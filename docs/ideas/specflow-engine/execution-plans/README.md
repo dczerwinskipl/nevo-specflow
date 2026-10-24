@@ -17,6 +17,7 @@ related:
   - ideas.specflow-engine.plan-03
   - ideas.specflow-engine.plan-04
   - ideas.specflow-engine.plan-05
+  - ideas.specflow-engine.plan-06
   - architecture.runtime.specflow-engine
 ---
 
@@ -29,6 +30,7 @@ related:
 | E3 — Offline Workflow    | [Plan 03](03-offline-workflow-execution/README.md)    | Real deterministic workflow, external CLI, claim admission and recovery                           |
 | E4 — Managed Sessions    | [Plan 04](04-managed-sessions-foundation/README.md)   | Durable Session/Turn/Work and enforced read-only mock provider                                    |
 | E5 — Managed Integration | [Plan 05](05-managed-execution-integration/README.md) | **Only after E3 and E4 acceptance**: safe dispatch, claims, handover and explicit workflow finish |
+| Documents layer D0–D3    | [Plan 06](06-specification-documents/README.md)       | Independent of E3–E5; PR order D0 → D1 → D2 → D3, Linux-only integration tests                    |
 
 Plan 03 and Plan 04 can be developed independently if code ownership is disjoint. High-risk identity, security, journal and recovery changes require solo independent review. E5 remains blocked on E3 and E4. [Multi-instance execution](../multi-instance-execution.md) and its [future plan](../multi-instance-plan/README.md) remain separate and are **not** part of the E5 gate.
 

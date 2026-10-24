@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import type { SpecFlowEngine } from '../../application';
-import { normalizeCreateClientIntent, type CreateClientTargetInput } from './intent';
+import {
+  normalizeCreateClientIntent,
+  type CreateArchetypeRef,
+  type CreateClientTargetInput,
+} from './intent';
+import type { AddedDocumentInput } from '../scaffold';
 import { CreateOperationError } from './error';
 import {
   createSpecificationWithIntent,
@@ -17,6 +22,11 @@ export interface CreateSpecificationRequest {
   readonly goal?: string;
   readonly slug?: string;
   readonly target: CreateClientTargetInput;
+  readonly archetype: CreateArchetypeRef;
+  readonly catalogueRevision?: string;
+  readonly optionalDocumentIds?: readonly string[];
+  readonly addedDocuments?: readonly AddedDocumentInput[];
+  readonly folders?: readonly string[];
 }
 
 export interface CreateSpecificationRequestOptions {
@@ -37,6 +47,8 @@ export async function createSpecificationFromRequest(
     normalizeCreateClientIntent(request),
     () => new Date().toISOString().slice(0, 10),
     options.onStage ? { onStage: options.onStage } : {},
+    undefined,
+    request.addedDocuments?.map((document) => document.content) ?? [],
   );
 }
 

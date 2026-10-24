@@ -17,6 +17,7 @@ describe('title-derived slug: UI preview rule equals the Engine rule', () => {
     'Ünïcödé Café',
   ])('%j', (title) => {
     const engine = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title,
       created: '2026-10-14',
@@ -48,7 +49,11 @@ describe('branch override: UI rule equals the Engine rule', () => {
   ])('%j', (branch) => {
     let engineAccepts = true;
     try {
-      normalizeCreateClientIntent({ title: 'T', target: { kind: 'new-worktree', branch } });
+      normalizeCreateClientIntent({
+        archetype: { id: 'minimal', version: 1 },
+        title: 'T',
+        target: { kind: 'new-worktree', branch },
+      });
     } catch {
       engineAccepts = false;
     }

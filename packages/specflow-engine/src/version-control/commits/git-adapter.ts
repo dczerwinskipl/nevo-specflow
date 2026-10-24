@@ -27,6 +27,14 @@ const BUSY_STATE = [
   'rebase-apply',
   'sequencer',
 ] as const;
+/**
+ * The Engine commits the pinned working-tree bytes whatever the user's `core.autocrlf` is:
+ * conversion and its round-trip check (`core.safecrlf`) are disabled for every command that reads the
+ * scaffold working-tree bytes into the index or compares them with the commit. `.gitattributes`
+ * still apply, as they do for a hand commit: the blob is what Git's attributes store for the pinned
+ * bytes (see ADR 0013).
+ */
+const EXACT_BYTES = ['-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false'] as const;
 const LOCK_RETRIES = 3;
 const LOCK_RETRY_MS = 200;
 
@@ -165,6 +173,7 @@ export function createGitCommitPort(
     if (tracked.length === 0) return { state: 'uncommitted' };
     if (!sameSet(tracked, paths)) return { state: 'mixed' };
     const status = await executeGit(root, [
+      ...EXACT_BYTES,
       '-c',
       'core.optionalLocks=false',
       'status',
@@ -182,14 +191,23 @@ export function createGitCommitPort(
     return { state: 'committed', sha };
   };
 
-  const fileAt = async (
+  const blobMatchesWorkingFile = async (
     root: string,
     commitSha: string,
     path: string,
-  ): Promise<string | undefined> => {
+  ): Promise<boolean> => {
     if (!OBJECT_ID.test(commitSha)) throw inspectionFailed('object-id');
-    const shown = await executeGit(root, ['show', commitSha + ':' + path]);
-    return shown.exitCode === 0 ? shown.stdout : undefined;
+    // `hash-object <file>` runs the file through the clean filters of its path (attributes), exactly
+    // like `git add`; `--no-filters` would hide an eol rule.
+    const stored = await executeGit(root, [...EXACT_BYTES, 'hash-object', '--', path]);
+    const committed = await executeGit(root, [
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      commitSha + ':' + path,
+    ]);
+    if (stored.exitCode !== 0 || committed.exitCode !== 0) return false;
+    return stored.stdout.trim() === committed.stdout.trim();
   };
 
   const isAncestor = async (
@@ -211,7 +229,7 @@ export function createGitCommitPort(
     head,
     currentBranch,
     inspectPaths,
-    fileAt,
+    blobMatchesWorkingFile,
     isAncestor,
     // Commits in one checkout run one at a time inside this process (they all move the same HEAD);
     // another process is covered by the lost-race retries below.
@@ -227,7 +245,7 @@ export function createGitCommitPort(
         // Makes untracked scaffold files "known" to Git (so `--only` accepts them) without staging
         // their content; nothing else in the index is touched.
         const added = await withLockRetry(() =>
-          executeGitMutation(root, ['add', '--intent-to-add', '--', ...literals]),
+          executeGitMutation(root, [...EXACT_BYTES, 'add', '--intent-to-add', '--', ...literals]),
         );
         if (added.exitCode !== 0) throw failed('intent-to-add');
 
@@ -239,6 +257,7 @@ export function createGitCommitPort(
         await testHooks?.afterRecheck?.();
         const committed = await withLockRetry(() =>
           executeGitMutation(root, [
+            ...EXACT_BYTES,
             '-c',
             'core.hooksPath=' + hooks,
             '-c',
@@ -282,6 +301,7 @@ export function createGitCommitPort(
           }
           return { sha: found.sha, parentHead };
         }
+        if (found.status === 'absent') await dropIntentToAdd(root, request.paths);
         if (found.status === 'history-changed') {
           throw new GitCapabilityError(
             'GIT_OPERATION_UNCERTAIN',
@@ -297,6 +317,31 @@ export function createGitCommitPort(
         );
       }),
   };
+}
+
+/**
+ * A commit that provably did not happen must not leave the scaffold files as intent-to-add entries in
+ * the user's index. Only paths that HEAD does not track are touched (the user's staged work on a
+ * tracked path is never reset). Best effort: a retry works whether or not the cleanup succeeded.
+ * Precondition (ADR 0013): the paths are new files this operation wrote, so no user staging of them
+ * can exist for the reset to drop.
+ */
+async function dropIntentToAdd(root: string, paths: readonly string[]): Promise<void> {
+  const literals = paths.map((path) => ':(literal)' + path);
+  const tracked = await executeGit(root, [
+    'ls-tree',
+    '-r',
+    '--name-only',
+    '-z',
+    'HEAD',
+    '--',
+    ...literals,
+  ]);
+  if (tracked.exitCode !== 0) return;
+  const known = new Set(tracked.stdout.split('\0').filter(Boolean));
+  const untracked = paths.filter((path) => !known.has(path)).map((path) => ':(literal)' + path);
+  if (untracked.length === 0) return;
+  await executeGitMutation(root, ['reset', '-q', '--', ...untracked]).catch(() => undefined);
 }
 
 function validateRequest(request: EngineCommitRequest): void {

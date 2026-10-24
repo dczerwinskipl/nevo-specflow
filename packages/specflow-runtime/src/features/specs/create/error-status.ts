@@ -1,5 +1,7 @@
+import type { DocumentErrorCode } from '@nevo/specflow-contracts/documents';
 import {
   CreateOperationError,
+  DocumentError,
   GitCapabilityError,
   ProjectControlLockError,
   ProjectHomeError,
@@ -12,8 +14,27 @@ import {
   type WorkspaceRegistryErrorCode,
 } from '@nevo/specflow-engine';
 
+/** The document codes a Create can answer with (admission of the archetype part). */
+export const CREATE_DOCUMENT_ERROR_CODES = [
+  'CATALOGUE_STALE',
+  'ARCHETYPE_UNKNOWN',
+  'DOCUMENT_PATH_INVALID',
+  'DOCUMENT_PATH_CONFLICT',
+  'DOCUMENT_OPERATION_INVALID',
+] as const satisfies readonly DocumentErrorCode[];
+type CreateDocumentErrorCode = (typeof CREATE_DOCUMENT_ERROR_CODES)[number];
+
+const CREATE_DOCUMENT_ERROR_CODE_SET: ReadonlySet<DocumentErrorCode> = new Set(
+  CREATE_DOCUMENT_ERROR_CODES,
+);
+
+function isCreateDocumentErrorCode(code: DocumentErrorCode): code is CreateDocumentErrorCode {
+  return CREATE_DOCUMENT_ERROR_CODE_SET.has(code);
+}
+
 export type CreateErrorCode =
   | CreateOperationError['code']
+  | CreateDocumentErrorCode
   | GitCapabilityErrorCode
   | ProjectControlLockErrorCode
   | ProjectHomeErrorCode
@@ -27,6 +48,8 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
   switch (code) {
     case 'CREATE_OPERATION_INVALID':
     case 'SPEC_VALIDATION_ERROR':
+    case 'DOCUMENT_PATH_INVALID':
+    case 'DOCUMENT_OPERATION_INVALID':
       return 400;
 
     case 'CREATE_CONFLICT':
@@ -36,6 +59,8 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'BRANCH_ALREADY_CHECKED_OUT':
     case 'WORKTREE_PATH_CONFLICT':
     case 'COMMIT_BLOCKED':
+    case 'CATALOGUE_STALE':
+    case 'DOCUMENT_PATH_CONFLICT':
       return 409;
 
     case 'BRANCH_NAME_INVALID':
@@ -43,10 +68,12 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'BRANCH_PROTECTED':
     case 'BASE_REF_NOT_FOUND':
     case 'GIT_BASE_CONFIG_MISSING':
+    case 'ARCHETYPE_UNKNOWN':
       return 422;
 
     case 'CREATE_RECOVERY_REQUIRED':
     case 'CREATE_JOURNAL_CORRUPT':
+    case 'CREATE_JOURNAL_UNSUPPORTED':
     case 'PROJECT_HOME_NOT_FOUND':
     case 'PROJECT_HOME_AMBIGUOUS':
     case 'PROJECT_HOME_INVALID':
@@ -95,5 +122,6 @@ export function createErrorCode(error: unknown): CreateErrorCode | undefined {
   ) {
     return error.code;
   }
+  if (error instanceof DocumentError && isCreateDocumentErrorCode(error.code)) return error.code;
   return undefined;
 }

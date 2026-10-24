@@ -12,6 +12,7 @@ import {
   previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   discoverSpecifications,
+  resolveCreateArchetype,
   openSpecFlowEngine,
   resolveSpecification,
   type CreateSpecificationRequest,
@@ -19,7 +20,7 @@ import {
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import { inspectCloseOperationDiagnostic } from '@nevo/specflow-engine/diagnostics';
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 
 export interface SpecsCommandContext {
   readonly cwd: string;
@@ -55,6 +56,15 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .command('create')
     .description('Create a Specification in the current checkout or a managed Git worktree')
     .requiredOption('--title <title>', 'Human-readable Specification title')
+    // Required, no default in any layer: a CLI default would be a hidden second place that decides
+    // the shape of the work.
+    .requiredOption('--archetype <id>', 'Archetype of the Specification (for example minimal)')
+    .option(
+      '--with <templateId>',
+      'Suggested document of the archetype to create (repeatable)',
+      collectUnique,
+      [] as string[],
+    )
     .option('--goal <description>', 'Optional Specification goal')
     .option('--workspace-id <id>', 'Target an existing registered workspace ID')
     .option('--worktree', 'Provision a managed Git worktree')
@@ -70,6 +80,8 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .action(
       async (options: {
         title: string;
+        archetype: string;
+        with: string[];
         goal?: string;
         workspaceId?: string;
         worktree?: boolean;
@@ -87,6 +99,10 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           title: options.title,
           goal: options.goal,
           target: resolveCliCreateTarget(engine, options),
+          // The Engine resolves the current version and revision of the catalogue it runs with; an
+          // unknown archetype id is refused there as ARCHETYPE_UNKNOWN.
+          ...resolveCreateArchetype(options.archetype),
+          optionalDocumentIds: options.with,
         });
         if (options.json) {
           output(context, projectCreatedSpecification(result));
@@ -95,6 +111,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           context.stdout('Workspace: ' + result.workspaceRoot + ' (' + result.workspaceId + ')');
           context.stdout('Manifest: ' + result.relativeManifestPath);
           context.stdout('Operation ID: ' + result.operationId);
+          context.stdout('Documents: ' + result.documentIds.join(', '));
         }
       },
     );
@@ -371,6 +388,14 @@ interface CliCreateOptions {
   readonly baseRef?: string;
   readonly branch?: string;
   readonly integrationTargetWorkspaceId?: string;
+}
+
+/** Repeatable option value: each template id once; a repeat is a usage error. */
+function collectUnique(value: string, previous: string[]): string[] {
+  if (previous.includes(value)) {
+    throw new InvalidArgumentError(`--with ${value} was given more than once.`);
+  }
+  return [...previous, value];
 }
 
 function validateCreateOptions(options: CliCreateOptions): void {

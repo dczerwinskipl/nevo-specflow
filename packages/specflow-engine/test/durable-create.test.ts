@@ -42,6 +42,7 @@ function existing(engine: SpecFlowEngine, title = 'Create durable spec'): Create
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
   };
 }
@@ -51,6 +52,7 @@ function linked(title = 'Create linked spec'): CreateSpecificationInput {
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'new-worktree', baseRef: 'HEAD' },
   };
 }
@@ -183,7 +185,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     );
   }, 300000);
 
-  it('SC00: records only Engine-created dirty scaffold files with durable fingerprints', async () => {
+  it('records only Engine-created dirty scaffold files with durable fingerprints', async () => {
     const { root, engine } = await project(false);
     const result = await createSpecification(engine, existing(engine, 'Baseline evidence'));
     const journal = await inspectCreateSpecification(engine, result.operationId);
@@ -225,7 +227,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
     const journal = await inspectCreateSpecification(engine, input.operationId);
     if (journal?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
-    expect(journal.version).toBe(1);
+    expect(journal.version).toBe(2);
     expect(journal?.stage).toBe('reserved');
     expect(journal?.target.branch).toBe('feature/pinned-git-reservation');
     expect(journal?.target.baseCommit).toBe(originalHead);
@@ -245,7 +247,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(git(created.workspaceRoot, 'symbolic-ref', '--short', 'HEAD')).toBe(
       journal?.target.branch,
     );
-    expect((await inspectCreateSpecification(restarted, input.operationId))?.version).toBe(1);
+    expect((await inspectCreateSpecification(restarted, input.operationId))?.version).toBe(2);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(originalHead);
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
   }, 240000);
@@ -264,7 +266,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     ).rejects.toThrow('Stop after journal reservation');
 
     const original = await inspectCreateSpecification(engine, input.operationId);
-    expect(original?.version).toBe(1);
+    expect(original?.version).toBe(2);
     expect(original?.stage).toBe('reserved');
     expect(original?.target.kind).toBe('new-worktree');
     if (original?.target.kind !== 'new-worktree') {
@@ -356,6 +358,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const { createSpecificationFromRequest } = await import('../src/index');
     const request = {
       operationId: randomUUID(),
+      archetype: { id: 'minimal', version: 1 },
       title: 'A very long descriptive title',
       slug: 'short-name',
       target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
@@ -391,6 +394,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(
       (
         await createSpecificationFromRequest(engine, {
+          archetype: { id: 'minimal', version: 1 },
           operationId: randomUUID(),
           title: 'Derived Title',
           target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -405,6 +409,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     for (const slug of ['Upper', 'a--b', '../x', 'con', 'a_b', 'a'.repeat(81)]) {
       await expect(
         createSpecificationFromRequest(engine, {
+          archetype: { id: 'minimal', version: 1 },
           operationId: randomUUID(),
           title: 'Bad slug',
           slug,
@@ -436,6 +441,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const operationId = randomUUID();
     const request = {
       operationId,
+      archetype: { id: 'minimal', version: 1 },
       title: 'Policy picked once',
       target: { kind: 'new-worktree' as const },
     };
@@ -443,7 +449,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     roots.push(dirname(first.workspaceRoot));
     const reserved = await inspectCreateSpecification(engine, operationId);
     if (reserved?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
-    expect(reserved.version).toBe(1);
+    expect(reserved.version).toBe(2);
     expect(reserved.target.branch).toBe(
       'feature/policy-picked-once-' + reserved.specId.slice(0, 8),
     );
@@ -478,6 +484,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const operationId = randomUUID();
     const request = {
       operationId,
+      archetype: { id: 'minimal', version: 1 },
       title: 'Omitted defaults pinned',
       target: { kind: 'new-worktree' as const },
     };
@@ -499,7 +506,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
     const reserved = await inspectCreateSpecification(engine, operationId);
     if (reserved?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
-    expect(reserved.version).toBe(1);
+    expect(reserved.version).toBe(2);
     expect(reserved.stage).toBe('reserved');
     expect(reserved.created).toBe('2026-10-14');
     expect(reserved?.target.branch).toBe(
@@ -531,7 +538,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       reserved?.target.branch,
     );
     expect(git(result.workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(head);
-    expect((await inspectCreateSpecification(engine, operationId))?.version).toBe(1);
+    expect((await inspectCreateSpecification(engine, operationId))?.version).toBe(2);
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
   }, 300000);
 

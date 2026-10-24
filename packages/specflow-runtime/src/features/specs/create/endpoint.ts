@@ -1,15 +1,18 @@
 import {
   inspectCreateOptions,
   inspectPublicCreateOperation,
+  projectCatalogue,
   readPublicCreateOperationRow,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
+import { Type } from 'typebox';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback } from 'fastify';
 import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
+import { ArchetypeCatalogueSchema } from '@nevo/specflow-contracts/documents';
 import {
   CREATE_RESPOND_ASYNC_PREFERENCE,
   CreateOperationAcceptedSchema,
@@ -29,10 +32,16 @@ import {
   type OperationEventsStreamOptions,
   type OperationProgressRegistry,
 } from '../../operations';
+import { matchesEtag, sendNotModified } from '../../../server/etag';
 import { createErrorCode, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
 
+/**
+ * Route-level `bodyLimit` of `POST /api/specs` (reference "Limits": HTTP body, Save and Create).
+ * Above the content caps (1 MiB per file, 1 MiB of added files) to leave room for JSON escaping.
+ */
+const CREATE_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 const DEFAULT_CLOSE_GRACE_MS = 30_000;
 
 export interface SpecsCreateEndpointOptions {
@@ -141,6 +150,36 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
     },
   );
 
+  // The archetype catalogue the Create form and the CLI choose from. Same capability as
+  // `create-options`; the ETag is the catalogue revision, so a client can revalidate cheaply.
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    '/api/specs/archetypes',
+    {
+      preHandler: requireCapability({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.Create,
+        scope: {},
+      }),
+      schema: {
+        response: {
+          200: ArchetypeCatalogueSchema,
+          304: Type.Null(),
+          401: AuthenticationRequiredErrorResponseSchema,
+          403: AuthorizationForbiddenErrorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const catalogue = projectCatalogue();
+      const etag = `"${catalogue.revision}"`;
+      reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return sendNotModified(reply);
+      }
+      return reply.code(200).send(catalogue);
+    },
+  );
+
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/create/operations/:operationId',
     {
@@ -232,6 +271,9 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   app.withTypeProvider<TypeBoxTypeProvider>().post(
     '/api/specs',
     {
+      // Above the content caps (1 MiB per file, 1 MiB of added files) to leave room for JSON
+      // escaping; a larger body is answered 413 before it is parsed.
+      bodyLimit: CREATE_BODY_LIMIT_BYTES,
       preHandler: requireCapability({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.Create,
@@ -246,6 +288,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
           409: CreateSpecErrorSchema,
+          413: CreateSpecErrorSchema,
           422: CreateSpecErrorSchema,
           503: CreateSpecErrorSchema,
         },

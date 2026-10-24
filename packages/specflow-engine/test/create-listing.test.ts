@@ -54,11 +54,12 @@ function journal(
   overrides: Partial<Omit<CreateJournal, 'target'>> & { target?: CreateJournal['target'] } = {},
 ): CreateJournal {
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title: 'Listing proof',
     target: { kind: 'existing', workspaceId: fx.engine.workspace.workspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId: fx.context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -67,6 +68,8 @@ function journal(
     slug: 'listing-proof',
     title: 'Listing proof',
     created: '2026-10-14',
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: ['overview'],
     stage: 'reserved',
     target: {
       kind: 'existing',
@@ -74,8 +77,12 @@ function journal(
       workspaceRoot: fx.root,
     },
     files: [
-      { relativePath: 'specs/active/listing-proof/specification.yaml', sha256: 'b'.repeat(64) },
-      { relativePath: 'specs/active/listing-proof/overview.md', sha256: 'c'.repeat(64) },
+      {
+        relativePath: 'specs/active/listing-proof/specification.yaml',
+        sha256: 'b'.repeat(64),
+        bytes: 1,
+      },
+      { relativePath: 'specs/active/listing-proof/overview.md', sha256: 'c'.repeat(64), bytes: 1 },
     ],
     ...overrides,
   };
@@ -139,6 +146,7 @@ describe('listPublicCreateOperations', () => {
   it('exposes the branch of a new worktree target and uses mtime as updatedAt', async () => {
     const fx = await fixture();
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: 'Listing proof',
       target: { kind: 'new-worktree', branch: 'feature/x' },
     });
@@ -197,7 +205,7 @@ describe('listPublicCreateOperations', () => {
     const rows = await listPublicCreateOperations(fx.engine);
     const byId = new Map(rows.map((row) => [row.operationId, row]));
     expect(byId.get(good.operationId)).toMatchObject({ state: 'in-progress' });
-    for (const id of [corrupt, huge, foreign.operationId, ...(symlinked ? [linked] : [])]) {
+    for (const id of [huge, foreign.operationId, ...(symlinked ? [linked] : [])]) {
       expect(byId.get(id), id).toEqual({
         operationId: id,
         kind: 'specification-create',
@@ -206,6 +214,15 @@ describe('listPublicCreateOperations', () => {
         updatedAt: expect.any(String) as string,
       });
     }
+    // Text that is not JSON is an unsupported journal: the same row, plus the stable code.
+    expect(byId.get(corrupt)).toEqual({
+      operationId: corrupt,
+      kind: 'specification-create',
+      state: 'recovery-required',
+      unreadable: true,
+      code: 'CREATE_JOURNAL_UNSUPPORTED',
+      updatedAt: expect.any(String) as string,
+    });
     expect(rows).toHaveLength(symlinked ? 5 : 4);
   });
 

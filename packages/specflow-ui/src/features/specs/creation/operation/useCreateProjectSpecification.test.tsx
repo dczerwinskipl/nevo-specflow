@@ -31,6 +31,7 @@ const created: CreatedSpec = {
   slug: 'title',
   workspaceId: '00000000-0000-4000-8000-000000000002',
   relativeManifestPath: 'specs/active/title/specification.yaml',
+  documentIds: ['overview'],
 };
 
 const httpError = (status: number, code: string) =>

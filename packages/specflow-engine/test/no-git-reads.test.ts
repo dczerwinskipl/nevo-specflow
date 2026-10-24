@@ -81,6 +81,7 @@ describe('read endpoints never spawn Git (regression guard)', () => {
           operationId: randomUUID(),
           title: 'Guarded read',
           created: '2026-10-20',
+          archetype: { id: 'minimal', version: 1 },
           target: await primaryTarget(engine),
         });
         const { spawns } = await countGit(() => read(engine, created.specId));
@@ -100,6 +101,7 @@ describe('git-disabled project end to end', () => {
         operationId: randomUUID(),
         title: 'No git at all',
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target,
       });
       const options = await inspectCreateOptions(engine);
@@ -130,6 +132,7 @@ describe('git-enabled create-options Git budget', () => {
         operationId: randomUUID(),
         title,
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'new-worktree', baseRef: 'HEAD' },
       });
     }
@@ -153,6 +156,7 @@ describe('filesystem-only availability on reads', () => {
       operationId: randomUUID(),
       title: 'Linked gone',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     const registry = await engine.readRegistry();
@@ -181,6 +185,7 @@ describe('mutations keep full Git verification', () => {
         operationId: randomUUID(),
         title: 'Mutation verifies',
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target,
       }),
     );
@@ -203,6 +208,7 @@ describe('verification split between reads and mutations', () => {
       operationId: randomUUID(),
       title: 'Redirected link',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     const registry = await engine.readRegistry();

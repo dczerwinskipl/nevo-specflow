@@ -55,14 +55,20 @@ type Context = Awaited<ReturnType<typeof fixture>>;
 function journal(context: Context, stage: CreateStage): CreateJournal {
   const title = 'Retention ' + randomUUID().slice(0, 8);
   const specId = randomUUID();
-  const scaffold = createSpecificationScaffold({ specId, title, created: '2026-10-14' });
+  const scaffold = createSpecificationScaffold({
+    archetypeId: 'minimal',
+    specId,
+    title,
+    created: '2026-10-14',
+  });
   const workspaceId = randomUUID();
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title,
     target: { kind: 'existing', workspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId: context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -71,9 +77,15 @@ function journal(context: Context, stage: CreateStage): CreateJournal {
     slug: scaffold.slug,
     title,
     created: '2026-10-14',
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: scaffold.documentIds,
     stage,
     target: { kind: 'existing', workspaceId, workspaceRoot: context.project.homeRoot },
-    files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+    files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+      relativePath,
+      sha256,
+      bytes,
+    })),
   };
 }
 
@@ -109,24 +121,31 @@ describe('Create journal retention', () => {
     }
   });
 
-  it('never removes the kept operation, corrupt or foreign files', async () => {
+  it('never removes the kept operation or a corrupt journal of the current format; unsupported ones age out', async () => {
     const context = await fixture();
     const now = Date.now();
     const keep = await seed(context, 'completed', 30, now);
-    const corruptId = randomUUID();
-    const corrupt = createJournalPath(context, corruptId);
-    await withCreateJournalLock(context, () => writeFile(corrupt, '{not json'));
     const old = new Date(now - 30 * DAY);
-    await utimes(corrupt, old, old);
+    // Not JSON and an other version are unsupported: deleted by age, never parsed further.
+    const notJson = createJournalPath(context, randomUUID());
+    await withCreateJournalLock(context, () => writeFile(notJson, '{not json'));
+    await utimes(notJson, old, old);
     const oldVersion = await seed(context, 'completed', 30, now);
     await writeFile(
       createJournalPath(context, oldVersion.operationId),
-      JSON.stringify({ ...oldVersion, version: 2 }),
+      JSON.stringify({ ...oldVersion, version: 1 }),
     );
     await utimes(createJournalPath(context, oldVersion.operationId), old, old);
-    expect(await sweep(context, now, { keepOperationId: keep.operationId })).toBe(0);
+    // A broken journal of the CURRENT format is evidence and stays.
+    const broken = await seed(context, 'completed', 30, now);
+    await writeFile(
+      createJournalPath(context, broken.operationId),
+      JSON.stringify({ ...broken, stage: 'nonsense' }),
+    );
+    await utimes(createJournalPath(context, broken.operationId), old, old);
+    expect(await sweep(context, now, { keepOperationId: keep.operationId })).toBe(2);
     const dir = await readdir(join(context.project.stateRoot, 'engine/operations/create'));
-    expect(dir).toHaveLength(3);
+    expect(dir.sort()).toEqual([keep.operationId + '.json', broken.operationId + '.json'].sort());
   });
 
   it('respects the per-call limit and finishes on later calls', async () => {

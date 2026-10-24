@@ -77,6 +77,13 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
           goal: body.goal,
           ...(body.slug !== undefined ? { slug: body.slug } : {}),
           target,
+          archetype: { id: body.archetypeId, version: body.archetypeVersion },
+          catalogueRevision: body.catalogueRevision,
+          ...(body.optionalDocumentIds !== undefined
+            ? { optionalDocumentIds: body.optionalDocumentIds }
+            : {}),
+          ...(body.addedDocuments !== undefined ? { addedDocuments: body.addedDocuments } : {}),
+          ...(body.folders !== undefined ? { folders: body.folders } : {}),
         },
         {
           onStage: (observation) => {

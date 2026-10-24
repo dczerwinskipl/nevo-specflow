@@ -56,6 +56,7 @@ async function specification(
     operationId: randomUUID(),
     title,
     created: '2026-10-19',
+    archetype: { id: 'minimal', version: 1 },
     target: linked
       ? { kind: 'new-worktree' as const, baseRef: 'HEAD' }
       : { kind: 'existing' as const, workspaceId: fixture.engine.workspace.workspaceId },
@@ -148,6 +149,7 @@ function spawnPausedCreateWorker(root: string, workspaceId: string): PausedCreat
         operationId: randomUUID(),
         title: 'Concurrent OS Create',
         created: '2026-10-19',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId },
       }),
       NEVO_CREATE_WORKER_PAUSE_STAGE: 'reservation',
@@ -406,6 +408,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
         operationId: randomUUID(),
         title,
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: a.workspaceId },
       });
       git(
@@ -460,6 +463,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
       operationId: randomUUID(),
       title: 'Shared OS Close second',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: a.workspaceId },
     });
     git(

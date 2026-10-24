@@ -8,6 +8,7 @@ import { InMemoryAuthenticationStore } from '../../src/features/auth/authenticat
 import { createRuntimeApp } from '../../src/server/app';
 import { INTERNAL_ERROR_CODE, registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 const SECRET_PATH = '/home/secret/proj/.nevo/local/state/engine/operations/create/x.json';
 const apps: FastifyInstance[] = [];
@@ -87,7 +88,7 @@ describe('untyped Engine failures on the Create routes', () => {
   it.each([
     ['GET', '/api/specs/create-options', undefined],
     ['GET', '/api/specs/create/operations/6f1d2c34-5b6a-4c7d-8e9f-0a1b2c3d4e5f', undefined],
-    ['POST', '/api/specs', { title: 'T', goal: 'G' }],
+    ['POST', '/api/specs', { ...ARCHETYPE_REQUEST, title: 'T', goal: 'G' }],
   ] as const)('%s %s masks the cause', async (method, url, payload) => {
     const { app, headers } = await server();
     const response = await app.inject({

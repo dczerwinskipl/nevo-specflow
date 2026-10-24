@@ -55,6 +55,7 @@ async function specification(engine: SpecFlowEngine, title: string, linked = fal
     operationId: randomUUID(),
     title,
     created: '2026-10-17',
+    archetype: { id: 'minimal', version: 1 },
     target: linked
       ? { kind: 'new-worktree', baseRef: 'HEAD' }
       : { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -194,6 +195,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
       operationId: randomUUID(),
       title: 'Second linked occupant',
       created: '2026-10-17',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: first.workspaceId },
     });
     git(
@@ -312,6 +314,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
           operationId: randomUUID(),
           title: 'Pending Create in same checkout',
           created: '2026-10-17',
+          archetype: { id: 'minimal', version: 1 },
           target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
         },
         {

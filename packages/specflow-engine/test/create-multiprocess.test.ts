@@ -50,6 +50,7 @@ function input(workspaceId: string, title: string): CreateSpecificationInput {
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing', workspaceId },
   };
 }
@@ -138,6 +139,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       ...input(engine.workspace.workspaceId, 'Concurrent midnight'),
       operationId,
       created: '2026-10-14',
+      archetype: { id: 'minimal', version: 1 },
     };
     const two = { ...one, created: '2026-10-15' };
     const workers = [spawnCreateWorker(root, one), spawnCreateWorker(root, two)];
@@ -149,7 +151,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
     ).toEqual([0, 0]);
     const { readCreateJournal } = await import('../src/specs/create/journal');
     const journal = await readCreateJournal(engine.context, operationId);
-    expect(journal?.version).toBe(1);
+    expect(journal?.version).toBe(2);
     expect(['2026-10-14', '2026-10-15']).toContain(journal?.created);
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);
     expect(await discoverSpecifications(engine)).toHaveLength(1);
@@ -175,6 +177,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
           operationId,
           title: 'Concurrent ' + pausedAt + (gitSettled ? ' Git confirmed' : '') + ' join',
           created: '2026-10-14',
+          archetype: { id: 'minimal', version: 1 },
           target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
         };
         const writer = spawnCreateWorker(root, original, { pauseEffect: pausedAt });
@@ -182,7 +185,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
         await waitForFile(writer.paused, writer);
         const { readCreateJournal } = await import('../src/specs/create/journal');
         const journal = await readCreateJournal(engine.context, operationId);
-        expect(journal?.version).toBe(1);
+        expect(journal?.version).toBe(2);
         expect(journal?.stage).toBe(pausedAt === 'git' ? 'git-initiated' : 'manifest-writing');
 
         const follower = spawnCreateWorker(
@@ -328,7 +331,9 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       const journal = await readCreateJournal(engine.context, original.operationId);
       expect(journal?.stage).toBe('manifest-writing');
       const manifest = join(root, journal!.files[0]!.relativePath);
-      expect(await readFile(manifest, 'utf8')).toBe('');
+      // The manifest becomes visible only complete (staged file, fsync, rename): while the write is
+      // in progress there is no partial file at its path.
+      await expect(readFile(manifest, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
 
       const unowned = join(root, 'specs/active/unowned-corrupt');
       await mkdir(unowned);
@@ -353,7 +358,9 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       // Reservation is emitted AFTER the independent process has passed
       // journal-aware discovery, but BEFORE it needs to finish its Create.
       await waitForFile(independent.observed, independent);
-      expect(await readFile(manifest, 'utf8')).toBe('');
+      // The manifest becomes visible only complete (staged file, fsync, rename): while the write is
+      // in progress there is no partial file at its path.
+      await expect(readFile(manifest, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
       expect((await engine.readRegistry()).specBindings).toHaveLength(0);
     } finally {
       await writeFile(writer.release, 'continue');

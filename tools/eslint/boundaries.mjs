@@ -61,6 +61,11 @@ export const specflowEngineBoundaries = [
         '^(?:@nevo/specflow(?!-contracts(?:/|$))(?:-|/|$)|@fastify(?:/|$)|fastify(?:/|$)|commander(?:/|$)|react(?:-dom)?(?:/|$)|openid-client(?:/|$))',
       message: 'Engine is independent of CLI, Runtime, providers, HTTP, and UI adapters.',
     },
+    {
+      regex: '^@nevo/specflow-contracts(?:/(?!documents(?:/|$))|$)',
+      message:
+        'Engine may import only the neutral documents vocabulary from @nevo/specflow-contracts/documents (ADR 0012).',
+    },
   ]),
 ];
 

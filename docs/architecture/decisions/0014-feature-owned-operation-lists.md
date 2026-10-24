@@ -65,8 +65,14 @@ from API data alone.
   days (bounded to 50 per reservation, under the reservation lock, no Git; the hook is kind agnostic so
   Close can reuse it). `recovery-required`, in-progress and corrupt journals are never deleted, so they
   accumulate until resolved. After the retention the same operationId is a new operation.
-- The Create journal format is `version: 1`; there was never a released version 2 and no migration or
-  compatibility reader exists.
+- The Create journal format is `version: 2` (the archetype layer). The scaffold contents are not in the journal:
+  they live in a hash-addressed payload folder next to it and the journal keeps only evidence (path, sha256,
+  bytes). No migration or compatibility reader exists: a journal of an older version, a file that is not JSON or a
+  file without a numeric `version` is _unsupported_ and nothing else is read from it. It never counts as a
+  resource claim, so it blocks neither Create nor Close; the retention sweep deletes it after 7 days; reading it
+  by operation id answers `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`), and the
+  tolerant list shows it as `recovery-required` with that code. Resume an interrupted Create before upgrading;
+  the evidence of an older journal that still had effects is lost after the retention.
 
 ## Known gap: no product path to resume or abandon
 

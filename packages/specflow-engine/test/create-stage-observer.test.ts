@@ -39,6 +39,7 @@ describe('create stage observer', () => {
         operationId: randomUUID(),
         title: 'Observed create',
         created: '2026-10-14',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       },
       { onStage: (observation) => seen.push(observation) },
@@ -65,6 +66,7 @@ describe('create stage observer', () => {
         operationId: randomUUID(),
         title: 'Observed linked create',
         created: '2026-10-14',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'new-worktree', baseRef: 'HEAD' },
       },
       {
@@ -85,6 +87,7 @@ describe('create stage observer', () => {
       operationId: randomUUID(),
       title: 'Replayed create',
       created: '2026-10-14',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing' as const, workspaceId: engine.workspace.workspaceId },
     };
     await createSpecification(engine, input);
@@ -101,6 +104,7 @@ describe('create stage observer: replay of a reserved operation', () => {
       operationId: randomUUID(),
       title: 'Replay behind a rejection',
       created: '2026-10-14',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
     };
     await expect(

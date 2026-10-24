@@ -20,7 +20,11 @@ import {
   type SessionReferenceOwner,
 } from '../features/sessions';
 import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
-import { createDocumentsFeature, type DocumentsFeatureDependencies } from '../features/documents';
+import {
+  createDocumentsFeature,
+  createEngineWorkspaceDocuments,
+  type DocumentsFeatureDependencies,
+} from '../features/documents';
 import { createSettingsFeature, SettingsCapabilities } from '../features/settings';
 import {
   createSpecsFeature,
@@ -72,6 +76,9 @@ export interface RuntimeAppDependencies {
 }
 
 export const RUNTIME_FASTIFY_OPTIONS = {
+  // Above the longest schema-legal path parameter (a 200 character id), so the schema answers 404 or
+  // 400 instead of the router answering 414 FST_ERR_MAX_PARAM_LENGTH (Fastify's default is 100).
+  maxParamLength: 256,
   logger: {
     level: 'warn',
     stream: process.stderr,
@@ -141,6 +148,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const sessionReferences: SessionReferenceOwner | undefined =
     demo?.sessionReferences ?? dependencies.sessions?.references;
   const documentSource = demo?.documentSource ?? dependencies.documents?.source;
+  // Project mode: the Engine is the source of the workspace `documents` section, unless a
+  // contribution was injected (tests, demo).
+  const engine = dependencies.specs?.engine;
+  const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
+  const contributions =
+    !demo && engine && !specContributions?.documents
+      ? { ...specContributions, documents: createEngineWorkspaceDocuments(engine) }
+      : specContributions;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -148,7 +163,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         engine: dependencies.specs?.engine,
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
-        contributions: dependencies.specs?.contributions ?? demo?.contributions,
+        contributions,
         sessions: sessionReferences,
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
@@ -172,6 +187,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createDocumentsFeature({
       source: documentSource,
+      legacyDemoRead: documentSource !== undefined,
+      ...(dependencies.documents?.readSource
+        ? { readSource: dependencies.documents.readSource }
+        : {}),
+      ...(engine ? { engine } : {}),
     }),
     createSessionsFeature(),
     createSettingsFeature(),

@@ -43,6 +43,7 @@ describe('read-path Git process budget (per request)', () => {
       operationId: randomUUID(),
       title: 'Linked',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
 

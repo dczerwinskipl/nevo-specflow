@@ -27,3 +27,10 @@ from that production-source scan. This is a build contract, not only a documenta
 
 Runtime may use these schemas directly with Fastify Type Providers. UI/client code may use the same
 types and, where useful, schemas without depending on Runtime.
+
+## Archetype definition JSON Schema
+
+`schema/archetype-definitions.schema.json` is generated from the TypeBox definition types
+(`pnpm --filter @nevo/specflow-contracts schema:generate`) and committed byte for byte. It is shipped in the
+package `files` but is **not** a subpath export; read it from the package directory or the repository. See
+`docs/reference/api/specification-documents.md` ("Definition schema").

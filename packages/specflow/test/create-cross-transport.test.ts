@@ -18,6 +18,8 @@ import {
 import { startRuntime } from '@nevo/specflow-runtime';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { catalogueRevision } from '@nevo/specflow-engine';
+
 import { createProgram } from '../src/program';
 
 const roots: string[] = [];
@@ -25,6 +27,11 @@ const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
+
+/** The archetype fields of a `POST /api/specs` body: the same selection the CLI test passes. */
+function archetypeRequest() {
+  return { archetypeId: 'minimal', archetypeVersion: 1, catalogueRevision: catalogueRevision() };
+}
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -228,7 +235,11 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
       const response = await fetch('http://127.0.0.1:' + port + '/api/specs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: 'Cross transport canonical Spec', operationId }),
+        body: JSON.stringify({
+          ...archetypeRequest(),
+          title: 'Cross transport canonical Spec',
+          operationId,
+        }),
       });
       expect(response.status).toBe(201);
       created = (await response.json()) as Created;
@@ -254,6 +265,8 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     const retry = cli(root);
     await retry.run([
       'create',
+      '--archetype',
+      'minimal',
       '--title',
       'Cross transport canonical Spec',
       '--operation-id',
@@ -271,7 +284,15 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     const { root, engine } = await fixture(true, await freePort());
     const before = git(root, 'rev-parse', 'HEAD');
     const shell = cli(root);
-    await shell.run(['create', '--title', 'CLI linked checkout', '--worktree', '--json']);
+    await shell.run([
+      'create',
+      '--archetype',
+      'minimal',
+      '--title',
+      'CLI linked checkout',
+      '--worktree',
+      '--json',
+    ]);
 
     const created = JSON.parse(shell.lines[0]!) as Created;
     expect(created).toMatchObject({ kind: 'specification-create', status: 'completed' });
@@ -333,7 +354,7 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
       const response = await fetch('http://127.0.0.1:' + port + '/api/specs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, operationId }),
+        body: JSON.stringify({ ...archetypeRequest(), title, operationId }),
       });
       expect(response.status).toBe(201);
       const created = (await response.json()) as Created;
@@ -345,7 +366,16 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
 
     const registryBefore = await readFile(workspaceRegistryPath(engine.context), 'utf8');
     await expect(
-      cli(linked).run(['create', '--title', title, '--operation-id', operationId, '--json']),
+      cli(linked).run([
+        'create',
+        '--archetype',
+        'minimal',
+        '--title',
+        title,
+        '--operation-id',
+        operationId,
+        '--json',
+      ]),
     ).rejects.toMatchObject({ code: 'CREATE_CONFLICT' });
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);

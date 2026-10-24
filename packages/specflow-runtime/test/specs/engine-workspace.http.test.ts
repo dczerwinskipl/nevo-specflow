@@ -21,6 +21,7 @@ import { InMemoryAuthenticationStore } from '../../src/features/auth/authenticat
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 function trustedLocalConfig() {
   const config = passwordConfig();
@@ -79,10 +80,11 @@ describe('Engine-backed specification workspace read', () => {
   });
 
   it(
-    'returns the identity of an existing specification with not-implemented sections, 404 for an unknown one',
+    'returns the identity and registered documents of an existing specification with the other sections not implemented, 404 for an unknown one',
     async () => {
       const { root, engine } = await fixture();
       const created = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Actual canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -104,12 +106,25 @@ describe('Engine-backed specification workspace read', () => {
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
           tasks: unavailable,
-          documents: unavailable,
+          documents: body.sections.documents,
           sessions: unavailable,
           activity: unavailable,
           repository: unavailable,
           changes: unavailable,
         });
+        // The registered documents of the manifest, read through the Engine.
+        expect(body.sections.documents.state).toBe('available');
+        if (body.sections.documents.state === 'available') {
+          const [overview, ...others] = body.sections.documents.data.items;
+          expect(others).toEqual([]);
+          expect(overview).toMatchObject({
+            id: 'overview',
+            title: 'Actual canonical Spec',
+            filename: 'overview.md',
+            kind: 'overview',
+          });
+          expect(overview?.revision).toMatch(/^[0-9a-f]{64}$/u);
+        }
         expect(body.actions).toEqual({
           executeTasks: { available: false, reason: 'not_implemented' },
           startSession: { available: false, reason: 'not_implemented' },
@@ -158,6 +173,7 @@ describe('Engine-backed specification workspace read', () => {
           method: 'POST',
           url: '/api/specs',
           payload: {
+            ...ARCHETYPE_REQUEST,
             title: 'From the new workspace',
             operationId,
             target: { kind: 'new-worktree' },
@@ -195,11 +211,13 @@ describe('Engine-backed specification workspace read', () => {
     async () => {
       const { engine } = await fixture();
       const visible = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Granted canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       });
       const hidden = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Hidden canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

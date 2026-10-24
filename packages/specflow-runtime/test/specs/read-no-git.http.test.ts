@@ -53,6 +53,7 @@ describe('read endpoints never spawn Git (HTTP regression guard)', () => {
       );
       const engine = await bootstrapProjectHome(root);
       const created = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Guarded HTTP read',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

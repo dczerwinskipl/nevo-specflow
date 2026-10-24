@@ -32,6 +32,7 @@ export async function inspectPublicCreateOperation(
       workspaceId: record.target.workspaceId,
       workspaceRoot: record.target.workspaceRoot,
       relativeManifestPath: record.files[0]!.relativePath,
+      documentIds: record.documentIds,
     });
   }
   return {

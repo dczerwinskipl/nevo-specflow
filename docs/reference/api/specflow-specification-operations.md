@@ -26,17 +26,18 @@ future Workflow or provider Session APIs.
 
 ## Create
 
-| HTTP | Route                                              | Result                                                         |
-| ---- | -------------------------------------------------- | -------------------------------------------------------------- |
-| GET  | `/api/specs/create-options`                        | 200, authorized read-only options                              |
-| POST | `/api/specs`                                       | **201** `CreatedSpec`, or **202** with `Prefer: respond-async` |
-| GET  | `/api/specs/create/operations/:operationId`        | 200 sanitized observation or 404 `CREATE_NOT_FOUND`            |
-| GET  | `/api/specs/create/operations/:operationId/events` | live named steps (SSE), see below                              |
+| HTTP | Route                                              | Result                                                          |
+| ---- | -------------------------------------------------- | --------------------------------------------------------------- |
+| GET  | `/api/specs/create-options`                        | 200, authorized read-only options                               |
+| GET  | `/api/specs/archetypes`                            | 200 archetype catalogue (ETag = revision, 304), same capability |
+| POST | `/api/specs`                                       | **201** `CreatedSpec`, or **202** with `Prefer: respond-async`  |
+| GET  | `/api/specs/create/operations/:operationId`        | 200 sanitized observation or 404 `CREATE_NOT_FOUND`             |
+| GET  | `/api/specs/create/operations/:operationId/events` | live named steps (SSE), see below                               |
 
 The list of Create operations for the Specifications screen is `GET /api/specs/operations`
 (`reference.api.specs-operations-list`; admitted by spec view, not by `Create`).
 
-All four require project-wide Spec `Create` capability before reading protected data.
+All of them require project-wide Spec `Create` capability before reading protected data.
 401/403 use existing Auth schemas. With no Engine composition, all return
 503 `{"error":"ENGINE_UNAVAILABLE","code":"ENGINE_UNAVAILABLE"}`.
 Typed Create errors otherwise expose matching uppercase `error`/`code`; examples include
@@ -49,7 +50,15 @@ created) and `COMMIT_FAILED`/503 (the scaffold files were written but could not 
 operator has to resume, a re-submit answers `CREATE_RECOVERY_REQUIRED`). Bodies stay `{error,code}`;
 they never carry branch patterns, paths or Git output.
 
-POST request: `{title,goal?,slug?,operationId?,target?}`, title HTTP length 1–200.
+POST request: `{title,goal?,slug?,operationId?,target?,archetypeId,archetypeVersion,catalogueRevision,optionalDocumentIds?,addedDocuments?,folders?}`,
+title HTTP length 1–200. The three archetype fields are required (no default archetype in the contract); the
+catalogue is `GET /api/specs/archetypes` and the fields are specified in
+[Specification documents](specification-documents.md) (D2). The route sets its own `bodyLimit` of 2 MiB; a larger
+body is **413** `DOCUMENT_TOO_LARGE`. Further typed errors: `CATALOGUE_STALE`/409 (revision or archetype version
+changed; nothing written), `ARCHETYPE_UNKNOWN`/422, `DOCUMENT_PATH_INVALID`/400, `DOCUMENT_PATH_CONFLICT`/409,
+`DOCUMENT_OPERATION_INVALID`/400 (counts, UTF-8 byte limits, an added type that cannot be registered) and
+`CREATE_JOURNAL_UNSUPPORTED`/503 (an older-format journal read by operation id). The catalogue revision is
+checked only when a new operation is admitted and is not part of the idempotency fingerprint.
 `slug` is optional, lowercase kebab-case ASCII (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 80 characters,
 not a Windows device name). It replaces the title-derived slug for the Spec folder, the
 worktree folder and the `{slug}` of the branch pattern. It is part of the idempotency fingerprint
@@ -61,7 +70,8 @@ and `{kind:"new-worktree",baseRef?,branch?,integrationTargetWorkspaceId?}` means
 worktree. Omitted/explicit overrides have distinct durable fingerprints.
 
 Successful result:
-`{operationId,specId,kind:"specification-create",status:"completed",slug,workspaceId,relativeManifestPath}`.
+`{operationId,specId,kind:"specification-create",status:"completed",slug,workspaceId,relativeManifestPath,documentIds}`
+(`documentIds`: the registered documents of the new Specification, in registry order).
 The Create result exposes no absolute checkout paths; create-options do (see `path` and `worktreesRoot` below).
 **Workspace path exposure (decision).** `GET /api/specs/create-options` returns the absolute checkout path of every
 registered workspace and the worktree folder to every principal that holds the `Create` capability (scope `{}`): the

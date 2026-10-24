@@ -75,6 +75,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       operationId: randomUUID(),
       title: 'From feature branch option',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: feature.ref },
     });
     roots.push(root + '-worktrees');
@@ -95,6 +96,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       operationId: randomUUID(),
       title: 'Linked one',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     for (const title of ['Linked two', 'Linked three']) {
@@ -102,6 +104,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
         operationId: randomUUID(),
         title,
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: first.workspaceId },
       });
     }
@@ -143,6 +146,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       operationId: randomUUID(),
       title: 'Unavailable linked checkout',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     const linkedRef = git(linked.workspaceRoot, 'symbolic-ref', 'HEAD');
@@ -178,6 +182,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       operationId: randomUUID(),
       title: 'Detached linked checkout',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     const linkedRef = git(linked.workspaceRoot, 'symbolic-ref', 'HEAD');
@@ -263,6 +268,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
         operationId: randomUUID(),
         title: 'Must fail closed',
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       }),
     ).rejects.toMatchObject({ code: 'GIT_POLICY_INVALID' });

@@ -27,12 +27,18 @@ import {
   type CreateJournal,
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
+import { admitCreateArchetype } from '../admission';
+import { getBuiltInCatalogue } from '../../archetypes/catalogue';
+import { assertJournalFitsItsCap } from './journal-cap';
+import { CREATE_JOURNAL_VERSION } from '../journal/model';
+import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
+import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
 import {
+  ScaffoldValidationError,
   createSpecificationScaffold,
-  isValidSpecificationId,
-  validateSpecificationScaffoldInput,
-} from '../../model';
+  documentErrorOf,
+} from '../../scaffold';
 
 /**
  * First lock winner owns the creation date and pinned Git effect plan.
@@ -43,6 +49,8 @@ export async function reserveCreateOperation(
   intent: CreateClientIntent,
   operationId: string,
   creationDate: () => string,
+  /** Contents of `intent.addedDocuments`, in order. Not needed to follow an existing operation. */
+  addedContents: readonly string[] = [],
 ): Promise<{ readonly record: CreateJournal; readonly existing: boolean }> {
   // New physical target inspection is outside the Project Home lock.
   // Completed-op retries must not depend on the destination's current state.
@@ -72,6 +80,10 @@ export async function reserveCreateOperation(
       return { record: previous, existing: true };
     }
 
+    // A new operation: the archetype part is admitted before anything is reserved or written. An
+    // existing operation is replayed above regardless of the current catalogue.
+    admitCreateArchetype(intent, addedContents);
+
     // Date generated once under Project Home lock, after checking no journal.
     const created = creationDate();
     validateSpecificationScaffoldInput({ title: intent.title, created });
@@ -85,12 +97,22 @@ export async function reserveCreateOperation(
       throw recovery('Cannot reserve new Spec while an existing canonical source is unavailable.');
     }
     const specId = randomUUID();
-    const scaffold = createSpecificationScaffold({
+    const catalogue = getBuiltInCatalogue();
+    const scaffold = scaffoldOf({
       specId,
+      catalogue,
       title: intent.title,
       created,
       goal: intent.goal,
       slug: intent.slug,
+      archetypeId: intent.archetype.id,
+      optionalDocumentIds: intent.optionalDocumentIds,
+      addedDocuments: intent.addedDocuments.map((document, index) => ({
+        path: document.path,
+        ...(document.type !== undefined ? { type: document.type } : {}),
+        content: addedContents[index]!,
+      })),
+      folders: intent.folders,
     });
     if (
       canonical.some(
@@ -230,7 +252,7 @@ export async function reserveCreateOperation(
     }
 
     const record: CreateJournal = {
-      version: 1,
+      version: CREATE_JOURNAL_VERSION,
       projectId: engine.context.project.projectId,
       operationId,
       inputFingerprint: fingerprintCreateClientIntent(intent),
@@ -241,11 +263,17 @@ export async function reserveCreateOperation(
       created,
       startedAt: new Date().toISOString(),
       ...(intent.goal ? { goal: intent.goal } : {}),
+      catalogueRevision: catalogue.revision,
+      documentIds: scaffold.documentIds,
       stage: 'reserved',
       target,
       ...(gitPlan ? { gitPlan } : {}),
       ...(commit ? { commit } : {}),
-      files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+      files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+        relativePath,
+        sha256,
+        bytes,
+      })),
     };
     try {
       await assertSharedResourcesAvailable(engine.context, resourcesForCreate(record));
@@ -258,9 +286,27 @@ export async function reserveCreateOperation(
       }
       throw error;
     }
+    assertJournalFitsItsCap(record);
+    // The scaffold contents are durable in the hash-addressed payload store BEFORE the journal that
+    // refers to them is published; a crash in between leaves only an orphan payload (swept later).
+    await writeCreatePayload(
+      engine.context,
+      operationId,
+      scaffold.files.map(({ sha256, content }) => ({ sha256, content })),
+    );
     await publishCreateJournal(engine.context, record);
     return { record, existing: false };
   });
+}
+
+/** Same scaffold the admission validated; a cause that only the real ids reveal maps the same way. */
+function scaffoldOf(input: Parameters<typeof createSpecificationScaffold>[0]) {
+  try {
+    return createSpecificationScaffold(input);
+  } catch (error) {
+    if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+    throw error;
+  }
 }
 
 function branchesOverlap(left: string, right: string): boolean {

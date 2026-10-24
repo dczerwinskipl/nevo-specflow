@@ -64,13 +64,15 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "schema"
   ],
   "scripts": {
     "build": "node ../../tools/build-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "schema:generate": "pnpm run build && node scripts/generate-archetype-definitions-schema.mjs"
   },
   "dependencies": {
     "@nevo/authorization": "workspace:*",

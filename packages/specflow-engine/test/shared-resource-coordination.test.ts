@@ -7,18 +7,24 @@ import type { CreateJournal } from '../src/specs/create/journal';
 
 function claim(specId: string, target: CreateJournal['target']): CreateJournal {
   return {
-    version: 1,
+    version: 2,
     projectId: '11111111-1111-4111-8111-111111111111',
     operationId: randomUUID(),
     requestIntent: {
       title: 'Resource example',
       target: { kind: 'existing', workspaceId: randomUUID() },
+      archetype: { id: 'minimal', version: 1 },
+      optionalDocumentIds: [],
+      addedDocuments: [],
+      folders: [],
     },
     inputFingerprint: 'a'.repeat(64),
     specId,
     slug: 'resource-example',
     title: 'Resource example',
     created: '2026-10-18',
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: ['overview'],
     stage: 'reserved',
     target,
     files: [],

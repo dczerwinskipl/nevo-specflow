@@ -3,13 +3,10 @@ import { join } from 'node:path';
 
 import type { SpecFlowEngine } from '../../../application';
 import { UUID, parseCreateJournal } from '../journal/codec';
+import { classifyCreateJournalText } from '../journal/unsupported';
+import { CREATE_JOURNAL_LISTING_MAX_FILES, CREATE_JOURNAL_MAX_BYTES } from '../limits';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../journal/store';
 import { createStepForStage, type PublicCreateStepId } from './step-mapping';
-
-/** Same size ceiling as the strict journal reader. */
-const MAX_JOURNAL_BYTES = 65536;
-/** A directory this large is not a journal directory worth listing in full. */
-const MAX_JOURNAL_FILES = 5000;
 
 export type PublicCreateListingState = 'in-progress' | 'recovery-required' | 'completed';
 
@@ -24,6 +21,8 @@ export interface PublicCreateListingRow {
   readonly state: PublicCreateListingState;
   /** The journal could not be read or validated: only the id is known. */
   readonly unreadable?: true;
+  /** Stable code of the cause when it is known (an older-format journal). */
+  readonly code?: 'CREATE_JOURNAL_UNSUPPORTED';
   readonly specId?: string;
   readonly slug?: string;
   readonly title?: string;
@@ -73,7 +72,7 @@ export async function listPublicCreateOperations(
     throw error;
   }
   names.sort();
-  names = names.slice(0, MAX_JOURNAL_FILES);
+  names = names.slice(0, CREATE_JOURNAL_LISTING_MAX_FILES);
 
   const previous = memos.get(dir) ?? new Map<string, Memo>();
   const next = new Map<string, Memo>();
@@ -148,12 +147,13 @@ async function readRow(
   stat: { isFile(): boolean; isSymbolicLink(): boolean; size: number },
   updatedAt: Date,
 ): Promise<PublicCreateListingRow> {
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_JOURNAL_BYTES) {
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) {
     return unreadable(operationId, updatedAt);
   }
   try {
-    const parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
-    const journal = parseCreateJournal(engine.context, parsed, operationId);
+    const classified = classifyCreateJournalText(await readFile(path, 'utf8'));
+    if (classified.kind === 'unsupported') return unsupported(operationId, updatedAt);
+    const journal = parseCreateJournal(engine.context, classified.value, operationId);
     const commits = Boolean(journal.commit);
     const branch =
       journal.target.kind === 'new-worktree' ? journal.target.branch : journal.commit?.branch;
@@ -183,6 +183,11 @@ async function readRow(
   } catch {
     return unreadable(operationId, updatedAt);
   }
+}
+
+/** A row for an older-format journal: only its id; the cause is a stable code, never its content. */
+function unsupported(operationId: string, updatedAt: Date): PublicCreateListingRow {
+  return { ...unreadable(operationId, updatedAt), code: 'CREATE_JOURNAL_UNSUPPORTED' };
 }
 
 function unreadable(operationId: string, updatedAt: Date): PublicCreateListingRow {

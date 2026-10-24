@@ -20,6 +20,7 @@ import {
 } from '../../src/features/operations';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 const roots: string[] = [];
 const apps: FastifyInstance[] = [];
@@ -86,7 +87,7 @@ async function server(
       method: 'POST',
       url: '/api/specs',
       headers: { ...headers, ...(prefer !== undefined ? { prefer } : {}) },
-      payload: body,
+      payload: { ...ARCHETYPE_REQUEST, ...body },
     });
   const inspect = (operationId: string) =>
     app.inject({ method: 'GET', url: `/api/specs/create/operations/${operationId}`, headers });
@@ -252,6 +253,7 @@ describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
       createSpecificationForTesting(
         engine,
         {
+          archetype: { id: 'minimal', version: 1 },
           operationId,
           title: 'Failed after reservation',
           created: '2026-10-14',

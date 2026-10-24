@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -9,6 +8,7 @@ import type { SpecFlowEngine } from '../../application';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
 import { publishCloseCheckpoint } from './close/checkpoint';
+import { ARCHIVE_FILES_MAX, ARCHIVE_FILE_MAX_BYTES } from './limits';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
@@ -23,6 +23,7 @@ import {
   type CloseArchiveEvidence,
   type CloseArchiveInventory,
 } from './model';
+import { sha256Hex } from '../../hash';
 
 function failure(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
@@ -30,15 +31,12 @@ function failure(message: string): CloseOperationError {
 function invalid(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_PREFLIGHT', message);
 }
-function digest(content: Buffer | string): string {
-  return createHash('sha256').update(content).digest('hex');
-}
 
 async function expectedFile(path: string): Promise<Buffer> {
   const stat = await lstat(path);
   if (!stat.isFile() || stat.isSymbolicLink())
     throw invalid('Archive source contains redirected/non-file data.');
-  if (stat.size > 32 * 1024 * 1024)
+  if (stat.size > ARCHIVE_FILE_MAX_BYTES)
     throw invalid('Archive source file exceeds bounded inventory size.');
   return readFile(path);
 }
@@ -56,8 +54,9 @@ async function physicalInventory(root: string, relative: string): Promise<CloseA
       const path = rel + '/' + e.name;
       if (e.isDirectory()) await visit(path);
       else {
-        if (files.length >= 4096) throw invalid('Archive inventory file limit exceeded.');
-        files.push({ relativePath: path, sha256: digest(await expectedFile(join(root, path))) });
+        if (files.length >= ARCHIVE_FILES_MAX)
+          throw invalid('Archive inventory file limit exceeded.');
+        files.push({ relativePath: path, sha256: sha256Hex(await expectedFile(join(root, path))) });
       }
     }
   }
@@ -94,6 +93,14 @@ function destinationPath(inventory: CloseArchiveEvidence, old: string): string {
 function plannedArchivePaths(inventory: CloseArchiveEvidence): readonly string[] {
   return inventory.files.map((x) => x.relativePath);
 }
+/**
+ * The archived manifest: the parsed source with only `status` replaced, so `archetype`, `documents`,
+ * `folders` and any unknown top-level key survive archival unchanged.
+ */
+export function archivedManifestText(parsed: object): string {
+  return stringify({ ...parsed, status: 'archived' });
+}
+
 async function assertArchivedFiles(root: string, archive: CloseArchiveEvidence): Promise<void> {
   if (!(await absent(join(root, archive.sourcePath))))
     throw failure('Active source still exists after archival.');
@@ -215,13 +222,13 @@ export async function archiveSpecificationWithCommit(
     typeof parsed.status !== 'string'
   )
     throw invalid('Canonical source manifest identity cannot be proved.');
-  const archivedManifest = stringify({ ...parsed, status: 'archived' });
+  const archivedManifest = archivedManifestText(parsed);
   const archive: CloseArchiveEvidence = {
     sourceCommit: source.head,
     sourcePath: oldPath,
     destinationPath: newPath,
     files,
-    archivedManifestSha256: digest(archivedManifest),
+    archivedManifestSha256: sha256Hex(archivedManifest),
   };
   const initiated = await publish(engine, record, {
     ...record,

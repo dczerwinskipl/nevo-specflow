@@ -1,14 +1,19 @@
 import { Type, type Static } from 'typebox';
+
+import { IdSchema } from './vocabulary';
+
+export * from './catalogue';
+export * from './definition';
+export * from './errors';
+export * from './operations';
+export * from './tree';
+export * from './vocabulary';
+
 export const DocumentReadErrorSchema = Type.Object({
   error: Type.Union([
     Type.Literal('specification_document_not_found'),
     Type.Literal('specification_source_unavailable'),
   ]),
-});
-const IdSchema = Type.String({
-  minLength: 1,
-  maxLength: 200,
-  pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
 });
 export const SpecificationDocumentParamsSchema = Type.Object(
   { specId: IdSchema, documentId: IdSchema },

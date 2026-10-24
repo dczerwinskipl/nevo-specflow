@@ -16,6 +16,7 @@ import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
 } from '../src/specs/create/intent';
+import { writeCreatePayload } from '../src/specs/create/journal/payload';
 import {
   createJournalPath,
   publishCreateJournal,
@@ -57,13 +58,14 @@ function currentJournal(
   const title = 'Current contract';
   const specId = randomUUID();
   const created = '2026-10-14';
-  const scaffold = createSpecificationScaffold({ specId, title, created });
+  const scaffold = createSpecificationScaffold({ archetypeId: 'minimal', specId, title, created });
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title,
     target: { kind: 'existing', workspaceId: targetWorkspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId: context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -72,13 +74,19 @@ function currentJournal(
     slug: scaffold.slug,
     title,
     created,
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: scaffold.documentIds,
     stage: 'reserved',
     target: {
       kind: 'existing',
       workspaceId: targetWorkspaceId,
       workspaceRoot: context.project.homeRoot,
     },
-    files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+    files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+      relativePath,
+      sha256,
+      bytes,
+    })),
   };
 }
 
@@ -97,12 +105,12 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(await readCreateJournal(context, record.operationId)).toEqual(record);
   });
 
-  it('rejects unsupported journal version 2 and change.yaml rather than migrating them', async () => {
+  it('answers CREATE_JOURNAL_UNSUPPORTED for the previous version and rejects change.yaml rather than migrating them', async () => {
     const context = await fixture();
     const record = currentJournal(context);
-    await seed(context, { ...record, version: 2 }, record.operationId);
+    await seed(context, { ...record, version: 1 }, record.operationId);
     await expect(readCreateJournal(context, record.operationId)).rejects.toMatchObject({
-      code: 'CREATE_JOURNAL_CORRUPT',
+      code: 'CREATE_JOURNAL_UNSUPPORTED',
     });
 
     await seed(
@@ -147,6 +155,15 @@ describe('Durable Create — one canonical journal and Specification format', ()
     const engine = await openSpecFlowEngine({ cwd: context.project.homeRoot });
     const record = currentJournal(context, engine.workspace.workspaceId);
     await seed(context, record, record.operationId);
+    const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
+      specId: record.specId,
+      title: record.title,
+      created: record.created,
+    });
+    await withCreateJournalLock(context, () =>
+      writeCreatePayload(context, record.operationId, scaffold.files),
+    );
 
     const result = await createSpecification(
       engine,
@@ -154,6 +171,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
         operationId: record.operationId,
         title: record.title,
         created: record.created,
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       },
       { resumeInterruptedOperation: true },
@@ -162,6 +180,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(result.relativeManifestPath).toBe(record.files[0]!.relativePath);
     expect(await readFile(join(result.workspaceRoot, result.relativeManifestPath), 'utf8')).toBe(
       createSpecificationScaffold({
+        archetypeId: 'minimal',
         specId: record.specId,
         title: record.title,
         created: record.created,
@@ -201,6 +220,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
       instanceId: randomUUID(),
     };
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: record.title,
       target: { kind: 'new-worktree' },
     });
@@ -231,6 +251,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
     });
 
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: record.title,
       target: { kind: 'new-worktree' },
     });
@@ -265,10 +286,12 @@ describe('Durable Create — one canonical journal and Specification format', ()
 
   it('distinguishes omitted and explicit baseRef in immutable user intent', () => {
     const omitted = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: 'Same intent',
       target: { kind: 'new-worktree' },
     });
     const explicit = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: 'Same intent',
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });

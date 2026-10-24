@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Offline-capable SpecFlow application boundary; no CLI, HTTP, provider or UI dependencies.",
+  "description": "Offline-capable SpecFlow application boundary; no CLI, HTTP, provider or UI dependencies. Shares only the neutral documents vocabulary of @nevo/specflow-contracts.",
   "license": "MIT",
   "exports": {
     ".": {
@@ -25,13 +25,15 @@
   "scripts": {
     "build": "node ../../tools/build-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "lint": "eslint .",
+    "lint": "eslint . && node ../../tools/eslint/check-import-cycles.mjs",
     "test": "vitest run --testTimeout=20000",
     "test:unit": "vitest run --testTimeout=20000 test/version-control-policy.test.ts test/git-output-decoder.test.ts test/shared-resource-coordination.test.ts",
     "test:filesystem:smoke": "vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism test/project-home.test.ts test/version-control-adapter.test.ts test/version-control-legacy-regression.test.ts test/platform-filesystem-contract.test.ts",
     "test:filesystem:full": "vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {
+    "@nevo/specflow-contracts": "workspace:*",
+    "typebox": "1.3.37",
     "yaml": "2.9.1"
   },
   "devDependencies": {

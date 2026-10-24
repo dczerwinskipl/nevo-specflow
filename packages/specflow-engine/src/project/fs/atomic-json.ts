@@ -58,7 +58,7 @@ export async function writeJsonAtomically(
   }
 }
 
-async function syncDirectoryWhenSupported(path: string): Promise<void> {
+export async function syncDirectoryWhenSupported(path: string): Promise<void> {
   // POSIX directory fsync helps persist the rename across power loss. On
   // Windows, opening/syncing a directory can be unsupported by Node/NTFS.
   let dir;

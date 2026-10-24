@@ -170,7 +170,9 @@ jobs:
         run: pnpm --filter "${{ matrix.package }}" exec playwright install --with-deps chromium
       - name: Engine unit tests (PR only)
         if: github.event_name == 'pull_request' && matrix.package == '@nevo/specflow-engine'
-        run: pnpm --filter @nevo/specflow-engine test:unit
+        run: |
+          pnpm turbo run build --filter=@nevo/specflow-engine^...
+          pnpm --filter @nevo/specflow-engine test:unit
       # PR: all stories of a changed design-system / SpecFlow UI package, or the
       # directly changed stories (scope planned by tools/ci-storybook-scope.mjs).
       - name: Test nevo-repo-storybook (PR scope)
@@ -215,7 +217,9 @@ jobs:
         if: steps.affected.outputs.run == 'true'
       - name: Smoke installed CLI + Engine Runtime from isolated tarball
         if: steps.affected.outputs.run == 'true'
-        run: pnpm --filter @nevo/specflow test:packaged
+        run: |
+          pnpm turbo run build --filter=@nevo/specflow-engine^...
+          pnpm --filter @nevo/specflow test:packaged
   # Aggregate the independently-running package tests into one stable required check.
   verify-tests:
     name: verify tests
@@ -332,7 +336,9 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Pack and smoke installed product
-        run: pnpm --filter @nevo/specflow test:packaged
+        run: |
+          pnpm turbo run build --filter=@nevo/specflow-engine^...
+          pnpm --filter @nevo/specflow test:packaged
 
   verify-product-smoke:
     name: product smoke

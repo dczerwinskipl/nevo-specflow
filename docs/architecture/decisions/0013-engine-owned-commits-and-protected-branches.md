@@ -13,6 +13,7 @@ related:
   - reference.configuration.specflow-git-worktrees
   - reference.api.specflow-specification-operations
   - engineering.shared.specflow-git-recovery
+  - adr.0016-engine-owned-document-commits
 ---
 
 # 0013 — Engine-owned scoped commits and protected branches
@@ -69,7 +70,29 @@ the Engine must never commit on some branches (for example `main` or `release/**
 7. **Scope.** Close archive and integration are not changed by this decision: they keep their own
    commit code and integration into a protected target branch is not forbidden. Migrating archive onto
    the commit capability (so protection guards it too) is a follow-up. Previously created untracked
-   specifications are not adopted automatically.
+   specifications are not adopted automatically. Specification document operations reuse this
+   mechanism and are decided in [ADR 0016](0016-engine-owned-document-commits.md) (proposed).
+8. **Line endings and attributes.** The commit port runs `git status`, `add` and `commit` (and the hash
+   comparison below) with `-c core.autocrlf=false -c core.safecrlf=false`, so the user's own conversion
+   setting never changes what is committed. `.gitattributes` still apply, exactly as they do for a
+   hand `git add`: a `text`/`eol` rule stores LF (or the rule's form) in the blob while the disk keeps
+   the pinned bytes. "Pinned bytes" therefore means the working-tree bytes the journal recorded; the
+   committed blob is what Git's attributes store for them. Resume verifies a found commit by comparing
+   its blob id with `git hash-object <path>` of the verified working file (the filters of the path
+   apply, `--no-filters` is not used), never by hashing the blob content. A scaffold committed by hand
+   is accepted when the full file list is committed and `git status` for those paths is clean under
+   the same flags, so a hand commit made under the user's `core.autocrlf` that differs from the disk
+   under `autocrlf=false` is not byte-identical and stays a recovery. Concretely: CRLF content committed by
+   hand under `core.autocrlf=true` WITHOUT a normalising `.gitattributes` rule stores LF, the Engine treats
+   the working bytes as authoritative, and resume is refused with `CREATE_RECOVERY_REQUIRED`; with a
+   normalising rule (for example `* text=auto eol=lf`) the same hand commit is accepted. Operator remedy: commit the scaffold files again on top with
+   `git -c core.autocrlf=false add specs` (a follow-up commit, so the working bytes become the committed
+   bytes) and finish with `specs recover <operation-id> --confirmed-stopped`; or abandon the operation.
+   Do not rewrite the hand commit away once a resume was attempted: the journal then pins that HEAD as
+   the commit parent and a reset ends in a permanent `CREATE_RECOVERY_REQUIRED` (history changed). `dropIntentToAdd` only runs after a
+   commit that provably did not happen and only resets paths that HEAD does not track; it relies on
+   the scaffold paths being new files written by this operation, which nobody can have staged before
+   (the files do not exist before the operation writes them).
 
 ## Known gap: no product path to resume or abandon a stuck Create
 

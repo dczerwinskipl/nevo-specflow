@@ -69,8 +69,20 @@ export {
 } from './specs/canonical-source';
 
 export { CreateOperationError } from './specs/create';
+export { DocumentError } from './specs/documents';
+export {
+  openSpecificationDocument,
+  readRegisteredDocumentSummaries,
+  readSpecificationDocument,
+  readSpecificationDocumentTree,
+  type OpenedDocument,
+  type OpenedDocumentMetadata,
+  type RegisteredDocumentSummary,
+} from './specs/documents/reading';
+export { catalogueRevision, projectCatalogue } from './specs/archetypes';
 
 export {
+  resolveCreateArchetype,
   createSpecificationFromRequest,
   resumeInterruptedCreateOperation,
   type ResumeCreateOptions,

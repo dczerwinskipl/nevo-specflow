@@ -7,7 +7,7 @@
  *   `**`  any run of characters including `/`
  *   `?`   exactly one character except `/`
  *   `[a-z]`, `[abc]`, `[!a-z]`  one character of the set (never `/`; `!` or `^` negates)
- * Everything else is literal. This is the Engine copy of `@nevo/specflow-contracts` `branch-protection.ts` (the Engine has no dependency on that package;
+ * Everything else is literal. This is the Engine copy of `@nevo/specflow-contracts` `branch-protection.ts` (the Engine imports only `@nevo/specflow-contracts/documents`, not that entry point;
  * both copies are pinned to the same test vectors), so the UI previews exactly what the Engine decides.
  */
 export const BRANCH_PATTERN_MAX_LENGTH = 200;

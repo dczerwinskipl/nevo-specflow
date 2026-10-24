@@ -10,6 +10,7 @@ node_modules/
 **/*.generated.*
 docs/**/*.generated.*
 tools/figma-project/generated/
+packages/specflow-contracts/schema/
 .agents/skills/nevo-agents-*/SKILL.md
 .claude/skills/nevo-agents-*/SKILL.md
 pnpm-lock.yaml

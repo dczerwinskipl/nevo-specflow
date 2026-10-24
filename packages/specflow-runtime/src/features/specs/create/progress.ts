@@ -10,6 +10,7 @@ import type { OperationProgressRegistry } from '../../operations';
 const RECOVERY_CODES: ReadonlySet<string> = new Set([
   'CREATE_RECOVERY_REQUIRED',
   'CREATE_JOURNAL_CORRUPT',
+  'CREATE_JOURNAL_UNSUPPORTED',
   'REGISTRY_RECOVERY_REQUIRED',
   'GIT_OPERATION_UNCERTAIN',
   'COMMIT_FAILED',

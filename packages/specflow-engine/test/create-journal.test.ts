@@ -59,11 +59,12 @@ function intent(projectId: string, workspaceId: string, root: string): CreateJou
   const operationId = randomUUID();
   const title = 'Journal proof';
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title,
     target: { kind: 'existing', workspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId,
     operationId,
     requestIntent,
@@ -72,11 +73,17 @@ function intent(projectId: string, workspaceId: string, root: string): CreateJou
     slug: 'journal-proof',
     title: 'Journal proof',
     created: '2026-10-14',
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: ['overview'],
     stage: 'reserved',
     target: { kind: 'existing', workspaceId, workspaceRoot: root },
     files: [
-      { relativePath: 'specs/active/journal-proof/specification.yaml', sha256: 'b'.repeat(64) },
-      { relativePath: 'specs/active/journal-proof/overview.md', sha256: 'c'.repeat(64) },
+      {
+        relativePath: 'specs/active/journal-proof/specification.yaml',
+        sha256: 'b'.repeat(64),
+        bytes: 1,
+      },
+      { relativePath: 'specs/active/journal-proof/overview.md', sha256: 'c'.repeat(64), bytes: 1 },
     ],
   };
 }

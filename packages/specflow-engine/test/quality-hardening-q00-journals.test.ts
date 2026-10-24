@@ -49,13 +49,19 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     const engine = await bootstrapProjectHome(root);
     const title = 'Q00 journal';
     const specId = randomUUID();
-    const scaffold = createSpecificationScaffold({ specId, title, created: '2026-10-19' });
+    const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
+      specId,
+      title,
+      created: '2026-10-19',
+    });
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title,
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     const original: CreateJournal = {
-      version: 1,
+      version: 2,
       projectId: engine.context.project.projectId,
       operationId: randomUUID(),
       requestIntent,
@@ -64,13 +70,19 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       slug: scaffold.slug,
       title,
       created: '2026-10-19',
+      catalogueRevision: 'r'.repeat(64),
+      documentIds: scaffold.documentIds,
       stage: 'reserved',
       target: {
         kind: 'existing',
         workspaceId: engine.workspace.workspaceId,
         workspaceRoot: root,
       },
-      files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+      files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+        relativePath,
+        sha256,
+        bytes,
+      })),
     };
 
     // The commit stages exist only for a journal that pins commit evidence at reservation.
@@ -89,7 +101,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     }
 
     const rejected: readonly [string, unknown][] = [
-      ['version 2', { ...original, version: 2 }],
+      ['version 1 (unsupported)', { ...original, version: 1 }],
       ['foreign Project Home', { ...original, projectId: randomUUID() }],
       ['forged fingerprint', { ...original, inputFingerprint: 'a'.repeat(64) }],
       [
@@ -107,6 +119,11 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
         { ...original, target: { ...original.target, branch: 'untrusted' } },
       ],
       ['future stage', { ...original, stage: 'future-stage' }],
+      ['missing catalogue revision', { ...original, catalogueRevision: undefined }],
+      [
+        'file with a stored content',
+        { ...original, files: [{ ...original.files[0], content: 'x' }, original.files[1]] },
+      ],
     ];
 
     for (const [name, value] of rejected) {

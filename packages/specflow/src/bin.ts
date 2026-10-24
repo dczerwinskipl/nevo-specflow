@@ -6,6 +6,7 @@ import process from 'node:process';
 import { CommanderError } from 'commander';
 
 import { ClackProjectSetupUi, ProjectSetupCancelledError } from './init/clack-setup-ui';
+import { commanderExitCode } from './exit-code';
 import { createProgram } from './program';
 
 async function main(argv: string[]): Promise<number> {
@@ -28,8 +29,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   } catch (err) {
     if (err instanceof CommanderError) {
-      if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') return 0;
-      return 2;
+      return commanderExitCode(err);
     }
     if (err instanceof ProjectSetupCancelledError) return 0;
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);

@@ -32,6 +32,7 @@ describe('Create reservation lock profile (opt-in)', () => {
           const engine = await bootstrapProjectHome(root);
           for (let i = 0; i < size; i++) {
             await createSpecificationFromRequest(engine, {
+              archetype: { id: 'minimal', version: 1 },
               title: `Profile canonical ${size}-${i}`,
               target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
             });
@@ -46,6 +47,7 @@ describe('Create reservation lock profile (opt-in)', () => {
               operationId: randomUUID(),
               title: `Unfinished profile ${size}-${i}`,
               created: '2026-10-15',
+              archetype: { id: 'minimal', version: 1 },
               target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
             };
             await expect(
@@ -81,6 +83,7 @@ describe('Create reservation lock profile (opt-in)', () => {
               operationId: randomUUID(),
               title: `Measured reservation ${size}`,
               created: '2026-10-15',
+              archetype: { id: 'minimal', version: 1 },
               target: { kind: 'new-worktree', baseRef: 'HEAD' },
             };
             await expect(

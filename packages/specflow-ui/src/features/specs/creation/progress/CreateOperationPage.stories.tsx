@@ -6,7 +6,6 @@ import type {
   CreateOperationAccepted,
   CreateOperationInspection,
   CreatedSpec,
-  CreateSpecRequest,
 } from '@nevo/specflow-contracts/specs';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, waitFor, within } from 'storybook/test';
@@ -21,6 +20,7 @@ import type { OperationsApi } from '../../../../shared/operations/operationsApi'
 import { createOperationEventsUrl } from '../api/api.project';
 import { CreateOperationScreen } from '../CreateOperationScreen';
 import { createSessionOperationStorage } from '../operation/createOperationStorage';
+import type { ProjectCreateRequest } from '../api/api.project';
 import type { CreateSettingsFacts } from '../workspace/model/createFacts';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 
@@ -34,6 +34,7 @@ const createdSpec: CreatedSpec = {
   slug: 'limity-platnosci',
   workspaceId: '00000000-0000-4000-8000-000000000002',
   relativeManifestPath: 'specs/active/limity-platnosci/specification.yaml',
+  documentIds: ['overview'],
 };
 const event = { ...base, at: '2026-10-20T14:32:08Z' };
 
@@ -145,7 +146,7 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
 
 interface FixtureProps {
   /** The request this browser stored when the form handed over; none is a direct link. */
-  request?: CreateSpecRequest & { operationId?: string };
+  request?: ProjectCreateRequest & { operationId?: string };
   /** What the form saved with the draft about this Create (workspace names, folder, merge target). */
   facts?: CreateSettingsFacts;
   server?: Server;

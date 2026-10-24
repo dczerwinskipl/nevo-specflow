@@ -59,6 +59,7 @@ async function project() {
   const engine = await bootstrapProjectHome(root);
   // One real Create: its journal is the template of every handcrafted variant below.
   const created = await createSpecificationFromRequest(engine, {
+    archetype: { id: 'minimal', version: 1 },
     operationId: randomUUID(),
     title: 'Real create',
     target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -242,7 +243,16 @@ describe('GET /api/specs/operations', () => {
     expect(second.statusCode).toBe(304);
     expect(second.body).toBe('');
     expect(second.headers.etag).toBe(etag);
+    // A 304 carries no entity headers: they would describe a body that is not there.
+    expect(second.headers['content-type']).toBeUndefined();
+    expect(second.headers['content-length']).toBeUndefined();
     expect((await get('', { 'if-none-match': '"other"' })).statusCode).toBe(200);
+    // Any list item matches, a weak tag matches weakly, and `*` matches whatever the list is.
+    expect(
+      (await get('', { 'if-none-match': '"other", ' + etag.replace(/^W\//u, '') })).statusCode,
+    ).toBe(304);
+    expect((await get('', { 'if-none-match': '"other", *' })).statusCode).toBe(304);
+    expect((await get('', { 'if-none-match': '*' })).statusCode).toBe(304);
 
     await variant(fx, { stage: 'registry-writing' });
     const third = await get('', { 'if-none-match': etag });

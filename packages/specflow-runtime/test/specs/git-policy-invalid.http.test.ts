@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { createRuntimeApp } from '../../src/server/app';
 import { noAuthConfig, passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -48,6 +49,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
     );
     const engine = await bootstrapProjectHome(root);
     const created = await createSpecificationFromRequest(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'Before the typo',
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -101,6 +103,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
         method: 'POST',
         url: '/api/specs',
         payload: {
+          ...ARCHETYPE_REQUEST,
           title: 'Must not be created',
           target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
         },

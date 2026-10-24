@@ -4,12 +4,12 @@
  * `feature.ts`). Only what a consumer imports is exported.
  */
 export { registerOperationEventsRoute, type OperationEventsStreamOptions } from './events-route';
+export { matchesEtag } from '../../server/etag';
 export {
   registerOperationListRoute,
   parseOperationListQuery,
   OperationListQueryStringSchema,
   operationListEtag,
-  matchesEtag,
   OPERATION_LIST_QUERY_INVALID_CODE,
 } from './list-route';
 export {

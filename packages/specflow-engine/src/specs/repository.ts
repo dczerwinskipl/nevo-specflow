@@ -1,11 +1,10 @@
-import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 
-import { parse } from 'yaml';
-
+import { readManifestTextBounded } from './bounded-read';
 import {
   SpecificationError,
-  parseSpecificationManifest,
+  parseSpecificationManifestText,
   validateSpecificationSlug,
   type SpecificationManifest,
 } from './model';
@@ -85,17 +84,22 @@ export async function listWorkspaceSpecifications(
       const manifestPath = join(base, manifestName);
       await requirePhysicalFile(manifestPath);
 
-      let parsed: unknown;
+      let content: string;
       try {
-        parsed = parse(await readFile(manifestPath, 'utf8')) as unknown;
+        const handle = await open(manifestPath, 'r');
+        try {
+          content = await readManifestTextBounded(handle);
+        } finally {
+          await handle.close();
+        }
       } catch {
         throw new SpecificationError(
           'SPEC_SOURCE_INVALID',
-          'Invalid YAML in specification manifest: ' + relativeManifestPath,
+          `Specification "${slug}" manifest could not be read.`,
         );
       }
 
-      const manifest = parseSpecificationManifest(parsed, slug, location);
+      const manifest = parseSpecificationManifestText(content, slug, location);
       if (seenIds.has(manifest.specId) || seenSlugs.has(slug)) {
         throw new SpecificationError(
           'SPEC_CONFLICT',

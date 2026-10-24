@@ -91,6 +91,7 @@ describe('operation progress contract', () => {
       slug: 'a-spec',
       workspaceId: operationId,
       relativeManifestPath: 'specs/a/specification.yaml',
+      documentIds: ['overview'],
     };
     expect(
       Value.Check(schema, {

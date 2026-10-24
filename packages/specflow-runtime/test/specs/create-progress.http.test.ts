@@ -13,6 +13,7 @@ import { authCookieNames } from '../../src/features/auth/authentication/http/coo
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 const roots: string[] = [];
 const apps: FastifyInstance[] = [];
@@ -141,7 +142,7 @@ async function post(url: string, headers: Record<string, string>, body: unknown)
   return fetch(`${url}/api/specs`, {
     method: 'POST',
     headers: { ...headers, 'content-type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...ARCHETYPE_REQUEST, ...(body as Record<string, unknown>) }),
   });
 }
 
@@ -242,6 +243,7 @@ describe('Create progress over the generic operations stream (real Git)', () => 
       method: 'POST',
       headers: { ...headers, 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...ARCHETYPE_REQUEST,
         operationId,
         title: 'Client disconnects',
         target: { kind: 'new-worktree', baseRef: 'HEAD' },

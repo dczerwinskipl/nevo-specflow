@@ -1,13 +1,34 @@
 import {
   fingerprintCreateClientIntent,
-  normalizeCreateClientIntent,
+  normalizePersistedCreateIntent,
   type CreateClientIntent,
 } from '../intent';
 import { CreateOperationError } from '../error';
 import type { ResolvedProjectHome } from '../../../project/home/home';
-import { CREATE_STAGES, type CreateJournal, type CreateStage } from './model';
+import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
+
+import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
+import { isExplicitSpecificationSlug } from '../../model';
+import { CREATE_SCAFFOLD_FILES_MAX } from '../limits';
+import {
+  CREATE_JOURNAL_VERSION,
+  CREATE_STAGES,
+  type CreateJournal,
+  type CreateStage,
+} from './model';
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const INTENT_FIELDS = new Set([
+  'title',
+  'goal',
+  'slug',
+  'target',
+  'archetype',
+  'catalogueRevision',
+  'optionalDocumentIds',
+  'addedDocuments',
+  'folders',
+]);
 const SHA256 = /^[0-9a-f]{64}$/u;
 const EXISTING_TARGET_FIELDS = new Set(['kind', 'workspaceId', 'workspaceRoot']);
 const WORKTREE_TARGET_FIELDS = new Set([
@@ -30,6 +51,7 @@ export function parseCreateJournal(
     !isValidJournalIdentity(context, value, operationId) ||
     !isValidJournalTarget(value.target) ||
     !isValidJournalFiles(value.files, value.slug) ||
+    !isValidJournalDocumentIds(value.documentIds) ||
     !isValidJournalCommit(value) ||
     !isValidJournalIntent(context, value)
   ) {
@@ -45,7 +67,7 @@ function isValidJournalIdentity(
   operationId: string,
 ): boolean {
   return (
-    value.version === 1 &&
+    value.version === CREATE_JOURNAL_VERSION &&
     value.projectId === context.project.projectId &&
     value.operationId === operationId &&
     UUID.test(operationId) &&
@@ -56,6 +78,8 @@ function isValidJournalIdentity(
     typeof value.slug === 'string' &&
     typeof value.title === 'string' &&
     typeof value.created === 'string' &&
+    typeof value.catalogueRevision === 'string' &&
+    value.catalogueRevision.length > 0 &&
     (value.startedAt === undefined ||
       (typeof value.startedAt === 'string' && !Number.isNaN(Date.parse(value.startedAt)))) &&
     (value.goal === undefined || typeof value.goal === 'string') &&
@@ -145,20 +169,68 @@ function isObjectId(value: unknown): boolean {
   return typeof value === 'string' && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu.test(value);
 }
 
+const DOCUMENT_ID = new RegExp(DOCUMENT_ID_PATTERN, 'u');
+const FILE_FIELDS = new Set(['relativePath', 'sha256', 'bytes']);
+
+/**
+ * Evidence of the scaffold: the manifest and the overview first and fixed, then the remaining files
+ * (templates, added documents), at most the documented count, every path unique and inside the
+ * Specification directory. Contents are not here: they are verified against these hashes in the
+ * payload store.
+ */
 function isValidJournalFiles(value: unknown, slug: unknown): boolean {
-  if (!Array.isArray(value) || value.length !== 2 || typeof slug !== 'string') return false;
+  if (
+    !Array.isArray(value) ||
+    value.length < 2 ||
+    value.length > CREATE_SCAFFOLD_FILES_MAX ||
+    typeof slug !== 'string'
+  ) {
+    return false;
+  }
+  if (!isExplicitSpecificationSlug(slug)) return false;
+  const base = 'specs/active/' + slug + '/';
+  const paths = new Set<string>();
+  for (const file of value as unknown[]) {
+    if (
+      !isRecord(file) ||
+      Object.keys(file).some((key) => !FILE_FIELDS.has(key)) ||
+      typeof file.relativePath !== 'string' ||
+      !file.relativePath.startsWith(base) ||
+      !isSafeScaffoldPath(file.relativePath.slice(base.length)) ||
+      paths.has(file.relativePath) ||
+      typeof file.sha256 !== 'string' ||
+      !SHA256.test(file.sha256) ||
+      !Number.isInteger(file.bytes) ||
+      (file.bytes as number) < 0 ||
+      (file.bytes as number) > TEXT_CONTENT_MAX_BYTES
+    ) {
+      return false;
+    }
+    paths.add(file.relativePath);
+  }
+  const [manifest, overview] = value as [Record<string, unknown>, Record<string, unknown>];
   return (
-    value.every(
-      (file: unknown) =>
-        isRecord(file) &&
-        typeof file.relativePath === 'string' &&
-        typeof file.sha256 === 'string' &&
-        SHA256.test(file.sha256),
-    ) &&
-    isRecord(value[0]) &&
-    value[0].relativePath === 'specs/active/' + slug + '/specification.yaml' &&
-    isRecord(value[1]) &&
-    value[1].relativePath === 'specs/active/' + slug + '/overview.md'
+    manifest.relativePath === base + 'specification.yaml' &&
+    overview.relativePath === base + 'overview.md'
+  );
+}
+
+/**
+ * A scaffold file path below the Specification directory follows the document path rules (traversal,
+ * hidden, trailing dot or space, forbidden characters, device names, segment and depth caps). The
+ * manifest is the one fixed exception to the reserved root name.
+ */
+function isSafeScaffoldPath(path: string): boolean {
+  return path === 'specification.yaml' || validateDocumentPath(path).ok;
+}
+
+function isValidJournalDocumentIds(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= CREATE_SCAFFOLD_FILES_MAX &&
+    value.every((id: unknown) => typeof id === 'string' && DOCUMENT_ID.test(id)) &&
+    new Set(value).size === value.length
   );
 }
 
@@ -177,9 +249,7 @@ function isValidJournalIntent(
     intent.goal !== value.goal ||
     (intent.slug !== undefined && intent.slug !== value.slug) ||
     !isRecord(intent.target) ||
-    Object.keys(intent).some(
-      (key) => key !== 'title' && key !== 'goal' && key !== 'slug' && key !== 'target',
-    )
+    Object.keys(intent).some((key) => !INTENT_FIELDS.has(key))
   ) {
     return false;
   }
@@ -229,27 +299,9 @@ function isValidJournalIntent(
   }
   if (typeof value.inputFingerprint !== 'string') return false;
   const persisted = intent as unknown as CreateClientIntent;
+  if (!isValidAddedDocumentEvidence(persisted.addedDocuments, value)) return false;
   try {
-    const normalized = normalizeCreateClientIntent({
-      title: persisted.title,
-      goal: persisted.goal,
-      slug: persisted.slug,
-      target:
-        persisted.target.kind === 'existing'
-          ? persisted.target
-          : {
-              kind: 'new-worktree',
-              ...(persisted.target.baseRef.kind === 'explicit'
-                ? { baseRef: persisted.target.baseRef.value }
-                : {}),
-              ...(persisted.target.branch.kind === 'explicit'
-                ? { branch: persisted.target.branch.value }
-                : {}),
-              ...(persisted.target.integrationTargetWorkspaceId !== undefined
-                ? { integrationTargetWorkspaceId: persisted.target.integrationTargetWorkspaceId }
-                : {}),
-            },
-    });
+    const normalized = normalizePersistedCreateIntent(persisted);
     return (
       JSON.stringify(normalized) === JSON.stringify(persisted) &&
       fingerprintCreateClientIntent(normalized) === value.inputFingerprint
@@ -257,6 +309,32 @@ function isValidJournalIntent(
   } catch {
     return false;
   }
+}
+
+/** Each added document of the intent is also a journal file of the same hash, size and path. */
+function isValidAddedDocumentEvidence(added: unknown, value: Record<string, unknown>): boolean {
+  if (!Array.isArray(added) || !Array.isArray(value.files)) return false;
+  const base = 'specs/active/' + String(value.slug) + '/';
+  return (added as unknown[]).every((document) => {
+    if (
+      !isRecord(document) ||
+      typeof document.path !== 'string' ||
+      (document.type !== undefined && typeof document.type !== 'string') ||
+      typeof document.sha256 !== 'string' ||
+      !SHA256.test(document.sha256) ||
+      !Number.isInteger(document.bytes)
+    ) {
+      return false;
+    }
+    const expected = base + document.path;
+    return (value.files as unknown[]).some(
+      (file) =>
+        isRecord(file) &&
+        file.relativePath === expected &&
+        file.sha256 === document.sha256 &&
+        file.bytes === document.bytes,
+    );
+  });
 }
 
 function isClientOverride(value: unknown): boolean {

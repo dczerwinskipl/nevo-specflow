@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../application';
 import { normalizeCreateClientIntent, type CreateClientIntent } from './intent';
-import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold';
+import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
 import { reserveCreateOperation, writingSlugsByWorkspace } from './reservation/reservation';
 import { followExistingCreateOperation } from './reservation/observation';
 import type { CreateSpecificationInput } from './input';
@@ -40,6 +40,8 @@ export interface CreatedSpecification {
   readonly workspaceId: string;
   readonly workspaceRoot: string;
   readonly relativeManifestPath: string;
+  /** Ids of the registered documents of the new Specification, in registry order. */
+  readonly documentIds: readonly string[];
 }
 
 export interface CreateSpecificationOptions {
@@ -97,7 +99,7 @@ function notifyStage(
 
 /** Internal fault-injection seam, deliberately absent from CreateSpecificationOptions. */
 export type CreateEffectHook = (
-  effect: 'reservation' | 'git' | 'manifest-opened' | 'manifest' | 'commit' | 'registry',
+  effect: 'reservation' | 'git' | 'manifest-opened' | 'file' | 'manifest' | 'commit' | 'registry',
 ) => Promise<void>;
 
 export async function inspectCreateSpecification(
@@ -127,6 +129,8 @@ export async function createSpecification(
     normalizeCreateClientIntent(input),
     () => input.created,
     options,
+    undefined,
+    input.addedDocuments?.map((document) => document.content) ?? [],
   );
 }
 
@@ -140,9 +144,19 @@ export async function createSpecificationWithIntent(
   creationDate: () => string,
   options: CreateSpecificationOptions = {},
   afterEffect?: CreateEffectHook,
+  /** Contents of `intent.addedDocuments` in order; only a first reservation needs them. */
+  addedContents: readonly string[] = [],
 ): Promise<CreatedSpecification> {
   const run = () =>
-    createWithVerifiedIntent(engine, operationId, intent, creationDate, options, afterEffect);
+    createWithVerifiedIntent(
+      engine,
+      operationId,
+      intent,
+      creationDate,
+      options,
+      afterEffect,
+      addedContents,
+    );
   // Not a Git operation: an existing-workspace create in a project with Git disabled
   // verifies Project Home/workspace on disk and spawns no Git process. Anything that
   // can involve Git (new worktree, Git enabled, unreadable policy) keeps full verification.
@@ -165,10 +179,17 @@ async function createWithVerifiedIntent(
   intent: CreateClientIntent,
   creationDate: () => string,
   options: CreateSpecificationOptions,
-  afterEffect?: CreateEffectHook,
+  afterEffect: CreateEffectHook | undefined,
+  addedContents: readonly string[],
 ): Promise<CreatedSpecification> {
   validateOperationId(operationId);
-  const reservation = await reserveCreateOperation(engine, intent, operationId, creationDate);
+  const reservation = await reserveCreateOperation(
+    engine,
+    intent,
+    operationId,
+    creationDate,
+    addedContents,
+  );
   let record = reservation.record;
   // A retry that finds the operation still reserved is announced only after the reserved plan
   // validated again, so a transport never accepts it ahead of the original run's rejection.
@@ -271,8 +292,10 @@ async function createWithVerifiedIntent(
         case 'manifest-writing': {
           await requireTargetIdentity(engine, record);
           await writeScaffoldWithEvidence(
+            engine,
             record,
             afterEffect ? () => afterEffect('manifest-opened') : undefined,
+            afterEffect ? () => afterEffect('file') : undefined,
           );
           await afterEffect?.('manifest');
           record = await transition(engine, record, 'manifest-written', options.onStage);
@@ -280,7 +303,7 @@ async function createWithVerifiedIntent(
         }
 
         case 'manifest-written': {
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           if (record.commit) {
             // The commit intent (parent HEAD) is durable BEFORE the Git effect.
             const parentHead = await openVersionControl(engine).commits.head(
@@ -298,7 +321,7 @@ async function createWithVerifiedIntent(
 
         case 'commit-writing': {
           await requireTargetIdentity(engine, record);
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           const commitSha = await ensureScaffoldCommitted(engine, record);
           await afterEffect?.('commit');
           record = await transition(engine, record, 'commit-written', options.onStage, {
@@ -309,14 +332,14 @@ async function createWithVerifiedIntent(
 
         case 'commit-written': {
           await requireTargetIdentity(engine, record);
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           record = await transition(engine, record, 'registry-writing', options.onStage);
           continue;
         }
 
         case 'registry-writing': {
           await requireTargetIdentity(engine, record);
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           await commitBinding(engine, record);
           await afterEffect?.('registry');
           record = await transition(engine, record, 'registry-linked', options.onStage);
@@ -413,7 +436,7 @@ async function verifyResult(engine: SpecFlowEngine, record: CreateJournal): Prom
     });
     if (current.slug !== record.slug) throw recovery('Completed Spec identity changed.');
   } else {
-    await verifyScaffold(record);
+    await verifyScaffold(engine, record);
   }
   const registry = await engine.readRegistry();
   if (
@@ -433,6 +456,7 @@ function resultOf(record: CreateJournal): CreatedSpecification {
     workspaceId: record.target.workspaceId,
     workspaceRoot: record.target.workspaceRoot,
     relativeManifestPath: record.files[0]!.relativePath,
+    documentIds: record.documentIds,
   };
 }
 

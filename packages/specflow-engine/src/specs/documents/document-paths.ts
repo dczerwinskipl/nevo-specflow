@@ -113,7 +113,7 @@ function validate(path: string, kind: 'file' | 'folder'): DocumentPathResult {
   return { ok: true, path };
 }
 
-/** Parent folder of a path (`''` for a root entry). */
+/** Parent folder of a path (`''` for a root entry). @internal Used by tests until the write operations need it. */
 export function parentFolder(path: string): string {
   const index = path.lastIndexOf('/');
   return index < 0 ? '' : path.slice(0, index);
@@ -156,7 +156,7 @@ export function findCaseCollisions(paths: readonly string[]): string[][] {
   return [...groups.values()].filter((group) => group.length > 1).map((group) => group.sort());
 }
 
-/** True when any of `others` equals `path` ignoring case (an exact match counts). */
+/** True when any of `others` equals `path` ignoring case (an exact match counts). @internal Used by tests until the write operations need it. */
 export function collidesIgnoringCase(path: string, others: Iterable<string>): boolean {
   const key = foldPathKey(path);
   for (const other of others) if (foldPathKey(other) === key) return true;

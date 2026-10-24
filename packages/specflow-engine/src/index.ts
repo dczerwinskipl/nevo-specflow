@@ -71,6 +71,12 @@ export {
 export { CreateOperationError } from './specs/create';
 export { DocumentError } from './specs/documents/errors';
 export {
+  readRegisteredDocumentSummaries,
+  readSpecificationDocument,
+  readSpecificationDocumentTree,
+  type RegisteredDocumentSummary,
+} from './specs/documents/read';
+export {
   catalogueRevision,
   getBuiltInCatalogue,
   projectCatalogue,

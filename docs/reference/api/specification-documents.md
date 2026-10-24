@@ -166,7 +166,9 @@ archetypes:
 **Published JSON Schema.** The contracts package derives `archetype-definitions.schema.json` (`$id`
 `urn:nevo:specflow:archetype-definitions:1`, draft 2020-12) from the TypeBox definition types and commits it at
 `packages/specflow-contracts/schema/archetype-definitions.schema.json`; a unit test fails when the committed file
-differs from the generated one. Users and AI generate files against it. The loader that reads user files is D-config.
+differs from the generated one, and it equals the generator output byte for byte (prettier ignores the folder; regenerate with `pnpm --filter @nevo/specflow-contracts schema:generate`). Users and AI generate files against it. The loader that reads user files is D-config.
+
+The `schema/` folder is **not** in the package `exports`: it is published as a package file (`files`), so consumers read it from the installed package directory (`node_modules/@nevo/specflow-contracts/schema/archetype-definitions.schema.json`) or from the repository path above, and may reference it from a definition file with `$schema`. Importing it as a module subpath is not supported; the TypeBox types (`ArchetypeDefinitionFileSchema`) are exported from `@nevo/specflow-contracts/documents`.
 
 ## D3 - Tree, read, raw
 
@@ -195,7 +197,7 @@ DocumentTree = {
     createFile: Action; createFolder: Action; import: Action; classify: Action
     formats: string[]                  // extensions creatable/editable as text: ['md','txt']
   }
-  issues: Array<{ code: string; path?: string; documentType?: string }>
+  issues: Array<{ code: 'dangling' | 'unclassified' | 'requirement-unmet' | 'skipped-entry' | 'path-case-collision' | 'archive-limit'; path?: string; documentType?: string }>
   truncated: boolean; skippedEntries: integer
 }
 ```
@@ -205,7 +207,7 @@ folder reason `required_document_path`; added `protected`, `type`, `classificati
 `editable`, `satisfiesRequirement`, `dangling`, `completeness`, `archetype`, `truncated`, `skippedEntries`.
 Listing limits and `truncated`: architecture document, Limits. `issues` lists `dangling`, `unclassified`,
 `requirement-unmet`, `skipped-entry`, `path-case-collision` and `archive-limit` entries as
-`{ code; path?: string; documentType?: string }`; the last two mean Close archive will refuse.
+`{ code; path?: string; documentType?: string }` with `code` a closed enum of exactly these six values; the last two mean Close archive will refuse.
 
 ```ts
 DocumentContent = {                    // GET /documents/:documentId

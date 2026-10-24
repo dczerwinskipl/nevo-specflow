@@ -221,6 +221,10 @@ Package `@nevo/specflow-engine`, `src/specs/`. Profile for all: `implementer` / 
   `{{...}}` left as is); a test fails when any catalogue string or generated skeleton diverges from the PR tables; the D0 validator
   passes over the built-ins; the revision is stable and changes on any edit. See G-1 and G-4 for the open template points.
 - **Verification:** U only.
+- **Checks the D0 schema cannot express (owned here):** the `overview` template has template id `overview` and filename
+  `overview.md`; template ids are unique per archetype; requirement `documentType`s are unique per archetype; template ids do
+  not start with `u-`; plus the catalogue-wide cross-checks above (every template `documentType` exists, ids and
+  `(id, version)` unique, exact UTF-8 byte limits via `findDefinitionTextLimitViolations`).
 
 ### D1.T03 — Manifest model, strict parser, serializer, archetype-aware scaffold
 

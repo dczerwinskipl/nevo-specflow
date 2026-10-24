@@ -1,5 +1,4 @@
 import {
-  HTTP_BODY_SAVE_AND_CREATE_MAX_BYTES,
   inspectCreateOptions,
   inspectPublicCreateOperation,
   projectCatalogue,
@@ -38,6 +37,11 @@ import { createErrorCode, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
 
+/**
+ * Route-level `bodyLimit` of `POST /api/specs` (reference "Limits": HTTP body, Save and Create).
+ * Above the content caps (1 MiB per file, 1 MiB of added files) to leave room for JSON escaping.
+ */
+const CREATE_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 const DEFAULT_CLOSE_GRACE_MS = 30_000;
 
 export interface SpecsCreateEndpointOptions {
@@ -271,7 +275,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
     {
       // Above the content caps (1 MiB per file, 1 MiB of added files) to leave room for JSON
       // escaping; a larger body is answered 413 before it is parsed.
-      bodyLimit: HTTP_BODY_SAVE_AND_CREATE_MAX_BYTES,
+      bodyLimit: CREATE_BODY_LIMIT_BYTES,
       preHandler: requireCapability({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.Create,

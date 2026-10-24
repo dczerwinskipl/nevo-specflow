@@ -22,8 +22,6 @@ describe('limits (architecture "Limits")', () => {
     expect(limits.ADDED_DOCUMENTS_MAX_TOTAL_BYTES).toBe(1_048_576);
     expect(limits.TEMPLATE_TEXT_MAX_BYTES).toBe(64 * 1024);
     expect(limits.DOCUMENT_PATH_MAX_CHARACTERS).toBe(500);
-    expect(limits.HTTP_BODY_SAVE_AND_CREATE_MAX_BYTES).toBe(2 * 1_048_576);
-    expect(limits.HTTP_BODY_DOCUMENT_OPERATION_MAX_BYTES).toBe(256 * 1024);
     expect(limits.CREATE_JOURNAL_MAX_BYTES).toBe(65_536);
     expect(limits.CONTENT_SNIFF_BYTES).toBe(8192);
   });

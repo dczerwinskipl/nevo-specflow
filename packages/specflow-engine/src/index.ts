@@ -87,10 +87,6 @@ export {
   projectCatalogue,
   type ResolvedCatalogue,
 } from './specs/archetypes';
-export {
-  HTTP_BODY_DOCUMENT_OPERATION_MAX_BYTES,
-  HTTP_BODY_SAVE_AND_CREATE_MAX_BYTES,
-} from './specs/documents/limits';
 export type { AddedDocumentInput } from './specs/scaffold';
 export type { CreateArchetypeRef } from './specs/create/intent';
 

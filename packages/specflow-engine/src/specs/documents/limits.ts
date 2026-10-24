@@ -51,10 +51,6 @@ export const DOCUMENT_SEGMENT_MAX_BYTES = 200;
 /** Path length in CHARACTERS (a sanity bound; path rules still apply). */
 export const DOCUMENT_PATH_MAX_CHARACTERS = 500;
 
-/** Route-level `bodyLimit` values: Save and Create; other document writes. */
-export const HTTP_BODY_SAVE_AND_CREATE_MAX_BYTES = 2 * MIB;
-export const HTTP_BODY_DOCUMENT_OPERATION_MAX_BYTES = 256 * KIB;
-
 /**
  * Create journal file cap (the existing 64 KiB). The one constant read by the strict store, the
  * tolerant listing and the retention sweep; scaffold contents are not stored in the journal.

@@ -181,7 +181,8 @@ characters, extra whitespace, no goal, a goal with leading/trailing whitespace a
   index in the registry at allocation; a collision with an existing id extends the suffix by one character until
   unique. The allocation is therefore deterministic (replay of Create produces the same ids) and, for later
   operations (D4), the allocated ids are persisted in the operation journal. Ids are never reused by the Engine.
-- Unclassified files have a **derived** id `u-<first 16 hex of sha256(exact path, case preserved)>`. It is stable
+- Unclassified files have a **derived** id `u-<first 32 hex of sha256(exact path, case preserved)>` (128 bits; a residual collision between two listed files is
+  detected and fails closed as `SPEC_SOURCE_UNAVAILABLE`). It is stable
   while the path is stable, resolved by recomputation over the listed files, and is replaced by a registered id on
   classification. On a case-sensitive filesystem `A.md` and `a.md` are two files with two different ids; both are
   listed and readable, the tree reports an issue `path-case-collision`, and the Engine refuses any operation that
@@ -197,13 +198,18 @@ characters, extra whitespace, no goal, a goal with leading/trailing whitespace a
   (`repository.ts` requires exactly one manifest-named entry, spelled `specification.yaml`), so the tree is never
   reached; this is documented behaviour, not new.
 - **Symlinks and special files** are never followed and never listed; such an entry is skipped, counted in
-  `skippedEntries` and reported as the issue `skipped-entry`. Close archive refuses a directory that contains a
+  `skippedEntries` and reported as the issue `skipped-entry`. The count is a lower bound once the archive count traversal
+  reached its own bound (entries beyond it were not visited; `archive-limit` is reported then). Names with control,
+  format, line or paragraph separator characters (Cc, Cf, Zl, Zp: bidi overrides, C1 controls, zero-width, U+2028), a
+  backslash or bytes that are not UTF-8 are skipped the same way. Close archive refuses a directory that contains a
   symlink or special file, so this issue means "Close will refuse until it is removed" (see Limits). Opening a file
   re-verifies the physical path (lstat, `realpath` equality, regular file) before and after open and compares
   `fstat` identity; `O_NOFOLLOW` (and `O_NONBLOCK`, so a swapped-in FIFO cannot block the open) is used where the
   platform has it (not on Windows, where the re-verification is the only guard and a swap between the last check and
   the first read cannot be excluded by the platform; this is a best-effort statement). The descriptor's device and
-  inode must equal those of the checked entry, and the checks are repeated after the open. A regular file with more than one hard link is readable; writes use temp file plus rename, which
+  inode must equal those of the checked entry, and the checks are repeated after the open. A regular file with more than one hard link is readable, including a file hard-linked into the directory from
+  outside it: the boundary is the directory entry, not the inode (accepted and tested; a hard link cannot be told apart
+  from the original). Writes use temp file plus rename, which
   replaces the directory entry and never writes through the link.
 - **Folders** are derived from file paths plus `folders[]`. Git cannot track an empty directory, so an empty
   folder exists only if it is in `folders[]` (committed with the registry change in D4).
@@ -251,6 +257,8 @@ in configuration.
 | HTTP body, Save and Create       | 2 MiB each (route-level `bodyLimit`)                                   | Above the content caps to leave room for JSON escaping; larger bodies answer 413. The server has no global override, so each route sets its own limit                      |
 | HTTP body, other document writes | 256 KiB                                                                | operations, folders, classify                                                                                                                                              |
 | Create journal file              | 64 KiB (the existing cap)                                              | Kept: file contents are not stored in the journal (delivery D2). One exported constant replaces the copies in `store.ts`, `listing.ts`, `retention.ts`                     |
+
+Revision memo limit (accepted): a content change that preserves size, mtime and inode within a memoised entry can serve a stale file revision, and so a stale tree revision, until the entry is evicted or the file changes again. Files modified in the last 2 seconds are never memoised to keep that window small.
 
 ## Validation results (never stored)
 

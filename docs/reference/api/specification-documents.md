@@ -213,13 +213,16 @@ DocumentTree = {
 listing and a stat/hash of the files; it is not an atomic snapshot (architecture invariant 7). `documents` is sorted
 by the case-folded path, `dangling` keeps registry order, `folders` starts with the root `''` and is sorted by the
 case-folded path. The response carries `ETag: "<revision>"`; a matching `If-None-Match` answers `304`.
-`truncated` is `true` when the listing stopped at the file or depth cap; registered documents beyond the cap are
+`truncated` is `true` when the listing stopped at the file cap, the depth cap or the entries budget (the same budget as the
+archive count traversal, so a Specification with a huge number of folders is read in bounded time); registered documents beyond the cap are
 still stat'ed and listed (a registered file is never reported dangling because of the cap). `issues` lists, in this
 order, `dangling`, `unclassified`, `requirement-unmet`, then `skipped-entry` (one per reported path, at most 50;
-`skippedEntries` is the full count), `path-case-collision` (one per colliding path) and `archive-limit` (with
+`skippedEntries` is the count the archive traversal found: a lower bound once that traversal reached its own bound,
+which `archive-limit` then reports), `path-case-collision` (one per colliding path) and `archive-limit` (with
 `path` when a single file above the archive per-file limit is the cause). Besides symlinks and special files,
-`skipped-entry` also reports names the layer cannot address safely (control characters, `\`, or bytes that are not
-UTF-8) and folders that cannot be read.
+`skipped-entry` also reports names the layer cannot address or display safely (control, format, line and paragraph
+separator characters such as bidi overrides, C1 controls, zero-width characters and U+2028, a backslash, or bytes that are
+not UTF-8) and folders that cannot be read.
 
 Before D4 every write action and capability is `{ available: false, reason }`. The reason is, in order of
 precedence: `archived` (Specification in `archive/`), then `protected` (`overview`: delete, rename, move) or `root`
@@ -227,7 +230,7 @@ precedence: `archived` (Specification in `archive/`), then `protected` (`overvie
 (`branch-protected`, `branch-not-allowed`, `git-policy-invalid`; omitted when Git is disabled or the branch is not
 known; the branch is read from the checkout's `HEAD` without starting a Git process), and otherwise
 `not-implemented`. `classify` of a registered document is `{ available: false }` without a reason (nothing to
-classify). `busy` and `commit-blocked` are never reported by reads. `editable` is true only for `text` kind with
+classify), or `archived` in an archived Specification. `busy` and `commit-blocked` are never reported by reads. `editable` is true only for `text` kind with
 an `md` or `txt` extension, within the save limit, in an active Specification.
 
 Replaces the demo's `DemoDocumentTree`: removed `documents[].required`, `reason: 'required_document_path'`,
@@ -250,7 +253,8 @@ and never answers for a registered path; any other id is `DOCUMENT_NOT_FOUND`, a
 name a Specification. A text-extension file is `text` when its first 8 KiB hold no NUL byte and are valid UTF-8,
 and, when the whole file is within the 1 MiB hash limit, the whole file is valid UTF-8 (otherwise `binary`); so
 `content` never contains a replacement character the file did not have. `title` is the first level-1 heading of a
-markdown file outside a YAML frontmatter block and outside fenced code, else the file stem. The `revision` and
+markdown file outside a YAML frontmatter block and outside fenced code, else the file stem; it is at most 200
+characters. The `revision` and
 `content` returned come from the same bytes. The current revision is the hash of the content up to 1 MiB, else
 `stat:<size>-<mtimeNs>`.
 
@@ -348,7 +352,7 @@ of the Create errors; `details` is new and optional: the shared error schema is 
 Read endpoints emit `DOCUMENT_NOT_FOUND`, `DOCUMENT_FILE_MISSING`, `DOCUMENT_REVISION_UNAVAILABLE`,
 `DOCUMENT_TOO_LARGE` and `SPEC_SOURCE_UNAVAILABLE`. An invalid manifest, an unavailable workspace, a registry or
 Project Home failure, a Specification directory that is not a canonical physical directory, a path that leaves the
-Specification directory and a file that changes while it is being opened are all `SPEC_SOURCE_UNAVAILABLE` (the body
+Specification directory a file that changes while it is being opened and any other filesystem failure of the Specification directory (permission denied, too many open files) are all `SPEC_SOURCE_UNAVAILABLE` (the body
 never carries a message or a path). A registered file that is a symlink, a directory or a special entry is
 `DOCUMENT_FILE_MISSING` (dangling); a registered path below a symlinked folder is `SPEC_SOURCE_UNAVAILABLE`.
 

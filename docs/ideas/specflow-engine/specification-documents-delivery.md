@@ -310,9 +310,11 @@ validation and `error-status` mapping with a fake Engine (`app.inject`), CLI arg
    actions `archived`. D3 never reports `busy` or `commit-blocked` (reads take no lock and run no mutating Git process;
    both arrive with D4). **No write route exists until D4**, so D3 reports every write action (`rename`, `move`, `delete`,
    `classify`, `folder`) and the capabilities `createFile`, `createFolder`, `import`, `classify` as `available: false`
-   with reason `not-implemented`, except where a stronger reason applies (`protected`, `root`, `archived`); `editable`
-   stays computed from kind and size. D4 replaces `not-implemented` by the policy-based answer and removes the reason
-   from the vocabulary. The `archive-limit` and `skipped-entry` issues come from the count-only traversal of the
+   with a reason in this order of precedence: `archived`, then `protected` or `root`, then the advisory Git policy reason
+   of the checked-out branch (`branch-protected`, `branch-not-allowed`, `git-policy-invalid`; the UI needs the read-only
+   reason before D4 exists), and otherwise `not-implemented`. A registered document's `classify` is unavailable without a
+   reason (nothing to classify), or `archived` in an archived Specification. `editable` stays computed from kind and
+   size. D4 replaces `not-implemented` by the policy-based answer and removes the reason from the vocabulary. The `archive-limit` and `skipped-entry` issues come from the count-only traversal of the
    architecture document ("Archive count rule"), independent of the listing cap; hidden entries are excluded from the tree
    and counted by that traversal.
 2. **Raw access**: `openSpecificationDocument(engine, specId, documentId)` returns `{ metadata, stream }`; it
@@ -473,7 +475,7 @@ the demo; real endpoints (D2/D3) ship first and are consumed by the UI at D5. Th
 
 Confirmed by the owner (no longer open): the UI Create adaptation is inside D2; no compatibility readers or aliases; built-ins require only `overview.md`; `overview.md` id and path are fixed (rename and move refused with `protected`); the narrow handling of older Create journals (D2 item 3, including the journal-less payload sweep); the CLI `--archetype` is required with no default.
 
-Still open: none that blocks D0 to D3. Choices made conservatively while resolving the plan's gaps and open to owner veto: reason `not-implemented` for write actions before D4 (section 7, item 1); `DocumentErrorCode` holds every code of the reference table while the Create `code` stays a string.
+Still open: none that blocks D0 to D3. Choices made conservatively while resolving the plan's gaps and open to owner veto: reason `not-implemented` for write actions before D4, behind `archived`, `protected`, `root` and the advisory Git policy reasons (section 7, item 1); `DocumentErrorCode` holds every code of the reference table while the Create `code` stays a string.
 
 ## 11. Not verified at specification time
 

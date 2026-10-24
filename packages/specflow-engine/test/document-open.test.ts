@@ -14,7 +14,6 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { once } from 'node:events';
 import type { Readable } from 'node:stream';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -44,7 +43,12 @@ async function drain(stream: Readable): Promise<Buffer> {
 
 /** Resolves when the stream has closed, which is after the file handle it owned is released. */
 async function closed(stream: Readable): Promise<void> {
-  if (!stream.closed) await once(stream, 'close');
+  if (stream.closed) return;
+  // A destroyed stream may emit its abort or read error before it closes; that is not under test here.
+  await new Promise<void>((resolve) => {
+    stream.on('error', () => undefined);
+    stream.once('close', () => resolve());
+  });
 }
 
 async function destroyed(stream: Readable): Promise<void> {

@@ -37,12 +37,12 @@ Language follows [normative language](../../architecture/principles/normative-la
 can be created with an archetype, can be read (tree, JSON, raw) through the real Runtime, and (D4) can be changed
 through Engine-owned committed operations; the UI integrates by swapping demo for real without shape changes.
 
-**One specification, six slices.** The slices share one manifest model, one contract and one error vocabulary, so
+**One specification, slices D0 to D5 plus the design-level slice D-config.** The slices share one manifest model, one contract and one error vocabulary, so
 they stay one specification with ordered, independently reviewable deliveries. Recommended **separate** later
 specifications (they have their own lifecycle and can be built without this one's UI): (a) the document commit
 queue with coalescing (post-D4, design in ADR 0016 section 10); (b) binary import/replace (after D4);
-(c) project-defined archetypes and template overrides (`.nevo/archetypes`) plus archetype switching and CLI
-authoring; (d) a readiness/acceptance validation capability (distinct from structural completeness);
+(c) archetype switching in an existing Specification and CLI authoring of definitions (loading owner-defined
+definitions is **not** separate: it is the named slice D-config of this specification, section 7a); (d) a readiness/acceptance validation capability (distinct from structural completeness);
 (e) the `ux` and `exploration` archetypes. None of these is started or approved by this document.
 
 **Readiness.** D0, D1, D2, D3: ready for task decomposition (decision-complete; owner questions in section 10 have
@@ -105,7 +105,7 @@ the D2/D3 outputs are prerequisites. D5: outline; depends on the parallel UI wor
 product, reference). (b) `packages/specflow-contracts/src/documents/` gains TypeBox schemas and types for the
 shared vocabulary of the reference page: `ContentKind`, `Classification`, `ActionReason`, `Action`,
 `DocumentTypeInfo`, `ArchetypeCatalogue`, `DocumentTree`, `DocumentContent`, `SaveInput/Result`,
-`DocumentOperationInput/Result`, `CreateDocumentsInput`, `DocumentErrorCode`, `DocumentError`, plus the Create
+`DocumentOperationInput/Result`, `CreateDocumentsInput`, the declarative **definition schema** (`ArchetypeDefinitionFile`: document types, archetypes, requirements, templates, with `instructions` and `preselected`; reference: "Definition schema") and its published JSON Schema file `packages/specflow-contracts/schema/archetype-definitions.schema.json` (generated from the TypeBox types; a unit test fails on drift), `DocumentErrorCode`, `DocumentError`, plus the Create
 request extension as an exported **fragment** (`CreateArchetypeSelectionSchema`) that is not yet merged into
 `CreateSpecRequestSchema` (that is D2). Export under `@nevo/specflow-contracts/documents`. (c) Update ADR 0013's
 pointer (done), `docs/architecture/runtime/specification-lifecycle.md` "Create" with a forward link,
@@ -121,7 +121,7 @@ break the parallel UI build).
 **Invariants.** Schemas contain no Engine logic; every enum (kinds, reasons, error codes) is defined once and the
 error-code list is a single exported `as const` array from which the union is derived.
 
-**Acceptance.** (1) New schemas exported and re-exported from the package index; (2) the shared vocabulary file
+**Acceptance.** (0) The definition schema validates the example file of the reference and rejects: a document type without `instructions`, an archetype without `useWhen`, a template referencing no `documentType`, `preselected` on an `always` template, `minCount` < 0, an unknown key; the committed JSON Schema equals the generated one. (1) New schemas exported and re-exported from the package index; (2) the shared vocabulary file
 has no duplicate of a literal defined elsewhere; (3) a contract test proves each representative payload of the
 reference (tree with unclassified + dangling + completeness, raw-error bodies, operation inputs for rename, move,
 delete, classify, create-documents; error bodies) validates and that invalid shapes (extra key, `required` flag,
@@ -137,8 +137,8 @@ lint, typecheck, build, `pnpm docs:check`. No L tests.
 
 1. **Catalogue module** (`specs/archetypes/`): typed plain data for document types and archetypes exactly as the
    product document's tables; each entry carries mandatory non-empty `description` and `useWhen` (archetypes also
-   `title`: "Minimal", "Feature", "Architecture"). Default filenames per type (including `note.md` and
-   `user-story.md`), archetype texts and the generated template skeletons are fixed by the product document
+   `title`: "Minimal", "Feature", "Architecture") and, for document types, mandatory `instructions`; archetypes and templates carry `instructions` as the product document defines. The data conforms to the definition schema of D0 (the same validator is run over the built-ins in a test). Default filenames per type (including `note.md` and
+   `user-story.md`), archetype texts, all `instructions` texts, `include`/`preselected` flags and the generated template skeletons are fixed by the product document
    ("Template skeletons"); the Engine reproduces them verbatim and a test compares them with that table. A pure
    `catalogueRevision()` (sha256 of canonical JSON); lookup functions. Shaped so that a future YAML loader yields the
    same type (`ArchetypeDefinition`), but no loader exists.
@@ -176,7 +176,7 @@ lint, typecheck, build, `pnpm docs:check`. No L tests.
 Messages name slug and field, never absolute paths.
 
 **Invariants.** Parser strictness; catalogue completeness (every requirement type exists in the type catalogue;
-every `always` template satisfies its archetype's requirements; every archetype includes `overview`); scaffold
+every archetype requires `overview` with `minCount` >= 1 and has an `always` overview template (the framework invariant), and the built-ins require nothing else; every template's `documentType` exists; every document type has non-empty `instructions`; placeholders render deterministically); scaffold
 determinism (same input, same sha256); `overview` entry always present and fixed; ids unique; paths unique case-insensitively.
 
 **Acceptance.** (1) A scaffold for each archetype parses back to an equal model; (2) the parser rejects each rule
@@ -326,7 +326,7 @@ directory (cannot occur after parsing, defence in depth) is `SPEC_SOURCE_UNAVAIL
 **Error codes.** `DOCUMENT_NOT_FOUND` 404, `DOCUMENT_FILE_MISSING` 404, `DOCUMENT_REVISION_UNAVAILABLE` 409,
 `DOCUMENT_TOO_LARGE` 413, `SPEC_SOURCE_UNAVAILABLE` 503, 401/403 unchanged.
 
-**Acceptance.** (1) A real Specification created with `feature` shows four registered documents, completeness
+**Acceptance.** (1) A real Specification created with `feature` and its preselected suggestions shows four registered documents, completeness
 satisfied; (2) a file added by hand appears `unclassified` with a derived id and can be read; (3) deleting a
 registered file by hand makes it `dangling` and reading it is `DOCUMENT_FILE_MISSING`; (4) png/svg open as images
 with correct MIME and the sandbox CSP header, a `.zip` is `binary` with `attachment`, a `.md` containing NUL is
@@ -344,6 +344,58 @@ completeness, limits), content-kind table, header builder, route tests with a fa
 status mapping, headers, ETag, authorization. L: real directories with real Specifications (symlink case,
 TOCTOU re-verification, large files, hand-edited files, archived location) and an HTTP test against a real
 project Runtime; Linux only.
+
+## 7a. D-config - Owner-defined archetypes, document types and templates (design level, after D3)
+
+Named slice, **not decision-complete and not part of the first execution pass**. It sits right after D3 and may run
+before or alongside D4 (it does not depend on D4 and D4 does not depend on it). It makes the "configuration"
+half of the framework invariant real (architecture document, "Definitions").
+
+**Scope (design).**
+
+1. **Location and trust.** YAML files under `.nevo/archetypes/*.yaml` plus template files under
+   `.nevo/archetypes/templates/`, in the schema of D0 (`schemaVersion: 1`), read only from the **committed** Project
+   Home configuration, with the same trust rule as `git.commits` (ADR 0013): a linked checkout's copy and local
+   machine configuration are never consulted. A template may use `contentFile` (relative path under
+   `templates/`, no traversal, size limit of the Limits table) instead of inline `content`; the loader resolves it, and
+   the resolved catalogue contains content only.
+2. **Validation and error surface.** Each file is validated with the D0 JSON Schema rules plus cross-checks (template
+   `documentType` exists, `overview` requirement and `always` overview template present, unique ids and
+   (`id`,`version`) pairs, limits). An invalid **file** is rejected as a whole and reported in
+   `ArchetypeCatalogue.problems[]` (`source` = file, `code`, `message`, location); valid files and built-ins still load.
+   Nothing is silently repaired. A Create that names an archetype from a rejected file is `ARCHETYPE_UNKNOWN`. A
+   broken or unreadable configuration directory never blocks reading existing Specifications (they use their
+   persisted snapshot) and never blocks Create with a built-in archetype.
+3. **Precedence and collisions.** Ids are unique across built-ins and user definitions. A user definition whose
+   archetype or document-type `id` equals a built-in's is rejected (`id-collision`); there is no overlay or silent
+   override in the first version. Template overrides for a built-in archetype are a later extension (a separate
+   `templateOverrides` section would be added to the schema with `schemaVersion: 2`).
+4. **Versions against existing Specifications.** Existing Specifications keep their persisted snapshot whatever the
+   files say. The version rule of the architecture document applies; the loader cannot detect an un-bumped
+   requirements change. A Create with a stale `catalogueRevision` or version is `CATALOGUE_STALE`.
+5. **Surfaces.** The same `GET /api/specs/archetypes` (now including user definitions and `problems`); CLI
+   `archetypes list|show|validate` as thin adapters (validate runs the loader over given files). Authoring by AI uses
+   the published JSON Schema and the catalogue's `description`/`useWhen`/`instructions`.
+
+**Dependencies.** D0 (definition schema and JSON Schema), D1 (catalogue types, validator, placeholder rendering,
+id and version rules), D2 (Create reads the catalogue by id, version and revision, and snapshots requirements), D3
+(catalogue endpoint and real read path). Project Home configuration reading (existing, used for `git.commits`).
+
+**What D1 to D3 MUST keep stable for D-config:** (a) the definition schema and `schemaVersion`; (b) ids of the
+built-in types, archetypes and templates (never renamed); (c) the meaning of `version` (bump on requirements
+change) and the snapshot in the manifest; (d) `catalogueRevision` = sha256 of the canonical resolved catalogue,
+computed by one function that takes any list of definitions; (e) the catalogue contract fields `instructions`,
+`preselected`, `include` and the reserved optional `problems`; (f) the catalogue being a single Engine function
+(`resolveCatalogue(builtIns, userDefinitions?)`) so D-config only adds an input; (g) the error codes
+`ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`. No backward-compatibility rule is weakened: user files are in the current
+schema only and an unknown `schemaVersion` is rejected.
+
+**Acceptance themes (to be made decision-complete before decomposition).** Valid user archetype creates a
+Specification with its snapshot; invalid file reported and isolated; id collision rejected; broken directory does not
+block built-ins or reads; revision changes with any edit; CLI validate agrees with the Runtime.
+
+**Verification themes.** U: schema validation, cross-checks, collision and precedence logic, `resolveCatalogue`
+determinism. L (Linux only): loading from a real Project Home with committed and uncommitted/linked-checkout copies.
 
 ## 8. D4 - Write operations (design-level outline; not decision-complete)
 
@@ -415,8 +467,9 @@ Still open (defaults stated, **unconfirmed**):
 2. **PROPOSAL - old Create journals (D2 item 3).** Tolerant classification, never a claim, never blocking Create or
    Close; the sweep deletes unsupported-version files after 7 days; `CREATE_JOURNAL_UNSUPPORTED` by id. Needs sign-off
    because it deletes old evidence after retention.
-3. **DEFAULT - `architecture` archetype** requires overview 1, architecture 1, decisions 1.
-4. **DEFAULT - CLI `--archetype`** is required (no default `minimal`).
+3. **DEFAULT - CLI `--archetype`** is required (no default `minimal`).
+
+Decided by the owner and therefore not open: built-in archetypes require only `overview.md`; owner-defined archetypes, types, templates and instructions are the slice D-config.
 
 ## 11. Not verified at specification time
 

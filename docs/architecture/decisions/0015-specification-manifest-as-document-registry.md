@@ -60,21 +60,27 @@ evolve this later (project-defined archetypes, template overrides) without redef
 5. **Unclassified and dangling.** A regular file under the Specification directory that is not registered is
    `unclassified`: readable and classifiable, never an error. A registry entry whose file is absent is
    reported as `dangling` (a validation issue), not a parse failure.
-6. **One protected document.** `overview.md` (document id `overview`, type `overview`) cannot be deleted and
+6. **One framework invariant, everything else configuration.** The framework hard-requires exactly one document:
+   `overview.md` (id and type `overview`). Which other documents are required or suggested, archetypes, templates and
+   authoring instructions are the owner's configuration; the shipped archetypes are default configuration and require
+   only `overview`. The requirements model is kept so owners can configure stricter archetypes.
+7. **One protected document.** `overview.md` (document id `overview`, type `overview`) cannot be deleted and
    is editable. No other protection exists. Archetype requirements never protect a file; they only produce
    validation results. There are no per-document status fields.
-7. **Completeness is computed, never stored.** "Structural completeness" (requirements met) is a pure function
+8. **Completeness is computed, never stored.** "Structural completeness" (requirements met) is a pure function
    of the registry, the files and the persisted requirements snapshot. Readiness or content acceptance is not
    stored and is not decided here; it is a validation result of a separate (later) capability.
-8. **Archetype catalogue is Engine code shaped like future YAML.** Each archetype and each document type has a
-   mandatory `description` and `useWhen`. The first release ships `minimal`, `feature` and `architecture`.
-   The catalogue is data (plain typed objects with a `revision` hash), so project-defined archetypes under
-   `.nevo/archetypes` and template overrides can later feed the same shape. They are out of scope now.
-9. **Selected archetype version and requirements are persisted with the Specification.** `archetype.requirements`
-   is a snapshot copied from the catalogue at Create. Later catalogue changes never alter an existing
-   Specification's completeness. Archetype switching in an existing Specification is out of scope; the
-   `archetype.version` and stable document ids leave room for it.
-10. **Engine owns all logic.** Parsing, catalogue, validation, projection and operations live in
+9. **One declarative definition schema.** Archetypes, document types, templates and requirements are described by one
+   schema (`schemaVersion: 1`), published as a JSON Schema, used identically by the built-in definitions (Engine code,
+   D1 to D3) and by future user-defined YAML under `.nevo/archetypes`. Every archetype and document type has mandatory
+   `description` and `useWhen`; document types also have mandatory `instructions` (templates and archetypes optional
+   `instructions`), consumed by AI, CLI and UI. The first release ships `minimal`, `feature` and `architecture`. Loading
+   user definitions, precedence, collisions and error surface are the named design-level slice D-config, after D3.
+10. **Selected archetype version and requirements are persisted with the Specification.** `archetype.requirements`
+    is a snapshot copied from the catalogue at Create. Later catalogue changes never alter an existing
+    Specification's completeness. Archetype switching in an existing Specification is out of scope; the
+    `archetype.version` and stable document ids leave room for it.
+11. **Engine owns all logic.** Parsing, catalogue, validation, projection and operations live in
     `@nevo/specflow-engine`. Runtime and CLI are thin adapters. No new Core package.
 
 ## Consequences

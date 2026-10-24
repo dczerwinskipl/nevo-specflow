@@ -81,19 +81,23 @@ Action        = { available: boolean; reason?: ActionReason }
 ## D2 - Archetype catalogue and Create request
 
 ```ts
-DocumentTypeInfo = { id; title; description; useWhen; defaultFilename?: string }
+DocumentTypeInfo = { id; title; description; useWhen; instructions: string; defaultFilename?: string }   // all text mandatory except defaultFilename
 ArchetypeCatalogue = {
   revision: string                     // sha256 of the catalogue content; changes when the catalogue changes
   defaultArchetypeId?: string          // absent in the real backend (the UI chooses); optional in demo
   documentTypes: DocumentTypeInfo[]
+  problems?: Array<{ source: string; code: string; message: string }>   // reserved for D-config; absent/empty for built-ins
   archetypes: Array<{
     id: string; version: integer >= 1  // demo today: string
     title: string; description: string; useWhen: string      // description and useWhen mandatory
+    instructions?: string                                    // how to work with the archetype (built-ins carry it)
     requirements: Array<{ documentType: string; minCount: integer >= 0 }>
     documents: Array<{                 // templates: scaffolded and suggested
       id: string                       // template id = document type id
       type: string; title: string; filename: string
-      include: 'always' | 'optional'   // replaces the template flag `required`
+      include: 'always' | 'optional'   // replaces the template flag `required`; always = scaffolded, optional = suggested
+      preselected?: boolean            // optional templates: default tick in clients, a recommendation only
+      instructions?: string            // how to fill this template
       content: string                  // template text (template limit: architecture document, Limits)
     }>
     workflow?: { phases; requiredDocuments; suggestedDocuments }   // optional, demo-only; the real backend omits it
@@ -116,6 +120,52 @@ The response `CreatedSpec` keeps its existing fields and gains `documentIds: str
 result already has it). `POST /api/specs` sets its own `bodyLimit` (value: architecture document, Limits); the server
 has no global body-limit override. Content sizes are UTF-8 bytes. Content is not stored in the Create journal (see
 the delivery specification, D2).
+
+### Definition schema (declarative, built-in and user-defined)
+
+One schema (`schemaVersion: 1`) describes archetypes, document types, templates and requirements; the entities and
+rules are owned by the architecture document ("Definitions"). The catalogue above is its **resolved** form plus
+`revision`. A file in this schema looks like:
+
+```yaml
+schemaVersion: 1
+documentTypes:
+  - id: runbook
+    title: Runbook
+    description: Operational steps for running or recovering a system.
+    useWhen: The change adds something that operators must run or recover.
+    instructions: List preconditions, numbered steps and the expected result of each step.
+    defaultFilename: runbook.md
+archetypes:
+  - id: operations-change
+    version: 1
+    title: Operations change
+    description: A change with an operational impact.
+    useWhen: The work changes how a system is operated.
+    requirements:
+      - { documentType: overview, minCount: 1 }
+    templates:
+      - {
+          id: overview,
+          documentType: overview,
+          filename: overview.md,
+          include: always,
+          content: "# {{specificationTitle}}\n",
+        }
+      - {
+          id: runbook,
+          documentType: runbook,
+          filename: runbook.md,
+          include: optional,
+          preselected: true,
+          content: "# {{specificationTitle}} - Runbook\n",
+        }
+```
+
+**Published JSON Schema.** The contracts package derives `archetype-definitions.schema.json` (`$id`
+`urn:nevo:specflow:archetype-definitions:1`, draft 2020-12) from the TypeBox definition types and commits it at
+`packages/specflow-contracts/schema/archetype-definitions.schema.json`; a unit test fails when the committed file
+differs from the generated one. Users and AI generate files against it. The loader that reads user files is D-config.
 
 ## D3 - Tree, read, raw
 
@@ -262,7 +312,7 @@ integrates D2/D3/D4; items marked _demo_ also change the demo contract and the d
    `completeness`, `archetype`, `truncated`: the tree must render unclassified files (with a classify action),
    dangling entries (with a remove-registration action) and completeness (requirement results).
 4. _demo_ Archetype catalogue: `version` string -> integer; template `required` -> `include: 'always'|'optional'`;
-   mandatory `description` and `useWhen` on archetypes and document types; `workflow` is optional and absent in
+   mandatory `description` and `useWhen` on archetypes and document types, mandatory `instructions` on document types, optional `instructions` on archetypes and templates, `preselected` on optional templates (show the instructions as guidance; they are not stored in the Specification); `workflow` is optional and absent in
    the real backend (`ArchetypeSummary` already falls back); `archetype.requirements` is new. Real catalogue is
    served by `GET /api/specs/archetypes`; the demo keeps embedding it in `GET /api/demo/specification-creation`.
 5. _demo_ Create request: `addedDocuments[].title` removed (title is derived), `addedDocuments[].type` optional;

@@ -86,14 +86,65 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
    and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
    (**DEFAULT, pending owner confirmation**; the owner decision itself only says it cannot be deleted).
-6. `requirements[].documentType` matches the type pattern; `minCount` is an integer >= 0 (unique per type).
+6. `requirements[].documentType` matches the type pattern; `minCount` is an integer >= 0 (unique per type). The
+   requirements MUST contain `overview` with `minCount` >= 1 (the framework invariant below); every other
+   requirement is configuration.
 7. `folders[]` entries are valid portable folder paths, unique ignoring case, not equal to a registered file.
 
 `archetype.version` is an integer. The persisted `requirements` are authoritative for that Specification:
-the catalogue is consulted at Create and for display text (title, description) only.
+the catalogue is consulted at Create and for display and authoring text (title, description, useWhen,
+instructions) only. Instructions are guidance, not rules, and are deliberately **not** snapshotted.
 
 Rewriting the manifest (registry operations) MUST go through one Engine function that validates the result with
 the same parser before writing, preserves unknown top-level keys and SHOULD preserve comments and key order.
+
+## Definitions: framework invariant and configuration
+
+**Framework invariant (hard-coded, not configurable).** Exactly one thing is required of every Specification: the
+main document `overview.md` (document id `overview`, type `overview`, protected from deletion). It follows from
+working on a Specification at all. Parser rule 5 and rule 6 enforce it, and no definition can remove or relax it:
+every archetype's requirements contain `overview` with `minCount` >= 1 and every scaffold creates it.
+
+**Configuration (shipped defaults now, owner-defined later).** Everything else is project configuration: which
+document types exist, which archetypes exist, which documents an archetype requires or suggests, the templates and
+the authoring instructions. The built-in `minimal`, `feature` and `architecture` archetypes are only the shipped
+**default configuration**; they require nothing but `overview` and offer the other documents as suggestions with
+templates. The requirements model (`documentType` + `minCount`, persisted as a snapshot) stays so that owners can
+configure stricter archetypes; requirements never protect a file and only yield validation results.
+
+### One declarative schema
+
+Specification archetypes, document types, templates and requirements are described by **one** declarative
+definition schema (`schemaVersion: 1`), used identically by the built-in definitions (plain typed data in the
+Engine for D1 to D3) and by future user-defined definitions (YAML files, slice D-config). Its published form is a
+JSON Schema generated from the contract types (reference: "Definition schema"); users and AI generate files against
+it. Entities:
+
+| Entity        | Fields (M = mandatory)                                                                                                                                                                                                                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document type | `id` M, `title` M, `description` M, `useWhen` M, `instructions` M (how to prepare the document and what it must contain), `defaultFilename`                                                                                                                                        |
+| Archetype     | `id` M, `version` M (integer >= 1), `title` M, `description` M, `useWhen` M, `instructions` (how to work with the archetype), `requirements[]` M, `templates[]` M                                                                                                                  |
+| Requirement   | `documentType` M, `minCount` M (integer >= 0)                                                                                                                                                                                                                                      |
+| Template      | `id` M (unique in the archetype), `documentType` M, `filename` M, `title`, `include` M (`always` or `optional`), `preselected` (optional templates only; UI default), `instructions` (how to fill this template), `content` M (inline text; a file reference is added by D-config) |
+
+Rules: `description`, `useWhen` and (for document types) `instructions` are consumed by AI agents, the CLI and the UI
+to choose and to author; they are exposed in the catalogue contract. `include: always` is scaffolded at Create;
+`optional` templates are the suggestions, and `preselected` only sets the default tick in clients (a
+recommendation, never a requirement). A template's `documentType` MUST exist in the catalogue. Content may use the
+placeholders `{{specificationTitle}}`, `{{slug}}`, `{{goal}}` and `{{created}}` (nothing else is substituted;
+unknown `{{...}}` text is left as is). `instructions` are not rendered into the document.
+
+### Versioning rule
+
+- Ids (document type, archetype, template) are immutable; renaming means a new id.
+- An archetype `version` MUST be bumped whenever its `requirements` change; changes to text only (title,
+  description, useWhen, instructions, template content) MAY keep the version. A catalogue never holds two
+  definitions with the same `id` and `version`.
+- `catalogueRevision` is the sha256 of the canonical JSON of the whole resolved catalogue (types, archetypes,
+  templates, instructions) and changes on any edit. Create sends it and the version; a mismatch is
+  `CATALOGUE_STALE`. The loader cannot detect an un-bumped requirement change (it keeps no history); the snapshot in
+  the manifest, not the version, is what protects existing Specifications.
+- A document type removed from the catalogue stays valid in registries (shown by id).
 
 ## Identity, paths and the registry
 
@@ -150,18 +201,19 @@ Other documents refer to this table and MUST NOT restate the numbers. All sizes 
 characters. The constants live in the Engine (exported once and imported by Runtime where a route needs them), not
 in configuration.
 
-| Limit                            | Value                                                  | Notes                                                                                                                                                  |
-| -------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Text JSON read and Save content  | 1 MiB (bytes)                                          | Above: JSON read and Save are `DOCUMENT_TOO_LARGE` (413); use `raw` to read                                                                            |
-| Raw content                      | 25 MiB                                                 | Below Close's 32 MiB per-file archive limit on purpose                                                                                                 |
-| Content-hash revision            | files <= 1 MiB: sha256; above: `stat:<size>-<mtimeNs>` | Memo keyed by path+size+mtimeNs+ino, at most 5000 entries (LRU)                                                                                        |
-| Manifest size                    | 256 KiB                                                | Larger: `SPEC_SOURCE_INVALID`                                                                                                                          |
-| Listed files per Specification   | 2000, depth 8                                          | Beyond: `truncated: true`. Close archive allows 4096 files and fails above that                                                                        |
-| Added documents at Create        | 10 files, 100 folders, total content 1 MiB (bytes)     | Each file also <= 1 MiB; enforced at admission                                                                                                         |
-| Template text                    | 64 KiB each                                            |                                                                                                                                                        |
-| HTTP body, Save and Create       | 2 MiB each (route-level `bodyLimit`)                   | Above the content caps to leave room for JSON escaping; larger bodies answer 413. The server has no global override, so each route sets its own limit  |
-| HTTP body, other document writes | 256 KiB                                                | operations, folders, classify                                                                                                                          |
-| Create journal file              | 64 KiB (the existing cap)                              | Kept: file contents are not stored in the journal (delivery D2). One exported constant replaces the copies in `store.ts`, `listing.ts`, `retention.ts` |
+| Limit                            | Value                                                             | Notes                                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Text JSON read and Save content  | 1 MiB (bytes)                                                     | Above: JSON read and Save are `DOCUMENT_TOO_LARGE` (413); use `raw` to read                                                                            |
+| Raw content                      | 25 MiB                                                            | Below Close's 32 MiB per-file archive limit on purpose                                                                                                 |
+| Content-hash revision            | files <= 1 MiB: sha256; above: `stat:<size>-<mtimeNs>`            | Memo keyed by path+size+mtimeNs+ino, at most 5000 entries (LRU)                                                                                        |
+| Manifest size                    | 256 KiB                                                           | Larger: `SPEC_SOURCE_INVALID`                                                                                                                          |
+| Listed files per Specification   | 2000, depth 8                                                     | Beyond: `truncated: true`. Close archive allows 4096 files and fails above that                                                                        |
+| Added documents at Create        | 10 files, 100 folders, total content 1 MiB (bytes)                | Each file also <= 1 MiB; enforced at admission                                                                                                         |
+| Template text                    | 64 KiB each                                                       |                                                                                                                                                        |
+| Definition text                  | `description`, `useWhen`: 1000 bytes; each `instructions`: 16 KiB | Per field                                                                                                                                              |
+| HTTP body, Save and Create       | 2 MiB each (route-level `bodyLimit`)                              | Above the content caps to leave room for JSON escaping; larger bodies answer 413. The server has no global override, so each route sets its own limit  |
+| HTTP body, other document writes | 256 KiB                                                           | operations, folders, classify                                                                                                                          |
+| Create journal file              | 64 KiB (the existing cap)                                         | Kept: file contents are not stored in the journal (delivery D2). One exported constant replaces the copies in `store.ts`, `listing.ts`, `retention.ts` |
 
 ## Validation results (never stored)
 

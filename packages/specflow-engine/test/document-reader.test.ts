@@ -173,7 +173,11 @@ describe('readSpecificationDocumentTree', () => {
     expect(
       code(
         await failure(
-          readSpecificationDocument(fixture.engine, created.specId, 'u-0123456789abcdef0123456789abcdef'),
+          readSpecificationDocument(
+            fixture.engine,
+            created.specId,
+            'u-0123456789abcdef0123456789abcdef',
+          ),
         ),
       ),
     ).toBe('DOCUMENT_NOT_FOUND');
@@ -442,17 +446,15 @@ describe('paths, links and hidden entries', () => {
     const fixture = await project();
     const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
     trackRoot(outside);
-    await writeFile(join(outside, 'shared.md'), '# Shared
-');
+    await writeFile(join(outside, 'shared.md'), '# Shared\n');
     const hand = await handBuilt(fixture);
     await link(join(outside, 'shared.md'), join(hand.dir, 'linked-in.md'));
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
     const entry = tree.documents.find((document) => document.path === 'linked-in.md')!;
     expect(entry.classification).toBe('unclassified');
-    expect(
-      (await readSpecificationDocument(fixture.engine, hand.specId, entry.id)).content,
-    ).toBe('# Shared
-');
+    expect((await readSpecificationDocument(fixture.engine, hand.specId, entry.id)).content).toBe(
+      '# Shared\n',
+    );
   }, 240000);
 
   it('reports names with bidi overrides, zero-width and separator characters as skipped entries', async () => {
@@ -620,7 +622,15 @@ describe('limits', () => {
     expect(performance.now() - started).toBeLessThan(5000);
     // So does the derived-id lookup: the unknown id is answered without walking everything.
     expect(
-      code(await failure(readSpecificationDocument(fixture.engine, hand.specId, deriveUnclassifiedDocumentId('nope.md')))),
+      code(
+        await failure(
+          readSpecificationDocument(
+            fixture.engine,
+            hand.specId,
+            deriveUnclassifiedDocumentId('nope.md'),
+          ),
+        ),
+      ),
     ).toBe('DOCUMENT_NOT_FOUND');
   }, 240000);
 
@@ -632,10 +642,8 @@ describe('limits', () => {
         { id: 'note', path: 'note.md', type: 'note' },
       ],
       files: {
-        'overview.md': '#' + ' '.repeat(200_000) + 'x
-',
-        'note.md': '# ' + 'a'.repeat(1024 * 1024 - 8) + '
-',
+        'overview.md': '#' + ' '.repeat(200_000) + 'x\n',
+        'note.md': '# ' + 'a'.repeat(1024 * 1024 - 8) + '\n',
       },
     });
     for (const work of [

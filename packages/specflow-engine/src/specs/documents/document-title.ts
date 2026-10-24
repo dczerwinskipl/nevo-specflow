@@ -68,12 +68,12 @@ function atxLevelOneTitle(line: string): string | undefined {
   while (index < 3 && line[index] === ' ') index += 1;
   if (line[index] !== '#') return undefined;
   index += 1;
-  if (line[index] !== ' ' && line[index] !== '	') return undefined;
+  if (line[index] !== ' ' && line[index] !== '\t') return undefined;
   let text = line.slice(index).trim();
   let end = text.length;
   while (end > 0 && text[end - 1] === '#') end -= 1;
   // A closing run of `#` counts only after a space or tab (or when it is the whole text).
-  if (end < text.length && (end === 0 || text[end - 1] === ' ' || text[end - 1] === '	')) {
+  if (end < text.length && (end === 0 || text[end - 1] === ' ' || text[end - 1] === '\t')) {
     text = text.slice(0, end).trim();
   }
   return text;

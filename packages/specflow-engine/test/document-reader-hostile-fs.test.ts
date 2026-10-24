@@ -16,7 +16,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { deriveUnclassifiedDocumentId } from '../src/specs/documents/document-ids';
 import { readSpecificationDocument } from '../src/specs/documents/document-reader';
+import { readRegisteredDocumentSummaries } from '../src/specs/documents/summaries';
 import { readSpecificationDocumentTree } from '../src/specs/documents/tree-reader';
+import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
 import {
   documentsProject,
   errorCode,
@@ -220,5 +222,49 @@ describe('paths, links and hidden entries', () => {
     await expect(readSpecificationDocumentTree(fixture.engine, hand.specId)).rejects.toMatchObject({
       code: 'SPEC_SOURCE_INVALID',
     });
+  }, 240000);
+});
+
+describe('files that cannot be read safely', () => {
+  const errno = (code: string): Error => Object.assign(new Error(code), { code });
+
+  async function twoRegistered() {
+    const fixture = await project();
+    const hand = await handBuilt(fixture, {
+      documents: [
+        { id: 'overview', path: 'overview.md', type: 'overview' },
+        { id: 'bad', path: 'bad.md', type: 'note' },
+      ],
+      files: { 'overview.md': '# Fine\n', 'bad.md': '# Bad\n' },
+    });
+    return { fixture, hand };
+  }
+
+  it('leaves an unreadable registered file out of the summaries and keeps the others', async () => {
+    const { fixture, hand } = await twoRegistered();
+    // EACCES while inspecting the entry: the layer reports it as an unavailable source.
+    const fs: VerifiedFs = {
+      ...nodeVerifiedFs,
+      lstat: (path) =>
+        path.endsWith('/bad.md') ? Promise.reject(errno('EACCES')) : nodeVerifiedFs.lstat(path),
+    };
+    const rows = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, { fs });
+    expect(rows.map((row) => row.id)).toEqual(['overview']);
+  }, 240000);
+
+  it('skips a file whose analysis fails with a document error (the open race)', async () => {
+    const { fixture, hand } = await twoRegistered();
+    // ELOOP at open: the entry became a symlink after the check; the layer reports a document error.
+    const fs: VerifiedFs = {
+      ...nodeVerifiedFs,
+      open: (path, flags) =>
+        path.endsWith('/bad.md')
+          ? Promise.reject(errno('ELOOP'))
+          : nodeVerifiedFs.open(path, flags),
+    };
+    const rows = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, { fs });
+    expect(rows.map((row) => row.id)).toEqual(['overview']);
+    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId, { fs });
+    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'bad.md' });
   }, 240000);
 });

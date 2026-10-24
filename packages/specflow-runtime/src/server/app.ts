@@ -20,7 +20,11 @@ import {
   type SessionReferenceOwner,
 } from '../features/sessions';
 import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
-import { createDocumentsFeature, type DocumentsFeatureDependencies } from '../features/documents';
+import {
+  createDocumentsFeature,
+  createEngineWorkspaceDocuments,
+  type DocumentsFeatureDependencies,
+} from '../features/documents';
 import { createSettingsFeature, SettingsCapabilities } from '../features/settings';
 import {
   createSpecsFeature,
@@ -141,7 +145,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const sessionReferences: SessionReferenceOwner | undefined =
     demo?.sessionReferences ?? dependencies.sessions?.references;
   const documentSource = demo?.documentSource ?? dependencies.documents?.source;
+  // Project mode: the Engine is the source of the workspace `documents` section, unless a
+  // contribution was injected (tests, demo).
   const engine = dependencies.specs?.engine;
+  const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
+  const contributions =
+    !demo && engine && !specContributions?.documents
+      ? { ...specContributions, documents: createEngineWorkspaceDocuments(engine) }
+      : specContributions;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -149,7 +160,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         engine: dependencies.specs?.engine,
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
-        contributions: dependencies.specs?.contributions ?? demo?.contributions,
+        contributions,
         sessions: sessionReferences,
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo

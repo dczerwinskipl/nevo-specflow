@@ -415,6 +415,24 @@ describe('Engine commit port: branch race and trailer poisoning (real Git)', () 
     });
   }, 240000);
 
+  it('leaves no intent-to-add residue after a commit that provably did not happen, and a retry commits', async () => {
+    const { root, engine } = await project();
+    await writeScaffold(root);
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const lock = join(root, '.git/refs/heads/feature/work.lock');
+    const commits = createGitCommitPort(engine, {
+      afterRecheck: () => writeFile(lock, ''),
+    });
+    await expect(commits.commit(request(root))).rejects.toMatchObject({ code: 'COMMIT_FAILED' });
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(parent);
+    expect(git(root, 'ls-files', '--', ...PATHS)).toBe('');
+    expect(git(root, 'status', '--porcelain=v1', '--untracked-files=all')).toContain('?? ');
+
+    await rm(lock);
+    const retried = await openVersionControl(engine).commits.commit(request(root));
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(retried.sha);
+  }, 240000);
+
   it('finds an operation only through the real trailer block of an Engine-committed commit', async () => {
     const { root, engine } = await project();
     const commits = openVersionControl(engine).commits;

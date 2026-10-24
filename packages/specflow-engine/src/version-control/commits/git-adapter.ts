@@ -27,6 +27,12 @@ const BUSY_STATE = [
   'rebase-apply',
   'sequencer',
 ] as const;
+/**
+ * The Engine commits exactly the bytes it pinned, whatever the user's line-ending settings are:
+ * conversion (`core.autocrlf`) and its round-trip check (`core.safecrlf`) are disabled for every
+ * command that reads the scaffold working-tree bytes into the index or compares them with the commit.
+ */
+const EXACT_BYTES = ['-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false'] as const;
 const LOCK_RETRIES = 3;
 const LOCK_RETRY_MS = 200;
 
@@ -165,6 +171,7 @@ export function createGitCommitPort(
     if (tracked.length === 0) return { state: 'uncommitted' };
     if (!sameSet(tracked, paths)) return { state: 'mixed' };
     const status = await executeGit(root, [
+      ...EXACT_BYTES,
       '-c',
       'core.optionalLocks=false',
       'status',
@@ -227,7 +234,7 @@ export function createGitCommitPort(
         // Makes untracked scaffold files "known" to Git (so `--only` accepts them) without staging
         // their content; nothing else in the index is touched.
         const added = await withLockRetry(() =>
-          executeGitMutation(root, ['add', '--intent-to-add', '--', ...literals]),
+          executeGitMutation(root, [...EXACT_BYTES, 'add', '--intent-to-add', '--', ...literals]),
         );
         if (added.exitCode !== 0) throw failed('intent-to-add');
 
@@ -239,6 +246,7 @@ export function createGitCommitPort(
         await testHooks?.afterRecheck?.();
         const committed = await withLockRetry(() =>
           executeGitMutation(root, [
+            ...EXACT_BYTES,
             '-c',
             'core.hooksPath=' + hooks,
             '-c',
@@ -282,6 +290,7 @@ export function createGitCommitPort(
           }
           return { sha: found.sha, parentHead };
         }
+        if (found.status === 'absent') await dropIntentToAdd(root, request.paths);
         if (found.status === 'history-changed') {
           throw new GitCapabilityError(
             'GIT_OPERATION_UNCERTAIN',
@@ -297,6 +306,29 @@ export function createGitCommitPort(
         );
       }),
   };
+}
+
+/**
+ * A commit that provably did not happen must not leave the scaffold files as intent-to-add entries in
+ * the user's index. Only paths that HEAD does not track are touched (the user's staged work on a
+ * tracked path is never reset). Best effort: a retry works whether or not the cleanup succeeded.
+ */
+async function dropIntentToAdd(root: string, paths: readonly string[]): Promise<void> {
+  const literals = paths.map((path) => ':(literal)' + path);
+  const tracked = await executeGit(root, [
+    'ls-tree',
+    '-r',
+    '--name-only',
+    '-z',
+    'HEAD',
+    '--',
+    ...literals,
+  ]);
+  if (tracked.exitCode !== 0) return;
+  const known = new Set(tracked.stdout.split(' ').filter(Boolean));
+  const untracked = paths.filter((path) => !known.has(path)).map((path) => ':(literal)' + path);
+  if (untracked.length === 0) return;
+  await executeGitMutation(root, ['reset', '-q', '--', ...untracked]).catch(() => undefined);
 }
 
 function validateRequest(request: EngineCommitRequest): void {

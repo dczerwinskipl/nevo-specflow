@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { getBuiltInCatalogue } from '../archetypes/catalogue';
-import { ADDED_DOCUMENTS_MAX_FILES, TEXT_CONTENT_MAX_BYTES } from '../documents/limits';
+import { TEXT_CONTENT_MAX_BYTES } from '../documents';
+import { ADDED_DOCUMENTS_MAX_FILES } from './limits';
 import { admitCreateArchetype, resolveCreateArchetype } from './admission';
 import { normalizeCreateClientIntent, type CreateClientIntentInput } from './intent';
 

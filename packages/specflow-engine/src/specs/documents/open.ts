@@ -10,10 +10,10 @@ import { RAW_CONTENT_MAX_BYTES } from './limits';
 import {
   loadSpecification,
   locateDocument,
-  type DocumentReadOptions,
   type LoadedSpecification,
-} from './read';
-import { nodeVerifiedFs, openVerifiedFile } from './verified-file';
+} from './loaded-specification';
+import { resolveReadOptions, type DocumentReadOptions } from './read-options';
+import { withOpenFile } from './verified-file';
 
 /** Everything the raw endpoint needs to describe the bytes it is about to stream. */
 export interface OpenedDocumentMetadata {
@@ -55,7 +55,7 @@ export async function openSpecificationDocument(
   documentId: string,
   options: DocumentReadOptions = {},
 ): Promise<OpenedDocument> {
-  const loaded = await loadSpecification(engine, specId, options.fs ?? nodeVerifiedFs);
+  const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
   return openDocumentOfLoaded(loaded, documentId, options);
 }
 
@@ -65,15 +65,10 @@ export async function openDocumentOfLoaded(
   documentId: string,
   options: DocumentReadOptions = {},
 ): Promise<OpenedDocument> {
-  const fs = options.fs ?? nodeVerifiedFs;
+  const { fs } = resolveReadOptions(options);
   const located = await locateDocument(loaded, documentId);
-  const opened = await openVerifiedFile(fs, loaded.specDir, located.path);
-  if (opened.state !== 'opened') {
-    throw new DocumentError('DOCUMENT_FILE_MISSING', 'The document has no file.');
-  }
-  const { handle, stat } = opened;
-  let handedOver = false;
-  try {
+  const outcome = await withOpenFile(fs, loaded.specDir, located.path, async (file, adopt) => {
+    const { handle, stat } = file;
     if (stat.size > BigInt(RAW_CONTENT_MAX_BYTES)) {
       throw new DocumentError('DOCUMENT_TOO_LARGE', 'The document is larger than the raw limit.');
     }
@@ -103,11 +98,14 @@ export async function openDocumentOfLoaded(
         'A document changed while it was being opened.',
       );
     }
-    handedOver = true;
+    // The stream now owns the handle and closes it when it ends or is destroyed.
+    adopt();
     return { metadata, stream: new FileStream(handle, analysis.size) };
-  } finally {
-    if (!handedOver) await handle.close().catch(() => undefined);
+  });
+  if (outcome.state !== 'opened') {
+    throw new DocumentError('DOCUMENT_FILE_MISSING', 'The document has no file.');
   }
+  return outcome.value;
 }
 
 /** Streams exactly `size` bytes of an open handle, then closes it; closes it on destroy as well. */

@@ -5,7 +5,7 @@ import { writeJsonAtomically } from '../../../project/fs/atomic-json';
 import { readFileWindowsSafe } from '../../../project/fs/windows-safe-fs';
 import { withProjectControlLock } from '../../../project/control-lock';
 import type { ResolvedProjectHome } from '../../../project/home/home';
-import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
+import { CREATE_JOURNAL_MAX_BYTES } from '../limits';
 import { CreateOperationError } from '../error';
 import type { CreateJournal } from './model';
 import { UUID, invalidJournal, parseCreateJournal } from './codec';

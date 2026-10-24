@@ -1,20 +1,18 @@
 import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 import { parse } from 'yaml';
 
-import { isRegisteredDocumentId } from './documents/document-ids';
 import {
-  ancestorFolders,
-  foldPathKey,
-  validateDocumentPath,
-  validateFolderPath,
-} from './documents/document-paths';
-import { MANIFEST_MAX_BYTES } from './documents/limits';
-import {
+  MANIFEST_MAX_BYTES,
   OVERVIEW_DOCUMENT_ID,
   OVERVIEW_DOCUMENT_PATH,
   OVERVIEW_DOCUMENT_TYPE,
+  ancestorFolders,
+  foldPathKey,
   isProtectedDocument,
-} from './documents/protection';
+  isRegisteredDocumentId,
+  validateDocumentPath,
+  validateFolderPath,
+} from './documents';
 
 export type SpecificationLocation = 'active' | 'archive';
 

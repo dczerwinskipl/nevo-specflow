@@ -69,18 +69,16 @@ export {
 } from './specs/canonical-source';
 
 export { CreateOperationError } from './specs/create';
-export { DocumentError } from './specs/documents/errors';
+export { DocumentError } from './specs/documents';
 export {
+  openSpecificationDocument,
   readRegisteredDocumentSummaries,
   readSpecificationDocument,
   readSpecificationDocumentTree,
-  type RegisteredDocumentSummary,
-} from './specs/documents/read';
-export {
-  openSpecificationDocument,
   type OpenedDocument,
   type OpenedDocumentMetadata,
-} from './specs/documents/open';
+  type RegisteredDocumentSummary,
+} from './specs/documents/reading';
 export {
   catalogueRevision,
   getBuiltInCatalogue,

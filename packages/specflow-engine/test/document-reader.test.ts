@@ -21,13 +21,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { withProjectControlLock } from '../src/testing';
 import { deriveUnclassifiedDocumentId } from '../src/specs/documents/document-ids';
-import {
-  readRegisteredDocumentSummaries,
-  readSpecificationDocument,
-  readSpecificationDocumentTree,
-  type ObservationMemoValue,
-} from '../src/specs/documents/read';
-import type { SummaryMemoValue } from '../src/specs/documents/read';
+import { readSpecificationDocument } from '../src/specs/documents/document-reader';
+import type { ObservationMemoValue, SummaryMemoValue } from '../src/specs/documents/read-options';
+import { readRegisteredDocumentSummaries } from '../src/specs/documents/summaries';
+import { readSpecificationDocumentTree } from '../src/specs/documents/tree-reader';
 import { RevisionMemo } from '../src/specs/documents/revision-memo';
 import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
 import { git } from './support/git-project';

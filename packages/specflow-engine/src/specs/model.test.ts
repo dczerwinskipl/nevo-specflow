@@ -1,7 +1,7 @@
 import { stringify } from 'yaml';
 import { describe, expect, it } from 'vitest';
 
-import { MANIFEST_MAX_BYTES } from './documents/limits';
+import { MANIFEST_MAX_BYTES } from './documents';
 import {
   SpecificationError,
   parseSpecificationManifest,

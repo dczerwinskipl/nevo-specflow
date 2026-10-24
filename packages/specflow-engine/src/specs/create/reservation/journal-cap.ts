@@ -1,8 +1,5 @@
-import { DocumentError } from '../../documents/errors';
-import {
-  CREATE_JOURNAL_GROWTH_HEADROOM_BYTES,
-  CREATE_JOURNAL_MAX_BYTES,
-} from '../../documents/limits';
+import { DocumentError } from '../../documents';
+import { CREATE_JOURNAL_GROWTH_HEADROOM_BYTES, CREATE_JOURNAL_MAX_BYTES } from '../limits';
 import type { CreateJournal } from '../journal';
 
 const size = (value: unknown): number => Buffer.byteLength(JSON.stringify(value) ?? '', 'utf8');

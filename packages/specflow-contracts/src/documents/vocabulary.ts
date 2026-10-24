@@ -14,10 +14,13 @@ export function closedUnion<const T extends readonly string[]>(values: T) {
   return Type.Unsafe<T[number]>(Type.Union(values.map((value) => Type.Literal(value))));
 }
 
+/** Longest id on the wire, in characters. */
+export const ID_MAX_LENGTH = 200;
+
 /** Specification and document ids on the wire (existing id pattern). */
 export const IdSchema = Type.String({
   minLength: 1,
-  maxLength: 200,
+  maxLength: ID_MAX_LENGTH,
   pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
 });
 

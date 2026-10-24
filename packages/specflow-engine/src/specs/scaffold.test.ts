@@ -7,13 +7,12 @@ import { describe, expect, it } from 'vitest';
 import goldenFixtures from './archetypes/fixtures/overview-golden.json';
 import { BUILT_IN_DEFINITIONS } from './archetypes/builtins';
 import { getBuiltInCatalogue, resolveCatalogue } from './archetypes/catalogue';
-import { deriveUnclassifiedDocumentId } from './documents/document-ids';
+import { TEXT_CONTENT_MAX_BYTES, deriveUnclassifiedDocumentId } from './documents';
 import {
   ADDED_DOCUMENTS_MAX_FILES,
   ADDED_DOCUMENTS_MAX_FOLDERS,
   ADDED_DOCUMENTS_MAX_TOTAL_BYTES,
-  TEXT_CONTENT_MAX_BYTES,
-} from './documents/limits';
+} from './create/limits';
 import { archivedManifestText } from './lifecycle/archive-effects';
 import { parseSpecificationManifestText } from './model';
 import {

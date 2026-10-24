@@ -188,6 +188,39 @@ export async function openVerifiedFile(
   }
 }
 
+/** An opened, verified regular file. */
+export interface OpenFile {
+  readonly handle: FileHandle;
+  readonly stat: BigIntStats;
+}
+
+export type WithOpenFileResult<T> =
+  { readonly state: 'opened'; readonly value: T } | { readonly state: 'absent' | 'not-regular' };
+
+/**
+ * Open the file like {@link openVerifiedFile}, run `use` on it and close the handle exactly once,
+ * whether `use` returns or throws. `use` may call `adopt()` to take over the handle (it is then not
+ * closed here and the caller closes it, as the raw stream does).
+ */
+export async function withOpenFile<T>(
+  fs: VerifiedFs,
+  specDir: string,
+  relativePath: string,
+  use: (file: OpenFile, adopt: () => void) => Promise<T>,
+): Promise<WithOpenFileResult<T>> {
+  const opened = await openVerifiedFile(fs, specDir, relativePath);
+  if (opened.state !== 'opened') return { state: opened.state };
+  let adopted = false;
+  try {
+    const value = await use({ handle: opened.handle, stat: opened.stat }, () => {
+      adopted = true;
+    });
+    return { state: 'opened', value };
+  } finally {
+    if (!adopted) await opened.handle.close().catch(() => undefined);
+  }
+}
+
 async function assertPhysicalPath(
   fs: VerifiedFs,
   full: string,

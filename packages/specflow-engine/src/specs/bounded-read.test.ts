@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { MANIFEST_MAX_BYTES } from './documents/limits';
+import { MANIFEST_MAX_BYTES } from './documents';
 import { readManifestTextBounded } from './bounded-read';
 
 const dirs: string[] = [];

@@ -1,6 +1,6 @@
 import type { FileHandle } from 'node:fs/promises';
 
-import { MANIFEST_MAX_BYTES } from './documents/limits';
+import { MANIFEST_MAX_BYTES } from './documents';
 
 /**
  * Read at most `limit + 1` bytes from the start of an opened file. A file larger than `limit` is never

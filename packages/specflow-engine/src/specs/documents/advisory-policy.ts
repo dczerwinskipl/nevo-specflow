@@ -6,6 +6,7 @@ import { GitCapabilityError } from '../../git/errors';
 import { engineCommitRefusal } from '../../version-control/commits/branch-patterns';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { PolicyReason } from './projection';
+import { ADVISORY_FILE_MAX_BYTES } from './limits';
 import { READ_OPEN_FLAGS } from './verified-file';
 
 /**
@@ -32,8 +33,6 @@ export async function advisoryPolicyReason(
   return branch === undefined ? undefined : engineCommitRefusal(policy.commits, branch);
 }
 
-const SMALL_FILE_MAX_BYTES = 4096;
-
 /**
  * Text of a small regular file, or `undefined`. Opened like every other file the layer reads
  * (no symlink, no blocking on a FIFO), checked to be a regular file on the descriptor, and read
@@ -43,9 +42,9 @@ async function readSmallRegularFile(path: string): Promise<string | undefined> {
   const handle = await open(path, READ_OPEN_FLAGS);
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.size > SMALL_FILE_MAX_BYTES) return undefined;
-    const buffer = Buffer.alloc(SMALL_FILE_MAX_BYTES);
-    const { bytesRead } = await handle.read(buffer, 0, SMALL_FILE_MAX_BYTES, 0);
+    if (!stat.isFile() || stat.size > ADVISORY_FILE_MAX_BYTES) return undefined;
+    const buffer = Buffer.alloc(ADVISORY_FILE_MAX_BYTES);
+    const { bytesRead } = await handle.read(buffer, 0, ADVISORY_FILE_MAX_BYTES, 0);
     return buffer.toString('utf8', 0, bytesRead);
   } finally {
     await handle.close();

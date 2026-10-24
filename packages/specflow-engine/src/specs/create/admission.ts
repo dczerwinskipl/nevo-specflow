@@ -1,5 +1,5 @@
 import { getBuiltInCatalogue, type ResolvedCatalogue } from '../archetypes/catalogue';
-import { DocumentError } from '../documents/errors';
+import { DocumentError } from '../documents';
 import { ScaffoldValidationError, createSpecificationScaffold, documentErrorOf } from '../scaffold';
 import { CreateOperationError } from './error';
 import { sha256Utf8, type CreateClientIntent } from './intent';

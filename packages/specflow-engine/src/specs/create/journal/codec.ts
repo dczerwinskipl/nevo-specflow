@@ -7,9 +7,9 @@ import { CreateOperationError } from '../error';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
-import { validateDocumentPath } from '../../documents/document-paths';
+import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';
-import { CREATE_SCAFFOLD_FILES_MAX, TEXT_CONTENT_MAX_BYTES } from '../../documents/limits';
+import { CREATE_SCAFFOLD_FILES_MAX } from '../limits';
 import {
   CREATE_JOURNAL_VERSION,
   CREATE_STAGES,

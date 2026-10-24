@@ -1,6 +1,6 @@
 import type { ContentKind } from '@nevo/specflow-contracts/documents';
 
-import { CONTENT_SNIFF_BYTES } from './limits';
+import { CONTENT_SNIFF_BYTES, TEXT_CONTENT_MAX_BYTES } from './limits';
 
 /**
  * Content kinds (architecture "Content kinds"): closed extension table decided by the Engine. A text
@@ -76,7 +76,7 @@ export function kindForExtension(extension: string): ContentKind {
 }
 
 /** True when `bytes` (the first {@link CONTENT_SNIFF_BYTES} of a file) are valid UTF-8 without NUL. */
-export function looksLikeText(bytes: Uint8Array): boolean {
+function looksLikeText(bytes: Uint8Array): boolean {
   const head = bytes.length > CONTENT_SNIFF_BYTES ? bytes.subarray(0, CONTENT_SNIFF_BYTES) : bytes;
   if (head.includes(0)) return false;
   try {
@@ -114,4 +114,20 @@ export function isEditableExtension(extension: string): boolean {
 
 function normaliseExtension(extension: string): string {
   return (extension.startsWith('.') ? extension.slice(1) : extension).toLowerCase();
+}
+
+/**
+ * Whether a person may edit this file's content: a `md`/`txt` text file within the save limit.
+ * Callers add the location rule (only an active Specification is editable).
+ */
+export function isEditable(file: {
+  readonly path: string;
+  readonly kind: ContentKind;
+  readonly size: number;
+}): boolean {
+  return (
+    file.kind === 'text' &&
+    isEditableExtension(extensionOf(file.path)) &&
+    file.size <= TEXT_CONTENT_MAX_BYTES
+  );
 }

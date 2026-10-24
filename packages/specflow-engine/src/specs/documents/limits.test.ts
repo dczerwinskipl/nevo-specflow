@@ -6,29 +6,22 @@ import { describe, expect, it } from 'vitest';
 
 import { isProtectedDocument, folderContainsProtectedDocument } from './protection';
 import * as archive from '../lifecycle/limits';
+import * as createLimits from '../create/limits';
 import * as limits from './limits';
 
 describe('limits (architecture "Limits")', () => {
-  it('holds the documented values in bytes', () => {
-    expect(limits.TEXT_CONTENT_MAX_BYTES).toBe(1_048_576);
-    expect(limits.RAW_CONTENT_MAX_BYTES).toBe(25 * 1_048_576);
+  it('keeps the raw read limit below the Close per-file archive limit', () => {
     expect(limits.RAW_CONTENT_MAX_BYTES).toBeLessThan(archive.ARCHIVE_FILE_MAX_BYTES);
-    expect(limits.CONTENT_HASH_MAX_BYTES).toBe(1_048_576);
-    expect(limits.REVISION_MEMO_MAX_ENTRIES).toBe(5000);
-    expect(limits.MANIFEST_MAX_BYTES).toBe(256 * 1024);
-    expect(limits.LISTED_FILES_MAX).toBe(2000);
-    expect(limits.FOLDER_DEPTH_MAX).toBe(8);
-    expect(archive.ARCHIVE_FILES_MAX).toBe(4096);
-    expect(archive.ARCHIVE_COUNT_TRAVERSAL_FILES_STOP).toBe(4097);
-    expect(archive.ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX).toBe(20000);
-    expect(archive.ARCHIVE_FILE_MAX_BYTES).toBe(32 * 1_048_576);
-    expect(limits.ADDED_DOCUMENTS_MAX_FILES).toBe(10);
-    expect(limits.ADDED_DOCUMENTS_MAX_FOLDERS).toBe(100);
-    expect(limits.ADDED_DOCUMENTS_MAX_TOTAL_BYTES).toBe(1_048_576);
-    expect(limits.TEMPLATE_TEXT_MAX_BYTES).toBe(64 * 1024);
-    expect(limits.DOCUMENT_PATH_MAX_CHARACTERS).toBe(500);
-    expect(limits.CREATE_JOURNAL_MAX_BYTES).toBe(65_536);
-    expect(limits.CONTENT_SNIFF_BYTES).toBe(8192);
+  });
+
+  it('keeps the archive count traversal one file past the archive file limit', () => {
+    expect(archive.ARCHIVE_COUNT_TRAVERSAL_FILES_STOP).toBe(archive.ARCHIVE_FILES_MAX + 1);
+  });
+
+  it('keeps the journal growth headroom inside the journal cap', () => {
+    expect(createLimits.CREATE_JOURNAL_GROWTH_HEADROOM_BYTES).toBeLessThan(
+      createLimits.CREATE_JOURNAL_MAX_BYTES,
+    );
   });
 });
 

@@ -10,13 +10,14 @@ import {
 } from '@nevo/specflow-contracts/documents';
 import { Value } from 'typebox/value';
 
-import { foldPathKey, validateDocumentPath } from '../documents/document-paths';
-import { DERIVED_ID_PREFIX } from '../documents/document-ids';
 import {
+  DERIVED_ID_PREFIX,
   OVERVIEW_DOCUMENT_ID,
   OVERVIEW_DOCUMENT_PATH,
   OVERVIEW_DOCUMENT_TYPE,
-} from '../documents/protection';
+  foldPathKey,
+  validateDocumentPath,
+} from '../documents';
 import { BUILT_IN_DEFINITIONS } from './builtins';
 
 /**

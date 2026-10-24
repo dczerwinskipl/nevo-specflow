@@ -4,12 +4,9 @@ import { join } from 'node:path';
 import type { SpecFlowEngine } from '../../../application';
 import { UUID, parseCreateJournal } from '../journal/codec';
 import { classifyCreateJournalText } from '../journal/unsupported';
-import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
+import { CREATE_JOURNAL_LISTING_MAX_FILES, CREATE_JOURNAL_MAX_BYTES } from '../limits';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../journal/store';
 import { createStepForStage, type PublicCreateStepId } from './step-mapping';
-
-/** A directory this large is not a journal directory worth listing in full. */
-const MAX_JOURNAL_FILES = 5000;
 
 export type PublicCreateListingState = 'in-progress' | 'recovery-required' | 'completed';
 
@@ -75,7 +72,7 @@ export async function listPublicCreateOperations(
     throw error;
   }
   names.sort();
-  names = names.slice(0, MAX_JOURNAL_FILES);
+  names = names.slice(0, CREATE_JOURNAL_LISTING_MAX_FILES);
 
   const previous = memos.get(dir) ?? new Map<string, Memo>();
   const next = new Map<string, Memo>();

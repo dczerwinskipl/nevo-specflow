@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { readFileWindowsSafe, removeFileWindowsSafe } from '../../../project/fs/windows-safe-fs';
 import { CREATE_JOURNAL_RELATIVE_DIR, isStrayJournalTempName } from './store';
-import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
+import { CREATE_JOURNAL_MAX_BYTES } from '../limits';
 import { UUID, parseCreateJournal } from './codec';
 import { payloadOperationIdOf, removeCreatePayload } from './payload';
 import { classifyCreateJournalText, isExpiredUnsupportedJournal } from './unsupported';

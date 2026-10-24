@@ -4,23 +4,24 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import { getBuiltInCatalogue, type ResolvedCatalogue } from './archetypes/catalogue';
 import { renderTemplate, templateValues } from './archetypes/template-renderer';
-import { DocumentIdError, allocateDocumentId } from './documents/document-ids';
-import { DocumentError } from './documents/errors';
 import {
+  DocumentError,
+  DocumentIdError,
+  OVERVIEW_DOCUMENT_TYPE,
+  TEMPLATE_TEXT_MAX_BYTES,
+  TEXT_CONTENT_MAX_BYTES,
+  allocateDocumentId,
   ancestorFolders,
   foldPathKey,
   validateDocumentPath,
   validateFolderPath,
-} from './documents/document-paths';
+} from './documents';
 import {
   ADDED_DOCUMENTS_MAX_FILES,
   ADDED_DOCUMENTS_MAX_FOLDERS,
   ADDED_DOCUMENTS_MAX_TOTAL_BYTES,
   CREATE_SCAFFOLD_FILES_MAX,
-  TEMPLATE_TEXT_MAX_BYTES,
-  TEXT_CONTENT_MAX_BYTES,
-} from './documents/limits';
-import { OVERVIEW_DOCUMENT_TYPE } from './documents/protection';
+} from './create/limits';
 import { serializeSpecificationManifest } from './manifest-serializer';
 import {
   SpecificationError,

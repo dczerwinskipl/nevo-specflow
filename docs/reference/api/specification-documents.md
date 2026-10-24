@@ -115,7 +115,9 @@ addedDocuments?: Array<{ path: string; type?: string; content: string }>   // co
 folders?: string[]                                   // unique; count: Limits
 ```
 
-`catalogueRevision` / `archetypeVersion` not matching the Engine catalogue -> `CATALOGUE_STALE` (409). Unknown
+`catalogueRevision` / `archetypeVersion` not matching the Engine catalogue -> `CATALOGUE_STALE` (409). The revision is a
+precondition checked when a NEW operation is admitted; it is not part of the idempotency fingerprint, so a retry of an
+existing `operationId` after the catalogue changed replays the stored result (the archetype version stays part of it). Unknown
 archetype or template id -> `ARCHETYPE_UNKNOWN` (422). `addedDocuments` without `type` are created unclassified.
 The response `CreatedSpec` keeps its existing fields and gains `documentIds: string[]` (registered ids; the demo
 result already has it). `POST /api/specs` sets its own `bodyLimit` (value: architecture document, Limits); the server

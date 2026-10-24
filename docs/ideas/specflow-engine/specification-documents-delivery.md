@@ -196,8 +196,11 @@ item 6 (they only change fixtures) and the listing test with a real directory; r
 1. **Engine input** (`CreateSpecificationInput`/`CreateClientIntent`): adds `archetype: {id, version}`,
    `catalogueRevision?` (checked when present; the HTTP schema requires it), `optionalDocumentIds` (normalised:
    sorted, unique), `addedDocuments` (path, type?, content) and `folders` (sorted, unique). The intent
-   fingerprint covers all of it (for `addedDocuments`, path, type and the sha256 of the content), so a replay with
-   a different archetype or content under the same `operationId` conflicts as today.
+   fingerprint covers all of it (for `addedDocuments`, path, type and the sha256 of the content) EXCEPT
+   `catalogueRevision`, which is a precondition of admitting a new operation and not part of its identity, so a
+   replay with a different archetype or content under the same `operationId` conflicts as today while a retry
+   after a catalogue change replays the stored result. (Implementation note: the journal also records the
+   registered `documentIds`, so results and inspections need not read the payload.)
 2. **Journal v2 and its size caps.** Observed caps: the journal file is read with a 65536-byte ceiling in three
    separate places (`journal/store.ts` `readCreateJournal` line 42, `inspect/listing.ts` line 10,
    `journal/retention.ts` line 24); the strict codec requires `version === 1`, `files.length === 2` with the

@@ -35,24 +35,50 @@ another branch. Multiple Spec bindings in the same workspace deliberately share 
 
 The documents a Specification starts with (the archetype, its document registry and the scaffold files) are
 defined by the [Specification documents layer](specification-documents.md); the target contract is in the
-[Specification documents HTTP contract](../../reference/api/specification-documents.md). Until that layer is
-implemented, the Create behaviour on this page is unchanged.
+[Specification documents HTTP contract](../../reference/api/specification-documents.md). Create names an
+archetype (there is no default in any layer), may select suggested documents and add files and folders, and
+writes the whole scaffold in one commit.
 
 ### Create journal retention
 
-The Create journal format is `version: 1`. Reserving a new Create (under the same control lock, without Git)
-deletes `completed` journals older than 7 days, at most 50 per reservation; in-progress, `recovery-required`
-and corrupt journals are never removed automatically. Retries within the window replay idempotently; afterwards
-the same operationId is a new operation and slug protection comes from the Specification on disk and the registry.
+The Create journal format is `version: 2`. It keeps evidence only (per file: path, sha256, bytes; the catalogue
+revision the scaffold was generated from; the registered document ids). The scaffold contents are written once,
+before the journal is published, to `<operation-id>.payload/<sha256>` in the same folder (temp file, fsync,
+rename); recovery reads and verifies that payload and never regenerates from the current catalogue or templates,
+so a catalogue change between a crash and the resume has no effect. Reserving a new Create (under the same control
+lock, without Git) deletes `completed` journals older than 7 days together with their payload folder, at most 50
+per reservation; it also deletes a payload folder that has no journal and is older than 7 days (a crash between
+the payload write and the journal publication) and an _unsupported_ journal older than 7 days. In-progress,
+`recovery-required` and corrupt journals of the current format are never removed automatically. Retries within the
+window replay idempotently; afterwards the same operationId is a new operation and slug protection comes from the
+Specification on disk and the registry.
+
+An _unsupported_ journal (older version, not JSON, or no numeric `version`) is never interpreted. It is returned
+separately by the listing and is not a resource claim, so it can block neither Create nor Close; read by operation
+id it answers `CREATE_JOURNAL_UNSUPPORTED` (503); the tolerant list shows it as `recovery-required` with that code.
+**Resume interrupted Creates before upgrading** (and before downgrading, which would classify version 2 journals as
+unsupported): the evidence of an older journal that still had effects is lost after 7 days.
+
+The intent fingerprint covers the archetype id and version, the suggestions, the folders and, for added documents,
+path, type and the sha256 of the content. The catalogue revision is a precondition checked when a new operation is
+admitted (`CATALOGUE_STALE`) and is **not** part of the fingerprint, so a retry of an existing operation after the
+catalogue changed replays the stored result. A body that differs in any fingerprinted field, including an
+`archetypeVersion` that moved with the catalogue, is `CREATE_CONFLICT`: the offline CLI takes the archetype version
+from the live catalogue, so to finish an operation after the catalogue changed use `specs recover <operation-id>`
+(it replays the journal's recorded intent, not the live catalogue), not a re-submit.
+
+Reservation holds the control lock while it writes the payload (fsync per file), so the hold time grows with the
+number and size of the scaffold files (at most 64 files and about 2 MiB of content); contention on a very large
+Create shows as a longer wait for other Creates and Closes, not as a failure.
 
 ### Create commits the scaffold when Git is enabled
 
-When `git.enabled` is true Create commits the scaffold (`specs/active/<slug>/specification.yaml` and
-`overview.md`, nothing else) through the Engine's one commit capability, between writing the
+When `git.enabled` is true Create commits the scaffold (`specs/active/<slug>/specification.yaml` and every
+document file of the journal, nothing else; empty folders exist only in the manifest) as ONE commit through the Engine's one commit capability, between writing the
 manifest and binding the registry (journal stages `commit-writing`, `commit-written`; public progress
 step `committing-specification`). The commit lands on the checkout's current branch for the current
 folder and existing-workspace targets, and on the new branch (one commit on top of the base commit) for
-a new worktree. It is `git commit --only` over the two literal paths: the user's other staged hunks,
+a new worktree. It is `git commit --only` over the literal paths of the journal: the user's other staged hunks,
 unstaged edits and untracked files are untouched. The author is the user's configured Git identity
 (Engine identity when unconfigured), the committer is the Engine, hooks and signing are off, and an
 operation trailer makes replay idempotent. See
@@ -68,7 +94,7 @@ operation trailer makes replay idempotent. See
   or a merge started meanwhile, a Git failure) is `COMMIT_FAILED` (503): the journal stays at
   `commit-writing`, files stay in place, and the operation is recovery-required. The operator resumes
   the same operation with the Engine's `resumeInterruptedOperation` once the cause is fixed, or commits
-  the two scaffold files by hand (resume accepts byte-identical, clean files). Re-submitting the same
+  the scaffold files by hand (resume accepts byte-identical, clean files of the full list). Re-submitting the same
   `operationId` meanwhile answers `CREATE_RECOVERY_REQUIRED`.
 - **Replay.** The commit is applied at most once per operation: resume looks for a commit carrying
   the operation trailer on top of the recorded parent HEAD before committing.
@@ -95,8 +121,9 @@ elapsed time proves nothing about a possibly live writer. What the operator can 
    still verifies refs, paths, HEAD and committed bytes and fails closed on a mismatch.
 2. **Abandon (manual).** Only when no branch, worktree, spec folder, commit or registry entry of that operation
    exists (check `git worktree list`, `git branch`, `specs/active/<slug>` and the registry): delete
-   `<Project Home>/.nevo/local/state/engine/operations/create/<operation-id>.json` while no Create runs. A
-   journal whose effects exist must be resumed, not deleted, or the slug/branch is orphaned.
+   `<Project Home>/.nevo/local/state/engine/operations/create/<operation-id>.json` and the folder
+   `<operation-id>.payload` next to it while no Create runs. A journal whose effects exist must be resumed, not
+   deleted, or the slug/branch is orphaned.
 3. A crash between creating and renaming a journal write can leave `.<id>.json.<uuid>.tmp` files in the same
    folder; they are ignored by every reader and swept after one hour by the next reservation.
 

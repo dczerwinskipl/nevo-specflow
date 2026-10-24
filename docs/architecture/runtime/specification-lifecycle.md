@@ -33,6 +33,11 @@ Create does not switch primary or promise that Close can merge in the future.
 A Specification can instead be created inside a verified existing workspace without provisioning
 another branch. Multiple Spec bindings in the same workspace deliberately share Git history.
 
+The documents a Specification starts with (the archetype, its document registry and the scaffold files) are
+defined by the [Specification documents layer](specification-documents.md); the target contract is in the
+[Specification documents HTTP contract](../../reference/api/specification-documents.md). Until that layer is
+implemented, the Create behaviour on this page is unchanged.
+
 ### Create journal retention
 
 The Create journal format is `version: 1`. Reserving a new Create (under the same control lock, without Git)

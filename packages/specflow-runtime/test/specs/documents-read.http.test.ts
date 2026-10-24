@@ -16,7 +16,12 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
+import {
+  DocumentContentSchema,
+  DocumentTreeSchema,
+  type DocumentContent,
+  type DocumentTree,
+} from '@nevo/specflow-contracts/documents';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
 import {
   bootstrapProjectHome,
@@ -24,6 +29,7 @@ import {
   serializeSpecificationManifest,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine/testing';
+import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
@@ -161,6 +167,8 @@ describe('document tree and content of a created Specification', () => {
       expect(response.headers['cache-control']).toBe('no-store');
       const body = response.json<DocumentTree>();
       expect(response.headers.etag).toBe(`"${body.revision}"`);
+      // The wire shape is exactly the contract (the serializer would silently drop extra keys).
+      expect(Value.Check(DocumentTreeSchema, body)).toBe(true);
       expect(body.documents.map((item) => item.id).sort()).toEqual([
         'backend',
         'behaviour',
@@ -181,6 +189,7 @@ describe('document tree and content of a created Specification', () => {
       expect(read.statusCode, read.body).toBe(200);
       expect(read.headers['cache-control']).toBe('no-store');
       const content = read.json<DocumentContent>();
+      expect(Value.Check(DocumentContentSchema, content)).toBe(true);
       expect(content).toMatchObject({
         id: 'overview',
         path: 'overview.md',

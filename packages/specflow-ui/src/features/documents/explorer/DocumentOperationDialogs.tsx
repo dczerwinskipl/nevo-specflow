@@ -1,3 +1,4 @@
+import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
@@ -16,7 +17,6 @@ import {
   DialogTitle,
   Field,
 } from '@nevo/ui';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
 import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 import type { DocumentDialogRequest } from './useDocumentOperations';
 

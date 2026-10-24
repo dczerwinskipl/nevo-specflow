@@ -7,6 +7,7 @@ import {
   DemoCreateOptionsSchema,
   DemoOperationStatusSchema,
   DemoCreateResultSchema,
+  type DemoCreateErrorCode,
 } from '@nevo/specflow-contracts/demo';
 import {
   CREATE_RESPOND_ASYNC_PREFERENCE,
@@ -28,6 +29,8 @@ import {
   isDemoOperationError,
 } from '../../../demo/http';
 import type { DemoState } from '../../../demo/state';
+import { DocumentError } from '@nevo/specflow-engine';
+import { statusForDocumentError } from '../../documents';
 import { DemoTargetError } from './create-target';
 import { parseScenarios, type DemoScenario } from './scenarios';
 import type { DemoSpecs } from './operations';
@@ -350,7 +353,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         return reply.code(201).send(outcome.result);
       } catch (error) {
         reporter?.fail(
-          error instanceof DemoTargetError
+          error instanceof DemoTargetError || error instanceof DocumentError
             ? error.code
             : isDemoOperationError(error)
               ? error.code
@@ -360,6 +363,14 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
           return error.code === 'forbidden'
             ? reply.code(403).send({ error: 'forbidden' })
             : reply.code(error.status).send({ error: error.message, code: error.code });
+        // Archetype admission (catalogue, templates, paths, limits): the real codes and statuses.
+        if (error instanceof DocumentError)
+          return (
+            reply
+              .code(statusForDocumentError(error.code))
+              // Admission throws only the archetype and document codes of `DemoCreateErrorCode`.
+              .send({ error: error.code, code: error.code as DemoCreateErrorCode })
+          );
         if (isDemoOperationError(error))
           return reply.code(error.status).send({ error: error.code });
         throw error;

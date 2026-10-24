@@ -1,3 +1,4 @@
+import type { ActionReason, DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useTranslation } from 'react-i18next';
 import {
   IconButton,
@@ -9,7 +10,6 @@ import {
   MenuTrigger,
   treeRowActionClassName,
 } from '@nevo/ui';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
 import { useMessage } from '../../../i18n/message';
 import type { EntryKind } from './documentTreePolicy';
 import { documentActionReason } from './documentTreePolicy';
@@ -54,9 +54,11 @@ export function DocumentNodeMenu({
   if (!item) return null;
   const policy = item.actions,
     name = path.split('/').at(-1) ?? path,
-    required = kind === 'document' && 'required' in item && item.required === true;
+    // phase C: the menu note of the design (`protected` overview note, Assign type, Remove
+    // registration); until then the protected overview keeps the former required note.
+    required = kind === 'document' && 'protected' in item && item.protected === true;
   const reasons: string[] = [];
-  const addReason = (reason?: string) => {
+  const addReason = (reason?: ActionReason) => {
     const reasonMessage = documentActionReason(reason);
     const reasonText = reasonMessage ? text(reasonMessage) : undefined;
     if (reasonText && !reasons.includes(reasonText)) reasons.push(reasonText);

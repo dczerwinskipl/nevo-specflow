@@ -80,7 +80,9 @@ afterEach(cleanup);
 
 describe('creating a file: mutation result is separate from the follow-up read', () => {
   it('keeps a confirmed create confirmed when the follow-up GET fails, and never re-POSTs', async () => {
-    mocks.addDocuments.mockResolvedValue({ documentIds: ['d1'] });
+    mocks.addDocuments.mockResolvedValue({
+      documents: [{ id: 'd1', path: 'd1.md', revision: '1' }],
+    });
     mocks.getDocument.mockRejectedValue(new TypeError('network down'));
     const { view } = setup();
     const settle = vi.fn();
@@ -111,13 +113,20 @@ describe('tree operations and tabs', () => {
       revision: 'r1',
     });
     const { store, view } = setup();
-    mocks.addDocuments.mockResolvedValue({ documentIds: ['d1'] });
+    mocks.addDocuments.mockResolvedValue({
+      documents: [{ id: 'd1', path: 'd1.md', revision: '1' }],
+    });
     await act(() => view.result.current.treeOps.add([{ path: 'a.md', content: '' }] as never));
     expect(store.get('s', 'd1')?.editing).toBe(true);
     expect(mocks.show).toHaveBeenLastCalledWith('d1');
 
     store.remove('s', 'd1');
-    mocks.addDocuments.mockResolvedValue({ documentIds: ['d1', 'd2'] });
+    mocks.addDocuments.mockResolvedValue({
+      documents: [
+        { id: 'd1', path: 'd1.md', revision: '1' },
+        { id: 'd2', path: 'd2.md', revision: '1' },
+      ],
+    });
     await act(() =>
       view.result.current.treeOps.add([
         { path: 'a.md', content: 'x' },
@@ -131,7 +140,7 @@ describe('tree operations and tabs', () => {
   });
 
   it('opens nothing for a new folder', async () => {
-    mocks.addDocuments.mockResolvedValue({ documentIds: [] });
+    mocks.addDocuments.mockResolvedValue({ documents: [] });
     const { view } = setup();
     await act(() => view.result.current.treeOps.add([], ['docs']));
     expect(mocks.show).not.toHaveBeenCalled();

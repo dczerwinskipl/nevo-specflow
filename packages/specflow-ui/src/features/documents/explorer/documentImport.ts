@@ -1,4 +1,4 @@
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../i18n/message';
 import { joinDocumentPath, uploadNameReason, type PlannedDocument } from './documentTreePolicy';
 
@@ -22,8 +22,6 @@ export interface ImportPlan {
   skipped: SkippedFile[];
 }
 
-const stem = (name: string) => name.replace(/\.(md|txt)$/i, '');
-
 /**
  * Validates a file selection against the import limits and the current tree without sending
  * anything. Rejected files never block the accepted ones; each gets exactly one reason (the first
@@ -32,7 +30,7 @@ const stem = (name: string) => name.replace(/\.(md|txt)$/i, '');
 export async function planImport(
   files: readonly File[],
   folder: string,
-  tree: Pick<DemoDocumentTree, 'documents' | 'folders' | 'capabilities'>,
+  tree: Pick<DocumentTree, 'documents' | 'folders' | 'capabilities'>,
 ): Promise<ImportPlan> {
   const accepted: PlannedDocument[] = [];
   const skipped: SkippedFile[] = [];
@@ -69,7 +67,7 @@ export async function planImport(
         skipped.push({ name: file.name, reason: message('documents.tree.skip.content') });
         continue;
       }
-      accepted.push({ path, title: stem(file.name), content });
+      accepted.push({ path, content });
     } catch {
       skipped.push({ name: file.name, reason: message('documents.tree.skip.utf8') });
     }

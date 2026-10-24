@@ -4,5 +4,5 @@ export const documentKeys = {
     ['specifications', specId, 'document', documentId, { revision: revision ?? null }] as const,
 };
 export const documentTreeKeys = {
-  tree: (specId: string) => ['specifications', specId, 'demo-document-tree'] as const,
+  tree: (specId: string) => ['specifications', specId, 'document-tree'] as const,
 };

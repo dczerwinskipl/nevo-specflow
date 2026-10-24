@@ -132,7 +132,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
           specification: {
             ...specification.specification,
             preparationState: created
-              ? created.documents.size
+              ? created.documents.files.size
                 ? 'preparing'
                 : 'empty'
               : specification.specification.preparationState,

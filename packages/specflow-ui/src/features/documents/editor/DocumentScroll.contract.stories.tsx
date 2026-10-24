@@ -1,3 +1,7 @@
+import {
+  documentContentFixture,
+  saveResultFixture,
+} from '../../../../test-support/documents/fixtures';
 import { useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -139,7 +143,7 @@ function Fixture({
     const base = createSpecFlowAppServices();
     return {
       ...base,
-      documentsApi: { ...base.documentsApi, save: () => Promise.resolve({ revision: '2' }) },
+      documentsApi: { ...base.documentsApi, save: () => Promise.resolve(saveResultFixture('2')) },
     };
   }, []);
   const source = documents[active]!;
@@ -163,13 +167,13 @@ function Fixture({
             {visible && (
               <DocumentEditorProvider
                 specId="scroll"
-                document={{
+                document={documentContentFixture({
                   id: source.id,
                   title: source.filename,
-                  filename: source.filename,
+                  path: source.filename,
                   content: source.content,
                   revision: '1',
-                }}
+                })}
               >
                 <div className="shrink-0 border-b border-border-subtle p-2">
                   <Header />

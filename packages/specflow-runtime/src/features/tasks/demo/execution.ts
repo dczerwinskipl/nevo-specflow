@@ -131,7 +131,7 @@ export function demoTaskResources(specId: string, taskId: string): ResourceFacts
     origin: { kind: 'explicit_association', sourceId: taskId },
     link: {
       state: 'available',
-      target: { kind: 'document', specId, documentId: 'spec', revision: 'demo-document-1' },
+      target: { kind: 'document', specId, documentId: 'overview', revision: 'demo-document-1' },
     },
   }));
 }

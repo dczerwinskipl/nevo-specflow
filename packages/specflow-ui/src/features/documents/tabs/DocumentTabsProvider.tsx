@@ -1,3 +1,4 @@
+import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
 import {
   createContext,
   useCallback,
@@ -14,8 +15,6 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
 import { useOpenedItems, type OpenedItem } from '@nevo/ui';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
@@ -28,7 +27,7 @@ import { documentTabs, neighbourOf, survivorOf, type DocumentTab } from './docum
 /** The record query of the document on screen: the one place that loads it. */
 export interface DocumentRecordState {
   documentId: string;
-  query: UseQueryResult<SpecificationDocumentResponse>;
+  query: UseQueryResult<DocumentContent>;
 }
 
 const RecordContext = createContext<DocumentRecordState | null>(null);
@@ -101,18 +100,7 @@ export function DocumentTabsProvider({
     () => (documentId ? { documentId, query } : null),
     [documentId, query],
   );
-  const document = useMemo(
-    () =>
-      query.data && documentId
-        ? {
-            ...query.data,
-            filename:
-              query.data.filename ??
-              tree.data?.documents.find((doc) => doc.id === documentId)?.path,
-          }
-        : undefined,
-    [query.data, tree.data, documentId],
-  );
+  const document = query.data && documentId ? query.data : undefined;
   return (
     <RecordContext.Provider value={record}>
       <DocumentEditorProvider specId={specId} document={document}>
@@ -132,7 +120,7 @@ function TabsHost({
 }: {
   specId: string;
   documentId?: string;
-  tree: DemoDocumentTree | undefined;
+  tree: DocumentTree | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -148,7 +136,7 @@ function TabsHost({
   // Every path the tree has shown, so a tab keeps its name when its document disappears. Adjusted
   // while rendering (the tree is the source), not synchronised by an effect.
   const [known, setKnown] = useState<{
-    tree?: DemoDocumentTree;
+    tree?: DocumentTree;
     paths: Readonly<Record<string, string>>;
   }>({ paths: {} });
   if (tree && known.tree !== tree)

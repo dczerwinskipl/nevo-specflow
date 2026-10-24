@@ -1,3 +1,4 @@
+import type { DocumentContent as DocumentRecord } from '@nevo/specflow-contracts/documents';
 import { useWorkspaceLabels } from '../../app/navigation/useWorkspaceLabels';
 import { useRef } from 'react';
 import { createRoute } from '@tanstack/react-router';
@@ -10,7 +11,6 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { useCachedQueryState } from '../../app/useCachedQueryState';
 import {
   ApplicationLocationIdentity,
@@ -90,9 +90,7 @@ function DocumentDetailContent() {
   const { specId, documentId } = documentDetailRoute.useParams();
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
-  const document = useCachedQueryState<SpecificationDocumentResponse>(
-    documentKeys.detail(specId, documentId),
-  );
+  const document = useCachedQueryState<DocumentRecord>(documentKeys.detail(specId, documentId));
   const title =
     document?.status === 'error'
       ? t('specification.viewDocuments')

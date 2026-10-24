@@ -8,12 +8,15 @@ describe('demo documents adapter', () => {
     const http = createHttpClient();
     const get = vi.spyOn(http, 'get').mockResolvedValue({});
     const put = vi.spyOn(http, 'put').mockResolvedValue({ revision: '2' });
+    const operationId = '0b8f1c1e-0a11-4c6e-9a01-000000000001';
     const api = createDemoDocumentsApi(http);
     const signal = new AbortController().signal;
     await api.documentTree('spec/a', signal);
-    await api.save('spec/a', 'doc/c', { content: '# Draft', expectedRevision: '1' });
-    expect(get.mock.calls).toEqual([['/api/demo/specs/spec%2Fa/document-tree', { signal }]]);
+    await api.save('spec/a', 'doc/c', { operationId, content: '# Draft', expectedRevision: '1' });
+    // The tree is the real route, served by the demo Runtime too; writes are the demo emulation.
+    expect(get.mock.calls).toEqual([['/api/specs/spec%2Fa/document-tree', { signal }]]);
     expect(put).toHaveBeenCalledWith('/api/demo/specs/spec%2Fa/documents/doc%2Fc', {
+      operationId,
       content: '# Draft',
       expectedRevision: '1',
     });
@@ -23,13 +26,17 @@ describe('demo documents adapter', () => {
     const error = new HttpClientError('Conflict', {
       kind: 'http',
       status: 409,
-      data: { error: 'demo_document_revision_conflict' },
+      data: { error: 'DOCUMENT_REVISION_CONFLICT', code: 'DOCUMENT_REVISION_CONFLICT' },
     });
     vi.spyOn(http, 'put').mockRejectedValue(error);
     await expect(
-      createDemoDocumentsApi(http).save('s', 'd', { content: 'Draft', expectedRevision: 'old' }),
+      createDemoDocumentsApi(http).save('s', 'd', {
+        operationId: '0b8f1c1e-0a11-4c6e-9a01-000000000002',
+        content: 'Draft',
+        expectedRevision: 'old',
+      }),
     ).rejects.toBe(error);
-    expect(apiErrorCode(error)).toBe('demo_document_revision_conflict');
+    expect(apiErrorCode(error)).toBe('DOCUMENT_REVISION_CONFLICT');
     expect(apiErrorCode(new Error('untyped'))).toBeUndefined();
   });
 });

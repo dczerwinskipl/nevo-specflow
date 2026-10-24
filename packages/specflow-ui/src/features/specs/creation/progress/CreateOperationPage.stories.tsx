@@ -188,6 +188,7 @@ function Fixture({
         runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
         projectCreationApi: {
           createOptions: () => Promise.reject(new Error('not used by the page')),
+          archetypes: () => Promise.reject(new Error('not used by the page')),
           // The Runtime that has not seen the request: the page sends it, the answer follows `server`.
           create: () =>
             server === 'refuses-protected'

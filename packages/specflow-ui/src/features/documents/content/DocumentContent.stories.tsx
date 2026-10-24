@@ -1,3 +1,5 @@
+import type { DocumentContent as DocumentRecord } from '@nevo/specflow-contracts/documents';
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
 import { useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
@@ -11,7 +13,6 @@ import {
   Button,
   WorkspaceHeader,
 } from '@nevo/ui';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
@@ -27,18 +28,16 @@ function DocumentLifecycle({
   stress?: boolean;
 }) {
   const requests = useRef(
-    new Map<
-      string,
-      { resolve: (data: SpecificationDocumentResponse) => void; reject: (error: Error) => void }
-    >(),
+    new Map<string, { resolve: (data: DocumentRecord) => void; reject: (error: Error) => void }>(),
   );
   const [id, setId] = useState('doc-a');
-  const response = (documentId: string): SpecificationDocumentResponse => ({
-    id: documentId,
-    title: 'Reading document',
-    revision: 'r1',
-    content: `# Reading ${documentId}\n\nContinue reading this protected content.\n\n${stress ? Array.from({ length: 18 }, () => 'Long paragraph describing independently continuing work, authorization and revision consistency. '.repeat(5)).join('\n\n') : 'Another paragraph remains mounted during refresh.'}`,
-  });
+  const response = (documentId: string): DocumentRecord =>
+    documentContentFixture({
+      id: documentId,
+      title: 'Reading document',
+      revision: 'r1',
+      content: `# Reading ${documentId}\n\nContinue reading this protected content.\n\n${stress ? Array.from({ length: 18 }, () => 'Long paragraph describing independently continuing work, authorization and revision consistency. '.repeat(5)).join('\n\n') : 'Another paragraph remains mounted during refresh.'}`,
+    });
   const client = useMemo(() => {
     const result = createSpecFlowQueryClient();
     result.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });

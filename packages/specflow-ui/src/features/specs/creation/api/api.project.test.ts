@@ -36,6 +36,16 @@ describe('project creation adapter', () => {
     });
   });
 
+  it('reads the archetype catalogue and rejects an answer of another shape', async () => {
+    const catalogue = { revision: 'r', documentTypes: [], archetypes: [] };
+    const { api, http } = build({ get: vi.fn().mockResolvedValue(catalogue) });
+    const signal = new AbortController().signal;
+    expect(await api.archetypes(signal)).toEqual(catalogue);
+    expect(http.get).toHaveBeenCalledWith('/api/specs/archetypes', { signal });
+    const broken = build({ get: vi.fn().mockResolvedValue({ archetypes: 'no' }) });
+    await expect(broken.api.archetypes()).rejects.toMatchObject({ kind: 'protocol' });
+  });
+
   it('posts the request verbatim in async mode with the long create time limit', async () => {
     const { api, http } = build();
     const input = {

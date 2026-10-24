@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -15,6 +16,9 @@ import { documentKeys } from '../read-model/queries';
 import { useDocumentSave } from './useDocumentSave';
 import { DocumentEditorProvider, useDocumentSaveOwner } from './DocumentEditorProvider';
 
+/** Every save carries a fresh `operationId` (idempotency key). */
+const anyOperationId: unknown = expect.any(String);
+
 afterEach(cleanup);
 
 const SPEC = 'spec';
@@ -24,13 +28,14 @@ const draft = (content: string, baseline: string, revision: string): DocumentDra
   revision,
   editing: false,
 });
-const record = (id: string): SpecificationDocumentResponse => ({
-  id,
-  title: id,
-  filename: `${id}.md`,
-  content: `${id}0`,
-  revision: `${id}1`,
-});
+const record = (id: string): DocumentContent =>
+  documentContentFixture({
+    id,
+    title: id,
+    path: `${id}.md`,
+    content: `${id}0`,
+    revision: `${id}1`,
+  });
 
 function setup(failIds: string[] = []) {
   const queryClient = createSpecFlowQueryClient();
@@ -68,7 +73,11 @@ describe('useDocumentSave for any document', () => {
     await act(async () => {
       expect(await view.result.current.save('b')).toMatchObject({ ok: true, documentId: 'b' });
     });
-    expect(save).toHaveBeenCalledWith(SPEC, 'b', { content: 'B1', expectedRevision: 'b1' });
+    expect(save).toHaveBeenCalledWith(SPEC, 'b', {
+      operationId: anyOperationId,
+      content: 'B1',
+      expectedRevision: 'b1',
+    });
     expect(store.get(SPEC, 'b')).toMatchObject({ baseline: 'B1', revision: 'b2' });
     expect(store.get(SPEC, 'a')).toMatchObject({ baseline: 'a0' });
   });
@@ -76,7 +85,11 @@ describe('useDocumentSave for any document', () => {
   it('defaults to the shown document', async () => {
     const { save, view } = setup();
     await act(async () => void (await view.result.current.save()));
-    expect(save).toHaveBeenCalledWith(SPEC, 'a', { content: 'A1', expectedRevision: 'a1' });
+    expect(save).toHaveBeenCalledWith(SPEC, 'a', {
+      operationId: anyOperationId,
+      content: 'A1',
+      expectedRevision: 'a1',
+    });
   });
 
   it('reports saving and error per document', async () => {
@@ -196,6 +209,7 @@ describe('useDocumentSave for any document', () => {
       await view.result.current.saveAll(['b', 'a']);
     });
     expect(save).toHaveBeenNthCalledWith(2, SPEC, 'a', {
+      operationId: anyOperationId,
       content: 'A2',
       expectedRevision: 'a1',
     });
@@ -241,6 +255,7 @@ describe('useDocumentSave for any document', () => {
       });
     });
     expect(save).toHaveBeenCalledWith(SPEC, 'b', {
+      operationId: anyOperationId,
       content: 'B1',
       expectedRevision: 'b1',
     });

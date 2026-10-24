@@ -1157,7 +1157,6 @@
       },
       "reason": {
         "required": "A path required by the workflow — it cannot be changed or deleted.",
-        "operationsUnavailable": "Operations on this sample specification are unavailable.",
         "rootProtected": "The root folder cannot be changed or deleted.",
         "unavailable": "This operation is unavailable."
       },

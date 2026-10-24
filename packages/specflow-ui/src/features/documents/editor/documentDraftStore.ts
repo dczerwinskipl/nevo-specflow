@@ -1,5 +1,5 @@
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import type { EditorView } from '@codemirror/view';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { createKeyedStore, type KeyedStore } from '../../../shared/state/keyedStore';
 import type { ScrollAnchor } from './documentScrollAnchor';
 
@@ -41,10 +41,12 @@ export const isDraftDirty = (draft: Pick<DocumentDraft, 'content' | 'baseline'>)
   draft.content !== draft.baseline;
 
 /** An opened editable document defaults to Preview, not Edit; see DocumentEditor. */
-export function draftFor(record: SpecificationDocumentResponse): DocumentDraft {
+export function draftFor(record: DocumentContent): DocumentDraft {
+  // phase C: image and binary documents carry no `content`; they get their own viewers and no draft.
+  const content = record.content ?? '';
   return {
-    content: record.content,
-    baseline: record.content,
+    content,
+    baseline: content,
     revision: record.revision,
     editing: false,
   };

@@ -1,11 +1,11 @@
+import type {
+  DocumentOperationInput,
+  DocumentTree as Tree,
+} from '@nevo/specflow-contracts/documents';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { isHttpClientError } from '@nevo/http-client';
-import type {
-  DemoDocumentOperationInput,
-  DemoDocumentTree as Tree,
-} from '@nevo/specflow-contracts/demo';
 import { useMessage } from '../../../i18n/message';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { planImport } from './documentImport';
@@ -13,7 +13,8 @@ import { joinDocumentPath, type PlannedDocument } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
 import { createOperationLock } from './operationLock';
 
-export type DocumentOperation = Omit<DemoDocumentOperationInput, 'requestId'>;
+/** An operation as the explorer asks for it; the owner adds the `operationId`. */
+export type DocumentOperation = Omit<DocumentOperationInput, 'operationId'>;
 
 /** A move or delete the user asked for; it runs once confirmed in its dialog. */
 export interface DocumentDialogRequest {
@@ -148,9 +149,7 @@ export function useDocumentOperations(
       else {
         const path = joinDocumentPath(entry.parent, finalName);
         await onAdd(
-          entry.kind === 'document'
-            ? [{ path, title: finalName.replace(/\.(md|txt)$/i, ''), content: '' }]
-            : [],
+          entry.kind === 'document' ? [{ path, content: '' }] : [],
           entry.kind === 'folder' ? [path] : [],
         );
       }
@@ -277,13 +276,13 @@ export function useDocumentOperations(
 /** Maps a Runtime error code to the explanation shown to the reader; the server text is never shown. */
 export function documentMutationError(error: unknown, t: TFunction): string {
   switch (apiErrorCode(error)) {
-    case 'demo_document_path_conflict':
+    case 'DOCUMENT_PATH_CONFLICT':
       return t('documents.tree.error.pathConflict');
-    case 'demo_document_revision_conflict':
+    case 'DOCUMENT_REVISION_CONFLICT':
       return t('documents.tree.error.revisionConflict');
-    case 'demo_document_required':
+    case 'DOCUMENT_PROTECTED':
       return t('documents.tree.error.required');
-    case 'demo_request_conflict':
+    case 'DOCUMENT_OPERATION_CONFLICT':
       return t('documents.tree.error.requestConflict');
     default:
       return t('documents.tree.error.default');

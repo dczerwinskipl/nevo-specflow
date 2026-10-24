@@ -1,3 +1,5 @@
+import { documentTreeFixture } from '../../../test-support/documents/fixtures';
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,7 +12,6 @@ import {
   cn,
   workspaceSurfaceClassName,
 } from '@nevo/ui';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
 import {
   DocumentsExplorer,
   documentRootActions,
@@ -107,30 +108,20 @@ function NavigationButton() {
 /* Tree: the product explorer with static data                                                  */
 /* ------------------------------------------------------------------------------------------ */
 
-const yes = { available: true };
-const no = { available: false, reason: 'demo_document_required' };
-const allowed = { rename: yes, move: yes, delete: yes };
-const locked = { rename: no, move: no, delete: no };
-const mockTreeData: DemoDocumentTree = {
-  revision: '1',
-  folders: [
-    { path: '', actions: locked },
-    ...treeFolders.map((path) => ({ path, actions: allowed })),
-  ],
+const no = { available: false, reason: 'protected' } as const;
+const mockTreeData: DocumentTree = documentTreeFixture({
+  folders: [...treeFolders],
   documents: mockDocuments.map((doc) => ({
     id: doc.id,
     path: doc.path,
-    required: !!doc.required,
-    revision: '1',
-    actions: doc.required ? locked : allowed,
+    ...(doc.required
+      ? {
+          protected: true,
+          actions: { rename: no, move: no, delete: no, classify: { available: false } },
+        }
+      : {}),
   })),
-  capabilities: {
-    createFile: yes,
-    createFolder: yes,
-    import: yes,
-    formats: ['md', 'txt'],
-  },
-};
+});
 
 /** The Primary-like tree header, exactly as the product builds it (title, subtitle, root actions). */
 function TreeHeader({

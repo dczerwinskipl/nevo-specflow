@@ -1,7 +1,8 @@
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { useAppServices } from '../../../app/useAppServices';
+import { newId } from '../../../shared/ids/newId';
 import { documentKeys } from '../read-model/queries';
 import { specificationKeys } from '../../specs/read-model';
 import {
@@ -18,6 +19,8 @@ export interface SaveVariables {
   readonly documentId: string;
   readonly content: string;
   readonly expectedRevision: string;
+  /** Idempotency key of this save (a new one per submitted snapshot). */
+  readonly operationId: string;
   /** Captured at submission time so a late response cannot overwrite a reopened draft. */
   readonly incarnation: number;
 }
@@ -76,7 +79,7 @@ export function useDocumentSave({
   draft,
 }: {
   specId: string;
-  document?: SpecificationDocumentResponse;
+  document?: DocumentContent;
   draft?: DocumentDraft;
 }): DocumentSaveOwner {
   const { documentsApi } = useAppServices();
@@ -94,6 +97,7 @@ export function useDocumentSave({
   const mutation = useMutation({
     mutationFn: (variables: SaveVariables) =>
       documentsApi.save(variables.specId, variables.documentId, {
+        operationId: variables.operationId,
         content: variables.content,
         expectedRevision: variables.expectedRevision,
       }),
@@ -103,11 +107,16 @@ export function useDocumentSave({
         store.update(variables.specId, variables.documentId, (saved) =>
           saved ? reconcileSavedDraft(saved, variables.content, result.revision) : undefined,
         );
-        cache.setQueryData<SpecificationDocumentResponse>(
+        cache.setQueryData<DocumentContent>(
           documentKeys.detail(variables.specId, variables.documentId),
           (existing) =>
             existing
-              ? { ...existing, content: variables.content, revision: result.revision }
+              ? {
+                  ...existing,
+                  content: variables.content,
+                  size: new TextEncoder().encode(variables.content).length,
+                  revision: result.revision,
+                }
               : existing,
         );
       } else {
@@ -141,6 +150,7 @@ export function useDocumentSave({
         documentId: id,
         content: source.content,
         expectedRevision: source.revision,
+        operationId: newId(),
         incarnation: store.incarnation(openSpec, id),
       };
       const base = {

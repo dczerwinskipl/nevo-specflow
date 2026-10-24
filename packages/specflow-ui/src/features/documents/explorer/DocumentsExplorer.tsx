@@ -1,3 +1,4 @@
+import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { Upload } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +13,6 @@ import {
   type RefObject,
 } from 'react';
 import { Alert, Button, TooltipProvider, type WorkspaceHeaderAction } from '@nevo/ui';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
 import { DocumentImporter, type DocumentImporterHandle } from './DocumentImporter';
 import { DocumentNodeMenu, type DocumentNodeActions } from './DocumentNodeMenu';
 import { DocumentOperationDialogs } from './DocumentOperationDialogs';

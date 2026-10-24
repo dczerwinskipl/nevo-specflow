@@ -50,7 +50,7 @@ describe('GET /api/demo/specifications/operations', () => {
         title: 'Listed demo create',
         catalogueRevision: catalogue.revision,
         archetypeId: 'feature',
-        archetypeVersion: '2',
+        archetypeVersion: 1,
         optionalDocumentIds: [],
       }),
     });

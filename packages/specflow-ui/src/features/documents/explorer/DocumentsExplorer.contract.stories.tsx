@@ -1,9 +1,10 @@
+import { documentTreeFixture } from '../../../../test-support/documents/fixtures';
+import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useState } from 'react';
 import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { expect, fn, spyOn, waitFor, within } from 'storybook/test';
 import { HttpClientError } from '@nevo/http-client';
 import { TooltipProvider } from '@nevo/ui';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
 import { DocumentsExplorer, type DocumentOperation } from './DocumentsExplorer';
 import type { PlannedDocument } from './documentTreePolicy';
 import { withLocale } from '../../../i18n/StoryLocalization';
@@ -16,53 +17,40 @@ import { withLocale } from '../../../i18n/StoryLocalization';
  * runtime/Engine is replaced by spies.
  */
 
-const yes = { available: true };
-const required = {
-  rename: { available: false, reason: 'demo_document_required' },
-  move: { available: false, reason: 'demo_document_required' },
-  delete: { available: false, reason: 'demo_document_required' },
-};
-const open = { rename: yes, move: yes, delete: yes };
-const blocked = { available: false, reason: 'demo_document_operations_unavailable' };
+const protectedActions = {
+  rename: { available: false, reason: 'protected' },
+  move: { available: false, reason: 'protected' },
+  delete: { available: false, reason: 'protected' },
+  classify: { available: false },
+} as const;
+const blocked = { available: false, reason: 'branch-protected' } as const;
 const readOnly = { rename: blocked, move: blocked, delete: blocked };
 const adr =
   'architektura/decyzje/adr-001-deterministyczna-admisja-zadan-i-granice-wykonania-agentow.md';
-const capabilities = { createFile: yes, createFolder: yes, import: yes, formats: ['md', 'txt'] };
-const doc = (id: string, path: string, extra: Partial<Tree['documents'][number]> = {}) => ({
-  id,
-  path,
-  required: false,
-  revision: '1',
-  actions: open,
-  ...extra,
-});
 
-/** The required document sits among the root files by name: importance never reorders the tree. */
-const tree: Tree = {
-  revision: '1',
-  folders: [
-    { path: '', actions: required },
-    { path: 'notatki', actions: open },
-    { path: 'architektura', actions: open },
-    { path: 'architektura/decyzje', actions: open },
-  ],
+/** The protected overview sits among the root files by name: importance never reorders the tree. */
+const tree: Tree = documentTreeFixture({
+  folders: ['notatki', 'architektura', 'architektura/decyzje'],
   documents: [
-    doc('adr', adr),
-    doc('ctx', 'architektura/kontekst-systemu.md'),
-    doc('zeta', 'zeta.md'),
-    doc('alfa', 'alfa.txt'),
-    doc('spec', 'specification.md', { required: true, actions: required }),
+    { id: 'adr', path: adr },
+    { id: 'ctx', path: 'architektura/kontekst-systemu.md' },
+    { id: 'zeta', path: 'zeta.md' },
+    { id: 'alfa', path: 'alfa.txt' },
+    { id: 'spec', path: 'specification.md', protected: true, actions: protectedActions },
   ],
-  capabilities,
-};
+});
 const readOnlyTree: Tree = {
   ...tree,
   folders: tree.folders.map((folder) => ({ ...folder, actions: readOnly })),
-  documents: tree.documents.map((item) => ({ ...item, actions: readOnly })),
+  documents: tree.documents.map((item) => ({
+    ...item,
+    actions: { ...readOnly, classify: { available: false } },
+  })),
   capabilities: {
     createFile: blocked,
     createFolder: blocked,
     import: blocked,
+    classify: blocked,
     formats: ['md', 'txt'],
   },
 };
@@ -336,7 +324,7 @@ export const MenusPerNodeType: Story = {
 export const ReadOnlyExplainsOnceInTheMenu: Story = {
   args: { tree: readOnlyTree },
   play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findByText(/niedostępne/)).toBeVisible();
+    await expect(await canvas.findByText(/Ta operacja jest niedostępna/)).toBeVisible();
     const menu = await openMenu(canvas, userEvent, 'architektura');
     for (const name of [
       'Nowy plik',
@@ -347,9 +335,7 @@ export const ReadOnlyExplainsOnceInTheMenu: Story = {
       'Usuń',
     ])
       await expect(menu.getByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
-    await expect(
-      menu.getAllByText(/Operacje na tej przykładowej specyfikacji są niedostępne/),
-    ).toHaveLength(1);
+    await expect(menu.getAllByText(/Ta operacja jest niedostępna/)).toHaveLength(1);
     await userEvent.keyboard('{Escape}');
     // The row stays openable.
     await expect(canvas.getByRole('button', { name: /^zeta\.md$/ })).toBeEnabled();

@@ -1,5 +1,5 @@
+import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useEffect, useRef, useState } from 'react';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
 import type { DocumentTreeIndex } from './documentTreePolicy';
 
 export interface TreeFocus {

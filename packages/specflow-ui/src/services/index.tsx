@@ -31,6 +31,7 @@ import {
   type DocumentsApi,
 } from '../features/documents/api';
 import { createDemoDocumentsApi } from '../features/documents/api.demo';
+import { createProjectDocumentsApi } from '../features/documents/api.project';
 
 export interface SpecFlowAppServices {
   readonly runtimeInfoApi: RuntimeInfoApi;
@@ -41,7 +42,13 @@ export interface SpecFlowAppServices {
   readonly specificationApi: SpecificationApi;
   readonly taskApi: TaskApi;
   readonly documentApi: DocumentApi;
+  /** Document tree and writes of the demo Runtime (the Documents workspace renders in demo mode). */
   readonly documentsApi: DocumentsApi;
+  /**
+   * The same port in a project Runtime: the real tree read, writes unavailable until the Runtime
+   * serves them. The Runtime mode selects it once the workspace renders in project mode (phase C).
+   */
+  readonly projectDocumentsApi: DocumentsApi;
   readonly sessionsApi: SessionsApi;
   readonly demoCreationApi: DemoCreationApi;
   /** Specification creation of a project Runtime (the demo Runtime uses `demoCreationApi`). */
@@ -61,6 +68,7 @@ export interface SpecFlowServicesOptions {
   readonly taskApi?: TaskApi;
   readonly documentApi?: DocumentApi;
   readonly documentsApi?: DocumentsApi;
+  readonly projectDocumentsApi?: DocumentsApi;
   readonly sessionsApi?: SessionsApi;
   readonly demoCreationApi?: DemoCreationApi;
   readonly projectCreationApi?: ProjectCreationApi;
@@ -97,6 +105,9 @@ export function createSpecFlowAppServices(
     taskApi: options.taskApi ?? createRuntimeTaskApi(runtimeHttp),
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
     documentsApi: options.documentsApi ?? createDemoDocumentsApi(runtimeHttp),
+    projectDocumentsApi:
+      options.projectDocumentsApi ??
+      createProjectDocumentsApi(createApiTransport(runtimeHttp, { operation: 'documents.read' })),
     sessionsApi: options.sessionsApi ?? createDemoSessionsApi(runtimeHttp),
     demoCreationApi: options.demoCreationApi ?? createDemoCreationApi(runtimeHttp),
     projectCreationApi:

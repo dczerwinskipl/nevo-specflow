@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 type Archetype = DemoCatalogue['archetypes'][number];
 
-/** Read-only catalogue metadata; this summary never changes the planned documents. */
+/**
+ * Read-only catalogue metadata; this summary never changes the planned documents.
+ * phase C: replaced by the archetype section of the design (list, ticks, instructions).
+ */
 export function ArchetypeSummary({ archetype }: { archetype?: Archetype }) {
   const { t } = useTranslation();
   if (!archetype)
@@ -15,10 +18,10 @@ export function ArchetypeSummary({ archetype }: { archetype?: Archetype }) {
     );
   const required =
     archetype.workflow?.requiredDocuments ??
-    archetype.documents.filter((d) => d.required).map((d) => d.filename);
+    archetype.documents.filter((d) => d.include === 'always').map((d) => d.filename);
   const suggested =
     archetype.workflow?.suggestedDocuments ??
-    archetype.documents.filter((d) => !d.required).map((d) => d.filename);
+    archetype.documents.filter((d) => d.include === 'optional').map((d) => d.filename);
   const phases = archetype.workflow?.phases;
   const hasDetails = required.length + suggested.length > 0;
   const groups = [

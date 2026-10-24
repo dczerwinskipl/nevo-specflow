@@ -1,3 +1,4 @@
+import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,7 +8,6 @@ import {
   treeRootClassName,
   treeRowClassName,
 } from '@nevo/ui';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
 import { DocumentNode, FolderNode } from './DocumentNode';
 import type { DocumentTreeIndex } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
@@ -91,7 +91,9 @@ export function DocumentTreeLevel({
         <DocumentNode
           key={doc.id}
           path={doc.path}
-          required={Boolean(doc.required)}
+          // phase C: the `required` badge becomes the trailing-label rule of the design
+          // (protected overview, requirement hint, `No type`); until then the overview keeps it.
+          required={doc.protected}
           selected={context.active !== undefined && context.active === doc.id}
           disabled={context.locked}
           buttonRef={context.register('doc:' + doc.id)}

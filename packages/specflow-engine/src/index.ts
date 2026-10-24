@@ -81,6 +81,38 @@ export {
 } from './specs/documents/reading';
 export { catalogueRevision, projectCatalogue } from './specs/archetypes';
 
+// Pure document rules (no I/O). The demo Runtime builds its in-memory Specifications with them, so
+// its document answers (catalogue, scaffold, ids, paths, kinds, titles, tree) match the Engine's.
+export {
+  renderTemplate,
+  resolveCatalogue,
+  templateValues,
+  type ResolvedCatalogue,
+} from './specs/archetypes';
+export {
+  OVERVIEW_DOCUMENT_ID,
+  OVERVIEW_DOCUMENT_TYPE,
+  TEXT_CONTENT_MAX_BYTES,
+  allocateDocumentId,
+  classifyContent,
+  deriveDocumentTitle,
+  deriveUnclassifiedDocumentId,
+  extensionOf,
+  isEditable,
+  validateDocumentPath,
+  validateFolderPath,
+} from './specs/documents';
+export {
+  projectDocumentTree,
+  type ObservedFile,
+  type PolicyReason,
+} from './specs/documents/reading';
+export {
+  ScaffoldValidationError,
+  createSpecificationScaffold,
+  documentErrorOf,
+} from './specs/scaffold';
+
 export {
   resolveCreateArchetype,
   createSpecificationFromRequest,

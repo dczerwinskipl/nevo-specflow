@@ -10,9 +10,19 @@ const ArchetypeSummary = (props: Parameters<typeof Summary>[0]) => (
 );
 import { catalogue } from './creationCatalogue.stories-support';
 
+/** The optional `workflow` (no longer sent by the demo) still orders phases when a catalogue has it. */
+const withWorkflow = {
+  ...catalogue.archetypes[0]!,
+  workflow: {
+    phases: ['Doprecyzowanie', 'Opracowanie', 'Weryfikacja'],
+    requiredDocuments: ['overview.md'],
+    suggestedDocuments: ['decisions.md', 'research.md'],
+  },
+};
+
 describe('catalogue archetype summary', () => {
   it('projects actual purpose, ordered phases and counts without a file dump', () => {
-    const html = renderToStaticMarkup(<ArchetypeSummary archetype={catalogue.archetypes[0]} />);
+    const html = renderToStaticMarkup(<ArchetypeSummary archetype={withWorkflow} />);
     expect(html).toContain(catalogue.archetypes[0]!.description);
     expect(html.indexOf('Doprecyzowanie')).toBeLessThan(html.indexOf('Opracowanie'));
     expect(html).toContain('1 dokument wymagany');
@@ -29,10 +39,14 @@ describe('catalogue archetype summary', () => {
     );
     expect(html).toContain('Opis workflow niedostępny.');
     expect(html).toContain('Przebieg nie jest opisany w katalogu.');
+    // Without workflow metadata the templates decide: `include: always` is required.
     expect(html).toContain('1 dokument wymagany');
+    expect(html).toContain('2 sugerowane później');
   });
   it('keeps an authoritative empty archetype distinct from an unavailable selection', () => {
-    const html = renderToStaticMarkup(<ArchetypeSummary archetype={catalogue.archetypes[1]} />);
+    const html = renderToStaticMarkup(
+      <ArchetypeSummary archetype={{ ...catalogue.archetypes[1]!, documents: [] }} />,
+    );
     expect(html).toContain('Brak wymaganych dokumentów');
     expect(html).not.toContain('Szczegóły dokumentów');
     expect(renderToStaticMarkup(<ArchetypeSummary />)).toContain(

@@ -15,8 +15,8 @@ function setup() {
     operationId: op(n),
     title: 'Nowa obsługa płatności',
     catalogueRevision: env.state.catalogue.revision,
-    archetypeId: 'simple',
-    archetypeVersion: '1',
+    archetypeId: 'minimal',
+    archetypeVersion: 1,
     optionalDocumentIds: [],
     ...extra,
   });

@@ -1,19 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type {
   DemoCatalogue,
-  DemoDocumentOperationInput,
-  DemoDocumentOperationResult,
-  DemoDocumentsInput,
-  DemoDocumentsResult,
-  DemoFolderInput,
   DemoError,
   DemoLocation,
-  DemoSessionInput,
   DemoSessionDetail,
-  DemoSessionResult,
 } from '@nevo/specflow-contracts/demo';
+import type { DemoSpecDocuments } from '../features/documents';
 import type { CurrentSpecRecord } from '../features/specs';
-import { creationCatalogue } from './catalogue';
+import { creationCatalogue, demoArchetypes } from './catalogue';
 
 /**
  * The one shared in-memory demo environment (one per Runtime). It holds data and the few
@@ -31,22 +25,12 @@ export class DemoOperationError extends Error {
   }
 }
 
-export interface DemoDocument {
-  id: string;
-  title: string;
-  filename?: string;
-  content: string;
-  revision: string;
-  required?: boolean;
-}
-
 export interface CreatedDemoSpecification {
   record: CurrentSpecRecord;
+  /** Display label of the archetype snapshot (Session context). */
   archetype: string;
-  documents: Map<string, DemoDocument>;
-  folders: string[];
-  requiredPaths: string[];
-  treeRevision: string;
+  /** The Specification directory: registry, files and folders (owned by the documents module). */
+  documents: DemoSpecDocuments;
   location: DemoLocation;
   /** Workspace the specification was created in (demo registry). */
   workspaceId: string;
@@ -71,10 +55,6 @@ export interface DemoStateOptions {
   scenarios?: boolean;
 }
 
-type RequestInput =
-  DemoSessionInput | DemoDocumentsInput | DemoFolderInput | DemoDocumentOperationInput;
-type RequestResult = DemoSessionResult | DemoDocumentsResult | DemoDocumentOperationResult;
-
 /** Stable recursive keys retain nested document fields in idempotency fingerprints. */
 export function fingerprintInput(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(fingerprintInput).join(',') + ']';
@@ -96,10 +76,12 @@ export function createDemoState(options: DemoStateOptions = {}) {
   const specifications = new Map<string, CreatedDemoSpecification>();
   const sessions = new Map<string, DemoSessionDetail>();
   const locations = new Map<string, DemoLocation>();
-  const requests = new Map<string, { fingerprint: string; result?: RequestResult }>();
+  const requests = new Map<string, { fingerprint: string; result?: unknown }>();
   return {
     scenarioSeam: options.scenarios ?? false,
     catalogue,
+    /** The resolved archetype catalogue (Engine rules) Create scaffolds from. */
+    archetypes: demoArchetypes,
     /** Specifications created in this environment (owned by specs; documents live inside). */
     specifications,
     /** Sessions allocated in this environment (owned by sessions). */
@@ -111,19 +93,29 @@ export function createDemoState(options: DemoStateOptions = {}) {
     fail: (stage: DemoFailureStage, code: DemoError['error']) => {
       if (options.fail?.(stage)) throw new DemoOperationError(503, code);
     },
+    /** Failure injection for a module that answers its own error (for example documents). */
+    failing: (stage: DemoFailureStage) => options.fail?.(stage) === true,
     stale: (revision: string) => {
       if (revision !== catalogue.revision)
         throw new DemoOperationError(409, 'demo_catalogue_stale');
     },
-    /** Idempotent request entry: same key + same input replays, same key + other input conflicts. */
-    request(subject: string, operation: string, input: RequestInput) {
-      const key = JSON.stringify([subject, operation, input.requestId]);
+    /**
+     * Idempotent request entry: same key + same input replays, same key + other input conflicts
+     * (`conflict` builds the owner's error; default `demo_request_conflict`).
+     */
+    request(
+      subject: string,
+      operation: string,
+      id: string,
+      input: unknown,
+      conflict: () => Error = () => new DemoOperationError(409, 'demo_request_conflict'),
+    ) {
+      const key = JSON.stringify([subject, operation, id]);
       const fingerprint = fingerprintInput(input);
       const previous = requests.get(key);
-      if (previous && previous.fingerprint !== fingerprint)
-        throw new DemoOperationError(409, 'demo_request_conflict');
+      if (previous && previous.fingerprint !== fingerprint) throw conflict();
       if (previous) return previous;
-      const entry: { fingerprint: string; result?: RequestResult } = { fingerprint };
+      const entry: { fingerprint: string; result?: unknown } = { fingerprint };
       requests.set(key, entry);
       return entry;
     },

@@ -1,6 +1,8 @@
 import { BRANCH_NAME_MAX_LENGTH, isValidBranchName } from '@nevo/specflow-contracts/specs';
 import { describe, expect, it } from 'vitest';
-import { createDemoEnvironment, DemoOperationError } from '../../../demo';
+import { DocumentError } from '@nevo/specflow-engine';
+import { createDemoEnvironment } from '../../../demo';
+import { createDemoSpecsRepositories } from './repositories';
 
 const op = (n: number) => `7f3a91c2-4b6e-4d1a-9c0e-${String(n).padStart(12, '0')}`;
 function setup() {
@@ -11,7 +13,7 @@ function setup() {
     title: 'Logowanie SSO',
     catalogueRevision: env.state.catalogue.revision,
     archetypeId: 'feature',
-    archetypeVersion: '2',
+    archetypeVersion: 1,
     optionalDocumentIds: ['decisions'],
   };
   const spec = env.specs.create('alice', create);
@@ -22,32 +24,39 @@ function setup() {
     modelId: 'model-a',
     mode: 'agent',
   };
-  return { env, create, spec, session };
+  const { catalogue } = createDemoSpecsRepositories(env);
+  const find = (specId: string) => catalogue.find(specId);
+  const directory = (specId: string) => env.state.specifications.get(specId)!.documents;
+  return { env, create, spec, session, find, directory };
+}
+
+async function refusal(work: Promise<unknown>) {
+  try {
+    await work;
+  } catch (error) {
+    if (error instanceof DocumentError) return error.code;
+    throw error;
+  }
+  return 'resolved';
 }
 
 describe('Specification-owned demo location', () => {
-  it('checks revision at commit when two saves use the same earlier read snapshot', () => {
-    const { env, spec } = setup();
-    const snapshot = structuredClone(
-      env.documents.readDocument(spec.specId, spec.documentIds[0]!)!,
-    );
-    env.documents.save(spec.specId, snapshot, { expectedRevision: '1', content: '# First save' });
-    expect(() =>
-      env.documents.save(spec.specId, snapshot, { expectedRevision: '1', content: '# Stale save' }),
-    ).toThrowError(expect.objectContaining({ code: 'demo_document_revision_conflict' }));
-    expect(env.documents.readDocument(spec.specId, snapshot.id)?.content).toBe('# First save');
-    const seed = { id: 'spec', title: 'Seed', content: '# Seed', revision: 'demo-document-1' };
-    env.documents.save('admission', seed, {
-      expectedRevision: seed.revision,
-      content: '# Saved seed',
-    });
-    expect(() =>
-      env.documents.save('admission', seed, {
-        expectedRevision: seed.revision,
-        content: '# Lost seed',
-      }),
-    ).toThrowError(expect.objectContaining({ code: 'demo_document_revision_conflict' }));
-    expect(env.documents.readDocument('admission', seed.id)?.content).toBe('# Saved seed');
+  it('checks revision at commit when two saves use the same earlier read snapshot', async () => {
+    const { env, spec, find, directory } = setup();
+    expect(spec.documentIds).toEqual(['overview', 'decisions']);
+    const revision = directory(spec.specId).files.get('overview.md')!.revision;
+    const save = (n: number, content: string) =>
+      env.documents.save(
+        'alice',
+        spec.specId,
+        'overview',
+        { operationId: op(100 + n), content, expectedRevision: revision },
+        find,
+      );
+    await save(1, '# First save');
+    expect(await refusal(save(2, '# Stale save'))).toBe('DOCUMENT_REVISION_CONFLICT');
+    const saved = directory(spec.specId).files.get('overview.md')!;
+    expect(new TextDecoder().decode(saved.bytes)).toBe('# First save');
   });
   it.each([
     '/absolute',
@@ -157,7 +166,7 @@ describe('Specification-owned demo location', () => {
       const { env, create } = setup();
       expect(() =>
         env.specs.create('alice', { ...create, operationId: op(2), catalogueRevision: 'stale' }),
-      ).toThrowError(expect.objectContaining({ code: 'demo_catalogue_stale' }));
+      ).toThrowError(expect.objectContaining({ code: 'CATALOGUE_STALE' }));
       expect(env.state.specifications.size).toBe(1);
     });
 
@@ -174,7 +183,7 @@ describe('Specification-owned demo location', () => {
       const { env, create } = setup();
       expect(() =>
         env.specs.create('alice', { ...create, operationId: op(3), optionalDocumentIds: ['x'] }),
-      ).toThrowError(expect.objectContaining({ code: 'demo_invalid_selection' }));
+      ).toThrowError(expect.objectContaining({ code: 'ARCHETYPE_UNKNOWN' }));
     });
 
     it('a recovery-required operation keeps answering recovery, then resolves on request', () => {
@@ -241,28 +250,37 @@ describe('Specification-owned demo location', () => {
       branch: 'spec/logowanie-sso',
       simulated: true,
     });
-    expect(env.documents.readDocument(created.specId, created.documentIds[0]!)?.filename).toBe(
-      'specification.md',
-    );
+    expect(env.state.specifications.get(created.specId)!.documents.registry[0]).toEqual({
+      id: 'overview',
+      path: 'overview.md',
+      type: 'overview',
+    });
   });
 });
 
 describe('Document additions and separate branch policy', () => {
   it('creates nested imports atomically and fingerprints their content', () => {
-    const { env, create } = setup();
+    const { env, create, directory } = setup();
     const input = {
       ...create,
       operationId: op(10),
       folders: ['research'],
       addedDocuments: [
-        { path: 'decisions/adr.md', content: '# Decision' },
+        { path: 'decisions/adr.md', type: 'note', content: '# Decision' },
         { path: 'research/call.txt', content: 'Customer meeting' },
       ],
     };
     const result = env.specs.create('alice', input);
     expect(env.specs.create('alice', input)).toEqual(result);
-    expect(env.state.specifications.get(result.specId)?.folders).toEqual(['research', 'decisions']);
-    expect(result.documentIds).toHaveLength(4);
+    expect(directory(result.specId).folders).toEqual(['research']);
+    // Templates first (overview, decisions), then the typed addition; the untyped one is unclassified.
+    expect(result.documentIds).toEqual(['overview', 'decisions', 'note']);
+    expect([...directory(result.specId).files.keys()].sort()).toEqual([
+      'decisions.md',
+      'decisions/adr.md',
+      'overview.md',
+      'research/call.txt',
+    ]);
     expect(() =>
       env.specs.create('alice', {
         ...input,
@@ -273,34 +291,44 @@ describe('Document additions and separate branch policy', () => {
       env.specs.create('alice', {
         ...create,
         operationId: op(11),
-        addedDocuments: [{ path: 'SPECIFICATION.md', content: '' }],
+        addedDocuments: [{ path: 'OVERVIEW.md', content: '' }],
       }),
-    ).toThrowError(expect.objectContaining({ code: 'demo_document_path_conflict' }));
+    ).toThrowError(expect.objectContaining({ code: 'DOCUMENT_PATH_CONFLICT' }));
+    expect(() =>
+      env.specs.create('alice', {
+        ...create,
+        operationId: op(12),
+        addedDocuments: [{ path: '../escape.md', content: '' }],
+      }),
+    ).toThrowError(expect.objectContaining({ code: 'DOCUMENT_PATH_INVALID' }));
     expect(env.state.specifications.size).toBe(2);
   });
-  it('replays imports without duplication and rejects a conflicting batch without partial writes', () => {
-    const { env, spec } = setup();
+  it('replays imports without duplication and rejects a conflicting batch without partial writes', async () => {
+    const { env, spec, find, directory } = setup();
     const input = {
-      requestId: 'import',
+      operationId: op(30),
       documents: [{ path: 'research/interview.txt', content: 'Interview' }],
     };
-    const first = env.documents.add('alice', spec.specId, input);
-    expect(env.documents.add('alice', spec.specId, input)).toEqual(first);
-    const existing = env.documents.readDocument(spec.specId, first.documentIds[0]!)!;
-    expect(existing.filename).toBe('research/interview.txt');
-    env.documents.save(spec.specId, existing, { expectedRevision: '1', content: 'Revised' });
-    expect(() =>
-      env.documents.add('alice', spec.specId, {
-        requestId: 'bad-batch',
-        documents: [
-          { path: 'new.md', content: '' },
-          { path: 'RESEARCH/INTERVIEW.TXT', content: '' },
-        ],
-      }),
-    ).toThrowError(expect.objectContaining({ code: 'demo_document_path_conflict' }));
-    expect(env.state.specifications.get(spec.specId)?.documents.size).toBe(3);
-    expect(env.documents.readDocument(spec.specId, first.documentIds[0]!)?.content).toBe('Revised');
-    expect(env.documents.readDocument('other', first.documentIds[0]!)).toBeUndefined();
+    const first = await env.documents.create('alice', spec.specId, input, find);
+    expect(await env.documents.create('alice', spec.specId, input, find)).toEqual(first);
+    expect(first.documents[0]!.path).toBe('research/interview.txt');
+    expect(
+      await refusal(
+        env.documents.create(
+          'alice',
+          spec.specId,
+          {
+            operationId: op(31),
+            documents: [
+              { path: 'new.md', content: '' },
+              { path: 'RESEARCH/INTERVIEW.TXT', content: '' },
+            ],
+          },
+          find,
+        ),
+      ),
+    ).toBe('DOCUMENT_PATH_CONFLICT');
+    expect(directory(spec.specId).files.size).toBe(3);
   });
   it.each([
     '../escape.md',
@@ -313,39 +341,47 @@ describe('Document additions and separate branch policy', () => {
     'a\u0000.md',
     'file.pdf',
     'a.md/child.txt',
-  ])('rejects invalid or file-as-folder path %j atomically', (path) => {
-    const { env, spec } = setup();
-    env.documents.add('alice', spec.specId, {
-      requestId: 'existing',
-      documents: [{ path: 'a.md', content: '' }],
-    });
-    expect(() =>
-      env.documents.add('alice', spec.specId, {
-        requestId: 'unsafe',
-        documents: [{ path, content: '' }],
-      }),
-    ).toThrow(DemoOperationError);
-    expect(env.state.specifications.get(spec.specId)?.documents.size).toBe(3);
+  ])('rejects invalid or file-as-folder path %j atomically', async (path) => {
+    const { env, spec, find, directory } = setup();
+    await env.documents.create(
+      'alice',
+      spec.specId,
+      { operationId: op(40), documents: [{ path: 'a.md', content: '' }] },
+      find,
+    );
+    expect(
+      await refusal(
+        env.documents.create(
+          'alice',
+          spec.specId,
+          { operationId: op(41), documents: [{ path, content: '' }] },
+          find,
+        ),
+      ),
+    ).toMatch(/^DOCUMENT_PATH_(INVALID|CONFLICT)$/u);
+    expect(directory(spec.specId).files.size).toBe(3);
   });
 });
 
 describe('Neutral authoring workflow templates', () => {
-  it('creates an arbitrary feature title with a scaffold, without unrelated SSO requirements', () => {
+  it('creates an arbitrary feature title with the Engine scaffold, without unrelated SSO requirements', () => {
     const env = createDemoEnvironment();
     const created = env.specs.create('alice', {
       operationId: op(20),
       title: 'Export CSV',
+      goal: 'Let owners export a list.',
       catalogueRevision: env.state.catalogue.revision,
       archetypeId: 'feature',
-      archetypeVersion: '2',
+      archetypeVersion: 1,
       optionalDocumentIds: [],
     });
-    expect(created.documentIds).toHaveLength(1);
-    const document = env.documents.readDocument(created.specId, created.documentIds[0]!)!;
-    expect(document.content).toContain('## Problem');
-    expect(document.content).toContain('## Proposed behaviour');
-    expect(document.content).toContain('## Acceptance criteria');
-    expect(document.content).toContain('Opisz oczekiwane zachowanie produktu.');
-    expect(document.content).not.toMatch(/SSO|OIDC|logowan|dostawc|tożsamości/i);
+    expect(created.documentIds).toEqual(['overview']);
+    const files = env.state.specifications.get(created.specId)!.documents.files;
+    const content = new TextDecoder().decode(files.get('overview.md')!.bytes);
+    expect(content).toContain('# Export CSV');
+    expect(content).toContain('## Goal');
+    expect(content).toContain('Let owners export a list.');
+    expect(content).toContain('## Acceptance Criteria & Verification');
+    expect(content).not.toMatch(/SSO|OIDC|logowan|dostawc|tożsamości/i);
   });
 });

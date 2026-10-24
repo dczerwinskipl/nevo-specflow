@@ -1,3 +1,4 @@
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
 import { within, waitFor } from 'storybook/test';
 import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -154,15 +155,17 @@ export function TaskWorkbenchFixture({
       },
       documentApi: {
         getDocument: (_specId, documentId) =>
-          Promise.resolve({
-            id: documentId,
-            title: fixture.response.task.title,
-            content:
-              documentId === 'history-guide'
-                ? '# Historical verification record\n\nMaterial from the selected completed attempt.'
-                : fixture.document,
-            revision: 'fixture-1',
-          }),
+          Promise.resolve(
+            documentContentFixture({
+              id: documentId,
+              title: fixture.response.task.title,
+              content:
+                documentId === 'history-guide'
+                  ? '# Historical verification record\n\nMaterial from the selected completed attempt.'
+                  : fixture.document,
+              revision: 'fixture-1',
+            }),
+          ),
       },
     });
     const workspace = createSpecificationWorkspaceFixture('working', 'admission');

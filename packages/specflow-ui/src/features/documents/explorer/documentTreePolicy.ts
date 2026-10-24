@@ -1,13 +1,13 @@
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
+import type { ActionReason, DocumentTree } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../i18n/message';
 
 const hasControlCharacter = (value: string) =>
   [...value].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
 /** Device names the Runtime refuses as a path segment (with or without an extension). */
 const isReservedName = (name: string) => /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name);
+/** A file to create or import; its display title is derived by the Engine (first H1, else stem). */
 export interface PlannedDocument {
   path: string;
-  title?: string;
   content: string;
 }
 export function validEntryName(name: string, document = false) {
@@ -68,14 +68,15 @@ export function pathCollides(
     )
   );
 }
-/** Maps a Runtime reason code to the explanation shown to the reader; the server text is never shown. */
-export function documentActionReason(reason?: string): Message | undefined {
+/**
+ * Maps an `ActionReason` of the tree to the explanation shown to the reader; the server text is
+ * never shown. phase C: the design re-keys the copy (branch policy, archived, dangling, busy).
+ */
+export function documentActionReason(reason?: ActionReason): Message | undefined {
   switch (reason) {
-    case 'demo_document_required':
+    case 'protected':
       return message('documents.tree.reason.required');
-    case 'demo_document_operations_unavailable':
-      return message('documents.tree.reason.operationsUnavailable');
-    case 'root_protected':
+    case 'root':
       return message('documents.tree.reason.rootProtected');
     default:
       return reason ? message('documents.tree.reason.unavailable') : undefined;
@@ -130,7 +131,7 @@ export function finalEntryName(rawName: string, kind: EntryKind, currentName?: s
 const containerOf = (path: string) => path.substring(0, path.lastIndexOf('/')).toLowerCase();
 
 /** Every level of a tree, grouped once: a lookup never scans the folder and document lists again. */
-export interface DocumentTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 'documents'>> {
+export interface DocumentTreeIndex<Tree extends Pick<DocumentTree, 'folders' | 'documents'>> {
   /** The level directly inside `parent` (case-insensitive), in presentation order; memoized. */
   level: (
     parent: string,
@@ -141,7 +142,7 @@ export interface DocumentTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders'
  * Groups a tree's folders and documents by container in one pass. Build it once per tree change
  * (the explorer memoizes it) and use it for rendering and for the emptiness checks.
  */
-export function createTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 'documents'>>(
+export function createTreeIndex<Tree extends Pick<DocumentTree, 'folders' | 'documents'>>(
   tree: Tree,
 ): DocumentTreeIndex<Tree> {
   type Folder = Tree['folders'][number];
@@ -171,7 +172,7 @@ export function createTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 
 }
 
 /** The folders and documents directly inside `parent` (one-off lookup; render paths use the index). */
-export function treeLevel<Tree extends Pick<DemoDocumentTree, 'folders' | 'documents'>>(
+export function treeLevel<Tree extends Pick<DocumentTree, 'folders' | 'documents'>>(
   tree: Tree,
   parent: string,
 ) {

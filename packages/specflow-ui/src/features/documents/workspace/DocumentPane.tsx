@@ -47,10 +47,7 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
   const { actions, dirty } = documentHeaderModel(session, t, {
     onCloseTab: () => void tabs.requestClose(documentId),
   });
-  const name =
-    tabs.tabs.find((tab) => tab.id === documentId)?.label ??
-    session?.document.filename ??
-    session?.document.title;
+  const name = tabs.tabs.find((tab) => tab.id === documentId)?.label ?? session?.document.path;
   return {
     status: 'ready',
     data: {

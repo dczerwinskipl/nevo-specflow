@@ -1157,7 +1157,6 @@
       },
       "reason": {
         "required": "Wymagana ścieżka workflow — nie można jej zmienić ani usunąć.",
-        "operationsUnavailable": "Operacje na tej przykładowej specyfikacji są niedostępne.",
         "rootProtected": "Folderu głównego nie można zmienić ani usunąć.",
         "unavailable": "Ta operacja jest niedostępna."
       },

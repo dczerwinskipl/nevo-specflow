@@ -29,7 +29,7 @@ export function documentHeaderModel(
       ]
     : [];
   if (!session) return { actions: close, dirty: false };
-  const kind = documentKindOf(session.document.filename ?? session.document.title);
+  const kind = documentKindOf(session.document.path);
   const view = documentViewOf(kind, session.draft);
   return {
     dirty: session.dirty,

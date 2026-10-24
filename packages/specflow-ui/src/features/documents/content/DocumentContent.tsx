@@ -93,8 +93,11 @@ export function DocumentContent({
         <MarkdownDocument
           labels={markdownLabels}
           headingOffset={headingOffset}
+          // phase C: image and binary documents have no `content`; they need their own viewers.
           source={
-            omitTitle ? markdownIntro(query.data.content, omitTitle).source : query.data.content
+            omitTitle
+              ? markdownIntro(query.data.content ?? '', omitTitle).source
+              : (query.data.content ?? '')
           }
         />
       ) : (

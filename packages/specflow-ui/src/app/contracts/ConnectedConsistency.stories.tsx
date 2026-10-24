@@ -1,3 +1,9 @@
+import {
+  documentContentFixture,
+  documentTreeFixture,
+  saveResultFixture,
+} from '../../../test-support/documents/fixtures';
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { HttpClientError } from '@nevo/http-client';
 import { createSpecsFixture } from '../../../test-support/specs/overview/fixtures';
 import { specsOverviewKeys } from '../../features/specs/overview/data/queries';
@@ -8,7 +14,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { browserPage } from '../../test-support/browserPage';
-import type { DemoDocumentTree, DemoSessionDetail } from '@nevo/specflow-contracts/demo';
+import type { DemoSessionDetail } from '@nevo/specflow-contracts/demo';
 import { createAuthStore } from '../../auth/store';
 import { createSpecFlowAppServices } from '../../services';
 import { createSpecFlowRouter } from '../router';
@@ -135,38 +141,21 @@ function Connected({
           }
         : {}),
     };
-    const yes = { available: true };
-    const actions = { rename: yes, move: yes, delete: yes };
-    const tree: DemoDocumentTree = {
-      revision: '1',
-      folders: [
-        {
-          path: '',
-          actions: {
-            rename: { available: false, reason: 'root_protected' },
-            move: { available: false, reason: 'root_protected' },
-            delete: { available: false, reason: 'root_protected' },
-          },
-        },
-        { path: 'notes', actions },
-        { path: '__root', actions },
-      ],
+    const kept = { available: false, reason: 'protected' } as const;
+    const tree: DocumentTree = documentTreeFixture({
+      folders: ['notes', '__root'],
       documents: Object.values(records).map((doc) => ({
         id: doc.id,
         path: doc.filename,
         revision: doc.revision,
-        required: doc.id === 'spec',
-        actions:
-          doc.id === 'spec'
-            ? {
-                rename: { available: false, reason: 'demo_document_required' },
-                move: { available: false, reason: 'demo_document_required' },
-                delete: { available: false, reason: 'demo_document_required' },
-              }
-            : actions,
+        ...(doc.id === 'spec'
+          ? {
+              protected: true,
+              actions: { rename: kept, move: kept, delete: kept, classify: { available: false } },
+            }
+          : {}),
       })),
-      capabilities: { createFile: yes, createFolder: yes, import: yes, formats: ['md', 'txt'] },
-    };
+    });
     const session: DemoSessionDetail = {
       sessionId: 'session',
       title: 'Spec Writer',
@@ -248,10 +237,18 @@ function Connected({
                 new HttpClientError('Not found', {
                   kind: 'http',
                   status: 404,
-                  data: { error: 'demo_document_not_found' },
+                  data: { error: 'DOCUMENT_NOT_FOUND', code: 'DOCUMENT_NOT_FOUND' },
                 }),
               )
-            : Promise.resolve(records[id]),
+            : Promise.resolve(
+                documentContentFixture({
+                  id,
+                  title: records[id].title,
+                  path: records[id].filename,
+                  revision: records[id].revision,
+                  content: records[id].content,
+                }),
+              ),
       },
       documentsApi: {
         ...defaults.documentsApi,
@@ -263,7 +260,7 @@ function Connected({
         save: (_spec, id, input) => {
           const doc = records[id]!;
           Object.assign(doc, { content: input.content, revision: '2' });
-          return Promise.resolve({ revision: '2' });
+          return Promise.resolve(saveResultFixture('2'));
         },
       },
       sessionsApi: {

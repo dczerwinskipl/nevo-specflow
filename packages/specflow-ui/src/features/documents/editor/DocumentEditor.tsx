@@ -19,7 +19,7 @@ export function DocumentEditor() {
   const session = useDocumentEditor();
   if (!session) return null;
   const { document, draft, editorRoot, save, setDraft } = session;
-  const kind = documentKindOf(document.filename ?? document.title);
+  const kind = documentKindOf(document.path);
   const plainText = kind.id === 'text';
   return (
     <div ref={editorRoot} className="flex h-full min-h-0 w-full flex-col">
@@ -28,7 +28,7 @@ export function DocumentEditor() {
           tone="attention"
           role="alert"
           title={
-            apiErrorCode(session.saveError) === 'demo_document_revision_conflict'
+            apiErrorCode(session.saveError) === 'DOCUMENT_REVISION_CONFLICT'
               ? t('documents.editor.conflict')
               : t('documents.editor.saveFailed')
           }
@@ -46,7 +46,7 @@ export function DocumentEditor() {
           readerRef={session.anchorReader}
           onChange={(content) => setDraft({ content })}
           onSave={() => void save()}
-          label={t('documents.editor.sourceLabel', { name: document.filename ?? document.title })}
+          label={t('documents.editor.sourceLabel', { name: document.path })}
         />
       ) : (
         <PreviewScroller

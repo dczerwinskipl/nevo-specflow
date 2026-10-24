@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -19,17 +20,15 @@ import { createDocumentDraftStore, draftFor } from '../editor/documentDraftStore
 import type { DocumentApi, DocumentsApi } from '../api';
 import { DocumentTabsProvider, useDocumentRecord } from './DocumentTabsProvider';
 
+/** Every save carries a fresh `operationId` (idempotency key). */
+const anyOperationId: unknown = expect.any(String);
+
 const SPEC = 'spec';
-const record = (id: string, content: string, revision: string): SpecificationDocumentResponse => ({
-  id,
-  title: id,
-  filename: `${id}.md`,
-  content,
-  revision,
-});
+const record = (id: string, content: string, revision: string): DocumentContent =>
+  documentContentFixture({ id, title: id, path: `${id}.md`, content, revision });
 
 function setup(documentId: string | undefined, strict = false) {
-  const docs: Record<string, SpecificationDocumentResponse> = {
+  const docs: Record<string, DocumentContent> = {
     a: record('a', 'A0', 'a1'),
     b: record('b', 'B0', 'b1'),
   };
@@ -104,7 +103,11 @@ describe('DocumentTabsProvider', () => {
     t.store.set(SPEC, 'b', { ...draftFor(t.docs.b!), content: 'B1' });
     const result = await act(() => t.seen.ops!.save('b'));
     expect(result).toMatchObject({ ok: true, documentId: 'b', content: 'B1' });
-    expect(t.save).toHaveBeenCalledWith(SPEC, 'b', { content: 'B1', expectedRevision: 'b1' });
+    expect(t.save).toHaveBeenCalledWith(SPEC, 'b', {
+      operationId: anyOperationId,
+      content: 'B1',
+      expectedRevision: 'b1',
+    });
     expect(t.store.get(SPEC, 'b')).toMatchObject({ baseline: 'B1', revision: 'b2' });
   });
 });

@@ -1,3 +1,4 @@
+import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type {
   CreateOperationAccepted,
   CreateOperationInspection,
@@ -42,6 +43,11 @@ export type ProjectCreateRequest = Omit<
 export interface ProjectCreationApi {
   createOptions(signal?: AbortSignal): Promise<CreateOptions>;
   /**
+   * The archetype catalogue (`GET /api/specs/archetypes`), the same `ArchetypeCatalogue` the demo
+   * embeds in its creation catalogue. The project form does not offer archetypes yet (phase C).
+   */
+  archetypes(signal?: AbortSignal): Promise<ArchetypeCatalogue>;
+  /**
    * Sends the request asking for async mode. The Runtime answers 202 (`CreateOperationAccepted`: the
    * work continues detached, watch the operation) or, when it does not know the preference, the
    * synchronous 201 `CreatedSpec`.
@@ -64,6 +70,7 @@ export const createOperationEventsUrl = (operationId: string) =>
 
 export const projectCreationKeys = {
   createOptions: ['specs', 'create', 'options'] as const,
+  archetypes: ['specs', 'create', 'archetypes'] as const,
 };
 
 const isObject = (data: unknown): data is Record<string, unknown> =>
@@ -77,6 +84,13 @@ export function createProjectCreationApi(api: ApiTransport): ProjectCreationApi 
         signal,
         timeoutMs: createOptionsTimeoutMs,
         isValid: (data) => isObject(data) && Array.isArray(data.workspaces),
+      }),
+    archetypes: (signal) =>
+      api.get<ArchetypeCatalogue>('/api/specs/archetypes', {
+        operation: 'specs.create.archetypes',
+        signal,
+        isValid: (data) =>
+          isObject(data) && typeof data.revision === 'string' && Array.isArray(data.archetypes),
       }),
     create: (input, signal) =>
       api.post<CreatedSpec | CreateOperationAccepted, ProjectCreateRequest>('/api/specs', input, {

@@ -1,3 +1,4 @@
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useTranslation } from 'react-i18next';
 import {
   createContext,
@@ -10,7 +11,6 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { documentDraftKey, draftFor, isDraftDirty, type DocumentDraft } from './documentDraftStore';
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
@@ -34,7 +34,7 @@ import { useEditorFocus } from './useEditorFocus';
  */
 export interface DocumentEditorSession {
   specId: string;
-  document: SpecificationDocumentResponse;
+  document: DocumentContent;
   draft: DocumentDraft;
   dirty: boolean;
   saving: boolean;
@@ -101,7 +101,7 @@ export function DocumentEditorProvider({
 }: {
   specId: string;
   /** Undefined while the document is loading or unavailable. */
-  document?: SpecificationDocumentResponse;
+  document?: DocumentContent;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -127,7 +127,7 @@ export function DocumentEditorProvider({
   useLayoutEffect(() => {
     shown.current = { specId, key, document, draft };
   });
-  const markdown = kindIdOf(document?.filename ?? document?.title) === 'markdown';
+  const markdown = kindIdOf(document?.path) === 'markdown';
   const content = draft?.content ?? '';
   const outline = useMemo(() => documentOutline(content, markdown), [content, markdown]);
   const outlineAvailable =
@@ -252,7 +252,7 @@ export function DocumentEditorProvider({
     openOutline,
   ]);
 
-  const name = document?.filename ?? document?.title ?? '';
+  const name = document?.path ?? '';
   return (
     <SaveOwnerContext.Provider value={owner}>
       <Context.Provider value={session}>

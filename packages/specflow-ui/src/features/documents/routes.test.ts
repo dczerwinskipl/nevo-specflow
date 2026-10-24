@@ -1,3 +1,4 @@
+import { documentContentFixture } from '../../../test-support/documents/fixtures';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
 import { createAuthStore } from '../../auth/store';
@@ -36,12 +37,14 @@ describe('canonical Documents routes', () => {
         },
         documentApi: {
           getDocument: () =>
-            Promise.resolve({
-              id: 'notes',
-              title: 'Notes',
-              content: '# Works',
-              revision: '1',
-            }),
+            Promise.resolve(
+              documentContentFixture({
+                id: 'notes',
+                title: 'Notes',
+                content: '# Works',
+                revision: '1',
+              }),
+            ),
         },
       }),
     );

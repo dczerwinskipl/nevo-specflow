@@ -1,4 +1,10 @@
 import {
+  documentContentFixture,
+  documentTreeFixture,
+  saveResultFixture,
+} from '../../../../test-support/documents/fixtures';
+import type { DocumentContent, DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
+import {
   createContext,
   useContext,
   useMemo,
@@ -24,8 +30,6 @@ import {
   useWorkspaceCapabilities,
   type SecondaryData,
 } from '@nevo/ui';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
@@ -42,39 +46,26 @@ import { settleViewport } from '../../../test-support/viewportSettle.stories-sup
 import { invokeDocumentAction } from '../editor/documentHeaderActions.stories-support';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';
-const yes = { available: true },
-  no = { available: false, reason: 'demo_document_required' };
-const actions = { rename: yes, move: yes, delete: yes };
-const initialTree: Tree = {
-  revision: '1',
-  folders: [
-    { path: '', actions: { rename: no, move: no, delete: no } },
-    { path: 'notes', actions },
-    { path: '__root', actions },
-  ],
+const no = { available: false, reason: 'protected' } as const;
+const protectedActions = { rename: no, move: no, delete: no, classify: { available: false } };
+const initialTree: Tree = documentTreeFixture({
+  folders: ['notes', '__root'],
   documents: [
-    {
-      id: 'specification',
-      path: 'specification.md',
-      required: true,
-      revision: '1',
-      actions: { rename: no, move: no, delete: no },
-    },
-    { id: 'decisions', path: 'notes/decisions.md', required: false, revision: '1', actions },
+    { id: 'specification', path: 'specification.md', protected: true, actions: protectedActions },
+    { id: 'decisions', path: 'notes/decisions.md' },
   ],
-  capabilities: { createFile: yes, createFolder: yes, import: yes, formats: ['md', 'txt'] },
-};
-const specification: SpecificationDocumentResponse = {
+});
+const specification: DocumentContent = documentContentFixture({
   id: 'specification',
   title: 'Specification',
-  filename: 'specification.md',
+  path: 'specification.md',
   revision: '1',
   content:
     '# Logowanie SSO\n\n## Cel\n\nPracownicy logują się przez firmowego dostawcę tożsamości, bez dodatkowego hasła.\n\n## Zachowanie\n\nPo uwierzytelnieniu użytkownik wraca do poprzednio otwartego projektu.\n\n## Kryteria akceptacji\n\n- Odpowiedź dostawcy jest weryfikowana.\n- Anulowanie nie tworzy sesji.\n- Użytkownik może bezpiecznie się wylogować.',
-};
-const Records = createContext<Record<string, SpecificationDocumentResponse>>({});
+});
+const Records = createContext<Record<string, DocumentContent>>({});
 interface StackData {
-  record: SpecificationDocumentResponse;
+  record: DocumentContent;
   actions: readonly WorkspaceHeaderAction[];
 }
 function useRecord({ id }: { id: string }): SecondaryData<StackData> {
@@ -92,7 +83,7 @@ function EditorScreen() {
   );
 }
 function EditorHeader({ data }: { data: StackData }) {
-  return <WorkspaceHeaderIdentity headingLevel={2} title={data.record.filename ?? 'Dokument'} />;
+  return <WorkspaceHeaderIdentity headingLevel={2} title={data.record.path} />;
 }
 const stack = defineSecondaryStack<{ id: string }, StackData, { editor: Record<string, never> }>({
   id: 'owner-v4-story-documents',
@@ -112,7 +103,7 @@ interface FixtureProps {
   loseAck?: boolean;
   concurrent?: boolean;
 }
-type StoryRecords = Record<string, SpecificationDocumentResponse>;
+type StoryRecords = Record<string, DocumentContent>;
 interface WorkspaceProps extends FixtureProps {
   records: StoryRecords;
   setRecords: Dispatch<SetStateAction<StoryRecords>>;
@@ -140,10 +131,7 @@ function Workspace({
   const [busy, setBusy] = useState(false);
   const navigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
-  const add = (
-    documents: { path: string; content: string; title?: string }[],
-    folders: string[] = [],
-  ) => {
+  const add = (documents: { path: string; content: string }[], folders: string[] = []) => {
     setCalls((value) => value + 1);
     setPayloads((current) => [...current, JSON.stringify(documents)]);
     if (loseAck && attempts.current++ === 0) return Promise.reject(new Error('Lost ACK'));
@@ -158,20 +146,17 @@ function Workspace({
         new HttpClientError('Conflict', {
           kind: 'http',
           status: 409,
-          data: { error: 'demo_document_path_conflict' },
+          data: { error: 'DOCUMENT_PATH_CONFLICT', code: 'DOCUMENT_PATH_CONFLICT' },
         }),
       );
-    const added = documents.map((doc) => ({
-      id: doc.path,
-      path: doc.path,
-      required: false,
-      revision: '1',
-      actions,
-    }));
+    const added = documentTreeFixture({
+      folders,
+      documents: documents.map((doc) => ({ id: doc.path, path: doc.path })),
+    });
     setTree((current) => ({
       ...current,
-      documents: [...current.documents, ...added],
-      folders: [...current.folders, ...folders.map((path) => ({ path, actions }))],
+      documents: [...current.documents, ...added.documents],
+      folders: [...current.folders, ...added.folders.slice(1)],
     }));
     setRecords((current) => ({
       ...current,
@@ -181,8 +166,8 @@ function Workspace({
           {
             ...specification,
             id: doc.path,
-            title: doc.title ?? doc.path,
-            filename: doc.path,
+            title: doc.path,
+            path: doc.path,
             content: doc.content,
           },
         ]),
@@ -203,7 +188,7 @@ function Workspace({
         new HttpClientError('Conflict', {
           kind: 'http',
           status: 409,
-          data: { error: 'demo_document_revision_conflict' },
+          data: { error: 'DOCUMENT_REVISION_CONFLICT', code: 'DOCUMENT_REVISION_CONFLICT' },
         }),
       );
     if (operation.action === 'rename')
@@ -289,7 +274,7 @@ function Workspace({
         <AppWorkspace.Secondary
           header={
             <WorkspaceHeader
-              title={records[active]?.filename ?? 'Dokument'}
+              title={records[active]?.path ?? 'Dokument'}
               actions={documentHeader.actions}
               labels={{ moreActions: 'Więcej akcji' }}
             />
@@ -308,7 +293,7 @@ function Fixture(props: FixtureProps) {
       decisions: {
         ...specification,
         id: 'decisions',
-        filename: 'notes/decisions.md',
+        path: 'notes/decisions.md',
         title: 'Decisions',
         content: '# Decyzje\n\nKorzystamy z OIDC.',
       },
@@ -318,7 +303,7 @@ function Fixture(props: FixtureProps) {
     const base = createSpecFlowAppServices();
     return {
       ...base,
-      documentsApi: { ...base.documentsApi, save: () => Promise.resolve({ revision: '2' }) },
+      documentsApi: { ...base.documentsApi, save: () => Promise.resolve(saveResultFixture('2')) },
     };
   }, []);
   return (
@@ -477,33 +462,17 @@ export const MoveRootNamedFolder: Story = {
     await expect(canvas.getByLabelText('Folder wysłanej operacji')).toHaveTextContent('__root');
   },
 };
-const nestedTree: Tree = {
-  revision: '1',
-  folders: [
-    { path: '', actions: { rename: no, move: no, delete: no } },
-    { path: 'guides', actions },
-    { path: 'guides/onboarding', actions },
-    { path: 'empty-folder', actions },
-  ],
+const nestedTree: Tree = documentTreeFixture({
+  folders: ['guides', 'guides/onboarding', 'empty-folder'],
   documents: [
-    {
-      id: 'specification',
-      path: 'specification.md',
-      required: true,
-      revision: '1',
-      actions: { rename: no, move: no, delete: no },
-    },
-    { id: 'overview', path: 'guides/overview.md', required: false, revision: '1', actions },
+    { id: 'specification', path: 'specification.md', protected: true, actions: protectedActions },
+    { id: 'overview', path: 'guides/overview.md' },
     {
       id: 'onboarding-long',
       path: 'guides/onboarding/a-very-long-descriptive-onboarding-guide-filename-for-connector-wrap-testing.md',
-      required: false,
-      revision: '1',
-      actions,
     },
   ],
-  capabilities: { createFile: yes, createFolder: yes, import: yes, formats: ['md', 'txt'] },
-};
+});
 const renderNested = (width: number, active?: string) => () => (
   <div style={{ padding: 16, width, maxWidth: '100%' }}>
     <DocumentsExplorer

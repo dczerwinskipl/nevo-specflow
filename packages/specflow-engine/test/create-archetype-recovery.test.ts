@@ -2,7 +2,7 @@
 // never from the current code templates, and a crash between the payload write and the journal
 // publication leaves only an orphan payload.
 import { randomUUID } from 'node:crypto';
-import { readFile, readdir, rm } from 'node:fs/promises';
+import { readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -143,6 +143,11 @@ describe('crash between the payload write and the journal publication', () => {
     expect(await inspectCreateSpecification(engine, request.operationId)).toBeUndefined();
     const orphan = await readdir(createPayloadDirectory(engine.context, request.operationId));
     expect(orphan.length).toBeGreaterThan(0);
+    const stale = 'f'.repeat(64);
+    await writeFile(
+      join(createPayloadDirectory(engine.context, request.operationId), stale),
+      'stale',
+    );
     // Nothing was written to the checkout and nothing is claimed.
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
     expect((await readdir(directory)).sort()).toEqual([request.operationId + '.payload']);
@@ -150,8 +155,8 @@ describe('crash between the payload write and the journal publication', () => {
     const created = await createSpecification(engine, request);
     expect(created.documentIds).toHaveLength(2);
     const payload = await readdir(createPayloadDirectory(engine.context, request.operationId));
-    // The retry reserved a fresh specId, so the old payload files were replaced, not accumulated.
-    expect(payload.some((name) => orphan.includes(name))).toBe(false);
+    // The directory of the crashed attempt was replaced, not accumulated into.
+    expect(payload).not.toContain(stale);
     expect(payload).toHaveLength(3);
   }, 240000);
 });

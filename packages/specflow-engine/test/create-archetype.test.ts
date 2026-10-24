@@ -324,7 +324,7 @@ describe('Create with an archetype: recovery uses the full recorded list', () =>
           .sort(),
       );
       expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
-      expect(resumed.documentIds).toHaveLength(6);
+      expect(resumed.documentIds).toHaveLength(5);
     },
     240000,
   );

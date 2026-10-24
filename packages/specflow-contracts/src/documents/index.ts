@@ -3,6 +3,7 @@ import { Type, type Static } from 'typebox';
 import { IdSchema } from './vocabulary';
 
 export * from './catalogue';
+export * from './definition';
 export * from './errors';
 export * from './operations';
 export * from './tree';

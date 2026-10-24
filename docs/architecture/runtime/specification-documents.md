@@ -45,7 +45,7 @@ Runtime and CLI MUST NOT contain document rules (paths, kinds, requirements, pro
 There is no new Core package. Reviews and Tasks are separate resources with their own read/write models; they
 are never documents and are never registered in `documents[]`.
 
-Observed present state: the Engine reads a Specification's documents (`specs/documents/read.ts`: tree,
+Observed present state: the Engine reads a Specification's documents (`specs/documents/tree-reader.ts`, `document-reader.ts`, `summaries.ts`: tree,
 document, registered summaries; `open.ts`: raw access) and the Runtime serves them through a `DocumentContentSource`
 over the Engine in project mode; save/add/tree operations exist only in the Runtime demo
 (`features/documents/demo`) until D4.

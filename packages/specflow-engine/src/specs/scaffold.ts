@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
+import { CATALOGUE_ID_PATTERN, type DocumentErrorCode } from '@nevo/specflow-contracts/documents';
 
 import { getBuiltInCatalogue, type ResolvedCatalogue } from './archetypes/catalogue';
 import { renderTemplate, templateValues } from './archetypes/template-renderer';
@@ -114,36 +114,69 @@ export class ScaffoldValidationError extends SpecificationError {
 
 /**
  * The one mapping of a scaffold refusal onto a document error code, used by Create admission and by
- * the reservation: every cause maps to exactly one code.
+ * the reservation: every cause maps to exactly one code. A `limit-exceeded` and a `type-invalid`
+ * cause share a code and stay distinguishable by their message.
  */
+const DOCUMENT_CODE_BY_CAUSE: Record<ScaffoldValidationCause['kind'], DocumentErrorCode> = {
+  'archetype-unknown': 'ARCHETYPE_UNKNOWN',
+  'template-unknown': 'ARCHETYPE_UNKNOWN',
+  'path-invalid': 'DOCUMENT_PATH_INVALID',
+  'path-conflict': 'DOCUMENT_PATH_CONFLICT',
+  'type-invalid': 'DOCUMENT_OPERATION_INVALID',
+  'content-invalid': 'DOCUMENT_OPERATION_INVALID',
+  'limit-exceeded': 'DOCUMENT_OPERATION_INVALID',
+};
+
 export function documentErrorOf(error: ScaffoldValidationError): DocumentError {
-  return new DocumentError(documentCodeOf(error.cause), error.message);
+  return new DocumentError(DOCUMENT_CODE_BY_CAUSE[error.cause.kind], error.message);
 }
 
-function documentCodeOf(cause: ScaffoldValidationCause) {
-  switch (cause.kind) {
-    case 'archetype-unknown':
-    case 'template-unknown':
-      return 'ARCHETYPE_UNKNOWN' as const;
-    case 'path-invalid':
-      return 'DOCUMENT_PATH_INVALID' as const;
-    case 'path-conflict':
-      return 'DOCUMENT_PATH_CONFLICT' as const;
-    case 'type-invalid':
-    case 'content-invalid':
-    case 'limit-exceeded':
-      return 'DOCUMENT_OPERATION_INVALID' as const;
-    default: {
-      const exhaustive: never = cause;
-      return exhaustive;
+/** The registry being built: allocates each document id from its position and the ids already used. */
+class DocumentRegistry {
+  private readonly specId: string;
+  private readonly usedIds = new Set<string>();
+  readonly documents: ManifestDocument[] = [];
+
+  constructor(specId: string) {
+    this.specId = specId;
+  }
+
+  register(path: string, type: string): void {
+    let id: string;
+    try {
+      id = allocateDocumentId({
+        specId: this.specId,
+        type,
+        position: this.documents.length,
+        existingIds: this.usedIds,
+      });
+    } catch (error) {
+      if (error instanceof DocumentIdError) {
+        throw new ScaffoldValidationError(`Document type "${type}" cannot be registered.`, {
+          kind: 'type-invalid',
+          path,
+          type,
+        });
+      }
+      throw error;
     }
+    this.usedIds.add(id);
+    this.documents.push({ id, path, type });
   }
 }
+
+interface ScaffoldSource {
+  readonly path: string;
+  readonly content: string;
+}
+
+type Archetype = NonNullable<ReturnType<ResolvedCatalogue['findArchetype']>>;
 
 /**
  * Deterministic, side-effect-free scaffold driven by an archetype. It does not reserve an ID, create
  * files, update a registry or regenerate indexes. Throws {@link ScaffoldValidationError} for unknown
- * archetype or template ids, invalid or conflicting paths and the Create limits.
+ * archetype or template ids, invalid or conflicting paths and the Create limits. The pipeline runs
+ * the steps in the order that decides which refusal a request with several problems gets.
  */
 export function createSpecificationScaffold(
   input: SpecificationScaffoldInput,
@@ -164,10 +197,8 @@ export function createSpecificationScaffold(
     );
   }
   const slug = input.slug ?? specificationSlugFromTitle(title, input.specId);
-  const base = 'specs/active/' + slug + '/';
 
-  const catalogue = input.catalogue ?? getBuiltInCatalogue();
-  const archetype = catalogue.findArchetype(input.archetypeId);
+  const archetype = (input.catalogue ?? getBuiltInCatalogue()).findArchetype(input.archetypeId);
   if (!archetype) {
     throw new ScaffoldValidationError(`Unknown archetype "${input.archetypeId}".`, {
       kind: 'archetype-unknown',
@@ -175,7 +206,41 @@ export function createSpecificationScaffold(
     });
   }
 
-  const chosen = new Set(input.optionalDocumentIds ?? []);
+  const registry = new DocumentRegistry(input.specId);
+  const templates = selectTemplates(archetype, input.optionalDocumentIds ?? []);
+  const values = templateValues({ title, slug, goal: input.goal, created: input.created });
+  const files = [
+    ...renderArchetypeFiles(registry, templates, values),
+    ...admitAddedDocuments(registry, input.addedDocuments ?? []),
+  ];
+  admitScaffoldFileCount(files);
+  const folders = admitFolders(files, input.folders ?? []);
+
+  const manifest = buildManifest(input, {
+    title,
+    slug,
+    archetype,
+    documents: registry.documents,
+    folders,
+  });
+  const base = 'specs/active/' + slug + '/';
+  return {
+    specId: input.specId,
+    slug,
+    files: [
+      fingerprint(base + 'specification.yaml', serializeSpecificationManifest(manifest)),
+      ...files.map((file) => fingerprint(base + file.path, file.content)),
+    ],
+    documentIds: registry.documents.map((item) => item.id),
+  };
+}
+
+/** The always-included templates plus the chosen optional ones, in catalogue order. */
+function selectTemplates(
+  archetype: Archetype,
+  optionalDocumentIds: readonly string[],
+): Archetype['templates'] {
+  const chosen = new Set(optionalDocumentIds);
   for (const id of chosen) {
     const template = archetype.templates.find((item) => item.id === id);
     if (template?.include !== 'optional') {
@@ -185,38 +250,19 @@ export function createSpecificationScaffold(
       );
     }
   }
-  const selected = archetype.templates.filter(
+  return archetype.templates.filter(
     (template) => template.include === 'always' || chosen.has(template.id),
   );
+}
 
-  const values = templateValues({ title, slug, goal: input.goal, created: input.created });
-  const documents: ManifestDocument[] = [];
-  const files: { path: string; content: string }[] = [];
-  const usedIds = new Set<string>();
-  const register = (path: string, type: string): void => {
-    let id: string;
-    try {
-      id = allocateDocumentId({
-        specId: input.specId,
-        type,
-        position: documents.length,
-        existingIds: usedIds,
-      });
-    } catch (error) {
-      if (error instanceof DocumentIdError) {
-        throw new ScaffoldValidationError(`Document type "${type}" cannot be registered.`, {
-          kind: 'type-invalid',
-          path,
-          type,
-        });
-      }
-      throw error;
-    }
-    usedIds.add(id);
-    documents.push({ id, path, type });
-  };
-
-  for (const template of selected) {
+/** Render and register the archetype's documents. */
+function renderArchetypeFiles(
+  registry: DocumentRegistry,
+  templates: Archetype['templates'],
+  values: ReturnType<typeof templateValues>,
+): ScaffoldSource[] {
+  const files: ScaffoldSource[] = [];
+  for (const template of templates) {
     const path = checkedPath(template.filename);
     const content = renderTemplate(template.content, values);
     const bytes = Buffer.byteLength(content, 'utf8');
@@ -229,14 +275,21 @@ export function createSpecificationScaffold(
         path,
       });
     }
-    register(path, template.documentType);
+    registry.register(path, template.documentType);
     files.push({ path, content });
   }
+  return files;
+}
 
-  const added = input.addedDocuments ?? [];
+/** Admit the files the person adds: well-formed, within the limits, registered when typed. */
+function admitAddedDocuments(
+  registry: DocumentRegistry,
+  added: readonly AddedDocumentInput[],
+): ScaffoldSource[] {
   if (added.length > ADDED_DOCUMENTS_MAX_FILES) {
     throw limit('added-files', ADDED_DOCUMENTS_MAX_FILES, added.length);
   }
+  const files: ScaffoldSource[] = [];
   let totalBytes = 0;
   for (const document of added) {
     const path = checkedPath(document.path);
@@ -259,20 +312,28 @@ export function createSpecificationScaffold(
           type: document.type,
         });
       }
-      register(path, document.type);
+      registry.register(path, document.type);
     }
     files.push({ path, content: document.content });
   }
   if (totalBytes > ADDED_DOCUMENTS_MAX_TOTAL_BYTES) {
     throw limit('added-total-bytes', ADDED_DOCUMENTS_MAX_TOTAL_BYTES, totalBytes);
   }
+  return files;
+}
 
-  // The manifest is one more file: the journal lists them all and must stay under its cap.
+/** The manifest is one more file: the journal lists them all and must stay under its cap. */
+function admitScaffoldFileCount(files: readonly ScaffoldSource[]): void {
   if (files.length + 1 > CREATE_SCAFFOLD_FILES_MAX) {
     throw limit('scaffold-files', CREATE_SCAFFOLD_FILES_MAX, files.length + 1);
   }
+}
 
-  const requestedFolders = input.folders ?? [];
+/** Explicit folders: bounded, valid, unique ignoring case and not in conflict with any file. */
+function admitFolders(
+  files: readonly ScaffoldSource[],
+  requestedFolders: readonly string[],
+): string[] {
   if (requestedFolders.length > ADDED_DOCUMENTS_MAX_FOLDERS) {
     throw limit('added-folders', ADDED_DOCUMENTS_MAX_FOLDERS, requestedFolders.length);
   }
@@ -285,11 +346,24 @@ export function createSpecificationScaffold(
     files.map((file) => file.path),
     folders,
   );
+  return folders;
+}
 
-  const manifest: SpecificationManifest = {
+function buildManifest(
+  input: SpecificationScaffoldInput,
+  parts: {
+    readonly title: string;
+    readonly slug: string;
+    readonly archetype: Archetype;
+    readonly documents: readonly ManifestDocument[];
+    readonly folders: readonly string[];
+  },
+): SpecificationManifest {
+  const { archetype } = parts;
+  return {
     specId: input.specId,
-    slug,
-    title,
+    slug: parts.slug,
+    title: parts.title,
     archetype: {
       id: archetype.id,
       version: archetype.version,
@@ -298,23 +372,13 @@ export function createSpecificationScaffold(
         minCount: item.minCount,
       })),
     },
-    documents,
-    folders,
+    documents: [...parts.documents],
+    folders: [...parts.folders],
     status: 'draft',
     location: 'active',
     priority: 10,
     created: input.created,
     tasks: [],
-  };
-
-  return {
-    specId: input.specId,
-    slug,
-    files: [
-      fingerprint(base + 'specification.yaml', serializeSpecificationManifest(manifest)),
-      ...files.map((file) => fingerprint(base + file.path, file.content)),
-    ],
-    documentIds: documents.map((item) => item.id),
   };
 }
 

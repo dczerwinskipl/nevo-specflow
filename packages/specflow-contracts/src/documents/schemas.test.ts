@@ -1,9 +1,14 @@
 import { Value } from 'typebox/value';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
   ACTION_REASONS,
   ActionSchema,
+  type ActionReason,
+  type Classification,
+  type ContentKind,
+  type DocumentIssueCode,
+  type TemplateInclude,
   CatalogueIdSchema,
   ClassificationSchema,
   ContentKindSchema,
@@ -440,5 +445,17 @@ describe('documents contract schemas', () => {
         }),
       ).toBe(false);
     }
+  });
+});
+
+describe('closed vocabularies are usable as types', () => {
+  it('exposes the literal unions, not never', () => {
+    expectTypeOf<ContentKind>().toEqualTypeOf<'text' | 'image' | 'binary'>();
+    expectTypeOf<Classification>().toEqualTypeOf<'registered' | 'unclassified'>();
+    expectTypeOf<TemplateInclude>().toEqualTypeOf<'always' | 'optional'>();
+    expectTypeOf<'protected'>().toExtend<ActionReason>();
+    expectTypeOf<'dangling'>().toExtend<DocumentIssueCode>();
+    expectTypeOf<ActionReason>().not.toBeNever();
+    expectTypeOf<DocumentIssueCode>().not.toBeNever();
   });
 });

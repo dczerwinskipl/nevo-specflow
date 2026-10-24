@@ -7,7 +7,7 @@ export const TEMPLATE_INCLUDES = ['always', 'optional'] as const;
 export const TemplateIncludeSchema = Type.Union(
   TEMPLATE_INCLUDES.map((value) => Type.Literal(value)),
 );
-export type TemplateInclude = Static<typeof TemplateIncludeSchema>;
+export type TemplateInclude = (typeof TEMPLATE_INCLUDES)[number];
 
 /** All text mandatory except `defaultFilename`. */
 export const DocumentTypeInfoSchema = Type.Object(

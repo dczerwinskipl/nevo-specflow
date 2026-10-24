@@ -28,11 +28,11 @@ export const RegisteredDocumentIdSchema = Type.String({ pattern: DOCUMENT_ID_PAT
 
 export const CONTENT_KINDS = ['text', 'image', 'binary'] as const;
 export const ContentKindSchema = Type.Union(CONTENT_KINDS.map((kind) => Type.Literal(kind)));
-export type ContentKind = Static<typeof ContentKindSchema>;
+export type ContentKind = (typeof CONTENT_KINDS)[number];
 
 export const CLASSIFICATIONS = ['registered', 'unclassified'] as const;
 export const ClassificationSchema = Type.Union(CLASSIFICATIONS.map((value) => Type.Literal(value)));
-export type Classification = Static<typeof ClassificationSchema>;
+export type Classification = (typeof CLASSIFICATIONS)[number];
 
 /** Reasons an action is unavailable (kebab-case). Advisory in reads, authoritative in write errors. */
 export const ACTION_REASONS = [
@@ -50,7 +50,7 @@ export const ACTION_REASONS = [
   'not-implemented',
 ] as const;
 export const ActionReasonSchema = Type.Union(ACTION_REASONS.map((reason) => Type.Literal(reason)));
-export type ActionReason = Static<typeof ActionReasonSchema>;
+export type ActionReason = (typeof ACTION_REASONS)[number];
 
 export const ActionSchema = Type.Object(
   { available: Type.Boolean(), reason: Type.Optional(ActionReasonSchema) },

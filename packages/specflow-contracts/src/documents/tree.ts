@@ -20,7 +20,7 @@ export const DOCUMENT_ISSUE_CODES = [
 export const DocumentIssueCodeSchema = Type.Union(
   DOCUMENT_ISSUE_CODES.map((code) => Type.Literal(code)),
 );
-export type DocumentIssueCode = Static<typeof DocumentIssueCodeSchema>;
+export type DocumentIssueCode = (typeof DOCUMENT_ISSUE_CODES)[number];
 
 export const DocumentTreeFolderSchema = Type.Object(
   {

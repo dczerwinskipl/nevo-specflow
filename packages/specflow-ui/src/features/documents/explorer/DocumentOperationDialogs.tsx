@@ -33,9 +33,11 @@ export function DocumentOperationDialogs({
   unknown,
   error,
   resumable = false,
+  dirtyIds = [],
   onTargetChange,
   onConfirm,
   onClose,
+  onCloseAutoFocus,
 }: {
   tree: Tree;
   request: DocumentDialogRequest | undefined;
@@ -46,18 +48,27 @@ export function DocumentOperationDialogs({
   error: string;
   /** The failure can be resumed with the same operation: Confirm becomes Resume. */
   resumable?: boolean;
+  /** Documents with unsaved changes: removing one's registration closes its tab and loses them. */
+  dirtyIds?: readonly string[];
   onTargetChange: (folder: string) => void;
   onConfirm: () => void;
   onClose: () => void;
+  /** Where focus goes when a dialog closes (the owner may prevent the default and decide). */
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const { t } = useTranslation();
+  // Removing the registration closes the missing tab: its unsaved changes go with it, said openly.
+  const losesDraft =
+    request?.action === 'remove-registration' &&
+    request.id !== undefined &&
+    dirtyIds.includes(request.id);
   const closeUnlessLocked = (open: boolean) => {
     if (!open && !busy && !unknown) onClose();
   };
   return (
     <>
       <Dialog open={request?.action === 'move'} onOpenChange={closeUnlessLocked}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
           <DialogHeader>
             <DialogTitle>
               {request?.kind === 'folder'
@@ -106,7 +117,7 @@ export function DocumentOperationDialogs({
         </DialogContent>
       </Dialog>
       <AlertDialog open={request?.action === 'delete'} onOpenChange={closeUnlessLocked}>
-        <AlertDialogContent>
+        <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {request?.kind === 'folder'
@@ -141,14 +152,23 @@ export function DocumentOperationDialogs({
         open={request?.action === 'remove-registration'}
         onOpenChange={closeUnlessLocked}
       >
-        <AlertDialogContent>
+        <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
           <AlertDialogHeader>
             <AlertDialogTitle className="break-words">
               {t('documents.dangling.confirmTitle', {
                 name: request?.path.split('/').at(-1) ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription>{t('documents.dangling.confirmBody')}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t('documents.dangling.confirmBody')}
+              {losesDraft && (
+                <span className="mt-2 block text-content-primary">
+                  {t('documents.dangling.confirmLoss', {
+                    name: request?.path.split('/').at(-1) ?? '',
+                  })}
+                </span>
+              )}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           {error && <Alert role="alert" tone="attention" title={error} />}
           <AlertDialogFooter>
@@ -160,7 +180,9 @@ export function DocumentOperationDialogs({
             <Button variant="destructive" disabled={busy} onClick={onConfirm}>
               {resumable
                 ? t('documents.tree.error.resume')
-                : t('documents.tree.removeRegistration')}
+                : losesDraft
+                  ? t('documents.dangling.confirmDiscard')
+                  : t('documents.tree.removeRegistration')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

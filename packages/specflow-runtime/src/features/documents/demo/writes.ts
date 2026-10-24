@@ -92,6 +92,16 @@ function takenPaths(files: Iterable<string>, folders: Iterable<string>) {
   return taken;
 }
 
+/**
+ * Paths the registry lists whose file is missing (dangling). They stay taken: a new or moved file
+ * there would give the path a second registration.
+ */
+function danglingPaths(documents: Pick<DemoSpecDocuments, 'files' | 'registry'>): string[] {
+  return documents.registry
+    .filter((entry) => !documents.files.has(entry.path))
+    .map((entry) => entry.path);
+}
+
 /** A file path conflicts with a taken path, or with a file used as one of its folders. */
 function assertFree(path: string, taken: ReadonlySet<string>, files: ReadonlySet<string>) {
   if (taken.has(foldKey(path)) || ancestors(path).some((folder) => files.has(foldKey(folder))))
@@ -173,7 +183,10 @@ export function planCreate(
   )
     throw refuse('DOCUMENT_OPERATION_INVALID', 'The batch is empty or above the limits.');
   const fileKeys = new Set([...documents.files.keys()].map(foldKey));
-  const taken = takenPaths(documents.files.keys(), allFolders(documents));
+  const taken = takenPaths(
+    [...documents.files.keys(), ...danglingPaths(documents)],
+    allFolders(documents),
+  );
   const files = new Map(documents.files);
   const registry = [...documents.registry];
   const nextFolders = [...documents.folders];
@@ -383,6 +396,10 @@ function relocate(
   const folderKeys = new Set(allFolders({ files, folders }).map(foldKey));
   if (keys.some((key) => folderKeys.has(key)))
     throw refuse('DOCUMENT_PATH_CONFLICT', 'The new path conflicts with a folder.');
+  // A dangling registration keeps its path: no file may land on it (it would be registered twice).
+  const dangling = new Set(danglingPaths(documents).map((path) => foldKey(remap(path))));
+  if (keys.some((key) => dangling.has(key)))
+    throw refuse('DOCUMENT_PATH_CONFLICT', 'The new path is registered to a missing file.');
   for (const folder of movedFolders) {
     const next = remap(folder);
     const others = allFolders(documents).filter((candidate) => !within(candidate, folder));

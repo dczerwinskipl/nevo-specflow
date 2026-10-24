@@ -114,7 +114,8 @@ export function DocumentNodeMenu({
         <PopoverContent
           align="end"
           aria-label={t('documents.tree.rowActions', { name })}
-          className="max-w-72 text-body-sm text-content-muted"
+          // Narrower than the tree pane, so it stays inside it; padded like a menu note.
+          className="w-60 px-3 py-2 text-body-sm text-content-muted"
         >
           {reasons[0]}
         </PopoverContent>

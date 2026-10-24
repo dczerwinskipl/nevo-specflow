@@ -29,6 +29,8 @@ export interface DocumentKindInput {
   path: string;
   kind?: ContentKind;
   content?: string;
+  /** False for text that can be viewed but not changed here (shown as read-only source). */
+  editable?: boolean;
 }
 
 export interface DocumentContentKind {
@@ -65,7 +67,9 @@ function saveActions(view: DocumentView, { session, t }: DocumentActionContext) 
       group: 'actions',
       // The shortcut is a hint only where the key works: the source editor binds it.
       shortcut: view === 'edit' ? 'Ctrl+S' : undefined,
-      disabled: session.saving || session.saveBlocked,
+      // Unavailable while the commit runs or a refusal blocks it, without dropping the keyboard
+      // focus of whoever pressed it (`aria-disabled`, presses ignored).
+      busy: session.saving || session.saveBlocked,
       onPress: () => void session.save({ restoreFocus: true }),
     },
     {
@@ -86,7 +90,7 @@ function saveActions(view: DocumentView, { session, t }: DocumentActionContext) 
  */
 const markdown: DocumentContentKind = {
   id: 'markdown',
-  matches: (document) => hasTextDraft(document),
+  matches: (document) => hasTextDraft(document) && kindIdOf(document.path) === 'markdown',
   text: true,
   views: ['preview', 'edit'],
   readOnlyViews: ['preview'],
@@ -115,15 +119,23 @@ const markdown: DocumentContentKind = {
   },
 };
 
-/** Plain text: one editable view (read-only text when it cannot be changed), no preview. */
+/**
+ * Plain text (any text that is not markdown) and any text that cannot be edited here: one source
+ * view, read-only when it cannot be changed (whitespace kept, never rendered as prose). A file that
+ * cannot be edited here offers Download, as its read-only line says.
+ */
 const text: DocumentContentKind = {
   id: 'text',
-  matches: (document) => hasTextDraft(document) && kindIdOf(document.path) === 'text',
+  matches: (document) =>
+    hasTextDraft(document) && (kindIdOf(document.path) === 'text' || document.editable === false),
   text: true,
   views: ['edit'],
   readOnlyViews: ['source'],
   defaultView: 'edit',
-  actions: (view, context) => saveActions(view, context),
+  actions: (view, context) =>
+    context.session.document.editable
+      ? saveActions(view, context)
+      : [downloadAction(context, false)],
 };
 
 function downloadAction(
@@ -174,12 +186,12 @@ const file: DocumentContentKind = {
   actions: (_view, context) => [downloadAction(context, false)],
 };
 
-/** Most specific first; markdown is the fallback of every text document. */
+/** Most specific first; plain text is the fallback of every text document. */
 export const documentContentKinds: readonly DocumentContentKind[] = [image, file, text, markdown];
 
 export function documentKindOf(document: DocumentKindInput | undefined): DocumentContentKind {
   const input = document ?? { path: '', content: '' };
-  return documentContentKinds.find((kind) => kind.matches(input)) ?? markdown;
+  return documentContentKinds.find((kind) => kind.matches(input)) ?? text;
 }
 
 /** The view on screen: the draft's mode, limited to the views the kind has (read-only ones when read-only). */

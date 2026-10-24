@@ -47,6 +47,8 @@ interface Props {
   onOperate: (input: DocumentOperation) => Promise<DocumentOperationResult | void>;
   /** Reads the tree again after a refusal that means it is stale or read-only now. */
   onRefresh?: () => Promise<unknown>;
+  /** Documents with unsaved changes (Remove registration says the changes will be lost). */
+  dirtyIds?: readonly string[];
   beforeAction?: (options?: BeforeActionOptions) => Promise<Tree | false>;
   onBusyChange?: (busy: boolean) => void;
   /** Root-level creation lives in the workspace header menu; it drives the tree through this handle. */
@@ -128,6 +130,7 @@ export function DocumentsExplorer({
   onAdd,
   onOperate,
   onRefresh,
+  dirtyIds,
   beforeAction,
   onBusyChange,
   controllerRef,
@@ -142,6 +145,9 @@ export function DocumentsExplorer({
     [typeRequest, setTypeRequest] = useState<TypeRequest>(),
     [target, setTarget] = useState('');
   const importer = useRef<DocumentImporterHandle>(null);
+  // Focus return of the dialogs (see `rememberOpener`).
+  const opener = useRef<HTMLElement | null>(null);
+  const closedByResult = useRef(false);
 
   const operations = useDocumentOperations({
     tree,
@@ -169,8 +175,29 @@ export function DocumentsExplorer({
     path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
   // These actions never change an open document's text: its draft stays, nobody is asked.
   const keepDrafts = { keepDrafts: true };
+  /**
+   * Remembers where focus goes back when a dialog closes without a result: the control that opened
+   * it (Add, a row's menu trigger, the tab's button). A dialog opened from the header menu returns
+   * to the tree instead. Written in event handlers only.
+   */
+  const rememberOpener = () => {
+    const active = globalThis.document.activeElement;
+    opener.current =
+      active instanceof HTMLElement &&
+      active !== globalThis.document.body &&
+      !active.closest('[data-workspace-header]')
+        ? active
+        : null;
+  };
+  const restoreOpener = () =>
+    requestAnimationFrame(() => {
+      if (opener.current?.isConnected) opener.current.focus();
+      else focus.request('folder:');
+      opener.current = null;
+    });
   const openTypeDialog = (next: TypeRequest) =>
     void operations.actions.guard(() => {
+      rememberOpener();
       operations.actions.clearError();
       setTypeRequest({ ...next, key: newKey() });
     }, keepDrafts);
@@ -200,7 +227,14 @@ export function DocumentsExplorer({
     classify: (id) =>
       void operations.actions.guard((snapshot) => {
         const document = snapshot.documents.find((doc) => doc.id === id);
-        if (!document) return;
+        // Offered only where the Runtime can classify (never in a Runtime without the write).
+        if (
+          !document ||
+          !document.actions.classify.available ||
+          !snapshot.capabilities.classify.available
+        )
+          return;
+        rememberOpener();
         operations.actions.clearError();
         setTypeRequest({
           kind: 'classify',
@@ -213,7 +247,8 @@ export function DocumentsExplorer({
     removeRegistration: (id) =>
       void operations.actions.guard((snapshot) => {
         const entry = snapshot.dangling.find((candidate) => candidate.id === id);
-        if (!entry) return;
+        if (!entry?.actions.delete.available) return;
+        rememberOpener();
         operations.actions.clearError();
         // A dangling entry has no revision of its own: the tree revision guards it.
         setRequest({
@@ -234,6 +269,8 @@ export function DocumentsExplorer({
   const closeTypeDialog = () => {
     operations.actions.clearError();
     setTypeRequest(undefined);
+    // The dialog unmounts: its own focus restoration cannot run, so the opener gets focus here.
+    restoreOpener();
   };
 
   useImperativeHandle(controllerRef, () => ({
@@ -338,6 +375,7 @@ export function DocumentsExplorer({
           unknown={unknown}
           error={error}
           resumable={resumable}
+          dirtyIds={dirtyIds}
           onTargetChange={setTarget}
           onConfirm={() => {
             if (!request) return;
@@ -346,13 +384,25 @@ export function DocumentsExplorer({
                 ? rowAfter(request.path, request.id)
                 : undefined;
             void operations.actions.confirmDialog(request, target, () => {
+              // The result decides where focus goes (the next row), not the opener.
+              if (after) {
+                opener.current = null;
+                closedByResult.current = true;
+                focus.request(after);
+              }
               setRequest(undefined);
-              if (after) focus.request(after);
             });
           }}
           onClose={() => {
             operations.actions.clearError();
             setRequest(undefined);
+          }}
+          onCloseAutoFocus={(event) => {
+            // Only the dialogs that remembered their opener decide focus; the others keep Radix's.
+            if (!opener.current && !closedByResult.current) return;
+            event.preventDefault();
+            if (!closedByResult.current) restoreOpener();
+            closedByResult.current = false;
           }}
         />
         {typeRequest?.kind === 'new' && (
@@ -367,7 +417,11 @@ export function DocumentsExplorer({
             error={error ? { message: error, resume: resumable } : undefined}
             onClose={closeTypeDialog}
             onSubmit={(input) =>
-              operations.actions.createDocument(input, () => setTypeRequest(undefined))
+              operations.actions.createDocument(input, () => {
+                // Focus moves into the new document's tab (the tree operations do that).
+                opener.current = null;
+                setTypeRequest(undefined);
+              })
             }
           />
         )}
@@ -383,6 +437,7 @@ export function DocumentsExplorer({
             onClose={closeTypeDialog}
             onSubmit={(type, title) =>
               operations.actions.classify(typeRequest, type, title, (id) => {
+                opener.current = null;
                 setTypeRequest(undefined);
                 // Focus stays on the row, now under its new id.
                 focus.request('doc:' + (id ?? typeRequest.id));

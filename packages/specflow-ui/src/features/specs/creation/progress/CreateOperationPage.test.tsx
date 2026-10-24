@@ -476,6 +476,36 @@ describe('CreateOperationPage', () => {
     });
   });
 
+  it.each(['CATALOGUE_STALE', 'ARCHETYPE_UNKNOWN'])(
+    '%s: nothing was created; Refresh archetypes goes back to the form with the choice kept',
+    async (code) => {
+      store();
+      storage().saveDraft({
+        operationId,
+        title: 'Payment limits',
+        goal: '',
+        choice: initialWorkspaceChoice,
+        archetype: { archetypeId: 'feature', ticks: { feature: ['ux'] } },
+      });
+      const post = vi
+        .fn()
+        .mockRejectedValue(httpError(code === 'CATALOGUE_STALE' ? 409 : 422, code));
+      const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
+      const { onBackToForm } = renderPage({ post, get });
+      expect(await heading('Specification was not created')).toBeTruthy();
+      expect(
+        screen.getByText('The archetypes changed while you were filling the form'),
+      ).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh archetypes' }));
+      expect(onBackToForm).toHaveBeenCalledWith(operationId);
+      // The form restores the archetype and learns why (it resets the ticks to the new defaults).
+      expect(storage().loadDraft(operationId)).toMatchObject({
+        archetype: { archetypeId: 'feature' },
+        failure: { kind: 'catalogue-stale', code },
+      });
+    },
+  );
+
   it('an unknown outcome offers only a check of the same operation, never a second create', async () => {
     store();
     const post = vi.fn().mockRejectedValue(new HttpClientError('network', { kind: 'network' }));

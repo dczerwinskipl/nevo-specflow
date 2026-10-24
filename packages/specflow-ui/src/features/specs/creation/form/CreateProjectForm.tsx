@@ -9,6 +9,7 @@ import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import type { RequestAttempt } from '../../../../shared/operations/retainedRequest';
 import { projectCreationKeys } from '../api/api.project';
+import { documentCatalogueKeys } from '../../../documents/read-model';
 import { CreateFooter } from './CreateFooter';
 import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
@@ -86,7 +87,8 @@ export function CreateProjectForm({
   });
   // The catalogue is read on every visit: Create checks its revision.
   const archetypes = useQuery({
-    queryKey: projectCreationKeys.archetypes,
+    // One cache entry with the documents feature (same route): a refresh here refreshes both.
+    queryKey: documentCatalogueKeys.catalogue,
     queryFn: ({ signal }) => projectCreationApi.archetypes(signal),
     staleTime: 0,
     refetchOnMount: 'always',

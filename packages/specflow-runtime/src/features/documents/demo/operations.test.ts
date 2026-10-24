@@ -339,6 +339,76 @@ describe('demo document writes (D4 shapes)', () => {
     expect((await tree('review')).dangling).toEqual([]);
   });
 
+  it('refuses creating, renaming or moving a file onto the path of a dangling registration', async () => {
+    const { env, find, tree } = setup();
+    // `ux.md` is registered but missing: creating it again (any letter case) is a conflict.
+    for (const [index, path] of ['ux.md', 'UX.md'].entries())
+      expect(
+        await code(
+          env.documents.create(
+            'alice',
+            'review',
+            { operationId: op(10 + index), documents: [{ path, content: '' }] },
+            find,
+          ),
+        ),
+      ).toEqual(['DOCUMENT_PATH_CONFLICT', undefined]);
+    // Renaming an unclassified file onto it, or a registered one, is refused the same way.
+    await env.documents.create(
+      'alice',
+      'review',
+      { operationId: op(15), documents: [{ path: 'scratch.md', content: '' }] },
+      find,
+    );
+    const current = await tree('review');
+    const scratch = node(current, 'scratch.md');
+    const behaviour = node(current, 'behaviour.md');
+    for (const [index, document] of [scratch, behaviour].entries())
+      expect(
+        await code(
+          env.documents.operate(
+            'alice',
+            'review',
+            {
+              operationId: op(20 + index),
+              action: 'rename',
+              kind: 'document',
+              documentId: document.id,
+              name: document === scratch ? 'Ux.md' : 'ux.md',
+              expectedRevision: document.revision,
+            },
+            find,
+          ),
+        ),
+      ).toEqual(['DOCUMENT_PATH_CONFLICT', undefined]);
+    // Moving a file named like the dangling entry into its folder is refused too.
+    await env.documents.create(
+      'alice',
+      'review',
+      { operationId: op(30), documents: [{ path: 'drafts/ux.md', content: '' }] },
+      find,
+    );
+    const moving = node(await tree('review'), 'drafts/ux.md');
+    expect(
+      await code(
+        env.documents.operate(
+          'alice',
+          'review',
+          {
+            operationId: op(31),
+            action: 'move',
+            kind: 'document',
+            documentId: moving.id,
+            targetFolder: '',
+            expectedRevision: moving.revision,
+          },
+          find,
+        ),
+      ),
+    ).toEqual(['DOCUMENT_PATH_CONFLICT', undefined]);
+    expect((await tree('review')).dangling.map((entry) => entry.path)).toEqual(['ux.md']);
+  });
+
   it('creates documents from a template and from content, with folders, and refuses conflicts', async () => {
     const { env, find, source, tree } = setup();
     const created = await env.documents.create(

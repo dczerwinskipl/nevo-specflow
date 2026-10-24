@@ -66,3 +66,35 @@ export const DisabledWithReasonContract: Story = {
       throw new Error('The option stays disabled and described by its reason.');
   },
 };
+
+/**
+ * Arrow keys move focus AND select, even with a short key press (key up before focus arrives),
+ * across every option of a controlled group.
+ */
+export const ArrowKeysSelectEveryOption: Story = {
+  render: () => (
+    <RadioGroup defaultValue="minimal" className="max-w-md" aria-label="Archetype">
+      <RadioGroupOption value="minimal" label="Minimal" description="Small work." />
+      <RadioGroupOption value="feature" label="Feature" description="A product change." />
+      <RadioGroupOption value="architecture" label="Architecture" description="A module change." />
+      <RadioGroupOption value="cross" label="Cross-module" description="Several modules." />
+    </RadioGroup>
+  ),
+  tags: ['contract', '!autodocs'],
+  play: async ({ canvas, userEvent }) => {
+    const names = ['Minimal', 'Feature', 'Architecture', 'Cross-module'];
+    canvas.getByRole('radio', { name: 'Minimal' }).focus();
+    for (const step of [1, 2, 3, 0, 3, 2, 1, 0]) {
+      const current = names.findIndex(
+        (name) => canvas.getByRole('radio', { name }) === document.activeElement,
+      );
+      const forward = step === (current + 1) % names.length;
+      await userEvent.keyboard(forward ? '{ArrowDown}' : '{ArrowUp}');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const target = canvas.getByRole('radio', { name: names[step] });
+      if (document.activeElement !== target) throw new Error(`Focus moves to ${names[step]}.`);
+      if (target.getAttribute('aria-checked') !== 'true')
+        throw new Error(`${names[step]} is selected by the arrow key.`);
+    }
+  },
+};

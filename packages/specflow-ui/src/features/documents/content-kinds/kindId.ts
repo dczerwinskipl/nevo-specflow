@@ -7,7 +7,7 @@ export type TextKindId = 'markdown' | 'text';
  * session) so the session itself can ask without importing them.
  */
 export function kindIdOf(filename: string | undefined): TextKindId {
-  return (filename ?? '').toLowerCase().endsWith('.txt') ? 'text' : 'markdown';
+  return /\.(md|markdown)$/i.test(filename ?? '') ? 'markdown' : 'text';
 }
 
 /**

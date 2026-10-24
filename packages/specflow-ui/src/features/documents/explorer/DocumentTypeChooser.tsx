@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Collapsible, RadioGroup, RadioGroupOption, Typography } from '@nevo/ui';
 import type { TypeChoice, TypeChoices } from '../catalogue/documentTypePolicy';
@@ -88,10 +89,25 @@ export function DocumentTypeChooser({
  */
 export function DocumentTypeGuidance({ choice }: { choice: TypeChoice | undefined }) {
   const { t } = useTranslation();
+  const root = useRef<HTMLDivElement>(null);
   if (!choice) return null;
   const templateInstructions = choice.template?.instructions?.trim();
   return (
-    <Collapsible className="-ml-control-padding-compact">
+    <Collapsible
+      ref={root}
+      className="-ml-control-padding-compact"
+      // Opened at the bottom of a scrolling dialog body: bring the instructions into view.
+      onExpandedChange={(expanded) => {
+        // The panel grows while it opens: keep the disclosure's end in view until it has grown.
+        if (!expanded) return;
+        const until = performance.now() + 600;
+        const follow = () => {
+          root.current?.scrollIntoView({ block: 'nearest' });
+          if (performance.now() < until) requestAnimationFrame(follow);
+        };
+        requestAnimationFrame(follow);
+      }}
+    >
       <Collapsible.Trigger className="px-0">
         {t('documents.newDocument.guidance', { type: choice.type.title })}
       </Collapsible.Trigger>

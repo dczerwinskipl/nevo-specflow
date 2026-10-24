@@ -32,27 +32,29 @@ owned by [the architecture document](../../architecture/runtime/specification-do
 
 ## Principle: one contract for demo and real
 
-The demo (`/api/demo/...`) and the real backend (`/api/...`) use the **same schemas, re-exported under demo
-names** (the technique already used for `DemoCreateOptionsSchema`). Swapping demo for real changes the path
-prefix and the data source, never a shape. Demo-only data (providers, simulated location, `DEMO_*` codes) stays in
-the demo-only part.
+The demo and the real backend use the **same schemas, re-exported under demo names** (the technique already
+used for `DemoCreateOptionsSchema`). The **reads** (document tree, document content, raw) are served on the real
+routes in both Runtimes: the demo Runtime supplies its data through the same document read-source port. Only the
+D4 **writes**, which the real Runtime does not serve yet, and the demo creation catalogue live under `/api/demo`
+as an emulation with the real shapes. Swapping demo for real changes the data source (and, for the writes, the path
+prefix), never a shape. Demo-only data (providers, simulated location, `DEMO_*` codes) stays in the demo-only part.
 
 ## Endpoints
 
 Authorization uses the existing `SpecCapabilities`: `View` for reads, `Manage` for every state change, and the
 `create-options` capability for the catalogue.
 
-| Slice | Method | Real path                                      | Demo path (prefix `/api/demo`)            | Capability          | Purpose                                                        |
-| ----- | ------ | ---------------------------------------------- | ----------------------------------------- | ------------------- | -------------------------------------------------------------- |
-| D2    | GET    | `/api/specs/archetypes`                        | in `GET /api/demo/specification-creation` | as `create-options` | `ArchetypeCatalogue`                                           |
-| D2    | POST   | `/api/specs`                                   | `/api/demo/specifications`                | Create              | Create (extended request, below)                               |
-| D3    | GET    | `/api/specs/:specId/document-tree`             | same suffix                               | View                | `DocumentTree`                                                 |
-| D3    | GET    | `/api/specs/:specId/documents/:documentId`     | same suffix (demo today: fixtures)        | View                | `DocumentContent` (JSON, text kinds)                           |
-| D3    | GET    | `/api/specs/:specId/documents/:documentId/raw` | new                                       | View                | Raw bytes with safe headers                                    |
-| D4    | PUT    | `/api/specs/:specId/documents/:documentId`     | same suffix                               | Manage              | Save text                                                      |
-| D4    | POST   | `/api/specs/:specId/documents`                 | same suffix                               | Manage              | Create documents/folders from template or content (one commit) |
-| D4    | POST   | `/api/specs/:specId/folders`                   | same suffix                               | Manage              | Create folder                                                  |
-| D4    | POST   | `/api/specs/:specId/document-operations`       | same suffix                               | Manage              | rename / move / delete / classify                              |
+| Slice | Method | Real path                                      | Demo path                                       | Capability          | Purpose                                                        |
+| ----- | ------ | ---------------------------------------------- | ----------------------------------------------- | ------------------- | -------------------------------------------------------------- |
+| D2    | GET    | `/api/specs/archetypes`                        | in `GET /api/demo/specification-creation`       | as `create-options` | `ArchetypeCatalogue`                                           |
+| D2    | POST   | `/api/specs`                                   | `/api/demo/specifications`                      | Create              | Create (extended request, below)                               |
+| D3    | GET    | `/api/specs/:specId/document-tree`             | the real path (demo read source)                | View                | `DocumentTree`                                                 |
+| D3    | GET    | `/api/specs/:specId/documents/:documentId`     | the real path (demo read source)                | View                | `DocumentContent` (JSON, text kinds)                           |
+| D3    | GET    | `/api/specs/:specId/documents/:documentId/raw` | the real path (demo read source)                | View                | Raw bytes with safe headers                                    |
+| D4    | PUT    | `/api/specs/:specId/documents/:documentId`     | `/api/demo/specs/:specId/documents/:documentId` | Manage              | Save text                                                      |
+| D4    | POST   | `/api/specs/:specId/documents`                 | `/api/demo/specs/:specId/documents`             | Manage              | Create documents/folders from template or content (one commit) |
+| D4    | POST   | `/api/specs/:specId/folders`                   | `/api/demo/specs/:specId/folders`               | Manage              | Create folder                                                  |
+| D4    | POST   | `/api/specs/:specId/document-operations`       | `/api/demo/specs/:specId/document-operations`   | Manage              | rename / move / delete / classify                              |
 
 **Implementation status.** The D3 rows (document tree, document content, raw) are implemented in the Runtime and
 read through the Engine; D2 and D3 are served in project mode by the Engine as the source of record. The D4 rows

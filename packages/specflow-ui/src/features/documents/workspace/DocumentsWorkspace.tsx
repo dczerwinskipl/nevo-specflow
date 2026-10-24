@@ -28,7 +28,11 @@ import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { DocumentPane } from './DocumentPane';
 import { DocumentsEmptyState } from './DocumentsEmptyState';
-import { DocumentsTreeActionsContext, type DocumentsTreeActions } from './DocumentsTreeActions';
+import {
+  DocumentsTreeActionsContext,
+  assignTypeFor,
+  type DocumentsTreeActions,
+} from './DocumentsTreeActions';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
@@ -75,7 +79,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   }));
   const documentHeader = documentHeaderModel(editor, t, {
     onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
-    onAssignType: treeActions.assignType,
+    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
   });
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
   const commitRef = useRef<(() => void) | null>(null);

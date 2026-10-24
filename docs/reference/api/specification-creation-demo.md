@@ -218,8 +218,9 @@ Demo ingest uses scoped Fastify body limits: **16 MiB** for specification creati
 
 ## Owner v4 authoring extension (bounded demo)
 
-The demo catalogue exposes `defaultArchetypeId` and no `workflow` (the real backend omits it too). The v4
-creation UI sends an empty optional selection; suggestions never materialize by merely viewing them.
+The demo catalogue exposes `defaultArchetypeId` and no `workflow` (the real backend omits it too). The creation
+UI sends the optional templates ticked in its Archetype section as `optionalDocumentIds`: the preselected ones
+start ticked, and the user may untick them or tick others before Create.
 Provider fixtures expose `connection: unknown`, a demonstration `profile`, and `quota.state: unknown`;
 no real account, subscription, usage value, unit or measurement window is fabricated.
 

@@ -60,7 +60,6 @@ export const createOperationEventsUrl = (operationId: string) =>
 
 export const projectCreationKeys = {
   createOptions: ['specs', 'create', 'options'] as const,
-  archetypes: ['specs', 'create', 'archetypes'] as const,
 };
 
 const isObject = (data: unknown): data is Record<string, unknown> =>

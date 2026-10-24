@@ -1263,7 +1263,9 @@
       "body": "Specyfikacja wymienia {{name}} jako dokument typu {{type}}, ale pliku nie ma w folderze. Mógł zostać przeniesiony lub usunięty poza SpecFlow.",
       "restore": "Aby go zachować, przywróć plik (na przykład w Git) i odśwież.",
       "confirmTitle": "Usunąć rejestrację {{name}}?",
-      "confirmBody": "Specyfikacja przestanie go wymieniać. Żaden plik nie zostanie usunięty."
+      "confirmBody": "Specyfikacja przestanie go wymieniać. Żaden plik nie zostanie usunięty.",
+      "confirmLoss": "Niezapisane zmiany w {{name}} zostaną utracone.",
+      "confirmDiscard": "Usuń i odrzuć zmiany"
     },
     "readOnly": {
       "line": "Tylko do odczytu: {{reason}}"
@@ -1360,7 +1362,8 @@
       "writer": "Spec Writer",
       "instructionsBody": "Instrukcje projektu i roli są przekazywane przez SpecFlow niezależnie od wiadomości użytkownika. Ten placeholder nie pokazuje pełnego promptu systemowego.",
       "loadingContext": "Wczytywanie kontekstu…",
-      "contextUnavailable": "Kontekst jest niedostępny."
+      "contextUnavailable": "Kontekst jest niedostępny.",
+      "cannotShow": "Tego pliku nie można tu wyświetlić. Otwórz go w Dokumentach."
     }
   },
   "apiErrors": {

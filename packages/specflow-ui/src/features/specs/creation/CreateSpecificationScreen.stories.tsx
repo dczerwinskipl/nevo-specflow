@@ -540,6 +540,20 @@ export const ArchetypeChoiceAndDocuments: Story = {
     await openManualForm(canvas, userEvent);
     const group = canvas.getByRole('radiogroup', { name: 'Archetyp' });
     await expect(within(group).getByRole('radio', { name: /Feature/ })).toBeChecked();
+    // Arrow keys select each archetype they move to (all transitions, both directions).
+    within(group)
+      .getByRole('radio', { name: /Feature/ })
+      .focus();
+    for (const [key, name] of [
+      ['{ArrowDown}', /Minimal/],
+      ['{ArrowDown}', /Feature/],
+      ['{ArrowUp}', /Minimal/],
+      ['{ArrowUp}', /Feature/],
+    ] as const) {
+      await userEvent.keyboard(key);
+      await waitFor(() => expect(within(group).getByRole('radio', { name })).toBeChecked());
+      await expect(within(group).getByRole('radio', { name })).toHaveFocus();
+    }
     const documents = canvas.getByRole('group', { name: 'Dokumenty do utworzenia' });
     await expect(
       within(documents).getByText('Overview (overview.md) jest tworzony zawsze.'),

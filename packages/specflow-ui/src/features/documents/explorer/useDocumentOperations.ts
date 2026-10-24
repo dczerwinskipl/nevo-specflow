@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { isHttpClientError } from '@nevo/http-client';
 import { translateMessage, useMessage } from '../../../i18n/message';
-import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { reasonFragment } from '../catalogue/documentTypePolicy';
 import { planImport } from './documentImport';
 import { joinDocumentPath, type PlannedDocument } from './documentTreePolicy';
@@ -124,8 +124,12 @@ export interface DocumentOperationsModel {
   actions: DocumentOperationsActions;
 }
 
-/** A failure without an HTTP status never proves the server did not apply the request. */
-const outcomeUnknown = (error: unknown) => !isHttpClientError(error) || error.status === undefined;
+/**
+ * A failure without an HTTP status never proves the server did not apply the request; a classified
+ * refusal before anything was sent (`not-applied`, for example a write the Runtime does not serve)
+ * is definite.
+ */
+const outcomeUnknown = writeOutcomeUnknown;
 
 /**
  * Runs the tree's create / rename / import / move / delete operations through the owner's
@@ -157,14 +161,24 @@ export function useDocumentOperations(
     setUnknown(value);
   };
 
-  /** Reports a failed dialog operation: message, resume offer and the follow-up the code calls for. */
-  const fail = (failure: unknown): TypeOperationOutcome => {
+  /**
+   * The bookkeeping of every failed operation: unknown outcome (locks the tree), resume offer and
+   * the tree refetch the code calls for. Returns whether the outcome is unknown.
+   */
+  const settleFailure = (failure: unknown) => {
     const unknownOutcome = outcomeUnknown(failure);
     setRecovery(unknownOutcome);
     const code = apiErrorCode(failure);
     setResumable(code === 'DOCUMENT_RECOVERY_REQUIRED');
-    setError(unknownOutcome ? t('documents.tree.unconfirmed') : documentMutationError(failure, t));
     if (code && refetchCodes.has(code)) void onRefresh?.();
+    return unknownOutcome;
+  };
+
+  /** Reports a failed dialog operation: message, resume offer and the follow-up the code calls for. */
+  const fail = (failure: unknown): TypeOperationOutcome => {
+    const unknownOutcome = settleFailure(failure);
+    const code = apiErrorCode(failure);
+    setError(unknownOutcome ? t('documents.tree.unconfirmed') : documentMutationError(failure, t));
     return {
       ok: false,
       focusName: code === 'DOCUMENT_PATH_CONFLICT' || code === 'DOCUMENT_PATH_INVALID',
@@ -220,10 +234,10 @@ export function useDocumentOperations(
             : t('documents.tree.fileAdded'),
       );
     } catch (failure) {
-      setRecovery(outcomeUnknown(failure));
+      const unknownOutcome = settleFailure(failure);
       settle({
         ok: false,
-        message: outcomeUnknown(failure)
+        message: unknownOutcome
           ? t('documents.tree.unconfirmedRename')
           : documentMutationError(failure, t),
       });
@@ -442,6 +456,11 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.busy');
     case 'DOCUMENT_RECOVERY_REQUIRED':
       return t('documents.tree.error.recovery');
+    // A write the Runtime does not serve yet (project mode): refused before anything was sent.
+    case 'not-implemented':
+      return t('documents.tree.error.refused', {
+        reason: translateMessage(t, reasonFragment('not-implemented')),
+      });
     case 'BRANCH_PROTECTED':
     case 'COMMIT_BLOCKED':
     case 'GIT_POLICY_INVALID':

@@ -190,7 +190,7 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
               {query.data.content === undefined ? (
                 // An image or a file without text to render: it opens in Documents (above).
                 <p className="text-body-sm text-content-secondary">
-                  {t('documents.binary.cannotShow')}
+                  {t('sessions.demo.cannotShow')}
                 </p>
               ) : query.data.path.toLowerCase().endsWith('.txt') ? (
                 <pre className="whitespace-pre-wrap break-words text-body-sm">

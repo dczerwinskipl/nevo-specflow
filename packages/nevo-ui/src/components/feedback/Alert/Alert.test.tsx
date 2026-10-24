@@ -21,6 +21,19 @@ describe('Alert', () => {
     ).toContain('role="alert"');
   });
 
+  it('puts the actions below the text on a narrow Alert and keeps a gap between them', () => {
+    const markup = renderToStaticMarkup(
+      <Alert title="Not saved" actions={<button type="button">Copy</button>}>
+        Body
+      </Alert>,
+    );
+    expect(markup).toContain('@container/alert');
+    expect(markup).toContain('flex-col gap-3 @lg/alert:flex-row');
+    expect(markup).toMatch(
+      /class="flex shrink-0 flex-wrap items-center gap-2" data-design-slot="actions"/,
+    );
+  });
+
   it('keeps the neutral tone icon-free by default', () => {
     expect(renderToStaticMarkup(<Alert tone="neutral">Notice</Alert>)).not.toContain(
       'data-design-slot="icon"',

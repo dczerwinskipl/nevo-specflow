@@ -6,7 +6,8 @@ import { cn } from '../../../lib';
 import { Icon, type IconGlyph, type IconName } from '../../foundations/Icon';
 
 export const alertVariants = tv({
-  base: 'rounded-composite border px-4 py-3',
+  // A size container: the actions sit beside the text only where the Alert itself is wide enough.
+  base: '@container/alert rounded-composite border px-4 py-3',
   variants: {
     tone: {
       neutral: 'border-border-default bg-surface-subtle',
@@ -65,26 +66,33 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
             <Icon name={resolvedIcon} size="md" />
           </span>
         ) : null}
-        <div className="min-w-0 flex-1">
-          {title ? (
-            <div className="text-label-md text-content-primary" {...designSlot('Alert', 'title')}>
-              {title}
-            </div>
-          ) : null}
-          {children ? (
+        <div className="flex min-w-0 flex-1 flex-col gap-3 @lg/alert:flex-row @lg/alert:items-start">
+          <div className="min-w-0 flex-1">
+            {title ? (
+              <div className="text-label-md text-content-primary" {...designSlot('Alert', 'title')}>
+                {title}
+              </div>
+            ) : null}
+            {children ? (
+              <div
+                className={cn('text-body-sm text-content-secondary', title && 'mt-1')}
+                {...designSlot('Alert', 'body')}
+              >
+                {children}
+              </div>
+            ) : null}
+          </div>
+          {actions ? (
+            // Below the text on a narrow Alert, beside it on a wide one; several actions keep the
+            // standard gap and wrap instead of squeezing the text.
             <div
-              className={cn('text-body-sm text-content-secondary', title && 'mt-1')}
-              {...designSlot('Alert', 'body')}
+              className="flex shrink-0 flex-wrap items-center gap-2"
+              {...designSlot('Alert', 'actions')}
             >
-              {children}
+              {actions}
             </div>
           ) : null}
         </div>
-        {actions ? (
-          <div className="shrink-0" {...designSlot('Alert', 'actions')}>
-            {actions}
-          </div>
-        ) : null}
       </div>
     </div>
   );

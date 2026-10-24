@@ -1,3 +1,4 @@
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { createContext, useContext } from 'react';
 
 /**
@@ -15,4 +16,21 @@ export const DocumentsTreeActionsContext = createContext<DocumentsTreeActions | 
 
 export function useDocumentsTreeActions(): DocumentsTreeActions | null {
   return useContext(DocumentsTreeActionsContext);
+}
+
+/**
+ * Assign type for the document of a tab, offered only where the Runtime can classify it (the
+ * document's own action and the Specification's capability); undefined otherwise.
+ */
+export function assignTypeFor(
+  actions: DocumentsTreeActions | null,
+  tree: DocumentTree | undefined,
+  documentId: string | undefined,
+): ((id: string) => void) | undefined {
+  const document = tree?.documents.find((item) => item.id === documentId);
+  return actions &&
+    document?.actions.classify.available === true &&
+    tree?.capabilities.classify.available === true
+    ? actions.assignType
+    : undefined;
 }

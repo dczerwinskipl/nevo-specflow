@@ -69,6 +69,11 @@ export interface DocumentSaveOwner {
   saveError: unknown;
   /** Forgets the failure of a document's save (the user resolved it, for example a conflict). */
   clearError: (id: string) => void;
+  /**
+   * A document got a new id: its refused save (the conflict banner) and a save to resume follow it,
+   * so neither is orphaned under the old id.
+   */
+  follow: (from: string, to: string) => void;
 }
 
 /** The save was written but not committed: it is resumed with the same operation id and content. */
@@ -238,8 +243,31 @@ export function useDocumentSave({
     [specId],
   );
 
+  const follow = useCallback(
+    (from: string, to: string) => {
+      const fromKey = documentDraftKey(specId, from);
+      const toKey = documentDraftKey(specId, to);
+      const recovery = recoveries.current.get(fromKey);
+      if (recovery) {
+        recoveries.current.delete(fromKey);
+        recoveries.current.set(toKey, {
+          ...recovery,
+          documentId: to,
+          incarnation: store.incarnation(specId, to),
+        });
+      }
+      setErrors((all) => {
+        if (!(fromKey in all)) return all;
+        const { [fromKey]: error, ...rest } = all;
+        return { ...rest, [toKey]: error };
+      });
+    },
+    [specId, store],
+  );
+
   const key = document ? documentDraftKey(specId, document.id) : undefined;
   return {
+    follow,
     save,
     saveAll,
     savingOf,

@@ -18,6 +18,7 @@ import {
   treeRowClassName,
   treeStateLabelClassName,
   treeTrailingLabelClassName,
+  treeItemLabelBeforeTrailingClassName,
 } from './treeRecipes';
 
 type TreeEntry =
@@ -112,7 +113,15 @@ function TreeLevel({
                   ) : (
                     <Icon name="file" />
                   )}
-                  <span className={treeItemLabelTruncateClassName}>{entry.name}</span>
+                  <span
+                    className={
+                      entry.trailing?.kind === 'label'
+                        ? treeItemLabelBeforeTrailingClassName
+                        : treeItemLabelTruncateClassName
+                    }
+                  >
+                    {entry.name}
+                  </span>
                   {entry.trailing && (
                     <span
                       className={
@@ -270,6 +279,20 @@ export const TrailingLabelsNarrow: Story = {
       noType.getBoundingClientRect().right > unclassified.getBoundingClientRect().right
     )
       throw new Error('A long name truncates so the state label stays inside the row.');
+  },
+};
+/** The open (selected) missing row keeps the attention tone on its warning glyph. */
+export const SelectedMissingRowKeepsItsWarning: Story = {
+  args: { entries: labelledFixture, selected: ['backend.md'] },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>('[data-tree-item="backend.md"]')!;
+    const glyph = row.querySelector('svg')!;
+    const label = Array.from(row.querySelectorAll('span')).find(
+      (span) => span.textContent === 'File missing',
+    )!;
+    if (getComputedStyle(glyph).color !== getComputedStyle(label).color)
+      throw new Error('The warning glyph keeps the attention tone on the selected row.');
   },
 };
 export const Narrow: Story = {

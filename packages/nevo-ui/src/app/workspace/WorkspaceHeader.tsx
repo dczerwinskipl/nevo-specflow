@@ -54,6 +54,12 @@ interface WorkspaceHeaderActionBase {
   label: string;
   primary?: boolean;
   disabled?: boolean;
+  /**
+   * The action is running (for example Save while it commits): it is unavailable but keeps focus
+   * (`aria-disabled`, presses ignored), so a keyboard user is not dropped to the page. A menu lists
+   * it as disabled.
+   */
+  busy?: boolean;
   tone?: WorkspaceHeaderActionTone;
   /** Defaults: `primary` is direct on wide and narrow headers, every other action is `'never'`. */
   direct?: WorkspaceHeaderActionDirect;
@@ -233,7 +239,7 @@ function WorkspaceMenuEntry({
   ) : null;
   return (
     <MenuItem
-      disabled={action.disabled}
+      disabled={action.disabled === true || action.busy === true}
       leadingIcon={action.icon}
       onSelect={onSelect}
       tone={action.tone ?? 'neutral'}
@@ -377,8 +383,9 @@ function DirectIconAction({
                 : 'aria-pressed:bg-surface-selected aria-pressed:text-content-primary'
             }
             disabled={action.disabled}
+            aria-disabled={action.busy ? true : undefined}
             icon={action.icon}
-            onClick={action.onPress}
+            onClick={action.busy ? undefined : action.onPress}
             size="sm"
             variant={action.primary ? 'primary' : 'ghost'}
           />
@@ -399,7 +406,12 @@ function DirectPrimaryAction({
   if (action.presentation === 'icon') return <DirectIconAction action={action} />;
   if (!action.icon) {
     return (
-      <Button disabled={action.disabled} onClick={action.onPress} size="sm">
+      <Button
+        disabled={action.disabled}
+        aria-disabled={action.busy ? true : undefined}
+        onClick={action.busy ? undefined : action.onPress}
+        size="sm"
+      >
         {action.label}
       </Button>
     );
@@ -414,8 +426,9 @@ function DirectPrimaryAction({
     <Button
       aria-label={action.label}
       disabled={action.disabled}
+      aria-disabled={action.busy ? true : undefined}
       leadingIcon={action.icon}
-      onClick={action.onPress}
+      onClick={action.busy ? undefined : action.onPress}
       size="sm"
     >
       {action.label}

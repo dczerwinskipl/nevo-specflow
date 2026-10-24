@@ -17,6 +17,7 @@ import {
   treeAttentionStateLabelClassName,
   treeStateLabelClassName,
   treeTrailingLabelClassName,
+  treeItemLabelBeforeTrailingClassName,
 } from './treeRecipes';
 
 describe('compact tree geometry', () => {
@@ -108,7 +109,9 @@ describe('tree row actions and labels', () => {
 
   it('hides a trailing label on narrow rows but never a state label', () => {
     expect(treeTrailingLabelClassName).toContain('text-content-muted');
-    expect(treeTrailingLabelClassName).toContain('@max-3xs/tree-row:sr-only');
+    // The type label gives way (ellipsis) before the name goes below about 16 characters.
+    expect(treeTrailingLabelClassName).toMatch(/min-w-0 shrink .*truncate/);
+    expect(treeItemLabelBeforeTrailingClassName).toContain('min-w-[min(16ch,100%)]');
     for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
       expect(label).toContain('shrink-0');
       expect(label).toContain('whitespace-nowrap');
@@ -116,7 +119,8 @@ describe('tree row actions and labels', () => {
     }
     expect(treeStateLabelClassName).toContain('text-content-muted');
     expect(treeAttentionStateLabelClassName).toContain('text-status-attention');
-    expect(treeAttentionGlyphClassName).toContain('text-status-attention');
+    // Important: the selected row recolours its first icon; the warning glyph keeps its tone.
+    expect(treeAttentionGlyphClassName).toContain('text-status-attention!');
   });
 
   it('renders the required marker as quiet muted text that swaps with an icon on narrow rows', () => {

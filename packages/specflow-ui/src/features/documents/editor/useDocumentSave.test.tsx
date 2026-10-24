@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HttpClientError } from '@nevo/http-client';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
@@ -259,5 +260,36 @@ describe('useDocumentSave for any document', () => {
       content: 'B1',
       expectedRevision: 'b1',
     });
+  });
+});
+
+const coded = (code: string) =>
+  new HttpClientError(code, { kind: 'http', status: 503, data: { error: code, code } });
+
+describe('a save that must be resumed or follows a new id', () => {
+  it('resumes a written but uncommitted save with the same operation id and content', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.errorOf('b')).toBeDefined();
+    // Edits after the failure do not change what is resumed.
+    store.update(SPEC, 'b', (current) => (current ? { ...current, content: 'B2' } : current));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) => (call as unknown[])[2] as { operationId: string; content: string },
+    );
+    expect(second).toEqual(first);
+    expect(second?.content).toBe('B1');
+    expect(view.result.current.errorOf('b')).toBeUndefined();
+  });
+
+  it("moves a refused save (the conflict) to the document's new id", async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_REVISION_CONFLICT')));
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.errorOf('b')).toBeDefined();
+    act(() => view.result.current.follow('b', 'research'));
+    expect(view.result.current.errorOf('b')).toBeUndefined();
+    expect(view.result.current.errorOf('research')).toBeDefined();
   });
 });

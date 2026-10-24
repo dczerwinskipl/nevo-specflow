@@ -16,6 +16,7 @@ import {
   unmetRequirements,
 } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
+import { useDirtyDocuments } from '../editor/DocumentDraftProvider';
 import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
 import { CloseIssues } from './CloseIssues';
@@ -52,6 +53,7 @@ export function DocumentsTreePanel({
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
   const catalogue = useDocumentCatalogue();
+  const dirtyIds = useDirtyDocuments(specId);
   const specification = useSpecificationWorkspace(specId);
   const data = tree.data;
   // What needs the reader first, and only that: Close refusals, why nothing can be changed, and
@@ -105,6 +107,7 @@ export function DocumentsTreePanel({
             }}
             specificationTitle={specification.data?.title ?? specId}
             onRefresh={operations.refresh}
+            dirtyIds={dirtyIds}
             controllerRef={controllerRef}
             active={documentId}
             onSelect={onSelect}

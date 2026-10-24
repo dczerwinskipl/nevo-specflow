@@ -315,7 +315,7 @@ through `location.hash`) and a safe-area override.
 `actions: WorkspaceHeaderAction[]`:
 
 ```ts
-{ id, label, primary?, disabled?, tone?: 'neutral' | 'danger', onPress,
+{ id, label, primary?, disabled?, busy?, tone?: 'neutral' | 'danger', onPress,
   icon?: IconGlyph,
   presentation?: 'button' | 'icon',      // 'icon' requires `icon` (type-enforced): IconButton sm + Tooltip(label)
   direct?: 'wide' | 'always' | 'never',  // default: primary -> shown directly, everything else -> 'never'
@@ -333,6 +333,9 @@ through `location.hash`) and a safe-area override.
   `ResizeObserver`, `data-workspace-header-density`), not a CSS-only query, because menu membership depends
   on it and menus portal outside any container query. A direct text `primary` with an `icon` collapses to
   an icon-only button on narrow headers (as before, now driven by the measured density).
+- `busy: true` marks an action that is running (for example Save while it commits): a direct action
+  stays focusable with `aria-disabled` and ignores presses, so keyboard focus is not dropped; the menu
+  lists it as disabled.
 - A menu action that moves focus itself (for example mounts an inline input) sets
   `onMenuClosed: () => void`. The menu then does not return focus to the `•••` trigger; it calls the
   handler once it has closed and no longer traps focus, so the consumer needs no timers or retakes.

@@ -23,7 +23,7 @@ import { useAppServices } from '../../../app/useAppServices';
 import { typeTitle } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentTreeKeys } from '../read-model/queries';
-import { useDocumentsTreeActions } from './DocumentsTreeActions';
+import { assignTypeFor, useDocumentsTreeActions } from './DocumentsTreeActions';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
@@ -50,8 +50,15 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
   const tabs = useDocumentTabs();
   const { t } = useTranslation();
   const documentId = tabs.activeId ?? params.documentId;
+  const treeActions = useDocumentsTreeActions();
+  const { documentsApi } = useAppServices();
+  const tree = useQuery({
+    queryKey: documentTreeKeys.tree(params.specId),
+    queryFn: ({ signal }) => documentsApi.documentTree(params.specId, signal),
+  });
   const { actions, dirty } = documentHeaderModel(session, t, {
     onCloseTab: () => void tabs.requestClose(documentId),
+    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
   });
   const name = tabs.tabs.find((tab) => tab.id === documentId)?.label ?? session?.document.path;
   return {

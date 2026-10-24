@@ -165,6 +165,10 @@ export const TallBodyScrollsBetweenHeaderAndFooter: Story = {
     const box = dialog.getBoundingClientRect();
     assert(box.bottom <= window.innerHeight, 'The dialog should fit the viewport.');
     assert(body.scrollHeight > body.clientHeight, 'The tall body should scroll inside the dialog.');
+    // A quiet edge says there is more below; it goes once the end is reached.
+    await until(() => body.getAttribute('data-more') === 'true');
+    body.scrollTop = body.scrollHeight;
+    await until(() => !body.hasAttribute('data-more'));
     const create = Array.from(dialog.querySelectorAll('button')).find(
       (button) => button.textContent === 'Create',
     );

@@ -45,12 +45,14 @@ export function DocumentImageView({
       className={cn(actualSize ? 'max-w-none' : 'max-h-full max-w-full object-contain')}
     />
   );
+  // A large image is fitted to the area; a small one keeps its size at the top left, on the same
+  // reading edge as a file's information (no lone image in the middle of an empty panel).
   return actualSize ? (
-    <ScrollArea direction="both" className="min-h-0 flex-1" contentClassName="p-4">
+    <ScrollArea direction="both" className="min-h-0 flex-1" contentClassName="p-6">
       {image}
     </ScrollArea>
   ) : (
-    <div className="flex min-h-0 flex-1 items-center justify-center p-4">{image}</div>
+    <div className="flex min-h-0 flex-1 items-start justify-start p-6">{image}</div>
   );
 }
 

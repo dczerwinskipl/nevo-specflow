@@ -78,3 +78,19 @@ export function treeWithFollowed(
     }),
   };
 }
+
+/**
+ * The revision a draft is based on after an operation changed its document's revision (classify,
+ * rename, move). A draft based on the version the operation started from follows the new
+ * revision; a draft based on an older version keeps its own, so its next save is checked against
+ * what it really was based on and an external change is never overwritten silently.
+ */
+export function followedDraftRevision(
+  draftRevision: string,
+  revisionBefore: string | undefined,
+  revisionAfter: string,
+): string {
+  return revisionBefore !== undefined && draftRevision === revisionBefore
+    ? revisionAfter
+    : draftRevision;
+}

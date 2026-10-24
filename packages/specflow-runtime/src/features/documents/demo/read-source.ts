@@ -12,7 +12,10 @@ const notFound = () => new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown document
 
 /**
  * Demo-only: the Task documents (`TASK-<n>`) of a seeded Specification are readable by id, as Task
- * pages expect, but are not files of its document tree.
+ * pages expect, but are not files of its document tree. Their text is generated and never changes,
+ * and the demo Task pages read them at the fixed seed revision (`tasks/demo/sources.ts`), so every
+ * Task document reports that one revision. A revision identifies a version of one document, never
+ * content across documents; a real Runtime derives it from the bytes.
  */
 function taskDocument(record: DemoSpecification, documentId: string): DocumentContent | undefined {
   const number = /^TASK-(\d+)$/u.exec(documentId);

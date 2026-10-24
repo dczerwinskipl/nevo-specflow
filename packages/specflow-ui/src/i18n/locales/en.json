@@ -1263,7 +1263,9 @@
       "body": "The specification lists {{name}} as a {{type}} document, but the file is not in the folder. It may have been moved or deleted outside SpecFlow.",
       "restore": "To keep it, restore the file (for example with Git) and refresh.",
       "confirmTitle": "Remove the registration of {{name}}?",
-      "confirmBody": "The specification will no longer list it. No file is deleted."
+      "confirmBody": "The specification will no longer list it. No file is deleted.",
+      "confirmLoss": "Your unsaved changes to {{name}} will be lost.",
+      "confirmDiscard": "Remove and discard changes"
     },
     "readOnly": {
       "line": "Read-only: {{reason}}"
@@ -1360,7 +1362,8 @@
       "writer": "Spec Writer",
       "instructionsBody": "Project and role instructions are passed by SpecFlow regardless of the user message. This placeholder does not show the full system prompt.",
       "loadingContext": "Loading the context…",
-      "contextUnavailable": "The context is unavailable."
+      "contextUnavailable": "The context is unavailable.",
+      "cannotShow": "This file cannot be shown here. Open it in Documents."
     }
   },
   "apiErrors": {

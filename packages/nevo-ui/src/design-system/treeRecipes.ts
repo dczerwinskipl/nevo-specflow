@@ -111,11 +111,16 @@ export const treeRequiredMarkerClassName =
 
 /**
  * Quiet trailing label of a row item (for example the item's type), on the right before the row
- * action. Same responsive rule as the required marker: on narrow rows (below `@3xs`) the text is
- * visually hidden but stays in the item's accessible name, so the name keeps its room.
+ * action. It gives way first: pair it with `treeItemLabelBeforeTrailingClassName` on the name, which
+ * keeps at least 16 characters; the label then shortens with an ellipsis (down to nothing) at
+ * every width, and stays in the item's accessible name.
  */
 export const treeTrailingLabelClassName =
-  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-3xs/tree-row:sr-only';
+  'min-w-0 shrink self-center truncate text-body-sm text-content-muted';
+
+/** The name of a row with a trailing label: it keeps about 16 characters before the label shortens. */
+export const treeItemLabelBeforeTrailingClassName =
+  'min-w-[min(16ch,100%)] flex-1 truncate leading-(--spacing-icon-md)';
 
 /**
  * Trailing label of a row STATE the reader must always see (for example "No type"): it never
@@ -131,8 +136,11 @@ export const treeStateLabelClassName =
 export const treeAttentionStateLabelClassName =
   'shrink-0 self-center whitespace-nowrap text-body-sm text-status-attention';
 
-/** Attention tone of a row item's leading icon (for example a warning glyph of a missing file). */
-export const treeAttentionGlyphClassName = 'shrink-0 text-status-attention';
+/**
+ * Attention tone of a row item's leading icon (for example a warning glyph of a missing file). It
+ * wins over the selected row's accent icon colour: the warning stays a warning when the row is open.
+ */
+export const treeAttentionGlyphClassName = 'shrink-0 text-status-attention!';
 
 /**
  * Quiet inline hint under an opened empty folder (for example "Folder is empty. Add a file or folder

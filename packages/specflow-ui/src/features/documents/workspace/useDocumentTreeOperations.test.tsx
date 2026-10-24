@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   addDocuments: vi.fn(),
   operateDocument: vi.fn(),
   getDocument: vi.fn(),
+  followTab: vi.fn((_from: string, _to: string) => Promise.resolve()),
+  followSave: vi.fn(),
   blocker: undefined as BlockerOptions | undefined,
 }));
 
@@ -27,7 +29,14 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 vi.mock('../tabs/DocumentTabsProvider', () => ({
-  useDocumentTabs: () => ({ show: mocks.show, removeTabs: mocks.removeTabs }),
+  useDocumentTabs: () => ({
+    show: mocks.show,
+    removeTabs: mocks.removeTabs,
+    follow: mocks.followTab,
+  }),
+}));
+vi.mock('../editor/DocumentEditorProvider', () => ({
+  useDocumentSaveOwner: () => ({ follow: mocks.followSave }),
 }));
 vi.mock('../../../app/useAppServices', () => ({
   useAppServices: () => ({
@@ -167,7 +176,7 @@ describe('tree operations and tabs', () => {
     expect(store.get('s', 'd1')).toBeUndefined();
   });
 
-  it('keeps the tab of a renamed document and refreshes only its revision', async () => {
+  it('keeps the tab of a renamed document and moves its draft to the new revision', async () => {
     mocks.operateDocument.mockResolvedValue({
       revision: 'r',
       documents: [{ id: 'd1', path: 'new.md', revision: 'r2' }],
@@ -182,11 +191,63 @@ describe('tree operations and tabs', () => {
         kind: 'document',
         documentId: 'd1',
         name: 'new.md',
-        expectedRevision: 'r0',
+        expectedRevision: 'r1',
       } as never),
     );
     expect(mocks.removeTabs).not.toHaveBeenCalled();
     expect(store.get('s', 'd1')).toMatchObject({ content: 'x', baseline: 'y', revision: 'r2' });
+  });
+
+  it('keeps the revision of a draft based on an older version (its next save sends that one)', async () => {
+    mocks.operateDocument.mockResolvedValue({
+      revision: 'r',
+      documents: [{ id: 'd1', path: 'new.md', revision: 'r2' }],
+      removedDocumentIds: [],
+      folders: [],
+    });
+    const { store, view } = setup();
+    // The file changed on disk (r1) after this draft was based on r0.
+    store.set('s', 'd1', { content: 'x', baseline: 'y', revision: 'r0', editing: false });
+    await act(() =>
+      view.result.current.treeOps.operate({
+        action: 'rename',
+        kind: 'document',
+        documentId: 'd1',
+        name: 'new.md',
+        expectedRevision: 'r1',
+      } as never),
+    );
+    expect(store.get('s', 'd1')?.revision).toBe('r0');
+  });
+
+  it('classifies a dirty document: draft, save state, tab and route follow the new id', async () => {
+    mocks.operateDocument.mockResolvedValue({
+      revision: 'r',
+      documents: [{ id: 'research', path: 'notes/a.md', revision: 'r1', type: 'research' }],
+      removedDocumentIds: [],
+      folders: [],
+    });
+    const { store, view } = setup();
+    store.set('s', 'u-a', { content: 'mine', baseline: 'disk', revision: 'r0', editing: true });
+    await act(() =>
+      view.result.current.treeOps.operate({
+        action: 'classify',
+        kind: 'document',
+        documentId: 'u-a',
+        type: 'research',
+        expectedRevision: 'r1',
+      } as never),
+    );
+    expect(store.get('s', 'u-a')).toBeUndefined();
+    // Unsaved changes survive the id change; the draft keeps the revision it was based on.
+    expect(store.get('s', 'research')).toMatchObject({
+      content: 'mine',
+      baseline: 'disk',
+      revision: 'r0',
+      editing: true,
+    });
+    expect(mocks.followSave).toHaveBeenCalledWith('u-a', 'research');
+    expect(mocks.followTab).toHaveBeenCalledWith('u-a', 'research');
   });
 });
 

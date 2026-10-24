@@ -108,6 +108,14 @@ function treeFor(scenario: Scenario): DocumentTree {
         },
       },
       { id: 'ux', path: 'ux.md', type: 'ux' },
+      // Text above the read limit: the record carries no content.
+      {
+        id: 'huge',
+        path: 'huge-log.md',
+        type: undefined,
+        classification: 'unclassified',
+        size: 9_000_000,
+      },
       { id: 'ux-2', path: 'architecture/login-flow.md', type: 'ux' },
       {
         id: 'u-notes-meeting',
@@ -172,6 +180,8 @@ function treeFor(scenario: Scenario): DocumentTree {
 
 /** Calls of the write ports, for the play functions. */
 const calls = { addDocuments: fn(), operateDocument: fn() };
+/** Lets a story make a file disappear from the folder behind an open tab (it becomes dangling). */
+const control = { removeFile: (_id: string) => undefined as void };
 
 function record(tree: DocumentTree, id: string): DocumentContent {
   const document = tree.documents.find((candidate) => candidate.id === id)!;
@@ -185,13 +195,22 @@ function record(tree: DocumentTree, id: string): DocumentContent {
     mediaType: document.mediaType,
     size: document.size,
     editable: document.editable,
-    ...(document.kind === 'text'
+    ...(document.kind === 'text' && id !== 'huge'
       ? { content: `# ${document.path}\n\nText of ${document.path}.\n` }
       : { content: undefined }),
   });
 }
 
-function Workspace({ scenario, path }: { scenario: Scenario; path: string }) {
+function Workspace({
+  scenario,
+  path,
+  saveRefusal,
+}: {
+  scenario: Scenario;
+  path: string;
+  /** The code every save is refused with (the conflict scenario uses the revision conflict). */
+  saveRefusal?: string;
+}) {
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
     query.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
@@ -265,24 +284,42 @@ function Workspace({ scenario, path }: { scenario: Scenario; path: string }) {
           }
           return Promise.reject(new Error('Not part of this story'));
         },
-        save: () =>
-          scenario === 'conflict'
+        save: () => {
+          const code =
+            saveRefusal ?? (scenario === 'conflict' ? 'DOCUMENT_REVISION_CONFLICT' : undefined);
+          return code
             ? Promise.reject(
-                new HttpClientError('Conflict', {
+                new HttpClientError('Refused', {
                   kind: 'http',
                   status: 409,
-                  data: {
-                    error: 'DOCUMENT_REVISION_CONFLICT',
-                    code: 'DOCUMENT_REVISION_CONFLICT',
-                  },
+                  data: { error: code, code },
                 }),
               )
-            : Promise.resolve(saveResultFixture('2')),
+            : Promise.resolve(saveResultFixture('2'));
+        },
       },
     });
+    control.removeFile = (id) => {
+      const document = tree.documents.find((item) => item.id === id);
+      if (!document) return;
+      tree = {
+        ...tree,
+        documents: tree.documents.filter((item) => item.id !== id),
+        dangling: [
+          ...tree.dangling,
+          {
+            id,
+            path: document.path,
+            type: document.type ?? 'note',
+            actions: { delete: { available: true } },
+          },
+        ],
+      };
+      void query.invalidateQueries({ queryKey: ['specifications', SPEC] });
+    };
     const router = createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] }), services);
     return { query, router };
-  }, [scenario, path]);
+  }, [scenario, path, saveRefusal]);
   return (
     <QueryClientProvider client={setup.query}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
@@ -449,10 +486,56 @@ export const SaveConflict: Story = {
     await expect(alert.getByText('Not saved: ux.md changed on disk')).toBeTruthy();
     await expect(alert.getByRole('button', { name: 'Copy my version' })).toBeTruthy();
     await expect(alert.getByRole('button', { name: 'Load the version on disk…' })).toBeTruthy();
-    await expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }).disabled).toBe(
-      true,
-    );
+    // Save waits for a choice but keeps the focus of whoever pressed it (aria-disabled).
+    const save = screen.getByRole<HTMLButtonElement>('button', { name: 'Save' });
+    await expect(save).toHaveAttribute('aria-disabled', 'true');
+    await expect(save.disabled).toBe(false);
+    await expect(save).toHaveFocus();
     await expect(editor.textContent).toContain('My change.');
+    // Load the version on disk asks first, then replaces the draft and ends the conflict.
+    await userEvent.click(alert.getByRole('button', { name: 'Load the version on disk…' }));
+    const confirm = within(
+      await screen.findByRole('alertdialog', { name: 'Load the version on disk?' }),
+    );
+    await userEvent.click(confirm.getByRole('button', { name: 'Discard and load' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Content of ux.md' }).textContent).not.toContain(
+        'My change.',
+      ),
+    );
+    await expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  },
+};
+
+/** Copy my version: the user's text goes to the clipboard and the version on disk becomes the base. */
+export const SaveConflictCopyMyVersion: Story = {
+  args: { scenario: 'conflict', path: `/specs/${SPEC}/documents/ux` },
+  play: async ({ userEvent }) => {
+    await wide();
+    const screen = body();
+    const copied: string[] = [];
+    const clipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (text: string) => (copied.push(text), Promise.resolve()) },
+    });
+    try {
+      await userEvent.click(await screen.findByRole('button', { name: 'Edit document' }));
+      const editor = await screen.findByRole('textbox', { name: 'Content of ux.md' });
+      await userEvent.click(editor);
+      await userEvent.keyboard('{Control>}{End}{/Control} Mine.');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      const alert = within(await screen.findByRole('alert'));
+      await userEvent.click(alert.getByRole('button', { name: 'Copy my version' }));
+      await waitFor(() => expect(copied.at(-1)).toContain('Mine.'));
+      await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+      await expect(
+        screen.getByRole('textbox', { name: 'Content of ux.md' }).textContent,
+      ).not.toContain('Mine.');
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
+    }
   },
 };
 
@@ -503,5 +586,120 @@ export const DanglingTab: Story = {
     await expect(
       await screen.findByRole('alertdialog', { name: 'Remove the registration of backend.md?' }),
     ).toBeTruthy();
+  },
+};
+
+/** Edits ux.md and presses Save; the save is refused with the story's code. */
+async function refusedSave(userEvent: {
+  click: (element: Element) => Promise<void>;
+  keyboard: (text: string) => Promise<void>;
+}) {
+  await wide();
+  const screen = body();
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit document' }));
+  await userEvent.click(await screen.findByRole('textbox', { name: 'Content of ux.md' }));
+  await userEvent.keyboard('{Control>}{End}{/Control} Change.');
+  await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+  return within(await screen.findByRole('alert'));
+}
+
+const refused = (saveRefusal: string) => ({
+  scenario: 'states' as const,
+  path: `/specs/${SPEC}/documents/ux`,
+  saveRefusal,
+});
+
+/** The protected branch refuses the save: the reason and the remedy, the draft kept. */
+export const SaveRefusedBranchProtected: Story = {
+  args: refused('BRANCH_PROTECTED'),
+  play: async ({ userEvent }) => {
+    const alert = await refusedSave(userEvent);
+    await expect(
+      alert.getByText('Not saved: this branch is protected from SpecFlow commits.'),
+    ).toBeTruthy();
+    await expect(
+      alert.getByText('To edit, open the specification in a workspace on an allowed branch.'),
+    ).toBeTruthy();
+  },
+};
+
+/** Git cannot take a commit now: what to do, and Try again. */
+export const SaveRefusedCommitBlocked: Story = {
+  args: refused('COMMIT_BLOCKED'),
+  play: async ({ userEvent }) => {
+    const alert = await refusedSave(userEvent);
+    await expect(alert.getByText('Not saved: Git cannot take a commit right now')).toBeTruthy();
+    await expect(alert.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  },
+};
+
+/** Another change is running: Try again. */
+export const SaveRefusedBusy: Story = {
+  args: refused('SPEC_BUSY'),
+  play: async ({ userEvent }) => {
+    const alert = await refusedSave(userEvent);
+    await expect(alert.getByText('Not saved: another change is in progress')).toBeTruthy();
+    await expect(alert.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  },
+};
+
+/** Written but not committed: Resume, and editing is locked until then. */
+export const SaveRecoveryRequired: Story = {
+  args: refused('DOCUMENT_RECOVERY_REQUIRED'),
+  play: async ({ userEvent }) => {
+    const alert = await refusedSave(userEvent);
+    await expect(alert.getByText('Saved to disk, but not committed')).toBeTruthy();
+    await expect(alert.getByRole('button', { name: 'Resume' })).toBeTruthy();
+    // Editing is locked until the save is resumed: typing changes nothing.
+    const editor = body().getByRole('textbox', { name: 'Content of ux.md' });
+    await userEvent.click(editor);
+    await userEvent.keyboard('Locked');
+    await expect(editor.textContent).not.toContain('Locked');
+  },
+};
+
+/** The file disappeared: the save says so and the draft is kept. */
+export const SaveRefusedFileMissing: Story = {
+  args: refused('DOCUMENT_FILE_MISSING'),
+  play: async ({ userEvent }) => {
+    const alert = await refusedSave(userEvent);
+    await expect(alert.getByText('Not saved: the file is missing')).toBeTruthy();
+    await expect(body().getByRole('textbox', { name: 'Content of ux.md' }).textContent).toContain(
+      'Change.',
+    );
+  },
+};
+
+/** Text above the read limit opens as a file with its facts and Download. */
+export const TooLargeText: Story = {
+  args: { path: `/specs/${SPEC}/documents/huge` },
+  play: async () => {
+    await wide();
+    const screen = body();
+    await screen.findByText('This file is too large to show here.');
+    await expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1);
+  },
+};
+
+/**
+ * A file with unsaved changes disappears from the folder: its missing tab offers Remove
+ * registration, and the confirmation says the changes will be lost.
+ */
+export const DanglingTabWithUnsavedChanges: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux` },
+  play: async ({ userEvent }) => {
+    await wide();
+    const screen = body();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit document' }));
+    await userEvent.click(await screen.findByRole('textbox', { name: 'Content of ux.md' }));
+    await userEvent.keyboard('{Control>}{End}{/Control} Unsaved.');
+    control.removeFile('ux');
+    await screen.findByText('ux.md is missing');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove registration' }));
+    const confirm = within(
+      await screen.findByRole('alertdialog', { name: 'Remove the registration of ux.md?' }),
+    );
+    await expect(confirm.getByText('Your unsaved changes to ux.md will be lost.')).toBeTruthy();
+    await expect(confirm.getByRole('button', { name: 'Remove and discard changes' })).toBeTruthy();
   },
 };

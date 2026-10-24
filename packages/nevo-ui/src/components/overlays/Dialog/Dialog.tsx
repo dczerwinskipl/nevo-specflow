@@ -1,6 +1,9 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   forwardRef,
+  useCallback,
+  useEffect,
+  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type HTMLAttributes,
@@ -97,12 +100,44 @@ export const DialogDescription = forwardRef<
   );
 });
 
+/**
+ * The scrolling body between the fixed header and footer. While more content is below the visible
+ * part, its bottom edge shows a quiet separator (`data-more`), so a cut-off list reads as
+ * scrollable; the edge is always laid out, so the cue never moves the footer.
+ */
 export const DialogBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function DialogBody({ className, ...props }, ref) {
+    const [node, setNode] = useState<HTMLDivElement | null>(null);
+    const [more, setMore] = useState(false);
+    const setRefs = useCallback(
+      (element: HTMLDivElement | null) => {
+        setNode(element);
+        if (typeof ref === 'function') ref(element);
+        else if (ref) ref.current = element;
+      },
+      [ref],
+    );
+    useEffect(() => {
+      if (!node) return;
+      const measure = () => setMore(node.scrollTop + node.clientHeight < node.scrollHeight - 1);
+      measure();
+      node.addEventListener('scroll', measure, { passive: true });
+      const observer = new ResizeObserver(measure);
+      observer.observe(node);
+      for (const child of Array.from(node.children)) observer.observe(child);
+      return () => {
+        node.removeEventListener('scroll', measure);
+        observer.disconnect();
+      };
+    }, [node]);
     return (
       <div
-        ref={ref}
-        className={cn('min-h-0 overflow-y-auto', className)}
+        ref={setRefs}
+        data-more={more || undefined}
+        className={cn(
+          'min-h-0 overflow-y-auto border-b border-b-transparent data-[more=true]:border-b-border-subtle',
+          className,
+        )}
         {...designSlot('Dialog', 'body')}
         {...props}
       />

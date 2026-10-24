@@ -185,6 +185,21 @@ describe('read-only reason', () => {
     expect(documentReadOnlyReason(protectedBranch, { editable: false })).toBe('branch-protected');
   });
 
+  it('never makes an open document read-only while another write commits (busy)', () => {
+    const busy = { available: false, reason: 'busy' } as const;
+    const committing = documentTreeFixture({
+      capabilities: {
+        ...tree.capabilities,
+        createFile: busy,
+        createFolder: busy,
+        import: busy,
+        classify: busy,
+      },
+    });
+    expect(documentReadOnlyReason(committing, { editable: true })).toBeUndefined();
+    expect(specificationReadOnlyReason(committing)).toBeUndefined();
+  });
+
   it('notes a whole-sentence reason alone and wraps a fragment', () => {
     expect(menuReasonNote('protected')).toEqual({ key: 'documents.reason.protected' });
     expect(menuReasonNote('branch-protected')).toEqual({

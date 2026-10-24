@@ -15,10 +15,29 @@ import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { draftFor } from '../editor/documentDraftStore';
 import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
+import { documentTabsScope } from '../tabs/DocumentTabStrip';
+import { getItemTabPanelId } from '@nevo/ui';
 import type { DocumentOperation } from '../explorer/DocumentsExplorer';
 import type { NewDocumentEntry } from '../explorer/useDocumentOperations';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
-import { followedDocuments, treeWithFollowed, type FollowedDocument } from './documentIdFollow';
+import {
+  followedDocuments,
+  followedDraftRevision,
+  treeWithFollowed,
+  type FollowedDocument,
+} from './documentIdFollow';
+import { useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
+
+/**
+ * Moves focus into a tab's panel once it is rendered: the source editor of a new document, else the
+ * panel itself. Gives up after a few frames (the route may have moved on meanwhile).
+ */
+function focusTabPanel(id: string, attempts = 30) {
+  const panel = globalThis.document.getElementById(getItemTabPanelId(documentTabsScope, id));
+  const target = panel?.querySelector<HTMLElement>('[contenteditable="true"], [tabindex="0"]');
+  if (target) target.focus();
+  else if (attempts > 0) requestAnimationFrame(() => focusTabPanel(id, attempts - 1));
+}
 
 /** Follow-up work after a confirmed mutation; its failure never reaches the mutation's caller. */
 const noop = () => undefined;
@@ -56,11 +75,17 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
   const { specId } = options;
   const { documentsApi, documentApi } = useAppServices();
   const drafts = useDocumentDraftStore();
+  const saves = useDocumentSaveOwner();
   const cache = useQueryClient();
   const tabs = useDocumentTabs();
   const [busy, setBusy] = useState(false);
   // What the operation decided for the tabs; applied once the tree is idle again.
-  const [followUp, setFollowUp] = useState<{ show?: string; removed?: readonly string[] }>();
+  const [followUp, setFollowUp] = useState<{
+    show?: string;
+    /** A new document: focus moves into its tab (the editor) once shown. */
+    focus?: boolean;
+    removed?: readonly string[];
+  }>();
   // Retained requests: written and read only by the operations below, never while rendering.
   const importAttempt = useRef<RequestAttempt<CreateDocumentsInput> | null>(null);
   const operationAttempt = useRef<RequestAttempt<DocumentOperationInput> | null>(null);
@@ -75,7 +100,10 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
     setFollowUp(undefined);
     void (async () => {
       if (followUp.removed) await tabs.removeTabs(followUp.removed);
-      if (followUp.show) await tabs.show(followUp.show);
+      if (followUp.show) {
+        await tabs.show(followUp.show);
+        if (followUp.focus) focusTabPanel(followUp.show);
+      }
     })();
   }, [followUp, busy, tabs]);
 
@@ -107,7 +135,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
         }),
       );
       // Without the prefetched record the document route loads (and reports) it itself.
-      setFollowUp({ show: id });
+      setFollowUp({ show: id, focus: blank });
     }
   };
   /**
@@ -115,13 +143,21 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
    * reading position, the cached record and tree entry (so nothing flashes as missing), then the
    * tab in place and the route (replaced, not pushed).
    */
-  const follow = async (moves: readonly FollowedDocument[]) => {
+  const follow = async (
+    moves: readonly FollowedDocument[],
+    revisionBefore: (id: string) => string | undefined,
+  ) => {
     for (const move of moves) {
       const draft = drafts.get(specId, move.from);
       if (draft) {
-        drafts.set(specId, move.to, { ...draft, revision: move.revision });
+        drafts.set(specId, move.to, {
+          ...draft,
+          revision: followedDraftRevision(draft.revision, revisionBefore(move.from), move.revision),
+        });
         drafts.remove(specId, move.from);
       }
+      // A refused or unfinished save (conflict, recovery) belongs to the document, not to its id.
+      saves.follow(move.from, move.to);
       const anchor = drafts.getAnchor(specId, move.from);
       if (anchor) drafts.setAnchor(specId, move.to, anchor);
       const record = cache.getQueryData<DocumentContent>(documentKeys.detail(specId, move.from));
@@ -151,11 +187,26 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
     );
     for (const removed of result.removedDocumentIds) drafts.remove(specId, removed);
     const moves = followedDocuments(before, operation, result);
+    // The revision each document had when the operation started: the one it names for a document
+    // target, the tree's for the documents of a folder.
+    const revisionBefore = (id: string) =>
+      operation.kind === 'document' && operation.documentId === id
+        ? operation.expectedRevision
+        : before?.documents.find((item) => item.id === id)?.revision;
     for (const record of result.documents)
       drafts.update(specId, record.id, (draft) =>
-        draft ? { ...draft, revision: record.revision } : undefined,
+        draft
+          ? {
+              ...draft,
+              revision: followedDraftRevision(
+                draft.revision,
+                revisionBefore(record.id),
+                record.revision,
+              ),
+            }
+          : undefined,
       );
-    if (moves.length > 0) await settleFollowUp(follow(moves));
+    if (moves.length > 0) await settleFollowUp(follow(moves, revisionBefore));
     await settleFollowUp(refresh());
     if (result.removedDocumentIds.length > 0) setFollowUp({ removed: result.removedDocumentIds });
     return result;

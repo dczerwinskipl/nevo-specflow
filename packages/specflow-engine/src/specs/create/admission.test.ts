@@ -77,6 +77,27 @@ describe('Create admission of the archetype part', () => {
     }
   });
 
+  it('refuses invisible, bidi and lone-surrogate names as DOCUMENT_PATH_INVALID', () => {
+    for (const path of [
+      'zw' + String.fromCharCode(0x200b) + 'sp.md',
+      'bidi' + String.fromCharCode(0x202e) + 'evil.md',
+      'x' + String.fromCharCode(0xd800) + '.md',
+    ]) {
+      expect(() => admit({ addedDocuments: [{ path, content: '' }] })).toThrowError(
+        expect.objectContaining({ code: 'DOCUMENT_PATH_INVALID' }),
+      );
+      expect(() => admit({ folders: [path.replace('.md', '')] })).toThrowError(
+        expect.objectContaining({ code: 'DOCUMENT_PATH_INVALID' }),
+      );
+    }
+  });
+
+  it('refuses a folder below an unregistered added file as DOCUMENT_PATH_CONFLICT', () => {
+    expect(() =>
+      admit({ addedDocuments: [{ path: 'a.md', content: '' }], folders: ['a.md/x'] }),
+    ).toThrowError(expect.objectContaining({ code: 'DOCUMENT_PATH_CONFLICT' }));
+  });
+
   it('refuses a case-insensitive duplicate as DOCUMENT_PATH_CONFLICT', () => {
     expect(() =>
       admit({

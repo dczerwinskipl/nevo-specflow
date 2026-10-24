@@ -77,6 +77,7 @@ function documentCodeOf(cause: ScaffoldValidationCause) {
     case 'path-conflict':
       return 'DOCUMENT_PATH_CONFLICT' as const;
     case 'type-invalid':
+    case 'content-invalid':
     case 'limit-exceeded':
       return 'DOCUMENT_OPERATION_INVALID' as const;
     default: {

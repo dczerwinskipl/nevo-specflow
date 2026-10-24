@@ -19,6 +19,7 @@ import {
   TEMPLATE_TEXT_MAX_BYTES,
   TEXT_CONTENT_MAX_BYTES,
 } from './documents/limits';
+import { OVERVIEW_DOCUMENT_TYPE } from './documents/protection';
 import { serializeSpecificationManifest } from './manifest-serializer';
 import {
   SpecificationError,
@@ -83,6 +84,7 @@ export type ScaffoldValidationCause =
   | { readonly kind: 'path-invalid'; readonly path: string; readonly violation: string }
   | { readonly kind: 'path-conflict'; readonly path: string }
   | { readonly kind: 'type-invalid'; readonly path: string; readonly type: string }
+  | { readonly kind: 'content-invalid'; readonly path: string }
   | {
       readonly kind: 'limit-exceeded';
       readonly limit:
@@ -119,7 +121,11 @@ export function createSpecificationScaffold(
   if (!isValidSpecificationId(input.specId)) {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'A canonical specId is required.');
   }
-  validateSpecificationScaffoldInput(input);
+  validateSpecificationScaffoldInput({
+    title: input.title,
+    created: input.created,
+    goal: input.goal,
+  });
   const title = input.title.replace(/\s+/gu, ' ').trim();
   if (input.slug !== undefined && !isExplicitSpecificationSlug(input.slug)) {
     throw new SpecificationError(
@@ -204,13 +210,19 @@ export function createSpecificationScaffold(
   let totalBytes = 0;
   for (const document of added) {
     const path = checkedPath(document.path);
+    if (!document.content.isWellFormed()) {
+      throw new ScaffoldValidationError(`Added document "${path}" is not well-formed text.`, {
+        kind: 'content-invalid',
+        path,
+      });
+    }
     const bytes = Buffer.byteLength(document.content, 'utf8');
     if (bytes > TEXT_CONTENT_MAX_BYTES) {
       throw limit('file-bytes', TEXT_CONTENT_MAX_BYTES, bytes, path);
     }
     totalBytes += bytes;
     if (document.type !== undefined) {
-      if (!CATALOGUE_ID.test(document.type)) {
+      if (!CATALOGUE_ID.test(document.type) || document.type === OVERVIEW_DOCUMENT_TYPE) {
         throw new ScaffoldValidationError(`Added document "${path}" has an invalid type.`, {
           kind: 'type-invalid',
           path,
@@ -322,8 +334,12 @@ function assertNoPathConflicts(filePaths: readonly string[], folders: readonly s
     if (folderKeys.has(key)) throw conflict(folder);
     folderKeys.add(key);
   }
+  // Every folder implied by a file path or by an explicit folder is a folder, so no file may use it.
   for (const path of filePaths) {
     for (const ancestor of ancestorFolders(path)) folderKeys.add(foldPathKey(ancestor));
+  }
+  for (const folder of folders) {
+    for (const ancestor of ancestorFolders(folder + '/x')) folderKeys.add(foldPathKey(ancestor));
   }
   for (const path of filePaths) {
     if (folderKeys.has(foldPathKey(path))) throw conflict(path);

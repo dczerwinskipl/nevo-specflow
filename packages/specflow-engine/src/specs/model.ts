@@ -299,8 +299,10 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
     }
   }
 
-  // Rule 5 (PC-1): exactly one overview entry, with fixed id, path and type.
-  const protectedEntries = documents.filter((item) => isProtectedDocument(item));
+  // Exactly one overview entry, with fixed id, path and type; the overview type is not reusable.
+  const protectedEntries = documents.filter(
+    (item) => isProtectedDocument(item) || item.type === OVERVIEW_DOCUMENT_TYPE,
+  );
   const only = protectedEntries[0];
   if (
     protectedEntries.length !== 1 ||
@@ -372,7 +374,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function validateSpecificationScaffoldInput(input: {
   readonly title: string;
   readonly created: string;
+  readonly goal?: string;
 }): void {
+  if (!input.title.isWellFormed() || (input.goal !== undefined && !input.goal.isWellFormed())) {
+    throw new SpecificationError(
+      'SPEC_VALIDATION_ERROR',
+      'Title and goal must be well-formed text (no lone surrogates).',
+    );
+  }
   const title = input.title.replace(/\s+/gu, ' ').trim();
   if (!title || title.length > 200) {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'Title must be 1 to 200 characters.');

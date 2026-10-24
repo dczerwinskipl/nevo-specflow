@@ -257,6 +257,9 @@ describe('createSpecificationScaffold', () => {
       ['a\u0000.md', 'control-character'],
       ['a:b.md', 'forbidden-character'],
       ['/abs.md', 'absolute'],
+      ['zw\u200bsp.md', 'unaddressable-character'],
+      ['bidi\u202eevil.md', 'unaddressable-character'],
+      ['x\ud800.md', 'malformed-text'],
     ])('invalid added path %j', (path, violation) => {
       expect(causeOf({ archetypeId: 'minimal', addedDocuments: [{ path, content: '' }] })).toEqual({
         kind: 'path-invalid',
@@ -285,6 +288,33 @@ describe('createSpecificationScaffold', () => {
           }),
         ).toMatchObject({ kind: 'type-invalid', type: 'u' });
       }
+    });
+
+    it('refuses a second document of type overview (the overview is fixed)', () => {
+      expect(
+        causeOf({
+          archetypeId: 'minimal',
+          addedDocuments: [{ path: 'second.md', type: 'overview', content: '' }],
+        }),
+      ).toEqual({ kind: 'type-invalid', path: 'second.md', type: 'overview' });
+    });
+
+    it('refuses added content that is not well-formed text', () => {
+      expect(
+        causeOf({
+          archetypeId: 'minimal',
+          addedDocuments: [{ path: 'x.md', content: 'a\ud800b' }],
+        }),
+      ).toEqual({ kind: 'content-invalid', path: 'x.md' });
+    });
+
+    it('refuses a title or goal that is not well-formed text', () => {
+      expect(() =>
+        createSpecificationScaffold(input({ archetypeId: 'minimal', title: 'x\ud800y' })),
+      ).toThrow(/well-formed/u);
+      expect(() =>
+        createSpecificationScaffold(input({ archetypeId: 'minimal', goal: 'x\ud800y' })),
+      ).toThrow(/well-formed/u);
     });
 
     it('invalid added type', () => {
@@ -327,6 +357,14 @@ describe('createSpecificationScaffold', () => {
         },
       ],
       ['two folders ignoring case', { folders: ['research', 'Research'] }],
+      [
+        'a folder below an unregistered added file',
+        { addedDocuments: [{ path: 'a.md', content: '' }], folders: ['a.md/x'] },
+      ],
+      [
+        'an added file equal to the ancestor of an explicit folder',
+        { addedDocuments: [{ path: 'Research', content: '' }], folders: ['research/deep/er'] },
+      ],
     ])('path conflict: %s', (_name, extra) => {
       const cause: ScaffoldValidationCause = causeOf({ archetypeId: 'minimal', ...extra });
       expect(cause.kind).toBe('path-conflict');

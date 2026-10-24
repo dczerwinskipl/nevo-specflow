@@ -225,6 +225,12 @@ describe('parseSpecificationManifest', () => {
       expectInvalid(source, 'exactly one overview entry');
     });
 
+    it('rejects a second entry of the overview type', () => {
+      const source = validSource();
+      documentsOf(source)[1]!.type = 'overview';
+      expectInvalid(source, 'exactly one overview entry');
+    });
+
     it('rejects another entry that claims the fixed overview path', () => {
       const source = validSource();
       documentsOf(source)[1]!.path = 'Overview.md';
@@ -288,6 +294,12 @@ describe('parseSpecificationManifest', () => {
       equalsFile.folders = ['OVERVIEW.md'];
       expectInvalid(equalsFile, 'folders[0]');
       const belowFile = validSource();
+      const deepBelowFile = validSource();
+      deepBelowFile.folders = ['overview.md/sub/deeper'];
+      expectInvalid(deepBelowFile, 'is below the registered file');
+      const fileBelowFolder = validSource();
+      fileBelowFolder.folders = ['docs/behaviour.md/x'];
+      expectInvalid(fileBelowFolder, 'is below the registered file');
       belowFile.folders = ['overview.md/sub'];
       expectInvalid(belowFile, 'is below the registered file');
       const notArray = validSource();

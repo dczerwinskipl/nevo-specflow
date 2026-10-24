@@ -6,3 +6,7 @@ export const documentKeys = {
 export const documentTreeKeys = {
   tree: (specId: string) => ['specifications', specId, 'document-tree'] as const,
 };
+/** The archetype catalogue as the documents feature reads it (type titles and instructions). */
+export const documentCatalogueKeys = {
+  catalogue: ['documents', 'archetype-catalogue'] as const,
+};

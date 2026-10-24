@@ -1,5 +1,6 @@
 import type { HttpRequestClient } from '@nevo/http-client';
 import type {
+  ArchetypeCatalogue,
   CreateDocumentsInput,
   DocumentContent,
   DocumentOperationInput,
@@ -50,6 +51,11 @@ export type CreateFolderInput = DemoFolderInput;
  */
 export interface DocumentsApi {
   documentTree(specId: string, signal?: AbortSignal): Promise<DocumentTree>;
+  /**
+   * The archetype catalogue the Specifications were created from: the type titles, `useWhen` and
+   * instructions the tree and the New document / Assign type chooser show (texts as delivered).
+   */
+  catalogue(signal?: AbortSignal): Promise<ArchetypeCatalogue>;
   operateDocument(specId: string, input: DocumentOperationInput): Promise<DocumentOperationResult>;
   addDocuments(specId: string, input: CreateDocumentsInput): Promise<DocumentOperationResult>;
   addFolder(specId: string, input: CreateFolderInput): Promise<DocumentOperationResult>;

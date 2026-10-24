@@ -6,7 +6,7 @@ import { expect, fn, spyOn, waitFor, within } from 'storybook/test';
 import { HttpClientError } from '@nevo/http-client';
 import { TooltipProvider } from '@nevo/ui';
 import { DocumentsExplorer, type DocumentOperation } from './DocumentsExplorer';
-import type { PlannedDocument } from './documentTreePolicy';
+import type { NewDocumentEntry } from './useDocumentOperations';
 import { withLocale } from '../../../i18n/StoryLocalization';
 
 /*
@@ -58,7 +58,7 @@ const readOnlyTree: Tree = {
 interface Props {
   tree?: Tree;
   width?: number;
-  onAdd?: (documents: PlannedDocument[], folders?: string[]) => Promise<void>;
+  onAdd?: (documents: NewDocumentEntry[], folders?: string[]) => Promise<void>;
   onOperate?: (operation: DocumentOperation) => Promise<void>;
   active?: string;
   onSelect?: (id: string) => void;
@@ -112,8 +112,8 @@ export const NoRootRowAndNaturalOrder: Story = {
     await expect(
       canvas.queryByRole('button', { name: /Akcje: Dokumenty/ }),
     ).not.toBeInTheDocument();
-    const topLevel = [...canvasElement.querySelector('ul')!.children].map((li) =>
-      li.querySelector('button')!.textContent.replace('Wymagany', ''),
+    const topLevel = [...canvasElement.querySelector('ul')!.children].map(
+      (li) => li.querySelector('button')!.textContent,
     );
     // Folders A-Z, then files A-Z; the required file stays among its siblings by name.
     await expect(topLevel).toEqual([
@@ -139,7 +139,7 @@ export const NoRootRowAndNaturalOrder: Story = {
   },
 };
 
-export const SingleLineRowsWithQuietRequiredMarker: Story = {
+export const SingleLineRowsWithoutAProtectedMarker: Story = {
   play: async ({ canvas }) => {
     const longName = adr.split('/').at(-1)!;
     const longButton = await canvas.findByRole('button', { name: longName });
@@ -150,20 +150,12 @@ export const SingleLineRowsWithQuietRequiredMarker: Story = {
     await expect(getComputedStyle(label).textOverflow).toBe('ellipsis');
     // Same rhythm for the 62 character name and a short one.
     await expect(rect(longButton).height).toBe(rect(shortButton).height);
-    // The required row (badge) has the same height as the others.
-    await expect(rect(canvas.getByRole('button', { name: /^specification\.md/ })).height).toBe(
-      rect(shortButton).height,
-    );
-    // The full name stays in the DOM (accessible name) while the badge is a sibling of the label.
+    // The protected row has the same height and no trailing label (its menu says why).
+    const protectedButton = canvas.getByRole('button', { name: /^specification\.md/ });
+    await expect(rect(protectedButton).height).toBe(rect(shortButton).height);
+    await expect(protectedButton).toHaveAccessibleName('specification.md');
+    // The full name stays in the DOM (accessible name).
     await expect(longButton).toHaveAccessibleName(longName);
-    const requiredButton = canvas.getByRole('button', { name: /^specification\.md/ });
-    const badge = within(requiredButton).getByText('Wymagany');
-    await expect(getComputedStyle(badge).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-    await expect(label.contains(badge)).toBe(false);
-    await expect(within(requiredButton).getByText('specification.md').contains(badge)).toBe(false);
-    await expect(rect(badge).left).toBeGreaterThan(
-      rect(within(requiredButton).getByText('specification.md')).right - 1,
-    );
   },
 };
 
@@ -239,10 +231,10 @@ export const HintDisappearsOnceSomethingIsAdded: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Akcje: notatki' }));
     await userEvent.click(
       within(await within(document.body).findByRole('menu')).getByRole('menuitem', {
-        name: 'Nowy plik',
+        name: 'Nowy folder',
       }),
     );
-    await canvas.findByRole('textbox', { name: 'Nazwa nowego pliku' });
+    await canvas.findByRole('textbox', { name: 'Nazwa nowego folderu' });
     // While the name is typed the folder is open with its new child, without the hint.
     await expect(canvas.queryByText(/Folder jest pusty/)).not.toBeInTheDocument();
   },
@@ -284,14 +276,14 @@ export const MenusPerNodeType: Story = {
     // Folder: creation + file operations, nothing hidden.
     const folder = await openMenu(canvas, userEvent, 'architektura');
     await expect(folder.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Nowy plik',
+      'Nowy dokument…',
       'Nowy folder',
       'Wgraj pliki',
       'Zmień nazwę',
       'Przenieś',
       'Usuń',
     ]);
-    await expect(folder.queryByText(/niedostępne|wymagany/i)).not.toBeInTheDocument();
+    await expect(folder.queryByText(/niedostępne/i)).not.toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     // File: no creation entries (they do not apply) and no "Open": the row itself opens it.
     const file = await openMenu(canvas, userEvent, 'zeta.md');
@@ -301,20 +293,13 @@ export const MenusPerNodeType: Story = {
       'Usuń',
     ]);
     await userEvent.keyboard('{Escape}');
-    // Required: policy-blocked actions stay visible but disabled, one wrapped reason.
-    const requiredMenu = await openMenu(canvas, userEvent, 'specification.md');
-    for (const name of ['Zmień nazwę', 'Przenieś', 'Usuń'])
-      await expect(requiredMenu.getByRole('menuitem', { name })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      );
-    await expect(requiredMenu.queryByRole('menuitem', { name: 'Otwórz' })).not.toBeInTheDocument();
-    const note = requiredMenu.getByText(/Dokument wymagany przez workflow/);
-    await expect(within(document.body).getByRole('menu')).toHaveAttribute(
-      'aria-describedby',
-      note.id,
-    );
-    await expect(requiredMenu.getAllByText(/wymagany/i)).toHaveLength(1);
+    // The protected overview: no menu of dead disabled items, only the note that says why.
+    await userEvent.click(canvas.getByRole('button', { name: 'Akcje: specification.md' }));
+    const note = await within(document.body).findByRole('dialog', {
+      name: 'Akcje: specification.md',
+    });
+    await expect(note).toHaveTextContent(/Przegląd to główny dokument/);
+    await expect(within(note).queryAllByRole('menuitem')).toHaveLength(0);
     // The reason wraps: it is taller than a single line and not clipped.
     await expect(note.scrollWidth).toBeLessThanOrEqual(note.clientWidth + 1);
     await expect(note.getBoundingClientRect().height).toBeGreaterThan(24);
@@ -324,10 +309,9 @@ export const MenusPerNodeType: Story = {
 export const ReadOnlyExplainsOnceInTheMenu: Story = {
   args: { tree: readOnlyTree },
   play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findByText(/Ta operacja jest niedostępna/)).toBeVisible();
     const menu = await openMenu(canvas, userEvent, 'architektura');
     for (const name of [
-      'Nowy plik',
+      'Nowy dokument…',
       'Nowy folder',
       'Wgraj pliki',
       'Zmień nazwę',
@@ -335,7 +319,9 @@ export const ReadOnlyExplainsOnceInTheMenu: Story = {
       'Usuń',
     ])
       await expect(menu.getByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
-    await expect(menu.getAllByText(/Ta operacja jest niedostępna/)).toHaveLength(1);
+    await expect(
+      menu.getAllByText('Niedostępne: ta gałąź jest chroniona przed commitami SpecFlow.'),
+    ).toHaveLength(1);
     await userEvent.keyboard('{Escape}');
     // The row stays openable.
     await expect(canvas.getByRole('button', { name: /^zeta\.md$/ })).toBeEnabled();
@@ -377,11 +363,12 @@ async function startFile(
   folder = 'architektura',
 ) {
   const menu = await openMenu(canvas, userEvent, folder);
-  await userEvent.click(menu.getByRole('menuitem', { name: 'Nowy plik' }));
-  return canvas.findByRole('textbox', { name: 'Nazwa nowego pliku' });
+  // New document opens the type chooser; inline entry stays for folders (and rename).
+  await userEvent.click(menu.getByRole('menuitem', { name: 'Nowy folder' }));
+  return canvas.findByRole('textbox', { name: 'Nazwa nowego folderu' });
 }
 
-export const InlineCreateValidationAndExtension: Story = {
+export const InlineCreateValidation: Story = {
   args: { onAdd: fn(() => Promise.resolve()) },
   play: async ({ canvas, userEvent, args }) => {
     // Invalid characters: Polish message, value and focus kept, the Engine is not called.
@@ -394,20 +381,10 @@ export const InlineCreateValidationAndExtension: Story = {
     await expect(input).toHaveValue('a/b');
     await expect(input.getAttribute('aria-describedby')).toBe(canvas.getByRole('alert').id);
     await expect(args.onAdd).not.toHaveBeenCalled();
-    await userEvent.clear(input);
-    await userEvent.type(input, 'a.pdf{Enter}');
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'Obsługiwane formaty to .md i .txt.',
-    );
-    // No extension -> .md; Enter commits.
+    // Enter commits a valid name.
     await userEvent.clear(input);
     await userEvent.type(input, 'notes{Enter}');
-    await waitFor(() =>
-      expect(args.onAdd).toHaveBeenCalledWith(
-        [{ path: 'architektura/notes.md', title: 'notes', content: '' }],
-        [],
-      ),
-    );
+    await waitFor(() => expect(args.onAdd).toHaveBeenCalledWith([], ['architektura/notes']));
   },
 };
 
@@ -430,12 +407,7 @@ export const InlineCancelEmptyAndBlur: Story = {
     const input = await startFile(canvas, userEvent);
     await userEvent.type(input, 'kept');
     await userEvent.click(canvas.getByLabelText('Aktywny dokument'));
-    await waitFor(() =>
-      expect(args.onAdd).toHaveBeenCalledWith(
-        [{ path: 'architektura/kept.md', title: 'kept', content: '' }],
-        [],
-      ),
-    );
+    await waitFor(() => expect(args.onAdd).toHaveBeenCalledWith([], ['architektura/kept']));
   },
 };
 
@@ -457,12 +429,7 @@ export const WindowBlurKeepsTheTypedName: Story = {
     // Back in the window, Enter still commits.
     canvas.getByRole('textbox').focus();
     await userEvent.keyboard('{Enter}');
-    await waitFor(() =>
-      expect(args.onAdd).toHaveBeenCalledWith(
-        [{ path: 'architektura/notat.md', title: 'notat', content: '' }],
-        [],
-      ),
-    );
+    await waitFor(() => expect(args.onAdd).toHaveBeenCalledWith([], ['architektura/notat']));
   },
 };
 
@@ -471,7 +438,7 @@ const conflict = () =>
     new HttpClientError('Conflict', {
       kind: 'http',
       status: 409,
-      data: { error: 'demo_document_path_conflict' },
+      data: { error: 'DOCUMENT_PATH_CONFLICT', code: 'DOCUMENT_PATH_CONFLICT' },
     }),
   );
 export const FailedCreateKeepsTheTypedName: Story = {

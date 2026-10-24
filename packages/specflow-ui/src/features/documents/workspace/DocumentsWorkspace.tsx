@@ -20,12 +20,15 @@ import { useAppServices } from '../../../app/useAppServices';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
+import { archetypeOf } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
 import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { DocumentPane } from './DocumentPane';
 import { DocumentsEmptyState } from './DocumentsEmptyState';
+import { DocumentsTreeActionsContext, type DocumentsTreeActions } from './DocumentsTreeActions';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
@@ -60,13 +63,20 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
+  const catalogue = useDocumentCatalogue();
   const editor = useDocumentEditor();
   const tabs = useDocumentTabs();
-  const documentHeader = documentHeaderModel(editor, t, {
-    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
-  });
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
+  // Stable: the callbacks read the controller only when the user acts.
+  const [treeActions] = useState<DocumentsTreeActions>(() => ({
+    assignType: (id) => treeController.current?.assignType(id),
+    removeRegistration: (id) => treeController.current?.removeRegistration(id),
+  }));
+  const documentHeader = documentHeaderModel(editor, t, {
+    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
+    onAssignType: treeActions.assignType,
+  });
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
   const commitRef = useRef<(() => void) | null>(null);
   const operations = useDocumentTreeOperations({ specId });
@@ -87,10 +97,20 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <DocumentPane data={{ specId, documentId }} />
     </div>
   ) : (
-    <DocumentsEmptyState documents={tree.data?.documents ?? []} onOpen={opening.select} />
+    <DocumentsEmptyState
+      documents={tree.data?.documents ?? []}
+      suggestedTypes={
+        tree.data
+          ? (archetypeOf(catalogue.data, tree.data)
+              ?.documents.filter((template) => template.include === 'optional')
+              .map((template) => template.type) ?? [])
+          : []
+      }
+      onOpen={opening.select}
+    />
   );
   return (
-    <>
+    <DocumentsTreeActionsContext.Provider value={treeActions}>
       <DocumentRouteGuard specId={specId} requestRef={requestRef} commitRef={commitRef} />
       <AppWorkspace
         scroll="content"
@@ -149,11 +169,10 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                   menuDisplay: t('documents.menuDisplay'),
                 }}
                 headingLevel={2}
+                // The tab label: the file name, also for a missing (dangling) document.
                 title={
-                  tree.data?.documents
-                    .find((item) => item.id === documentId)
-                    ?.path.split('/')
-                    .at(-1) ?? t('specification.documentPreviewTitle')
+                  tabs.tabs.find((tab) => tab.id === documentId)?.label ??
+                  t('specification.documentPreviewTitle')
                 }
                 identityContent={<DocumentTabStrip />}
               />
@@ -178,6 +197,6 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
           <DialogBody>{t('documents.demo.body')}</DialogBody>
         </DialogContent>
       </Dialog>
-    </>
+    </DocumentsTreeActionsContext.Provider>
   );
 }

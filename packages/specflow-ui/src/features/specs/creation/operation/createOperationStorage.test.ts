@@ -4,6 +4,7 @@ import {
   type StoredCreateOperation,
 } from './createOperationStorage';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -17,7 +18,11 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 const id = '11111111-1111-4111-8111-111111111111';
 const operation: StoredCreateOperation = {
-  request: { title: 'Title', operationId: '11111111-1111-4111-8111-111111111111' },
+  request: {
+    title: 'Title',
+    operationId: '11111111-1111-4111-8111-111111111111',
+    ...archetypeSelectionFixture,
+  },
   startedAt: 1_000,
 };
 
@@ -35,7 +40,11 @@ describe('create operation storage', () => {
   it('keeps one entry per operation: saving a second leaves the first resumable', () => {
     const mine = createSessionOperationStorage('user:a', memoryStorage());
     const other: StoredCreateOperation = {
-      request: { title: 'Other', operationId: '22222222-2222-4222-8222-222222222222' },
+      request: {
+        title: 'Other',
+        operationId: '22222222-2222-4222-8222-222222222222',
+        ...archetypeSelectionFixture,
+      },
       startedAt: 2,
     };
     mine.save(operation);

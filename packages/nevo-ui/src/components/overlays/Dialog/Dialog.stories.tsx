@@ -127,3 +127,52 @@ export const CloseActionIsPinnedToTheCorner: Story = {
     assert(rect.top - box.top < 24, 'Close should sit at the top edge.');
   },
 };
+
+/**
+ * A body taller than the viewport scrolls between the header and the footer: the footer actions stay
+ * reachable on a short screen (for example 390 × 844 with a long option list).
+ */
+export const TallBodyScrollsBetweenHeaderAndFooter: Story = {
+  render: () => (
+    <Dialog defaultOpen>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choose a document type</DialogTitle>
+          <DialogDescription>The list is longer than the screen.</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-3">
+          {Array.from({ length: 40 }, (_, index) => (
+            <label key={index} className="flex items-start gap-2 text-body-md">
+              <input type="radio" name="tall-dialog-option" defaultChecked={index === 0} />
+              Option {index + 1}: a line of body content that makes the dialog taller.
+            </label>
+          ))}
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="secondary">Cancel</Button>
+          </DialogClose>
+          <Button>Create</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ),
+  tags: ['contract', '!autodocs'],
+  play: async () => {
+    const dialog = await until(() => document.querySelector<HTMLElement>('[role="dialog"]'));
+    const body = dialog.querySelector<HTMLElement>('[data-design-slot="body"]');
+    assert(body, 'The dialog body should render.');
+    const box = dialog.getBoundingClientRect();
+    assert(box.bottom <= window.innerHeight, 'The dialog should fit the viewport.');
+    assert(body.scrollHeight > body.clientHeight, 'The tall body should scroll inside the dialog.');
+    const create = Array.from(dialog.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Create',
+    );
+    assert(create, 'The footer action should render.');
+    const action = create.getBoundingClientRect();
+    assert(
+      action.top >= box.top && action.bottom <= box.bottom,
+      'The footer action should stay inside the visible dialog.',
+    );
+  },
+};

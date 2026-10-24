@@ -40,9 +40,12 @@ export function parseDocumentDraftKey(key: string): { specId: string; documentId
 export const isDraftDirty = (draft: Pick<DocumentDraft, 'content' | 'baseline'>): boolean =>
   draft.content !== draft.baseline;
 
-/** An opened editable document defaults to Preview, not Edit; see DocumentEditor. */
+/**
+ * An opened editable document defaults to Preview, not Edit; see DocumentEditor. Images and files
+ * that cannot be shown carry no `content`: the editor uses this only as a view-only value and never
+ * stores it (no draft, never dirty; see `hasTextDraft`).
+ */
 export function draftFor(record: DocumentContent): DocumentDraft {
-  // phase C: image and binary documents carry no `content`; they get their own viewers and no draft.
   const content = record.content ?? '';
   return {
     content,

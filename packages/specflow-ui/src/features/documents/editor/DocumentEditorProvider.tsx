@@ -1,5 +1,21 @@
-import type { DocumentContent } from '@nevo/specflow-contracts/documents';
+import type { ActionReason, DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+} from '@nevo/ui';
+import { useAppServices } from '../../../app/useAppServices';
+import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
+import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { downloadDocument } from '../content/DocumentFileViews';
+import { documentKeys } from '../read-model/queries';
 import {
   createContext,
   useCallback,
@@ -15,7 +31,7 @@ import { documentDraftKey, draftFor, isDraftDirty, type DocumentDraft } from './
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { DocumentPathDialog } from './DocumentPathDialog';
-import { kindIdOf } from '../content-kinds/kindId';
+import { hasTextDraft, kindIdOf } from '../content-kinds/kindId';
 import {
   documentOutline,
   type DocumentOutlineData,
@@ -44,6 +60,26 @@ export interface DocumentEditorSession {
   save: (options?: { restoreFocus?: boolean }) => Promise<boolean>;
   /** Asks to discard unsaved edits; clean drafts need no confirmation. */
   requestDiscard: () => void;
+  /**
+   * Why the document opens read-only (design order: archived, Git policy, branch, commit, not
+   * editable, not implemented); undefined when it can be edited. No Edit is offered then.
+   */
+  readOnlyReason?: ActionReason;
+  /** A save was written but not committed: editing is locked until it is resumed. */
+  locked: boolean;
+  /** Save would only repeat a refusal (conflict not resolved, read-only, locked). */
+  saveBlocked: boolean;
+  /** Resumes the save that was written but not committed (same operation id). */
+  resume: () => void;
+  /** Conflict: puts the user's text on the clipboard and loads the version on disk as the base. */
+  copyMine: () => void;
+  /** Conflict: asks to discard the draft and load the version on disk. */
+  requestLoadDisk: () => void;
+  /** An image is shown at its actual size instead of fitted to the area. */
+  actualSize: boolean;
+  toggleActualSize: () => void;
+  /** Downloads the document's bytes (images and files that cannot be shown). */
+  download: () => void;
   /** Opens the dialog with the document's full path (header overflow action). */
   showPath: () => void;
   editorRoot: MutableRefObject<HTMLDivElement | null>;
@@ -97,15 +133,25 @@ export function useDocumentSession(documentId: string): DocumentEditorSession | 
 export function DocumentEditorProvider({
   specId,
   document,
+  readOnlyReason,
   children,
 }: {
   specId: string;
   /** Undefined while the document is loading or unavailable. */
   document?: DocumentContent;
+  /** Why the document cannot be edited (from the tree and the record); undefined when it can. */
+  readOnlyReason?: ActionReason;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const store = useDocumentDraftStore();
+  const cache = useQueryClient();
+  const { documentApi } = useAppServices();
+  const { announce, region } = useAnnouncer();
+  // Images shown at their actual size (by document); fitted to the area otherwise.
+  const [actualSizeOf, setActualSizeOf] = useState<readonly string[]>([]);
+  // The document whose "Load the version on disk" question is open.
+  const [loadDiskFor, setLoadDiskFor] = useState<string>();
   const anchorReader = useRef<(() => ScrollAnchor | undefined) | null>(null);
   const focusAfterDiscard = useRef(false);
   const [guardFor, setGuardFor] = useState<string>();
@@ -121,7 +167,9 @@ export function DocumentEditorProvider({
   const documentId = document?.id ?? '';
   const key = documentDraftKey(specId, documentId);
   const stored = useDocumentDraft(specId, documentId);
-  const draft = stored ?? (document ? draftFor(document) : undefined);
+  // Images and files that cannot be shown have no text: a view-only draft that is never stored.
+  const textDocument = document ? hasTextDraft(document) : false;
+  const draft = (textDocument ? stored : undefined) ?? (document ? draftFor(document) : undefined);
   // Event-time reads of the committed document/draft; never used for the identity of a save result.
   const shown = useRef({ specId, key, document, draft });
   useLayoutEffect(() => {
@@ -152,15 +200,19 @@ export function DocumentEditorProvider({
   const setDraft = useCallback(
     (change: Partial<DocumentDraft>) => {
       const { document: record } = shown.current;
-      if (!record) return;
+      if (!record || !hasTextDraft(record)) return;
       store.patch(shown.current.specId, record.id, change, () => draftFor(record));
     },
     [store],
   );
   const save = useCallback(
     async (options?: { restoreFocus?: boolean }) => {
-      const result = await saveOwned();
+      // A slow commit is announced once, after a second; the result is announced when it comes.
+      const slow = setTimeout(() => announce(t('documents.save.committing')), 1000);
+      const result = await saveOwned().finally(() => clearTimeout(slow));
       if (!result?.ok) return false;
+      if (result.committed !== undefined)
+        announce(result.committed ? t('documents.save.committed') : t('documents.save.saved'));
       // Only the document still on screen is affected by what happens after the response.
       const open = shown.current;
       if (open.key !== documentDraftKey(result.specId, result.documentId)) return true;
@@ -176,8 +228,57 @@ export function DocumentEditorProvider({
       }
       return open.draft?.content === result.content;
     },
-    [saveOwned, focusEditorSoon],
+    [saveOwned, focusEditorSoon, announce, t],
   );
+  const { clearError } = owner;
+  /** Replaces the draft of the shown document with the version on disk (the new base). */
+  const loadDisk = useCallback(async () => {
+    const { specId: openSpec, document: open, draft: openDraft } = shown.current;
+    if (!open) return false;
+    try {
+      const fresh = await documentApi.getDocument(openSpec, open.id);
+      cache.setQueryData(documentKeys.detail(openSpec, open.id), fresh);
+      store.set(openSpec, open.id, {
+        ...draftFor(fresh),
+        editing: openDraft?.editing ?? false,
+      });
+      clearError(open.id);
+      return true;
+    } catch {
+      announce(t('documents.conflict.loadFailed'));
+      return false;
+    }
+  }, [documentApi, cache, store, clearError, announce, t]);
+  const copyMine = useCallback(() => {
+    const content = shown.current.draft?.content ?? '';
+    void (async () => {
+      try {
+        if (!navigator.clipboard) throw new Error('Clipboard is unavailable');
+        await navigator.clipboard.writeText(content);
+      } catch {
+        announce(t('documents.conflict.copyFailed'));
+        return;
+      }
+      if (await loadDisk()) announce(t('documents.conflict.copied'));
+    })();
+  }, [loadDisk, announce, t]);
+  const requestLoadDisk = useCallback(() => {
+    const { document: open } = shown.current;
+    if (open) setLoadDiskFor(open.id);
+  }, []);
+  const resume = useCallback(() => void save(), [save]);
+  const toggleActualSize = useCallback(() => {
+    const { document: open } = shown.current;
+    if (!open) return;
+    setActualSizeOf((ids) =>
+      ids.includes(open.id) ? ids.filter((id) => id !== open.id) : [...ids, open.id],
+    );
+  }, []);
+  const download = useCallback(() => {
+    const { specId: openSpec, document: open } = shown.current;
+    if (!open) return;
+    downloadDocument(openSpec, open);
+  }, []);
   const toggleEditing = useCallback(() => {
     const { specId: openSpec, document: openDocument, draft: openDraft } = shown.current;
     if (!openDraft || !openDocument) return;
@@ -203,15 +304,27 @@ export function DocumentEditorProvider({
     [store],
   );
 
+  const saveCode = apiErrorCode(owner.saveError);
+  const locked = saveCode === 'DOCUMENT_RECOVERY_REQUIRED';
   const session = useMemo<DocumentEditorSession | null>(() => {
     if (!document || !draft) return null;
     return {
       specId,
       document,
       draft,
-      dirty: isDraftDirty(draft),
+      dirty: textDocument && isDraftDirty(draft),
       saving: owner.saving,
       saveError: owner.saveError,
+      readOnlyReason,
+      locked,
+      saveBlocked:
+        locked || saveCode === 'DOCUMENT_REVISION_CONFLICT' || readOnlyReason !== undefined,
+      resume,
+      copyMine,
+      requestLoadDisk,
+      actualSize: actualSizeOf.includes(document.id),
+      toggleActualSize,
+      download,
       setDraft,
       toggleEditing,
       save,
@@ -237,6 +350,16 @@ export function DocumentEditorProvider({
     store,
     owner.saving,
     owner.saveError,
+    textDocument,
+    readOnlyReason,
+    locked,
+    saveCode,
+    resume,
+    copyMine,
+    requestLoadDisk,
+    actualSizeOf,
+    toggleActualSize,
+    download,
     setDraft,
     toggleEditing,
     save,
@@ -257,6 +380,39 @@ export function DocumentEditorProvider({
     <SaveOwnerContext.Provider value={owner}>
       <Context.Provider value={session}>
         {children}
+        {region}
+        {session && (
+          <AlertDialog
+            open={loadDiskFor !== undefined && loadDiskFor === document?.id}
+            onOpenChange={(next) => {
+              if (!next) setLoadDiskFor(undefined);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('documents.conflict.loadTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('documents.conflict.loadBody', { name })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel asChild>
+                  <Button variant="secondary">{t('common.cancel')}</Button>
+                </AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  onClick={() =>
+                    void loadDisk().then((loaded) => {
+                      if (loaded) setLoadDiskFor(undefined);
+                    })
+                  }
+                >
+                  {t('documents.conflict.loadConfirm')}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         {session && <DocumentPathDialog open={pathOpen} path={name} onOpenChange={setPathOpen} />}
         {session && (
           <DocumentOutlineSheet

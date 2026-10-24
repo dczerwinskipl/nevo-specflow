@@ -46,6 +46,7 @@ import { settleViewport } from '../../../test-support/viewportSettle.stories-sup
 import { invokeDocumentAction } from '../editor/documentHeaderActions.stories-support';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';
+import type { NewDocumentEntry } from './useDocumentOperations';
 const no = { available: false, reason: 'protected' } as const;
 const protectedActions = { rename: no, move: no, delete: no, classify: { available: false } };
 const initialTree: Tree = documentTreeFixture({
@@ -131,11 +132,12 @@ function Workspace({
   const [busy, setBusy] = useState(false);
   const navigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
-  const add = (documents: { path: string; content: string }[], folders: string[] = []) => {
+  const add = (documents: NewDocumentEntry[], folders: string[] = []) => {
     setCalls((value) => value + 1);
     setPayloads((current) => [...current, JSON.stringify(documents)]);
     if (loseAck && attempts.current++ === 0) return Promise.reject(new Error('Lost ACK'));
     if (
+      folders.some((folder) => folder.includes('bad')) ||
       documents.some(
         (doc) =>
           doc.path.includes('bad') ||
@@ -168,7 +170,7 @@ function Workspace({
             id: doc.path,
             title: doc.path,
             path: doc.path,
-            content: doc.content,
+            content: 'content' in doc ? doc.content : '',
           },
         ]),
       ),
@@ -353,13 +355,13 @@ export const DocumentsAndInline: Story = {
     await settleViewport();
     await userEvent.click(canvas.getByRole('button', { name: 'Akcje: notes' }));
     await settleViewport();
-    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Nowy plik' }));
-    const name = canvas.getByRole('textbox', { name: 'Nazwa nowego pliku' });
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Nowy folder' }));
+    const name = canvas.getByRole('textbox', { name: 'Nazwa nowego folderu' });
     await waitFor(() => expect(name).toHaveFocus());
     await userEvent.type(name, 'client-notes');
     await settleViewport();
     await userEvent.keyboard('{Enter}');
-    await expect(canvas.getByRole('button', { name: 'client-notes.md' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Akcje: client-notes' })).toBeVisible();
     await expect(canvas.getByLabelText('Liczba operacji')).toHaveTextContent('1');
     // The active document (specification.md) opens in Preview by default.
     await settleViewport();
@@ -372,54 +374,49 @@ export const DocumentsAndInline: Story = {
 };
 export const InlineErrorsAndCancellation: Story = {
   play: async ({ canvas, userEvent }) => {
-    await chooseRootAction(canvas, userEvent, 'Nowy plik');
+    await chooseRootAction(canvas, userEvent, 'Nowy folder');
     await waitFor(() =>
-      expect(canvas.getByRole('textbox', { name: 'Nazwa nowego pliku' })).toHaveFocus(),
+      expect(canvas.getByRole('textbox', { name: 'Nazwa nowego folderu' })).toHaveFocus(),
     );
     await userEvent.keyboard('{Escape}');
     await expect(
-      canvas.queryByRole('textbox', { name: 'Nazwa nowego pliku' }),
+      canvas.queryByRole('textbox', { name: 'Nazwa nowego folderu' }),
     ).not.toBeInTheDocument();
     await expect(canvas.getByLabelText('Liczba operacji')).toHaveTextContent('0');
-    await chooseRootAction(canvas, userEvent, 'Nowy plik');
+    await chooseRootAction(canvas, userEvent, 'Nowy folder');
     await userEvent.type(
-      await canvas.findByRole('textbox', { name: 'Nazwa nowego pliku' }),
+      await canvas.findByRole('textbox', { name: 'Nazwa nowego folderu' }),
       'bad-name',
     );
     await userEvent.keyboard('{Enter}');
-    await expect(canvas.getByRole('textbox', { name: 'Nazwa nowego pliku' })).toHaveValue(
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa nowego folderu' })).toHaveValue(
       'bad-name',
     );
     await expect(canvas.getByRole('alert')).toBeVisible();
     await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('button', { name: 'Akcje: specification.md' }));
-    const menu = await within(document.body).findByRole('menu');
-    // Policy-blocked actions stay visible but disabled; the reason is one wrapped note.
-    await expect(within(menu).getByRole('menuitem', { name: 'Usuń' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    // The row itself opens the document: the menu holds no copy of that action.
-    await expect(within(menu).queryByRole('menuitem', { name: 'Otwórz' })).not.toBeInTheDocument();
-    const note = within(menu).getByText(/Dokument wymagany przez workflow/);
-    await expect(menu).toHaveAttribute('aria-describedby', note.id);
+    // The protected overview offers no dead items: its "..." is the note that says why.
+    const note = await within(document.body).findByRole('dialog', {
+      name: 'Akcje: specification.md',
+    });
+    await expect(note).toHaveTextContent(/Przegląd to główny dokument/);
   },
 };
 
 export const LostInlineAcknowledgement: Story = {
   render: () => <Fixture loseAck />,
   play: async ({ canvas, userEvent }) => {
-    await chooseRootAction(canvas, userEvent, 'Nowy plik');
-    const input = await canvas.findByRole('textbox', { name: 'Nazwa nowego pliku' });
+    await chooseRootAction(canvas, userEvent, 'Nowy folder');
+    const input = await canvas.findByRole('textbox', { name: 'Nazwa nowego folderu' });
     await userEvent.type(input, 'lost');
     await userEvent.keyboard('{Enter}');
     await expect(input).toBeDisabled();
     await expect(input).toHaveValue('lost');
     await expect(canvas.getByRole('button', { name: 'Akcje: notes' })).toBeDisabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź wynik tej operacji' }));
-    await expect(canvas.getByRole('button', { name: 'lost.md' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Akcje: lost' })).toBeVisible();
     await expect(canvas.getByLabelText('Tożsamość prób')).toHaveTextContent('same');
-    await expect(canvas.getAllByRole('button', { name: 'lost.md' })).toHaveLength(1);
+    await expect(canvas.getAllByRole('button', { name: 'Akcje: lost' })).toHaveLength(1);
   },
 };
 export const ConfirmationKeepsObservedRevision: Story = {

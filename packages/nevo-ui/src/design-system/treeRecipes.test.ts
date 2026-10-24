@@ -13,6 +13,10 @@ import {
   treeRootClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeAttentionGlyphClassName,
+  treeAttentionStateLabelClassName,
+  treeStateLabelClassName,
+  treeTrailingLabelClassName,
 } from './treeRecipes';
 
 describe('compact tree geometry', () => {
@@ -100,6 +104,19 @@ describe('tree row actions and labels', () => {
     expect(treeItemLabelTruncateClassName).toContain('truncate');
     expect(treeItemLabelTruncateClassName).toContain('min-w-0');
     expect(treeItemLabelClassName).not.toContain('truncate');
+  });
+
+  it('hides a trailing label on narrow rows but never a state label', () => {
+    expect(treeTrailingLabelClassName).toContain('text-content-muted');
+    expect(treeTrailingLabelClassName).toContain('@max-3xs/tree-row:sr-only');
+    for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
+      expect(label).toContain('shrink-0');
+      expect(label).toContain('whitespace-nowrap');
+      expect(label).not.toMatch(/sr-only|hidden|rounded|bg-/);
+    }
+    expect(treeStateLabelClassName).toContain('text-content-muted');
+    expect(treeAttentionStateLabelClassName).toContain('text-status-attention');
+    expect(treeAttentionGlyphClassName).toContain('text-status-attention');
   });
 
   it('renders the required marker as quiet muted text that swaps with an icon on narrow rows', () => {

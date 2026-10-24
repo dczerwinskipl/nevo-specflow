@@ -41,6 +41,9 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   CONTROL_LOCK_BUSY: { kind: 'unavailable', outcome: 'unknown', retryable: true },
   ENGINE_UNAVAILABLE: { kind: 'unavailable', outcome: 'not-applied', retryable: true },
   CREATE_NOT_FOUND: { kind: 'not-found', outcome: 'not-applied' },
+  // The archetype catalogue changed under the form, or the chosen archetype is gone (admission).
+  CATALOGUE_STALE: { kind: 'conflict', outcome: 'not-applied' },
+  ARCHETYPE_UNKNOWN: { kind: 'validation', outcome: 'not-applied' },
 };
 
 const branchConflictCodes = new Set([
@@ -72,6 +75,8 @@ export const protectedBranchFailure = (sent: SentCreate): CreateFailure => ({
  */
 export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateFailure {
   const code = error.code ?? 'unknown';
+  if (code === 'CATALOGUE_STALE' || code === 'ARCHETYPE_UNKNOWN')
+    return { kind: 'catalogue-stale', code };
   if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
   if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
   // The server cannot rule out that the operation was reserved: never claim a definite refusal.

@@ -87,6 +87,10 @@ function DemoCreateSpecification(props: Props) {
       catalogue={catalogue.data}
       configurationUnavailable={runtime.isError || catalogue.isError}
       onRefresh={() => void Promise.all([runtime.refetch(), catalogue.refetch()])}
+      onRefreshCatalogue={async () => {
+        const result = await catalogue.refetch();
+        return result.isError ? undefined : result.data;
+      }}
     />
   );
 }

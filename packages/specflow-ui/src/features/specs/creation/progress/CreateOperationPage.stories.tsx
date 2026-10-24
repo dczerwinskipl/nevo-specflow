@@ -23,6 +23,7 @@ import { createSessionOperationStorage } from '../operation/createOperationStora
 import type { ProjectCreateRequest } from '../api/api.project';
 import type { CreateSettingsFacts } from '../workspace/model/createFacts';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
 const base = { operationId, kind: 'specification-create' as const };
@@ -146,7 +147,9 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
 
 interface FixtureProps {
   /** The request this browser stored when the form handed over; none is a direct link. */
-  request?: ProjectCreateRequest & { operationId?: string };
+  request?: Omit<ProjectCreateRequest, keyof typeof archetypeSelectionFixture> & {
+    operationId?: string;
+  };
   /** What the form saved with the draft about this Create (workspace names, folder, merge target). */
   facts?: CreateSettingsFacts;
   server?: Server;
@@ -173,12 +176,19 @@ function Fixture({
   useMemo(() => {
     sessionStorage.clear();
     const storage = createSessionOperationStorage('unknown', sessionStorage);
-    if (request) storage.save({ request: { ...request, operationId }, startedAt: Date.now() });
+    if (request)
+      storage.save({
+        request: { ...archetypeSelectionFixture, ...request, operationId },
+        startedAt: Date.now(),
+      });
     storage.saveDraft({
       operationId,
       title: request?.title ?? '',
       goal: request?.goal ?? '',
       choice: initialWorkspaceChoice,
+      // What the form showed about the archetype: the page lists it with the files it makes.
+      archetypeTitle: 'Feature',
+      documentFiles: ['overview.md', 'behaviour.md', 'ux.md'],
       ...(facts ? { facts } : {}),
     });
   }, [request, facts]);

@@ -1,6 +1,5 @@
-import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useEffect, useRef, useState } from 'react';
-import type { DocumentTreeIndex } from './documentTreePolicy';
+import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 
 export interface TreeFocus {
   /** Ref callback of a row's button: `key` is `doc:<id>` or `folder:<path>`. */
@@ -13,7 +12,7 @@ export interface TreeFocus {
 }
 
 /** Focus restoration for tree rows that are replaced or created by operations. */
-export function useTreeFocus(index: DocumentTreeIndex<Tree>): TreeFocus {
+export function useTreeFocus(index: DocumentTreeIndex<TreeRows>): TreeFocus {
   const nodes = useRef(new Map<string, HTMLButtonElement>());
   const [target, setTarget] = useState<string>();
   useEffect(() => {

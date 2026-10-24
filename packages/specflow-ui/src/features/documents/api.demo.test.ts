@@ -21,6 +21,13 @@ describe('demo documents adapter', () => {
       expectedRevision: '1',
     });
   });
+  it('reads the catalogue from the demo creation catalogue (its specifications were created from it)', async () => {
+    const http = createHttpClient();
+    const get = vi.spyOn(http, 'get').mockResolvedValue({ revision: 'r', documentTypes: [] });
+    const signal = new AbortController().signal;
+    await createDemoDocumentsApi(http).catalogue(signal);
+    expect(get).toHaveBeenCalledWith('/api/demo/specification-creation', { signal });
+  });
   it('propagates conflict failures without fixture success and exposes the error code', async () => {
     const http = createHttpClient();
     const error = new HttpClientError('Conflict', {

@@ -1,12 +1,25 @@
 import type { RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, AppContent, Button, ScrollArea } from '@nevo/ui';
+import { Alert, AppContent, Button, InlineNote, ScrollArea, Separator } from '@nevo/ui';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
+import { useMessage } from '../../../i18n/message';
 import { SessionRecoveryNotice } from '../../sessions';
+import { useSpecificationWorkspace } from '../../specs/read-model';
+import {
+  archetypeTitle,
+  closeRefusingIssues,
+  reasonFragment,
+  specificationReadOnlyReason,
+  typeTitle,
+  unmetRequirements,
+} from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
+import { CloseIssues } from './CloseIssues';
+import { ExpectedDocuments } from './ExpectedDocuments';
 import type { DocumentTreeOperations } from './useDocumentTreeOperations';
 
 /** The Primary pane: the document tree with its loading and error states. */
@@ -31,12 +44,21 @@ export function DocumentsTreePanel({
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const text = useMessage();
   const { documentsApi } = useAppServices();
   const cache = useQueryClient();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
+  const catalogue = useDocumentCatalogue();
+  const specification = useSpecificationWorkspace(specId);
+  const data = tree.data;
+  // What needs the reader first, and only that: Close refusals, why nothing can be changed, and
+  // the types the archetype expects that are missing.
+  const issues = data ? closeRefusingIssues(data) : [];
+  const readOnly = data ? specificationReadOnlyReason(data) : undefined;
+  const unmet = data ? unmetRequirements(data) : [];
   return (
     <AppContent className="h-full w-full">
       {/* The location header is a breadcrumb trail; the page still needs its level-1 heading. */}
@@ -46,6 +68,27 @@ export function DocumentsTreePanel({
       <SessionRecoveryNotice specId={specId} />
       <ScrollArea direction="both" className="min-h-0 flex-1" contentClassName="p-2">
         <ApplicationContextLine specId={specId} view="documents" className="mb-2 px-2" />
+        {data && (issues.length > 0 || readOnly !== undefined || unmet.length > 0) && (
+          // Inside the tree's scroll area: it scrolls away with the tree and costs nothing when empty.
+          <div className="mb-3 grid gap-4">
+            <CloseIssues issues={issues} />
+            {readOnly && (
+              <InlineNote className="px-2">
+                {t('documents.tree.editingUnavailable', {
+                  reason: text(reasonFragment(readOnly)),
+                })}
+              </InlineNote>
+            )}
+            <ExpectedDocuments
+              requirements={unmet}
+              archetype={archetypeTitle(data, catalogue.data)}
+              typeTitle={(typeId) => typeTitle(catalogue.data, typeId)}
+              canAdd={data.capabilities.createFile.available}
+              onAdd={(typeId) => controllerRef.current?.newDocument(typeId)}
+            />
+            {(issues.length > 0 || unmet.length > 0) && <Separator />}
+          </div>
+        )}
         {tree.isPending ? (
           <p role="status">{t('documents.loadingDocuments')}</p>
         ) : !tree.data ? (
@@ -55,14 +98,24 @@ export function DocumentsTreePanel({
         ) : (
           <DocumentsExplorer
             tree={tree.data}
+            catalogue={{
+              data: catalogue.data,
+              isPending: catalogue.isPending,
+              retry: () => void catalogue.refetch(),
+            }}
+            specificationTitle={specification.data?.title ?? specId}
+            onRefresh={operations.refresh}
             controllerRef={controllerRef}
             active={documentId}
             onSelect={onSelect}
             onAdd={operations.add}
             onOperate={operations.operate}
-            beforeAction={async () => {
-              if (requestRef.current && !(await requestRef.current())) return false;
-              commitRef?.current?.();
+            beforeAction={async (options) => {
+              // Create, classify and registration removal keep the drafts of open documents.
+              if (!options?.keepDrafts) {
+                if (requestRef.current && !(await requestRef.current())) return false;
+                commitRef?.current?.();
+              }
               const snapshot = await documentsApi.documentTree(specId);
               cache.setQueryData(documentTreeKeys.tree(specId), snapshot);
               return snapshot;

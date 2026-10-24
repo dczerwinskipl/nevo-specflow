@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, MarkdownDocument, ScrollArea } from '@nevo/ui';
+import { Alert, Button, InlineNote, MarkdownDocument, ScrollArea } from '@nevo/ui';
+import { useMessage } from '../../../i18n/message';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { reasonFragment, reasonRemedy } from '../catalogue/documentTypePolicy';
 import { documentKindOf, documentViewOf } from '../content-kinds/documentContentKinds';
+import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
+import { refusalReason } from '../explorer/useDocumentOperations';
 import { MarkdownSourceEditor } from './MarkdownSourceEditor';
-import { useDocumentEditor } from './DocumentEditorProvider';
+import { useDocumentEditor, type DocumentEditorSession } from './DocumentEditorProvider';
 import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
 import { DocumentOutline } from '../outline/DocumentOutline';
 import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
@@ -13,44 +17,153 @@ import { DocumentProperties } from '../frontmatter/DocumentProperties';
 import { useMarkdownLabels } from '../useMarkdownLabels';
 import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
 
-/** Document content (preview or source). Identity and actions live in the workspace header. */
+/**
+ * Why the document is read-only, as the first quiet line of its content (on open, in the reading
+ * order before the text): the reason and, when there is one, what to do about it.
+ */
+function ReadOnlyLine({ session }: { session: DocumentEditorSession }) {
+  const { t } = useTranslation();
+  const text = useMessage();
+  const reason = session.readOnlyReason;
+  if (!reason) return null;
+  const remedy = reasonRemedy(reason);
+  return (
+    <InlineNote>
+      {t('documents.readOnly.line', { reason: text(reasonFragment(reason)) })}
+      {remedy ? ` ${text(remedy)}` : ''}
+    </InlineNote>
+  );
+}
+
+/**
+ * A refused save, at the top of the document (role alert, focus stays in the editor). The draft
+ * is always kept; the actions are the ways out of each refusal.
+ */
+function SaveRefusal({ session }: { session: DocumentEditorSession }) {
+  const { t } = useTranslation();
+  const text = useMessage();
+  if (session.saveError === undefined) return null;
+  const code = apiErrorCode(session.saveError);
+  const name = session.document.path.split('/').at(-1) ?? session.document.path;
+  const tryAgain = (
+    <Button
+      size="sm"
+      variant="secondary"
+      disabled={session.saving}
+      onClick={() => void session.save()}
+    >
+      {t('documents.save.tryAgain')}
+    </Button>
+  );
+  let title: string;
+  let body: ReactNode = null;
+  let actions: ReactNode = null;
+  switch (code) {
+    case 'DOCUMENT_REVISION_CONFLICT':
+      title = t('documents.conflict.title', { name });
+      body = t('documents.conflict.body');
+      actions = (
+        <>
+          <Button size="sm" variant="secondary" onClick={session.copyMine}>
+            {t('documents.conflict.copyMine')}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={session.requestLoadDisk}>
+            {t('documents.conflict.loadDisk')}
+          </Button>
+        </>
+      );
+      break;
+    case 'BRANCH_PROTECTED':
+    case 'GIT_POLICY_INVALID':
+    case 'SPEC_ARCHIVED': {
+      const reason = refusalReason(session.saveError, code);
+      const remedy = reasonRemedy(reason);
+      title = t('documents.save.refused', { reason: text(reasonFragment(reason)) });
+      body = remedy ? text(remedy) : null;
+      break;
+    }
+    case 'COMMIT_BLOCKED':
+      title = t('documents.save.commitBlocked');
+      body = t('documents.remedy.commitBlocked');
+      actions = tryAgain;
+      break;
+    case 'SPEC_BUSY':
+      title = t('documents.save.busy');
+      actions = tryAgain;
+      break;
+    case 'DOCUMENT_RECOVERY_REQUIRED':
+      title = t('documents.save.recoveryTitle');
+      body = t('documents.save.recoveryBody');
+      actions = (
+        <Button size="sm" variant="secondary" disabled={session.saving} onClick={session.resume}>
+          {t('documents.save.resume')}
+        </Button>
+      );
+      break;
+    case 'DOCUMENT_FILE_MISSING':
+      title = t('documents.save.missing');
+      body = t('documents.tabs.missingHint');
+      break;
+    default:
+      title = t('documents.save.failed');
+      actions = tryAgain;
+  }
+  return (
+    <div className="shrink-0 px-4 pt-4">
+      <Alert role="alert" tone="attention" title={title} actions={actions}>
+        {body && <p>{body}</p>}
+      </Alert>
+    </div>
+  );
+}
+
+/** Document content (preview, source, image or file). Identity and actions live in the workspace header. */
 export function DocumentEditor() {
   const { t } = useTranslation();
   const session = useDocumentEditor();
   if (!session) return null;
   const { document, draft, editorRoot, save, setDraft } = session;
-  const kind = documentKindOf(document.path);
+  const kind = documentKindOf(document);
   const plainText = kind.id === 'text';
+  const view = documentViewOf(kind, draft, session.readOnlyReason !== undefined);
+  const readOnlyLine = kind.text ? <ReadOnlyLine session={session} /> : null;
   return (
     <div ref={editorRoot} className="flex h-full min-h-0 w-full flex-col">
-      {session.saveError !== undefined && (
-        <Alert
-          tone="attention"
-          role="alert"
-          title={
-            apiErrorCode(session.saveError) === 'DOCUMENT_REVISION_CONFLICT'
-              ? t('documents.editor.conflict')
-              : t('documents.editor.saveFailed')
-          }
+      <SaveRefusal session={session} />
+      {view === 'image' ? (
+        <DocumentImageView
+          specId={session.specId}
+          document={document}
+          actualSize={session.actualSize}
         />
-      )}
-      {documentViewOf(kind, draft) === 'edit' ? (
-        <MarkdownSourceEditor
-          key={document.id}
-          plainText={plainText}
-          value={draft.content}
-          viewState={draft.viewState}
-          onViewStateChange={(viewState) => setDraft({ viewState })}
-          anchor={session.anchor}
-          onAnchorChange={session.rememberAnchor}
-          readerRef={session.anchorReader}
-          onChange={(content) => setDraft({ content })}
-          onSave={() => void save()}
-          label={t('documents.editor.sourceLabel', { name: document.path })}
-        />
+      ) : view === 'file' ? (
+        <DocumentFileView document={document} onDownload={session.download} />
+      ) : view === 'edit' || view === 'source' ? (
+        <>
+          {session.readOnlyReason && <div className="shrink-0 px-4 pb-1 pt-3">{readOnlyLine}</div>}
+          <MarkdownSourceEditor
+            key={document.id}
+            plainText={plainText}
+            // Read-only text, or editing locked until a written save is resumed.
+            readOnly={view === 'source' || session.locked}
+            value={draft.content}
+            viewState={draft.viewState}
+            onViewStateChange={(viewState) => setDraft({ viewState })}
+            anchor={session.anchor}
+            onAnchorChange={session.rememberAnchor}
+            readerRef={session.anchorReader}
+            onChange={(content) => setDraft({ content })}
+            // Ctrl/Cmd+S does nothing while a save runs (it joins it) or when Save is blocked.
+            onSave={() => {
+              if (!session.saveBlocked) void save();
+            }}
+            label={t('documents.editor.sourceLabel', { name: document.path })}
+          />
+        </>
       ) : (
         <PreviewScroller
           key={document.id}
+          lead={session.readOnlyReason ? readOnlyLine : undefined}
           content={draft.content}
           anchor={session.anchor}
           onAnchorChange={session.rememberAnchor}
@@ -68,6 +181,7 @@ const lineCountOf = (text: string) => text.split('\n').length;
 
 /** The rendered preview: one scroller whose position is the shared anchor of the document. */
 function PreviewScroller({
+  lead,
   content,
   anchor,
   onAnchorChange,
@@ -76,6 +190,8 @@ function PreviewScroller({
   navigatorRef,
   reportColumnShown,
 }: {
+  /** The first line of the content (for example why the document is read-only), in the flow. */
+  lead?: ReactNode;
   content: string;
   anchor?: ScrollAnchor;
   onAnchorChange: (anchor: ScrollAnchor) => void;
@@ -243,6 +359,7 @@ function PreviewScroller({
       // The focusable scroll viewport is the preview region the editor provider refocuses.
       viewportRef={viewportRef}
     >
+      {lead && <div className="mb-4 max-w-content-narrow">{lead}</div>}
       {wide && hasAside ? (
         // Two columns: the text keeps its readable measure and the contents and properties stay in
         // view beside it, so a wide panel is not an empty band.

@@ -27,6 +27,8 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
       return 'create.errors.branchProtected.title';
     case 'commit-blocked':
       return 'create.errors.commitBlocked.title';
+    case 'catalogue-stale':
+      return 'create.errors.catalogueStale.title';
     case 'branch-exists':
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.title'
@@ -64,6 +66,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
           : 'create.errors.branchProtected.bodyWorkspace';
     case 'commit-blocked':
       return 'create.errors.commitBlocked.body';
+    case 'catalogue-stale':
+      return 'create.errors.catalogueStale.body';
     case 'branch-exists':
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.body'
@@ -112,6 +116,7 @@ export function CreateFailureAlert({
   refreshing,
   onCopy,
   onRefresh,
+  onRefreshArchetypes,
   onUseAutomaticName,
   onUseCustomName,
   showDiagnostics = true,
@@ -131,6 +136,8 @@ export function CreateFailureAlert({
   refreshing: boolean;
   onCopy: (kind: CopyKind) => void;
   onRefresh: () => void;
+  /** Reads the archetypes again and keeps the form (after `catalogue-stale`). */
+  onRefreshArchetypes: () => void;
   onUseAutomaticName: () => void;
   onUseCustomName: () => void;
 }) {
@@ -210,6 +217,18 @@ export function CreateFailureAlert({
           onClick={onRefresh}
         >
           {t('create.workspace.refreshOptionsAction')}
+        </Button>
+      )}
+      {failure.kind === 'catalogue-stale' && (
+        <Button
+          className="mt-3"
+          size="sm"
+          variant="secondary"
+          leadingIcon="refresh"
+          disabled={refreshing}
+          onClick={onRefreshArchetypes}
+        >
+          {t('create.errors.refreshArchetypes')}
         </Button>
       )}
       {failure.kind === 'branch-protected' && failure.cause === 'workspace' && (

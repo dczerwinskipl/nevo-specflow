@@ -12,13 +12,24 @@ import {
   treeRequiredLabelClassName,
   treeRequiredMarkerClassName,
   treeRootClassName,
+  treeAttentionGlyphClassName,
+  treeAttentionStateLabelClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeStateLabelClassName,
+  treeTrailingLabelClassName,
 } from './treeRecipes';
 
 type TreeEntry =
   | { kind: 'folder'; name: string; children: TreeEntry[] }
-  | { kind: 'file'; name: string; required?: boolean; disabled?: boolean };
+  | {
+      kind: 'file';
+      name: string;
+      required?: boolean;
+      disabled?: boolean;
+      /** Trailing label: a hideable quiet label, a state label or an attention state label. */
+      trailing?: { text: string; kind: 'label' | 'state' | 'attention' };
+    };
 
 const longName = 'adr-001-deterministyczna-admisja-zadan-i-granice-wykonania-agentow.md';
 
@@ -96,8 +107,25 @@ function TreeLevel({
                   disabled={entry.disabled}
                   type="button"
                 >
-                  <Icon name="file" />
+                  {entry.trailing?.kind === 'attention' ? (
+                    <Icon name="triangle-alert" className={treeAttentionGlyphClassName} />
+                  ) : (
+                    <Icon name="file" />
+                  )}
                   <span className={treeItemLabelTruncateClassName}>{entry.name}</span>
+                  {entry.trailing && (
+                    <span
+                      className={
+                        entry.trailing.kind === 'label'
+                          ? treeTrailingLabelClassName
+                          : entry.trailing.kind === 'state'
+                            ? treeStateLabelClassName
+                            : treeAttentionStateLabelClassName
+                      }
+                    >
+                      {entry.trailing.text}
+                    </span>
+                  )}
                   {entry.required && (
                     <>
                       <span className={treeRequiredLabelClassName}>Required</span>
@@ -153,14 +181,34 @@ function TreeLevel({
   );
 }
 
+/** Trailing labels: a type label that may hide on narrow rows, and state labels that never hide. */
+const labelledFixture: TreeEntry[] = [
+  {
+    kind: 'folder',
+    name: 'notes',
+    children: [
+      { kind: 'file', name: 'login-flow.md', trailing: { text: 'UX', kind: 'label' } },
+      {
+        kind: 'file',
+        name: 'meeting-2026-10-20-with-the-identity-team.md',
+        trailing: { text: 'No type', kind: 'state' },
+      },
+    ],
+  },
+  { kind: 'file', name: 'backend.md', trailing: { text: 'File missing', kind: 'attention' } },
+  { kind: 'file', name: 'overview.md' },
+];
+
 function TreeExample({
   selected = nothing,
   width = 'w-full max-w-sm',
   opened = nothing,
+  entries = fixture,
 }: {
   selected?: string[];
   width?: string;
   opened?: string[];
+  entries?: TreeEntry[];
 }) {
   const [closed, setClosed] = useState<string[]>(opened);
   const toggle = (path: string) =>
@@ -171,7 +219,7 @@ function TreeExample({
     <nav aria-label="Documents" className={`${width} min-w-0`}>
       <TreeLevel
         closed={closed}
-        entries={fixture}
+        entries={entries}
         parent=""
         selected={selected}
         toggle={toggle}
@@ -199,6 +247,31 @@ export const SelectedNestedFile: Story = {
 export const SelectedRequiredFile: Story = { args: { selected: ['specification.md'] } };
 /** An opened empty folder shows the quiet hint, not a tree item. */
 export const EmptyFolderOpened: Story = { args: { opened: ['open:notatki'] } };
+/** Trailing labels: the type label hides on a narrow row, the state labels never do. */
+export const TrailingLabels: Story = { args: { entries: labelledFixture } };
+export const TrailingLabelsNarrow: Story = {
+  args: { entries: labelledFixture, width: 'w-[15rem]' },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const row = (key: string) =>
+      canvasElement.querySelector<HTMLElement>(`[data-tree-item="${key}"]`)!;
+    const missing = row('backend.md');
+    const state = Array.from(missing.querySelectorAll('span')).find(
+      (span) => span.textContent === 'File missing',
+    );
+    if (!state || state.getBoundingClientRect().width === 0)
+      throw new Error('A state label stays visible on a narrow row.');
+    const unclassified = row('notes/meeting-2026-10-20-with-the-identity-team.md');
+    const noType = Array.from(unclassified.querySelectorAll('span')).find(
+      (span) => span.textContent === 'No type',
+    );
+    if (
+      !noType ||
+      noType.getBoundingClientRect().right > unclassified.getBoundingClientRect().right
+    )
+      throw new Error('A long name truncates so the state label stays inside the row.');
+  },
+};
 export const Narrow: Story = {
   args: { selected: [`architektura/decyzje/${longName}`], width: 'w-full' },
   globals: { viewport: { value: 'mobile1', isRotated: false } },

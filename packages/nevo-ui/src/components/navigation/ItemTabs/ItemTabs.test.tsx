@@ -96,6 +96,20 @@ describe('ItemTabs', () => {
     expect(screen.getByRole('tab', { name: 'item-1.md' })).toBe(tabs[1]);
   });
 
+  it('keeps the space at the split point of a middle-truncated label', () => {
+    renderTabs({ items: [makeItem('ux', { label: 'Single sign-on - UX' })] });
+    const tab = screen.getByRole('tab', { name: 'Single sign-on - UX' });
+    const halves = Array.from(tab.querySelectorAll('[aria-hidden="true"]')).filter(
+      (node) => node.textContent,
+    );
+    expect(halves.map((node) => node.textContent).join('')).toBe('Single sign-on - UX');
+    const head = halves[0]!;
+    expect(head.textContent?.endsWith(' ')).toBe(true);
+    // A truncating head with `white-space: nowrap` collapses its trailing space; `pre` keeps it.
+    expect(head.className).toContain('whitespace-pre');
+    expect(head.className).not.toMatch(/\btruncate\b|whitespace-nowrap/);
+  });
+
   it('keeps the tablist free of non-tab owned elements and close buttons out of the tab order', () => {
     renderTabs();
     const tablist = screen.getByRole('tablist');

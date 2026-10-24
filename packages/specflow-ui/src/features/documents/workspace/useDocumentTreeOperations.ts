@@ -1,6 +1,9 @@
 import type {
   CreateDocumentsInput,
+  DocumentContent,
   DocumentOperationInput,
+  DocumentOperationResult,
+  DocumentTree,
 } from '@nevo/specflow-contracts/documents';
 import { useEffect, useRef, useState } from 'react';
 import { useBlocker } from '@tanstack/react-router';
@@ -13,21 +16,35 @@ import { draftFor } from '../editor/documentDraftStore';
 import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import type { DocumentOperation } from '../explorer/DocumentsExplorer';
-import type { PlannedDocument } from '../explorer/documentTreePolicy';
-import { documentKeys } from '../read-model/queries';
+import type { NewDocumentEntry } from '../explorer/useDocumentOperations';
+import { documentKeys, documentTreeKeys } from '../read-model/queries';
+import { followedDocuments, treeWithFollowed, type FollowedDocument } from './documentIdFollow';
 
 /** Follow-up work after a confirmed mutation; its failure never reaches the mutation's caller. */
 const noop = () => undefined;
 const settleFollowUp = (work: Promise<unknown>) => work.then(noop, noop);
+/**
+ * A coded answer is the server's definite refusal: its operation id must not be replayed, except
+ * `DOCUMENT_RECOVERY_REQUIRED`, which is resumed with the same operation id.
+ */
+const definiteRefusal = (error: unknown) => {
+  const code = apiErrorCode(error);
+  return Boolean(code) && code !== 'DOCUMENT_RECOVERY_REQUIRED';
+};
 
 export interface DocumentTreeOperations {
   /** A tree operation is in flight (or unconfirmed): leaving the page is blocked meanwhile. */
   busy: boolean;
   setBusy: (busy: boolean) => void;
-  /** Adds files and folders; a new empty file, or the first imported file, opens as a new tab. */
-  add: (documents: PlannedDocument[], folders?: string[]) => Promise<void>;
-  /** Renames, moves, deletes or classifies; deleting a document closes its tab (no second question). */
-  operate: (operation: DocumentOperation) => Promise<void>;
+  /** Adds files and folders; a new document, or the first imported file, opens as a new tab. */
+  add: (documents: NewDocumentEntry[], folders?: string[]) => Promise<void>;
+  /**
+   * Renames, moves, deletes or classifies; deleting a document closes its tab (no second question).
+   * A document whose id changes keeps its tab, draft and position, and the route follows it.
+   */
+  operate: (operation: DocumentOperation) => Promise<DocumentOperationResult>;
+  /** Reads the tree (and what depends on it) again. */
+  refresh: () => Promise<unknown>;
 }
 
 /**
@@ -69,12 +86,18 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       { documents, folders },
       (input) => documentsApi.addDocuments(specId, input),
       'operationId',
+      definiteRefusal,
     );
     // The mutation is confirmed from here on: nothing below may turn it into an uncertain outcome
     // (a retry would POST again with a new operation id). The follow-up is best effort.
     await settleFollowUp(refresh());
-    // A new empty file opens in edit; an import opens its first file in preview.
-    const blank = documents.length === 1 && documents[0]!.content === '';
+    // A new document (empty, or from its type's template) opens in edit; an import opens its first
+    // file in preview.
+    const first = documents[0];
+    const blank =
+      documents.length === 1 &&
+      first !== undefined &&
+      ('templateId' in first || first.content === '');
     const id = documents.length > 0 ? result.documents[0]?.id : undefined;
     if (id) {
       await settleFollowUp(
@@ -87,24 +110,55 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       setFollowUp({ show: id });
     }
   };
+  /**
+   * Moves what belongs to a document to its new id: the draft (unsaved changes survive), the
+   * reading position, the cached record and tree entry (so nothing flashes as missing), then the
+   * tab in place and the route (replaced, not pushed).
+   */
+  const follow = async (moves: readonly FollowedDocument[]) => {
+    for (const move of moves) {
+      const draft = drafts.get(specId, move.from);
+      if (draft) {
+        drafts.set(specId, move.to, { ...draft, revision: move.revision });
+        drafts.remove(specId, move.from);
+      }
+      const anchor = drafts.getAnchor(specId, move.from);
+      if (anchor) drafts.setAnchor(specId, move.to, anchor);
+      const record = cache.getQueryData<DocumentContent>(documentKeys.detail(specId, move.from));
+      if (record)
+        cache.setQueryData<DocumentContent>(documentKeys.detail(specId, move.to), {
+          ...record,
+          id: move.to,
+          path: move.path,
+          revision: move.revision,
+          ...(move.type ? { type: move.type, classification: 'registered' as const } : {}),
+        });
+    }
+    cache.setQueryData<DocumentTree>(documentTreeKeys.tree(specId), (tree) =>
+      tree ? treeWithFollowed(tree, moves) : tree,
+    );
+    for (const move of moves) await tabs.follow(move.from, move.to);
+  };
+
   const operate: DocumentTreeOperations['operate'] = async (operation) => {
+    const before = cache.getQueryData<DocumentTree>(documentTreeKeys.tree(specId));
     const result = await sendRetained(
       operationAttempt,
       operation,
       (input) => documentsApi.operateDocument(specId, input),
       'operationId',
-      // A coded answer is the server's definite refusal: its operation id must not be replayed.
-      (error) => Boolean(apiErrorCode(error)),
+      definiteRefusal,
     );
     for (const removed of result.removedDocumentIds) drafts.remove(specId, removed);
-    // phase C: classify, rename and move of an unclassified file change its derived `u-` id; the
-    // open tab, its draft and the route must follow `result.documents[].id`.
+    const moves = followedDocuments(before, operation, result);
     for (const record of result.documents)
       drafts.update(specId, record.id, (draft) =>
         draft ? { ...draft, revision: record.revision } : undefined,
       );
+    if (moves.length > 0) await settleFollowUp(follow(moves));
     await settleFollowUp(refresh());
     if (result.removedDocumentIds.length > 0) setFollowUp({ removed: result.removedDocumentIds });
+    return result;
   };
-  return { busy, setBusy, add, operate };
+  return { busy, setBusy, add, operate, refresh };
 }

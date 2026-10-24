@@ -347,7 +347,7 @@ export const DirtyDraftKeepsPositionAcrossToggles: Story = {
     const entered = editorTopLine(view);
     view.focus();
     await userEvent.keyboard('ZMIANA');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await invokeDocumentAction(canvas, userEvent, 'Pokaż podgląd');
     await waitForPreview(canvasElement);
     await waitFor(() =>
@@ -357,7 +357,7 @@ export const DirtyDraftKeepsPositionAcrossToggles: Story = {
     const again = await openEditorOnly(canvasElement);
     await waitFor(() => expect(Math.abs(editorTopLine(again) - entered)).toBeLessThanOrEqual(1));
     await expect(again.state.doc.toString()).toContain('ZMIANA');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
   },
 };
 async function openEditorOnly(root: HTMLElement) {

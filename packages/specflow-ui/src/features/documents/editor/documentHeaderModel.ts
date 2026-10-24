@@ -12,7 +12,11 @@ import type { DocumentEditorSession } from './DocumentEditorProvider';
 export function documentHeaderModel(
   session: DocumentEditorSession | null,
   t: TFunction,
-  options: { onCloseTab?: () => void } = {},
+  options: {
+    onCloseTab?: () => void;
+    /** Offered for an unclassified document (its tab's `...` menu). */
+    onAssignType?: (id: string) => void;
+  } = {},
 ): {
   actions: readonly WorkspaceHeaderAction[];
   dirty: boolean;
@@ -29,8 +33,20 @@ export function documentHeaderModel(
       ]
     : [];
   if (!session) return { actions: close, dirty: false };
-  const kind = documentKindOf(session.document.path);
+  const kind = documentKindOf(session.document);
   const view = documentViewOf(kind, session.draft);
+  const { onAssignType } = options;
+  const assignType: WorkspaceHeaderAction[] =
+    onAssignType && session.document.classification === 'unclassified'
+      ? [
+          {
+            id: 'document-assign-type',
+            label: t('documents.tree.assignType'),
+            group: 'actions',
+            onPress: () => onAssignType(session.document.id),
+          },
+        ]
+      : [];
   return {
     dirty: session.dirty,
     actions: [
@@ -47,6 +63,7 @@ export function documentHeaderModel(
           ]
         : []),
       ...kind.actions(view, { session, t }),
+      ...assignType,
       {
         id: 'document-path',
         label: t('documents.actions.showPath'),

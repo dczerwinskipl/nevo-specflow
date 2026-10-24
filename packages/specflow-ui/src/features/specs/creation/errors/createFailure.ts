@@ -37,6 +37,12 @@ export type CreateFailure =
    * branch checked out, a locked index): nothing was created, trying again after it is resolved works.
    */
   | { kind: 'commit-blocked' }
+  /**
+   * The archetype catalogue changed while the form was filled in (`CATALOGUE_STALE`), or the chosen
+   * archetype no longer exists (`ARCHETYPE_UNKNOWN`): nothing was created; refreshing the archetypes
+   * keeps the form.
+   */
+  | { kind: 'catalogue-stale'; code: 'CATALOGUE_STALE' | 'ARCHETYPE_UNKNOWN' }
   | { kind: 'uncertain' }
   /** The request was provably never sent (no connection at dispatch): nothing was created. */
   | { kind: 'offline' }

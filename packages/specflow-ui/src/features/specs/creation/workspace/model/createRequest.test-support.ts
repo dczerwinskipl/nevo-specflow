@@ -18,3 +18,11 @@ export function buildCreateRequest(
     ...(target ? { target } : {}),
   };
 }
+
+/** The archetype part every Create request carries (tests and stories). */
+export const archetypeSelectionFixture = {
+  archetypeId: 'feature',
+  archetypeVersion: 1,
+  catalogueRevision: 'catalogue-revision-1',
+  optionalDocumentIds: ['behaviour', 'ux'],
+};

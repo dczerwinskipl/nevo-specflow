@@ -7,6 +7,7 @@ import {
   orderTreeLevel,
   pathCollides,
   createTreeIndex,
+  treeRows,
   treeLevel,
   uploadNameReason,
   validEntryName,
@@ -87,7 +88,7 @@ describe('inline entry names', () => {
     );
     expect(entryNameError('abc.', 'folder')).toBe('Nazwa nie może kończyć się kropką ani spacją.');
     expect(entryNameError('..', 'folder')).toBe('Wpisz inną nazwę.');
-    expect(entryNameError('a.pdf', 'document')).toBe('Obsługiwane formaty to .md i .txt.');
+    expect(entryNameError('a.pdf', 'document')).toBe('Obsługiwane formaty: .md, .txt.');
     expect(entryNameError('a.pdf', 'folder')).toBeUndefined();
   });
   it('appends .md on create and keeps the current extension on rename', () => {
@@ -107,6 +108,24 @@ describe('upload name policy', () => {
   });
 });
 
+describe('treeRows', () => {
+  const action = { available: true };
+  const tree = {
+    folders: [{ path: 'docs', actions: { rename: action, move: action, delete: action } }],
+    documents: [],
+    dangling: [
+      { id: 'backend', path: 'docs/backend.md', type: 'backend', actions: { delete: action } },
+      { id: 'ux', path: 'gone/ux.md', type: 'ux', actions: { delete: action } },
+    ],
+  } as unknown as Parameters<typeof treeRows>[0];
+
+  it('places a dangling entry at its registered path, or in the main folder when its folder is gone', () => {
+    const index = createTreeIndex(treeRows(tree));
+    expect(index.level('docs').documents.map((row) => row.id)).toEqual(['backend']);
+    expect(index.level('').documents.map((row) => [row.id, row.dangling])).toEqual([['ux', true]]);
+  });
+});
+
 describe('treeLevel', () => {
   const tree = {
     folders: [{ path: 'Docs' }, { path: 'docs/sub' }, { path: 'other' }],
@@ -116,7 +135,7 @@ describe('treeLevel', () => {
       { id: '3', path: 'DOCS/a.md' },
       { id: '4', path: 'docs/sub/c.md' },
     ],
-  } as unknown as Parameters<typeof treeLevel>[0];
+  };
 
   it('lists the direct children of the root', () => {
     const level = treeLevel(tree, '');
@@ -206,7 +225,7 @@ describe('createTreeIndex', () => {
     const index = createTreeIndex({
       folders: folders.proxy,
       documents: documents.proxy,
-    } as unknown as Parameters<typeof createTreeIndex>[0]);
+    });
     const total = source.folders.length + source.documents.length;
     expect(total).toBeGreaterThanOrEqual(2000);
     const afterBuild = folders.reads.count + documents.reads.count;

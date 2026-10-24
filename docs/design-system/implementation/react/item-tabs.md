@@ -65,7 +65,7 @@ owns state, guards and the tab panel; the strip renders no panel.
 
 ## useOpenedItems
 
-Headless state: `{ items, activeId, open, activate, close, requestClose, closeAll }`.
+Headless state: `{ items, activeId, open, activate, close, requestClose, closeAll, replace }`.
 
 - `open` MUST activate an item whose `id` is already open instead of adding another.
 - Closing the active item activates its right neighbour, else the left one; closing the last leaves
@@ -78,6 +78,9 @@ Headless state: `{ items, activeId, open, activate, close, requestClose, closeAl
   host MUST handle the rejection, treat it as a refusal and tell the user. The host MUST route every
   close trigger (`x`, Delete, middle-click, menu) through `requestClose`. `close` and `closeAll` do
   not ask.
+- `replace(id, item)` gives an open item a new identity in place (same position, still active when
+  it was active), for example after the host's resource got a new id. An id that is not open is
+  ignored; when the new id is already open the old entry is dropped instead of duplicated.
 - A change of `scope` resets to the initial values and starts a new state generation. A guard that
   was pending in an earlier generation MUST NOT close anything, even if the scope later returns to
   the same value.

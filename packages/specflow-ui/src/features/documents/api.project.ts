@@ -1,4 +1,4 @@
-import type { DocumentTree } from '@nevo/specflow-contracts/documents';
+import type { ArchetypeCatalogue, DocumentTree } from '@nevo/specflow-contracts/documents';
 import { ApiError, type ApiTransport } from '../../api';
 import { documentTreePath, type DocumentsApi } from './api';
 
@@ -31,6 +31,12 @@ export function createProjectDocumentsApi(api: ApiTransport): DocumentsApi {
         operation: 'documents.tree',
         signal,
         isValid: (data) => isObject(data) && Array.isArray(data.documents),
+      }),
+    catalogue: (signal) =>
+      api.get<ArchetypeCatalogue>('/api/specs/archetypes', {
+        operation: 'documents.catalogue',
+        signal,
+        isValid: (data) => isObject(data) && Array.isArray(data.documentTypes),
       }),
     operateDocument: () => notImplemented('documents.operate'),
     addDocuments: () => notImplemented('documents.create'),

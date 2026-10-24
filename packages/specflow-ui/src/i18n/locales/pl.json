@@ -525,7 +525,6 @@
     "manual": "Samodzielnie",
     "nameLabel": "Nazwa specyfikacji",
     "namePlaceholder": "Np. Logowanie SSO",
-    "workflowLabel": "Workflow",
     "model": "Model",
     "chooseModel": "Wybierz model",
     "effort": "Effort",
@@ -538,9 +537,9 @@
     "simulatedSuffix": "symulacja, bez operacji Git",
     "method": {
       "title": "Jak chcesz stworzyć specyfikację?",
-      "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z workflow.",
+      "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z archetypu.",
       "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów.",
-      "manualText": "Utwórz wymagane dokumenty z workflow i edytuj je samodzielnie."
+      "manualText": "Utwórz dokumenty archetypu i edytuj je samodzielnie."
     },
     "heading": {
       "session": "Z kim chcesz pracować?",
@@ -548,7 +547,7 @@
     },
     "subheading": {
       "session": "Skonfiguruj kolejną sesję Spec Writera.",
-      "specification": "Wybierz workflow, który odpowiada rodzajowi pracy."
+      "withArchetype": "Nazwij pracę, wybierz pasujący do niej archetyp i miejsce, w którym powstanie."
     },
     "agent": {
       "sessionTitle": "Konfiguracja sesji",
@@ -570,10 +569,10 @@
       "forbidden": "Nie masz uprawnień do tworzenia specyfikacji.",
       "refreshConfiguration": "Odśwież konfigurację przed utworzeniem.",
       "title": "Podaj nazwę specyfikacji.",
-      "workflow": "Wybierz dostępny workflow.",
       "provider": "Wybierz dostępnego wykonawcę.",
       "model": "Wybierz model.",
-      "mode": "Wybierz obsługiwany tryb pracy."
+      "mode": "Wybierz obsługiwany tryb pracy.",
+      "archetype": "Wybierz dostępny archetyp."
     },
     "announce": {
       "refreshFailed": "Nie udało się odświeżyć opcji. Formularz zachowany.",
@@ -630,23 +629,15 @@
       "retry": "Ponów otwarcie sesji"
     },
     "archetype": {
-      "unavailable": "Wybrany workflow jest niedostępny. Wybierz inną pozycję.",
-      "info": "Informacje o workflow",
-      "phases": "Przebieg workflow",
-      "noDescription": "Opis workflow niedostępny.",
-      "noPhases": "Przebieg nie jest opisany w katalogu.",
-      "requiredDocuments": "Wymagane dokumenty",
-      "suggestedLater": "Sugerowane później",
-      "details": "Szczegóły dokumentów",
-      "requiredNone": "Brak wymaganych dokumentów",
-      "requiredCount_one": "{{count}} dokument wymagany",
-      "requiredCount_few": "{{count}} dokumenty wymagane",
-      "requiredCount_many": "{{count}} dokumentów wymaganych",
-      "requiredCount_other": "{{count}} dokumentów wymaganych",
-      "suggestedCount_one": "{{count}} sugerowany później",
-      "suggestedCount_few": "{{count}} sugerowane później",
-      "suggestedCount_many": "{{count}} sugerowanych później",
-      "suggestedCount_other": "{{count}} sugerowanych później"
+      "title": "Archetyp",
+      "intro": "Kształt pracy: od jakich dokumentów zaczyna się specyfikacja i jakich się oczekuje. Dokumenty możesz później dodawać, usuwać i klasyfikować.",
+      "guidance": "Jak pracować z archetypem {{archetype}}",
+      "documents": "Dokumenty do utworzenia",
+      "always": "{{type}} ({{file}}) jest tworzony zawsze.",
+      "expectedUnticked": "{{archetype}} oczekuje dokumentu typu {{type}}. Bez niego specyfikacja pokaże go jako brakujący, dopóki go nie dodasz.",
+      "loading": "Wczytywanie archetypów",
+      "loadFailed": "Nie udało się wczytać archetypów",
+      "refreshed": "Archetypy zostały odświeżone."
     },
     "errors": {
       "forbiddenTitle": "Nie masz uprawnień do tworzenia specyfikacji",
@@ -724,7 +715,12 @@
       "commitFailed": {
         "title": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie",
         "body": "Nevo zapisało pliki specyfikacji, ale nie zdołało zapisać ich w commicie, więc specyfikacja nie jest jeszcze zarejestrowana. Nie twórz jej ponownie. Poproś operatora projektu o wznowienie tej operacji lub o zapisanie nowych plików w commicie, a potem sprawdź operację ponownie."
-      }
+      },
+      "catalogueStale": {
+        "title": "Archetypy zmieniły się w trakcie wypełniania formularza",
+        "body": "Specyfikacja nie została utworzona. Wpisane dane zostały zachowane: odśwież archetypy i sprawdź swój wybór."
+      },
+      "refreshArchetypes": "Odśwież archetypy"
     },
     "workspace": {
       "heading": "Gdzie chcesz pracować?",
@@ -937,7 +933,6 @@
       }
     },
     "project": {
-      "subheading": "Nadaj jej nazwę, opisz cel, jeśli go masz, i wybierz, gdzie mają leżeć jej pliki.",
       "goalLabel": "Cel (opcjonalnie)",
       "goalPlaceholder": "Co ma osiągnąć ta specyfikacja?",
       "footNote": "Po utworzeniu otworzymy specyfikację.",
@@ -1010,7 +1005,9 @@
         "name": "Nazwa specyfikacji",
         "slug": "Nazwa (slug)",
         "goal": "Cel",
-        "committedTo": "Pliki specyfikacji trafią do commita na gałęzi <branch/>"
+        "committedTo": "Pliki specyfikacji trafią do commita na gałęzi <branch/>",
+        "archetype": "Archetyp",
+        "documents": "Dokumenty"
       },
       "status": {
         "sending": "Wysyłanie żądania…",
@@ -1058,8 +1055,6 @@
       "body": "Dokumenty i puste foldery są zachowane do restartu środowiska demonstracyjnego."
     },
     "editor": {
-      "conflict": "Dokument zmienił się. Twój szkic pozostaje zachowany.",
-      "saveFailed": "Nie udało się zapisać. Twój szkic pozostaje zachowany.",
       "sourceLabel": "Treść {{name}}"
     },
     "properties": {
@@ -1071,7 +1066,8 @@
       "preview": "Pokaż podgląd",
       "save": "Zapisz",
       "discard": "Cofnij zmiany",
-      "closeTab": "Zamknij kartę"
+      "closeTab": "Zamknij kartę",
+      "download": "Pobierz"
     },
     "dialogs": {
       "path": {
@@ -1097,14 +1093,11 @@
       "saveAllFailed": "Nie wszystkie dokumenty udało się zapisać. Szkice zostają."
     },
     "tree": {
-      "newFile": "Nowy plik",
       "newFolder": "Nowy folder",
       "upload": "Wgraj pliki",
       "rename": "Zmień nazwę",
       "move": "Przenieś",
       "delete": "Usuń",
-      "required": "Wymagany",
-      "requiredReason": "Dokument wymagany przez workflow: nie można go zmienić ani usunąć.",
       "rowActions": "Akcje: {{name}}",
       "checkFailed": "Nie udało się sprawdzić aktualnych dokumentów. Spróbuj ponownie.",
       "renamed": "Nazwa zmieniona.",
@@ -1120,7 +1113,6 @@
       "saving": "Zapisywanie…",
       "checkResult": "Sprawdź wynik tej operacji",
       "emptyFolder": "Folder jest pusty. Dodaj plik lub folder z menu.",
-      "readOnly": "Ta specyfikacja jest tylko do odczytu.",
       "addFirst": "Dodaj pierwszy plik przez menu akcji.",
       "processing": "Przetwarzanie…",
       "importDone": "Import zakończony.",
@@ -1151,14 +1143,15 @@
       "error": {
         "pathConflict": "Ta ścieżka już istnieje. Wybierz inną nazwę lub folder.",
         "revisionConflict": "Dokument lub drzewo zmieniło się. Zamknij akcję i otwórz ją ponownie, aby sprawdzić aktualny stan.",
-        "required": "Wymagana ścieżka workflow — tej zmiany nie można wykonać.",
         "requestConflict": "Żądanie ma inny zapisany wynik. Odśwież dokumenty przed kolejną operacją.",
-        "default": "Nie udało się wykonać zmiany. Sprawdź nazwę i ścieżkę; szkic pozostaje zachowany."
-      },
-      "reason": {
-        "required": "Wymagana ścieżka workflow — nie można jej zmienić ani usunąć.",
-        "rootProtected": "Folderu głównego nie można zmienić ani usunąć.",
-        "unavailable": "Ta operacja jest niedostępna."
+        "default": "Nie udało się wykonać zmiany. Sprawdź nazwę i ścieżkę; szkic pozostaje zachowany.",
+        "pathInvalid": "Tej nazwy lub ścieżki nie można użyć. Wybierz inną nazwę.",
+        "alreadyClassified": "Ten plik ma już typ. Dokumenty zostały odświeżone.",
+        "manifestDirty": "Plik specification.yaml ma niezacommitowane zmiany. Zacommituj je lub odrzuć i spróbuj ponownie.",
+        "busy": "Trwa inna zmiana tej specyfikacji. Spróbuj ponownie za chwilę.",
+        "refused": "Nie zmieniono: {{reason}}",
+        "recovery": "Pliki zostały zmienione, ale bez commita. Dokończ operację przed kolejną zmianą.",
+        "resume": "Wznów"
       },
       "nameError": {
         "characters": "Nazwa nie może zawierać znaków \\ / : * ? \" < > |",
@@ -1168,13 +1161,25 @@
         "dot": "Nazwa nie może zaczynać się od kropki.",
         "reserved": "Ta nazwa jest zarezerwowana przez system.",
         "trailing": "Nazwa nie może kończyć się kropką ani spacją.",
-        "format": "Obsługiwane formaty to .md i .txt."
+        "format": "Obsługiwane formaty: {{formats}}."
       },
       "nameReason": {
         "dot": "nazwa nie może zaczynać się od kropki",
         "reserved": "nazwa jest zarezerwowana przez system",
         "invalid": "nazwa zawiera niedozwolone znaki lub kończy się kropką/spacją"
-      }
+      },
+      "noType": "Bez typu",
+      "fileMissing": "Brak pliku",
+      "newDocument": "Nowy dokument…",
+      "assignType": "Przypisz typ…",
+      "removeRegistration": "Usuń rejestrację",
+      "registrationRemoved": "Usunięto rejestrację.",
+      "truncated": "Pokazano tylko pierwsze pozycje.",
+      "skipped_one": "Nie udało się odczytać {{count}} pozycji w folderze.",
+      "skipped_few": "Nie udało się odczytać {{count}} pozycji w folderze.",
+      "skipped_many": "Nie udało się odczytać {{count}} pozycji w folderze.",
+      "skipped_other": "Nie udało się odczytać {{count}} pozycji w folderze.",
+      "editingUnavailable": "Edycja jest niedostępna: {{reason}}"
     },
     "tabs": {
       "tablist": "Otwarte dokumenty",
@@ -1213,7 +1218,115 @@
       "close": "Zamknij spis treści",
       "columnLabel": "Spis treści i właściwości dokumentu"
     },
-    "menuDisplay": "Widok"
+    "menuDisplay": "Widok",
+    "issues": {
+      "title": "Zamknięcie tej specyfikacji zostanie odrzucone",
+      "caseCollision": "Dwa pliki różnią się tylko wielkością liter: {{path}}",
+      "archiveLimit": "Folder jest większy, niż pozwala archiwum.",
+      "remedy": "Popraw to w folderze (na przykład w Git), a potem odśwież."
+    },
+    "requirements": {
+      "title": "Oczekiwane dokumenty",
+      "help": "{{archetype}} oczekuje tych typów. Sprawdzana jest tylko obecność plików.",
+      "count": "{{count}} z {{min}}",
+      "add": "Dodaj",
+      "addLabel": "Dodaj dokument: {{type}}"
+    },
+    "newDocument": {
+      "title": "Nowy dokument",
+      "inFolder": "W folderze {{folder}}",
+      "inRoot": "W głównym folderze specyfikacji {{specification}}.",
+      "typeLabel": "Typ dokumentu",
+      "suggestedBy": "Sugerowane przez {{archetype}}",
+      "otherTypes": "Inne typy",
+      "expected": "Oczekiwany · {{count}} z {{min}}",
+      "present": "W tej specyfikacji: {{count}}",
+      "noType": "Bez typu",
+      "noTypeHelp": "Plik bez typu. Typ możesz przypisać później.",
+      "fileName": "Nazwa pliku",
+      "fileNameHelp": "O tym, czym jest dokument, decyduje typ; nazwa jest dowolna.",
+      "nameRequired": "Wpisz nazwę pliku.",
+      "guidance": "Jak napisać dokument: {{type}}",
+      "create": "Utwórz",
+      "created": "Dodano: {{type}}",
+      "loadingTypes": "Wczytywanie typów dokumentów…",
+      "typesFailed": "Nie udało się wczytać typów dokumentów"
+    },
+    "classify": {
+      "title": "Przypisz typ",
+      "description": "{{path}} zostaje na miejscu. Typ decyduje, czym ten plik jest w tej specyfikacji.",
+      "confirm": "Przypisz typ",
+      "done": "{{name}} ma teraz typ {{type}}"
+    },
+    "dangling": {
+      "title": "Brak pliku {{name}}",
+      "body": "Specyfikacja wymienia {{name}} jako dokument typu {{type}}, ale pliku nie ma w folderze. Mógł zostać przeniesiony lub usunięty poza SpecFlow.",
+      "restore": "Aby go zachować, przywróć plik (na przykład w Git) i odśwież.",
+      "confirmTitle": "Usunąć rejestrację {{name}}?",
+      "confirmBody": "Specyfikacja przestanie go wymieniać. Żaden plik nie zostanie usunięty."
+    },
+    "readOnly": {
+      "line": "Tylko do odczytu: {{reason}}"
+    },
+    "reason": {
+      "note": "Niedostępne: {{reason}}",
+      "protected": "Przegląd to główny dokument: można go edytować, ale nie można zmienić jego nazwy, przenieść ani usunąć.",
+      "root": "Folderu głównego nie można zmienić, przenieść ani usunąć.",
+      "archived": "ta specyfikacja jest zarchiwizowana.",
+      "branchProtected": "ta gałąź jest chroniona przed commitami SpecFlow.",
+      "branchNotAllowed": "SpecFlow nie może commitować na tej gałęzi.",
+      "commitBlocked": "Git nie może teraz przyjąć commita.",
+      "gitPolicyInvalid": "ustawienia Git projektu są nieprawidłowe.",
+      "busy": "trwa inna zmiana tej specyfikacji.",
+      "notEditable": "ten typ pliku można tu oglądać, ale nie edytować.",
+      "dangling": "Brak pliku; można tylko usunąć jego rejestrację.",
+      "notImplemented": "jeszcze niedostępne w tej wersji."
+    },
+    "remedy": {
+      "branch": "Aby edytować, otwórz specyfikację w środowisku pracy na dozwolonej gałęzi.",
+      "commitBlocked": "Dokończ lub przerwij merge albo rebase w tym środowisku pracy i spróbuj ponownie.",
+      "gitPolicy": "Popraw ustawienia Git w konfiguracji projektu.",
+      "notEditable": "Pobierz plik, aby edytować go gdzie indziej."
+    },
+    "save": {
+      "saving": "Zapisywanie…",
+      "committing": "Zapisywanie i commit…",
+      "saved": "Zapisano",
+      "committed": "Zapisano i zacommitowano",
+      "refused": "Nie zapisano: {{reason}}",
+      "busy": "Nie zapisano: trwa inna zmiana",
+      "commitBlocked": "Nie zapisano: Git nie może teraz przyjąć commita",
+      "missing": "Nie zapisano: brak pliku",
+      "failed": "Nie zapisano. Twoje zmiany są nadal tutaj.",
+      "tryAgain": "Spróbuj ponownie",
+      "recoveryTitle": "Zapisano na dysku, ale bez commita",
+      "recoveryBody": "Dokończ zapis, zanim będziesz dalej edytować.",
+      "resume": "Wznów"
+    },
+    "conflict": {
+      "title": "Nie zapisano: plik {{name}} zmienił się na dysku",
+      "body": "Plik zmienił się poza tym edytorem po jego otwarciu. Nic nie zostało nadpisane, a Twoje zmiany są nadal tutaj.",
+      "copyMine": "Kopiuj moją wersję",
+      "loadDisk": "Wczytaj wersję z dysku…",
+      "copied": "Twoja wersja jest w schowku. Edytor pokazuje wersję z dysku: przenieś do niej swoje zmiany i zapisz.",
+      "copyFailed": "Nie udało się skopiować. Zaznacz swój tekst i skopiuj go ręcznie.",
+      "loadTitle": "Wczytać wersję z dysku?",
+      "loadBody": "Twoje zmiany w {{name}} zostaną odrzucone, a edytor pokaże plik w wersji z dysku.",
+      "loadConfirm": "Odrzuć i wczytaj",
+      "loadFailed": "Nie udało się wczytać wersji z dysku. Twoje zmiany zostały zachowane."
+    },
+    "binary": {
+      "cannotShow": "Tego pliku nie można tu wyświetlić. Pobierz go, aby otworzyć w innym programie.",
+      "tooLarge": "Ten plik jest zbyt duży, aby go tu wyświetlić.",
+      "label": "Informacje o pliku",
+      "path": "Ścieżka",
+      "type": "Typ",
+      "size": "Rozmiar",
+      "format": "Format"
+    },
+    "image": {
+      "actualSize": "Rzeczywisty rozmiar"
+    }
   },
   "sessions": {
     "demo": {

@@ -187,12 +187,16 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
               </Button>
             </div>
             <ScrollArea className="min-h-0 flex-1" contentClassName="p-5">
-              {query.data.path.toLowerCase().endsWith('.txt') ? (
+              {query.data.content === undefined ? (
+                // An image or a file without text to render: it opens in Documents (above).
+                <p className="text-body-sm text-content-secondary">
+                  {t('documents.binary.cannotShow')}
+                </p>
+              ) : query.data.path.toLowerCase().endsWith('.txt') ? (
                 <pre className="whitespace-pre-wrap break-words text-body-sm">
                   {query.data.content}
                 </pre>
               ) : (
-                // phase C: image and binary documents have no `content`; they need their own viewer.
                 <MarkdownDocument source={query.data.content ?? ''} />
               )}
             </ScrollArea>

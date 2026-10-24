@@ -5,15 +5,19 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  cn,
+  treeAttentionGlyphClassName,
+  treeAttentionStateLabelClassName,
   treeGlyphSlotClassName,
   treeItemClassName,
   treeItemLabelTruncateClassName,
   treeLeafItemClassName,
   treeNodeClassName,
-  treeRequiredLabelClassName,
-  treeRequiredMarkerClassName,
   treeRowClassName,
+  treeStateLabelClassName,
+  treeTrailingLabelClassName,
 } from '@nevo/ui';
+import type { TrailingLabel } from '../catalogue/documentTypePolicy';
 
 const lastSegment = (path: string) => path.split('/').at(-1) ?? path;
 
@@ -76,10 +80,14 @@ export function FolderNode({
   );
 }
 
-/** One document row: icon, name, the required badge and its actions. */
+/**
+ * One document row: icon, name, the quiet trailing label and its actions. A dangling entry (the
+ * registry lists a file that is not on disk) keeps its place with the warning glyph and
+ * `File missing`. The label is part of the row button's text, so it is in its accessible name.
+ */
 export function DocumentNode({
   path,
-  required,
+  label,
   selected,
   disabled,
   buttonRef,
@@ -88,8 +96,8 @@ export function DocumentNode({
   onOpen,
 }: {
   path: string;
-  required: boolean;
-  /** The document that is open, nothing else (never "required"). */
+  label?: TrailingLabel;
+  /** The document that is open, nothing else. */
   selected: boolean;
   disabled: boolean;
   buttonRef: (node: HTMLButtonElement | null) => void;
@@ -99,13 +107,14 @@ export function DocumentNode({
 }) {
   const { t } = useTranslation();
   const name = lastSegment(path);
+  const missing = label?.kind === 'missing';
   return (
     <li className={treeNodeClassName}>
       <div className={treeRowClassName}>
         {editor ?? (
           <>
             <TruncatedTooltip name={name}>
-              {(label) => (
+              {(labelRef) => (
                 <button
                   type="button"
                   disabled={disabled}
@@ -114,19 +123,27 @@ export function DocumentNode({
                   aria-current={selected ? 'true' : undefined}
                   onClick={onOpen}
                 >
-                  <Icon name="file" />
-                  <span ref={label} className={treeItemLabelTruncateClassName}>
+                  {missing ? (
+                    <Icon name="triangle-alert" className={treeAttentionGlyphClassName} />
+                  ) : (
+                    <Icon name="file" />
+                  )}
+                  <span
+                    ref={labelRef}
+                    className={cn(treeItemLabelTruncateClassName, missing && 'text-content-muted')}
+                  >
                     {name}
                   </span>
-                  {required && (
-                    <>
-                      <span className={treeRequiredLabelClassName}>
-                        {t('documents.tree.required')}
-                      </span>
-                      <span aria-hidden className={treeRequiredMarkerClassName}>
-                        <Icon name="workflow" size="sm" />
-                      </span>
-                    </>
+                  {label?.kind === 'type' && (
+                    <span className={treeTrailingLabelClassName}>{label.text}</span>
+                  )}
+                  {label?.kind === 'no-type' && (
+                    <span className={treeStateLabelClassName}>{t('documents.tree.noType')}</span>
+                  )}
+                  {missing && (
+                    <span className={treeAttentionStateLabelClassName}>
+                      {t('documents.tree.fileMissing')}
+                    </span>
                   )}
                 </button>
               )}

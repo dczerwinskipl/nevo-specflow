@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 import {
   Alert,
@@ -18,6 +19,11 @@ import {
 } from '../../../app/navigation/ApplicationLocation';
 import { BackLink } from '../../../app/navigation/LocationLink';
 import { translateNow } from '../../../i18n/message';
+import { useAppServices } from '../../../app/useAppServices';
+import { typeTitle } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
+import { documentTreeKeys } from '../read-model/queries';
+import { useDocumentsTreeActions } from './DocumentsTreeActions';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
@@ -60,8 +66,54 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
   };
 }
 
+/**
+ * A registry entry whose file is missing (dangling): what happened, how to keep it, and Remove
+ * registration (confirmed in the tree's dialog; it closes this tab).
+ */
+function DanglingDocument({
+  entry,
+  dirty,
+}: {
+  entry: { id: string; path: string; type: string; actions: { delete: { available: boolean } } };
+  dirty: boolean;
+}) {
+  const { t } = useTranslation();
+  const catalogue = useDocumentCatalogue();
+  const actions = useDocumentsTreeActions();
+  const name = entry.path.split('/').at(-1) ?? entry.path;
+  return (
+    <div className="p-4">
+      <Alert
+        tone="attention"
+        title={t('documents.dangling.title', { name })}
+        actions={
+          actions && entry.actions.delete.available ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => actions.removeRegistration(entry.id)}
+            >
+              {t('documents.tree.removeRegistration')}
+            </Button>
+          ) : undefined
+        }
+      >
+        <p>{t('documents.dangling.body', { name, type: typeTitle(catalogue.data, entry.type) })}</p>
+        <p className="mt-1 text-content-secondary">{t('documents.dangling.restore')}</p>
+        {dirty && <p className="mt-1">{t('documents.tabs.missingHint')}</p>}
+      </Alert>
+    </div>
+  );
+}
+
 /** The open document: loading and error states, the way back, and the editor. */
 export function DocumentPane({ data }: { data: DocumentParams }) {
+  const { documentsApi } = useAppServices();
+  const tree = useQuery({
+    queryKey: documentTreeKeys.tree(data.specId),
+    queryFn: ({ signal }) => documentsApi.documentTree(data.specId, signal),
+  });
+  const dangling = tree.data?.dangling.find((entry) => entry.id === data.documentId);
   const session = useSessionReturn(data.specId);
   const { supportsSplit } = useWorkspaceCapabilities();
   const collection = useApplicationCollection();
@@ -80,6 +132,16 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
     />
   );
   const query = record?.documentId === data.documentId ? record.query : undefined;
+  if (dangling)
+    return (
+      <AppContent className="h-full w-full">
+        {closeFailed}
+        <DanglingDocument
+          entry={dangling}
+          dirty={tabs.tabs.some((tab) => tab.id === dangling.id && tab.dirty)}
+        />
+      </AppContent>
+    );
   const status = isHttpClientError(query?.error) ? query.error.status : undefined;
   if (!query || query.isPending)
     return (

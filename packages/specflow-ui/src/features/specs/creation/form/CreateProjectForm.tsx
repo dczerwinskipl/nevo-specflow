@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { Alert, Field, Separator, TextArea, TextInput } from '@nevo/ui';
 import { isApiError } from '../../../../api';
 import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
@@ -24,6 +25,15 @@ import {
 import { startCreate } from '../operation/startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
+import { ArchetypeSection, type ArchetypeCatalogueState } from '../options/ArchetypeSection';
+import {
+  archetypeSelection,
+  documentsToCreate,
+  initialArchetypeChoice,
+  refreshedArchetypeChoice,
+  selectedArchetype,
+  type ArchetypeChoice,
+} from '../options/archetypeChoice';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateFacts } from '../workspace/model/createFacts';
 import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
@@ -66,6 +76,29 @@ export function CreateProjectForm({
   const [draft] = useState(() => (restoreDraftOf ? storage.loadDraft(restoreDraftOf) : undefined));
   const [title, setTitle] = useState(draft?.title ?? '');
   const [goal, setGoal] = useState(draft?.goal ?? '');
+  // Back to form after the archetypes changed: the choice is kept (if it still exists) with the
+  // new default ticks; after an unknown archetype the default archetype is selected.
+  const [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(() => {
+    const restored = draft?.archetype ?? initialArchetypeChoice;
+    return draft?.failure?.kind === 'catalogue-stale'
+      ? refreshedArchetypeChoice(restored, draft.failure.code)
+      : restored;
+  });
+  // The catalogue is read on every visit: Create checks its revision.
+  const archetypes = useQuery({
+    queryKey: projectCreationKeys.archetypes,
+    queryFn: ({ signal }) => projectCreationApi.archetypes(signal),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+  const catalogue = archetypes.data;
+  const archetype = selectedArchetype(catalogue, archetypeChoice);
+  const archetypeState: ArchetypeCatalogueState = catalogue
+    ? { status: 'ready', catalogue }
+    : archetypes.isError
+      ? { status: 'error', retry: () => void archetypes.refetch() }
+      : { status: 'loading' };
 
   const createOptions = useCreateOptions({
     queryKey: projectCreationKeys.createOptions,
@@ -83,6 +116,7 @@ export function CreateProjectForm({
   const configurationSnapshot = JSON.stringify({
     title,
     goal,
+    archetype: archetypeChoice,
     choice: requestChoiceSnapshot(place.choice),
   });
   const [initialConfiguration] = useState(configurationSnapshot);
@@ -106,6 +140,8 @@ export function CreateProjectForm({
     workspaceState: createOptions.state,
     choice: place.choice,
     forbidden: createOptions.forbidden,
+    archetypesLoading: archetypes.isPending,
+    archetype,
   });
 
   useEffect(() => {
@@ -126,14 +162,23 @@ export function CreateProjectForm({
   };
 
   const submit = () => {
-    if (!canSubmit || started.current) return;
+    if (!canSubmit || started.current || !catalogue || !archetype) return;
     const slug = workspaceOptions
       ? buildCreateSlug(place.choice, workspaceOptions, title)
       : undefined;
     const request = startCreate({
       attempt,
       storage,
-      draft: { title, goal, choice: place.choice, ...factsOf(place.choice) },
+      draft: {
+        title,
+        goal,
+        choice: place.choice,
+        archetype: archetypeChoice,
+        archetypeTitle: archetype.title,
+        documentFiles: documentsToCreate(archetype, archetypeChoice),
+        ...factsOf(place.choice),
+      },
+      selection: archetypeSelection(catalogue, archetype, archetypeChoice),
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
@@ -161,7 +206,7 @@ export function CreateProjectForm({
           headingRef={headingRef}
           lead={<ApplicationContextLine className="mb-0" view="new-specification" />}
           heading={t('create.heading.specification')}
-          subheading={t('create.project.subheading')}
+          subheading={t('create.subheading.withArchetype')}
         />
         <Separator />
         <div className="grid gap-4">
@@ -190,6 +235,13 @@ export function CreateProjectForm({
             <Field.Description>{t('create.project.goalHelp')}</Field.Description>
           </Field>
         </div>
+        <Separator />
+        <ArchetypeSection
+          state={archetypeState}
+          choice={archetypeChoice}
+          locked={locked}
+          onChange={setArchetypeChoice}
+        />
         <Separator />
         <CreateWorkspaceSection
           headingId={gitHeadingId}

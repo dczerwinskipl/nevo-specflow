@@ -138,7 +138,7 @@ export const RetainedDraftAndGuard: Story = {
     await userEvent.click(editor);
     await userEvent.keyboard('{Control>}End{/Control}');
     await userEvent.type(editor, ' Retained draft');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Otwórz dokument' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
@@ -158,7 +158,7 @@ export const RetainedDraftAndGuard: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
     // Save exists only while the draft differs.
     await expect(canvas.queryByRole('button', { name: /^Zapisz$/ })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Niezapisane zmiany')).not.toBeInTheDocument();
   },
 };
 export const KeyboardSave: Story = {
@@ -212,7 +212,7 @@ export const EditsDuringSave: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
       'UnsavedLater',
     );
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await invokeDocumentAction(canvas, userEvent, 'Zapisz');
     await userEvent.click(canvas.getByRole('button', { name: 'Potwierdź zapis' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();

@@ -110,6 +110,31 @@ export const treeRequiredMarkerClassName =
   'inline-flex shrink-0 self-center text-content-muted @3xs/tree-row:hidden';
 
 /**
+ * Quiet trailing label of a row item (for example the item's type), on the right before the row
+ * action. Same responsive rule as the required marker: on narrow rows (below `@3xs`) the text is
+ * visually hidden but stays in the item's accessible name, so the name keeps its room.
+ */
+export const treeTrailingLabelClassName =
+  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-3xs/tree-row:sr-only';
+
+/**
+ * Trailing label of a row STATE the reader must always see (for example "No type"): it never
+ * hides, the name truncates instead. Quiet muted text, no pill.
+ */
+export const treeStateLabelClassName =
+  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted';
+
+/**
+ * Attention form of the state label (for example "File missing"); pair the row's icon with the same
+ * tone (`treeAttentionGlyphClassName`) and keep the text, never colour alone.
+ */
+export const treeAttentionStateLabelClassName =
+  'shrink-0 self-center whitespace-nowrap text-body-sm text-status-attention';
+
+/** Attention tone of a row item's leading icon (for example a warning glyph of a missing file). */
+export const treeAttentionGlyphClassName = 'shrink-0 text-status-attention';
+
+/**
  * Quiet inline hint under an opened empty folder (for example "Folder is empty. Add a file or folder
  * from the menu."): muted text aligned to the folder's name column, no icon, not focusable and not a
  * tree item. The product removes it as soon as the folder has content.

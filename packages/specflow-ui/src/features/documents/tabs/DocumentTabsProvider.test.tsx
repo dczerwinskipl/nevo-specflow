@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
-import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import {
+  documentContentFixture,
+  documentTreeFixture,
+} from '../../../../test-support/documents/fixtures';
 import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -38,14 +41,15 @@ function setup(documentId: string | undefined, strict = false) {
     documentApi: { getDocument } as unknown as DocumentApi,
     documentsApi: {
       documentTree: () =>
-        Promise.resolve({
-          revision: 't',
-          folders: [],
-          documents: [
-            { id: 'a', path: 'docs/a.md' },
-            { id: 'b', path: 'docs/b.md' },
-          ],
-        }),
+        Promise.resolve(
+          documentTreeFixture({
+            revision: 't',
+            documents: [
+              { id: 'a', path: 'docs/a.md' },
+              { id: 'b', path: 'docs/b.md' },
+            ],
+          }),
+        ),
       save,
     } as unknown as DocumentsApi,
   });

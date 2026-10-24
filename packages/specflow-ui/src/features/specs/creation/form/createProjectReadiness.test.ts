@@ -1,3 +1,4 @@
+import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 import { createOptionsFixture } from '../options/creationOptions.stories-support';
 import {
@@ -14,6 +15,8 @@ const base = {
   workspaceState: ready,
   choice: initialWorkspaceChoice,
   forbidden: false,
+  archetypesLoading: false,
+  archetype: { id: 'feature' } as ArchetypeInfo,
 };
 
 describe('projectCreateReadiness', () => {
@@ -41,6 +44,8 @@ describe('projectCreateReadiness', () => {
       'create.prerequisite.workspaceError',
     ],
     ['no permission', { forbidden: true }, 'create.prerequisite.forbidden'],
+    ['loading archetypes', { archetypesLoading: true }, 'create.archetype.loading'],
+    ['no archetype', { archetype: undefined }, 'create.prerequisite.archetype'],
   ])('is blocked by %s with its reason', (_name, change, key) => {
     const result = projectCreateReadiness({ ...base, ...change });
     expect(result.canSubmit).toBe(false);

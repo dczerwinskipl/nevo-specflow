@@ -38,13 +38,20 @@ export function documentContentFixture(
 
 export type TreeDocumentFixture = DocumentTree['documents'][number];
 
-/** One document node of the tree: registered, editable Markdown with every action available. */
+/**
+ * One document node of the tree: registered, editable Markdown with every action available. Its
+ * type defaults to the file stem, so its name says the type and the row shows no type label.
+ */
 export function treeDocumentFixture(
   fields: Partial<TreeDocumentFixture> & Pick<TreeDocumentFixture, 'id' | 'path'>,
 ): TreeDocumentFixture {
   return {
     classification: 'registered',
-    type: 'note',
+    type:
+      stem(fields.path)
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/^[^a-z]+/, '') || 'note',
     kind: 'text',
     mediaType: 'text/markdown; charset=utf-8',
     size: 0,

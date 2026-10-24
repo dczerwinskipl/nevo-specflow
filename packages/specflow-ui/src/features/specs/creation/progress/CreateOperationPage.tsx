@@ -125,6 +125,7 @@ export function CreateOperationPage({
     ownDraft?.goal,
     ownDraft?.facts,
     ownDraft?.title,
+    { title: ownDraft?.archetypeTitle, documents: ownDraft?.documentFiles },
   );
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.

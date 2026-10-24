@@ -22,6 +22,7 @@ import { createSessionOperationStorage } from '../operation/createOperationStora
 import { createSpecErrorCodes } from '../errors/createSpecErrors';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { openAfterCreatedMs } from './CreateOperationPage';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operationId = '00000000-0000-4000-8000-000000000001';
 const created: CreatedSpec = {
@@ -43,7 +44,7 @@ const httpError = (status: number, code: string) =>
 const storage = () => createSessionOperationStorage('unknown', sessionStorage);
 const store = (request: Record<string, unknown> = {}) =>
   storage().save({
-    request: { title: 'Payment limits', operationId, ...request },
+    request: { title: 'Payment limits', operationId, ...archetypeSelectionFixture, ...request },
     startedAt: Date.now(),
   });
 

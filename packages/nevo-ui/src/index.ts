@@ -31,4 +31,8 @@ export {
   treeRequiredMarkerClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeTrailingLabelClassName,
+  treeStateLabelClassName,
+  treeAttentionStateLabelClassName,
+  treeAttentionGlyphClassName,
 } from './design-system/treeRecipes';

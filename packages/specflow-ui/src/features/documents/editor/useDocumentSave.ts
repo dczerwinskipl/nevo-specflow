@@ -2,8 +2,9 @@ import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
+import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { newId } from '../../../shared/ids/newId';
-import { documentKeys } from '../read-model/queries';
+import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import { specificationKeys } from '../../specs/read-model';
 import {
   documentDraftKey,
@@ -34,6 +35,8 @@ export interface SaveResult {
   readonly content: string;
   /** The failure, when `ok` is false. */
   readonly error?: unknown;
+  /** The save made a commit (false only when Git is disabled); absent when nothing was sent. */
+  readonly committed?: boolean;
 }
 
 export interface SaveAllResult {
@@ -64,7 +67,12 @@ export interface DocumentSaveOwner {
   saving: boolean;
   /** The last failure of the CURRENT document's save, until its next attempt. */
   saveError: unknown;
+  /** Forgets the failure of a document's save (the user resolved it, for example a conflict). */
+  clearError: (id: string) => void;
 }
+
+/** The save was written but not committed: it is resumed with the same operation id and content. */
+const recoveryCode = 'DOCUMENT_RECOVERY_REQUIRED';
 
 /**
  * The single owner of the Save operation for the open document. The header action, the keyboard
@@ -91,6 +99,8 @@ export function useDocumentSave({
     current.current = { specId, document, draft };
   });
   const inFlight = useRef(new Map<string, Promise<SaveResult>>());
+  // Saves that must be resumed as they were sent (same operation id); owned by `save` only.
+  const recoveries = useRef(new Map<string, SaveVariables>());
   const [pending, setPending] = useState<readonly string[]>([]);
   const [errors, setErrors] = useState<Readonly<Record<string, unknown>>>({});
 
@@ -130,6 +140,9 @@ export function useDocumentSave({
         exact: true,
       });
     },
+    // The tree changes with a save (revision, completeness) and with a refusal (read-only, missing).
+    onSettled: (_result, _error, variables) =>
+      cache.invalidateQueries({ queryKey: documentTreeKeys.tree(variables.specId), exact: true }),
   });
   const { mutateAsync } = mutation;
 
@@ -145,7 +158,8 @@ export function useDocumentSave({
       const key = documentDraftKey(openSpec, id);
       const joined = inFlight.current.get(key);
       if (joined) return joined;
-      const variables: SaveVariables = {
+      // A save that was written but not committed is resumed exactly as it was sent.
+      const variables: SaveVariables = recoveries.current.get(key) ?? {
         specId: openSpec,
         documentId: id,
         content: source.content,
@@ -158,7 +172,7 @@ export function useDocumentSave({
         documentId: variables.documentId,
         content: variables.content,
       };
-      if (!isDraftDirty(source)) return { ok: true, ...base };
+      if (!isDraftDirty(source) && !recoveries.current.has(key)) return { ok: true, ...base };
       const run = (async (): Promise<SaveResult> => {
         setErrors((all) => {
           const rest = { ...all };
@@ -167,9 +181,12 @@ export function useDocumentSave({
         });
         setPending((keys) => [...keys, key]);
         try {
-          await mutateAsync(variables);
-          return { ok: true, ...base };
+          const result = await mutateAsync(variables);
+          recoveries.current.delete(key);
+          return { ok: true, ...base, committed: result.committed };
         } catch (error) {
+          if (apiErrorCode(error) === recoveryCode) recoveries.current.set(key, variables);
+          else recoveries.current.delete(key);
           setErrors((all) => ({ ...all, [key]: error }));
           return { ok: false, ...base, error };
         } finally {
@@ -209,12 +226,25 @@ export function useDocumentSave({
     [errors, specId],
   );
 
+  const clearError = useCallback(
+    (id: string) =>
+      setErrors((all) => {
+        const errorKey = documentDraftKey(specId, id);
+        if (!(errorKey in all)) return all;
+        const rest = { ...all };
+        delete rest[errorKey];
+        return rest;
+      }),
+    [specId],
+  );
+
   const key = document ? documentDraftKey(specId, document.id) : undefined;
   return {
     save,
     saveAll,
     savingOf,
     errorOf,
+    clearError,
     saving: key !== undefined && pending.includes(key),
     saveError: key === undefined ? undefined : errors[key],
   };

@@ -1,4 +1,4 @@
-import type { ActionReason, DocumentTree } from '@nevo/specflow-contracts/documents';
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../i18n/message';
 
 const hasControlCharacter = (value: string) =>
@@ -68,21 +68,6 @@ export function pathCollides(
     )
   );
 }
-/**
- * Maps an `ActionReason` of the tree to the explanation shown to the reader; the server text is
- * never shown. phase C: the design re-keys the copy (branch policy, archived, dangling, busy).
- */
-export function documentActionReason(reason?: ActionReason): Message | undefined {
-  switch (reason) {
-    case 'protected':
-      return message('documents.tree.reason.required');
-    case 'root':
-      return message('documents.tree.reason.rootProtected');
-    default:
-      return reason ? message('documents.tree.reason.unavailable') : undefined;
-  }
-}
-
 const collator = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
 export const compareNames = (a: string, b: string) => collator.compare(a, b);
 const baseName = (path: string) => path.split('/').at(-1) ?? path;
@@ -106,7 +91,12 @@ export function orderTreeLevel<F extends { path: string }, D extends { path: str
 
 export type EntryKind = 'document' | 'folder';
 /** Client-side name check (on the trimmed name); `undefined` means acceptable. */
-export function entryNameError(rawName: string, kind: EntryKind): Message | undefined {
+export function entryNameError(
+  rawName: string,
+  kind: EntryKind,
+  /** Extensions a new text document may have (`capabilities.formats`). */
+  formats: readonly string[] = ['md', 'txt'],
+): Message | undefined {
   const name = rawName.trim();
   if (!name) return undefined;
   if (/[\\/:*?"<>|]/.test(name)) return message('documents.tree.nameError.characters');
@@ -116,8 +106,13 @@ export function entryNameError(rawName: string, kind: EntryKind): Message | unde
   if (name.startsWith('.')) return message('documents.tree.nameError.dot');
   if (isReservedName(name)) return message('documents.tree.nameError.reserved');
   if (/[. ]$/.test(name)) return message('documents.tree.nameError.trailing');
-  if (kind === 'document' && name.includes('.') && !/.\.(md|txt)$/i.test(name))
-    return message('documents.tree.nameError.format');
+  if (kind === 'document' && name.includes('.')) {
+    const extension = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
+    if (name.lastIndexOf('.') === 0 || !formats.map((f) => f.toLowerCase()).includes(extension))
+      return message('documents.tree.nameError.format', {
+        formats: formats.map((format) => `.${format}`).join(', '),
+      });
+  }
   return undefined;
 }
 
@@ -130,8 +125,47 @@ export function finalEntryName(rawName: string, kind: EntryKind, currentName?: s
 
 const containerOf = (path: string) => path.substring(0, path.lastIndexOf('/')).toLowerCase();
 
+/** The minimal shape the index groups: folders and rows with a path (a row may set its level). */
+export interface IndexableTree {
+  folders: readonly { path: string }[];
+  /** `placement`: the folder the row is shown in when it is not its path's folder. */
+  documents: readonly { path: string; placement?: string }[];
+}
+
+/** A row of the tree: a document on disk, or a registry entry whose file is missing (dangling). */
+export type TreeRowDocument =
+  | (DocumentTree['documents'][number] & { dangling?: undefined; placement?: undefined })
+  | (DocumentTree['dangling'][number] & { dangling: true; placement?: string });
+
+export interface TreeRows {
+  folders: DocumentTree['folders'];
+  documents: TreeRowDocument[];
+}
+
+/**
+ * The rows the explorer draws: the documents, and each dangling entry at its registered path (in
+ * the main folder when its folder no longer exists). State never reorders a level.
+ */
+export function treeRows(tree: Pick<DocumentTree, 'folders' | 'documents' | 'dangling'>): TreeRows {
+  const folders = new Set(tree.folders.map((folder) => folder.path.toLowerCase()));
+  return {
+    folders: tree.folders,
+    documents: [
+      ...tree.documents,
+      ...tree.dangling.map((entry) => {
+        const container = containerOf(entry.path);
+        return {
+          ...entry,
+          dangling: true as const,
+          ...(container && !folders.has(container) ? { placement: '' } : {}),
+        };
+      }),
+    ],
+  };
+}
+
 /** Every level of a tree, grouped once: a lookup never scans the folder and document lists again. */
-export interface DocumentTreeIndex<Tree extends Pick<DocumentTree, 'folders' | 'documents'>> {
+export interface DocumentTreeIndex<Tree extends IndexableTree> {
   /** The level directly inside `parent` (case-insensitive), in presentation order; memoized. */
   level: (
     parent: string,
@@ -142,9 +176,7 @@ export interface DocumentTreeIndex<Tree extends Pick<DocumentTree, 'folders' | '
  * Groups a tree's folders and documents by container in one pass. Build it once per tree change
  * (the explorer memoizes it) and use it for rendering and for the emptiness checks.
  */
-export function createTreeIndex<Tree extends Pick<DocumentTree, 'folders' | 'documents'>>(
-  tree: Tree,
-): DocumentTreeIndex<Tree> {
+export function createTreeIndex<Tree extends IndexableTree>(tree: Tree): DocumentTreeIndex<Tree> {
   type Folder = Tree['folders'][number];
   type Doc = Tree['documents'][number];
   const groups = new Map<string, { folders: Folder[]; documents: Doc[] }>();
@@ -155,7 +187,8 @@ export function createTreeIndex<Tree extends Pick<DocumentTree, 'folders' | 'doc
   };
   for (const folder of tree.folders)
     if (folder.path.length > 0) group(containerOf(folder.path)).folders.push(folder);
-  for (const doc of tree.documents) group(containerOf(doc.path)).documents.push(doc);
+  for (const doc of tree.documents)
+    group(doc.placement?.toLowerCase() ?? containerOf(doc.path)).documents.push(doc);
   const levels = new Map<string, ReturnType<DocumentTreeIndex<Tree>['level']>>();
   return {
     level(parent) {
@@ -172,9 +205,6 @@ export function createTreeIndex<Tree extends Pick<DocumentTree, 'folders' | 'doc
 }
 
 /** The folders and documents directly inside `parent` (one-off lookup; render paths use the index). */
-export function treeLevel<Tree extends Pick<DocumentTree, 'folders' | 'documents'>>(
-  tree: Tree,
-  parent: string,
-) {
+export function treeLevel<Tree extends IndexableTree>(tree: Tree, parent: string) {
   return createTreeIndex(tree).level(parent);
 }

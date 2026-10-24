@@ -15,6 +15,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
 import { useOpenedItems, type OpenedItem } from '@nevo/ui';
+import { documentReadOnlyReason } from '../catalogue/documentTypePolicy';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
@@ -58,6 +59,11 @@ export interface DocumentTabs {
   closeAll: () => Promise<boolean>;
   /** Closes the tabs of deleted documents and drops their drafts; the user already confirmed. */
   removeTabs: (ids: readonly string[]) => Promise<void>;
+  /**
+   * A document got a new id (classified, or an unclassified file renamed or moved): its tab keeps
+   * its place and, when it is the active one, the route is replaced with the new id.
+   */
+  follow: (from: string, to: string) => Promise<void>;
   closeFailed: boolean;
   /** A close was refused because another tab's question was still open. */
   closeBusy: boolean;
@@ -94,7 +100,8 @@ export function DocumentTabsProvider({
   const query = useQuery({
     queryKey: documentKeys.detail(specId, documentId ?? ''),
     queryFn: ({ signal }) => documentApi.getDocument(specId, documentId!, signal),
-    enabled: Boolean(documentId),
+    // A dangling entry has no file to read: its tab shows the missing state from the tree.
+    enabled: Boolean(documentId) && !tree.data?.dangling.some((entry) => entry.id === documentId),
   });
   const record = useMemo<DocumentRecordState | null>(
     () => (documentId ? { documentId, query } : null),
@@ -103,7 +110,11 @@ export function DocumentTabsProvider({
   const document = query.data && documentId ? query.data : undefined;
   return (
     <RecordContext.Provider value={record}>
-      <DocumentEditorProvider specId={specId} document={document}>
+      <DocumentEditorProvider
+        specId={specId}
+        document={document}
+        readOnlyReason={document ? documentReadOnlyReason(tree.data, document) : undefined}
+      >
         <TabsHost specId={specId} documentId={documentId} tree={tree.data}>
           {children}
         </TabsHost>
@@ -156,7 +167,7 @@ function TabsHost({
     scope: specId,
     canClose: (id) => canCloseRef.current(id),
   });
-  const { open: ensureOpen, close: closeNow, closeAll: closeEvery } = opened;
+  const { open: ensureOpen, close: closeNow, closeAll: closeEvery, replace: replaceItem } = opened;
   const ids = useMemo(() => opened.items.map((item) => item.id), [opened.items]);
   // Event-time reads: closing outlives the render that started it.
   const latest = useRef({ ids, documentId, requestClose: opened.requestClose });
@@ -301,6 +312,16 @@ function TabsHost({
     [store, specId, goTo, closeNow],
   );
 
+  const follow = useCallback(
+    async (from: string, to: string) => {
+      const { ids: openIds, documentId: shown } = latest.current;
+      if (!openIds.includes(from)) return;
+      replaceItem(from, { id: to });
+      if (shown === from) await goTo(to, true);
+    },
+    [replaceItem, goTo],
+  );
+
   const recordGone = isHttpClientError(record?.query.error) && record.query.error.status === 404;
   const tabs = useMemo(
     () =>
@@ -323,6 +344,7 @@ function TabsHost({
       requestClose,
       closeAll,
       removeTabs,
+      follow,
       closeFailed,
       closeBusy,
       dismissCloseFailed: () => {
@@ -339,6 +361,7 @@ function TabsHost({
       requestClose,
       closeAll,
       removeTabs,
+      follow,
       closeFailed,
       closeBusy,
     ],

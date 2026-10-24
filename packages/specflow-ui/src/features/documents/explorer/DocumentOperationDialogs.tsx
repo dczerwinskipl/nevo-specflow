@@ -1,6 +1,7 @@
 import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
@@ -20,7 +21,10 @@ import {
 import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 import type { DocumentDialogRequest } from './useDocumentOperations';
 
-/** The confirmation dialogs of a move and a delete; the request decides which one is open. */
+/**
+ * The confirmation dialogs of a move, a delete and a registration removal (a dangling entry); the
+ * request decides which one is open.
+ */
 export function DocumentOperationDialogs({
   tree,
   request,
@@ -28,6 +32,7 @@ export function DocumentOperationDialogs({
   busy,
   unknown,
   error,
+  resumable = false,
   onTargetChange,
   onConfirm,
   onClose,
@@ -39,6 +44,8 @@ export function DocumentOperationDialogs({
   busy: boolean;
   unknown: boolean;
   error: string;
+  /** The failure can be resumed with the same operation: Confirm becomes Resume. */
+  resumable?: boolean;
   onTargetChange: (folder: string) => void;
   onConfirm: () => void;
   onClose: () => void;
@@ -126,6 +133,34 @@ export function DocumentOperationDialogs({
             </AlertDialogCancel>
             <Button variant="destructive" disabled={busy} onClick={onConfirm}>
               {t('documents.tree.delete')}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={request?.action === 'remove-registration'}
+        onOpenChange={closeUnlessLocked}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="break-words">
+              {t('documents.dangling.confirmTitle', {
+                name: request?.path.split('/').at(-1) ?? '',
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t('documents.dangling.confirmBody')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {error && <Alert role="alert" tone="attention" title={error} />}
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="secondary" disabled={busy || unknown}>
+                {t('common.cancel')}
+              </Button>
+            </AlertDialogCancel>
+            <Button variant="destructive" disabled={busy} onClick={onConfirm}>
+              {resumable
+                ? t('documents.tree.error.resume')
+                : t('documents.tree.removeRegistration')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

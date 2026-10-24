@@ -1,0 +1,135 @@
+import type {
+  ArchetypeCatalogue,
+  ArchetypeInfo,
+  ArchetypeTemplateInfo,
+  CreateArchetypeSelection,
+} from '@nevo/specflow-contracts/documents';
+
+/**
+ * The archetype part of the Create form: the chosen archetype and, per archetype visited, the
+ * optional templates the user ticked. Ticks are kept per archetype within the visit, so switching
+ * back restores the user's ticks; an archetype not visited yet starts from its preselected ones.
+ */
+export interface ArchetypeChoice {
+  /** The chosen archetype; undefined means the catalogue's default (see `selectedArchetype`). */
+  readonly archetypeId?: string;
+  /** Ticked optional template ids, by archetype id (only archetypes the user changed). */
+  readonly ticks: Readonly<Record<string, readonly string[]>>;
+}
+
+export const initialArchetypeChoice: ArchetypeChoice = { ticks: {} };
+
+/** The catalogue's `defaultArchetypeId` when it names an archetype, else the first archetype. */
+export function defaultArchetype(catalogue: ArchetypeCatalogue): ArchetypeInfo | undefined {
+  return (
+    catalogue.archetypes.find((archetype) => archetype.id === catalogue.defaultArchetypeId) ??
+    catalogue.archetypes[0]
+  );
+}
+
+/** The archetype on screen: the chosen one while the catalogue has it, else the default. */
+export function selectedArchetype(
+  catalogue: ArchetypeCatalogue | undefined,
+  choice: ArchetypeChoice,
+): ArchetypeInfo | undefined {
+  if (!catalogue) return undefined;
+  return (
+    catalogue.archetypes.find((archetype) => archetype.id === choice.archetypeId) ??
+    defaultArchetype(catalogue)
+  );
+}
+
+export const optionalTemplates = (archetype: ArchetypeInfo) =>
+  archetype.documents.filter((template) => template.include === 'optional');
+export const alwaysTemplates = (archetype: ArchetypeInfo) =>
+  archetype.documents.filter((template) => template.include === 'always');
+
+/** The ticked optional templates of an archetype (its preselected ones until the user changes them). */
+export function tickedTemplates(archetype: ArchetypeInfo, choice: ArchetypeChoice): string[] {
+  const own = choice.ticks[archetype.id];
+  const ids = optionalTemplates(archetype).map((template) => template.id);
+  return own
+    ? ids.filter((id) => own.includes(id))
+    : optionalTemplates(archetype)
+        .filter((template) => template.preselected === true)
+        .map((template) => template.id);
+}
+
+export function chooseArchetype(choice: ArchetypeChoice, archetypeId: string): ArchetypeChoice {
+  return { ...choice, archetypeId };
+}
+
+export function toggleTemplate(
+  choice: ArchetypeChoice,
+  archetype: ArchetypeInfo,
+  templateId: string,
+  ticked: boolean,
+): ArchetypeChoice {
+  const current = tickedTemplates(archetype, choice).filter((id) => id !== templateId);
+  return {
+    ...choice,
+    archetypeId: archetype.id,
+    ticks: { ...choice.ticks, [archetype.id]: ticked ? [...current, templateId] : current },
+  };
+}
+
+/**
+ * Unticking this template leaves a requirement of the archetype unmet (only owner-configured
+ * archetypes do this): no `always` template and no other ticked template has its type.
+ */
+export function unmetWhenUnticked(
+  archetype: ArchetypeInfo,
+  template: ArchetypeTemplateInfo,
+  ticked: readonly string[],
+): boolean {
+  const required = archetype.requirements.some(
+    (requirement) => requirement.documentType === template.type && requirement.minCount > 0,
+  );
+  if (!required || ticked.includes(template.id)) return false;
+  return !archetype.documents.some(
+    (other) =>
+      other.type === template.type && (other.include === 'always' || ticked.includes(other.id)),
+  );
+}
+
+/** The file names Create makes: the `always` templates, then the ticked optional ones. */
+export function documentsToCreate(archetype: ArchetypeInfo, choice: ArchetypeChoice): string[] {
+  const ticked = tickedTemplates(archetype, choice);
+  return [
+    ...alwaysTemplates(archetype).map((template) => template.filename),
+    ...optionalTemplates(archetype)
+      .filter((template) => ticked.includes(template.id))
+      .map((template) => template.filename),
+  ];
+}
+
+/** The archetype part of the Create request. */
+export function archetypeSelection(
+  catalogue: ArchetypeCatalogue,
+  archetype: ArchetypeInfo,
+  choice: ArchetypeChoice,
+): Pick<
+  CreateArchetypeSelection,
+  'archetypeId' | 'archetypeVersion' | 'catalogueRevision' | 'optionalDocumentIds'
+> {
+  return {
+    archetypeId: archetype.id,
+    archetypeVersion: archetype.version,
+    catalogueRevision: catalogue.revision,
+    optionalDocumentIds: tickedTemplates(archetype, choice),
+  };
+}
+
+/**
+ * After the catalogue changed under the form (`CATALOGUE_STALE`): the selected archetype stays
+ * when it still exists, every tick returns to the new defaults. After `ARCHETYPE_UNKNOWN` the
+ * selection falls back to the default archetype.
+ */
+export function refreshedArchetypeChoice(
+  choice: ArchetypeChoice,
+  code: 'CATALOGUE_STALE' | 'ARCHETYPE_UNKNOWN',
+): ArchetypeChoice {
+  return code === 'ARCHETYPE_UNKNOWN'
+    ? { ticks: {} }
+    : { archetypeId: choice.archetypeId, ticks: {} };
+}

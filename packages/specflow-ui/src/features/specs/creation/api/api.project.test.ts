@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createApiTransport } from '../../../../api';
 import { createOperationHardLimitMs, createProjectCreationApi } from './api.project';
 import { createSpecErrorCodes } from '../errors/createSpecErrors';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 function build(overrides: Partial<HttpRequestClient> = {}) {
   const http = {
@@ -49,6 +50,7 @@ describe('project creation adapter', () => {
   it('posts the request verbatim in async mode with the long create time limit', async () => {
     const { api, http } = build();
     const input = {
+      ...archetypeSelectionFixture,
       title: 'Title',
       operationId: '11111111-1111-4111-8111-111111111111',
       target: { kind: 'new-worktree' as const },
@@ -69,11 +71,17 @@ describe('project creation adapter', () => {
       status: 'in-progress',
     };
     const asyncApi = build({ post: vi.fn().mockResolvedValue(accepted) });
-    await expect(asyncApi.api.create({ title: 'T' })).resolves.toEqual(accepted);
+    await expect(
+      asyncApi.api.create({ title: 'T', ...archetypeSelectionFixture }),
+    ).resolves.toEqual(accepted);
     const syncApi = build({ post: vi.fn().mockResolvedValue({ specId: 'spec-1' }) });
-    await expect(syncApi.api.create({ title: 'T' })).resolves.toEqual({ specId: 'spec-1' });
+    await expect(syncApi.api.create({ title: 'T', ...archetypeSelectionFixture })).resolves.toEqual(
+      { specId: 'spec-1' },
+    );
     const garbage = build({ post: vi.fn().mockResolvedValue({ status: 'in-progress' }) });
-    await expect(garbage.api.create({ title: 'T' })).rejects.toMatchObject({
+    await expect(
+      garbage.api.create({ title: 'T', ...archetypeSelectionFixture }),
+    ).rejects.toMatchObject({
       kind: 'protocol',
       outcome: 'unknown',
     });
@@ -102,7 +110,7 @@ describe('project creation adapter', () => {
         }),
       ),
     });
-    await expect(api.create({ title: 'T' })).rejects.toMatchObject({
+    await expect(api.create({ title: 'T', ...archetypeSelectionFixture })).rejects.toMatchObject({
       kind: 'conflict',
       outcome: 'not-applied',
       operation: 'specs.create',
@@ -136,7 +144,7 @@ describe('project creation adapter', () => {
     const api = createProjectCreationApi(
       createApiTransport(http, { operation: 'specs.create', isOnline: () => false }),
     );
-    await expect(api.create({ title: 'T' })).rejects.toMatchObject({
+    await expect(api.create({ title: 'T', ...archetypeSelectionFixture })).rejects.toMatchObject({
       kind: 'network',
       outcome: 'not-applied',
     });

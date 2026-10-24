@@ -21,6 +21,13 @@ function build(get = vi.fn().mockResolvedValue({ documents: [] })) {
 }
 
 describe('project documents adapter', () => {
+  it('reads the archetype catalogue from the real route', async () => {
+    const { api, http } = build(vi.fn().mockResolvedValue({ revision: 'r', documentTypes: [] }));
+    const signal = new AbortController().signal;
+    await api.catalogue(signal);
+    expect(http.get).toHaveBeenCalledWith('/api/specs/archetypes', { signal });
+  });
+
   it('reads the real document tree route', async () => {
     const { api, http } = build();
     const signal = new AbortController().signal;

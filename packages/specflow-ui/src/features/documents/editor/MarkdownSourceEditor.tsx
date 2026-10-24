@@ -40,6 +40,7 @@ export function MarkdownSourceEditor({
   onSave,
   label,
   plainText = false,
+  readOnly = false,
   viewState,
   onViewStateChange,
   anchor,
@@ -51,6 +52,8 @@ export function MarkdownSourceEditor({
   onSave: () => void;
   label: string;
   plainText?: boolean;
+  /** The text can be read, selected and copied but not changed (a read-only or locked document). */
+  readOnly?: boolean;
   viewState?: {
     anchor: number;
     head: number;
@@ -109,6 +112,7 @@ export function MarkdownSourceEditor({
           history(),
           ...(plainText ? [] : [markdown(), syntaxHighlighting(markdownHighlight)]),
           EditorView.lineWrapping,
+          EditorState.readOnly.of(readOnly),
           EditorView.contentAttributes.of({ 'aria-label': label, tabindex: '0' }),
           keymap.of([
             {
@@ -266,7 +270,7 @@ export function MarkdownSourceEditor({
     // creation, and later value changes are synchronised by the effect below, so they must not
     // rebuild (and reset) the CodeMirror view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plainText, label]);
+  }, [plainText, label, readOnly]);
   useEffect(() => {
     const editor = view.current;
     if (!editor) return;

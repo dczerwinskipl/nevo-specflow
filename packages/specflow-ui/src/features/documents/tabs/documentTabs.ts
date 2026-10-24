@@ -30,7 +30,13 @@ export function survivorOf(ids: readonly string[], id: string, removed: readonly
 
 export function documentTabs(options: {
   ids: readonly string[];
-  tree: { documents: readonly { id: string; path: string }[] } | undefined;
+  tree:
+    | {
+        documents: readonly { id: string; path: string }[];
+        /** Registry entries whose file is missing: their tab is missing but keeps the name. */
+        dangling?: readonly { id: string; path: string }[];
+      }
+    | undefined;
   dirty: readonly string[];
   /** Documents the Runtime reported as gone although the tree may still list them. */
   unavailable?: readonly string[];
@@ -40,8 +46,9 @@ export function documentTabs(options: {
   const { ids, tree, dirty, unavailable = [], knownPaths = {} } = options;
   return ids.map((id) => {
     const entry = tree?.documents.find((document) => document.id === id);
+    const dangling = tree?.dangling?.find((document) => document.id === id);
     const missing = unavailable.includes(id) || (tree !== undefined && !entry);
-    const path = entry?.path ?? knownPaths[id] ?? id;
+    const path = entry?.path ?? dangling?.path ?? knownPaths[id] ?? id;
     return {
       id,
       label: fileNameOf(path),

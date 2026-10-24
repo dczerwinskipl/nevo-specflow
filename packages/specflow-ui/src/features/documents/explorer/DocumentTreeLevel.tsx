@@ -1,4 +1,4 @@
-import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
+import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,13 +9,16 @@ import {
   treeRowClassName,
 } from '@nevo/ui';
 import { DocumentNode, FolderNode } from './DocumentNode';
-import type { DocumentTreeIndex } from './documentTreePolicy';
+import { documentTrailingLabel } from '../catalogue/documentTypePolicy';
+import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
 
 /** Everything a level (and the levels below it) needs to draw rows; no state of its own. */
 export interface DocumentTreeLevelContext {
   /** The tree grouped by level, built once per tree change. */
-  index: DocumentTreeIndex<Tree>;
+  index: DocumentTreeIndex<TreeRows>;
+  /** Type titles for the trailing labels (ids while it is unavailable). */
+  catalogue?: ArchetypeCatalogue;
   /** The open document. */
   active?: string;
   /** An operation is in flight or its outcome is unknown. */
@@ -91,9 +94,7 @@ export function DocumentTreeLevel({
         <DocumentNode
           key={doc.id}
           path={doc.path}
-          // phase C: the `required` badge becomes the trailing-label rule of the design
-          // (protected overview, requirement hint, `No type`); until then the overview keeps it.
-          required={doc.protected}
+          label={doc.dangling ? { kind: 'missing' } : documentTrailingLabel(doc, context.catalogue)}
           selected={context.active !== undefined && context.active === doc.id}
           disabled={context.locked}
           buttonRef={context.register('doc:' + doc.id)}

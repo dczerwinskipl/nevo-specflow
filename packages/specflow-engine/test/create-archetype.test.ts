@@ -273,7 +273,9 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     const { root, engine } = await project();
     const head = git(root, 'rev-parse', 'HEAD');
     const options = { windowsPathBound: { platform: 'win32' as const } };
-    const over = 'f'.repeat(WINDOWS_ABSOLUTE_PATH_MAX - root.length);
+    // Three 100-character folders: each segment is valid, only the absolute length is not.
+    const over = Array.from({ length: 3 }, () => 'f'.repeat(100)).join('/');
+    expect(root.length + over.length).toBeLessThan(WINDOWS_ABSOLUTE_PATH_MAX * 2);
     await expect(
       createSpecification(
         engine,

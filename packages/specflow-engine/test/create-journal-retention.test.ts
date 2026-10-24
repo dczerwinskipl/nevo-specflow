@@ -63,6 +63,7 @@ function journal(context: Context, stage: CreateStage): CreateJournal {
   });
   const workspaceId = randomUUID();
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title,
     target: { kind: 'existing', workspaceId },
   });

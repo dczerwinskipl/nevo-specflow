@@ -59,6 +59,7 @@ function request(engine: SpecFlowEngine, title: string, linked = false): CreateS
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: linked
       ? { kind: 'new-worktree', baseRef: 'HEAD' }
       : { kind: 'existing', workspaceId: engine.workspace.workspaceId },

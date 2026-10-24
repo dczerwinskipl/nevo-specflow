@@ -41,6 +41,7 @@ describe('E2.T10 Close journal destination ownership', () => {
       operationId: randomUUID(),
       title: 'Journal destination consistency',
       created: '2026-10-17',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     git(root, 'add', '--', spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md');

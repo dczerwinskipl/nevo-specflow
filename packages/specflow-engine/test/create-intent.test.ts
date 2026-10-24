@@ -4,6 +4,7 @@ import { normalizeCreateClientIntent } from '../src/specs/create/intent';
 
 const intent = (branch: string) =>
   normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title: 'T',
     target: { kind: 'new-worktree', branch },
   });
@@ -27,7 +28,11 @@ describe('Create intent: branch override', () => {
 
   it('leaves an omitted branch to the configured pattern', () => {
     expect(
-      normalizeCreateClientIntent({ title: 'T', target: { kind: 'new-worktree' } }).target,
+      normalizeCreateClientIntent({
+        archetype: { id: 'minimal', version: 1 },
+        title: 'T',
+        target: { kind: 'new-worktree' },
+      }).target,
     ).toMatchObject({ branch: { kind: 'omitted' } });
   });
 });

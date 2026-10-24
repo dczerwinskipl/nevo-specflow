@@ -50,6 +50,7 @@ async function project(withInheritedSpec = false) {
       operationId: randomUUID(),
       title: 'Zeta spec',
       created: '2026-10-18',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     git(
@@ -65,6 +66,7 @@ async function project(withInheritedSpec = false) {
     operationId: randomUUID(),
     title: withInheritedSpec ? 'Alpha spec' : 'Integrate complete branch',
     created: '2026-10-18',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'new-worktree', baseRef: 'HEAD' },
   });
   roots.push(dirname(spec.workspaceRoot));

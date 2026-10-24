@@ -27,6 +27,7 @@ import {
   type CreateJournal,
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
+import { admitCreateArchetype } from '../admission';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
 import { createSpecificationScaffold } from '../../scaffold';
@@ -40,6 +41,8 @@ export async function reserveCreateOperation(
   intent: CreateClientIntent,
   operationId: string,
   creationDate: () => string,
+  /** Contents of `intent.addedDocuments`, in order. Not needed to follow an existing operation. */
+  addedContents: readonly string[] = [],
 ): Promise<{ readonly record: CreateJournal; readonly existing: boolean }> {
   // New physical target inspection is outside the Project Home lock.
   // Completed-op retries must not depend on the destination's current state.
@@ -69,6 +72,10 @@ export async function reserveCreateOperation(
       return { record: previous, existing: true };
     }
 
+    // A new operation: the archetype part is admitted before anything is reserved or written. An
+    // existing operation is replayed above regardless of the current catalogue.
+    admitCreateArchetype(intent, addedContents);
+
     // Date generated once under Project Home lock, after checking no journal.
     const created = creationDate();
     validateSpecificationScaffoldInput({ title: intent.title, created });
@@ -88,8 +95,14 @@ export async function reserveCreateOperation(
       created,
       goal: intent.goal,
       slug: intent.slug,
-      // Interim (D1 to D2): Create has no archetype input yet; D2 replaces this with the request value.
-      archetypeId: 'minimal',
+      archetypeId: intent.archetype.id,
+      optionalDocumentIds: intent.optionalDocumentIds,
+      addedDocuments: intent.addedDocuments.map((document, index) => ({
+        path: document.path,
+        ...(document.type !== undefined ? { type: document.type } : {}),
+        content: addedContents[index]!,
+      })),
+      folders: intent.folders,
     });
     if (
       canonical.some(

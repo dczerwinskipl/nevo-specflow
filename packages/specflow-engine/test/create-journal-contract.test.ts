@@ -59,6 +59,7 @@ function currentJournal(
   const created = '2026-10-14';
   const scaffold = createSpecificationScaffold({ archetypeId: 'minimal', specId, title, created });
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title,
     target: { kind: 'existing', workspaceId: targetWorkspaceId },
   });
@@ -154,6 +155,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
         operationId: record.operationId,
         title: record.title,
         created: record.created,
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       },
       { resumeInterruptedOperation: true },
@@ -202,6 +204,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
       instanceId: randomUUID(),
     };
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: record.title,
       target: { kind: 'new-worktree' },
     });
@@ -232,6 +235,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
     });
 
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: record.title,
       target: { kind: 'new-worktree' },
     });
@@ -266,10 +270,12 @@ describe('Durable Create — one canonical journal and Specification format', ()
 
   it('distinguishes omitted and explicit baseRef in immutable user intent', () => {
     const omitted = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: 'Same intent',
       target: { kind: 'new-worktree' },
     });
     const explicit = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: 'Same intent',
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });

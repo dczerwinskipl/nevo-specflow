@@ -50,6 +50,7 @@ async function fixture(includeUnicodeFile = false) {
     operationId: randomUUID(),
     title: 'Archive scoped changes',
     created: '2026-10-18',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
   });
   git(root, 'add', '--', spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md');
@@ -140,6 +141,7 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       operationId: randomUUID(),
       title: 'Archived conflict source',
       created: '2026-10-18',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     roots.push(dirname(spec.workspaceRoot));
@@ -238,6 +240,7 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       operationId: randomUUID(),
       title: 'Linked archival source',
       created: '2026-10-18',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'HEAD' },
     });
     roots.push(dirname(spec.workspaceRoot));

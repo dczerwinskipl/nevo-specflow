@@ -50,6 +50,7 @@ function input(workspaceId: string, title: string): CreateSpecificationInput {
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing', workspaceId },
   };
 }
@@ -138,6 +139,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       ...input(engine.workspace.workspaceId, 'Concurrent midnight'),
       operationId,
       created: '2026-10-14',
+      archetype: { id: 'minimal', version: 1 },
     };
     const two = { ...one, created: '2026-10-15' };
     const workers = [spawnCreateWorker(root, one), spawnCreateWorker(root, two)];
@@ -175,6 +177,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
           operationId,
           title: 'Concurrent ' + pausedAt + (gitSettled ? ' Git confirmed' : '') + ' join',
           created: '2026-10-14',
+          archetype: { id: 'minimal', version: 1 },
           target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
         };
         const writer = spawnCreateWorker(root, original, { pauseEffect: pausedAt });

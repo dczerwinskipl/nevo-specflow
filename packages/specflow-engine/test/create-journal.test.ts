@@ -59,6 +59,7 @@ function intent(projectId: string, workspaceId: string, root: string): CreateJou
   const operationId = randomUUID();
   const title = 'Journal proof';
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title,
     target: { kind: 'existing', workspaceId },
   });

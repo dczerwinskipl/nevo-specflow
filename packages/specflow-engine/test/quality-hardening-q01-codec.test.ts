@@ -59,6 +59,7 @@ describe('Q01 pure Close journal codec and durable store boundary', () => {
       operationId: randomUUID(),
       title: 'Close codec boundary',
       created: '2026-10-19',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     git(root, 'add', '--', spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md');

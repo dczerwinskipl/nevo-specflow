@@ -41,6 +41,7 @@ const existing = (engine: SpecFlowEngine, title = 'Commit scaffold'): CreateSpec
   operationId: randomUUID(),
   title,
   created: '2026-10-14',
+  archetype: { id: 'minimal', version: 1 },
   target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
 });
 
@@ -48,6 +49,7 @@ const linked = (title = 'Linked commit', branch?: string): CreateSpecificationIn
   operationId: randomUUID(),
   title,
   created: '2026-10-14',
+  archetype: { id: 'minimal', version: 1 },
   target: { kind: 'new-worktree', baseRef: 'HEAD', ...(branch ? { branch } : {}) },
 });
 

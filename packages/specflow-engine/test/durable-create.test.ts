@@ -42,6 +42,7 @@ function existing(engine: SpecFlowEngine, title = 'Create durable spec'): Create
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
   };
 }
@@ -51,6 +52,7 @@ function linked(title = 'Create linked spec'): CreateSpecificationInput {
     operationId: randomUUID(),
     title,
     created: '2026-10-14',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'new-worktree', baseRef: 'HEAD' },
   };
 }
@@ -356,6 +358,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const { createSpecificationFromRequest } = await import('../src/index');
     const request = {
       operationId: randomUUID(),
+      archetype: { id: 'minimal', version: 1 },
       title: 'A very long descriptive title',
       slug: 'short-name',
       target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
@@ -391,6 +394,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(
       (
         await createSpecificationFromRequest(engine, {
+          archetype: { id: 'minimal', version: 1 },
           operationId: randomUUID(),
           title: 'Derived Title',
           target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -405,6 +409,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     for (const slug of ['Upper', 'a--b', '../x', 'con', 'a_b', 'a'.repeat(81)]) {
       await expect(
         createSpecificationFromRequest(engine, {
+          archetype: { id: 'minimal', version: 1 },
           operationId: randomUUID(),
           title: 'Bad slug',
           slug,
@@ -436,6 +441,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const operationId = randomUUID();
     const request = {
       operationId,
+      archetype: { id: 'minimal', version: 1 },
       title: 'Policy picked once',
       target: { kind: 'new-worktree' as const },
     };
@@ -478,6 +484,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const operationId = randomUUID();
     const request = {
       operationId,
+      archetype: { id: 'minimal', version: 1 },
       title: 'Omitted defaults pinned',
       target: { kind: 'new-worktree' as const },
     };

@@ -127,6 +127,8 @@ export async function createSpecification(
     normalizeCreateClientIntent(input),
     () => input.created,
     options,
+    undefined,
+    input.addedDocuments?.map((document) => document.content) ?? [],
   );
 }
 
@@ -140,9 +142,19 @@ export async function createSpecificationWithIntent(
   creationDate: () => string,
   options: CreateSpecificationOptions = {},
   afterEffect?: CreateEffectHook,
+  /** Contents of `intent.addedDocuments` in order; only a first reservation needs them. */
+  addedContents: readonly string[] = [],
 ): Promise<CreatedSpecification> {
   const run = () =>
-    createWithVerifiedIntent(engine, operationId, intent, creationDate, options, afterEffect);
+    createWithVerifiedIntent(
+      engine,
+      operationId,
+      intent,
+      creationDate,
+      options,
+      afterEffect,
+      addedContents,
+    );
   // Not a Git operation: an existing-workspace create in a project with Git disabled
   // verifies Project Home/workspace on disk and spawns no Git process. Anything that
   // can involve Git (new worktree, Git enabled, unreadable policy) keeps full verification.
@@ -165,10 +177,17 @@ async function createWithVerifiedIntent(
   intent: CreateClientIntent,
   creationDate: () => string,
   options: CreateSpecificationOptions,
-  afterEffect?: CreateEffectHook,
+  afterEffect: CreateEffectHook | undefined,
+  addedContents: readonly string[],
 ): Promise<CreatedSpecification> {
   validateOperationId(operationId);
-  const reservation = await reserveCreateOperation(engine, intent, operationId, creationDate);
+  const reservation = await reserveCreateOperation(
+    engine,
+    intent,
+    operationId,
+    creationDate,
+    addedContents,
+  );
   let record = reservation.record;
   // A retry that finds the operation still reserved is announced only after the reserved plan
   // validated again, so a transport never accepts it ahead of the original run's rejection.

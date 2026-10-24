@@ -25,5 +25,6 @@ export function createSpecificationForTesting(
     () => input.created,
     options,
     options.afterEffect,
+    input.addedDocuments?.map((document) => document.content) ?? [],
   );
 }

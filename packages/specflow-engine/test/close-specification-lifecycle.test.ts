@@ -47,6 +47,7 @@ async function fixture(linked: boolean) {
     operationId: randomUUID(),
     title: 'Lifecycle archive test',
     created: '2026-10-18',
+    archetype: { id: 'minimal', version: 1 },
     target: linked
       ? { kind: 'new-worktree' as const, baseRef: 'HEAD' }
       : { kind: 'existing' as const, workspaceId: registry.primaryWorkspaceId },
@@ -141,12 +142,14 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       operationId: randomUUID(),
       title: 'Independent sibling B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: sourceWorkspaceId },
     });
     const c = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
       title: 'Independent sibling C',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: sourceWorkspaceId },
     });
     git(
@@ -246,12 +249,14 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       operationId: randomUUID(),
       title: 'Workspace sibling B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId },
     });
     const c = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
       title: 'Workspace sibling C',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId },
     });
     git(
@@ -311,6 +316,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       operationId: randomUUID(),
       title: 'Atomic CAS sibling B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId },
     });
     git(
@@ -360,6 +366,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       operationId: randomUUID(),
       title: 'Ignored data sibling B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId },
     });
     git(
@@ -397,6 +404,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
         operationId: randomUUID(),
         title,
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId },
       });
       git(
@@ -449,6 +457,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       operationId: randomUUID(),
       title: 'Conflict retained shared B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId },
     });
     git(
@@ -491,6 +500,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       operationId: randomUUID(),
       title: 'Incarnation sibling B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: a.workspaceId },
     });
     git(

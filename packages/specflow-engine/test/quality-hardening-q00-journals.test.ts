@@ -56,6 +56,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       created: '2026-10-19',
     });
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title,
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });

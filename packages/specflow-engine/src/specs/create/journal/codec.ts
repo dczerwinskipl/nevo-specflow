@@ -1,6 +1,6 @@
 import {
   fingerprintCreateClientIntent,
-  normalizeCreateClientIntent,
+  normalizePersistedCreateIntent,
   type CreateClientIntent,
 } from '../intent';
 import { CreateOperationError } from '../error';
@@ -8,6 +8,17 @@ import type { ResolvedProjectHome } from '../../../project/home/home';
 import { CREATE_STAGES, type CreateJournal, type CreateStage } from './model';
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const INTENT_FIELDS = new Set([
+  'title',
+  'goal',
+  'slug',
+  'target',
+  'archetype',
+  'catalogueRevision',
+  'optionalDocumentIds',
+  'addedDocuments',
+  'folders',
+]);
 const SHA256 = /^[0-9a-f]{64}$/u;
 const EXISTING_TARGET_FIELDS = new Set(['kind', 'workspaceId', 'workspaceRoot']);
 const WORKTREE_TARGET_FIELDS = new Set([
@@ -177,9 +188,7 @@ function isValidJournalIntent(
     intent.goal !== value.goal ||
     (intent.slug !== undefined && intent.slug !== value.slug) ||
     !isRecord(intent.target) ||
-    Object.keys(intent).some(
-      (key) => key !== 'title' && key !== 'goal' && key !== 'slug' && key !== 'target',
-    )
+    Object.keys(intent).some((key) => !INTENT_FIELDS.has(key))
   ) {
     return false;
   }
@@ -230,26 +239,7 @@ function isValidJournalIntent(
   if (typeof value.inputFingerprint !== 'string') return false;
   const persisted = intent as unknown as CreateClientIntent;
   try {
-    const normalized = normalizeCreateClientIntent({
-      title: persisted.title,
-      goal: persisted.goal,
-      slug: persisted.slug,
-      target:
-        persisted.target.kind === 'existing'
-          ? persisted.target
-          : {
-              kind: 'new-worktree',
-              ...(persisted.target.baseRef.kind === 'explicit'
-                ? { baseRef: persisted.target.baseRef.value }
-                : {}),
-              ...(persisted.target.branch.kind === 'explicit'
-                ? { branch: persisted.target.branch.value }
-                : {}),
-              ...(persisted.target.integrationTargetWorkspaceId !== undefined
-                ? { integrationTargetWorkspaceId: persisted.target.integrationTargetWorkspaceId }
-                : {}),
-            },
-    });
+    const normalized = normalizePersistedCreateIntent(persisted);
     return (
       JSON.stringify(normalized) === JSON.stringify(persisted) &&
       fingerprintCreateClientIntent(normalized) === value.inputFingerprint

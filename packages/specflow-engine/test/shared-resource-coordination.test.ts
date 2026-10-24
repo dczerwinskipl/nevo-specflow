@@ -13,6 +13,10 @@ function claim(specId: string, target: CreateJournal['target']): CreateJournal {
     requestIntent: {
       title: 'Resource example',
       target: { kind: 'existing', workspaceId: randomUUID() },
+      archetype: { id: 'minimal', version: 1 },
+      optionalDocumentIds: [],
+      addedDocuments: [],
+      folders: [],
     },
     inputFingerprint: 'a'.repeat(64),
     specId,

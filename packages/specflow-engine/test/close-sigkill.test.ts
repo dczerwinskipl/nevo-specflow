@@ -68,6 +68,7 @@ async function project(
     operationId: randomUUID(),
     title: 'Close SIGKILL proof',
     created: '2026-10-18',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'new-worktree', baseRef: 'HEAD' },
   });
   cleanup.push(dirname(spec.workspaceRoot));
@@ -87,6 +88,7 @@ async function project(
         operationId: randomUUID(),
         title,
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: { kind: 'existing', workspaceId: spec.workspaceId },
       });
       siblings.push({ specId: child.specId, slug: child.slug });

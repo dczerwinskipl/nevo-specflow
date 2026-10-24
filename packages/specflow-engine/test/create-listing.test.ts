@@ -54,6 +54,7 @@ function journal(
   overrides: Partial<Omit<CreateJournal, 'target'>> & { target?: CreateJournal['target'] } = {},
 ): CreateJournal {
   const requestIntent = normalizeCreateClientIntent({
+    archetype: { id: 'minimal', version: 1 },
     title: 'Listing proof',
     target: { kind: 'existing', workspaceId: fx.engine.workspace.workspaceId },
   });
@@ -139,6 +140,7 @@ describe('listPublicCreateOperations', () => {
   it('exposes the branch of a new worktree target and uses mtime as updatedAt', async () => {
     const fx = await fixture();
     const requestIntent = normalizeCreateClientIntent({
+      archetype: { id: 'minimal', version: 1 },
       title: 'Listing proof',
       target: { kind: 'new-worktree', branch: 'feature/x' },
     });

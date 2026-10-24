@@ -44,6 +44,7 @@ async function fixture() {
     operationId: randomUUID(),
     title: 'Platform feature',
     created: '2026-10-20',
+    archetype: { id: 'minimal', version: 1 },
     target: { kind: 'new-worktree', branch: 'feature/x', baseRef: 'refs/heads/develop' },
   });
   cleanup.push(dirname(feature.workspaceRoot));
@@ -67,6 +68,7 @@ async function createCommittedChild(
     operationId: randomUUID(),
     title,
     created: '2026-10-20',
+    archetype: { id: 'minimal', version: 1 },
     target: {
       kind: 'new-worktree',
       baseRef: 'refs/heads/feature/x',
@@ -92,6 +94,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       operationId: randomUUID(),
       title: 'Destination-specific Spec',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: {
         kind: 'new-worktree',
         baseRef: 'refs/heads/feature/x',
@@ -156,6 +159,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       operationId: randomUUID(),
       title: 'Shared child B',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'existing', workspaceId: child.workspaceId },
     });
     git(
@@ -204,6 +208,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       operationId: randomUUID(),
       title: 'Default target Spec',
       created: '2026-10-20',
+      archetype: { id: 'minimal', version: 1 },
       target: { kind: 'new-worktree', baseRef: 'refs/heads/develop' },
     });
     const entry = (await engine.readRegistry()).workspaces.find(
@@ -239,6 +244,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
         operationId,
         title: 'Unsafe destination',
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: {
           kind: 'new-worktree',
           baseRef: 'HEAD',
@@ -253,6 +259,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
         operationId: randomUUID(),
         title: 'Detached destination',
         created: '2026-10-20',
+        archetype: { id: 'minimal', version: 1 },
         target: {
           kind: 'new-worktree',
           baseRef: 'HEAD',

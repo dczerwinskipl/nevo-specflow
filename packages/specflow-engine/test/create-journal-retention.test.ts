@@ -55,7 +55,12 @@ type Context = Awaited<ReturnType<typeof fixture>>;
 function journal(context: Context, stage: CreateStage): CreateJournal {
   const title = 'Retention ' + randomUUID().slice(0, 8);
   const specId = randomUUID();
-  const scaffold = createSpecificationScaffold({ specId, title, created: '2026-10-14' });
+  const scaffold = createSpecificationScaffold({
+    archetypeId: 'minimal',
+    specId,
+    title,
+    created: '2026-10-14',
+  });
   const workspaceId = randomUUID();
   const requestIntent = normalizeCreateClientIntent({
     title,

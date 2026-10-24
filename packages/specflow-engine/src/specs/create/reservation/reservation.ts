@@ -28,11 +28,8 @@ import {
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
-import {
-  createSpecificationScaffold,
-  isValidSpecificationId,
-  validateSpecificationScaffoldInput,
-} from '../../model';
+import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
+import { createSpecificationScaffold } from '../../scaffold';
 
 /**
  * First lock winner owns the creation date and pinned Git effect plan.
@@ -91,6 +88,8 @@ export async function reserveCreateOperation(
       created,
       goal: intent.goal,
       slug: intent.slug,
+      // Interim (D1 to D2): Create has no archetype input yet; D2 replaces this with the request value.
+      archetypeId: 'minimal',
     });
     if (
       canonical.some(

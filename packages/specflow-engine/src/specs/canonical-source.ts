@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto';
 import { lstat, open, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { parse } from 'yaml';
-
 import type { SpecFlowEngine } from '../application';
 import {
   discoverSpecifications,
@@ -11,7 +9,8 @@ import {
   type DiscoveredSpecification,
 } from './discovery';
 import { runReadRequest } from '../project/request-verification-memo';
-import { parseSpecificationManifest, SpecificationError } from './model';
+import { readManifestTextBounded } from './bounded-read';
+import { parseSpecificationManifestText, SpecificationError } from './model';
 
 type AvailableSpec = Extract<DiscoveredSpecification, { readonly status: 'available' }>;
 
@@ -66,8 +65,8 @@ async function readSourcesInRequest(
       }
       let latest;
       try {
-        latest = parseSpecificationManifest(
-          parse(source.content) as unknown,
+        latest = parseSpecificationManifestText(
+          source.content,
           item.specification.slug,
           item.specification.location,
         );
@@ -134,8 +133,8 @@ async function readDocumentInRequest(
       if (kind === 'manifest') {
         let current;
         try {
-          current = parseSpecificationManifest(
-            parse(source.content) as unknown,
+          current = parseSpecificationManifestText(
+            source.content,
             found.specification.slug,
             found.specification.location,
           );
@@ -202,7 +201,8 @@ async function readPhysicalDocument(
       if (!openedStat.isFile()) {
         throw new SpecificationError('SPEC_SOURCE_INVALID', 'Canonical document is not a file.');
       }
-      const content = await handle.readFile('utf8');
+      const content =
+        kind === 'manifest' ? await readManifestTextBounded(handle) : await handle.readFile('utf8');
       return {
         relativePath,
         content,

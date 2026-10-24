@@ -49,7 +49,12 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     const engine = await bootstrapProjectHome(root);
     const title = 'Q00 journal';
     const specId = randomUUID();
-    const scaffold = createSpecificationScaffold({ specId, title, created: '2026-10-19' });
+    const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
+      specId,
+      title,
+      created: '2026-10-19',
+    });
     const requestIntent = normalizeCreateClientIntent({
       title,
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

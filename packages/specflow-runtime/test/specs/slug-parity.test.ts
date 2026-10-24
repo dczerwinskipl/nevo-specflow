@@ -17,6 +17,7 @@ describe('title-derived slug: UI preview rule equals the Engine rule', () => {
     'Ünïcödé Café',
   ])('%j', (title) => {
     const engine = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title,
       created: '2026-10-14',

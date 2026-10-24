@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { createSpecificationScaffold, type SpecificationScaffold } from '../model';
+import { createSpecificationScaffold, type SpecificationScaffold } from '../scaffold';
 import { CreateOperationError, type CreateJournal } from './journal';
 
 /** Durable scaffold contents are immutable until the operation completes. */
@@ -14,6 +14,8 @@ function expectedScaffold(record: CreateJournal): SpecificationScaffold {
     created: record.created,
     goal: record.goal,
     slug: record.requestIntent.slug,
+    // Interim (D1 to D2): journals carry no archetype yet; D2 replaces this with the journal payload.
+    archetypeId: 'minimal',
   });
   if (
     scaffold.slug !== record.slug ||

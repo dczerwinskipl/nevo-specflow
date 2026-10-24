@@ -57,7 +57,7 @@ function currentJournal(
   const title = 'Current contract';
   const specId = randomUUID();
   const created = '2026-10-14';
-  const scaffold = createSpecificationScaffold({ specId, title, created });
+  const scaffold = createSpecificationScaffold({ archetypeId: 'minimal', specId, title, created });
   const requestIntent = normalizeCreateClientIntent({
     title,
     target: { kind: 'existing', workspaceId: targetWorkspaceId },
@@ -162,6 +162,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(result.relativeManifestPath).toBe(record.files[0]!.relativePath);
     expect(await readFile(join(result.workspaceRoot, result.relativeManifestPath), 'utf8')).toBe(
       createSpecificationScaffold({
+        archetypeId: 'minimal',
         specId: record.specId,
         title: record.title,
         created: record.created,

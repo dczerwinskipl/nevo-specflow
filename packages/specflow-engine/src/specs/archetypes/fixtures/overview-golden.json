@@ -1,0 +1,78 @@
+[
+  {
+    "name": "plain-title",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "Plain title",
+      "goal": "Ship the thing."
+    },
+    "slug": "plain-title",
+    "overview": "---\nid: spec.plain-title\ntype: change\ntitle: \"Plain title\"\nstatus: draft\nchange: plain-title\n---\n\n# Plain title\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nShip the thing.\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  },
+  {
+    "name": "quotes-and-non-ascii",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "Zażółć \"gęślą\" jaźń  — café",
+      "goal": "Cel: 日本語 ok"
+    },
+    "slug": "zazolc-gesla-jazn-cafe",
+    "overview": "---\nid: spec.zazolc-gesla-jazn-cafe\ntype: change\ntitle: \"Zażółć \\\"gęślą\\\" jaźń — café\"\nstatus: draft\nchange: zazolc-gesla-jazn-cafe\n---\n\n# Zażółć \"gęślą\" jaźń — café\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nCel: 日本語 ok\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  },
+  {
+    "name": "extra-whitespace",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "  Spaced \t  out\n title  ",
+      "goal": "Goal"
+    },
+    "slug": "spaced-out-title",
+    "overview": "---\nid: spec.spaced-out-title\ntype: change\ntitle: \"Spaced out title\"\nstatus: draft\nchange: spaced-out-title\n---\n\n# Spaced out title\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nGoal\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  },
+  {
+    "name": "no-goal",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "No goal"
+    },
+    "slug": "no-goal",
+    "overview": "---\nid: spec.no-goal\ntype: change\ntitle: \"No goal\"\nstatus: draft\nchange: no-goal\n---\n\n# No goal\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nDescribe the intended outcome of this specification.\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  },
+  {
+    "name": "padded-goal",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "Padded goal",
+      "goal": "  \n  Goal with padding.  \n "
+    },
+    "slug": "padded-goal",
+    "overview": "---\nid: spec.padded-goal\ntype: change\ntitle: \"Padded goal\"\nstatus: draft\nchange: padded-goal\n---\n\n# Padded goal\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nGoal with padding.\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  },
+  {
+    "name": "multi-line-goal",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "Multi line",
+      "goal": "Line one.\n\nLine three with {{slug}} text.\n- item"
+    },
+    "slug": "multi-line",
+    "overview": "---\nid: spec.multi-line\ntype: change\ntitle: \"Multi line\"\nstatus: draft\nchange: multi-line\n---\n\n# Multi line\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nLine one.\n\nLine three with {{slug}} text.\n- item\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  },
+  {
+    "name": "whitespace-only-goal",
+    "input": {
+      "specId": "11111111-2222-4333-8444-555555555555",
+      "created": "2026-10-14",
+      "title": "Blank goal",
+      "goal": "   \n "
+    },
+    "slug": "blank-goal",
+    "overview": "---\nid: spec.blank-goal\ntype: change\ntitle: \"Blank goal\"\nstatus: draft\nchange: blank-goal\n---\n\n# Blank goal\n\n## Context\n\n## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nDescribe the intended outcome of this specification.\n\n## Non-goals\n\n## Constraints\n\n## Affected Areas\n\n## Acceptance Criteria & Verification\n"
+  }
+]

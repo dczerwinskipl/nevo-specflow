@@ -32,6 +32,8 @@
     "test:filesystem:full": "vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {
+    "@nevo/specflow-contracts": "workspace:*",
+    "typebox": "1.3.37",
     "yaml": "2.9.1"
   },
   "devDependencies": {

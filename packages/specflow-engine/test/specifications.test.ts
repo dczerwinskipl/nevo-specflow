@@ -15,6 +15,10 @@ import {
   validateSpecificationSlug,
   type SpecificationScaffold,
 } from '../src/testing';
+import {
+  writeOldShapeManifestFixture,
+  writeSpecificationManifestFixture,
+} from './support/manifest-fixture';
 
 const roots: string[] = [];
 
@@ -45,6 +49,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('marks the Goal section as the initial, freely refinable goal for agents', () => {
     const specId = randomUUID();
     const withGoal = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId,
       title: 'Goal note',
       created: '2026-10-14',
@@ -55,6 +60,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       '## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nShip the thing.\n',
     );
     const empty = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId,
       title: 'Goal note',
       created: '2026-10-14',
@@ -64,7 +70,12 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
 
   it('creates a deterministic title-only scaffold using the canonical specification.yaml', async () => {
     const specId = randomUUID();
-    const input = { specId, title: 'Żółty Projekt', created: '2026-10-14' };
+    const input = {
+      specId,
+      title: 'Żółty Projekt',
+      created: '2026-10-14',
+      archetypeId: 'minimal',
+    };
     const first = createSpecificationScaffold(input);
     const second = createSpecificationScaffold(input);
     expect(first).toEqual(second);
@@ -89,7 +100,13 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       slug: first.slug,
       title: 'Żółty Projekt',
       location: 'active',
-      type: 'standard',
+      archetype: {
+        id: 'minimal',
+        version: 1,
+        requirements: [{ documentType: 'overview', minCount: 1 }],
+      },
+      documents: [{ id: 'overview', path: 'overview.md', type: 'overview' }],
+      folders: [],
       status: 'draft',
       priority: 10,
       created: '2026-10-14',
@@ -105,6 +122,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('fails closed on an obsolete change.yaml-only directory', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Outdated prototype',
       created: '2026-10-14',
@@ -120,6 +138,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('rejects two manifest filenames rather than selecting a preferred source', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Ambiguous manifest',
       created: '2026-10-14',
@@ -135,6 +154,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('rejects incorrectly cased manifest names', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Wrong case',
       created: '2026-10-14',
@@ -150,6 +170,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('reflects manifest edits directly without a generated index or stale status cache', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Status source',
       created: '2026-10-14',
@@ -167,9 +188,15 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     const specId = randomUUID();
     await persist(
       root,
-      createSpecificationScaffold({ specId, title: 'Primary', created: '2026-10-14' }),
+      createSpecificationScaffold({
+        archetypeId: 'minimal',
+        specId,
+        title: 'Primary',
+        created: '2026-10-14',
+      }),
     );
     const other = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId,
       title: 'Duplicate',
       created: '2026-10-14',
@@ -185,6 +212,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('fails closed on missing identity, malformed YAML and non-file manifests', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Invalid source',
       created: '2026-10-14',
@@ -216,6 +244,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('uses a valid explicit slug for the scaffold paths and rejects an unsafe one', () => {
     const specId = randomUUID();
     const result = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId,
       title: 'Żółty Projekt',
       created: '2026-10-14',
@@ -225,7 +254,13 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     expect(result.files[0]?.relativePath).toBe('specs/active/my-slug/specification.yaml');
     for (const slug of ['My-Slug', 'a--b', '-a', 'a.b', '../x', 'nul', 'a'.repeat(81)]) {
       expect(() =>
-        createSpecificationScaffold({ specId, title: 'T', created: '2026-10-14', slug }),
+        createSpecificationScaffold({
+          archetypeId: 'minimal',
+          specId,
+          title: 'T',
+          created: '2026-10-14',
+          slug,
+        }),
       ).toThrow(SpecificationError);
     }
   });
@@ -235,10 +270,20 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     expect(await listWorkspaceSpecifications(root)).toEqual([]);
     expect(() => validateSpecificationSlug('../escape')).toThrow(SpecificationError);
     expect(() =>
-      createSpecificationScaffold({ specId: randomUUID(), title: '  ', created: '2026-10-14' }),
+      createSpecificationScaffold({
+        archetypeId: 'minimal',
+        specId: randomUUID(),
+        title: '  ',
+        created: '2026-10-14',
+      }),
     ).toThrow(SpecificationError);
     expect(() =>
-      createSpecificationScaffold({ specId: 'not-a-uuid', title: 'Valid', created: '2026-10-14' }),
+      createSpecificationScaffold({
+        archetypeId: 'minimal',
+        specId: 'not-a-uuid',
+        title: 'Valid',
+        created: '2026-10-14',
+      }),
     ).toThrow(SpecificationError);
     await expect(readWorkspaceSpecification(root, randomUUID())).rejects.toMatchObject({
       code: 'SPEC_NOT_FOUND',
@@ -272,7 +317,12 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
 
     const specId = randomUUID();
     for (const title of ['CON', 'NUL', 'LPT1', 'COM9', 'AUX']) {
-      const result = createSpecificationScaffold({ specId, title, created: '2026-10-14' });
+      const result = createSpecificationScaffold({
+        archetypeId: 'minimal',
+        specId,
+        title,
+        created: '2026-10-14',
+      });
       expect(result.slug).toBe(title.toLowerCase() + '-' + specId.slice(0, 8));
       expect(validateSpecificationSlug(result.slug)).toBe(result.slug);
       expect(result.files[0]?.relativePath).toBe(
@@ -289,5 +339,52 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
         'active',
       ),
     ).toThrowError(SpecificationError);
+  });
+
+  it('fails closed on one old-shape manifest and names the slug and the missing field', async () => {
+    const root = await workspace();
+    await writeSpecificationManifestFixture(root, { slug: 'good-one' });
+    await writeOldShapeManifestFixture(root, 'old-one');
+    const error = await listWorkspaceSpecifications(root).then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(SpecificationError);
+    expect((error as SpecificationError).code).toBe('SPEC_SOURCE_INVALID');
+    expect((error as SpecificationError).message).toContain('"old-one"');
+    expect((error as SpecificationError).message).toContain('"archetype"');
+    expect((error as SpecificationError).message).not.toContain(root);
+  });
+
+  it('lists hand-built manifests written in the current shape', async () => {
+    const root = await workspace();
+    const written = await writeSpecificationManifestFixture(root, {
+      slug: 'hand-built',
+      archetypeId: 'feature',
+      documents: [
+        { id: 'overview', path: 'overview.md', type: 'overview' },
+        { id: 'behaviour', path: 'docs/behaviour.md', type: 'behaviour' },
+      ],
+      folders: ['research'],
+      extra: { 'x-owner': 'core' },
+    });
+    const [item] = await listWorkspaceSpecifications(root);
+    expect(item).toMatchObject({
+      specId: written.specId,
+      slug: 'hand-built',
+      archetype: { id: 'feature' },
+      folders: ['research'],
+    });
+    expect(item?.documents.map((document) => document.id)).toEqual(['overview', 'behaviour']);
+  });
+
+  it('names the slug for a malformed manifest and rejects an oversized one', async () => {
+    const root = await workspace();
+    const written = await writeSpecificationManifestFixture(root, { slug: 'broken' });
+    const path = join(root, written.relativeManifestPath);
+    await writeFile(path, ['id: [invalid', ''].join('\n'));
+    await expect(listWorkspaceSpecifications(root)).rejects.toThrow(/"broken".*YAML/u);
+    await writeFile(path, ['id: broken', '# padding'.repeat(40_000)].join('\n'));
+    await expect(listWorkspaceSpecifications(root)).rejects.toThrow(/"broken".*larger than/u);
   });
 });

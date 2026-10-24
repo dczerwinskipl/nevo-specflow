@@ -170,8 +170,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       },
     },
     async (request, reply) => {
-      // The catalogue is resolved in memory; the await keeps the handler shape of its siblings.
-      const catalogue = await Promise.resolve(projectCatalogue());
+      const catalogue = projectCatalogue();
       const etag = `"${catalogue.revision}"`;
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
       if (matchesEtag(request.headers['if-none-match'], etag)) {

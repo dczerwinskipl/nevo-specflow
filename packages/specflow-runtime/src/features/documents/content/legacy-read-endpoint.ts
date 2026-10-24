@@ -11,8 +11,7 @@ import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
-import { requireCapability } from '../../auth';
+import { viewGuard } from './route-support';
 import { readDocumentContent, type DocumentContentSource } from './read-document';
 
 export const legacyDocumentReadEndpoint: FastifyPluginCallback<{
@@ -21,11 +20,7 @@ export const legacyDocumentReadEndpoint: FastifyPluginCallback<{
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/:specId/documents/:documentId',
     {
-      preHandler: requireCapability({
-        resource: SpecCapabilities,
-        capability: SpecCapabilities.capabilities.View,
-        scope: (request) => ({ specId: (request.params as { specId: string }).specId }),
-      }),
+      preHandler: viewGuard(),
       schema: {
         params: SpecificationDocumentParamsSchema,
         querystring: DocumentQuerySchema,

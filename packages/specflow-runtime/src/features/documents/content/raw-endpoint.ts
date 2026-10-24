@@ -5,7 +5,7 @@ import { SpecificationDocumentParamsSchema } from '@nevo/specflow-contracts/docu
 import { DocumentError } from '@nevo/specflow-engine';
 
 import { matchesEtag, sendNotModified } from '../../../server/etag';
-import { documentReadErrorResponses, replyWithDocumentFailure, viewGuard } from './endpoint';
+import { documentReadErrorResponses, documentRoute, viewGuard } from './route-support';
 import { rawEtag, rawNotModifiedHeaders, rawResponseHeaders } from './raw-headers';
 import type { DocumentReadSource } from './document-read-source';
 
@@ -35,17 +35,12 @@ export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadS
         response: { 200: Type.Any(), 304: Type.Null(), ...documentReadErrorResponses },
       },
     },
-    async (request, reply) => {
-      let opened;
-      try {
-        const source = options.source;
-        if (!source?.open) {
-          throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The document source is unavailable.');
-        }
-        opened = await source.open(request.params.specId, request.params.documentId);
-      } catch (error) {
-        return replyWithDocumentFailure(error, reply);
+    documentRoute(async (request, reply) => {
+      const source = options.source;
+      if (!source?.open) {
+        throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The document source is unavailable.');
       }
+      const opened = await source.open(request.params.specId, request.params.documentId);
 
       if (matchesEtag(request.headers['if-none-match'], rawEtag(opened.metadata.revision))) {
         opened.stream.destroy();
@@ -64,7 +59,7 @@ export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadS
         )
         .code(200)
         .send(opened.stream);
-    },
+    }),
   );
   done();
 };

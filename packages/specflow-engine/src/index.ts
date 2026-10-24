@@ -79,18 +79,10 @@ export {
   type OpenedDocumentMetadata,
   type RegisteredDocumentSummary,
 } from './specs/documents/reading';
-export {
-  catalogueRevision,
-  getBuiltInCatalogue,
-  projectCatalogue,
-  type ResolvedCatalogue,
-} from './specs/archetypes';
-export type { AddedDocumentInput } from './specs/scaffold';
-export type { CreateArchetypeRef } from './specs/create/intent';
+export { catalogueRevision, projectCatalogue } from './specs/archetypes';
 
 export {
   resolveCreateArchetype,
-  type ResolvedCreateArchetype,
   createSpecificationFromRequest,
   resumeInterruptedCreateOperation,
   type ResumeCreateOptions,

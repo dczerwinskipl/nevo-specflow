@@ -33,6 +33,10 @@ export const WorkspaceDocumentSchema = Type.Object({
   filename: Type.Optional(Type.String()),
   required: Type.Optional(Type.Boolean()),
   revision: Type.Optional(Type.String()),
+  /**
+   * The document TYPE id of the archetype vocabulary (for example `behaviour`), not the content kind
+   * (`text`, `image`, `binary`) of the document tree. The name is kept for wire compatibility.
+   */
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
 });

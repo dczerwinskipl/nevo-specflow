@@ -62,4 +62,4 @@ export const DocumentErrorSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-export type DocumentError = Static<typeof DocumentErrorSchema>;
+export type DocumentErrorBody = Static<typeof DocumentErrorSchema>;

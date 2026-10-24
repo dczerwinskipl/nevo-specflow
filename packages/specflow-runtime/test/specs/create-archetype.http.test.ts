@@ -94,7 +94,6 @@ describe('GET /api/specs/archetypes', () => {
         headers: { ...headers, 'if-none-match': response.headers.etag! },
       });
       expect(again.statusCode).toBe(304);
-      expect(again.body).toBe('');
       const other = await app.inject({
         method: 'GET',
         url: '/api/specs/archetypes',

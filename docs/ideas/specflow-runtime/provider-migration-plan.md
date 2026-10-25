@@ -87,6 +87,12 @@ inventory certification, asynchronous cached discovery and provider registry, tr
 composition, durable private native-context admission/resume and end-to-end installed transport tests.
 These steps remain inside PR #98. Writable effects still require W1/W2 below.
 
+Verification on implementation commit `aa6314b5`: 29 focused Windows tests passed;
+independent re-review found no remaining concrete blocker in this normalization slice.
+Linux build/typecheck and all 754 Runtime tests passed (96 files). Root `pnpm check:quality`
+passed, including 231-document corpus/index validation. These results do not close the remaining
+live-adapter gates above.
+
 At task start capture exact executable/version and installed protocol/SDK schema as test evidence.
 That is bounded adapter certification, not a deferred decision about canonical semantics.
 If transport is missing, fixture work can proceed but live acceptance is pending, not PASS.

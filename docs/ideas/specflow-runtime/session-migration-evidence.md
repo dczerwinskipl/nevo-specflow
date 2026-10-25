@@ -48,7 +48,21 @@ The configured mock is explicit and performs no external effects. No legacy hist
 
 Real Claude/Codex/Antigravity adapters, provider-specific process certification, writable Engine
 admission and product associations are subsequent packages. Their absence is not a fallback to
-fixture data. Independent code/UX review has not been performed; the Plan 04 review gate stays open.
+fixture data. Independent code review and its follow-up are recorded below. The owner will review
+UX separately; no independent rendered UX pass is claimed.
+
+## Independent code review and fixes
+
+Review of `42f2ba19` found three P2 data/contract defects: unbounded JSON escape expansion in pages,
+oversized activity labels derived from valid Work titles, and missing Work-read invalidation after
+terminal/interaction changes. `62806167` fixes all three with regression tests. Pages now budget
+the complete serialized envelope and preserve excluded entries through their cursor; labels are
+bounded at a valid UTF-8 prefix; Turn and interaction events invalidate their Work read models.
+
+The independent reviewer rechecked the fixes and ran 12 persistence and 6 feed tests, all passing,
+with no remaining blocker in those fixes. Final Linux build/typecheck plus complete Runtime and UI
+suites passed on `62806167`: 707 Runtime tests and 1188 UI tests. This does not certify real providers
+or claim a rendered UX review. All changes remain in the single foundation PR #98.
 
 ## Executed verification (2026-10-25)
 

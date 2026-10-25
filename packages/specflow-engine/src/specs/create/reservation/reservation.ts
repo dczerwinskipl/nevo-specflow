@@ -28,6 +28,7 @@ import {
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { admitCreateArchetype } from '../admission';
+import { assertCreatePathsFitWindows, type WindowsPathBoundOptions } from '../path-bound';
 import { getBuiltInCatalogue } from '../../archetypes/catalogue';
 import { assertJournalFitsItsCap } from './journal-cap';
 import { CREATE_JOURNAL_VERSION } from '../journal/model';
@@ -51,6 +52,7 @@ export async function reserveCreateOperation(
   creationDate: () => string,
   /** Contents of `intent.addedDocuments`, in order. Not needed to follow an existing operation. */
   addedContents: readonly string[] = [],
+  windowsPathBound?: WindowsPathBoundOptions,
 ): Promise<{ readonly record: CreateJournal; readonly existing: boolean }> {
   // New physical target inspection is outside the Project Home lock.
   // Completed-op retries must not depend on the destination's current state.
@@ -249,6 +251,19 @@ export async function reserveCreateOperation(
         projectRoot: plan.projectRoot,
         gitInstanceId: plan.gitInstanceId,
       };
+    }
+
+    // Windows only, and before anything is written: a path beyond the Windows limit would be
+    // accepted here and then fail in Git, leaving a stuck journal.
+    try {
+      assertCreatePathsFitWindows(
+        target.workspaceRoot,
+        scaffold.files.map((file) => file.relativePath),
+        windowsPathBound,
+      );
+    } catch (error) {
+      if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+      throw error;
     }
 
     const record: CreateJournal = {

@@ -10,7 +10,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -25,6 +25,7 @@ import {
   failure,
   handBuiltSpecification,
   removeTrackedRoots,
+  SYMLINKS_AVAILABLE,
   trackRoot,
 } from './support/documents-fixture';
 
@@ -35,91 +36,103 @@ const handBuilt = handBuiltSpecification;
 const code = errorCode;
 
 describe('paths, links and hidden entries', () => {
-  it('skips symlinks (files and folders), reports them and never reads through them', async () => {
-    const fixture = await project();
-    const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    trackRoot(outside);
-    await writeFile(join(outside, 'secret.md'), '# SECRET\n');
-    await mkdir(join(outside, 'folder'));
-    await writeFile(join(outside, 'folder', 'inner.md'), '# INNER SECRET\n');
-    const hand = await handBuilt(fixture);
-    await symlink(join(outside, 'secret.md'), join(hand.dir, 'link.md'));
-    await symlink(join(outside, 'folder'), join(hand.dir, 'linked-folder'));
-    await symlink('overview.md', join(hand.dir, 'inner-link.md'));
+  it.skipIf(!SYMLINKS_AVAILABLE)(
+    'skips symlinks (files and folders), reports them and never reads through them',
+    async () => {
+      const fixture = await project();
+      const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
+      trackRoot(outside);
+      await writeFile(join(outside, 'secret.md'), '# SECRET\n');
+      await mkdir(join(outside, 'folder'));
+      await writeFile(join(outside, 'folder', 'inner.md'), '# INNER SECRET\n');
+      const hand = await handBuilt(fixture);
+      await symlink(join(outside, 'secret.md'), join(hand.dir, 'link.md'));
+      await symlink(join(outside, 'folder'), join(hand.dir, 'linked-folder'));
+      await symlink('overview.md', join(hand.dir, 'inner-link.md'));
 
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
-    expect(tree.skippedEntries).toBe(3);
-    expect(tree.issues.filter((issue) => issue.code === 'skipped-entry')).toEqual([
-      { code: 'skipped-entry', path: 'inner-link.md' },
-      { code: 'skipped-entry', path: 'link.md' },
-      { code: 'skipped-entry', path: 'linked-folder' },
-    ]);
-    expect(JSON.stringify(tree)).not.toContain('SECRET');
-    // The derived id of a symlink path resolves to nothing: it is not a listed file.
-    for (const path of ['link.md', 'linked-folder/inner.md', 'inner-link.md']) {
-      expect(
-        code(
-          await failure(
-            readSpecificationDocument(
-              fixture.engine,
-              hand.specId,
-              deriveUnclassifiedDocumentId(path),
+      const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+      expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
+      expect(tree.skippedEntries).toBe(3);
+      expect(tree.issues.filter((issue) => issue.code === 'skipped-entry')).toEqual([
+        { code: 'skipped-entry', path: 'inner-link.md' },
+        { code: 'skipped-entry', path: 'link.md' },
+        { code: 'skipped-entry', path: 'linked-folder' },
+      ]);
+      expect(JSON.stringify(tree)).not.toContain('SECRET');
+      // The derived id of a symlink path resolves to nothing: it is not a listed file.
+      for (const path of ['link.md', 'linked-folder/inner.md', 'inner-link.md']) {
+        expect(
+          code(
+            await failure(
+              readSpecificationDocument(
+                fixture.engine,
+                hand.specId,
+                deriveUnclassifiedDocumentId(path),
+              ),
             ),
           ),
-        ),
-      ).toBe('DOCUMENT_NOT_FOUND');
-    }
-  }, 240000);
+        ).toBe('DOCUMENT_NOT_FOUND');
+      }
+    },
+    240000,
+  );
 
-  it('reports a registered file replaced by a symlink only as skipped and never reads it', async () => {
-    const fixture = await project();
-    const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    trackRoot(outside);
-    await writeFile(join(outside, 'secret.md'), '# SECRET\n');
-    const hand = await handBuilt(fixture, {
-      documents: [
-        { id: 'overview', path: 'overview.md', type: 'overview' },
-        { id: 'note', path: 'note.md', type: 'note' },
-      ],
-      files: { 'overview.md': '# o\n', 'note.md': '# n\n' },
-    });
-    await unlink(join(hand.dir, 'note.md'));
-    await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    // Present but not safely readable is not "file missing": skipped only, never dangling.
-    expect(tree.dangling).toEqual([]);
-    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
-    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'note.md' });
-    expect(tree.skippedEntries).toBe(1);
-    expect(JSON.stringify(tree)).not.toContain('SECRET');
-    expect(
-      code(await failure(readSpecificationDocument(fixture.engine, hand.specId, 'note'))),
-    ).toBe('DOCUMENT_FILE_MISSING');
-  }, 240000);
+  it.skipIf(!SYMLINKS_AVAILABLE)(
+    'reports a registered file replaced by a symlink only as skipped and never reads it',
+    async () => {
+      const fixture = await project();
+      const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
+      trackRoot(outside);
+      await writeFile(join(outside, 'secret.md'), '# SECRET\n');
+      const hand = await handBuilt(fixture, {
+        documents: [
+          { id: 'overview', path: 'overview.md', type: 'overview' },
+          { id: 'note', path: 'note.md', type: 'note' },
+        ],
+        files: { 'overview.md': '# o\n', 'note.md': '# n\n' },
+      });
+      await unlink(join(hand.dir, 'note.md'));
+      await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
+      const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+      // Present but not safely readable is not "file missing": skipped only, never dangling.
+      expect(tree.dangling).toEqual([]);
+      expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
+      expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'note.md' });
+      expect(tree.skippedEntries).toBe(1);
+      expect(JSON.stringify(tree)).not.toContain('SECRET');
+      expect(
+        code(await failure(readSpecificationDocument(fixture.engine, hand.specId, 'note'))),
+      ).toBe('DOCUMENT_FILE_MISSING');
+    },
+    240000,
+  );
 
-  it('refuses a registered path below a symlinked folder as leaving the Specification directory', async () => {
-    const fixture = await project();
-    const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    trackRoot(outside);
-    await writeFile(join(outside, 'inner.md'), '# SECRET\n');
-    const hand = await handBuilt(fixture, {
-      documents: [
-        { id: 'overview', path: 'overview.md', type: 'overview' },
-        { id: 'inner', path: 'linked/inner.md', type: 'note' },
-      ],
-      files: { 'overview.md': '# o\n' },
-    });
-    await symlink(outside, join(hand.dir, 'linked'));
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.dangling).toEqual([]);
-    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
-    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'linked/inner.md' });
-    expect(JSON.stringify(tree)).not.toContain('SECRET');
-    expect(
-      code(await failure(readSpecificationDocument(fixture.engine, hand.specId, 'inner'))),
-    ).toBe('SPEC_SOURCE_UNAVAILABLE');
-  }, 240000);
+  it.skipIf(!SYMLINKS_AVAILABLE)(
+    'refuses a registered path below a symlinked folder as leaving the Specification directory',
+    async () => {
+      const fixture = await project();
+      const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
+      trackRoot(outside);
+      await writeFile(join(outside, 'inner.md'), '# SECRET\n');
+      const hand = await handBuilt(fixture, {
+        documents: [
+          { id: 'overview', path: 'overview.md', type: 'overview' },
+          { id: 'inner', path: 'linked/inner.md', type: 'note' },
+        ],
+        files: { 'overview.md': '# o\n' },
+      });
+      await symlink(outside, join(hand.dir, 'linked'));
+      const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+      expect(tree.dangling).toEqual([]);
+      expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
+      expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'linked/inner.md' });
+      expect(JSON.stringify(tree)).not.toContain('SECRET');
+      expect(
+        code(await failure(readSpecificationDocument(fixture.engine, hand.specId, 'inner'))),
+      ).toBe('SPEC_SOURCE_UNAVAILABLE');
+    },
+    240000,
+  );
 
   it('reads a file with several hard links like any other file', async () => {
     const fixture = await project();
@@ -172,15 +185,20 @@ describe('paths, links and hidden entries', () => {
     expect(tree.issues).toEqual([]);
   }, 240000);
 
-  it('reports names that cannot be addressed as skipped entries', async () => {
-    const fixture = await project();
-    const hand = await handBuilt(fixture);
-    await writeFile(join(hand.dir, 'back\\slash.md'), 'x');
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
-    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'back\\slash.md' });
-    expect(tree.skippedEntries).toBe(1);
-  }, 240000);
+  // A backslash is a path separator on Windows, so such a file name cannot exist there.
+  it.skipIf(process.platform === 'win32')(
+    'reports names that cannot be addressed as skipped entries',
+    async () => {
+      const fixture = await project();
+      const hand = await handBuilt(fixture);
+      await writeFile(join(hand.dir, 'back\\slash.md'), 'x');
+      const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+      expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
+      expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'back\\slash.md' });
+      expect(tree.skippedEntries).toBe(1);
+    },
+    240000,
+  );
 
   it('lists A.md and a.md with different ids and reports the case collision on a case-sensitive filesystem', async () => {
     const fixture = await project();
@@ -206,28 +224,39 @@ describe('paths, links and hidden entries', () => {
     );
   }, 240000);
 
-  it('lists a Windows reserved name as an ordinary unclassified file on Linux', async () => {
-    const fixture = await project();
-    const hand = await handBuilt(fixture);
-    await writeFile(join(hand.dir, 'con.txt'), 'device-like');
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    const reserved = tree.documents.find((document) => document.path === 'con.txt')!;
-    expect(reserved.classification).toBe('unclassified');
-    expect(
-      (await readSpecificationDocument(fixture.engine, hand.specId, reserved.id)).content,
-    ).toBe('device-like');
-  }, 240000);
+  // CON/PRN/... name devices on Windows; the POSIX behaviour is what is under test.
+  it.skipIf(process.platform === 'win32')(
+    'lists a Windows reserved name as an ordinary unclassified file on Linux',
+    async () => {
+      const fixture = await project();
+      const hand = await handBuilt(fixture);
+      await writeFile(join(hand.dir, 'con.txt'), 'device-like');
+      const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+      const reserved = tree.documents.find((document) => document.path === 'con.txt')!;
+      expect(reserved.classification).toBe('unclassified');
+      expect(
+        (await readSpecificationDocument(fixture.engine, hand.specId, reserved.id)).content,
+      ).toBe('device-like');
+    },
+    240000,
+  );
 
-  it('fails closed when the Specification directory itself is a symlink', async () => {
-    const fixture = await project();
-    const hand = await handBuilt(fixture);
-    const real = hand.dir + '-real';
-    await rename(hand.dir, real);
-    await symlink(real, hand.dir);
-    await expect(readSpecificationDocumentTree(fixture.engine, hand.specId)).rejects.toMatchObject({
-      code: 'SPEC_SOURCE_INVALID',
-    });
-  }, 240000);
+  it.skipIf(!SYMLINKS_AVAILABLE)(
+    'fails closed when the Specification directory itself is a symlink',
+    async () => {
+      const fixture = await project();
+      const hand = await handBuilt(fixture);
+      const real = hand.dir + '-real';
+      await rename(hand.dir, real);
+      await symlink(real, hand.dir);
+      await expect(
+        readSpecificationDocumentTree(fixture.engine, hand.specId),
+      ).rejects.toMatchObject({
+        code: 'SPEC_SOURCE_INVALID',
+      });
+    },
+    240000,
+  );
 });
 
 describe('files that cannot be read safely', () => {
@@ -251,7 +280,7 @@ describe('files that cannot be read safely', () => {
     const fs: VerifiedFs = {
       ...nodeVerifiedFs,
       lstat: (path) =>
-        path.endsWith('/bad.md') ? Promise.reject(errno('EACCES')) : nodeVerifiedFs.lstat(path),
+        basename(path) === 'bad.md' ? Promise.reject(errno('EACCES')) : nodeVerifiedFs.lstat(path),
     };
     const rows = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, { fs });
     expect(rows.map((row) => row.id)).toEqual(['overview']);
@@ -263,7 +292,7 @@ describe('files that cannot be read safely', () => {
     const fs: VerifiedFs = {
       ...nodeVerifiedFs,
       open: (path, flags) =>
-        path.endsWith('/bad.md')
+        basename(path) === 'bad.md'
           ? Promise.reject(errno('ELOOP'))
           : nodeVerifiedFs.open(path, flags),
     };

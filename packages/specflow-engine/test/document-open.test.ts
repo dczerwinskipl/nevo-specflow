@@ -68,6 +68,11 @@ async function openDescriptors(): Promise<number> {
   return (await readdir('/proc/self/fd')).length;
 }
 
+/** The same count, but undefined off Linux (no /proc): callers assert only when it is defined. */
+async function countOpenFds(): Promise<number | undefined> {
+  return onLinux ? openDescriptors() : undefined;
+}
+
 describe('openSpecificationDocument', () => {
   it('streams a registered document with its metadata', async () => {
     const fixture = await documentsProject();
@@ -177,7 +182,7 @@ describe('openSpecificationDocument', () => {
     await writeFile(over, '');
     await truncate(exact, 25 * 1024 * 1024);
     await truncate(over, 25 * 1024 * 1024 + 1);
-    const before = await openDescriptors();
+    const before = await countOpenFds();
     const opened = await openSpecificationDocument(
       fixture.engine,
       hand.specId,
@@ -196,7 +201,8 @@ describe('openSpecificationDocument', () => {
         ),
       ),
     ).toBe('DOCUMENT_TOO_LARGE');
-    if (onLinux) expect(await openDescriptors()).toBeLessThanOrEqual(before);
+    const after = await countOpenFds();
+    if (before !== undefined && after !== undefined) expect(after).toBeLessThanOrEqual(before);
   }, 240000);
 
   it.skipIf(!onLinux)(

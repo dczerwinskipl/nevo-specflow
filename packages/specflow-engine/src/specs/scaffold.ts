@@ -83,6 +83,12 @@ export type ScaffoldValidationCause =
   | { readonly kind: 'archetype-unknown'; readonly id: string }
   | { readonly kind: 'template-unknown'; readonly id: string }
   | { readonly kind: 'path-invalid'; readonly path: string; readonly violation: string }
+  | {
+      readonly kind: 'path-too-long';
+      readonly path: string;
+      readonly max: number;
+      readonly actual: number;
+    }
   | { readonly kind: 'path-conflict'; readonly path: string }
   | { readonly kind: 'type-invalid'; readonly path: string; readonly type: string }
   | { readonly kind: 'content-invalid'; readonly path: string }
@@ -120,6 +126,7 @@ const DOCUMENT_CODE_BY_CAUSE: Record<ScaffoldValidationCause['kind'], DocumentEr
   'archetype-unknown': 'ARCHETYPE_UNKNOWN',
   'template-unknown': 'ARCHETYPE_UNKNOWN',
   'path-invalid': 'DOCUMENT_PATH_INVALID',
+  'path-too-long': 'DOCUMENT_PATH_INVALID',
   'path-conflict': 'DOCUMENT_PATH_CONFLICT',
   'type-invalid': 'DOCUMENT_OPERATION_INVALID',
   'content-invalid': 'DOCUMENT_OPERATION_INVALID',
@@ -127,7 +134,10 @@ const DOCUMENT_CODE_BY_CAUSE: Record<ScaffoldValidationCause['kind'], DocumentEr
 };
 
 export function documentErrorOf(error: ScaffoldValidationError): DocumentError {
-  return new DocumentError(DOCUMENT_CODE_BY_CAUSE[error.cause.kind], error.message);
+  const code = DOCUMENT_CODE_BY_CAUSE[error.cause.kind];
+  return error.cause.kind === 'path-too-long'
+    ? new DocumentError(code, error.message, { cause: 'path-too-long' })
+    : new DocumentError(code, error.message);
 }
 
 /** The registry being built: allocates each document id from its position and the ids already used. */

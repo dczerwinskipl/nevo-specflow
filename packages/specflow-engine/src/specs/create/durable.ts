@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { SpecFlowEngine } from '../../application';
 import { normalizeCreateClientIntent, type CreateClientIntent } from './intent';
 import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
+import type { WindowsPathBoundOptions } from './path-bound';
 import { reserveCreateOperation, writingSlugsByWorkspace } from './reservation/reservation';
 import { followExistingCreateOperation } from './reservation/observation';
 import type { CreateSpecificationInput } from './input';
@@ -146,6 +147,8 @@ export async function createSpecificationWithIntent(
   afterEffect?: CreateEffectHook,
   /** Contents of `intent.addedDocuments` in order; only a first reservation needs them. */
   addedContents: readonly string[] = [],
+  /** Internal test seam: the platform the Windows path bound is judged for. */
+  windowsPathBound?: WindowsPathBoundOptions,
 ): Promise<CreatedSpecification> {
   const run = () =>
     createWithVerifiedIntent(
@@ -156,6 +159,7 @@ export async function createSpecificationWithIntent(
       options,
       afterEffect,
       addedContents,
+      windowsPathBound,
     );
   // Not a Git operation: an existing-workspace create in a project with Git disabled
   // verifies Project Home/workspace on disk and spawns no Git process. Anything that
@@ -181,6 +185,7 @@ async function createWithVerifiedIntent(
   options: CreateSpecificationOptions,
   afterEffect: CreateEffectHook | undefined,
   addedContents: readonly string[],
+  windowsPathBound: WindowsPathBoundOptions | undefined,
 ): Promise<CreatedSpecification> {
   validateOperationId(operationId);
   const reservation = await reserveCreateOperation(
@@ -189,6 +194,7 @@ async function createWithVerifiedIntent(
     operationId,
     creationDate,
     addedContents,
+    windowsPathBound,
   );
   let record = reservation.record;
   // A retry that finds the operation still reserved is announced only after the reserved plan

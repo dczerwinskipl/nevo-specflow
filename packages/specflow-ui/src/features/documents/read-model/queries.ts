@@ -8,5 +8,8 @@ export const documentTreeKeys = {
 };
 /** The archetype catalogue as the documents feature reads it (type titles and instructions). */
 export const documentCatalogueKeys = {
-  catalogue: ['documents', 'archetype-catalogue'] as const,
+  all: ['documents', 'archetype-catalogue'] as const,
+  /** Per documents adapter: the demo catalogue and the project one never share an entry. */
+  catalogue: (adapter: 'demo' | 'project') =>
+    ['documents', 'archetype-catalogue', adapter] as const,
 };

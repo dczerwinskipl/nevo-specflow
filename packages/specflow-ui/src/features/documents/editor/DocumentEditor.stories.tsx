@@ -64,8 +64,8 @@ function EditorFixture({
     const services = createSpecFlowAppServices();
     return {
       ...services,
-      documentsApi: {
-        ...services.documentsApi,
+      demoDocumentsApi: {
+        ...services.demoDocumentsApi,
         save: (_spec: string, _document: string, _input: SaveInput) =>
           deferred
             ? new Promise<SaveResult>((resolve) =>

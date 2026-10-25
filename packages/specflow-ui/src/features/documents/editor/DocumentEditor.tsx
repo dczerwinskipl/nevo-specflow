@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, MarkdownDocument, ScrollArea } from '@nevo/ui';
 import { useMessage } from '../../../i18n/message';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
-import { reasonFragment, reasonRemedy } from '../catalogue/documentTypePolicy';
+import { readOnlyLine, reasonFragment, reasonRemedy } from '../catalogue/documentTypePolicy';
 import { documentKindOf, documentViewOf } from '../content-kinds/documentContentKinds';
 import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
 import { refusalReason } from '../explorer/useDocumentOperations';
@@ -29,14 +29,13 @@ import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
  * order before the text): the reason and, when there is one, what to do about it.
  */
 function ReadOnlyLine({ session }: { session: DocumentEditorSession }) {
-  const { t } = useTranslation();
   const text = useMessage();
   const reason = session.readOnlyReason;
   if (!reason) return null;
   const remedy = reasonRemedy(reason);
   return (
     <InlineNote>
-      {t('documents.readOnly.line', { reason: text(reasonFragment(reason)) })}
+      {text(readOnlyLine(reason, 'document'))}
       {remedy ? ` ${text(remedy)}` : ''}
     </InlineNote>
   );
@@ -89,6 +88,10 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
       body = remedy ? text(remedy) : null;
       break;
     }
+    // This Runtime does not serve saves (refused before anything was applied): no Try again.
+    case 'not-implemented':
+      title = text(readOnlyLine('not-implemented', 'document'));
+      break;
     case 'COMMIT_BLOCKED':
       title = t('documents.save.commitBlocked');
       body = t('documents.remedy.commitBlocked');

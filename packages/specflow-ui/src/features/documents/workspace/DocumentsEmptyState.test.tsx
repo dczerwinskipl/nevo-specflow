@@ -35,9 +35,9 @@ describe('documents empty state', () => {
     expect(screen.getByRole('button', { name: 'Wgraj pliki' }).hasAttribute('disabled')).toBe(true);
   });
 
-  it('shows only the line when the Specification allows no start action', () => {
+  it('shows only the line, without "create", when the Specification allows no start action', () => {
     renderIn('en', <DocumentsEmptyState />);
-    expect(screen.getByText('Choose a document from the tree or create a new one.')).toBeTruthy();
+    expect(screen.getByText('Choose a document from the tree.')).toBeTruthy();
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });

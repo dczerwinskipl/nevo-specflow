@@ -250,8 +250,8 @@ function Connected({
                 }),
               ),
       },
-      documentsApi: {
-        ...defaults.documentsApi,
+      demoDocumentsApi: {
+        ...defaults.demoDocumentsApi,
         documentTree: () =>
           Promise.resolve({
             ...tree,

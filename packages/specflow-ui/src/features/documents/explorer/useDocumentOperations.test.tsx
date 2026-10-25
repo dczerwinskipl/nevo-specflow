@@ -75,7 +75,8 @@ describe('a refused document operation', () => {
     expect(view.result.current.actions.isUnknown()).toBe(false);
     expect(view.result.current.state.busy).toBe(false);
     expect(onBusyChange).toHaveBeenLastCalledWith(false);
-    expect(view.result.current.state.error).toBe('documents.tree.error.refused');
+    // The one sentence for a Runtime without document writes.
+    expect(view.result.current.state.error).toBe('documents.reason.notImplementedEditing');
   });
 
   it('keeps an answer without a status as an unknown outcome (it may have been applied)', async () => {

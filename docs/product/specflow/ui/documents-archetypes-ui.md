@@ -241,7 +241,8 @@ operation returns it, it is shown as the protected-document reason.
 ### 3.7 Idle document area (nothing open)
 
 `DocumentsEmptyState` is one line, "Choose a document from the tree or create a new one.", and, when the
-capabilities allow them, the start actions **New document…** and **Upload files**. It does not list
+capabilities allow them, the start actions **New document…** and **Upload files**; when neither is
+available the line is only "Choose a document from the tree." It does not list
 documents: the tree beside it already does, and Expected documents in the tree names what is missing. No
 completeness, no issues here: they belong to the tree, which is also what Narrow shows first.
 
@@ -325,6 +326,11 @@ You can add, remove or classify documents later.             body-md secondary
 - The first line of the document content is an `InlineNote` (info): `Read-only: <reason>` plus the remedy
   for that reason. It is in the document flow, not sticky, not a box. The Edit action is not
   offered; Show path and Close tab stay.
+- `not-implemented` (a project Runtime that does not serve the document writes yet; every write action
+  and capability of its tree carries it) is not a property of the Specification: the document line, the
+  line above the tree and the row-menu note are the one sentence "Editing documents is not available in
+  this version yet." The same workspace renders in the demo and in a project Runtime; only the documents
+  adapter differs.
 - The same Specification-wide reason appears once above the tree (3.1, item 2); the per-document
   `not-editable` reason appears only in the tab.
 

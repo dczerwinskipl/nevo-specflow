@@ -50,6 +50,11 @@ export type CreateFolderInput = DemoFolderInput;
  * `operationId` (idempotency key).
  */
 export interface DocumentsApi {
+  /**
+   * The writes are an emulation (the demo Runtime): the workspace explains the demo's scope. A
+   * project Runtime's adapter is not emulated.
+   */
+  readonly emulated: boolean;
   documentTree(specId: string, signal?: AbortSignal): Promise<DocumentTree>;
   /**
    * The archetype catalogue the Specifications were created from: the type titles, `useWhen` and

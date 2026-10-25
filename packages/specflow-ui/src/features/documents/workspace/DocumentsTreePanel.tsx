@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, AppContent, Button, InlineNote, ScrollArea, Separator } from '@nevo/ui';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
-import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { useMessage } from '../../../i18n/message';
 import { SessionRecoveryNotice } from '../../sessions';
 import { useSpecificationWorkspace } from '../../specs/read-model';
 import {
   archetypeTitle,
   closeRefusingIssues,
-  reasonFragment,
+  readOnlyLine,
   specificationReadOnlyReason,
   typeTitle,
   unmetRequirements,
@@ -46,7 +46,7 @@ export function DocumentsTreePanel({
 }) {
   const { t } = useTranslation();
   const text = useMessage();
-  const { documentsApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const cache = useQueryClient();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
@@ -75,11 +75,7 @@ export function DocumentsTreePanel({
           <div className="mb-3 grid gap-4">
             <CloseIssues issues={issues} />
             {readOnly && (
-              <InlineNote className="px-2">
-                {t('documents.tree.editingUnavailable', {
-                  reason: text(reasonFragment(readOnly)),
-                })}
-              </InlineNote>
+              <InlineNote className="px-2">{text(readOnlyLine(readOnly, 'tree'))}</InlineNote>
             )}
             <ExpectedDocuments
               requirements={unmet}

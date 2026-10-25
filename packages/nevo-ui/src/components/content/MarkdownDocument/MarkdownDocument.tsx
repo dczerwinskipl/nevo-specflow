@@ -85,6 +85,29 @@ function rehypeSourceLines() {
   };
 }
 
+interface MdastNode {
+  type: string;
+  value?: string;
+  children?: MdastNode[];
+}
+
+const htmlComment = /^\s*<!--[\s\S]*?-->\s*$/;
+
+/**
+ * Remark step: an HTML comment (`<!-- note to the writer -->`) is not content. Raw HTML is never
+ * rendered as markup here, so without this step the comment would be shown as literal text.
+ */
+function remarkDropHtmlComments() {
+  const walk = (node: MdastNode) => {
+    if (!node.children) return;
+    node.children = node.children.filter(
+      (child) => !(child.type === 'html' && htmlComment.test(child.value ?? '')),
+    );
+    for (const child of node.children) walk(child);
+  };
+  return walk;
+}
+
 /** react-markdown forwards hast properties as props; keep the source line on the rendered block. */
 function sourceLine(props: object): { 'data-source-line'?: number } {
   const line = (props as { 'data-source-line'?: number })['data-source-line'];
@@ -319,7 +342,7 @@ export function MarkdownDocument({
       <ReactMarkdown
         components={components}
         rehypePlugins={sourceLines ? [rehypeSourceLines] : []}
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkDropHtmlComments]}
       >
         {source}
       </ReactMarkdown>

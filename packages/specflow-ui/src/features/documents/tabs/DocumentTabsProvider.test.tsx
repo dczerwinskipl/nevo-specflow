@@ -39,7 +39,7 @@ function setup(documentId: string | undefined, strict = false) {
   const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
   const services = createSpecFlowAppServices({
     documentApi: { getDocument } as unknown as DocumentApi,
-    documentsApi: {
+    demoDocumentsApi: {
       documentTree: () =>
         Promise.resolve(
           documentTreeFixture({

@@ -16,7 +16,7 @@ import {
 } from '@nevo/ui';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
-import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
@@ -59,7 +59,7 @@ export function DocumentsWorkspace({
 function Workspace({ specId, documentId }: { specId: string; documentId?: string }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
-  const { documentsApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const { supportsSplit } = useWorkspaceCapabilities();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
@@ -132,12 +132,17 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             specId,
             actions: [
               ...rootActions,
-              {
-                id: 'demo-scope',
-                label: t('documents.demo.title'),
-                icon: 'info',
-                onPress: () => setDemoNotice(true),
-              },
+              // What the demo emulates; a project Runtime has nothing to explain here.
+              ...(documentsApi.emulated
+                ? [
+                    {
+                      id: 'demo-scope',
+                      label: t('documents.demo.title'),
+                      icon: 'info' as const,
+                      onPress: () => setDemoNotice(true),
+                    },
+                  ]
+                : []),
             ],
           })}
         >

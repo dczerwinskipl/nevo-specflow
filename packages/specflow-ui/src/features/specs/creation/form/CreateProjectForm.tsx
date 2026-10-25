@@ -88,7 +88,7 @@ export function CreateProjectForm({
   // The catalogue is read on every visit: Create checks its revision.
   const archetypes = useQuery({
     // One cache entry with the documents feature (same route): a refresh here refreshes both.
-    queryKey: documentCatalogueKeys.catalogue,
+    queryKey: documentCatalogueKeys.catalogue('project'),
     queryFn: ({ signal }) => projectCreationApi.archetypes(signal),
     staleTime: 0,
     refetchOnMount: 'always',

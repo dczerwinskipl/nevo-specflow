@@ -143,7 +143,10 @@ function Fixture({
     const base = createSpecFlowAppServices();
     return {
       ...base,
-      documentsApi: { ...base.documentsApi, save: () => Promise.resolve(saveResultFixture('2')) },
+      demoDocumentsApi: {
+        ...base.demoDocumentsApi,
+        save: () => Promise.resolve(saveResultFixture('2')),
+      },
     };
   }, []);
   const source = documents[active]!;

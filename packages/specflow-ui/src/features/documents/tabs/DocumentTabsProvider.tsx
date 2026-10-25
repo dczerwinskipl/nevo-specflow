@@ -19,6 +19,7 @@ import { documentGuidance, documentReadOnlyReason } from '../catalogue/documentT
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { DocumentEditorProvider, useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
 import { isDraftDirty } from '../editor/documentDraftStore';
@@ -93,7 +94,8 @@ export function DocumentTabsProvider({
   documentId?: string;
   children: ReactNode;
 }) {
-  const { documentApi, documentsApi } = useAppServices();
+  const { documentApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
@@ -102,7 +104,11 @@ export function DocumentTabsProvider({
     queryKey: documentKeys.detail(specId, documentId ?? ''),
     queryFn: ({ signal }) => documentApi.getDocument(specId, documentId!, signal),
     // A dangling entry has no file to read: its tab shows the missing state from the tree.
-    enabled: Boolean(documentId) && !tree.data?.dangling.some((entry) => entry.id === documentId),
+    // The tree comes first, so a dangling id is never requested.
+    enabled:
+      Boolean(documentId) &&
+      tree.data !== undefined &&
+      !tree.data.dangling.some((entry) => entry.id === documentId),
   });
   const record = useMemo<DocumentRecordState | null>(
     () => (documentId ? { documentId, query } : null),

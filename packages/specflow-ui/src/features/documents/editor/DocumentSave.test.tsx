@@ -72,7 +72,7 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
     return next.promise;
   });
   const services = createSpecFlowAppServices({
-    documentsApi: { save } as unknown as DocumentsApi,
+    demoDocumentsApi: { save } as unknown as DocumentsApi,
   });
   const store = createDocumentDraftStore();
   const controls: Controls = { session: null, leave: createRef() };

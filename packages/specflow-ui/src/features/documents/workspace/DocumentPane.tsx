@@ -19,7 +19,7 @@ import {
 } from '../../../app/navigation/ApplicationLocation';
 import { BackLink } from '../../../app/navigation/LocationLink';
 import { translateNow } from '../../../i18n/message';
-import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { typeTitle } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentTreeKeys } from '../read-model/queries';
@@ -53,7 +53,7 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
   const { t } = useTranslation();
   const documentId = tabs.activeId ?? params.documentId;
   const treeActions = useDocumentsTreeActions();
-  const { documentsApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(params.specId),
     queryFn: ({ signal }) => documentsApi.documentTree(params.specId, signal),
@@ -117,7 +117,7 @@ function DanglingDocument({
 
 /** The open document: loading and error states, the way back, and the editor. */
 export function DocumentPane({ data }: { data: DocumentParams }) {
-  const { documentsApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(data.specId),
     queryFn: ({ signal }) => documentsApi.documentTree(data.specId, signal),

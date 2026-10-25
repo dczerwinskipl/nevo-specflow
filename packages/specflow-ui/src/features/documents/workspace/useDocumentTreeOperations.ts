@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBlocker } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { ApiError } from '../../../api';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
@@ -102,7 +103,8 @@ export interface DocumentTreeOperations {
  */
 export function useDocumentTreeOperations(options: { specId: string }): DocumentTreeOperations {
   const { specId } = options;
-  const { documentsApi, documentApi } = useAppServices();
+  const { documentApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const drafts = useDocumentDraftStore();
   const saves = useDocumentSaveOwner();
   const cache = useQueryClient();

@@ -14,6 +14,17 @@ describe('MarkdownDocument', () => {
     expect(embedded).toContain('<h6');
     expect(embedded.match(/class="[^"]*"/g)).toEqual(standalone.match(/class="[^"]*"/g));
   });
+  it('hides HTML comments and keeps any other raw HTML as text', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument
+        source={'## Goal\n\n<!-- Initial goal; refine it. -->\n\nDescribe it.\n\n<b>bold</b>'}
+      />,
+    );
+    expect(html).not.toContain('Initial goal');
+    expect(html).toContain('Describe it.');
+    expect(html).not.toContain('<b>');
+    expect(html).toContain('&lt;b&gt;bold&lt;/b&gt;');
+  });
   it('supports GFM and safe external links', () => {
     const html = renderToStaticMarkup(
       <MarkdownDocument

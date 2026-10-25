@@ -280,12 +280,33 @@ export function reasonRemedy(reason: ActionReason): Message | undefined {
 /** Reasons that are whole sentences on their own (row-menu notes). */
 const sentenceReasons: readonly ActionReason[] = ['protected', 'root', 'dangling'];
 
+/**
+ * A Runtime that does not serve the document writes yet (`not-implemented`) is not a property of
+ * this Specification or branch: one plain sentence says so wherever a write is unavailable.
+ */
+const notImplementedSentence = message('documents.reason.notImplementedEditing');
+
 /** The row-menu note of an unavailable action: a sentence, or `Unavailable: <fragment>`. */
 export function menuReasonNote(reason: ActionReason | undefined): Message | undefined {
   if (!reason) return undefined;
+  if (reason === 'not-implemented') return notImplementedSentence;
   return sentenceReasons.includes(reason)
     ? reasonFragment(reason)
     : message('documents.reason.note', { reason: reasonFragment(reason) });
+}
+
+/**
+ * Why nothing can be changed, as one line: above the tree (`tree`) or as the first line of a
+ * read-only document (`document`).
+ */
+export function readOnlyLine(reason: ActionReason, where: 'tree' | 'document'): Message {
+  if (reason === 'not-implemented') return notImplementedSentence;
+  return message(
+    where === 'tree' ? 'documents.tree.editingUnavailable' : 'documents.readOnly.line',
+    {
+      reason: reasonFragment(reason),
+    },
+  );
 }
 
 /** How to write a document of its type: the catalogue's text, shown beside or under the document. */

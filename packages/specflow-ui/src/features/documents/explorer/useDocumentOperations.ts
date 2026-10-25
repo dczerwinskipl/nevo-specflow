@@ -12,7 +12,7 @@ import { isHttpClientError } from '@nevo/http-client';
 import { translateMessage, useMessage } from '../../../i18n/message';
 import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { useNotify } from '../../../shared/notifications/notifications';
-import { reasonFragment } from '../catalogue/documentTypePolicy';
+import { readOnlyLine, reasonFragment } from '../catalogue/documentTypePolicy';
 import { planImport } from './documentImport';
 import { joinDocumentPath, type PlannedDocument } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
@@ -466,9 +466,7 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.saveToResume');
     // A write the Runtime does not serve yet (project mode): refused before anything was sent.
     case 'not-implemented':
-      return t('documents.tree.error.refused', {
-        reason: translateMessage(t, reasonFragment('not-implemented')),
-      });
+      return translateMessage(t, readOnlyLine('not-implemented', 'tree'));
     case 'BRANCH_PROTECTED':
     case 'COMMIT_BLOCKED':
     case 'GIT_POLICY_INVALID':

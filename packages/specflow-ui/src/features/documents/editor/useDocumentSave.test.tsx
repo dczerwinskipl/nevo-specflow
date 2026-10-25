@@ -47,7 +47,7 @@ function setup(failIds: string[] = []) {
     return Promise.resolve({ revision: `${id}2` });
   });
   const services = createSpecFlowAppServices({
-    documentsApi: { save } as unknown as DocumentsApi,
+    demoDocumentsApi: { save } as unknown as DocumentsApi,
   });
   const store = createDocumentDraftStore();
   store.set(SPEC, 'a', draft('A1', 'a0', 'a1'));
@@ -232,7 +232,7 @@ describe('useDocumentSave for any document', () => {
     const queryClient = createSpecFlowQueryClient();
     const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
     const services = createSpecFlowAppServices({
-      documentsApi: { save } as unknown as DocumentsApi,
+      demoDocumentsApi: { save } as unknown as DocumentsApi,
     });
     const store = createDocumentDraftStore();
     store.set(SPEC, 'b', draft('B1', 'b0', 'b1'));

@@ -1,31 +1,75 @@
-import type { ArchetypeCatalogue, DocumentTree } from '@nevo/specflow-contracts/documents';
-import { ApiError, type ApiTransport } from '../../api';
-import { documentTreePath, type DocumentsApi } from './api';
+import { isHttpClientError, type HttpRequestClient } from '@nevo/http-client';
+import {
+  DOCUMENT_ERROR_CODES,
+  type ArchetypeCatalogue,
+  type CreateDocumentsInput,
+  type DocumentOperationInput,
+  type DocumentOperationResult,
+  type DocumentTree,
+  type SaveInput,
+  type SaveResult,
+} from '@nevo/specflow-contracts/documents';
+import { ApiError, readServerCode, type ApiTransport } from '../../api';
+import { documentTreePath, type CreateFolderInput, type DocumentsApi } from './api';
 
 const isObject = (data: unknown): data is Record<string, unknown> =>
   typeof data === 'object' && data !== null;
 
+const specPath = (specId: string) => `/api/specs/${encodeURIComponent(specId)}`;
+
+const documentCodes: ReadonlySet<string> = new Set(DOCUMENT_ERROR_CODES);
+
 /**
- * A write the project Runtime does not serve yet (the D4 routes do not exist): refused before
- * anything is sent, so nothing was applied. The tree reports the same with the `not-implemented`
- * reason of every write action.
+ * A write route this Runtime does not serve (no route: `404` without a documents code, or `405`):
+ * a definite refusal, nothing was applied. It reads as the `not-implemented` refusal the tree
+ * reports for every write action of a Runtime without the write routes; never as an unknown
+ * outcome, so it never locks the tree.
  */
-function notImplemented(operation: string): Promise<never> {
-  return Promise.reject(
-    new ApiError({
-      kind: 'unavailable',
-      operation,
-      outcome: 'not-applied',
-      retryable: false,
-      code: 'not-implemented',
-      reason: 'not-in-runtime',
-    }),
-  );
+function routeMissing(error: unknown, operation: string): ApiError | undefined {
+  if (!isHttpClientError(error) || error.kind !== 'http') return undefined;
+  const code = readServerCode(error.data);
+  const missing =
+    error.status === 405 || (error.status === 404 && !(code && documentCodes.has(code)));
+  return missing
+    ? new ApiError({
+        kind: 'unavailable',
+        operation,
+        outcome: 'not-applied',
+        retryable: false,
+        status: error.status,
+        code: 'not-implemented',
+        reason: 'not-in-runtime',
+        cause: error,
+      })
+    : undefined;
 }
 
-/** Project-runtime adapter of {@link DocumentsApi}: the real tree read; writes unavailable. */
-export function createProjectDocumentsApi(api: ApiTransport): DocumentsApi {
+/** Sends a write; every other failure reaches the caller exactly as the demo adapter's do. */
+async function write<T>(operation: string, send: () => Promise<T>): Promise<T> {
+  try {
+    return await send();
+  } catch (error) {
+    throw routeMissing(error, operation) ?? error;
+  }
+}
+
+/**
+ * Project-runtime adapter of {@link DocumentsApi}, the only module that knows the project routes:
+ * the real tree and catalogue reads (classified, shape-checked) and the D4 writes of
+ * `docs/reference/api/specification-documents.md`, in the contract's shapes, each carrying its
+ * `operationId` (idempotency key). Writes go through the same client as the demo adapter's, so a
+ * refusal reaches the UI in the same form in both modes.
+ *
+ * Until a Runtime serves the writes, its tree reports every write action and capability as
+ * unavailable (`not-implemented`) and the UI offers none of them; a write that still reaches a
+ * Runtime without the route is the definite `not-implemented` refusal above.
+ */
+export function createProjectDocumentsApi(
+  api: ApiTransport,
+  http: HttpRequestClient,
+): DocumentsApi {
   return {
+    emulated: false,
     documentTree: (specId, signal) =>
       api.get<DocumentTree>(documentTreePath(specId), {
         operation: 'documents.tree',
@@ -38,9 +82,25 @@ export function createProjectDocumentsApi(api: ApiTransport): DocumentsApi {
         signal,
         isValid: (data) => isObject(data) && Array.isArray(data.documentTypes),
       }),
-    operateDocument: () => notImplemented('documents.operate'),
-    addDocuments: () => notImplemented('documents.create'),
-    addFolder: () => notImplemented('documents.create-folder'),
-    save: () => notImplemented('documents.save'),
+    save: (specId, documentId, input: SaveInput) =>
+      write('documents.save', () =>
+        http.put<SaveResult>(
+          `${specPath(specId)}/documents/${encodeURIComponent(documentId)}`,
+          input,
+        ),
+      ),
+    addDocuments: (specId, input: CreateDocumentsInput) =>
+      write('documents.create', () =>
+        http.post<DocumentOperationResult>(`${specPath(specId)}/documents`, input),
+      ),
+    // The contract names the route but no body; the body is the demo's (`operationId`, `path`).
+    addFolder: (specId, input: CreateFolderInput) =>
+      write('documents.create-folder', () =>
+        http.post<DocumentOperationResult>(`${specPath(specId)}/folders`, input),
+      ),
+    operateDocument: (specId, input: DocumentOperationInput) =>
+      write('documents.operate', () =>
+        http.post<DocumentOperationResult>(`${specPath(specId)}/document-operations`, input),
+      ),
   };
 }

@@ -148,10 +148,6 @@
     "tasksPreparingNotice": "Zadania są jeszcze w przygotowaniu. Otwórz je, żeby sprawdzić zakres; wykonanie wymaga zakończenia review.",
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
-    "searchDocumentPlaceholder": "Szukaj dokumentu",
-    "documentsConfiguredNotice": "Kolekcja z konfiguracji specyfikacji · tytuły i kolejność z backendu",
-    "noDocumentsNotice": "Nie ma jeszcze dokumentów. Powstaną podczas przygotowania specyfikacji.",
-    "readDocumentAction": "Czytaj",
     "openFullDocument": "Otwórz pełny dokument",
     "sessionsOfThisSpec": "Sesje tej specyfikacji",
     "sessionsFutureNotice": "W przyszłości ta sama kolekcja może zawierać sesje wykonujące workflow specyfikacji.",
@@ -1203,7 +1199,8 @@
       "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
     },
     "empty": {
-      "title": "Wybierz dokument z drzewa albo utwórz nowy."
+      "title": "Wybierz dokument z drzewa albo utwórz nowy.",
+      "choose": "Wybierz dokument z drzewa."
     },
     "notFound": {
       "title": "Nie znaleziono dokumentu",
@@ -1285,7 +1282,8 @@
       "busy": "trwa inna zmiana tej specyfikacji.",
       "notEditable": "ten typ pliku można tu oglądać, ale nie edytować.",
       "dangling": "Brak pliku; można tylko usunąć jego rejestrację.",
-      "notImplemented": "jeszcze niedostępne w tej wersji."
+      "notImplemented": "jeszcze niedostępne w tej wersji.",
+      "notImplementedEditing": "Edytowanie dokumentów nie jest jeszcze dostępne w tej wersji."
     },
     "remedy": {
       "branch": "Aby edytować, otwórz specyfikację w środowisku pracy na dozwolonej gałęzi.",

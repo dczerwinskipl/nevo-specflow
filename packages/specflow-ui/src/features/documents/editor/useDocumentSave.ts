@@ -1,7 +1,7 @@
 import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { newId } from '../../../shared/ids/newId';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
@@ -110,7 +110,7 @@ export function useDocumentSave({
   document?: DocumentContent;
   draft?: DocumentDraft;
 }): DocumentSaveOwner {
-  const { documentsApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const cache = useQueryClient();
   const store = useDocumentDraftStore();
   // Read at event time only (never during render and never for the identity of a finished save).

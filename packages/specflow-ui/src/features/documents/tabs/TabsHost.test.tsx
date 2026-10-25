@@ -70,7 +70,7 @@ function setup({
   );
   const services = createSpecFlowAppServices({
     documentApi: { getDocument } as unknown as DocumentApi,
-    documentsApi: {
+    demoDocumentsApi: {
       documentTree: () => Promise.resolve(tree(treeIds)),
       save,
     } as unknown as DocumentsApi,

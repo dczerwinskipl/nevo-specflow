@@ -26,7 +26,7 @@ export function DocumentsEmptyState({
     // Left-aligned on the reading measure under the header, like the document.
     <div className="flex max-w-content-narrow flex-col items-start gap-4 p-6">
       <Typography as="p" className="m-0 text-content-secondary">
-        {t('documents.empty.title')}
+        {actions.length > 0 ? t('documents.empty.title') : t('documents.empty.choose')}
       </Typography>
       {actions.length > 0 && (
         <div className="flex flex-wrap gap-2">

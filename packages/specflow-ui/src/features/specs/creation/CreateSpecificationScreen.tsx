@@ -91,7 +91,7 @@ function DemoCreateSpecification(props: Props) {
       onRefresh={() => void Promise.all([runtime.refetch(), catalogue.refetch()])}
       onRefreshCatalogue={async () => {
         // The documents feature reads the same catalogue: it is refreshed with it.
-        void cache.invalidateQueries({ queryKey: documentCatalogueKeys.catalogue });
+        void cache.invalidateQueries({ queryKey: documentCatalogueKeys.all });
         const result = await catalogue.refetch();
         return result.isError ? undefined : result.data;
       }}

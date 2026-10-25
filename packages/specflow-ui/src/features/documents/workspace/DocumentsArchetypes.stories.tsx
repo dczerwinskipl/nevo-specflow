@@ -21,6 +21,7 @@ import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
+import type { DocumentsApi } from '../api';
 import { createAuthStore } from '../../../auth/store';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
@@ -89,9 +90,49 @@ const catalogue: ArchetypeCatalogue = {
 
 const available = { available: true };
 const protectedAction = { available: false, reason: 'protected' } as const;
-type Scenario = 'states' | 'read-only' | 'conflict';
+/** `project`: a project Runtime that does not serve the document writes yet (`not-implemented`). */
+type Scenario = 'states' | 'read-only' | 'conflict' | 'project';
+const notImplemented = { available: false, reason: 'not-implemented' } as const;
+
+/** The tree a project Runtime without the write routes reports: every write unavailable. */
+function withoutWrites(tree: DocumentTree): DocumentTree {
+  return {
+    ...tree,
+    documents: tree.documents.map((document) =>
+      document.protected
+        ? document
+        : {
+            ...document,
+            actions: {
+              rename: notImplemented,
+              move: notImplemented,
+              delete: notImplemented,
+              classify:
+                document.classification === 'unclassified' ? notImplemented : { available: false },
+            },
+          },
+    ),
+    dangling: tree.dangling.map((entry) => ({ ...entry, actions: { delete: notImplemented } })),
+    folders: tree.folders.map((folder) =>
+      folder.path === ''
+        ? folder
+        : {
+            ...folder,
+            actions: { rename: notImplemented, move: notImplemented, delete: notImplemented },
+          },
+    ),
+    capabilities: {
+      createFile: notImplemented,
+      createFolder: notImplemented,
+      import: notImplemented,
+      classify: notImplemented,
+      formats: ['md', 'txt'],
+    },
+  };
+}
 
 function treeFor(scenario: Scenario): DocumentTree {
+  if (scenario === 'project') return withoutWrites(treeFor('states'));
   const readOnly = { available: false, reason: 'branch-protected' } as const;
   return documentTreeFixture({
     archetype: { id: 'team', version: 1, title: 'Team feature' },
@@ -180,8 +221,29 @@ function treeFor(scenario: Scenario): DocumentTree {
   });
 }
 
+const unreachable = (): Promise<never> =>
+  Promise.reject(new Error('The demo adapter must not be used in a project Runtime'));
+
+/** Which service field serves the scenario's documents port (by Runtime mode). */
+function documentsPorts(scenario: Scenario, api: DocumentsApi) {
+  return scenario === 'project'
+    ? {
+        projectDocumentsApi: { ...api, emulated: false },
+        demoDocumentsApi: {
+          emulated: true,
+          documentTree: unreachable,
+          catalogue: unreachable,
+          operateDocument: unreachable,
+          addDocuments: unreachable,
+          addFolder: unreachable,
+          save: unreachable,
+        },
+      }
+    : { demoDocumentsApi: api };
+}
+
 /** Calls of the write ports, for the play functions. */
-const calls = { addDocuments: fn(), operateDocument: fn() };
+const calls = { addDocuments: fn(), operateDocument: fn(), save: fn() };
 /** Lets a story make a file disappear from the folder behind an open tab (it becomes dangling). */
 const control = { removeFile: (_id: string) => undefined as void };
 
@@ -242,7 +304,9 @@ function Workspace({
           return { ...dto, specification: { ...dto.specification, title: 'Single sign-on' } };
         },
       },
-      runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
+      runtimeInfoApi: {
+        getInfo: () => Promise.resolve({ dataMode: scenario === 'project' ? 'project' : 'demo' }),
+      },
       documentApi: {
         getDocument: (_spec, id) =>
           // Text above the JSON read limit: the Runtime answers 413 DOCUMENT_TOO_LARGE.
@@ -264,8 +328,9 @@ function Workspace({
                   }),
                 ),
       },
-      documentsApi: {
-        ...defaults.documentsApi,
+      // A project Runtime is served by the project adapter only: the demo one must stay unused.
+      ...documentsPorts(scenario, {
+        ...defaults.demoDocumentsApi,
         catalogue: () => Promise.resolve(catalogue),
         documentTree: () => Promise.resolve(tree),
         addDocuments: (_spec, input) => {
@@ -346,6 +411,7 @@ function Workspace({
           return Promise.reject(new Error('Not part of this story'));
         },
         save: () => {
+          calls.save();
           const code =
             saveRefusal ?? (scenario === 'conflict' ? 'DOCUMENT_REVISION_CONFLICT' : undefined);
           return code
@@ -358,7 +424,7 @@ function Workspace({
               )
             : Promise.resolve(saveResultFixture('2'));
         },
-      },
+      }),
     });
     control.removeFile = (id) => {
       const document = tree.documents.find((item) => item.id === id);
@@ -434,6 +500,67 @@ export const TreeStates: Story = {
     await expect(screen.getByText('1 entry in the folder could not be read.')).toBeTruthy();
     await expect(screen.getByText('Only the first entries are listed.')).toBeTruthy();
     await expect(screen.queryByText(/complete/i)).toBeNull();
+  },
+};
+
+/**
+ * A project Runtime that does not serve the document writes yet: one sentence above the tree, no
+ * write offered anywhere (root actions, row menus, Expected documents, the idle area), and nothing
+ * sent. The tree and the catalogue come from the project adapter.
+ */
+export const ProjectRuntimeWithoutWrites: Story = {
+  args: { scenario: 'project' },
+  play: async ({ userEvent }) => {
+    await wide();
+    const screen = body();
+    await screen.findByText('Editing documents is not available in this version yet.');
+    await expect(screen.queryByRole('button', { name: 'Add a Decisions document' })).toBeNull();
+    // The idle area offers no start action and does not suggest creating one; no demo notice.
+    await expect(screen.getByText('Choose a document from the tree.')).toBeTruthy();
+    await expect(screen.queryByRole('button', { name: 'New document…' })).toBeNull();
+    await userEvent.click(screen.getAllByRole('button', { name: 'More actions' })[0]!);
+    await expect(screen.queryByRole('menuitem', { name: /demo/i })).toBeNull();
+    await userEvent.keyboard('{Escape}');
+    // An unclassified file: Assign type is there but disabled, with the one sentence as the reason.
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'Actions: meeting-2026-10-20-with-the-identity-team.md',
+      }),
+    );
+    const menu = await screen.findByRole('menu');
+    await expect(within(menu).getByRole('menuitem', { name: 'Assign type…' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    for (const name of ['Rename', 'Move', 'Delete'])
+      await expect(within(menu).getByRole('menuitem', { name })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    await expect(menu).toHaveTextContent('Editing documents is not available in this version yet.');
+    await userEvent.keyboard('{Escape}');
+    await expect(calls.addDocuments).not.toHaveBeenCalled();
+    await expect(calls.operateDocument).not.toHaveBeenCalled();
+  },
+};
+
+/** The same Runtime: a document opens read-only with the sentence as its first line, no Edit. */
+export const ProjectRuntimeReadOnlyDocument: Story = {
+  args: { scenario: 'project', path: `/specs/${SPEC}/documents/ux` },
+  play: async () => {
+    await wide();
+    const screen = body();
+    // Above the tree and as the document's first line: the same sentence.
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('Editing documents is not available in this version yet.'),
+      ).toHaveLength(2),
+    );
+    await expect(screen.queryByRole('button', { name: 'Edit document' })).toBeNull();
+    await expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    // The writing guidance is a read, so it is offered in a project Runtime too.
+    await expect(screen.getByRole('button', { name: 'Guidance' })).toBeTruthy();
+    await expect(calls.save).not.toHaveBeenCalled();
   },
 };
 

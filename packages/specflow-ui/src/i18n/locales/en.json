@@ -148,10 +148,6 @@
     "tasksPreparingNotice": "Tasks are still being prepared. Open them to inspect scope; execution requires review completion.",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
-    "searchDocumentPlaceholder": "Search document",
-    "documentsConfiguredNotice": "Configured collection · titles and order from backend",
-    "noDocumentsNotice": "No documents yet. They will be created during specification preparation.",
-    "readDocumentAction": "Read",
     "openFullDocument": "Open full document",
     "sessionsOfThisSpec": "Sessions of this specification",
     "sessionsFutureNotice": "In the future this collection may include sessions executing the specification workflow.",
@@ -1203,7 +1199,8 @@
       "closeBusy": "Finish the open question about unsaved changes first, then close this document."
     },
     "empty": {
-      "title": "Choose a document from the tree or create a new one."
+      "title": "Choose a document from the tree or create a new one.",
+      "choose": "Choose a document from the tree."
     },
     "notFound": {
       "title": "Document not found",
@@ -1285,7 +1282,8 @@
       "busy": "another change to this specification is in progress.",
       "notEditable": "this file type can be viewed but not edited here.",
       "dangling": "The file is missing; only its registration can be removed.",
-      "notImplemented": "not available in this version yet."
+      "notImplemented": "not available in this version yet.",
+      "notImplementedEditing": "Editing documents is not available in this version yet."
     },
     "remedy": {
       "branch": "To edit, open the specification in a workspace on an allowed branch.",

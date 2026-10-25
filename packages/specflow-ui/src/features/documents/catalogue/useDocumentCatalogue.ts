@@ -1,6 +1,6 @@
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import { useQuery } from '@tanstack/react-query';
-import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { documentCatalogueKeys } from '../read-model/queries';
 
 /**
@@ -9,10 +9,10 @@ import { documentCatalogueKeys } from '../read-model/queries';
  * back to the type id and the chooser shows its loading or failure line.
  */
 export function useDocumentCatalogue() {
-  const { documentsApi } = useAppServices();
+  const { api, kind } = useDocumentsApi();
   return useQuery<ArchetypeCatalogue>({
-    queryKey: documentCatalogueKeys.catalogue,
-    queryFn: ({ signal }) => documentsApi.catalogue(signal),
+    queryKey: documentCatalogueKeys.catalogue(kind),
+    queryFn: ({ signal }) => api.catalogue(signal),
     // The catalogue changes only with a Runtime configuration change.
     staleTime: 5 * 60 * 1000,
   });

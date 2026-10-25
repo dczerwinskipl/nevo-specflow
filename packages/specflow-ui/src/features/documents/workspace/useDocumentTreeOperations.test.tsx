@@ -42,12 +42,12 @@ vi.mock('../editor/DocumentEditorProvider', () => ({
   useDocumentSaveOwner: () => ({ follow: mocks.followSave, pendingOf: mocks.pendingOf }),
 }));
 vi.mock('../../../app/useAppServices', () => ({
-  useAppServices: () => ({
-    documentsApi: {
-      addDocuments: mocks.addDocuments,
-      operateDocument: mocks.operateDocument,
-    },
-    documentApi: { getDocument: mocks.getDocument },
+  useAppServices: () => ({ documentApi: { getDocument: mocks.getDocument } }),
+}));
+vi.mock('../useDocumentsApi', () => ({
+  useDocumentsApi: () => ({
+    api: { addDocuments: mocks.addDocuments, operateDocument: mocks.operateDocument },
+    kind: 'demo',
   }),
 }));
 

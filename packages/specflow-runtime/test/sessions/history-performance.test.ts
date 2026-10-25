@@ -63,7 +63,7 @@ it.each([1, 64])(
           ...entry,
           id: randomUUID(),
           ordinal,
-          text: { text: 'A bounded tail preview', complete: true },
+          text: ordinal === 10000 ? entry.text : { text: 'A bounded tail preview', complete: true },
         };
         insertEntry.run(row.id, sessionId, ordinal, row.turnId, JSON.stringify(row));
       }
@@ -109,7 +109,7 @@ it.each([1, 64])(
           historyMiB,
           conversationRows: 10000,
           coldMs: Math.round(coldMs),
-          warmP95Ms: Math.round(timings[28]!),
+          warmP95Ms: Number(timings[28]!.toFixed(3)),
           responseBytes: Buffer.byteLength(JSON.stringify(cold)),
           rows: store.readMetrics().rows,
           contentBytes: store.readMetrics().contentBytes,

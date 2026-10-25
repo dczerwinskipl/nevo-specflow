@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,12 @@ export const managedSessionRoute = createRoute({
 function ManagedSessionRoute() {
   const { sessionId } = managedSessionRoute.useParams(),
     services = useAppServices();
-  const auth = services.authStore.getState();
+  const subscribe = useCallback(
+    (listener: () => void) => services.authStore.subscribe(listener),
+    [services.authStore],
+  );
+  const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
+  const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
   const owner = auth.status === 'ready' ? authSessionIdentity(auth.session) : 'unavailable';
   return (
     <AppWorkspaceProvider>

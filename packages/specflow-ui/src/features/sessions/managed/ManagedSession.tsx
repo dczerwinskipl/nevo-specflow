@@ -39,7 +39,7 @@ function InteractionPrompt({
   return (
     <section
       aria-label={t('managedSession.responseRequired')}
-      className="grid gap-3 rounded-control border border-border-subtle p-4"
+      className="grid max-h-[40dvh] gap-3 overflow-y-auto rounded-control border border-border-subtle p-4"
     >
       <Typography as="h2" variant="title-sm">
         {t('managedSession.responseRequired')}
@@ -228,7 +228,7 @@ export function ManagedSession({
                   <InteractionPrompt
                     key={snapshot.interaction.interactionId}
                     interaction={snapshot.interaction}
-                    busy={state.commandBusy}
+                    busy={state.commandBusy || !snapshot.session.capabilities.manage}
                     onRespond={(answer, optionId, allow) => {
                       const i = snapshot.interaction!;
                       void feed.respond(

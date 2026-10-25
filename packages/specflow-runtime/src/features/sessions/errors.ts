@@ -1,13 +1,17 @@
 import type { SessionErrorCode } from '@nevo/specflow-contracts/sessions';
 
 export class SessionError extends Error {
+  readonly code: SessionErrorCode;
+  readonly details?: { turnId?: string; reason?: string; field?: string; capability?: string };
   constructor(
-    readonly code: SessionErrorCode,
+    code: SessionErrorCode,
     message: string,
-    readonly details?: { turnId?: string; reason?: string; field?: string; capability?: string },
+    details?: { turnId?: string; reason?: string; field?: string; capability?: string },
   ) {
     super(message);
     this.name = 'SessionError';
+    this.code = code;
+    this.details = details;
   }
   get statusCode(): number {
     if (['SESSION_NOT_FOUND', 'SESSION_RESOURCE_NOT_FOUND'].includes(this.code)) return 404;

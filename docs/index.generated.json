@@ -5379,6 +5379,32 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-migration-evidence",
+      "type": "reference",
+      "title": "Managed Session migration evidence",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-migration-evidence.md",
+      "read_when": [
+        "checking preserved legacy behavior during Session implementation"
+      ],
+      "summary": "Source evidence and characterization mapping for independent Session contracts.",
+      "related": [
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "migration",
+        "characterization"
+      ]
+    },
+    {
       "id": "reference.api.authorization",
       "type": "reference",
       "title": "Authorization HTTP API",

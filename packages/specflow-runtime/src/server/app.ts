@@ -203,7 +203,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       config: mode === 'project' ? config.sessions : undefined,
       storage:
         dependencies.sessions?.storage ??
-        (engine
+        (mode === 'project' && config.sessions?.enabled && engine
           ? {
               directory: join(engine.context.project.stateRoot, 'sessions'),
               projectId: engine.context.project.projectId,

@@ -4,11 +4,11 @@ import { terminalizeTurn, transitionWork } from './reducer';
 
 describe('Session lifecycle arbitration', () => {
   it('honors durable cancellation and never replaces an already settled outcome', () => {
-    const turn = { state: 'running', revision: 3 } as unknown as TurnSummary;
+    const turn = { state: 'active', revision: 3 } as unknown as TurnSummary;
     const settled = terminalizeTurn(turn, 'completed', 'now', true);
     expect(settled).toMatchObject({ state: 'terminal', outcome: 'cancelled', revision: 4 });
     expect(terminalizeTurn(settled, 'failed', 'later', false)).toBe(settled);
-    expect(turn).toEqual({ state: 'running', revision: 3 });
+    expect(turn).toEqual({ state: 'active', revision: 3 });
   });
   it('does not reopen settled Work after a delayed provider callback', () => {
     const work = { state: 'active', revision: 1 } as unknown as WorkSummary;

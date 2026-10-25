@@ -66,6 +66,23 @@ function prefix(bytes: Uint8Array, limit: number): string {
   return '';
 }
 
+/** Keep the newest contiguous membership, including JSON escaping and envelope/cursor bytes. */
+function boundedPage<Item, Page>(
+  items: Item[],
+  hasOlder: boolean,
+  project: (items: Item[], hasOlder: boolean) => Page,
+): Page {
+  for (;;) {
+    const page = project(items, hasOlder);
+    // HTTP may replace capability true with false and readiness with unavailable after this read.
+    if (Buffer.byteLength(JSON.stringify(page), 'utf8') <= 256 * 1024 - 64) return page;
+    if (items.length <= 1)
+      fail('SESSION_PAYLOAD_TOO_LARGE', 'Session page metadata exceeds its byte budget.');
+    items = items.slice(1);
+    hasOlder = true;
+  }
+}
+
 /** Separate Worker entry: imported surface checks must not acquire a database. */
 export async function runSessionWorker(): Promise<void> {
   const options = workerData as {
@@ -396,7 +413,13 @@ export async function runSessionWorker(): Promise<void> {
       return fail('SESSION_CURSOR_INVALID', 'Invalid history cursor.');
     }
   }
-  function history(sid: string, actor: string, upper: number, limit: number) {
+  function history<Envelope extends object>(
+    sid: string,
+    actor: string,
+    upper: number,
+    limit: number,
+    envelope: Envelope,
+  ) {
     const rows = all(
       'SELECT data FROM entries WHERE session=? AND ordinal<? ORDER BY ordinal DESC LIMIT ?',
       sid,
@@ -408,13 +431,14 @@ export async function runSessionWorker(): Promise<void> {
       .slice(0, limit)
       .map((r) => decode<ConversationEntry>(r))
       .reverse();
-    return {
-      entries: items,
+    return boundedPage(items, hasOlder, (entries, older) => ({
+      ...envelope,
+      entries,
       history: {
-        hasOlder,
-        ...(hasOlder ? { before: cursor(sid, actor, 'conversation', items[0]!.ordinal) } : {}),
+        hasOlder: older,
+        ...(older ? { before: cursor(sid, actor, 'conversation', entries[0]!.ordinal) } : {}),
       },
-    };
+    }));
   }
   function refreshAttention(s: StoredSession, t: StoredTurn): void {
     const pending = get(
@@ -589,7 +613,7 @@ export async function runSessionWorker(): Promise<void> {
         turnId: c.turnId,
         workId: w.workId,
         kind: f.workKind === 'interaction' ? 'attention' : f.workKind,
-        label: f.title,
+        label: prefix(Buffer.from(f.title, 'utf8'), 1024),
       };
       emit(s, 'work', { turnId: c.turnId, items: [w] });
       if (f.workKind === 'tool') entry(s, c.turnId, 'work-summary', w.title, w.workId);
@@ -1007,21 +1031,18 @@ export async function runSessionWorker(): Promise<void> {
     if (c.op === 'snapshot') {
       const s = session(c.sessionId);
       return {
-        snapshot: { ...s.snapshot, ...history(c.sessionId, c.actor, Number.MAX_SAFE_INTEGER, 40) },
+        snapshot: history(c.sessionId, c.actor, Number.MAX_SAFE_INTEGER, 40, s.snapshot),
       };
     }
     if (c.op === 'history') {
       const s = session(c.sessionId);
-      return {
-        sessionId: c.sessionId,
-        eventSeq: s.snapshot.eventSeq,
-        ...history(
-          c.sessionId,
-          c.actor,
-          boundary(c.before, c.sessionId, c.actor, 'conversation'),
-          c.limit,
-        ),
-      };
+      return history(
+        c.sessionId,
+        c.actor,
+        boundary(c.before, c.sessionId, c.actor, 'conversation'),
+        c.limit,
+        { sessionId: c.sessionId, eventSeq: s.snapshot.eventSeq },
+      );
     }
     if (c.op === 'work' || c.op === 'actions') {
       const s = session(c.sessionId),
@@ -1053,18 +1074,21 @@ export async function runSessionWorker(): Promise<void> {
           .map((r) => decode<{ ordinal: number }>(r))
           .reverse(),
         hasOlder = rows.length > c.limit;
-      return {
+      const envelope = {
         sessionId: c.sessionId,
         eventSeq: s.snapshot.eventSeq,
         ...(isWork ? { turn: turn(parent, c.sessionId).summary } : { workId: parent }),
-        items,
+      };
+      return boundedPage(items, hasOlder, (pageItems, older) => ({
+        ...envelope,
+        items: pageItems,
         history: {
-          hasOlder,
-          ...(hasOlder
-            ? { before: cursor(c.sessionId, c.actor, c.op, items[0]!.ordinal, parent) }
+          hasOlder: older,
+          ...(older
+            ? { before: cursor(c.sessionId, c.actor, c.op, pageItems[0]!.ordinal, parent) }
             : {}),
         },
-      };
+      }));
     }
     if (c.op === 'content') {
       session(c.sessionId);

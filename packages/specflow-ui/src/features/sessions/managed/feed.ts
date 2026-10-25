@@ -101,7 +101,15 @@ export function createSessionFeed(
       connection: 'connected',
       hasNew: state.hasNew || (state.away && event.kind === 'conversation'),
     });
-    if (event.kind === 'work') for (const listener of workListeners) listener(event.changes.turnId);
+    const changedTurn =
+      event.kind === 'work'
+        ? event.changes.turnId
+        : event.kind === 'turn'
+          ? event.changes.turn.turnId
+          : event.kind === 'interaction'
+            ? event.changes.projection.activeTurn?.turnId
+            : undefined;
+    if (changedTurn) for (const listener of workListeners) listener(changedTurn);
   }
   async function run(signal: AbortSignal, token: number) {
     try {

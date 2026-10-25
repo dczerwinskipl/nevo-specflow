@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import type { SessionSnapshot, SessionChange } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 import { createSessionFeed } from './feed';
 
@@ -38,6 +38,58 @@ function setup() {
   return { storage, api, start };
 }
 describe('Session feed operation lifetime', () => {
+  it('invalidates Work reads when a Turn settles or its interaction completes', async () => {
+    const { storage, api } = setup();
+    api.watch = async function* (_id, _after, signal) {
+      const projection = {
+        session: snapshot.session,
+        activeTurn: null,
+        currentActivity: null,
+        interaction: null,
+      };
+      yield {
+        sessionId: 'session',
+        eventSeq: 1,
+        kind: 'turn',
+        changes: {
+          turn: {
+            turnId: 'turn',
+            state: 'terminal',
+            outcome: 'cancelled',
+            revision: 2,
+            createdAt: 'now',
+            updatedAt: 'now',
+            completedAt: 'now',
+            userMessage: { text: 'request', complete: true },
+          },
+          projection,
+        },
+      } satisfies SessionChange;
+      yield {
+        sessionId: 'session',
+        eventSeq: 2,
+        kind: 'interaction',
+        changes: {
+          projection: {
+            ...projection,
+            activeTurn: { turnId: 'another', state: 'active', revision: 2, startedAt: 'now' },
+          },
+        },
+      } satisfies SessionChange;
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+    };
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    const refresh = vi.fn();
+    feed.subscribeWork(refresh);
+    feed.connect();
+    try {
+      await vi.waitFor(() => expect(refresh.mock.calls).toEqual([['turn'], ['another']]));
+    } finally {
+      feed.disconnect();
+    }
+  });
   it('does not clear a newer owner draft or command when an unmounted request settles', async () => {
     const { storage, api } = setup();
     let accept: () => void = () => {

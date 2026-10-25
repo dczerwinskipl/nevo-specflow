@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { sessionValidators, SessionLimits } from '@nevo/specflow-contracts/sessions';
 import { afterEach, describe, expect, it } from 'vitest';
 import type {
   SessionSnapshot,
@@ -13,6 +14,7 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import { openSessionStore, type SessionStore } from './store';
 import type { SnapshotSource, StartAdmission, DriverFact } from './protocol';
+import { validateDriverFact } from '../providers/facts';
 
 let store: SessionStore | undefined;
 let directory = '';
@@ -32,6 +34,142 @@ async function snap(sessionId: string): Promise<SessionSnapshot> {
   return (await store!.call<SnapshotSource>({ op: 'snapshot', sessionId, actor: 'user' })).snapshot;
 }
 describe('durable Session store', () => {
+  it('bounds activity labels for valid long and multi-byte Work titles', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Inspect' },
+    });
+    let driverSeq = 0;
+    for (const title of ['x'.repeat(1500), '💬'.repeat(500)]) {
+      const fact: DriverFact = {
+        kind: 'work-open',
+        key: String(driverSeq),
+        workKind: 'tool',
+        title,
+      };
+      validateDriverFact(fact);
+      await store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+      const snapshot = await snap(sessionId);
+      expect(sessionValidators.snapshot(snapshot)).toBe(true);
+      expect(Buffer.byteLength(snapshot.currentActivity!.label)).toBeLessThanOrEqual(1024);
+      expect(snapshot.currentActivity!.label).not.toContain('\ufffd');
+    }
+  });
+  it('pages escaped previews within the serialized JSON budget without losing older entries', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Inspect' },
+    });
+    for (let driverSeq = 1; driverSeq <= 85; driverSeq++)
+      await store!.call({
+        op: 'fact',
+        sessionId,
+        ...start,
+        driverSeq,
+        fact: {
+          kind: 'text',
+          key: String(driverSeq),
+          channel: 'commentary',
+          text: '\0'.repeat(2048),
+        },
+      });
+    const snapshot = await snap(sessionId);
+    expect(Buffer.byteLength(JSON.stringify(snapshot))).toBeLessThanOrEqual(
+      SessionLimits.pageBytes,
+    );
+    expect(snapshot.entries.length).toBeLessThan(40);
+    expect(store!.readMetrics()).toMatchObject({ contentBytes: 0 });
+    expect(store!.readMetrics().rows).toBeLessThanOrEqual(42);
+    let history = snapshot.history;
+    const entries = [...snapshot.entries];
+    while (history.before) {
+      const page = await store!.call<HistoryPage>({
+        op: 'history',
+        sessionId,
+        actor: 'user',
+        before: history.before,
+        limit: 40,
+      });
+      expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThanOrEqual(SessionLimits.pageBytes);
+      expect(page.entries.length).toBeGreaterThan(0);
+      entries.unshift(...page.entries);
+      history = page.history;
+    }
+    expect(entries).toHaveLength(86);
+    expect(new Set(entries.map((e) => e.id)).size).toBe(86);
+    expect(entries.map((e) => e.ordinal)).toEqual(Array.from({ length: 86 }, (_, n) => n + 1));
+  });
+  it('budgets escaped Work/action pages including metadata and preserves cursor membership', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: '\0'.repeat(2048) },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    for (let n = 0; n < 45; n++)
+      await emit({ kind: 'work-open', key: 'w' + n, workKind: 'tool', title: '\0'.repeat(2048) });
+    let work = await store!.call<WorkPage>({
+      op: 'work',
+      sessionId,
+      turnId: start.turnId,
+      actor: 'user',
+      limit: 40,
+    });
+    const workId = work.items.at(-1)!.workId;
+    const workIds: string[] = [];
+    for (;;) {
+      expect(Buffer.byteLength(JSON.stringify(work))).toBeLessThanOrEqual(SessionLimits.pageBytes);
+      workIds.push(...work.items.map((item) => item.workId));
+      if (!work.history.before) break;
+      work = await store!.call<WorkPage>({
+        op: 'work',
+        sessionId,
+        turnId: start.turnId,
+        actor: 'user',
+        before: work.history.before,
+        limit: 40,
+      });
+    }
+    expect(new Set(workIds).size).toBe(45);
+    expect(workIds).toHaveLength(45);
+    for (let n = 0; n < 45; n++)
+      await emit({ kind: 'action-open', key: 'a' + n, parentKey: 'w44', title: '\0'.repeat(2048) });
+    let actions = await store!.call<ActionPage>({
+      op: 'actions',
+      sessionId,
+      workId,
+      actor: 'user',
+      limit: 40,
+    });
+    const actionIds: string[] = [];
+    for (;;) {
+      expect(Buffer.byteLength(JSON.stringify(actions))).toBeLessThanOrEqual(
+        SessionLimits.pageBytes,
+      );
+      actionIds.push(...actions.items.map((item) => item.actionId));
+      if (!actions.history.before) break;
+      actions = await store!.call<ActionPage>({
+        op: 'actions',
+        sessionId,
+        workId,
+        actor: 'user',
+        before: actions.history.before,
+        limit: 40,
+      });
+    }
+    expect(new Set(actionIds).size).toBe(45);
+    expect(actionIds).toHaveLength(45);
+  });
   it('refuses an unrecognized database instead of treating its contents as a new store', async () => {
     directory = await mkdtemp(join(tmpdir(), 'nevo-session-foreign-'));
     const db = new DatabaseSync(join(directory, 'sessions.sqlite'));

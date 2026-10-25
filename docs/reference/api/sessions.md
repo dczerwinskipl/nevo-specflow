@@ -216,10 +216,15 @@ requestId returns its original response; a fresh response to an already resolved
 
 ## Bounded history and Work
 
-Snapshot limit is fixed: latest 40 conversation entries, <=256 KiB UTF-8 JSON overall, no full
+Snapshot limit is fixed: up to the latest 40 conversation entries, <=256 KiB UTF-8 JSON overall, no full
 content chunks or complete Turn hydration. Entry previews include references when shortened.
 History default/max 40 entries, <=256 KiB overall. One indexed lookahead establishes hasOlder,
 not an exact count. Response:
+
+The byte budget includes JSON escapes, metadata and the signed cursor. If the indexed count-bounded
+window exceeds it, return a smaller contiguous newest window and set the cursor immediately before
+its oldest returned item. Do not skip excluded entries or scan older rows to fill the page. Work and
+ToolAction pages use the same count-and-byte policy.
 
 ```ts
 type HistoryPage = {

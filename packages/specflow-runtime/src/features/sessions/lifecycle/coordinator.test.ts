@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSessionCoordinator, type SessionCoordinator } from './coordinator';
 import { openSessionStore } from '../persistence/store';
 import { createMockDriver, type MockScenario } from '../providers/mock';
+import type { SessionDriver } from '../providers/driver';
 
 let runtime: SessionCoordinator | undefined,
   directory = '';
@@ -14,20 +15,62 @@ afterEach(async () => {
   runtime = undefined;
   if (directory) await rm(directory, { recursive: true, force: true });
 });
-async function setup(scenario?: MockScenario) {
+async function setup(scenario?: MockScenario, driver?: SessionDriver) {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-lifecycle-'));
   runtime = createSessionCoordinator(
     await openSessionStore({ directory, projectId: 'project' }),
-    createMockDriver(scenario),
+    driver ?? createMockDriver(scenario),
     'project',
   );
   return runtime.create('actor', {
     requestId: randomUUID(),
-    providerId: 'mock',
+    providerId: driver?.describe().providerId ?? 'mock',
     mode: 'read-only',
   });
 }
 describe('Session coordinator', () => {
+  it.each(['resolve', 'reject'] as const)(
+    'preserves lost operation uncertainty when its handle later %ss',
+    async (completion) => {
+      let finish!: () => void;
+      const completed = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const driver: SessionDriver = {
+        ...createMockDriver(),
+        describe: () => ({ ...createMockDriver().describe(), providerId: 'claude' }),
+        validate: () => undefined,
+        start(_invocation, emit) {
+          return {
+            done: (async () => {
+              await emit({ kind: 'lost', message: 'Transport connection lost.' });
+              await completed;
+              if (completion === 'reject') throw new Error('Private native error');
+            })(),
+            respond: () => Promise.resolve(),
+          };
+        },
+      };
+      const { sessionId } = await setup(undefined, driver);
+      await runtime!.start('actor', sessionId, { requestId: randomUUID(), message: 'Start' });
+      await vi.waitFor(async () =>
+        expect((await runtime!.snapshot(sessionId, 'actor')).activeTurn?.state).toBe('unknown'),
+      );
+      finish();
+      await runtime!.close();
+      runtime = undefined;
+      const store = await openSessionStore({ directory, projectId: 'project' });
+      try {
+        const result = await store.call<{
+          snapshot: { activeTurn?: { state: string }; entries: { kind: string }[] };
+        }>({ op: 'snapshot', sessionId, actor: 'actor' });
+        expect(result.snapshot.activeTurn?.state).toBe('unknown');
+        expect(result.snapshot.entries.some((entry) => entry.kind === 'outcome')).toBe(false);
+      } finally {
+        await store.close();
+      }
+    },
+  );
   it('answers a live permission once without granting any filesystem capability', async () => {
     const observed = vi.fn();
     const { sessionId } = await setup(async (invocation, emit, _signal, question) => {

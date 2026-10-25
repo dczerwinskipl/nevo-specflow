@@ -49,6 +49,44 @@ prerequisite, not a fake depends_on edge within Plan 04. Full Task workflow/batc
 
 ## Per-adapter acceptance
 
+### Claude P2 implementation checkpoint
+
+The feature branch contains the bounded full-message protocol translator and pure request mapping
+under Runtime Sessions `providers/claude/`. These are internal adapter components, **not a registered
+production driver**. They do not spawn Claude or advertise availability. The current checkpoint covers:
+
+- native Session correlation, distinct native event UUIDs versus shared assistant message IDs,
+  duplicate detection, compound tool actions, commentary/reasoning/final separation and invocation-total
+  usage; partial stream events are not requested or supported;
+- backpressured canonical facts, 16 KiB UTF-8 chunks, 1 MiB native frames and pending assistant text,
+  128 active tools, 4,096 retained event identities; unknown protocol/background/deferred work fails closed;
+- structured interruption and failure, with private native error prose excluded from public errors;
+- literal `client_composed: true` user frames, pure bounded AskUserQuestion mapping, multi-question
+  answers, single/multiple selection checks and refusal of all other permission requests; no permission
+  suggestion or persistent permission update is forwarded;
+- preserving an explicitly lost operation as unknown when its transport handle later resolves or rejects.
+
+Read-only local inspection on 2026-10-25 found Claude Code 2.1.296 and existing `claude.ai` login.
+A no-prompt control initialization returned model/effort descriptors using the shared process boundary.
+This proves initialization only: no model response, tool restrictions, native question round trip, resume
+or malicious-input live acceptance is claimed. Normalization tests use synthetic protocol fixtures,
+cross-checked against legacy Nevo and the [official SDK protocol implementation](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/query.py).
+Requiring an outer assistant UUID is the translator's supported subset; the SDK also represents
+messages without UUIDs, so installed-version live evidence is still required.
+
+Production dispatch remains gated. In particular, the inspected `--safe-mode` and `--restricted`
+flags preserve managed policy: the [official CLI reference](https://code.claude.com/docs/en/cli-reference)
+documents executable policy customizations that remain active. A tool allowlist and a post-start
+inventory do not prevent a startup hook from already running. Inspect effective managed policy before
+launch, or use an independently enforced execution boundary; do not claim workspace read-only safety
+from these flags alone. Preserve the existing CLI login path: `--bare` excludes OAuth authentication.
+
+Remaining P2 work includes the live control reader/writer and cancellation of pending questions,
+canonical response-cardinality validation before durable response admission, policy/version/tool
+inventory certification, asynchronous cached discovery and provider registry, trusted workspace
+composition, durable private native-context admission/resume and end-to-end installed transport tests.
+These steps remain inside PR #98. Writable effects still require W1/W2 below.
+
 At task start capture exact executable/version and installed protocol/SDK schema as test evidence.
 That is bounded adapter certification, not a deferred decision about canonical semantics.
 If transport is missing, fixture work can proceed but live acceptance is pending, not PASS.

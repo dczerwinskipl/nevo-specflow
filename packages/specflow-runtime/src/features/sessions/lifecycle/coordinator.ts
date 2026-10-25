@@ -83,6 +83,7 @@ export function createSessionCoordinator(
       const controller = new AbortController();
       let seq = 0,
         tail = Promise.resolve();
+      let uncertain = false;
       const emit = async (fact: DriverFact) => {
         validateDriverFact(fact);
         if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes)
@@ -91,7 +92,7 @@ export function createSessionCoordinator(
           throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver fact exceeds budget.');
         const operation = tail.then(async () => {
           const next = seq + 1;
-          await call({
+          const accepted = await call<boolean>({
             op: 'fact',
             sessionId,
             turnId: admitted.turnId,
@@ -99,6 +100,8 @@ export function createSessionCoordinator(
             driverSeq: next,
             fact,
           });
+          if (accepted && fact.kind === 'lost') uncertain = true;
+          if (accepted && fact.kind === 'outcome') uncertain = false;
           seq = next;
         });
         tail = operation.catch(() => undefined);
@@ -121,6 +124,8 @@ export function createSessionCoordinator(
             controller.signal,
           );
           await live.operation.done;
+          // A transport ending is not evidence that a previously lost operation settled.
+          if (uncertain) return;
           // A settled read-only operation without protocol outcome is interrupted, never invented success.
           await emit({
             kind: 'outcome',
@@ -131,6 +136,7 @@ export function createSessionCoordinator(
             },
           });
         } catch (error) {
+          if (uncertain) return;
           await emit({
             kind: 'outcome',
             outcome: controller.signal.aborted

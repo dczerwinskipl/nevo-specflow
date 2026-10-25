@@ -1,6 +1,6 @@
 // Linux-only integration (real Git project, real files, symlinks, many files): the documents reader: the revision memos.
 import { utimes, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -57,7 +57,7 @@ describe('revision memo', () => {
       summaryMemo,
       now,
     });
-    expect(opens.map((path) => path.split('/').pop())).toEqual(['specification.yaml']);
+    expect(opens.map((path) => basename(path))).toEqual(['specification.yaml']);
     expect(second).toEqual(first);
 
     // A changed file is a new key and is read again.
@@ -95,7 +95,7 @@ describe('revision memo', () => {
       now,
     });
     // Only the manifest is opened again.
-    expect(opens.map((path) => path.split('/').pop())).toEqual(['specification.yaml']);
+    expect(opens.map((path) => basename(path))).toEqual(['specification.yaml']);
     expect(second).toEqual(first);
 
     // A file changed within the memo key is a new key: its size changed, so it is re-analysed.

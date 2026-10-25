@@ -157,7 +157,7 @@ export function DocumentsExplorer({
     beforeAction,
     onBusyChange,
   });
-  const { busy, unknown, error, notice, retry, resumable } = operations.state;
+  const { busy, unknown, error, retry, resumable } = operations.state;
   const index = useMemo(() => createTreeIndex(treeRows(tree)), [tree]);
   const focus = useTreeFocus(index);
   const inline = useInlineEntry({
@@ -346,11 +346,6 @@ export function DocumentsExplorer({
         {busy && !inline.entry && (
           <p role="status" className="text-body-sm">
             {t('documents.tree.processing')}
-          </p>
-        )}
-        {notice && (
-          <p role="status" className="break-words text-body-sm text-content-muted">
-            {notice}
           </p>
         )}
         {error && !request && !typeRequest && (

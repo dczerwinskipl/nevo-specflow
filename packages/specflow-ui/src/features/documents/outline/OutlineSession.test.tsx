@@ -123,7 +123,9 @@ describe('the contents of a previewed document', () => {
     act(() => seen.session!.reportColumnShown(false));
     fireEvent.click(icon()!);
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText('Contents (3)')).toBeTruthy();
+    // Titled "Contents" with the document's name under it.
+    expect(sheet.getAttribute('aria-labelledby')).toBeTruthy();
+    expect(within(sheet).getByRole('heading', { name: 'Contents' })).toBeTruthy();
     const nav = within(sheet).getByRole('navigation', { name: 'Contents' });
     const links = within(nav).getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual(['One', 'Two', 'Three']);

@@ -4,6 +4,7 @@ import { documentTreeFixture } from '../../../../test-support/documents/fixtures
 import {
   closeRefusingIssues,
   defaultFileName,
+  documentGuidance,
   documentReadOnlyReason,
   documentTrailingLabel,
   initialTypeChoice,
@@ -102,7 +103,8 @@ describe('type labels', () => {
       kind: 'type',
       text: 'UX',
     });
-    expect(documentTrailingLabel(tree.documents[3]!, catalogue)).toEqual({ kind: 'no-type' });
+    // An unclassified file has no row label (owner: the 'No type' text was noise).
+    expect(documentTrailingLabel(tree.documents[3]!, catalogue)).toBeUndefined();
   });
 });
 
@@ -206,5 +208,26 @@ describe('read-only reason', () => {
       key: 'documents.reason.note',
       values: { reason: { key: 'documents.reason.branchProtected' } },
     });
+  });
+});
+
+describe('writing guidance', () => {
+  it('is the type text plus the template instructions of the archetype, for registered documents only', () => {
+    expect(
+      documentGuidance(catalogue, tree, { classification: 'registered', type: 'decisions' }),
+    ).toEqual({
+      title: 'Decisions',
+      description: 'Decisions description',
+      useWhen: 'Decisions use when',
+      instructions: ['Decisions instructions', 'Template instructions'],
+    });
+    expect(documentGuidance(catalogue, tree, { type: 'ux' })?.instructions).toEqual([
+      'UX instructions',
+    ]);
+    expect(
+      documentGuidance(catalogue, tree, { classification: 'unclassified', type: undefined }),
+    ).toBeUndefined();
+    expect(documentGuidance(catalogue, tree, { type: 'unknown' })).toBeUndefined();
+    expect(documentGuidance(undefined, tree, { type: 'ux' })).toBeUndefined();
   });
 });

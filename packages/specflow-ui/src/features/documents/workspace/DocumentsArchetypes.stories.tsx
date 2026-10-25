@@ -25,11 +25,13 @@ import { createAuthStore } from '../../../auth/store';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
 import { browserPage } from '../../../test-support/browserPage';
+import { expectToast } from '../../../test-support/toast.stories-support';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 
 /*
  * The Documents workspace with archetype states, composed through the real router and query
  * client; only the document ports are in-memory fakes. Covers the tree grammar (type labels,
- * No type, File missing), the top region (Close-refusing issues, read-only line, Expected
+ * unlabelled unclassified files, File missing), the top region (Close-refusing issues, read-only line, Expected
  * documents), New document, Assign type with the id the tab follows, and the tab states
  * (read-only line, save conflict, image, binary, missing file).
  */
@@ -196,7 +198,13 @@ function record(tree: DocumentTree, id: string): DocumentContent {
     size: document.size,
     editable: document.editable,
     ...(document.kind === 'text' && id !== 'huge'
-      ? { content: `# ${document.path}\n\nText of ${document.path}.\n` }
+      ? {
+          content:
+            // ux.md has sections, so its preview has a contents column beside the text.
+            id === 'ux'
+              ? `# ${document.path}\n\nText of ${document.path}.\n\n## Goal\n\nWhat the screen is for.\n\n## Flow\n\nThe steps.\n`
+              : `# ${document.path}\n\nText of ${document.path}.\n`,
+        }
       : { content: undefined }),
   });
 }
@@ -215,6 +223,8 @@ function Workspace({
     const query = createSpecFlowQueryClient();
     query.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
     let tree = treeFor(scenario);
+    // The first create is refused (another change runs); a second attempt goes through.
+    let creates = 0;
     const defaults = createSpecFlowAppServices();
     const authStore = createAuthStore(defaults.authApi, {
       authenticationRequired: false,
@@ -260,13 +270,36 @@ function Workspace({
         documentTree: () => Promise.resolve(tree),
         addDocuments: (_spec, input) => {
           calls.addDocuments(input);
-          return Promise.reject(
-            new HttpClientError('Conflict', {
-              kind: 'http',
-              status: 409,
-              data: { error: 'SPEC_BUSY', code: 'SPEC_BUSY' },
-            }),
-          );
+          if (creates++ === 0)
+            return Promise.reject(
+              new HttpClientError('Conflict', {
+                kind: 'http',
+                status: 409,
+                data: { error: 'SPEC_BUSY', code: 'SPEC_BUSY' },
+              }),
+            );
+          const added = documentTreeFixture({
+            documents: input.documents.map((entry) => ({
+              id: entry.path,
+              path: entry.path,
+              type: entry.type,
+            })),
+          }).documents;
+          tree = { ...tree, documents: [...tree.documents, ...added] };
+          const result: DocumentOperationResult = {
+            operationId: input.operationId,
+            revision: 't2',
+            documents: added.map((document) => ({
+              id: document.id,
+              path: document.path,
+              revision: document.revision,
+              ...(document.type ? { type: document.type } : {}),
+            })),
+            removedDocumentIds: [],
+            folders: [],
+            committed: true,
+          };
+          return Promise.resolve(result);
         },
         operateDocument: (_spec, input) => {
           calls.operateDocument(input);
@@ -286,6 +319,25 @@ function Workspace({
               revision: 't2',
               documents: [{ id, path: moved.path, revision: moved.revision, type: input.type }],
               removedDocumentIds: [],
+              folders: [],
+              committed: true,
+            };
+            return Promise.resolve(result);
+          }
+          if (
+            input.action === 'delete' &&
+            tree.dangling.some((entry) => entry.id === input.documentId)
+          ) {
+            // Remove registration: the dangling entry leaves the registry.
+            tree = {
+              ...tree,
+              dangling: tree.dangling.filter((entry) => entry.id !== input.documentId),
+            };
+            const result: DocumentOperationResult = {
+              operationId: input.operationId,
+              revision: 't2',
+              documents: [],
+              removedDocumentIds: [input.documentId!],
               folders: [],
               committed: true,
             };
@@ -369,13 +421,14 @@ export const TreeStates: Story = {
     await expect(
       within(expected).getByRole('button', { name: 'Add a Decisions document' }),
     ).toBeTruthy();
-    // Rows: the type only where the name does not say it; the state labels always.
+    // Rows: the type only where the name does not say it; File missing always; no label for an
+    // unclassified file (owner feedback removed "No type").
     await expect(screen.getByRole('button', { name: /^login-flow\.md\s*UX$/ })).toBeTruthy();
     await expect(screen.getByRole('button', { name: /^ux\.md$/ })).toBeTruthy();
     await expect(screen.getByRole('button', { name: /^backend\.md\s*File missing$/ })).toBeTruthy();
     await expect(
       screen.getByRole('button', {
-        name: /meeting-2026-10-20-with-the-identity-team\.md\s*No type/,
+        name: /^meeting-2026-10-20-with-the-identity-team\.md$/,
       }),
     ).toBeTruthy();
     await expect(screen.getByText('1 entry in the folder could not be read.')).toBeTruthy();
@@ -433,6 +486,10 @@ export const NewDocument: Story = {
       await dialog.findByText(/Another change to this specification is in progress/),
     ).toBeTruthy();
     await expect(name.value).toBe('meeting-notes');
+    // Trying again succeeds: the dialog closes and a toast confirms what was added.
+    await userEvent.click(dialog.getByRole('button', { name: 'Create' }));
+    await expectToast('Note added');
+    await expect(screen.queryByRole('dialog', { name: 'New document' })).toBeNull();
   },
 };
 
@@ -464,6 +521,7 @@ export const AssignTypeFollowsTheId: Story = {
       ]),
     );
     await expect(screen.getByRole('tab', { name: /meeting-2026-10-20/ })).toBeTruthy();
+    await expectToast('meeting-2026-10-20-with-the-identity-team.md is now Decisions');
   },
 };
 
@@ -548,6 +606,116 @@ export const SaveConflictCopyMyVersion: Story = {
   },
 };
 
+/** Resizes the window and waits until the workspace layout has settled. */
+const viewport = (width: number, height = 900) => settleViewport(width, height);
+
+/**
+ * Guidance on a wide panel (1920 px window): a third column right of the contents column; the text
+ * keeps at least 528 px. It stays a column in edit mode, where the source editor keeps 960 px.
+ */
+export const GuidanceThreeColumns: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux` },
+  play: async ({ userEvent }) => {
+    await viewport(1920, 1000);
+    const screen = body();
+    const toggle = await screen.findByRole('button', { name: 'Guidance' });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    // The panel has room for three columns once the window has been resized.
+    await waitFor(() =>
+      expect(document.querySelector('[data-document-preview]')!.clientWidth).toBeGreaterThanOrEqual(
+        1280,
+      ),
+    );
+    await userEvent.click(toggle);
+    const column = await screen.findByRole('complementary', { name: 'How to write: UX' });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(screen.queryByRole('dialog')).toBeNull();
+    await expect(within(column).getByText('How to write UX.')).toBeVisible();
+    const contents = screen.getByRole('complementary', {
+      name: 'Document contents and properties',
+    });
+    const group = column.parentElement!;
+    const textColumn = group.firstElementChild!.getBoundingClientRect();
+    await expect(contents.getBoundingClientRect().right).toBeLessThanOrEqual(
+      column.getBoundingClientRect().left,
+    );
+    await expect(textColumn.width).toBeGreaterThanOrEqual(528);
+    // Edit mode keeps the column at the editor's right edge; the editor keeps 960 px.
+    await userEvent.click(screen.getByRole('button', { name: 'Edit document' }));
+    const editor = await screen.findByRole('textbox', { name: 'Content of ux.md' });
+    const edited = await screen.findByRole('complementary', { name: 'How to write: UX' });
+    await expect(editor.getBoundingClientRect().right).toBeLessThanOrEqual(
+      edited.getBoundingClientRect().left + 1,
+    );
+    await expect(
+      edited.getBoundingClientRect().left - editor.getBoundingClientRect().left,
+    ).toBeGreaterThanOrEqual(900);
+    await viewport(1440);
+  },
+};
+
+/** Guidance on a medium panel (1440 px window): too narrow for three columns, so a sheet. */
+export const GuidanceSheetMedium: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux` },
+  play: async ({ userEvent }) => {
+    await wide();
+    const screen = body();
+    const toggle = await screen.findByRole('button', { name: 'Guidance' });
+    await userEvent.click(toggle);
+    const sheet = within(await screen.findByRole('dialog', { name: 'Guidance' }));
+    await expect(sheet.getByText('How to write: UX')).toBeVisible();
+    await expect(sheet.getByText('How to write UX.')).toBeVisible();
+    await expect(screen.queryByRole('complementary', { name: 'How to write: UX' })).toBeNull();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(toggle).toHaveFocus());
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+/** Guidance on a phone: the same sheet, inside the viewport. */
+export const GuidanceSheetNarrow: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux` },
+  play: async ({ userEvent }) => {
+    await viewport(390, 844);
+    const screen = body();
+    await userEvent.click(await screen.findByRole('button', { name: 'Guidance' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Guidance' });
+    await expect(dialog.getBoundingClientRect().right).toBeLessThanOrEqual(390);
+    await expect(within(dialog).getByText('How to write UX.')).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close guidance' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await viewport(1440);
+  },
+};
+
+/**
+ * A very wide panel (2560 px window) centres the text and its contents column: the spare width
+ * becomes two equal gutters, never one band on the right; the text keeps its measure.
+ */
+export const PreviewCentredOnWideScreens: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux` },
+  play: async () => {
+    await viewport(2560, 1200);
+    const screen = body();
+    const contents = await screen.findByRole('complementary', {
+      name: 'Document contents and properties',
+    });
+    const group = contents.parentElement!;
+    // Measured once the window has been resized and the panel has laid out again.
+    await waitFor(() => {
+      const box = group.getBoundingClientRect();
+      const panel = document.querySelector('[data-document-preview]')!.getBoundingClientRect();
+      const left = box.left - panel.left;
+      const right = panel.right - box.right;
+      if (left <= 24 || Math.abs(left - right) > 2)
+        throw new Error(`Gutters are not equal: ${left} px left, ${right} px right`);
+    });
+    await expect(group.firstElementChild!.getBoundingClientRect().width).toBeLessThanOrEqual(760);
+    await viewport(1440);
+  },
+};
+
 /** An image tab: the bytes from the raw route as an image; Download is its only, promoted, action. */
 export const ImageTab: Story = {
   args: { path: `/specs/${SPEC}/documents/u-notes-sequence` },
@@ -592,9 +760,11 @@ export const DanglingTab: Story = {
       ),
     ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Remove registration' }));
-    await expect(
+    const confirm = within(
       await screen.findByRole('alertdialog', { name: 'Remove the registration of backend.md?' }),
-    ).toBeTruthy();
+    );
+    await userEvent.click(confirm.getByRole('button', { name: 'Remove registration' }));
+    await expectToast('Registration of backend.md removed');
   },
 };
 

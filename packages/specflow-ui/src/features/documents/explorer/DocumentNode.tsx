@@ -14,7 +14,6 @@ import {
   treeLeafItemClassName,
   treeNodeClassName,
   treeRowClassName,
-  treeStateLabelClassName,
   treeTrailingLabelClassName,
 } from '@nevo/ui';
 import type { TrailingLabel } from '../catalogue/documentTypePolicy';
@@ -136,9 +135,6 @@ export function DocumentNode({
                   </span>
                   {label?.kind === 'type' && (
                     <span className={treeTrailingLabelClassName}>{label.text}</span>
-                  )}
-                  {label?.kind === 'no-type' && (
-                    <span className={treeStateLabelClassName}>{t('documents.tree.noType')}</span>
                   )}
                   {missing && (
                     <span className={treeAttentionStateLabelClassName}>

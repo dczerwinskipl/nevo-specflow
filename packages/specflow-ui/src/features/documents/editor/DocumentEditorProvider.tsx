@@ -39,6 +39,8 @@ import {
 } from '../outline/outlineData';
 import { DocumentOutlineSheet } from '../outline/DocumentOutlineSheet';
 import { regionHeading } from '../outline/regionHeading';
+import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
+import { DocumentGuidanceSheet } from '../guidance/DocumentGuidance';
 import type { ScrollAnchor } from './documentScrollAnchor';
 import { useDocumentSave, type DocumentSaveOwner } from './useDocumentSave';
 import { useEditorFocus } from './useEditorFocus';
@@ -104,6 +106,17 @@ export interface DocumentEditorSession {
   outlineAvailable: boolean;
   outlineOpen: boolean;
   openOutline: () => void;
+  /** How to write a document of this type (registered documents of a described type only). */
+  guidance?: DocumentGuidance;
+  /**
+   * The content reports whether its panel has room for the guidance column (undefined: no content
+   * that can host it); otherwise the guidance opens as a sheet.
+   */
+  reportGuidanceColumnFits: (fits: boolean | undefined) => void;
+  /** Where the guidance is shown now: beside the content, as a sheet, or not at all. */
+  guidanceShown?: 'column' | 'sheet';
+  /** Shows or hides the guidance: the column (kept per document for the visit) or the sheet. */
+  toggleGuidance: () => void;
 }
 
 const Context = createContext<DocumentEditorSession | null>(null);
@@ -134,6 +147,7 @@ export function DocumentEditorProvider({
   specId,
   document,
   readOnlyReason,
+  guidance,
   children,
 }: {
   specId: string;
@@ -141,6 +155,8 @@ export function DocumentEditorProvider({
   document?: DocumentContent;
   /** Why the document cannot be edited (from the tree and the record); undefined when it can. */
   readOnlyReason?: ActionReason;
+  /** The writing guidance of the document's type, when the catalogue has it. */
+  guidance?: DocumentGuidance;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -192,6 +208,38 @@ export function DocumentEditorProvider({
     setOutlineActive(outlineNavigator.current?.activeLine());
     setOpenedFor(documentId);
   }, [documentId]);
+  // The guidance column is a choice per document, kept for the visit (switching tabs and modes keeps
+  // it); the sheet is a moment, like the contents sheet.
+  const [guidanceColumnIds, setGuidanceColumnIds] = useState<readonly string[]>([]);
+  const [guidanceSheetFor, setGuidanceSheetFor] = useState<string>();
+  // Reported by the mounted content, which alone can measure its panel.
+  const [guidanceColumnFits, setGuidanceColumnFits] = useState<boolean>();
+  const guidanceInColumn = guidanceColumnFits === true;
+  const guidanceShown: 'column' | 'sheet' | undefined = !guidance
+    ? undefined
+    : guidanceInColumn
+      ? guidanceColumnIds.includes(documentId)
+        ? 'column'
+        : undefined
+      : guidanceSheetFor !== undefined && guidanceSheetFor === documentId
+        ? 'sheet'
+        : undefined;
+  // A wider panel, another document or no guidance ends the sheet, so it never reopens by itself.
+  if (guidanceSheetFor !== undefined && guidanceShown !== 'sheet') setGuidanceSheetFor(undefined);
+  const guidanceOpener = useRef<HTMLElement | null>(null);
+  const toggleGuidance = useCallback(() => {
+    if (guidanceInColumn) {
+      setGuidanceColumnIds((ids) =>
+        ids.includes(documentId) ? ids.filter((id) => id !== documentId) : [...ids, documentId],
+      );
+      return;
+    }
+    guidanceOpener.current =
+      globalThis.document.activeElement instanceof HTMLElement
+        ? globalThis.document.activeElement
+        : null;
+    setGuidanceSheetFor((current) => (current === documentId ? undefined : documentId));
+  }, [guidanceInColumn, documentId]);
   const owner = useDocumentSave({ specId, document, draft });
   const { save: saveOwned } = owner;
 
@@ -343,6 +391,10 @@ export function DocumentEditorProvider({
       outlineAvailable,
       outlineOpen,
       openOutline,
+      guidance,
+      reportGuidanceColumnFits: setGuidanceColumnFits,
+      guidanceShown,
+      toggleGuidance,
     };
   }, [
     specId,
@@ -374,6 +426,9 @@ export function DocumentEditorProvider({
     outlineAvailable,
     outlineOpen,
     openOutline,
+    guidance,
+    guidanceShown,
+    toggleGuidance,
   ]);
 
   const name = document?.path ?? '';
@@ -418,6 +473,7 @@ export function DocumentEditorProvider({
         {session && (
           <DocumentOutlineSheet
             open={outlineOpen}
+            documentName={name.split('/').at(-1) ?? name}
             headings={outline.headings}
             activeLine={outlineActive}
             onOpenChange={(next) => {
@@ -427,6 +483,22 @@ export function DocumentEditorProvider({
             restoreFocusTo={() =>
               // A menu item that opened the sheet is gone by now: the document heading is the next best place.
               outlineOpener.current?.isConnected ? outlineOpener.current : regionHeading()
+            }
+          />
+        )}
+        {session && (
+          <DocumentGuidanceSheet
+            open={guidanceShown === 'sheet'}
+            guidance={guidance}
+            onOpenChange={(next) => {
+              if (!next) setGuidanceSheetFor(undefined);
+            }}
+            restoreFocusTo={() =>
+              // Opened from the menu: its item is gone, so the guidance toggle takes focus back.
+              guidanceOpener.current?.isConnected
+                ? guidanceOpener.current
+                : (globalThis.document.querySelector<HTMLElement>('[data-guidance-toggle]') ??
+                  regionHeading())
             }
           />
         )}

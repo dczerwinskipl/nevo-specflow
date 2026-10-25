@@ -1100,11 +1100,11 @@
       "delete": "Delete",
       "rowActions": "Actions: {{name}}",
       "checkFailed": "Unable to check the current documents. Try again.",
-      "renamed": "Name changed.",
-      "folderAdded": "Folder added.",
-      "fileAdded": "File added.",
-      "deleted": "Deleted.",
-      "moved": "Moved.",
+      "renamed": "Renamed to {{name}}",
+      "folderAdded": "Folder {{name}} created",
+      "fileAdded": "{{name}} added",
+      "deleted": "{{name}} deleted",
+      "moved": "{{name}} moved",
       "unconfirmedRename": "No confirmation. Check the same operation before renaming again.",
       "unconfirmed": "No confirmation. Check the result of the same operation.",
       "inputRename": "New name",
@@ -1115,13 +1115,13 @@
       "emptyFolder": "This folder is empty. Add a file or folder from the menu.",
       "addFirst": "Add the first file from the actions menu.",
       "processing": "Processing…",
-      "importDone": "Import finished.",
+      "importDone": "Upload finished",
       "importStillUnconfirmed": "The import is still unconfirmed. The files are kept.",
       "importUnconfirmed": "The import was not confirmed. The files are kept so the same operation can be retried.",
       "importRejected": "Import rejected. {{reason}}",
       "retryImport": "Retry import",
-      "uploadDone": "Added: {{count}}.",
-      "uploadSkipped": "Added: {{count}}. Skipped: {{skipped}}.",
+      "uploadDone": "Files uploaded: {{count}}",
+      "uploadSkipped": "Files uploaded: {{count}}. Skipped: {{skipped}}",
       "skippedItem": "{{name}}: {{reason}}",
       "skip": {
         "limit": "at most 10 files per import",
@@ -1175,7 +1175,7 @@
       "newDocument": "New document…",
       "assignType": "Assign type…",
       "removeRegistration": "Remove registration",
-      "registrationRemoved": "Registration removed.",
+      "registrationRemoved": "Registration of {{name}} removed",
       "truncated": "Only the first entries are listed.",
       "skipped_one": "{{count}} entry in the folder could not be read.",
       "skipped_few": "{{count}} entries in the folder could not be read.",
@@ -1203,9 +1203,7 @@
       "closeBusy": "Finish the open question about unsaved changes first, then close this document."
     },
     "empty": {
-      "title": "Choose a document from the tree",
-      "suggested": "Start with",
-      "open": "Open {{name}}"
+      "title": "Choose a document from the tree or create a new one."
     },
     "notFound": {
       "title": "Document not found",
@@ -1215,10 +1213,13 @@
     "outline": {
       "label": "Contents",
       "open": "Open contents",
-      "title": "Contents ({{n}})",
-      "description": "Go to a section of the document",
       "close": "Close contents",
       "columnLabel": "Document contents and properties"
+    },
+    "guidance": {
+      "label": "Guidance",
+      "heading": "How to write: {{type}}",
+      "close": "Close guidance"
     },
     "menuDisplay": "Display",
     "issues": {

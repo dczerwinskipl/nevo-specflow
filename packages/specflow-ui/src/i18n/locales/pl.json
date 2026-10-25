@@ -1100,11 +1100,11 @@
       "delete": "Usuń",
       "rowActions": "Akcje: {{name}}",
       "checkFailed": "Nie udało się sprawdzić aktualnych dokumentów. Spróbuj ponownie.",
-      "renamed": "Nazwa zmieniona.",
-      "folderAdded": "Folder dodany.",
-      "fileAdded": "Plik dodany.",
-      "deleted": "Usunięto.",
-      "moved": "Przeniesiono.",
+      "renamed": "Zmieniono nazwę na {{name}}",
+      "folderAdded": "Utworzono folder {{name}}",
+      "fileAdded": "Dodano {{name}}",
+      "deleted": "Usunięto {{name}}",
+      "moved": "Przeniesiono {{name}}",
       "unconfirmedRename": "Brak potwierdzenia. Sprawdź tę samą operację przed dalszą zmianą nazwy.",
       "unconfirmed": "Brak potwierdzenia. Sprawdź wynik tej samej operacji.",
       "inputRename": "Nowa nazwa",
@@ -1115,13 +1115,13 @@
       "emptyFolder": "Folder jest pusty. Dodaj plik lub folder z menu.",
       "addFirst": "Dodaj pierwszy plik przez menu akcji.",
       "processing": "Przetwarzanie…",
-      "importDone": "Import zakończony.",
+      "importDone": "Wgrywanie zakończone",
       "importStillUnconfirmed": "Nadal brak potwierdzenia importu. Pliki zachowane.",
       "importUnconfirmed": "Import nie został potwierdzony. Pliki zachowano do ponowienia tej samej operacji.",
       "importRejected": "Import odrzucony. {{reason}}",
       "retryImport": "Ponów import",
-      "uploadDone": "Dodano: {{count}}.",
-      "uploadSkipped": "Dodano: {{count}}. Pominięto: {{skipped}}.",
+      "uploadDone": "Wgrano pliki: {{count}}",
+      "uploadSkipped": "Wgrano pliki: {{count}}. Pominięto: {{skipped}}",
       "skippedItem": "{{name}}: {{reason}}",
       "skip": {
         "limit": "maksymalnie 10 plików na import",
@@ -1175,7 +1175,7 @@
       "newDocument": "Nowy dokument…",
       "assignType": "Przypisz typ…",
       "removeRegistration": "Usuń rejestrację",
-      "registrationRemoved": "Usunięto rejestrację.",
+      "registrationRemoved": "Usunięto rejestrację {{name}}",
       "truncated": "Pokazano tylko pierwsze pozycje.",
       "skipped_one": "Nie udało się odczytać {{count}} pozycji w folderze.",
       "skipped_few": "Nie udało się odczytać {{count}} pozycji w folderze.",
@@ -1203,9 +1203,7 @@
       "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
     },
     "empty": {
-      "title": "Wybierz dokument z drzewa",
-      "suggested": "Zacznij od",
-      "open": "Otwórz {{name}}"
+      "title": "Wybierz dokument z drzewa albo utwórz nowy."
     },
     "notFound": {
       "title": "Nie znaleziono dokumentu",
@@ -1215,10 +1213,13 @@
     "outline": {
       "label": "Spis treści",
       "open": "Otwórz spis treści",
-      "title": "Spis treści ({{n}})",
-      "description": "Przejdź do sekcji dokumentu",
       "close": "Zamknij spis treści",
       "columnLabel": "Spis treści i właściwości dokumentu"
+    },
+    "guidance": {
+      "label": "Wskazówki",
+      "heading": "Jak pisać: {{type}}",
+      "close": "Zamknij wskazówki"
     },
     "menuDisplay": "Widok",
     "issues": {

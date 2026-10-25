@@ -670,7 +670,7 @@ export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
     await expect(canvas.queryByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeNull();
     const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
     await userEvent.click(icon);
-    const sheet = await within(document.body).findByRole('dialog', { name: 'Spis treści (4)' });
+    const sheet = await within(document.body).findByRole('dialog', { name: 'Spis treści' });
     await userEvent.click(within(sheet).getByRole('link', { name: 'Etap 3' }));
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Etap 3'));
@@ -1119,14 +1119,22 @@ export const DocumentsIdleSecondary: Story = {
     await expect(
       (await canvas.findAllByRole('button', { name: /^Akcje: / })).length,
     ).toBeGreaterThan(0);
-    await expect(canvas.getByText('Wybierz dokument z drzewa')).toBeVisible();
-    // A few documents to start from, as buttons that open a tab (nothing opens by itself).
-    await expect(canvas.getByRole('button', { name: 'Otwórz specification.md' })).toBeVisible();
+    const idle = canvas.getByText('Wybierz dokument z drzewa albo utwórz nowy.');
+    await expect(idle).toBeVisible();
+    // One line and the start actions; the tree beside it is not repeated as a list, and nothing
+    // opens by itself.
+    const area = within(idle.parentElement!);
+    await expect(area.queryByRole('list')).toBeNull();
+    await expect(area.getByRole('button', { name: 'Nowy dokument…' })).toBeVisible();
+    await expect(area.getByRole('button', { name: 'Wgraj pliki' })).toBeVisible();
+    await expect(area.getAllByRole('button')).toHaveLength(2);
     await expect(canvas.queryByRole('tab')).toBeNull();
     await settleViewport();
     // Narrow: the tree remains the sole visible Primary; no idle Secondary placeholder.
     await viewport(390, 844);
-    await expect(canvas.queryByText('Wybierz dokument z drzewa')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText('Wybierz dokument z drzewa albo utwórz nowy.'),
+    ).not.toBeInTheDocument();
     await settleViewport(390, 844);
   },
 };

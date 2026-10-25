@@ -66,8 +66,8 @@ files arrive unclassified), split view, history of a document.
 
 | #   | Decision                                                                                                                                                                                                                                                                                     | Rejected alternatives (one line each)                                                                                                                                                                                                             |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | A tree row shows its **type as a quiet trailing label only when the file name does not already say it** (`login-flow.md · UX`, not `ux.md · UX`).                                                                                                                                            | Type on every row: repeats the file name on most rows and drowns the two states that matter (No type, File missing). Type only in a tooltip: hover-only, unreachable on touch.                                                                    |
-| D2  | **Unclassified** rows read `No type`; **dangling** rows keep their place in the tree with the warning glyph and `File missing`. Neither is grouped separately.                                                                                                                               | A separate "Unclassified" / "Missing" group: moves files away from their folder, the user no longer finds them where they are on disk.                                                                                                            |
+| D1  | A tree row shows its **type as a quiet trailing label only when the file name does not already say it** (`login-flow.md · UX`, not `ux.md · UX`).                                                                                                                                            | Type on every row: repeats the file name on most rows and drowns the state that matters (File missing). Type only in a tooltip: hover-only, unreachable on touch.                                                                                 |
+| D2  | **Unclassified** rows carry no label (their menu offers **Assign type…** first; Expected documents names what is missing); **dangling** rows keep their place in the tree with the warning glyph and `File missing`. Neither is grouped separately.                                          | A separate "Unclassified" / "Missing" group: moves files away from their folder, the user no longer finds them where they are on disk.                                                                                                            |
 | D3  | The tree pane starts with what needs the user, and only that: Close-refusing **issues** (attention Alert), then **Expected documents** listing **unmet requirements only**, each with **Add**. When nothing is unmet and nothing blocks Close, the region does not exist.                    | A permanent completeness summary ("3 of 3", a progress bar, a green check): reads as approval or "done", which the product explicitly forbids. Showing met requirements too: noise for every built-in archetype (only `overview: 1`, always met). |
 | D4  | **New document** is a type chooser (radio list: title + "use when", grouped "Suggested by <archetype>" / "Other types" / "No type"), a pre-filled editable **File name**, and the type instructions behind a disclosure. One `Dialog` at every width (see the scroll gap in section 11).     | Inline file-name entry in the tree (today): cannot carry a type, which is what satisfies a requirement. A type select: hides "use when", the criterion for choosing. A wizard: two steps for one decision.                                        |
 | D5  | **Assign type** reuses the same chooser without "No type" and without a file name.                                                                                                                                                                                                           | Inline type select in the row: no room for "use when" in a 280-360 px tree.                                                                                                                                                                       |
@@ -119,8 +119,8 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
      login-flow.md                    UX
      sequence.png                   Note
  v notes
-     meeting-2026-10-20.md       No type
-     token-sample.bin            No type
+     meeting-2026-10-20.md
+     token-sample.bin
  ! backend.md               File missing   (warning glyph and label in attention tone)
    behaviour.md
    overview.md
@@ -129,8 +129,8 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
 ```
 
 - **Wide (≥ 1080) and Compact (840-1079):** as above; Compact keeps the tree at 1/3. The trailing label
-  uses the existing trailing-label track of the row (today's "Required" slot). **State labels (No type,
-  File missing) never hide: the file name truncates instead** (full name in the tooltip and Show path).
+  uses the existing trailing-label track of the row (today's "Required" slot). **The state label (File
+  missing) never hides: the file name truncates instead** (full name in the tooltip and Show path).
   Only a type-title label (UX, Note) may hide below the row's `@3xs` width.
 - **Narrow (< 840):** the tree page is the same column at full width; nothing moves into a drawer.
   Verified at 390 px: no horizontal overflow, labels visible.
@@ -146,7 +146,7 @@ their registered path.
 | Registered, name says type | `file` (images too)          | file name        | none                                | open tab                       | Rename, Move, Delete                                               |
 | Registered, other name     | as above                     | file name        | type title (`UX`)                   | open tab                       | Rename, Move, Delete                                               |
 | `overview.md` (protected)  | `file`                       | file name        | none                                | open tab                       | only the note with the `protected` reason (no dead disabled items) |
-| Unclassified               | as above                     | file name        | `No type`                           | open tab                       | **Assign type…**, separator, Rename, Move, Delete                  |
+| Unclassified               | as above                     | file name        | none                                | open tab                       | **Assign type…**, separator, Rename, Move, Delete                  |
 | Dangling                   | `triangle-alert` (attention) | file name, muted | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                                   |
 
 "The file name says the type" means the file stem equals the type id or the stem of the type's
@@ -240,11 +240,10 @@ operation returns it, it is shown as the protected-document reason.
 
 ### 3.7 Idle document area (nothing open)
 
-Unchanged composition (`DocumentsEmptyState`): "Choose a document from the tree" and **Start with** (at
-most five). The ordering rule changes: the protected overview first, then registered documents of a
-suggested type in tree order, then other registered documents; unclassified and dangling entries are
-never suggested. No completeness, no issues here: they belong to the tree, which is also what Narrow shows
-first.
+`DocumentsEmptyState` is one line, "Choose a document from the tree or create a new one.", and, when the
+capabilities allow them, the start actions **New document…** and **Upload files**. It does not list
+documents: the tree beside it already does, and Expected documents in the tree names what is missing. No
+completeness, no issues here: they belong to the tree, which is also what Narrow shows first.
 
 ## 4. Create Specification
 
@@ -408,7 +407,7 @@ You can add, remove or classify documents later.             body-md secondary
 | All requirements met, no blocking issues | tree only                                              | idle or tabs                         | none                                                    |
 | Requirement unmet                        | Expected documents; Add only with `createFile`         | -                                    | Add → New document (type preselected)                   |
 | Close-refusing issue                     | attention Alert at top                                 | -                                    | none (fix on disk)                                      |
-| Unclassified file                        | `No type`                                              | opens normally (edit if `editable`)  | Assign type… first in menu                              |
+| Unclassified file                        | none (Assign type… in the row menu)                    | opens normally (edit if `editable`)  | Assign type… first in menu                              |
 | Dangling entry                           | warning glyph, `File missing`                          | missing tab with Remove registration | only Remove registration                                |
 | Overview                                 | no label                                               | normal                               | menu holds only the `protected` note                    |
 | Specification read-only                  | read-only line above tree; New/Upload disabled; no Add | read-only line in every text tab     | no Edit, no Save                                        |
@@ -428,7 +427,7 @@ the Create form order.
 ## 8. Interaction and accessibility
 
 - **Tree rows:** the trailing label is part of the row button's text, so the accessible name reads
-  "meeting-2026-10-20.md No type" / "backend.md File missing". The warning glyph is decorative.
+  "login-flow.md UX" / "backend.md File missing". The warning glyph is decorative.
 - **Expected documents:** a `section` labelled by its heading; each Add has its own accessible name.
   Not a live region (the tree refetch announces through the operation's own message).
 - **Close issues Alert:** static (no `role="alert"`): it is present on load, not caused by an action.

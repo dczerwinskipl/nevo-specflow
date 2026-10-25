@@ -11,6 +11,7 @@ import type { TFunction } from 'i18next';
 import { isHttpClientError } from '@nevo/http-client';
 import { translateMessage, useMessage } from '../../../i18n/message';
 import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
+import { useNotify } from '../../../shared/notifications/notifications';
 import { reasonFragment } from '../catalogue/documentTypePolicy';
 import { planImport } from './documentImport';
 import { joinDocumentPath, type PlannedDocument } from './documentTreePolicy';
@@ -36,7 +37,7 @@ export interface NewDocumentInput {
   path: string;
   type?: string;
   templateId?: string;
-  /** The type's title, for the announcement ("<type> added"). */
+  /** The type's title, for the confirmation toast ("<type> added"). */
   title?: string;
 }
 
@@ -73,8 +74,6 @@ export interface DocumentOperationsState {
   unknown: boolean;
   /** Failure of the last operation, shown where it was started. */
   error: string;
-  /** Polite confirmation of the last operation. */
-  notice: string;
   /** Files of an unconfirmed import, kept so the same import can be retried. */
   retry: PlannedDocument[];
   /** The last failure can be resumed with the same operation (`DOCUMENT_RECOVERY_REQUIRED`). */
@@ -131,6 +130,8 @@ export interface DocumentOperationsModel {
  */
 const outcomeUnknown = writeOutcomeUnknown;
 
+const lastSegment = (path: string) => path.split('/').at(-1) ?? path;
+
 /**
  * Runs the tree's create / rename / import / move / delete operations through the owner's
  * callbacks and keeps their lifecycle: one operation in flight, an unknown outcome that blocks
@@ -143,11 +144,13 @@ export function useDocumentOperations(
   const { tree, onAdd, onOperate, onRefresh, beforeAction, onBusyChange } = options;
   const { t } = useTranslation();
   const text = useMessage();
+  // A completed operation is confirmed by a toast (announced once); failures stay where they
+  // were started.
+  const notify = useNotify();
   const [lock] = useState(createOperationLock);
   const [busy, setBusy] = useState(false),
     [unknown, setUnknown] = useState(false),
     [error, setError] = useState(''),
-    [notice, setNotice] = useState(''),
     [retry, setRetry] = useState<PlannedDocument[]>([]),
     [resumable, setResumable] = useState(false);
 
@@ -226,12 +229,12 @@ export function useDocumentOperations(
       }
       setRecovery(false);
       settle({ ok: true });
-      setNotice(
+      notify(
         entry.rename
-          ? t('documents.tree.renamed')
+          ? t('documents.tree.renamed', { name: finalName })
           : entry.kind === 'folder'
-            ? t('documents.tree.folderAdded')
-            : t('documents.tree.fileAdded'),
+            ? t('documents.tree.folderAdded', { name: finalName })
+            : t('documents.tree.fileAdded', { name: finalName }),
       );
     } catch (failure) {
       const unknownOutcome = settleFailure(failure);
@@ -250,7 +253,6 @@ export function useDocumentOperations(
     if (lock.busy) return;
     markBusy(true);
     setError('');
-    setNotice('');
     setRetry([]);
     let accepted: PlannedDocument[] = [];
     try {
@@ -261,7 +263,7 @@ export function useDocumentOperations(
       );
       if (accepted.length) await onAdd(accepted);
       setRecovery(false);
-      setNotice(
+      notify(
         skipped.length
           ? t('documents.tree.uploadSkipped', {
               count: accepted.length,
@@ -290,7 +292,7 @@ export function useDocumentOperations(
         setRecovery(false);
         setRetry([]);
         setError('');
-        setNotice(t('documents.tree.importDone'));
+        notify(t('documents.tree.importDone'));
       })
       .catch(() => setError(t('documents.tree.importStillUnconfirmed')))
       .finally(() => markBusy(false));
@@ -309,10 +311,10 @@ export function useDocumentOperations(
       await onAdd([entry]);
       setRecovery(false);
       onDone();
-      setNotice(
+      notify(
         input.title
           ? t('documents.newDocument.created', { type: input.title })
-          : t('documents.tree.fileAdded'),
+          : t('documents.tree.fileAdded', { name: lastSegment(input.path) }),
       );
       return { ok: true };
     } catch (failure) {
@@ -341,7 +343,7 @@ export function useDocumentOperations(
         ?.path.split('/')
         .at(-1);
       onDone(result ? result.documents[0]?.id : undefined);
-      setNotice(t('documents.classify.done', { name: name ?? request.id, type: title }));
+      notify(t('documents.classify.done', { name: name ?? request.id, type: title }));
       return { ok: true };
     } catch (failure) {
       return fail(failure);
@@ -370,12 +372,13 @@ export function useDocumentOperations(
       });
       setRecovery(false);
       onDone();
-      setNotice(
+      const name = lastSegment(request.path);
+      notify(
         request.action === 'remove-registration'
-          ? t('documents.tree.registrationRemoved')
+          ? t('documents.tree.registrationRemoved', { name })
           : request.action === 'delete'
-            ? t('documents.tree.deleted')
-            : t('documents.tree.moved'),
+            ? t('documents.tree.deleted', { name })
+            : t('documents.tree.moved', { name }),
       );
     } catch (failure) {
       fail(failure);
@@ -385,7 +388,7 @@ export function useDocumentOperations(
   };
 
   return {
-    state: { busy, unknown, error, notice, retry, resumable },
+    state: { busy, unknown, error, retry, resumable },
     actions: {
       guard,
       canSelect: lock.canSelect,

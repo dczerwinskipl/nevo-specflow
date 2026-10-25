@@ -33,6 +33,7 @@ import {
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
+import { NotificationProvider } from '../../../shared/notifications/notifications';
 import {
   DocumentsExplorer,
   documentRootActions,
@@ -43,6 +44,7 @@ import { DocumentEditor } from '../editor/DocumentEditor';
 import { DocumentEditorProvider, useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
+import { expectToast } from '../../../test-support/toast.stories-support';
 import { invokeDocumentAction } from '../editor/documentHeaderActions.stories-support';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';
@@ -446,6 +448,9 @@ export const FolderAcknowledgementRestoresFocus: Story = {
     await userEvent.keyboard('{Enter}');
     await waitFor(() => expect(canvas.getByRole('button', { name: 'plans' })).toHaveFocus());
     await expect(canvas.getByLabelText('Liczba operacji')).toHaveTextContent('1');
+    // The result is a toast; the toast does not take focus from the new folder.
+    await expectToast('Utworzono folder plans');
+    await expect(canvas.getByRole('button', { name: 'plans' })).toHaveFocus();
   },
 };
 
@@ -457,6 +462,32 @@ export const MoveRootNamedFolder: Story = {
     await userEvent.click(await within(document.body).findByRole('option', { name: '__root' }));
     await userEvent.click(within(document.body).getByRole('button', { name: 'Przenieś' }));
     await expect(canvas.getByLabelText('Folder wysłanej operacji')).toHaveTextContent('__root');
+    await expectToast('Przeniesiono decisions.md');
+  },
+};
+
+/** Rename and delete confirm with a toast; nothing is left as a status line under the tree. */
+export const OperationResultsAreToasts: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Akcje: decisions.md' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Zmień nazwę' }));
+    const name = await canvas.findByRole('textbox', { name: 'Nowa nazwa' });
+    await userEvent.clear(name);
+    await userEvent.type(name, 'choices.md');
+    await userEvent.keyboard('{Enter}');
+    await expectToast('Zmieniono nazwę na choices.md');
+    await userEvent.click(await canvas.findByRole('button', { name: 'Akcje: choices.md' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Usuń' }));
+    await userEvent.click(
+      within(within(document.body).getByRole('alertdialog')).getByRole('button', { name: 'Usuń' }),
+    );
+    // The latest result replaces the previous toast.
+    await expectToast('Usunięto choices.md');
+    await expect(within(document.body).queryByText('Zmieniono nazwę na choices.md')).toBeNull();
+    // No status line under the tree repeats the result.
+    await expect(
+      canvas.queryAllByRole('status').filter((node) => node.textContent?.includes('Usunięto')),
+    ).toHaveLength(0);
   },
 };
 const nestedTree: Tree = documentTreeFixture({
@@ -471,15 +502,17 @@ const nestedTree: Tree = documentTreeFixture({
   ],
 });
 const renderNested = (width: number, active?: string) => () => (
-  <div style={{ padding: 16, width, maxWidth: '100%' }}>
-    <DocumentsExplorer
-      tree={nestedTree}
-      active={active}
-      onSelect={() => undefined}
-      onAdd={() => Promise.resolve()}
-      onOperate={() => Promise.resolve()}
-    />
-  </div>
+  <NotificationProvider>
+    <div style={{ padding: 16, width, maxWidth: '100%' }}>
+      <DocumentsExplorer
+        tree={nestedTree}
+        active={active}
+        onSelect={() => undefined}
+        onAdd={() => Promise.resolve()}
+        onOperate={() => Promise.resolve()}
+      />
+    </div>
+  </NotificationProvider>
 );
 /**
  * The compact explorer composition at depth: a nested folder chain (`guides` -> `guides/onboarding`),
@@ -569,20 +602,20 @@ export const MixedImportReasons: Story = {
       new File([new Uint8Array([255])], 'invalid.txt'),
       new File(['a'.repeat(200001)], 'large-text.txt'),
     ]);
-    await expect(await canvas.findByText(/Dodano: 1/)).toHaveTextContent(
+    await expect(await canvas.findByText(/Wgrano pliki: 1/)).toHaveTextContent(
       'specification.md: ta ścieżka już istnieje',
     );
-    await expect(canvas.getByText(/Dodano: 1/)).toHaveTextContent(
+    await expect(canvas.getByText(/Wgrano pliki: 1/)).toHaveTextContent(
       'sketch.pdf: obsługiwane formaty to .md i .txt',
     );
-    await expect(canvas.getByText(/Dodano: 1/)).toHaveTextContent(
+    await expect(canvas.getByText(/Wgrano pliki: 1/)).toHaveTextContent(
       '.hidden.md: nazwa nie może zaczynać się od kropki',
     );
     await expect(canvas.queryByRole('button', { name: 'Ponów import' })).toBeNull();
-    await expect(canvas.getByText(/Dodano: 1/)).toHaveTextContent(
+    await expect(canvas.getByText(/Wgrano pliki: 1/)).toHaveTextContent(
       'invalid.txt: nie udało się odczytać tekstu UTF-8',
     );
-    await expect(canvas.getByText(/Dodano: 1/)).toHaveTextContent(
+    await expect(canvas.getByText(/Wgrano pliki: 1/)).toHaveTextContent(
       'large-text.txt: treść przekracza 200 000 znaków',
     );
   },

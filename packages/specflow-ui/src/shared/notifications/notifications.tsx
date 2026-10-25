@@ -47,12 +47,18 @@ function NotificationHost({ store }: { store: NotificationStore }) {
       {notification && (
         <Toast
           key={notification.id}
+          // A confirmation, not an interruption: announced politely (role="status").
+          type="background"
           open
           onOpenChange={(open) => {
             if (!open) store.dismiss();
           }}
         >
-          <ToastTitle role="status">{notification.message}</ToastTitle>
+          {/*
+           * No live role here: the toast primitive announces the message once through its own
+           * transient status region; a second role="status" would announce it twice.
+           */}
+          <ToastTitle>{notification.message}</ToastTitle>
           <ToastClose dismissLabel={t('common.dismissNotification')} />
         </Toast>
       )}

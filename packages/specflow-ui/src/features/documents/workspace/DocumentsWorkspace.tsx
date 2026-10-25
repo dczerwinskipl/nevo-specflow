@@ -20,8 +20,6 @@ import { useAppServices } from '../../../app/useAppServices';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
-import { archetypeOf } from '../catalogue/documentTypePolicy';
-import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
 import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
@@ -67,7 +65,6 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
-  const catalogue = useDocumentCatalogue();
   const editor = useDocumentEditor();
   const tabs = useDocumentTabs();
   const [demoNotice, setDemoNotice] = useState(false);
@@ -102,15 +99,13 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     </div>
   ) : (
     <DocumentsEmptyState
-      documents={tree.data?.documents ?? []}
-      suggestedTypes={
-        tree.data
-          ? (archetypeOf(catalogue.data, tree.data)
-              ?.documents.filter((template) => template.include === 'optional')
-              .map((template) => template.type) ?? [])
-          : []
-      }
-      onOpen={opening.select}
+      // The start actions the Specification allows; a running operation only disables them.
+      actions={rootActions.filter((action) => {
+        const capabilities = tree.data?.capabilities;
+        if (action.id === 'documents-new-file') return capabilities?.createFile.available === true;
+        if (action.id === 'documents-upload') return capabilities?.import.available === true;
+        return false;
+      })}
     />
   );
   return (

@@ -5,6 +5,7 @@ import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { expect, fn, spyOn, waitFor, within } from 'storybook/test';
 import { HttpClientError } from '@nevo/http-client';
 import { TooltipProvider } from '@nevo/ui';
+import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { DocumentsExplorer, type DocumentOperation } from './DocumentsExplorer';
 import type { NewDocumentEntry } from './useDocumentOperations';
 import { withLocale } from '../../../i18n/StoryLocalization';
@@ -73,21 +74,23 @@ function Fixture({
 }: Props) {
   const [current, setCurrent] = useState(active);
   return (
-    <TooltipProvider>
-      <div style={{ width, padding: 8 }}>
-        <DocumentsExplorer
-          tree={value}
-          active={current}
-          onSelect={(id) => {
-            setCurrent(id);
-            onSelect?.(id);
-          }}
-          onAdd={onAdd}
-          onOperate={onOperate}
-        />
-        <output aria-label="Aktywny dokument">{current}</output>
-      </div>
-    </TooltipProvider>
+    <NotificationProvider>
+      <TooltipProvider>
+        <div style={{ width, padding: 8 }}>
+          <DocumentsExplorer
+            tree={value}
+            active={current}
+            onSelect={(id) => {
+              setCurrent(id);
+              onSelect?.(id);
+            }}
+            onAdd={onAdd}
+            onOperate={onOperate}
+          />
+          <output aria-label="Aktywny dokument">{current}</output>
+        </div>
+      </TooltipProvider>
+    </NotificationProvider>
   );
 }
 

@@ -12,7 +12,14 @@ import { useDocumentEditor, type DocumentEditorSession } from './DocumentEditorP
 import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
 import { DocumentOutline } from '../outline/DocumentOutline';
 import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
-import { outlineColumnMinWidth, outlineColumnWidth } from '../outline/markdownOutline';
+import {
+  guidanceColumnMinWidth,
+  guidanceColumnWidth,
+  outlineColumnMinWidth,
+  outlineColumnWidth,
+} from '../outline/markdownOutline';
+import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
+import { DocumentGuidanceColumn } from '../guidance/DocumentGuidance';
 import { DocumentProperties } from '../frontmatter/DocumentProperties';
 import { useMarkdownLabels } from '../useMarkdownLabels';
 import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
@@ -117,18 +124,54 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
   );
 }
 
+/** Measures the width of an element (0 until it is mounted). */
+function useWidth(element: HTMLElement | null) {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    if (!element) return;
+    const measure = () => setWidth(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return width;
+}
+
 /** Document content (preview, source, image or file). Identity and actions live in the workspace header. */
 export function DocumentEditor() {
-  const { t } = useTranslation();
   const session = useDocumentEditor();
   if (!session) return null;
-  const { document, draft, editorRoot, save, setDraft } = session;
+  return <DocumentContentView session={session} />;
+}
+
+function DocumentContentView({ session }: { session: DocumentEditorSession }) {
+  const { t } = useTranslation();
+  const { document, draft, editorRoot, save, setDraft, reportGuidanceColumnFits } = session;
   const kind = documentKindOf(document);
   const plainText = kind.id === 'text';
   const view = documentViewOf(kind, draft, session.readOnlyReason !== undefined);
   const readOnlyLine = kind.text ? <ReadOnlyLine session={session} /> : null;
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  const rootRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      editorRoot.current = node;
+      setRoot(node);
+    },
+    [editorRoot],
+  );
+  const width = useWidth(root);
+  const textView = view === 'edit' || view === 'source' || view === 'preview';
+  // The guidance is a column only for text on a panel wide enough for it beside the contents column
+  // (preview) or beside a still roomy source editor (edit); otherwise it opens as a sheet.
+  const columnFits = textView && width >= guidanceColumnMinWidth;
+  useLayoutEffect(() => {
+    reportGuidanceColumnFits(width > 0 ? columnFits : undefined);
+    return () => reportGuidanceColumnFits(undefined);
+  }, [columnFits, width, reportGuidanceColumnFits]);
+  const guidance = session.guidanceShown === 'column' ? session.guidance : undefined;
   return (
-    <div ref={editorRoot} className="flex h-full min-h-0 w-full flex-col">
+    <div ref={rootRef} className="flex h-full min-h-0 w-full flex-col">
       <SaveRefusal session={session} />
       {view === 'image' ? (
         <DocumentImageView
@@ -139,7 +182,7 @@ export function DocumentEditor() {
       ) : view === 'file' ? (
         <DocumentFileView document={document} onDownload={session.download} />
       ) : view === 'edit' || view === 'source' ? (
-        <>
+        <SourceWithGuidance guidance={guidance} width={width}>
           {session.readOnlyReason && <div className="shrink-0 px-4 pb-1 pt-3">{readOnlyLine}</div>}
           <MarkdownSourceEditor
             key={document.id}
@@ -159,7 +202,7 @@ export function DocumentEditor() {
             }}
             label={t('documents.editor.sourceLabel', { name: document.path })}
           />
-        </>
+        </SourceWithGuidance>
       ) : (
         <PreviewScroller
           key={document.id}
@@ -171,8 +214,35 @@ export function DocumentEditor() {
           outline={session.outline}
           navigatorRef={session.outlineNavigator}
           reportColumnShown={session.reportColumnShown}
+          guidance={guidance}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The source editor keeps the full width; with the guidance column shown (only on panels where the
+ * editor keeps at least 960 px) the column sits at its right edge with its own scroll.
+ */
+function SourceWithGuidance({
+  guidance,
+  width,
+  children,
+}: {
+  guidance?: DocumentGuidance;
+  width: number;
+  children: ReactNode;
+}) {
+  if (!guidance) return <>{children}</>;
+  return (
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+      <DocumentGuidanceColumn
+        guidance={guidance}
+        width={guidanceColumnWidth(width)}
+        className="shrink-0 border-l border-divider px-2 py-6"
+      />
     </div>
   );
 }
@@ -189,6 +259,7 @@ function PreviewScroller({
   outline,
   navigatorRef,
   reportColumnShown,
+  guidance,
 }: {
   /** The first line of the content (for example why the document is read-only), in the flow. */
   lead?: ReactNode;
@@ -199,6 +270,8 @@ function PreviewScroller({
   outline: DocumentOutlineData;
   navigatorRef: { current: OutlineNavigator | null };
   reportColumnShown: (shown: boolean | undefined) => void;
+  /** The guidance column to show beside the contents column (wide panels only). */
+  guidance?: DocumentGuidance;
 }) {
   const markdownLabels = useMarkdownLabels();
   const { t } = useTranslation();
@@ -209,6 +282,7 @@ function PreviewScroller({
   // The panel decides the layout (measured), so the same document reads right in any pane width.
   const [panel, setPanel] = useState<HTMLDivElement | null>(null);
   const [panelWidth, setPanelWidth] = useState(0);
+  const [panelHeight, setPanelHeight] = useState(0);
   const [activeLine, setActiveLine] = useState<number>();
   const wide = panelWidth >= outlineColumnMinWidth;
   const hasAside = headings.length > 0 || properties !== undefined;
@@ -240,7 +314,10 @@ function PreviewScroller({
   }, []);
   useLayoutEffect(() => {
     if (!panel) return;
-    const measure = () => setPanelWidth(panel.clientWidth);
+    const measure = () => {
+      setPanelWidth(panel.clientWidth);
+      setPanelHeight(panel.clientHeight);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(panel);
@@ -350,6 +427,10 @@ function PreviewScroller({
     };
   }, [navigatorRef, goToHeading, measureActive]);
   const text = <MarkdownDocument labels={markdownLabels} source={body} sourceLines />;
+  // The columns beside the text, each with the 32 px gap before it.
+  const asideWidth =
+    (hasAside ? outlineColumnWidth(panelWidth) + 32 : 0) +
+    (guidance ? guidanceColumnWidth(panelWidth) + 32 : 0);
   return (
     <ScrollArea
       direction="both"
@@ -359,26 +440,48 @@ function PreviewScroller({
       // The focusable scroll viewport is the preview region the editor provider refocuses.
       viewportRef={viewportRef}
     >
-      {lead && <div className="mb-4 max-w-content-narrow">{lead}</div>}
-      {wide && hasAside ? (
-        // Two columns: the text keeps its readable measure and the contents and properties stay in
-        // view beside it, so a wide panel is not an empty band.
-        <div className="flex items-start gap-8">
-          <div className="min-w-0 max-w-content-narrow flex-1">{text}</div>
-          <aside
-            aria-label={t('documents.outline.columnLabel')}
-            className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
-            style={{ width: outlineColumnWidth(panelWidth) }}
-          >
-            {properties && <DocumentProperties properties={properties} anchored={false} />}
-            {headings.length > 0 && (
-              <DocumentOutline headings={headings} activeLine={activeLine} onSelect={goToHeading} />
-            )}
-          </aside>
+      {wide && (hasAside || guidance) ? (
+        // The text keeps its readable measure and the contents (and the guidance) stay in view
+        // beside it. The group is centred in a panel wider than itself, so the spare width becomes
+        // two equal outer gutters instead of one empty band on the right.
+        <div
+          className="mx-auto flex items-start gap-8"
+          style={{ maxWidth: `calc(var(--spacing-content-narrow) + ${asideWidth}px)` }}
+        >
+          <div className="min-w-0 max-w-content-narrow flex-1">
+            {lead && <div className="mb-4">{lead}</div>}
+            {text}
+          </div>
+          {hasAside && (
+            <aside
+              aria-label={t('documents.outline.columnLabel')}
+              className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
+              style={{ width: outlineColumnWidth(panelWidth) }}
+            >
+              {properties && <DocumentProperties properties={properties} anchored={false} />}
+              {headings.length > 0 && (
+                <DocumentOutline
+                  headings={headings}
+                  activeLine={activeLine}
+                  onSelect={goToHeading}
+                />
+              )}
+            </aside>
+          )}
+          {guidance && (
+            <DocumentGuidanceColumn
+              guidance={guidance}
+              width={guidanceColumnWidth(panelWidth)}
+              // Its own scroll inside the visible panel (less the panel's padding).
+              maxHeight={Math.max(0, panelHeight - 48)}
+              className="sticky top-0 shrink-0"
+            />
+          )}
         </div>
       ) : (
         // A readable measure (about 80 characters) aligned with the tabs; the editor keeps the full width.
         <div className="max-w-content-narrow">
+          {lead && <div className="mb-4">{lead}</div>}
           {properties && <DocumentProperties properties={properties} />}
           {text}
         </div>

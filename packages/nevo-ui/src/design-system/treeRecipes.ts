@@ -120,7 +120,7 @@ export const treeTrailingLabelClassName =
   'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-xs/tree-row:sr-only';
 
 /**
- * Trailing label of a row STATE the reader must always see (for example "No type"): it never
+ * Trailing label of a row STATE the reader must always see (for example "Read-only"): it never
  * hides, the name truncates instead. Quiet muted text, no pill.
  */
 export const treeStateLabelClassName =

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocumentDraftStore } from '../editor/documentDraftStore';
 import { DocumentDraftProvider } from '../editor/DocumentDraftProvider';
+import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { useDocumentOperations } from '../explorer/useDocumentOperations';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
 import { documentKeys } from '../read-model/queries';
@@ -61,7 +62,9 @@ function setup() {
   const cache = new QueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={cache}>
-      <DocumentDraftProvider store={store}>{children}</DocumentDraftProvider>
+      <DocumentDraftProvider store={store}>
+        <NotificationProvider>{children}</NotificationProvider>
+      </DocumentDraftProvider>
     </QueryClientProvider>
   );
   const view = renderHook(

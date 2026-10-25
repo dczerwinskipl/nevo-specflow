@@ -561,8 +561,18 @@ export const NarrowPanelOpensContentsAsSheet: Story = {
     );
     const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
     await userEvent.click(icon);
-    const sheet = await within(document.body).findByRole('dialog', { name: /Spis treści \(\d+\)/ });
+    const sheet = await within(document.body).findByRole('dialog', { name: 'Spis treści' });
     await expect(sheet).toBeVisible();
+    // The sheet says which document it lists and shows its structure like the column: the top
+    // level flush and semibold, the next level indented and medium.
+    await expect(within(sheet).getByText('with-props.md')).toBeVisible();
+    const top = within(sheet).getByRole('link', { name: 'Długi dokument' });
+    const section = within(sheet).getByRole('link', { name: 'Sekcja 1' });
+    await expect(section.getBoundingClientRect().left).toBeGreaterThan(
+      top.getBoundingClientRect().left + 8,
+    );
+    await expect(Number(getComputedStyle(top).fontWeight)).toBeGreaterThanOrEqual(600);
+    await expect(Number(getComputedStyle(section).fontWeight)).toBe(500);
     // The current section (the first at the top) is marked and holds focus.
     const current = within(sheet).getByRole('link', { current: 'location' });
     await waitFor(() => expect(current).toHaveFocus());

@@ -17,6 +17,7 @@ import {
   documentRootActions,
   type DocumentTreeController,
 } from '../../features/documents/explorer/DocumentsExplorer';
+import { NotificationProvider } from '../../shared/notifications/notifications';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { contentRegistry, type MockLayout } from './content-kinds/contentKinds.stories-support';
 import { editorProvider, headerBudget } from './content-kinds/editorProvider.stories-support';
@@ -157,14 +158,17 @@ function TreeList({
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto p-3" data-mock-tree="true">
-      <DocumentsExplorer
-        tree={mockTreeData}
-        controllerRef={controller}
-        active={activeId ?? undefined}
-        onSelect={onOpen}
-        onAdd={() => Promise.resolve()}
-        onOperate={() => Promise.resolve()}
-      />
+      {/* The explorer confirms operations with toasts. */}
+      <NotificationProvider>
+        <DocumentsExplorer
+          tree={mockTreeData}
+          controllerRef={controller}
+          active={activeId ?? undefined}
+          onSelect={onOpen}
+          onAdd={() => Promise.resolve()}
+          onOperate={() => Promise.resolve()}
+        />
+      </NotificationProvider>
     </div>
   );
 }

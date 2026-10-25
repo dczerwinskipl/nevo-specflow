@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ItemTabs, type ItemTab, type ItemTabsLabels } from '@nevo/ui';
 import { OutlineButton } from '../outline/OutlineButton';
+import { GuidanceButton } from '../guidance/GuidanceButton';
 import { useDocumentTabs } from './DocumentTabsProvider';
 
 /** Ties the strip's tabs to the tab panel the workspace renders. */
@@ -59,7 +60,7 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
       <h2 tabIndex={-1} data-workspace-header-title="true" className="sr-only outline-none">
         {active?.label ?? t('documents.title')}
       </h2>
-      {/* The contents icon follows the strip (or the switcher) as region navigation. */}
+      {/* The contents and guidance icons follow the strip (or the switcher) as region navigation. */}
       <div className="flex min-w-0 items-center gap-1">
         <div className={variant === 'switcher' ? 'min-w-0' : 'min-w-0 flex-1'}>
           <ItemTabs
@@ -73,6 +74,7 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
           />
         </div>
         <OutlineButton />
+        <GuidanceButton />
       </div>
     </>
   );

@@ -46,17 +46,19 @@ export function nameSaysType(
 }
 
 /** The quiet trailing label of a tree row. */
-export type TrailingLabel =
-  { kind: 'type'; text: string } | { kind: 'no-type' } | { kind: 'missing' };
+export type TrailingLabel = { kind: 'type'; text: string } | { kind: 'missing' };
 
 type TreeDocument = DocumentTree['documents'][number];
 
-/** Type title only when the name does not already say it; `No type` for an unclassified file. */
+/**
+ * Type title only when the name does not already say it. An unclassified file carries no label:
+ * its row menu offers `Assign type…` and Expected documents name what is still missing.
+ */
 export function documentTrailingLabel(
   document: Pick<TreeDocument, 'path' | 'classification' | 'type'>,
   catalogue: ArchetypeCatalogue | undefined,
 ): TrailingLabel | undefined {
-  if (document.classification === 'unclassified') return { kind: 'no-type' };
+  if (document.classification === 'unclassified') return undefined;
   if (document.type && !nameSaysType(document.path, document.type, catalogue))
     return { kind: 'type', text: typeTitle(catalogue, document.type) };
   return undefined;
@@ -284,4 +286,40 @@ export function menuReasonNote(reason: ActionReason | undefined): Message | unde
   return sentenceReasons.includes(reason)
     ? reasonFragment(reason)
     : message('documents.reason.note', { reason: reasonFragment(reason) });
+}
+
+/** How to write a document of its type: the catalogue's text, shown beside or under the document. */
+export interface DocumentGuidance {
+  /** The type's title. */
+  title: string;
+  description: string;
+  useWhen: string;
+  /** The type's instructions, then the archetype template's own, as plain text. */
+  instructions: readonly string[];
+}
+
+/**
+ * The writing guidance of a registered document whose type the catalogue describes; undefined for
+ * an unclassified file, an unknown type or while the catalogue is not loaded.
+ */
+export function documentGuidance(
+  catalogue: ArchetypeCatalogue | undefined,
+  tree: Pick<DocumentTree, 'archetype'> | undefined,
+  document: { classification?: 'registered' | 'unclassified'; type?: string },
+): DocumentGuidance | undefined {
+  if (document.classification === 'unclassified' || !document.type) return undefined;
+  const type = catalogue?.documentTypes.find((candidate) => candidate.id === document.type);
+  const own = type?.instructions.trim();
+  if (!type || !own) return undefined;
+  const template = tree
+    ? archetypeOf(catalogue, tree)
+        ?.documents.find((candidate) => candidate.type === type.id)
+        ?.instructions?.trim()
+    : undefined;
+  return {
+    title: type.title,
+    description: type.description,
+    useWhen: type.useWhen,
+    instructions: template ? [own, template] : [own],
+  };
 }

@@ -191,7 +191,7 @@ const labelledFixture: TreeEntry[] = [
       {
         kind: 'file',
         name: 'meeting-2026-10-20-with-the-identity-team.md',
-        trailing: { text: 'No type', kind: 'state' },
+        trailing: { text: 'Read-only', kind: 'state' },
       },
     ],
   },
@@ -261,13 +261,13 @@ export const TrailingLabelsNarrow: Story = {
     );
     if (!state || state.getBoundingClientRect().width === 0)
       throw new Error('A state label stays visible on a narrow row.');
-    const unclassified = row('notes/meeting-2026-10-20-with-the-identity-team.md');
-    const noType = Array.from(unclassified.querySelectorAll('span')).find(
-      (span) => span.textContent === 'No type',
+    const stateRow = row('notes/meeting-2026-10-20-with-the-identity-team.md');
+    const readOnly = Array.from(stateRow.querySelectorAll('span')).find(
+      (span) => span.textContent === 'Read-only',
     );
     if (
-      !noType ||
-      noType.getBoundingClientRect().right > unclassified.getBoundingClientRect().right
+      !readOnly ||
+      readOnly.getBoundingClientRect().right > stateRow.getBoundingClientRect().right
     )
       throw new Error('A long name truncates so the state label stays inside the row.');
     // The type label is never shortened: on this narrow row it is visually hidden but named.

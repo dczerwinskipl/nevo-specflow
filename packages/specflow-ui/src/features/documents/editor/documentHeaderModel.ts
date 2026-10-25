@@ -62,6 +62,19 @@ export function documentHeaderModel(
             } satisfies WorkspaceHeaderAction,
           ]
         : []),
+      // The guidance toggle is also in the menu (Display), checked while it is shown.
+      ...(session.guidance
+        ? [
+            {
+              id: 'document-guidance',
+              label: t('documents.guidance.label'),
+              icon: 'info',
+              group: 'display',
+              checked: session.guidanceShown !== undefined,
+              onPress: session.toggleGuidance,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
       ...kind.actions(view, { session, t }),
       ...assignType,
       {

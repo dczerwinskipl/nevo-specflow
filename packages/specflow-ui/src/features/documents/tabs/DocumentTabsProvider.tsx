@@ -15,7 +15,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
 import { useOpenedItems, type OpenedItem } from '@nevo/ui';
-import { documentReadOnlyReason } from '../catalogue/documentTypePolicy';
+import { documentGuidance, documentReadOnlyReason } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
@@ -108,12 +109,14 @@ export function DocumentTabsProvider({
     [documentId, query],
   );
   const document = query.data && documentId ? query.data : undefined;
+  const catalogue = useDocumentCatalogue();
   return (
     <RecordContext.Provider value={record}>
       <DocumentEditorProvider
         specId={specId}
         document={document}
         readOnlyReason={document ? documentReadOnlyReason(tree.data, document) : undefined}
+        guidance={document ? documentGuidance(catalogue.data, tree.data, document) : undefined}
       >
         <TabsHost specId={specId} documentId={documentId} tree={tree.data}>
           {children}

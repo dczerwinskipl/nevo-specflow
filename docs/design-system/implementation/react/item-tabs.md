@@ -36,7 +36,7 @@ owns state, guards and the tab panel; the strip renders no panel.
 - **Width.** A tab is 140-180 px. If `N x 140` fits, all tabs are visible; otherwise
   `floor((width - 52) / 140)` tabs are visible, the active one always among them, and the rest go to
   the `Opened (N)` menu. Labels truncate in the middle so the extension stays visible; the tooltip
-  and the menu row show the full description (path).
+  shows the full description (path).
 - **Switcher.** Below `switcherBelow` (default 480 px of strip width) the strip MUST become one
   button `name (N)` opening the same menu (`variant="auto"`).
 - **Tab anatomy.** Icon, label, close `x` at the label's right edge. The unsaved state is a badge on
@@ -44,7 +44,10 @@ owns state, guards and the tab panel; the strip renders no panel.
   shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.
 - **Close.** The `x` is shown on hover, focus and on the active tab, always on coarse pointers, with
   a 44 px hit area there. It is outside the tablist and not in the tab order.
-- **Menu.** `Opened (N)` lists every item with description and dirty badge. Each item row is
+- **Menu.** `Opened (N)` lists every item with description and dirty badge. Every row has the same
+  compact height: the label and the description each take one line and truncate, the description at
+  its start so the file name stays visible; the row's tooltip and accessible text carry the full
+  description. Each item row is
   followed by a `Close <label>` menu item, shown when its row is highlighted and always available to
   assistive technology; the `x` in a row is a pointer shortcut only. The same menu serves the
   switcher, so closing never depends on a keyboard.

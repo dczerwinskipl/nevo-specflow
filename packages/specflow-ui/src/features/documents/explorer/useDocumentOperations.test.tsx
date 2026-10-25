@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
+import type { ReactNode } from 'react';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { HttpClientError } from '@nevo/http-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../api';
 import { documentTreeFixture } from '../../../../test-support/documents/fixtures';
+import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { assignTypeFor } from '../workspace/DocumentsTreeActions';
 import { useDocumentOperations } from './useDocumentOperations';
 
@@ -39,13 +41,19 @@ const notImplemented = () =>
 
 function setup(onOperate: () => Promise<never>) {
   const onBusyChange = vi.fn();
-  const view = renderHook(() =>
-    useDocumentOperations({
-      tree,
-      onAdd: () => Promise.resolve(),
-      onOperate,
-      onBusyChange,
-    }),
+  const view = renderHook(
+    () =>
+      useDocumentOperations({
+        tree,
+        onAdd: () => Promise.resolve(),
+        onOperate,
+        onBusyChange,
+      }),
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <NotificationProvider>{children}</NotificationProvider>
+      ),
+    },
   );
   return { view, onBusyChange };
 }

@@ -1,78 +1,47 @@
 import { useTranslation } from 'react-i18next';
-import { Button, Typography } from '@nevo/ui';
-import { fileNameOf } from '../tabs/documentTabs';
+import { Button, Typography, type IconGlyph } from '@nevo/ui';
 
-/** At most this many documents are suggested. */
-export const suggestedDocumentCount = 5;
-
-/** What the empty state needs to know about a document of the tree. */
-export interface SuggestableDocument {
+/** A start action offered under the line (New document…, Upload). */
+export interface DocumentsEmptyStateAction {
   id: string;
-  path: string;
-  /** Only registered documents are suggested (an unclassified file never is). */
-  classification?: 'registered' | 'unclassified';
-  type?: string;
-  /** The overview: always the first suggestion. */
-  protected?: boolean;
+  label: string;
+  icon?: IconGlyph;
+  disabled?: boolean;
+  onPress: () => void;
 }
 
 /**
- * The documents worth opening first: the protected overview, then registered documents of a type
- * the archetype suggests (tree order), then the other registered documents. Unclassified and
- * dangling entries are never suggested.
- */
-export function suggestedDocuments<T extends SuggestableDocument>(
-  documents: readonly T[],
-  suggestedTypes: readonly string[] = [],
-): T[] {
-  const registered = documents.filter((document) => document.classification !== 'unclassified');
-  const suggested = (document: T) =>
-    document.type !== undefined && suggestedTypes.includes(document.type);
-  return [
-    ...registered.filter((document) => document.protected),
-    ...registered.filter((document) => !document.protected && suggested(document)),
-    ...registered.filter((document) => !document.protected && !suggested(document)),
-  ].slice(0, suggestedDocumentCount);
-}
-
-/**
- * The document area with nothing open: one line and a few documents to start from. Nothing opens by
- * itself, so closing the last tab does not bring a document back.
+ * The document area with nothing open: one line and, when the Specification allows it, the start
+ * actions. It does not repeat the tree beside it. Nothing opens by itself, so closing the last tab
+ * does not bring a document back.
  */
 export function DocumentsEmptyState({
-  documents,
-  suggestedTypes,
-  onOpen,
+  actions = [],
 }: {
-  documents: readonly SuggestableDocument[];
-  /** Types of the optional templates of the Specification's archetype. */
-  suggestedTypes?: readonly string[];
-  onOpen: (id: string) => void;
+  /** Only the actions the capabilities allow; one that waits for a running operation is disabled. */
+  actions?: readonly DocumentsEmptyStateAction[];
 }) {
   const { t } = useTranslation();
-  const suggested = suggestedDocuments(documents, suggestedTypes);
   return (
-    // Left-aligned on the reading measure under the header, like the document and the list.
-    <div className="flex h-full min-h-0 max-w-content-narrow flex-col gap-4 p-6">
-      <Typography as="p" variant="title-sm">
+    // Left-aligned on the reading measure under the header, like the document.
+    <div className="flex max-w-content-narrow flex-col items-start gap-4 p-6">
+      <Typography as="p" className="m-0 text-content-secondary">
         {t('documents.empty.title')}
       </Typography>
-      {suggested.length > 0 && (
-        <ul aria-label={t('documents.empty.suggested')} className="flex flex-col items-start gap-1">
-          {suggested.map((document) => (
-            <li key={document.id}>
-              <Button
-                variant="ghost"
-                leadingIcon="file"
-                title={document.path}
-                aria-label={t('documents.empty.open', { name: fileNameOf(document.path) })}
-                onClick={() => onOpen(document.id)}
-              >
-                {fileNameOf(document.path)}
-              </Button>
-            </li>
+      {actions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {actions.map((action) => (
+            <Button
+              key={action.id}
+              variant="secondary"
+              leadingIcon={action.icon}
+              disabled={action.disabled}
+              onClick={action.onPress}
+            >
+              {action.label}
+            </Button>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

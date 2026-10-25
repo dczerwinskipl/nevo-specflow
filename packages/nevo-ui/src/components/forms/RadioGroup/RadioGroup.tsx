@@ -39,15 +39,9 @@ export const RadioGroup = forwardRef<
         ref={ref}
         className={cn('min-w-0', className)}
         onKeyDownCapture={(event) => {
-          if (ARROW_KEYS.includes(event.key)) {
-            arrow.current = true;
-            // No focus move follows (one option, the end without loop): forget the arrow, so a
-            // later Tab onto an unchecked option never selects it.
-            const from = event.target;
-            setTimeout(() => {
-              if (globalThis.document.activeElement === from) arrow.current = false;
-            }, 100);
-          }
+          // Remembered until the focus arrives (however late), or until the group is left, a pointer
+          // is used or another key is pressed. No timer: a slow machine moves focus later.
+          arrow.current = ARROW_KEYS.includes(event.key);
           onKeyDownCapture?.(event);
         }}
         onPointerDownCapture={(event) => {

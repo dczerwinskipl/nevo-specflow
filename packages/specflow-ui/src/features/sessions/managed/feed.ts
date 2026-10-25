@@ -166,9 +166,9 @@ export function createSessionFeed(
     notify({ ...state, pending: request, commandBusy: true, commandError: false });
     try {
       await api.start(sessionId, request);
-      save(':pending', '');
+      if (read(':pending') === JSON.stringify(request)) save(':pending', '');
       const draft = state.draft === request.message ? '' : state.draft;
-      save(':draft', draft);
+      if (read(':draft') === request.message) save(':draft', '');
       const next = { ...state, draft, commandBusy: false };
       delete next.pending;
       notify(next);
@@ -190,7 +190,11 @@ export function createSessionFeed(
       controller?.abort();
       controller = new AbortController();
       const token = ++generation;
-      notify({ ...state, connection: state.snapshot ? 'reconnecting' : 'loading' });
+      notify({
+        ...state,
+        historyBusy: false,
+        connection: state.snapshot ? 'reconnecting' : 'loading',
+      });
       void run(controller.signal, token);
       return () => {
         if (token === generation) {

@@ -1367,6 +1367,28 @@
       "outcome": "Turn outcome"
     },
     "actions": "Tool actions",
-    "newer": "Newer activity"
+    "newer": "Newer activity",
+    "outcome": {
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "interrupted": "Interrupted"
+    },
+    "workKind": {
+      "commentary": "Progress",
+      "reasoning": "Reasoning",
+      "interaction": "User response",
+      "tool": "Tool"
+    },
+    "workState": {
+      "queued": "Queued",
+      "active": "In progress",
+      "waiting": "Waiting",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "interrupted": "Interrupted",
+      "expired": "Expired"
+    }
   }
 }

@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 import type {
   SessionSnapshot,
@@ -31,6 +32,67 @@ async function snap(sessionId: string): Promise<SessionSnapshot> {
   return (await store!.call<SnapshotSource>({ op: 'snapshot', sessionId, actor: 'user' })).snapshot;
 }
 describe('durable Session store', () => {
+  it('refuses an unrecognized database instead of treating its contents as a new store', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'nevo-session-foreign-'));
+    const db = new DatabaseSync(join(directory, 'sessions.sqlite'));
+    db.exec('CREATE TABLE unrelated(value TEXT)');
+    db.close();
+    await expect(openSessionStore({ directory, projectId: 'project' })).rejects.toMatchObject({
+      code: 'SESSION_STORE_UNAVAILABLE',
+    });
+    const inspect = new DatabaseSync(join(directory, 'sessions.sqlite'));
+    try {
+      expect(inspect.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).toEqual([
+        { name: 'unrelated' },
+      ]);
+    } finally {
+      inspect.close();
+    }
+  });
+  it('expires interaction immediately when live execution becomes unknown', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Question' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    await emit({ kind: 'work-open', key: 'q', workKind: 'interaction', title: 'Question' });
+    await emit({
+      kind: 'interaction',
+      key: 'q',
+      interaction: { kind: 'question', prompt: 'Continue?', allowText: true },
+    });
+    const interaction = (await snap(sessionId)).interaction!;
+    await emit({ kind: 'lost', message: 'Connection outcome unknown' });
+    expect((await snap(sessionId)).interaction).toBeUndefined();
+    expect((await snap(sessionId)).activeTurn?.state).toBe('unknown');
+    await expect(
+      store!.call({
+        op: 'respond',
+        actor: 'user',
+        sessionId,
+        interactionId: interaction.interactionId,
+        input: {
+          kind: 'question',
+          requestId: randomUUID(),
+          answer: { text: 'yes', optionIds: [] },
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
+    await expect(
+      store!.call({
+        op: 'cancel',
+        actor: 'user',
+        sessionId,
+        turnId: start.turnId,
+        requestId: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+  });
   it('admits only one concurrent Turn and returns the same durable request result', async () => {
     const { sessionId } = await create();
     const input = { requestId: randomUUID(), message: 'Same logical request' };

@@ -44,10 +44,10 @@ function InteractionPrompt({
       <Typography as="h2" variant="title-sm">
         {t('managedSession.responseRequired')}
       </Typography>
-      <p className="whitespace-pre-wrap text-body-sm">{interaction.prompt}</p>
+      <p className="whitespace-pre-wrap break-words text-body-sm">{interaction.prompt}</p>
       {interaction.kind === 'permission' ? (
         <>
-          <p className="text-body-sm">{interaction.actionSummary}</p>
+          <p className="break-words text-body-sm">{interaction.actionSummary}</p>
           <div className="flex gap-2">
             <Button disabled={busy} onClick={() => onRespond('', undefined, true)}>
               {t('managedSession.allow')}
@@ -67,6 +67,7 @@ function InteractionPrompt({
             {interaction.options?.map((option) => (
               <Button
                 key={option.id}
+                className="max-w-full whitespace-normal text-left"
                 disabled={busy}
                 variant="secondary"
                 onClick={() => onRespond('', option.id)}
@@ -133,6 +134,12 @@ export function ManagedSession({
     void feed.older();
   }
   const snapshot = state.snapshot;
+  const outcomeLabels: Record<string, string> = {
+    completed: t('managedSession.outcome.completed'),
+    failed: t('managedSession.outcome.failed'),
+    cancelled: t('managedSession.outcome.cancelled'),
+    interrupted: t('managedSession.outcome.interrupted'),
+  };
   return (
     <AppWorkspace scroll="content" fit="available" split="primary" labels={labels}>
       <AppWorkspace.Primary
@@ -201,7 +208,14 @@ export function ManagedSession({
                         key={entry.text.content?.contentId ?? entry.id}
                         api={api}
                         sessionId={sessionId}
-                        value={entry.text}
+                        value={
+                          entry.kind === 'outcome'
+                            ? {
+                                ...entry.text,
+                                text: outcomeLabels[entry.text.text] ?? entry.text.text,
+                              }
+                            : entry.text
+                        }
                       />
                       {(entry.kind === 'work-summary' || entry.kind === 'outcome') && (
                         <Button

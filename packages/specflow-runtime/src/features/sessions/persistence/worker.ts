@@ -479,6 +479,7 @@ export async function runSessionWorker(): Promise<void> {
     if (t.summary.state === 'terminal') return;
     const completedAt = now();
     t.summary = terminalizeTurn(t.summary, outcome, completedAt, t.cancelRequested, error);
+    if (t.summary.state === 'terminal') outcome = t.summary.outcome;
     run(
       "UPDATE interactions SET state='expired' WHERE turn=? AND state='pending'",
       t.summary.turnId,
@@ -548,6 +549,7 @@ export async function runSessionWorker(): Promise<void> {
     if (f.kind === 'lost') {
       t.summary.state = 'unknown';
       t.summary.error = { code: 'OPERATION_UNKNOWN', message: f.message };
+      run("UPDATE interactions SET state='expired' WHERE turn=? AND state='pending'", c.turnId);
     }
     if (f.kind === 'correlation') {
       const native = s.snapshot.session.providerId + '\u0000' + f.providerSessionId;
@@ -941,6 +943,11 @@ export async function runSessionWorker(): Promise<void> {
         const s = session(c.sessionId),
           t = turn(c.turnId, c.sessionId);
         if (t.summary.state !== 'terminal') {
+          if (t.summary.state === 'unknown')
+            fail(
+              'SESSION_RECOVERY_REQUIRED',
+              'Unknown execution requires recovery before cancellation.',
+            );
           t.cancelRequested = true;
           t.summary.state = 'cancelling';
           t.summary.revision++;
@@ -1105,18 +1112,23 @@ export async function runSessionWorker(): Promise<void> {
       };
     }
     if (c.op === 'events') {
+      const cutoff = Date.now() - 86400000;
       const s = session(c.sessionId),
         oldest = Number(
-          get('SELECT seq FROM events WHERE session=? ORDER BY seq LIMIT 1', c.sessionId)?.seq ??
-            s.snapshot.eventSeq + 1,
+          get(
+            'SELECT seq FROM events WHERE session=? AND at>=? ORDER BY seq LIMIT 1',
+            c.sessionId,
+            cutoff,
+          )?.seq ?? s.snapshot.eventSeq + 1,
         );
       return {
         latest: s.snapshot.eventSeq,
         oldest,
         events: all(
-          'SELECT data FROM events WHERE session=? AND seq>? ORDER BY seq LIMIT 3',
+          'SELECT data FROM events WHERE session=? AND seq>? AND at>=? ORDER BY seq LIMIT 3',
           c.sessionId,
           c.after,
+          cutoff,
         ).map((r) => decode<SessionChange>(r)),
       };
     }

@@ -63,7 +63,8 @@ function Work({ data }: { data: Data }) {
           {query.data?.items.map((item) => (
             <section key={item.workId} className="grid gap-2">
               <Typography variant="label-sm">
-                {item.kind} · {item.state}
+                {t(`managedSession.workKind.${item.kind}`)} ·{' '}
+                {t(`managedSession.workState.${item.state}`)}
               </Typography>
               <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
               {item.content && (
@@ -133,7 +134,9 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
           )}
           {query.data?.items.map((item) => (
             <section key={item.actionId} className="grid gap-2">
-              <Typography variant="label-sm">{item.state}</Typography>
+              <Typography variant="label-sm">
+                {t(`managedSession.workState.${item.state}`)}
+              </Typography>
               <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
               {item.input && (
                 <ReadableText

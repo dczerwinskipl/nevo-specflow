@@ -1367,6 +1367,28 @@
       "outcome": "Wynik tury"
     },
     "actions": "Działania narzędzia",
-    "newer": "Nowsza aktywność"
+    "newer": "Nowsza aktywność",
+    "outcome": {
+      "completed": "Zakończono",
+      "failed": "Niepowodzenie",
+      "cancelled": "Zatrzymano",
+      "interrupted": "Przerwano"
+    },
+    "workKind": {
+      "commentary": "Postęp",
+      "reasoning": "Rozumowanie",
+      "interaction": "Odpowiedź użytkownika",
+      "tool": "Narzędzie"
+    },
+    "workState": {
+      "queued": "W kolejce",
+      "active": "W toku",
+      "waiting": "Oczekiwanie",
+      "completed": "Zakończono",
+      "failed": "Niepowodzenie",
+      "cancelled": "Zatrzymano",
+      "interrupted": "Przerwano",
+      "expired": "Wygasło"
+    }
   }
 }

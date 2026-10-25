@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
@@ -25,16 +26,20 @@ async function setup() {
     userId: 'demo-user',
     authenticatedWith: { kind: 'password' },
   });
-  app = await createRuntimeApp(
-    {
-      ...passwordConfig(),
-      authorization: {
-        assignments: [{ userId: 'demo-user', role: 'developer', scope: { projectId: 'project' } }],
+  const reopen = () =>
+    createRuntimeApp(
+      {
+        ...passwordConfig(),
+        authorization: {
+          assignments: [
+            { userId: 'demo-user', role: 'developer', scope: { projectId: 'project' } },
+          ],
+        },
+        sessions: { enabled: true, providers: { mock: { enabled: true } } },
       },
-      sessions: { enabled: true, providers: { mock: { enabled: true } } },
-    },
-    { auth: { store }, sessions: { storage: { directory, projectId: 'project' } } },
-  );
+      { auth: { store }, sessions: { storage: { directory, projectId: 'project' } } },
+    );
+  app = await reopen();
   const cookie = 'nevo_session_4318=' + authId;
   const created = await app.inject({
     method: 'POST',
@@ -45,9 +50,38 @@ async function setup() {
   expect(created.statusCode).toBe(201);
   const sessionId = created.json<{ sessionId: string }>().sessionId;
   const origin = await app.listen({ host: '127.0.0.1', port: 0 });
-  return { store, authId, cookie, sessionId, origin };
+  return { store, authId, cookie, sessionId, origin, reopen };
 }
 describe('live Session stream authorization and replay', () => {
+  it('requires a fresh snapshot when the replay cursor is outside retained history', async () => {
+    const { cookie, sessionId, reopen } = await setup();
+    await app!.inject({
+      method: 'POST',
+      url: '/api/sessions/' + sessionId + '/turns',
+      headers: { cookie },
+      payload: { requestId: randomUUID(), message: 'Expire replay' },
+    });
+    await vi.waitFor(async () =>
+      expect(
+        (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
+          .json<SessionSnapshot>()
+          .entries.at(-1)?.kind,
+      ).toBe('outcome'),
+    );
+    await app!.close();
+    // Controlled offline fixture: no production writer bypasses the singleton owner.
+    const db = new DatabaseSync(join(directory, 'sessions.sqlite'));
+    db.prepare('UPDATE events SET at=0 WHERE session=?').run(sessionId);
+    db.close();
+    app = await reopen();
+    const response = await app.inject({
+      url: '/api/sessions/' + sessionId + '/events?after=0',
+      headers: { cookie },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('event: resync-required');
+    expect(response.body).not.toContain('event: session-change');
+  });
   it('replays from the snapshot sequence without losing an intervening Turn', async () => {
     const { cookie, sessionId, origin } = await setup();
     const snapshot = (

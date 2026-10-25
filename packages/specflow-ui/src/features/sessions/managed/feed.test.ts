@@ -38,6 +38,29 @@ function setup() {
   return { storage, api, start };
 }
 describe('Session feed operation lifetime', () => {
+  it('does not clear a newer owner draft or command when an unmounted request settles', async () => {
+    const { storage, api } = setup();
+    let accept: () => void = () => {
+      throw new Error('Not started');
+    };
+    api.start = vi.fn(
+      () =>
+        new Promise<{ turnId: string }>((resolve) => {
+          accept = () => resolve({ turnId: 'turn' });
+        }),
+    );
+    const first = createSessionFeed(api, 'session', 'actor', storage);
+    first.setDraft('Old command');
+    const request = first.send();
+    first.disconnect();
+    const second = createSessionFeed(api, 'session', 'actor', storage);
+    second.setDraft('New unsent draft');
+    accept();
+    await request;
+    expect(createSessionFeed(api, 'session', 'actor', storage).getSnapshot().draft).toBe(
+      'New unsent draft',
+    );
+  });
   it('retains the exact command across a failed request and route remount', async () => {
     const { storage, api, start } = setup();
     const first = createSessionFeed(api, 'session', 'actor', storage);

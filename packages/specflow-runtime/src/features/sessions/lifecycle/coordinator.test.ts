@@ -28,6 +28,42 @@ async function setup(scenario?: MockScenario) {
   });
 }
 describe('Session coordinator', () => {
+  it('answers a live permission once without granting any filesystem capability', async () => {
+    const observed = vi.fn();
+    const { sessionId } = await setup(async (invocation, emit, _signal, question) => {
+      expect(invocation.executionContext).toEqual({ kind: 'no-effects' });
+      await emit({
+        kind: 'work-open',
+        key: 'permission',
+        workKind: 'interaction',
+        title: 'Permission',
+      });
+      const answer = question('permission');
+      await emit({
+        kind: 'interaction',
+        key: 'permission',
+        interaction: {
+          kind: 'permission',
+          prompt: 'Continue the simulation?',
+          actionSummary: 'No external effects',
+        },
+      });
+      observed(await answer);
+    });
+    await runtime!.start('actor', sessionId, { requestId: randomUUID(), message: 'Run' });
+    await vi.waitFor(async () =>
+      expect((await runtime!.snapshot(sessionId, 'actor')).interaction?.kind).toBe('permission'),
+    );
+    const interaction = (await runtime!.snapshot(sessionId, 'actor')).interaction!;
+    const input = {
+      kind: 'permission' as const,
+      requestId: randomUUID(),
+      decision: 'deny' as const,
+    };
+    await runtime!.respond('actor', sessionId, interaction.interactionId, input);
+    await runtime!.respond('actor', sessionId, interaction.interactionId, input);
+    await vi.waitFor(() => expect(observed).toHaveBeenCalledExactlyOnceWith(input));
+  });
   it('persists default no-effect conversation and deduplicates completed requests', async () => {
     const { sessionId } = await setup(),
       input = { requestId: randomUUID(), message: 'Hello' };

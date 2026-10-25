@@ -36,6 +36,8 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .codex-remote-attachments/
+# Local Claude worktree checkouts
+/.claude/worktrees/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.recommended.json

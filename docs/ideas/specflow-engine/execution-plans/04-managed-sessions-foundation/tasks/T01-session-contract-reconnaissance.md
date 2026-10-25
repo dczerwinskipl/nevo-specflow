@@ -7,47 +7,57 @@ scope: specflow
 areas: [runtime, ai, security, testing]
 tags: [execution-task, temporary, implementation]
 read_when:
-  - implementing E4.T01 on the shared implementation branch
-  - checking dependencies, batch safety and acceptance evidence
+  - implementing E4.T01 on feature/managed-sessions-foundation
 summary: >
-  Temporary task for session contract reconnaissance within the SpecFlow Engine implementation.
+  Dependency-complete session contract reconnaissance task for independent Sessions.
 related:
   - ideas.specflow-engine.plan-04
-  - ideas.specflow-engine.execution-plans
-  - ideas.specflow-engine.test-plan
+  - ideas.specflow-runtime.managed-sessions-delivery
+  - architecture.ai.session-storage-and-lifecycle
+  - reference.api.sessions
+  - reference.protocols.session-provider-driver
 ---
 
 # E4.T01 — Session contract reconnaissance
 
-**Temporary implementation task.** Work on branch `feature/specflow-engine-foundation`; do not create a per-task PR or treat this document as a formal Specification. The [plan overview](../README.md) owns the acceptance boundary.
+Temporary implementation task on `feature/managed-sessions-foundation`.
+The [parent plan](../README.md) owns sequencing and independent review gates.
 
-## Required implementation / outcome
+## Goal and ownership
 
-Inspect current `@nevo/specflow-contracts/sessions`, Runtime Sessions feature, existing UI session routes/mock data, accepted canonical Session/Turn/Work and provider boundary docs, and legacy `tools/dashboard/server/ai/sessions/**`. Identify migration semantics vs disposable infrastructure.
+Capture bounded migration evidence and characterization fixtures. This is evidence realization, not another undecided architecture exercise.
 
-## Prerequisites
+- Kind/profile: general / nevo-agents:implementer.
+- Owner paths: docs/ideas/specflow-runtime/session-migration-evidence.md; owned characterization fixtures under Runtime sessions.
+- Prerequisites: Implemented E1/E2 context on pinned main; no E3 workflow dependency.
+- Minimal context: delivery spec, canonical model, legacy inspection map.
+- Acceptance coverage: MS01–MS05/MS12.
 
-- [Implemented E1 Engine boundary](../../../../../architecture/runtime/specflow-engine.md)
+## Authoritative design entry points
 
-Original planning dependency: Plan 01 readiness. Implemented E1/E2 prerequisites now resolve to current documentation. Remaining E3–E5 task dependencies still require their own review gates.
+- [Delivery and acceptance](../../../../specflow-runtime/managed-sessions-delivery.md).
+- [Storage/lifecycle](../../../../../architecture/ai/session-storage-and-lifecycle.md).
+- [HTTP/read contract](../../../../../reference/api/sessions.md).
+- [Provider driver](../../../../../reference/protocols/session-provider-driver.md).
 
-## Execution & batching
+Read task-relevant sections; behavior stays with those owners, not duplicate schemas in UI.
 
-- Mode: **Solo / review gate** — separate execution and result inspection.
-- Reason: Classify existing Session contracts, provider boundary, legacy before designing identities.
-- **No concurrent writes** to the same shared manifest, registry, journal, Git ref, auth/DTO contract or Runtime feature composition without explicit coordinated ownership; dependency-free alone does not imply safe parallel execution.
-- In a batch, execute tasks **in order** with a checkpoint after each and stop on unexpected contract changes. This is not simultaneous execution.
+## Acceptance
 
-## Verification evidence to attach to review
+- Record legacy revision/source paths, preserved behaviors and intentional corrections, mapped to new owners and MS scenarios.
+- Cover chronology, final/Work separation, unknown/interrupted state, duplicate starts, pending interaction expiry and late native ID. Never import legacy tools into product.
+- Document rejection of required specId and whole-transcript JSON. Do not preserve known legacy bugs as new invariants.
 
-- Specific evidence: **Current AI architecture inventory**. These IDs refer to the [canonical candidate test matrix](../../../test-plan.md); where evidence is qualitative, provide precise inspected source/contract and build/import checks instead of inventing a PASS result.
-- Show positive behavior and at least one meaningful failure/no-side-effect case for the changed boundary. Run relevant existing tests; report OS/Git/Node versions for actual Git/process cases.
-- Report modified modules, new/changed contracts, tests run (PASS/FAIL/SKIP), unresolved risk and any changes that affect later task dependencies.
-- Do not claim this task or its parent plan complete while required checks are skipped or unresolved security/lifecycle ownership remains.
+## Verification and review
 
-## References
+Focused fixture harness plus source evidence review; report expected failing new behavior separately from regressions.
 
-- [Parent execution plan](../README.md)
-- [Program sequencing / parallel safety](../../README.md)
-- [Ideas acceptance gates](../../../acceptance-criteria.md)
-- [Ideas test plan](../../../test-plan.md)
+Report actual PASS/FAIL/SKIP, affected contracts and intentional legacy differences.
+Use owner-boundary tests and public feature ports. Independent review uses nevo-agents:reviewer
+at the parent plan's gates; this document does not claim review occurred.
+A newly evidenced material conflict blocks dependent work and returns to the owning design.
+
+## Out of scope
+
+No legacy compatibility/import, mandatory Spec ownership, full transcript hydration,
+real writable provider launch, automatic workflow finish or fabricated prerequisite readiness.

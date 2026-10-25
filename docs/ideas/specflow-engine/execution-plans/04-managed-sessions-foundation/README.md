@@ -4,80 +4,102 @@ type: engineering
 title: Temporary execution plan 04 — Managed Sessions Foundation
 status: draft
 scope: specflow
-areas: [runtime, ai, security, testing]
-tags: [execution-plan, temporary, sessions, turns, mock-provider]
+areas: [runtime, ai, security, testing, ui]
+tags: [execution-plan, temporary, sessions, turns, mock-provider, pagination]
 read_when:
-  - executing the temporary Engine migration proof of concept
-  - reviewing implementation tasks, verification and dependency gates
+  - implementing the independent managed Session foundation
+  - selecting the next dependency-complete Session task
 summary: >
-  Disposable implementation plan for canonical Runtime Session Turn Work persistence and a controllable mock provider, without worktree-native resume.
+  Implementation-ready decomposition of independent Session core, worker SQLite,
+  bounded tail/history, authorized HTTP/SSE and a real UI with a no-effect mock.
 related:
-  - ideas.specflow-engine
-  - ideas.specflow-engine.acceptance
-  - ideas.specflow-engine.test-plan
-  - architecture.principles.enforceable-invariants
+  - ideas.specflow-runtime.managed-sessions-delivery
+  - architecture.ai.session-storage-and-lifecycle
+  - reference.api.sessions
+  - reference.protocols.session-provider-driver
+  - ideas.specflow-runtime.provider-migration-plan
+  - ideas.specflow-engine.execution-plans
 ---
 
 # Plan 04 — Managed Sessions Foundation
 
-**Lifecycle: temporary implementation plan.** Independently useful Runtime capability with a **controlled fake/mock provider**, _not_ proof that any real provider can resume or switch worktrees. Work can begin alongside Plan 03 once Plan 01's identity boundaries are sufficiently decided.
+## Ready handoff and branch
 
-## Verifiable result
+Preparation is complete for this bounded delivery; implementation is not done. Start on
+`feature/managed-sessions-foundation`, based on `origin/main`
+`4d51e12a09e5bfd19f4ea9f254931c1cd2c6c663`, in the dedicated managed worktree.
+Do not implement on the old dirty `codex/specification-creation-demo` checkout.
+Tasks are reviewable checkpoints, not obligatory separate branches.
 
-An authenticated user creates/opens a provider-backed **test** Session in a fixed, verified project checkout context; invokes a Turn; Runtime persists canonical `Session -> Turn -> Work -> ToolAction`; receives ordered events and optional interaction requests; restarts; then reads a truthful recovered Session view. All identity, attention/readiness and Turn concurrency rules come from Runtime, not UI heuristics.
+The [delivery specification](../../../specflow-runtime/managed-sessions-delivery.md) owns scope,
+owner decisions and MS01–MS12. The [storage/lifecycle design](../../../../architecture/ai/session-storage-and-lifecycle.md),
+[API reference](../../../../reference/api/sessions.md) and
+[driver reference](../../../../reference/protocols/session-provider-driver.md) own exact contracts.
+Previous identity/persistence/concurrency/auth/tail gaps are resolved. Reopen only a newly
+evidenced material contradiction. Draft design status avoids claiming unimplemented software
+is current; existing current invariants win. Execution admission remains workflow-owned.
 
-Actual repository evidence: `packages/specflow-runtime/src/features/sessions/feature.ts` currently only registers Session authorization capabilities; `packages/specflow-contracts/src/sessions/` contains capabilities, not the full execution model. No real Session management API should be assumed already implemented. Reuse current [AI architecture](../../../../architecture/ai/canonical-session-turn-work.md).
+## Scope and result
 
-## Execution order, task files and review checkpoints
+An authorized user creates an independent Session without Spec/Task/workflow, runs an explicitly
+labelled no-effect mock, sees conversation/Work, answers interactions and cancels, reloads/restarts,
+and reads history without hydrating the transcript. Worker SQLite, one local Runtime owner,
+bounded API, durable retry and restart recovery are foundation work. Production wiring uses real
+persistence, not demo sources. Mock is opt-in and cannot execute external tool effects.
 
-Each task has its own Markdown file. **Batch** means sequential tasks in one agent session; **parallel** means independent workers writing disjoint owners; **solo** means separately executed and reviewed. The task-level dependency links are executable prerequisites, not only documentation. For cross-plan ordering see the [program runbook](../README.md).
+## Task graph
 
-### Recommended waves
+| Task                                                                    | Dependencies                      | Kind / implementer        | Planning readiness                         |
+| ----------------------------------------------------------------------- | --------------------------------- | ------------------------- | ------------------------------------------ |
+| [E4.T01 Characterization](tasks/T01-session-contract-reconnaissance.md) | Implemented E1/E2 context on base | general / implementer     | Ready for execution as planning assessment |
+| [E4.T02 Contracts](tasks/T02-canonical-identities.md)                   | T01                               | backend / implementer     | Planned, dependent                         |
+| [E4.T03 Storage](tasks/T03-durable-runtime-state.md)                    | T02                               | backend / implementer     | Planned, dependent                         |
+| [E4.T04 Driver/mock](tasks/T04-provider-neutral-test-driver.md)         | T02                               | backend / implementer     | Planned, dependent                         |
+| [E4.T05 Coordinator](tasks/T05-turn-coordinator.md)                     | T03, T04                          | backend / implementer     | Planned, dependent                         |
+| [E4.T06 HTTP/composition](tasks/T06-http-stream-contracts.md)           | T05                               | backend / implementer     | Planned, dependent                         |
+| [E4.T07 UI](tasks/T07-ui-integration-slice.md)                          | T06                               | ui / implementer-ui       | Planned, dependent                         |
+| [E4.T08 Acceptance](tasks/T08-lifecycle-security-tests.md)              | T03, T04, T05, T06, T07           | integration / implementer | Planned, dependent                         |
 
-1. T01 solo (discovery)
-2. T02 solo (identity/DTO contract)
-3. **T03 ∥ T04** parallel group `4-session-internals` (separate code ownership)
-4. T05 solo (coordinator integration)
-5. T06 → T07 sequential batch `4-runtime-surface`
-6. T08 solo (acceptance)
+Profiles mean nevo-agents:implementer and nevo-agents:implementer-ui. Independent review uses
+nevo-agents:reviewer. These are planning metadata, not invented workflow manifest keys.
+T01 -> T02 -> (T03, T04) -> T05 -> T06 -> T07 -> T08 is acyclic.
+T03/T04 are the only parallel-safe code pair after T02; shared barrels belong to T05.
+This is a future scheduling option, not an instruction to spawn agents during preparation.
 
-### Tasks
+## Review and verification
 
-| Task                                                                                     | Depends on                                     | Run mode                             |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------ |
-| [E4.T01 — Session contract reconnaissance](tasks/T01-session-contract-reconnaissance.md) | E1.T07                                         | Solo                                 |
-| [E4.T02 — Canonical identities](tasks/T02-canonical-identities.md)                       | E4.T01                                         | Solo                                 |
-| [E4.T03 — Durable Runtime state](tasks/T03-durable-runtime-state.md)                     | E4.T02                                         | Parallel `4-session-internals`       |
-| [E4.T04 — Provider-neutral test driver](tasks/T04-provider-neutral-test-driver.md)       | E4.T02                                         | Parallel `4-session-internals`       |
-| [E4.T05 — Turn coordinator](tasks/T05-turn-coordinator.md)                               | E4.T03, E4.T04                                 | Solo                                 |
-| [E4.T06 — HTTP/stream contracts](tasks/T06-http-stream-contracts.md)                     | E4.T05                                         | Sequential batch `4-runtime-surface` |
-| [E4.T07 — UI integration slice](tasks/T07-ui-integration-slice.md)                       | E4.T06                                         | Sequential batch `4-runtime-surface` |
-| [E4.T08 — Lifecycle/security tests](tasks/T08-lifecycle-security-tests.md)               | E4.T02, E4.T03, E4.T04, E4.T05, E4.T06, E4.T07 | Solo                                 |
+Independent review gates: after T02 (contract), T03 (durability/owner), T05 (recovery),
+T06 (auth/stream), T08 (whole delivery). Stop dependent work at a failed gate.
+Each task reports changed owners, PASS/FAIL/SKIP, intentional legacy changes and unresolved risk.
+Source-owned tests/stories stay co-located; process/public/installed tests use package test/.
+Follow repository OS guidance, including Linux-only real-Git/SIGKILL suites where applicable.
+This preparation claims no implementation tests or independent review.
 
-**Batch policy:** never auto-batch a high-risk solo gate with dependent tasks; re-evaluate shared file ownership at dispatch. In particular, lock/claim, security, HTTP scopes, durability/recovery and dispatch uncertainty need an explicit review checkpoint. If a task uncovers an architecture conflict, stop dependent tasks but continue unaffected, disjoint work.
+## Dependencies and later stages
 
-## Deliberately no Engine claim in this foundation
+E4 does not wait for E3 workflow, #95 UI merge or D4 writes. T07 uses independent core routes
+on this base, comparing current main/#95 before shared-router/service edits. Existing demo and
+Specification entry points remain usable. Spec/Task/Document associations are later integration,
+with no inherited specId requirement in IDs, persistence or HTTP.
 
-A standalone Session can exist without Task, workflow or Engine writer claim **only if the mock execution is enforced read-only / no real filesystem mutations**. Provider dispatch that could actually write code is blocked until Plan 05 integrates Engine admission. A conversational Turn is not secretly a workflow attempt.
+[Real provider packages](../../../specflow-runtime/provider-migration-plan.md) follow E4.T08:
+process boundary and Claude/Codex/Antigravity adapters with native fixture/live acceptance.
+E5 writable integration needs real Engine admission/claim/settlement; plans do not prove APIs
+exist. Standalone writable dispatch also needs that shared capability. No automatic workflow
+finish or provider relaunch follows Turn termination.
 
-Session associations with a Spec/Task are optional scoped product metadata and must be authorized, not used as implicit workflow progression. The Runtime Session service owns presentation-level semantic readiness; the UI cannot guess statuses from provider event strings.
+## Exit and cleanup
 
-## Exit gate
+All MS01–MS12 must pass, including 64 MiB cold-tail bounds, cursor/live merge, singleton owner,
+scoped commands/content/events, auth revocation, interaction expiry and installed worker startup.
+Validate representative API payloads and connected Full Session at wide/narrow widths.
+After implementation and independent review promote proven guarantees and retire this worklist;
+preserve stable task IDs meanwhile. Mock acceptance does not finish real-provider migration.
 
-- Pass **S01** on real persistence and Runtime HTTP: durable `sessionId`, Turn/Work ordering and reload, truly read-only mock conversation.
-- Demonstrate one-active-turn admission, idempotent duplicate Turn request, safe terminal immutability, correct interaction validity after restart/cancel and scoped Session read.
-- Production wiring uses feature-owned source, not Storybook/demo fixtures; if provider is absent in production, report unsupported/unavailable honestly.
-- Dependency/import review: Engine does not import Sessions, provider adapters, UI or Runtime.
+## Preparation verification (2026-10-25)
 
-This foundation **does not claim SI03–SI08**, which require Plan 05 and broader mock-provider execution tests.
-
-## Exclusions with explicit future owner
-
-No real Claude/Codex/Antigravity adapter, native provider resume, changing provider `cwd` across worktrees, Session migration after spec rebind, cross-worktree live Session moves, native history import, full transcript cloning or production provider credential manager. These become later adapter-specific plans after their actual capabilities can be verified.
-
-## Sources and handoff
-
-- [Managed Session integration concept](../../managed-session-integration.md), [ownership](../../ownership-and-state.md), [Runtime/Engine boundaries](../../engine-cli-runtime-boundaries.md), [acceptance](../../acceptance-criteria.md).
-- [Canonical Session/Turn/Work](../../../../architecture/ai/canonical-session-turn-work.md), [provider boundary](../../../../architecture/ai/provider-boundary.md), [Runtime ownership](../../../../architecture/runtime/ownership-and-lifecycle.md), [Runtime authorization](../../../../architecture/runtime/auth/authorization.md).
-
-**Ready for Plan 05:** stable product and provider-correlated identities, persisted Turn lifecycle, deterministic mock driver, authorized read model and no hidden mutation without Engine admission.
+The documentation corpus passes docs:check (229 documents); changed authored files pass Prettier
+and git diff --check. A local-link audit checked 86 links with zero broken targets; task graph
+validation found all eight tasks and no cycles. Node 24.20.0 on this Windows host exposes built-in
+DatabaseSync. These are preparation checks only: no product implementation, independent code
+review, SQLite worker acceptance or provider certification is claimed.

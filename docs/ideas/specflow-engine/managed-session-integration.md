@@ -28,7 +28,13 @@ related:
 
 `Runtime Sessions` owns canonical Session/Turn/Work lifecycle, provider invocation, transport, interactions, streaming and cancellation. `Engine` owns Specs, workflow readiness/transitions, physical workspace admission/claims and durable mutation recovery. Neither layer delegates its authority to the other.
 
-Existing [Session/Turn/Work architecture](../../architecture/ai/canonical-session-turn-work.md) currently permits `ProviderSessionRef` as a **temporary** canonical locator until an application-owned Session ID exists. Migration should explicitly decide on a stable product `sessionId`, retaining the composite provider-native locator for adapter correlation. This is a _proposed normative change_, not already adopted.
+The owner-selected [Session/Turn/Work model](../../architecture/ai/canonical-session-turn-work.md)
+uses an independent application-owned `sessionId`; composite provider-native identity remains
+adapter correlation. Spec/Task/workflow associations are composed above that core. The decided
+[foundation design](../../architecture/ai/session-storage-and-lifecycle.md) and
+[Plan 04](execution-plans/04-managed-sessions-foundation/README.md) resolve its storage, authorization
+and bounded history contracts. This document still proposes the later Engine dispatch handshake;
+it does not make managed writer admission an implemented capability.
 
 ## Independent identities
 

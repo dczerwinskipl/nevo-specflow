@@ -18,7 +18,6 @@ import {
   treeRowClassName,
   treeStateLabelClassName,
   treeTrailingLabelClassName,
-  treeItemLabelBeforeTrailingClassName,
 } from './treeRecipes';
 
 type TreeEntry =
@@ -113,15 +112,7 @@ function TreeLevel({
                   ) : (
                     <Icon name="file" />
                   )}
-                  <span
-                    className={
-                      entry.trailing?.kind === 'label'
-                        ? treeItemLabelBeforeTrailingClassName
-                        : treeItemLabelTruncateClassName
-                    }
-                  >
-                    {entry.name}
-                  </span>
+                  <span className={treeItemLabelTruncateClassName}>{entry.name}</span>
                   {entry.trailing && (
                     <span
                       className={
@@ -279,6 +270,33 @@ export const TrailingLabelsNarrow: Story = {
       noType.getBoundingClientRect().right > unclassified.getBoundingClientRect().right
     )
       throw new Error('A long name truncates so the state label stays inside the row.');
+    // The type label is never shortened: on this narrow row it is visually hidden but named.
+    const typed = row('notes/login-flow.md');
+    const ux = Array.from(typed.querySelectorAll('span')).find(
+      (span) => span.textContent === 'UX',
+    )!;
+    // Visually hidden (`sr-only`: absolutely positioned and clipped), never an ellipsis.
+    if (
+      getComputedStyle(ux).position !== 'absolute' ||
+      getComputedStyle(ux).textOverflow === 'ellipsis'
+    )
+      throw new Error('A narrow row hides the type label instead of shortening it.');
+  },
+};
+
+/** On a wide row the type label is shown in full, never with an ellipsis. */
+export const TrailingLabelsWideShowsTheFullType: Story = {
+  args: { entries: labelledFixture, width: 'w-[28rem]' },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const typed = canvasElement.querySelector<HTMLElement>(
+      '[data-tree-item="notes/login-flow.md"]',
+    )!;
+    const ux = Array.from(typed.querySelectorAll('span')).find(
+      (span) => span.textContent === 'UX',
+    )!;
+    if (getComputedStyle(ux).position === 'absolute' || ux.scrollWidth > ux.clientWidth + 1)
+      throw new Error('A wide row shows the whole type label.');
   },
 };
 /** The open (selected) missing row keeps the attention tone on its warning glyph. */

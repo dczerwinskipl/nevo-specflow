@@ -28,7 +28,7 @@ describe('Alert', () => {
       </Alert>,
     );
     expect(markup).toContain('@container/alert');
-    expect(markup).toContain('flex-col gap-3 @lg/alert:flex-row');
+    expect(markup).toContain('flex-col gap-3 @2xl/alert:flex-row');
     expect(markup).toMatch(
       /class="flex shrink-0 flex-wrap items-center gap-2" data-design-slot="actions"/,
     );

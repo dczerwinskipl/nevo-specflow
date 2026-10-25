@@ -10,7 +10,6 @@ import {
   treeAttentionStateLabelClassName,
   treeGlyphSlotClassName,
   treeItemClassName,
-  treeItemLabelBeforeTrailingClassName,
   treeItemLabelTruncateClassName,
   treeLeafItemClassName,
   treeNodeClassName,
@@ -131,13 +130,7 @@ export function DocumentNode({
                   )}
                   <span
                     ref={labelRef}
-                    className={cn(
-                      // A type label gives way before the name; a state label never does.
-                      label?.kind === 'type'
-                        ? treeItemLabelBeforeTrailingClassName
-                        : treeItemLabelTruncateClassName,
-                      missing && 'text-content-muted',
-                    )}
+                    className={cn(treeItemLabelTruncateClassName, missing && 'text-content-muted')}
                   >
                     {name}
                   </span>

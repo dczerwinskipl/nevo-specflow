@@ -1151,7 +1151,9 @@
         "busy": "Trwa inna zmiana tej specyfikacji. Spróbuj ponownie za chwilę.",
         "refused": "Nie zmieniono: {{reason}}",
         "recovery": "Pliki zostały zmienione, ale bez commita. Dokończ operację przed kolejną zmianą.",
-        "resume": "Wznów"
+        "resume": "Wznów",
+        "saveRunning": "Zapis tego dokumentu jeszcze trwa. Spróbuj ponownie, gdy się zakończy.",
+        "saveToResume": "Najpierw wznów lub odrzuć oczekujący zapis."
       },
       "nameError": {
         "characters": "Nazwa nie może zawierać znaków \\ / : * ? \" < > |",

@@ -74,6 +74,11 @@ export interface DocumentSaveOwner {
    * so neither is orphaned under the old id.
    */
   follow: (from: string, to: string) => void;
+  /**
+   * A save of the document is running (`saving`) or was written but not committed and waits for
+   * Resume (`recovery`); read when an operation would give the document a new id.
+   */
+  pendingOf: (id: string) => 'saving' | 'recovery' | undefined;
 }
 
 /** The save was written but not committed: it is resumed with the same operation id and content. */
@@ -265,9 +270,19 @@ export function useDocumentSave({
     [specId, store],
   );
 
+  const pendingOf = useCallback(
+    (id: string): 'saving' | 'recovery' | undefined => {
+      const pendingKey = documentDraftKey(specId, id);
+      if (inFlight.current.has(pendingKey)) return 'saving';
+      return recoveries.current.has(pendingKey) ? 'recovery' : undefined;
+    },
+    [specId],
+  );
+
   const key = document ? documentDraftKey(specId, document.id) : undefined;
   return {
     follow,
+    pendingOf,
     save,
     saveAll,
     savingOf,

@@ -272,6 +272,8 @@ describe('a save that must be resumed or follows a new id', () => {
     save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
     await act(async () => void (await view.result.current.save('b')));
     expect(view.result.current.errorOf('b')).toBeDefined();
+    // An operation that would change the document's id is refused meanwhile (see the tree ops).
+    expect(view.result.current.pendingOf('b')).toBe('recovery');
     // Edits after the failure do not change what is resumed.
     store.update(SPEC, 'b', (current) => (current ? { ...current, content: 'B2' } : current));
     await act(async () => void (await view.result.current.save('b')));
@@ -281,6 +283,7 @@ describe('a save that must be resumed or follows a new id', () => {
     expect(second).toEqual(first);
     expect(second?.content).toBe('B1');
     expect(view.result.current.errorOf('b')).toBeUndefined();
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
   });
 
   it("moves a refused save (the conflict) to the document's new id", async () => {

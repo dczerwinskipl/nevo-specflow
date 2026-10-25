@@ -111,16 +111,13 @@ export const treeRequiredMarkerClassName =
 
 /**
  * Quiet trailing label of a row item (for example the item's type), on the right before the row
- * action. It gives way first: pair it with `treeItemLabelBeforeTrailingClassName` on the name, which
- * keeps at least 16 characters; the label then shortens with an ellipsis (down to nothing) at
- * every width, and stays in the item's accessible name.
+ * action. It is shown in full or not at all: on a row narrower than `@xs` (20rem, room for the
+ * glyph, about 16 characters of name and the label) it is visually hidden, so the name keeps its
+ * room. It is never shortened and always stays in the item's accessible name. One rule at every
+ * pane width, decided by the row's own width (`@container/tree-row`).
  */
 export const treeTrailingLabelClassName =
-  'min-w-0 shrink self-center truncate text-body-sm text-content-muted';
-
-/** The name of a row with a trailing label: it keeps about 16 characters before the label shortens. */
-export const treeItemLabelBeforeTrailingClassName =
-  'min-w-[min(16ch,100%)] flex-1 truncate leading-(--spacing-icon-md)';
+  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-xs/tree-row:sr-only';
 
 /**
  * Trailing label of a row STATE the reader must always see (for example "No type"): it never

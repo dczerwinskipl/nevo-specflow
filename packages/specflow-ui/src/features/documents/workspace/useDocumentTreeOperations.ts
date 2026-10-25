@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBlocker } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
+import { ApiError } from '../../../api';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
@@ -27,6 +28,34 @@ import {
   type FollowedDocument,
 } from './documentIdFollow';
 import { useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
+
+/**
+ * The pending save that blocks an operation able to change document ids (classify, rename, move of
+ * a document, rename or move of a folder and so of the documents in it), if any.
+ */
+export function pendingSaveOf(
+  operation: DocumentOperation,
+  tree: DocumentTree | undefined,
+  pendingOf: (id: string) => 'saving' | 'recovery' | undefined,
+): 'saving' | 'recovery' | undefined {
+  if (operation.action === 'delete') return undefined;
+  const ids =
+    operation.kind === 'document'
+      ? operation.documentId
+        ? [operation.documentId]
+        : []
+      : (tree?.documents ?? [])
+          .filter((document) =>
+            document.path.toLowerCase().startsWith((operation.path ?? '').toLowerCase() + '/'),
+          )
+          .map((document) => document.id);
+  const states = ids.map(pendingOf);
+  return states.includes('recovery')
+    ? 'recovery'
+    : states.includes('saving')
+      ? 'saving'
+      : undefined;
+}
 
 /**
  * Moves focus into a tab's panel once it is rendered: the source editor of a new document, else the
@@ -160,6 +189,8 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       saves.follow(move.from, move.to);
       const anchor = drafts.getAnchor(specId, move.from);
       if (anchor) drafts.setAnchor(specId, move.to, anchor);
+      // Nothing stays under the old id: a file created later at the old path starts clean.
+      drafts.removeAnchor(specId, move.from);
       const record = cache.getQueryData<DocumentContent>(documentKeys.detail(specId, move.from));
       if (record)
         cache.setQueryData<DocumentContent>(documentKeys.detail(specId, move.to), {
@@ -174,10 +205,24 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       tree ? treeWithFollowed(tree, moves) : tree,
     );
     for (const move of moves) await tabs.follow(move.from, move.to);
+    // Once the route has moved on, the old id's cached record goes (any revision).
+    for (const move of moves)
+      cache.removeQueries({ queryKey: documentKeys.detail(specId, move.from).slice(0, 4) });
   };
 
   const operate: DocumentTreeOperations['operate'] = async (operation) => {
     const before = cache.getQueryData<DocumentTree>(documentTreeKeys.tree(specId));
+    // An operation that may give a document a new id waits for that document's save: a running
+    // save would settle under the old id, a save to resume would be replayed under the new one.
+    const pending = pendingSaveOf(operation, before, saves.pendingOf);
+    if (pending)
+      throw new ApiError({
+        kind: 'conflict',
+        operation: 'documents.operate',
+        outcome: 'not-applied',
+        retryable: true,
+        code: pending === 'recovery' ? 'document-save-to-resume' : 'document-save-running',
+      });
     const result = await sendRetained(
       operationAttempt,
       operation,

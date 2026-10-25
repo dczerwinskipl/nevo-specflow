@@ -122,12 +122,28 @@ export const DialogBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
       const measure = () => setMore(node.scrollTop + node.clientHeight < node.scrollHeight - 1);
       measure();
       node.addEventListener('scroll', measure, { passive: true });
-      const observer = new ResizeObserver(measure);
-      observer.observe(node);
-      for (const child of Array.from(node.children)) observer.observe(child);
+      // Size changes of the body and of its children (re-observed when the content is replaced);
+      // without ResizeObserver the scroll position and content changes still update the edge.
+      const sizes = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure);
+      const observeAll = () => {
+        if (!sizes) return;
+        sizes.disconnect();
+        sizes.observe(node);
+        for (const child of Array.from(node.children)) sizes.observe(child);
+      };
+      observeAll();
+      const content =
+        typeof MutationObserver === 'undefined'
+          ? undefined
+          : new MutationObserver(() => {
+              observeAll();
+              measure();
+            });
+      content?.observe(node, { childList: true, subtree: true });
       return () => {
         node.removeEventListener('scroll', measure);
-        observer.disconnect();
+        sizes?.disconnect();
+        content?.disconnect();
       };
     }, [node]);
     return (

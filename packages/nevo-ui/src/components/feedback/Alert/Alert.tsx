@@ -66,7 +66,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
             <Icon name={resolvedIcon} size="md" />
           </span>
         ) : null}
-        <div className="flex min-w-0 flex-1 flex-col gap-3 @lg/alert:flex-row @lg/alert:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 @2xl/alert:flex-row @2xl/alert:items-start">
           <div className="min-w-0 flex-1">
             {title ? (
               <div className="text-label-md text-content-primary" {...designSlot('Alert', 'title')}>

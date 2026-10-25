@@ -456,6 +456,11 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.busy');
     case 'DOCUMENT_RECOVERY_REQUIRED':
       return t('documents.tree.error.recovery');
+    // The document has a save running or one to resume: the operation waits for it.
+    case 'document-save-running':
+      return t('documents.tree.error.saveRunning');
+    case 'document-save-to-resume':
+      return t('documents.tree.error.saveToResume');
     // A write the Runtime does not serve yet (project mode): refused before anything was sent.
     case 'not-implemented':
       return t('documents.tree.error.refused', {

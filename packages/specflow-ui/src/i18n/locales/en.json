@@ -1151,7 +1151,9 @@
         "busy": "Another change to this specification is in progress. Try again in a moment.",
         "refused": "Not changed: {{reason}}",
         "recovery": "The files were changed but not committed. Finish the operation before the next change.",
-        "resume": "Resume"
+        "resume": "Resume",
+        "saveRunning": "A save of this document is still running. Try again when it has finished.",
+        "saveToResume": "Resume or discard the pending save first."
       },
       "nameError": {
         "characters": "The name cannot contain the characters \\ / : * ? \" < > |",

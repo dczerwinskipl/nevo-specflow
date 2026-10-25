@@ -26,7 +26,10 @@ const ArrowNavigation = createContext<MutableRefObject<boolean> | null>(null);
 export const RadioGroup = forwardRef<
   ComponentRef<typeof RadioGroupPrimitive.Root>,
   ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(function RadioGroup({ className, onKeyDownCapture, onPointerDownCapture, ...props }, ref) {
+>(function RadioGroup(
+  { className, onKeyDownCapture, onPointerDownCapture, onBlurCapture, ...props },
+  ref,
+) {
   const capture = useDesignMetadata('RadioGroup');
   const arrow = useRef(false);
   const { children, ...rootProps } = props;
@@ -36,12 +39,25 @@ export const RadioGroup = forwardRef<
         ref={ref}
         className={cn('min-w-0', className)}
         onKeyDownCapture={(event) => {
-          if (ARROW_KEYS.includes(event.key)) arrow.current = true;
+          if (ARROW_KEYS.includes(event.key)) {
+            arrow.current = true;
+            // No focus move follows (one option, the end without loop): forget the arrow, so a
+            // later Tab onto an unchecked option never selects it.
+            const from = event.target;
+            setTimeout(() => {
+              if (globalThis.document.activeElement === from) arrow.current = false;
+            }, 100);
+          }
           onKeyDownCapture?.(event);
         }}
         onPointerDownCapture={(event) => {
           arrow.current = false;
           onPointerDownCapture?.(event);
+        }}
+        onBlurCapture={(event) => {
+          // Focus leaving the group ends any arrow navigation.
+          if (!event.currentTarget.contains(event.relatedTarget)) arrow.current = false;
+          onBlurCapture?.(event);
         }}
         {...rootProps}
         {...capture}

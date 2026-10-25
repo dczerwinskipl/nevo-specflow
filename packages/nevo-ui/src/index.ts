@@ -32,7 +32,6 @@ export {
   treeRowActionClassName,
   treeRowClassName,
   treeTrailingLabelClassName,
-  treeItemLabelBeforeTrailingClassName,
   treeStateLabelClassName,
   treeAttentionStateLabelClassName,
   treeAttentionGlyphClassName,

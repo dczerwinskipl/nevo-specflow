@@ -67,6 +67,9 @@ export const ActionsOnNarrowAndWide: Story = {
       <div data-width="narrow" style={{ width: 340 }}>
         <Alert {...args} />
       </div>
+      <div data-width="medium" style={{ width: 567 }}>
+        <Alert {...args} />
+      </div>
       <div data-width="wide" style={{ width: 900 }}>
         <Alert {...args} />
       </div>
@@ -74,7 +77,7 @@ export const ActionsOnNarrowAndWide: Story = {
   ),
   tags: ['contract'],
   play: async ({ canvasElement }) => {
-    for (const width of ['narrow', 'wide'] as const) {
+    for (const width of ['narrow', 'medium', 'wide'] as const) {
       const frame = canvasElement.querySelector<HTMLElement>(`[data-width="${width}"]`)!;
       const title = frame.querySelector<HTMLElement>('[data-design-slot="title"]')!;
       const actions = frame.querySelector<HTMLElement>('[data-design-slot="actions"]')!;
@@ -83,7 +86,7 @@ export const ActionsOnNarrowAndWide: Story = {
       const gap = second.getBoundingClientRect().left - first.getBoundingClientRect().right;
       const wrapped = second.getBoundingClientRect().top > first.getBoundingClientRect().top;
       assert(wrapped || gap >= 8, `The ${width} actions keep a gap.`);
-      if (width === 'narrow') {
+      if (width !== 'wide') {
         assert(
           actions.getBoundingClientRect().top >= title.getBoundingClientRect().bottom,
           'On a narrow Alert the actions sit below the text.',

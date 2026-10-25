@@ -7,6 +7,7 @@ import { createDocumentDraftStore } from '../editor/documentDraftStore';
 import { DocumentDraftProvider } from '../editor/DocumentDraftProvider';
 import { useDocumentOperations } from '../explorer/useDocumentOperations';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
+import { documentKeys } from '../read-model/queries';
 
 interface BlockerOptions {
   shouldBlockFn: (args: unknown) => boolean;
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   getDocument: vi.fn(),
   followTab: vi.fn((_from: string, _to: string) => Promise.resolve()),
   followSave: vi.fn(),
+  pendingOf: vi.fn((_id: string): 'saving' | 'recovery' | undefined => undefined),
   blocker: undefined as BlockerOptions | undefined,
 }));
 
@@ -36,7 +38,7 @@ vi.mock('../tabs/DocumentTabsProvider', () => ({
   }),
 }));
 vi.mock('../editor/DocumentEditorProvider', () => ({
-  useDocumentSaveOwner: () => ({ follow: mocks.followSave }),
+  useDocumentSaveOwner: () => ({ follow: mocks.followSave, pendingOf: mocks.pendingOf }),
 }));
 vi.mock('../../../app/useAppServices', () => ({
   useAppServices: () => ({
@@ -75,7 +77,7 @@ function setup() {
     },
     { wrapper },
   );
-  return { store, view };
+  return { store, view, cache };
 }
 
 beforeEach(() => {
@@ -218,6 +220,55 @@ describe('tree operations and tabs', () => {
       } as never),
     );
     expect(store.get('s', 'd1')?.revision).toBe('r0');
+  });
+
+  it.each([
+    ['recovery', 'document-save-to-resume'],
+    ['saving', 'document-save-running'],
+  ] as const)(
+    'refuses an id-changing operation while the document has a %s save, sending nothing',
+    async (state, code) => {
+      mocks.pendingOf.mockImplementation((id) => (id === 'u-a' ? state : undefined));
+      const { view } = setup();
+      await expect(
+        view.result.current.treeOps.operate({
+          action: 'classify',
+          kind: 'document',
+          documentId: 'u-a',
+          type: 'research',
+          expectedRevision: 'r1',
+        } as never),
+      ).rejects.toMatchObject({ code, outcome: 'not-applied' });
+      expect(mocks.operateDocument).not.toHaveBeenCalled();
+      mocks.pendingOf.mockImplementation(() => undefined);
+    },
+  );
+
+  it("drops the old id's reading position and cached record after an id change", async () => {
+    mocks.operateDocument.mockResolvedValue({
+      revision: 'r',
+      documents: [{ id: 'research', path: 'a.md', revision: 'r1', type: 'research' }],
+      removedDocumentIds: [],
+      folders: [],
+    });
+    const { store, view, cache } = setup();
+    store.setAnchor('s', 'u-a', { line: 4, offset: 0 } as never);
+    cache.setQueryData(documentKeys.detail('s', 'u-a'), { id: 'u-a', content: 'old' });
+    await act(() =>
+      view.result.current.treeOps.operate({
+        action: 'classify',
+        kind: 'document',
+        documentId: 'u-a',
+        type: 'research',
+        expectedRevision: 'r1',
+      } as never),
+    );
+    expect(store.getAnchor('s', 'u-a')).toBeUndefined();
+    expect(store.getAnchor('s', 'research')).toEqual({ line: 4, offset: 0 });
+    expect(cache.getQueryData(documentKeys.detail('s', 'u-a'))).toBeUndefined();
+    expect(cache.getQueryData(documentKeys.detail('s', 'research'))).toMatchObject({
+      id: 'research',
+    });
   });
 
   it('classifies a dirty document: draft, save state, tab and route follow the new id', async () => {

@@ -95,6 +95,8 @@ export interface DocumentDraftStore {
   subscribeSpec(specId: string, listener: () => void): () => void;
   getAnchor(specId: string, documentId: string): ScrollAnchor | undefined;
   setAnchor(specId: string, documentId: string, anchor: ScrollAnchor): void;
+  /** Forgets a reading position (the document moved to another id). */
+  removeAnchor(specId: string, documentId: string): void;
 }
 
 export function createDocumentDraftStore(): DocumentDraftStore {
@@ -133,5 +135,6 @@ export function createDocumentDraftStore(): DocumentDraftStore {
       }),
     getAnchor: (s, d) => anchors.get(documentDraftKey(s, d)),
     setAnchor: (s, d, anchor) => void anchors.set(documentDraftKey(s, d), anchor),
+    removeAnchor: (s, d) => void anchors.delete(documentDraftKey(s, d)),
   };
 }

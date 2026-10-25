@@ -17,7 +17,6 @@ import {
   treeAttentionStateLabelClassName,
   treeStateLabelClassName,
   treeTrailingLabelClassName,
-  treeItemLabelBeforeTrailingClassName,
 } from './treeRecipes';
 
 describe('compact tree geometry', () => {
@@ -109,9 +108,11 @@ describe('tree row actions and labels', () => {
 
   it('hides a trailing label on narrow rows but never a state label', () => {
     expect(treeTrailingLabelClassName).toContain('text-content-muted');
-    // The type label gives way (ellipsis) before the name goes below about 16 characters.
-    expect(treeTrailingLabelClassName).toMatch(/min-w-0 shrink .*truncate/);
-    expect(treeItemLabelBeforeTrailingClassName).toContain('min-w-[min(16ch,100%)]');
+    // Shown in full or visually hidden (never an ellipsis), by the row's own width.
+    expect(treeTrailingLabelClassName).toContain('shrink-0');
+    expect(treeTrailingLabelClassName).toContain('whitespace-nowrap');
+    expect(treeTrailingLabelClassName).toContain('@max-xs/tree-row:sr-only');
+    expect(treeTrailingLabelClassName).not.toMatch(/truncate|text-ellipsis/);
     for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
       expect(label).toContain('shrink-0');
       expect(label).toContain('whitespace-nowrap');

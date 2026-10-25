@@ -41,8 +41,9 @@ Exact legacy files are under D:/repos/git/nevo/tools/dashboard; inspected HEAD 1
 | W1 managed effect contract | Engine public admission/claim/settlement operations for an ad-hoc writer even without Task, cross-process exclusion with D4/Create/Close                                       | Owner is Engine integration; must reuse current durable resource algebra, never add Runtime-only locks                                                      |
 | W2 writable dispatch       | Runtime durable intent -> Engine claim -> provider correlation -> settlement; uncertain effects retain claim and block conflicting writer; no automatic workflow finish        | W1 + chosen real adapter; real crash-cut and competing process tests required                                                                               |
 
-Separate branches/PRs are suggested for each real adapter and the Engine shared capability after
-the foundation merges. Do not start provider writable work on the premise that E3/E5 plans already
+The owner requires one feature branch and one PR (#98) for this migration. The packages above
+are implementation/review stages inside that PR, not separate pull requests. The temporary P1
+PR #99 is closed and its commits are included in #98. Do not start provider writable work on the premise that E3/E5 plans already
 expose implemented public APIs. W1 is a separately accepted shared capability and a real external
 prerequisite, not a fake depends_on edge within Plan 04. Full Task workflow/batch remains E3/E5.
 

@@ -20,7 +20,7 @@ related:
 
 # Shared provider process boundary
 
-P1 lives in Runtime Sessions `providers/process/`, based on foundation PR #98. It is a private
+P1 lives in Runtime Sessions `providers/process/`, included in the single migration PR #98. It is a private
 transport prerequisite, not a second Session model or public provider registry. No real provider
 is enabled by this package. The next package is the Claude adapter; Codex and Antigravity follow.
 Writable dispatch still needs the separate Engine effect claim/settlement contract.

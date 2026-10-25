@@ -154,6 +154,8 @@ or a guarantee on arbitrary hardware. Explain a miss before accepting the delive
 
 No unresolved product/storage/auth/API decisions block T01–T08 in Plan 04. T01 is bounded
 characterization, T02 schema realization, not another round of choosing architecture.
-Actual execution follows task dependencies and review gates; no tests have been claimed passed.
+Actual execution follows task dependencies and review gates. Executed foundation checks are
+recorded separately in `ideas.specflow-runtime.session-migration-evidence`; independent review
+is still required before promoting draft guarantees.
 Full provider parity follows the linked provider migration plan. Writable execution waits for
 the explicit Engine integration contract and proof; it is not folded silently into foundation.

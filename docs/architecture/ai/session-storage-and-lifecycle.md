@@ -22,8 +22,9 @@ related:
 
 # Managed Session persistence and lifecycle
 
-This design is ready to implement within Plan 04. It is not a claim of existing software.
-It remains draft until implementation and review prove the design. Current architecture wins.
+Plan 04 implements this design in PR #98. It remains draft pending independent review;
+the migration evidence document records executed verification separately from design obligations.
+Current architecture wins.
 The independent Session boundary is an owner decision recorded in the canonical AI model.
 
 ## Independent capability

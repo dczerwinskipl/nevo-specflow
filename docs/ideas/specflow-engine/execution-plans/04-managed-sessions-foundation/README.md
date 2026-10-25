@@ -103,3 +103,10 @@ and git diff --check. A local-link audit checked 86 links with zero broken targe
 validation found all eight tasks and no cycles. Node 24.20.0 on this Windows host exposes built-in
 DatabaseSync. These are preparation checks only: no product implementation, independent code
 review, SQLite worker acceptance or provider certification is claimed.
+
+## Implementation handoff
+
+PR #98 contains the foundation implementation on `feature/managed-sessions-foundation`.
+See `ideas.specflow-runtime.session-migration-evidence` for executed checks and remaining review
+gates. Keep these stable task IDs until independent code and UX review close the worklist.
+Real providers and writable Engine integration remain separate delivery packages.

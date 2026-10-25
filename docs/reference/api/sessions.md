@@ -21,12 +21,31 @@ related:
 
 # Managed Sessions API
 
-Design contract for Plan 04; not yet implemented. Schemas/types will live in
+Plan 04 foundation contract, implemented on `feature/managed-sessions-foundation` in PR #98.
+This document remains draft pending independent review. Schemas/types live in
 `@nevo/specflow-contracts/sessions`. No aliases for legacy /agent-sessions or DemoSession.
 All JSON objects reject unknown keys. Optional fields are omitted, never overloaded null values.
 IDs below are canonical UUIDs except provider/model IDs, content revision and opaque cursors.
 Sequences/revisions are nonnegative safe integers; overflow fails closed, not wraparound.
 Timestamps are UTC ISO-8601 strings. Byte limits refer to UTF-8, not JavaScript string length.
+
+## Enable the foundation
+
+Add this project-owned top-level section to `.nevo/config.yaml`:
+
+```yaml
+sessions:
+  enabled: true
+  providers:
+    mock:
+      enabled: true
+```
+
+Both flags default to false. Local overrides and unknown provider keys are rejected.
+Start the existing product server and open `/sessions/new`; created chats use `/sessions/:sessionId`.
+The explicitly labelled mock performs no external effects. Real provider launch, imported Nevo
+history and writable Engine execution are outside this foundation. Disabling only the provider
+keeps stored reads available. Disabling the feature acquires no database owner.
 
 ## Authorization and transport
 

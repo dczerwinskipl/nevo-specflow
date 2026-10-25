@@ -71,7 +71,7 @@ encoding and oversized partial diagnostic lines are dropped/marked, not forwarde
 
 Retained data is capped at 1 MiB per invocation and 100 MiB per store. Both invocation records and
 retained frame metadata have explicit 1024-item limits. Head eviction is amortized constant time.
-Settled records are evicted first at global/cardi­nality limits. Age eligibility is enforced during
+Settled records are evicted first at global/cardinality limits. Age eligibility is enforced during
 open/read/write/finish/statistics, with a maximum configured age of seven days. `release` erases the
 record and pending bookkeeping; captures do not survive Runtime exit. A disk/raw-capture feature
 requires its own reviewed storage/GC policy before enablement.
@@ -95,7 +95,12 @@ No provider installation, credentials or live-model call is required for P1 test
 
 ## Verification
 
-Windows focused tests currently pass: environment isolation, UTF-8 framing/backpressure, secret
-redaction, metadata/byte/age bounds, cleanup rollback and actual process-tree cancellation. The
-Linux-only orphan-group case is verified separately on Linux. Review and final Linux evidence are
-recorded when the committed package has passed those checks; do not infer real-provider acceptance.
+Windows focused tests pass: 21 tests and one Linux-only test skipped. On committed `8f14a586`,
+Linux build/typecheck and the complete Runtime suite pass: 729 tests, including the orphan-group
+case. Both platforms cover real process cancellation; fixtures require no model/API call.
+
+Independent code review found sanitizer ordering, diagnostic acquisition rollback and diagnostic
+metadata/performance defects. They were fixed with regressions and independently rechecked; the
+reviewer found no remaining concrete blocker in the changed paths. The diagnostic stress probe now
+retains 1024 bytes after 128 KiB of newline input; timing is informational, not a hardware SLA.
+No real-provider acceptance or forced PID-reuse certification is claimed.

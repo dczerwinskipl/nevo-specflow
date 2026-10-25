@@ -19,7 +19,7 @@ export function createSseStream<TEvent, TParams>(
 ): SseStream<TEvent> {
   const controller = new AbortController();
   const externalSignal = options.config?.signal;
-  let lastEventId: string | undefined;
+  let lastEventId: string | undefined = options.config?.lastEventId;
   let retryMs = DEFAULT_RETRY_MS;
   let consumed = false;
   let closed = false;

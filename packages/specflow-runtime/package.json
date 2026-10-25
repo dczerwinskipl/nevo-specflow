@@ -6,6 +6,10 @@
   "description": "Nevo SpecFlow Runtime vertical: configurable long-lived Runtime server, authentication, and authorization foundation, bundled into @nevo/specflow.",
   "license": "MIT",
   "exports": {
+    "./session-worker": {
+      "types": "./dist/session-worker.d.ts",
+      "default": "./dist/session-worker.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"

@@ -33,7 +33,7 @@ import {
   workspaceRegistryPath,
 } from '../../specflow-engine/src/testing';
 import crossSpawn from 'cross-spawn';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -211,6 +211,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         'package/README.md',
         'package/THIRD_PARTY_NOTICES.txt',
         'package/dist/bin.js',
+        'package/dist/session-worker.js',
         'package/dist/ui/index.html',
         'package/package.json',
       ]),
@@ -225,6 +226,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
           path === 'package/THIRD_PARTY_NOTICES.txt' ||
           path === 'package/package.json' ||
           path === 'package/dist/bin.js' ||
+          path === 'package/dist/session-worker.js' ||
           path.startsWith('package/dist/ui/'),
       ),
     ).toBe(true);
@@ -313,6 +315,11 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         '        enabled: false',
         '      oidc:',
         '        instances: {}',
+        'sessions:',
+        '  enabled: true',
+        '  providers:',
+        '    mock:',
+        '      enabled: true',
         '',
       ].join('\n'),
       'utf8',
@@ -403,6 +410,32 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       expect(overview.collection).toBe('current');
       expect(overview.items).toEqual([]);
       expect(response.status).toBe(200);
+      const createdSession = await fetch(`http://127.0.0.1:${port}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: crypto.randomUUID(),
+          providerId: 'mock',
+          mode: 'read-only',
+        }),
+      });
+      expect(createdSession.status, await createdSession.clone().text()).toBe(201);
+      const { sessionId } = (await createdSession.json()) as { sessionId: string };
+      const startTurn = await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}/turns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: crypto.randomUUID(),
+          message: 'Installed SQLite worker',
+        }),
+      });
+      expect(startTurn.status).toBe(202);
+      await vi.waitFor(async () => {
+        const snapshot = (await (
+          await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}`)
+        ).json()) as { entries: { kind: string }[] };
+        expect(snapshot.entries.at(-1)?.kind).toBe('outcome');
+      });
       await expect(response.json()).resolves.toEqual({
         authenticationRequired: false,
         authenticated: false,

@@ -1,4 +1,5 @@
 import cookie from '@fastify/cookie';
+import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { CapabilityId } from '@nevo/authorization';
@@ -18,6 +19,7 @@ import {
   createSessionsFeature,
   SessionCapabilities,
   type SessionReferenceOwner,
+  type SessionDriver,
 } from '../features/sessions';
 import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
 import {
@@ -57,7 +59,11 @@ export interface RuntimeAppDependencies {
   readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
-  readonly sessions?: { references?: SessionReferenceOwner };
+  readonly sessions?: {
+    references?: SessionReferenceOwner;
+    storage?: { directory: string; projectId: string };
+    driver?: SessionDriver;
+  };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
   readonly webApp?: RuntimeWebApp;
@@ -193,7 +199,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         : {}),
       ...(engine ? { engine } : {}),
     }),
-    createSessionsFeature(),
+    createSessionsFeature({
+      config: mode === 'project' ? config.sessions : undefined,
+      storage:
+        dependencies.sessions?.storage ??
+        (engine
+          ? {
+              directory: join(engine.context.project.stateRoot, 'sessions'),
+              projectId: engine.context.project.projectId,
+            }
+          : undefined),
+      driver: dependencies.sessions?.driver,
+    }),
     createSettingsFeature(),
   ];
 

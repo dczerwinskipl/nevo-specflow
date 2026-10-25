@@ -60,6 +60,8 @@ export interface SseRequestConfig<
   TEvent = SseEvent,
   TParams = unknown,
 > extends HttpTransportConfig<TParams> {
+  /** Initial replay boundary, e.g. from an authoritative bounded snapshot. */
+  readonly lastEventId?: string;
   readonly decode?: (event: SseEvent) => TEvent;
   readonly onConnected?: () => void;
   readonly onReconnecting?: (context: SseReconnectContext) => void;

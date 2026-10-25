@@ -26,6 +26,7 @@ import { defaultSpecFlowServices } from '../services';
 import { taskAppRoutes, specificationTaskRoute } from '../features/tasks/routes';
 import { documentsAppRoutes } from '../features/documents/routes';
 import { sessionsAppRoutes } from '../features/sessions/routes';
+import { managedSessionAppRoutes } from '../features/sessions/managed/routes';
 import { gitAppRoutes } from '../features/git/routes';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 import { UiPlaygroundScreen } from './screens';
@@ -61,6 +62,7 @@ export const routeTree = rootRoute.addChildren([
   ...authRoutes,
   ...specsRootRoutes,
   appRoute.addChildren([
+    ...managedSessionAppRoutes,
     ...specsAppRoutes,
     createSpecificationRoute,
     createOperationRoute,

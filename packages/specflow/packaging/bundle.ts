@@ -4,6 +4,7 @@
 
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 
@@ -54,6 +55,21 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     },
     legalComments: 'none',
     sourcemap: false,
+    logLevel: 'silent',
+  });
+
+  // A Worker must be an installed artifact beside bin.js; workspace source paths are never used.
+  await build({
+    absWorkingDir: cwd,
+    entryPoints: [
+      fileURLToPath(new URL('../../specflow-runtime/src/session-worker.ts', import.meta.url)),
+    ],
+    outfile: join(dirname(outfile), 'session-worker.js'),
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node24',
+    packages: 'bundle',
     logLevel: 'silent',
   });
 

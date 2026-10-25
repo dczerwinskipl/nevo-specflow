@@ -46,7 +46,8 @@ export interface SpecFlowAppServices {
   readonly documentsApi: DocumentsApi;
   /**
    * The same port in a project Runtime: the real tree read, writes unavailable until the Runtime
-   * serves them. The Runtime mode selects it once the workspace renders in project mode (phase C).
+   * serves them. Wired but not used yet: the Documents workspace renders in demo mode only; the
+   * Runtime mode selects this port once the workspace renders in project mode too.
    */
   readonly projectDocumentsApi: DocumentsApi;
   readonly sessionsApi: SessionsApi;

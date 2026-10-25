@@ -268,15 +268,14 @@ const coded = (code: string) =>
 
 describe('a save that must be resumed or follows a new id', () => {
   it('resumes a written but uncommitted save with the same operation id and content', async () => {
-    const { save, store, view } = setup();
+    const { save, view } = setup();
     save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
     await act(async () => void (await view.result.current.save('b')));
     expect(view.result.current.errorOf('b')).toBeDefined();
     // An operation that would change the document's id is refused meanwhile (see the tree ops).
     expect(view.result.current.pendingOf('b')).toBe('recovery');
-    // Edits after the failure do not change what is resumed.
-    store.update(SPEC, 'b', (current) => (current ? { ...current, content: 'B2' } : current));
-    await act(async () => void (await view.result.current.save('b')));
+    // Resume replays exactly what was written.
+    await act(async () => void (await view.result.current.save('b', { resume: true })));
     const [first, second] = save.mock.calls.map(
       (call) => (call as unknown[])[2] as { operationId: string; content: string },
     );
@@ -284,6 +283,80 @@ describe('a save that must be resumed or follows a new id', () => {
     expect(second?.content).toBe('B1');
     expect(view.result.current.errorOf('b')).toBeUndefined();
     expect(view.result.current.pendingOf('b')).toBeUndefined();
+  });
+
+  it('replays a save whose answer was lost with the same operation id and revision', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) =>
+        (call as unknown[])[2] as {
+          operationId: string;
+          content: string;
+          expectedRevision: string;
+        },
+    );
+    // The server may have committed the first one: the retry is the same operation.
+    expect(second).toEqual(first);
+    expect(view.result.current.errorOf('b')).toBeUndefined();
+    // Settled: a later edit is a new operation.
+    await act(async () => void (await view.result.current.save('b')));
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts a new save after an unknown outcome once the text changed', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    store.update(SPEC, 'b', (current) => (current ? { ...current, content: 'B2' } : current));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) => (call as unknown[])[2] as { operationId: string; content: string },
+    );
+    expect(second?.content).toBe('B2');
+    expect(second?.operationId).not.toBe(first?.operationId);
+  });
+
+  it('forgets a save to resume once the draft was discarded (no request for a clean draft)', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.pendingOf('b')).toBe('recovery');
+    // Discard: the draft is back at its baseline.
+    store.update(SPEC, 'b', (current) =>
+      current ? { ...current, content: current.baseline } : current,
+    );
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
+    await act(async () => {
+      expect(await view.result.current.save('b')).toMatchObject({ ok: true });
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves a new edit made after a save to resume as a new operation, not the old text', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
+    await act(async () => void (await view.result.current.save('b')));
+    // The draft was reloaded and edited again (for example after the tab was closed and reopened).
+    store.remove(SPEC, 'b');
+    store.set(SPEC, 'b', draft('B3', 'b0', 'b5'));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) =>
+        (call as unknown[])[2] as {
+          operationId: string;
+          content: string;
+          expectedRevision: string;
+        },
+    );
+    expect(second).toMatchObject({ content: 'B3', expectedRevision: 'b5' });
+    expect(second?.operationId).not.toBe(first?.operationId);
   });
 
   it("moves a refused save (the conflict) to the document's new id", async () => {

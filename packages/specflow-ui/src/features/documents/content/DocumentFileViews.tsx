@@ -12,16 +12,12 @@ export function formatFileSize(bytes: number, locale?: string): string {
   // `Intl` spells the byte unit out ("27 byte"); the symbol reads the same in both languages.
   if (bytes < 1000) return `${new Intl.NumberFormat(locale).format(bytes)} B`;
   const [value, unit] =
-    bytes < 1000
-      ? [bytes, 'byte']
-      : bytes < 1000 * 1000
-        ? [bytes / 1000, 'kilobyte']
-        : [bytes / (1000 * 1000), 'megabyte'];
+    bytes < 1000 * 1000 ? [bytes / 1000, 'kilobyte'] : [bytes / (1000 * 1000), 'megabyte'];
   return new Intl.NumberFormat(locale, {
     style: 'unit',
     unit,
     unitDisplay: 'short',
-    maximumFractionDigits: unit === 'byte' ? 0 : 1,
+    maximumFractionDigits: 1,
   }).format(value);
 }
 

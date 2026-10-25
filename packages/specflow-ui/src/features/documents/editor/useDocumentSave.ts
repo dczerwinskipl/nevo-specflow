@@ -2,7 +2,7 @@ import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
-import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { newId } from '../../../shared/ids/newId';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import { specificationKeys } from '../../specs/read-model';
@@ -52,7 +52,7 @@ export interface DocumentSaveOwner {
    * Saves one document of the spec (default: the one the session currently shows) from its draft.
    * Concurrent calls for the same document join the one in flight.
    */
-  save: (documentId?: string) => Promise<SaveResult | undefined>;
+  save: (documentId?: string, options?: { resume?: boolean }) => Promise<SaveResult | undefined>;
   /**
    * Saves each distinct document once, in input order, and stops at the first failure; ids after it are
    * neither saved nor listed. `saved` also holds clean documents (no request), `skipped` holds ids
@@ -85,6 +85,16 @@ export interface DocumentSaveOwner {
 const recoveryCode = 'DOCUMENT_RECOVERY_REQUIRED';
 
 /**
+ * A save sent whose result is not final: written but not committed (`recovery`, finished by
+ * Resume), or without an answer (`unknown`, the server may have applied it). Retrying it sends
+ * exactly the same operation, so the user's own write never comes back as a conflict.
+ */
+interface RetainedSave {
+  readonly variables: SaveVariables;
+  readonly reason: 'recovery' | 'unknown';
+}
+
+/**
  * The single owner of the Save operation for the open document. The header action, the keyboard
  * shortcut and the leave-document dialog all call `save`, so there is one `saving` flag, one error
  * and one request. The mutation variables carry the resource identity: its callbacks update only
@@ -110,7 +120,27 @@ export function useDocumentSave({
   });
   const inFlight = useRef(new Map<string, Promise<SaveResult>>());
   // Saves that must be resumed as they were sent (same operation id); owned by `save` only.
-  const recoveries = useRef(new Map<string, SaveVariables>());
+  const retained = useRef(new Map<string, RetainedSave>());
+  /**
+   * The retained save of a document while it still describes the draft: same incarnation (not
+   * discarded or closed since) and the same text. A discarded, reloaded or edited draft drops it,
+   * so a new edit is a new save and a clean draft sends nothing.
+   */
+  const retainedFor = useCallback(
+    (spec: string, id: string): RetainedSave | undefined => {
+      const key = documentDraftKey(spec, id);
+      const entry = retained.current.get(key);
+      if (!entry) return undefined;
+      if (
+        entry.variables.incarnation === store.incarnation(spec, id) &&
+        store.get(spec, id)?.content === entry.variables.content
+      )
+        return entry;
+      retained.current.delete(key);
+      return undefined;
+    },
+    [store],
+  );
   const [pending, setPending] = useState<readonly string[]>([]);
   const [errors, setErrors] = useState<Readonly<Record<string, unknown>>>({});
 
@@ -157,7 +187,10 @@ export function useDocumentSave({
   const { mutateAsync } = mutation;
 
   const save = useCallback(
-    async (documentId?: string): Promise<SaveResult | undefined> => {
+    async (
+      documentId?: string,
+      options?: { resume?: boolean },
+    ): Promise<SaveResult | undefined> => {
       const { specId: openSpec, document: open, draft: openDraft } = current.current;
       const id = documentId ?? open?.id;
       if (id === undefined) return undefined;
@@ -168,8 +201,10 @@ export function useDocumentSave({
       const key = documentDraftKey(openSpec, id);
       const joined = inFlight.current.get(key);
       if (joined) return joined;
-      // A save that was written but not committed is resumed exactly as it was sent.
-      const variables: SaveVariables = recoveries.current.get(key) ?? {
+      // A save without a final result is sent again exactly as it was: Resume always replays the
+      // written one; otherwise only while it still describes the draft.
+      const kept = options?.resume ? retained.current.get(key) : retainedFor(openSpec, id);
+      const variables: SaveVariables = kept?.variables ?? {
         specId: openSpec,
         documentId: id,
         content: source.content,
@@ -182,7 +217,7 @@ export function useDocumentSave({
         documentId: variables.documentId,
         content: variables.content,
       };
-      if (!isDraftDirty(source) && !recoveries.current.has(key)) return { ok: true, ...base };
+      if (!isDraftDirty(source) && !(options?.resume && kept)) return { ok: true, ...base };
       const run = (async (): Promise<SaveResult> => {
         setErrors((all) => {
           const rest = { ...all };
@@ -192,11 +227,15 @@ export function useDocumentSave({
         setPending((keys) => [...keys, key]);
         try {
           const result = await mutateAsync(variables);
-          recoveries.current.delete(key);
+          retained.current.delete(key);
           return { ok: true, ...base, committed: result.committed };
         } catch (error) {
-          if (apiErrorCode(error) === recoveryCode) recoveries.current.set(key, variables);
-          else recoveries.current.delete(key);
+          // Kept for an exact replay: written but not committed, or no answer at all.
+          if (apiErrorCode(error) === recoveryCode)
+            retained.current.set(key, { variables, reason: 'recovery' });
+          else if (writeOutcomeUnknown(error))
+            retained.current.set(key, { variables, reason: 'unknown' });
+          else retained.current.delete(key);
           setErrors((all) => ({ ...all, [key]: error }));
           return { ok: false, ...base, error };
         } finally {
@@ -207,7 +246,7 @@ export function useDocumentSave({
       inFlight.current.set(key, run);
       return run;
     },
-    [mutateAsync, store],
+    [mutateAsync, store, retainedFor],
   );
 
   const saveAll = useCallback(
@@ -252,13 +291,16 @@ export function useDocumentSave({
     (from: string, to: string) => {
       const fromKey = documentDraftKey(specId, from);
       const toKey = documentDraftKey(specId, to);
-      const recovery = recoveries.current.get(fromKey);
-      if (recovery) {
-        recoveries.current.delete(fromKey);
-        recoveries.current.set(toKey, {
-          ...recovery,
-          documentId: to,
-          incarnation: store.incarnation(specId, to),
+      const kept = retained.current.get(fromKey);
+      if (kept) {
+        retained.current.delete(fromKey);
+        retained.current.set(toKey, {
+          ...kept,
+          variables: {
+            ...kept.variables,
+            documentId: to,
+            incarnation: store.incarnation(specId, to),
+          },
         });
       }
       setErrors((all) => {
@@ -274,9 +316,9 @@ export function useDocumentSave({
     (id: string): 'saving' | 'recovery' | undefined => {
       const pendingKey = documentDraftKey(specId, id);
       if (inFlight.current.has(pendingKey)) return 'saving';
-      return recoveries.current.has(pendingKey) ? 'recovery' : undefined;
+      return retainedFor(specId, id)?.reason === 'recovery' ? 'recovery' : undefined;
     },
-    [specId],
+    [specId, retainedFor],
   );
 
   const key = document ? documentDraftKey(specId, document.id) : undefined;

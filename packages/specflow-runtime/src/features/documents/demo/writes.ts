@@ -353,12 +353,21 @@ function planFolderOperation(
   if (input.action === 'delete') {
     const files = new Map([...documents.files].filter(([file]) => !within(file, path)));
     const removed = [...documents.files.keys()].filter((file) => within(file, path));
+    // Registrations under the folder whose file is already missing go with it too.
+    const dangling = documents.registry.filter(
+      (entry) => !documents.files.has(entry.path) && within(entry.path, path),
+    );
     return {
-      registry: documents.registry.filter((entry) => !removed.includes(entry.path)),
+      registry: documents.registry.filter(
+        (entry) => !removed.includes(entry.path) && !dangling.includes(entry),
+      ),
       files,
       folders: documents.folders.filter((folder) => !within(folder, path)),
       affectedPaths: [],
-      removedDocumentIds: removed.map((file) => documentIdOf(documents, file)),
+      removedDocumentIds: [
+        ...removed.map((file) => documentIdOf(documents, file)),
+        ...dangling.map((entry) => entry.id),
+      ],
     };
   }
   const destination = checkedFolderPath(

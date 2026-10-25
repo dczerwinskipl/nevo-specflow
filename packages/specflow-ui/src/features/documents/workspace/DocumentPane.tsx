@@ -23,6 +23,8 @@ import { useAppServices } from '../../../app/useAppServices';
 import { typeTitle } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentTreeKeys } from '../read-model/queries';
+import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { DocumentFileView, downloadDocument } from '../content/DocumentFileViews';
 import { assignTypeFor, useDocumentsTreeActions } from './DocumentsTreeActions';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
@@ -150,6 +152,22 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
       </AppContent>
     );
   const status = isHttpClientError(query?.error) ? query.error.status : undefined;
+  // Text above the JSON read limit (413): the file view with its facts from the tree and Download;
+  // retrying could only fail the same way.
+  const tooLarge =
+    apiErrorCode(query?.error) === 'DOCUMENT_TOO_LARGE'
+      ? tree.data?.documents.find((entry) => entry.id === data.documentId)
+      : undefined;
+  if (tooLarge)
+    return (
+      <AppContent className="h-full w-full">
+        {closeFailed}
+        <DocumentFileView
+          document={{ ...tooLarge, kind: 'text' }}
+          onDownload={() => downloadDocument(data.specId, tooLarge)}
+        />
+      </AppContent>
+    );
   if (!query || query.isPending)
     return (
       <p role="status" className="p-5">

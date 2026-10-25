@@ -409,6 +409,40 @@ describe('demo document writes (D4 shapes)', () => {
     expect((await tree('review')).dangling.map((entry) => entry.path)).toEqual(['ux.md']);
   });
 
+  it('deleting a folder also removes the registrations of its missing files', async () => {
+    const { env, find, tree } = setup();
+    // A registration under `evidence` whose file is gone (dangling).
+    const directory = await env.documents.directory('review', find);
+    directory!.registry.push({ id: 'gone', path: 'evidence/gone.md', type: 'note' });
+    expect((await tree('review')).dangling.map((entry) => entry.id)).toContain('gone');
+    const result = await env.documents.operate(
+      'alice',
+      'review',
+      {
+        operationId: op(40),
+        action: 'delete',
+        kind: 'folder',
+        path: 'evidence',
+        expectedRevision: (await tree('review')).revision,
+      },
+      find,
+    );
+    expect(result.removedDocumentIds).toContain('gone');
+    const after = await tree('review');
+    expect(after.dangling.map((entry) => entry.id)).not.toContain('gone');
+    // The path is free again.
+    expect(
+      await code(
+        env.documents.create(
+          'alice',
+          'review',
+          { operationId: op(41), documents: [{ path: 'evidence/gone.md', content: '' }] },
+          find,
+        ),
+      ),
+    ).toEqual(['resolved']);
+  });
+
   it('creates documents from a template and from content, with folders, and refuses conflicts', async () => {
     const { env, find, source, tree } = setup();
     const created = await env.documents.create(

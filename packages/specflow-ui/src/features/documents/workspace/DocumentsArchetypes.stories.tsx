@@ -235,15 +235,24 @@ function Workspace({
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
       documentApi: {
         getDocument: (_spec, id) =>
-          tree.documents.some((document) => document.id === id)
-            ? Promise.resolve(record(tree, id))
-            : Promise.reject(
-                new HttpClientError('Not found', {
+          // Text above the JSON read limit: the Runtime answers 413 DOCUMENT_TOO_LARGE.
+          id === 'huge'
+            ? Promise.reject(
+                new HttpClientError('Too large', {
                   kind: 'http',
-                  status: 404,
-                  data: { error: 'DOCUMENT_FILE_MISSING', code: 'DOCUMENT_FILE_MISSING' },
+                  status: 413,
+                  data: { error: 'DOCUMENT_TOO_LARGE', code: 'DOCUMENT_TOO_LARGE' },
                 }),
-              ),
+              )
+            : tree.documents.some((document) => document.id === id)
+              ? Promise.resolve(record(tree, id))
+              : Promise.reject(
+                  new HttpClientError('Not found', {
+                    kind: 'http',
+                    status: 404,
+                    data: { error: 'DOCUMENT_FILE_MISSING', code: 'DOCUMENT_FILE_MISSING' },
+                  }),
+                ),
       },
       documentsApi: {
         ...defaults.documentsApi,
@@ -670,13 +679,15 @@ export const SaveRefusedFileMissing: Story = {
   },
 };
 
-/** Text above the read limit opens as a file with its facts and Download. */
+/** Text above the read limit (the read answers 413) opens as a file with its facts and Download. */
 export const TooLargeText: Story = {
   args: { path: `/specs/${SPEC}/documents/huge` },
   play: async () => {
     await wide();
     const screen = body();
     await screen.findByText('This file is too large to show here.');
+    // The read would fail the same way again: no Retry.
+    await expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
     await expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1);
   },
 };

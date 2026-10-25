@@ -266,7 +266,8 @@ export function DocumentEditorProvider({
     const { document: open } = shown.current;
     if (open) setLoadDiskFor(open.id);
   }, []);
-  const resume = useCallback(() => void save(), [save]);
+  // Resume replays the written save exactly (its text may no longer be the draft's).
+  const resume = useCallback(() => void saveOwned(undefined, { resume: true }), [saveOwned]);
   const toggleActualSize = useCallback(() => {
     const { document: open } = shown.current;
     if (!open) return;

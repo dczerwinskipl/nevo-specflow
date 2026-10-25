@@ -115,19 +115,21 @@ const markdown: DocumentContentKind = {
               onPress: session.toggleEditing,
             },
           ];
-    return [...mode, ...saveActions(view, context)];
+    // Markdown the Runtime reports as not editable (for example an archived specification) can be
+    // downloaded, as its read-only line says.
+    const download = session.document.editable ? [] : [downloadAction(context, false)];
+    return [...mode, ...saveActions(view, context), ...download];
   },
 };
 
 /**
- * Plain text (any text that is not markdown) and any text that cannot be edited here: one source
- * view, read-only when it cannot be changed (whitespace kept, never rendered as prose). A file that
- * cannot be edited here offers Download, as its read-only line says.
+ * Plain text (any text that is not markdown): one source view, read-only when it cannot be changed
+ * (whitespace kept, never rendered as prose). A file that cannot be edited here offers Download, as
+ * its read-only line says. Markdown that cannot be edited stays markdown (a preview, no Edit).
  */
 const text: DocumentContentKind = {
   id: 'text',
-  matches: (document) =>
-    hasTextDraft(document) && (kindIdOf(document.path) === 'text' || document.editable === false),
+  matches: (document) => hasTextDraft(document) && kindIdOf(document.path) === 'text',
   text: true,
   views: ['edit'],
   readOnlyViews: ['source'],

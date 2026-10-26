@@ -39,17 +39,17 @@ When reviewing work produced by another agent, do not assume its summary is corr
 
 ## Implementation scope and complexity discipline
 
-Use this as a proportional decision aid for implementation and review, not a new approval gate, a substitute for the selected role's workflow, or a line-count target. Follow the repository's normative-language and document-authority rules: an explicit owner request defines the desired scope but cannot silently waive a current MUST/MUST NOT contract. Resolve a real conflict at the owning contract before performing dependent state-changing work. Never trade correctness, security, authorization, accessibility, required tests, deterministic invariants, lifecycle safety, or Git recovery for a smaller diff.
+Keep implementation and review proportional to the requested outcome. This guidance is not a separate approval gate, a replacement for role-specific workflows, or a line-count target. An explicit owner request sets the intended scope but cannot silently override a current MUST/MUST NOT contract; resolve such conflicts in the authoritative source before dependent changes. Do not sacrifice correctness, security, authorization, accessibility, required verification, deterministic invariants, lifecycle safety, or Git recovery for a smaller diff.
 
 ### Establish what is needed
 
-Identify the requested observable outcome and what must remain unchanged. Inspect the closest capability owner, existing public APIs, dependencies, relevant tests, and representative consumers as needed to establish the change's effects. For new or materially changed UI patterns, inspect semantically matching design-system components and rendered Storybook evidence; an isolated visual correction does not require a survey of unrelated components or consumers. Required repository knowledge, applicable contracts, and verification still apply. Search by responsibility, proportional to uncertainty and blast radius.
+Identify the requested observable outcome and what must remain unchanged. Inspect the closest capability owner, existing public APIs, dependencies, relevant tests, and representative consumers as needed to establish the change's effects. For new or materially changed UI patterns, inspect matching design-system contracts, available Storybook stories, and rendered behavior. An isolated visual correction does not require an unrelated component survey, but still needs applicable design-system rules and visual verification. Required repository knowledge, applicable contracts, and verification still apply. Search by responsibility, proportional to uncertainty and blast radius.
 
-First determine whether existing behavior meets the required semantics. Otherwise choose composition, extension at the established owner, or a new capability based on the present requirement and responsibility boundary; none is an automatic default. Similar-looking code is not sufficient evidence of matching semantics. Do not cross ownership boundaries merely to reduce file count.
+Prefer reusing an existing capability when both its semantics and ownership fit. Otherwise compose existing capabilities, extend their owner, or introduce a new capability when the present requirement justifies it. For UI work, follow the more specific design-system reuse rules. Similar-looking code does not necessarily have matching semantics. Do not cross ownership boundaries merely to reduce file count.
 
 ### Keep the implementation complete but focused
 
-Avoid redundant adapters and wrappers, abstractions for hypothetical reuse, speculative extension hooks or fallback branches, duplicate state or validation, configuration flags without a real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
+Avoid forwarding-only wrappers, abstractions for hypothetical reuse, unsupported compatibility paths, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
 
 Prefer straightforward, readable control flow and explicit ownership over compressed code. Preserve required error handling, failure/retry paths, recovery, and coverage. A sound change can legitimately need multiple modules, new types, or additional tests. Never use lines changed, files created, or abstraction counts as hard limits or quality scores.
 
@@ -216,13 +216,13 @@ If there are no material findings, say so rather than inventing polish work.
 **Applies when:** adding, moving, modifying, or reviewing feature code, components, stores, API ports, or shared code.
 **Requirement:** Required when applicable.
 
-Module ownership applies to any change that adds, moves or modifies feature code, components, stores, API ports or shared code. Load `engineering.shared.code-organization` (section "Module ownership and boundaries") and apply it. This is agent guidance where automation does not cover the rule. ESLint enforces package boundaries and, in `packages/specflow-ui`, selected feature import and `shared/` direction rules; other ownership and placement decisions still require review. Consult `engineering.shared.code-organization` for the exact enforced scope.
+Apply this guidance when changing feature code, components, stores, API ports, or shared code. Load `engineering.shared.code-organization`, especially "Module ownership and boundaries" and the relevant package-specific rules. That document owns the contracts; this fragment highlights implementation and review checks.
 
-- A new component, store or port MUST be placed in the feature that owns the capability, not in the folder of the screen or task that first needed it.
-- `shared/` MUST hold only code used by several features and MUST NOT import a feature or composition root. Code SHOULD NOT be moved to `shared/` before a second feature needs it.
-- For new code and code touched during migration, features SHOULD import other features only through `features/<name>/index.ts`. Feature barrels may not exist yet; do not create one only to satisfy this rule.
-- Demo adapters (for example `api.demo.ts`) are allowed only for explicit Demo Runtime contracts or isolated test environments, are not frontend fixtures or mock-data modes, and do not decide ownership. A port is not required to have two adapters. Production fixture-based adapters remain forbidden.
-- If ownership is ambiguous, surface the decision instead of defaulting to the current screen's folder.
+- Place code with the capability that owns its behavior. A screen does not automatically own every component, store, or port it uses. Product-neutral reusable UI belongs to its design-system owner; feature-specific composition stays with the owning feature.
+- Promote code into `shared/` only when several features genuinely need it. Shared code must not import a feature or composition root. Do not introduce a shared abstraction for hypothetical reuse.
+- For `packages/specflow-ui`, cross-feature production imports use the appropriate public entry: `features/<name>/index.ts` for feature exports, `features/<name>/read-model` for data-only dependencies, and `features/<name>/routes` for composition. Read models must not depend on screens, and screens must not import composition. Other packages follow their documented public boundaries. Do not create a forwarding barrel merely to satisfy a presumed universal rule.
+- Demo adapters (such as `api.demo.ts`) are permitted for explicit Demo Runtime contracts or isolated tests, not as production UI fixture fallbacks. An adapter's existence does not decide capability ownership.
+- ESLint enforces package boundaries and selected feature/shared import boundaries in `packages/specflow-ui`; remaining ownership and placement decisions still require review. If ownership is materially ambiguous, surface the specific decision instead of defaulting to the current screen folder.
 
 ## React UI state and effects review
 

@@ -4361,6 +4361,36 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.managed-agent-execution",
+      "type": "engineering",
+      "title": "Native provider modes and managed agent execution",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/managed-agent-execution.md",
+      "read_when": [
+        "enabling writable native provider modes",
+        "changing external execution claims or recovery"
+      ],
+      "summary": "Owner-directed agent default, native provider mode selection, Engine-owned durable project write admission and evidence requirements across Runtime/Engine crash windows.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-runtime.session-review-follow-up",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "providers",
+        "execution",
+        "recovery"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.provider-compatibility",
       "type": "engineering",
       "title": "Optimistic provider compatibility and strict execution checks",

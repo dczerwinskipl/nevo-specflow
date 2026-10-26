@@ -2,6 +2,8 @@ import type { ResolvedProjectHome } from '../../project/home/home';
 import { listCreateJournals, type CreateJournal } from '../create/journal';
 import { listCloseJournals } from '../lifecycle';
 import { resourcesForClosePlan } from '../lifecycle';
+// Journal-only dependency: importing execution operations here would create an admission cycle.
+import { listExecutionJournals } from '../../execution/journal';
 
 export type MutationResource = string;
 
@@ -83,17 +85,29 @@ function settledClose(stage: string): boolean {
 export async function assertSharedResourcesAvailable(
   context: ResolvedProjectHome,
   requested: readonly MutationResource[],
-  self?: { readonly kind: 'create' | 'close'; readonly operationId: string },
+  self?: { readonly kind: 'create' | 'close' | 'external'; readonly operationId: string },
 ): Promise<void> {
   const [creates, closes] = await Promise.all([
     listCreateJournals(context),
     listCloseJournals(context),
   ]);
+  const projectWrite = requested.includes('project-write:' + context.project.projectId);
+  for await (const execution of listExecutionJournals(context, true)) {
+    if (
+      execution.phase === 'settled' ||
+      (self?.kind === 'external' && self.operationId === execution.intent.operationId)
+    )
+      continue;
+    throw new SharedResourceError(
+      'RESOURCE_CONFLICT',
+      'An external execution reserves this project; inspect or reconcile it.',
+    );
+  }
 
   for (const record of creates) {
     if (self?.kind === 'create' && self.operationId === record.operationId) continue;
     if (record.stage === 'completed') continue;
-    if (overlaps(requested, resourcesForCreate(record))) {
+    if (projectWrite || overlaps(requested, resourcesForCreate(record))) {
       throw new SharedResourceError(
         'RESOURCE_CONFLICT',
         'Unfinished Create reserves a conflicting checkout/ref; inspect or recover it.',
@@ -123,7 +137,7 @@ export async function assertSharedResourcesAvailable(
         'git-worktree-admin:' + record.projectId,
         ...(record.scratch ? ['worktree-path:' + record.scratch.root.toLowerCase()] : []),
       ];
-      if (overlaps(requested, scratchClaims)) {
+      if (projectWrite || overlaps(requested, scratchClaims)) {
         throw new SharedResourceError(
           'RESOURCE_CONFLICT',
           'Retained conflicting scratch must be reconciled before another Git worktree lifecycle.',
@@ -132,7 +146,7 @@ export async function assertSharedResourcesAvailable(
       continue;
     }
     if (settledClose(record.stage)) continue;
-    if (overlaps(requested, record.plan.resources)) {
+    if (projectWrite || overlaps(requested, record.plan.resources)) {
       throw new SharedResourceError(
         'RESOURCE_CONFLICT',
         'Unfinished Close reserves a conflicting checkout/ref; inspect or recover it.',

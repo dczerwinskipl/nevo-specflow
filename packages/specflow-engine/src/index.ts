@@ -1,5 +1,20 @@
 // Supported application and transport boundary. Test/fixture internals live in ./testing.
 export {
+  admitWorkspaceExecution,
+  markWorkspaceExecutionDispatched,
+  markWorkspaceExecutionUnknown,
+  abandonWorkspaceExecutionAdmission,
+  settleWorkspaceExecution,
+  WorkspaceExecutionError,
+  inspectWorkspaceExecution,
+  listUnsettledWorkspaceExecutions,
+} from './execution';
+export type {
+  WorkspaceExecutionIntent,
+  WorkspaceExecutionReceipt,
+  WorkspaceExecutionJournal,
+} from './execution';
+export {
   isGitIgnored,
   areGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,

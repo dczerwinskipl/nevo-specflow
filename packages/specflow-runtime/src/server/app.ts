@@ -200,6 +200,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(engine ? { engine } : {}),
     }),
     createSessionsFeature({
+      ...(engine ? { engine } : {}),
       config: mode === 'project' ? config.sessions : undefined,
       storage:
         dependencies.sessions?.storage ??
@@ -282,6 +283,7 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
     SpecCapabilities.capabilities.CloseSpecification,
     SessionCapabilities.capabilities.Create,
     SessionCapabilities.capabilities.Manage,
+    SessionCapabilities.capabilities.ExecuteWrite,
   ] as const;
 
   return {

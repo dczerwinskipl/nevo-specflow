@@ -63,8 +63,24 @@ export type StoreCommand =
       input: StartTurn;
       nativeWorkspace?: string;
       nativeScope?: string;
+      nativeWorkspaceIdentity?: string;
+      effectBinding?: string;
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
+  | { op: 'effect-candidates'; sessionId?: string; turnId?: string; afterSession?: string }
+  | {
+      op: 'reconcile-effect';
+      sessionId: string;
+      turnId: string;
+      invocationId: string;
+      binding: string;
+      actor: string;
+      requestId: string;
+      source: 'native-result' | 'not-dispatched';
+      outcome: TurnOutcome;
+      error?: { code: string; message: string };
+      recovered?: boolean;
+    }
   | {
       op: 'fact';
       sessionId: string;
@@ -143,11 +159,22 @@ export interface WorkerReply {
   error?: { code: string; message: string; details?: { turnId?: string; reason?: string } };
 }
 export interface StoredSession {
+  nativeWorkspaceIdentity?: string;
   snapshot: SessionSnapshot;
   ordinal: number;
 }
 export interface StoredTurn {
+  effectBinding?: string;
   summary: TurnSummary;
   invocationId: string;
   cancelRequested: boolean;
+}
+export interface EffectRecoveryCandidate {
+  sessionId: string;
+  turnId: string;
+  invocationId: string;
+  binding: string;
+  nativeDispatched: boolean;
+  workspace: string;
+  workspaceIdentity?: string;
 }

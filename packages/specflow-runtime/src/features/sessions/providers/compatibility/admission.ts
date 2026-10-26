@@ -6,6 +6,7 @@ export interface ProviderAdmissionPrerequisites {
   securityVerified: boolean;
   protocolVerified: boolean;
   executionMode: string;
+  managedEffectsAvailable?: boolean;
 }
 
 /** Protocol compatibility alone never authorizes host execution. */
@@ -20,9 +21,11 @@ export function admitProvider(
     !prerequisites.authenticated ||
     !prerequisites.securityVerified ||
     !prerequisites.protocolVerified ||
-    prerequisites.executionMode !== 'read-only' ||
-    (compatibility.classification === 'tested' &&
-      !compatibility.record.executionModes.includes('read-only'))
+    !(
+      prerequisites.executionMode === 'read-only' ||
+      (prerequisites.executionMode === 'workspace-write' &&
+        prerequisites.managedEffectsAvailable === true)
+    )
   )
     return { allowed: false, reason: 'Provider admission prerequisites are not satisfied.' };
   return { allowed: true };

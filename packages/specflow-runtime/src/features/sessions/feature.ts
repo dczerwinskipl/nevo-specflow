@@ -10,12 +10,15 @@ import { registerSessionRoutes } from './http/routes';
 import { SessionError } from './errors';
 import { createClaudeDriver } from './providers/claude/driver';
 import { join } from 'node:path';
+import type { SpecFlowEngine } from '@nevo/specflow-engine';
+import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
 
 export function createSessionsFeature(
   options: {
     config?: SessionsFeatureConfig;
     storage?: { directory: string; projectId: string; workspace?: string };
     driver?: SessionDriver | readonly SessionDriver[];
+    engine?: SpecFlowEngine;
   } = {},
 ): RuntimeFeature {
   return {
@@ -34,6 +37,12 @@ export function createSessionsFeature(
           'Verified workspace context is required for Claude.',
         );
       const drivers: SessionDriver[] = [];
+      const effects =
+        options.engine &&
+        options.storage?.workspace === options.engine.workspace.root &&
+        options.storage.projectId === options.engine.context.project.projectId
+          ? createEngineSessionEffects(options.engine)
+          : undefined;
       if (options.config?.providers.mock.enabled) drivers.push(createMockDriver());
       if (enabled && claude?.enabled)
         drivers.push(
@@ -41,6 +50,7 @@ export function createSessionsFeature(
             workspace: options.storage!.workspace!,
             temporaryRoot: join(options.storage!.directory, 'provider-temporary'),
             executable: claude.executable,
+            managedWrites: effects !== undefined,
           }),
         );
       const store = enabled ? await openSessionStore(options.storage!) : undefined;
@@ -55,11 +65,16 @@ export function createSessionsFeature(
                   kind: 'read-only',
                   workspace: options.storage.workspace,
                   temporaryRoot: join(options.storage.directory, 'provider-temporary'),
+                  ...(effects
+                    ? { workspaceIdentity: workspaceExecutionIdentity(options.engine!) }
+                    : {}),
                 }
               : { kind: 'no-effects' },
+            effects,
           )
         : undefined;
       if (coordinator) app.addHook('onClose', () => coordinator.close());
+      if (coordinator) await coordinator.recoverEffects();
       if (coordinator && claude?.enabled) await coordinator.providers();
       registerSessionRoutes(app, {
         coordinator,

@@ -1,4 +1,6 @@
-import { mkdtemp, mkdir, writeFile, rm, readdir, realpath } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readdir, realpath, readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { bootstrapProjectHome, type SpecFlowEngine } from '@nevo/specflow-engine/testing';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -99,12 +101,16 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
         subtype: 'init',
         session_id: id,
         cwd: process.cwd(),
-        permissionMode: 'plan',
+        permissionMode: args[args.indexOf('--permission-mode')+1],
         claude_code_version: version,
-        tools: ['Read', 'Glob', 'Grep', 'AskUserQuestion'],
+        tools: args[args.indexOf('--tools')+1].split(','),
         mcp_servers: [],
         plugins: [],
       });
+      if (f.message.content === 'write') {
+        if(args[args.indexOf('--permission-mode')+1]!=='acceptEdits')throw Error('wrong native mode');
+        await writeFile(join(process.cwd(),'agent-output.txt'), 'controlled write '+count);
+      }
       if (f.message.content === 'quota') {
         send({
           type: 'assistant',
@@ -190,6 +196,7 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
 `;
 let app: FastifyInstance | undefined;
 let root = '';
+let engine: SpecFlowEngine | undefined;
 async function open() {
   const config = passwordConfig();
   app = await createRuntimeApp(
@@ -202,23 +209,44 @@ async function open() {
       },
     },
     {
+      ...(engine ? { specs: { engine } } : {}),
       sessions: {
         storage: {
           directory: join(root, 'store'),
-          projectId: 'project',
+          projectId: engine?.context.project.projectId ?? 'project',
           workspace: join(root, 'workspace'),
         },
       },
     },
   );
 }
-async function setup() {
+async function setup(writable = false) {
   fixture.version = '2.1.296';
   fixture.hash = '76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a';
   // Match the verified Engine workspace contract. POSIX cwd resolves aliases such as
   // macOS /var -> /private/var before the provider emits its initialization frame.
   root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-claude-http-')));
   await mkdir(join(root, 'workspace'));
+  if (writable) {
+    const workspace = join(root, 'workspace');
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: workspace, windowsHide: true, stdio: 'pipe' });
+    git('init', '-q');
+    await mkdir(join(workspace, '.nevo'));
+    await writeFile(join(workspace, '.gitignore'), '.nevo/local/\n');
+    await writeFile(join(workspace, '.nevo/config.yaml'), 'runtime: {}\ngit:\n  enabled: false\n');
+    git('add', '.gitignore', '.nevo/config.yaml');
+    git(
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'initial',
+    );
+    engine = await bootstrapProjectHome(workspace);
+  }
   fixture.privateRoot = join(root, 'native');
   await mkdir(fixture.privateRoot);
   fixture.entry = join(root, 'native-provider.mjs');
@@ -227,7 +255,12 @@ async function setup() {
   const created = await app!.inject({
     method: 'POST',
     url: '/api/sessions',
-    payload: { requestId: randomUUID(), providerId: 'claude', mode: 'read-only' },
+    payload: {
+      requestId: randomUUID(),
+      providerId: 'claude',
+      mode: writable ? 'workspace-write' : 'read-only',
+      ...(writable ? { providerModeId: 'acceptEdits' } : {}),
+    },
   });
   expect(created.statusCode).toBe(201);
   return created.json<{ sessionId: string }>().sessionId;
@@ -246,9 +279,44 @@ async function start(sessionId: string, message: string) {
 afterEach(async () => {
   await app?.close();
   app = undefined;
+  engine = undefined;
   if (root) await rm(root, { recursive: true, force: true });
 });
 describe('Claude driver through the real process/store/HTTP boundary', () => {
+  it(
+    'executes two writable turns through Engine admission and resumes the same native context',
+    async () => {
+      const sessionId = await setup(true);
+      for (let turn = 1; turn <= 2; turn++) {
+        await start(sessionId, 'write');
+        await vi.waitFor(
+          async () => expect((await snapshot(sessionId)).activeTurn).toBeUndefined(),
+          { timeout: 10000 },
+        );
+        expect((await snapshot(sessionId)).entries.at(-1)?.text.text).toBe('completed');
+        expect(await readFile(join(root, 'workspace', 'agent-output.txt'), 'utf8')).toBe(
+          'controlled write ' + turn,
+        );
+      }
+      expect(
+        (await readdir(fixture.privateRoot)).filter((name) => name.endsWith('.txt')),
+      ).toHaveLength(1);
+      const providers = (await app!.inject('/api/session-providers')).json<{
+        items: ProviderDescriptor[];
+      }>();
+      expect(
+        providers.items.find((provider) => provider.providerId === 'claude')?.providerModes,
+      ).toContainEqual(
+        expect.objectContaining({
+          modeId: 'acceptEdits',
+          readiness: 'ready',
+          authorized: true,
+          compatibility: 'provisional',
+        }),
+      );
+    },
+    process.platform === 'win32' ? 120000 : 30000,
+  );
   it.each(['2.1.296', '2.1.297', '9.0.0'])(
     'runs updated compatible %s as provisional after discovery-to-start replacement',
     async (version) => {

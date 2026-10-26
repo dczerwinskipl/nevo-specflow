@@ -13,9 +13,12 @@ import type {
   SnapshotSource,
   StartAdmission,
   StoreCommand,
+  EffectRecoveryCandidate,
 } from '../persistence/protocol';
 import type { SessionDriver, ProviderOperation, Invocation } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
+import { executionBinding, type SessionEffects } from './effects';
+import { createManagedInvocation } from './managed-invocation';
 
 interface ActiveInvocation {
   invocationId: string;
@@ -29,7 +32,10 @@ export function createSessionCoordinator(
   drivers: SessionDriver | readonly SessionDriver[],
   projectId: string,
   available = true,
-  executionContext: Invocation['executionContext'] = { kind: 'no-effects' },
+  executionContext: Exclude<Invocation['executionContext'], { kind: 'workspace-write' }> = {
+    kind: 'no-effects',
+  },
+  effects?: SessionEffects,
 ) {
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
@@ -61,6 +67,17 @@ export function createSessionCoordinator(
     }
   }
   async function validate(driver: SessionDriver, selection: Invocation['selection']) {
+    if (
+      selection.mode === 'workspace-write' &&
+      (!effects ||
+        executionContext.kind !== 'read-only' ||
+        !executionContext.workspaceIdentity ||
+        driver.supportsManagedWrites !== true)
+    )
+      throw new SessionError(
+        'CAPABILITY_UNSUPPORTED',
+        'Managed agent execution is not available in this Runtime.',
+      );
     await bounded((signal) => driver.validate(selection, signal));
   }
   const active = new Map<string, ActiveInvocation>();
@@ -94,6 +111,28 @@ export function createSessionCoordinator(
   function accepting() {
     if (closed) throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Runtime is stopping.');
   }
+  async function recover(candidate: EffectRecoveryCandidate, actor: string, requestId: string) {
+    if (!effects || active.has(candidate.turnId))
+      throw new SessionError(
+        'SESSION_RECOVERY_REQUIRED',
+        'Execution is still attached or has no recovery evidence service.',
+      );
+    const receipt = await effects.reconcile(candidate);
+    if (!receipt)
+      throw new SessionError(
+        'SESSION_RECOVERY_REQUIRED',
+        'No positive Engine settlement evidence is available.',
+      );
+    return call<{ turnId: string; outcome: string; reconciled: boolean }>({
+      op: 'reconcile-effect',
+      ...candidate,
+      actor,
+      requestId,
+      source: receipt.source,
+      outcome: receipt.outcome,
+      recovered: true,
+    });
+  }
   return {
     store,
     snapshot,
@@ -102,6 +141,55 @@ export function createSessionCoordinator(
       available ? registry.get(providerId)?.describe() : undefined,
     available: (providerId: string) =>
       available && registry.get(providerId)?.describe().readiness === 'ready',
+    async recoverEffects() {
+      if (!effects) return;
+      let afterSession: string | undefined;
+      while (!closed) {
+        const candidates = await call<EffectRecoveryCandidate[]>({
+          op: 'effect-candidates',
+          afterSession,
+        });
+        if (!candidates.length) break;
+        for (const candidate of candidates) {
+          if (afterSession !== undefined && candidate.sessionId <= afterSession)
+            throw new SessionError(
+              'SESSION_STORE_UNAVAILABLE',
+              'Execution recovery cursor did not advance.',
+            );
+          afterSession = candidate.sessionId;
+          try {
+            await recover(candidate, 'runtime-recovery', candidate.invocationId);
+          } catch {
+            /* Missing proof remains unknown; continue past it without redispatch. */
+          }
+        }
+      }
+    },
+    async reconcile(actor: string, sessionId: string, turnId: string, requestId: string) {
+      accepting();
+      const previous = await call<
+        { turnId: string; outcome: string; reconciled: boolean } | undefined
+      >({
+        op: 'replay',
+        actor,
+        command: 'reconcile',
+        scope: sessionId + ':' + turnId,
+        requestId,
+        input: { requestId },
+      });
+      if (previous) return previous;
+      const [candidate] = await call<EffectRecoveryCandidate[]>({
+        op: 'effect-candidates',
+        sessionId,
+        turnId,
+      });
+      if (!candidate)
+        throw new SessionError(
+          'SESSION_RECOVERY_REQUIRED',
+          'This Turn has no pending verifiable execution.',
+        );
+      return recover(candidate, actor, requestId);
+    },
     async providers() {
       if (!available) return [];
       return Promise.all(
@@ -120,6 +208,7 @@ export function createSessionCoordinator(
       );
     },
     async create(actor: string, input: CreateSession): Promise<{ sessionId: string }> {
+      input = Object.freeze(structuredClone(input));
       accepting();
       const cached = await call<{ sessionId: string } | undefined>({
         op: 'replay',
@@ -137,6 +226,7 @@ export function createSessionCoordinator(
       return call({ op: 'create', actor, input });
     },
     async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
+      input = Object.freeze(structuredClone(input));
       accepting();
       const cached = await call<{ turnId: string } | undefined>({
         op: 'replay',
@@ -155,6 +245,9 @@ export function createSessionCoordinator(
       const selection = {
         providerId: before.session.providerId,
         mode: before.session.mode,
+        ...(before.session.providerModeId ? { providerModeId: before.session.providerModeId } : {}),
+        ...(input.mode ? { mode: input.mode } : {}),
+        ...(input.providerModeId ? { providerModeId: input.providerModeId } : {}),
         ...(before.session.modelId ? { modelId: before.session.modelId } : {}),
         ...(before.session.effort ? { effort: before.session.effort } : {}),
         ...(input.modelId ? { modelId: input.modelId } : {}),
@@ -163,14 +256,31 @@ export function createSessionCoordinator(
       const driver = driverFor(selection.providerId);
       await validate(driver, selection);
       const native = selection.providerId !== 'mock' && executionContext.kind === 'read-only';
+      const writing = selection.mode === 'workspace-write';
+      const nativeScope = driver.contextScope?.();
+      const binding =
+        writing && executionContext.kind === 'read-only'
+          ? executionBinding(
+              sessionId,
+              input.requestId,
+              selection,
+              nativeScope ?? '',
+              executionContext.workspaceIdentity!,
+            )
+          : undefined;
       const admitted = await call<StartAdmission>({
         op: 'start',
         actor,
         sessionId,
         input,
         ...(native
-          ? { nativeWorkspace: executionContext.workspace, nativeScope: driver.contextScope?.() }
+          ? {
+              nativeWorkspace: executionContext.workspace,
+              nativeScope,
+              nativeWorkspaceIdentity: executionContext.workspaceIdentity,
+            }
           : {}),
+        ...(binding ? { effectBinding: binding } : {}),
       });
       if (!admitted.fresh) return { turnId: admitted.turnId };
       if (closed) return { turnId: admitted.turnId };
@@ -211,32 +321,59 @@ export function createSessionCoordinator(
       active.set(admitted.turnId, live);
       live.done = (async () => {
         try {
-          live.operation = driver.start(
-            {
-              sessionId,
-              turnId: admitted.turnId,
-              invocationId: admitted.invocationId,
-              request: input,
-              selection,
-              executionContext:
-                selection.providerId === 'mock' ? { kind: 'no-effects' } : executionContext,
-              ...(admitted.providerContext
-                ? {
-                    providerContext: admitted.providerContext,
-                    beforeDispatch: async () => {
-                      await call({
-                        op: 'dispatch-intent',
-                        sessionId,
-                        turnId: admitted.turnId,
-                        invocationId: admitted.invocationId,
-                      });
-                    },
-                  }
-                : {}),
-            },
-            emit,
-            controller.signal,
-          );
+          const invocation: Invocation = {
+            sessionId,
+            turnId: admitted.turnId,
+            invocationId: admitted.invocationId,
+            request: input,
+            selection,
+            executionContext:
+              selection.providerId === 'mock' ? { kind: 'no-effects' } : executionContext,
+            ...(admitted.providerContext
+              ? {
+                  providerContext: admitted.providerContext,
+                  beforeDispatch: async () => {
+                    await call({
+                      op: 'dispatch-intent',
+                      sessionId,
+                      turnId: admitted.turnId,
+                      invocationId: admitted.invocationId,
+                    });
+                  },
+                }
+              : {}),
+          };
+          if (writing) {
+            const managed = createManagedInvocation({
+              invocation,
+              binding: binding!,
+              driver,
+              effects: effects!,
+              signal: controller.signal,
+              stop: () => controller.abort('persistence-loss'),
+              persist: emit,
+              finalize: async (result, source, recovered = false) => {
+                await call({
+                  op: 'reconcile-effect',
+                  sessionId,
+                  turnId: admitted.turnId,
+                  invocationId: admitted.invocationId,
+                  binding: binding!,
+                  actor: 'runtime-execution',
+                  requestId: admitted.invocationId,
+                  source,
+                  outcome: result.outcome,
+                  ...(result.error ? { error: result.error } : {}),
+                  recovered,
+                });
+              },
+            });
+            live.operation = managed;
+            live.emit = managed.emit;
+            await managed.done;
+            return;
+          }
+          live.operation = driver.start(invocation, emit, controller.signal);
           await live.operation.done;
           // A transport ending is not evidence that a previously lost operation settled.
           if (uncertain) return;
@@ -250,6 +387,13 @@ export function createSessionCoordinator(
             },
           });
         } catch (error) {
+          if (writing) {
+            await emit({
+              kind: 'lost',
+              message: 'Agent lifecycle persistence requires recovery.',
+            }).catch(() => undefined);
+            return;
+          }
           if (uncertain) return;
           if (
             error instanceof SessionError &&

@@ -5,7 +5,7 @@ import type { Invocation } from '../driver';
 import { validateDriverFact } from '../facts';
 import { createClaudeOperation, type ClaudeProcess } from './operation';
 
-function fixture(disposition: 'stopped' | 'unknown' = 'stopped') {
+function fixture(disposition: 'stopped' | 'unknown' = 'stopped', disposeOnCancel = true) {
   const facts: DriverFact[] = [];
   const sent: Record<string, unknown>[] = [];
   const frames: string[] = [];
@@ -67,7 +67,7 @@ function fixture(disposition: 'stopped' | 'unknown' = 'stopped') {
   };
   const controller = new AbortController();
   controller.signal.addEventListener('abort', () => {
-    void owner.dispose();
+    if (disposeOnCancel) void owner.dispose();
   });
   const operation = createClaudeOperation(
     invocation,
@@ -278,6 +278,44 @@ describe('Claude bidirectional operation', () => {
     await f.operation.done;
     expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'cancelled' });
     expect(f.facts.some((fact) => fact.kind === 'interaction-expired')).toBe(true);
+  });
+  it('uses a native interrupt result and settles the tree before publishing cancellation evidence', async () => {
+    const f = fixture('stopped', false);
+    await f.ready();
+    f.controller.abort();
+    await vi.waitFor(() =>
+      expect(
+        f.sent.some((frame) => (frame.request as { subtype?: string })?.subtype === 'interrupt'),
+      ).toBe(true),
+    );
+    expect(f.owner.dispose).not.toHaveBeenCalled();
+    f.push({
+      type: 'result',
+      session_id: f.invocation.providerContext!.nativeSessionId,
+      subtype: 'success',
+      is_error: false,
+      terminal_reason: 'aborted_streaming',
+    });
+    await f.operation.done;
+    expect(await f.operation.settlement).toMatchObject({
+      process: 'stopped',
+      source: 'native-result',
+      result: { outcome: 'interrupted' },
+    });
+    expect(f.facts.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'interrupted' });
+    expect(f.owner.dispose).toHaveBeenCalledOnce();
+  });
+  it('preserves a completed native result when cancellation races with completion', async () => {
+    const f = fixture('stopped', false);
+    await f.ready();
+    f.result();
+    f.controller.abort();
+    await f.operation.done;
+    expect(await f.operation.settlement).toMatchObject({
+      source: 'native-result',
+      result: { outcome: 'completed' },
+    });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
   });
   it('turns malformed post-dispatch protocol into unknown instead of fabricated failure', async () => {
     const f = fixture();

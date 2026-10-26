@@ -90,9 +90,13 @@ export async function openSessionStore(options: {
       return Promise.reject(
         new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.'),
       );
-    const critical = ['fact', 'dispatch-intent', 'response-delivered', 'close'].includes(
-      command.op,
-    );
+    const critical = [
+      'fact',
+      'dispatch-intent',
+      'response-delivered',
+      'reconcile-effect',
+      'close',
+    ].includes(command.op);
     const release = await admission.acquire(critical);
     try {
       if (closed) throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.');

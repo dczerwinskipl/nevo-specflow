@@ -2,12 +2,13 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
 import { object, ClaudeProtocolError } from './protocol';
-const readTools = ['Read', 'Glob', 'Grep', 'AskUserQuestion'];
+import { claudeMode, toolsForClaudeMode } from './modes';
 
 export function claudeArguments(
   selection?: Invocation['selection'],
   context?: Invocation['providerContext'],
 ): string[] {
+  const mode = claudeMode(selection);
   return [
     '--print',
     '--verbose',
@@ -18,9 +19,9 @@ export function claudeArguments(
     '--safe-mode',
     '--restricted',
     '--tools',
-    readTools.join(','),
+    toolsForClaudeMode(mode).join(','),
     '--permission-mode',
-    'plan',
+    mode.modeId,
     '--permission-prompts',
     'host',
     '--permission-prompt-tool',
@@ -70,7 +71,10 @@ export function verifyClaudeInit(
   frame: Record<string, unknown>,
   workspace: string,
   expectedVersion?: string,
+  selection?: Invocation['selection'],
 ) {
+  const mode = claudeMode(selection);
+  const requiredTools = toolsForClaudeMode(mode);
   const tools = frame.tools;
   if (
     frame.type !== 'system' ||
@@ -78,13 +82,11 @@ export function verifyClaudeInit(
     (expectedVersion !== undefined && claudeVersion(frame) !== expectedVersion) ||
     typeof frame.cwd !== 'string' ||
     resolve(frame.cwd) !== resolve(workspace) ||
-    frame.permissionMode !== 'plan' ||
+    frame.permissionMode !== mode.nativeMode ||
     !Array.isArray(tools) ||
-    readTools.some((tool) => !tools.includes(tool)) ||
+    requiredTools.some((tool) => !tools.includes(tool)) ||
     tools.some(
-      (tool) =>
-        typeof tool !== 'string' ||
-        !['Read', 'Glob', 'Grep', 'AskUserQuestion', 'EndConversation'].includes(tool),
+      (tool) => typeof tool !== 'string' || ![...requiredTools, 'EndConversation'].includes(tool),
     ) ||
     !Array.isArray(frame.mcp_servers) ||
     frame.mcp_servers.length !== 0 ||

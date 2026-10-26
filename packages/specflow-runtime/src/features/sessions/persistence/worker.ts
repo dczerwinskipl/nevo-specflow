@@ -20,6 +20,7 @@ import { createRequestJournal } from './requests';
 import { createSessionCursors } from './cursors';
 import { createSessionReads } from './reads';
 import { createProviderFacts } from './facts';
+import { createEffectReconciliation } from './reconciliation';
 
 /** Separate Worker entry: imported surface checks must not acquire a database. */
 export async function runSessionWorker(): Promise<void> {
@@ -219,6 +220,8 @@ export async function runSessionWorker(): Promise<void> {
       t.summary.state = pending ? 'waitingForUser' : 'active';
     s.snapshot.activeTurn = {
       turnId: t.summary.turnId,
+      ...(t.summary.mode ? { mode: t.summary.mode } : {}),
+      ...(t.summary.providerModeId ? { providerModeId: t.summary.providerModeId } : {}),
       state: t.summary.state,
       revision: t.summary.revision,
       startedAt: t.summary.createdAt,
@@ -313,6 +316,7 @@ export async function runSessionWorker(): Promise<void> {
     preview,
     entry,
   });
+  const effects = createEffectReconciliation({ get, all, run, request, remember, turn, applyFact });
   // Only active records are reconciled; settled conversation/content is not read at boot.
   transaction(() => {
     for (const row of all("SELECT session,data FROM turns WHERE state!='terminal'")) {
@@ -325,7 +329,7 @@ export async function runSessionWorker(): Promise<void> {
       // The durable dispatch barrier precedes native input. A dead owner that never
       // crossed it cannot later send this Turn; recovery never replays that input.
       const undispatched = context && Number(context.dispatched) === 0;
-      if (s.snapshot.session.providerId === 'mock' || undispatched)
+      if (s.snapshot.session.providerId === 'mock' || (undispatched && !t.effectBinding))
         settle(s, t, 'interrupted', {
           code: 'INTERRUPTED',
           message: undispatched
@@ -340,11 +344,13 @@ export async function runSessionWorker(): Promise<void> {
         t.summary.state = 'unknown';
         t.summary.error = {
           code: 'OPERATION_UNKNOWN',
-          message: context
-            ? Number(context.confirmed) === 1
-              ? 'Native context is confirmed; execution and process settlement require reconciliation.'
-              : 'Native dispatch may have occurred without confirmed context.'
-            : 'Provider execution evidence is unavailable.',
+          message: t.effectBinding
+            ? 'Agent execution requires verified Engine settlement.'
+            : context
+              ? Number(context.confirmed) === 1
+                ? 'Native context is confirmed; execution and process settlement require reconciliation.'
+                : 'Native dispatch may have occurred without confirmed context.'
+              : 'Provider execution evidence is unavailable.',
         };
         refreshAttention(s, t);
         saveTurn(String(row.session), t);
@@ -353,6 +359,8 @@ export async function runSessionWorker(): Promise<void> {
     }
   });
   function execute(c: StoreCommand): unknown {
+    if (c.op === 'effect-candidates') return effects.candidates(c);
+    if (c.op === 'reconcile-effect') return transaction(() => effects.reconcile(c));
     if (c.op === 'close') {
       transaction(() =>
         run("UPDATE owner SET runtime='',pid=0 WHERE id=1 AND runtime=?", options.runtimeId),
@@ -383,6 +391,7 @@ export async function runSessionWorker(): Promise<void> {
               projectId: options.projectId,
               providerId: c.input.providerId,
               mode: c.input.mode,
+              ...(c.input.providerModeId ? { providerModeId: c.input.providerModeId } : {}),
               ...(c.input.modelId ? { modelId: c.input.modelId } : {}),
               ...(c.input.effort ? { effort: c.input.effort } : {}),
               ...(c.input.title ? { title: c.input.title } : {}),
@@ -423,6 +432,20 @@ export async function runSessionWorker(): Promise<void> {
           throw new StoreFault('TURN_CONFLICT', 'Session already has a nonterminal Turn.', {
             turnId: String(active.id),
           });
+        const writing = (c.input.mode ?? s.snapshot.session.mode) === 'workspace-write';
+        if (
+          writing &&
+          (!c.nativeWorkspace ||
+            !c.nativeWorkspaceIdentity ||
+            !c.effectBinding ||
+            !/^[0-9a-f]{64}$/.test(c.effectBinding))
+        )
+          fail(
+            'SESSION_INPUT_INVALID',
+            'Writable execution requires a verified workspace and effect binding.',
+          );
+        if (!writing && c.effectBinding)
+          fail('SESSION_INPUT_INVALID', 'Read-only execution cannot carry a write claim binding.');
         const tid = randomUUID(),
           invocationId = randomUUID(),
           date = now();
@@ -438,6 +461,25 @@ export async function runSessionWorker(): Promise<void> {
           )
             fail('SESSION_INPUT_INVALID', 'A verified native workspace is required.');
           const previous = get('SELECT * FROM provider_contexts WHERE session=?', c.sessionId);
+          if (
+            c.nativeWorkspaceIdentity !== undefined &&
+            !/^[0-9a-f]{64}$/.test(c.nativeWorkspaceIdentity)
+          )
+            fail('SESSION_INPUT_INVALID', 'Workspace incarnation identity is invalid.');
+          if (
+            (previous || s.nativeWorkspaceIdentity) &&
+            s.nativeWorkspaceIdentity !== c.nativeWorkspaceIdentity
+          )
+            fail(
+              'SESSION_RECOVERY_REQUIRED',
+              'Native workspace incarnation binding is missing or changed.',
+            );
+          if (!previous && get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native)
+            fail(
+              'SESSION_RECOVERY_REQUIRED',
+              'Confirmed native context evidence is missing; replacement is forbidden.',
+            );
+          if (c.nativeWorkspaceIdentity) s.nativeWorkspaceIdentity = c.nativeWorkspaceIdentity;
           if (previous && previous.workspace !== c.nativeWorkspace)
             fail('SESSION_RECOVERY_REQUIRED', 'Native context belongs to another workspace.');
           if (previous && previous.scope !== c.nativeScope)
@@ -465,9 +507,16 @@ export async function runSessionWorker(): Promise<void> {
         }
         const t: StoredTurn = {
           invocationId,
+          ...(c.effectBinding ? { effectBinding: c.effectBinding } : {}),
           cancelRequested: false,
           summary: {
             turnId: tid,
+            mode: c.input.mode ?? s.snapshot.session.mode,
+            ...((c.input.providerModeId ?? s.snapshot.session.providerModeId)
+              ? {
+                  providerModeId: c.input.providerModeId ?? s.snapshot.session.providerModeId,
+                }
+              : {}),
             revision: 1,
             state: 'active',
             createdAt: date,

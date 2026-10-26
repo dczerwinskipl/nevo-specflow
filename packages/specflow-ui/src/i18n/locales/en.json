@@ -1324,6 +1324,7 @@
     "back": "Back to specifications"
   },
   "managedSession": {
+    "nativeMode": "Native mode",
     "title": "Session",
     "new": "New test session",
     "create": "Create session",

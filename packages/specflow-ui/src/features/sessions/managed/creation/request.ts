@@ -13,16 +13,29 @@ export function createSessionRequest(owner: string, storage: Storage | undefined
     if (encoded) {
       if (encoded.length > 4096) throw new Error('Invalid retained create');
       const input = JSON.parse(encoded) as CreateSession;
+      const bounded = (value: unknown, max: number) =>
+        typeof value === 'string' && value.length > 0 && value.length <= max;
       if (
-        input?.mode !== 'read-only' ||
-        typeof input.requestId !== 'string' ||
+        !input ||
+        !['read-only', 'workspace-write'].includes(input.mode) ||
+        !bounded(input.requestId, 36) ||
         !/^[0-9a-f-]{36}$/i.test(input.requestId) ||
-        typeof input.providerId !== 'string' ||
-        input.providerId.length > 128 ||
-        (input.modelId !== undefined &&
-          (typeof input.modelId !== 'string' || input.modelId.length > 256)) ||
+        !bounded(input.providerId, 128) ||
+        (input.modelId !== undefined && !bounded(input.modelId, 256)) ||
+        (input.providerModeId !== undefined && !bounded(input.providerModeId, 128)) ||
+        (input.title !== undefined && !bounded(input.title, 256)) ||
+        (input.effort !== undefined && !bounded(input.effort, 64)) ||
         Object.keys(input).some(
-          (field) => !['requestId', 'providerId', 'modelId', 'mode'].includes(field),
+          (field) =>
+            ![
+              'requestId',
+              'providerId',
+              'modelId',
+              'providerModeId',
+              'title',
+              'effort',
+              'mode',
+            ].includes(field),
         )
       )
         throw new Error('Invalid retained create');

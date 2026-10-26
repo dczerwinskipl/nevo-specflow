@@ -22,6 +22,7 @@ export function effective(
   s.session.capabilities.manage = permissions.manage;
   s.session.capabilities.questions = provider?.capabilities.questions === true;
   s.session.capabilities.permissions = provider?.capabilities.permissions === true;
+  s.session.capabilities.executeWrite = permissions['execute-write'];
   s.session.capabilities.start = permissions.manage && available && s.session.readiness === 'ready';
   s.session.capabilities.cancel =
     permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';

@@ -97,9 +97,34 @@ expiry to make an old writer disappear.
 
 ## Implementation and proof
 
-The current W1 slice adds the Engine journal and shared admission contract. Writable Runtime dispatch,
-native profile selection and the small UI selector are subsequent parts of this same feature; W1 alone
-must not advertise a writable provider. Required integration proof includes two competing writers,
+W1 adds the Engine journal and shared admission contract. W2 connects Runtime dispatch to that
+contract and exposes a small native mode selector. Claude defaults to `acceptEdits` when managed
+execution is configured; `auto`, `manual`, `dontAsk` and `plan` are separately initialized and can
+be unavailable independently. The tested baseline has read-only evidence; writable modes remain
+provisional until separately accepted. `bypassPermissions` is not an admitted profile.
+
+Runtime requires the separate `session:execute-write` capability for writer creation, starts and
+interaction delivery. Developer and admin roles include it. Denial, cancellation and reconciliation
+remain available with Session management authority. Native tool approvals are one-operation grants,
+never persistent permission suggestions. The initial writer inventory adds Edit, Write and Bash to
+Read, Glob, Grep and AskUserQuestion. Unknown tool shapes, detached/background execution options,
+external customizations, hooks and MCP remain outside the admitted profile. This is a restricted
+adapter subset, not a full host sandbox or every Claude CLI feature.
+
+A writer outcome is buffered until an independent process receipt confirms an authoritative native
+result and a stopped tree. Engine settles before SQLite publishes a terminal Turn. If canonical
+persistence fails, restart or the authenticated reconcile command may consume that exact Engine
+receipt without sending native input. Missing output is explicitly reported, never reconstructed.
+Cancellation attempts native interrupt first, with a bounded forced-stop fallback. Forced stop
+without a native result retains an unknown claim and does not establish semantic resume safety.
+
+Startup walks bounded candidate pages, advancing even past unknown cases. For the SQLite-only cut,
+recovery requires matching current workspace incarnation and undispatched native context, then
+durably admits and abandons the same intent through Engine locking. An absent file alone cannot
+publish interruption. A dispatched/unknown Engine claim has no automatic expiry or replay; genuinely
+unresolved native execution still needs future provider-specific positive reconciliation evidence.
+
+Required integration proof includes two competing writers,
 both directions of Create/Close exclusion, exact identity/replay, corrupt journals, each publication
 cut point, lost admission/settlement acknowledgements and unknown after restart. Installed-provider
 answers, tool round trips and semantic resume remain separate acceptance from controlled processes.

@@ -10,6 +10,12 @@ import {
   Button,
   Typography,
   WorkspaceHeader,
+  Field,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from '@nevo/ui';
 import type { ManagedSessionsApi } from '../api';
 import { createSessionRequest } from './request';
@@ -40,15 +46,24 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
   const pending = retained.pending();
   const [busy, setBusy] = useState(false),
     [failed, setFailed] = useState(false);
-  const provider = providers.data?.items.find(
-    (item) => item.readiness === 'ready' && item.modes.includes('read-only'),
+  const [selection, setSelection] = useState<{ providerId: string; modeId: string }>();
+  const readyProviders = providers.data?.items.filter((item) => item.readiness === 'ready');
+  const provider =
+    readyProviders?.find((item) => item.modes.includes('workspace-write')) ?? readyProviders?.[0];
+  const modeId =
+    selection?.providerId === provider?.providerId ? selection?.modeId : provider?.defaultModeId;
+  const nativeMode = provider?.providerModes?.find((mode) => mode.modeId === modeId);
+  const canCreate = Boolean(
+    provider &&
+    (!provider.providerModes ||
+      (nativeMode?.readiness === 'ready' && nativeMode.authorized !== false)),
   );
   async function create() {
-    if (busy || (!provider && !pending)) return;
+    if (busy || (!canCreate && !pending)) return;
     const input = pending ?? {
       providerId: provider!.providerId,
-      modelId: provider!.models[0]?.modelId,
-      mode: 'read-only' as const,
+      mode: nativeMode?.mode ?? ('read-only' as const),
+      ...(nativeMode ? { providerModeId: nativeMode.modeId } : {}),
     };
     setBusy(true);
     setFailed(false);
@@ -74,6 +89,33 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
               {provider?.providerId === 'mock' && (
                 <p className="text-body-md text-content-muted">{t('managedSession.mockNote')}</p>
               )}
+              {provider?.providerModes && (
+                <Field disabled={busy || Boolean(pending)}>
+                  <Field.Label>{t('managedSession.nativeMode')}</Field.Label>
+                  <Select
+                    value={modeId}
+                    onValueChange={(modeId) =>
+                      setSelection({ providerId: provider.providerId, modeId })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provider.providerModes.map((mode) => (
+                        <SelectItem
+                          key={mode.modeId}
+                          value={mode.modeId}
+                          disabled={mode.readiness !== 'ready' || mode.authorized === false}
+                        >
+                          {mode.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {nativeMode?.reason && <Field.Description>{nativeMode.reason}</Field.Description>}
+                </Field>
+              )}
               {providers.isPending ? (
                 <p role="status">{t('managedSession.loading')}</p>
               ) : provider ? (
@@ -84,7 +126,7 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
                 </Alert>
               )}
               {failed && <Alert tone="attention" title={t('managedSession.commandFailed')} />}
-              <Button disabled={busy || (!provider && !pending)} onClick={() => void create()}>
+              <Button disabled={busy || (!canCreate && !pending)} onClick={() => void create()}>
                 {t(pending ? 'managedSession.retryCreate' : 'managedSession.create')}
               </Button>
             </div>

@@ -9,6 +9,7 @@ export const CreateSessionSchema = Type.Object(
     providerId: choice(128),
     modelId: Type.Optional(choice(256)),
     mode: SessionModeSchema,
+    providerModeId: Type.Optional(choice(128)),
     effort: Type.Optional(choice(64)),
     title: Type.Optional(Type.String({ maxLength: 256 })),
   },
@@ -18,6 +19,8 @@ export const StartTurnSchema = Type.Object(
   {
     requestId: SessionIdSchema,
     message: choice(128 * 1024),
+    mode: Type.Optional(SessionModeSchema),
+    providerModeId: Type.Optional(choice(128)),
     modelId: Type.Optional(choice(256)),
     effort: Type.Optional(choice(64)),
   },
@@ -148,6 +151,31 @@ export const ProviderDescriptorSchema = Type.Object(
       { maxItems: 100 },
     ),
     modes: Type.Array(SessionModeSchema, { maxItems: 2, uniqueItems: true }),
+    defaultModeId: Type.Optional(choice(128)),
+    providerModes: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            modeId: choice(128),
+            title: choice(256),
+            nativeMode: choice(128),
+            compatibility: Type.Optional(
+              Type.Union([
+                Type.Literal('tested'),
+                Type.Literal('provisional'),
+                Type.Literal('unsupported'),
+              ]),
+            ),
+            mode: SessionModeSchema,
+            readiness: Type.Union([Type.Literal('ready'), Type.Literal('unavailable')]),
+            authorized: Type.Optional(Type.Boolean()),
+            reason: Type.Optional(Type.String({ maxLength: 512 })),
+          },
+          closed,
+        ),
+        { maxItems: 16 },
+      ),
+    ),
   },
   closed,
 );

@@ -15,6 +15,21 @@ function storageFixture() {
   };
 }
 const body = { providerId: 'claude', modelId: 'default', mode: 'read-only' as const };
+it('retains the exact writable native mode across an uncertain acknowledgement and remount', async () => {
+  const storage = storageFixture();
+  const first = createSessionRequest('alice', storage);
+  const input = {
+    providerId: 'claude',
+    mode: 'workspace-write' as const,
+    providerModeId: 'acceptEdits',
+  };
+  await expect(first.send(input, () => Promise.reject(new Error('Lost')))).rejects.toThrow('Lost');
+  const next = createSessionRequest('alice', storage);
+  expect(next.pending()).toMatchObject(input);
+  const send = vi.fn(() => Promise.resolve({ sessionId: 'created' }));
+  await next.send({ ...input, providerModeId: 'plan' }, send);
+  expect(send).toHaveBeenCalledWith(first.pending());
+});
 
 it('reuses the exact create after a lost response and remount, then clears confirmed success', async () => {
   const storage = storageFixture();

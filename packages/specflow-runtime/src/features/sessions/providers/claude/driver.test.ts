@@ -4,6 +4,38 @@ import { describe, expect, it } from 'vitest';
 import { claudeArguments, claudeModels, verifyClaudeInit } from './discovery';
 
 describe('Claude native launch contract', () => {
+  it('compares the manual CLI alias against its canonical default protocol mode without accepting escalation', () => {
+    const selection = {
+      providerId: 'claude',
+      mode: 'workspace-write' as const,
+      providerModeId: 'manual',
+    };
+    const workspace = resolve('workspace');
+    expect(claudeArguments(selection)).toContain('manual');
+    const frame = {
+      type: 'system',
+      subtype: 'init',
+      cwd: workspace,
+      permissionMode: 'default',
+      tools: ['Read', 'Glob', 'Grep', 'AskUserQuestion', 'Edit', 'Write', 'Bash'],
+      mcp_servers: [],
+    };
+    expect(() => verifyClaudeInit(frame, workspace, undefined, selection)).not.toThrow();
+    expect(() =>
+      verifyClaudeInit(
+        { ...frame, permissionMode: 'bypassPermissions' },
+        workspace,
+        undefined,
+        selection,
+      ),
+    ).toThrow();
+    expect(() =>
+      verifyClaudeInit(frame, workspace, undefined, {
+        ...selection,
+        providerModeId: 'acceptEdits',
+      }),
+    ).toThrow();
+  });
   it('uses exact native context without resume-to-new fallback and fixes effect restrictions', () => {
     const nativeSessionId = randomUUID();
     const fresh = claudeArguments(

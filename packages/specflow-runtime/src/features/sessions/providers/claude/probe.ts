@@ -3,6 +3,7 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { createInvocationScope, launchOwnedProcess, type ProviderEnvironment } from '../process';
 import { object, ClaudeProtocolError } from './protocol';
 import { claudeArguments, claudeModels, claudeVersion } from './discovery';
+import type { Invocation } from '../driver';
 
 export class ClaudeProbeError extends Error {
   readonly reasonCode: NonNullable<ProviderDescriptor['reasonCode']>;
@@ -21,6 +22,7 @@ export async function probeClaude(
     environment: ProviderEnvironment;
     secrets: readonly string[];
     signal: AbortSignal;
+    selection?: Invocation['selection'];
   },
   launch: typeof launchOwnedProcess = launchOwnedProcess,
 ) {
@@ -30,7 +32,7 @@ export async function probeClaude(
     ...options,
     invocationId,
     scope,
-    args: claudeArguments(),
+    args: claudeArguments(options.selection),
     cwd: options.workspace,
   });
   let result: { models: ProviderDescriptor['models']; version?: string } | undefined;

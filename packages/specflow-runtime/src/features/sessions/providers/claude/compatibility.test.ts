@@ -17,7 +17,7 @@ vi.mock('../process', async (original) => ({
 
 type Installation = Awaited<ReturnType<typeof inspectClaudeInstallation>>;
 const models = [{ modelId: 'default', title: 'Native default', efforts: ['low'] }];
-function fixture() {
+function fixture(managedWrites = false) {
   let installation: Installation = {
     executable: resolve('claude.exe'),
     sha256: bundledClaudeBuild.sha256,
@@ -34,6 +34,7 @@ function fixture() {
       workspace: resolve('workspace'),
       temporaryRoot: resolve('temporary'),
       environment: { values: {}, sources: {} },
+      managedWrites,
     },
     { inspect, probe },
   );
@@ -46,6 +47,36 @@ function fixture() {
     },
   };
 }
+it('discovers native writable modes independently and uses the native default model without inventing an alias', async () => {
+  const f = fixture(true);
+  f.probe.mockImplementation((options) =>
+    options.selection?.providerModeId === 'auto'
+      ? Promise.reject(new ClaudeProbeError('PROTOCOL_UNSUPPORTED', 'Unsupported mode.'))
+      : Promise.resolve({
+          models: [{ modelId: 'haiku', title: 'Haiku', efforts: [] }],
+          version: '2.1.296',
+        }),
+  );
+  await f.driver.validate({
+    providerId: 'claude',
+    mode: 'workspace-write',
+    providerModeId: 'acceptEdits',
+  });
+  expect(f.driver.describe()).toMatchObject({
+    defaultModeId: 'acceptEdits',
+    modes: ['read-only', 'workspace-write'],
+  });
+  expect(f.driver.describe().providerModes).toContainEqual(
+    expect.objectContaining({ modeId: 'auto', readiness: 'unavailable' }),
+  );
+  await expect(
+    f.driver.validate({ providerId: 'claude', mode: 'workspace-write', providerModeId: 'auto' }),
+  ).rejects.toThrow('unavailable');
+  await expect(
+    f.driver.validate({ providerId: 'claude', mode: 'read-only', providerModeId: 'acceptEdits' }),
+  ).rejects.toThrow('matching effect authority');
+  expect(f.probe).toHaveBeenCalledTimes(5);
+});
 afterEach(() => {
   vi.useRealTimers();
   boundary.allocate.mockClear();

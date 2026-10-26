@@ -108,6 +108,7 @@ export const SessionInfoSchema = Type.Object(
     providerId: Type.String({ minLength: 1, maxLength: 128 }),
     modelId: Type.Optional(text(256)),
     mode: SessionModeSchema,
+    providerModeId: Type.Optional(text(128)),
     effort: Type.Optional(text(64)),
     readiness: Type.Union([
       Type.Literal('ready'),
@@ -123,6 +124,7 @@ export const SessionInfoSchema = Type.Object(
         cancel: Type.Boolean(),
         questions: Type.Boolean(),
         permissions: Type.Boolean(),
+        executeWrite: Type.Optional(Type.Boolean()),
       },
       closed,
     ),
@@ -133,6 +135,8 @@ export const SessionInfoSchema = Type.Object(
 );
 export const ActiveTurnSchema = Type.Object(
   {
+    mode: Type.Optional(SessionModeSchema),
+    providerModeId: Type.Optional(text(128)),
     turnId: SessionIdSchema,
     state: Type.Union([
       Type.Literal('active'),
@@ -222,6 +226,8 @@ export const ContentPageSchema = Type.Object(
 );
 export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048) }, closed);
 const turnFields = {
+  mode: Type.Optional(SessionModeSchema),
+  providerModeId: Type.Optional(text(128)),
   turnId: SessionIdSchema,
   revision: SessionSequenceSchema,
   createdAt: text(40),

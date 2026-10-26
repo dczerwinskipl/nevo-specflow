@@ -14,7 +14,10 @@ export const CompatibilityRecordSchema = Type.Object(
     classification: Type.Union([Type.Literal('tested'), Type.Literal('unsupported')]),
     capabilities: Type.Array(label, { maxItems: 32, uniqueItems: true }),
     authenticationModes: Type.Array(label, { maxItems: 8, uniqueItems: true }),
-    executionModes: Type.Array(Type.Literal('read-only'), { maxItems: 1, uniqueItems: true }),
+    executionModes: Type.Array(
+      Type.Union([Type.Literal('read-only'), Type.Literal('workspace-write')]),
+      { maxItems: 2, uniqueItems: true },
+    ),
     evidenceId: label,
     revoked: Type.Boolean(),
   },
@@ -62,6 +65,19 @@ export interface ProviderInstallationIdentity {
 export type ProviderCompatibility =
   | { classification: 'tested'; record: ImmutableRecord }
   | { classification: 'provisional' | 'unsupported'; reason: string };
+
+export function compatibilityForExecution(
+  compatibility: ProviderCompatibility,
+  mode: 'read-only' | 'workspace-write',
+): ProviderCompatibility {
+  return compatibility.classification === 'tested' &&
+    !compatibility.record.executionModes.includes(mode)
+    ? {
+        classification: 'provisional',
+        reason: 'This execution mode has no tested evidence for the build.',
+      }
+    : compatibility;
+}
 
 /** Tested is diagnostic evidence. Every other compatible installation may be provisional. */
 export function classifyProviderInstallation(

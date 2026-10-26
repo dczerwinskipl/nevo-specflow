@@ -1324,6 +1324,7 @@
     "back": "Wróć do specyfikacji"
   },
   "managedSession": {
+    "nativeMode": "Tryb natywny",
     "title": "Sesja",
     "new": "Nowa sesja testowa",
     "create": "Utwórz sesję",

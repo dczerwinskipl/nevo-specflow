@@ -6,13 +6,14 @@ import type { EmitFact, Invocation, ProviderOperation } from '../driver';
 import type { launchOwnedProcess } from '../process';
 import { ProviderProcessError } from '../process';
 import { createClaudeProtocol, ClaudeProtocolError, identifier, object } from './protocol';
-import { claudeUserMessage, prepareClaudeQuestion } from './requests';
+import { claudeUserMessage } from './requests';
+import { prepareClaudeRequest } from './permissions';
 
 export type ClaudeProcess = Pick<
   Awaited<ReturnType<typeof launchOwnedProcess>>,
   'write' | 'lines' | 'dispose'
 >;
-type Questions = Extract<ReturnType<typeof prepareClaudeQuestion>, { kind: 'questions' }>;
+type Questions = Extract<ReturnType<typeof prepareClaudeRequest>, { kind: 'questions' }>;
 
 /** One owner for the bidirectional transport. Waiting for user input never blocks the
  * reader; only persistence and bounded writes apply backpressure. Outcomes are held
@@ -24,7 +25,7 @@ export function createClaudeOperation(
   signal: AbortSignal,
   options: {
     launch(signal: AbortSignal): Promise<ClaudeProcess>;
-    initialize(payload: Record<string, unknown>): void;
+    initialize(payload: Record<string, unknown>): void | Promise<void>;
     verifyFrame?(frame: Record<string, unknown>): void;
   },
 ): ProviderOperation {
@@ -43,9 +44,30 @@ export function createClaudeOperation(
   let writes = Promise.resolve();
   let queued = 0;
   let queuedBytes = 0;
+  const settlement = Promise.withResolvers<Awaited<NonNullable<ProviderOperation['settlement']>>>();
   const internal = new AbortController();
-  const operationSignal = AbortSignal.any([signal, internal.signal]);
+  const operationSignal = internal.signal;
   const initializeId = randomUUID();
+  const interruptId = randomUUID();
+  let interruptSent = false;
+  let cancellationDeadline: ReturnType<typeof setTimeout> | undefined;
+  function cancel() {
+    if (!dispatched) {
+      internal.abort(signal.reason);
+      return;
+    }
+    if (interruptSent || closed) return;
+    interruptSent = true;
+    cancellationDeadline = setTimeout(() => internal.abort('interrupt-timeout'), 2000);
+    cancellationDeadline.unref();
+    void send({
+      type: 'control_request',
+      request_id: interruptId,
+      request: { subtype: 'interrupt' },
+    }).catch(() => internal.abort('interrupt-write-failed'));
+  }
+  signal.addEventListener('abort', cancel, { once: true });
+  if (signal.aborted) cancel();
   async function send(frame: unknown, live: () => boolean = () => true) {
     const line = JSON.stringify(frame) + '\n';
     const bytes = Buffer.byteLength(line);
@@ -108,16 +130,24 @@ export function createClaudeOperation(
       for await (const line of owner.lines()) {
         const frame = object(JSON.parse(line));
         if (frame.type === 'control_response') {
-          if (initialized) throw new ClaudeProtocolError();
           const response = object(frame.response);
+          if (
+            initialized &&
+            interruptSent &&
+            response.request_id === interruptId &&
+            response.subtype === 'success'
+          )
+            continue;
+          if (initialized) throw new ClaudeProtocolError();
           if (response.request_id !== initializeId || response.subtype !== 'success')
             throw new ClaudeProtocolError();
-          options.initialize(object(response.response));
+          await options.initialize(object(response.response));
           initialized = true;
           clearTimeout(deadline);
           operationSignal.throwIfAborted();
           await invocation.beforeDispatch!();
           dispatched = true;
+          signal.throwIfAborted();
           operationSignal.throwIfAborted();
           await send(claudeUserMessage(invocation.request.message, context.nativeSessionId));
           continue;
@@ -138,7 +168,10 @@ export function createClaudeOperation(
           }
           if (seen.size >= 1024) throw new ClaudeProtocolError();
           seen.set(requestId, hash);
-          const request = prepareClaudeQuestion(frame);
+          const request = prepareClaudeRequest(
+            frame,
+            invocation.selection.mode === 'workspace-write',
+          );
           if (request.kind === 'denied') {
             await send(request.response);
             continue;
@@ -151,7 +184,10 @@ export function createClaudeOperation(
               kind: 'work-open',
               key: question.key,
               workKind: 'interaction',
-              title: 'Claude question',
+              title:
+                question.interaction.kind === 'permission'
+                  ? 'Claude permission'
+                  : 'Claude question',
             });
             await publish({ kind: 'interaction', ...question });
           }
@@ -167,31 +203,27 @@ export function createClaudeOperation(
     } finally {
       closed = true;
       clearTimeout(deadline);
+      clearTimeout(cancellationDeadline);
+      signal.removeEventListener('abort', cancel);
       const disposition = owner
         ? await owner.dispose().catch(() => ({
             process: { state: 'unknown' as const, reason: 'unverified-tree' as const },
             cleanup: [],
           }))
         : undefined;
-      await writes;
-      for (const group of [...groups.values()]) await expire(group);
-      pending.clear();
-      seen.clear();
-      if (
+      const unverified =
         disposition?.process.state === 'unknown' ||
         (failure instanceof ProviderProcessError &&
-          failure.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED'))
-      ) {
-        await publish({ kind: 'lost', message: 'Claude process-tree settlement is unknown.' });
-      } else if (signal.aborted) {
-        await outcome({
+          failure.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED'));
+      let result: Extract<DriverFact, { kind: 'outcome' }> | undefined;
+      if (!unverified && pendingOutcome && !lost) result = pendingOutcome;
+      else if (!unverified && signal.aborted) {
+        result = {
           kind: 'outcome',
           outcome: signal.reason === 'shutdown' ? 'interrupted' : 'cancelled',
-        });
-      } else if (pendingOutcome && !lost) {
-        await outcome(pendingOutcome);
-      } else if (!dispatched) {
-        await outcome({
+        };
+      } else if (!unverified && !dispatched) {
+        result = {
           kind: 'outcome',
           outcome: 'failed',
           error: {
@@ -206,14 +238,39 @@ export function createClaudeOperation(
               ? 'Claude initialization timed out.'
               : 'Claude could not initialize the requested operation.',
           },
-        });
-      } else if (!lost) {
+        };
+      }
+      // Keep proven outcome/liveness evidence even if later canonical persistence
+      // fails. This receipt never authorizes replaying native input.
+      const source = unverified
+        ? 'unverified'
+        : pendingOutcome && !lost
+          ? 'native-result'
+          : !dispatched
+            ? 'not-started'
+            : signal.aborted
+              ? 'forced-stop'
+              : 'unverified';
+      settlement.resolve({
+        process: unverified ? 'unknown' : 'stopped',
+        source,
+        ...(result ? { result } : {}),
+      });
+      await writes;
+      for (const group of [...groups.values()]) await expire(group);
+      pending.clear();
+      seen.clear();
+      if (unverified)
+        await publish({ kind: 'lost', message: 'Claude process-tree settlement is unknown.' });
+      else if (result) await outcome(result);
+      else if (!lost) {
         await protocol.end();
       }
     }
   })();
   return {
     done,
+    settlement: settlement.promise,
     async respond(key: string, response: RespondInteraction) {
       const entry = pending.get(key);
       if (closed || !entry?.live)

@@ -82,6 +82,44 @@ async function clickCreate() {
   await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false));
   fireEvent.click(button);
 }
+it('defaults to the provider native writable mode and retains it on a lost response', async () => {
+  const f = fixture();
+  const base = (await f.providers()).items[0]!;
+  f.providers.mockResolvedValue({
+    items: [
+      {
+        ...base,
+        modes: ['read-only', 'workspace-write'],
+        defaultModeId: 'acceptEdits',
+        providerModes: [
+          {
+            modeId: 'acceptEdits',
+            title: 'Accept edits',
+            nativeMode: 'acceptEdits',
+            mode: 'workspace-write',
+            readiness: 'ready',
+            authorized: true,
+          },
+          {
+            modeId: 'plan',
+            title: 'Plan',
+            nativeMode: 'plan',
+            mode: 'read-only',
+            readiness: 'ready',
+            authorized: true,
+          },
+        ],
+      },
+    ],
+  });
+  view(f.api);
+  await clickCreate();
+  expect(f.create.mock.calls[0]?.[0]).toMatchObject({
+    mode: 'workspace-write',
+    providerModeId: 'acceptEdits',
+  });
+  await screen.findByRole('button', { name: 'Retry creation' });
+});
 
 it('retries a retained create after remount even when the provider becomes unavailable', async () => {
   const { api, create, providers } = fixture();

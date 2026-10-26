@@ -20,7 +20,7 @@ import {
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { SessionError } from '../errors';
 import { effective } from './projection';
-import { authorizeSession } from './authorization';
+import { authorizeSession, authorizeSessionWrite } from './authorization';
 import { createSessionStreams } from './stream';
 
 const closed = { additionalProperties: false } as const;
@@ -104,6 +104,23 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     };
     const authorize = (request: FastifyRequest, manage = false) =>
       authorizeSession(request, coordinator(), ids(request).sessionId, manage);
+    async function authorizeExecution(request: FastifyRequest, continuation = false) {
+      await authorize(request, true);
+      const response = request.body as RespondInteraction;
+      if (continuation && response.kind === 'permission' && response.decision === 'deny') return;
+      const snapshot = await coordinator().snapshot(
+        ids(request).sessionId,
+        request.authz.readContext().subject,
+      );
+      const mode = continuation
+        ? (snapshot.activeTurn?.mode ?? snapshot.session.mode)
+        : ((request.body as StartTurn).mode ?? snapshot.session.mode);
+      if (mode === 'workspace-write')
+        authorizeSessionWrite(request, {
+          projectId: snapshot.session.projectId,
+          sessionId: snapshot.session.sessionId,
+        });
+    }
     function authorizeCreate(
       request: FastifyRequest,
       _reply: unknown,
@@ -116,13 +133,28 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         capability: SessionCapabilities.capabilities.Create,
         scope: { projectId: options.projectId! },
       });
+      if ((request.body as CreateSession | undefined)?.mode === 'workspace-write')
+        authorizeSessionWrite(request, { projectId: options.projectId! });
       done();
     }
     const actor = (request: FastifyRequest) => request.authz.readContext().subject;
     feature.get(
       '/api/session-providers',
       { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },
-      async () => ({ items: await coordinator().providers() }),
+      async (request) => {
+        const items = await coordinator().providers();
+        const permissions = request.authz.resolveCapabilities({
+          resource: SessionCapabilities,
+          scope: { projectId: options.projectId! },
+        });
+        for (const provider of items)
+          if (provider.providerModes)
+            provider.providerModes = provider.providerModes.map((mode) => ({
+              ...mode,
+              authorized: mode.mode !== 'workspace-write' || permissions['execute-write'],
+            }));
+        return { items };
+      },
     );
     feature.post(
       '/api/sessions',
@@ -239,7 +271,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       '/api/sessions/:sessionId/turns',
       {
         bodyLimit: 256 * 1024,
-        preHandler: (request) => authorize(request, true),
+        preHandler: (request) => authorizeExecution(request),
         schema: { params: params(), body: StartTurnSchema },
       },
       async (request, reply) => {
@@ -274,10 +306,29 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           ),
     );
     feature.post(
-      '/api/sessions/:sessionId/interactions/:interactionId/respond',
+      '/api/sessions/:sessionId/turns/:turnId/reconcile',
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
+        schema: { params: params({ turnId: SessionIdSchema }), body: CancelTurnSchema },
+      },
+      async (request, reply) =>
+        reply
+          .code(200)
+          .send(
+            await coordinator().reconcile(
+              actor(request),
+              ids(request).sessionId,
+              ids(request).turnId!,
+              (request.body as { requestId: string }).requestId,
+            ),
+          ),
+    );
+    feature.post(
+      '/api/sessions/:sessionId/interactions/:interactionId/respond',
+      {
+        bodyLimit: 65536,
+        preHandler: (request) => authorizeExecution(request, true),
         schema: {
           params: params({ interactionId: SessionIdSchema }),
           body: RespondInteractionSchema,

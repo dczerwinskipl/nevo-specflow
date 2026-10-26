@@ -59,7 +59,7 @@ export function createProviderFacts({
   preview,
   entry,
 }: FactDependencies) {
-  function applyFact(c: Extract<StoreCommand, { op: 'fact' }>): boolean {
+  function applyFact(c: Extract<StoreCommand, { op: 'fact' }>, effectVerified = false): boolean {
     const s = session(c.sessionId),
       t = turn(c.turnId, c.sessionId);
     if (t.summary.state === 'terminal' || t.invocationId !== c.invocationId) return false;
@@ -82,6 +82,11 @@ export function createProviderFacts({
     run('INSERT INTO facts VALUES(?,?,?)', c.invocationId, c.driverSeq, hash);
     const f: DriverFact = c.fact;
     if (f.kind === 'outcome') {
+      if (t.effectBinding && !effectVerified)
+        fail(
+          'SESSION_RECOVERY_REQUIRED',
+          'Writable execution requires verified Engine settlement.',
+        );
       settle(s, t, f.outcome, f.error);
       return true;
     }

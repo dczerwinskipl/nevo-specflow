@@ -185,14 +185,17 @@ it
       const resumed = await turn(
         'Without reading any file or using tools, repeat the exact acceptance token from our previous turn.',
       );
-      expect(
-        resumed.entries.filter((entry) => entry.kind === 'answer').at(-1)?.text.text,
-      ).toContain(token);
       const resumedTurnId = resumed.entries.at(-1)!.turnId;
+      expect(
+        resumed.entries
+          .filter((entry) => entry.kind === 'answer' && entry.turnId === resumedTurnId)
+          .at(-1)?.text.text,
+      ).toContain(token);
       const work = (
         await app.inject('/api/sessions/' + sessionId + '/turns/' + resumedTurnId + '/work')
       ).json<WorkPage>();
       expect(work.items.filter((item) => item.kind === 'tool')).toEqual([]);
+      expect(work.history.hasOlder).toBe(false);
     } finally {
       await app?.close();
       // Exact owned mkdtemp root, never a user-supplied or repository checkout path.

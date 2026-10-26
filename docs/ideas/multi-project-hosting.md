@@ -48,16 +48,18 @@ because a server process exists. Global application state is not another project
 
 ## Conceptual boundaries
 
-| Scope | Possible ownership | Important distinction |
-| --- | --- | --- |
-| SpecFlow application/runtime | HTTP/UI, admin and users, registered projects, global provider/tool availability, host credentials and operational settings | One process can serve many projects; no extra domain "instance" is required |
-| Git Project / Project Home | Committed `.nevo/config.yaml` project rules, one verified local Project Home, canonical specs and workspace bindings | Project identity is not a Git remote URL or a display name |
-| Project-local state | Existing `.nevo/local/`: registry, claims, journals, recovery, local configuration, eventually project-bound execution state | Must remain valid across restart and Git lifecycle operations |
-| Workspace | Verified primary or linked Git checkout owned by one Project Home | Not the proposed cross-project Workbench |
-| Agent definition / provider configuration | Potentially reusable across projects, possibly overridden by project policy | Reusing an agent definition does not confer access to every project |
-| Managed Session / Turn / Work | Provider-neutral execution context owned by Runtime; exact project/context attachment remains open | Conversation identity, execution authorization and Git writer authority are different things |
-| Optional Workbench | References to multiple existing projects and possibly selected workspaces or shared instructions | Does not own or merge the underlying Project Homes |
-
+- **Application/Runtime:** HTTP, user access, registered projects, provider availability and
+  installed tools. This is application state, not a Git Project.
+- **Git Project / Project Home:** Committed project policy, canonical Specifications, verified
+  primary checkout and registered linked worktrees.
+- **Project-local state:** Existing `.nevo/local/` holds local configuration, registry, journals,
+  claims and recovery evidence. The eventual physical location remains undecided.
+- **Workspace:** Verified checkout belonging to a Project Home, not a cross-project Workbench.
+- **Agent definition / provider:** May be reusable, but does not itself authorize access to
+  other projects.
+- **Managed Session / Turn / Work:** Runtime-owned execution; conversation context, execution
+  target and mutation authority are different concepts.
+- **Optional Workbench:** A group of references to projects, not a new Project Home.
 The current canonical Session -> Turn -> Work model and E1/E2 Project Home verification remain
 authoritative. This note does not revise their existing identities or mutation semantics.
 

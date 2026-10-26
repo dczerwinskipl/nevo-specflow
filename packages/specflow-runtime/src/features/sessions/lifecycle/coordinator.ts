@@ -8,7 +8,12 @@ import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { SessionStore } from '../persistence/store';
-import type { DriverFact, SnapshotSource, StartAdmission } from '../persistence/protocol';
+import type {
+  DriverFact,
+  SnapshotSource,
+  StartAdmission,
+  StoreCommand,
+} from '../persistence/protocol';
 import type { SessionDriver, ProviderOperation, Invocation } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
 
@@ -61,6 +66,28 @@ export function createSessionCoordinator(
   const active = new Map<string, ActiveInvocation>();
   let closed = false;
   const call = store.call;
+  async function persistFact(command: Extract<StoreCommand, { op: 'fact' }>) {
+    const deadline = performance.now() + 2000;
+    const backoff = [25, 100];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await call<boolean>(command);
+      } catch (error) {
+        // Retry persistence of this exact sequenced fact, never provider input.
+        // Worker deduplication handles a commit whose acknowledgement was lost.
+        if (
+          !(error instanceof SessionError) ||
+          error.code !== 'SESSION_STORE_BUSY' ||
+          closed ||
+          attempt >= backoff.length ||
+          performance.now() >= deadline
+        )
+          throw error;
+        await delay(backoff[attempt]);
+        if (closed || performance.now() >= deadline) throw error;
+      }
+    }
+  }
   async function snapshot(sessionId: string, actor: string): Promise<SessionSnapshot> {
     return (await call<SnapshotSource>({ op: 'snapshot', sessionId, actor })).snapshot;
   }
@@ -159,7 +186,7 @@ export function createSessionCoordinator(
           throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver fact exceeds budget.');
         const operation = tail.then(async () => {
           const next = seq + 1;
-          const accepted = await call<boolean>({
+          const accepted = await persistFact({
             op: 'fact',
             sessionId,
             turnId: admitted.turnId,
@@ -167,7 +194,8 @@ export function createSessionCoordinator(
             driverSeq: next,
             fact,
           });
-          if (accepted && fact.kind === 'lost') uncertain = true;
+          // A replayed lost fact may already be committed despite a lost acknowledgement.
+          if (fact.kind === 'lost') uncertain = true;
           if (accepted && fact.kind === 'outcome') uncertain = false;
           seq = next;
         });

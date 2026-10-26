@@ -35,13 +35,50 @@ async function setup(
   });
 }
 describe('Session coordinator', () => {
+  it.each(['before-commit', 'lost-acknowledgement'] as const)(
+    'recovers a known terminal fact after transient storage pressure: %s',
+    async (failure) => {
+      const execution = vi.fn(() => Promise.resolve());
+      const receipts: string[] = [];
+      const { sessionId } = await setup(execution, undefined, (store) => ({
+        ...store,
+        call(command) {
+          if (command.op === 'fact' && command.fact.kind === 'outcome') {
+            receipts.push(JSON.stringify(command));
+            if (receipts.length === 1) {
+              const reject = () =>
+                Promise.reject(new SessionError('SESSION_STORE_BUSY', 'Transient pressure.'));
+              return failure === 'before-commit' ? reject() : store.call(command).then(reject);
+            }
+          }
+          return store.call(command);
+        },
+      }));
+      const input = { requestId: randomUUID(), message: 'Execute once' };
+      const admitted = await runtime!.start('actor', sessionId, input);
+      await vi.waitFor(async () =>
+        expect((await runtime!.snapshot(sessionId, 'actor')).entries.at(-1)?.text.text).toBe(
+          'completed',
+        ),
+      );
+      expect(receipts[1]).toBe(receipts[0]);
+      expect(execution).toHaveBeenCalledTimes(1);
+      expect(await runtime!.start('actor', sessionId, input)).toEqual(admitted);
+      expect(execution).toHaveBeenCalledTimes(1);
+      expect(
+        (await runtime!.snapshot(sessionId, 'actor')).entries.filter(
+          (entry) => entry.kind === 'outcome',
+        ),
+      ).toHaveLength(1);
+    },
+  );
   it('records uncertainty instead of inventing failure when a terminal fact cannot be persisted', async () => {
-    let rejected = false;
+    let attempts = 0;
     const { sessionId } = await setup(undefined, undefined, (store) => ({
       ...store,
       call(command) {
-        if (!rejected && command.op === 'fact' && command.fact.kind === 'outcome') {
-          rejected = true;
+        if (command.op === 'fact' && command.fact.kind === 'outcome') {
+          attempts++;
           return Promise.reject(
             new SessionError('SESSION_STORE_BUSY', 'Storage admission timed out.'),
           );
@@ -56,6 +93,36 @@ describe('Session coordinator', () => {
     expect(
       (await runtime!.snapshot(sessionId, 'actor')).entries.some((item) => item.kind === 'outcome'),
     ).toBe(false);
+    expect(attempts).toBe(3);
+  });
+  it('preserves unknown when the acknowledgement of a committed lost fact disappears', async () => {
+    let receipts = 0;
+    const driver: SessionDriver = {
+      ...createMockDriver(),
+      start(_invocation, emit) {
+        return {
+          done: emit({ kind: 'lost', message: 'Execution cannot be confirmed.' }),
+          respond: () => Promise.resolve({ deliveredKeys: [] }),
+        };
+      },
+    };
+    const { sessionId } = await setup(undefined, driver, (store) => ({
+      ...store,
+      call(command) {
+        if (command.op === 'fact' && command.fact.kind === 'lost' && ++receipts === 1)
+          return store
+            .call(command)
+            .then(() =>
+              Promise.reject(new SessionError('SESSION_STORE_BUSY', 'Acknowledgement lost.')),
+            );
+        return store.call(command);
+      },
+    }));
+    await runtime!.start('actor', sessionId, { requestId: randomUUID(), message: 'Start' });
+    await vi.waitFor(() => expect(receipts).toBe(2));
+    const snapshot = await runtime!.snapshot(sessionId, 'actor');
+    expect(snapshot.activeTurn?.state).toBe('unknown');
+    expect(snapshot.entries.some((entry) => entry.kind === 'outcome')).toBe(false);
   });
   it('keeps admitted answers unconfirmed when native delivery fails and never resends a retry', async () => {
     const delivery = vi.fn(() => Promise.reject(new Error('Private stdin failure')));

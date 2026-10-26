@@ -51,6 +51,12 @@ hardening change. No Engine effect admission or new UI feature is introduced.
   deadline. Their invocation sequence remains serialized by the coordinator. Exhaustion/Worker loss
   is explicit rejection, not dropped success; a failed lifecycle write cannot fabricate a terminal
   result. A persistently unavailable store still requires restart recovery.
+  A follow-up adds at most two retries of the identical invocation/sequence/fact after transient
+  SESSION_STORE_BUSY, with 25/100 ms backoff and a two-second window for starting retries. Each
+  Store call still has its own existing admission budget; this is not a two-second wall-clock
+  deadline for uncancellable writes. Committed acknowledgements can be replayed without duplicating
+  content/outcomes or redispatching provider input. A replayed lost fact preserves unknown even
+  when Worker deduplication returns false. Permanent failures still record uncertainty.
 - **R05:** committed outbox changes wake subscribers without storing event payloads in a second queue.
   A revision fence prevents losing commits between read and wait. Idle authorization is refreshed
   every second; heartbeat remains 15 s. Replay, sequence gaps, capacity and backpressure retain the

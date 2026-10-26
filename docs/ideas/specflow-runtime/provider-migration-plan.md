@@ -28,6 +28,14 @@ foundation; an adapter must not grow a second Session model.
 
 ## Work packages
 
+Owner follow-up after architecture acceptance: read-only is a test stage, not the product default.
+The product must offer supported native provider modes and default normal task work to an agent
+capable of edits/tools. Native collaboration/permission modes and Engine effect scope are distinct
+contracts; modes must not bypass durable writer admission. W1/W2 are now explicitly in the ongoing
+PR scope before enabling writable execution. The UI change is limited to the requested mode choice;
+the broader chat experience remains with the owner. Claude live success/resume remains unverified
+while the account returns quota failures.
+
 All implementation packages use nevo-agents:implementer (backend), with independent review.
 Exact legacy files are under D:/repos/git/nevo/tools/dashboard; inspected HEAD 10bded58.
 

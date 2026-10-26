@@ -61,6 +61,7 @@ be useful for operations. Global application state is not another Git Project.
 - **Managed Session / Turn / Work:** Runtime-owned execution; conversation context, execution
   target and mutation authority are different concepts.
 - **Optional Workbench:** A group of references to projects, not a new Project Home.
+
 The current canonical Session -> Turn -> Work model and E1/E2 Project Home verification remain
 authoritative. This note does not revise their existing identities or mutation semantics.
 
@@ -109,6 +110,7 @@ authoritative. This note does not revise their existing identities or mutation s
   SDKs, CLIs and dependencies could later be installed through an authorized UI workflow.
   Installed tools need version, scope, persistence, execution-environment and rollback semantics.
   Installing one project's toolchain must not silently alter another project's environment.
+  UI-triggered installation is privileged code execution, not a general shell endpoint.
 - Credentials are not committed project definitions. Prefer explicit host/user/project-scoped
   bindings and minimal provider process environments over handing agents every host secret.
 - Container restart, persistent volumes, Git worktree paths, filesystem identity and recovery
@@ -152,7 +154,7 @@ several projects, select one, run the existing per-project flow**.
 ## Trigger for promotion
 
 When implementing **managed Sessions/provider execution**, revisit the Session scope and access
-sections. When implementing **project registration or Docker hosting**, revisit global-versus-
-project configuration, durable identity and Runtime composition. Promote any accepted invariants
+sections. When implementing **project registration or Docker hosting**, revisit global versus project
+configuration, durable identity and Runtime composition. Promote any accepted invariants
 into their respective authoritative architecture/product/reference documents; keep the deferred
 features here until they have evidence and a separate approved scope.

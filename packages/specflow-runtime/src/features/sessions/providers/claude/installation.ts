@@ -80,8 +80,14 @@ export async function inspectClaudeInstallation(
           'LOCALAPPDATA',
           'TEMP',
           'TMP',
+          'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS',
         ].includes(key),
     )
+  )
+    unavailable();
+  if (
+    env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS !== undefined &&
+    env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS !== '1'
   )
     unavailable();
   const executable = options.executable ?? join(home, '.local', 'bin', 'claude.exe');

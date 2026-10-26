@@ -30,6 +30,25 @@ function fixture() {
   return { facts, protocol, accept, assistant, result };
 }
 describe('Claude full-message protocol', () => {
+  it.each(['run_in_background', 'dangerouslyDisableSandbox'])(
+    'refuses %s even when native permissions did not call the host',
+    async (field) => {
+      const f = fixture();
+      await expect(
+        f.assistant('msg-background', [
+          {
+            type: 'tool_use',
+            id: 'tool-bg',
+            name: 'Bash',
+            input: { command: 'echo test', [field]: true },
+          },
+        ]),
+      ).rejects.toThrow();
+      expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+      await f.protocol.end();
+      expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
+    },
+  );
   it('classifies the installed CLI quota result without publishing native diagnostic prose', async () => {
     const f = fixture();
     await f.accept({

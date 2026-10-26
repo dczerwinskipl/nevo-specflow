@@ -33,7 +33,14 @@ export function createClaudeDriver(
     probe?: typeof probeClaude;
   } = {},
 ): SessionDriver {
-  const environment = options.environment ?? projectProviderEnvironment({ host: process.env });
+  const baseEnvironment = options.environment ?? projectProviderEnvironment({ host: process.env });
+  const environment: ProviderEnvironment = {
+    values: Object.freeze({ ...baseEnvironment.values, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }),
+    sources: Object.freeze({
+      ...baseEnvironment.sources,
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: 'configured',
+    }),
+  };
   let descriptor: ProviderDescriptor = {
     providerId: 'claude',
     title: 'Claude Code',

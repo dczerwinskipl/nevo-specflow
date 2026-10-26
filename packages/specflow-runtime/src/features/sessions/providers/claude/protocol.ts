@@ -134,10 +134,16 @@ export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) 
           const toolId = identifier(block.id);
           const key = 'tool:' + toolId;
           const name = identifier(block.name);
+          const input = object(block.input);
+          if (
+            name === 'Bash' &&
+            (input.run_in_background === true || input.dangerouslyDisableSandbox === true)
+          )
+            throw new ClaudeProtocolError();
           if (tools.has(toolId)) throw new ClaudeProtocolError();
           tools.set(toolId, { parent, key });
           await emit({ kind: 'action-open', key, parentKey: parent, title: name });
-          await text(key, 'tool-input', JSON.stringify(object(block.input)));
+          await text(key, 'tool-input', JSON.stringify(input));
         }
       }
       return;

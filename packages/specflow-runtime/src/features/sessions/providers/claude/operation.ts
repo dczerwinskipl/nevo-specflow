@@ -157,12 +157,10 @@ export function createClaudeOperation(
       closed = true;
       clearTimeout(deadline);
       const disposition = owner
-        ? await owner
-            .dispose()
-            .catch(() => ({
-              process: { state: 'unknown' as const, reason: 'unverified-tree' as const },
-              cleanup: [],
-            }))
+        ? await owner.dispose().catch(() => ({
+            process: { state: 'unknown' as const, reason: 'unverified-tree' as const },
+            cleanup: [],
+          }))
         : undefined;
       await writes;
       for (const group of [...groups.values()]) await expire(group);

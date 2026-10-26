@@ -34,9 +34,7 @@ export async function inspectClaudeRegistry(environment: ProviderEnvironment): P
   });
 }
 interface Files {
-  stat(
-    path: string,
-  ): Promise<{
+  stat(path: string): Promise<{
     isFile(): boolean;
     isDirectory(): boolean;
     isSymbolicLink(): boolean;

@@ -49,6 +49,7 @@ if(at>=0)count=Number(await readFile(join(root,id+'.txt'),'utf8'));
 else count=0;
 count++;await writeFile(join(root,id+'.txt'),String(count));
 send({type:'system',subtype:'init',session_id:id,cwd:process.cwd(),permissionMode:'plan',claude_code_version:'2.1.296',tools:['Read','Glob','Grep','AskUserQuestion'],mcp_servers:[],plugins:[]});
+if(f.message.content==='quota'){send({type:'assistant',session_id:id,error:'rate_limit',message:{id:'error_message',content:[{type:'text',text:'private native diagnostic'}]}});send({type:'result',session_id:id,subtype:'success',is_error:true,terminal_reason:'api_error',stop_reason:'stop_sequence',api_error_status:429,result:'private native diagnostic'});return;}
 if(f.message.content==='question'){
 const questions=[{question:'Choose database',options:[{label:'SQLite'},{label:'Postgres'}],multiSelect:false}];
 send({type:'assistant',session_id:id,message:{id:'ask_message',content:[{type:'tool_use',id:'tool_1',name:'AskUserQuestion',input:{questions}}]}});
@@ -114,6 +115,26 @@ afterEach(async () => {
   if (root) await rm(root, { recursive: true, force: true });
 });
 describe('Claude driver through the real process/store/HTTP boundary', () => {
+  it('keeps a safe quota explanation readable after Runtime restart without exposing native error prose', async () => {
+    const sessionId = await setup();
+    await start(sessionId, 'quota');
+    await vi.waitFor(
+      async () => expect((await snapshot(sessionId)).entries.at(-1)?.text.text).toBe('failed'),
+      { timeout: 5000 },
+    );
+    await app!.close();
+    app = undefined;
+    await open();
+    const state = await snapshot(sessionId);
+    expect(
+      state.entries.some(
+        (entry) =>
+          entry.kind === 'commentary' &&
+          entry.text.text === 'Claude quota or rate limit prevented the operation.',
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(state)).not.toContain('private native diagnostic');
+  }, 20000);
   it('answers one live question, rejects over-selection before admission, reloads and resumes the exact native conversation', async () => {
     const sessionId = await setup();
     const providers = (await app!.inject('/api/session-providers')).json<{

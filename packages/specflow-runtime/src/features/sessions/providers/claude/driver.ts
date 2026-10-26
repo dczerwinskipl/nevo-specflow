@@ -139,6 +139,21 @@ export function createClaudeDriver(options: {
   let discovery: Promise<ProviderDescriptor> | undefined;
   const inspect = (signal: AbortSignal) =>
     inspectClaudeInstallation({ ...options, environment, signal });
+  function invalidate(error?: unknown) {
+    checkedAt = 0;
+    scope = '';
+    descriptor = {
+      ...descriptor,
+      readiness:
+        error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED'
+          ? 'authenticationRequired'
+          : 'unavailable',
+      reason:
+        error instanceof SessionError
+          ? error.message
+          : 'Claude operation availability must be rechecked.',
+    };
+  }
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
     if (Date.now() - checkedAt < 30000) return structuredClone(descriptor);
     discovery ??= (async () => {
@@ -219,7 +234,10 @@ export function createClaudeDriver(options: {
           'Claude writable dispatch requires Engine effect admission.',
         );
       await refresh(signal);
-      const installation = await inspect(signal);
+      const installation = await inspect(signal).catch((error: unknown) => {
+        invalidate(error);
+        throw error;
+      });
       if (descriptor.readiness !== 'ready' || installation.accountScope !== scope) {
         checkedAt = 0;
         throw new SessionError(
@@ -248,40 +266,63 @@ export function createClaudeDriver(options: {
           'Verified read-only workspace is required.',
         );
       let verified = false;
-      return createClaudeOperation(invocation, emit, signal, {
-        async launch(operationSignal) {
-          const installation = await inspect(operationSignal);
-          if (installation.accountScope !== invocation.providerContext?.scope)
-            throw new SessionError(
-              'SESSION_RECOVERY_REQUIRED',
-              'Claude account changed after native context admission.',
+      return createClaudeOperation(
+        invocation,
+        async (fact) => {
+          if (
+            fact.kind === 'lost' ||
+            (fact.kind === 'outcome' &&
+              fact.error &&
+              [
+                'PROVIDER_UNAVAILABLE',
+                'PROVIDER_AUTH_REQUIRED',
+                'PROCESS_FAILED',
+                'TIMEOUT',
+              ].includes(fact.error.code))
+          )
+            invalidate(
+              fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
+                ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
+                : undefined,
             );
-          const temporary = await createInvocationScope(
-            options.temporaryRoot,
-            invocation.invocationId,
-          );
-          return launchOwnedProcess({
-            invocationId: invocation.invocationId,
-            scope: temporary,
-            executable: installation.executable,
-            cwd: options.workspace,
-            args: claudeArguments(invocation.selection, invocation.providerContext),
-            environment,
-            signal: operationSignal,
-            secrets: installation.secrets,
-          });
+          await emit(fact);
         },
-        initialize(payload) {
-          claudeModels(payload);
+        signal,
+        {
+          async launch(operationSignal) {
+            const installation = await inspect(operationSignal);
+            if (installation.accountScope !== invocation.providerContext?.scope)
+              throw new SessionError(
+                'SESSION_RECOVERY_REQUIRED',
+                'Claude account changed after native context admission.',
+              );
+            const temporary = await createInvocationScope(
+              options.temporaryRoot,
+              invocation.invocationId,
+            );
+            return launchOwnedProcess({
+              invocationId: invocation.invocationId,
+              scope: temporary,
+              executable: installation.executable,
+              cwd: options.workspace,
+              args: claudeArguments(invocation.selection, invocation.providerContext),
+              environment,
+              signal: operationSignal,
+              secrets: installation.secrets,
+            });
+          },
+          initialize(payload) {
+            claudeModels(payload);
+          },
+          verifyFrame(frame) {
+            if (!verified) {
+              verifyClaudeInit(frame, options.workspace);
+              verified = true;
+            } else if (frame.type === 'system' && frame.subtype === 'init')
+              verifyClaudeInit(frame, options.workspace);
+          },
         },
-        verifyFrame(frame) {
-          if (!verified) {
-            verifyClaudeInit(frame, options.workspace);
-            verified = true;
-          } else if (frame.type === 'system' && frame.subtype === 'init')
-            verifyClaudeInit(frame, options.workspace);
-        },
-      });
+      );
     },
   };
 }

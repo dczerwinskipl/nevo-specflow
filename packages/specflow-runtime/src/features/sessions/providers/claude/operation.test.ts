@@ -118,6 +118,29 @@ function fixture(disposition: 'stopped' | 'unknown' = 'stopped') {
   };
 }
 describe('Claude bidirectional operation', () => {
+  it('publishes only the safe quota reason into durable conversation before its failed outcome', async () => {
+    const f = fixture();
+    await f.ready();
+    f.push({
+      type: 'result',
+      session_id: f.invocation.providerContext!.nativeSessionId,
+      subtype: 'success',
+      is_error: true,
+      api_error_status: 429,
+      terminal_reason: 'api_error',
+      stop_reason: 'stop_sequence',
+      result: 'private native diagnostic',
+    });
+    await f.operation.done;
+    expect(f.facts).toContainEqual({
+      kind: 'text',
+      key: 'provider-error',
+      channel: 'commentary',
+      text: 'Claude quota or rate limit prevented the operation.',
+    });
+    expect(f.facts.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'failed' });
+    expect(JSON.stringify(f.facts)).not.toContain('private native diagnostic');
+  });
   it('initializes before durable dispatch and publishes completion only after tree disposal', async () => {
     const f = fixture();
     await f.ready();

@@ -21,13 +21,15 @@ related:
 
 # Session provider driver
 
-Unimplemented design contract; target internal port in Runtime Sessions, not an SDK shared with UI.
+Internal Runtime Sessions port, implemented by the mock and the bounded Claude adapter; remaining
+provider operations are design guidance until their adapter is delivered. This is not a UI SDK.
 Runtime owns ordering, identity, persistence and terminal arbitration. Drivers own native correlation,
 process/transport resources and translating protocol evidence. This contract does not import Engine.
 
 ## Operations
 
-- describe(signal): bounded ProviderDescriptor from the API reference, using cheap cached discovery;
+- describe(): synchronous last-known ProviderDescriptor; refresh(signal) owns bounded cached discovery.
+  validate(selection, signal) may await that refresh before admission;
   cache positive/negative availability for at most 30 seconds, invalidate on authoritative start error.
   Snapshot reads use the last known descriptor without network/subprocess probes; unknown is honest.
 - validate(selection, signal): validate requested model/mode/effort and readiness before admission;

@@ -73,6 +73,18 @@ export function createClaudeOperation(
     }
   };
   const protocol = createClaudeProtocol(publish, context.nativeSessionId);
+  async function outcome(fact: Extract<DriverFact, { kind: 'outcome' }>) {
+    // Safe adapter messages must survive reload through the normal bounded conversation,
+    // rather than existing only in a transient Turn event or private diagnostics.
+    if (fact.error)
+      await emit({
+        kind: 'text',
+        key: 'provider-error',
+        channel: 'commentary',
+        text: fact.error.message,
+      });
+    await emit(fact);
+  }
   async function expire(group: Questions) {
     groups.delete(group.requestId);
     for (const question of group.questions) {
@@ -173,21 +185,23 @@ export function createClaudeOperation(
       ) {
         await publish({ kind: 'lost', message: 'Claude process-tree settlement is unknown.' });
       } else if (signal.aborted) {
-        await emit({
+        await outcome({
           kind: 'outcome',
           outcome: signal.reason === 'shutdown' ? 'interrupted' : 'cancelled',
         });
       } else if (pendingOutcome && !lost) {
-        await emit(pendingOutcome);
+        await outcome(pendingOutcome);
       } else if (!dispatched) {
-        await emit({
+        await outcome({
           kind: 'outcome',
           outcome: 'failed',
           error: {
             code: internal.signal.aborted
               ? 'TIMEOUT'
               : failure instanceof SessionError
-                ? failure.code
+                ? failure.code === 'PROVIDER_AUTH_REQUIRED'
+                  ? 'PROVIDER_AUTH_REQUIRED'
+                  : 'PROVIDER_UNAVAILABLE'
                 : 'PROVIDER_UNAVAILABLE',
             message: internal.signal.aborted
               ? 'Claude initialization timed out.'

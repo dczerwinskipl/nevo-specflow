@@ -43,8 +43,9 @@ sessions:
 
 Both flags default to false. Local overrides and unknown provider keys are rejected.
 Start the existing product server and open `/sessions/new`; created chats use `/sessions/:sessionId`.
-The explicitly labelled mock performs no external effects. Real provider launch, imported Nevo
-history and writable Engine execution are outside this foundation. Disabling only the provider
+The explicitly labelled mock performs no external effects. The optional Claude adapter uses this
+same API; see [Claude enablement and supported installations](../../ideas/specflow-runtime/claude-provider.md).
+Imported Nevo history and writable Engine execution remain outside this foundation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
 
 ## Authorization and transport
@@ -151,7 +152,7 @@ Conversation entries reference this canonical data; they do not become another l
 Interaction is a discriminated union:
 
 - {interactionId, turnId, workId, revision, kind:'question', prompt, options?: [{id,label}],
-  allowText:boolean};
+  allowText:boolean, maxSelections?:integer};
 - {interactionId, turnId, workId, revision, kind:'permission', prompt, actionSummary}.
 
 At most one answerable interaction per Turn. prompt/actionSummary <=8 KiB each, <=20 options,
@@ -203,7 +204,8 @@ type Respond =
 ```
 
 Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid;
-text only when allowText. Empty answer invalid unless the question explicitly offers an empty
+text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs and is checked
+before durable response admission. Empty answer invalid unless the question explicitly offers an empty
 option (through its ID). Denied permission resolves the interaction; it does not automatically
 fail the Turn. Start inherits pinned Session mode; this foundation exposes no mode-changing command.
 Unsupported model/effort overrides fail CAPABILITY_UNSUPPORTED, never silently ignore.
@@ -322,8 +324,10 @@ Catalogue response is <=128 KiB; <=32 providers, <=100 models each, <=16 efforts
 titles/reasons <=512 bytes. Cap by total bytes as well; oversized provider catalogue is explicit
 PROVIDER_CATALOGUE_UNAVAILABLE, not a silent omission of selected model. Catalogue is advisory;
 command-time validation is authoritative.
-Foundation advertises only explicitly enabled mock, title identifying it as test, read-only mode,
-and its actual synthetic capabilities. No real adapter is advertised from a demo list.
+The catalogue includes explicitly enabled production drivers. The mock identifies itself as a test;
+Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
+is outside the certified subset. Each Session is dispatched through its own selected provider;
+enabling the mock does not grant Claude availability. No real adapter is advertised from a demo list.
 
 ## Error contract
 

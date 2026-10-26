@@ -19,9 +19,20 @@ describe('project Session feature configuration', () => {
     for (const input of [
       { enable: true },
       { enabled: 'true' },
-      { providers: { claude: { enabled: true } } },
+      { providers: { cluade: { enabled: true } } },
       { providers: { mock: { enable: true } } },
+      { providers: { claude: { enabled: 'true' } } },
+      { providers: { claude: { executable: 'claude' } } },
+      { providers: { claude: { allowUnsafe: true } } },
     ])
       expect(() => parseSessionsFeatureConfig(input)).toThrow();
+  });
+  it('supports explicit Claude enablement independently of the mock', () => {
+    expect(
+      parseSessionsFeatureConfig({ enabled: true, providers: { claude: { enabled: true } } }),
+    ).toEqual({
+      enabled: true,
+      providers: { mock: { enabled: false }, claude: { enabled: true } },
+    });
   });
 });

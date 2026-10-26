@@ -22,6 +22,7 @@ const question = Type.Object(
     kind: Type.Literal('question'),
     prompt: text(8192),
     allowText: Type.Boolean(),
+    maxSelections: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
     options: Type.Optional(
       Type.Array(
         Type.Object(
@@ -39,6 +40,7 @@ const permission = Type.Object(
   closed,
 );
 const schema = Type.Union([
+  Type.Object({ kind: Type.Literal('interaction-expired'), key }, closed),
   Type.Object({ kind: Type.Literal('correlation'), providerSessionId: key }, closed),
   Type.Object(
     { kind: Type.Literal('work-open'), key, workKind: WorkKindSchema, title: text(2048) },

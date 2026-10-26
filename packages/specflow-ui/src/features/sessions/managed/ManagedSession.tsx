@@ -160,7 +160,11 @@ export function ManagedSession({
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle px-5 py-3">
-                <p className="text-body-sm text-content-muted">{t('managedSession.mockNote')}</p>
+                <p className="text-body-sm text-content-muted">
+                  {snapshot.session.providerId === 'mock'
+                    ? t('managedSession.mockNote')
+                    : snapshot.session.providerId}
+                </p>
                 <span role="status" className="text-body-sm">
                   {state.connection === 'connected'
                     ? (snapshot.currentActivity?.label ??

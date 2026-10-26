@@ -2,7 +2,7 @@ import { parentPort, workerData, isMainThread } from 'node:worker_threads';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { randomUUID, randomBytes, createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import type {
   ConversationEntry,
   TextPreview,
@@ -130,6 +130,7 @@ export async function runSessionWorker(): Promise<void> {
     CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS owner(id INTEGER PRIMARY KEY CHECK(id=1),runtime TEXT NOT NULL,pid INTEGER NOT NULL,epoch INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,project TEXT NOT NULL,seq INTEGER NOT NULL,ordinal INTEGER NOT NULL,data TEXT NOT NULL,native TEXT UNIQUE);
+    CREATE TABLE IF NOT EXISTS provider_contexts(session TEXT PRIMARY KEY,native TEXT UNIQUE NOT NULL,workspace TEXT NOT NULL,confirmed INTEGER NOT NULL,dispatched INTEGER NOT NULL,scope TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS turns(id TEXT PRIMARY KEY,session TEXT NOT NULL REFERENCES sessions(id),state TEXT NOT NULL,data TEXT NOT NULL);
     CREATE UNIQUE INDEX IF NOT EXISTS one_active_turn ON turns(session) WHERE state!='terminal';
     CREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY,session TEXT NOT NULL REFERENCES sessions(id),ordinal INTEGER NOT NULL,turn TEXT NOT NULL,data TEXT NOT NULL);
@@ -576,11 +577,31 @@ export async function runSessionWorker(): Promise<void> {
       run("UPDATE interactions SET state='expired' WHERE turn=? AND state='pending'", c.turnId);
     }
     if (f.kind === 'correlation') {
+      const context = get('SELECT native FROM provider_contexts WHERE session=?', c.sessionId);
+      if (context && context.native !== f.providerSessionId)
+        fail('SESSION_RECOVERY_REQUIRED', 'Provider context differs from its durable admission.');
       const native = s.snapshot.session.providerId + '\u0000' + f.providerSessionId;
       const existing = get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native;
       if (existing && existing !== native)
         fail('SESSION_RECOVERY_REQUIRED', 'Provider context cannot be rebound.');
       run('UPDATE sessions SET native=? WHERE id=?', native, c.sessionId);
+      if (context) run('UPDATE provider_contexts SET confirmed=1 WHERE session=?', c.sessionId);
+    }
+    if (f.kind === 'interaction-expired') {
+      const row = get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.key);
+      if (row) {
+        const work = decode<WorkSummary>(row);
+        if (work.kind !== 'interaction')
+          fail('SESSION_INPUT_INVALID', 'Expected interaction Work.');
+        run(
+          "UPDATE interactions SET state='expired' WHERE turn=? AND state='pending' AND json_extract(data,'$.workId')=?",
+          c.turnId,
+          work.workId,
+        );
+        const next = transitionWork(work, 'expired', now());
+        run('UPDATE work SET data=? WHERE id=?', JSON.stringify(next), work.workId);
+        emit(s, 'work', { turnId: c.turnId, items: [next] });
+      }
     }
     if (f.kind === 'work-open') {
       if (get('SELECT id FROM work WHERE turn=? AND native=?', c.turnId, f.key))
@@ -856,6 +877,10 @@ export async function runSessionWorker(): Promise<void> {
           message: 'Interrupted by Runtime restart.',
         });
       else {
+        run(
+          "UPDATE interactions SET state='expired' WHERE turn=? AND state='pending'",
+          t.summary.turnId,
+        );
         t.summary.state = 'unknown';
         refreshAttention(s, t);
         saveTurn(String(row.session), t);
@@ -937,6 +962,43 @@ export async function runSessionWorker(): Promise<void> {
         const tid = randomUUID(),
           invocationId = randomUUID(),
           date = now();
+        let providerContext:
+          { nativeSessionId: string; resume: boolean; scope: string } | undefined;
+        if (c.nativeWorkspace !== undefined) {
+          if (
+            !isAbsolute(c.nativeWorkspace) ||
+            c.nativeWorkspace.includes('\0') ||
+            Buffer.byteLength(c.nativeWorkspace) > 8192 ||
+            !c.nativeScope ||
+            Buffer.byteLength(c.nativeScope) > 256
+          )
+            fail('SESSION_INPUT_INVALID', 'A verified native workspace is required.');
+          const previous = get('SELECT * FROM provider_contexts WHERE session=?', c.sessionId);
+          if (previous && previous.workspace !== c.nativeWorkspace)
+            fail('SESSION_RECOVERY_REQUIRED', 'Native context belongs to another workspace.');
+          if (previous && previous.scope !== c.nativeScope)
+            fail(
+              'SESSION_RECOVERY_REQUIRED',
+              'Native context belongs to another provider account.',
+            );
+          if (previous?.dispatched && !previous.confirmed)
+            fail('SESSION_RECOVERY_REQUIRED', 'An unconfirmed dispatch cannot be retried.');
+          const nativeSessionId = previous?.confirmed ? String(previous.native) : randomUUID();
+          providerContext = {
+            nativeSessionId,
+            resume: !!previous?.confirmed,
+            scope: c.nativeScope,
+          };
+          run(
+            'INSERT OR REPLACE INTO provider_contexts VALUES(?,?,?,?,?,?)',
+            c.sessionId,
+            nativeSessionId,
+            c.nativeWorkspace,
+            previous?.confirmed ? 1 : 0,
+            0,
+            c.nativeScope,
+          );
+        }
         const t: StoredTurn = {
           invocationId,
           cancelRequested: false,
@@ -953,11 +1015,27 @@ export async function runSessionWorker(): Promise<void> {
         refreshAttention(s, t);
         entry(s, tid, 'request', t.summary.userMessage);
         emit(s, 'turn', { turn: t.summary, projection: projection(s) });
-        const result = { turnId: tid, invocationId };
+        const result = {
+          turnId: tid,
+          invocationId,
+          ...(providerContext ? { providerContext } : {}),
+        };
         remember(c.actor, 'start', c.sessionId, c.input.requestId, c.input, result);
         return { ...result, fresh: true };
       });
     if (c.op === 'fact') return transaction(() => applyFact(c));
+    if (c.op === 'dispatch-intent')
+      return transaction(() => {
+        const t = turn(c.turnId, c.sessionId);
+        if (t.invocationId !== c.invocationId || t.summary.state !== 'active' || t.cancelRequested)
+          fail('SESSION_RECOVERY_REQUIRED', 'Invocation cannot dispatch.');
+        const context = get('SELECT * FROM provider_contexts WHERE session=?', c.sessionId);
+        if (!context) fail('SESSION_RECOVERY_REQUIRED', 'Native context is missing.');
+        if (context.dispatched)
+          fail('SESSION_RECOVERY_REQUIRED', 'Invocation has already dispatched.');
+        run('UPDATE provider_contexts SET dispatched=1 WHERE session=?', c.sessionId);
+        return true;
+      });
     if (c.op === 'cancel')
       return transaction(() => {
         const input = { requestId: c.requestId };
@@ -999,6 +1077,8 @@ export async function runSessionWorker(): Promise<void> {
           if (
             (answer.text && !i.allowText) ||
             (!answer.text?.trim() && !answer.optionIds.length) ||
+            (i.maxSelections !== undefined && answer.optionIds.length > i.maxSelections) ||
+            new Set(answer.optionIds).size !== answer.optionIds.length ||
             answer.optionIds.some((id) => !i.options?.some((o) => o.id === id))
           )
             fail('INTERACTION_RESPONSE_INVALID', 'Answer does not match the question.');

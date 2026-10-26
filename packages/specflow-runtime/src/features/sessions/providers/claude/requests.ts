@@ -107,6 +107,7 @@ export function prepareClaudeQuestion(frame: unknown) {
         kind: 'question',
         prompt,
         allowText: true,
+        maxSelections: question.multiSelect ? options.length : 1,
         options: options.map(({ id, label }) => ({ id, label })),
       },
       native: {

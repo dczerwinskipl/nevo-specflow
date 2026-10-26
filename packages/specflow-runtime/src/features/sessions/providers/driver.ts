@@ -12,7 +12,10 @@ export interface Invocation {
   invocationId: string;
   request: StartTurn;
   selection: Pick<CreateSession, 'providerId' | 'mode' | 'modelId' | 'effort'>;
-  executionContext: { kind: 'no-effects' };
+  executionContext:
+    { kind: 'no-effects' } | { kind: 'read-only'; workspace: string; temporaryRoot: string };
+  providerContext?: { nativeSessionId: string; resume: boolean; scope?: string };
+  beforeDispatch?: () => Promise<void>;
 }
 export type EmitFact = (fact: DriverFact) => Promise<void>;
 export interface ProviderOperation {
@@ -21,6 +24,8 @@ export interface ProviderOperation {
 }
 export interface SessionDriver {
   describe(): ProviderDescriptor;
-  validate(selection: Invocation['selection']): void;
+  refresh?(signal: AbortSignal): Promise<ProviderDescriptor>;
+  contextScope?(): string;
+  validate(selection: Invocation['selection'], signal?: AbortSignal): void | Promise<void>;
   start(invocation: Invocation, emit: EmitFact, signal: AbortSignal): ProviderOperation;
 }

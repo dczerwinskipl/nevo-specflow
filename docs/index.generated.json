@@ -4330,6 +4330,37 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.claude-provider",
+      "type": "engineering",
+      "title": "Claude Session provider implementation and acceptance",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/claude-provider.md",
+      "read_when": [
+        "enabling or reviewing the Claude Session adapter",
+        "certifying a new installed Claude executable"
+      ],
+      "summary": "Production Claude wiring, initial Windows personal-OAuth certification, durable native context, bidirectional questions and explicit live acceptance limitations.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-runtime.provider-process-boundary",
+        "reference.protocols.session-provider-driver",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "claude",
+        "providers",
+        "sessions",
+        "migration"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.provider-migration-plan",
       "type": "engineering",
       "title": "Real provider migration after the independent Session foundation",

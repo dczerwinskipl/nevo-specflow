@@ -1,0 +1,140 @@
+---
+id: ideas.specflow-runtime.claude-provider
+type: engineering
+title: Claude Session provider implementation and acceptance
+status: draft
+scope: specflow
+areas: [ai, runtime, security, testing]
+tags: [claude, providers, sessions, migration]
+read_when:
+  - enabling or reviewing the Claude Session adapter
+  - certifying a new installed Claude executable
+summary: >
+  Production Claude wiring, initial Windows personal-OAuth certification, durable
+  native context, bidirectional questions and explicit live acceptance limitations.
+related:
+  - ideas.specflow-runtime.provider-migration-plan
+  - ideas.specflow-runtime.provider-process-boundary
+  - reference.protocols.session-provider-driver
+  - reference.api.sessions
+---
+
+# Claude Session provider
+
+Claude is registered alongside the optional mock in the existing Session coordinator. It uses the
+same SQLite Worker, authorization, HTTP/SSE, tail/history/content APIs and independent Session UI.
+No provider transcript endpoint or Spec/Task requirement is introduced. There is no legacy-history
+import or resume-to-new fallback.
+
+## Enablement
+
+Committed `.nevo/config.yaml`:
+
+```yaml
+sessions:
+  enabled: true
+  providers:
+    mock:
+      enabled: false
+    claude:
+      enabled: true
+      # Optional absolute native executable; default: ~/.local/bin/claude.exe
+      # executable: C:/Users/example/.local/bin/claude.exe
+```
+
+The Runtime receives its workspace and Session storage from the verified Engine project context.
+Provider flags do not have a local-config override. Disabled Claude does not inspect login or launch
+a process. Enabling an unsupported installation leaves the provider unavailable; the Runtime and
+other providers remain usable. Discovery is cached for at most 30 seconds and is bounded to 10
+seconds; ordinary chat snapshots do not launch subprocesses. Startup warms discovery for existing
+chat reloads. Model IDs, labels and effort choices come from native initialization, not a static list.
+
+The first certified subset is **Windows native Claude Code 2.1.296**, default first-party **personal
+Pro/Max OAuth file login** and **read-only** execution. Linux/macOS, Team/Enterprise, API keys,
+profiles, gateways, alternate credential directories and writable execution are not certified by this
+implementation. An updated executable is refused until separately checked; a version string alone
+does not carry its certification.
+
+## Prelaunch policy checks
+
+`installation.ts` binds certification to SHA-256
+`76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a`.
+It hashes the executable and rechecks authentication/policy sources before each launch. It accepts
+only the platform environment projection, requires regular default config/credential files,
+an unexpired inference-scoped Pro/Max OAuth credential, and a stable opaque account binding.
+
+It refuses the native Windows managed-settings file/fragments/MCP file, symlinked policy root,
+registry policy roots in both hives/views, remote cache, legacy `.claude/.config.json`, Anthropic
+profile directory, FD fallback credential files, stored `primaryApiKey` and the cached Windows
+Credential Manager feature. Missing is distinguished from access denied or unreadable/malformed
+data. Registry inspection uses fixed .NET read operations in an absolute, hidden, profile-free
+PowerShell process with a two-second/4 KiB budget; it never executes policy values. Credential
+contents and native account identity do not become public diagnostics or descriptors.
+
+This narrow subset is supported by inspection of that exact executable's embedded JavaScript:
+
+| Binary offset                       | Evidence                                                                                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 215609341                           | Remote-policy eligibility excludes known personal Pro/Max unless profile/API authentication supplies another eligible source; unknown subscription remains eligible. |
+| 215028682                           | Subscription is read from the selected OAuth record.                                                                                                                 |
+| 215003300                           | Global `primaryApiKey` is an additional authentication source.                                                                                                       |
+| 213641081                           | Remote cache is not applied when eligibility is false.                                                                                                               |
+| 213662149                           | Windows managed root is the fixed `C:\Program Files\ClaudeCode`.                                                                                                     |
+| 211840302 / 214070759               | Default config directory and secure-storage override affect credential selection.                                                                                    |
+| approximately 212102200             | Existing `.claude/.config.json` overrides the ordinary global config.                                                                                                |
+| approximately 214088000 / 229122887 | Credential Manager choice is latched from the environment/config feature before credential use.                                                                      |
+
+These are bounded build-specific findings, not an OS sandbox or a guarantee for other releases.
+The [managed-settings documentation](https://code.claude.com/docs/en/managed-settings) and
+[remote-policy documentation](https://code.claude.com/docs/en/server-managed-settings) explain why
+an absent cache or safe-mode flag alone is insufficient. User-controlled login/settings must remain
+consistent while a native invocation runs; Runtime does not own the external CLI login process.
+
+## Invocation and settlement
+
+Before launch, one store transaction reserves an independent native UUID, workspace and account
+scope with the Turn. Immediately before the first user frame, a fenced dispatch-intent transaction
+prevents duplicate dispatch. Correlation must match the reserved ID. Confirmed contexts resume only
+in the same workspace/account after reload/restart. An unconfirmed possible dispatch cannot be
+replayed as a new conversation. Neither native IDs nor the account binding are exposed in snapshots.
+
+Arguments fix safe/restricted mode, plan permissions, explicit read tools, no external MCP, no settings
+sources, disabled hooks/slash commands and host permissions over stdio. User frames are explicitly
+`client_composed: true`, suppressing native path-mention/slash-command interpretation. Native init
+checks version, cwd, mode, tool inventory and absence of MCP. Only the three observed plugins bundled
+in the pinned executable (agents-md, telemetry, plugin-authoring) are accepted, with exact builtin
+path/source; external or additional plugins are refused.
+
+The reader continues while questions wait. One native AskUserQuestion request maps to at most four
+canonical questions; pending questions, control identities and serialized stdin writes have explicit
+bounds. Canonical `maxSelections` is checked before durable response admission. Native cancellation
+expires the relevant interaction without sending a stale answer. All non-question permission requests
+are denied, and permission suggestions/updates are never forwarded. Unknown control protocol fails
+closed. No silence timeout is applied while waiting for user input or a model/tool response.
+
+Terminal facts are held until the shared process owner has stopped the process tree. A protocol
+outcome with unverified tree settlement remains unknown. Abort with positive settlement becomes
+cancelled/interrupted. Native `api_error` results, including the observed HTTP 429 shape, become safe
+structured failures; arbitrary native error prose is excluded. Loss without authoritative outcome stays
+unknown when the handle subsequently resolves/rejects.
+
+The [official SDK transport](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/transport/subprocess_cli.py)
+and [control protocol](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/query.py)
+are protocol evidence; newer SDK shapes are not automatically certified for this pinned build.
+
+## Acceptance evidence and remaining limits
+
+Focused tests cover gate refusals before provider spawn, protocol/result normalization, control-loop
+questions/cancellation and private context persistence. A controlled real Node child process through
+the production driver, process owner, SQLite Worker and HTTP proves question response validation,
+cancel/settle, Runtime restart and exact-context continuation without workspace writes.
+
+On 2026-10-26 the installed native CLI passed prelaunch checks, initialized 13 native models and was
+called through the production Runtime HTTP path: create returned 201 and start returned 202. The
+native account returned a weekly quota error (HTTP 429); the Turn persisted as failed, process cleanup
+completed, and the disposable workspace remained empty. No successful live model response, native
+AskUserQuestion round trip or live semantic resume is claimed while that account limit blocks them.
+Those live checks remain pending; the controlled transport tests are not a substitute for them.
+
+Writable effects and document mutations still require the separate Engine effect-admission contract.
+Codex, Antigravity and product associations remain later stages in the same feature PR #98.

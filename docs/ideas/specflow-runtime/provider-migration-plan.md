@@ -51,9 +51,10 @@ prerequisite, not a fake depends_on edge within Plan 04. Full Task workflow/batc
 
 ### Claude P2 implementation checkpoint
 
-The feature branch contains the bounded full-message protocol translator and pure request mapping
-under Runtime Sessions `providers/claude/`. These are internal adapter components, **not a registered
-production driver**. They do not spawn Claude or advertise availability. The current checkpoint covers:
+The feature branch now registers the Claude driver in production Runtime Sessions, alongside the
+optional mock. It includes bounded full-message normalization, a bidirectional control reader/writer,
+native question cancellation, cached discovery, verified workspace composition and durable private
+native-context admission/resume. The current implementation covers:
 
 - native Session correlation, distinct native event UUIDs versus shared assistant message IDs,
   duplicate detection, compound tool actions, commentary/reasoning/final separation and invocation-total
@@ -66,32 +67,28 @@ production driver**. They do not spawn Claude or advertise availability. The cur
   suggestion or persistent permission update is forwarded;
 - preserving an explicitly lost operation as unknown when its transport handle later resolves or rejects.
 
-Read-only local inspection on 2026-10-25 found Claude Code 2.1.296 and existing `claude.ai` login.
-A no-prompt control initialization returned model/effort descriptors using the shared process boundary.
-This proves initialization only: no model response, tool restrictions, native question round trip, resume
-or malicious-input live acceptance is claimed. Normalization tests use synthetic protocol fixtures,
-cross-checked against legacy Nevo and the [official SDK protocol implementation](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/query.py).
-Requiring an outer assistant UUID is the translator's supported subset; the SDK also represents
-messages without UUIDs, so installed-version live evidence is still required.
+The initial certified installation subset is the exact Windows Claude Code 2.1.296 native build,
+default personal Pro/Max file OAuth and read-only execution. Runtime checks the binary hash, managed
+policy absence and credential-source eligibility before launch. Canonical question cardinality is
+validated before durable response admission. Native identity is independently reserved and fenced by
+workspace and account; uncertain dispatch never falls back to a new conversation.
 
-Production dispatch remains gated. In particular, the inspected `--safe-mode` and `--restricted`
-flags preserve managed policy: the [official CLI reference](https://code.claude.com/docs/en/cli-reference)
-documents executable policy customizations that remain active. A tool allowlist and a post-start
-inventory do not prevent a startup hook from already running. Inspect effective managed policy before
-launch, or use an independently enforced execution boundary; do not claim workspace read-only safety
-from these flags alone. Preserve the existing CLI login path: `--bare` excludes OAuth authentication.
+On 2026-10-26 the real installed transport passed discovery and the production Runtime HTTP
+create/start path. Claude returned the account's weekly quota error (HTTP 429), which is persisted as a
+safe failed Turn with process cleanup and no disposable-workspace changes. Controlled real-process
+HTTP integration proves questions, cancellation and continuation across Runtime restart. Successful
+live answers, native question round trips and semantic live resume remain pending behind that quota.
 
-Remaining P2 work includes the live control reader/writer and cancellation of pending questions,
-canonical response-cardinality validation before durable response admission, policy/version/tool
-inventory certification, asynchronous cached discovery and provider registry, trusted workspace
-composition, durable private native-context admission/resume and end-to-end installed transport tests.
-These steps remain inside PR #98. Writable effects still require W1/W2 below.
+See [Claude provider implementation and acceptance](claude-provider.md) for enablement, exact
+certification evidence, bounded operation ownership and remaining live gates. Other installations
+remain unavailable until independently certified. Writable effects still require W1/W2 below;
+all remaining work stays inside PR #98.
 
 Verification on implementation commit `aa6314b5`: 29 focused Windows tests passed;
 independent re-review found no remaining concrete blocker in this normalization slice.
 Linux build/typecheck and all 754 Runtime tests passed (96 files). Root `pnpm check:quality`
-passed, including 231-document corpus/index validation. These results do not close the remaining
-live-adapter gates above.
+passed, including 231-document corpus/index validation. That was the normalization checkpoint;
+the new integration evidence is recorded in the Claude provider document.
 
 At task start capture exact executable/version and installed protocol/SDK schema as test evidence.
 That is bounded adapter certification, not a deferred decision about canonical semantics.

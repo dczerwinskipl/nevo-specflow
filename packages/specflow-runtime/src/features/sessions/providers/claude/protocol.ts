@@ -88,6 +88,9 @@ export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) 
     }
     if (frame.type === 'rate_limit_event') return;
     if (frame.type === 'assistant') {
+      // SDK error assistant prose can include private diagnostics. A structured result
+      // below owns its public failure classification, never the arbitrary error text.
+      if (frame.error !== undefined) return;
       const message = object(frame.message);
       const messageId = identifier(message.id);
       const id = identifier(frame.uuid);
@@ -187,9 +190,10 @@ export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) 
       frame.terminal_reason == null ? undefined : string(frame.terminal_reason);
     const interrupted = ['aborted_streaming', 'aborted_tools'].includes(terminalReason ?? '');
     if (
-      (terminalReason !== undefined &&
+      (!frame.is_error &&
+        terminalReason !== undefined &&
         !['completed', 'aborted_streaming', 'aborted_tools'].includes(terminalReason)) ||
-      (frame.stop_reason != null && frame.stop_reason !== 'end_turn') ||
+      (!frame.is_error && frame.stop_reason != null && frame.stop_reason !== 'end_turn') ||
       frame.deferred_tool_use != null ||
       (frame.origin != null && object(frame.origin).kind !== 'human')
     )
@@ -234,8 +238,13 @@ export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) 
               kind: 'outcome',
               outcome: 'failed',
               error: {
-                code: 'PROVIDER_FAILED',
-                message: 'Claude reported an unsuccessful result.',
+                code: frame.api_error_status === 401 ? 'PROVIDER_AUTH_REQUIRED' : 'PROVIDER_FAILED',
+                message:
+                  frame.api_error_status === 429
+                    ? 'Claude quota or rate limit prevented the operation.'
+                    : frame.api_error_status === 401
+                      ? 'Claude authentication is required.'
+                      : 'Claude reported an unsuccessful result.',
               },
             },
     );

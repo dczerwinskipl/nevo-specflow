@@ -22,6 +22,7 @@ import {
   type SessionSnapshot,
   type SessionChange,
   type LiveProjection,
+  type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { EventBatch } from '../persistence/protocol';
@@ -63,14 +64,18 @@ const count = (value: string | undefined, fallback: number, max: number) => {
 function effective(
   s: SessionSnapshot,
   request: FastifyRequest,
-  available: boolean,
+  providerFor: (providerId: string) => ProviderDescriptor | undefined,
 ): SessionSnapshot {
+  const provider = providerFor(s.session.providerId);
+  const available = provider?.readiness === 'ready';
   const permissions = request.authz.resolveCapabilities({
     resource: SessionCapabilities,
     scope: { projectId: s.session.projectId, sessionId: s.session.sessionId },
   });
   s.session.capabilities.view = permissions.view;
   s.session.capabilities.manage = permissions.manage;
+  s.session.capabilities.questions = provider?.capabilities.questions === true;
+  s.session.capabilities.permissions = provider?.capabilities.permissions === true;
   s.session.capabilities.start = permissions.manage && available && s.session.readiness === 'ready';
   s.session.capabilities.cancel =
     permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';
@@ -80,7 +85,7 @@ function effective(
 function effectiveEvent(
   event: SessionChange,
   request: FastifyRequest,
-  available: boolean,
+  available: (providerId: string) => ProviderDescriptor | undefined,
 ): SessionChange {
   if (event.kind === 'session') {
     const session = event.changes.session;
@@ -114,7 +119,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
   options: {
     coordinator?: SessionCoordinator;
     projectId?: string;
-    mockEnabled: boolean;
   },
 ): void {
   const streams = new Set<AbortController>();
@@ -200,7 +204,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     feature.get(
       '/api/session-providers',
       { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },
-      () => ({ items: options.mockEnabled ? [coordinator().describe()] : [] }),
+      async () => ({ items: await coordinator().providers() }),
     );
     feature.post(
       '/api/sessions',
@@ -221,7 +225,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         effective(
           await coordinator().snapshot(ids(request).sessionId, actor(request)),
           request,
-          options.mockEnabled,
+          coordinator().provider,
         ),
     );
     feature.get(
@@ -445,7 +449,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
                 'id: ' +
                 event.eventSeq +
                 '\nevent: session-change\ndata: ' +
-                JSON.stringify(effectiveEvent(event, request, options.mockEnabled)) +
+                JSON.stringify(effectiveEvent(event, request, coordinator().provider)) +
                 '\n\n';
               if (!raw.write(frame)) await once(raw, 'drain', { signal: controller.signal });
               after = event.eventSeq;

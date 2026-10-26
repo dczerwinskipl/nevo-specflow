@@ -9,7 +9,7 @@ import { SessionError } from '../errors';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { SessionStore } from '../persistence/store';
 import type { DriverFact, SnapshotSource, StartAdmission } from '../persistence/protocol';
-import type { SessionDriver, ProviderOperation } from '../providers/driver';
+import type { SessionDriver, ProviderOperation, Invocation } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
 
 interface ActiveInvocation {
@@ -20,10 +20,43 @@ interface ActiveInvocation {
 }
 export function createSessionCoordinator(
   store: SessionStore,
-  driver: SessionDriver,
+  drivers: SessionDriver | readonly SessionDriver[],
   projectId: string,
   available = true,
+  executionContext: Invocation['executionContext'] = { kind: 'no-effects' },
 ) {
+  const driverList: readonly SessionDriver[] = Array.isArray(drivers)
+    ? drivers
+    : [drivers as SessionDriver];
+  const registry = new Map<string, SessionDriver>(
+    driverList.map((driver) => [driver.describe().providerId, driver]),
+  );
+  function driverFor(providerId: string) {
+    const driver = available ? registry.get(providerId) : undefined;
+    if (!driver) throw new SessionError('PROVIDER_UNAVAILABLE', 'Session provider is not enabled.');
+    return driver;
+  }
+  async function bounded<T>(run: (signal: AbortSignal) => Promise<T> | T): Promise<T> {
+    const controller = new AbortController();
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(
+          new SessionError('PROVIDER_UNAVAILABLE', 'Provider discovery or validation timed out.'),
+        );
+      }, 10000);
+      timer.unref();
+    });
+    try {
+      return await Promise.race([Promise.resolve().then(() => run(controller.signal)), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  async function validate(driver: SessionDriver, selection: Invocation['selection']) {
+    await bounded((signal) => driver.validate(selection, signal));
+  }
   const active = new Map<string, ActiveInvocation>();
   let closed = false;
   const call = store.call;
@@ -36,7 +69,28 @@ export function createSessionCoordinator(
   return {
     store,
     snapshot,
-    describe: () => driver.describe(),
+    describe: () => [...registry.values()][0]?.describe(),
+    provider: (providerId: string) =>
+      available ? registry.get(providerId)?.describe() : undefined,
+    available: (providerId: string) =>
+      available && registry.get(providerId)?.describe().readiness === 'ready',
+    async providers() {
+      if (!available) return [];
+      return Promise.all(
+        [...registry.values()].map(async (driver) => {
+          try {
+            if (driver.refresh) await bounded((signal) => driver.refresh!(signal));
+            return driver.describe();
+          } catch {
+            return {
+              ...driver.describe(),
+              readiness: 'unavailable' as const,
+              reason: 'Provider discovery could not be completed.',
+            };
+          }
+        }),
+      );
+    },
     async create(actor: string, input: CreateSession): Promise<{ sessionId: string }> {
       accepting();
       const cached = await call<{ sessionId: string } | undefined>({
@@ -50,7 +104,8 @@ export function createSessionCoordinator(
       if (cached) return cached;
       if (!available)
         throw new SessionError('PROVIDER_UNAVAILABLE', 'No Session provider is enabled.');
-      driver.validate(input);
+      const driver = driverFor(input.providerId);
+      await validate(driver, input);
       return call({ op: 'create', actor, input });
     },
     async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
@@ -77,9 +132,20 @@ export function createSessionCoordinator(
         ...(input.modelId ? { modelId: input.modelId } : {}),
         ...(input.effort ? { effort: input.effort } : {}),
       };
-      driver.validate(selection);
-      const admitted = await call<StartAdmission>({ op: 'start', actor, sessionId, input });
+      const driver = driverFor(selection.providerId);
+      await validate(driver, selection);
+      const native = selection.providerId !== 'mock' && executionContext.kind === 'read-only';
+      const admitted = await call<StartAdmission>({
+        op: 'start',
+        actor,
+        sessionId,
+        input,
+        ...(native
+          ? { nativeWorkspace: executionContext.workspace, nativeScope: driver.contextScope?.() }
+          : {}),
+      });
       if (!admitted.fresh) return { turnId: admitted.turnId };
+      if (closed) return { turnId: admitted.turnId };
       const controller = new AbortController();
       let seq = 0,
         tail = Promise.resolve();
@@ -118,7 +184,21 @@ export function createSessionCoordinator(
               invocationId: admitted.invocationId,
               request: input,
               selection,
-              executionContext: { kind: 'no-effects' },
+              executionContext:
+                selection.providerId === 'mock' ? { kind: 'no-effects' } : executionContext,
+              ...(admitted.providerContext
+                ? {
+                    providerContext: admitted.providerContext,
+                    beforeDispatch: async () => {
+                      await call({
+                        op: 'dispatch-intent',
+                        sessionId,
+                        turnId: admitted.turnId,
+                        invocationId: admitted.invocationId,
+                      });
+                    },
+                  }
+                : {}),
             },
             emit,
             controller.signal,

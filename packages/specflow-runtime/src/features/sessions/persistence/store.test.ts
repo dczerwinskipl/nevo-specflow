@@ -23,10 +23,10 @@ afterEach(async () => {
   store = undefined;
   if (directory) await rm(directory, { recursive: true, force: true });
 });
-async function create() {
+async function create(providerId = 'mock') {
   directory = await mkdtemp(join(tmpdir(), 'nevo-sessions-'));
   store = await openSessionStore({ directory, projectId: 'project' });
-  const input = { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' as const };
+  const input = { requestId: randomUUID(), providerId, mode: 'read-only' as const };
   const session = await store.call<{ sessionId: string }>({ op: 'create', actor: 'user', input });
   return { ...session, input };
 }
@@ -34,6 +34,191 @@ async function snap(sessionId: string): Promise<SessionSnapshot> {
   return (await store!.call<SnapshotSource>({ op: 'snapshot', sessionId, actor: 'user' })).snapshot;
 }
 describe('durable Session store', () => {
+  it('persists native admission and resumes the confirmed context across Runtime restart, scoped to workspace and account', async () => {
+    const { sessionId } = await create('claude');
+    const nativeWorkspace = join(directory, 'workspace');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace,
+      nativeScope: 'account-a',
+      input: { requestId: randomUUID(), message: 'First' },
+    });
+    expect(start.providerContext).toMatchObject({ resume: false, scope: 'account-a' });
+    const nativeSessionId = start.providerContext!.nativeSessionId;
+    await store!.call({
+      op: 'dispatch-intent',
+      sessionId,
+      turnId: start.turnId,
+      invocationId: start.invocationId,
+    });
+    await expect(
+      store!.call({
+        op: 'dispatch-intent',
+        sessionId,
+        turnId: start.turnId,
+        invocationId: start.invocationId,
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 1,
+      fact: { kind: 'correlation', providerSessionId: nativeSessionId },
+    });
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 2,
+      fact: { kind: 'outcome', outcome: 'completed' },
+    });
+    await store!.close();
+    store = await openSessionStore({ directory, projectId: 'project' });
+    const next = await store.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace,
+      nativeScope: 'account-a',
+      input: { requestId: randomUUID(), message: 'Second' },
+    });
+    expect(next.providerContext).toEqual({ nativeSessionId, resume: true, scope: 'account-a' });
+    const snapshot = JSON.stringify(await snap(sessionId));
+    expect(snapshot).not.toContain(nativeSessionId);
+    expect(snapshot).not.toContain('account-a');
+    await store.call({
+      op: 'fact',
+      sessionId,
+      ...next,
+      driverSeq: 1,
+      fact: { kind: 'outcome', outcome: 'completed' },
+    });
+    for (const change of [
+      { nativeWorkspace: join(directory, 'other'), nativeScope: 'account-a' },
+      { nativeWorkspace, nativeScope: 'account-b' },
+    ])
+      await expect(
+        store.call({
+          op: 'start',
+          actor: 'user',
+          sessionId,
+          ...change,
+          input: { requestId: randomUUID(), message: 'Unsafe resume' },
+        }),
+      ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+  });
+  it('does not replay an unconfirmed native dispatch and never silently rebinds correlation', async () => {
+    const { sessionId } = await create('claude');
+    const nativeWorkspace = join(directory, 'workspace');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'First' },
+    });
+    await store!.call({
+      op: 'dispatch-intent',
+      sessionId,
+      turnId: start.turnId,
+      invocationId: start.invocationId,
+    });
+    await expect(
+      store!.call({
+        op: 'fact',
+        sessionId,
+        ...start,
+        driverSeq: 1,
+        fact: { kind: 'correlation', providerSessionId: randomUUID() },
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 1,
+      fact: { kind: 'outcome', outcome: 'failed' },
+    });
+    await expect(
+      store!.call({
+        op: 'start',
+        actor: 'user',
+        sessionId,
+        nativeWorkspace,
+        nativeScope: 'account',
+        input: { requestId: randomUUID(), message: 'Unsafe replay' },
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+  });
+  it('checks single-selection answers before durable admission and expires native-cancelled questions', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Question' },
+    });
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 1,
+      fact: { kind: 'work-open', key: 'q', workKind: 'interaction', title: 'Question' },
+    });
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 2,
+      fact: {
+        kind: 'interaction',
+        key: 'q',
+        interaction: {
+          kind: 'question',
+          prompt: 'Pick',
+          allowText: true,
+          maxSelections: 1,
+          options: [
+            { id: 'a', label: 'A' },
+            { id: 'b', label: 'B' },
+          ],
+        },
+      },
+    });
+    const interactionId = (await snap(sessionId)).interaction!.interactionId;
+    await expect(
+      store!.call({
+        op: 'respond',
+        actor: 'user',
+        sessionId,
+        interactionId,
+        input: { requestId: randomUUID(), kind: 'question', answer: { optionIds: ['a', 'b'] } },
+      }),
+    ).rejects.toMatchObject({ code: 'INTERACTION_RESPONSE_INVALID' });
+    expect((await snap(sessionId)).interaction?.interactionId).toBe(interactionId);
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 3,
+      fact: { kind: 'interaction-expired', key: 'q' },
+    });
+    expect((await snap(sessionId)).interaction).toBeUndefined();
+    expect((await snap(sessionId)).activeTurn?.state).toBe('active');
+    await expect(
+      store!.call({
+        op: 'respond',
+        actor: 'user',
+        sessionId,
+        interactionId,
+        input: { requestId: randomUUID(), kind: 'question', answer: { optionIds: ['a'] } },
+      }),
+    ).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
+  });
   it('bounds activity labels for valid long and multi-byte Work titles', async () => {
     const { sessionId } = await create();
     const start = await store!.call<StartAdmission>({

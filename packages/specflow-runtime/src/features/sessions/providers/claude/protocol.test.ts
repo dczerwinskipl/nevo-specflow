@@ -30,6 +30,33 @@ function fixture() {
   return { facts, protocol, accept, assistant, result };
 }
 describe('Claude full-message protocol', () => {
+  it('classifies the installed CLI quota result without publishing native diagnostic prose', async () => {
+    const f = fixture();
+    await f.accept({
+      type: 'assistant',
+      uuid: 'error_1',
+      session_id: sessionId,
+      error: 'rate_limit',
+      message: { id: 'msg_error', content: [{ type: 'text', text: 'private diagnostic' }] },
+    });
+    await f.result({
+      is_error: true,
+      terminal_reason: 'api_error',
+      stop_reason: 'stop_sequence',
+      api_error_status: 429,
+      result: 'private diagnostic',
+      usage: { input_tokens: 0, output_tokens: 0 },
+    });
+    expect(f.facts.at(-1)).toEqual({
+      kind: 'outcome',
+      outcome: 'failed',
+      error: {
+        code: 'PROVIDER_FAILED',
+        message: 'Claude quota or rate limit prevented the operation.',
+      },
+    });
+    expect(JSON.stringify(f.facts)).not.toContain('private diagnostic');
+  });
   it('separates commentary, reasoning and final without counting partial/message usage twice', async () => {
     const f = fixture();
     await f.assistant('msg_1', [

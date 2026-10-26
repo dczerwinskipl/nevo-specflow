@@ -61,8 +61,8 @@ export interface RuntimeAppDependencies {
   readonly documents?: DocumentsFeatureDependencies;
   readonly sessions?: {
     references?: SessionReferenceOwner;
-    storage?: { directory: string; projectId: string };
-    driver?: SessionDriver;
+    storage?: { directory: string; projectId: string; workspace?: string };
+    driver?: SessionDriver | readonly SessionDriver[];
   };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
@@ -207,6 +207,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
           ? {
               directory: join(engine.context.project.stateRoot, 'sessions'),
               projectId: engine.context.project.projectId,
+              workspace: engine.context.workspace.root,
             }
           : undefined),
       driver: dependencies.sessions?.driver,

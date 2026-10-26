@@ -83,6 +83,7 @@ export const InteractionSchema = Type.Union([
         Type.Array(Type.Object({ id: text(128), label: text(512) }, closed), { maxItems: 20 }),
       ),
       allowText: Type.Boolean(),
+      maxSelections: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
     },
     closed,
   ),

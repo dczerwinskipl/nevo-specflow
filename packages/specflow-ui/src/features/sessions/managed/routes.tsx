@@ -91,7 +91,9 @@ function NewManagedSession() {
               <Typography as="h1" variant="title-lg">
                 {t('managedSession.new')}
               </Typography>
-              <p className="text-body-md text-content-muted">{t('managedSession.mockNote')}</p>
+              {provider?.providerId === 'mock' && (
+                <p className="text-body-md text-content-muted">{t('managedSession.mockNote')}</p>
+              )}
               {providers.isPending ? (
                 <p role="status">{t('managedSession.loading')}</p>
               ) : provider ? (

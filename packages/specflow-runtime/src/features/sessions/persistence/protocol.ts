@@ -11,6 +11,7 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 
 export type DriverFact =
+  | { kind: 'interaction-expired'; key: string }
   | { kind: 'correlation'; providerSessionId: string }
   | { kind: 'work-open'; key: string; workKind: WorkSummary['kind']; title: string }
   | { kind: 'work-update'; key: string; state: WorkSummary['state'] }
@@ -55,7 +56,15 @@ export type StoreCommand =
       input: unknown;
     }
   | { op: 'create'; actor: string; input: CreateSession }
-  | { op: 'start'; actor: string; sessionId: string; input: StartTurn }
+  | {
+      op: 'start';
+      actor: string;
+      sessionId: string;
+      input: StartTurn;
+      nativeWorkspace?: string;
+      nativeScope?: string;
+    }
+  | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
   | {
       op: 'fact';
       sessionId: string;
@@ -99,6 +108,7 @@ export interface StartAdmission {
   turnId: string;
   invocationId: string;
   fresh: boolean;
+  providerContext?: { nativeSessionId: string; resume: boolean; scope: string };
 }
 export interface SnapshotSource {
   snapshot: SessionSnapshot;

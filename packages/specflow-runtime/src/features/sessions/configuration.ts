@@ -1,9 +1,10 @@
 import { record, onlyKeys } from '../../config/parsing/value-parsers';
 import { RuntimeConfigError } from '../../config/parsing/runtime-config-error';
+import { isAbsolute } from 'node:path';
 
 export interface SessionsFeatureConfig {
   enabled: boolean;
-  providers: { mock: { enabled: boolean } };
+  providers: { mock: { enabled: boolean }; claude?: { enabled: boolean; executable?: string } };
 }
 export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfig {
   if (value === undefined) return { enabled: false, providers: { mock: { enabled: false } } };
@@ -11,7 +12,25 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
   onlyKeys(sessions, new Set(['enabled', 'providers']), 'sessions');
   const providers =
     sessions.providers === undefined ? {} : record(sessions.providers, 'sessions.providers');
-  onlyKeys(providers, new Set(['mock']), 'sessions.providers');
+  onlyKeys(providers, new Set(['mock', 'claude']), 'sessions.providers');
+  const claude =
+    providers.claude === undefined
+      ? undefined
+      : record(providers.claude, 'sessions.providers.claude');
+  if (claude) {
+    onlyKeys(claude, new Set(['enabled', 'executable']), 'sessions.providers.claude');
+    if (claude.enabled !== undefined && typeof claude.enabled !== 'boolean')
+      throw new RuntimeConfigError('sessions.providers.claude.enabled must be boolean.');
+    if (
+      claude.executable !== undefined &&
+      (typeof claude.executable !== 'string' ||
+        !isAbsolute(claude.executable) ||
+        claude.executable.includes('\0'))
+    )
+      throw new RuntimeConfigError(
+        'sessions.providers.claude.executable must be an absolute native executable path.',
+      );
+  }
   const mock =
     providers.mock === undefined ? {} : record(providers.mock, 'sessions.providers.mock');
   onlyKeys(mock, new Set(['enabled']), 'sessions.providers.mock');
@@ -24,6 +43,16 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
   }
   return {
     enabled: sessions.enabled === true,
-    providers: { mock: { enabled: mock.enabled === true } },
+    providers: {
+      mock: { enabled: mock.enabled === true },
+      ...(claude
+        ? {
+            claude: {
+              enabled: claude.enabled === true,
+              ...(typeof claude.executable === 'string' ? { executable: claude.executable } : {}),
+            },
+          }
+        : {}),
+    },
   };
 }

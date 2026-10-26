@@ -35,7 +35,7 @@ for the result and its blocking implications.
 
 Prioritize correctness, violated invariants, missing edge cases, recovery behavior, security boundaries, and tests that would fail for the defect being discussed. Distinguish blocking findings from optional improvements. Do not rewrite implementation merely to match personal style.
 
-When reviewing work produced by another agent, do not assume its summary is correct; inspect the relevant diff, code, tests, and authoritative documentation yourself. Apply scope-and-complexity guidance to distinguish a concrete maintainability or correctness defect from an optional simplification; do not invent a blocking finding from file count, abstraction count, or subjective style.
+When reviewing work produced by another agent, do not assume its summary is correct; inspect the relevant diff, code, tests, and authoritative documentation yourself. For a complexity finding, identify its concrete impact on correctness, consistency, clarity, or maintainability and name a viable simpler alternative. Distinguish required fixes from optional cleanup. File count, personal style preferences, and hypothetical reuse alone are not blocking defects when repository conventions are met.
 
 ## Implementation scope and complexity discipline
 
@@ -49,15 +49,9 @@ Prefer reusing an existing capability when both its semantics and ownership fit.
 
 ### Keep the implementation complete but focused
 
-Avoid forwarding-only wrappers, abstractions for hypothetical reuse, unsupported compatibility paths, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
+Avoid forwarding-only wrappers, abstractions for hypothetical reuse, compatibility branches without a current requirement, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
 
 Prefer straightforward, readable control flow and explicit ownership over compressed code. Preserve required error handling, failure/retry paths, recovery, and coverage. A sound change can legitimately need multiple modules, new types, or additional tests. Never use lines changed, files created, or abstraction counts as hard limits or quality scores.
-
-### Self-review and independent review
-
-**Implementer:** Before handoff, compare the diff to the requested outcome. For each materially new abstraction, dependency, configuration choice, or state owner, verify that it serves a current requirement or boundary. Files may be split for ownership and testability without individual justification. Remove dead scaffolding and unrelated changes. Verify the behavior and material failure cases using the repository's testing rules. Explain only non-obvious choices; avoid a report-sized checklist for a trivial change.
-
-**Reviewer:** After any required independent UX first-read, compare the diff with existing capabilities and concrete callers. Raise evidence-based findings for unnecessary complexity only where it materially harms maintainability, clarity, consistency, or correctness; name a simpler viable alternative. Distinguish defects from optional cleanup. Do not reject correct work merely for its size, coding style, or possible future reuse.
 
 ## Repository knowledge
 

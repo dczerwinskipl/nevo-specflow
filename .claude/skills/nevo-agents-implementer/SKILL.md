@@ -27,6 +27,8 @@ Apply the shared scope-and-complexity discipline within existing architecture an
 
 Verify the changed behavior at the narrowest useful boundary first, then run the broader checks required by the repository. Report material limitations or unresolved failures instead of treating them as successful completion.
 
+Before handoff, compare the diff with the intended behavior and unchanged scope. Check that materially new abstractions, dependencies, configuration choices, and state owners serve a current requirement or boundary. Remove dead scaffolding and unrelated changes. Report only material decisions, unverified behavior, and remaining limitations; a trivial change does not need a report-sized checklist.
+
 ## Implementation scope and complexity discipline
 
 Keep implementation and review proportional to the requested outcome. This guidance is not a separate approval gate, a replacement for role-specific workflows, or a line-count target. An explicit owner request sets the intended scope but cannot silently override a current MUST/MUST NOT contract; resolve such conflicts in the authoritative source before dependent changes. Do not sacrifice correctness, security, authorization, accessibility, required verification, deterministic invariants, lifecycle safety, or Git recovery for a smaller diff.
@@ -39,15 +41,9 @@ Prefer reusing an existing capability when both its semantics and ownership fit.
 
 ### Keep the implementation complete but focused
 
-Avoid forwarding-only wrappers, abstractions for hypothetical reuse, unsupported compatibility paths, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
+Avoid forwarding-only wrappers, abstractions for hypothetical reuse, compatibility branches without a current requirement, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
 
 Prefer straightforward, readable control flow and explicit ownership over compressed code. Preserve required error handling, failure/retry paths, recovery, and coverage. A sound change can legitimately need multiple modules, new types, or additional tests. Never use lines changed, files created, or abstraction counts as hard limits or quality scores.
-
-### Self-review and independent review
-
-**Implementer:** Before handoff, compare the diff to the requested outcome. For each materially new abstraction, dependency, configuration choice, or state owner, verify that it serves a current requirement or boundary. Files may be split for ownership and testability without individual justification. Remove dead scaffolding and unrelated changes. Verify the behavior and material failure cases using the repository's testing rules. Explain only non-obvious choices; avoid a report-sized checklist for a trivial change.
-
-**Reviewer:** After any required independent UX first-read, compare the diff with existing capabilities and concrete callers. Raise evidence-based findings for unnecessary complexity only where it materially harms maintainability, clarity, consistency, or correctness; name a simpler viable alternative. Distinguish defects from optional cleanup. Do not reject correct work merely for its size, coding style, or possible future reuse.
 
 ## Repository knowledge
 

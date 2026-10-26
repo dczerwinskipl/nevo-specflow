@@ -43,9 +43,10 @@ A later version may let an agent inspect or coordinate work across projects. Mor
 a **Workbench** could group several Git projects as a logical alternative to a monorepo. Neither
 capability needs to exist for the first multi-project server.
 
-This direction does **not** require a user-facing `Instance` domain aggregate or public
-`instanceId` just because a server hosts several projects. Internal deployment identity may still
-be useful for operations. Global application state is not another Git Project.
+This direction does **not** propose a separate hosting/server `Instance` aggregate or public
+`instanceId` for a SpecFlow deployment. This is unrelated to the proposed `instanceId` for
+[independent executions of one workflow step](specflow-engine/multi-instance-execution.md).
+An internal deployment identity may still be useful operationally; it is not a Git Project.
 
 ## Conceptual boundaries
 
@@ -58,8 +59,9 @@ be useful for operations. Global application state is not another Git Project.
 - **Workspace:** Verified checkout belonging to a Project Home, not a cross-project Workbench.
 - **Agent definition / provider:** May be reusable, but does not itself authorize access to
   other projects.
-- **Managed Session / Turn / Work:** Runtime-owned execution; conversation context, execution
-  target and mutation authority are different concepts.
+- **Managed Session / Turn / Work:** Runtime owns canonical Session execution records and their
+  lifecycle. Projects available as context, the execution target and mutation authority are
+  separate relationships; none follows merely from where a record is stored.
 - **Optional Workbench:** A group of references to projects, not a new Project Home.
 
 The current canonical Session -> Turn -> Work model and E1/E2 Project Home verification remain
@@ -88,6 +90,10 @@ authoritative. This note does not revise their existing identities or mutation s
 - Distinguish **context access** (a session can read information about another project),
   **execution target** (where a specific operation runs), and **mutation authority** (which
   project/workspace the operation may change). These can differ.
+- Future access to another project's context need not change the Session's execution environment
+  or target. Provider-native resume may depend on working directory, configuration, process
+  state and authentication environment. Exposing context does not relocate the Session; changing
+  its execution target needs separate identity, authorization and provider-compatibility decisions.
 - Cross-project read/write needs explicit selection and authorization, not automatic access to
   every repo in the same server. Project policy, user identity, provider process credentials and
   Engine writer claims must not be conflated.
@@ -106,6 +112,9 @@ authoritative. This note does not revise their existing identities or mutation s
   while the Engine pins Project Home, common Git directory and absolute paths in local identity
   and recovery evidence. Moving ownership or files is a deliberate migration, **not** a path
   rename or a config override.
+- Runtime owns Session/Turn execution state separately from Engine's Project Home state. Its
+  future physical storage layout (global, per-project or hybrid) remains undecided; placement
+  alone must not define a Session's context, execution target or permissions.
 - A Docker image can bundle the SpecFlow Runtime/UI and common provider tools; project-specific
   SDKs, CLIs and dependencies could later be installed through an authorized UI workflow.
   Installed tools need version, scope, persistence, execution-environment and rollback semantics.

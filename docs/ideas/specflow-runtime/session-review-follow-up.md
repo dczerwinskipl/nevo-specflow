@@ -29,13 +29,10 @@ hardening change. No Engine effect admission or new UI feature is introduced.
 
 ## Confirmed defects and changes
 
-- **R01 remains a blocker.** Native Windows reproduction receives a valid terminal frame followed
-  immediately by natural process exit, then obtains `unknown/unverified-tree` in 4/4 reviewer probes.
-  Natural root exit before disposal reproduces it too. A live-root cancellation obtains
-  `stopped/tree-killed`; that is not evidence for the exited-root case. A native PowerShell parent
-  left a child retaining inherited pipes; the reviewer explicitly cleaned up that exact test child.
-  Current taskkill cannot safely reconstruct membership from a stale PID. New characterization
-  tests preserve uncertainty and the terminal frame; they do not claim this defect is fixed.
+- **R01:** the original taskkill path reproduced `unknown/unverified-tree` after natural exit in
+  4/4 reviewer probes. Owned Windows invocations now use a retained Job Object, including after
+  root exit. Regression tests require positive settlement after natural/immediate terminal exit,
+  termination of detached descendants, cancellation and abrupt Runtime death. See ownership below.
 - **R02:** startup now settles an admitted real Turn as interrupted only when its persisted native
   dispatch barrier was not crossed. It never replays the input. Repeated start request IDs return the
   same admission. Confirmed context/account/workspace binding is retained for a subsequent explicit
@@ -101,18 +98,34 @@ post-crash reconciliation/termination certificate exists yet for dispatched Clau
 Sessions remain blocked. A separate new Session is an explicit new conversation, not recovery of
 the old one, and must wait until any possibly surviving process affecting the workspace is contained.
 
-## Windows ownership dependency
+## Windows job ownership
 
-A real fix needs an atomic native launcher: create an unnamed, non-inherited Job Object with
-KILL_ON_JOB_CLOSE and no breakaway; CreateProcessW suspended; assign to the job before resuming;
-terminate suspended launch on assignment failure. Retain a query handle until disposal. Cancellation
-terminates the entire job and waits for ActiveProcesses=0. Root exit is a separate event. Keep bounded
-control messages separate from provider stdout; never treat a helper's ordinary exit as settlement.
+Runtime creates a uniquely named local Job Object with KILL_ON_JOB_CLOSE, without either breakaway
+flag, and retains its non-inherited handle. A trusted Node bootstrap opens the job, assigns itself,
+closes its temporary handle and reports ownership over separate IPC. Runtime verifies one admitted
+process before permitting start. Only then does the bootstrap spawn the provider; descendants
+inherit membership. No provider executes before assignment. If Runtime dies during admission,
+opening the missing job fails or closing the bootstrap's last handle terminates the job.
+The provider inherits standard streams, but never the bootstrap IPC channel.
+Bootstrap environment contains only the Windows system directory. Configured provider environment,
+including any Node preload options accepted by the shared transport, crosses IPC only after job
+admission and is applied exclusively to the provider. A native regression verifies a configured
+Node preload cannot create an unowned detached descendant before bootstrap membership.
 
-The current Runtime has no native launcher/Node-API module or packaging for one. Required next work
-includes supported-architecture binaries, build/release provenance, handle/stdio inheritance tests,
-job nesting/assignment failure, grandchildren, immediate terminal exit, cancellation and launcher or
-Runtime SIGKILL. Assigning a Job after ordinary Node spawn leaves a race and is not an acceptable fix.
+Natural bootstrap exit and cancellation settle the retained job. Runtime terminates remaining
+members and requires successful accounting queries showing ActiveProcesses=0 before stopped.
+Query/termination uncertainty remains unknown; ordinary helper/root exit is never proof. Closing
+the last Runtime handle on abrupt termination also kills the admitted job. This owns process
+liveness, not arbitrary OS services or effects outside the job; it is not a security sandbox.
+
+The pinned MIT-licensed Koffi dependency supplies Node-API Win32 bindings. The portable tarball
+contains its CJS loader and Windows x64/arm64 binaries in dist/native, with third-party notices.
+Packaging includes both architectures even on Linux/macOS; installation requires no compiler,
+install script or additional registry dependency. Windows x64 tests exercise natural exit, immediate
+terminal exit, detached descendants, cancellation and abrupt Runtime death. ARM64 binaries are
+included, but native ARM64 execution is not locally verified. Assigning an already executing
+provider after ordinary Node spawn remains unacceptable; only the trusted bootstrap starts outside
+the job and cannot launch a provider until ownership admission succeeds.
 See Microsoft's [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
 and [assignment API](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject).
 
@@ -141,9 +154,13 @@ StrictMode/content/create retention. Broader final-commit verification is record
 older green runs are not evidence for the final HEAD. Skipped Windows/Linux-specific tests and
 unexecuted live-provider/matrix acceptance must be listed separately.
 
-Recommendation remains **NOT READY** while R01 lacks positive process ownership/settlement and
-successful live Claude model/semantic-resume acceptance is pending. Signed catalogue distribution
-is deliberately staged, as described in the compatibility design, rather than shipped unverified.
+Recommendation remains **NOT READY** while successful live Claude model/semantic-resume acceptance
+is pending. The local unpaid installed Claude 2.1.296 initialization probe succeeds; a subsequent
+real read-only Haiku invocation still returns the bounded quota/rate-limit failure. No successful
+answer or semantic resume is claimed. Dispatched unknown recovery remains explicitly incomplete.
+The owner compatibility override supersedes the original certification/allowlist requirement:
+compatible unlisted builds may run Provisional, and remote catalogue distribution is optional.
+See the revised compatibility design for the probe limits and strict execution checks.
 
 The first full matrix found a macOS controlled-fixture mismatch: the test provided an aliased
 temporary workspace while the child reported its canonical cwd. A POSIX symlink probe reproduced

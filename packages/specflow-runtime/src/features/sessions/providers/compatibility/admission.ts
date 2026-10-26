@@ -4,6 +4,7 @@ export interface ProviderAdmissionPrerequisites {
   configured: boolean;
   authenticated: boolean;
   securityVerified: boolean;
+  protocolVerified: boolean;
   executionMode: string;
 }
 
@@ -12,14 +13,16 @@ export function admitProvider(
   compatibility: ProviderCompatibility,
   prerequisites: ProviderAdmissionPrerequisites,
 ): { allowed: boolean; reason?: string } {
-  if (compatibility.classification !== 'verified')
+  if (compatibility.classification === 'unsupported')
     return { allowed: false, reason: compatibility.reason };
   if (
     !prerequisites.configured ||
     !prerequisites.authenticated ||
     !prerequisites.securityVerified ||
+    !prerequisites.protocolVerified ||
     prerequisites.executionMode !== 'read-only' ||
-    !compatibility.record.executionModes.includes('read-only')
+    (compatibility.classification === 'tested' &&
+      !compatibility.record.executionModes.includes('read-only'))
   )
     return { allowed: false, reason: 'Provider admission prerequisites are not satisfied.' };
   return { allowed: true };

@@ -32,19 +32,75 @@ async function setup() {
 }
 describe('owned provider process', () => {
   it.runIf(process.platform === 'win32')(
-    'retains unknown after natural root exit instead of claiming its tree is stopped (R01 blocker)',
+    'does not run provider Node preloads outside the owned job',
+    async () => {
+      const input = await setup();
+      const pidFile = join(root, 'preload-child.pid');
+      const preload = `
+      import {spawn} from 'node:child_process';
+      import {writeFileSync} from 'node:fs';
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+        detached: true, stdio: 'ignore', env: {SystemRoot: process.env.SystemRoot},
+      });
+      child.once('spawn', () => writeFileSync(${JSON.stringify(pidFile)}, String(child.pid)));
+    `;
+      running = await launchOwnedProcess({
+        ...input,
+        environment: projectProviderEnvironment({
+          host: process.env,
+          configured: {
+            NODE_OPTIONS:
+              '--import=data:text/javascript;base64,' + Buffer.from(preload).toString('base64'),
+          },
+        }),
+        args: ['-e', `console.log('ready'); setInterval(() => {}, 1000);`],
+      });
+      const reader = running.lines();
+      expect((await reader.next()).value).toBe('ready');
+      let pid = 0;
+      await vi.waitFor(async () => {
+        pid = Number(await readFile(pidFile, 'utf8'));
+        expect(pid).toBeGreaterThan(0);
+      });
+      expect((await running.dispose()).process.state).toBe('stopped');
+      await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow());
+      await reader.return(undefined);
+    },
+  );
+  it.runIf(process.platform === 'win32')(
+    'settles descendants after their provider root exits',
+    async () => {
+      const input = await setup();
+      const script = `
+      const { spawn } = require('node:child_process');
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+        stdio: 'ignore', detached: true,
+      });
+      child.once('spawn', () => {
+        process.stdout.write(String(child.pid) + '\\n', () => process.exit(0));
+      });
+    `;
+      running = await launchOwnedProcess({ ...input, args: ['-e', script] });
+      const reader = running.lines();
+      const pid = Number((await reader.next()).value);
+      expect(pid).toBeGreaterThan(0);
+      await running.done;
+      expect((await running.dispose()).process.state).toBe('stopped');
+      await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow());
+      await reader.return(undefined);
+    },
+  );
+  it.runIf(process.platform === 'win32')(
+    'verifies the owned job after natural root exit',
     async () => {
       const input = await setup();
       running = await launchOwnedProcess({ ...input, args: ['-e', 'process.exit(0)'] });
       await running.done;
-      expect((await running.dispose()).process).toEqual({
-        state: 'unknown',
-        reason: 'unverified-tree',
-      });
+      expect((await running.dispose()).process.state).toBe('stopped');
     },
   );
   it.runIf(process.platform === 'win32')(
-    'preserves a terminal frame but cannot certify tree settlement after immediate exit (R01 blocker)',
+    'preserves a terminal frame and verifies settlement after immediate exit',
     async () => {
       const input = await setup();
       const script = `
@@ -61,7 +117,7 @@ describe('owned provider process', () => {
         result: 'authoritative',
       });
       await running.done;
-      expect((await running.dispose()).process.state).toBe('unknown');
+      expect((await running.dispose()).process.state).toBe('stopped');
       await reader.return(undefined);
     },
   );

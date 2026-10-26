@@ -170,6 +170,32 @@ function installedManifest(): Record<string, unknown> {
 }
 
 describe('packaged @nevo/specflow — isolated tarball install', () => {
+  it.runIf(process.platform === 'win32')(
+    'loads the installed Windows Job Object binding without workspace dependencies',
+    () => {
+      const binding = join(
+        prefix,
+        'node_modules',
+        '@nevo',
+        'specflow',
+        'dist',
+        'native',
+        'koffi',
+        'index.cjs',
+      );
+      const script = `
+      const koffi = require(${JSON.stringify(binding)});
+      const kernel = koffi.load(require('node:path').join(process.env.SystemRoot, 'System32', 'kernel32.dll'));
+      const create = kernel.func('void * __stdcall CreateJobObjectW(void *, const char16_t *)');
+      const close = kernel.func('int __stdcall CloseHandle(void *)');
+      const job = create(null, null);
+      if (!job || !close(job)) process.exit(1);
+    `;
+      expect(
+        execFileSync(process.execPath, ['-e', script], { cwd: prefix, encoding: 'utf8' }),
+      ).toBe('');
+    },
+  );
   it('was packed with the repository-pinned pnpm', () => {
     const pnpm = crossSpawn.sync('pnpm', ['--version'], {
       cwd: repoRoot,
@@ -212,6 +238,9 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         'package/THIRD_PARTY_NOTICES.txt',
         'package/dist/bin.js',
         'package/dist/session-worker.js',
+        'package/dist/native/koffi/index.cjs',
+        'package/dist/native/@koromix/koffi-win32-x64/win32_x64/koffi.node',
+        'package/dist/native/@koromix/koffi-win32-arm64/win32_arm64/koffi.node',
         'package/dist/ui/index.html',
         'package/package.json',
       ]),
@@ -227,6 +256,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
           path === 'package/package.json' ||
           path === 'package/dist/bin.js' ||
           path === 'package/dist/session-worker.js' ||
+          path.startsWith('package/dist/native/') ||
           path.startsWith('package/dist/ui/'),
       ),
     ).toBe(true);

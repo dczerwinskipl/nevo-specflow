@@ -2,6 +2,7 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
 import { object, ClaudeProtocolError } from './protocol';
+const readTools = ['Read', 'Glob', 'Grep', 'AskUserQuestion'];
 
 export function claudeArguments(
   selection?: Invocation['selection'],
@@ -17,7 +18,7 @@ export function claudeArguments(
     '--safe-mode',
     '--restricted',
     '--tools',
-    'Read,Glob,Grep,AskUserQuestion',
+    readTools.join(','),
     '--permission-mode',
     'plan',
     '--permission-prompts',
@@ -38,16 +39,8 @@ export function claudeArguments(
     ...(selection?.effort ? ['--effort', selection.effort] : []),
   ];
 }
-export function claudeModels(
-  payload: Record<string, unknown>,
-  expectedVersion: string,
-): ProviderDescriptor['models'] {
-  if (
-    payload.claude_code_version !== expectedVersion ||
-    !Array.isArray(payload.models) ||
-    payload.models.length > 64
-  )
-    throw new ClaudeProtocolError();
+export function claudeModels(payload: Record<string, unknown>): ProviderDescriptor['models'] {
+  if (!Array.isArray(payload.models) || payload.models.length > 64) throw new ClaudeProtocolError();
   const models = payload.models.map((entry) => {
     const model = object(entry);
     if (
@@ -61,10 +54,9 @@ export function claudeModels(
     const efforts = model.supportsEffort === true ? model.supportedEffortLevels : [];
     if (
       !Array.isArray(efforts) ||
-      efforts.length > 5 ||
+      efforts.length > 16 ||
       efforts.some(
-        (value) =>
-          typeof value !== 'string' || !['low', 'medium', 'high', 'xhigh', 'max'].includes(value),
+        (value) => typeof value !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(value),
       )
     )
       throw new ClaudeProtocolError();
@@ -77,17 +69,19 @@ export function claudeModels(
 export function verifyClaudeInit(
   frame: Record<string, unknown>,
   workspace: string,
-  expectedVersion: string,
+  expectedVersion?: string,
 ) {
+  const tools = frame.tools;
   if (
     frame.type !== 'system' ||
     frame.subtype !== 'init' ||
-    frame.claude_code_version !== expectedVersion ||
+    (expectedVersion !== undefined && claudeVersion(frame) !== expectedVersion) ||
     typeof frame.cwd !== 'string' ||
     resolve(frame.cwd) !== resolve(workspace) ||
     frame.permissionMode !== 'plan' ||
-    !Array.isArray(frame.tools) ||
-    frame.tools.some(
+    !Array.isArray(tools) ||
+    readTools.some((tool) => !tools.includes(tool)) ||
+    tools.some(
       (tool) =>
         typeof tool !== 'string' ||
         !['Read', 'Glob', 'Grep', 'AskUserQuestion', 'EndConversation'].includes(tool),
@@ -108,4 +102,14 @@ export function verifyClaudeInit(
         })))
   )
     throw new ClaudeProtocolError();
+}
+
+/** Missing/non-version diagnostic text must not become a fabricated version or leak native prose. */
+export function claudeVersion(payload: Record<string, unknown>): string | undefined {
+  const value = payload.claude_code_version;
+  return typeof value === 'string' &&
+    /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(value) &&
+    value.length <= 128
+    ? value
+    : undefined;
 }

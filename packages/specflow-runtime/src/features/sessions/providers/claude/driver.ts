@@ -1,7 +1,6 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
-import { randomUUID } from 'node:crypto';
 import { SessionError } from '../../errors';
-import type { SessionDriver } from '../driver';
+import type { SessionDriver, Invocation } from '../driver';
 import {
   createInvocationScope,
   launchOwnedProcess,
@@ -10,15 +9,25 @@ import {
 } from '../process';
 import { createClaudeOperation } from './operation';
 import { inspectClaudeInstallation } from './installation';
-import { object, ClaudeProtocolError } from './protocol';
-import { claudeArguments, claudeModels, verifyClaudeInit } from './discovery';
+import { classifyProviderInstallation } from '../compatibility/catalogue';
+import { admitProvider } from '../compatibility/admission';
+import { probeClaude, ClaudeProbeError } from './probe';
+import { claudeArguments, claudeModels, verifyClaudeInit, claudeVersion } from './discovery';
 
-export function createClaudeDriver(options: {
-  workspace: string;
-  temporaryRoot: string;
-  executable?: string;
-  environment?: ProviderEnvironment;
-}): SessionDriver {
+export function createClaudeDriver(
+  options: {
+    workspace: string;
+    temporaryRoot: string;
+    executable?: string;
+    environment?: ProviderEnvironment;
+  },
+  dependencies: {
+    inspect?: (
+      signal: AbortSignal,
+    ) => Promise<Awaited<ReturnType<typeof inspectClaudeInstallation>>>;
+    probe?: typeof probeClaude;
+  } = {},
+): SessionDriver {
   const environment = options.environment ?? projectProviderEnvironment({ host: process.env });
   let descriptor: ProviderDescriptor = {
     providerId: 'claude',
@@ -38,89 +47,140 @@ export function createClaudeDriver(options: {
   let checkedAt = 0;
   let scope = '';
   let discovery: Promise<ProviderDescriptor> | undefined;
-  const inspect = (signal: AbortSignal) =>
-    inspectClaudeInstallation({ ...options, environment, signal });
+  const inspect =
+    dependencies.inspect ??
+    ((signal: AbortSignal) => inspectClaudeInstallation({ ...options, environment, signal }));
+  const probe = dependencies.probe ?? probeClaude;
+  let checkedFingerprint = '';
   function invalidate(error?: unknown) {
     checkedAt = 0;
     scope = '';
+    if (!error && descriptor.compatibility?.classification === 'unsupported') return;
+    const reasonCode =
+      error instanceof ClaudeProbeError
+        ? error.reasonCode
+        : error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED'
+          ? 'AUTHENTICATION_REQUIRED'
+          : error instanceof SessionError
+            ? 'INSTALLATION_UNAVAILABLE'
+            : 'PROBE_FAILED';
     descriptor = {
       ...descriptor,
+      models: [],
       readiness:
-        error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED'
-          ? 'authenticationRequired'
-          : 'unavailable',
+        reasonCode === 'AUTHENTICATION_REQUIRED' ? 'authenticationRequired' : 'unavailable',
+      reasonCode,
       reason:
-        error instanceof SessionError
+        error instanceof ClaudeProbeError || error instanceof SessionError
           ? error.message
-          : 'Claude operation availability must be rechecked.',
+          : 'Claude availability must be rechecked.',
     };
+    delete descriptor.compatibility;
+    if (
+      ['PROTOCOL_UNSUPPORTED', 'RESTRICTION_UNSUPPORTED', 'KNOWN_INCOMPATIBILITY'].includes(
+        reasonCode,
+      )
+    )
+      descriptor.compatibility = {
+        classification: 'unsupported',
+        protocolProfile: 'claude-stream-json-v1',
+      };
   }
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
-    if (Date.now() - checkedAt < 30000) return structuredClone(descriptor);
     discovery ??= (async () => {
-      let owner: Awaited<ReturnType<typeof launchOwnedProcess>> | undefined;
+      const boundedSignal = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
       try {
-        const installation = await inspect(signal);
-        const invocationId = randomUUID();
-        const temporary = await createInvocationScope(options.temporaryRoot, invocationId);
-        owner = await launchOwnedProcess({
-          invocationId,
-          scope: temporary,
-          executable: installation.executable,
-          cwd: options.workspace,
-          args: claudeArguments(),
-          environment,
-          signal,
-          secrets: installation.secrets,
-        });
-        const requestId = randomUUID();
-        await owner.write(
-          JSON.stringify({
-            type: 'control_request',
-            request_id: requestId,
-            request: { subtype: 'initialize' },
-          }) + '\n',
-        );
-        let models: ProviderDescriptor['models'] | undefined;
-        for await (const line of owner.lines()) {
-          const frame = object(JSON.parse(line));
-          if (frame.type !== 'control_response') throw new ClaudeProtocolError();
-          const response = object(frame.response);
-          if (response.subtype !== 'success' || response.request_id !== requestId)
-            throw new ClaudeProtocolError();
-          models = claudeModels(object(response.response), installation.version);
-          break;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const installation = await inspect(boundedSignal);
+          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
+            return structuredClone(descriptor);
+          const identity = { ...installation, providerId: 'claude' };
+          const known = classifyProviderInstallation(identity);
+          if (known.classification === 'unsupported')
+            throw new ClaudeProbeError('KNOWN_INCOMPATIBILITY', known.reason);
+          const result = await probe({
+            ...installation,
+            workspace: options.workspace,
+            temporaryRoot: options.temporaryRoot,
+            environment,
+            signal: boundedSignal,
+          });
+          const after = await inspect(boundedSignal);
+          if (after.fingerprint !== installation.fingerprint) continue;
+          const compatibility = classifyProviderInstallation({ ...identity, ...result });
+          const admission = admitProvider(compatibility, {
+            configured: true,
+            authenticated: true,
+            securityVerified: true,
+            protocolVerified: true,
+            executionMode: 'read-only',
+          });
+          if (!admission.allowed)
+            throw new ClaudeProbeError('KNOWN_INCOMPATIBILITY', admission.reason!);
+          descriptor = {
+            ...descriptor,
+            models: result.models,
+            readiness: 'ready',
+            compatibility: {
+              classification: compatibility.classification,
+              protocolProfile: 'claude-stream-json-v1',
+              ...(result.version ? { version: result.version } : {}),
+            },
+          };
+          delete descriptor.reason;
+          delete descriptor.reasonCode;
+          checkedFingerprint = installation.fingerprint;
+          checkedAt = Date.now();
+          scope = installation.accountScope;
+          return structuredClone(descriptor);
         }
-        if (!models?.length || (await owner.dispose()).process.state !== 'stopped')
-          throw new ClaudeProtocolError();
-        descriptor = { ...descriptor, models, readiness: 'ready' };
-        delete descriptor.reason;
-        scope = installation.accountScope;
+        throw new ClaudeProbeError(
+          'PROBE_FAILED',
+          'Claude installation changed repeatedly during its compatibility probe.',
+        );
       } catch (error) {
-        descriptor = {
-          ...descriptor,
-          models: [],
-          readiness:
-            error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED'
-              ? 'authenticationRequired'
-              : 'unavailable',
-          reason:
-            error instanceof SessionError
-              ? error.message
-              : 'Claude initialization could not be verified.',
-        };
-        scope = '';
-      } finally {
-        await owner?.dispose();
-        checkedAt = Date.now();
+        invalidate(error);
+        return structuredClone(descriptor);
       }
-      return structuredClone(descriptor);
     })();
     try {
       return await discovery;
     } finally {
       discovery = undefined;
     }
+  }
+  async function readyInstallation(signal: AbortSignal) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await refresh(signal);
+      if (descriptor.readiness !== 'ready')
+        throw new SessionError(
+          'PROVIDER_UNAVAILABLE',
+          descriptor.reason ?? 'Claude is unavailable.',
+        );
+      const installation = await inspect(signal).catch((error: unknown) => {
+        invalidate(error);
+        throw error;
+      });
+      if (installation.fingerprint === checkedFingerprint && installation.accountScope === scope)
+        return installation;
+    }
+    invalidate();
+    throw new SessionError(
+      'PROVIDER_UNAVAILABLE',
+      'Claude installation changed before invocation.',
+    );
+  }
+  function validateModel(selection: Invocation['selection']) {
+    const model = descriptor.models.find(
+      (model) => model.modelId === (selection.modelId ?? 'default'),
+    );
+    if (!model)
+      throw new SessionError('MODEL_UNSUPPORTED', 'Requested Claude model is unavailable.');
+    if (selection.effort && !model.efforts.includes(selection.effort))
+      throw new SessionError(
+        'CAPABILITY_UNSUPPORTED',
+        'Requested Claude effort is unavailable for this model.',
+      );
   }
   return {
     describe: () => structuredClone(descriptor),
@@ -134,28 +194,8 @@ export function createClaudeDriver(options: {
           'CAPABILITY_UNSUPPORTED',
           'Claude writable dispatch requires Engine effect admission.',
         );
-      await refresh(signal);
-      const installation = await inspect(signal).catch((error: unknown) => {
-        invalidate(error);
-        throw error;
-      });
-      if (descriptor.readiness !== 'ready' || installation.accountScope !== scope) {
-        checkedAt = 0;
-        throw new SessionError(
-          'PROVIDER_UNAVAILABLE',
-          'Claude discovery must be refreshed for the active installation and account.',
-        );
-      }
-      const model = descriptor.models.find(
-        (model) => model.modelId === (selection.modelId ?? 'default'),
-      );
-      if (!model)
-        throw new SessionError('MODEL_UNSUPPORTED', 'Requested Claude model is unavailable.');
-      if (selection.effort && !model.efforts.includes(selection.effort))
-        throw new SessionError(
-          'CAPABILITY_UNSUPPORTED',
-          'Requested Claude effort is unavailable for this model.',
-        );
+      await readyInstallation(signal);
+      validateModel(selection);
     },
     start(invocation, emit, signal) {
       if (
@@ -167,7 +207,7 @@ export function createClaudeDriver(options: {
           'Verified read-only workspace is required.',
         );
       let verified = false;
-      let expectedVersion = '';
+      let expectedVersion: string | undefined;
       return createClaudeOperation(
         invocation,
         async (fact) => {
@@ -192,8 +232,8 @@ export function createClaudeDriver(options: {
         signal,
         {
           async launch(operationSignal) {
-            const installation = await inspect(operationSignal);
-            expectedVersion = installation.version;
+            const installation = await readyInstallation(operationSignal);
+            validateModel(invocation.selection);
             if (installation.accountScope !== invocation.providerContext?.scope)
               throw new SessionError(
                 'SESSION_RECOVERY_REQUIRED',
@@ -215,11 +255,22 @@ export function createClaudeDriver(options: {
             });
           },
           initialize(payload) {
-            claudeModels(payload, expectedVersion);
+            claudeModels(payload);
+            expectedVersion = claudeVersion(payload);
           },
           verifyFrame(frame) {
             if (!verified) {
-              verifyClaudeInit(frame, options.workspace, expectedVersion);
+              try {
+                verifyClaudeInit(frame, options.workspace, expectedVersion);
+              } catch (error) {
+                invalidate(
+                  new ClaudeProbeError(
+                    'RESTRICTION_UNSUPPORTED',
+                    'Claude invocation does not satisfy the restricted protocol profile.',
+                  ),
+                );
+                throw error;
+              }
               verified = true;
             } else if (frame.type === 'system' && frame.subtype === 'init')
               verifyClaudeInit(frame, options.workspace, expectedVersion);

@@ -67,8 +67,8 @@ native-context admission/resume. The current implementation covers:
   suggestion or persistent permission update is forwarded;
 - preserving an explicitly lost operation as unknown when its transport handle later resolves or rejects.
 
-The initial certified installation subset is the exact Windows Claude Code 2.1.296 native build,
-default personal Pro/Max file OAuth and read-only execution. Runtime checks the binary hash, managed
+The observed Tested baseline is Windows Claude Code 2.1.296; compatible unlisted/newer builds run Provisional with
+default personal Pro/Max file OAuth and read-only execution. Runtime fingerprints the binary and checks managed
 policy absence and credential-source eligibility before launch. Canonical question cardinality is
 validated before durable response admission. Native identity is independently reserved and fenced by
 workspace and account; uncertain dispatch never falls back to a new conversation.
@@ -80,8 +80,8 @@ HTTP integration proves questions, cancellation and continuation across Runtime 
 live answers, native question round trips and semantic live resume remain pending behind that quota.
 
 See [Claude provider implementation and acceptance](claude-provider.md) for enablement, exact
-certification evidence, bounded operation ownership and remaining live gates. Other installations
-remain unavailable until independently certified. Writable effects still require W1/W2 below;
+build-specific evidence, bounded operation ownership and remaining live gates. Compatible updates
+do not require new hash records; see [the compatibility decision](provider-compatibility.md). Writable effects still require W1/W2 below;
 all remaining work stays inside PR #98.
 
 Verification on implementation commit `aa6314b5`: 29 focused Windows tests passed;

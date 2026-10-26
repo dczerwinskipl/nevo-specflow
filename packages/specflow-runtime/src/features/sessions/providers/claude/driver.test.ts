@@ -35,12 +35,14 @@ describe('Claude native launch contract', () => {
         },
       ],
     };
-    expect(claudeModels(payload, '2.1.296')).toEqual([
+    expect(claudeModels(payload)).toEqual([
       { modelId: 'default', title: 'Native default', efforts: ['low', 'high'] },
     ]);
-    expect(() => claudeModels({ ...payload, claude_code_version: 'other' }, '2.1.296')).toThrow();
+    expect(claudeModels({ ...payload, claude_code_version: '9.0.0' })).toEqual(
+      claudeModels(payload),
+    );
     expect(() =>
-      claudeModels({ ...payload, models: [...payload.models, ...payload.models] }, '2.1.296'),
+      claudeModels({ ...payload, models: [...payload.models, ...payload.models] }),
     ).toThrow();
   });
   it('accepts only the observed builtin plugins and explicit read tools, never arbitrary plugins/MCP or mode escalation', () => {
@@ -57,7 +59,7 @@ describe('Claude native launch contract', () => {
         { name: 'cc-plugin-telemetry', path: 'builtin', source: 'cc-plugin-telemetry@builtin' },
       ],
     };
-    expect(() => verifyClaudeInit(frame, workspace, '2.1.296')).not.toThrow();
+    expect(() => verifyClaudeInit(frame, workspace)).not.toThrow();
     for (const changed of [
       { tools: ['Bash'] },
       { permissionMode: 'bypassPermissions' },
@@ -69,6 +71,6 @@ describe('Claude native launch contract', () => {
       },
       { plugins: [{ name: 'unknown', path: 'builtin', source: 'unknown@builtin' }] },
     ])
-      expect(() => verifyClaudeInit({ ...frame, ...changed }, workspace, '2.1.296')).toThrow();
+      expect(() => verifyClaudeInit({ ...frame, ...changed }, workspace)).toThrow();
   });
 });

@@ -3,21 +3,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import type { SessionSnapshot, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
-const fixture = vi.hoisted(() => ({ entry: '', privateRoot: '' }));
+const fixture = vi.hoisted(() => ({ entry: '', privateRoot: '', version: '2.1.296', hash: '' }));
 // Policy is independently tested with file/registry fixtures. This process integration
-// substitutes only installation certification and the executable entrypoint; the real
+// substitutes only installation inspection and the executable entrypoint; the real
 // driver, process ownership, registry, coordinator, SQLite Worker and HTTP remain in use.
 vi.mock('../../src/features/sessions/providers/claude/installation', () => ({
-  claudeCertification: { version: '2.1.296' },
   inspectClaudeInstallation: () =>
     Promise.resolve({
       executable: process.execPath,
-      version: '2.1.296',
+      sha256: fixture.hash,
+      fingerprint: fixture.hash + ':' + fixture.version,
+      platform: 'win32',
+      architecture: 'x64',
       accountScope: 'fixture-account',
       secrets: [],
     }),
@@ -30,7 +32,7 @@ vi.mock('../../src/features/sessions/providers/process', async (importOriginal) 
     launchOwnedProcess: (options: Parameters<typeof original.launchOwnedProcess>[0]) =>
       original.launchOwnedProcess({
         ...options,
-        args: [fixture.entry, fixture.privateRoot, ...options.args],
+        args: [fixture.entry, fixture.privateRoot, fixture.version, ...options.args],
       }),
   };
 });
@@ -40,7 +42,8 @@ import { createInterface } from 'node:readline';
 import { writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-const args = process.argv.slice(3),
+const version = process.argv[3];
+const args = process.argv.slice(4),
   root = process.argv[2];
 const at = args.indexOf('--resume'),
   fresh = args.indexOf('--session-id');
@@ -77,7 +80,7 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
           subtype: 'success',
           request_id: f.request_id,
           response: {
-            claude_code_version: '2.1.296',
+            claude_code_version: version,
             models: [{ value: 'default', displayName: 'Fixture model' }],
           },
         },
@@ -97,7 +100,7 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
         session_id: id,
         cwd: process.cwd(),
         permissionMode: 'plan',
-        claude_code_version: '2.1.296',
+        claude_code_version: version,
         tools: ['Read', 'Glob', 'Grep', 'AskUserQuestion'],
         mcp_servers: [],
         plugins: [],
@@ -210,6 +213,8 @@ async function open() {
   );
 }
 async function setup() {
+  fixture.version = '2.1.296';
+  fixture.hash = '76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a';
   // Match the verified Engine workspace contract. POSIX cwd resolves aliases such as
   // macOS /var -> /private/var before the provider emits its initialization frame.
   root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-claude-http-')));
@@ -244,6 +249,30 @@ afterEach(async () => {
   if (root) await rm(root, { recursive: true, force: true });
 });
 describe('Claude driver through the real process/store/HTTP boundary', () => {
+  it.each(['2.1.296', '2.1.297', '9.0.0'])(
+    'runs updated compatible %s as provisional after discovery-to-start replacement',
+    async (version) => {
+      const sessionId = await setup();
+      fixture.hash = 'a'.repeat(64);
+      fixture.version = version;
+      await start(sessionId, 'Updated provider');
+      await vi.waitFor(
+        async () => expect((await snapshot(sessionId)).entries.at(-1)?.text.text).toBe('completed'),
+        { timeout: 5000 },
+      );
+      const providers = (await app!.inject('/api/session-providers')).json<{
+        items: ProviderDescriptor[];
+      }>();
+      expect(providers.items.find((provider) => provider.providerId === 'claude')).toMatchObject({
+        readiness: 'ready',
+        compatibility: { classification: 'provisional', version },
+      });
+      expect(
+        (await snapshot(sessionId)).entries.some((entry) => entry.text.text === 'Native turn 1'),
+      ).toBe(true);
+    },
+    20000,
+  );
   it('keeps a safe quota explanation readable after Runtime restart without exposing native error prose', async () => {
     const sessionId = await setup();
     await start(sessionId, 'quota');

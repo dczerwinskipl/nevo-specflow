@@ -5,14 +5,8 @@ import { join, resolve, isAbsolute } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
 
-import { bundledClaudeBuild, classifyProviderInstallation } from '../compatibility/catalogue';
-import { admitProvider } from '../compatibility/admission';
 import { inspectClaudeRegistry } from './registry';
 
-export const claudeCertification = {
-  version: bundledClaudeBuild.version,
-  windowsSha256: bundledClaudeBuild.sha256,
-} as const;
 interface Files {
   stat(path: string): Promise<{
     isFile(): boolean;
@@ -40,7 +34,7 @@ const files: Files = {
 function unavailable(): never {
   throw new SessionError(
     'PROVIDER_UNAVAILABLE',
-    'Claude installation, authentication source or managed policy is outside the certified read-only configuration.',
+    'Claude installation, authentication source or managed policy is outside the supported read-only configuration.',
   );
 }
 function record(value: unknown): Record<string, unknown> {
@@ -113,13 +107,8 @@ export async function inspectClaudeInstallation(
   try {
     options.signal.throwIfAborted();
     await regular(executable, 512 * 1024 * 1024);
-    const compatibility = classifyProviderInstallation({
-      providerId: 'claude',
-      platform: 'win32',
-      architecture: 'x64',
-      sha256: await io.hash(executable),
-    });
-    if (compatibility.classification !== 'verified') unavailable();
+    const sha256 = await io.hash(executable);
+    if (!/^[a-f0-9]{64}$/.test(sha256)) unavailable();
     const configDirectory = join(home, '.claude');
     const directory = await io.stat(configDirectory);
     if (!directory.isDirectory() || directory.isSymbolicLink()) unavailable();
@@ -164,21 +153,30 @@ export async function inspectClaudeInstallation(
     )
       throw new SessionError(
         'PROVIDER_AUTH_REQUIRED',
-        'Claude requires an active personal Pro or Max CLI login for this certified configuration.',
+        'Claude requires an active personal Pro or Max CLI login for this supported configuration.',
       );
     options.signal.throwIfAborted();
-    if (
-      !admitProvider(compatibility, {
-        configured: true,
-        authenticated: true,
-        securityVerified: true,
-        executionMode: 'read-only',
-      }).allowed
-    )
-      unavailable();
     return {
       executable,
-      version: compatibility.record.version,
+      sha256,
+      platform: 'win32' as const,
+      architecture: 'x64' as const,
+      fingerprint: createHash('sha256')
+        .update(
+          JSON.stringify({
+            executable,
+            sha256,
+            account: account.accountUuid,
+            authentication: {
+              subscriptionType: credentials.subscriptionType,
+              scopes: credentials.scopes,
+            },
+            environment: env,
+            workspace: options.workspace,
+            protocolProfile: 'claude-stream-json-v1',
+          }),
+        )
+        .digest('hex'),
       accountScope: createHash('sha256').update(account.accountUuid).digest('hex'),
       secrets: [
         credentials.accessToken,

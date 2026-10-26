@@ -320,7 +320,7 @@ not lose the first event after the snapshot; test with an update in each handoff
 ## Provider catalogue
 
 ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
-'unknown', reason?:string, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
+'unknown', reason?:string, reasonCode?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
 models:[{modelId,title,efforts:string[]}], modes:('read-only'|'workspace-write')[]}.
 Catalogue response is <=128 KiB; <=32 providers, <=100 models each, <=16 efforts per model,
 titles/reasons <=512 bytes. Cap by total bytes as well; oversized provider catalogue is explicit
@@ -328,7 +328,8 @@ PROVIDER_CATALOGUE_UNAVAILABLE, not a silent omission of selected model. Catalog
 command-time validation is authoritative.
 The catalogue includes explicitly enabled production drivers. The mock identifies itself as a test;
 Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
-is outside the certified subset. Each Session is dispatched through its own selected provider;
+fails the supported authentication/policy or protocol checks. Unlisted compatible versions run
+Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;
 enabling the mock does not grant Claude availability. No real adapter is advertised from a demo list.
 
 ## Error contract

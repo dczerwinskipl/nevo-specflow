@@ -11,7 +11,7 @@ export const CompatibilityRecordSchema = Type.Object(
     version: label,
     sha256: Type.String({ pattern: '^[a-f0-9]{64}$' }),
     protocolProfile: label,
-    classification: Type.Union([Type.Literal('verified'), Type.Literal('unsupported')]),
+    classification: Type.Union([Type.Literal('tested'), Type.Literal('unsupported')]),
     capabilities: Type.Array(label, { maxItems: 32, uniqueItems: true }),
     authenticationModes: Type.Array(label, { maxItems: 8, uniqueItems: true }),
     executionModes: Type.Array(Type.Literal('read-only'), { maxItems: 1, uniqueItems: true }),
@@ -35,7 +35,7 @@ export const bundledClaudeBuild: ImmutableRecord = Object.freeze({
   version: '2.1.296',
   sha256: '76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a',
   protocolProfile: 'claude-stream-json-v1',
-  classification: 'verified',
+  classification: 'tested',
   capabilities: Object.freeze(['initialization', 'restricted-read-tools', 'questions']),
   authenticationModes: Object.freeze(['personal-pro-max-oauth-file']),
   executionModes: Object.freeze(['read-only'] as const),
@@ -43,11 +43,11 @@ export const bundledClaudeBuild: ImmutableRecord = Object.freeze({
   revoked: false,
 });
 
-/** Schema validation is not signature verification and never confers catalogue trust. */
+/** Validate local diagnostic/known-incompatibility records; absence is never a denial. */
 export function validCompatibilityRecord(value: unknown): value is CompatibilityRecord {
   return (
     Value.Check(CompatibilityRecordSchema, value) &&
-    !(value.classification === 'verified' && value.revoked)
+    !(value.classification === 'tested' && value.revoked)
   );
 }
 
@@ -60,10 +60,10 @@ export interface ProviderInstallationIdentity {
 }
 
 export type ProviderCompatibility =
-  | { classification: 'verified'; record: ImmutableRecord }
+  | { classification: 'tested'; record: ImmutableRecord }
   | { classification: 'provisional' | 'unsupported'; reason: string };
 
-/** Only the bundled trusted baseline is admitted until signed distribution is implemented. */
+/** Tested is diagnostic evidence. Every other compatible installation may be provisional. */
 export function classifyProviderInstallation(
   installation: ProviderInstallationIdentity,
   trustedRecords: readonly ImmutableRecord[] = [bundledClaudeBuild],
@@ -81,25 +81,30 @@ export function classifyProviderInstallation(
   if (record) {
     if (
       record.revoked ||
-      record.classification !== 'verified' ||
-      record.protocolProfile !== 'claude-stream-json-v1' ||
-      (installation.version !== undefined && installation.version !== record.version)
+      record.classification !== 'tested' ||
+      record.protocolProfile !== 'claude-stream-json-v1'
     )
       return {
         classification: 'unsupported',
         reason: 'Provider build is revoked or incompatible.',
       };
-    return { classification: 'verified', record };
+    if (installation.version === record.version) return { classification: 'tested', record };
+    return {
+      classification: 'provisional',
+      reason: 'Provider version was not established by the handshake.',
+    };
   }
-  const candidate =
-    installation.providerId === 'claude' &&
-    installation.platform === 'win32' &&
-    installation.architecture === 'x64' &&
-    /^2\.1\.\d+$/.test(installation.version ?? '');
-  return candidate
-    ? {
-        classification: 'provisional',
-        reason: 'Provider build needs trusted safety certification.',
-      }
-    : { classification: 'unsupported', reason: 'Provider installation identity is not certified.' };
+  if (
+    installation.providerId !== 'claude' ||
+    installation.platform !== 'win32' ||
+    installation.architecture !== 'x64'
+  )
+    return {
+      classification: 'unsupported',
+      reason: 'Provider platform/profile is not implemented.',
+    };
+  return {
+    classification: 'provisional',
+    reason: 'Local protocol and execution checks are required.',
+  };
 }

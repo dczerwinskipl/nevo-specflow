@@ -5,6 +5,7 @@ import { createDiagnosticStore, type DiagnosticStore } from './diagnostics';
 import { terminateOwnedProcess, type ProcessDisposition } from './termination';
 import type { InvocationScope, CleanupIssue } from './scope';
 import type { ProviderEnvironment } from './environment';
+import { createWindowsJob } from './windows-job';
 
 export class ProviderProcessError extends Error {
   readonly code:
@@ -38,6 +39,7 @@ export async function launchOwnedProcess(options: {
   maxFrameBytes?: number;
 }) {
   let child: ReturnType<typeof spawn>;
+  let windowsJob: ReturnType<typeof createWindowsJob> | undefined;
   const secretValues = Object.keys(options.environment.sources)
     .filter((key) => options.environment.sources[key] === 'secret')
     .map((key) => options.environment.values[key]!);
@@ -76,15 +78,22 @@ export async function launchOwnedProcess(options: {
       );
     if (options.signal.aborted)
       throw new ProviderProcessError('CANCELLED', 'Provider startup was cancelled.');
-    child = spawn(options.executable, [...options.args], {
-      cwd: options.cwd,
-      env: { ...options.environment.values },
-      shell: false,
-      windowsHide: true,
-      detached: process.platform !== 'win32',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    windowsJob =
+      process.platform === 'win32' ? createWindowsJob(options.executable, options.args) : undefined;
+    child = spawn(
+      windowsJob?.executable ?? options.executable,
+      windowsJob?.args ?? [...options.args],
+      {
+        cwd: options.cwd,
+        env: windowsJob?.environment ?? { ...options.environment.values },
+        shell: false,
+        windowsHide: true,
+        detached: process.platform !== 'win32',
+        stdio: windowsJob ? ['pipe', 'pipe', 'pipe', 'ipc'] : ['pipe', 'pipe', 'pipe'],
+      },
+    );
   } catch (error) {
+    await windowsJob?.stop();
     capture.release();
     const cleanup = await options.scope.close();
     throw new ProviderProcessError(
@@ -127,9 +136,15 @@ export async function launchOwnedProcess(options: {
   });
   let termination: Promise<ProcessDisposition> | undefined;
   function stopTree() {
-    termination ??= terminateOwnedProcess(child).catch(
-      () => ({ state: 'unknown', reason: 'unverified-tree' }) as const,
-    );
+    termination ??= (
+      windowsJob
+        ? windowsJob.stop().finally(() => {
+            // A bootstrap can still be loading before job assignment. It cannot dispatch
+            // after the job closes; terminate its exact ChildProcess handle as well.
+            if (child.exitCode === null) child.kill();
+          })
+        : terminateOwnedProcess(child)
+    ).catch(() => ({ state: 'unknown', reason: 'unverified-tree' }) as const);
     return termination;
   }
   // Cache tree evidence at root exit instead of re-running termination on a long-retained handle.
@@ -158,6 +173,7 @@ export async function launchOwnedProcess(options: {
       if (processDisposition.state === 'unknown') child.unref();
       await stderr;
       capture.finish();
+      if (processDisposition.state === 'stopped') await done;
       const cleanup = await options.scope.close(processDisposition.state === 'stopped');
       return { process: processDisposition, cleanup };
     })();
@@ -170,12 +186,17 @@ export async function launchOwnedProcess(options: {
   if (options.signal.aborted) onAbort();
   try {
     await ready;
+    await windowsJob?.ready(child, options.environment.values);
     if (options.signal.aborted)
       throw new ProviderProcessError('CANCELLED', 'Provider startup was cancelled.');
   } catch (error) {
     const result = await dispose();
     throw new ProviderProcessError(
-      error instanceof ProviderProcessError ? error.code : 'START_FAILED',
+      error instanceof ProviderProcessError
+        ? error.code
+        : (error as NodeJS.ErrnoException).code === 'UNAVAILABLE'
+          ? 'UNAVAILABLE'
+          : 'START_FAILED',
       error instanceof ProviderProcessError ? error.message : 'Provider process could not start.',
       result.cleanup,
     );

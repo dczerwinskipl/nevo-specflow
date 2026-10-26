@@ -7,6 +7,7 @@ import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
+import { copyWindowsBindings } from './windows-bindings.ts';
 
 export interface BundleInput {
   /** absolute or cwd-relative entry (`src/bin.ts`). */
@@ -80,7 +81,10 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
 
   return {
     outfile,
-    thirdPartyPackages: discoverThirdPartyPackages(Object.keys(result.metafile.inputs), cwd),
+    thirdPartyPackages: [
+      ...discoverThirdPartyPackages(Object.keys(result.metafile.inputs), cwd),
+      ...copyWindowsBindings(dirname(outfile)),
+    ],
   };
 }
 

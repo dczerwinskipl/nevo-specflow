@@ -11,22 +11,28 @@ const prerequisites = {
   configured: true,
   authenticated: true,
   securityVerified: true,
+  protocolVerified: true,
   executionMode: 'read-only',
 };
 
 it('admits the trusted bundled fingerprint only with independent security/authentication gates', () => {
   const compatibility = classifyProviderInstallation(installation);
-  expect(compatibility.classification).toBe('verified');
+  expect(compatibility.classification).toBe('tested');
   expect(admitProvider(compatibility, prerequisites).allowed).toBe(true);
-  for (const gate of ['configured', 'authenticated', 'securityVerified'] as const)
+  for (const gate of [
+    'configured',
+    'authenticated',
+    'securityVerified',
+    'protocolVerified',
+  ] as const)
     expect(admitProvider(compatibility, { ...prerequisites, [gate]: false }).allowed).toBe(false);
   expect(
     admitProvider(compatibility, { ...prerequisites, executionMode: 'writable' }).allowed,
   ).toBe(false);
 });
 
-it.each(['2.1.296', '2.1.297'])(
-  'never executes an uncertified %s build despite plausible protocol compatibility',
+it.each(['2.1.296', '2.1.297', '9.0.0'])(
+  'admits unlisted %s builds only after protocol and execution checks',
   (version) => {
     const compatibility = classifyProviderInstallation({
       ...installation,
@@ -34,7 +40,7 @@ it.each(['2.1.296', '2.1.297'])(
       sha256: 'a'.repeat(64),
     });
     expect(compatibility.classification).toBe('provisional');
-    expect(admitProvider(compatibility, prerequisites).allowed).toBe(false);
+    expect(admitProvider(compatibility, prerequisites).allowed).toBe(true);
   },
 );
 
@@ -46,7 +52,7 @@ it('rejects revoked, unknown profile/platform and mismatched version evidence', 
     'unsupported',
   );
   expect(classifyProviderInstallation({ ...installation, version: '2.1.999' }).classification).toBe(
-    'unsupported',
+    'provisional',
   );
   expect(classifyProviderInstallation({ ...installation, platform: 'linux' }).classification).toBe(
     'unsupported',

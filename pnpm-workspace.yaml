@@ -23,6 +23,12 @@ engineStrict: true
 # reviewable diff.
 savePrefix: ""
 
+# The portable product includes Windows Job Object bindings even when packed on
+# Linux/macOS. No native compilation or install script is needed for these builds.
+supportedArchitectures:
+  os: [current, win32]
+  cpu: [current, x64, arm64]
+
 # The only third-party package allowed to run an install script: esbuild fetches
 # its platform binary in a postinstall. It is used by package-owned product
 # artifact bundling for the distributable `nevo-specflow` CLI.

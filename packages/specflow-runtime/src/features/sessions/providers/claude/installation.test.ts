@@ -1,7 +1,8 @@
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { claudeCertification, inspectClaudeInstallation } from './installation';
+import { inspectClaudeInstallation } from './installation';
 import type { ProviderEnvironment } from '../process';
+import { bundledClaudeBuild } from '../compatibility/catalogue';
 
 function fixture() {
   const home = resolve('certified-home');
@@ -19,7 +20,7 @@ function fixture() {
     scopes: ['user:inference'],
   };
   const present = new Set<string>();
-  let hash = claudeCertification.windowsSha256;
+  let hash = bundledClaudeBuild.sha256;
   let registryAbsent = true;
   let denied: string | undefined;
   let linked: string | undefined;
@@ -87,11 +88,22 @@ function fixture() {
     },
   };
 }
-describe('certified Claude installation admission', () => {
-  it('accepts only the pinned native binary and known personal inference OAuth, returning an opaque account binding', async () => {
+describe('Claude installation and policy inspection', () => {
+  it('accepts a changed valid fingerprint while rechecking policy and account binding', async () => {
+    const f = fixture();
+    const before = await f.run();
+    f.setHash('a'.repeat(64));
+    const changed = await f.run();
+    expect(changed.sha256).toBe('a'.repeat(64));
+    expect(changed.fingerprint).not.toBe(before.fingerprint);
+    expect(changed.accountScope).toBe(before.accountScope);
+    f.setRegistry(false);
+    await expect(f.run()).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  });
+  it('fingerprints the native binary and checks personal inference OAuth, returning an opaque account binding', async () => {
     const f = fixture();
     const value = await f.run();
-    expect(value.version).toBe('2.1.296');
+    expect(value.sha256).toBe(bundledClaudeBuild.sha256);
     expect(value.accountScope).toMatch(/^[0-9a-f]{64}$/);
     expect(value.secrets).toEqual(['private-access', 'private-refresh']);
     expect(value.accountScope).not.toContain('b6d81fa6');
@@ -104,7 +116,7 @@ describe('certified Claude installation admission', () => {
       await expect(f.run()).rejects.toMatchObject({ code: 'PROVIDER_AUTH_REQUIRED' });
     },
   );
-  it('rejects modified executables, unsupported platforms, denied reads and links', async () => {
+  it('rejects malformed fingerprints, unsupported platforms, denied reads and links', async () => {
     const changed = fixture();
     changed.setHash('other');
     await expect(changed.run()).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
@@ -113,10 +125,10 @@ describe('certified Claude installation admission', () => {
     await expect(linux.run()).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
     const denied = fixture();
     denied.setDenied(denied.credentialsPath);
-    await expect(denied.run()).rejects.toThrow('outside the certified');
+    await expect(denied.run()).rejects.toThrow('outside the supported');
     const linked = fixture();
     linked.setLinked(linked.configPath);
-    await expect(linked.run()).rejects.toThrow('outside the certified');
+    await expect(linked.run()).rejects.toThrow('outside the supported');
   });
   it.each(['managed-settings.json', 'managed-settings.d', 'managed-mcp.json'])(
     'rejects any %s policy source',
@@ -137,16 +149,16 @@ describe('certified Claude installation admission', () => {
   it('refuses registry uncertainty, profile credentials, stored API key and Credman backend', async () => {
     const registry = fixture();
     registry.setRegistry(false);
-    await expect(registry.run()).rejects.toThrow('outside the certified');
+    await expect(registry.run()).rejects.toThrow('outside the supported');
     const profile = fixture();
     profile.present.add(join(profile.home, 'AppData', 'Roaming', 'Anthropic'));
-    await expect(profile.run()).rejects.toThrow('outside the certified');
+    await expect(profile.run()).rejects.toThrow('outside the supported');
     const apiKey = fixture();
     apiKey.config.primaryApiKey = 'private-key';
-    await expect(apiKey.run()).rejects.toThrow('outside the certified');
+    await expect(apiKey.run()).rejects.toThrow('outside the supported');
     const credman = fixture();
     credman.config.cachedGrowthBookFeatures = { tengu_windows_credman: true };
-    await expect(credman.run()).rejects.toThrow('outside the certified');
+    await expect(credman.run()).rejects.toThrow('outside the supported');
   });
   it('refuses expired credentials, missing inference scope and all non-platform environment inputs', async () => {
     const expired = fixture();

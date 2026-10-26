@@ -4337,9 +4337,9 @@
       "file": "docs/ideas/specflow-runtime/claude-provider.md",
       "read_when": [
         "enabling or reviewing the Claude Session adapter",
-        "certifying a new installed Claude executable"
+        "checking compatibility after a Claude CLI update"
       ],
-      "summary": "Production Claude wiring, initial Windows personal-OAuth certification, durable native context, bidirectional questions and explicit live acceptance limitations.",
+      "summary": "Production Claude wiring, optimistic Windows personal-OAuth compatibility, durable native context, bidirectional questions and explicit live acceptance limitations.",
       "related": [
         "ideas.specflow-runtime.provider-migration-plan",
         "ideas.specflow-runtime.provider-process-boundary",
@@ -4363,14 +4363,14 @@
     {
       "id": "ideas.specflow-runtime.provider-compatibility",
       "type": "engineering",
-      "title": "Provider compatibility catalogue and admission design",
+      "title": "Optimistic provider compatibility and strict execution checks",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/provider-compatibility.md",
       "read_when": [
         "certifying an additional provider binary",
         "implementing independently published compatibility updates"
       ],
-      "summary": "Separates installation identity, trusted certification, bounded protocol probing and execution admission; ships a bundled baseline while signed distribution remains deferred.",
+      "summary": "Separates diagnostic build identity, bounded protocol probing and strict execution admission; compatible unlisted builds run provisionally without catalogue updates.",
       "related": [
         "ideas.specflow-runtime.claude-provider",
         "ideas.specflow-runtime.provider-process-boundary",

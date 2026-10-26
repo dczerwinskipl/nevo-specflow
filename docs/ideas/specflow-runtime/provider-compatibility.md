@@ -1,7 +1,7 @@
 ---
 id: ideas.specflow-runtime.provider-compatibility
 type: engineering
-title: Provider compatibility catalogue and admission design
+title: Optimistic provider compatibility and strict execution checks
 status: draft
 scope: specflow
 areas: [ai, runtime, security, testing]
@@ -10,154 +10,95 @@ read_when:
   - certifying an additional provider binary
   - implementing independently published compatibility updates
 summary: >
-  Separates installation identity, trusted certification, bounded protocol probing and
-  execution admission; ships a bundled baseline while signed distribution remains deferred.
+  Separates diagnostic build identity, bounded protocol probing and strict execution
+  admission; compatible unlisted builds run provisionally without catalogue updates.
 related:
   - ideas.specflow-runtime.claude-provider
   - ideas.specflow-runtime.provider-process-boundary
   - reference.protocols.session-provider-driver
 ---
 
-# Provider compatibility and admission
+# Optimistic compatibility, strict capability enforcement
 
-## Decision and present scope
+The owner's PR98_provider_compatibility_override.md replaces the original handover section 3.
+Unknown versions and hashes are allowed when the implemented protocol and the required execution
+checks pass. A catalogue entry, signature service or new SpecFlow release is not required for every
+CLI update. This decision supersedes the previous mandatory exact-hash certification design.
 
-Use a data-only compatibility catalogue. Protocol implementations remain part of SpecFlow.
-A catalogue may certify a new executable for an already implemented profile; it cannot introduce
-parsers, code, environment variables, command-line arguments or writable execution modes.
+## Classification and admission
 
-PR #98 introduces a closed record schema, the trusted bundled Claude baseline, three compatibility
-classifications and a separate admission policy. Production accepts only bundled exact fingerprints.
-There is no remote catalogue loader, configurable certification override, provisional execution or
-network update service in this stage. Remote signature/cache tests are future distribution acceptance,
-not tests that have already passed. This preserves the existing strict security gate.
+- Tested: the exact build/version has recorded integration evidence for the implemented profile,
+  and current checks pass. This label does not claim every native model/question/resume scenario
+  was successfully exercised. The existing Claude 2.1.296 fingerprint records the observed baseline.
+- Provisional: an untested version/build, including another hash at the same version or a new major,
+  passes current local checks. It is available without extra opt-in or blocking UI warning.
+- Unsupported: a known incompatibility or a failed required protocol/restriction check. Refuse the
+  affected operation/mode and publish a bounded reasonCode. A failed file read, cancelled probe or
+  unverified process settlement is technical unavailability, not proof of protocol incompatibility.
 
-The baseline records the Windows x64 Claude 2.1.296 SHA-256 already inspected for the restricted
-personal OAuth configuration. It certifies that configuration's binary/protocol policy evidence.
-It does not certify successful paid model answers, native question continuation or semantic resume.
-Those remain separate live acceptance items. Windows process-tree ownership remains an independent
-known blocker; catalogue classification cannot supply missing OS lifetime evidence.
+Both Tested and Provisional pass the same configuration, authentication, policy, environment,
+read-only and supported model/effort gates. Writable effects still require Engine admission.
+Missing version metadata leaves the build provisional; never infer Tested from a successful handshake.
+An unsupported requested mode does not disable another supported mode globally.
 
-## Responsibility boundaries
+## Installation identity and cache
 
-| Boundary                       | Responsibility                                                                                                                                       | PR #98 implementation                                                                                                                                                                                               |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ProviderInstallationDetector   | Resolve the configured installation and passively establish platform, architecture, version and SHA-256. Never run an unknown binary to identify it. | Claude native regular-file checks and bounded hashing; a known exact hash establishes the baseline version/architecture. Unknown hashes remain unavailable. General PE version extraction is deferred.              |
-| ProviderCompatibilityCatalogue | Resolve trusted build records, incompatibilities and revocations for implemented profiles.                                                           | Immutable bundled baseline, closed record validator and classification policy. No external metadata is trusted.                                                                                                     |
-| ProviderProtocolProbe          | Bound initialization/model/effort discovery and observable restrictions after the trust gate.                                                        | Extracted Claude discovery module; existing 10 s operation bound, 1 MiB framing, process owner, cleanup and explicit tool/MCP/plugin validation. Initialization does not prove semantic resume or execution safety. |
-| ProviderAdmissionPolicy        | Combine certification with configuration, security, authentication, execution mode and account/workspace affinity.                                   | Pure policy plus the existing installation/account checks and durable coordinator dispatch gate. Provisional always denied.                                                                                         |
+installation.ts requires a bounded regular native executable, fingerprints it with SHA-256, and
+retains all existing default personal Pro/Max OAuth, managed-policy absence, registry, symlink,
+profile and projected-environment checks. The fingerprint is diagnostic identity, not an allowlist.
 
-Authentication or configuration failure does not revoke an otherwise known build. Readiness still
-reports unavailable/authenticationRequired with bounded safe text, without paths, hashes, tokens
-or native account identities. No compatibility-management UI is introduced.
+Discovery caches for at most 30 seconds, keyed by executable path/hash, opaque account binding,
+authentication mode, projected configuration/environment, workspace and implemented protocol profile.
+All authentication/policy sources are rechecked before consulting the cache. Native bookkeeping and
+routine token refresh do not require a new catalogue record. Changing the account or relevant
+configuration invalidates availability. Configuration outside the supported sources remains denied.
 
-## Classifications
+Reinspect after probing and before invocation. If the executable changes during discovery, discard
+that result and probe the current build, with at most two attempts. Revalidate model/effort against
+the fresh catalogue after an update between admission and launch. Never dispatch using the old
+build's models. The path-based hash-to-spawn interval is not an atomic executable-handle lock;
+stronger OS ownership/identity binding remains a separate hardening concern.
 
-- **Verified:** exact provider/platform/architecture/hash, matching identified version, implemented
-  protocol profile, current trusted evidence, no revocation. Execution additionally requires every
-  independent admission prerequisite. A supported capability is distinct from live acceptance evidence.
-- **Provisional:** a passively identified candidate that plausibly belongs to an existing protocol
-  family but lacks trusted safety evidence. An unchanged version with another hash belongs here too.
-  A permissive version match never admits it. Present policy denies all provisional execution and
-  does not run host probes. A future opt-in requires an independently specified OS isolation boundary
-  and restricted read-only policy; it cannot relax hooks, MCP, permissions or environment restrictions.
-- **Unsupported:** unknown identity, unsupported platform/auth/profile, failed policy, incompatible
-  or revoked build, invalid trusted evidence. Internal checking/unknown readiness is not a fourth
-  compatibility classification. A candidate with changed/invalid protocol fails probe admission even
-  if its fingerprint later obtains a catalogue record.
+## Unpaid probe and its limits
 
-Classification is descriptive. Invocation permission is a separate decision. Today, an unknown
-executable whose version cannot be established without executing it is unsupported, rather than
-being run to determine whether it might be provisional.
+probe.ts starts the CLI through the existing owned-process boundary with the existing strict flags:
+safe/restricted mode, explicit Read/Glob/Grep/AskUserQuestion tools, plan permissions, host stdio
+permission prompts, empty strict MCP, no setting sources, hooks disabled, no slash commands/chrome.
+It sends only control initialization; no user message, paid inference or history is sent.
 
-## Record and future envelope
+The probe validates control framing/correlation, minimal initialize schema and bounded model/effort
+metadata. Reported versions are bounded diagnostics rather than release-number admission checks.
+It uses a 10-second discovery deadline, bounded frames/writes and owned disposal. Failure or uncertain
+cleanup never advertises readiness or invents Tested status. Windows process-settlement uncertainty
+remains applicable; the probe does not supply a stronger OS cleanup guarantee than the Runtime has.
 
-`providers/compatibility/catalogue.ts` owns the closed executable record schema:
+Effective tools, plan mode, MCP and builtin-plugin inventory are observable in the invocation's
+system/init frame, after sending its user message. They remain strictly checked there. The unpaid
+handshake does not prove those effective settings, semantic question delivery, native cancellation
+or semantic resume. CLI argument acceptance and initialization are limited compatibility evidence.
+Provisional execution relies on the same declared CLI restrictions and Runtime checks as the tested
+path, with no claim of an OS sandbox, complete network isolation or future native semantic correctness.
+Actual refusal of those restrictions/profile blocks execution; no hash-only refusal is introduced.
 
-```json
-{
-  "providerId": "claude",
-  "platform": "win32",
-  "architecture": "x64",
-  "version": "2.1.296",
-  "sha256": "76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a",
-  "protocolProfile": "claude-stream-json-v1",
-  "classification": "verified",
-  "capabilities": ["initialization", "restricted-read-tools", "questions"],
-  "authenticationModes": ["personal-pro-max-oauth-file"],
-  "executionModes": ["read-only"],
-  "evidenceId": "claude-2.1.296-windows-readonly-policy",
-  "revoked": false
-}
-```
+## Optional local catalogue
 
-A future signed catalogue payload has closed fields `schemaVersion:1`, `revision` (monotonic safe
-integer), `issuedAt`, `expiresAt` (UTC timestamps), `records` (bounded unique build records) and
-`revocations` (append-only provider/platform/architecture/hash identities with reason/evidence IDs).
-The detached envelope contains only `keyId`, `algorithm:"Ed25519"`, `payload` and `signature`.
-The signature covers UTF-8 RFC 8785 canonical JSON of the entire payload, including revision and
-times. Reject duplicate JSON keys, unknown fields, invalid encodings, excessive nesting, more than
-1 MiB, ambiguous/duplicate records and a verified record that is also revoked.
+The closed record schema stores diagnostic tested fingerprints, version/profile/scenario evidence,
+authentication/execution modes and locally known incompatible/revoked builds. Known incompatibility
+wins over optimistic classification. An absent entry or offline catalogue service never disables a
+locally compatible build. Invalid local evidence fails explicitly rather than granting Tested.
 
-This envelope is a proposed distribution contract, not an available production input. The record
-validator alone does not grant trust. A local `.nevo/config.yaml` cannot create a trusted record.
+Remote signing/distribution/cache/anti-rollback is optional future quality infrastructure, not an MVP
+prerequisite or a source of executable code, command arguments or protocol parsers. A genuinely new
+unsupported protocol profile may require a SpecFlow release. Routine CLI version changes do not.
 
-## Signed distribution and offline policy — next stage
+## Evidence and tests
 
-Publish the JSON and detached signature independently of provider binaries over HTTPS. Pin the
-verification public key in SpecFlow; keep the private signing key in a separately controlled release
-system with auditable certification evidence. HTTPS provides transport protection, not catalogue
-authenticity. No publishing key or endpoint exists in this PR. Key rotation requires a release or a
-separately specified transition signed by the previously trusted key.
+Controlled tests cover known Tested, same-version/new-hash, newer and new-major Provisional,
+missing diagnostic version, malformed handshake, restriction failures, known incompatible evidence,
+o-network/no-entry policy, cache invalidation, replacement during probing and replacement between
+validation and dispatch. Controlled HTTP/native-child tests exercise updated builds through the
+production registry, coordinator, SQLite and HTTP, without running an external paid model.
 
-Verify signature, closed schema, profile implementation, timestamps and monotonic revision before
-activation. Reject future issue times outside a small defined clock-skew budget, expired catalogues,
-rollback revisions and same-revision/different-payload changes. Persist the highest activated
-revision, payload digest and known revocations atomically before admitting a build. Cache bytes and
-signature in Runtime-owned storage using atomic replace/fsync; reverify on every load. A previously
-observed revocation must survive cache expiry and must override the bundled baseline and older caches.
-
-Offline startup may use an unexpired, previously verified cache. If that cache expires, dynamically
-certified additions become unavailable. The bundled baseline may continue only where it does not
-conflict with persisted revocations; never roll back to stale metadata to restore a revoked build.
-Missing/corrupt anti-rollback state after updates requires reconciliation, rather than silently
-accepting older cached trust. Explicit recovery/reset procedures and expiry duration need approval
-with the distribution contract before implementation.
-
-## Probe, caching and launch binding
-
-Trust/isolate first, then probe. Basic probes must not use paid inference. The current Claude
-initialize handshake obtains models and effort metadata without a user prompt; first-turn init also
-checks expected version, native correlation, workspace, plan permission mode, restricted tools,
-empty MCP and only the observed builtin plugins. Auth/policy source inspection precedes execution.
-Hooks/environment checks and exact binary evidence are not replaced by a successful handshake.
-
-Discovery is cached for at most 30 seconds. Installation/auth/policy is checked again at validation
-and immediately before launch; account changes invalidate admission and native context affinity.
-Handshake version is compared with the version of that newly inspected installation, rather than
-a second independent constant in the driver. Future catalogue activation must invalidate discovery
-and include its revision in the admission evidence. Never fallback from a failed native resume to
-a new conversation or resend an input whose dispatch might already have occurred.
-
-There is still a path-based hash-to-spawn interval. Strict atomic identity binding against concurrent
-replacement requires the native launcher/file ownership boundary described in the review follow-up.
-Another version check after execution cannot make an untrusted binary safe to execute. This is a
-remaining hardening dependency, not a guarantee supplied by the current pure catalogue abstraction.
-
-## Staged acceptance
-
-1. **This PR:** bundled exact-hash path, closed record validation, verified/provisional/unsupported
-   classification, deny provisional/unknown, policy/auth restrictions unchanged; controlled tests for
-   known build, same version/different hash, newer candidate, revoked evidence, unknown profile,
-   platform mismatch and failed security prerequisites. Existing installation tests retain fail-closed
-   authentication, policy, symlink and fingerprint coverage.
-2. **Distribution contract and publisher:** agree expiry/rotation/operator rules, provision signing
-   key and evidence publishing. Implement bounded signature verification/cache/anti-rollback, then test
-   invalid signature, expired and rolled-back metadata, offline valid cache, persisted revocation and
-   unknown sensitive fields. No unverified remote allowlist may substitute for this stage.
-3. **Additional certification:** controlled binary fixtures for a newer same-profile build and invalid
-   protocol, discovery-to-dispatch update, bounded cancellation and negative tool inventory. Only
-   afterwards publish a signed certification record. Semantic continuation/cancellation and actual
-   model replies require separate live evidence; a quota response proves neither.
-4. **Optional provisional invocation:** future scope, blocked until a safe OS execution boundary and
-   explicit opt-in policy are defined. No writable operations in this adapter stage.
+Live Claude model answers, question round trips and semantic resume remain separate acceptance.
+The previous quota-limited native invocation does not prove those scenarios. New probes likewise
+establish only the unpaid protocol/model observations they actually perform.

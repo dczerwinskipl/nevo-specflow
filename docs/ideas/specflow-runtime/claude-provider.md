@@ -8,9 +8,9 @@ areas: [ai, runtime, security, testing]
 tags: [claude, providers, sessions, migration]
 read_when:
   - enabling or reviewing the Claude Session adapter
-  - certifying a new installed Claude executable
+  - checking compatibility after a Claude CLI update
 summary: >
-  Production Claude wiring, initial Windows personal-OAuth certification, durable
+  Production Claude wiring, optimistic Windows personal-OAuth compatibility, durable
   native context, bidirectional questions and explicit live acceptance limitations.
 related:
   - ideas.specflow-runtime.provider-migration-plan
@@ -49,16 +49,16 @@ other providers remain usable. Discovery is cached for at most 30 seconds and is
 seconds; ordinary chat snapshots do not launch subprocesses. Startup warms discovery for existing
 chat reloads. Model IDs, labels and effort choices come from native initialization, not a static list.
 
-The first certified subset is **Windows native Claude Code 2.1.296**, default first-party **personal
-Pro/Max OAuth file login** and **read-only** execution. Linux/macOS, Team/Enterprise, API keys,
-profiles, gateways, alternate credential directories and writable execution are not certified by this
-implementation. An updated executable is refused until separately checked; a version string alone
-does not carry its certification.
+The supported configuration remains Windows native Claude, default first-party personal Pro/Max
+OAuth file login and read-only execution. Claude 2.1.296 is the observed Tested baseline; a different
+hash, newer release or new major may run Provisional when local protocol/execution checks pass.
+Linux/macOS, Team/Enterprise, API keys, profiles/gateways, alternate auth directories and writable
+execution remain outside the implemented configuration. Unknown hashes alone never deny execution.
 
 ## Prelaunch policy checks
 
-`installation.ts` binds certification to SHA-256
-`76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a`.
+See [optimistic compatibility and admission](provider-compatibility.md) for the owner's revised
+policy. SHA-256 identifies builds and invalidates discovery cache; it is not an execution allowlist.
 It hashes the executable and rechecks authentication/policy sources before each launch. It accepts
 only the platform environment projection, requires regular default config/credential files,
 an unexpired inference-scoped Pro/Max OAuth credential, and a stable opaque account binding.
@@ -126,7 +126,7 @@ unknown when the handle subsequently resolves/rejects.
 
 The [official SDK transport](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/transport/subprocess_cli.py)
 and [control protocol](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/query.py)
-are protocol evidence; newer SDK shapes are not automatically certified for this pinned build.
+are protocol evidence; newer SDK shapes must satisfy the implemented protocol checks, independently of their release number.
 
 ## Acceptance evidence and remaining limits
 

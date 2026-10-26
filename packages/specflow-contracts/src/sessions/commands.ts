@@ -100,6 +100,31 @@ export const ProviderDescriptorSchema = Type.Object(
       Type.Literal('unknown'),
     ]),
     reason: Type.Optional(Type.String({ maxLength: 512 })),
+    reasonCode: Type.Optional(
+      Type.Union([
+        Type.Literal('INSTALLATION_UNAVAILABLE'),
+        Type.Literal('AUTHENTICATION_REQUIRED'),
+        Type.Literal('PROTOCOL_UNSUPPORTED'),
+        Type.Literal('RESTRICTION_UNSUPPORTED'),
+        Type.Literal('KNOWN_INCOMPATIBILITY'),
+        Type.Literal('PROBE_FAILED'),
+        Type.Literal('PROCESS_SETTLEMENT_UNVERIFIED'),
+      ]),
+    ),
+    compatibility: Type.Optional(
+      Type.Object(
+        {
+          classification: Type.Union([
+            Type.Literal('tested'),
+            Type.Literal('provisional'),
+            Type.Literal('unsupported'),
+          ]),
+          protocolProfile: choice(128),
+          version: Type.Optional(choice(128)),
+        },
+        closed,
+      ),
+    ),
     capabilities: Type.Object(
       {
         questions: Type.Boolean(),

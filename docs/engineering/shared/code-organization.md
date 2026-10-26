@@ -289,10 +289,12 @@ ownership.
 - `shared/` MUST hold only code that several features genuinely use and MUST NOT import a feature
   or a composition root. Code SHOULD NOT be promoted to `shared/` for convenience; promote it when
   a second feature needs it.
-- Target rule for new code and code touched during migration: features SHOULD reach other features
-  only through the target feature's public boundary (`features/<name>/index.ts`), which exports
-  what others may use. This is not an existing invariant, and creating a barrel only to satisfy
-  this rule is not required. A feature-private sub-slice SHOULD NOT be imported from outside.
+- Target rule for new code and code touched during migration: features SHOULD use the target
+  feature's documented public entrypoints rather than importing private sub-slices. For SpecFlow
+  UI, those entrypoints are `features/<name>/index.ts` (feature exports),
+  `features/<name>/read-model` (data-only dependencies), and `features/<name>/routes`
+  (composition only), as detailed below. Other packages follow their own documented public
+  boundaries. Do not create a forwarding barrel only to satisfy a presumed universal rule.
 - If ownership is ambiguous, surface the decision instead of defaulting to the current screen's
   folder.
 

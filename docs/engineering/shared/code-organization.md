@@ -95,11 +95,13 @@ belongs beside the operation it adapts.
 
 ### UI feature folders
 
-A UI feature is organized by responsibility, not as a flat list of files. Keep a folder at about 15
-to 20 direct files at most; when it grows, extract a sub-folder named after what it owns, and keep
-tests, stories and story-support next to their owner. The feature root keeps only the entry files
-(`routes.tsx`, `uiModule.ts`) and the screens that compose the sub-folders. Do not create
-`utils/` or `common/` folders.
+A UI feature is organized by responsibility, not as a flat list of files. Around 15 to 20 direct
+files in one folder is an inspection trigger, not a hard limit or an automatic extraction rule.
+Extract a sub-folder when it clarifies cohesive ownership; keep a larger cohesive folder when
+splitting would introduce only navigation or forwarding overhead. Keep tests, stories and
+story-support next to their owner. Prefer a small feature root with entry files (`routes.tsx`,
+`uiModule.ts`) and composing screens, but do not introduce ceremony only to reach a file count.
+Do not create generic `utils/` or `common/` dumping grounds.
 
 Example, `features/specs/creation` (private to Create; the application wires only its routes and UI
 module):
@@ -225,10 +227,11 @@ casing is a separate repository convention and is not defined by this rule.
 
 ### Engine capability folders
 
-The Engine (`packages/specflow-engine/src`) follows the same vertical-slice rule: capability
-folders, no prefix families. A group of files sharing a name prefix (`create-*.ts`, `close-*.ts`,
-`git-*.ts`, `project-home-*.ts`) is a missing folder: the prefix becomes the folder and the files
-drop it (`create-journal.ts` becomes `create/journal/`).
+The Engine (`packages/specflow-engine/src`) follows the same vertical-slice principle: organize
+modules by cohesive capability and ownership rather than filename prefixes alone. A shared prefix
+(`create-*.ts`, `close-*.ts`, `git-*.ts`, `project-home-*.ts`) signals that a capability folder may
+be worth considering, not that files must be moved. Group by actual responsibility: for example,
+`create-journal.ts` may belong under `create/journal/` when that is the owning slice.
 
 Each capability folder exposes a small `index.ts`. Code in another capability and the package
 surfaces (`index.ts`, `testing.ts`, `diagnostics.ts`) import the capability only through that
@@ -286,10 +289,12 @@ ownership.
 - `shared/` MUST hold only code that several features genuinely use and MUST NOT import a feature
   or a composition root. Code SHOULD NOT be promoted to `shared/` for convenience; promote it when
   a second feature needs it.
-- Target rule for new code and code touched during migration: features SHOULD reach other features
-  only through the target feature's public boundary (`features/<name>/index.ts`), which exports
-  what others may use. This is not an existing invariant, and creating a barrel only to satisfy
-  this rule is not required. A feature-private sub-slice SHOULD NOT be imported from outside.
+- Target rule for new code and code touched during migration: features SHOULD use the target
+  feature's documented public entrypoints rather than importing private sub-slices. For SpecFlow
+  UI, those entrypoints are `features/<name>/index.ts` (feature exports),
+  `features/<name>/read-model` (data-only dependencies), and `features/<name>/routes`
+  (composition only), as detailed below. Other packages follow their own documented public
+  boundaries. Do not create a forwarding barrel only to satisfy a presumed universal rule.
 - If ownership is ambiguous, surface the decision instead of defaulting to the current screen's
   folder.
 

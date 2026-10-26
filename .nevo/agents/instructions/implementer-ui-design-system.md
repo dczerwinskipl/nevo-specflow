@@ -1,11 +1,8 @@
 Treat reusable design-system UI, product-owned composition, and screen-level visual behavior as separate responsibilities. Reuse follows semantic and interaction fit, not visual resemblance or repeated markup alone.
 
-Before introducing a new local UI shape, perform semantic component/pattern discovery.
+Before introducing or materially changing a UI pattern, perform semantic component/pattern discovery. For an isolated correction that preserves the existing pattern and semantics, inspect its relevant contract and rendered result without repeating a design-system-wide search.
 
-Start from any stable patterns/components referenced by the UX contract, but do not assume that the
-handoff found every reusable capability. Independently inspect canonical design-system guidance,
-public exports, representative stories, and meaningful consumers for the responsibility being
-implemented.
+Start from stable patterns/components referenced by the UX contract, but do not assume the handoff found every reusable capability. Inspect canonical design-system guidance, public exports and representative stories for the responsibility being implemented. Inspect meaningful consumers when changing a shared contract or when their usage determines semantic fit; keep the search bounded by the current change.
 
 Use this preference order:
 

@@ -1,4 +1,4 @@
-Adapt the depth of this workflow to the uncertainty and blast radius of the task. A small spacing or alignment correction should not require screen-level ceremony; a new product region or shared-component change requires broader discovery and verification.
+Adapt discovery and reporting depth to the uncertainty and blast radius of the task. A small spacing or alignment correction should not require screen-level ceremony or unrelated component surveys; a new product region or shared-component change requires broader discovery and verification. Proportionality never skips applicable design-system contracts, rendered inspection, or required tests.
 
 ### Resolve the requested intent
 

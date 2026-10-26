@@ -144,3 +144,11 @@ unexecuted live-provider/matrix acceptance must be listed separately.
 Recommendation remains **NOT READY** while R01 lacks positive process ownership/settlement and
 successful live Claude model/semantic-resume acceptance is pending. Signed catalogue distribution
 is deliberately staged, as described in the compatibility design, rather than shipped unverified.
+
+The first full matrix found a macOS controlled-fixture mismatch: the test provided an aliased
+temporary workspace while the child reported its canonical cwd. A POSIX symlink probe reproduced
+`lexicalMatches:false, canonicalMatches:true`. The fixture now canonicalizes its owned temporary
+root before supplying the verified workspace. Production workspace verification remains strict.
+The local broad Windows run also observed taskkill settlement uncertainty under concurrent load;
+its failed live-root cancellation and controlled Claude completion remain recorded failures, even
+though the corresponding first remote Windows matrix passed. An isolated pass does not resolve R01.

@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, rm, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readdir, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -210,7 +210,9 @@ async function open() {
   );
 }
 async function setup() {
-  root = await mkdtemp(join(tmpdir(), 'specflow-claude-http-'));
+  // Match the verified Engine workspace contract. POSIX cwd resolves aliases such as
+  // macOS /var -> /private/var before the provider emits its initialization frame.
+  root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-claude-http-')));
   await mkdir(join(root, 'workspace'));
   fixture.privateRoot = join(root, 'native');
   await mkdir(fixture.privateRoot);

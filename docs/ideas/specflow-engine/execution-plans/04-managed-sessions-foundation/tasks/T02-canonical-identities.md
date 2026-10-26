@@ -27,6 +27,8 @@ Define stable product `sessionId`, `turnId`, `workId`, `interactionId` and separ
 
 **Future compatibility only:** Keep product Session/Turn identities independent of `(spec, task, step, attempt)` and do not assume one Turn per workflow attempt. Stable step-instance/run identities are deferred to the [future plan](../../../multi-instance-plan/README.md).
 
+Check the [multi-project hosting direction](../../../../multi-project-hosting.md) when choosing persisted Session scope. E4 still targets one fixed verified checkout; this note does not add cross-project behavior to E4.
+
 ## Prerequisites
 
 - [E4.T01](T01-session-contract-reconnaissance.md)

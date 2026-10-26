@@ -75,6 +75,13 @@ export type StoreCommand =
     }
   | { op: 'cancel'; actor: string; sessionId: string; turnId: string; requestId: string }
   | {
+      op: 'response-delivered';
+      sessionId: string;
+      turnId: string;
+      invocationId: string;
+      nativeKeys: readonly string[];
+    }
+  | {
       op: 'respond';
       actor: string;
       sessionId: string;
@@ -129,6 +136,8 @@ export interface StoreReadMetrics {
 }
 export interface WorkerReply {
   id: number;
+  /** Sessions whose outbox changed in a committed transaction, never speculative facts. */
+  changed?: string[];
   result?: unknown;
   metrics?: StoreReadMetrics;
   error?: { code: string; message: string; details?: { turnId?: string; reason?: string } };

@@ -20,7 +20,8 @@ export interface Invocation {
 export type EmitFact = (fact: DriverFact) => Promise<void>;
 export interface ProviderOperation {
   done: Promise<void>;
-  respond(key: string, response: RespondInteraction): Promise<void>;
+  /** Keys whose answers crossed the native transport, possibly an entire question group. */
+  respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
 }
 export interface SessionDriver {
   describe(): ProviderDescriptor;

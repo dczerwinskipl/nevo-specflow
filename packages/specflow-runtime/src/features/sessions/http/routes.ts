@@ -1,6 +1,4 @@
 import type { FastifyInstance, FastifyRequest, RawServerBase } from 'fastify';
-import { setTimeout as delay } from 'node:timers/promises';
-import { once } from 'node:events';
 import { Type } from 'typebox';
 import {
   SessionCapabilities,
@@ -15,18 +13,15 @@ import {
   ActionPageSchema,
   ContentPageSchema,
   ProviderCatalogueSchema,
-  SessionLimits,
   type CreateSession,
   type StartTurn,
   type RespondInteraction,
-  type SessionSnapshot,
-  type SessionChange,
-  type LiveProjection,
-  type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import type { SessionCoordinator } from '../lifecycle/coordinator';
-import type { EventBatch } from '../persistence/protocol';
 import { SessionError } from '../errors';
+import { effective } from './projection';
+import { authorizeSession } from './authorization';
+import { createSessionStreams } from './stream';
 
 const closed = { additionalProperties: false } as const;
 const params = (extra: Record<string, typeof SessionIdSchema> = {}) =>
@@ -61,59 +56,6 @@ const count = (value: string | undefined, fallback: number, max: number) => {
     throw new SessionError('SESSION_INPUT_INVALID', 'Page limit is out of range.');
   return n;
 };
-function effective(
-  s: SessionSnapshot,
-  request: FastifyRequest,
-  providerFor: (providerId: string) => ProviderDescriptor | undefined,
-): SessionSnapshot {
-  const provider = providerFor(s.session.providerId);
-  const available = provider?.readiness === 'ready';
-  const permissions = request.authz.resolveCapabilities({
-    resource: SessionCapabilities,
-    scope: { projectId: s.session.projectId, sessionId: s.session.sessionId },
-  });
-  s.session.capabilities.view = permissions.view;
-  s.session.capabilities.manage = permissions.manage;
-  s.session.capabilities.questions = provider?.capabilities.questions === true;
-  s.session.capabilities.permissions = provider?.capabilities.permissions === true;
-  s.session.capabilities.start = permissions.manage && available && s.session.readiness === 'ready';
-  s.session.capabilities.cancel =
-    permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';
-  if (!available && !s.activeTurn) s.session.readiness = 'unavailable';
-  return s;
-}
-function effectiveEvent(
-  event: SessionChange,
-  request: FastifyRequest,
-  available: (providerId: string) => ProviderDescriptor | undefined,
-): SessionChange {
-  if (event.kind === 'session') {
-    const session = event.changes.session;
-    effective(
-      { session, revision: 0, eventSeq: event.eventSeq, entries: [], history: { hasOlder: false } },
-      request,
-      available,
-    );
-  } else if ('projection' in event.changes && event.changes.projection) {
-    const p: LiveProjection = event.changes.projection;
-    effective(
-      {
-        session: p.session,
-        revision: 0,
-        eventSeq: event.eventSeq,
-        entries: [],
-        history: { hasOlder: false },
-        ...(p.activeTurn ? { activeTurn: p.activeTurn } : {}),
-        ...(p.currentActivity ? { currentActivity: p.currentActivity } : {}),
-        ...(p.interaction ? { interaction: p.interaction } : {}),
-      },
-      request,
-      available,
-    );
-  }
-  return event;
-}
-
 export function registerSessionRoutes<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
   options: {
@@ -121,12 +63,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     projectId?: string;
   },
 ): void {
-  const streams = new Set<AbortController>();
-  const perActor = new Map<string, number>();
-  app.addHook('preClose', (done) => {
-    for (const controller of streams) controller.abort();
-    done();
-  });
+  const streams = createSessionStreams(app);
   app.register((feature, _options, registered) => {
     feature.setErrorHandler((error, _request, reply) => {
       if (error instanceof SessionError)
@@ -165,27 +102,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         throw new SessionError('SESSION_DISABLED', 'Managed Sessions are disabled.');
       return options.coordinator;
     };
-    async function authorize(request: FastifyRequest, manage = false) {
-      request.authz.requireAccess();
-      const c = coordinator();
-      request.authz.requireCapabilityInAnyScope({
-        resource: SessionCapabilities,
-        capability: manage
-          ? SessionCapabilities.capabilities.Manage
-          : SessionCapabilities.capabilities.View,
-      });
-      const identity = await c.store.call<{ projectId: string; sessionId: string }>({
-        op: 'identity',
-        sessionId: ids(request).sessionId,
-      });
-      request.authz.require({
-        resource: SessionCapabilities,
-        capability: manage
-          ? SessionCapabilities.capabilities.Manage
-          : SessionCapabilities.capabilities.View,
-        scope: identity,
-      });
-    }
+    const authorize = (request: FastifyRequest, manage = false) =>
+      authorizeSession(request, coordinator(), ids(request).sessionId, manage);
     function authorizeCreate(
       request: FastifyRequest,
       _reply: unknown,
@@ -390,86 +308,14 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         },
       },
       async (request, reply) => {
-        const sid = ids(request).sessionId,
-          principal = actor(request),
-          header = request.headers['last-event-id'];
-        if (
-          Array.isArray(header) ||
-          (query(request).after !== undefined &&
-            header !== undefined &&
-            query(request).after !== header)
-        )
-          throw new SessionError('SESSION_CURSOR_INVALID', 'Conflicting replay cursors.');
-        const supplied = query(request).after ?? header;
-        const initial = await coordinator().store.call<EventBatch>({
-          op: 'events',
-          sessionId: sid,
-          after: 0,
-        });
-        let after = supplied === undefined ? initial.latest : Number(supplied);
-        if (!Number.isSafeInteger(after) || after < 0 || after > initial.latest)
-          throw new SessionError('SESSION_CURSOR_INVALID', 'Invalid replay sequence.');
-        if (streams.size >= 32 || (perActor.get(principal) ?? 0) >= 8)
-          return reply.code(429).header('Retry-After', '5').send({ error: 'rate_limited' });
-        const controller = new AbortController();
-        streams.add(controller);
-        perActor.set(principal, (perActor.get(principal) ?? 0) + 1);
-        const raw = reply.raw;
-        reply.hijack();
-        const disconnected = () => controller.abort();
-        raw.on('close', disconnected);
-        raw.writeHead(200, {
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-store',
-          Connection: 'keep-alive',
-          'X-Accel-Buffering': 'no',
-        });
-        raw.write(': connected\n\n');
-        let heartbeat = Date.now();
-        try {
-          while (!controller.signal.aborted) {
-            request.authz = request.authz.refresh();
-            await authorize(request);
-            const batch = await coordinator().store.call<EventBatch>({
-              op: 'events',
-              sessionId: sid,
-              after,
-            });
-            if (after < batch.oldest - 1 || raw.writableLength > SessionLimits.subscriberBytes) {
-              raw.write('event: resync-required\ndata: {}\n\n');
-              break;
-            }
-            for (const event of batch.events) {
-              if (event.eventSeq !== after + 1) {
-                raw.write('event: resync-required\ndata: {}\n\n');
-                controller.abort();
-                break;
-              }
-              const frame =
-                'id: ' +
-                event.eventSeq +
-                '\nevent: session-change\ndata: ' +
-                JSON.stringify(effectiveEvent(event, request, coordinator().provider)) +
-                '\n\n';
-              if (!raw.write(frame)) await once(raw, 'drain', { signal: controller.signal });
-              after = event.eventSeq;
-            }
-            if (Date.now() - heartbeat >= 15000) {
-              raw.write(': heartbeat\n\n');
-              heartbeat = Date.now();
-            }
-            if (!batch.events.length) await delay(100, undefined, { signal: controller.signal });
-          }
-        } catch {
-          /* Auth revocation, disconnect and shutdown close the stream without more data. */
-        } finally {
-          streams.delete(controller);
-          const left = (perActor.get(principal) ?? 1) - 1;
-          if (left) perActor.set(principal, left);
-          else perActor.delete(principal);
-          raw.off('close', disconnected);
-          if (!raw.writableEnded) raw.end();
-        }
+        return streams.open(
+          request,
+          reply,
+          coordinator(),
+          ids(request).sessionId,
+          actor(request),
+          query(request).after,
+        );
       },
     );
     registered();

@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSessionCoordinator, type SessionCoordinator } from './coordinator';
-import { openSessionStore } from '../persistence/store';
+import { openSessionStore, type SessionStore } from '../persistence/store';
+import { SessionError } from '../errors';
 import { createMockDriver, type MockScenario } from '../providers/mock';
 import type { SessionDriver } from '../providers/driver';
 
@@ -15,10 +16,15 @@ afterEach(async () => {
   runtime = undefined;
   if (directory) await rm(directory, { recursive: true, force: true });
 });
-async function setup(scenario?: MockScenario, driver?: SessionDriver) {
+async function setup(
+  scenario?: MockScenario,
+  driver?: SessionDriver,
+  wrapStore?: (store: SessionStore) => SessionStore,
+) {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-lifecycle-'));
+  const store = await openSessionStore({ directory, projectId: 'project' });
   runtime = createSessionCoordinator(
-    await openSessionStore({ directory, projectId: 'project' }),
+    wrapStore?.(store) ?? store,
     driver ?? createMockDriver(scenario),
     'project',
   );
@@ -29,6 +35,78 @@ async function setup(scenario?: MockScenario, driver?: SessionDriver) {
   });
 }
 describe('Session coordinator', () => {
+  it('records uncertainty instead of inventing failure when a terminal fact cannot be persisted', async () => {
+    let rejected = false;
+    const { sessionId } = await setup(undefined, undefined, (store) => ({
+      ...store,
+      call(command) {
+        if (!rejected && command.op === 'fact' && command.fact.kind === 'outcome') {
+          rejected = true;
+          return Promise.reject(
+            new SessionError('SESSION_STORE_BUSY', 'Storage admission timed out.'),
+          );
+        }
+        return store.call(command);
+      },
+    }));
+    await runtime!.start('actor', sessionId, { requestId: randomUUID(), message: 'Start' });
+    await vi.waitFor(async () =>
+      expect((await runtime!.snapshot(sessionId, 'actor')).activeTurn?.state).toBe('unknown'),
+    );
+    expect(
+      (await runtime!.snapshot(sessionId, 'actor')).entries.some((item) => item.kind === 'outcome'),
+    ).toBe(false);
+  });
+  it('keeps admitted answers unconfirmed when native delivery fails and never resends a retry', async () => {
+    const delivery = vi.fn(() => Promise.reject(new Error('Private stdin failure')));
+    const base = createMockDriver(async (_invocation, emit, signal) => {
+      await emit({ kind: 'work-open', key: 'q', workKind: 'interaction', title: 'Question' });
+      await emit({
+        kind: 'interaction',
+        key: 'q',
+        interaction: {
+          kind: 'question',
+          prompt: 'Continue?',
+          allowText: true,
+        },
+      });
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+    });
+    const driver: SessionDriver = {
+      ...base,
+      start(...args) {
+        return { ...base.start(...args), respond: delivery };
+      },
+    };
+    const { sessionId } = await setup(undefined, driver);
+    const { turnId } = await runtime!.start('actor', sessionId, {
+      requestId: randomUUID(),
+      message: 'Start',
+    });
+    await vi.waitFor(async () =>
+      expect((await runtime!.snapshot(sessionId, 'actor')).interaction).toBeDefined(),
+    );
+    const interaction = (await runtime!.snapshot(sessionId, 'actor')).interaction!;
+    const input = {
+      requestId: randomUUID(),
+      kind: 'question' as const,
+      answer: { optionIds: [], text: 'Yes' },
+    };
+    await runtime!.respond('actor', sessionId, interaction.interactionId, input);
+    await runtime!.respond('actor', sessionId, interaction.interactionId, input);
+    expect(delivery).toHaveBeenCalledTimes(1);
+    expect((await runtime!.snapshot(sessionId, 'actor')).activeTurn?.state).toBe('unknown');
+    const work = await runtime!.store.call<{ items: { state: string }[] }>({
+      op: 'work',
+      sessionId,
+      turnId,
+      actor: 'actor',
+      limit: 40,
+    });
+    expect(work.items.map((item) => item.state)).not.toContain('completed');
+  });
   it.each(['resolve', 'reject'] as const)(
     'preserves lost operation uncertainty when its handle later %ss',
     async (completion) => {
@@ -47,7 +125,7 @@ describe('Session coordinator', () => {
               await completed;
               if (completion === 'reject') throw new Error('Private native error');
             })(),
-            respond: () => Promise.resolve(),
+            respond: () => Promise.resolve({ deliveredKeys: [] }),
           };
         },
       };

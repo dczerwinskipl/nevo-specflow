@@ -339,6 +339,18 @@ jobs:
         run: |
           pnpm turbo run build --filter=@nevo/specflow-engine^...
           pnpm --filter @nevo/specflow test:packaged
+      - name: Build Session lifecycle dependencies
+        run: pnpm turbo run build --filter=@nevo/specflow-runtime
+      - name: Session process, persistence and HTTP lifecycle
+        run: >
+          pnpm --filter @nevo/specflow-runtime exec vitest run
+          src/features/sessions/providers/process
+          src/features/sessions/providers/claude
+          src/features/sessions/providers/compatibility
+          src/features/sessions/lifecycle
+          src/features/sessions/persistence
+          test/sessions
+          --maxWorkers=1 --no-file-parallelism
 
   verify-product-smoke:
     name: product smoke

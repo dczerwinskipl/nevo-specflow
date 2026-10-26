@@ -31,6 +31,40 @@ async function setup() {
   };
 }
 describe('owned provider process', () => {
+  it.runIf(process.platform === 'win32')(
+    'retains unknown after natural root exit instead of claiming its tree is stopped (R01 blocker)',
+    async () => {
+      const input = await setup();
+      running = await launchOwnedProcess({ ...input, args: ['-e', 'process.exit(0)'] });
+      await running.done;
+      expect((await running.dispose()).process).toEqual({
+        state: 'unknown',
+        reason: 'unverified-tree',
+      });
+    },
+  );
+  it.runIf(process.platform === 'win32')(
+    'preserves a terminal frame but cannot certify tree settlement after immediate exit (R01 blocker)',
+    async () => {
+      const input = await setup();
+      const script = `
+        process.stdout.write(JSON.stringify({ type: 'result', result: 'authoritative' }) + '\\n', () => {
+          process.exit(0);
+        });
+      `;
+      running = await launchOwnedProcess({ ...input, args: ['-e', script] });
+      const reader = running.lines();
+      const frame: unknown = (await reader.next()).value;
+      expect(typeof frame).toBe('string');
+      expect(JSON.parse(frame as string)).toEqual({
+        type: 'result',
+        result: 'authoritative',
+      });
+      await running.done;
+      expect((await running.dispose()).process.state).toBe('unknown');
+      await reader.return(undefined);
+    },
+  );
   it('rolls back resources if diagnostic acquisition fails before spawn', async () => {
     const input = await setup();
     const diagnostics = createDiagnosticStore({ enabled: true });
@@ -47,7 +81,14 @@ describe('owned provider process', () => {
     'terminates the retained POSIX group after its root exits',
     async () => {
       const input = await setup();
-      const script = `const {spawn}=require('node:child_process');const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});child.once('spawn',()=>{console.log(child.pid);process.exit(0);});`;
+      const script = `
+        const { spawn } = require('node:child_process');
+        const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+        child.once('spawn', () => {
+          console.log(child.pid);
+          process.exit(0);
+        });
+      `;
       running = await launchOwnedProcess({ ...input, args: ['-e', script] });
       const reader = running.lines();
       const pid = Number((await reader.next()).value);
@@ -98,7 +139,10 @@ describe('owned provider process', () => {
       diagnostics,
       args: [
         '-e',
-        `process.stderr.write(process.env.PROVIDER_TEST_KEY+'\\n');process.stdout.write(JSON.stringify({ok:true,leaked:process.env.DATABASE_URL??null})+'\\n')`,
+        `
+          process.stderr.write(process.env.PROVIDER_TEST_KEY + '\\n');
+          process.stdout.write(JSON.stringify({ ok: true, leaked: process.env.DATABASE_URL ?? null }) + '\\n');
+        `,
       ],
     });
     const lines = await collect(running.lines());
@@ -113,7 +157,15 @@ describe('owned provider process', () => {
       close = vi.fn(() => Promise.resolve());
     input.scope.defer('mcp', close);
     await input.scope.temporaryFile('mcp.json', '{}');
-    const script = `const{spawn}=require('node:child_process');const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});process.on('SIGINT',()=>{child.once('exit',()=>process.exit(0));});console.log(child.pid);setInterval(()=>{},1000);`;
+    const script = `
+      const { spawn } = require('node:child_process');
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+      process.on('SIGINT', () => {
+        child.once('exit', () => process.exit(0));
+      });
+      console.log(child.pid);
+      setInterval(() => {}, 1000);
+    `;
     running = await launchOwnedProcess({
       ...input,
       signal: controller.signal,

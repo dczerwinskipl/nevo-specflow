@@ -19,7 +19,7 @@ function fixture() {
     scopes: ['user:inference'],
   };
   const present = new Set<string>();
-  let hash = claudeCertification.windowsSha256 as string;
+  let hash = claudeCertification.windowsSha256;
   let registryAbsent = true;
   let denied: string | undefined;
   let linked: string | undefined;

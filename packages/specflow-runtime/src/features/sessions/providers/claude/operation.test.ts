@@ -118,6 +118,65 @@ function fixture(disposition: 'stopped' | 'unknown' = 'stopped') {
   };
 }
 describe('Claude bidirectional operation', () => {
+  it('expires locally admitted answers when a native question group is cancelled before its write', async () => {
+    const f = fixture();
+    await f.ready();
+    const frame = f.question();
+    frame.request.input.questions.push({
+      question: 'Second',
+      options: [{ label: 'C' }],
+      multiSelect: false,
+    });
+    f.push(frame);
+    await vi.waitFor(() =>
+      expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(2),
+    );
+    const keys = f.facts.filter((fact) => fact.kind === 'interaction').map((fact) => fact.key);
+    expect(
+      await f.operation.respond(keys[0]!, {
+        requestId: randomUUID(),
+        kind: 'question',
+        answer: { optionIds: ['0'] },
+      }),
+    ).toEqual({ deliveredKeys: [] });
+    f.push({ type: 'control_cancel_request', request_id: 'request_1' });
+    await vi.waitFor(() =>
+      expect(
+        f.facts.filter((fact) => fact.kind === 'interaction-expired').map((fact) => fact.key),
+      ).toEqual(keys),
+    );
+    expect(f.sent.filter((sent) => sent.type === 'control_response')).toHaveLength(0);
+    f.result();
+    await f.operation.done;
+  });
+  it('acknowledges an entire question group only after its single native write', async () => {
+    const f = fixture();
+    await f.ready();
+    const frame = f.question();
+    frame.request.input.questions.push({
+      question: 'Second',
+      options: [{ label: 'C' }],
+      multiSelect: false,
+    });
+    f.push(frame);
+    await vi.waitFor(() =>
+      expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(2),
+    );
+    const keys = f.facts.filter((fact) => fact.kind === 'interaction').map((fact) => fact.key);
+    const answer = {
+      requestId: randomUUID(),
+      kind: 'question' as const,
+      answer: { optionIds: ['0'] },
+    };
+    expect(await f.operation.respond(keys[0]!, answer)).toEqual({ deliveredKeys: [] });
+    expect(f.sent.filter((sent) => sent.type === 'control_response')).toHaveLength(0);
+    expect(await f.operation.respond(keys[1]!, { ...answer, requestId: randomUUID() })).toEqual({
+      deliveredKeys: keys,
+    });
+    expect(f.sent.filter((sent) => sent.type === 'control_response')).toHaveLength(1);
+    f.result();
+    await f.operation.done;
+  });
   it('publishes only the safe quota reason into durable conversation before its failed outcome', async () => {
     const f = fixture();
     await f.ready();

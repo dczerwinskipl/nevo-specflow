@@ -89,8 +89,7 @@ export function createClaudeOperation(
     groups.delete(group.requestId);
     for (const question of group.questions) {
       const entry = pending.get(question.key);
-      if (!entry) continue;
-      entry.live = false;
+      if (entry) entry.live = false;
       pending.delete(question.key);
       await publish({ kind: 'interaction-expired', key: question.key });
     }
@@ -222,9 +221,17 @@ export function createClaudeOperation(
       const frame = entry.group.respond(entry.index, response);
       pending.delete(key);
       if (frame) {
-        await send(frame, () => groups.has(entry.group.requestId));
+        let delivered = false;
+        await send(frame, () => {
+          delivered = groups.has(entry.group.requestId);
+          return delivered;
+        });
         groups.delete(entry.group.requestId);
+        return {
+          deliveredKeys: delivered ? entry.group.questions.map((question) => question.key) : [],
+        };
       }
+      return { deliveredKeys: [] };
     },
   };
 }

@@ -13,6 +13,7 @@ import type { SessionDriver, ProviderOperation, Invocation } from '../providers/
 import { validateDriverFact } from '../providers/facts';
 
 interface ActiveInvocation {
+  invocationId: string;
   controller: AbortController;
   operation?: ProviderOperation;
   done: Promise<void>;
@@ -173,7 +174,12 @@ export function createSessionCoordinator(
         tail = operation.catch(() => undefined);
         await operation;
       };
-      const live: ActiveInvocation = { controller, emit, done: Promise.resolve() };
+      const live: ActiveInvocation = {
+        invocationId: admitted.invocationId,
+        controller,
+        emit,
+        done: Promise.resolve(),
+      };
       active.set(admitted.turnId, live);
       live.done = (async () => {
         try {
@@ -217,6 +223,19 @@ export function createSessionCoordinator(
           });
         } catch (error) {
           if (uncertain) return;
+          if (
+            error instanceof SessionError &&
+            ['SESSION_STORE_BUSY', 'SESSION_STORE_UNAVAILABLE'].includes(error.code)
+          ) {
+            // A storage failure says nothing about the provider's execution outcome.
+            // If this final write also fails, retain the nonterminal record for restart recovery.
+            uncertain = true;
+            await emit({
+              kind: 'lost',
+              message: 'Provider lifecycle persistence could not be confirmed.',
+            });
+            return;
+          }
           await emit({
             kind: 'outcome',
             outcome: controller.signal.aborted
@@ -265,10 +284,20 @@ export function createSessionCoordinator(
       }>({ op: 'respond', actor, sessionId, interactionId, input });
       if (result.fresh) {
         const live = active.get(result.turnId);
-        if (!live?.operation)
+        if (!live?.operation) {
+          // Admission is durable, but no transport acknowledged delivery. Never resend it.
           throw new SessionError('INTERACTION_EXPIRED', 'Live operation has ended.');
+        }
         try {
-          await live.operation.respond(result.nativeKey, input);
+          const delivery = await live.operation.respond(result.nativeKey, input);
+          if (delivery.deliveredKeys.length)
+            await call({
+              op: 'response-delivered',
+              sessionId,
+              turnId: result.turnId,
+              invocationId: live.invocationId,
+              nativeKeys: delivery.deliveredKeys,
+            });
         } catch {
           await live.emit({
             kind: 'lost',

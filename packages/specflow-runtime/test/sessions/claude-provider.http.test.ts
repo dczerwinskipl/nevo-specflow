@@ -36,27 +36,154 @@ vi.mock('../../src/features/sessions/providers/process', async (importOriginal) 
 });
 
 const program = `
-import{createInterface}from'node:readline';import{writeFile,readFile}from'node:fs/promises';import{join}from'node:path';import{randomUUID}from'node:crypto';
-const args=process.argv.slice(3),root=process.argv[2];const at=args.indexOf('--resume'),fresh=args.indexOf('--session-id');const id=at>=0?args[at+1]:fresh>=0?args[fresh+1]:undefined;
-let count=0,pending=false;
-const send=f=>process.stdout.write(JSON.stringify({...f,uuid:randomUUID()})+'\\n');
-const finish=()=>{send({type:'assistant',session_id:id,message:{id:'message_'+count,content:[{type:'text',text:'Native turn '+count}]}});send({type:'result',session_id:id,subtype:'success',is_error:false,result:'Native turn '+count,usage:{input_tokens:2,output_tokens:3}});};
-createInterface({input:process.stdin}).on('line',async line=>{try{const f=JSON.parse(line);
-if(f.type==='control_request'){send({type:'control_response',response:{subtype:'success',request_id:f.request_id,response:{claude_code_version:'2.1.296',models:[{value:'default',displayName:'Fixture model'}]}}});return;}
-if(f.type==='user'){
-if(f.client_composed!==true)throw Error('literal input missing');
-if(at>=0)count=Number(await readFile(join(root,id+'.txt'),'utf8'));
-else count=0;
-count++;await writeFile(join(root,id+'.txt'),String(count));
-send({type:'system',subtype:'init',session_id:id,cwd:process.cwd(),permissionMode:'plan',claude_code_version:'2.1.296',tools:['Read','Glob','Grep','AskUserQuestion'],mcp_servers:[],plugins:[]});
-if(f.message.content==='quota'){send({type:'assistant',session_id:id,error:'rate_limit',message:{id:'error_message',content:[{type:'text',text:'private native diagnostic'}]}});send({type:'result',session_id:id,subtype:'success',is_error:true,terminal_reason:'api_error',stop_reason:'stop_sequence',api_error_status:429,result:'private native diagnostic'});return;}
-if(f.message.content==='question'){
-const questions=[{question:'Choose database',options:[{label:'SQLite'},{label:'Postgres'}],multiSelect:false}];
-send({type:'assistant',session_id:id,message:{id:'ask_message',content:[{type:'tool_use',id:'tool_1',name:'AskUserQuestion',input:{questions}}]}});
-send({type:'control_request',request_id:'question_1',request:{subtype:'can_use_tool',tool_name:'AskUserQuestion',tool_use_id:'tool_1',input:{questions}}});pending=true;return;
-}finish();return;}
-if(f.type==='control_response'&&pending){if(f.response.response.updatedInput.answers['Choose database']!=='SQLite')throw Error('wrong answer');pending=false;send({type:'user',message:{content:[{type:'tool_result',tool_use_id:'tool_1',content:'SQLite'}]}});finish();}
-}catch{process.exitCode=1;process.stdin.destroy();}});
+import { createInterface } from 'node:readline';
+import { writeFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+const args = process.argv.slice(3),
+  root = process.argv[2];
+const at = args.indexOf('--resume'),
+  fresh = args.indexOf('--session-id');
+const id = at >= 0 ? args[at + 1] : fresh >= 0 ? args[fresh + 1] : undefined;
+let count = 0,
+  pending = false;
+const send = (f) =>
+  process.stdout.write(JSON.stringify({ ...f, uuid: randomUUID() }) + '\\n');
+const finish = () => {
+  send({
+    type: 'assistant',
+    session_id: id,
+    message: {
+      id: 'message_' + count,
+      content: [{ type: 'text', text: 'Native turn ' + count }],
+    },
+  });
+  send({
+    type: 'result',
+    session_id: id,
+    subtype: 'success',
+    is_error: false,
+    result: 'Native turn ' + count,
+    usage: { input_tokens: 2, output_tokens: 3 },
+  });
+};
+createInterface({ input: process.stdin }).on('line', async (line) => {
+  try {
+    const f = JSON.parse(line);
+    if (f.type === 'control_request') {
+      send({
+        type: 'control_response',
+        response: {
+          subtype: 'success',
+          request_id: f.request_id,
+          response: {
+            claude_code_version: '2.1.296',
+            models: [{ value: 'default', displayName: 'Fixture model' }],
+          },
+        },
+      });
+      return;
+    }
+    if (f.type === 'user') {
+      if (f.client_composed !== true) throw Error('literal input missing');
+      if (at >= 0)
+        count = Number(await readFile(join(root, id + '.txt'), 'utf8'));
+      else count = 0;
+      count++;
+      await writeFile(join(root, id + '.txt'), String(count));
+      send({
+        type: 'system',
+        subtype: 'init',
+        session_id: id,
+        cwd: process.cwd(),
+        permissionMode: 'plan',
+        claude_code_version: '2.1.296',
+        tools: ['Read', 'Glob', 'Grep', 'AskUserQuestion'],
+        mcp_servers: [],
+        plugins: [],
+      });
+      if (f.message.content === 'quota') {
+        send({
+          type: 'assistant',
+          session_id: id,
+          error: 'rate_limit',
+          message: {
+            id: 'error_message',
+            content: [{ type: 'text', text: 'private native diagnostic' }],
+          },
+        });
+        send({
+          type: 'result',
+          session_id: id,
+          subtype: 'success',
+          is_error: true,
+          terminal_reason: 'api_error',
+          stop_reason: 'stop_sequence',
+          api_error_status: 429,
+          result: 'private native diagnostic',
+        });
+        return;
+      }
+      if (f.message.content === 'question') {
+        const questions = [
+          {
+            question: 'Choose database',
+            options: [{ label: 'SQLite' }, { label: 'Postgres' }],
+            multiSelect: false,
+          },
+        ];
+        send({
+          type: 'assistant',
+          session_id: id,
+          message: {
+            id: 'ask_message',
+            content: [
+              {
+                type: 'tool_use',
+                id: 'tool_1',
+                name: 'AskUserQuestion',
+                input: { questions },
+              },
+            ],
+          },
+        });
+        send({
+          type: 'control_request',
+          request_id: 'question_1',
+          request: {
+            subtype: 'can_use_tool',
+            tool_name: 'AskUserQuestion',
+            tool_use_id: 'tool_1',
+            input: { questions },
+          },
+        });
+        pending = true;
+        return;
+      }
+      finish();
+      return;
+    }
+    if (f.type === 'control_response' && pending) {
+      if (
+        f.response.response.updatedInput.answers['Choose database'] !== 'SQLite'
+      )
+        throw Error('wrong answer');
+      pending = false;
+      send({
+        type: 'user',
+        message: {
+          content: [
+            { type: 'tool_result', tool_use_id: 'tool_1', content: 'SQLite' },
+          ],
+        },
+      });
+      finish();
+    }
+  } catch {
+    process.exitCode = 1;
+    process.stdin.destroy();
+  }
+});
 `;
 let app: FastifyInstance | undefined;
 let root = '';

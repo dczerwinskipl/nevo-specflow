@@ -38,6 +38,11 @@ process/transport resources and translating protocol evidence. This contract doe
   explicit startup evidence. Do not confuse resource acquisition with provider execution completion.
   emit is asynchronous and backpressured; resolve only after Runtime has persisted/ignored the fact.
 - respond(handle, privateInteractionRef, response, signal): unblock only the matching live request.
+  The current driver handle returns `{deliveredKeys: readonly string[]}` after the native write.
+  For a grouped native request this is empty until every local answer is present, then includes all
+  keys written together. Canonical admission is durable before this receipt; it is not proof of
+  delivery. Expire undelivered admitted answers on native expiry/restart. Never automatically resend
+  an admitted answer after an uncertain write. A transport receipt is not semantic consumption.
 - cancel(handle, signal): request stop, returning evidence rather than claiming success from intent.
 - reconcile(invocationEvidence, signal): optional; return authoritative facts/settlement or unknown,
   never redispatch or fabricate a terminal answer.

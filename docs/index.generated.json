@@ -4361,6 +4361,36 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.provider-compatibility",
+      "type": "engineering",
+      "title": "Provider compatibility catalogue and admission design",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/provider-compatibility.md",
+      "read_when": [
+        "certifying an additional provider binary",
+        "implementing independently published compatibility updates"
+      ],
+      "summary": "Separates installation identity, trusted certification, bounded protocol probing and execution admission; ships a bundled baseline while signed distribution remains deferred.",
+      "related": [
+        "ideas.specflow-runtime.claude-provider",
+        "ideas.specflow-runtime.provider-process-boundary",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "compatibility",
+        "certification",
+        "sessions"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.provider-migration-plan",
       "type": "engineering",
       "title": "Real provider migration after the independent Session foundation",
@@ -4391,6 +4421,37 @@
         "claude",
         "codex",
         "antigravity"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.session-review-follow-up",
+      "type": "engineering",
+      "title": "PR 98 Session architecture review follow-up",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-review-follow-up.md",
+      "read_when": [
+        "reviewing PR 98 architecture hardening",
+        "reconciling an unknown Session Turn"
+      ],
+      "summary": "Tracks reproduced defects, safe recovery boundaries, Windows ownership blockers, measured SSE activity, compatibility staging and final verification requirements.",
+      "related": [
+        "ideas.specflow-runtime.provider-compatibility",
+        "ideas.specflow-runtime.claude-provider",
+        "ideas.specflow-runtime.session-migration-evidence",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "review",
+        "recovery",
+        "migration"
       ]
     },
     {

@@ -4,9 +4,11 @@ import { isAbsolute } from 'node:path';
 import { SessionError } from '../errors';
 import type { SessionErrorCode } from '@nevo/specflow-contracts/sessions';
 import type { StoreCommand, WorkerReply, StoreReadMetrics } from './protocol';
+import { createStoreAdmission } from './admission';
 
 export interface SessionStore {
   call<T>(this: void, command: StoreCommand): Promise<T>;
+  subscribe(sessionId: string, listener: () => void): () => void;
   close(): Promise<void>;
   /** Stop the worker without releasing durable ownership after uncertain shutdown. */
   abandon(): Promise<void>;
@@ -31,6 +33,8 @@ export async function openSessionStore(options: {
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
+  const admission = createStoreAdmission();
+  const listeners = new Map<string, Set<() => void>>();
   let id = 0,
     closed = false,
     closing: Promise<void> | undefined;
@@ -42,6 +46,7 @@ export async function openSessionStore(options: {
   });
   const failure = (error: Error) => {
     closed = true;
+    admission.fail(error);
     readyReject(error);
     for (const task of pending.values()) task.reject(error);
     pending.clear();
@@ -53,6 +58,8 @@ export async function openSessionStore(options: {
     failure(new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Worker closed.')),
   );
   worker.on('message', (message: WorkerReply) => {
+    for (const sessionId of message.changed ?? [])
+      for (const listener of listeners.get(sessionId) ?? []) listener();
     if (message.metrics) metrics = message.metrics;
     const error = message.error
       ? new SessionError(
@@ -78,23 +85,37 @@ export async function openSessionStore(options: {
     await worker.terminate();
     throw error;
   }
-  function call<T>(command: StoreCommand): Promise<T> {
+  async function call<T>(command: StoreCommand): Promise<T> {
     if (closed || (closing && command.op !== 'close'))
       return Promise.reject(
         new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.'),
       );
-    if (pending.size >= 64)
-      return Promise.reject(
-        new SessionError('SESSION_STORE_BUSY', 'Session storage queue is full.'),
-      );
-    return new Promise<T>((resolve, reject) => {
-      const requestId = ++id;
-      pending.set(requestId, { resolve: (value) => resolve(value as T), reject });
-      worker.postMessage({ id: requestId, command });
-    });
+    const critical = ['fact', 'dispatch-intent', 'response-delivered', 'close'].includes(
+      command.op,
+    );
+    const release = await admission.acquire(critical);
+    try {
+      if (closed) throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.');
+      return await new Promise<T>((resolve, reject) => {
+        const requestId = ++id;
+        pending.set(requestId, { resolve: (value) => resolve(value as T), reject });
+        worker.postMessage({ id: requestId, command });
+      });
+    } finally {
+      release();
+    }
   }
   return {
     call,
+    subscribe(sessionId, listener) {
+      const owned = listeners.get(sessionId) ?? new Set<() => void>();
+      owned.add(listener);
+      listeners.set(sessionId, owned);
+      return () => {
+        owned.delete(listener);
+        if (!owned.size) listeners.delete(sessionId);
+      };
+    },
     readMetrics: () => metrics,
     async abandon() {
       closed = true;

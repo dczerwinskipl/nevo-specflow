@@ -1,8 +1,7 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { randomUUID } from 'node:crypto';
-import { resolve } from 'node:path';
 import { SessionError } from '../../errors';
-import type { SessionDriver, Invocation } from '../driver';
+import type { SessionDriver } from '../driver';
 import {
   createInvocationScope,
   launchOwnedProcess,
@@ -10,108 +9,10 @@ import {
   type ProviderEnvironment,
 } from '../process';
 import { createClaudeOperation } from './operation';
-import { inspectClaudeInstallation, claudeCertification } from './installation';
+import { inspectClaudeInstallation } from './installation';
 import { object, ClaudeProtocolError } from './protocol';
+import { claudeArguments, claudeModels, verifyClaudeInit } from './discovery';
 
-export function claudeArguments(
-  selection?: Invocation['selection'],
-  context?: Invocation['providerContext'],
-): string[] {
-  return [
-    '--print',
-    '--verbose',
-    '--input-format',
-    'stream-json',
-    '--output-format',
-    'stream-json',
-    '--safe-mode',
-    '--restricted',
-    '--tools',
-    'Read,Glob,Grep,AskUserQuestion',
-    '--permission-mode',
-    'plan',
-    '--permission-prompts',
-    'host',
-    '--permission-prompt-tool',
-    'stdio',
-    '--strict-mcp-config',
-    '--mcp-config',
-    '{"mcpServers":{}}',
-    '--setting-sources',
-    '',
-    '--settings',
-    '{"disableAllHooks":true}',
-    '--disable-slash-commands',
-    '--no-chrome',
-    ...(context ? [context.resume ? '--resume' : '--session-id', context.nativeSessionId] : []),
-    ...(selection?.modelId ? ['--model', selection.modelId] : []),
-    ...(selection?.effort ? ['--effort', selection.effort] : []),
-  ];
-}
-export function claudeModels(payload: Record<string, unknown>): ProviderDescriptor['models'] {
-  if (
-    payload.claude_code_version !== claudeCertification.version ||
-    !Array.isArray(payload.models) ||
-    payload.models.length > 64
-  )
-    throw new ClaudeProtocolError();
-  const models = payload.models.map((entry) => {
-    const model = object(entry);
-    if (
-      typeof model.value !== 'string' ||
-      !/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$/.test(model.value) ||
-      typeof model.displayName !== 'string' ||
-      !model.displayName ||
-      Buffer.byteLength(model.displayName) > 256
-    )
-      throw new ClaudeProtocolError();
-    const efforts = model.supportsEffort === true ? model.supportedEffortLevels : [];
-    if (
-      !Array.isArray(efforts) ||
-      efforts.length > 5 ||
-      efforts.some(
-        (value) =>
-          typeof value !== 'string' || !['low', 'medium', 'high', 'xhigh', 'max'].includes(value),
-      )
-    )
-      throw new ClaudeProtocolError();
-    return { modelId: model.value, title: model.displayName, efforts: efforts as string[] };
-  });
-  if (new Set(models.map((model) => model.modelId)).size !== models.length)
-    throw new ClaudeProtocolError();
-  return models;
-}
-export function verifyClaudeInit(frame: Record<string, unknown>, workspace: string) {
-  if (
-    frame.type !== 'system' ||
-    frame.subtype !== 'init' ||
-    frame.claude_code_version !== claudeCertification.version ||
-    typeof frame.cwd !== 'string' ||
-    resolve(frame.cwd) !== resolve(workspace) ||
-    frame.permissionMode !== 'plan' ||
-    !Array.isArray(frame.tools) ||
-    frame.tools.some(
-      (tool) =>
-        typeof tool !== 'string' ||
-        !['Read', 'Glob', 'Grep', 'AskUserQuestion', 'EndConversation'].includes(tool),
-    ) ||
-    !Array.isArray(frame.mcp_servers) ||
-    frame.mcp_servers.length !== 0 ||
-    (frame.plugins !== undefined &&
-      (!Array.isArray(frame.plugins) ||
-        frame.plugins.some((value) => {
-          const plugin = object(value);
-          return (
-            !['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'].includes(
-              String(plugin.name),
-            ) ||
-            plugin.path !== 'builtin' ||
-            plugin.source !== String(plugin.name) + '@builtin'
-          );
-        })))
-  )
-    throw new ClaudeProtocolError();
-}
 export function createClaudeDriver(options: {
   workspace: string;
   temporaryRoot: string;
@@ -187,7 +88,7 @@ export function createClaudeDriver(options: {
           const response = object(frame.response);
           if (response.subtype !== 'success' || response.request_id !== requestId)
             throw new ClaudeProtocolError();
-          models = claudeModels(object(response.response));
+          models = claudeModels(object(response.response), installation.version);
           break;
         }
         if (!models?.length || (await owner.dispose()).process.state !== 'stopped')
@@ -266,6 +167,7 @@ export function createClaudeDriver(options: {
           'Verified read-only workspace is required.',
         );
       let verified = false;
+      let expectedVersion = '';
       return createClaudeOperation(
         invocation,
         async (fact) => {
@@ -291,6 +193,7 @@ export function createClaudeDriver(options: {
         {
           async launch(operationSignal) {
             const installation = await inspect(operationSignal);
+            expectedVersion = installation.version;
             if (installation.accountScope !== invocation.providerContext?.scope)
               throw new SessionError(
                 'SESSION_RECOVERY_REQUIRED',
@@ -312,14 +215,14 @@ export function createClaudeDriver(options: {
             });
           },
           initialize(payload) {
-            claudeModels(payload);
+            claudeModels(payload, expectedVersion);
           },
           verifyFrame(frame) {
             if (!verified) {
-              verifyClaudeInit(frame, options.workspace);
+              verifyClaudeInit(frame, options.workspace, expectedVersion);
               verified = true;
             } else if (frame.type === 'system' && frame.subtype === 'init')
-              verifyClaudeInit(frame, options.workspace);
+              verifyClaudeInit(frame, options.workspace, expectedVersion);
           },
         },
       );

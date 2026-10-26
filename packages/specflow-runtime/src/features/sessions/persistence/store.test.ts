@@ -34,6 +34,148 @@ async function snap(sessionId: string): Promise<SessionSnapshot> {
   return (await store!.call<SnapshotSource>({ op: 'snapshot', sessionId, actor: 'user' })).snapshot;
 }
 describe('durable Session store', () => {
+  it.each(['expired', 'terminal'] as const)(
+    'does not revive %s interaction Work after a late delivery receipt',
+    async (state) => {
+      const { sessionId } = await create();
+      const admitted = await store!.call<StartAdmission>({
+        op: 'start',
+        actor: 'user',
+        sessionId,
+        input: { requestId: randomUUID(), message: 'Question' },
+      });
+      const fact = (driverSeq: number, value: DriverFact) =>
+        store!.call({ op: 'fact', sessionId, ...admitted, driverSeq, fact: value });
+      await fact(1, {
+        kind: 'work-open',
+        key: 'question',
+        workKind: 'interaction',
+        title: 'Question',
+      });
+      await fact(2, {
+        kind: 'interaction',
+        key: 'question',
+        interaction: { kind: 'question', prompt: 'Continue?', allowText: true },
+      });
+      const interactionId = (await snap(sessionId)).interaction!.interactionId;
+      const input = {
+        requestId: randomUUID(),
+        kind: 'question' as const,
+        answer: { optionIds: [], text: 'Yes' },
+      };
+      await store!.call({ op: 'respond', sessionId, actor: 'user', interactionId, input });
+      await fact(
+        3,
+        state === 'expired'
+          ? { kind: 'interaction-expired', key: 'question' }
+          : { kind: 'outcome', outcome: 'cancelled' },
+      );
+      await store!.call({
+        op: 'response-delivered',
+        sessionId,
+        turnId: admitted.turnId,
+        invocationId: admitted.invocationId,
+        nativeKeys: ['question'],
+      });
+      const work = await store!.call<WorkPage>({
+        op: 'work',
+        sessionId,
+        turnId: admitted.turnId,
+        actor: 'user',
+        limit: 40,
+      });
+      expect(work.items[0]?.state).toBe(state === 'expired' ? 'expired' : 'cancelled');
+      expect(
+        await store!.call({ op: 'respond', sessionId, actor: 'user', interactionId, input }),
+      ).toMatchObject({ fresh: false });
+    },
+  );
+  it('reconciles only an unpassed native dispatch barrier and preserves idempotency and affinity', async () => {
+    const { sessionId } = await create('claude');
+    const input = { requestId: randomUUID(), message: 'Never dispatched' };
+    const command = {
+      op: 'start' as const,
+      actor: 'user',
+      sessionId,
+      input,
+      nativeWorkspace: join(directory, 'workspace'),
+      nativeScope: 'account-a',
+    };
+    const admitted = await store!.call<StartAdmission>(command);
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...admitted,
+      driverSeq: 1,
+      fact: { kind: 'correlation', providerSessionId: admitted.providerContext!.nativeSessionId },
+    });
+    await store!.close();
+    store = await openSessionStore({ directory, projectId: 'project' });
+    expect((await snap(sessionId)).activeTurn).toBeUndefined();
+    expect((await snap(sessionId)).entries.at(-1)?.text.text).toBe('interrupted');
+    expect(await store.call<StartAdmission>(command)).toMatchObject({
+      turnId: admitted.turnId,
+      fresh: false,
+    });
+    await expect(
+      store.call({
+        ...command,
+        nativeScope: 'account-b',
+        input: { ...input, requestId: randomUUID() },
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    await expect(
+      store.call({
+        ...command,
+        nativeWorkspace: join(directory, 'other'),
+        input: { ...input, requestId: randomUUID() },
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    const next = await store.call<StartAdmission>({
+      ...command,
+      input: { requestId: randomUUID(), message: 'New intent' },
+    });
+    expect(next.providerContext).toEqual({ ...admitted.providerContext, resume: true });
+  });
+  it('notifies only committed outbox changes and keeps a terminal fact under read saturation', async () => {
+    const { sessionId } = await create();
+    let changes = 0;
+    const unsubscribe = store!.subscribe(sessionId, () => {
+      changes++;
+    });
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Start' },
+    });
+    expect(changes).toBe(1);
+    const reads = Array.from({ length: 80 }, () =>
+      store!.call({ op: 'snapshot', sessionId, actor: 'user' }),
+    );
+    const settledReads = Promise.allSettled(reads);
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      ...start,
+      driverSeq: 1,
+      fact: { kind: 'outcome', outcome: 'completed' },
+    });
+    expect((await settledReads).some((result) => result.status === 'rejected')).toBe(true);
+    expect(changes).toBe(2);
+    expect((await snap(sessionId)).entries.at(-1)?.text.text).toBe('completed');
+    await expect(
+      store!.call({
+        op: 'fact',
+        sessionId,
+        ...start,
+        driverSeq: 99,
+        fact: { kind: 'outcome', outcome: 'failed' },
+      }),
+    ).resolves.toBe(false);
+    expect(changes).toBe(2);
+    unsubscribe();
+  });
   it('persists native admission and resumes the confirmed context across Runtime restart, scoped to workspace and account', async () => {
     const { sessionId } = await create('claude');
     const nativeWorkspace = join(directory, 'workspace');

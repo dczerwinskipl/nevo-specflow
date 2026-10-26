@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@nevo/ui';
 import type { ContentRef, TextPreview } from '@nevo/specflow-contracts/sessions';
@@ -13,14 +13,34 @@ export function ReadableText({
   sessionId: string;
   value: TextPreview;
 }) {
+  // Loaded pages, pagination and in-flight reads all belong to one immutable revision.
+  const identity = JSON.stringify([sessionId, value.content?.contentId, value.content?.revision]);
+  return <RevisionText key={identity} api={api} sessionId={sessionId} value={value} />;
+}
+
+function RevisionText({
+  api,
+  sessionId,
+  value,
+}: {
+  api: ManagedSessionsApi;
+  sessionId: string;
+  value: TextPreview;
+}) {
   const { t } = useTranslation();
   const [page, setPage] = useState<{ text: string; offset: number; nextOffset?: number }>();
   const [previous, setPrevious] = useState<number[]>([]),
     [busy, setBusy] = useState(false),
     [failed, setFailed] = useState(false);
-  const controller = useMemo(() => new AbortController(), []);
-  useEffect(() => () => controller.abort(), [controller]);
+  const lifetime = useRef<AbortController | undefined>(undefined);
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => controller.abort();
+  }, []);
   async function load(offset: number, ref: ContentRef) {
+    const controller = lifetime.current;
+    if (!controller || controller.signal.aborted) return;
     setBusy(true);
     setFailed(false);
     try {

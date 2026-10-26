@@ -1,38 +1,18 @@
 import { createReadStream } from 'node:fs';
 import { lstat, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { execFile } from 'node:child_process';
 import { join, resolve, isAbsolute } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
 
-// Initial, deliberately bounded certification: this exact Windows native build.
-// Its embedded eligibility code excludes known personal Pro/Max OAuth from server
-// policy only when profile, stored API key and alternate auth sources are absent.
-export const claudeCertification = {
-  version: '2.1.296',
-  windowsSha256: '76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a',
-} as const;
-const registryScript = `$ErrorActionPreference='Stop';foreach($h in @([Microsoft.Win32.RegistryHive]::LocalMachine,[Microsoft.Win32.RegistryHive]::CurrentUser)){foreach($v in @([Microsoft.Win32.RegistryView]::Registry64,[Microsoft.Win32.RegistryView]::Registry32)){$b=[Microsoft.Win32.RegistryKey]::OpenBaseKey($h,$v);try{$k=$b.OpenSubKey('SOFTWARE\\Policies\\ClaudeCode');if($null -ne $k){$k.Dispose();[Console]::Write('present');exit 0}}finally{$b.Dispose()}}};[Console]::Write('absent')`;
+import { bundledClaudeBuild, classifyProviderInstallation } from '../compatibility/catalogue';
+import { admitProvider } from '../compatibility/admission';
+import { inspectClaudeRegistry } from './registry';
 
-export async function inspectClaudeRegistry(environment: ProviderEnvironment): Promise<boolean> {
-  const systemRoot = environment.values.SYSTEMROOT;
-  if (!systemRoot || !isAbsolute(systemRoot)) return false;
-  return new Promise((resolveInspection) => {
-    execFile(
-      join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
-      ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', registryScript],
-      {
-        shell: false,
-        windowsHide: true,
-        timeout: 2000,
-        maxBuffer: 4096,
-        env: { ...environment.values },
-      },
-      (error, stdout) => resolveInspection(!error && stdout === 'absent'),
-    );
-  });
-}
+export const claudeCertification = {
+  version: bundledClaudeBuild.version,
+  windowsSha256: bundledClaudeBuild.sha256,
+} as const;
 interface Files {
   stat(path: string): Promise<{
     isFile(): boolean;
@@ -133,7 +113,13 @@ export async function inspectClaudeInstallation(
   try {
     options.signal.throwIfAborted();
     await regular(executable, 512 * 1024 * 1024);
-    if ((await io.hash(executable)) !== claudeCertification.windowsSha256) unavailable();
+    const compatibility = classifyProviderInstallation({
+      providerId: 'claude',
+      platform: 'win32',
+      architecture: 'x64',
+      sha256: await io.hash(executable),
+    });
+    if (compatibility.classification !== 'verified') unavailable();
     const configDirectory = join(home, '.claude');
     const directory = await io.stat(configDirectory);
     if (!directory.isDirectory() || directory.isSymbolicLink()) unavailable();
@@ -181,9 +167,18 @@ export async function inspectClaudeInstallation(
         'Claude requires an active personal Pro or Max CLI login for this certified configuration.',
       );
     options.signal.throwIfAborted();
+    if (
+      !admitProvider(compatibility, {
+        configured: true,
+        authenticated: true,
+        securityVerified: true,
+        executionMode: 'read-only',
+      }).allowed
+    )
+      unavailable();
     return {
       executable,
-      version: claudeCertification.version,
+      version: compatibility.record.version,
       accountScope: createHash('sha256').update(account.accountUuid).digest('hex'),
       secrets: [
         credentials.accessToken,

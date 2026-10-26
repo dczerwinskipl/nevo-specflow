@@ -312,6 +312,8 @@ A pruned gap emits unnumbered resync-required and closes. Never jump an event ID
 Client deduplicates eventSeq, detects gaps and fetches a new bounded Snapshot. It merges already
 loaded older pages by ID/revision, keeping history; it does not reload the transcript.
 Heartbeat comments every 15 seconds do not advance eventSeq. Disconnect cleans the subscriber only.
+Committed outbox changes wake live subscribers. Idle streams revalidate authentication/policy at
+most one second apart without polling the outbox; no change is broadcast before its transaction commits.
 Close authorization/lifecycle resources on shutdown. Concurrent bootstrap/replay/broadcast must
 not lose the first event after the snapshot; test with an update in each handoff window.
 

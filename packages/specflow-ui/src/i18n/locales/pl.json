@@ -1338,6 +1338,7 @@
     "previous": "Poprzedni fragment",
     "next": "Następny fragment",
     "responseRequired": "Wymagana odpowiedź",
+    "unsupportedQuestion": "To pytanie wymaga kontrolek, które nie są jeszcze dostępne.",
     "allow": "Zezwól",
     "deny": "Odmów",
     "answer": "Twoja odpowiedź",

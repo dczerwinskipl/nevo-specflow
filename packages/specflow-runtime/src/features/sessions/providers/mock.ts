@@ -109,7 +109,7 @@ export function createMockDriver(scenario?: MockScenario): SessionDriver {
             );
           waiting.delete(key);
           pending.resolve(response);
-          return Promise.resolve();
+          return Promise.resolve({ deliveredKeys: [key] });
         },
       };
     },

@@ -36,6 +36,7 @@ function InteractionPrompt({
 }) {
   const { t } = useTranslation();
   const [answer, setAnswer] = useState('');
+  const unsupported = interaction.kind === 'question' && (interaction.maxSelections ?? 1) > 1;
   return (
     <section
       aria-label={t('managedSession.responseRequired')}
@@ -45,7 +46,9 @@ function InteractionPrompt({
         {t('managedSession.responseRequired')}
       </Typography>
       <p className="whitespace-pre-wrap break-words text-body-sm">{interaction.prompt}</p>
-      {interaction.kind === 'permission' ? (
+      {unsupported ? (
+        <Alert tone="attention" title={t('managedSession.unsupportedQuestion')} />
+      ) : interaction.kind === 'permission' ? (
         <>
           <p className="break-words text-body-sm">{interaction.actionSummary}</p>
           <div className="flex gap-2">
@@ -236,7 +239,7 @@ export function ManagedSession({
                   ))}
                 </div>
               </div>
-              {state.hasNew && (
+              {(state.hasNew || state.away) && (
                 <Button variant="ghost" onClick={() => feed.latest()}>
                   {t('managedSession.latest')}
                 </Button>

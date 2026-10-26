@@ -165,8 +165,9 @@ must not embed incidental timestamps.
 
 ### Storybook play functions
 
-Storybook play functions run in a shared browser and the whole corpus is executed on `main` and
-nightly, while pull requests run only the changed stories. A play function must therefore be
+Storybook play functions run in a shared browser. The full corpus is executed on `main` and
+nightly; pull requests run a path-scoped set (all stories for a changed UI package, or directly
+changed stories in other packages), as defined by `engineering.repository.ci`. A play function must therefore be
 order independent and load independent:
 
 - no fixed sleeps or timeouts as synchronization: wait on the condition (`findBy*`, `waitFor`,

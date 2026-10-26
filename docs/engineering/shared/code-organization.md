@@ -95,11 +95,13 @@ belongs beside the operation it adapts.
 
 ### UI feature folders
 
-A UI feature is organized by responsibility, not as a flat list of files. Keep a folder at about 15
-to 20 direct files at most; when it grows, extract a sub-folder named after what it owns, and keep
-tests, stories and story-support next to their owner. The feature root keeps only the entry files
-(`routes.tsx`, `uiModule.ts`) and the screens that compose the sub-folders. Do not create
-`utils/` or `common/` folders.
+A UI feature is organized by responsibility, not as a flat list of files. Around 15 to 20 direct
+files in one folder is an inspection trigger, not a hard limit or an automatic extraction rule.
+Extract a sub-folder when it clarifies cohesive ownership; keep a larger cohesive folder when
+splitting would introduce only navigation or forwarding overhead. Keep tests, stories and
+story-support next to their owner. Prefer a small feature root with entry files (`routes.tsx`,
+`uiModule.ts`) and composing screens, but do not introduce ceremony only to reach a file count.
+Do not create generic `utils/` or `common/` dumping grounds.
 
 Example, `features/specs/creation` (private to Create; the application wires only its routes and UI
 module):
@@ -226,9 +228,10 @@ casing is a separate repository convention and is not defined by this rule.
 ### Engine capability folders
 
 The Engine (`packages/specflow-engine/src`) follows the same vertical-slice rule: capability
-folders, no prefix families. A group of files sharing a name prefix (`create-*.ts`, `close-*.ts`,
-`git-*.ts`, `project-home-*.ts`) is a missing folder: the prefix becomes the folder and the files
-drop it (`create-journal.ts` becomes `create/journal/`).
+folders, no prefix families. A group of files sharing a capability prefix (`create-*.ts`, `close-*.ts`,
+`git-*.ts`, `project-home-*.ts`) is a signal to inspect whether a cohesive capability folder
+would clarify ownership. Group by actual responsibility, not by filename count or prefix alone
+(for example `create-journal.ts` can become `create/journal/` when that is the owning slice).
 
 Each capability folder exposes a small `index.ts`. Code in another capability and the package
 surfaces (`index.ts`, `testing.ts`, `diagnostics.ts`) import the capability only through that

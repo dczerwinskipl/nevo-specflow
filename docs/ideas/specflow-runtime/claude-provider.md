@@ -105,6 +105,12 @@ checks version, cwd, mode, tool inventory and absence of MCP. Only the three obs
 in the pinned executable (agents-md, telemetry, plugin-authoring) are accepted, with exact builtin
 path/source; external or additional plugins are refused.
 
+The pinned builtin evidence is also bounded: agents-md uses reading/context primitives (embedded
+module around 247758000–247764200); plugin-authoring registers a skill (247812033) while command/skill
+exposure is disabled by the supplied flag (220687609 / 221960991). Telemetry can perform auxiliary
+network/native activity and is not effect-free. The guarantee concerns restricted workspace effects;
+native private transcript/cache writes needed for continuation are allowed.
+
 The reader continues while questions wait. One native AskUserQuestion request maps to at most four
 canonical questions; pending questions, control identities and serialized stdin writes have explicit
 bounds. Canonical `maxSelections` is checked before durable response admission. Native cancellation
@@ -135,6 +141,20 @@ native account returned a weekly quota error (HTTP 429); the Turn persisted as f
 completed, and the disposable workspace remained empty. No successful live model response, native
 AskUserQuestion round trip or live semantic resume is claimed while that account limit blocks them.
 Those live checks remain pending; the controlled transport tests are not a substitute for them.
+
+Verification on final implementation `eb2879eb`:
+
+- Linux Runtime build/typecheck and all **785 tests** passed (100 files).
+- The broader build/typecheck and package run on `5758588d` passed: contracts 188, HTTP client 26,
+  Runtime 783, UI 1188, product 131; one existing product fixture entry skipped. The final follow-up
+  adds two Runtime regressions and leaves the other packages' implementation unchanged.
+- SpecFlow UI Storybook scope: **463 tests** passed, 43 files passed and one tagged file skipped.
+  UI changes only remove the mock label for real providers; they introduce no state/effect ownership.
+- Root `pnpm check:quality` passed on the final implementation, including 232-document corpus/index,
+  generated-agent projection and version-transition checks.
+- Independent review found no blocking lifecycle/private-data findings; 51 tests passed in its initial
+  review and 13 targeted tests in the safe-error follow-up. The minor authentication readiness
+  classification finding was corrected before final validation.
 
 Writable effects and document mutations still require the separate Engine effect-admission contract.
 Codex, Antigravity and product associations remain later stages in the same feature PR #98.

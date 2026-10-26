@@ -38,6 +38,7 @@ export function createSessionsFeature(
         );
       const drivers: SessionDriver[] = [];
       const effects =
+        enabled &&
         options.engine &&
         options.storage?.workspace === options.engine.workspace.root &&
         options.storage.projectId === options.engine.context.project.projectId

@@ -123,58 +123,66 @@ export function createClaudeDriver(
             ['plan', result.models],
           ]);
           const providerModes: NonNullable<ProviderDescriptor['providerModes']> = [];
-          for (const mode of claudeModes) {
-            let reason: string | undefined;
-            let modeCompatibility = compatibilityForExecution(
-              classifyProviderInstallation({ ...identity, ...result }),
-              mode.mode,
-            ).classification;
-            if (mode.mode === 'workspace-write') {
-              if (!options.managedWrites) reason = 'Managed workspace execution is unavailable.';
-              else {
-                try {
-                  const native = await probe({
-                    ...installation,
-                    workspace: options.workspace,
-                    temporaryRoot: options.temporaryRoot,
-                    environment,
-                    signal: boundedSignal,
-                    selection: {
-                      providerId: 'claude',
-                      mode: mode.mode,
-                      providerModeId: mode.modeId,
-                    },
-                  });
-                  const compatible = compatibilityForExecution(
-                    classifyProviderInstallation({ ...identity, ...native }),
-                    mode.mode,
-                  );
-                  modeCompatibility = compatible.classification;
-                  const admitted = admitProvider(compatible, {
-                    configured: true,
-                    authenticated: true,
-                    securityVerified: true,
-                    protocolVerified: true,
-                    executionMode: mode.mode,
-                    managedEffectsAvailable: options.managedWrites,
-                  });
-                  if (!admitted.allowed)
-                    throw new ClaudeProbeError(
-                      'KNOWN_INCOMPATIBILITY',
-                      'Native mode admission failed.',
-                    );
-                  available.set(mode.modeId, native.models);
-                } catch {
-                  reason = 'The installed Claude could not initialize this native mode.';
+          // At most two CLI probes run together; avoid serial startup latency
+          // while retaining a fixed process bound and deterministic catalogue order.
+          for (let offset = 0; offset < claudeModes.length; offset += 2) {
+            const checkedModes = await Promise.all(
+              claudeModes.slice(offset, offset + 2).map(async (mode) => {
+                let reason: string | undefined;
+                let modeCompatibility = compatibilityForExecution(
+                  classifyProviderInstallation({ ...identity, ...result }),
+                  mode.mode,
+                ).classification;
+                if (mode.mode === 'workspace-write') {
+                  if (!options.managedWrites)
+                    reason = 'Managed workspace execution is unavailable.';
+                  else {
+                    try {
+                      const native = await probe({
+                        ...installation,
+                        workspace: options.workspace,
+                        temporaryRoot: options.temporaryRoot,
+                        environment,
+                        signal: boundedSignal,
+                        selection: {
+                          providerId: 'claude',
+                          mode: mode.mode,
+                          providerModeId: mode.modeId,
+                        },
+                      });
+                      const compatible = compatibilityForExecution(
+                        classifyProviderInstallation({ ...identity, ...native }),
+                        mode.mode,
+                      );
+                      modeCompatibility = compatible.classification;
+                      const admitted = admitProvider(compatible, {
+                        configured: true,
+                        authenticated: true,
+                        securityVerified: true,
+                        protocolVerified: true,
+                        executionMode: mode.mode,
+                        managedEffectsAvailable: options.managedWrites,
+                      });
+                      if (!admitted.allowed)
+                        throw new ClaudeProbeError(
+                          'KNOWN_INCOMPATIBILITY',
+                          'Native mode admission failed.',
+                        );
+                      available.set(mode.modeId, native.models);
+                    } catch {
+                      reason = 'The installed Claude could not initialize this native mode.';
+                    }
+                  }
                 }
-              }
-            }
-            providerModes.push({
-              ...mode,
-              compatibility: modeCompatibility,
-              readiness: reason ? 'unavailable' : 'ready',
-              ...(reason ? { reason } : {}),
-            });
+                return {
+                  ...mode,
+                  compatibility: modeCompatibility,
+                  readiness: reason ? ('unavailable' as const) : ('ready' as const),
+                  ...(reason ? { reason } : {}),
+                };
+              }),
+            );
+            providerModes.push(...checkedModes);
           }
           const after = await inspect(boundedSignal);
           if (after.fingerprint !== installation.fingerprint) continue;

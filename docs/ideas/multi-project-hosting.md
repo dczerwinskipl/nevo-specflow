@@ -43,8 +43,9 @@ A later version may let an agent inspect or coordinate work across projects. Mor
 a **Workbench** could group several Git projects as a logical alternative to a monorepo. Neither
 capability needs to exist for the first multi-project server.
 
-This direction does **not** introduce an `Instance` domain aggregate or an `instanceId` just
-because a server process exists. Global application state is not another project.
+This direction does **not** require a user-facing `Instance` domain aggregate or public
+`instanceId` just because a server hosts several projects. Internal deployment identity may still
+be useful for operations. Global application state is not another Git Project.
 
 ## Conceptual boundaries
 
@@ -81,7 +82,8 @@ authoritative. This note does not revise their existing identities or mutation s
 
 - Keep provider/session identity independent from UI routes, project names and workspace paths.
   Do not prematurely encode `Session == one permanent project == one permanent worktree` as an
-  irreversible storage invariant.
+  irreversible storage invariant. E4's fixed verified checkout remains an appropriate initial
+  execution boundary, not a demand to build multi-project Sessions.
 - Distinguish **context access** (a session can read information about another project),
   **execution target** (where a specific operation runs), and **mutation authority** (which
   project/workspace the operation may change). These can differ.

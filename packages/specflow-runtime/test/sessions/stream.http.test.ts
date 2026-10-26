@@ -82,6 +82,7 @@ async function setup() {
 describe('live Session stream authorization and replay', () => {
   it('keeps 32 idle sockets event-driven while revalidating authorization', async () => {
     const { store, cookie, sessionId, origin } = await setup();
+    const bootstrapReads = activity.events + 32 * 2;
     const cookies = [
       cookie,
       ...['reader-1', 'reader-2', 'reader-3'].map(
@@ -104,6 +105,11 @@ describe('live Session stream authorization and replay', () => {
         }),
       ),
     );
+    // Receiving ': connected' does not mean the initial async outbox drain finished.
+    // Wait for both reads per socket before measuring idle activity (including on slow macOS CI).
+    await vi.waitFor(() => expect(activity.events).toBeGreaterThanOrEqual(bootstrapReads), {
+      timeout: 5000,
+    });
     const before = { ...activity };
     const started = performance.now();
     await new Promise((resolve) => setTimeout(resolve, 1200));

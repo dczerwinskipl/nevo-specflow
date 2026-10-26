@@ -227,11 +227,11 @@ casing is a separate repository convention and is not defined by this rule.
 
 ### Engine capability folders
 
-The Engine (`packages/specflow-engine/src`) follows the same vertical-slice rule: capability
-folders, no prefix families. A group of files sharing a capability prefix (`create-*.ts`, `close-*.ts`,
-`git-*.ts`, `project-home-*.ts`) is a signal to inspect whether a cohesive capability folder
-would clarify ownership. Group by actual responsibility, not by filename count or prefix alone
-(for example `create-journal.ts` can become `create/journal/` when that is the owning slice).
+The Engine (`packages/specflow-engine/src`) follows the same vertical-slice principle: organize
+modules by cohesive capability and ownership rather than filename prefixes alone. A shared prefix
+(`create-*.ts`, `close-*.ts`, `git-*.ts`, `project-home-*.ts`) signals that a capability folder may
+be worth considering, not that files must be moved. Group by actual responsibility: for example,
+`create-journal.ts` may belong under `create/journal/` when that is the owning slice.
 
 Each capability folder exposes a small `index.ts`. Code in another capability and the package
 surfaces (`index.ts`, `testing.ts`, `diagnostics.ts`) import the capability only through that

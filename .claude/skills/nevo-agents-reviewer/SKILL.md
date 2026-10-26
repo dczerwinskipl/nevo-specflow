@@ -49,7 +49,7 @@ Prefer reusing an existing capability when both its semantics and ownership fit.
 
 ### Keep the implementation complete but focused
 
-Avoid forwarding-only wrappers, abstractions for hypothetical reuse, compatibility branches without a current requirement, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
+Avoid forwarding-only wrappers that provide no meaningful contract, ownership boundary, adaptation, or testability benefit. Also avoid abstractions for hypothetical reuse, compatibility branches without a current requirement, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
 
 Prefer straightforward, readable control flow and explicit ownership over compressed code. Preserve required error handling, failure/retry paths, recovery, and coverage. A sound change can legitimately need multiple modules, new types, or additional tests. Never use lines changed, files created, or abstraction counts as hard limits or quality scores.
 

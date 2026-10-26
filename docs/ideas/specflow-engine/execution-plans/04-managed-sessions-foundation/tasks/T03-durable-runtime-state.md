@@ -25,6 +25,8 @@ related:
 
 Implement versioned Runtime-owned Session/Turn/Work repository under approved local state home. One non-terminal active Turn per Session, idempotent logical turn starts, terminal immutability, bounded recovery records and ordered work. Do not persist duplicate Engine workflow position.
 
+When selecting the state layout, review the [future global/project-local separation](../../../../multi-project-hosting.md). No storage migration or multi-project implementation is required in E4.
+
 ## Prerequisites
 
 - [E4.T02](T02-canonical-identities.md)

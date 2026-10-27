@@ -33,6 +33,8 @@ Implement asynchronous worker SQLite, singleton ownership, durable records/idemp
 - Minimal context: storage/lifecycle design, API paging/content semantics, delivery MS06/MS09/MS11.
 - Acceptance coverage: MS01/MS02/MS06/MS09/MS11.
 
+When selecting the state layout, review the [future global/project-local separation](../../../../multi-project-hosting.md). No storage migration or multi-project implementation is required in E4.
+
 ## Authoritative design entry points
 
 - [Delivery and acceptance](../../../../specflow-runtime/managed-sessions-delivery.md).

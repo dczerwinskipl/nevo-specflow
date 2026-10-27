@@ -25,6 +25,8 @@ related:
 
 Inspect Engine admission/claim/attempt APIs from Plan 03 and Runtime Turn/Session persistence from Plan 04. Define explicit intent/receipt shapes and resource ownership. `sessionId`, `turnId`, `invocationId`, `executionId`, `workspaceId`, `workflowAttemptRef`, and `ProviderSessionRef` stay distinct.
 
+Consult the [future multi-project direction](../../../../multi-project-hosting.md) when defining context versus execution authority. E5 still demonstrates a single verified checkout, not cross-project dispatch.
+
 ## Prerequisites
 
 - [E3.T10](../../03-offline-workflow-execution/tasks/T10-process-restart-tests.md)

@@ -33,6 +33,8 @@ Realize the fixed canonical and wire contracts with schemas/types and validation
 - Minimal context: API reference, driver reference, storage/lifecycle design, T01 evidence.
 - Acceptance coverage: MS01–MS08/MS12.
 
+Check the [multi-project hosting direction](../../../../multi-project-hosting.md) when choosing persisted Session scope. E4 still targets one fixed verified checkout; this note does not add cross-project behavior to E4.
+
 ## Authoritative design entry points
 
 - [Delivery and acceptance](../../../../specflow-runtime/managed-sessions-delivery.md).

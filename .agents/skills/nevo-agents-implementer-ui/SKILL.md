@@ -21,15 +21,33 @@ pnpm docs:get architecture.principles.normative-language engineering.shared.code
 
 ## Implementer role
 
-Implement the requested scope rather than redesigning adjacent systems without evidence that the task requires it.
+Implement the requested scope rather than redesigning adjacent systems without evidence that the task requires it. Keep the change dependency-complete; do not omit required behavior or safeguards in the name of simplicity. If the request conflicts with a current mandatory contract, surface the conflict and resolve it at the owning source instead of choosing the convenient interpretation.
 
-Prefer existing architecture and repository conventions over introducing a parallel abstraction. Inspect the relevant code and documentation before changing behavior. Keep external boundaries thin and place deterministic policy in testable code where the repository architecture calls for it.
+Apply the shared scope-and-complexity discipline within existing architecture and repository conventions. Inspect the relevant code and documentation before changing behavior. Keep external boundaries thin and place deterministic policy in testable code where the repository architecture calls for it.
 
 Verify the changed behavior at the narrowest useful boundary first, then run the broader checks required by the repository. Report material limitations or unresolved failures instead of treating them as successful completion.
 
+Before handoff, compare the diff with the intended behavior and unchanged scope. Check that materially new abstractions, dependencies, configuration choices, and state owners serve a current requirement or boundary. Remove dead scaffolding and unrelated changes. Report only material decisions, unverified behavior, and remaining limitations; a trivial change does not need a report-sized checklist.
+
+## Implementation scope and complexity discipline
+
+Keep implementation and review proportional to the requested outcome. This guidance is not a separate approval gate, a replacement for role-specific workflows, or a line-count target. An explicit owner request sets the intended scope but cannot silently override a current MUST/MUST NOT contract; resolve such conflicts in the authoritative source before dependent changes. Do not sacrifice correctness, security, authorization, accessibility, required verification, deterministic invariants, lifecycle safety, or Git recovery for a smaller diff.
+
+### Establish what is needed
+
+Identify the requested observable outcome and what must remain unchanged. Inspect the closest capability owner, existing public APIs, dependencies, relevant tests, and representative consumers as needed to establish the change's effects. For new or materially changed UI patterns, inspect matching design-system contracts, available Storybook stories, and rendered behavior. An isolated visual correction does not require an unrelated component survey, but still needs applicable design-system rules and visual verification. Required repository knowledge, applicable contracts, and verification still apply. Search by responsibility, proportional to uncertainty and blast radius.
+
+Prefer reusing an existing capability when both its semantics and ownership fit. Otherwise compose existing capabilities, extend their owner, or introduce a new capability when the present requirement justifies it. For UI work, follow the more specific design-system reuse rules. Similar-looking code does not necessarily have matching semantics. Do not cross ownership boundaries merely to reduce file count.
+
+### Keep the implementation complete but focused
+
+Avoid forwarding-only wrappers that provide no meaningful contract, ownership boundary, adaptation, or testability benefit. Also avoid abstractions for hypothetical reuse, compatibility branches without a current requirement, fallbacks without a defined failure case, duplicate state or validation without distinct boundary responsibilities, configuration options with no real choice, unnecessary dependencies, and unrelated refactors. Introduce abstractions where current behavior, boundary isolation, ownership, testability, or domain complexity actually benefits. Do not force duplication merely to avoid an abstraction.
+
+Prefer straightforward, readable control flow and explicit ownership over compressed code. Preserve required error handling, failure/retry paths, recovery, and coverage. A sound change can legitimately need multiple modules, new types, or additional tests. Never use lines changed, files created, or abstraction counts as hard limits or quality scores.
+
 ## UI implementation role
 
-Implement decided UI intent rather than acting as the product's UX designer. A formal screen specification is one source of decided intent, not a prerequisite for every UI change. When the requested outcome is clear, implement the smallest coherent change that satisfies it and preserve unrelated product decisions.
+Implement decided UI intent rather than acting as the product's UX designer. A formal screen specification is one source of decided intent, not a prerequisite for every UI change. When the requested outcome is clear, implement the smallest dependency-complete change that satisfies it, including necessary integration and verification, while preserving unrelated product decisions.
 
 Treat an explicit owner request as authoritative for the requested change. It does not implicitly reopen established hierarchy, interaction, responsive, or design-system decisions outside that scope. When the requested change materially supersedes a durable product or design-system contract, keep the owning source of truth aligned as repository guidance requires.
 
@@ -49,7 +67,7 @@ The absence of an exact precedent is not itself a blocker. The presence of an ex
 
 ## UI implementation workflow
 
-Adapt the depth of this workflow to the uncertainty and blast radius of the task. A small spacing or alignment correction should not require screen-level ceremony; a new product region or shared-component change requires broader discovery and verification.
+Adapt discovery and reporting depth to the uncertainty and blast radius of the task. A small spacing or alignment correction should not require screen-level ceremony or unrelated component surveys; a new product region or shared-component change requires broader discovery and verification. Proportionality never skips applicable design-system contracts, rendered inspection, or required tests.
 
 ### Resolve the requested intent
 
@@ -176,12 +194,9 @@ Keep the completion handoff concise and evidence-based:
 
 Treat reusable design-system UI, product-owned composition, and screen-level visual behavior as separate responsibilities. Reuse follows semantic and interaction fit, not visual resemblance or repeated markup alone.
 
-Before introducing a new local UI shape, perform semantic component/pattern discovery.
+Before introducing or materially changing a UI pattern, perform semantic component/pattern discovery. For an isolated correction that preserves the existing pattern and semantics, inspect its relevant contract and rendered result without repeating a design-system-wide search.
 
-Start from any stable patterns/components referenced by the UX contract, but do not assume that the
-handoff found every reusable capability. Independently inspect canonical design-system guidance,
-public exports, representative stories, and meaningful consumers for the responsibility being
-implemented.
+Start from stable patterns/components referenced by the UX contract, but do not assume the handoff found every reusable capability. Inspect canonical design-system guidance, public exports and representative stories for the responsibility being implemented. Inspect meaningful consumers when changing a shared contract or when their usage determines semantic fit; keep the search bounded by the current change.
 
 Use this preference order:
 
@@ -229,7 +244,7 @@ Use repository documentation as the source of project-specific rules. At the beg
 pnpm docs:find react git testing
 ```
 
-The search is deterministic lexical OR search. Review all returned matches unless you intentionally supply `--limit`; use `title`, `summary`, `read_when`, taxonomy, and matched terms to decide which documents apply.
+The search is deterministic lexical OR search. Scan the returned match metadata (`title`, `summary`, `read_when`, taxonomy, and matched terms) to identify applicable documents, then read those documents. When results are too broad, refine the activity terms or use a deliberate `--limit`; do not treat every lexical match as a requirement to read unrelated documents.
 
 When an exact stable document ID is supplied by an agent profile, workflow, task, or another authoritative document, resolve it directly with `pnpm docs:get <id...>` instead of searching for it again.
 
@@ -273,13 +288,13 @@ When a visually material change affects an existing story or screen with an acce
 **Applies when:** adding, moving, modifying, or reviewing feature code, components, stores, API ports, or shared code.
 **Requirement:** Required when applicable.
 
-Module ownership applies to any change that adds, moves or modifies feature code, components, stores, API ports or shared code. Load `engineering.shared.code-organization` (section "Module ownership and boundaries") and apply it. This is agent guidance; ESLint enforces only the package-level import boundaries configured on main.
+Apply this guidance when changing feature code, components, stores, API ports, or shared code. Load `engineering.shared.code-organization`, especially "Module ownership and boundaries" and the relevant package-specific rules. That document owns the contracts; this fragment highlights implementation and review checks.
 
-- A new component, store or port MUST be placed in the feature that owns the capability, not in the folder of the screen or task that first needed it.
-- `shared/` MUST hold only code used by several features and MUST NOT import a feature or composition root. Code SHOULD NOT be moved to `shared/` before a second feature needs it.
-- For new code and code touched during migration, features SHOULD import other features only through `features/<name>/index.ts`. Feature barrels may not exist yet; do not create one only to satisfy this rule.
-- Demo adapters (for example `api.demo.ts`) are allowed only for explicit Demo Runtime contracts or isolated test environments, are not frontend fixtures or mock-data modes, and do not decide ownership. A port is not required to have two adapters. Production fixture-based adapters remain forbidden.
-- If ownership is ambiguous, surface the decision instead of defaulting to the current screen's folder.
+- Place code with the capability that owns its behavior. A screen does not automatically own every component, store, or port it uses. Product-neutral reusable UI belongs to its design-system owner; feature-specific composition stays with the owning feature.
+- Promote code into `shared/` only when several features genuinely need it. Shared code must not import a feature or composition root. Do not introduce a shared abstraction for hypothetical reuse.
+- For `packages/specflow-ui`, cross-feature production imports use the appropriate public entry: `features/<name>/index.ts` for feature exports, `features/<name>/read-model` for data-only dependencies, and `features/<name>/routes` for composition. Read models must not depend on screens, and screens must not import composition. Other packages follow their documented public boundaries. Do not create a forwarding barrel merely to satisfy a presumed universal rule.
+- Demo adapters (such as `api.demo.ts`) are permitted for explicit Demo Runtime contracts or isolated tests, not as production UI fixture fallbacks. An adapter's existence does not decide capability ownership.
+- ESLint enforces package boundaries and selected feature/shared import boundaries in `packages/specflow-ui`; remaining ownership and placement decisions still require review. If ownership is materially ambiguous, surface the specific decision instead of defaulting to the current screen folder.
 
 ## React UI state and effects review
 

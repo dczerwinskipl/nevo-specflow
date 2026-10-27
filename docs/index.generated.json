@@ -989,6 +989,49 @@
       ]
     },
     {
+      "id": "ideas.multi-project-hosting",
+      "type": "architecture",
+      "title": "Multi-project hosting and future cross-project work",
+      "status": "draft",
+      "file": "docs/ideas/multi-project-hosting.md",
+      "read_when": [
+        "designing Runtime composition, project discovery, or project selection",
+        "designing managed Sessions, provider execution, or cross-project access",
+        "separating global application settings from repository and Project Home state",
+        "planning Docker hosting, repository registration, or installed development tools",
+        "evaluating a logical workspace spanning multiple independent Git repositories"
+      ],
+      "summary": "Non-authoritative product direction: one SpecFlow Runtime can eventually host multiple registered Git projects, with global app concerns separated from project-owned Engine state, and room for explicitly authorized cross-project agents and an optional logical Workbench without implementing them now.",
+      "related": [
+        "ideas.readme",
+        "architecture.runtime.ownership-and-lifecycle",
+        "architecture.runtime.configuration",
+        "architecture.runtime.specflow-project-home",
+        "architecture.ai.canonical-session-turn-work",
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.developer-workspace"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "ai",
+        "configuration",
+        "server",
+        "cli",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "multi-project",
+        "docker",
+        "sessions",
+        "providers",
+        "workbench",
+        "worktree",
+        "tooling"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.baseline-evidence",
       "type": "architecture",
       "title": "Baseline and migration evidence",

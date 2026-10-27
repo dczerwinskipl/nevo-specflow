@@ -17,6 +17,12 @@ instructions:
     required: true
     applies: always
     delivery: inline
+  - id: scope-and-complexity
+    title: Implementation scope and complexity discipline
+    source: ../instructions/implementation-scope-and-complexity.md
+    required: true
+    applies: always
+    delivery: inline
   - id: repository-knowledge
     title: Repository knowledge
     description: How to discover and load project-specific rules before and during implementation.

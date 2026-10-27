@@ -1,4 +1,4 @@
-Implement decided UI intent rather than acting as the product's UX designer. A formal screen specification is one source of decided intent, not a prerequisite for every UI change. When the requested outcome is clear, implement the smallest coherent change that satisfies it and preserve unrelated product decisions.
+Implement decided UI intent rather than acting as the product's UX designer. A formal screen specification is one source of decided intent, not a prerequisite for every UI change. When the requested outcome is clear, implement the smallest dependency-complete change that satisfies it, including necessary integration and verification, while preserving unrelated product decisions.
 
 Treat an explicit owner request as authoritative for the requested change. It does not implicitly reopen established hierarchy, interaction, responsive, or design-system decisions outside that scope. When the requested change materially supersedes a durable product or design-system contract, keep the owning source of truth aligned as repository guidance requires.
 

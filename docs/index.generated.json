@@ -4483,6 +4483,36 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.provider-manual-checks",
+      "type": "engineering",
+      "title": "Short manual provider checks outside automated tests",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/provider-manual-checks.md",
+      "read_when": [
+        "manually verifying an installed provider",
+        "reporting native provider evidence separately from automated tests"
+      ],
+      "summary": "Optional short native-provider checks with explicit test prompts, no embedded credentials and no dependency from automated tests or CI on a subscription.",
+      "related": [
+        "engineering.shared.testing",
+        "ideas.specflow-runtime.claude-provider",
+        "ideas.specflow-runtime.codex-provider",
+        "ideas.specflow-runtime.antigravity-provider"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "sessions",
+        "manual",
+        "subscriptions"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.provider-migration-plan",
       "type": "engineering",
       "title": "Real provider migration after the independent Session foundation",

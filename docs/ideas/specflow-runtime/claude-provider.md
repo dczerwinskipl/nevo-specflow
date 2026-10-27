@@ -140,7 +140,16 @@ called through the production Runtime HTTP path: create returned 201 and start r
 native account returned a weekly quota error (HTTP 429); the Turn persisted as failed, process cleanup
 completed, and the disposable workspace remained empty. No successful live model response, native
 AskUserQuestion round trip or live semantic resume is claimed while that account limit blocks them.
-Those live checks remain pending; the controlled transport tests are not a substitute for them.
+That paragraph records the historical quota-limited checkpoint. Later explicitly
+invoked checks on `9dd7c10a` passed real Write, foreground Bash and semantic resume
+in `acceptEdits` and `manual` modes (two profiles, six native Turns). Native
+AskUserQuestion and real cancellation were not established by those checks.
+
+Live-account test-runner cases have since been removed at the owner's request.
+Automated tests and CI use synthetic credentials and controlled processes only;
+they do not require a personal login or subscription. Further native checks are
+short manual activities under the [manual provider check policy](provider-manual-checks.md).
+The controlled transport tests remain distinct from native acceptance evidence.
 
 Verification on final implementation `eb2879eb`:
 

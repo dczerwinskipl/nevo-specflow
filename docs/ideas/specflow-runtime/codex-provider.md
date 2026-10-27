@@ -127,8 +127,12 @@ patch boundaries, request capacity/idempotency, failed native writes, group
 withdrawal, effective policy escalation, native home mismatch, independent
 settlement receipts, account isolation and access-only credential snapshots.
 
-`SPECFLOW_LIVE_CODEX=1` enables explicit Windows native acceptance. The installation
-test is unpaid. The HTTP acceptance test uses paid inference and must separately
-prove a real edit and recall of a random token after native resume without tools.
-These tests are skipped in normal runs; skipped tests are not successful live
-acceptance.
+Automated tests use controlled processes, synthetic credentials and fixture
+installations only. No personal login, installed provider or subscription is
+required, including through an opt-in flag. The earlier live-account test-runner
+cases have been removed.
+
+Native verification is a separate, short manual activity described in
+[manual provider checks](provider-manual-checks.md). It never runs in CI and never
+contains embedded credentials. Native results are recorded separately from the
+controlled Engine/SQLite/HTTP restart test.

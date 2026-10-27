@@ -88,9 +88,12 @@ On 2026-10-26 the real installed transport passed discovery and the production R
 create/start path. Claude returned the account's weekly quota error (HTTP 429), which is persisted as a
 safe failed Turn with process cleanup and no disposable-workspace changes. Controlled real-process
 HTTP integration proves questions, cancellation and continuation across Runtime restart. This was the
-quota-limited checkpoint, not a statement about every subsequent acceptance run. Explicit opt-in live
-tests now cover native edits, one-operation permissions, exact-turn semantic resume and foreground
-command output; their results must identify the tested implementation rather than inherit this baseline.
+quota-limited checkpoint, not a statement about every subsequent acceptance run. Later manual
+checks covered native edits, one-operation permissions, exact-turn semantic resume and foreground
+command output; their results identify the tested implementation rather than inherit this baseline.
+Live-account test-runner cases have been removed. Automated tests and CI use synthetic credentials
+and controlled providers only. Further real-provider checks are short manual activities, outside
+the test runner, under the [manual provider check policy](provider-manual-checks.md).
 
 See [Claude provider implementation and acceptance](claude-provider.md) for enablement, exact
 build-specific evidence, bounded operation ownership and remaining live gates. Compatible updates

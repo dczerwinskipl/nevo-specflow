@@ -26,15 +26,24 @@ interpret the legacy adapter or a help-only probe as writable certification.
 
 ## Observed installation
 
-An explicit Windows x64 installed-CLI `--help` probe passed through the retained
+An explicitly invoked Windows x64 installed-CLI `--help` probe passed through the retained
 Job Object process boundary. It submitted no prompt, model request or daemon
 command. The installed CLI advertises stream-json input/output, explicit
 conversation IDs, model/effort, `plan`/`accept-edits`, disabled slash expansion and
 a terminal sandbox flag. Future probes disable the documented background updater
 with `AGY_CLI_DISABLE_AUTO_UPDATE=true` and request noninteractive behavior.
 
-This establishes the command surface and stopped help-process tree only. It does
-not establish model/tool ownership, account binding or sandbox enforcement.
+Further no-prompt discovery with a temporary Windows profile returned the model
+catalogue and emitted `init` with `conversation_id` while stdin was still empty.
+The profile used private USERPROFILE/HOME/APPDATA/LOCALAPPDATA directories and
+disabled the updater. No user event or model request was sent. This is evidence
+for that installed build, not an authentication or effective-policy certificate.
+
+It does not establish model/tool ownership, account binding or sandbox enforcement.
+The native tool inventory still includes browser, MCP, scheduling and messaging
+families; a private profile alone is not sufficient admission evidence.
+These experimental test-runner probes have been removed. Future native checks
+are manual only under the [manual provider check policy](provider-manual-checks.md).
 
 ## Documented protocol and unresolved evidence
 
@@ -43,16 +52,11 @@ documents `event:user` input and `init`, `step_update`, `result` output. Native
 context is the top-level `conversation_id` on `init`; continuation uses the exact
 ID through `--conversation`, without a most-recent-context fallback.
 
-The documentation does not promise that an idle stream emits `init` before its
-first user input. Its example program writes user input before reading output.
-That is a timing question to observe on an isolated installed build, not evidence
-for either ordering.
-
-If pre-input context allocation is available, reuse the current provider-assigned
-contract. Otherwise define a separate assigned-after-dispatch contract: persist
-the dispatch barrier before input, allow one durable subsequent correlation, and
-leave missing acknowledgement unknown without replay. Do not weaken Codex's
-existing correlation-before-dispatch guarantee to accommodate an unverified CLI.
+The documentation does not promise pre-input `init`, but the installed build
+emitted it during the no-prompt discovery above. Reuse the current provider-assigned
+contract and durably correlate that ID before the first user event. If a future
+build cannot supply it within bounded initialization, leave dispatch unavailable;
+do not weaken the existing correlation-before-dispatch guarantee.
 
 EOF drains the current Turn; it is not cancellation. Claude control frames are
 explicitly unsupported. Native interrupted/cancelled result statuses can supply

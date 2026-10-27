@@ -107,3 +107,72 @@ ownership instead of assuming either shared or per-invocation execution.
 Until these gates are established, do not advertise Antigravity as ready, add a
 force-completion path, infer successful cancellation from EOF, or install the
 legacy persistent MCP bridge into user configuration.
+
+## Follow-up execution handoff (2026-10-27)
+
+PR #98 is merged. Continue on `feature/antigravity-provider`, based on merged
+`origin/main` revision `12a6e3b5`. This is one follow-up feature with one eventual
+implementation PR, not another expansion of #98.
+
+Preparation is **partially ready**: the discovery task below can start, but the
+executable adapter is dependent on evidence that the existing discovery does not
+provide. No production code or independent review is claimed by this handoff.
+The existing Session driver, process boundary, Engine admission and SQLite
+lifecycle remain the owners; this feature does not introduce competing owners.
+
+### Task sequence
+
+| Task                                            | Dependencies / readiness    | Delivery and acceptance                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AG.T01 — Resolve native admission prerequisites | Ready for bounded discovery | Record the installed version/platform and primary-source evidence for configuration isolation, stable account identity, effective tool policy, process ownership and cancellation. Each gate must have a concrete supported mechanism and an acceptance check, or remain explicitly unresolved. No inference request is required for this task. |
+| AG.T02 — Installation and admission             | T01; dependent              | Implement detection, private configuration, account/workspace binding and bounded protocol discovery beside the Antigravity adapter. Revalidate executable identity at launch. A missing or failed gate keeps execution unavailable; a successful initialization alone cannot admit a writable invocation.                                      |
+| AG.T03 — Managed operation and transcript       | T02; dependent              | Use provider-assigned context, persist the exact native ID before input, normalize bounded message/reasoning/tool/usage facts, and implement exact-ID continuation. Correlated native outcome and positive stopped-process evidence remain separate. EOF and exit code alone cannot establish successful completion or cancellation.            |
+| AG.T04 — Integration and independent acceptance | T03; dependent              | Verify existing HTTP/SSE/history, Engine write claims, restart, uncertain dispatch, account changes and failure handling with controlled processes. Independently review the full diff before enabling readiness. Manual native acceptance is reported separately.                                                                              |
+
+All tasks use `nevo-agents:implementer`; independent gates use
+`nevo-agents:reviewer`. These are handoff recommendations, not workflow manifest
+fields. Discovery is implementation work against explicit evidence questions;
+it is not permission to invent configuration or authentication contracts.
+
+### AG.T01 evidence checklist and unblock condition
+
+- **Configuration:** establish which supported invocation/configuration controls
+  exclude global and workspace hooks, MCP, plugins, background scheduling and
+  messaging. Inspect native file tools as well as terminal execution. Preserve
+  the owner's files; do not sanitize global configuration in place.
+- **Account:** establish a non-secret stable identity and the native mechanism
+  that authenticates a private invocation without creating a second refresh-token
+  authority. Do not substitute a credential fingerprint for durable account identity.
+- **Containment:** identify the actual enforceable Windows prerequisites and
+  effective policy. Document how to prove permitted in-workspace effects and
+  denied outside-workspace effects in a disposable environment. A sandbox flag
+  or advertised tool inventory is not that proof.
+- **Lifetime:** establish whether tool processes stay inside the retained Job
+  Object, how native cancellation is correlated and how an unconfirmed result
+  retains the existing conservative recovery behavior.
+- **Protocol:** confirm bounded pre-input native ID allocation and exact-ID
+  continuation. Record the supported schema/version and diagnostic limits without
+  persisting raw credentials, account identifiers or private paths in public output.
+
+T01 finishes with evidence and resolved mechanisms, or a named external dependency
+and its unblock condition. An unresolved gate blocks T02 execution readiness;
+it must not be replaced by a boolean certification option, a mock-only proof or
+the legacy skip-permissions mapping. Do not add unused production interfaces
+merely to appear to have progressed while these mechanisms remain unknown.
+
+### Verification and scope limits
+
+Automated tests use controlled binaries, protocol fixtures and synthetic account
+data only. They must cover ID binding before dispatch, failed initialization,
+wrong native ID, uncertain delivery, duplicate request IDs, terminal/result races,
+active descendants, restart and authorization isolation. Real CLI/account checks
+are manual outside all test runners and CI, following
+[the existing policy](provider-manual-checks.md). Any eventual inference check
+explicitly requests a tiny test response and stops on quota/authentication failure.
+
+No new UI, credential broker, provider update service, historical import or
+automatic replay belongs to this follow-up. Native Agent is the intended normal
+execution mode; Plan is exposed only if its effective semantics satisfy the
+requested authority. Independent review is required after the admission design
+is evidenced and again on the final implementation. Fixture success does not
+claim native acceptance or readiness on untested platforms.

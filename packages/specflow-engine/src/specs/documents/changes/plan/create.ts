@@ -4,6 +4,7 @@ import {
   DocumentIdError,
   OVERVIEW_DOCUMENT_TYPE,
   allocateDocumentId,
+  deriveUnclassifiedDocumentId,
   validateDocumentPath,
   validateFolderPath,
 } from '../../../document-rules';
@@ -89,7 +90,13 @@ export function planCreate(
       });
     }
     if (entry.type === undefined) {
-      // Created unclassified: a file with no registry entry; its id is derived from the path.
+      // Created unclassified: a file with no registry entry; its id is derived from the path and
+      // the result still reports it, like a rename of an unclassified file does.
+      draft.documents.push({
+        id: deriveUnclassifiedDocumentId(entry.path),
+        path: entry.path,
+        ...post,
+      });
       continue;
     }
     if (!CATALOGUE_ID.test(entry.type)) {

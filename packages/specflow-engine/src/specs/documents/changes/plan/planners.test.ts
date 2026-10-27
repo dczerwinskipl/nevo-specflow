@@ -264,7 +264,11 @@ describe('create', () => {
     expect(
       parseSpecificationManifestText(manifestPayload.content, TEST_SLUG, 'active').documents,
     ).toEqual(registry.documents);
-    expect(first.plan.documents.map((document) => document.id)).toEqual(first.plan.allocatedIds);
+    // The unclassified file is reported too, under the id derived from its path.
+    expect(first.plan.documents.map((document) => document.id)).toEqual([
+      ...first.plan.allocatedIds,
+      deriveUnclassifiedDocumentId('free.md'),
+    ]);
   });
 
   it('pins the template and the rendered hash, and checks the catalogue revision', () => {
@@ -295,7 +299,14 @@ describe('create', () => {
     });
     expect(result.paths.map((path) => path.role)).toEqual(['document']);
     expect(result.registry).toBeUndefined();
-    expect(result.documents).toEqual([]);
+    expect(result.documents).toEqual([
+      {
+        id: deriveUnclassifiedDocumentId('scratch.md'),
+        path: 'scratch.md',
+        sha256: sha256Hex('s'),
+        bytes: 1,
+      },
+    ]);
   });
 
   it.each([

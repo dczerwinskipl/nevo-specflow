@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { expect, it } from 'vitest';
@@ -9,7 +9,7 @@ const prepareCodexCredentials = (user: string, root: string) =>
 async function fixture(
   run: (root: string, user: string, homeRoot: string, auth: string) => Promise<void>,
 ) {
-  const root = await mkdtemp(join(tmpdir(), 'codex-credentials-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'codex-credentials-')));
   const user = join(root, 'user');
   await mkdir(join(root, 'workspace'));
   await mkdir(join(user, '.codex'), { recursive: true });

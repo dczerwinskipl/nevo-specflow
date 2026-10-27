@@ -25,3 +25,6 @@ export const DOCUMENT_PATH_MAX_CHARACTERS = DOCUMENT_PATH_MAX_LENGTH;
  * `docs/architecture/runtime/specification-documents.md`.
  */
 export const WINDOWS_ABSOLUTE_PATH_MAX = 240;
+
+/** Raw content. Below Close's per-file archive limit on purpose. Working files above it are never read whole. */
+export const RAW_CONTENT_MAX_BYTES = 25 * 1024 * 1024;

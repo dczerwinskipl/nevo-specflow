@@ -14,6 +14,7 @@ export {
   DOCUMENT_PATH_MAX_CHARACTERS,
   DOCUMENT_SEGMENT_MAX_BYTES,
   FOLDER_DEPTH_MAX,
+  RAW_CONTENT_MAX_BYTES,
 } from '../document-rules/limits';
 
 const KIB = 1024;
@@ -21,8 +22,6 @@ const MIB = 1024 * KIB;
 
 /** Text JSON read and Save content. Above: `DOCUMENT_TOO_LARGE`; use `raw` to read. */
 export const TEXT_CONTENT_MAX_BYTES = 1 * MIB;
-/** Raw content. Below Close's per-file archive limit on purpose. */
-export const RAW_CONTENT_MAX_BYTES = 25 * MIB;
 
 /** Files up to this size get a sha256 revision; larger ones `stat:<size>-<mtimeNs>`. */
 export const CONTENT_HASH_MAX_BYTES = 1 * MIB;

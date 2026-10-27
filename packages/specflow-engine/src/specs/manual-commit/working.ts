@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { hashWorkingFile } from '../document-rules/working-file';
-import { RAW_CONTENT_MAX_BYTES } from '../documents/limits';
+import { RAW_CONTENT_MAX_BYTES } from '../document-rules/limits';
 import type { WorkingContent } from './selection';
 
 /**

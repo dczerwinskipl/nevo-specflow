@@ -1,0 +1,127 @@
+name: Temporary readability preview
+
+# Intentionally temporary. This previews fixes for ONE file without committing changes.
+on:
+  pull_request:
+    paths:
+      - eslint.base.mjs
+      - .github/workflows/readability-preview.yml
+  workflow_dispatch:
+    inputs:
+      file:
+        description: Git-tracked JavaScript/TypeScript file to inspect
+        required: true
+        type: string
+        default: packages/specflow-runtime/src/features/sessions/providers/codex/questions.ts
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    name: Check and preview one file
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+
+      - name: Check and preview without committing changes
+        shell: bash
+        env:
+          TARGET_FILE: ${{ inputs.file || 'packages/specflow-runtime/src/features/sessions/providers/codex/questions.ts' }}
+        run: |
+          set -euo pipefail
+
+          # Keep workflow_dispatch input out of shell syntax and Git option parsing.
+          if [[ "$TARGET_FILE" == /* || "$TARGET_FILE" == -* || "$TARGET_FILE" == *..* || "$TARGET_FILE" == *$'\n'* ]]; then
+            echo "Invalid relative file path."
+            exit 1
+          fi
+          case "$TARGET_FILE" in
+            *.ts|*.tsx|*.mts|*.cts|*.js|*.mjs|*.cjs) ;;
+            *) echo "Only JS/TS source files are supported."; exit 1 ;;
+          esac
+          if [[ ! -f "$TARGET_FILE" ]] || ! git ls-files --error-unmatch -- "$TARGET_FILE" >/dev/null 2>&1; then
+            echo "File must exist and be tracked by Git."
+            exit 1
+          fi
+
+          # Match the per-package ESLint ownership used by the regular quality gate.
+          owner=.
+          current_dir="$(dirname "$TARGET_FILE")"
+          while [[ "$current_dir" != "." ]]; do
+            if [[ -f "$current_dir/eslint.config.mjs" ]]; then
+              owner="$current_dir"
+              break
+            fi
+            current_dir="$(dirname "$current_dir")"
+          done
+          if [[ "$owner" == "." ]]; then
+            relative_file="$TARGET_FILE"
+          else
+            relative_file="${TARGET_FILE#"$owner"/}"
+          fi
+
+          lint_file() {
+            if [[ "$owner" == "." ]]; then
+              pnpm exec eslint -c eslint.config.mjs "$relative_file" "$@"
+            else
+              (cd "$owner" && pnpm exec eslint "$relative_file" "$@")
+            fi
+          }
+
+          echo "File: $TARGET_FILE (ESLint owner: $owner)"
+          echo "No commit or push will be performed."
+
+          set +e
+          lint_file --format stylish > "$RUNNER_TEMP/readability-eslint-before.txt" 2>&1
+          lint_status=$?
+          pnpm exec prettier --check "$TARGET_FILE" > "$RUNNER_TEMP/readability-prettier-before.txt" 2>&1
+          prettier_status=$?
+          lint_file --fix > "$RUNNER_TEMP/readability-eslint-fix.txt" 2>&1
+          fix_status=$?
+          pnpm exec prettier --write "$TARGET_FILE" > "$RUNNER_TEMP/readability-prettier-fix.txt" 2>&1
+          write_status=$?
+          set -e
+
+          printf 'ESLint before fix (exit %s):\n' "$lint_status"
+          cat "$RUNNER_TEMP/readability-eslint-before.txt"
+          printf '\nPrettier before fix (exit %s):\n' "$prettier_status"
+          cat "$RUNNER_TEMP/readability-prettier-before.txt"
+
+          git diff -- "$TARGET_FILE" > "$RUNNER_TEMP/readability-preview.patch"
+          {
+            echo "## Temporary single-file readability preview"
+            echo ""
+            echo "File: \`$TARGET_FILE\`. Changes are local to this CI runner; nothing is committed."
+            echo ""
+            echo "Before fix: ESLint exit \`$lint_status\`, Prettier exit \`$prettier_status\`."
+            echo "ESLint fix exit \`$fix_status\`, Prettier write exit \`$write_status\`."
+            echo ""
+            echo "Full logs and diff are available in the workflow artifact."
+            echo ""
+            echo '~~~diff'
+            sed -n '1,160p' "$RUNNER_TEMP/readability-preview.patch"
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$lint_status" -gt 1 || "$prettier_status" -gt 1 || "$fix_status" -gt 1 || "$write_status" -ne 0 ]]; then
+            echo "Tooling error: inspect the recorded logs."
+            exit 1
+          fi
+          # Existing violations are expected; this diagnostic job stays green.
+          echo "Single-file preview complete; no files were pushed."
+
+      - name: Upload preview and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: readability-preview-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/readability-eslint-before.txt
+            ${{ runner.temp }}/readability-prettier-before.txt
+            ${{ runner.temp }}/readability-eslint-fix.txt
+            ${{ runner.temp }}/readability-prettier-fix.txt
+            ${{ runner.temp }}/readability-preview.patch
+          if-no-files-found: warn

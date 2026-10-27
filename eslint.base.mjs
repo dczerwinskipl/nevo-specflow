@@ -141,5 +141,19 @@ export function packageConfig({
 
     // Formatting is Prettier's job — turn off any stylistic conflicts.
     prettier,
+
+    // Structural readability is not handled by Prettier. Keep these rules AFTER
+    // eslint-config-prettier; they enforce braces and separate logical statements.
+    // Existing sources are deliberately NOT auto-fixed in this PR.
+    {
+      rules: {
+        curly: ['error', 'all'],
+        'padding-line-between-statements': [
+          'error',
+          { blankLine: 'always', prev: 'block-like', next: '*' },
+          { blankLine: 'always', prev: '*', next: ['return', 'throw'] },
+        ],
+      },
+    },
   );
 }

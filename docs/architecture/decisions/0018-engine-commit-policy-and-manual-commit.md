@@ -112,7 +112,9 @@ Draft (owner decision 2026-10-26, proposed with the D4 + D-config delivery). It 
      `definitions` (the Project Home) or `all` (every ledger owner in one checkout). `paths` is an optional subset of the
      ledger paths of the scope; because an operation's file and registry change MUST NOT be split, the subset MUST be
      closed under shared operation ids, otherwise the request is refused `MANUAL_COMMIT_SUBSET_INVALID` naming the
-     required closure. `ledgerRevision`, when given, is a precondition (`MANUAL_COMMIT_STALE`).
+     required closure. An entry keeps only its newest 50 operation ids; when any entry of the scope has forgotten
+     some (`operationCount` above its ids) closure cannot be proven, so every partial subset is refused and the closure
+     named is the whole scope. `ledgerRevision`, when given, is a precondition (`MANUAL_COMMIT_STALE`).
    - **Availability:** with the policy OFF for the capability, always (after a bounded flush of any queued work of
      the scope; if that work cannot drain, `MANUAL_COMMIT_UNAVAILABLE`, cause `queue-not-empty`). With the policy ON, only
      when the queue for the scope is empty after a flush; it then **adopts** the ledger entries left by `abandon`.

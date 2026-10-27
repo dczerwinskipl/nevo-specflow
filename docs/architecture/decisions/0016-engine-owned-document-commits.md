@@ -225,7 +225,8 @@ and consolidation. 0013 receives a pointer to this relaxation.
     (at most 10 s), a Git step with less than 1 s left does not start (retryable `COMMIT_BLOCKED` /
     `deadline-exceeded`), and once a mutation has started the reads that tell what it did keep at least 5 s. A path
     that is a directory (or submodule) in `HEAD` where a document is expected, or a directory on disk where `HEAD`
-    holds a file, is a `non-blob:` state: it classifies as `foreign` and a commit naming it is refused
+    holds a file, or a symbolic link on disk or a committed mode `120000` entry (verification compares the tree entry
+    mode, not only the blob id), is a `non-blob:` state: it classifies as `foreign` and a commit naming it is refused
     (`path-kind-conflict`). The Engine records the paths it is about to add to the index before the add runs, so an
     add that was killed is taken back; the index lookup follows `core.ignorecase`. Read-only Git (`executeGit`) ends a
     process with SIGTERM and escalates to SIGKILL after 1.5 s; nothing that can hold the index lock runs through it.

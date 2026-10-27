@@ -522,7 +522,7 @@ ManualCommitInput = {                  // POST /api/specs/:specId/commit
   operationId: string
   scope?: 'specification' | 'all'      // default 'specification'; 'all' = every ledger owner of this Specification's checkout that the caller may Manage
   message?: string                     // first line 1-100 characters; body <= 2000; default 'spec(docs): manual commit <slug>'
-  paths?: string[]                     // a subset of entries[].path, closed under shared operations (else MANUAL_COMMIT_SUBSET_INVALID)
+  paths?: string[]                     // a subset of entries[].path, closed under shared operations (else MANUAL_COMMIT_SUBSET_INVALID); once an entry has forgotten operation ids (more than 50), only the whole scope is accepted
   ledgerRevision?: string              // precondition (MANUAL_COMMIT_STALE)
 }
 ManualCommitResult = {

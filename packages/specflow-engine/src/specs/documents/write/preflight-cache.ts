@@ -4,9 +4,21 @@ import { isAbsolute, join, resolve } from 'node:path';
 
 import type { ResolvedProjectHome } from '../../../project/home/home';
 
+/** The Git state entries whose presence makes the commit port refuse (`git-busy`). */
+const BUSY_STATE = [
+  'MERGE_HEAD',
+  'CHERRY_PICK_HEAD',
+  'REVERT_HEAD',
+  'REBASE_HEAD',
+  'rebase-merge',
+  'rebase-apply',
+  'sequencer',
+] as const;
+
 /**
  * What a cached Git preflight is valid for: the stat signatures of the checkout's `HEAD` file, the
- * existence of its index lock and the mtimes of the project (and local) configuration. The branch
+ * existence of its index lock and of the merge, cherry-pick, revert, rebase and sequencer state, the
+ * stat of the root `.gitignore` and `info/exclude`, and the mtimes of the project (and local) configuration. The branch
  * the checkout is on comes from the same `HEAD` read, so a hit starts no Git process.
  */
 export interface PreflightSignature {
@@ -67,16 +79,18 @@ export const readPreflightSignature: PreflightSignatureReader = async (context, 
     if (gitDirectory === undefined) throw new Error('no git directory');
     const head = await readSmall(join(gitDirectory, 'HEAD'));
     const branch = head === undefined ? null : /^ref:\s*refs\/heads\/(.+?)\s*$/mu.exec(head);
-    const [headToken, lockToken, projectConfig, localConfig] = await Promise.all([
+    const [headToken, lockToken, projectConfig, localConfig, busy, ignores] = await Promise.all([
       statToken(join(gitDirectory, 'HEAD')),
       statToken(join(gitDirectory, 'index.lock')),
       statToken(context.project.projectConfigPath),
       statToken(context.project.localConfigPath),
+      Promise.all(BUSY_STATE.map((name) => statToken(join(gitDirectory, name)))),
+      Promise.all([join(root, '.gitignore'), join(gitDirectory, 'info', 'exclude')].map(statToken)),
     ]);
     return {
       branchRef: branch?.[1],
       indexLocked: lockToken !== 'absent',
-      token: [headToken, head ?? '', projectConfig, localConfig].join('|'),
+      token: [headToken, head ?? '', projectConfig, localConfig, ...busy, ...ignores].join('|'),
     };
   } catch {
     return {

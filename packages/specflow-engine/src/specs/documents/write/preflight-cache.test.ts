@@ -117,6 +117,22 @@ describe('readPreflightSignature', () => {
     expect((await readPreflightSignature(context, root)).token).not.toBe(touched.token);
   });
 
+  it('changes when a merge, a rebase or an ignore rule appears', async () => {
+    const { root, context } = await checkout();
+    const before = await readPreflightSignature(context, root);
+    await writeFile(join(root, '.git', 'MERGE_HEAD'), 'a'.repeat(40) + '\n');
+    const merging = await readPreflightSignature(context, root);
+    expect(merging.token).not.toBe(before.token);
+    await rm(join(root, '.git', 'MERGE_HEAD'));
+    await mkdir(join(root, '.git', 'rebase-merge'));
+    const rebasing = await readPreflightSignature(context, root);
+    expect(rebasing.token).not.toBe(before.token);
+    expect(rebasing.token).not.toBe(merging.token);
+    await rm(join(root, '.git', 'rebase-merge'), { recursive: true });
+    await writeFile(join(root, '.gitignore'), 'specs/\n');
+    expect((await readPreflightSignature(context, root)).token).not.toBe(before.token);
+  });
+
   it('follows the gitdir file of a linked checkout', async () => {
     const base = await mkdtemp(join(tmpdir(), 'preflight-linked-'));
     roots.push(base);

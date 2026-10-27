@@ -84,6 +84,17 @@ export function classifyProviderInstallation(
   installation: ProviderInstallationIdentity,
   trustedRecords: readonly ImmutableRecord[] = [bundledClaudeBuild],
 ): ProviderCompatibility {
+  const profile =
+    installation.providerId === 'claude'
+      ? 'claude-stream-json-v1'
+      : installation.providerId === 'codex'
+        ? 'codex-app-server-v2'
+        : undefined;
+  if (!profile || installation.platform !== 'win32' || installation.architecture !== 'x64')
+    return {
+      classification: 'unsupported',
+      reason: 'Provider platform/profile is not implemented.',
+    };
   const matching = trustedRecords.filter(
     (record) =>
       record.providerId === installation.providerId &&
@@ -95,11 +106,7 @@ export function classifyProviderInstallation(
     return { classification: 'unsupported', reason: 'Compatibility evidence is invalid.' };
   const record = matching[0];
   if (record) {
-    if (
-      record.revoked ||
-      record.classification !== 'tested' ||
-      record.protocolProfile !== 'claude-stream-json-v1'
-    )
+    if (record.revoked || record.classification !== 'tested' || record.protocolProfile !== profile)
       return {
         classification: 'unsupported',
         reason: 'Provider build is revoked or incompatible.',
@@ -110,15 +117,6 @@ export function classifyProviderInstallation(
       reason: 'Provider version was not established by the handshake.',
     };
   }
-  if (
-    installation.providerId !== 'claude' ||
-    installation.platform !== 'win32' ||
-    installation.architecture !== 'x64'
-  )
-    return {
-      classification: 'unsupported',
-      reason: 'Provider platform/profile is not implemented.',
-    };
   return {
     classification: 'provisional',
     reason: 'Local protocol and execution checks are required.',

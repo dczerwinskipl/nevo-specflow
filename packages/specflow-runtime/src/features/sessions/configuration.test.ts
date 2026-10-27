@@ -24,8 +24,19 @@ describe('project Session feature configuration', () => {
       { providers: { claude: { enabled: 'true' } } },
       { providers: { claude: { executable: 'claude' } } },
       { providers: { claude: { allowUnsafe: true } } },
+      { providers: { codex: { allowUnsafe: true } } },
+      { providers: { codex: { enabled: 'true' } } },
+      { providers: { codex: { executable: 'codex' } } },
     ])
       expect(() => parseSessionsFeatureConfig(input)).toThrow();
+  });
+  it('supports explicit Codex enablement without a certification override', () => {
+    expect(
+      parseSessionsFeatureConfig({ enabled: true, providers: { codex: { enabled: true } } }),
+    ).toEqual({
+      enabled: true,
+      providers: { mock: { enabled: false }, codex: { enabled: true } },
+    });
   });
   it('supports explicit Claude enablement independently of the mock', () => {
     expect(

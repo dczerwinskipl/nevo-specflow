@@ -4,7 +4,11 @@ import { isAbsolute } from 'node:path';
 
 export interface SessionsFeatureConfig {
   enabled: boolean;
-  providers: { mock: { enabled: boolean }; claude?: { enabled: boolean; executable?: string } };
+  providers: {
+    mock: { enabled: boolean };
+    claude?: { enabled: boolean; executable?: string };
+    codex?: { enabled: boolean; executable?: string };
+  };
 }
 export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfig {
   if (value === undefined) return { enabled: false, providers: { mock: { enabled: false } } };
@@ -12,7 +16,23 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
   onlyKeys(sessions, new Set(['enabled', 'providers']), 'sessions');
   const providers =
     sessions.providers === undefined ? {} : record(sessions.providers, 'sessions.providers');
-  onlyKeys(providers, new Set(['mock', 'claude']), 'sessions.providers');
+  onlyKeys(providers, new Set(['mock', 'claude', 'codex']), 'sessions.providers');
+  const codex =
+    providers.codex === undefined ? undefined : record(providers.codex, 'sessions.providers.codex');
+  if (codex) {
+    onlyKeys(codex, new Set(['enabled', 'executable']), 'sessions.providers.codex');
+    if (codex.enabled !== undefined && typeof codex.enabled !== 'boolean')
+      throw new RuntimeConfigError('sessions.providers.codex.enabled must be boolean.');
+    if (
+      codex.executable !== undefined &&
+      (typeof codex.executable !== 'string' ||
+        !isAbsolute(codex.executable) ||
+        codex.executable.includes('\0'))
+    )
+      throw new RuntimeConfigError(
+        'sessions.providers.codex.executable must be an absolute native executable path.',
+      );
+  }
   const claude =
     providers.claude === undefined
       ? undefined
@@ -45,6 +65,14 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
     enabled: sessions.enabled === true,
     providers: {
       mock: { enabled: mock.enabled === true },
+      ...(codex
+        ? {
+            codex: {
+              enabled: codex.enabled === true,
+              ...(typeof codex.executable === 'string' ? { executable: codex.executable } : {}),
+            },
+          }
+        : {}),
       ...(claude
         ? {
             claude: {

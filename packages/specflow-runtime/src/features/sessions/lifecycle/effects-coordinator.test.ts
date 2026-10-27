@@ -171,4 +171,7 @@ it.each(['same-binding', 'changed-account', 'changed-workspace'])(
       ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
     expect(f.start).toHaveBeenCalledTimes(1);
   },
+  // Includes two cold SQLite Workers, shutdown and restart. Windows CI can
+  // exceed Vitest's five-second unit-test budget without a lifecycle failure.
+  20000,
 );

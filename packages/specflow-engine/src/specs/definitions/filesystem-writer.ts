@@ -24,7 +24,8 @@ export class DefinitionWriteError extends Error {
 }
 
 /** A directory on the way that exists is checked; one that does not is created. */
-async function checkDirectory(directory: string): Promise<boolean> {
+/** `canonical` is where the directory has to resolve to: the real path of the home plus the same segments. */
+async function checkDirectory(directory: string, canonical: string): Promise<boolean> {
   try {
     const stat = await lstat(directory);
     if (!stat.isDirectory() || stat.isSymbolicLink()) {
@@ -32,7 +33,7 @@ async function checkDirectory(directory: string): Promise<boolean> {
         'A folder on the way to the definitions is not a plain directory.',
       );
     }
-    if (!samePhysicalPath(await realpath(directory), directory)) {
+    if (!samePhysicalPath(await realpath(directory), canonical)) {
       throw new DefinitionWriteError('A folder on the way to the definitions is redirected.');
     }
     return true;
@@ -42,13 +43,13 @@ async function checkDirectory(directory: string): Promise<boolean> {
   }
 }
 
-async function ensureDirectory(directory: string): Promise<void> {
-  if (await checkDirectory(directory)) return;
+async function ensureDirectory(directory: string, canonical: string): Promise<void> {
+  if (await checkDirectory(directory, canonical)) return;
   try {
     await mkdir(directory);
   } catch (error) {
     // Another writer created it first: it still has to be a plain directory.
-    if (errnoCode(error) !== 'EEXIST' || !(await checkDirectory(directory))) throw error;
+    if (errnoCode(error) !== 'EEXIST' || !(await checkDirectory(directory, canonical))) throw error;
   }
 }
 
@@ -67,12 +68,15 @@ export function createFilesystemDefinitionWriter(homeRoot: string): DefinitionWr
       }
       const target = join(definitionsRoot, ...path.split('/'));
       let directory = homeRoot;
+      // The home may be spelled through a short name or a case variant; the folders below it may not redirect.
+      let canonical = await realpath(homeRoot);
       for (const segment of [
         ...DEFINITIONS_RELATIVE_PATH.split('/'),
         ...path.split('/').slice(0, -1),
       ]) {
         directory = join(directory, segment);
-        await ensureDirectory(directory);
+        canonical = join(canonical, segment);
+        await ensureDirectory(directory, canonical);
       }
       try {
         const existing = await lstat(target);

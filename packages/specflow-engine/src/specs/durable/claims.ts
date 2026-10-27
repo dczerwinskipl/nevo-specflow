@@ -17,8 +17,13 @@ export function sortedResources(resources: readonly string[]): readonly Mutation
   return [...new Set(resources)].sort();
 }
 
-/** Scoped claims coexist with each other, but conflict with the exclusive claim. */
+/**
+ * Scoped claims coexist with each other, but conflict with the exclusive claim. A project-wide write
+ * (an external execution) conflicts with every other claim.
+ */
 export function overlaps(left: readonly string[], right: readonly string[]): boolean {
+  if (right.length > 0 && left.some((resource) => resource.startsWith('project-write:')))
+    return true;
   for (const first of left) {
     for (const second of right) {
       if (first === second) {

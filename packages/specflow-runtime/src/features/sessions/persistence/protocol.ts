@@ -63,6 +63,7 @@ export type StoreCommand =
       input: StartTurn;
       nativeWorkspace?: string;
       nativeScope?: string;
+      nativeContextMode?: 'reserved' | 'provider-assigned';
       nativeWorkspaceIdentity?: string;
       effectBinding?: string;
     }
@@ -164,6 +165,7 @@ export interface StoredSession {
   ordinal: number;
 }
 export interface StoredTurn {
+  nativeContextMode?: 'reserved' | 'provider-assigned';
   effectBinding?: string;
   summary: TurnSummary;
   invocationId: string;

@@ -30,9 +30,21 @@ foreach ($hive in $hives) {
 [Console]::Write('absent')
 `;
 
-export async function inspectClaudeRegistry(environment: ProviderEnvironment): Promise<boolean> {
+export type ClaudeRegistryPolicy = 'absent' | 'present' | 'unavailable';
+export function registryInspectionResult(
+  error: Error | null,
+  stdout: string,
+): ClaudeRegistryPolicy {
+  if (error) return 'unavailable';
+  if (stdout === 'absent') return 'absent';
+  if (stdout === 'present') return 'present';
+  return 'unavailable';
+}
+export async function inspectClaudeRegistryPolicy(
+  environment: ProviderEnvironment,
+): Promise<ClaudeRegistryPolicy> {
   const systemRoot = environment.values.SYSTEMROOT;
-  if (!systemRoot || !isAbsolute(systemRoot)) return false;
+  if (!systemRoot || !isAbsolute(systemRoot)) return 'unavailable';
   return new Promise((resolveInspection) => {
     execFile(
       join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
@@ -40,11 +52,16 @@ export async function inspectClaudeRegistry(environment: ProviderEnvironment): P
       {
         shell: false,
         windowsHide: true,
-        timeout: 2000,
+        // Cold PowerShell startup under native CLI/AV load can exceed two seconds.
+        // Keep a finite budget and require the exact positive absence marker.
+        timeout: 5000,
         maxBuffer: 4096,
         env: { ...environment.values },
       },
-      (error, stdout) => resolveInspection(!error && stdout === 'absent'),
+      (error, stdout) => resolveInspection(registryInspectionResult(error, stdout)),
     );
   });
+}
+export async function inspectClaudeRegistry(environment: ProviderEnvironment): Promise<boolean> {
+  return (await inspectClaudeRegistryPolicy(environment)) === 'absent';
 }

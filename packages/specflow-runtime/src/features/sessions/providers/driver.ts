@@ -26,6 +26,8 @@ export interface Invocation {
   beforeDispatch?: () => Promise<void>;
 }
 export type EmitFact = (fact: DriverFact) => Promise<void>;
+/** Discovery may initialize several bounded native mode profiles on a cold machine. */
+export const ProviderTimeouts = { discoveryMs: 30000, initializeMs: 10000 } as const;
 export interface ProviderOperation {
   done: Promise<void>;
   /** Positive liveness evidence from the process owner; required for a writable driver. */
@@ -38,6 +40,9 @@ export interface ProviderOperation {
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
 }
 export interface SessionDriver {
+  /** Some native protocols allocate the persistent context during thread/start.
+   * Its identity must be durably correlated before any user input is dispatched. */
+  readonly nativeContextMode?: 'reserved' | 'provider-assigned';
   supportsManagedWrites?: boolean;
   describe(): ProviderDescriptor;
   refresh?(signal: AbortSignal): Promise<ProviderDescriptor>;

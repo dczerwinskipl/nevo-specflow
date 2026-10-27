@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
+import { claudeReadTools } from './modes';
 
 type ObjectValue = Record<string, unknown>;
 export class ClaudeProtocolError extends Error {
@@ -32,7 +33,11 @@ function blocks(message: unknown): ObjectValue[] {
  * Only a structured result establishes success. A bounded pending text message avoids
  * publishing the final assistant response twice (assistant + result).
  */
-export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) {
+export function createClaudeProtocol(
+  emit: EmitFact,
+  expectedSessionId: string,
+  allowedTools: readonly string[] = claudeReadTools,
+) {
   identifier(expectedSessionId);
   const seen = new Map<string, string>();
   const tools = new Map<string, { parent: string; key: string }>();
@@ -134,6 +139,7 @@ export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) 
           const toolId = identifier(block.id);
           const key = 'tool:' + toolId;
           const name = identifier(block.name);
+          if (!allowedTools.includes(name)) throw new ClaudeProtocolError();
           const input = object(block.input);
           if (
             name === 'Bash' &&
@@ -276,6 +282,40 @@ export function createClaudeProtocol(emit: EmitFact, expectedSessionId: string) 
           throw new ClaudeProtocolError();
         }
         if (typeof frame.type !== 'string') throw new ClaudeProtocolError();
+        if (frame.type === 'system' && frame.subtype === 'thinking_tokens') {
+          // Estimates are non-authoritative progress. Validate and ignore before
+          // the UUID ledger so long thinking cannot exhaust lifecycle deduplication.
+          identifier(frame.uuid);
+          if (
+            identifier(frame.session_id) !== expectedSessionId ||
+            !Number.isSafeInteger(frame.estimated_tokens) ||
+            !Number.isSafeInteger(frame.estimated_tokens_delta)
+          )
+            throw new ClaudeProtocolError();
+          if (frame.user_message_uuid !== undefined) identifier(frame.user_message_uuid);
+          await correlate(frame);
+          return;
+        }
+        if (frame.type === 'tool_progress') {
+          // Foreground shell progress also has task_id and may use an internal
+          // bash-progress-* ID. It is not an action/result or background receipt.
+          identifier(frame.uuid);
+          identifier(frame.tool_use_id);
+          const name = identifier(frame.tool_name);
+          if (
+            identifier(frame.session_id) !== expectedSessionId ||
+            !allowedTools.includes(name) ||
+            frame.parent_tool_use_id !== null ||
+            !Number.isSafeInteger(frame.elapsed_time_seconds) ||
+            (frame.heartbeat !== undefined && typeof frame.heartbeat !== 'boolean') ||
+            frame.subagent_type !== undefined ||
+            frame.subagent_retry !== undefined
+          )
+            throw new ClaudeProtocolError();
+          if (frame.task_id !== undefined) identifier(frame.task_id);
+          await correlate(frame);
+          return;
+        }
         // Native UUID deduplication is bounded. Never evict then replay an old event as new.
         // Sibling assistant envelopes can share message.id. Only the outer UUID identifies
         // a native event; requiring it avoids confusing tool siblings with changed duplicates.

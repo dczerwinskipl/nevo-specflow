@@ -4,13 +4,17 @@ import { validateDriverFact } from '../facts';
 import { createClaudeProtocol } from './protocol';
 
 const sessionId = 'b6d81fa6-d1fc-4841-8241-bc1ae33cbb1f';
-function fixture() {
+function fixture(allowedTools?: readonly string[]) {
   const facts: DriverFact[] = [];
-  const protocol = createClaudeProtocol((fact) => {
-    validateDriverFact(fact);
-    facts.push(fact);
-    return Promise.resolve();
-  }, sessionId);
+  const protocol = createClaudeProtocol(
+    (fact) => {
+      validateDriverFact(fact);
+      facts.push(fact);
+      return Promise.resolve();
+    },
+    sessionId,
+    allowedTools,
+  );
   const accept = (frame: unknown) => protocol.accept(JSON.stringify(frame));
   const assistant = (id: string, content: unknown[]) =>
     accept({
@@ -30,6 +34,129 @@ function fixture() {
   return { facts, protocol, accept, assistant, result };
 }
 describe('Claude full-message protocol', () => {
+  it('accepts foreground tool progress with internal IDs without changing tool state or usage', async () => {
+    const f = fixture(['Bash']);
+    await f.assistant('command', [
+      { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: 'echo test' } },
+    ]);
+    const before = f.facts.length;
+    for (let at = 0; at < 4100; at++)
+      await f.accept({
+        type: 'tool_progress',
+        uuid: 'progress-' + at,
+        session_id: sessionId,
+        tool_use_id: 'bash-progress-1',
+        tool_name: 'Bash',
+        parent_tool_use_id: null,
+        elapsed_time_seconds: at,
+        task_id: 'task-1',
+        heartbeat: true,
+      });
+    expect(f.facts).toHaveLength(before); // No canonical progress writes.
+    expect(f.protocol.terminal).toBe(false);
+    await f.accept({
+      type: 'user',
+      session_id: sessionId,
+      message: { content: [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'test' }] },
+    });
+    await f.result({ result: 'Done' });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it.each([
+    { tool_name: 'Agent' },
+    { parent_tool_use_id: 'agent-1' },
+    { subagent_type: 'explore' },
+    { heartbeat: 'true' },
+    { elapsed_time_seconds: 0.5 },
+    { task_id: 123 },
+    { session_id: 'other' },
+  ])('rejects unsupported tool progress without mutating lifecycle: %j', async (change) => {
+    const f = fixture(['Bash']);
+    await expect(
+      f.accept({
+        type: 'tool_progress',
+        uuid: 'progress-1',
+        session_id: sessionId,
+        tool_use_id: 'bash-progress-1',
+        tool_name: 'Bash',
+        parent_tool_use_id: null,
+        elapsed_time_seconds: 1,
+        ...change,
+      }),
+    ).rejects.toThrow();
+    expect(f.facts.some((fact) => fact.kind === 'usage' || fact.kind === 'outcome')).toBe(false);
+  });
+  it('accepts correlated native thinking estimates without inventing usage or terminal state', async () => {
+    const f = fixture();
+    await f.accept({
+      type: 'system',
+      subtype: 'thinking_tokens',
+      uuid: 'estimate-1',
+      session_id: sessionId,
+      estimated_tokens: 12,
+      estimated_tokens_delta: 4,
+      user_message_uuid: 'message-1',
+    });
+    expect(f.facts).toEqual([{ kind: 'correlation', providerSessionId: sessionId }]);
+    expect(f.protocol.terminal).toBe(false);
+    await f.assistant('answer', [
+      { type: 'thinking', thinking: 'Provider-emitted reasoning' },
+      { type: 'text', text: 'Resumed answer' },
+    ]);
+    await f.result({ result: 'Resumed answer', usage: { output_tokens: 2 } });
+    expect(f.facts.filter((fact) => fact.kind === 'usage')).toEqual([
+      {
+        kind: 'usage',
+        sampleId: 'claude-result',
+        basis: 'turn-total',
+        counters: { outputTokens: 2 },
+      },
+    ]);
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+    expect(f.facts).toContainEqual(
+      expect.objectContaining({
+        kind: 'text',
+        channel: 'reasoning',
+        text: 'Provider-emitted reasoning',
+      }),
+    );
+  });
+  it('does not consume lifecycle deduplication capacity for ignored thinking progress', async () => {
+    const f = fixture();
+    for (let at = 0; at < 4100; at++)
+      await f.accept({
+        type: 'system',
+        subtype: 'thinking_tokens',
+        uuid: 'estimate-' + at,
+        session_id: sessionId,
+        estimated_tokens: at,
+        estimated_tokens_delta: at === 4099 ? -1 : 1,
+      });
+    await f.assistant('answer', [{ type: 'text', text: 'Done' }]);
+    await f.result({ result: 'Done' });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+    expect(f.facts.filter((fact) => fact.kind === 'correlation')).toHaveLength(1);
+  });
+  it.each([
+    { estimated_tokens: '12' },
+    { estimated_tokens_delta: 0.5 },
+    { session_id: 'another-session' },
+    { uuid: undefined },
+  ])('rejects malformed or uncorrelated thinking progress: %j', async (change) => {
+    const f = fixture();
+    await expect(
+      f.accept({
+        type: 'system',
+        subtype: 'thinking_tokens',
+        uuid: 'estimate-1',
+        session_id: sessionId,
+        estimated_tokens: 12,
+        estimated_tokens_delta: 4,
+        ...change,
+      }),
+    ).rejects.toThrow();
+    expect(f.facts.some((fact) => fact.kind === 'usage' || fact.kind === 'outcome')).toBe(false);
+  });
   it.each(['run_in_background', 'dangerouslyDisableSandbox'])(
     'refuses %s even when native permissions did not call the host',
     async (field) => {

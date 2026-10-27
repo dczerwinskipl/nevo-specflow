@@ -99,9 +99,26 @@ export function createProviderFacts({
       );
     }
     if (f.kind === 'correlation') {
-      const context = get('SELECT native FROM provider_contexts WHERE session=?', c.sessionId);
-      if (context && context.native !== f.providerSessionId)
+      const context = get(
+        'SELECT native,confirmed,dispatched FROM provider_contexts WHERE session=?',
+        c.sessionId,
+      );
+      if (
+        context &&
+        t.nativeContextMode !== 'provider-assigned' &&
+        context.native !== f.providerSessionId
+      )
         fail('SESSION_RECOVERY_REQUIRED', 'Provider context differs from its durable admission.');
+      if (
+        context &&
+        t.nativeContextMode === 'provider-assigned' &&
+        !context.confirmed &&
+        context.dispatched
+      )
+        fail(
+          'SESSION_RECOVERY_REQUIRED',
+          'Provider-assigned context must be bound before dispatch.',
+        );
       const native = s.snapshot.session.providerId + '\u0000' + f.providerSessionId;
       const existing = get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native;
       if (existing && existing !== native)

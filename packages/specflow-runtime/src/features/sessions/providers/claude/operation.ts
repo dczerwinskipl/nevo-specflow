@@ -3,11 +3,13 @@ import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact } from '../../persistence/protocol';
 import { SessionError } from '../../errors';
 import type { EmitFact, Invocation, ProviderOperation } from '../driver';
+import { ProviderTimeouts } from '../driver';
 import type { launchOwnedProcess } from '../process';
 import { ProviderProcessError } from '../process';
 import { createClaudeProtocol, ClaudeProtocolError, identifier, object } from './protocol';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
+import { claudeMode, toolsForClaudeMode } from './modes';
 
 export type ClaudeProcess = Pick<
   Awaited<ReturnType<typeof launchOwnedProcess>>,
@@ -94,7 +96,11 @@ export function createClaudeOperation(
       if (fact.kind === 'lost') lost = true;
     }
   };
-  const protocol = createClaudeProtocol(publish, context.nativeSessionId);
+  const protocol = createClaudeProtocol(
+    publish,
+    context.nativeSessionId,
+    toolsForClaudeMode(claudeMode(invocation.selection)),
+  );
   async function outcome(fact: Extract<DriverFact, { kind: 'outcome' }>) {
     // Safe adapter messages must survive reload through the normal bounded conversation,
     // rather than existing only in a transient Turn event or private diagnostics.
@@ -117,11 +123,19 @@ export function createClaudeOperation(
     }
   }
   const done = (async () => {
-    const deadline = setTimeout(() => internal.abort('initialize-timeout'), 10000);
+    // Admission/discovery and native initialization have separate deadlines. A
+    // cold profile refresh must not consume the subsequent handshake's budget.
+    let deadline = setTimeout(() => internal.abort('launch-timeout'), ProviderTimeouts.discoveryMs);
     deadline.unref();
     let failure: unknown;
     try {
       owner = await options.launch(operationSignal);
+      clearTimeout(deadline);
+      deadline = setTimeout(
+        () => internal.abort('initialize-timeout'),
+        ProviderTimeouts.initializeMs,
+      );
+      deadline.unref();
       await send({
         type: 'control_request',
         request_id: initializeId,
@@ -153,6 +167,9 @@ export function createClaudeOperation(
           continue;
         }
         if (!initialized) throw new ClaudeProtocolError();
+        // The production driver requires the restricted system/init inventory
+        // before admitting any host interaction, including permission requests.
+        options.verifyFrame?.(frame);
         if (frame.type === 'control_cancel_request') {
           const group = groups.get(identifier(frame.request_id));
           if (group) await expire(group);
@@ -194,7 +211,6 @@ export function createClaudeOperation(
           continue;
         }
         if (frame.type === 'result' && pending.size) throw new ClaudeProtocolError();
-        options.verifyFrame?.(frame);
         await protocol.accept(line);
         if (protocol.terminal) break;
       }
@@ -223,21 +239,23 @@ export function createClaudeOperation(
           outcome: signal.reason === 'shutdown' ? 'interrupted' : 'cancelled',
         };
       } else if (!unverified && !dispatched) {
+        const error = {
+          code: 'PROVIDER_UNAVAILABLE',
+          message: 'Claude could not initialize the requested operation.',
+        };
+        if (internal.signal.aborted) {
+          error.code = 'TIMEOUT';
+          error.message = 'Claude initialization timed out.';
+        } else if (failure instanceof SessionError) {
+          // SessionError is the adapter's sanitized public boundary. Preserve its
+          // actionable reason; arbitrary native exceptions remain masked.
+          error.code = failure.code;
+          error.message = failure.message;
+        }
         result = {
           kind: 'outcome',
           outcome: 'failed',
-          error: {
-            code: internal.signal.aborted
-              ? 'TIMEOUT'
-              : failure instanceof SessionError
-                ? failure.code === 'PROVIDER_AUTH_REQUIRED'
-                  ? 'PROVIDER_AUTH_REQUIRED'
-                  : 'PROVIDER_UNAVAILABLE'
-                : 'PROVIDER_UNAVAILABLE',
-            message: internal.signal.aborted
-              ? 'Claude initialization timed out.'
-              : 'Claude could not initialize the requested operation.',
-          },
+          error,
         };
       }
       // Keep proven outcome/liveness evidence even if later canonical persistence

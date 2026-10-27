@@ -55,6 +55,10 @@ let count = 0,
 const send = (f) =>
   process.stdout.write(JSON.stringify({ ...f, uuid: randomUUID() }) + '\\n');
 const finish = () => {
+  if (at >= 0) send({
+    type: 'system', subtype: 'thinking_tokens', session_id: id,
+    estimated_tokens: 3, estimated_tokens_delta: 1,
+  });
   send({
     type: 'assistant',
     session_id: id,

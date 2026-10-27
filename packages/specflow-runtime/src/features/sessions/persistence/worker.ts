@@ -489,7 +489,15 @@ export async function runSessionWorker(): Promise<void> {
             );
           if (previous?.dispatched && !previous.confirmed)
             fail('SESSION_RECOVERY_REQUIRED', 'An unconfirmed dispatch cannot be retried.');
-          const nativeSessionId = previous?.confirmed ? String(previous.native) : randomUUID();
+          const reservation = previous?.confirmed ? String(previous.native) : randomUUID();
+          let nativeSessionId = reservation;
+          if (previous?.confirmed) {
+            const correlated = get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native;
+            const prefix = s.snapshot.session.providerId + '\u0000';
+            if (typeof correlated !== 'string' || !correlated.startsWith(prefix))
+              fail('SESSION_RECOVERY_REQUIRED', 'Confirmed provider context is unavailable.');
+            nativeSessionId = correlated.slice(prefix.length);
+          }
           providerContext = {
             nativeSessionId,
             resume: !!previous?.confirmed,
@@ -498,7 +506,7 @@ export async function runSessionWorker(): Promise<void> {
           run(
             'INSERT OR REPLACE INTO provider_contexts VALUES(?,?,?,?,?,?)',
             c.sessionId,
-            nativeSessionId,
+            reservation,
             c.nativeWorkspace,
             previous?.confirmed ? 1 : 0,
             0,
@@ -506,6 +514,7 @@ export async function runSessionWorker(): Promise<void> {
           );
         }
         const t: StoredTurn = {
+          ...(c.nativeContextMode ? { nativeContextMode: c.nativeContextMode } : {}),
           invocationId,
           ...(c.effectBinding ? { effectBinding: c.effectBinding } : {}),
           cancelRequested: false,
@@ -544,6 +553,8 @@ export async function runSessionWorker(): Promise<void> {
           fail('SESSION_RECOVERY_REQUIRED', 'Invocation cannot dispatch.');
         const context = get('SELECT * FROM provider_contexts WHERE session=?', c.sessionId);
         if (!context) fail('SESSION_RECOVERY_REQUIRED', 'Native context is missing.');
+        if (t.nativeContextMode === 'provider-assigned' && !context.confirmed)
+          fail('SESSION_RECOVERY_REQUIRED', 'Provider-assigned context has not been bound.');
         if (context.dispatched)
           fail('SESSION_RECOVERY_REQUIRED', 'Invocation has already dispatched.');
         run('UPDATE provider_contexts SET dispatched=1 WHERE session=?', c.sessionId);

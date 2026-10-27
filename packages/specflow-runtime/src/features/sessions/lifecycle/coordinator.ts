@@ -16,6 +16,7 @@ import type {
   EffectRecoveryCandidate,
 } from '../persistence/protocol';
 import type { SessionDriver, ProviderOperation, Invocation } from '../providers/driver';
+import { ProviderTimeouts } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
 import { executionBinding, type SessionEffects } from './effects';
 import { createManagedInvocation } from './managed-invocation';
@@ -57,7 +58,7 @@ export function createSessionCoordinator(
         reject(
           new SessionError('PROVIDER_UNAVAILABLE', 'Provider discovery or validation timed out.'),
         );
-      }, 10000);
+      }, ProviderTimeouts.discoveryMs);
       timer.unref();
     });
     try {
@@ -277,6 +278,7 @@ export function createSessionCoordinator(
           ? {
               nativeWorkspace: executionContext.workspace,
               nativeScope,
+              nativeContextMode: driver.nativeContextMode ?? 'reserved',
               nativeWorkspaceIdentity: executionContext.workspaceIdentity,
             }
           : {}),

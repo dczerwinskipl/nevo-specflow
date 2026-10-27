@@ -34,6 +34,84 @@ async function snap(sessionId: string): Promise<SessionSnapshot> {
   return (await store!.call<SnapshotSource>({ op: 'snapshot', sessionId, actor: 'user' })).snapshot;
 }
 describe('durable Session store', () => {
+  it.each(['before-input', 'after-result'] as const)(
+    'binds provider-assigned identity before dispatch and preserves it across restart: %s',
+    async (cut) => {
+      const { sessionId } = await create('controlled');
+      const native = {
+        nativeWorkspace: directory,
+        nativeScope: 'account',
+        nativeWorkspaceIdentity: 'a'.repeat(64),
+        nativeContextMode: 'provider-assigned' as const,
+      };
+      const admitted = await store!.call<StartAdmission>({
+        op: 'start',
+        actor: 'user',
+        sessionId,
+        ...native,
+        input: { requestId: randomUUID(), message: 'First' },
+      });
+      const dispatch = {
+        op: 'dispatch-intent' as const,
+        sessionId,
+        turnId: admitted.turnId,
+        invocationId: admitted.invocationId,
+      };
+      await expect(store!.call(dispatch)).rejects.toMatchObject({
+        code: 'SESSION_RECOVERY_REQUIRED',
+      });
+      const providerSessionId = 'thread-' + randomUUID();
+      await store!.call({
+        ...dispatch,
+        op: 'fact',
+        driverSeq: 1,
+        fact: { kind: 'correlation', providerSessionId },
+      });
+      if (cut === 'after-result') {
+        await store!.call(dispatch);
+        await store!.call({
+          op: 'fact',
+          sessionId,
+          turnId: admitted.turnId,
+          invocationId: admitted.invocationId,
+          driverSeq: 2,
+          fact: { kind: 'outcome', outcome: 'completed' },
+        });
+      }
+      await store!.close();
+      store = await openSessionStore({ directory, projectId: 'project' });
+      const resumed = await store.call<StartAdmission>({
+        op: 'start',
+        actor: 'user',
+        sessionId,
+        ...native,
+        input: { requestId: randomUUID(), message: 'Continue' },
+      });
+      expect(resumed.providerContext).toMatchObject({
+        nativeSessionId: providerSessionId,
+        resume: true,
+        scope: 'account',
+      });
+      await expect(
+        store.call({
+          op: 'fact',
+          sessionId,
+          turnId: resumed.turnId,
+          invocationId: resumed.invocationId,
+          driverSeq: 1,
+          fact: { kind: 'correlation', providerSessionId: 'replacement-' + randomUUID() },
+        }),
+      ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+      await store.call({
+        op: 'fact',
+        sessionId,
+        turnId: resumed.turnId,
+        invocationId: resumed.invocationId,
+        driverSeq: 1,
+        fact: { kind: 'correlation', providerSessionId },
+      });
+    },
+  );
   it.each(['expired', 'terminal'] as const)(
     'does not revive %s interaction Work after a late delivery receipt',
     async (state) => {

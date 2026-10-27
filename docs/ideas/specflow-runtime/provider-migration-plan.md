@@ -33,8 +33,9 @@ The product must offer supported native provider modes and default normal task w
 capable of edits/tools. Native collaboration/permission modes and Engine effect scope are distinct
 contracts; modes must not bypass durable writer admission. W1/W2 are now explicitly in the ongoing
 PR scope before enabling writable execution. The UI change is limited to the requested mode choice;
-the broader chat experience remains with the owner. Claude live success/resume remains unverified
-while the account returns quota failures.
+the broader chat experience remains with the owner. The implemented boundary and native mode rules
+are described in [managed agent execution](managed-agent-execution.md). The earlier quota-only live
+checkpoint below is historical; subsequent edit/permission/resume acceptance is tracked separately.
 
 All implementation packages use nevo-agents:implementer (backend), with independent review.
 Exact legacy files are under D:/repos/git/nevo/tools/dashboard; inspected HEAD 10bded58.
@@ -71,12 +72,14 @@ native-context admission/resume. The current implementation covers:
   128 active tools, 4,096 retained event identities; unknown protocol/background/deferred work fails closed;
 - structured interruption and failure, with private native error prose excluded from public errors;
 - literal `client_composed: true` user frames, pure bounded AskUserQuestion mapping, multi-question
-  answers, single/multiple selection checks and refusal of all other permission requests; no permission
-  suggestion or persistent permission update is forwarded;
+  answers and single/multiple selection checks. Read-only refuses writable tool permissions; managed
+  writer profiles support bounded one-shot Edit/Write/Bash decisions. No permission suggestion or
+  persistent permission update is forwarded;
 - preserving an explicitly lost operation as unknown when its transport handle later resolves or rejects.
 
 The observed Tested baseline is Windows Claude Code 2.1.296; compatible unlisted/newer builds run Provisional with
-default personal Pro/Max file OAuth and read-only execution. Runtime fingerprints the binary and checks managed
+default personal Pro/Max file OAuth. Tested evidence covers read-only; new writable mode evidence is
+Provisional. Runtime fingerprints the binary and checks managed
 policy absence and credential-source eligibility before launch. Canonical question cardinality is
 validated before durable response admission. Native identity is independently reserved and fenced by
 workspace and account; uncertain dispatch never falls back to a new conversation.
@@ -84,12 +87,14 @@ workspace and account; uncertain dispatch never falls back to a new conversation
 On 2026-10-26 the real installed transport passed discovery and the production Runtime HTTP
 create/start path. Claude returned the account's weekly quota error (HTTP 429), which is persisted as a
 safe failed Turn with process cleanup and no disposable-workspace changes. Controlled real-process
-HTTP integration proves questions, cancellation and continuation across Runtime restart. Successful
-live answers, native question round trips and semantic live resume remain pending behind that quota.
+HTTP integration proves questions, cancellation and continuation across Runtime restart. This was the
+quota-limited checkpoint, not a statement about every subsequent acceptance run. Explicit opt-in live
+tests now cover native edits, one-operation permissions, exact-turn semantic resume and foreground
+command output; their results must identify the tested implementation rather than inherit this baseline.
 
 See [Claude provider implementation and acceptance](claude-provider.md) for enablement, exact
 build-specific evidence, bounded operation ownership and remaining live gates. Compatible updates
-do not require new hash records; see [the compatibility decision](provider-compatibility.md). Writable effects still require W1/W2 below;
+do not require new hash records; see [the compatibility decision](provider-compatibility.md). Writable effects use the implemented W1/W2 boundary below;
 all remaining work stays inside PR #98.
 
 Verification on implementation commit `aa6314b5`: 29 focused Windows tests passed;
@@ -120,6 +125,11 @@ Use the existing hardening dossier as migration evidence; promote implemented du
 into the relevant current architecture/reference after review, rather than making every idea normative.
 
 ## W1 contract to settle before W2
+
+W1/W2 are implemented in the feature branch: Engine owns durable project-wide claims and checks
+existing Create/Close reservations symmetrically. This does not claim integration with a future
+Documents write/commit-queue branch. When those writers land, they must join the same admission
+boundary before concurrent operation is enabled; a clean textual merge alone is insufficient.
 
 Required public result: Engine verifies environment, inspects effect scope, admits a writer,
 returns a durable claim correlated with Runtime invocation, and reconciles/releases it only from

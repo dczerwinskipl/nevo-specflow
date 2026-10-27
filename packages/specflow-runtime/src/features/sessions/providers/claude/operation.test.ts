@@ -4,8 +4,18 @@ import type { DriverFact } from '../../persistence/protocol';
 import type { Invocation } from '../driver';
 import { validateDriverFact } from '../facts';
 import { createClaudeOperation, type ClaudeProcess } from './operation';
+import { SessionError } from '../../errors';
 
-function fixture(disposition: 'stopped' | 'unknown' = 'stopped', disposeOnCancel = true) {
+function fixture(
+  disposition: 'stopped' | 'unknown' = 'stopped',
+  options: {
+    disposeOnCancel?: boolean;
+    launchDelay?: number;
+    initializeError?: Error;
+    verifyFrame?: (frame: Record<string, unknown>) => void;
+  } = {},
+) {
+  const { disposeOnCancel = true, launchDelay = 0, initializeError } = options;
   const facts: DriverFact[] = [];
   const sent: Record<string, unknown>[] = [];
   const frames: string[] = [];
@@ -77,7 +87,16 @@ function fixture(disposition: 'stopped' | 'unknown' = 'stopped', disposeOnCancel
       return Promise.resolve();
     },
     controller.signal,
-    { launch: () => Promise.resolve(owner), initialize: () => undefined },
+    {
+      launch: () =>
+        launchDelay
+          ? new Promise((resolve) => setTimeout(() => resolve(owner), launchDelay))
+          : Promise.resolve(owner),
+      initialize: () => {
+        if (initializeError) throw initializeError;
+      },
+      verifyFrame: options.verifyFrame,
+    },
   );
   const ready = () =>
     vi.waitFor(() => expect(sent.some((frame) => frame.type === 'user')).toBe(true));
@@ -118,6 +137,58 @@ function fixture(disposition: 'stopped' | 'unknown' = 'stopped', disposeOnCancel
   };
 }
 describe('Claude bidirectional operation', () => {
+  it('verifies native inventory before accepting a host permission or question request', async () => {
+    const verifyFrame = vi.fn(() => {
+      throw new Error('Inventory not verified');
+    });
+    const f = fixture('stopped', { verifyFrame });
+    await f.ready();
+    f.push(f.question());
+    await f.operation.done;
+    expect(verifyFrame).toHaveBeenCalledOnce();
+    expect(f.facts.some((fact) => fact.kind === 'interaction')).toBe(false);
+    expect(f.sent.some((frame) => frame.type === 'control_response')).toBe(false);
+    expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
+  });
+  it.each([true, false])(
+    'preserves only sanitized initialization reasons: %s',
+    async (sanitized) => {
+      const error = sanitized
+        ? new SessionError('MODEL_UNSUPPORTED', 'Requested Claude model is unavailable.')
+        : new Error('Private native credential detail');
+      const f = fixture('stopped', { initializeError: error });
+      await f.operation.done;
+      expect(f.beforeDispatch).not.toHaveBeenCalled();
+      expect(f.facts.at(-1)).toMatchObject({
+        kind: 'outcome',
+        outcome: 'failed',
+        error: {
+          code: sanitized ? 'MODEL_UNSUPPORTED' : 'PROVIDER_UNAVAILABLE',
+          message: sanitized
+            ? 'Requested Claude model is unavailable.'
+            : 'Claude could not initialize the requested operation.',
+        },
+      });
+      expect(JSON.stringify(f.facts)).not.toContain('Private native credential detail');
+    },
+  );
+  it('gives native initialization its own budget after a slow cold launch', async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture('stopped', { launchDelay: 11000 });
+      await vi.advanceTimersByTimeAsync(11000);
+      await f.ready();
+      f.result();
+      await f.operation.done;
+      expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+      expect(await f.operation.settlement).toMatchObject({
+        process: 'stopped',
+        source: 'native-result',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('expires locally admitted answers when a native question group is cancelled before its write', async () => {
     const f = fixture();
     await f.ready();
@@ -280,7 +351,7 @@ describe('Claude bidirectional operation', () => {
     expect(f.facts.some((fact) => fact.kind === 'interaction-expired')).toBe(true);
   });
   it('uses a native interrupt result and settles the tree before publishing cancellation evidence', async () => {
-    const f = fixture('stopped', false);
+    const f = fixture('stopped', { disposeOnCancel: false });
     await f.ready();
     f.controller.abort();
     await vi.waitFor(() =>
@@ -306,7 +377,7 @@ describe('Claude bidirectional operation', () => {
     expect(f.owner.dispose).toHaveBeenCalledOnce();
   });
   it('preserves a completed native result when cancellation races with completion', async () => {
-    const f = fixture('stopped', false);
+    const f = fixture('stopped', { disposeOnCancel: false });
     await f.ready();
     f.result();
     f.controller.abort();

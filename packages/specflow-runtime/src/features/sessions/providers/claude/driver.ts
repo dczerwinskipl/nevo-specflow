@@ -1,6 +1,7 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../../errors';
 import type { SessionDriver, Invocation } from '../driver';
+import { ProviderTimeouts } from '../driver';
 import {
   createInvocationScope,
   launchOwnedProcess,
@@ -102,7 +103,10 @@ export function createClaudeDriver(
   }
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
-      const boundedSignal = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
+      const boundedSignal = AbortSignal.any([
+        signal,
+        AbortSignal.timeout(ProviderTimeouts.discoveryMs),
+      ]);
       try {
         for (let attempt = 0; attempt < 2; attempt++) {
           const installation = await inspect(boundedSignal);
@@ -277,7 +281,7 @@ export function createClaudeDriver(
     describe: () => structuredClone(descriptor),
     refresh,
     contextScope: () => scope,
-    async validate(selection, signal = AbortSignal.timeout(10000)) {
+    async validate(selection, signal = AbortSignal.timeout(ProviderTimeouts.discoveryMs)) {
       if (selection.providerId !== 'claude')
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Claude provider identity is required.');
       if (selection.mode === 'workspace-write' && !options.managedWrites)

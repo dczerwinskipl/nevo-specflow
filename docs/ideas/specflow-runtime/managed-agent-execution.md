@@ -118,6 +118,20 @@ receipt without sending native input. Missing output is explicitly reported, nev
 Cancellation attempts native interrupt first, with a bounded forced-stop fallback. Forced stop
 without a native result retains an unknown claim and does not establish semantic resume safety.
 
+Provider-emitted thinking text is retained as reasoning Work/content. This does not expose or invent
+reasoning withheld by the provider. Native `system/thinking_tokens` frames contain approximate numeric
+progress rather than text or billed usage. They are validated and ignored before the bounded UUID
+ledger; final native usage remains authoritative. Foreground `tool_progress` is similarly metadata:
+its optional task-output ID does not itself establish background execution or completion. Unsupported
+subagent progress remains refused by the current tool profile.
+
+Discovery/launch has a bounded 30-second budget; native initialization receives its own 10 seconds
+after process launch. Cold policy inspection has five seconds and distinguishes an unavailable
+inspection from an observed policy. Only a positive absence marker admits the supported profile.
+
+Provider-assigned contexts (needed by Codex) bind their actual identity durably before dispatch.
+Restart resumes that exact identity; a reservation placeholder never becomes a replacement thread.
+
 Startup walks bounded candidate pages, advancing even past unknown cases. For the SQLite-only cut,
 recovery requires matching current workspace incarnation and undispatched native context, then
 durably admits and abandons the same intent through Engine locking. An absent file alone cannot

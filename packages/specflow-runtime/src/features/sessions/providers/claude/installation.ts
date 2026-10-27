@@ -5,7 +5,7 @@ import { join, resolve, isAbsolute } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
 
-import { inspectClaudeRegistry } from './registry';
+import { inspectClaudeRegistryPolicy } from './registry';
 
 interface Files {
   stat(path: string): Promise<{
@@ -34,7 +34,7 @@ const files: Files = {
 function unavailable(): never {
   throw new SessionError(
     'PROVIDER_UNAVAILABLE',
-    'Claude installation, authentication source or managed policy is outside the supported read-only configuration.',
+    'Claude installation, authentication source or managed policy is outside the supported configuration.',
   );
 }
 function record(value: unknown): Record<string, unknown> {
@@ -136,8 +136,17 @@ export async function inspectClaudeInstallation(
       resolve(options.workspace, '/home/claude/.claude/remote/.oauth_token'),
     ])
       await absent(path);
-    if (!(await (dependencies.registryAbsent?.() ?? inspectClaudeRegistry(options.environment))))
-      unavailable();
+    if (dependencies.registryAbsent) {
+      if (!(await dependencies.registryAbsent())) unavailable();
+    } else {
+      const policy = await inspectClaudeRegistryPolicy(options.environment);
+      if (policy === 'unavailable')
+        throw new SessionError(
+          'PROVIDER_UNAVAILABLE',
+          'Claude machine policy inspection could not complete.',
+        );
+      if (policy !== 'absent') unavailable();
+    }
     const config = await json(join(home, '.claude.json'));
     if (config.primaryApiKey != null && config.primaryApiKey !== '') unavailable();
     if (record(config.cachedGrowthBookFeatures ?? {}).tengu_windows_credman === true) unavailable();

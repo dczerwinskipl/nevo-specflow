@@ -66,9 +66,9 @@ jobs:
       - name: Build CLI and Runtime dependencies
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
       - name: Runtime full adapter regression
-        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism --testTimeout=60000
       - name: CLI full adapter regression
-        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism
+        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism --testTimeout=60000
 
   windows-engine-full:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full-platform')

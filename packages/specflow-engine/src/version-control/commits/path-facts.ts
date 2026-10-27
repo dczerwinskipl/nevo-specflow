@@ -13,8 +13,11 @@ export const READ_CHUNK_CHARS = 12_000;
 /** Runs one read-only Git command in a checkout (`executeGit` in production, a fake in unit tests). */
 export type GitReader = (root: string, args: readonly string[]) => Promise<GitCommandResult>;
 
-/** What a working-tree entry is: nothing, a regular file (or symlink) Git can hash, or anything else. */
-export type WorkingEntry = 'absent' | 'file' | 'other';
+/**
+ * What a working-tree entry is: nothing, a regular file, a symbolic link (Git would record mode
+ * 120000, never a document), or anything else.
+ */
+export type WorkingEntry = 'absent' | 'file' | 'symlink' | 'other';
 
 export interface PathFactsDeps {
   readonly run: GitReader;
@@ -115,19 +118,27 @@ export async function readPathFacts(
     }
     for (const record of listed.stdout.split('\0').filter(Boolean)) {
       const tab = record.indexOf('\t');
-      const [, type, id] = record.slice(0, tab).split(' ');
+      const [mode, type, id] = record.slice(0, tab).split(' ');
       const name = record.slice(tab + 1);
       if (!head.has(name)) continue;
-      if (type === 'blob' && id !== undefined && OBJECT_ID.test(id)) head.set(name, id);
+      // A committed symbolic link (mode 120000) is a blob but never a document: its mode is checked, not only its id.
+      if (mode === '120000') head.set(name, nonBlobState('committed-symlink'));
+      else if (type === 'blob' && id !== undefined && OBJECT_ID.test(id)) head.set(name, id);
       else head.set(name, nonBlobState('tree'));
     }
   }
 
   return paths.map((path) => ({
     path,
-    working: kinds.get(path) === 'other' ? nonBlobState('directory') : (working.get(path) ?? null),
+    working: workingState(kinds.get(path), working.get(path)),
     head: head.get(path) ?? null,
   }));
+}
+
+function workingState(kind: WorkingEntry | undefined, id: string | undefined): string | null {
+  if (kind === 'other') return nonBlobState('directory');
+  if (kind === 'symlink') return nonBlobState('symlink');
+  return id ?? null;
 }
 
 function defaultEntry(
@@ -137,7 +148,7 @@ function defaultEntry(
   return async (absolutePath) => {
     try {
       const stats = await lstat(absolutePath);
-      return stats.isFile() || stats.isSymbolicLink() ? 'file' : 'other';
+      return stats.isSymbolicLink() ? 'symlink' : stats.isFile() ? 'file' : 'other';
     } catch (error) {
       if (
         typeof error === 'object' &&

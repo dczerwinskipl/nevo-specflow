@@ -37,7 +37,7 @@ export type BlobState = string | null;
 const NON_BLOB_PREFIX = 'non-blob:';
 
 /** A state for a path that holds something other than a document file; it equals no blob id. */
-export function nonBlobState(what: 'tree' | 'directory'): string {
+export function nonBlobState(what: 'tree' | 'directory' | 'symlink' | 'committed-symlink'): string {
   return NON_BLOB_PREFIX + what;
 }
 

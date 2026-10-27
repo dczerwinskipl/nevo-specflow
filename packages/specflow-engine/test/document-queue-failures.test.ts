@@ -3,12 +3,12 @@
 // abandon and recover, the evidence that resolves an uncertain outcome, rewritten history, a project
 // whose Git was turned off, a checkout that is gone, and a queue that dead operations do not fill.
 import { randomUUID } from 'node:crypto';
-import { rm, writeFile } from 'node:fs/promises';
+import { rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS } from './support/platform';
+import { SLOW_GIT_TEST_TIMEOUT_MS, symlinksAvailable } from './support/platform';
 
 import { GitCapabilityError } from '../src/git/errors';
 import { sha256Hex } from '../src/hash';
@@ -39,6 +39,7 @@ import {
 } from './support/document-writes';
 import {
   clockAfterBackoff,
+  commitCount,
   committedPaths,
   currentNotes,
   editNotesByHand,
@@ -199,6 +200,27 @@ describe('permanent failures', () => {
     const results = await settleQueue(project);
     expect(results[0]).toMatchObject({ status: 'committed', operationIds: [other] });
   });
+
+  it.skipIf(!symlinksAvailable)(
+    'never commits a symbolic link swapped in for a queued document with the same content',
+    async () => {
+      const project = await queueProject();
+      await queueSave(project, 1, 'will be swapped\n');
+      // The path now is a link to a file that holds exactly the planned bytes.
+      await writeFile(join(project.root, 'same-content.md'), 'will be swapped\n');
+      await rm(join(project.dir, notesPath(1)));
+      await symlink(join(project.root, 'same-content.md'), join(project.dir, notesPath(1)));
+      const before = commitCount(project);
+
+      expect(await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH)).toMatchObject({
+        status: 'failed',
+        reason: 'content-changed',
+      });
+
+      expect(commitCount(project)).toBe(before);
+      expect(git(project.root, 'ls-tree', 'HEAD', '--', specPath(1))).not.toContain('120000');
+    },
+  );
 
   it('lets dead operations wait without filling the queue of 200', async () => {
     const project = await queueProject();

@@ -1,5 +1,15 @@
 import { mkdirSync, mkdtempSync, readdirSync, symlinkSync } from 'node:fs';
-import { chmod, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  mkdir,
+  readFile,
+  truncate,
+  readdir,
+  realpath,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
@@ -18,6 +28,7 @@ import {
   ensureParentDirectories,
   nodeDocumentFileOps,
   observePath,
+  readFileBytes,
   isStageFileOf,
   removeStageFiles,
   stagedFileName,
@@ -72,6 +83,16 @@ describe('observePath and dispositionOf', () => {
     expect(await observePath(nodeDocumentFileOps, specDir, 'a.md')).toEqual(state('abc'));
     expect(await observePath(nodeDocumentFileOps, specDir, 'nope.md')).toBeNull();
     expect(await observePath(nodeDocumentFileOps, specDir, 'dir')).toBe(NOT_REGULAR);
+  });
+
+  it('refuses to read a moved file over the raw content limit before allocating it', async () => {
+    await writeFile(join(specDir, 'big.md'), '');
+    await truncate(join(specDir, 'big.md'), 26 * 1024 * 1024);
+    await writeFile(join(specDir, 'small.md'), 'abc');
+    await expect(readFileBytes(nodeDocumentFileOps, specDir, 'big.md')).rejects.toMatchObject({
+      code: 'DOCUMENT_TOO_LARGE',
+    });
+    expect((await readFileBytes(nodeDocumentFileOps, specDir, 'small.md'))?.toString()).toBe('abc');
   });
 
   it('judges post before pre and anything else foreign', () => {

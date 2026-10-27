@@ -15,7 +15,9 @@ import {
   withOpenFile,
   type VerifiedFs,
 } from '../../document-rules/verified-file';
+import { documentChangeError } from '../changes/errors';
 import type { FileState, PlannedPath } from '../changes/plan/model';
+import { RAW_CONTENT_MAX_BYTES } from '../limits';
 import { DOCUMENT_TEMP_NAME_LENGTH } from './path-bound';
 
 const HASH_CHUNK_BYTES = 256 * 1024;
@@ -107,13 +109,18 @@ export async function observePath(
   return outcome.value;
 }
 
-/** The whole file as bytes; used for the bytes a move carries from its origin. */
+/**
+ * The whole file as bytes; used for the bytes a move carries from its origin. A file over the raw
+ * content limit is refused (`DOCUMENT_TOO_LARGE`) before any of it is allocated.
+ */
 export async function readFileBytes(
   ops: DocumentFileOps,
   specDir: string,
   relativePath: string,
 ): Promise<Buffer | undefined> {
+  const tooLarge = () => documentChangeError('too-large', 'The document to move is too large.');
   const outcome = await withOpenFile(ops.verified, specDir, relativePath, async (open) => {
+    if (open.stat.size > BigInt(RAW_CONTENT_MAX_BYTES)) throw tooLarge();
     const parts: Buffer[] = [];
     let position = 0;
     for (;;) {
@@ -121,6 +128,7 @@ export async function readFileBytes(
       if (chunk.length === 0) break;
       parts.push(chunk);
       position += chunk.length;
+      if (position > RAW_CONTENT_MAX_BYTES) throw tooLarge();
     }
     return Buffer.concat(parts);
   });

@@ -52,6 +52,20 @@ describe('closureOf', () => {
   });
 });
 
+describe('closureOf with forgotten operation ids', () => {
+  it('returns the whole scope when an entry kept fewer ids than operations', () => {
+    const truncated = { ...entry('a.md', ['op-51']), operationCount: 51 };
+    const entries = [truncated, entry('b.md', ['op-51']), entry('c.md', ['op-9'])];
+    expect(closureOf(entries, ['c.md'])).toEqual(['a.md', 'b.md', 'c.md']);
+    expect(selectEntries(entries, ['c.md'])).toEqual({
+      ok: false,
+      kind: 'not-closed',
+      paths: ['a.md', 'b.md', 'c.md'],
+    });
+    expect(selectEntries(entries, ['a.md', 'b.md', 'c.md'])).toMatchObject({ ok: true });
+  });
+});
+
 describe('selectEntries', () => {
   const entries = [
     entry('a.md', ['op-1']),

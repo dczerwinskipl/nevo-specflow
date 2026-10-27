@@ -265,6 +265,30 @@ describe('the subset of a manual commit', () => {
     expect(await ledgerPaths(project)).toEqual([specPath(3)]);
   });
 
+  it('refuses a partial subset once a path forgot older operation ids, and takes the whole scope', async () => {
+    const project = await manualModeProject();
+    await saveAllUncommitted(
+      project,
+      new Map([
+        [1, 'one\n'],
+        [2, 'two\n'],
+      ]),
+    );
+    // 50 later saves of notes-2 push the shared operation out of its newest-50 ids.
+    for (let round = 0; round < 50; round += 1) await saveUncommitted(project, 2, `two ${round}\n`);
+    const before = headCount(project);
+
+    const refused = await refusal(commitUncommitted(project, { paths: [specPath(1)] }));
+
+    expect(refused.code).toBe('MANUAL_COMMIT_SUBSET_INVALID');
+    expect(refused.details).toMatchObject({ paths: [specPath(1), specPath(2)] });
+    expect(headCount(project)).toBe(before);
+
+    const all = await commitUncommitted(project, { paths: [specPath(1), specPath(2)] });
+    expect(all.paths).toEqual([specPath(1), specPath(2)]);
+    expect(await ledgerPaths(project)).toEqual([]);
+  });
+
   it('refuses a path that is not an uncommitted path of the scope', async () => {
     const project = await manualModeProject();
     await saveUncommitted(project, 1, 'one\n');

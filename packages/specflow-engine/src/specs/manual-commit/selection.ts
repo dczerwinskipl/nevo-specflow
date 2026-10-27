@@ -50,11 +50,19 @@ export function revisionOfScope(
 /**
  * The paths that must travel together with `seed`: an operation's file and its registry change are
  * never split, so every path that shares an operation id with a selected path is selected too, and
- * so on transitively. Sorted. Entries keep at most their newest 50 operation ids; an older shared id
- * is not seen (the ledger itself no longer remembers it).
+ * so on transitively. Sorted. Entries keep at most their newest 50 operation ids, so an entry whose
+ * `operationCount` exceeds its ids has forgotten operations that may have touched other paths. When
+ * any entry of the scope is truncated that way, closure cannot be proven for a partial selection and
+ * the whole scope is returned (committing everything never splits an operation).
  */
 export function closureOf(entries: readonly ScopeEntry[], seed: Iterable<string>): string[] {
   const selected = new Set(seed);
+  if (
+    selected.size > 0 &&
+    entries.some((entry) => entry.operationCount > entry.operationIds.length)
+  ) {
+    return entries.map((entry) => entry.path).sort();
+  }
   const byOperation = new Map<string, string[]>();
   for (const entry of entries) {
     for (const id of entry.operationIds) {

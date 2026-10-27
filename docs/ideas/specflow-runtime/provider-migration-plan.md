@@ -26,6 +26,12 @@ This is the rest of the migration program, not part of Plan 04's mock acceptance
 import/backwards compatibility. IDs, lifecycle, storage and APIs are consumed unchanged from the
 foundation; an adapter must not grow a second Session model.
 
+The owner-approved closing scope of PR #98 is the independent Session foundation,
+Engine-managed execution, Claude/Codex adapters, native modes and basic external
+CLI sign-in/recheck. Antigravity execution, continuous credential renewal during
+an active Turn, ConnectedConsistency stability and broader UX are separate
+follow-ups. They do not block acceptance of the delivered Claude/Codex scope.
+
 ## Work packages
 
 Owner follow-up after architecture acceptance: read-only is a test stage, not the product default.
@@ -50,9 +56,10 @@ Exact legacy files are under D:/repos/git/nevo/tools/dashboard; inspected HEAD 1
 | W1 managed effect contract | Engine public admission/claim/settlement operations for an ad-hoc writer even without Task, cross-process exclusion with D4/Create/Close                                       | Owner is Engine integration; must reuse current durable resource algebra, never add Runtime-only locks                                                      |
 | W2 writable dispatch       | Runtime durable intent -> Engine claim -> provider correlation -> settlement; uncertain effects retain claim and block conflicting writer; no automatic workflow finish        | W1 + chosen real adapter; real crash-cut and competing process tests required                                                                               |
 
-The owner requires one feature branch and one PR (#98) for this migration. The packages above
-are implementation/review stages inside that PR, not separate pull requests. The temporary P1
-PR #99 is closed and its commits are included in #98. Do not start provider writable work on the premise that E3/E5 plans already
+The delivered foundation, P1/P2/P3 and W1/W2 share one feature branch and PR #98.
+The temporary P1 PR #99 is closed and its commits are included in #98. Remaining
+packages are follow-up features rather than further expansion of #98. Do not
+start provider writable work on the premise that E3/E5 plans already
 expose implemented public APIs. W1 is a separately accepted shared capability and a real external
 prerequisite, not a fake depends_on edge within Plan 04. Full Task workflow/batch remains E3/E5.
 
@@ -98,7 +105,8 @@ the test runner, under the [manual provider check policy](provider-manual-checks
 See [Claude provider implementation and acceptance](claude-provider.md) for enablement, exact
 build-specific evidence, bounded operation ownership and remaining live gates. Compatible updates
 do not require new hash records; see [the compatibility decision](provider-compatibility.md). Writable effects use the implemented W1/W2 boundary below;
-all remaining work stays inside PR #98.
+the completed Claude/Codex scope stays in PR #98, while the remaining packages
+follow the closing scope above.
 
 Verification on implementation commit `aa6314b5`: 29 focused Windows tests passed;
 independent re-review found no remaining concrete blocker in this normalization slice.

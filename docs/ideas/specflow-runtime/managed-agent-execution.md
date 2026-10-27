@@ -22,8 +22,10 @@ related:
 
 The owner explicitly requires an agent capable of edits/tools as the normal task default.
 Read-only remains useful for tests and optional discussion/planning, not the final product default.
-This supersedes the earlier restriction of W1/W2 to a future PR. Everything remains in PR #98;
-broader UX stays with the owner, except for the requested mode selection.
+This supersedes the earlier restriction of W1/W2 to a future PR. W1/W2 and writable
+Claude/Codex are delivered together in PR #98. Antigravity and continuous in-flight
+credential renewal are separate follow-ups; broader UX stays with the owner,
+except for the requested mode selection.
 
 ## Native provider modes
 

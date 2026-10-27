@@ -45,15 +45,24 @@ sessions:
 The Runtime receives its workspace and Session storage from the verified Engine project context.
 Provider flags do not have a local-config override. Disabled Claude does not inspect login or launch
 a process. Enabling an unsupported installation leaves the provider unavailable; the Runtime and
-other providers remain usable. Discovery is cached for at most 30 seconds and is bounded to 10
-seconds; ordinary chat snapshots do not launch subprocesses. Startup warms discovery for existing
+other providers remain usable. Discovery is cached for at most 30 seconds and has a 30-second
+overall budget, with bounded protocol initialization; ordinary chat snapshots do not launch
+subprocesses. Startup warms discovery for existing
 chat reloads. Model IDs, labels and effort choices come from native initialization, not a static list.
 
-The supported configuration remains Windows native Claude, default first-party personal Pro/Max
-OAuth file login and read-only execution. Claude 2.1.296 is the observed Tested baseline; a different
+The supported configuration is Windows x64 native Claude with default first-party personal Pro/Max
+OAuth file login. Native `plan` is read-only; `acceptEdits` (the writable default), `auto`, `manual`
+and `dontAsk` use Engine-managed workspace-write admission. Claude 2.1.296 is the observed Tested
+read-only baseline; writable profiles remain Provisional. A different
 hash, newer release or new major may run Provisional when local protocol/execution checks pass.
-Linux/macOS, Team/Enterprise, API keys, profiles/gateways, alternate auth directories and writable
-execution remain outside the implemented configuration. Unknown hashes alone never deny execution.
+Linux/macOS, Team/Enterprise, API keys, profiles/gateways and alternate auth directories remain
+outside the implemented configuration. Unknown hashes alone never deny execution.
+
+Expired/rejected login is exposed as `authenticationRequired`. The operator signs in through
+the original CLI and explicitly rechecks availability. Recheck never sends or replays a Turn.
+Credential rotation invalidates discovery while preserving account/workspace affinity; late
+errors from an old operation do not reject a newer verified login. Unknown executions retain
+their recovery state and Engine claim.
 
 ## Prelaunch policy checks
 
@@ -98,8 +107,10 @@ prevents duplicate dispatch. Correlation must match the reserved ID. Confirmed c
 in the same workspace/account after reload/restart. An unconfirmed possible dispatch cannot be
 replayed as a new conversation. Neither native IDs nor the account binding are exposed in snapshots.
 
-Arguments fix safe/restricted mode, plan permissions, explicit read tools, no external MCP, no settings
-sources, disabled hooks/slash commands and host permissions over stdio. User frames are explicitly
+Arguments fix safe/restricted mode, the selected native permission mode, an explicit tool inventory,
+no external MCP, no settings sources, disabled hooks/slash commands and host permissions over stdio.
+Plan exposes Read/Glob/Grep/AskUserQuestion; managed writers additionally expose Edit/Write/Bash.
+User frames are explicitly
 `client_composed: true`, suppressing native path-mention/slash-command interpretation. Native init
 checks version, cwd, mode, tool inventory and absence of MCP. Only the three observed plugins bundled
 in the pinned executable (agents-md, telemetry, plugin-authoring) are accepted, with exact builtin
@@ -114,8 +125,10 @@ native private transcript/cache writes needed for continuation are allowed.
 The reader continues while questions wait. One native AskUserQuestion request maps to at most four
 canonical questions; pending questions, control identities and serialized stdin writes have explicit
 bounds. Canonical `maxSelections` is checked before durable response admission. Native cancellation
-expires the relevant interaction without sending a stale answer. All non-question permission requests
-are denied, and permission suggestions/updates are never forwarded. Unknown control protocol fails
+expires the relevant interaction without sending a stale answer. Read-only rejects writable
+permissions; managed writer profiles support bounded one-operation Edit/Write/Bash decisions.
+Unsupported requests are refused, and permission suggestions/persistent updates are never forwarded.
+Unknown control protocol fails
 closed. No silence timeout is applied while waiting for user input or a model/tool response.
 
 Terminal facts are held until the shared process owner has stopped the process tree. A protocol
@@ -135,12 +148,12 @@ questions/cancellation and private context persistence. A controlled real Node c
 the production driver, process owner, SQLite Worker and HTTP proves question response validation,
 cancel/settle, Runtime restart and exact-context continuation without workspace writes.
 
-On 2026-10-26 the installed native CLI passed prelaunch checks, initialized 13 native models and was
+At the historical quota-limited checkpoint on 2026-10-26, the installed native CLI passed prelaunch
+checks, initialized 13 native models and was
 called through the production Runtime HTTP path: create returned 201 and start returned 202. The
 native account returned a weekly quota error (HTTP 429); the Turn persisted as failed, process cleanup
-completed, and the disposable workspace remained empty. No successful live model response, native
-AskUserQuestion round trip or live semantic resume is claimed while that account limit blocks them.
-That paragraph records the historical quota-limited checkpoint. Later explicitly
+completed, and the disposable workspace remained empty. That checkpoint did not prove a successful
+model answer or semantic resume. Later explicitly
 invoked checks on `9dd7c10a` passed real Write, foreground Bash and semantic resume
 in `acceptEdits` and `manual` modes (two profiles, six native Turns). Native
 AskUserQuestion and real cancellation were not established by those checks.
@@ -151,7 +164,7 @@ they do not require a personal login or subscription. Further native checks are
 short manual activities under the [manual provider check policy](provider-manual-checks.md).
 The controlled transport tests remain distinct from native acceptance evidence.
 
-Verification on final implementation `eb2879eb`:
+Historical normalization verification on `eb2879eb`:
 
 - Linux Runtime build/typecheck and all **785 tests** passed (100 files).
 - The broader build/typecheck and package run on `5758588d` passed: contracts 188, HTTP client 26,
@@ -165,5 +178,8 @@ Verification on final implementation `eb2879eb`:
   review and 13 targeted tests in the safe-error follow-up. The minor authentication readiness
   classification finding was corrected before final validation.
 
-Writable effects and document mutations still require the separate Engine effect-admission contract.
-Codex, Antigravity and product associations remain later stages in the same feature PR #98.
+The current delivery includes implemented Engine effect admission and writable Claude/Codex in
+PR #98. [Codex](codex-provider.md) records its separate native resume evidence and authentication
+limits. Antigravity, continuous in-flight credential renewal, broader product associations and UX
+are follow-up scopes, not additional requirements for accepting this PR. Integration with future
+Documents writers must still use the same Engine admission boundary.

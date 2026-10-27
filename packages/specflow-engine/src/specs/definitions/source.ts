@@ -105,6 +105,8 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
   async function checkDirectory(path: string): Promise<'ok' | 'absent' | 'unsafe' | 'unreadable'> {
     const full = join(root, ...pathSegments(path));
     try {
+      const rootStat = await lstat(root, { bigint: true });
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return 'unsafe';
       const stat = await lstat(full, { bigint: true });
       if (!stat.isDirectory() || stat.isSymbolicLink()) return 'unsafe';
       const expected = join(await realpath(root), ...pathSegments(path));

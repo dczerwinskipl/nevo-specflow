@@ -43,7 +43,11 @@ describe('Session coordinator', () => {
       const { sessionId } = await setup(execution, undefined, (store) => ({
         ...store,
         call(command) {
-          if (command.op === 'fact' && command.fact.kind === 'outcome') {
+          if (
+            command.op === 'fact' &&
+            command.fact.kind === 'outcome' &&
+            command.fact.outcome === 'completed'
+          ) {
             receipts.push(JSON.stringify(command));
             if (receipts.length === 1) {
               const reject = () =>
@@ -61,6 +65,9 @@ describe('Session coordinator', () => {
           'completed',
         ),
       );
+      // A committed outcome can be visible before the deliberately lost ACK
+      // has triggered its bounded retry. Observe that separate boundary too.
+      await vi.waitFor(() => expect(receipts).toHaveLength(2));
       expect(receipts[1]).toBe(receipts[0]);
       expect(execution).toHaveBeenCalledTimes(1);
       expect(await runtime!.start('actor', sessionId, input)).toEqual(admitted);

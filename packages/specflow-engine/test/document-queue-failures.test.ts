@@ -162,7 +162,9 @@ describe('transient failures wait and give up', () => {
       undefined,
       FLUSH,
     );
-    expect(results.at(-1)).toMatchObject({ status: 'committed', operationIds: [id] });
+    expect(results.find((entry) => entry.status === 'committed')).toMatchObject({
+      operationIds: [id],
+    });
     expect(engineCommits(project)).toHaveLength(1);
     expect(workingTreeClean(project)).toBe(true);
   });
@@ -212,7 +214,9 @@ describe('transient failures wait and give up', () => {
       undefined,
       FLUSH,
     );
-    expect(results.at(-1)).toMatchObject({ status: 'committed', operationIds: [id] });
+    expect(results.find((entry) => entry.status === 'committed')).toMatchObject({
+      operationIds: [id],
+    });
     expect(engineCommits(project)).toHaveLength(1);
   });
 

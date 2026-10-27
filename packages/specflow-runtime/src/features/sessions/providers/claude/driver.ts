@@ -18,6 +18,7 @@ import { admitProvider } from '../compatibility/admission';
 import { probeClaude, ClaudeProbeError } from './probe';
 import { claudeArguments, claudeModels, verifyClaudeInit, claudeVersion } from './discovery';
 import { claudeMode, claudeModes } from './modes';
+import { createProviderAuthentication } from '../authentication';
 
 export function createClaudeDriver(
   options: {
@@ -65,10 +66,13 @@ export function createClaudeDriver(
     ((signal: AbortSignal) => inspectClaudeInstallation({ ...options, environment, signal }));
   const probe = dependencies.probe ?? probeClaude;
   let checkedFingerprint = '';
-  let checkedAuthentication = '';
-  let rejectedAuthentication = '';
+  const authentication = createProviderAuthentication();
   const modeModels = new Map<string, ProviderDescriptor['models']>();
-  function invalidate(error?: unknown, authenticationFingerprint = checkedAuthentication) {
+  function invalidate(
+    error?: unknown,
+    authenticationFingerprint?: string,
+    source: 'discovery' | 'operation' = 'discovery',
+  ) {
     if (!error && descriptor.compatibility?.classification === 'unsupported') return;
     const reasonCode =
       error instanceof ClaudeProbeError
@@ -79,8 +83,8 @@ export function createClaudeDriver(
             ? 'INSTALLATION_UNAVAILABLE'
             : 'PROBE_FAILED';
     if (reasonCode === 'AUTHENTICATION_REQUIRED' && authenticationFingerprint) {
-      rejectedAuthentication = authenticationFingerprint;
-      if (checkedAuthentication && authenticationFingerprint !== checkedAuthentication) return;
+      const current = authentication.reject(authenticationFingerprint);
+      if (source === 'operation' && !current) return;
     }
     checkedAt = 0;
     scope = '';
@@ -107,23 +111,28 @@ export function createClaudeDriver(
         protocolProfile: 'claude-stream-json-v1',
       };
   }
+  function requireAuthentication(fingerprint: string) {
+    if (!authentication.isRejected(fingerprint)) return;
+    const error = new SessionError(
+      'PROVIDER_AUTH_REQUIRED',
+      'Sign in again using the Claude CLI, then recheck provider availability.',
+    );
+    invalidate(error, fingerprint);
+    throw error;
+  }
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
       const boundedSignal = AbortSignal.any([
         signal,
         AbortSignal.timeout(ProviderTimeouts.discoveryMs),
       ]);
+      let inspectedAuthentication: string | undefined;
       try {
         for (let attempt = 0; attempt < 2; attempt++) {
+          inspectedAuthentication = undefined;
           const installation = await inspect(boundedSignal);
-          if (
-            rejectedAuthentication &&
-            installation.authenticationFingerprint === rejectedAuthentication
-          )
-            throw new SessionError(
-              'PROVIDER_AUTH_REQUIRED',
-              'Sign in again using the Claude CLI, then recheck provider availability.',
-            );
+          inspectedAuthentication = installation.authenticationFingerprint;
+          requireAuthentication(installation.authenticationFingerprint);
           if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
             return structuredClone(descriptor);
           const identity = { ...installation, providerId: 'claude' };
@@ -141,6 +150,7 @@ export function createClaudeDriver(
             ['plan', result.models],
           ]);
           const providerModes: NonNullable<ProviderDescriptor['providerModes']> = [];
+          let authenticationFailure: SessionError | undefined;
           // At most two CLI probes run together; avoid serial startup latency
           // while retaining a fixed process bound and deterministic catalogue order.
           for (let offset = 0; offset < claudeModes.length; offset += 2) {
@@ -187,7 +197,9 @@ export function createClaudeDriver(
                           'Native mode admission failed.',
                         );
                       available.set(mode.modeId, native.models);
-                    } catch {
+                    } catch (error) {
+                      if (error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED')
+                        authenticationFailure = error;
                       reason = 'The installed Claude could not initialize this native mode.';
                     }
                   }
@@ -200,10 +212,13 @@ export function createClaudeDriver(
                 };
               }),
             );
+            if (authenticationFailure) throw authenticationFailure;
             providerModes.push(...checkedModes);
           }
+          inspectedAuthentication = undefined;
           const after = await inspect(boundedSignal);
           if (after.fingerprint !== installation.fingerprint) continue;
+          requireAuthentication(installation.authenticationFingerprint);
           const compatibility = classifyProviderInstallation({ ...identity, ...result });
           const admission = admitProvider(compatibility, {
             configured: true,
@@ -232,7 +247,7 @@ export function createClaudeDriver(
           delete descriptor.reason;
           delete descriptor.reasonCode;
           checkedFingerprint = installation.fingerprint;
-          checkedAuthentication = installation.authenticationFingerprint;
+          authentication.verified(installation.authenticationFingerprint);
           checkedAt = Date.now();
           scope = installation.accountScope;
           return structuredClone(descriptor);
@@ -242,7 +257,7 @@ export function createClaudeDriver(
           'Claude installation changed repeatedly during its compatibility probe.',
         );
       } catch (error) {
-        invalidate(error);
+        invalidate(error, inspectedAuthentication);
         return structuredClone(descriptor);
       }
     })();
@@ -266,8 +281,10 @@ export function createClaudeDriver(
         invalidate(error);
         throw error;
       });
-      if (installation.fingerprint === checkedFingerprint && installation.accountScope === scope)
+      if (installation.fingerprint === checkedFingerprint && installation.accountScope === scope) {
+        requireAuthentication(installation.authenticationFingerprint);
         return installation;
+      }
     }
     invalidate();
     throw new SessionError(
@@ -328,8 +345,21 @@ export function createClaudeDriver(
       let expectedVersion: string | undefined;
       let launchFingerprint: string | undefined;
       let launchAuthentication: string | undefined;
+      let dispatched = false;
+      const beforeDispatch = invocation.beforeDispatch;
       return createClaudeOperation(
-        invocation,
+        {
+          ...invocation,
+          ...(beforeDispatch
+            ? {
+                beforeDispatch: async () => {
+                  await beforeDispatch();
+                  if (launchAuthentication) requireAuthentication(launchAuthentication);
+                  dispatched = true;
+                },
+              }
+            : {}),
+        },
         async (fact) => {
           if (
             fact.kind === 'lost' ||
@@ -346,7 +376,8 @@ export function createClaudeDriver(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
                 ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
                 : undefined,
-              launchAuthentication,
+              dispatched ? launchAuthentication : undefined,
+              dispatched ? 'operation' : 'discovery',
             );
           await emit(fact);
         },
@@ -403,6 +434,7 @@ export function createClaudeDriver(
                 'SESSION_RECOVERY_REQUIRED',
                 'Claude installation changed before dispatch.',
               );
+            requireAuthentication(current.authenticationFingerprint);
             expectedVersion = claudeVersion(payload);
           },
           verifyFrame(frame) {

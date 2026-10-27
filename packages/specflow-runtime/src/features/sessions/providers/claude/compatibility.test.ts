@@ -6,6 +6,7 @@ import { ClaudeProbeError, type probeClaude } from './probe';
 import { bundledClaudeBuild } from '../compatibility/catalogue';
 import type { inspectClaudeInstallation } from './installation';
 import type { DriverFact } from '../../persistence/protocol';
+import { SessionError } from '../../errors';
 
 const boundary = vi.hoisted(() => ({
   allocate: vi.fn(() => Promise.reject(new Error('Unexpected invocation allocation'))),
@@ -77,6 +78,18 @@ it('discovers native writable modes independently and uses the native default mo
     f.driver.validate({ providerId: 'claude', mode: 'read-only', providerModeId: 'acceptEdits' }),
   ).rejects.toThrow('matching effect authority');
   expect(f.probe).toHaveBeenCalledTimes(5);
+});
+it('requires external login when a writable-mode probe rejects authentication after Plan initialized', async () => {
+  const f = fixture(true);
+  f.probe.mockImplementation(({ selection }) =>
+    selection
+      ? Promise.reject(new SessionError('PROVIDER_AUTH_REQUIRED', 'External login expired'))
+      : Promise.resolve({ models, version: '2.1.296' }),
+  );
+  expect(await f.driver.refresh!(new AbortController().signal)).toMatchObject({
+    readiness: 'authenticationRequired',
+    reasonCode: 'AUTHENTICATION_REQUIRED',
+  });
 });
 afterEach(() => {
   vi.useRealTimers();

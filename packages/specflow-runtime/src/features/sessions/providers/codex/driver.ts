@@ -12,6 +12,7 @@ import { probeCodex } from './probe';
 import { codexMode, codexModes } from './modes';
 import { CodexRpcError } from './rpc';
 import { createCodexOperation } from './operation';
+import { createProviderAuthentication } from '../authentication';
 
 export function createCodexDriver(
   options: {
@@ -49,13 +50,16 @@ export function createCodexDriver(
     checkedFingerprint = '',
     scope = '';
   let discovery: Promise<ProviderDescriptor> | undefined;
-  let checkedAuthentication = '';
-  let rejectedAuthentication = '';
-  function invalidate(error?: unknown, authenticationFingerprint = checkedAuthentication) {
-    const authentication = error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED';
-    if (authentication && authenticationFingerprint) {
-      rejectedAuthentication = authenticationFingerprint;
-      if (checkedAuthentication && authenticationFingerprint !== checkedAuthentication) return;
+  const authentication = createProviderAuthentication();
+  function invalidate(
+    error?: unknown,
+    authenticationFingerprint?: string,
+    source: 'discovery' | 'operation' = 'discovery',
+  ) {
+    const authRequired = error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED';
+    if (authRequired && authenticationFingerprint) {
+      const current = authentication.reject(authenticationFingerprint);
+      if (source === 'operation' && !current) return;
     }
     checkedAt = 0;
     scope = '';
@@ -63,8 +67,8 @@ export function createCodexDriver(
     descriptor = {
       ...descriptor,
       models: [],
-      readiness: authentication ? 'authenticationRequired' : 'unavailable',
-      reasonCode: authentication
+      readiness: authRequired ? 'authenticationRequired' : 'unavailable',
+      reasonCode: authRequired
         ? 'AUTHENTICATION_REQUIRED'
         : incompatible
           ? 'PROTOCOL_UNSUPPORTED'
@@ -79,20 +83,25 @@ export function createCodexDriver(
         protocolProfile: 'codex-app-server-v2',
       };
   }
+  function requireAuthentication(fingerprint: string) {
+    if (!authentication.isRejected(fingerprint)) return;
+    const error = new SessionError(
+      'PROVIDER_AUTH_REQUIRED',
+      'Sign in again using the Codex CLI, then recheck provider availability.',
+    );
+    invalidate(error, fingerprint);
+    throw error;
+  }
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
       const bounded = AbortSignal.any([signal, AbortSignal.timeout(ProviderTimeouts.discoveryMs)]);
+      let inspectedAuthentication: string | undefined;
       try {
         for (let attempt = 0; attempt < 2; attempt++) {
+          inspectedAuthentication = undefined;
           const installation = await inspect(bounded);
-          if (
-            rejectedAuthentication &&
-            installation.authenticationFingerprint === rejectedAuthentication
-          )
-            throw new SessionError(
-              'PROVIDER_AUTH_REQUIRED',
-              'Sign in again using the Codex CLI, then recheck provider availability.',
-            );
+          inspectedAuthentication = installation.authenticationFingerprint;
+          requireAuthentication(installation.authenticationFingerprint);
           if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
             return structuredClone(descriptor);
           const compatibility = classifyProviderInstallation({
@@ -107,7 +116,9 @@ export function createCodexDriver(
             temporaryRoot: options.temporaryRoot,
             signal: bounded,
           });
+          inspectedAuthentication = undefined;
           if ((await inspect(bounded)).fingerprint !== installation.fingerprint) continue;
+          requireAuthentication(installation.authenticationFingerprint);
           const modes = codexModes.map((mode) => {
             const compatible = compatibilityForExecution(compatibility, mode.mode);
             const supported = result.modes.includes(mode.nativeMode);
@@ -155,7 +166,7 @@ export function createCodexDriver(
           if (descriptor.readiness !== 'ready')
             descriptor.reason = 'No Codex execution mode is currently available.';
           checkedFingerprint = installation.fingerprint;
-          checkedAuthentication = installation.authenticationFingerprint;
+          authentication.verified(installation.authenticationFingerprint);
           checkedAt = Date.now();
           scope = installation.accountScope;
           return structuredClone(descriptor);
@@ -165,7 +176,7 @@ export function createCodexDriver(
           'Codex installation changed repeatedly during discovery.',
         );
       } catch (error) {
-        invalidate(error);
+        invalidate(error, inspectedAuthentication);
         return structuredClone(descriptor);
       }
     })();
@@ -189,8 +200,10 @@ export function createCodexDriver(
         invalidate(error);
         throw error;
       });
-      if (current.fingerprint === checkedFingerprint && current.accountScope === scope)
+      if (current.fingerprint === checkedFingerprint && current.accountScope === scope) {
+        requireAuthentication(current.authenticationFingerprint);
         return current;
+      }
     }
     invalidate();
     throw new SessionError('PROVIDER_UNAVAILABLE', 'Codex installation changed before invocation.');
@@ -245,8 +258,21 @@ export function createCodexDriver(
       let fingerprint: string | undefined;
       let launchAuthentication: string | undefined;
       let nativeHome: string | undefined;
+      let dispatched = false;
+      const beforeDispatch = invocation.beforeDispatch;
       return createCodexOperation(
-        invocation,
+        {
+          ...invocation,
+          ...(beforeDispatch
+            ? {
+                beforeDispatch: async () => {
+                  await beforeDispatch();
+                  if (launchAuthentication) requireAuthentication(launchAuthentication);
+                  dispatched = true;
+                },
+              }
+            : {}),
+        },
         async (fact) => {
           if (
             fact.kind === 'lost' ||
@@ -260,7 +286,8 @@ export function createCodexDriver(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
                 ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
                 : undefined,
-              launchAuthentication,
+              dispatched ? launchAuthentication : undefined,
+              dispatched ? 'operation' : 'discovery',
             );
           await emit(fact);
         },
@@ -281,6 +308,7 @@ export function createCodexDriver(
                 'SESSION_RECOVERY_REQUIRED',
                 'Codex installation or account changed before dispatch.',
               );
+            requireAuthentication(current.authenticationFingerprint);
           },
           async launch(operationSignal) {
             const installation = await readyInstallation(operationSignal);

@@ -3,10 +3,16 @@ import { expect, it, vi } from 'vitest';
 import type { EmitFact, Invocation } from '../../src/features/sessions/providers/driver';
 import { createClaudeDriver } from '../../src/features/sessions/providers/claude/driver';
 import { createCodexDriver } from '../../src/features/sessions/providers/codex/driver';
+import { SessionError } from '../../src/features/sessions/errors';
 
 // Exercise real discovery/admission and late native facts without launching a CLI.
 const native = vi.hoisted(() => ({
-  operations: [] as { emit: EmitFact; launch(signal: AbortSignal): Promise<unknown> }[],
+  operations: [] as {
+    emit: EmitFact;
+    launch(signal: AbortSignal): Promise<unknown>;
+    dispatch?: () => Promise<void>;
+    verifyInput?: () => Promise<void>;
+  }[],
 }));
 vi.mock('../../src/features/sessions/providers/process', async (original) => ({
   ...(await original<typeof import('../../src/features/sessions/providers/process')>()),
@@ -14,12 +20,22 @@ vi.mock('../../src/features/sessions/providers/process', async (original) => ({
   launchOwnedProcess: () => Promise.resolve({}),
 }));
 function operation(
-  _invocation: Invocation,
+  invocation: Invocation,
   emit: EmitFact,
   _signal: AbortSignal,
-  options: { launch(signal: AbortSignal): Promise<unknown> },
+  options: {
+    launch(signal: AbortSignal): Promise<unknown>;
+    beforeInput?(signal: AbortSignal): Promise<void>;
+    initialize?(payload: Record<string, unknown>): Promise<void>;
+  },
 ) {
-  native.operations.push({ emit, launch: options.launch });
+  native.operations.push({
+    emit,
+    launch: (signal) => options.launch(signal),
+    dispatch: invocation.beforeDispatch,
+    verifyInput: () =>
+      options.beforeInput ? options.beforeInput(_signal) : options.initialize!({ models: [] }),
+  });
   return { done: Promise.resolve(), respond: () => Promise.resolve({ deliveredKeys: [] }) };
 }
 vi.mock('../../src/features/sessions/providers/claude/operation', () => ({
@@ -73,7 +89,7 @@ it.each(['claude', 'codex'] as const)(
     const signal = new AbortController().signal;
     const selection = { providerId, mode: 'read-only' as const, providerModeId: 'plan' };
     await driver.validate(selection, signal);
-    async function launch() {
+    async function launch(dispatch = true) {
       driver.start(
         {
           sessionId: 'session',
@@ -90,6 +106,7 @@ it.each(['claude', 'codex'] as const)(
       );
       const entry = native.operations.at(-1)!;
       await entry.launch(signal);
+      if (dispatch) await entry.dispatch!();
       return entry;
     }
     const old = await launch();
@@ -104,6 +121,7 @@ it.each(['claude', 'codex'] as const)(
     expect((await driver.refresh!(signal)).readiness).toBe('ready');
     const current = await launch();
     await current.emit(rejection);
+    await old.emit(rejection); // A late second rejection cannot erase B's rejection.
     expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
     await expect(driver.validate(selection, signal)).rejects.toMatchObject({
       code: 'PROVIDER_AUTH_REQUIRED',
@@ -112,6 +130,31 @@ it.each(['claude', 'codex'] as const)(
     login = 'login-c';
     expect((await driver.refresh!(signal)).readiness).toBe('ready');
     expect(driver.contextScope!()).toBe('stable-account');
-    expect(native.operations).toHaveLength(2); // Rechecking never starts another Turn.
+    const preInput = await launch(false);
+    inspect.mockRejectedValueOnce(
+      new SessionError('PROVIDER_AUTH_REQUIRED', 'Source temporarily unavailable'),
+    );
+    await expect(preInput.verifyInput!()).rejects.toMatchObject({ code: 'PROVIDER_AUTH_REQUIRED' });
+    await preInput.emit(rejection);
+    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect(driver.contextScope!()).toBe('stable-account');
+    expect(native.operations).toHaveLength(3); // Rechecking never starts another Turn.
+    login = 'login-d';
+    probe.mockRejectedValueOnce(new SessionError('PROVIDER_AUTH_REQUIRED', 'New login rejected'));
+    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
+    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
+    login = 'login-e';
+    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect(native.operations).toHaveLength(3);
+    login = 'login-f';
+    const stillValid = await inspect();
+    inspect
+      .mockResolvedValueOnce(stillValid)
+      .mockRejectedValueOnce(
+        new SessionError('PROVIDER_AUTH_REQUIRED', 'Source temporarily unreadable after probe'),
+      );
+    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
+    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect(driver.contextScope!()).toBe('stable-account');
   },
 );

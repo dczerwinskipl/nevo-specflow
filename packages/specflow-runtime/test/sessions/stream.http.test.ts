@@ -153,7 +153,8 @@ describe('live Session stream authorization and replay', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('event: resync-required');
     expect(response.body).not.toContain('event: session-change');
-  });
+    // Includes two cold Runtime/SQLite Worker starts plus offline pruning on Windows.
+  }, 20000);
   it('replays from the snapshot sequence without losing an intervening Turn', async () => {
     const { cookie, sessionId, origin } = await setup();
     const snapshot = (

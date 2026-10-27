@@ -58,6 +58,8 @@ describe('Session feed operation lifetime', () => {
   });
   it('does not reconnect after a pending login recheck outlives its view', async () => {
     const { storage, api } = setup();
+    const snapshotRead = vi.fn<ManagedSessionsApi['snapshot']>().mockResolvedValue(snapshot);
+    api.snapshot = snapshotRead;
     const check = Promise.withResolvers<{ items: [] }>();
     api.providers = () => check.promise;
     const feed = createSessionFeed(api, 'session', 'actor', storage);
@@ -65,7 +67,7 @@ describe('Session feed operation lifetime', () => {
     feed.disconnect();
     check.resolve({ items: [] });
     await checking;
-    expect(api.snapshot).not.toHaveBeenCalled();
+    expect(snapshotRead).not.toHaveBeenCalled();
     expect(feed.getSnapshot().commandBusy).toBe(false);
   });
   it.each(['remove-throws', 'remove-ignored'] as const)(

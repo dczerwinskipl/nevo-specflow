@@ -23,9 +23,9 @@ related:
 
 Status: implementation and independent review in PR #98. Native Windows x64
 discovery and execution-boundary probes pass. A real model patch and completed
-first Turn passed; full write/resume acceptance remains blocked by account quota
-after fixes to native resume metadata. Final-HEAD CI remains required; a completed
-text-only answer does not prove writable agent behavior.
+first Turn passed earlier. Short manual semantic continuation across Runtime
+restart now passes separately; a text-only answer does not prove writable tools.
+Final-HEAD CI remains required.
 
 ## Native contract
 
@@ -111,8 +111,10 @@ hint, never local JWT authentication. Native Codex remains the authentication
 authority. Missing/malformed login requires operator intervention. Credential
 rotation invalidates discovery independently from stable account affinity.
 
-A native authentication failure rejects that credential fingerprint for the
-current driver lifetime. An unchanged binary upgrade or repeated availability
+A native authentication failure rejects the fingerprint used by that operation,
+not newer credentials verified while it was running. Bounded in-memory evidence
+retains up to 64 rejected logins while protecting the currently verified login.
+An unchanged binary upgrade or repeated availability
 check cannot make the rejected login ready; a renewed external credential must
 pass discovery. Authentication fingerprints and native account IDs stay internal.
 This does not implement a refresh-token broker or renew an in-flight native Turn.
@@ -154,3 +156,14 @@ Native verification is a separate, short manual activity described in
 [manual provider checks](provider-manual-checks.md). It never runs in CI and never
 contains embedded credentials. Native results are recorded separately from the
 controlled Engine/SQLite/HTTP restart test.
+
+On 2026-10-27, a one-off manual script outside the repository used the built
+public Engine bootstrap and Runtime HTTP APIs from `bcb76078`, without test seams.
+Native Agent (`default`), discovered `gpt-6.1-sol` and low effort completed two
+short test messages: acknowledge a fresh random public marker with `OK`, then
+recall that exact marker after Runtime close/restart. Both canonical outcomes
+were completed. No tools were requested and no model answer or marker was supplied
+by the second prompt. This confirms semantic continuation after restart, not an
+additional write/cancellation claim. The two native requests are manual evidence,
+not automated tests or a dependency on a subscription. No further inference was
+submitted for the authentication race fixes.

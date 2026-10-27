@@ -108,6 +108,76 @@ Until these gates are established, do not advertise Antigravity as ready, add a
 force-completion path, infer successful cancellation from EOF, or install the
 legacy persistent MCP bridge into user configuration.
 
+## Admission decisions and remaining evidence (2026-10-27)
+
+The following decisions narrow AG.T01; they do not claim that its native checks
+have passed. Rechecked primary sources are the
+[CLI authentication reference](https://www.antigravity.google/docs/install/),
+[headless protocol](https://www.antigravity.google/docs/cli/headless/),
+[settings schema](https://antigravity.google/schemas/v1/settings.json) and the
+sandbox/settings references above. Installed binary strings are discovery hints,
+not supported configuration contracts.
+
+- **Authentication owner:** use the CLI's native account login and system secure
+  keyring. Runtime does not copy refresh credentials, refresh tokens itself or
+  silently switch to Gemini API-key/ADC billing. The authentication reference
+  explicitly describes keyring token profiles. Private HOME is configuration
+  separation, not an isolated authentication authority. The remaining technical
+  check is a bounded, non-secret stable account/profile identity from the actual
+  native credential source. If that identity cannot be established, execution
+  remains unavailable; a path, installation ID, OS username or token hash is not a
+  substitute. Account changes must never resume an old account's context.
+- **Configuration owner:** use Runtime-owned private configuration and exact
+  persisted native context, without modifying global settings. Before launching,
+  inspect workspace hooks/MCP/plugins and reject unsupported executable additions
+  rather than deleting them. Private HOME does not suppress workspace additions.
+  Validate the effective tool inventory before dispatch, including browser,
+  scheduling, messaging and sidecars; an inventory entry is not proof of denial.
+  The supported mechanism that prevents these effects still needs native evidence.
+- **Execution profile:** the proposed initial native mode is `accept-edits` with
+  `allowNonWorkspaceAccess=false`, terminal sandbox enabled and
+  `toolPermission=proceed-in-sandbox`. Do not use `auto`, skip-permissions or broad
+  command allow rules that can authorize an unsandboxed command. These settings
+  are a candidate profile, not evidence of enforcement. Native file tools need
+  their own outside-workspace negative control. No full hostile-code sandbox is
+  promised beyond the existing managed-execution architecture.
+- **Native correlation:** reuse the implemented provider-assigned context barrier.
+  No first prompt before durable native-ID binding. Continue only the exact saved
+  ID; never use `--continue` or allocate a replacement after uncertain dispatch.
+- **Process ownership:** reuse the retained Windows Job Object and Engine claims;
+  do not add another supervisor or infer a shared daemon from the authentication
+  documentation's shared harness wording. Evidence must show that actual tool
+  execution remains owned. OS support/version alone does not prove containment.
+- **Cancellation:** EOF is graceful draining. Forced tree termination without a
+  correlated authoritative native outcome remains uncertain under the existing
+  settlement rules. Do not translate it into successful cancellation or release a
+  writer claim. A missing native cancel protocol is a capability limitation to
+  document, not a reason to emulate Claude control frames.
+- **Transcript:** retain only text/reasoning actually supplied by the provider.
+  Numeric `thinking_tokens` is usage, not reasoning text. Native result usage in
+  a streaming conversation is cumulative; adapt it using the existing usage
+  basis instead of summing every result as a fresh per-Turn total.
+
+### Owner decision pending: interaction scope
+
+The documented stream rejects Claude-style control requests/responses and does
+not specify an answer/approval channel. Headless tools requiring unobtainable
+approval are soft-denied, and exit zero alone does not mean those tools ran.
+
+Recommendation: first deliver the bounded `accept-edits` profile with explicit
+unsupported interactive capabilities and honest tool denials. Do not install the
+legacy persistent MCP bridge. An alternative is to include a separately designed
+invocation-scoped interaction bridge in this feature, with authenticated request
+correlation, bounded lifetime and controlled-process tests. That adds an actual
+transport contract and expands acceptance; it cannot be inferred from the current
+stream. The owner has been asked which scope to deliver. Until answered, this is
+a proposal and dependent interaction work does not begin.
+
+Stable native account identity and effective tool isolation are technical evidence
+questions owned by the adapter implementer, not unspecified product decisions for
+the owner. AG.T01 must resolve them or report the exact missing native contract.
+It must not leave another generic instruction to "investigate safety".
+
 ## Follow-up execution handoff (2026-10-27)
 
 PR #98 is merged. Continue on `feature/antigravity-provider`, based on merged

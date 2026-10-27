@@ -13,7 +13,16 @@ export function effective(
   providerFor: (providerId: string) => ProviderDescriptor | undefined,
 ): SessionSnapshot {
   const provider = providerFor(s.session.providerId);
-  const available = provider?.readiness === 'ready';
+  const modeAvailable =
+    !s.session.providerModeId ||
+    provider?.providerModes?.some(
+      (mode) =>
+        mode.modeId === s.session.providerModeId &&
+        mode.mode === s.session.mode &&
+        mode.readiness === 'ready' &&
+        mode.authorized !== false,
+    ) === true;
+  const available = provider?.readiness === 'ready' && modeAvailable;
   const permissions = request.authz.resolveCapabilities({
     resource: SessionCapabilities,
     scope: { projectId: s.session.projectId, sessionId: s.session.sessionId },
@@ -23,7 +32,12 @@ export function effective(
   s.session.capabilities.questions = provider?.capabilities.questions === true;
   s.session.capabilities.permissions = provider?.capabilities.permissions === true;
   s.session.capabilities.executeWrite = permissions['execute-write'];
-  s.session.capabilities.start = permissions.manage && available && s.session.readiness === 'ready';
+  s.session.capabilities.start =
+    permissions.manage &&
+    available &&
+    s.session.readiness === 'ready' &&
+    !s.activeTurn &&
+    (s.session.mode !== 'workspace-write' || permissions['execute-write']);
   s.session.capabilities.cancel =
     permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';
   if (!available && !s.activeTurn) s.session.readiness = 'unavailable';

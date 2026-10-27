@@ -19,6 +19,18 @@ import {
 } from '@nevo/ui';
 import type { ManagedSessionsApi } from '../api';
 import { createSessionRequest } from './request';
+import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
+
+function executableModes(provider: ProviderDescriptor) {
+  return (
+    provider.providerModes?.filter(
+      (mode) =>
+        mode.readiness === 'ready' &&
+        mode.authorized !== false &&
+        provider.modes.includes(mode.mode),
+    ) ?? []
+  );
+}
 
 export function CreateSession({ owner, api }: { owner: string; api: ManagedSessionsApi }) {
   const { t } = useTranslation(),
@@ -49,14 +61,22 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
   const [selection, setSelection] = useState<{ providerId: string; modeId: string }>();
   const readyProviders = providers.data?.items.filter((item) => item.readiness === 'ready');
   const provider =
-    readyProviders?.find((item) => item.modes.includes('workspace-write')) ?? readyProviders?.[0];
+    readyProviders?.find((item) =>
+      executableModes(item).some((mode) => mode.mode === 'workspace-write'),
+    ) ??
+    readyProviders?.find((item) =>
+      item.providerModes ? executableModes(item).length > 0 : item.modes.includes('read-only'),
+    );
+  const availableModes = provider ? executableModes(provider) : [];
+  const writerModes = availableModes.filter((mode) => mode.mode === 'workspace-write');
+  const preferredModes = writerModes.length ? writerModes : availableModes;
+  const defaultMode =
+    preferredModes.find((mode) => mode.modeId === provider?.defaultModeId) ?? preferredModes[0];
   const modeId =
-    selection?.providerId === provider?.providerId ? selection?.modeId : provider?.defaultModeId;
+    selection?.providerId === provider?.providerId ? selection?.modeId : defaultMode?.modeId;
   const nativeMode = provider?.providerModes?.find((mode) => mode.modeId === modeId);
   const canCreate = Boolean(
-    provider &&
-    (!provider.providerModes ||
-      (nativeMode?.readiness === 'ready' && nativeMode.authorized !== false)),
+    provider && (!provider.providerModes || availableModes.some((mode) => mode.modeId === modeId)),
   );
   async function create() {
     if (busy || (!canCreate && !pending)) return;
@@ -106,7 +126,9 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
                         <SelectItem
                           key={mode.modeId}
                           value={mode.modeId}
-                          disabled={mode.readiness !== 'ready' || mode.authorized === false}
+                          disabled={
+                            !availableModes.some((available) => available.modeId === mode.modeId)
+                          }
                         >
                           {mode.title}
                         </SelectItem>

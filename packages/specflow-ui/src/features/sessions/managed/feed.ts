@@ -48,8 +48,10 @@ export function createSessionFeed(
     }
   };
   let pending: StartTurn | undefined;
+  let pendingReadable = true;
   try {
-    const value: unknown = JSON.parse(read(':pending') || 'null');
+    const encoded = storage?.getItem(key + ':pending');
+    const value: unknown = JSON.parse(encoded ?? 'null');
     if (
       value &&
       typeof value === 'object' &&
@@ -58,9 +60,12 @@ export function createSessionFeed(
       'requestId' in value &&
       typeof value.requestId === 'string'
     )
-      pending = { message: value.message, requestId: value.requestId };
+      pending = value as StartTurn;
+    else if (encoded) pendingReadable = false;
   } catch {
-    /* A malformed browser record is not a command. */
+    // An unreadable record may contain a dispatched command whose ACK was lost.
+    // Do not overwrite it with a newly generated request ID.
+    pendingReadable = false;
   }
   let state: FeedState = {
     connection: 'loading',
@@ -170,7 +175,18 @@ export function createSessionFeed(
       notify({ ...state, commandError: true });
       return;
     }
-    save(':pending', JSON.stringify(request));
+    try {
+      if (!storage || !pendingReadable) throw new Error('Pending command storage is unavailable.');
+      const encoded = JSON.stringify(request);
+      const retained = storage.getItem(key + ':pending');
+      if (retained && retained !== encoded) throw new Error('Another command is retained.');
+      storage.setItem(key + ':pending', encoded);
+      if (storage.getItem(key + ':pending') !== encoded)
+        throw new Error('Pending command retention could not be confirmed.');
+    } catch {
+      notify({ ...state, pending: request, commandError: true });
+      return;
+    }
     notify({ ...state, pending: request, commandBusy: true, commandError: false });
     try {
       await api.start(sessionId, request);

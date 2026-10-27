@@ -175,3 +175,27 @@ root before supplying the verified workspace. Production workspace verification 
 The local broad Windows run also observed taskkill settlement uncertainty under concurrent load;
 its failed live-root cancellation and controlled Claude completion remain recorded failures, even
 though the corresponding first remote Windows matrix passed. An isolated pass does not resolve R01.
+
+## External UI review of `5cb4186d`
+
+The three reported cases were reproduced with controlled tests before changing
+production behavior. Start now requires a successful browser write and exact
+readback of the pending command before HTTP dispatch. Missing/unreadable storage
+or a conflicting retained command blocks dispatch. The complete retained body
+survives an uncertain ACK and remount; draft persistence remains best effort.
+
+Create chooses an executable, authorized native writer across available providers,
+then an available read-only choice if no writer is ready. It no longer treats a
+declared workspace-write capability as readiness. The existing mode selector and
+retained create request remain the sole owners of user choice and retries.
+
+Effective Start now requires Manage, an idle ready Session, a ready provider and
+pinned native mode, and ExecuteWrite for a writable Session. Snapshot and SSE
+projections apply the same rule. Existing pending-command retries retain their
+exact request ID rather than allocating new work from an uncertain acknowledgement.
+
+These are bug fixes, without new provider-selection UX or lifecycle authorities.
+Automated verification uses synthetic credentials and controlled providers only.
+Native Claude/Codex support is still Windows x64; Linux/macOS product smoke is not
+certification of native adapters there. Codex native resume/auth renewal and the
+unimplemented Antigravity adapter remain separately reported limitations.

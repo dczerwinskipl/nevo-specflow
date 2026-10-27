@@ -38,6 +38,76 @@ function setup() {
   return { storage, api, start };
 }
 describe('Session feed operation lifetime', () => {
+  it.each(['missing', 'write-throws', 'write-ignored', 'readback-throws'] as const)(
+    'does not dispatch without confirmed request retention: %s',
+    async (failure) => {
+      const { storage, api, start } = setup();
+      let written = false;
+      const blocked =
+        failure === 'missing'
+          ? undefined
+          : {
+              ...storage,
+              setItem(key: string, value: string) {
+                if (!key.endsWith(':pending')) return storage.setItem(key, value);
+                if (failure === 'write-throws') throw new Error('Storage denied');
+                written = true;
+                if (failure !== 'write-ignored') storage.setItem(key, value);
+              },
+              getItem(key: string) {
+                if (written && key.endsWith(':pending') && failure === 'readback-throws')
+                  throw new Error('Storage read denied');
+                return storage.getItem(key);
+              },
+            };
+      const feed = createSessionFeed(api, 'session', 'actor', blocked);
+      feed.setDraft('Change workspace once');
+      await feed.send();
+      expect(start).not.toHaveBeenCalled();
+      expect(feed.getSnapshot()).toMatchObject({
+        draft: 'Change workspace once',
+        commandBusy: false,
+        commandError: true,
+      });
+    },
+  );
+  it('blocks an unreadable remount after a lost ACK and resumes the same terminal command when storage returns', async () => {
+    const { storage, api } = setup();
+    const executed = new Set<string>();
+    let unavailable = false;
+    const start = vi.fn<ManagedSessionsApi['start']>((_id, request) => {
+      const duplicate = executed.has(request.requestId);
+      executed.add(request.requestId);
+      return duplicate
+        ? Promise.resolve({ turnId: 'completed-turn' })
+        : Promise.reject(new Error('Terminal outcome committed, ACK lost'));
+    });
+    api.start = start;
+    const intermittent = {
+      ...storage,
+      getItem(key: string) {
+        if (unavailable) throw new Error('Storage denied');
+        return storage.getItem(key);
+      },
+    };
+    const first = createSessionFeed(api, 'session', 'actor', intermittent);
+    first.setDraft('Change workspace once');
+    await first.send();
+    unavailable = true;
+    const unreadable = createSessionFeed(api, 'session', 'actor', intermittent);
+    unreadable.setDraft('Change workspace once');
+    await unreadable.send();
+    expect(start).toHaveBeenCalledTimes(1);
+    unavailable = false;
+    const recovered = createSessionFeed(api, 'session', 'actor', intermittent);
+    await recovered.send();
+    expect(start.mock.calls[1]).toEqual(start.mock.calls[0]);
+    expect(executed.size).toBe(1);
+    expect(recovered.getSnapshot().pending).toBeUndefined();
+    expect(
+      createSessionFeed(api, 'session', 'actor', intermittent).getSnapshot().pending,
+    ).toBeUndefined();
+  });
   it('invalidates Work reads when a Turn settles or its interaction completes', async () => {
     const { storage, api } = setup();
     api.watch = async function* (_id, _after, signal) {

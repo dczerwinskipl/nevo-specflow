@@ -143,6 +143,101 @@ it('retries a retained create after remount even when the provider becomes unava
   expect(sessionStorage.getItem('nevo:session-create:alice')).toBeNull();
 });
 
+it.each(['unavailable', 'unauthorized'] as const)(
+  'chooses a ready authorized Agent on another provider when the first writer is %s',
+  async (failure) => {
+    const f = fixture();
+    const base = (await f.providers()).items[0]!;
+    const writer = {
+      modeId: 'agent',
+      nativeMode: 'agent',
+      title: 'Agent',
+      mode: 'workspace-write' as const,
+      readiness: 'ready' as const,
+      authorized: true,
+    };
+    f.providers.mockResolvedValue({
+      items: [
+        {
+          ...base,
+          modes: ['read-only', 'workspace-write'],
+          defaultModeId: 'agent',
+          providerModes: [
+            {
+              ...writer,
+              ...(failure === 'unavailable'
+                ? { readiness: 'unavailable' as const }
+                : { authorized: false }),
+            },
+            {
+              modeId: 'plan',
+              nativeMode: 'plan',
+              title: 'Plan',
+              mode: 'read-only',
+              readiness: 'ready',
+              authorized: true,
+            },
+          ],
+        },
+        {
+          ...base,
+          providerId: 'codex',
+          title: 'Codex',
+          modes: ['read-only', 'workspace-write'],
+          defaultModeId: 'agent',
+          providerModes: [writer],
+        },
+      ],
+    });
+    view(f.api);
+    await clickCreate();
+    expect(f.create.mock.calls[0]?.[0]).toMatchObject({
+      providerId: 'codex',
+      providerModeId: 'agent',
+      mode: 'workspace-write',
+    });
+  },
+);
+
+it('selects an available Plan when no authorized writer is available', async () => {
+  const f = fixture();
+  const base = (await f.providers()).items[0]!;
+  f.providers.mockResolvedValue({
+    items: [
+      {
+        ...base,
+        modes: ['read-only', 'workspace-write'],
+        defaultModeId: 'agent',
+        providerModes: [
+          {
+            modeId: 'agent',
+            nativeMode: 'agent',
+            title: 'Agent',
+            mode: 'workspace-write',
+            readiness: 'unavailable',
+            authorized: true,
+          },
+          {
+            modeId: 'plan',
+            nativeMode: 'plan',
+            title: 'Plan',
+            mode: 'read-only',
+            readiness: 'ready',
+            authorized: true,
+          },
+        ],
+      },
+    ],
+  });
+  view(f.api);
+  await clickCreate();
+  expect(f.create.mock.calls[0]?.[0]).toMatchObject({
+    providerId: 'claude',
+    providerModeId: 'plan',
+    mode: 'read-only',
+  });
+});
+
 it('keeps a lost acknowledgement isolated when another identity creates a Session', async () => {
   const { api, create } = fixture();
   const alice = view(api);

@@ -6,7 +6,8 @@ import process from 'node:process';
 import { CommanderError } from 'commander';
 
 import { ClackProjectSetupUi, ProjectSetupCancelledError } from './init/clack-setup-ui';
-import { commanderExitCode } from './exit-code';
+import { ReportedFailure, commanderExitCode } from './exit-code';
+import { readBoundedUtf8 } from './documents/content-input';
 import { createProgram } from './program';
 
 async function main(argv: string[]): Promise<number> {
@@ -19,6 +20,7 @@ async function main(argv: string[]): Promise<number> {
     stdout: (line) => process.stdout.write(`${line}\n`),
     stderr: (line) => process.stderr.write(`${line}\n`),
     readPasswordFromStdin: readStdin,
+    readStdin,
     signal: shutdown.signal,
     cwd: process.cwd(),
     initUi: new ClackProjectSetupUi(),
@@ -32,6 +34,7 @@ async function main(argv: string[]): Promise<number> {
       return commanderExitCode(err);
     }
     if (err instanceof ProjectSetupCancelledError) return 0;
+    if (err instanceof ReportedFailure) return err.exitCode;
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     return 1;
   } finally {
@@ -40,13 +43,8 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-async function readStdin(): Promise<string> {
-  process.stdin.setEncoding('utf8');
-  let input = '';
-  for await (const chunk of process.stdin) {
-    input += String(chunk);
-  }
-  return input;
+function readStdin(): Promise<string> {
+  return readBoundedUtf8(process.stdin, 'Standard input');
 }
 
 process.exitCode = await main(process.argv);

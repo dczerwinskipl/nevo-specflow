@@ -1,7 +1,11 @@
 import { Value } from 'typebox/value';
 import { Type, type Static } from 'typebox';
 
-import { CreateArchetypeSelectionProperties, RegisteredDocumentIdSchema } from '../documents';
+import {
+  CreateArchetypeSelectionProperties,
+  DocumentErrorDetailsSchema,
+  RegisteredDocumentIdSchema,
+} from '../documents';
 import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from './slug';
 
 const UuidSchema = Type.String({
@@ -64,7 +68,12 @@ export const CreatedSpecSchema = Type.Object(
 export type CreatedSpec = Static<typeof CreatedSpecSchema>;
 
 export const CreateSpecErrorSchema = Type.Object(
-  { error: Type.String(), code: Type.String() },
+  {
+    error: Type.String(),
+    code: Type.String(),
+    /** For example `cause: 'definitions-missing'` of `DEFINITIONS_MISSING`; absent for most errors. */
+    details: Type.Optional(DocumentErrorDetailsSchema),
+  },
   { additionalProperties: false },
 );
 

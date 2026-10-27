@@ -10,6 +10,7 @@ summary: >
   GET /api/specs/operations, authorized by spec view; status comes from one documented table; freshness is
   by polling with ETag; there is no global operations index.
 related:
+  - reference.api.specification-documents
   - reference.api.specs-operations-list
   - reference.api.operation-progress
   - engineering.shared.operation-progress
@@ -39,7 +40,9 @@ from API data alone.
 - Access goes through **feature-owned, read-only routes** registered by `registerOperationListRoute`,
   exactly like the per-operation events route. Specifications exposes `GET /api/specs/operations`; its
   authorization is that feature's capability (spec view per row, rows without a spec need Create). A new
-  kind or feature costs one adapter and one registration. There is **no global** `GET /api/operations`.
+  kind or feature costs one adapter and one registration. The documents feature registers a second such list,
+  `GET /api/specs/document-operations` (document changes that wait for their commit; status `queued`), with
+  the same helper, query and ETag. There is **no global** `GET /api/operations`.
 - **Status is derived by one documented table** from the journal, the registry and the idle time
   (reference.api.specs-operations-list). The registry keeps a listing record separate from its replay
   window (completed 10 min, failed 60 min, capped). A non terminal journal idle for 5 minutes with no live

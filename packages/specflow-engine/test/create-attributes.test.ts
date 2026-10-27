@@ -10,6 +10,7 @@ import {
   inspectCreateSpecification,
   type CreateSpecificationInput,
   type SpecFlowEngine,
+  installDefinitionsForTesting,
 } from '../src/testing';
 import { createGitTestProject, git } from './support/git-project';
 
@@ -44,7 +45,11 @@ async function project(
     git(root, 'add', '.gitattributes');
     git(root, '-c', 'user.name=T', '-c', 'user.email=t@e.invalid', 'commit', '-qm', 'attributes');
   }
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 const NOTES_PATH = 'specs/active/attributes/notes.md';

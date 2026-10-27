@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   bootstrapProjectHome,
-  createSpecification,
+  createSpecificationForTesting as createSpecification,
   inspectCreateSpecification,
   inspectProjectControlLock,
   projectControlLockPath,
@@ -19,6 +19,8 @@ import {
   createSpecificationScaffold,
   type CreateSpecificationInput,
   type SpecFlowEngine,
+  seedCatalogueForTesting,
+  installDefinitionsForTesting,
 } from '../src/testing';
 import { withProjectControlLock } from '../src/project/control-lock';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
@@ -31,6 +33,8 @@ import {
   terminateCheckpointPid,
   type IndependentVitestWorker,
 } from './support/process-worker';
+
+const catalogue = await seedCatalogueForTesting();
 
 const roots: string[] = [];
 const activeProcesses: IndependentVitestWorker[] = [];
@@ -51,7 +55,11 @@ async function project(gitEnabled = false): Promise<{ root: string; engine: Spec
   );
   roots.push(root);
   if (gitEnabled) roots.push(root + '-worktrees');
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 function request(engine: SpecFlowEngine, title: string, linked = false): CreateSpecificationInput {
@@ -297,6 +305,7 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     );
     const existingId = randomUUID();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: existingId,
       title: 'Missing source',

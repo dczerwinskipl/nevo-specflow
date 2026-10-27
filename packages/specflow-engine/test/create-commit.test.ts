@@ -11,9 +11,10 @@ import {
   inspectCreateSpecification,
   type CreateSpecificationInput,
   type SpecFlowEngine,
+  installDefinitionsForTesting,
 } from '../src/testing';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
-import { createGitTestProject, git } from './support/git-project';
+import { commitStaged, createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 
@@ -34,7 +35,11 @@ async function project(
   const root = await createGitTestProject('specflow-create-commit-', config);
   roots.push(root, root + '-worktrees');
   git(root, 'checkout', '-q', '-b', branch);
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 const existing = (engine: SpecFlowEngine, title = 'Commit scaffold'): CreateSpecificationInput => ({
@@ -220,7 +225,11 @@ describe('protected branches', () => {
   }, 240000);
 
   it('does not evaluate the base ref: a new worktree from a protected branch is fine', async () => {
-    const { engine, root } = await project(protect('[develop]'));
+    // The definitions are installed while the branch is still free; the owner protects it afterwards.
+    const { engine, root } = await project();
+    await writeFile(join(root, '.nevo/config.yaml'), protect('[develop]'));
+    git(root, 'add', '.nevo/config.yaml');
+    commitStaged(root, 'protect develop');
     const created = await createSpecification(engine, linked());
     roots.push(dirname(created.workspaceRoot));
     expect(git(created.workspaceRoot, 'rev-list', '--count', 'develop..HEAD')).toBe('1');

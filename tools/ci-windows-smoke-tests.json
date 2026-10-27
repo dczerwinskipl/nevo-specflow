@@ -23,6 +23,20 @@
     {
       "package": "@nevo/specflow-engine",
       "dir": "packages/specflow-engine",
+      "file": "test/document-queue.test.ts",
+      "tests": [
+        "commits five saves of one document as ONE commit with the last content and the right trailers"
+      ]
+    },
+    {
+      "package": "@nevo/specflow",
+      "dir": "packages/specflow",
+      "file": "test/documents-cli.test.ts",
+      "tests": ["adds a document, commits it at exit and reports the settled commit with status"]
+    },
+    {
+      "package": "@nevo/specflow-engine",
+      "dir": "packages/specflow-engine",
       "file": "test/create-options.test.ts",
       "tests": ["treats an unreadable worktree folder as not existing"]
     }

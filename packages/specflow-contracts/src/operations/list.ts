@@ -13,16 +13,17 @@ import { OperationIdSchema } from './progress';
  * renderable generic value instead of failing the whole list.
  */
 
-/** Statuses a list row can currently carry. */
+/** Statuses a list row can currently carry. `queued`: a document change waiting for its commit. */
 export const OPERATION_LIST_STATUSES = [
   'in-progress',
   'recovery-required',
   'failed',
   'completed',
+  'queued',
 ] as const;
 
 /** Reserved for a later operation runner; the list never produces them today. */
-export const OPERATION_LIST_RESERVED_STATUSES = ['queued', 'scheduled'] as const;
+export const OPERATION_LIST_RESERVED_STATUSES = ['scheduled'] as const;
 
 export const OPERATION_LIST_ALL_STATUSES = [
   ...OPERATION_LIST_STATUSES,
@@ -32,7 +33,11 @@ export const OPERATION_LIST_ALL_STATUSES = [
 export type OperationListStatus = (typeof OPERATION_LIST_ALL_STATUSES)[number];
 
 /** Kinds the list produces today. The wire type stays an open string (new kinds add rows only). */
-export const OPERATION_LIST_KINDS = ['specification-create'] as const;
+export const OPERATION_LIST_KINDS = [
+  'specification-create',
+  'document-change',
+  'manual-commit',
+] as const;
 export type OperationListKind = (typeof OPERATION_LIST_KINDS)[number];
 
 /**
@@ -105,6 +110,10 @@ export const OperationSummarySchema = Type.Object(
     finishedAt: Type.Optional(Type.String()),
     /** Stable code, never server text. */
     code: Type.Optional(Type.String({ minLength: 1 })),
+    /** `document-change` rows: the kind of change (the `DocumentOperationStatus` action vocabulary). */
+    action: Type.Optional(Type.String({ minLength: 1 })),
+    /** `document-change` rows: how many documents the change covers. */
+    documentCount: Type.Optional(Type.Integer({ minimum: 0 })),
     /** Hint, absent or false today. */
     resumable: Type.Optional(Type.Boolean()),
     /** Reserved for `scheduled`, absent today. ISO. */

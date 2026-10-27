@@ -79,10 +79,14 @@ jobs:
         include:
           - { kind: hot, part: 1, total: 2 }
           - { kind: hot, part: 2, total: 2 }
-          - { kind: rest, part: 1, total: 4 }
-          - { kind: rest, part: 2, total: 4 }
-          - { kind: rest, part: 3, total: 4 }
-          - { kind: rest, part: 4, total: 4 }
+          - { kind: rest, part: 1, total: 8 }
+          - { kind: rest, part: 2, total: 8 }
+          - { kind: rest, part: 3, total: 8 }
+          - { kind: rest, part: 4, total: 8 }
+          - { kind: rest, part: 5, total: 8 }
+          - { kind: rest, part: 6, total: 8 }
+          - { kind: rest, part: 7, total: 8 }
+          - { kind: rest, part: 8, total: 8 }
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -106,9 +110,36 @@ jobs:
 
   windows-adapters-full:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full-platform')
-    name: engine adapters Windows full
+    name: engine adapters Windows (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      # Runtime and CLI take minutes per file on Windows (real Git): they run as parallel jobs and the
+      # Runtime suite is split by vitest into three parts.
+      matrix:
+        include:
+          - { name: engine src, filter: "@nevo/specflow-engine", args: "src --testTimeout=60000" }
+          - {
+              name: runtime 1/3,
+              filter: "@nevo/specflow-runtime",
+              args: "--testTimeout=120000 --maxWorkers=1 --no-file-parallelism --shard=1/3",
+            }
+          - {
+              name: runtime 2/3,
+              filter: "@nevo/specflow-runtime",
+              args: "--testTimeout=120000 --maxWorkers=1 --no-file-parallelism --shard=2/3",
+            }
+          - {
+              name: runtime 3/3,
+              filter: "@nevo/specflow-runtime",
+              args: "--testTimeout=120000 --maxWorkers=1 --no-file-parallelism --shard=3/3",
+            }
+          - {
+              name: cli,
+              filter: "@nevo/specflow",
+              args: "--testTimeout=120000 --maxWorkers=1 --no-file-parallelism",
+            }
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -123,7 +154,5 @@ jobs:
           pnpm --version
       - name: Build CLI and Runtime dependencies
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
-      - name: Runtime full adapter regression
-        run: pnpm --filter @nevo/specflow-runtime exec vitest run --testTimeout=120000 --maxWorkers=1 --no-file-parallelism
-      - name: CLI full adapter regression
-        run: pnpm --filter @nevo/specflow exec vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism
+      - name: Adapter and source tests
+        run: pnpm --filter ${{ matrix.filter }} exec vitest run ${{ matrix.args }}

@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting,
+  installDefinitionsForTesting,
   reserveCloseOperation,
   discoverSpecifications,
   workspaceRegistryPath,
@@ -42,7 +43,10 @@ async function project() {
   );
   roots.push(root);
   await mkdir(join(root, '.nevo/local/create-workers'), { recursive: true });
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed up front, so every process of the test finds them in place.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 function input(workspaceId: string, title: string): CreateSpecificationInput {
@@ -247,7 +251,9 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       join(root, '.nevo/config.yaml'),
       'runtime: {}\ngit:\n  enabled: false\n  integrationTargetBranch: ' + branch + '\n',
     );
-    execFileSync('git', ['add', '.nevo/config.yaml'], { cwd: root });
+    // Git is disabled in this project, so the installed definitions are only written; the owner commits
+    // them with the configuration change, which keeps the checkout clean for Close.
+    execFileSync('git', ['add', '.nevo/config.yaml', '.nevo/definitions'], { cwd: root });
     execFileSync(
       'git',
       [

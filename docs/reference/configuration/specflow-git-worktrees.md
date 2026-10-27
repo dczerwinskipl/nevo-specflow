@@ -11,6 +11,7 @@ read_when:
 summary: >
   Exact implemented E2 Git configuration defaults and their Create versus Close meanings.
 related:
+  - adr.0018-engine-commit-policy-and-manual-commit
   - architecture.runtime.specflow-project-home
   - architecture.runtime.specflow-lifecycle
 ---
@@ -29,6 +30,8 @@ git:
   commits:
     protectedBranches: [main, 'release/**']
     allowedBranches: ['feature/**', develop]
+    auto:
+      documents: true
 ```
 
 | Field                           | Effect                                                                                                                                                                  |
@@ -39,6 +42,7 @@ git:
 | `git.integrationTargetBranch`   | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out                                         |
 | `git.commits.protectedBranches` | Optional list of branch patterns on which the Engine never commits (default: none). See [Engine commits and protected branches](#engine-commits-and-protected-branches) |
 | `git.commits.allowedBranches`   | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch)                                        |
+| `git.commits.auto.documents`    | Optional boolean (default `true`). `false`: document edits are saved but not committed by the Engine. See [Auto-commit per capability](#auto-commit-per-capability)     |
 
 `nevo-specflow init` asks for the pattern right after the integration target: presets
 `feature/{slug}` (default, recommended), `feature/{slug}-{shortId}`, `spec/{slug}-{shortId}` or a
@@ -48,8 +52,8 @@ overlapping reservations) and an existing branch is never overwritten. The effec
 returned as `branchPattern` by create-options, so the UI previews exactly `feature/<slug>` unless
 the pattern contains `{shortId}`.
 
-The workstation-local config cannot override committed `git` policy, with one exception: the
-machine-specific worktree folder.
+The workstation-local config cannot override committed `git` policy, with two exceptions: the
+machine-specific worktree folder and `git.commits.auto` (see below).
 
 ## Engine commits and protected branches
 
@@ -94,6 +98,31 @@ empty (nothing selected writes no `commits` block) and is listed in the final re
 _Protected branches_. Protecting the integration target branch is allowed and does not break init;
 the review explains that Nevo then cannot commit specifications directly on it, so they are created
 in a new or an existing worktree, and that merging worktrees into it is not affected.
+
+## Auto-commit per capability
+
+`git.commits.auto` is an object of booleans, one key per Engine capability; the closed key set is `documents` (tasks and
+reviews join it when they exist). Default `true` for every capability.
+
+```yaml
+# .nevo/config.yaml (committed) or .nevo/local/config.yaml (this machine)
+git:
+  commits:
+    auto:
+      documents: false
+```
+
+| Rule                    | Effect                                                                                                                                                                                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Precedence              | Local value, else committed value, else `true`. The effective value and its source (`project`, `local`, `default`) are readable (`GET /api/specs/:specId/uncommitted`)                                                                             |
+| Local `git.commits`     | May contain **only** `auto`; `protectedBranches` and `allowedBranches` stay committed-only, so a local file never loosens protection                                                                                                               |
+| Validation              | A value that is not an object of booleans, or an unknown capability key, is `GIT_POLICY_INVALID` (committed and local file), also while `git.enabled` is `false`                                                                                   |
+| Git disabled            | The setting is inert: nothing is committed either way                                                                                                                                                                                              |
+| Never governed          | The Create scaffold commit and the commits of `init` and `definitions install` always happen                                                                                                                                                       |
+| With `documents: false` | A save completes at once as `uncommitted` (no queue, no commit preflight, so a protected branch or a detached HEAD do not prevent editing); the paths are recorded in the uncommitted-changes ledger and Close is refused until they are committed |
+| Changing the value      | Read fresh at each admission; the mode of a queued operation is pinned. `true` to `false`: queued work drains normally. `false` to `true`: nothing is committed silently                                                                           |
+
+See [ADR 0018](../../architecture/decisions/0018-engine-commit-policy-and-manual-commit.md).
 
 ## Local worktree folder
 

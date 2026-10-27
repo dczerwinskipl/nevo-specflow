@@ -11,6 +11,7 @@ import {
   createSpecificationForTesting,
   discoverSpecifications,
   workspaceRegistryPath,
+  installDefinitionsForTesting,
 } from '@nevo/specflow-engine/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -39,7 +40,7 @@ async function fixture(gitEnabled = false, extraGitConfig = '') {
   await writeFile(
     join(root, '.nevo/config.yaml'),
     gitEnabled
-      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n' + extraGitConfig
+      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n'
       : 'runtime: {}\ngit:\n  enabled: false\n',
   );
   git(root, 'add', '.gitignore', '.nevo/config.yaml');
@@ -54,7 +55,28 @@ async function fixture(gitEnabled = false, extraGitConfig = '') {
     'initial',
   );
   if (gitEnabled) git(root, 'branch', '-m', 'develop');
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
+  if (extraGitConfig !== '') {
+    // The owner protects the branch after the definitions were installed (an install on a protected
+    // branch is refused, so the other order is not possible).
+    await writeFile(
+      join(root, '.nevo/config.yaml'),
+      'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n' + extraGitConfig,
+    );
+    git(root, 'add', '.nevo/config.yaml');
+    git(
+      root,
+      '-c',
+      'user.name=SpecFlow Test',
+      '-c',
+      'user.email=specflow@example.invalid',
+      'commit',
+      '-qm',
+      'protect the branch',
+    );
+  }
+  return { root, engine };
 }
 
 function authenticatedStore() {

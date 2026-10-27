@@ -1,17 +1,18 @@
 ---
 id: adr.0015-specification-manifest-as-document-registry
 type: adr
-title: The Specification manifest is the document registry; archetypes are Engine-owned catalogue entries
+title: The Specification manifest is the document registry; archetypes are project-defined catalogue entries
 status: draft
 date: 2026-10-23
 summary: >
   specification.yaml becomes the canonical registry of a Specification's documents (stable id, path, type)
   and records the selected archetype with a snapshot of its requirements. Archetypes and document types
-  are an Engine-built-in catalogue shaped like future YAML. Frontmatter is optional and never authoritative;
+  are project data files (ADR 0017), not compiled into the product. Frontmatter is optional and never authoritative;
   files outside the registry are unclassified. Structural completeness is a computed validation result.
 related:
   - architecture.runtime.specification-documents
   - adr.0016-engine-owned-document-commits
+  - adr.0017-definitions-as-project-data
   - adr.0013-engine-owned-commits-and-protected-branches
   - architecture.runtime.specflow-engine
   - product.specflow.specification-documents
@@ -70,12 +71,13 @@ evolve this later (project-defined archetypes, template overrides) without redef
 8. **Completeness is computed, never stored.** "Structural completeness" (requirements met) is a pure function
    of the registry, the files and the persisted requirements snapshot. Readiness or content acceptance is not
    stored and is not decided here; it is a validation result of a separate (later) capability.
-9. **One declarative definition schema.** Archetypes, document types, templates and requirements are described by one
-   schema (`schemaVersion: 1`), published as a JSON Schema, used identically by the built-in definitions (Engine code,
-   D1 to D3) and by future user-defined YAML under `.nevo/archetypes`. Every archetype and document type has mandatory
-   `description` and `useWhen`; document types also have mandatory `instructions` (templates and archetypes optional
-   `instructions`), consumed by AI, CLI and UI. The first release ships `minimal`, `feature` and `architecture`. Loading
-   user definitions, precedence, collisions and error surface are the named design-level slice D-config, after D3.
+9. **Declarative definitions, owned by the project.** Archetypes, document types, templates and requirements are
+   described by declarative schemas (`schemaVersion` per kind), published as JSON Schemas. They are **project data
+   files** read from `.nevo/definitions/<kind>/` ([ADR 0017](0017-definitions-as-project-data.md)); nothing
+   archetype-related is compiled into the product (amended 2026-10-24: the first draft held the built-ins in Engine
+   code). The shipped `minimal`, `feature` and `architecture` archetypes and their document types are seed files that
+   install into a project. Every archetype and document type has mandatory `description` and `useWhen`; document types
+   also have mandatory `instructions` (templates and archetypes optional `instructions`), consumed by AI, CLI and UI.
 10. **Selected archetype version and requirements are persisted with the Specification.** `archetype.requirements`
     is a snapshot copied from the catalogue at Create. Later catalogue changes never alter an existing
     Specification's completeness. Archetype switching in an existing Specification is out of scope; the

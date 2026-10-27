@@ -2,15 +2,17 @@ import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 import { ArchetypeCatalogueSchema } from '@nevo/specflow-contracts/documents';
 
-import { getBuiltInCatalogue } from './catalogue';
-import { projectCatalogue } from './projection';
+import { seedCatalogueForTesting } from '../definitions/testing-install';
+import { toArchetypeCatalogue } from './projection';
+
+const catalogue = await seedCatalogueForTesting();
 
 describe('public catalogue projection', () => {
-  const projected = projectCatalogue();
+  const projected = toArchetypeCatalogue({ catalogue });
 
   it('conforms to the contract schema and carries the revision', () => {
     expect([...Value.Errors(ArchetypeCatalogueSchema, projected)]).toEqual([]);
-    expect(projected.revision).toBe(getBuiltInCatalogue().revision);
+    expect(projected.revision).toBe(catalogue.revision);
     expect(projected.defaultArchetypeId).toBeUndefined();
   });
 

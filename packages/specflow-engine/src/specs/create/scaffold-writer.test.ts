@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ResolvedProjectHome } from '../../project/home/home';
-import { BUILT_IN_DEFINITIONS } from '../archetypes/builtins';
-import { resolveCatalogue } from '../archetypes/catalogue';
+import { resolveCatalogue } from '../definitions/resolved-catalogue';
+import { seedCatalogueForTesting } from '../definitions/testing-install';
 import { createSpecificationScaffold } from '../scaffold';
 import { fingerprintCreateClientIntent, normalizeCreateClientIntent } from './intent';
 import { sha256Hex } from '../../hash';
@@ -16,6 +16,7 @@ import { writeCreatePayload } from './journal/payload';
 import { CREATE_JOURNAL_RELATIVE_DIR } from './journal/store';
 import { expectedScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
 
+const seeds = await seedCatalogueForTesting();
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(
@@ -32,15 +33,15 @@ async function engineFixture() {
   };
 }
 
-/** A catalogue that differs from the built-in one in the text of the overview template. */
+/** A catalogue that differs from the shipped one in the text of the overview template. */
 function changedCatalogue() {
-  const definitions = structuredClone(BUILT_IN_DEFINITIONS);
-  for (const archetype of definitions.archetypes ?? []) {
+  const archetypes = structuredClone([...seeds.archetypes]);
+  for (const archetype of archetypes) {
     for (const template of archetype.templates) {
       if (template.id === 'overview') template.content = '# Changed {{specificationTitle}}\n';
     }
   }
-  return resolveCatalogue(definitions);
+  return resolveCatalogue({ documentTypes: seeds.documentTypes, archetypes });
 }
 
 function journalFor(scaffold: ReturnType<typeof createSpecificationScaffold>): CreateJournal {
@@ -81,8 +82,11 @@ describe('Create scaffold recovery source', () => {
       archetypeId: 'minimal',
     };
     // The journal was reserved while the catalogue read "Changed ...".
-    const pinned = createSpecificationScaffold({ ...input, catalogue: changedCatalogue() });
-    const live = createSpecificationScaffold(input);
+    const pinned = createSpecificationScaffold({
+      ...input,
+      catalogue: changedCatalogue(),
+    });
+    const live = createSpecificationScaffold({ ...input, catalogue: seeds });
     expect(pinned.files[1]!.content).not.toBe(live.files[1]!.content);
 
     const journal = journalFor(pinned);
@@ -99,6 +103,7 @@ describe('Create scaffold recovery source', () => {
   it('is recovery-required when a payload file is missing', async () => {
     const engine = await engineFixture();
     const scaffold = createSpecificationScaffold({
+      catalogue: seeds,
       specId: randomUUID(),
       title: 'Pinned',
       created: '2026-10-14',
@@ -116,6 +121,7 @@ describe('Create scaffold recovery source', () => {
   it('is recovery-required when the journal ids differ from the registry in the manifest', async () => {
     const engine = await engineFixture();
     const scaffold = createSpecificationScaffold({
+      catalogue: seeds,
       specId: randomUUID(),
       title: 'Pinned',
       created: '2026-10-14',
@@ -137,6 +143,7 @@ describe('Create scaffold recovery source', () => {
     const workspaceRoot = join(engine.context.project.stateRoot, 'workspace');
     await mkdir(workspaceRoot, { recursive: true });
     const scaffold = createSpecificationScaffold({
+      catalogue: seeds,
       specId: randomUUID(),
       title: 'Forged',
       created: '2026-10-14',
@@ -169,6 +176,7 @@ describe('Create scaffold recovery source', () => {
     const engine = await engineFixture();
     const workspaceRoot = join(engine.context.project.stateRoot, 'workspace');
     const scaffold = createSpecificationScaffold({
+      catalogue: seeds,
       specId: randomUUID(),
       title: 'Partial',
       created: '2026-10-14',

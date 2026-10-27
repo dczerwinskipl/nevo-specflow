@@ -12,6 +12,7 @@ summary: >
   Implemented E2 endpoint routes, public payloads, response codes and authorization
   boundaries.
 related:
+  - reference.api.specification-documents
   - architecture.runtime.specflow-lifecycle
   - product.specflow.specification-creation
   - reference.configuration.specflow-git-worktrees
@@ -177,6 +178,10 @@ Spec-scoped Close requires the appropriate Spec capability and whole-branch inte
 needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 `CloseWorkspace` **and** `Integrate` before revealing occupants/journals.
 Shared spec-scoped integration refuses with 409 `CLOSE_SHARED_WORKTREE`.
+Close and integration first flush the document commit queue of the affected checkouts and refuse with 409
+`DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
+commits remain; the precedence and the preview behaviour are defined in
+[Specification documents](specification-documents.md).
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

@@ -27,3 +27,7 @@ an ADR. Use [`../../templates/adr-template.md`](../../templates/adr-template.md)
 - [0012 — Product package topology and dependency direction](0012-product-package-topology-and-dependency-direction.md)
 - [0013 — Engine-owned scoped commits and protected branches](0013-engine-owned-commits-and-protected-branches.md)
 - [0014 — Feature-owned operation lists over a shared operation model](0014-feature-owned-operation-lists.md)
+- [0015 — The Specification manifest is the document registry](0015-specification-manifest-as-document-registry.md) — draft
+- [0016 — Document operations: immediate write, queued Engine-owned commit](0016-engine-owned-document-commits.md) — draft
+- [0017 — Definitions are project data files](0017-definitions-as-project-data.md) — draft
+- [0018 — Engine commit policy, uncommitted-changes ledger and manual commit](0018-engine-commit-policy-and-manual-commit.md) — draft

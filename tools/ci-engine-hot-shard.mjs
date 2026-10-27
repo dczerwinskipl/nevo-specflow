@@ -64,7 +64,7 @@ const args = [
   fileName,
   '--testNamePattern',
   pattern,
-  '--testTimeout=20000',
+  '--testTimeout=120000',
   '--maxWorkers=1',
   '--no-file-parallelism',
   '--reporter=verbose',

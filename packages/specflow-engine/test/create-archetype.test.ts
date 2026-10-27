@@ -22,14 +22,15 @@ import {
   createSpecificationForTesting as createSpecification,
   inspectCreateSpecification,
   parseSpecificationManifestText,
+  seedCatalogueForTesting,
   type CreateSpecificationInput,
   type SpecFlowEngine,
+  installDefinitionsForTesting,
 } from '../src/testing';
 import { WINDOWS_ABSOLUTE_PATH_MAX } from '../src/specs/create/path-bound';
-import { getBuiltInCatalogue } from '../src/specs/archetypes/catalogue';
 import { validateDocuments } from '../src/specs/documents/document-validation';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
-import { SYMLINKS_AVAILABLE } from './support/documents-fixture';
+import { onWindows, symlinksAvailable } from './support/platform';
 import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
@@ -42,13 +43,17 @@ afterEach(async () => {
 });
 
 const GIT_CONFIG = 'runtime: {}\ngit:\n  enabled: true\n';
-const catalogue = getBuiltInCatalogue();
+const catalogue = await seedCatalogueForTesting();
 
 async function project(config = GIT_CONFIG): Promise<{ root: string; engine: SpecFlowEngine }> {
   const root = await createGitTestProject('specflow-create-archetype-', config);
   roots.push(root, root + '-worktrees');
   git(root, 'checkout', '-q', '-b', 'develop');
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 function request(
@@ -252,7 +257,7 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     // (see the refusal test below), so this keeps proving a long, committed path there too.
     let longName = 'n'.repeat(197) + '.md';
     let longFolder = 'f'.repeat(200);
-    if (process.platform === 'win32') {
+    if (onWindows) {
       const room = WINDOWS_ABSOLUTE_PATH_MAX - root.length - 1 - 'specs/active/'.length - 40 - 2;
       longFolder = 'f'.repeat(Math.floor(room / 2));
       longName = 'n'.repeat(room - longFolder.length - 3) + '.md';
@@ -312,7 +317,7 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     expect((await inspectCreateSpecification(engine, created.operationId))?.commit).toBeUndefined();
   }, 240000);
 
-  it.skipIf(!SYMLINKS_AVAILABLE)(
+  it.skipIf(!symlinksAvailable)(
     'refuses a redirected nested directory instead of writing through it',
     async () => {
       const { root, engine } = await project('runtime: {}\ngit:\n  enabled: false\n');

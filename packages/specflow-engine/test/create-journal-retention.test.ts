@@ -6,7 +6,11 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { bootstrapProjectHome, createSpecificationScaffold } from '../src/testing';
+import {
+  bootstrapProjectHome,
+  createSpecificationScaffold,
+  seedCatalogueForTesting,
+} from '../src/testing';
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
@@ -22,6 +26,8 @@ import {
   type CreateJournal,
   type CreateStage,
 } from '../src/specs/create/journal';
+
+const catalogue = await seedCatalogueForTesting();
 
 const roots: string[] = [];
 const DAY = 24 * 60 * 60 * 1000;
@@ -56,6 +62,7 @@ function journal(context: Context, stage: CreateStage): CreateJournal {
   const title = 'Retention ' + randomUUID().slice(0, 8);
   const specId = randomUUID();
   const scaffold = createSpecificationScaffold({
+    catalogue,
     archetypeId: 'minimal',
     specId,
     title,

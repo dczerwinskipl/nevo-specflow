@@ -16,6 +16,18 @@ export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
 // Subscribers can profile contention without modifying the coordinated operation.
 const lockTimingChannel = channel('nevo.specflow.engine.control-lock');
 
+/**
+ * Lock files this process holds right now (path -> token). A takeover never clears one of them; it is
+ * how the operator command tells a lock this process holds from a leftover of an earlier process that
+ * had the same PID (containers restart with PID 1 again).
+ */
+const heldHere = new Map<string, string>();
+
+/** Whether this process holds the control lock of the Project Home at this moment. */
+export function holdsProjectControlLock(context: ResolvedProjectHome): boolean {
+  return heldHere.has(projectControlLockPath(context));
+}
+
 export type ProjectControlLockErrorCode =
   | 'CONTROL_LOCK_BUSY'
   | 'CONTROL_LOCK_CORRUPT'
@@ -170,6 +182,7 @@ export async function withProjectControlLock<T>(
   try {
     // If killed between exclusive create and durable metadata publication, a
     // partial lock remains as recovery-required rather than becoming free.
+    heldHere.set(path, token);
     await file.writeFile(JSON.stringify(record) + '\n', 'utf8');
     await file.sync();
     await file.close();
@@ -194,6 +207,8 @@ export async function withProjectControlLock<T>(
       await releaseOwnedLock(path, token);
     } catch (error) {
       releaseFailure = error;
+    } finally {
+      heldHere.delete(path);
     }
     // Publish only after releasing the file; diagnostics must never break an operation.
     if (measuring) {
@@ -225,6 +240,7 @@ export async function withProjectControlLock<T>(
   } catch (error) {
     // A failed metadata write leaves a visible recovery artifact. Do not
     // silently unlink a possibly-published lock after an uncertain failure.
+    heldHere.delete(path);
     await file.close().catch(() => undefined);
     throw error;
   }

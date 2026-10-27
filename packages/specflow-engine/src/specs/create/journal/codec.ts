@@ -7,6 +7,8 @@ import { CreateOperationError } from '../error';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
+import { OPERATION_ID_PATTERN } from '../../durable';
+
 import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';
 import { CREATE_SCAFFOLD_FILES_MAX } from '../limits';
@@ -17,7 +19,7 @@ import {
   type CreateStage,
 } from './model';
 
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+export const UUID = OPERATION_ID_PATTERN;
 const INTENT_FIELDS = new Set([
   'title',
   'goal',

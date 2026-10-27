@@ -6,6 +6,7 @@ import {
   DEFAULT_BASE_REF,
   DEFAULT_BRANCH_PATTERN,
   normalizeBaseRef,
+  effectiveAutoCommit,
   parseGitWorktreePolicy,
   resolveWorktreeBranch,
   resolveWorktreesRoot,
@@ -244,12 +245,82 @@ describe('git.commits policy (protected and allowed branches)', () => {
     expect(() => parse(commits)).toThrow(expect.objectContaining({ code: 'GIT_POLICY_INVALID' }));
   });
 
-  it('cannot be set from the workstation-local configuration', () => {
-    expect(() =>
-      parseGitWorktreePolicy(
-        { git: { enabled: true } },
-        { git: { commits: { protectedBranches: ['main'] } } },
-      ),
-    ).toThrow(/worktreesRoot/);
+  it('keeps protection committed-only: the local file may not set it', () => {
+    for (const key of ['protectedBranches', 'allowedBranches']) {
+      expect(() =>
+        parseGitWorktreePolicy(
+          { git: { enabled: true } },
+          { git: { commits: { [key]: ['main'] } } },
+        ),
+      ).toThrow(expect.objectContaining({ code: 'GIT_POLICY_INVALID' }));
+    }
+  });
+});
+
+describe('git.commits.auto (commit policy per capability)', () => {
+  const project = (auto: unknown, enabled = true) => ({
+    git: { enabled, commits: { auto } },
+  });
+
+  it('defaults to automatic commits for every capability', () => {
+    const policy = parseGitWorktreePolicy({ git: { enabled: true } });
+    expect(effectiveAutoCommit(policy, 'documents')).toEqual({ auto: true, source: 'default' });
+    expect(parseGitWorktreePolicy({}).commits.auto).toBeUndefined();
+  });
+
+  it('reads the committed value and lets the local value win over it', () => {
+    const committed = parseGitWorktreePolicy(project({ documents: false }));
+    expect(committed.commits.auto).toEqual({ documents: false });
+    expect(effectiveAutoCommit(committed, 'documents')).toEqual({ auto: false, source: 'project' });
+
+    const localOn = parseGitWorktreePolicy(project({ documents: false }), {
+      git: { commits: { auto: { documents: true } } },
+    });
+    expect(effectiveAutoCommit(localOn, 'documents')).toEqual({ auto: true, source: 'local' });
+
+    const localOff = parseGitWorktreePolicy(project({ documents: true }), {
+      git: { commits: { auto: { documents: false } } },
+    });
+    expect(effectiveAutoCommit(localOff, 'documents')).toEqual({ auto: false, source: 'local' });
+  });
+
+  it('accepts the local value together with the worktrees root and without a committed git block', () => {
+    const policy = parseGitWorktreePolicy(
+      {},
+      { git: { worktreesRoot: '../w', commits: { auto: { documents: false } } } },
+    );
+    expect(policy.worktreesRoot).toBe('../w');
+    expect(effectiveAutoCommit(policy, 'documents')).toEqual({ auto: false, source: 'local' });
+  });
+
+  it('is validated while Git is disabled, and then inert for the policy that gates Git', () => {
+    const policy = parseGitWorktreePolicy(project({ documents: false }, false));
+    expect(policy.enabled).toBe(false);
+    expect(() => parseGitWorktreePolicy(project({ documents: 'no' }, false))).toThrow(
+      expect.objectContaining({ code: 'GIT_POLICY_INVALID' }),
+    );
+  });
+
+  it.each([
+    ['not an object', 'off'],
+    ['a list', [true]],
+    ['a non-boolean value', { documents: 'false' }],
+    ['a null value', { documents: null }],
+    ['an unknown capability', { documents: true, tasks: false }],
+  ])('rejects %s in the committed configuration', (_name, auto) => {
+    expect(() => parseGitWorktreePolicy(project(auto))).toThrow(
+      expect.objectContaining({ code: 'GIT_POLICY_INVALID' }),
+    );
+  });
+
+  it.each([
+    ['a non-boolean value', { auto: { documents: 1 } }],
+    ['an unknown capability', { auto: { reviews: false } }],
+    ['not an object', { auto: false }],
+    ['another commits key', { auto: { documents: false }, protectedBranches: [] }],
+  ])('rejects %s in the local configuration', (_name, commits) => {
+    expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, { git: { commits } })).toThrow(
+      expect.objectContaining({ code: 'GIT_POLICY_INVALID' }),
+    );
   });
 });

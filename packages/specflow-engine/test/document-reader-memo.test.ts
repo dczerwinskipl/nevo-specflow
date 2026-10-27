@@ -9,7 +9,7 @@ import { readRegisteredDocumentSummaries } from '../src/specs/documents/summarie
 import { readSpecificationDocument } from '../src/specs/documents/document-reader';
 import { readSpecificationDocumentTree } from '../src/specs/documents/tree-reader';
 import { RevisionMemo } from '../src/specs/documents/revision-memo';
-import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
+import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/document-rules/verified-file';
 import {
   documentsProject,
   handBuiltSpecification,

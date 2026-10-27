@@ -1,9 +1,9 @@
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { isUnaddressable } from './document-paths';
-import { DocumentError } from './errors';
-import { isAbsent } from './errno';
+import { isUnaddressable } from '../document-rules/document-paths';
+import { DocumentError } from '../document-rules/errors';
+import { isAbsent } from '../document-rules/errno';
 import {
   ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX,
   ARCHIVE_COUNT_TRAVERSAL_FILES_STOP,

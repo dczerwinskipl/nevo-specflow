@@ -11,6 +11,7 @@ import {
   inspectCreateSpecification,
   type CreateSpecificationInput,
   type SpecFlowEngine,
+  installDefinitionsForTesting,
 } from '../src/testing';
 import { createGitTestProject, git } from './support/git-project';
 
@@ -37,7 +38,11 @@ async function project(
   git(root, 'checkout', '-q', '-b', 'develop');
   // The user's own settings, applied after the fixture's neutral default.
   for (const [key, value] of Object.entries(settings)) git(root, 'config', '--local', key, value);
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 const NOTES = 'notes.md';

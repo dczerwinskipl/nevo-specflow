@@ -14,6 +14,7 @@ summary: >
   live progress registry: schema, status table, retention, authorization, ETag, query, error codes and
   the demo mirror.
 related:
+  - reference.api.specification-documents
   - reference.api.operation-progress
   - reference.api.specflow-specification-operations
   - reference.api.specs-overview
@@ -40,9 +41,13 @@ its `/events` stream, which stay the source of truth.
 Query (both optional, anything else is 400):
 
 - `status`: comma-separated filter of the **items** (default all). Known values: `in-progress`,
-  `recovery-required`, `failed`, `completed`, plus the reserved `queued`, `scheduled`. An unknown value or an
+  `recovery-required`, `failed`, `completed`, plus `queued` (a document change whose commit waits; produced by the documents list route below) and the reserved `scheduled`. An unknown value or an
   empty list is 400 `OPERATION_LIST_QUERY_INVALID`. `counts` always cover every admitted row, not the filter.
 - `limit`: digits, 1..50, default 20. Anything else is 400. `truncated` is true when the filtered rows exceed it.
+
+The document changes are listed by the documents feature at `GET /api/specs/document-operations` (same query,
+ETag and 304, `View` of each row's Specification; see
+[the documents contract](specification-documents.md)). Its `queued` rows count as `inProgress`.
 
 There is no `kind` parameter: the route lists the kinds of the specification feature (today
 `specification-create`). A new kind of the same feature adds rows, not a contract change; another feature
@@ -59,7 +64,7 @@ registers its own `<feature>/operations` route with the same helper.
 }
 OperationSummary = {
   operationId; kind;                          // kind: 'specification-create'
-  status: 'in-progress' | 'recovery-required' | 'failed' | 'completed';   // 'queued' | 'scheduled' reserved, never produced
+  status: 'in-progress' | 'recovery-required' | 'failed' | 'completed' | 'queued';   // 'queued' only on document-change rows; 'scheduled' reserved, never produced
   title?; subject?: { specId?; slug? };
   target?: { workspaceKind?: 'existing' | 'new-worktree'; workspaceId?; branch? };
   currentStep?; steps?: { id; status: 'pending' | 'running' | 'done' | 'skipped' }[];

@@ -8,6 +8,7 @@ import {
   bootstrapProjectHome,
   createSpecificationScaffold,
   withProjectControlLock,
+  seedCatalogueForTesting,
 } from '../src/testing';
 import {
   fingerprintCreateClientIntent,
@@ -27,6 +28,8 @@ import {
   type ClosePlan,
 } from '../src/specs/lifecycle/model';
 import { createGitTestProject, git } from './support/git-project';
+
+const catalogue = await seedCatalogueForTesting();
 
 /**
  * Q00 characterization, pinned to pre-refactor tree abada44.
@@ -50,6 +53,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     const title = 'Q00 journal';
     const specId = randomUUID();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId,
       title,

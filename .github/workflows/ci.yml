@@ -80,6 +80,9 @@ jobs:
       - name: Storybook scope self-test
         run: node tools/ci-storybook-scope.mjs --self-test
 
+      - name: Windows engine shard audit
+        run: node tools/ci-engine-shard-audit.mjs
+
       # Resolve the Turbo task graph and fan out independent package jobs.
       # PRs select affected workspaces, then defer known process/browser-heavy packages;
       # main, release, scheduled and manual runs execute the full package suite.

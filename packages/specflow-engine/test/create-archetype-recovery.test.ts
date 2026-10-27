@@ -6,25 +6,9 @@ import { readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { parse, stringify } from 'yaml';
 
-const state = vi.hoisted(() => ({ changed: false, failNextJournalPublish: false }));
-
-vi.mock('../src/specs/archetypes/catalogue', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/specs/archetypes/catalogue')>();
-  const { BUILT_IN_DEFINITIONS } = await import('../src/specs/archetypes/builtins');
-  const changedDefinitions = structuredClone(BUILT_IN_DEFINITIONS);
-  for (const archetype of changedDefinitions.archetypes ?? []) {
-    archetype.version += 1;
-    for (const template of archetype.templates) {
-      template.content = '# CHANGED {{specificationTitle}}\n';
-    }
-  }
-  const changed = actual.resolveCatalogue(changedDefinitions);
-  return {
-    ...actual,
-    getBuiltInCatalogue: () => (state.changed ? changed : actual.getBuiltInCatalogue()),
-  };
-});
+const state = vi.hoisted(() => ({ failNextJournalPublish: false }));
 
 vi.mock('../src/project/fs/atomic-json', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/project/fs/atomic-json')>();
@@ -46,6 +30,7 @@ import {
   inspectCreateSpecification,
   type CreateSpecificationInput,
   type SpecFlowEngine,
+  installDefinitionsForTesting,
 } from '../src/testing';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
 import { createPayloadDirectory } from '../src/specs/create/journal/payload';
@@ -53,7 +38,6 @@ import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
-  state.changed = false;
   state.failNextJournalPublish = false;
   await Promise.all(
     roots
@@ -69,7 +53,11 @@ async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
   );
   roots.push(root, root + '-worktrees');
   git(root, 'checkout', '-q', '-b', 'develop');
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 const input = (engine: SpecFlowEngine, title: string): CreateSpecificationInput => ({
@@ -82,6 +70,26 @@ const input = (engine: SpecFlowEngine, title: string): CreateSpecificationInput 
 });
 
 class Crash extends Error {}
+
+/**
+ * Edit the archetype files of the project the way an owner would: every archetype gets version 2 and
+ * its templates new inline text, so the catalogue has another revision, other versions and other text.
+ */
+async function changeDefinitions(root: string): Promise<void> {
+  const directory = join(root, '.nevo', 'definitions', 'specification-archetype');
+  for (const name of (await readdir(directory)).filter((entry) => entry.endsWith('.yaml'))) {
+    const file = parse(await readFile(join(directory, name), 'utf8')) as {
+      version: number;
+      templates: { content?: string; contentFile?: string }[];
+    };
+    file.version += 1;
+    for (const template of file.templates) {
+      delete template.contentFile;
+      template.content = '# CHANGED {{specificationTitle}}\n';
+    }
+    await writeFile(join(directory, name), stringify(file, { lineWidth: 0 }));
+  }
+}
 
 describe('recovery is independent of the live catalogue', () => {
   it.each(['manifest', 'commit', 'registry'])(
@@ -98,7 +106,7 @@ describe('recovery is independent of the live catalogue', () => {
       const journal = (await inspectCreateSpecification(engine, request.operationId))!;
       const pinnedRevision = journal.catalogueRevision;
 
-      state.changed = true; // the live catalogue differs now: other templates, version 2, new revision
+      await changeDefinitions(root); // the live catalogue differs now: other templates, version 2, new revision
       const resumed = await createSpecification(engine, request, {
         resumeInterruptedOperation: true,
       });
@@ -112,7 +120,12 @@ describe('recovery is independent of the live catalogue', () => {
       const manifest = await readFile(join(root, resumed.relativeManifestPath), 'utf8');
       expect(manifest).toMatch(/version: 1/u);
       expect(git(root, 'log', '-1', '--format=%s')).toBe('spec(create): ' + resumed.slug);
-      expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+      // The owner's edits of the definition files are the only uncommitted change.
+      expect(
+        git(root, 'status', '--porcelain', '--untracked-files=all')
+          .split('\n')
+          .filter((line) => line !== '' && !line.includes('.nevo/definitions/')),
+      ).toEqual([]);
       const done = (await inspectCreateSpecification(engine, request.operationId))!;
       expect(done.catalogueRevision).toBe(pinnedRevision);
     },
@@ -120,10 +133,10 @@ describe('recovery is independent of the live catalogue', () => {
   );
 
   it('replays a completed Create after the catalogue changed, whatever the stale revision says', async () => {
-    const { engine } = await project();
+    const { root, engine } = await project();
     const request = { ...input(engine, 'Replay after change') };
     const created = await createSpecification(engine, request);
-    state.changed = true;
+    await changeDefinitions(root);
     expect(await createSpecification(engine, request)).toEqual(created);
     // The revision is a precondition of admission, not part of the operation identity.
     expect(

@@ -8,9 +8,10 @@ import {
   addWorkspace,
   bindSpecToWorkspace,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   provisionLinkedWorkspaceIdentity,
   updateWorkspaceRegistry,
+  installDefinitionsForTesting,
 } from '@nevo/specflow-engine/testing';
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -64,7 +65,9 @@ async function fixture(gitEnabled = false) {
     'initial',
   );
   if (gitEnabled) git(root, 'branch', '-m', 'develop');
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
+  return { root, engine };
 }
 
 describe('Engine-backed specification workspace read', () => {

@@ -12,6 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import {
   mkdirSync,
+  existsSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -229,7 +230,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       encoding: 'utf8',
     });
 
-  it('ships the CLI and built SpecFlow UI, nothing outside the intended product surface', () => {
+  it('ships the CLI, the built SpecFlow UI and the default definitions, nothing outside the intended product surface', () => {
     const listing = tarArgs('-tzf').split(/\r?\n/).filter(Boolean).sort();
     expect(listing).toEqual(
       expect.arrayContaining([
@@ -242,6 +243,8 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         'package/dist/native/@koromix/koffi-win32-x64/win32_x64/koffi.node',
         'package/dist/native/@koromix/koffi-win32-arm64/win32_arm64/koffi.node',
         'package/dist/ui/index.html',
+        'package/dist/definitions/document-type/overview.yaml',
+        'package/dist/definitions/specification-archetype/templates/overview.md',
         'package/package.json',
       ]),
     );
@@ -257,7 +260,8 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
           path === 'package/dist/bin.js' ||
           path === 'package/dist/session-worker.js' ||
           path.startsWith('package/dist/native/') ||
-          path.startsWith('package/dist/ui/'),
+          path.startsWith('package/dist/ui/') ||
+          path.startsWith('package/dist/definitions/'),
       ),
     ).toBe(true);
   });
@@ -583,6 +587,68 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       rmSync(linked, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
       rmSync(clone, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
+  }, 50_000);
+
+  it('G2. the installed CLI finds the packaged default definitions (definitions install --dry-run)', () => {
+    // The seed folder ships next to the bundle (dist/definitions) and is found from the bundle at run time.
+    const home = realpathSync(prefix);
+    const result = nevoSpec(['definitions', 'install', '--dry-run', '--json'], undefined, home);
+    expect(result.code, result.stdout).toBe(0);
+    const printed = JSON.parse(
+      result.stdout.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}',
+    ) as {
+      dryRun: boolean;
+      outcome: { status: string; plan: { items: { action: string; path: string }[] } };
+    };
+    expect(printed.dryRun).toBe(true);
+    expect(printed.outcome.status).toBe('planned');
+    const created = printed.outcome.plan.items.filter((item) => item.action === 'create');
+    expect(created).toHaveLength(13);
+    expect(created.map((item) => item.path)).toContain(
+      'specification-archetype/templates/overview.md',
+    );
+    // A dry run leaves the project untouched.
+    expect(existsSync(join(home, '.nevo', 'definitions'))).toBe(false);
+  }, 50_000);
+
+  it('G3. the installed CLI exposes specs documents: help, a usage error and a JSON refusal', () => {
+    const home = realpathSync(prefix);
+    const help = nevoSpec(['specs', 'documents', '--help'], undefined, home);
+    expect(help.code, help.stdout).toBe(0);
+    for (const name of ['list', 'add', 'save', 'flush', 'recover', 'validate']) {
+      expect(help.stdout).toContain(name);
+    }
+    // Usage error: exit 2.
+    expect(nevoSpec(['specs', 'documents', 'add'], undefined, home).code).toBe(2);
+    // A domain refusal: exit 1, one JSON error object on stdout.
+    const refused = nevoSpec(
+      ['specs', 'documents', 'status', randomUUID(), '--json'],
+      undefined,
+      home,
+    );
+    expect(refused.code, refused.stdout).toBe(1);
+    const line = refused.stdout.split(/\r?\n/u).find((entry) => entry.startsWith('{')) ?? '{}';
+    expect((JSON.parse(line) as { error: { code: string } }).error.code).toBe(
+      'DOCUMENT_OPERATION_NOT_FOUND',
+    );
+  }, 50_000);
+
+  it('G4. the installed CLI exposes commit: help, a usage error and a JSON refusal', () => {
+    const home = realpathSync(prefix);
+    const help = nevoSpec(['commit', '--help'], undefined, home);
+    expect(help.code, help.stdout).toBe(0);
+    for (const name of ['--scope', '--spec', '--path', '--ledger-revision', 'status']) {
+      expect(help.stdout).toContain(name);
+    }
+    // Usage error: exit 2.
+    expect(nevoSpec(['commit'], undefined, home).code).toBe(2);
+    // A domain refusal: exit 1, one JSON error object on stdout.
+    const refused = nevoSpec(['commit', '--scope', 'definitions', '--json'], undefined, home);
+    expect(refused.code, refused.stdout).toBe(1);
+    const line = refused.stdout.split(/\r?\n/u).find((entry) => entry.startsWith('{')) ?? '{}';
+    expect((JSON.parse(line) as { error: { code: string } }).error.code).toBe(
+      'MANUAL_COMMIT_UNAVAILABLE',
+    );
   }, 50_000);
 
   it('H. two independent installed CLI processes cannot bootstrap competing Project Homes', async () => {

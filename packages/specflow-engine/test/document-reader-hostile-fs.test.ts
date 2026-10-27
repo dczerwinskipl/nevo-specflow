@@ -14,18 +14,19 @@ import { basename, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { deriveUnclassifiedDocumentId } from '../src/specs/documents/document-ids';
+import { onPosix, symlinksAvailable } from './support/platform';
+
+import { deriveUnclassifiedDocumentId } from '../src/specs/document-rules/document-ids';
 import { readSpecificationDocument } from '../src/specs/documents/document-reader';
 import { readRegisteredDocumentSummaries } from '../src/specs/documents/summaries';
 import { readSpecificationDocumentTree } from '../src/specs/documents/tree-reader';
-import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
+import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/document-rules/verified-file';
 import {
   documentsProject,
   errorCode,
   failure,
   handBuiltSpecification,
   removeTrackedRoots,
-  SYMLINKS_AVAILABLE,
   trackRoot,
 } from './support/documents-fixture';
 
@@ -36,7 +37,7 @@ const handBuilt = handBuiltSpecification;
 const code = errorCode;
 
 describe('paths, links and hidden entries', () => {
-  it.skipIf(!SYMLINKS_AVAILABLE)(
+  it.skipIf(!symlinksAvailable)(
     'skips symlinks (files and folders), reports them and never reads through them',
     async () => {
       const fixture = await project();
@@ -77,7 +78,7 @@ describe('paths, links and hidden entries', () => {
     240000,
   );
 
-  it.skipIf(!SYMLINKS_AVAILABLE)(
+  it.skipIf(!symlinksAvailable)(
     'reports a registered file replaced by a symlink only as skipped and never reads it',
     async () => {
       const fixture = await project();
@@ -107,7 +108,7 @@ describe('paths, links and hidden entries', () => {
     240000,
   );
 
-  it.skipIf(!SYMLINKS_AVAILABLE)(
+  it.skipIf(!symlinksAvailable)(
     'refuses a registered path below a symlinked folder as leaving the Specification directory',
     async () => {
       const fixture = await project();
@@ -186,7 +187,7 @@ describe('paths, links and hidden entries', () => {
   }, 240000);
 
   // A backslash is a path separator on Windows, so such a file name cannot exist there.
-  it.skipIf(process.platform === 'win32')(
+  it.skipIf(!onPosix)(
     'reports names that cannot be addressed as skipped entries',
     async () => {
       const fixture = await project();
@@ -225,7 +226,7 @@ describe('paths, links and hidden entries', () => {
   }, 240000);
 
   // CON/PRN/... name devices on Windows; the POSIX behaviour is what is under test.
-  it.skipIf(process.platform === 'win32')(
+  it.skipIf(!onPosix)(
     'lists a Windows reserved name as an ordinary unclassified file on Linux',
     async () => {
       const fixture = await project();
@@ -241,7 +242,7 @@ describe('paths, links and hidden entries', () => {
     240000,
   );
 
-  it.skipIf(!SYMLINKS_AVAILABLE)(
+  it.skipIf(!symlinksAvailable)(
     'fails closed when the Specification directory itself is a symlink',
     async () => {
       const fixture = await project();

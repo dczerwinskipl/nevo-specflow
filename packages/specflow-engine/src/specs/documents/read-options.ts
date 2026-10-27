@@ -1,6 +1,7 @@
 import type { ObservedFile } from './projection';
+import type { ProcessTable } from './write/executor-identity';
 import { RevisionMemo } from './revision-memo';
-import { nodeVerifiedFs, type VerifiedFs } from './verified-file';
+import { nodeVerifiedFs, type VerifiedFs } from '../document-rules/verified-file';
 
 /** What a memoised tree observation keeps of a file. */
 export interface ObservationMemoValue {
@@ -29,6 +30,8 @@ export interface DocumentReadOptions {
   /** Memo of revisions and titles for the workspace documents section; defaults to a process-wide LRU. */
   readonly summaryMemo?: RevisionMemo<SummaryMemoValue>;
   readonly now?: () => number;
+  /** Process table that judges whether a writer recorded in a journal still runs (procfs seam). */
+  readonly processTable?: ProcessTable;
 }
 
 export interface ResolvedReadOptions {

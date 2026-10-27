@@ -18,9 +18,11 @@ import type { Readable } from 'node:stream';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { deriveUnclassifiedDocumentId } from '../src/specs/documents/document-ids';
+import { onLinux } from './support/platform';
+
+import { deriveUnclassifiedDocumentId } from '../src/specs/document-rules/document-ids';
 import { openSpecificationDocument } from '../src/specs/documents/open';
-import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
+import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/document-rules/verified-file';
 import {
   createdFeature,
   documentsProject,
@@ -32,8 +34,6 @@ import {
 } from './support/documents-fixture';
 
 afterEach(removeTrackedRoots);
-
-const onLinux = process.platform === 'linux';
 
 async function drain(stream: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];

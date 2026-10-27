@@ -7,7 +7,9 @@ import { join } from 'node:path';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting,
+  inspectCreateSpecification,
   inspectPublicCreateOperation,
+  installDefinitionsForTesting,
 } from '@nevo/specflow-engine/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -65,6 +67,7 @@ async function server(
   );
   if (gitEnabled) git(root, 'branch', '-m', 'develop');
   const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
 
   const store = new InMemoryAuthenticationStore();
   const session = store.createSession({
@@ -150,7 +153,7 @@ describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
   }, 240000);
 
   it('replay of a still running request returns the current state (202) or the result (201)', async () => {
-    const { post, untilCompleted } = await server(true);
+    const { engine, post, untilCompleted } = await server(true);
     const operationId = randomUUID();
     const body = {
       operationId,
@@ -159,8 +162,15 @@ describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
     };
     const first = await post(body, 'respond-async');
     expect(first.statusCode).toBe(202);
+    // The replay is of an operation that has left `reserved`: wait for the journal to say so instead
+    // of relying on the 202 alone, then replay while the detached Create is still working.
+    for (let attempt = 0; attempt < 600; attempt++) {
+      const stage = (await inspectCreateSpecification(engine, operationId))?.stage;
+      if (stage !== undefined && stage !== 'reserved') break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     const replay = await post(body, 'respond-async');
-    expect([201, 202]).toContain(replay.statusCode);
+    expect([201, 202], replay.body).toContain(replay.statusCode);
     if (replay.statusCode === 202) {
       expect(replay.headers.location).toBe(`/api/specs/create/operations/${operationId}`);
     }

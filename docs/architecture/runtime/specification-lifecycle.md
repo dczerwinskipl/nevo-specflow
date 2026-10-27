@@ -12,6 +12,8 @@ summary: >
   Implemented E2 Create and explicit Specification/workspace Close invariants, Git
   publication proof and CAS rebind.
 related:
+  - architecture.runtime.specification-documents
+  - adr.0016-engine-owned-document-commits
   - architecture.runtime.specflow-project-home
   - engineering.shared.specflow-git-recovery
   - reference.api.specflow-specification-operations
@@ -163,6 +165,11 @@ Workspace Close derives the full occupant set from verified registry and canonic
 It records exact IDs, locations, statuses and binding generations in its durable journal.
 Callers cannot name an arbitrary subset or disguise a whole-branch merge as one Spec operation.
 Active Specs remain active after whole-workspace rebind; already archived Specs remain archived.
+
+Every Close and integration first flushes the document commit queue of the checkouts it touches and is refused
+with `DOCUMENT_COMMITS_PENDING` while document commits are pending, failed or uncommitted; the rule, its precedence and
+the recovery of document operations are owned by the [documents layer](specification-documents.md) and
+[ADR 0016](../decisions/0016-engine-owned-document-commits.md).
 
 ## Safe integration, rebind and disposal
 

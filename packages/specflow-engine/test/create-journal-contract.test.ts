@@ -11,6 +11,7 @@ import {
   createSpecification,
   createSpecificationScaffold,
   openSpecFlowEngine,
+  seedCatalogueForTesting,
 } from '../src/testing';
 import {
   fingerprintCreateClientIntent,
@@ -24,6 +25,8 @@ import {
   withCreateJournalLock,
   type CreateJournal,
 } from '../src/specs/create/journal';
+
+const catalogue = await seedCatalogueForTesting();
 
 const roots: string[] = [];
 
@@ -58,7 +61,13 @@ function currentJournal(
   const title = 'Current contract';
   const specId = randomUUID();
   const created = '2026-10-14';
-  const scaffold = createSpecificationScaffold({ archetypeId: 'minimal', specId, title, created });
+  const scaffold = createSpecificationScaffold({
+    catalogue,
+    archetypeId: 'minimal',
+    specId,
+    title,
+    created,
+  });
   const requestIntent = normalizeCreateClientIntent({
     archetype: { id: 'minimal', version: 1 },
     title,
@@ -156,6 +165,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
     const record = currentJournal(context, engine.workspace.workspaceId);
     await seed(context, record, record.operationId);
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: record.specId,
       title: record.title,
@@ -180,6 +190,7 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(result.relativeManifestPath).toBe(record.files[0]!.relativePath);
     expect(await readFile(join(result.workspaceRoot, result.relativeManifestPath), 'utf8')).toBe(
       createSpecificationScaffold({
+        catalogue,
         archetypeId: 'minimal',
         specId: record.specId,
         title: record.title,

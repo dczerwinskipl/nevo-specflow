@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   type CreateSpecificationInput,
 } from '../src/testing';
 import { createGitTestProject, git, commitStaged } from './support/git-project';

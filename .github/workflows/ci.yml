@@ -346,6 +346,7 @@ jobs:
           pnpm --filter @nevo/specflow-runtime exec vitest run
           src/features/sessions/providers/process
           src/features/sessions/providers/claude
+          src/features/sessions/providers/codex
           src/features/sessions/providers/compatibility
           src/features/sessions/lifecycle
           src/features/sessions/persistence

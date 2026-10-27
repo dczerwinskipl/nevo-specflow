@@ -14,6 +14,7 @@ import {
 import { mergeRuntimeConfigValues } from './merge';
 import { parseRuntimeConfig } from './parse';
 import type { LoadedRuntimeConfig } from './types';
+import { parseSessionsFeatureConfig } from '../features/sessions';
 import { isRecord } from './parsing/value-parsers';
 
 export interface LoadRuntimeConfigOptions {
@@ -34,6 +35,9 @@ export async function loadRuntimeConfig(
 
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
+  const sessions = parseSessionsFeatureConfig(
+    isRecord(projectDocument) ? projectDocument.sessions : undefined,
+  );
   const specs = parseSpecsFeatureConfig(
     isRecord(projectDocument) ? projectDocument.specs : undefined,
   );
@@ -47,6 +51,10 @@ export async function loadRuntimeConfig(
     localExists = await fileExists(localPath);
     if (localExists) {
       const localDocument = await readRequiredConfig(localPath);
+      if (isRecord(localDocument) && localDocument.sessions !== undefined)
+        throw new RuntimeConfigError(
+          'Session configuration is project-owned and cannot be set locally.',
+        );
       if (isRecord(localDocument) && localDocument.specs !== undefined) {
         throw new RuntimeConfigError(
           'Specs Overview configuration is project-owned and cannot be set locally.',
@@ -64,7 +72,7 @@ export async function loadRuntimeConfig(
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
   return {
-    config: { ...parseRuntimeConfig(merged), specs },
+    config: { ...parseRuntimeConfig(merged), specs, sessions },
     sources: {
       project: projectPath,
       ...(localExists && localPath ? { local: localPath } : {}),

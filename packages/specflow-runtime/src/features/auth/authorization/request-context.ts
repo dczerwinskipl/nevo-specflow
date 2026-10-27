@@ -27,13 +27,17 @@ export function registerAuthorizationRequestContext<RawServer extends RawServerB
   app.decorateRequest('authz');
 
   app.addHook('onRequest', (request, _reply, done) => {
-    const access = resolveAuthorizationAccess(
-      options.authentication,
-      options.store,
-      request.cookies[options.cookieNames.session],
-    );
-
-    request.authz = createRequestAuthorization(access, options.authorization);
+    const refresh = (): RequestAuthorization =>
+      createRequestAuthorization(
+        resolveAuthorizationAccess(
+          options.authentication,
+          options.store,
+          request.cookies[options.cookieNames.session],
+        ),
+        options.authorization,
+        refresh,
+      );
+    request.authz = refresh();
     done();
   });
 }

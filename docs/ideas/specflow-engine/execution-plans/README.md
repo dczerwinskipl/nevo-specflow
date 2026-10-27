@@ -36,4 +36,9 @@ Plan 03 and Plan 04 can be developed independently if code ownership is disjoint
 
 ## Cleanup policy
 
+Plan 04 now has a decision-complete independent Session foundation and implementation tasks on
+`feature/managed-sessions-foundation`; its linked delivery/storage/API/driver documents own the
+resolved contracts. [Real provider migration](../../specflow-runtime/provider-migration-plan.md)
+is explicit follow-on work. This does not unblock E5 claims before real E3/Engine acceptance.
+
 Temporary plans are deleted **by implemented stage**, after tests and independent review. E3–E5 worklists stay in this branch as drafts until their corresponding stage is completed and promoted. This supersedes the old proposal to delete all five plans together before the Create branch merges. Run `pnpm docs:check --write`, `pnpm docs:check` and CI after any promotion; do not merge temporary task lists as permanent product specification format.

@@ -49,6 +49,8 @@ export type WithCapabilities<T, Targets extends AuthorizationTargets> = Contract
 >;
 
 export interface RequestAuthorization {
+  /** Re-resolve trusted access for a long-lived connection instead of retaining request-time grants. */
+  refresh(): RequestAuthorization;
   /** Trusted identity and immutable policy instance for disposable, non-authoritative reads. */
   readContext(): { readonly subject: string; readonly policy: object };
   requireAccess(): void;
@@ -87,6 +89,7 @@ export interface RequestAuthorization {
 export function createRequestAuthorization(
   access: AuthorizationAccess,
   authorization: Authorization,
+  refresh?: () => RequestAuthorization,
 ): RequestAuthorization {
   const cache = new Map<string, readonly CapabilityId[]>();
 
@@ -132,6 +135,7 @@ export function createRequestAuthorization(
   };
 
   const api: RequestAuthorization = {
+    refresh: refresh ?? (() => createRequestAuthorization(access, authorization)),
     readContext: () => {
       requireAccess();
       return {

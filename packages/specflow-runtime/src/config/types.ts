@@ -1,5 +1,6 @@
 import type { RuntimeAuthenticationConfig, RuntimeAuthorizationConfig } from '../features/auth';
 import type { SpecsFeatureConfig } from '../features/specs';
+import type { SessionsFeatureConfig } from '../features/sessions';
 import type { EndpointRateLimit } from '../server/endpoint-policy-config';
 
 export interface RuntimeServerTlsConfig {
@@ -21,6 +22,7 @@ export interface RuntimeConfig {
   readonly authentication: RuntimeAuthenticationConfig;
   readonly authorization?: RuntimeAuthorizationConfig;
   readonly specs?: SpecsFeatureConfig;
+  readonly sessions?: SessionsFeatureConfig;
 }
 
 export interface LoadedRuntimeConfig {

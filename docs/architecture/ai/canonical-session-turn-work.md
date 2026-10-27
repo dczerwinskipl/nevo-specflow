@@ -45,8 +45,17 @@ Session
 
 A Session represents a provider-backed conversation/execution context.
 
-A Session is the canonical product concept. Until an application-owned session ID is introduced,
-its canonical provider-backed locator is `ProviderSessionRef = (provider, providerSessionId)`.
+Session is an independent abstraction. Its identity, lifecycle, persistence, history and
+Turn/Work operations MUST NOT require a Specification, Task or workflow attempt. Product
+integrations own those associations and compose their context above the Session capability.
+Association metadata MUST NOT become the source of Session identity or lifecycle authority.
+
+Execution may still require an authorized, verified environment and effect admission. Integrations
+resolve product-specific context and supply it through the execution boundary; independence from
+Specs/Tasks does not waive provider, authorization or workspace safety requirements.
+
+A Session has an application-owned stable `sessionId`, allocated before provider execution.
+Its provider-backed locator is separately `ProviderSessionRef = (provider, providerSessionId)`.
 `providerSessionId` alone MUST NOT be treated as globally unique identity, and display name, file
 path, task order, or UI route MUST NOT be used as session identity.
 

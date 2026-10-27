@@ -7,47 +7,59 @@ scope: specflow
 areas: [runtime, ai, security, testing]
 tags: [execution-task, temporary, implementation]
 read_when:
-  - implementing E4.T06 on the shared implementation branch
-  - checking dependencies, batch safety and acceptance evidence
+  - implementing E4.T06 on feature/managed-sessions-foundation
 summary: >
-  Temporary task for http/stream contracts within the SpecFlow Engine implementation.
+  Dependency-complete http/stream contracts task for independent Sessions.
 related:
   - ideas.specflow-engine.plan-04
-  - ideas.specflow-engine.execution-plans
-  - ideas.specflow-engine.test-plan
+  - ideas.specflow-runtime.managed-sessions-delivery
+  - architecture.ai.session-storage-and-lifecycle
+  - reference.api.sessions
+  - reference.protocols.session-provider-driver
 ---
 
 # E4.T06 — HTTP/stream contracts
 
-**Temporary implementation task.** Work on branch `feature/specflow-engine-foundation`; do not create a per-task PR or treat this document as a formal Specification. The [plan overview](../README.md) owns the acceptance boundary.
+Temporary implementation task on `feature/managed-sessions-foundation`.
+The [parent plan](../README.md) owns sequencing and independent review gates.
 
-## Required implementation / outcome
+## Goal and ownership
 
-Add authenticated and scoped feature-owned Session read/start/cancel/interact endpoints and streaming/replay where currently supported architecture permits. Place exact DTOs in `@nevo/specflow-contracts`, not shared UI fixtures or Engine. Separate ownership of Runtime read source from API presenter.
+Wire production Session configuration/storage/lifecycle and authorized bounded HTTP/SSE.
 
-## Prerequisites
+- Kind/profile: backend / nevo-agents:implementer.
+- Owner paths: Runtime Session feature, config/start/server composition and Auth-owned public stream checker; test/sessions HTTP/SSE.
+- Prerequisites: [E4.T05](T05-turn-coordinator.md).
+- Minimal context: API reference, Runtime auth/endpoint policy, delivery config/startup.
+- Acceptance coverage: MS01/MS02/MS04/MS06–MS09.
 
-- [E4.T05](T05-turn-coordinator.md)
+## Authoritative design entry points
 
-Original planning dependency: T03–T05. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
+- [Delivery and acceptance](../../../../specflow-runtime/managed-sessions-delivery.md).
+- [Storage/lifecycle](../../../../../architecture/ai/session-storage-and-lifecycle.md).
+- [HTTP/read contract](../../../../../reference/api/sessions.md).
+- [Provider driver](../../../../../reference/protocols/session-provider-driver.md).
 
-## Execution & batching
+Read task-relevant sections; behavior stays with those owners, not duplicate schemas in UI.
 
-- Mode: **Sequential batch** `4-runtime-surface`; the predecessor task must complete first.
-- Reason: Runtime HTTP first, then T07 UI in same sequential batch, with DTO acceptance at boundary.
-- **No concurrent writes** to the same shared manifest, registry, journal, Git ref, auth/DTO contract or Runtime feature composition without explicit coordinated ownership; dependency-free alone does not imply safe parallel execution.
-- In a batch, execute tasks **in order** with a checkpoint after each and stop on unexpected contract changes. This is not simultaneous execution.
+## Acceptance
 
-## Verification evidence to attach to review
+- Implement exact routes/error/byte limits with trusted project/session scopes; no required specId or client actor override.
+- Project sessions flags default false; reject unknown/local overrides. Disabled feature acquires no store; enabled startup reconciles before exposure and shutdown owns cleanup.
+- Snapshot/replay/live handoff loses no events; durable outbox before broadcast, bounded replay/subscriber queues and explicit resync on gaps. Disconnect never cancels execution.
+- Verify history tokens, content/Work membership and current Auth each request; SSE reauthorizes through Auth's public boundary at each batch/idle interval.
+- Test expired/revoked credentials, forged scope, altered retry payload and expired cursors. No demo fallback or duplicated Auth cookie resolver.
 
-- Specific evidence: **Scoped Session HTTP/cancel/interact/replay**. These IDs refer to the [canonical candidate test matrix](../../../test-plan.md); where evidence is qualitative, provide precise inspected source/contract and build/import checks instead of inventing a PASS result.
-- Show positive behavior and at least one meaningful failure/no-side-effect case for the changed boundary. Run relevant existing tests; report OS/Git/Node versions for actual Git/process cases.
-- Report modified modules, new/changed contracts, tests run (PASS/FAIL/SKIP), unresolved risk and any changes that affect later task dependencies.
-- Do not claim this task or its parent plan complete while required checks are skipped or unresolved security/lifecycle ownership remains.
+## Verification and review
 
-## References
+Fastify HTTP/SSE integration through real SQLite+controlled mock; config tests and Runtime/contracts typecheck/build/lint.
 
-- [Parent execution plan](../README.md)
-- [Program sequencing / parallel safety](../../README.md)
-- [Ideas acceptance gates](../../../acceptance-criteria.md)
-- [Ideas test plan](../../../test-plan.md)
+Report actual PASS/FAIL/SKIP, affected contracts and intentional legacy differences.
+Use owner-boundary tests and public feature ports. Independent review uses nevo-agents:reviewer
+at the parent plan's gates; this document does not claim review occurred.
+A newly evidenced material conflict blocks dependent work and returns to the owning design.
+
+## Out of scope
+
+No legacy compatibility/import, mandatory Spec ownership, full transcript hydration,
+real writable provider launch, automatic workflow finish or fabricated prerequisite readiness.

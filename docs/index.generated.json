@@ -550,6 +550,39 @@
       ]
     },
     {
+      "id": "architecture.ai.session-storage-and-lifecycle",
+      "type": "architecture",
+      "title": "Managed Session persistence and lifecycle design",
+      "status": "draft",
+      "file": "docs/architecture/ai/session-storage-and-lifecycle.md",
+      "read_when": [
+        "implementing managed Session storage or admission",
+        "implementing Session tail reads and restart recovery"
+      ],
+      "summary": "Decided implementation design for independent Sessions, worker-owned SQLite, one local Runtime owner, transactional admission, bounded reads and crash recovery.",
+      "related": [
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "sqlite",
+        "durability",
+        "recovery",
+        "pagination"
+      ]
+    },
+    {
       "id": "architecture.principles.enforceable-invariants",
       "type": "architecture",
       "title": "Enforceable invariants",
@@ -3037,29 +3070,33 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/README.md",
       "read_when": [
-        "executing the temporary Engine migration proof of concept",
-        "reviewing implementation tasks, verification and dependency gates"
+        "implementing the independent managed Session foundation",
+        "selecting the next dependency-complete Session task"
       ],
-      "summary": "Disposable implementation plan for canonical Runtime Session Turn Work persistence and a controllable mock provider, without worktree-native resume.",
+      "summary": "Implementation-ready decomposition of independent Session core, worker SQLite, bounded tail/history, authorized HTTP/SSE and a real UI with a no-effect mock.",
       "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.acceptance",
-        "ideas.specflow-engine.test-plan",
-        "architecture.principles.enforceable-invariants"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver",
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-engine.execution-plans"
       ],
       "scope": "specflow",
       "areas": [
         "runtime",
         "ai",
         "security",
-        "testing"
+        "testing",
+        "ui"
       ],
       "tags": [
         "execution-plan",
         "temporary",
         "sessions",
         "turns",
-        "mock-provider"
+        "mock-provider",
+        "pagination"
       ]
     },
     {
@@ -3069,14 +3106,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T01-session-contract-reconnaissance.md",
       "read_when": [
-        "implementing E4.T01 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T01 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for session contract reconnaissance within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete session contract reconnaissance task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -3098,14 +3136,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T02-canonical-identities.md",
       "read_when": [
-        "implementing E4.T02 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T02 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for canonical identities within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete canonical identities task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -3127,14 +3166,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T03-durable-runtime-state.md",
       "read_when": [
-        "implementing E4.T03 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T03 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for durable runtime state within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete durable runtime state task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -3156,14 +3196,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T04-provider-neutral-test-driver.md",
       "read_when": [
-        "implementing E4.T04 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T04 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for provider-neutral test driver within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete provider-neutral test driver task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -3185,14 +3226,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T05-turn-coordinator.md",
       "read_when": [
-        "implementing E4.T05 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T05 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for turn coordinator within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete turn coordinator task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -3214,14 +3256,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T06-http-stream-contracts.md",
       "read_when": [
-        "implementing E4.T06 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T06 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for http/stream contracts within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete http/stream contracts task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -3243,21 +3286,23 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T07-ui-integration-slice.md",
       "read_when": [
-        "implementing E4.T07 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T07 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for ui integration slice within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete ui integration slice task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
         "runtime",
         "ai",
         "security",
-        "testing"
+        "testing",
+        "ui"
       ],
       "tags": [
         "execution-task",
@@ -3272,14 +3317,15 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T08-lifecycle-security-tests.md",
       "read_when": [
-        "implementing E4.T08 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
+        "implementing E4.T08 on feature/managed-sessions-foundation"
       ],
-      "summary": "Temporary task for lifecycle/security tests within the SpecFlow Engine implementation.",
+      "summary": "Dependency-complete lifecycle/security tests task for independent Sessions.",
       "related": [
         "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -4327,6 +4373,253 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.antigravity-provider",
+      "type": "engineering",
+      "title": "Antigravity Session provider discovery and admission prerequisites",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/antigravity-provider.md",
+      "read_when": [
+        "implementing the Antigravity Session adapter",
+        "checking native context allocation, cancellation and sandbox prerequisites"
+      ],
+      "summary": "Verified installed CLI surface, primary protocol evidence, and explicit gaps that must be closed before advertising managed Antigravity execution.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-runtime.provider-process-boundary",
+        "ideas.specflow-runtime.managed-agent-execution",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "antigravity",
+        "providers",
+        "sessions",
+        "migration"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.claude-provider",
+      "type": "engineering",
+      "title": "Claude Session provider implementation and acceptance",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/claude-provider.md",
+      "read_when": [
+        "enabling or reviewing the Claude Session adapter",
+        "checking compatibility after a Claude CLI update"
+      ],
+      "summary": "Production Claude wiring, optimistic Windows personal-OAuth compatibility, durable native context, bidirectional questions and explicit live acceptance limitations.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-runtime.provider-process-boundary",
+        "reference.protocols.session-provider-driver",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "claude",
+        "providers",
+        "sessions",
+        "migration"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.codex-provider",
+      "type": "engineering",
+      "title": "Codex Session provider implementation and acceptance",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/codex-provider.md",
+      "read_when": [
+        "enabling or reviewing the Codex Session adapter",
+        "checking native Codex execution and authentication boundaries"
+      ],
+      "summary": "Native Codex mode discovery, managed execution, provider-assigned context, access-only credentials and explicit live acceptance limitations.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-runtime.provider-process-boundary",
+        "reference.protocols.session-provider-driver",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "codex",
+        "providers",
+        "sessions",
+        "migration"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.managed-agent-execution",
+      "type": "engineering",
+      "title": "Native provider modes and managed agent execution",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/managed-agent-execution.md",
+      "read_when": [
+        "enabling writable native provider modes",
+        "changing external execution claims or recovery"
+      ],
+      "summary": "Owner-directed agent default, native provider mode selection, Engine-owned durable project write admission and evidence requirements across Runtime/Engine crash windows.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-runtime.session-review-follow-up",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "providers",
+        "execution",
+        "recovery"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.provider-compatibility",
+      "type": "engineering",
+      "title": "Optimistic provider compatibility and strict execution checks",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/provider-compatibility.md",
+      "read_when": [
+        "certifying an additional provider binary",
+        "implementing independently published compatibility updates"
+      ],
+      "summary": "Separates diagnostic build identity, bounded protocol probing and strict execution admission; compatible unlisted builds run provisionally without catalogue updates.",
+      "related": [
+        "ideas.specflow-runtime.claude-provider",
+        "ideas.specflow-runtime.provider-process-boundary",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "compatibility",
+        "certification",
+        "sessions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.provider-manual-checks",
+      "type": "engineering",
+      "title": "Short manual provider checks outside automated tests",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/provider-manual-checks.md",
+      "read_when": [
+        "manually verifying an installed provider",
+        "reporting native provider evidence separately from automated tests"
+      ],
+      "summary": "Optional short native-provider checks with explicit test prompts, no embedded credentials and no dependency from automated tests or CI on a subscription.",
+      "related": [
+        "engineering.shared.testing",
+        "ideas.specflow-runtime.claude-provider",
+        "ideas.specflow-runtime.codex-provider",
+        "ideas.specflow-runtime.antigravity-provider"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "sessions",
+        "manual",
+        "subscriptions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.provider-migration-plan",
+      "type": "engineering",
+      "title": "Real provider migration after the independent Session foundation",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/provider-migration-plan.md",
+      "read_when": [
+        "continuing migration after Plan 04",
+        "planning real provider parity and managed writer integration"
+      ],
+      "summary": "Bounded follow-on deliveries for Claude, Codex and Antigravity against the fixed Session driver contract, with explicit Engine prerequisites for writable execution.",
+      "related": [
+        "ideas.specflow-engine.plan-04",
+        "ideas.specflow-engine.plan-05",
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "reference.protocols.session-provider-driver",
+        "ideas.specflow-runtime.ai-adapters.migration-inspection-map"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "migration",
+        "claude",
+        "codex",
+        "antigravity"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.session-review-follow-up",
+      "type": "engineering",
+      "title": "PR 98 Session architecture review follow-up",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-review-follow-up.md",
+      "read_when": [
+        "reviewing PR 98 architecture hardening",
+        "reconciling an unknown Session Turn"
+      ],
+      "summary": "Tracks reproduced defects, safe recovery boundaries, Windows ownership blockers, measured SSE activity, compatibility staging and final verification requirements.",
+      "related": [
+        "ideas.specflow-runtime.provider-compatibility",
+        "ideas.specflow-runtime.claude-provider",
+        "ideas.specflow-runtime.session-migration-evidence",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "review",
+        "recovery",
+        "migration"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.spec-creation",
       "type": "product",
       "title": "Specification creation vertical slice",
@@ -4396,6 +4689,41 @@
         "archetypes",
         "delivery",
         "slices"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.managed-sessions-delivery",
+      "type": "product",
+      "title": "Managed Sessions migration delivery specification",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/managed-sessions-delivery.md",
+      "read_when": [
+        "implementing the managed Session migration",
+        "checking scope and acceptance of Plan 04"
+      ],
+      "summary": "Decision-complete foundation scope for independent Sessions with durable lifecycle, bounded tail/history and streaming, plus explicit real-provider and Engine dependencies.",
+      "related": [
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver",
+        "ideas.specflow-engine.plan-04",
+        "ideas.specflow-runtime.provider-migration-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "ui",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "migration",
+        "tail",
+        "history",
+        "implementation"
       ]
     },
     {
@@ -5308,6 +5636,62 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.provider-process-boundary",
+      "type": "reference",
+      "title": "Shared provider process boundary implementation",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/provider-process-boundary.md",
+      "read_when": [
+        "implementing a real Session provider adapter",
+        "checking process ownership and diagnostics limits"
+      ],
+      "summary": "P1 implementation surface for explicit process environments, bounded protocol framing, private diagnostics and invocation cleanup before real provider adapters are enabled.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "architecture.ai.provider-boundary",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "process",
+        "migration",
+        "diagnostics"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.session-migration-evidence",
+      "type": "reference",
+      "title": "Managed Session migration evidence",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-migration-evidence.md",
+      "read_when": [
+        "checking preserved legacy behavior during Session implementation"
+      ],
+      "summary": "Source evidence and characterization mapping for independent Session contracts.",
+      "related": [
+        "ideas.specflow-runtime.managed-sessions-delivery",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "migration",
+        "characterization"
+      ]
+    },
+    {
       "id": "reference.api.authorization",
       "type": "reference",
       "title": "Authorization HTTP API",
@@ -5352,6 +5736,39 @@
         "runtime",
         "server",
         "ui"
+      ]
+    },
+    {
+      "id": "reference.api.sessions",
+      "type": "reference",
+      "title": "Managed Sessions HTTP and read-model contract",
+      "status": "draft",
+      "file": "docs/reference/api/sessions.md",
+      "read_when": [
+        "implementing Session schemas, HTTP or UI clients",
+        "implementing tail/history cursors and replay"
+      ],
+      "summary": "Implementation contract for independent Session commands, bounded snapshots, conversation and Work paging, content ranges, scoped authorization and SSE resync.",
+      "related": [
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.ai.canonical-session-turn-work",
+        "reference.protocols.session-provider-driver",
+        "ideas.specflow-runtime.managed-sessions-delivery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "pagination",
+        "tail",
+        "streaming",
+        "idempotency"
       ]
     },
     {
@@ -5609,6 +6026,38 @@
       "areas": [
         "configuration",
         "cli"
+      ]
+    },
+    {
+      "id": "reference.protocols.session-provider-driver",
+      "type": "reference",
+      "title": "Session provider driver and invocation protocol",
+      "status": "draft",
+      "file": "docs/reference/protocols/session-provider-driver.md",
+      "read_when": [
+        "implementing a Session provider driver or the controllable mock",
+        "migrating Claude Codex or Antigravity adapters"
+      ],
+      "summary": "Canonical driver operations, event normalization, invocation fences, settlement evidence and a no-effect mock protocol for the managed Session foundation.",
+      "related": [
+        "architecture.ai.provider-boundary",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.sessions",
+        "ideas.specflow-runtime.ai-adapters"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "sessions",
+        "cancellation",
+        "fencing",
+        "mock"
       ]
     }
   ]

@@ -95,9 +95,10 @@ function toEntry(name: string, stat: BigIntStats): SourceEntry {
 const LIST_CONCURRENCY = 16;
 
 /**
- * The real filesystem. `root` MUST already be the canonical physical path of the tree (for a Project
- * Home: `<home>/.nevo/definitions`, the home being the Engine-verified canonical root); a root that is a
- * symlink, or whose physical path differs, is `unsafe`.
+ * The real filesystem. `root` is the tree itself (for a Project Home: `<home>/.nevo/definitions`); the
+ * home may be spelled through a short name or a link (`/var` on macOS), but `root` itself and every
+ * folder below it must be real directories: a symlink, or a folder whose physical path differs, is
+ * `unsafe`.
  */
 export function createFilesystemDefinitionSource(root: string): DefinitionSource {
   /** `lstat` + `realpath` equality of one directory below the root (no symlink anywhere on the way). */
@@ -106,7 +107,8 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
     try {
       const stat = await lstat(full, { bigint: true });
       if (!stat.isDirectory() || stat.isSymbolicLink()) return 'unsafe';
-      return samePhysicalPath(await realpath(full), full) ? 'ok' : 'unsafe';
+      const expected = join(await realpath(root), ...pathSegments(path));
+      return samePhysicalPath(await realpath(full), expected) ? 'ok' : 'unsafe';
     } catch (error) {
       if (isAbsent(error)) return 'absent';
       if (errnoCode(error)?.startsWith('E')) return 'unreadable';
@@ -153,7 +155,7 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
       try {
         const rootState = await checkDirectory('');
         if (rootState !== 'ok') return { state: rootState === 'absent' ? 'absent' : 'unsafe' };
-        const opened = await openVerifiedFile(nodeVerifiedFs, root, path);
+        const opened = await openVerifiedFile(nodeVerifiedFs, await realpath(root), path);
         if (opened.state !== 'opened') return { state: opened.state };
         try {
           if (opened.stat.size > BigInt(maxBytes)) return { state: 'too-large' };

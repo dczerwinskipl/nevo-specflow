@@ -464,8 +464,10 @@ describe('create, folders and structural operations', () => {
       folders: string[];
     }>();
     expect(Value.Check(DocumentOperationResultSchema, result)).toBe(true);
-    expect(result.documents.map((item) => item.path).sort()).toEqual(['extra/plan.md']);
-    expect(result.documents[0]?.type).toBe('notes');
+    // A document without a type is reported too, with no type.
+    expect(result.documents.map((item) => item.path).sort()).toEqual(['extra/plan.md', 'loose.md']);
+    expect(result.documents.find((item) => item.path === 'extra/plan.md')?.type).toBe('notes');
+    expect(result.documents.find((item) => item.path === 'loose.md')?.type).toBeUndefined();
     expect(await readFile(join(fx.dir, 'extra', 'plan.md'), 'utf8')).toBe('# Plan\n');
     // The revision is the one the tree answers now.
     const tree = await call(l, 'GET', `${base(fx)}/document-tree`);

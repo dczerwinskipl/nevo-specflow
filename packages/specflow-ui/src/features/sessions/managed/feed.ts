@@ -244,6 +244,23 @@ export function createSessionFeed(
       if (state.away !== away) notify({ ...state, away });
     },
     send,
+    async recheckProvider() {
+      if (state.commandBusy) return;
+      const token = generation;
+      notify({ ...state, commandBusy: true, commandError: false });
+      try {
+        await api.providers(controller?.signal);
+        notify({ ...state, commandBusy: false });
+        if (token !== generation) return;
+        this.connect();
+      } catch {
+        notify({
+          ...state,
+          commandBusy: false,
+          commandError: token === generation ? true : state.commandError,
+        });
+      }
+    },
     async older() {
       const before = state.snapshot?.history.before;
       if (!before || state.historyBusy) return;

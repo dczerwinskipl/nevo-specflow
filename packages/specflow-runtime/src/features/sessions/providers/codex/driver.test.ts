@@ -10,6 +10,7 @@ function fixture(options: { write?: boolean; managed?: boolean; modes?: string[]
     executable: resolve('codex.exe'),
     home: resolve('private-native-home'),
     accountScope: 'account-scope',
+    authenticationFingerprint: 'synthetic-login',
     secrets: [],
     environment: { values: {}, sources: {} },
     sha256: fingerprint,

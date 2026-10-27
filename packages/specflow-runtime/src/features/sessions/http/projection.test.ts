@@ -69,6 +69,25 @@ it('requires ExecuteWrite in addition to Manage for a writable Start', () => {
   expect(fixture().project().session.capabilities.start).toBe(true);
   expect(fixture('read-only', true, false).project().session.capabilities.start).toBe(false);
 });
+it('exposes required external login without replacing an unresolved active Turn', () => {
+  const idle = fixture();
+  idle.provider.readiness = 'authenticationRequired';
+  expect(idle.project().session).toMatchObject({
+    readiness: 'authenticationRequired',
+    capabilities: { start: false },
+  });
+  const unresolved = fixture();
+  unresolved.provider.readiness = 'authenticationRequired';
+  unresolved.snapshot.session.readiness = 'requiresAttention';
+  unresolved.snapshot.activeTurn = {
+    turnId: 'unknown',
+    state: 'unknown',
+    revision: 1,
+    startedAt: 'now',
+  };
+  expect(unresolved.project().session.readiness).toBe('requiresAttention');
+  expect(unresolved.snapshot.activeTurn.state).toBe('unknown');
+});
 it.each(['active', 'waitingForUser', 'unknown'] as const)(
   'blocks Start while the active Turn is %s',
   (state) => {

@@ -115,6 +115,7 @@ export const SessionInfoSchema = Type.Object(
       Type.Literal('busy'),
       Type.Literal('requiresAttention'),
       Type.Literal('unavailable'),
+      Type.Literal('authenticationRequired'),
     ]),
     capabilities: Type.Object(
       {

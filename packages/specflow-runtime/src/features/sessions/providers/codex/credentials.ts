@@ -68,6 +68,21 @@ async function readAuth(path: string) {
     )
       unavailable();
   }
+  // Expiry is an availability hint only; native Codex still authenticates tokens.
+  // Opaque tokens have no local expiry claim and must pass native validation.
+  const accessParts = String(tokens.access_token).split('.');
+  if (accessParts.length === 3) {
+    const accessClaims = rpcObject(
+      JSON.parse(Buffer.from(accessParts[1]!, 'base64url').toString('utf8')),
+    );
+    if (
+      accessClaims.exp !== undefined &&
+      (typeof accessClaims.exp !== 'number' ||
+        !Number.isFinite(accessClaims.exp) ||
+        accessClaims.exp * 1000 <= Date.now() + 60000)
+    )
+      unavailable();
+  }
   // This is local context binding, not JWT authentication or issuer trust.
   // Native Codex authenticates the copied login; token rotation must preserve scope.
   const parts = String(tokens.id_token).split('.');
@@ -101,8 +116,15 @@ export async function prepareCodexCredentials(
       );
   }
   outsideProject(resolve(homeRoot));
-  await physicalDirectory(join(userHome, '.codex'));
-  const source = await readAuth(join(userHome, '.codex', 'auth.json'));
+  const source = await (async () => {
+    try {
+      await physicalDirectory(join(userHome, '.codex'));
+      return await readAuth(join(userHome, '.codex', 'auth.json'));
+    } catch (error) {
+      if (error instanceof SessionError) throw error;
+      return unavailable();
+    }
+  })();
   const accountScope = createHash('sha256')
     .update(JSON.stringify([source.tokens.account_id, source.userId]))
     .digest('hex');
@@ -170,6 +192,9 @@ export async function prepareCodexCredentials(
   return {
     home,
     accountScope,
+    authenticationFingerprint: createHash('sha256')
+      .update(JSON.stringify([source.tokens.access_token, source.tokens.id_token]))
+      .digest('hex'),
     secrets: ['access_token', 'refresh_token', 'id_token'].map((key) => String(source.tokens[key])),
   };
 }

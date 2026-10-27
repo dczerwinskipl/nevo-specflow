@@ -38,6 +38,36 @@ function setup() {
   return { storage, api, start };
 }
 describe('Session feed operation lifetime', () => {
+  it('rechecks external login and reloads availability without replaying a retained request', async () => {
+    const { storage, api, start } = setup();
+    const providers = vi.fn<ManagedSessionsApi['providers']>().mockResolvedValue({ items: [] });
+    api.providers = providers;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Explicit user intent');
+    await feed.send();
+    const pending = feed.getSnapshot().pending;
+    await feed.recheckProvider();
+    await vi.waitFor(() => expect(feed.getSnapshot().connection).toBe('connected'));
+    expect(providers).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledOnce();
+    expect(feed.getSnapshot().pending).toEqual(pending);
+    expect(feed.getSnapshot().draft).toBe('Explicit user intent');
+    await feed.send();
+    expect(start.mock.calls[1]).toEqual(start.mock.calls[0]);
+    feed.disconnect();
+  });
+  it('does not reconnect after a pending login recheck outlives its view', async () => {
+    const { storage, api } = setup();
+    const check = Promise.withResolvers<{ items: [] }>();
+    api.providers = () => check.promise;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    const checking = feed.recheckProvider();
+    feed.disconnect();
+    check.resolve({ items: [] });
+    await checking;
+    expect(api.snapshot).not.toHaveBeenCalled();
+    expect(feed.getSnapshot().commandBusy).toBe(false);
+  });
   it.each(['remove-throws', 'remove-ignored'] as const)(
     'retains an acknowledged command until durable cleanup succeeds: %s',
     async (failure) => {

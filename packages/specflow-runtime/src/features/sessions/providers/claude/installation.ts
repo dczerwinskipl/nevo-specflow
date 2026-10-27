@@ -171,11 +171,15 @@ export async function inspectClaudeInstallation(
         'Claude requires an active personal Pro or Max CLI login for this supported configuration.',
       );
     options.signal.throwIfAborted();
+    const authenticationFingerprint = createHash('sha256')
+      .update(credentials.accessToken)
+      .digest('hex');
     return {
       executable,
       sha256,
       platform: 'win32' as const,
       architecture: 'x64' as const,
+      authenticationFingerprint,
       fingerprint: createHash('sha256')
         .update(
           JSON.stringify({
@@ -183,6 +187,7 @@ export async function inspectClaudeInstallation(
             sha256,
             account: account.accountUuid,
             authentication: {
+              fingerprint: authenticationFingerprint,
               subscriptionType: credentials.subscriptionType,
               scopes: credentials.scopes,
             },

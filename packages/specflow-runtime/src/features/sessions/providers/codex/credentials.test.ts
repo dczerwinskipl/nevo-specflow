@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { prepareCodexCredentials as prepareCredentials } from './credentials';
 const prepareCodexCredentials = (user: string, root: string) =>
   prepareCredentials(user, root, join(dirname(user), 'workspace'));
@@ -79,9 +79,43 @@ it('never copies refresh authority and reloads externally renewed access tokens'
     await writeFile(auth, JSON.stringify(login('account-one', 'new-login')));
     const renewed = await prepareCodexCredentials(user, homeRoot);
     expect(renewed.home).toBe(first.home);
+    expect(renewed.accountScope).toBe(first.accountScope);
+    expect(renewed.authenticationFingerprint).not.toBe(first.authenticationFingerprint);
     const updated = JSON.parse(await readFile(privateAuth, 'utf8')) as typeof copied;
     expect(updated.tokens).toMatchObject({ access_token: 'new-login', refresh_token: '' });
     expect(JSON.parse(await readFile(auth, 'utf8'))).toEqual(login('account-one', 'new-login'));
+  });
+});
+it('requires external login renewal for an expired access token and keeps the same account after renewal', async () => {
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(1000000);
+  try {
+    await fixture(async (_root, user, homeRoot, auth) => {
+      const token = (exp: number) =>
+        'header.' + Buffer.from(JSON.stringify({ exp })).toString('base64url') + '.signature';
+      const original = login('account-one', token(2000));
+      await writeFile(auth, JSON.stringify(original));
+      const first = await prepareCodexCredentials(user, homeRoot);
+      clock.mockReturnValue(2000000);
+      await expect(prepareCodexCredentials(user, homeRoot)).rejects.toMatchObject({
+        code: 'PROVIDER_AUTH_REQUIRED',
+      });
+      expect(JSON.parse(await readFile(auth, 'utf8'))).toEqual(original);
+      await writeFile(auth, JSON.stringify(login('account-one', token(3000))));
+      const renewed = await prepareCodexCredentials(user, homeRoot);
+      expect(renewed.accountScope).toBe(first.accountScope);
+      expect(renewed.home).toBe(first.home);
+      expect(renewed.authenticationFingerprint).not.toBe(first.authenticationFingerprint);
+    });
+  } finally {
+    clock.mockRestore();
+  }
+});
+it('reports a missing external login as authentication required without creating private credentials', async () => {
+  await fixture(async (_root, user, homeRoot) => {
+    await expect(prepareCodexCredentials(user, homeRoot)).rejects.toMatchObject({
+      code: 'PROVIDER_AUTH_REQUIRED',
+    });
+    await expect(readFile(join(homeRoot, 'auth.json'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });
 it('refuses API keys and private-home configuration instead of importing user settings', async () => {

@@ -60,6 +60,9 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
     [failed, setFailed] = useState(false);
   const [selection, setSelection] = useState<{ providerId: string; modeId: string }>();
   const readyProviders = providers.data?.items.filter((item) => item.readiness === 'ready');
+  const authenticationRequired = providers.data?.items.some(
+    (item) => item.readiness === 'authenticationRequired',
+  );
   const provider =
     readyProviders?.find((item) =>
       executableModes(item).some((mode) => mode.mode === 'workspace-write'),
@@ -143,7 +146,15 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
               ) : provider ? (
                 <p className="text-body-md">{provider.title}</p>
               ) : (
-                <Alert tone="attention" title={t('managedSession.unavailable')}>
+                <Alert
+                  tone="attention"
+                  title={t(
+                    authenticationRequired
+                      ? 'managedSession.authenticationRequired'
+                      : 'managedSession.unavailable',
+                  )}
+                >
+                  {authenticationRequired && <p>{t('managedSession.authenticationHelp')}</p>}
                   <Button onClick={() => void providers.refetch()}>{t('common.retry')}</Button>
                 </Alert>
               )}

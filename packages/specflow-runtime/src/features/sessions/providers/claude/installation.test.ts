@@ -89,6 +89,16 @@ function fixture() {
   };
 }
 describe('Claude installation and policy inspection', () => {
+  it('invalidates credential discovery after external token renewal without changing account affinity', async () => {
+    const f = fixture();
+    const before = await f.run();
+    f.oauth.accessToken = 'renewed-synthetic-access';
+    const after = await f.run();
+    expect(after.authenticationFingerprint).not.toBe(before.authenticationFingerprint);
+    expect(after.fingerprint).not.toBe(before.fingerprint);
+    expect(after.accountScope).toBe(before.accountScope);
+    expect(after.authenticationFingerprint).toMatch(/^[a-f0-9]{64}$/);
+  });
   it('accepts a changed valid fingerprint while rechecking policy and account binding', async () => {
     const f = fixture();
     const before = await f.run();

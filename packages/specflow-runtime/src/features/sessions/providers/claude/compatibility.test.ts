@@ -25,6 +25,7 @@ function fixture(managedWrites = false) {
     platform: 'win32',
     architecture: 'x64',
     accountScope: 'account',
+    authenticationFingerprint: 'synthetic-login',
     secrets: [],
   };
   const inspect = vi.fn(() => Promise.resolve(installation));

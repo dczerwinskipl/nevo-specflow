@@ -1324,6 +1324,9 @@
     "back": "Wróć do specyfikacji"
   },
   "managedSession": {
+    "authenticationRequired": "Wymagane ponowne logowanie",
+    "authenticationHelp": "Zaloguj się ponownie w CLI dostawcy, a następnie sprawdź dostępność. Wiadomości nie zostaną ponowione automatycznie.",
+    "recheckAuthentication": "Sprawdź logowanie",
     "nativeMode": "Tryb natywny",
     "title": "Sesja",
     "new": "Nowa sesja testowa",

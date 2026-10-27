@@ -23,6 +23,7 @@ vi.mock('../../src/features/sessions/providers/claude/installation', () => ({
       platform: 'win32',
       architecture: 'x64',
       accountScope: 'fixture-account',
+      authenticationFingerprint: 'synthetic-login',
       secrets: [],
     }),
 }));

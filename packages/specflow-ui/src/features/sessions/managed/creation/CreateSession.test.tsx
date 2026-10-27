@@ -82,6 +82,25 @@ async function clickCreate() {
   await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false));
   fireEvent.click(button);
 }
+it('explains external login and only refreshes discovery after the operator signs in', async () => {
+  const f = fixture();
+  const provider = (await f.providers()).items[0]!;
+  f.providers.mockResolvedValue({ items: [{ ...provider, readiness: 'authenticationRequired' }] });
+  view(f.api);
+  await screen.findByText('Sign-in required');
+  expect(screen.getByText(/Sign in again using the provider CLI/)).toBeDefined();
+  expect(screen.getByRole('button', { name: 'Create session' }).hasAttribute('disabled')).toBe(
+    true,
+  );
+  f.providers.mockResolvedValue({ items: [provider] });
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Create session' }).hasAttribute('disabled')).toBe(
+      false,
+    ),
+  );
+  expect(f.create).not.toHaveBeenCalled();
+});
 it('defaults to the provider native writable mode and retains it on a lost response', async () => {
   const f = fixture();
   const base = (await f.providers()).items[0]!;

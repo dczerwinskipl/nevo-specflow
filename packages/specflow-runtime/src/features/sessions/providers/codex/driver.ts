@@ -49,10 +49,13 @@ export function createCodexDriver(
     checkedFingerprint = '',
     scope = '';
   let discovery: Promise<ProviderDescriptor> | undefined;
+  let checkedAuthentication = '';
+  let rejectedAuthentication = '';
   function invalidate(error?: unknown) {
     checkedAt = 0;
     scope = '';
     const authentication = error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED';
+    if (authentication && checkedAuthentication) rejectedAuthentication = checkedAuthentication;
     const incompatible = error instanceof CodexRpcError && error.kind === 'protocol';
     descriptor = {
       ...descriptor,
@@ -79,6 +82,14 @@ export function createCodexDriver(
       try {
         for (let attempt = 0; attempt < 2; attempt++) {
           const installation = await inspect(bounded);
+          if (
+            rejectedAuthentication &&
+            installation.authenticationFingerprint === rejectedAuthentication
+          )
+            throw new SessionError(
+              'PROVIDER_AUTH_REQUIRED',
+              'Sign in again using the Codex CLI, then recheck provider availability.',
+            );
           if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
             return structuredClone(descriptor);
           const compatibility = classifyProviderInstallation({
@@ -141,6 +152,7 @@ export function createCodexDriver(
           if (descriptor.readiness !== 'ready')
             descriptor.reason = 'No Codex execution mode is currently available.';
           checkedFingerprint = installation.fingerprint;
+          checkedAuthentication = installation.authenticationFingerprint;
           checkedAt = Date.now();
           scope = installation.accountScope;
           return structuredClone(descriptor);
@@ -165,7 +177,9 @@ export function createCodexDriver(
       await refresh(signal);
       if (descriptor.readiness !== 'ready')
         throw new SessionError(
-          'PROVIDER_UNAVAILABLE',
+          descriptor.readiness === 'authenticationRequired'
+            ? 'PROVIDER_AUTH_REQUIRED'
+            : 'PROVIDER_UNAVAILABLE',
           descriptor.reason ?? 'Codex is unavailable.',
         );
       const current = await inspect(signal).catch((error: unknown) => {
@@ -238,7 +252,11 @@ export function createCodexDriver(
                 fact.error.code,
               ))
           )
-            invalidate();
+            invalidate(
+              fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
+                ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
+                : undefined,
+            );
           await emit(fact);
         },
         signal,

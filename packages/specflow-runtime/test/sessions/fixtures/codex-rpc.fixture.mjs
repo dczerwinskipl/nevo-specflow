@@ -76,6 +76,17 @@ for await (const line of createInterface({ input: process.stdin })) {
     send({ id, result: { turn: { id: turnId, status: 'inProgress' } } });
     notify('turn/started', { turn: { id: turnId, status: 'inProgress' } });
     const message = params.input[0].text;
+    if (message === 'expire-login') {
+      notify('turn/completed', {
+        turnId,
+        turn: {
+          id: turnId,
+          status: 'failed',
+          error: { codexErrorInfo: 'unauthorized', message: 'Synthetic private login detail' },
+        },
+      });
+      continue;
+    }
     if (message.startsWith('write:')) {
       token = message.slice(6);
       const item = {

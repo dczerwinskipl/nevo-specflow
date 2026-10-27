@@ -162,6 +162,14 @@ export function ManagedSession({
             </div>
           ) : (
             <>
+              {snapshot.session.readiness === 'authenticationRequired' && (
+                <Alert tone="attention" title={t('managedSession.authenticationRequired')}>
+                  <p>{t('managedSession.authenticationHelp')}</p>
+                  <Button disabled={state.commandBusy} onClick={() => void feed.recheckProvider()}>
+                    {t('managedSession.recheckAuthentication')}
+                  </Button>
+                </Alert>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle px-5 py-3">
                 <p className="text-body-sm text-content-muted">
                   {snapshot.session.providerId === 'mock'

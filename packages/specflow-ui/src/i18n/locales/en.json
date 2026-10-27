@@ -1324,6 +1324,9 @@
     "back": "Back to specifications"
   },
   "managedSession": {
+    "authenticationRequired": "Sign-in required",
+    "authenticationHelp": "Sign in again using the provider CLI, then recheck availability. Messages will not be retried automatically.",
+    "recheckAuthentication": "Check sign-in",
     "nativeMode": "Native mode",
     "title": "Session",
     "new": "New test session",

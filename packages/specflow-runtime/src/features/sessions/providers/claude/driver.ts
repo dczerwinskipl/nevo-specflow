@@ -65,6 +65,8 @@ export function createClaudeDriver(
     ((signal: AbortSignal) => inspectClaudeInstallation({ ...options, environment, signal }));
   const probe = dependencies.probe ?? probeClaude;
   let checkedFingerprint = '';
+  let checkedAuthentication = '';
+  let rejectedAuthentication = '';
   const modeModels = new Map<string, ProviderDescriptor['models']>();
   function invalidate(error?: unknown) {
     checkedAt = 0;
@@ -79,6 +81,8 @@ export function createClaudeDriver(
           : error instanceof SessionError
             ? 'INSTALLATION_UNAVAILABLE'
             : 'PROBE_FAILED';
+    if (reasonCode === 'AUTHENTICATION_REQUIRED' && checkedAuthentication)
+      rejectedAuthentication = checkedAuthentication;
     descriptor = {
       ...descriptor,
       models: [],
@@ -110,6 +114,14 @@ export function createClaudeDriver(
       try {
         for (let attempt = 0; attempt < 2; attempt++) {
           const installation = await inspect(boundedSignal);
+          if (
+            rejectedAuthentication &&
+            installation.authenticationFingerprint === rejectedAuthentication
+          )
+            throw new SessionError(
+              'PROVIDER_AUTH_REQUIRED',
+              'Sign in again using the Claude CLI, then recheck provider availability.',
+            );
           if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
             return structuredClone(descriptor);
           const identity = { ...installation, providerId: 'claude' };
@@ -218,6 +230,7 @@ export function createClaudeDriver(
           delete descriptor.reason;
           delete descriptor.reasonCode;
           checkedFingerprint = installation.fingerprint;
+          checkedAuthentication = installation.authenticationFingerprint;
           checkedAt = Date.now();
           scope = installation.accountScope;
           return structuredClone(descriptor);
@@ -242,7 +255,9 @@ export function createClaudeDriver(
       await refresh(signal);
       if (descriptor.readiness !== 'ready')
         throw new SessionError(
-          'PROVIDER_UNAVAILABLE',
+          descriptor.readiness === 'authenticationRequired'
+            ? 'PROVIDER_AUTH_REQUIRED'
+            : 'PROVIDER_UNAVAILABLE',
           descriptor.reason ?? 'Claude is unavailable.',
         );
       const installation = await inspect(signal).catch((error: unknown) => {

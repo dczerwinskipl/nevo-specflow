@@ -202,6 +202,7 @@ export async function inspectCodexInstallation(options: {
             executable,
             home: credentials.home,
             scope: credentials.accountScope,
+            authentication: credentials.authenticationFingerprint,
             environment: environment.values,
             workspace: options.workspace,
             profile: 'codex-app-server-v2',

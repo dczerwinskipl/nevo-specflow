@@ -10,7 +10,7 @@ import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
-const fixture = vi.hoisted(() => ({ home: '', entry: '' }));
+const fixture = vi.hoisted(() => ({ home: '', entry: '', authentication: 'a'.repeat(64) }));
 // Substitute installation/capability evidence and the executable only. Runtime,
 // assigned-context correlation, Engine claims, owned processes, SQLite and HTTP
 // remain real. This is controlled-process evidence, never native certification.
@@ -26,8 +26,9 @@ vi.mock('../../src/features/sessions/providers/codex/installation', async (impor
         executable: process.execPath,
         home: fixture.home,
         accountScope: 'controlled-account',
+        authenticationFingerprint: fixture.authentication,
         sha256: 'a'.repeat(64),
-        fingerprint: 'a'.repeat(64),
+        fingerprint: fixture.authentication,
         platform: 'win32',
         architecture: 'x64',
         secrets: [],
@@ -111,7 +112,7 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
     });
     expect(create.statusCode, create.body).toBe(201);
     const { sessionId } = create.json<{ sessionId: string }>();
-    async function turn(message: string) {
+    async function turn(message: string, outcome = 'completed') {
       const requestId = randomUUID();
       const response = await app!.inject({
         method: 'POST',
@@ -131,7 +132,7 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
         async () => {
           snapshot = (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
           expect(snapshot.activeTurn, JSON.stringify(snapshot.entries.slice(-3))).toBeUndefined();
-          expect(snapshot.entries.at(-1)?.text.text).toBe('completed');
+          expect(snapshot.entries.at(-1)?.text.text).toBe(outcome);
         },
         { timeout: 15000, interval: 50 },
       );
@@ -151,6 +152,35 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
         .at(-1)?.text.text,
     ).toBe(token);
     expect(resumed.snapshot.entries.filter((entry) => entry.kind === 'outcome')).toHaveLength(2);
+    const failed = await turn('expire-login', 'failed');
+    expect(failed.snapshot.session).toMatchObject({
+      readiness: 'authenticationRequired',
+      capabilities: { start: false },
+    });
+    expect(JSON.stringify(failed.snapshot)).not.toContain('Synthetic private login detail');
+    const unavailable = await app.inject('/api/session-providers');
+    expect(unavailable.json<{ items: { readiness: string }[] }>().items[0]?.readiness).toBe(
+      'authenticationRequired',
+    );
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/api/sessions/' + sessionId + '/turns',
+      payload: { requestId: randomUUID(), message: 'Must not dispatch' },
+    });
+    expect(blocked.statusCode).not.toBe(202);
+    fixture.authentication = 'b'.repeat(64);
+    const renewed = await app.inject('/api/session-providers');
+    expect(renewed.json<{ items: { readiness: string }[] }>().items[0]?.readiness).toBe('ready');
+    const idle = (await app.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
+    expect(idle.activeTurn).toBeUndefined();
+    expect(idle.entries.filter((entry) => entry.kind === 'outcome')).toHaveLength(3);
+    const explicit = await turn('recall');
+    expect(
+      explicit.snapshot.entries
+        .filter((entry) => entry.turnId === explicit.turnId && entry.kind === 'answer')
+        .at(-1)?.text.text,
+    ).toBe(token);
+    expect(explicit.snapshot.entries.filter((entry) => entry.kind === 'outcome')).toHaveLength(4);
   } finally {
     await app?.close();
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });

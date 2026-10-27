@@ -99,6 +99,24 @@ has not renewed login, availability or the native Turn fails honestly. A support
 coordinated authentication broker is a remaining dependency for continuous long
 operations. Internal-only external-auth RPC is deliberately not used.
 
+Runtime now exposes `authenticationRequired` for an idle Session whose provider
+requires external sign-in. Existing Session and Create controls explain signing
+in through the provider CLI and explicitly rechecking availability. Recheck only
+refreshes discovery/snapshot; it never dispatches or replays a message. An unknown
+active Turn retains its recovery state and Engine claim after login changes.
+
+Access-token expiry, when the external token exposes an expiry claim, is checked
+before launch with the same one-minute margin as Claude. This is an availability
+hint, never local JWT authentication. Native Codex remains the authentication
+authority. Missing/malformed login requires operator intervention. Credential
+rotation invalidates discovery independently from stable account affinity.
+
+A native authentication failure rejects that credential fingerprint for the
+current driver lifetime. An unchanged binary upgrade or repeated availability
+check cannot make the rejected login ready; a renewed external credential must
+pass discovery. Authentication fingerprints and native account IDs stay internal.
+This does not implement a refresh-token broker or renew an in-flight native Turn.
+
 ## Lifecycle and transcript
 
 Codex assigns the persistent thread ID. Runtime stores that exact correlation

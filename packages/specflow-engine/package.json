@@ -28,7 +28,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint . && node ../../tools/eslint/check-import-cycles.mjs",
     "test": "vitest run --testTimeout=20000",
-    "test:unit": "vitest run --testTimeout=20000 test/version-control-policy.test.ts test/git-output-decoder.test.ts test/shared-resource-coordination.test.ts",
+    "test:unit": "vitest run --testTimeout=20000 test/version-control-policy.test.ts test/git/git-output-decoder.test.ts test/shared-resource-coordination.test.ts",
     "test:filesystem:smoke": "vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism test/project-home.test.ts test/version-control-adapter.test.ts test/version-control-legacy-regression.test.ts test/platform-filesystem-contract.test.ts",
     "test:filesystem:full": "vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism"
   },

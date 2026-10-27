@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engineRoot = join(root, 'packages', 'specflow-engine');
-const fileName = 'test/git-integration-proof.test.ts';
+const fileName = 'test/git/git-integration-proof.test.ts';
 const source = readFileSync(join(engineRoot, fileName), 'utf8');
 const part = Number(process.argv[2]);
 const total = Number(process.argv[3]);

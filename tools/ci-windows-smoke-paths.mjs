@@ -41,7 +41,7 @@ const cases = [
   ['packages/specflow-engine/src/specs/create/journal/store.ts', true],
   ['packages/specflow-engine/src/specs/create/git/commit.ts', true],
   ['packages/specflow-engine/src/git/index.ts', true],
-  ['packages/specflow-engine/test/create-commit.test.ts', true],
+  ['packages/specflow-engine/test/create/create-commit.test.ts', true],
   ['packages/specflow-runtime/src/features/specs/http.ts', true],
   ['packages/specflow-runtime/test/specs/create-async.http.test.ts', true],
   ['packages/specflow-contracts/src/specs/create.ts', true],

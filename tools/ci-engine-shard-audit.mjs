@@ -41,7 +41,7 @@ function discover(folder) {
 }
 
 const problems = [];
-const hot = 'test/git-integration-proof.test.ts';
+const hot = 'test/git/git-integration-proof.test.ts';
 const restFiles = new Map();
 const hotCases = new Map();
 let allHotCases = 0;

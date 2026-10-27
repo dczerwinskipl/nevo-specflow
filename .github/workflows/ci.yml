@@ -310,7 +310,7 @@ jobs:
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
       - name: Engine real-Git lifecycle smoke
         if: steps.affected.outputs.run == 'true'
-        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts test/close-specification-lifecycle.test.ts test/integration-destination.test.ts test/quality-hardening-q05-projections.test.ts --maxWorkers=1 --no-file-parallelism
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/lifecycle/close-worktree-lifecycle.test.ts test/lifecycle/close-specification-lifecycle.test.ts test/integration-destination.test.ts test/quality-hardening-q05-projections.test.ts --maxWorkers=1 --no-file-parallelism
       - name: Runtime authorized Create/Close/Overview HTTP smoke
         if: steps.affected.outputs.run == 'true'
         run: >

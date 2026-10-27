@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engineRoot = join(root, 'packages', 'specflow-engine');
 const testRoot = join(engineRoot, 'test');
-const hot = 'test/git-integration-proof.test.ts';
+const hot = 'test/git/git-integration-proof.test.ts';
 const part = Number(process.argv[2]);
 const total = Number(process.argv[3]);
 if (

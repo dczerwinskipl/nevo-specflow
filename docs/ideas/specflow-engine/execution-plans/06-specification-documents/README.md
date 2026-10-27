@@ -266,7 +266,7 @@ Package `@nevo/specflow-engine`, `src/specs/`. Profile for all: `implementer` / 
 ### D1.T05 — Fixture rewrite, fail-closed message, audit, lifecycle repair note
 
 - **Goal:** the repository is green on the new shape and the fail-closed consequence is explicit and documented.
-- **Scope:** Engine `test/specifications.test.ts`, `test/create-multiprocess.test.ts`, `test/engine-commit-port.test.ts`; Runtime
+- **Scope:** Engine `test/specifications.test.ts`, `test/create/create-multiprocess.test.ts`, `test/git/engine-commit-port.test.ts`; Runtime
   `test/specs/engine-overview.http.test.ts`; shared helper `writeSpecificationManifestFixture` in Engine test support; the message in
   `specs/repository.ts`; lifecycle document; Runtime `test/specs/slug-parity.test.ts` (calls the scaffold; needs
   `archetypeId: 'minimal'`).

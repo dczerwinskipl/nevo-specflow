@@ -14,7 +14,7 @@
     {
       "package": "@nevo/specflow-engine",
       "dir": "packages/specflow-engine",
-      "file": "test/create-commit.test.ts",
+      "file": "test/create/create-commit.test.ts",
       "tests": [
         "commits the new-worktree scaffold on the new branch, one commit on top of the base",
         "does not evaluate the base ref: a new worktree from a protected branch is fine"
@@ -23,7 +23,7 @@
     {
       "package": "@nevo/specflow-engine",
       "dir": "packages/specflow-engine",
-      "file": "test/document-queue.test.ts",
+      "file": "test/documents/document-queue.test.ts",
       "tests": [
         "commits five saves of one document as ONE commit with the last content and the right trailers"
       ]
@@ -37,7 +37,7 @@
     {
       "package": "@nevo/specflow-engine",
       "dir": "packages/specflow-engine",
-      "file": "test/create-options.test.ts",
+      "file": "test/create/create-options.test.ts",
       "tests": ["treats an unreadable worktree folder as not existing"]
     }
   ]

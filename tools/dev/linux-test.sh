@@ -12,7 +12,7 @@
 #          --cpus <n>       container CPU limit (default 6)
 #          --image <name>   Docker image (default node:24-bookworm)
 # Example: tools/dev/linux-test.sh -- 'pnpm turbo run build --filter=@nevo/specflow-engine^... \
-#            && cd packages/specflow-engine && npx vitest run test/create-commit.test.ts --testTimeout=240000'
+#            && cd packages/specflow-engine && npx vitest run test/create/create-commit.test.ts --testTimeout=240000'
 # Only COMMITTED changes are tested (the clone is made from the local repository's objects).
 set -euo pipefail
 

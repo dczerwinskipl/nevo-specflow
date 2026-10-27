@@ -38,6 +38,51 @@ function setup() {
   return { storage, api, start };
 }
 describe('Session feed operation lifetime', () => {
+  it.each(['remove-throws', 'remove-ignored'] as const)(
+    'retains an acknowledged command until durable cleanup succeeds: %s',
+    async (failure) => {
+      const { storage, api } = setup();
+      const start = vi.fn<ManagedSessionsApi['start']>().mockResolvedValue({ turnId: 'turn' });
+      api.start = start;
+      let cleanupAvailable = false;
+      const intermittent = {
+        ...storage,
+        removeItem(key: string) {
+          if (key.endsWith(':pending') && !cleanupAvailable) {
+            if (failure === 'remove-throws') throw new Error('Storage cleanup denied');
+            return;
+          }
+          storage.removeItem(key);
+        },
+      };
+      const first = createSessionFeed(api, 'session', 'actor', intermittent);
+      first.setDraft('First command');
+      await first.send();
+      const original = start.mock.calls[0]![1];
+      expect(first.getSnapshot()).toMatchObject({
+        pending: original,
+        commandBusy: false,
+        commandError: true,
+      });
+      const remounted = createSessionFeed(api, 'session', 'actor', intermittent);
+      expect(remounted.getSnapshot().pending).toEqual(original);
+      remounted.setDraft('Next command');
+      await remounted.send();
+      expect(start.mock.calls[1]![1]).toEqual(original);
+      expect(remounted.getSnapshot().pending).toEqual(original);
+      cleanupAvailable = true;
+      await remounted.send();
+      expect(start.mock.calls[2]![1]).toEqual(original);
+      expect(remounted.getSnapshot().pending).toBeUndefined();
+      expect(remounted.getSnapshot().draft).toBe('Next command');
+      const recovered = createSessionFeed(api, 'session', 'actor', intermittent);
+      expect(recovered.getSnapshot().pending).toBeUndefined();
+      await recovered.send();
+      expect(start.mock.calls[3]![1]).toMatchObject({ message: 'Next command' });
+      expect(start.mock.calls[3]![1].requestId).not.toBe(original.requestId);
+      expect(recovered.getSnapshot().pending).toBeUndefined();
+    },
+  );
   it.each(['missing', 'write-throws', 'write-ignored', 'readback-throws'] as const)(
     'does not dispatch without confirmed request retention: %s',
     async (failure) => {

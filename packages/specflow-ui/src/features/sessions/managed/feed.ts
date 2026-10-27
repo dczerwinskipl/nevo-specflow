@@ -190,7 +190,12 @@ export function createSessionFeed(
     notify({ ...state, pending: request, commandBusy: true, commandError: false });
     try {
       await api.start(sessionId, request);
-      if (read(':pending') === JSON.stringify(request)) save(':pending', '');
+      // Keep the exact command retryable until its durable record is gone.
+      // Acknowledgement alone must not let a newer command replace this record.
+      if (storage!.getItem(key + ':pending') === JSON.stringify(request))
+        storage!.removeItem(key + ':pending');
+      if (storage!.getItem(key + ':pending') !== null)
+        throw new Error('Pending command cleanup could not be confirmed.');
       const draft = state.draft === request.message ? '' : state.draft;
       if (read(':draft') === request.message) save(':draft', '');
       const next = { ...state, draft, commandBusy: false };

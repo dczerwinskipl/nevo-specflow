@@ -51,11 +51,14 @@ export function createCodexDriver(
   let discovery: Promise<ProviderDescriptor> | undefined;
   let checkedAuthentication = '';
   let rejectedAuthentication = '';
-  function invalidate(error?: unknown) {
+  function invalidate(error?: unknown, authenticationFingerprint = checkedAuthentication) {
+    const authentication = error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED';
+    if (authentication && authenticationFingerprint) {
+      rejectedAuthentication = authenticationFingerprint;
+      if (checkedAuthentication && authenticationFingerprint !== checkedAuthentication) return;
+    }
     checkedAt = 0;
     scope = '';
-    const authentication = error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED';
-    if (authentication && checkedAuthentication) rejectedAuthentication = checkedAuthentication;
     const incompatible = error instanceof CodexRpcError && error.kind === 'protocol';
     descriptor = {
       ...descriptor,
@@ -240,6 +243,7 @@ export function createCodexDriver(
           'Verified matching workspace execution authority is required.',
         );
       let fingerprint: string | undefined;
+      let launchAuthentication: string | undefined;
       let nativeHome: string | undefined;
       return createCodexOperation(
         invocation,
@@ -256,6 +260,7 @@ export function createCodexDriver(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
                 ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
                 : undefined,
+              launchAuthentication,
             );
           await emit(fact);
         },
@@ -286,6 +291,7 @@ export function createCodexDriver(
                 'Codex account changed after native context admission.',
               );
             fingerprint = installation.fingerprint;
+            launchAuthentication = installation.authenticationFingerprint;
             nativeHome = installation.home;
             const temporary = await createInvocationScope(
               options.temporaryRoot,

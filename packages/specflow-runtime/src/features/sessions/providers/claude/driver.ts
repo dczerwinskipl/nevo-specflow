@@ -68,10 +68,7 @@ export function createClaudeDriver(
   let checkedAuthentication = '';
   let rejectedAuthentication = '';
   const modeModels = new Map<string, ProviderDescriptor['models']>();
-  function invalidate(error?: unknown) {
-    checkedAt = 0;
-    scope = '';
-    modeModels.clear();
+  function invalidate(error?: unknown, authenticationFingerprint = checkedAuthentication) {
     if (!error && descriptor.compatibility?.classification === 'unsupported') return;
     const reasonCode =
       error instanceof ClaudeProbeError
@@ -81,8 +78,13 @@ export function createClaudeDriver(
           : error instanceof SessionError
             ? 'INSTALLATION_UNAVAILABLE'
             : 'PROBE_FAILED';
-    if (reasonCode === 'AUTHENTICATION_REQUIRED' && checkedAuthentication)
-      rejectedAuthentication = checkedAuthentication;
+    if (reasonCode === 'AUTHENTICATION_REQUIRED' && authenticationFingerprint) {
+      rejectedAuthentication = authenticationFingerprint;
+      if (checkedAuthentication && authenticationFingerprint !== checkedAuthentication) return;
+    }
+    checkedAt = 0;
+    scope = '';
+    modeModels.clear();
     descriptor = {
       ...descriptor,
       models: [],
@@ -325,6 +327,7 @@ export function createClaudeDriver(
       let verified = false;
       let expectedVersion: string | undefined;
       let launchFingerprint: string | undefined;
+      let launchAuthentication: string | undefined;
       return createClaudeOperation(
         invocation,
         async (fact) => {
@@ -343,6 +346,7 @@ export function createClaudeDriver(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
                 ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
                 : undefined,
+              launchAuthentication,
             );
           await emit(fact);
         },
@@ -351,6 +355,7 @@ export function createClaudeDriver(
           async launch(operationSignal) {
             const installation = await readyInstallation(operationSignal);
             launchFingerprint = installation.fingerprint;
+            launchAuthentication = installation.authenticationFingerprint;
             validateModel(invocation.selection);
             if (installation.accountScope !== invocation.providerContext?.scope)
               throw new SessionError(

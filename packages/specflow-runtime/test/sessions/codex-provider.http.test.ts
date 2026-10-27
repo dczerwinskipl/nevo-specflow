@@ -61,6 +61,7 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-codex-http-')));
   const workspace = join(root, 'workspace');
   let app: Awaited<ReturnType<typeof createRuntimeApp>> | undefined;
+  let testFailure: unknown;
   try {
     await mkdir(workspace);
     await mkdir(join(workspace, '.nevo'));
@@ -181,8 +182,21 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
         .at(-1)?.text.text,
     ).toBe(token);
     expect(explicit.snapshot.entries.filter((entry) => entry.kind === 'outcome')).toHaveLength(4);
+  } catch (error) {
+    testFailure = error;
+    throw error;
   } finally {
-    await app?.close();
-    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+    try {
+      await app?.close();
+    } catch (cleanupError) {
+      if (testFailure)
+        throw new AggregateError(
+          [testFailure, cleanupError],
+          'Controlled HTTP failure and cleanup failure',
+        );
+      throw cleanupError;
+    } finally {
+      await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+    }
   }
 }, 60000);

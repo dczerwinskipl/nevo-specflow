@@ -4,7 +4,7 @@ import { DOCUMENT_CHANGE_JOURNAL_KIND } from '../changes/journal/kind';
 import type { DocumentBatchRecord, DocumentChangeJournal } from '../changes/journal';
 import { transitionDocumentChange, type DocumentChangeTransitionPatch } from '../changes/journal';
 import { readDocumentChangeJournal } from '../write/journal-store';
-import { nextAttemptAt } from './backoff';
+import { countFailedAttempt, nextAttemptAt } from './backoff';
 import { completeUncommitted, type UncommittedHooks } from './uncommitted';
 
 /**
@@ -188,7 +188,7 @@ async function reconcileDissolved(
       journal,
       'queued',
       {
-        attempts: journal.attempts + 1,
+        attempts: countFailedAttempt(journal.attempts),
         reason: batch.reason,
         ...(batch.blockedBy !== undefined ? { blockedBy: batch.blockedBy } : {}),
         nextAttemptAt: nextAttemptAt(batch.updatedAt, batch.attempts),

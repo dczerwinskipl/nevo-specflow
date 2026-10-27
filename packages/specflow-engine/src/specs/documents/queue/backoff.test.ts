@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BACKOFF_MAX_MS,
-  DOCUMENT_RETRY_MAX_ATTEMPTS,
+  ATTEMPT_COUNTER_CAP,
   backoffMs,
+  countFailedAttempt,
   nextAttemptAt,
-  retriesExhausted,
 } from './backoff';
 import { splitBatch } from './split';
 
@@ -18,9 +18,10 @@ describe('the retry schedule', () => {
     expect(backoffMs(500)).toBe(BACKOFF_MAX_MS);
   });
 
-  it('ends the retries at the tenth failed attempt', () => {
-    expect(retriesExhausted(DOCUMENT_RETRY_MAX_ATTEMPTS - 1)).toBe(false);
-    expect(retriesExhausted(DOCUMENT_RETRY_MAX_ATTEMPTS)).toBe(true);
+  it('never ends the retries: the counter saturates', () => {
+    expect(countFailedAttempt(0)).toBe(1);
+    expect(countFailedAttempt(ATTEMPT_COUNTER_CAP - 1)).toBe(ATTEMPT_COUNTER_CAP);
+    expect(countFailedAttempt(ATTEMPT_COUNTER_CAP)).toBe(ATTEMPT_COUNTER_CAP);
   });
 
   it('adds the wait to the failure time', () => {

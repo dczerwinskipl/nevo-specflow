@@ -165,10 +165,15 @@ and consolidation. 0013 receives a pointer to this relaxation.
     taken over only by an operator assertion. Create keeps its operator-assertion rule.
 13. **Failure classification and the state machine.** (See the diagram.) Outcomes of a batch attempt:
     - committed -> members `completed`.
-    - transient (`index-locked`, `git-busy`, `unmerged-paths`, read-side `GIT_UNAVAILABLE`): back to `queued` with
-      backoff (1 s doubling to 60 s, 10 attempts); visible as `pending` with `reason`, `attempts`, `nextAttemptAt`.
+    - transient (`index-locked`, `git-busy`, `unmerged-paths`, `GIT_UNAVAILABLE` including a Git program that is
+      missing or cannot be started): back to `queued` with backoff (1 s doubling to 60 s, then every 60 s for as long as
+      the blocker lasts; the stored attempt counter saturates at 10). A Git outage never ends the retries: the files
+      stay, the operation stays `pending` with `reason`, `blockedBy`, `attempts` and `nextAttemptAt`, and the batch is
+      committed once Git works again, also after a Runtime or CLI restart (the startup pass and the sweep arm every
+      checkout with queued work). A person may `abandon` a waiting operation. Git turned off by policy is different:
+      the operation completes `not-applicable` and nothing is retained.
     - permanent (`BRANCH_PROTECTED`, `detached`, `branch-changed`, `no-commits`, `path-ignored`, `index-unreadable`,
-      `COMMIT_FAILED`, `content-changed`, `retries-exhausted`, `workspace-missing`): batch `failed`, members
+      `COMMIT_FAILED`, `content-changed`, `workspace-missing`; `retries-exhausted` is no longer produced and is read only from older journals): batch `failed`, members
       `commit-failed`, files stay. A failed batch MUST NOT block other batches or paths (it holds only its own paths).
       **Split and retry:** when only some paths fail (ignored, foreign), the unaffected paths are committed and the
       failed paths become a new `failed` batch.
@@ -267,9 +272,9 @@ and consolidation. 0013 receives a pointer to this relaxation.
 ```text
 operation:  reserved -> files-writing -> queued -> committing -> completed(committed | not-applicable | uncommitted)
                |         |  ^  |  ^         ^   \-> commit-failed -(retry/new overlapping op/flush: dissolve)-> queued
-               |         |  |  |  |         |   \-> completed(uncommitted, ledger entry) via abandon (ADR 0018)
+               |         |  |  |  |         |   \-> completed(uncommitted, ledger entry) via abandon (ADR 0018; also from a queued op waiting after a failure)
                |         |  \--/  |         |   \-> recovery-required -(recover --resume/--adopt/--abandon)-> queued | completed | completed(uncommitted)
-               v         v       |         \---- transient blocker (backoff, attempts+1) ----/
+               v         v       |         \---- transient blocker (backoff to 60 s, retried until it passes) ----/
             failed <-----+  write-phase recovery-required (a retry of the operation takes the write back)
    files-writing -> files-writing: the executor is replaced under the lock (takeover)
    files-writing -> failed: a foreign edit was found while NOTHING of the write is on disk

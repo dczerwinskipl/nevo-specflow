@@ -16,7 +16,7 @@ import { decodePlanWithEvidence } from '../changes/plan/codec';
 import type { DocumentChangePlan } from '../changes/plan/model';
 import { readDocumentChangeJournal } from '../write/journal-store';
 import type { ClassifiedCommitFailure } from '../../../version-control/commits/failure-class';
-import { retriesExhausted } from './backoff';
+import { countFailedAttempt } from './backoff';
 import {
   DOCUMENT_BATCH_KIND,
   publishDocumentBatch,
@@ -79,8 +79,8 @@ async function memberPlansOf(
  * first (it is the commit point), then the members, then the lease is released:
  *
  * - transient: the batch is `dissolved` with the failure as its reason, the members are `queued`
- *   again with the attempt counted and `nextAttemptAt` after the backoff (1 s doubling to 60 s); the
- *   tenth failed attempt is a permanent `retries-exhausted`;
+ *   again with the attempt counted (saturating) and `nextAttemptAt` after the backoff (1 s doubling
+ *   to 60 s, then every 60 s for as long as the blocker lasts);
  * - permanent: the batch is `failed`, the members `commit-failed`; when `failure.paths` names only
  *   some of the batch's paths, the batch is split instead (see {@link splitLocked});
  * - uncertain: the batch is `recovery-required` and the members `recovery-required`.
@@ -101,11 +101,8 @@ export async function recordCommitFailureLocked(
     throw documentChangeError('operation-state-invalid', 'The document batch moved.');
   }
   const now = failureContext.now();
-  const attempts = batch.attempts + 1;
-  const effective: ClassifiedCommitFailure =
-    failure.kind === 'transient' && retriesExhausted(attempts)
-      ? { kind: 'permanent', reason: 'retries-exhausted', blockedBy: failure.reason }
-      : failure;
+  const attempts = countFailedAttempt(batch.attempts);
+  const effective: ClassifiedCommitFailure = failure;
 
   if (effective.kind === 'permanent' && effective.paths !== undefined) {
     const split = splitBatch(
@@ -196,7 +193,7 @@ async function splitLocked(
       ...(batch.commitStartedAt !== undefined ? { commitStartedAt: batch.commitStartedAt } : {}),
       createdAt: now,
       updatedAt: now,
-      attempts: batch.attempts + 1,
+      attempts: countFailedAttempt(batch.attempts),
       reason: failure.reason,
       ...(failure.blockedBy !== undefined ? { blockedBy: failure.blockedBy } : {}),
     },

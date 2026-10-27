@@ -71,10 +71,11 @@ describe('classification of commit port errors', () => {
       reason: 'git-timeout',
       blockedBy: 'timeout',
     });
+    // A missing Git is an outage: the commit is retained and made once Git is back.
     expect(classifyCommitError(err('GIT_UNAVAILABLE', 'executable-unavailable'))).toEqual({
-      kind: 'permanent',
-      reason: 'commit-failed',
-      blockedBy: 'git-unavailable',
+      kind: 'transient',
+      reason: 'git-unavailable',
+      blockedBy: 'executable-unavailable',
     });
     // Running out of descriptors or memory when Git is started passes; it is not a missing Git.
     expect(classifyCommitError(err('GIT_UNAVAILABLE', 'spawn-failed'))).toEqual({
@@ -83,9 +84,9 @@ describe('classification of commit port errors', () => {
       blockedBy: 'spawn-failed',
     });
     expect(classifyCommitError(err('GIT_OPERATION_UNCERTAIN', 'executable-unavailable'))).toEqual({
-      kind: 'permanent',
-      reason: 'commit-failed',
-      blockedBy: 'git-unavailable',
+      kind: 'transient',
+      reason: 'git-unavailable',
+      blockedBy: 'executable-unavailable',
     });
     expect(classifyCommitError(err('GIT_OPERATION_FAILED'))).toMatchObject({
       kind: 'transient',

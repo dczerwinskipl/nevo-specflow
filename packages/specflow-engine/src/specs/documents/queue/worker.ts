@@ -167,9 +167,7 @@ async function executeBatch(
       batchId: batch.operationId,
       operationIds,
       outcome,
-      // A transient failure that ends the batch for good was the last of its attempts.
-      reason:
-        failure.kind === 'transient' && outcome === 'failed' ? 'retries-exhausted' : failure.reason,
+      reason: failure.reason,
     };
   };
 

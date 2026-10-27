@@ -102,7 +102,7 @@ const uncertain = (): GitCapabilityError =>
   new GitCapabilityError('GIT_OPERATION_UNCERTAIN', 'uncertain', 'mutation-timeout');
 
 describe('transient failures wait and give up', () => {
-  it('waits 1 s, 2 s, 4 s, ... doubling to 60 s, and ends at the tenth failed attempt', async () => {
+  it('waits 1 s, 2 s, 4 s, ... doubling to 60 s, and keeps waiting at 60 s past the tenth attempt', async () => {
     const project = await queueProject();
     const id = await queueSave(project, 1, 'later\n');
     await writeFile(join(project.root, '.git', 'index.lock'), '');
@@ -135,24 +135,104 @@ describe('transient failures wait and give up', () => {
     }
     const clock = manualClock();
     clock.wallAt(at);
-    const last = await runQueueOnce(project.engine, isolatedQueue({ clock }), undefined, FLUSH);
-    expect(last).toMatchObject({
-      status: 'failed',
-      outcome: 'failed',
-      reason: 'retries-exhausted',
-    });
-    expect(await stage(project, id)).toMatchObject({
-      stage: 'commit-failed',
-      reason: 'retries-exhausted',
-      blockedBy: 'index-locked',
-    });
-    // It does not spin: the dead operation is left alone.
-    expect(
-      await runQueueOnce(project.engine, isolatedQueue({ clock }), undefined, FLUSH),
-    ).toMatchObject({
-      status: 'idle',
-    });
+    // Far past the old limit of ten attempts the operation still waits, at the 60 s cap.
+    for (let attempt = 10; attempt <= 14; attempt += 1) {
+      const later = manualClock();
+      later.wallAt(at);
+      expect(
+        await runQueueOnce(project.engine, isolatedQueue({ clock: later }), undefined, FLUSH),
+      ).toMatchObject({ status: 'failed', outcome: 'requeued', reason: 'index-locked' });
+      expect(await stage(project, id)).toMatchObject({
+        stage: 'queued',
+        reason: 'index-locked',
+        attempts: 10,
+        nextAttemptAt: new Date(at + 60_000).toISOString(),
+      });
+      at += 120_000;
+    }
     expect(engineCommits(project)).toEqual([]);
+
+    // The blocker goes away: the commit lands exactly once.
+    await rm(join(project.root, '.git', 'index.lock'));
+    const done = manualClock();
+    done.wallAt(at);
+    const results = await drainQueue(
+      project.engine,
+      isolatedQueue({ clock: done }),
+      undefined,
+      FLUSH,
+    );
+    expect(results.at(-1)).toMatchObject({ status: 'committed', operationIds: [id] });
+    expect(engineCommits(project)).toHaveLength(1);
+    expect(workingTreeClean(project)).toBe(true);
+  });
+
+  it('keeps a queued commit while the Git program is missing and commits it once it is back', async () => {
+    const project = await queueProject();
+    const id = await queueSave(project, 1, 'wait for git\n');
+    const real = openVersionControl(project.engine).commits;
+    let missing = true;
+    const port = new Proxy(real, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver) as unknown;
+        if (typeof value !== 'function') return value;
+        return (...args: unknown[]) => {
+          if (missing) {
+            throw new GitCapabilityError(
+              'GIT_UNAVAILABLE',
+              'Git is not available.',
+              'executable-unavailable',
+            );
+          }
+          return (value as (...parameters: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    }) as CommitPort;
+    let at = Date.now() + 1000;
+    for (let round = 0; round < 12; round += 1) {
+      const clock = manualClock();
+      clock.wallAt(at);
+      await runQueueOnce(
+        project.engine,
+        isolatedQueue({ clock, commits: port }),
+        undefined,
+        FLUSH,
+      ).catch(() => undefined);
+      expect(await stage(project, id)).toMatchObject({ stage: 'queued' });
+      at += 120_000;
+    }
+    expect(engineCommits(project)).toEqual([]);
+
+    missing = false;
+    const clock = manualClock();
+    clock.wallAt(at);
+    const results = await drainQueue(
+      project.engine,
+      isolatedQueue({ clock, commits: port }),
+      undefined,
+      FLUSH,
+    );
+    expect(results.at(-1)).toMatchObject({ status: 'committed', operationIds: [id] });
+    expect(engineCommits(project)).toHaveLength(1);
+  });
+
+  it('lets a person abandon an operation that waits for Git: the files stay and the ledger holds the path', async () => {
+    const project = await queueProject();
+    const id = await queueSave(project, 1, 'give up\n');
+    await writeFile(join(project.root, '.git', 'index.lock'), '');
+    await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
+    expect(await stage(project, id)).toMatchObject({ stage: 'queued', reason: 'index-locked' });
+
+    // A retry of a waiting operation is a repeat: it is on its way already.
+    expect((await retryDocumentCommit(project.engine, id)).map((entry) => entry.stage)).toEqual([
+      'queued',
+    ]);
+    const abandoned = await abandonDocumentCommit(project.engine, id);
+    expect(abandoned.map((entry) => [entry.stage, entry.outcome, entry.reason])).toEqual([
+      ['completed', 'uncommitted', 'abandoned'],
+    ]);
+    expect(await ledgerPaths(project)).toEqual([specPath(1)]);
+    expect(await checkoutClaimFree(project)).toBe(true);
   });
 
   it('keeps the files and commits once the blocker is gone', async () => {
@@ -703,6 +783,8 @@ describe('a checkout that cannot take commits', () => {
     });
     expect(engineCommits(project)).toEqual([]);
     expect(await checkoutClaimFree(project)).toBe(true);
+    // Deliberately off is not an outage: nothing is retained for a later commit.
+    expect(await ledgerOf(project)).toBeUndefined();
   });
 
   it('completes a claimed batch as not-applicable when Git was turned off after the claim', async () => {

@@ -40,6 +40,14 @@ const ABANDONABLE: readonly DocumentChangeJournal['stage'][] = [
   'recovery-required',
 ];
 
+/**
+ * An operation that waits for its next attempt after a failed one (a Git outage keeps it queued, with
+ * the reason of the failure and no batch): the person may give up on it like on a failed commit.
+ */
+function isWaitingAfterFailure(journal: DocumentChangeJournal): boolean {
+  return journal.stage === 'queued' && journal.commit !== undefined && journal.reason !== undefined;
+}
+
 /** Whether the operation already ended as an abandoned one (a repeat finds it so). */
 export function isAbandonedJournal(journal: DocumentChangeJournal): boolean {
   return (
@@ -72,7 +80,8 @@ async function cleanLeftovers(
  * `recovery-required` (commit phase); any other state is `operation-state-invalid`. The batch record
  * is dissolved first (it is the commit point), then each member records its paths in the ledger and
  * completes, all in the control-lock section of the abandon. The completed journals move to `settled/`
- * afterwards. A repeat returns the operation as it ended.
+ * afterwards. A repeat returns the operation as it ended. An operation that waits queued after a failed
+ * attempt (a Git outage) is abandoned on its own, without a batch.
  */
 export async function abandonCommit(
   context: ResolvedProjectHome,
@@ -95,7 +104,10 @@ export async function abandonCommit(
       throw documentChangeError('operation-not-found', 'The document operation does not exist.');
     }
     if (isAbandonedJournal(journal)) return [journal];
-    if (!ABANDONABLE.includes(journal.stage) || journal.recoveryPhase === 'write') {
+    if (
+      !isWaitingAfterFailure(journal) &&
+      (!ABANDONABLE.includes(journal.stage) || journal.recoveryPhase === 'write')
+    ) {
       throw documentChangeError(
         'operation-state-invalid',
         'Only a failed commit or one that needs recovery can be abandoned.',

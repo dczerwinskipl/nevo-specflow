@@ -446,7 +446,7 @@ separate requests.
   creates); `coalescedWith` says how many others.
 - `failed`: the Engine cannot commit without a decision; files stay on disk. `reason` is one of `branch-changed`,
   `branch-protected`, `branch-not-allowed`, `detached`, `no-commits`, `path-ignored`, `index-unreadable`,
-  `commit-failed`, `content-changed`, `retries-exhausted`, `history-changed`, `uncertain`; `blockedBy` carries the
+  `commit-failed`, `content-changed`, `retries-exhausted` (legacy: no longer produced), `history-changed`, `uncertain`; `blockedBy` carries the
   port reason where applicable. `recoveryRequired` is true for `history-changed` and `uncertain`.
 - `uncommitted`: the files are on disk and recorded in the uncommitted-changes ledger, not in Git. `reason` is `auto-commit-off` (policy) or `abandoned` (the abandon action; there is no separate `abandoned` state). Resolved by a manual commit, a later operation that commits the path, or a hand commit (ADR 0018).
 - `not-applicable`: Git is disabled (plain write), or every path of a delete was never tracked (`nothing-to-commit`).

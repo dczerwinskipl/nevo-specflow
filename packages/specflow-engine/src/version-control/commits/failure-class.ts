@@ -102,16 +102,13 @@ export function classifyCommitError(error: unknown): ClassifiedCommitFailure | u
     case 'COMMIT_FAILED':
       return withBlockedBy('permanent', 'commit-failed', error.reason);
     case 'GIT_OPERATION_UNCERTAIN':
-      // A Git that was never there ran nothing: that is not uncertain, it is a missing Git.
+      // A Git that was never there ran nothing: that is not uncertain, it is a Git outage that passes.
       return error.reason === 'executable-unavailable'
-        ? withBlockedBy('permanent', 'commit-failed', 'git-unavailable')
+        ? withBlockedBy('transient', 'git-unavailable', error.reason)
         : withBlockedBy('uncertain', 'uncertain', error.reason);
     case 'GIT_UNAVAILABLE':
-      // A Git that cannot be found needs an operator; one that hung or could not be started for want
-      // of resources (a lock, descriptors, memory) passes.
-      if (error.reason === 'executable-unavailable') {
-        return withBlockedBy('permanent', 'commit-failed', 'git-unavailable');
-      }
+      // A Git that cannot be found or started, one that hung, one short of resources (a lock,
+      // descriptors, memory): an outage, retained and committed once Git works again.
       return error.reason === 'timeout'
         ? withBlockedBy('transient', 'git-timeout', error.reason)
         : withBlockedBy('transient', 'git-unavailable', error.reason);

@@ -187,7 +187,7 @@ describe('transient failures wait and give up', () => {
           return (value as (...parameters: unknown[]) => unknown).apply(target, args);
         };
       },
-    }) as CommitPort;
+    });
     let at = Date.now() + 1000;
     for (let round = 0; round < 12; round += 1) {
       const clock = manualClock();

@@ -144,8 +144,11 @@ function SpecRowIdentity({
  */
 function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
   const { t, i18n } = useTranslation();
-  const valid = item.updatedAt !== undefined && Number.isFinite(Date.parse(item.updatedAt));
-  const date = valid ? formatSpecDate(item.updatedAt!, i18n.resolvedLanguage) : undefined;
+  const updatedAt = item.updatedAt;
+  const date =
+    updatedAt && Number.isFinite(Date.parse(updatedAt))
+      ? formatSpecDate(updatedAt, i18n.resolvedLanguage)
+      : undefined;
   return (
     <Typography
       as="div"
@@ -154,7 +157,7 @@ function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
       data-spec-updated
     >
       {date ? (
-        <time dateTime={item.updatedAt}>
+        <time dateTime={updatedAt}>
           <span className="@min-[48rem]/collection:sr-only">
             {t('specifications.updated', { date })}
           </span>

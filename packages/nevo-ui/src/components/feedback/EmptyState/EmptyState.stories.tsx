@@ -64,7 +64,7 @@ export const Pane: Story = {
       Math.abs(group.left + group.width / 2 - (host.left + host.width / 2)) < 2,
       'The icon tile is centred horizontally.',
     );
-    assert(getComputedStyle(region).borderTopStyle === 'none', 'A pane has no border.');
+    assert(getComputedStyle(region).borderTopWidth === '0px', 'A pane has no border.');
     const [primary, secondary] = [...region.querySelectorAll('button')];
     assert(primary?.textContent === 'Create customer', 'The primary action comes first.');
     assert(secondary?.textContent === 'Import customers', 'The secondary action follows.');

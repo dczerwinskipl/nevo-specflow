@@ -289,11 +289,16 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   would create, rename or move onto a path equal to another ignoring case.
   A rename or move that changes only the letter case of a path (`bb.md` to `Bb.md`, a folder `docs` to `Docs`) is
   applied as a write of the new path followed by the removal of the old one; where the file system ignores case both
-  name one file and the removal would delete it. The Engine therefore refuses it on Windows
-  (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`) and accepts it on case-sensitive systems; no
-  plan whose paths name one file twice is planned or applied (a journaled one is `DOCUMENT_RECOVERY_REQUIRED`,
-  `plan-invalid`). Case-insensitive file systems other than Windows (for example the default APFS volume of macOS)
-  are not detected.
+  name one file and the removal would delete it. The Engine therefore refuses it wherever the file system ignores
+  case (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`, nothing reserved or written) and accepts
+  it on case-sensitive volumes. The file system decides, not the platform: before the reservation (and again before
+  a journaled operation touches a file) every planned path that exists is `lstat`ed, and a removed path with the
+  device and inode of another planned path is one entry under two names (this also covers the default APFS volume
+  of macOS, a Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs). On a volume
+  that reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with
+  its letter case swapped, is found. A path pair that is the same file only by a hard link is refused the same way.
+  On Windows the planner also refuses it at once without I/O. A journaled operation refused this way after its
+  reservation is `DOCUMENT_RECOVERY_REQUIRED` (`plan-invalid`), its files untouched.
 - **Paths**: POSIX `/`, relative to the Specification directory, at most 500 characters, every segment at most 200 UTF-8 bytes, no leading `/`, no
   `..`, no empty segment, no segment starting with `.` or ending with `.` or space, none of `\ : * ? " < > |` or
   control characters, no Windows reserved device name in any segment (with or without extension); folder depth

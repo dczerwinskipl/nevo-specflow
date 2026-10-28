@@ -128,6 +128,10 @@ export const DOCUMENT_CHANGE_ERROR_MAP = {
   'uncommitted-limit': { code: 'DOCUMENT_UNCOMMITTED_LIMIT' },
 } as const satisfies Record<DocumentChangeCause, DocumentChangeErrorMapping>;
 
+/** The message of `case-only-rename`, the same from the planner and from the file-system check. */
+export const CASE_ONLY_RENAME_MESSAGE =
+  'Renaming only the letter case is not supported on this file system.';
+
 /** Extra `details` a caller adds to the mapped ones. */
 export interface DocumentChangeErrorExtras {
   readonly blockedBy?: string;

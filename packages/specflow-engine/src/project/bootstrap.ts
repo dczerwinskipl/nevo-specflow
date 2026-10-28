@@ -16,7 +16,7 @@ import {
   resolveProjectHome,
 } from './home/home';
 import { initializeWorkspaceRegistry } from './workspace/registry/store';
-import { claimGitInstance } from './git-instance';
+import { GIT_INSTANCE_SENTINEL_FILE, claimGitInstance } from './git-instance';
 
 /**
  * Explicitly designate a previously unclaimed primary Git checkout.
@@ -127,6 +127,31 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
   const context = await resolveProjectHome({ cwd: root });
   await initializeWorkspaceRegistry(context);
   return openSpecFlowEngine({ cwd: root });
+}
+
+/**
+ * Read-only: the path of the Git instance evidence (`<git common dir>/nevo-specflow-instance.json`)
+ * when an earlier project claimed this repository but no Project Home is designated in this checkout
+ * (its marker is absent), or `undefined`. Such a repository is never bootstrapped again (the
+ * evidence is never reused, replaced or removed by the Engine); callers use this to explain the
+ * explicit recovery. A designated Project Home, healthy or not, is never reported here.
+ */
+export async function findOrphanedGitInstance(cwd: string): Promise<string | undefined> {
+  const { root, physicalCommonDir } = await inspectPrimaryGitCheckout(cwd);
+  const path = join(physicalCommonDir, GIT_INSTANCE_SENTINEL_FILE);
+  try {
+    await lstat(path);
+  } catch (error) {
+    if (isMissing(error)) return undefined;
+    throw error;
+  }
+  try {
+    await resolveProjectHome({ cwd: root });
+    return undefined;
+  } catch (error) {
+    if (error instanceof ProjectHomeError && error.code === 'PROJECT_HOME_NOT_FOUND') return path;
+    return undefined;
+  }
 }
 
 /** Read-only admission before CLI init wizard or any config/.gitignore mutation. */

@@ -127,9 +127,20 @@ describe('definitions install', () => {
 
   it('refuses on a protected branch before writing, with the protection code', async () => {
     const root = await project(true, '  commits:\n    protectedBranches: [trunk]\n');
-    await expect(command(root).run(['definitions', 'install'])).rejects.toMatchObject({
-      code: 'BRANCH_PROTECTED',
-    });
+    const refusal = await command(root)
+      .run(['definitions', 'install'])
+      .then(
+        () => undefined,
+        (error: unknown) => error as Error & { code?: string },
+      );
+    expect(refusal?.code).toBe('BRANCH_PROTECTED');
+    // It names the branch and every way out.
+    expect(refusal?.message).toContain("Nevo does not commit the definitions on 'trunk'");
+    expect(refusal?.message).toContain('git switch -c nevo-specflow/definitions');
+    expect(refusal?.message).toContain(
+      "remove 'trunk' from git.commits.protectedBranches in .nevo/config.yaml",
+    );
+    expect(refusal?.message).toContain('Nothing was written.');
     await expect(
       readFile(join(root, '.nevo/definitions/document-type/overview.yaml')),
     ).rejects.toMatchObject({ code: 'ENOENT' });

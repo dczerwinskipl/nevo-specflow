@@ -88,7 +88,9 @@ JSON object carries `projectHome`, so the folder that was used is always visible
   definition brings the definitions it refers to. An existing file that differs is kept unless `--force`. A link, a
   special file or an unreadable kind folder refuses the whole install before anything is written. With Git enabled the
   written files (and any left by an interrupted install) are committed in one Engine commit; a protected or
-  not-allowed branch refuses before writing; with Git disabled it is a plain write. `--dry-run` prints the plan and
+  not-allowed branch refuses before writing (`BRANCH_PROTECTED`), naming the branch and the ways out: switch to a
+  branch Nevo may commit on (for example `git switch -c nevo-specflow/definitions`), install there and merge it, or
+  change `git.commits.protectedBranches` / `allowedBranches`; with Git disabled it is a plain write. `--dry-run` prints the plan and
   changes nothing.
 
 Exit codes: `0` success; `1` an operation failure, a refused install, `show` of a missing or rejected definition,

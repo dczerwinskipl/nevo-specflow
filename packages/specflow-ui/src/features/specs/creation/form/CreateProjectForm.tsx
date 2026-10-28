@@ -203,14 +203,24 @@ export function CreateProjectForm({
   };
 
   return (
-    <CreateShell>
-      <form
-        className="grid gap-8"
-        onSubmit={(event) => {
+    <CreateShell
+      form={{
+        onSubmit: (event) => {
           event.preventDefault();
           submit();
-        }}
-      >
+        },
+      }}
+      footer={
+        <CreateFooter
+          submitRef={submitRef}
+          prerequisite={prerequisite ? text(prerequisite) : undefined}
+          note={t('create.project.footNote')}
+          submitLabel={t('create.submit.create')}
+          submitDisabled={locked || !canSubmit}
+        />
+      }
+    >
+      <div className="grid gap-8">
         <CreateFormHeader
           headingRef={headingRef}
           lead={<ApplicationContextLine className="mb-0" view="new-specification" />}
@@ -264,23 +274,13 @@ export function CreateProjectForm({
           onRefresh={refreshOptions}
           onAnnounce={announce}
         />
-        <Separator />
-        <CreateFooter
-          submitRef={submitRef}
-          failureAlert={
-            unprepared && (
-              <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
-                <p>{t('create.errors.failed.body')}</p>
-              </Alert>
-            )
-          }
-          prerequisite={prerequisite ? text(prerequisite) : undefined}
-          note={t('create.project.footNote')}
-          submitLabel={t('create.submit.create')}
-          submitDisabled={locked || !canSubmit}
-        />
+        {unprepared && (
+          <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
+            <p>{t('create.errors.failed.body')}</p>
+          </Alert>
+        )}
         {region}
-      </form>
+      </div>
       <CreateLeaveDialog guard={leaveGuard} />
     </CreateShell>
   );

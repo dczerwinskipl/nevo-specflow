@@ -255,56 +255,49 @@ export function CreateDemoForm({
         onAnnounce={announce}
       />
     ),
-    <CreateFooter
-      key="footer"
-      actionRegion={reveal.actionRegion}
-      submitRef={submitRef}
-      failureAlert={
-        <>
-          {configurationUnavailable && <CreateConfigurationNotice onRefresh={onRefresh} />}
-          {failure && (
-            <CreateFailurePanel
-              failure={failure}
-              state={state}
-              workspaceOptions={workspaceOptions}
-              typedTitle={title.trim()}
-              refreshing={createOptions.fetching}
-              announce={announce}
-              onRefresh={refreshOptions}
-              onRefreshArchetypes={() =>
-                void (async () => {
-                  const code = failure.kind === 'catalogue-stale' ? failure.code : undefined;
-                  const fresh = await onRefreshCatalogue();
-                  if (!fresh || !code) return;
-                  setArchetypeChoice((current) => refreshedArchetypeChoice(current, code));
-                  actions.dismissFailure();
-                  announce(t('create.archetype.refreshed'));
-                })()
-              }
-              onUseAutomaticName={() => {
-                place.chooseAutomaticBranch();
-                actions.dismissFailure();
-              }}
-              onUseCustomName={() => {
-                place.chooseCustomBranch();
-                actions.dismissFailure();
-              }}
-            />
-          )}
-        </>
-      }
-      prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
-      note={note}
-      submitLabel={submitLabel}
-      submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
-    />,
   ].filter(Boolean);
+  // Under the last section, in the scrolling form: what went wrong and how to go on. The pinned
+  // footer stays one line; a failure is revealed here (`useRevealFailure`).
+  const failureRegion = (
+    <div ref={reveal.actionRegion} className="grid gap-4 empty:hidden">
+      {configurationUnavailable && <CreateConfigurationNotice onRefresh={onRefresh} />}
+      {failure && (
+        <CreateFailurePanel
+          failure={failure}
+          state={state}
+          workspaceOptions={workspaceOptions}
+          typedTitle={title.trim()}
+          refreshing={createOptions.fetching}
+          announce={announce}
+          onRefresh={refreshOptions}
+          onRefreshArchetypes={() =>
+            void (async () => {
+              const code = failure.kind === 'catalogue-stale' ? failure.code : undefined;
+              const fresh = await onRefreshCatalogue();
+              if (!fresh || !code) return;
+              setArchetypeChoice((current) => refreshedArchetypeChoice(current, code));
+              actions.dismissFailure();
+              announce(t('create.archetype.refreshed'));
+            })()
+          }
+          onUseAutomaticName={() => {
+            place.chooseAutomaticBranch();
+            actions.dismissFailure();
+          }}
+          onUseCustomName={() => {
+            place.chooseCustomBranch();
+            actions.dismissFailure();
+          }}
+        />
+      )}
+    </div>
+  );
 
   return (
-    <CreateShell specId={specId}>
-      <form
-        className="grid gap-8"
-        onSubmit={(event) => {
+    <CreateShell
+      specId={specId}
+      form={{
+        onSubmit: (event) => {
           event.preventDefault();
           if (recovery) {
             void actions.submit(submission());
@@ -314,8 +307,19 @@ export function CreateDemoForm({
             reveal.captureSubmit(event);
             void actions.submit(submission());
           }
-        }}
-      >
+        },
+      }}
+      footer={
+        <CreateFooter
+          submitRef={submitRef}
+          prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
+          note={note}
+          submitLabel={submitLabel}
+          submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
+        />
+      }
+    >
+      <div className="grid gap-8">
         <CreateFormHeader
           headingRef={headingRef}
           lead={
@@ -338,8 +342,9 @@ export function CreateDemoForm({
           index > 0 ? <Separator key={`separator-${index}`} /> : null,
           section,
         ])}
+        {failureRegion}
         {region}
-      </form>
+      </div>
       {leaveDialog}
     </CreateShell>
   );

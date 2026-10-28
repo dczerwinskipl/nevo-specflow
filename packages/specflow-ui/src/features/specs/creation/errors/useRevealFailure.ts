@@ -1,7 +1,7 @@
 import { useEffect, useRef, type FormEvent, type RefObject } from 'react';
 
 export interface RevealFailure {
-  /** The region under the submit button that holds the failure alert and the footer. */
+  /** The region at the end of the scrolling form that holds the failure alert. */
   actionRegion: RefObject<HTMLDivElement | null>;
   /** Call when a submit is accepted: remembers whether the submit button was in view. */
   captureSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -38,10 +38,12 @@ export function useRevealFailure(
         event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
       const rect = submitter?.getBoundingClientRect(),
         viewport = scroller?.getBoundingClientRect();
-      submitted.current =
-        scroller && rect && viewport && rect.top >= viewport.top && rect.bottom <= viewport.bottom
-          ? { scroller, top: scroller.scrollTop }
-          : null;
+      // A submit button outside the scroller is in the pinned footer: always in view.
+      const inView =
+        Boolean(submitter) &&
+        (!scroller?.contains(submitter) ||
+          Boolean(rect && viewport && rect.top >= viewport.top && rect.bottom <= viewport.bottom));
+      submitted.current = scroller && inView ? { scroller, top: scroller.scrollTop } : null;
     },
   };
 }

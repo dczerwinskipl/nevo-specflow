@@ -86,6 +86,17 @@ describe('useRevealFailure', () => {
     expect(parts.scrollIntoView).not.toHaveBeenCalled();
   });
 
+  it('reveals the failure after a submit from the pinned footer outside the scroller', () => {
+    const parts = layout({ buttonInView: false });
+    // The footer sits under the scroll area, never scrolled away.
+    document.body.append(parts.submitter);
+    const view = setup(parts);
+    view.result.current.captureSubmit(submitEvent(parts.submitter));
+    view.rerender({ failed: true, seq: 1 });
+    flush();
+    expect(parts.scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
+  });
+
   it('does nothing when the submit button was not in view (the owner was elsewhere)', () => {
     const parts = layout({ buttonInView: false });
     const view = setup(parts);

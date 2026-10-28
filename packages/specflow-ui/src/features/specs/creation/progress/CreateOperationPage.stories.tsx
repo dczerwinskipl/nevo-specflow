@@ -502,6 +502,40 @@ export const Refused: Story = {
   },
 };
 
+/**
+ * The progress page and the form share one content width (`content-standard`, 1100 px, centred by
+ * the bounded workspace): the layout does not jump on submit, running or refused alike. Narrower
+ * screens fill the workspace with the normal gutters.
+ */
+async function expectFormWidth() {
+  const standard =
+    parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-standard'),
+    ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const heading = await within(document.body).findByRole('heading', { level: 1 });
+  const content = heading.closest('.scroll-area')!.parentElement!;
+  const surface =
+    content.closest<HTMLElement>('[data-workspace-surface]') ?? content.parentElement!;
+  for (const width of [1440, 1920, 2560, 900, 390]) {
+    await settleViewport(width, 900);
+    const box = content.getBoundingClientRect();
+    if (width >= 1440) await expect(Math.abs(box.width - standard)).toBeLessThan(1);
+    else await expect(Math.abs(box.width - surface.getBoundingClientRect().width)).toBeLessThan(2);
+  }
+  await settleViewport();
+}
+export const SharesTheFormWidth: Story = {
+  args: { request: newWorkspace, facts: newWorkspaceFacts },
+  play: () => expectFormWidth(),
+};
+export const RefusedSharesTheFormWidth: Story = {
+  args: Refused.args,
+  play: async ({ canvas }) => {
+    await canvas.findByRole('alert');
+    await expectFormWidth();
+  },
+};
+
 /** The answer was lost: the outcome is not assumed, only the same operation can be checked. */
 export const UnknownOutcome: Story = {
   args: { request: newWorkspace, server: 'unknown' },

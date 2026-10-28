@@ -612,11 +612,11 @@ export const SingleModeModel: Story = {
 export const SeparatorsOnlyBetweenRenderedSections: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
-    // Manual mode has no agent section: basics | archetype | git | footer.
-    await expect(canvas.getAllByRole('separator')).toHaveLength(3);
+    // Manual mode has no agent section: basics | archetype | git (the footer is pinned below).
+    await expect(canvas.getAllByRole('separator')).toHaveLength(2);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień sposób pracy/ }));
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
-    await expect(canvas.getAllByRole('separator')).toHaveLength(4);
+    await expect(canvas.getAllByRole('separator')).toHaveLength(3);
   },
 };
 
@@ -999,6 +999,41 @@ export const WorkspaceSectionGeometryInTheForm: Story = {
     await settle(390);
     const stacked = canvas.getByRole('radio', { name: 'Bieżący katalog' }).closest('label')!;
     await expect(stacked.getBoundingClientRect().top).toBeGreaterThan(a.bottom - 1);
+  },
+};
+
+/**
+ * The Create action and its hint are pinned under the scrolling form: scrolling the form never moves
+ * them, at 1440, at 900 and at 390 with the height left by an open on-screen keyboard.
+ */
+export const CreateActionStaysVisibleWhileTheFormScrolls: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    for (const [width, height] of [
+      [1440, 900],
+      [900, 800],
+      [390, 500],
+    ] as const) {
+      await settleViewport(width, height);
+      const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
+      const footer = canvas.getByRole('group', { name: 'Utworzenie specyfikacji' });
+      const scroller = canvas
+        .getByRole('textbox', { name: 'Nazwa specyfikacji' })
+        .closest<HTMLElement>('.scroll-area-viewport')!;
+      await expect(scroller.contains(footer)).toBe(false);
+      await expect(footer.closest('form')).toBe(scroller.closest('form'));
+      const before = submit.getBoundingClientRect();
+      scroller.scrollTop = scroller.scrollHeight;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const after = submit.getBoundingClientRect();
+      await expect(Math.abs(after.top - before.top)).toBeLessThan(1);
+      await expect(after.bottom).toBeLessThanOrEqual(height + 1);
+      await expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        scroller.getBoundingClientRect().bottom - 1,
+      );
+      scroller.scrollTop = 0;
+    }
+    await settleViewport();
   },
 };
 

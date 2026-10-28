@@ -801,9 +801,11 @@ export const FailedCreateAtTheBottomStaysVisible: Story = {
       'Logowanie SSO',
     );
     const submit = await canvas.findByRole('button', { name: 'Utwórz specyfikację' });
-    const scroller = scrollerOf(submit);
+    // The primary button is pinned under the form; the form itself scrolls.
+    const scroller = scrollerOf(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }));
     if (!scroller) throw new Error('The create form has no scroller at 390x844');
-    // The user is at the very bottom, where the primary button lives.
+    await expect(scroller.contains(submit)).toBe(false);
+    // The user is at the very bottom of the form.
     scroller.scrollTop = scroller.scrollHeight;
     await waitFor(() =>
       expect(scroller.scrollTop + scroller.clientHeight).toBeGreaterThanOrEqual(

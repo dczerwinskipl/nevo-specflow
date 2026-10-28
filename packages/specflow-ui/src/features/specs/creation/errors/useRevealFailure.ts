@@ -13,21 +13,39 @@ export interface RevealFailure {
  * scrolled to its end when the button is pinned below it), and has not scrolled since: it never
  * fights the user's own scrolling or pulls them away from what they are reading.
  */
+/** Scroll positions are fractional on zoomed or high-density screens: "at the end" allows a few px. */
+const endSlackPx = 8;
+
 export function useRevealFailure(
   failed: boolean,
   errorSeq: number,
   failure: unknown,
 ): RevealFailure {
   const actionRegion = useRef<HTMLDivElement>(null);
-  const submitted = useRef<{ scroller: HTMLElement; top: number } | null>(null);
+  const submitted = useRef<{ scroller: HTMLElement; top: number; atEnd: boolean } | null>(null);
   useEffect(() => {
     if (!failed || !submitted.current) return;
     const initial = submitted.current;
     const frame = requestAnimationFrame(() => {
       const region = actionRegion.current;
-      if (!region || Math.abs(initial.scroller.scrollTop - initial.top) > 1) return;
-      const available = initial.scroller.clientHeight;
-      region.scrollIntoView({ block: region.offsetHeight <= available ? 'end' : 'start' });
+      if (!region) return;
+      const scroller = initial.scroller;
+      // Still at the end of the form without the new alert: the browser may have clamped the
+      // position while the form locked, which is not the owner scrolling away.
+      const stillAtEnd =
+        initial.atEnd &&
+        scroller.scrollTop + scroller.clientHeight >=
+          scroller.scrollHeight - region.offsetHeight - endSlackPx;
+      if (Math.abs(scroller.scrollTop - initial.top) > 1 && !stillAtEnd) return;
+      // The form's own scroller is moved directly (an element scrollIntoView can be dropped by a
+      // concurrent scroll elsewhere in the workspace): the whole alert ends at the bottom of the
+      // view, or one taller than the view starts at its top so it is read from the beginning.
+      const box = region.getBoundingClientRect(),
+        view = scroller.getBoundingClientRect();
+      scroller.scrollTop +=
+        region.offsetHeight <= scroller.clientHeight
+          ? Math.max(0, box.bottom - view.bottom)
+          : box.top - view.top;
     });
     return () => cancelAnimationFrame(frame);
   }, [failed, errorSeq, failure]);
@@ -47,9 +65,13 @@ export function useRevealFailure(
         (scroller?.contains(submitter)
           ? Boolean(rect && viewport && rect.top >= viewport.top && rect.bottom <= viewport.bottom)
           : Boolean(
-              scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1,
+              scroller &&
+              scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - endSlackPx,
             ));
-      submitted.current = scroller && atEnd ? { scroller, top: scroller.scrollTop } : null;
+      submitted.current =
+        scroller && atEnd
+          ? { scroller, top: scroller.scrollTop, atEnd: !scroller.contains(submitter) }
+          : null;
     },
   };
 }

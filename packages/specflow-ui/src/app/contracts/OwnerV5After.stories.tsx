@@ -106,14 +106,23 @@ async function shot(name: string, width: number, height = 900) {
     }),
   );
 }
-/** Scrolls the Create form to its end (the submit button is pinned below it). */
-function toFormEnd(canvas: {
+/**
+ * Scrolls the Create form to its end (the submit button is pinned below it) and waits until it
+ * stays there: late layout (options, focus on narrow screens) may still move it.
+ */
+async function toFormEnd(canvas: {
   getByRole: (role: string, options: { name: string }) => HTMLElement;
 }) {
   const scroller = canvas
     .getByRole('textbox', { name: 'Nazwa specyfikacji' })
     .closest<HTMLElement>('.scroll-area-viewport')!;
-  scroller.scrollTop = scroller.scrollHeight;
+  await waitFor(async () => {
+    scroller.scrollTop = scroller.scrollHeight;
+    await frame();
+    await frame();
+    if (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1)
+      throw new Error('The form did not stay at its end');
+  });
 }
 export const CreateBottomFailure: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
@@ -129,7 +138,7 @@ export const CreateBottomFailure: Story = {
     // end right before submitting.
     await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     await shot('create-bottom-before', 390, 844);
-    toFormEnd(canvas);
+    await toFormEnd(canvas);
     await userEvent.click(submit);
     await canvas.findByRole('alert');
     await waitFor(() => {
@@ -420,7 +429,7 @@ export const OversizeFeedbackInShortViewport: Story = {
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
     await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
-    toFormEnd(canvas);
+    await toFormEnd(canvas);
     await userEvent.click(submit);
     const alert = await canvas.findByRole('alert');
     // The failure is explained at the end of the scrolling form, above the pinned footer.

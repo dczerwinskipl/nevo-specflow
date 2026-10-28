@@ -11,7 +11,7 @@ summary: >
   checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a
   batch save is one commit. The dirty window between write and commit is bounded and journaled; it relaxes the
   clean-checkout consequence of ADR 0013 for document operations only. Protected branches and commit blockers
-  are checked before any file is written. Extends ADR 0013; amends the earlier draft of this ADR.
+  are checked before any file is written. Extends ADR 0013.
 related:
   - adr.0013-engine-owned-commits-and-protected-branches
   - adr.0014-feature-owned-operation-lists
@@ -32,13 +32,6 @@ Draft (proposed with `product.specflow.specification-documents`). This ADR **ext
 states that "a checkout is clean after Create". For document operations a checkout MAY be dirty because of Nevo for
 a bounded, journaled window (decision 9). Create keeps its synchronous commit stage and its clean-checkout
 guarantee. Language follows [normative language](../principles/normative-language.md).
-
-**Amended 2026-10-24 in place (still draft, nothing implemented), twice.** First: the earlier draft decided "one
-synchronous commit per request" and rejected a dirty window; the owner decided otherwise. Second: an independent
-review found design holes (effective commit path set, claim/write race, mid-batch write failure, batch scope, lease,
-journal growth, Close hook, state machine, identity of an executor); they are closed below. Third (2026-10-26): ADR 0018
-adds the commit policy, the uncommitted-changes ledger and manual commit; decision 15 and the `abandoned` state are
-amended accordingly.
 
 ## Why a new ADR and not an amendment of 0013
 
@@ -173,7 +166,7 @@ and consolidation. 0013 receives a pointer to this relaxation.
       checkout with queued work). A person may `abandon` a waiting operation. Git turned off by policy is different:
       the operation completes `not-applicable` and nothing is retained.
     - permanent (`BRANCH_PROTECTED`, `detached`, `branch-changed`, `no-commits`, `path-ignored`, `index-unreadable`,
-      `COMMIT_FAILED`, `content-changed`, `workspace-missing`; `retries-exhausted` is no longer produced and is read only from older journals): batch `failed`, members
+      `COMMIT_FAILED`, `content-changed`, `workspace-missing`): batch `failed`, members
       `commit-failed`, files stay. A failed batch MUST NOT block other batches or paths (it holds only its own paths).
       **Split and retry:** when only some paths fail (ignored, foreign), the unaffected paths are committed and the
       failed paths become a new `failed` batch.
@@ -192,7 +185,7 @@ and consolidation. 0013 receives a pointer to this relaxation.
 15. **Abandon is the uncommitted state (amended by [ADR 0018](0018-engine-commit-policy-and-manual-commit.md)).**
     `abandon` of a failed batch leaves the files on disk, records its paths in the **uncommitted-changes ledger** (the
     generic, owner-keyed record of ADR 0018), completes its members with `outcome: 'uncommitted'` (reason `abandoned`)
-    and releases the claim; the former stage `abandoned` and the state `abandoned` no longer exist. The tree reports the
+    and releases the claim; there is no `abandoned` stage or state. The tree reports the
     paths `uncommitted` until a later operation on them commits, a manual commit includes them, or a hand commit makes
     them equal to `HEAD` (pruned). Close is refused (`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`).
 16. **Close.** The flush hook belongs in `reserveCloseOperation` (`lifecycle/reservation.ts`), after the pure
@@ -293,7 +286,7 @@ batch:      formed(unclaimed) -claim(parentHead, lease)-> committing -> committe
 
 ## Rejected
 
-- **One synchronous commit per request** (earlier draft): latency and history noise.
+- **One synchronous commit per request**: latency and history noise.
 - **Debounce longer than the settle window**; **an in-process-only queue**; **rolling queued files back**; **time-based
   takeover**; **`git add -A`**; **separate commits for registry and file**; **batches across Specifications** (one
   failed Specification would block another); **treating a mid-batch write failure as a plain failure** (changed files

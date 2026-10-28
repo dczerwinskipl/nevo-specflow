@@ -24,8 +24,8 @@ related:
 
 ## Status
 
-Draft (proposed with delivery slice D-config of `ideas.specflow-engine.specification-documents-delivery`).
-Amends ADR 0015 decision 9 (the first release no longer holds the built-in definitions in Engine code).
+Draft (proposed with the definitions-as-project-data delivery of `ideas.specflow-engine.specification-documents-delivery`).
+Completes ADR 0015 decision 9: the built-in definitions are project data, never Engine code.
 
 ## Context
 
@@ -111,7 +111,7 @@ their own committed files and are not flattened into `config.yaml`.
 
 - **Compiled built-ins with a YAML overlay (disable list, override).** Two sources, silent precedence, and the
   product would still own archetype text.
-- **A single `.nevo/archetypes/*.yaml` multi-entity file set** (the earlier D-config sketch). Cannot serve other
+- **A single `.nevo/archetypes/*.yaml` multi-entity file set**. Cannot serve other
   kinds, deletes whole groups, and isolates failures at the wrong granularity.
 - **Absorbing definitions into `.nevo/config.yaml`.** Violates the configuration architecture (large declarative
   definitions keep their own files).

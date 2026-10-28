@@ -63,9 +63,7 @@ Authorization uses the existing `SpecCapabilities`: `View` for reads, `Manage` f
 | D4    | GET    | `/api/specs/:specId/uncommitted`                                          | new                                       | View                | Uncommitted ledger entries, policy, queue summary (ADR 0018) |
 | D4    | POST   | `/api/specs/:specId/commit`                                               | new                                       | Manage              | Manual commit of the ledger paths of a scope (ADR 0018)      |
 
-**Implementation status.** The D3 rows (document tree, document content, raw) and the D4 write, status, retry, abandon and flush rows are implemented in the Runtime and go through the Engine; the document operations list is `GET /api/specs/document-operations`. D2 and D3 are served in project mode by the Engine as the source of record. The `uncommitted` row (ADR 0018, DW.T18) and the `commit` row (manual commit, DW.T19) are implemented. The write routes are registered only outside demo mode. The Engine reads the catalogue from the project's `.nevo/definitions` (nothing is compiled in), and Create answers `DEFINITIONS_MISSING` without definitions; the catalogue route reports `problems`, `problemsTruncated` and `unstableRead` (its ETag covers them) and the `definitions` commands exist.
-read through the Engine; D2 and D3 are served in project mode by the Engine as the source of record. The D4 rows
-are decided in this page (section D4); no write route exists yet. The Engine side of the reads is implemented: the commit state, the real actions and folder revisions of the tree, `readDocumentOperationStatus` and the rows of the document operation list (`listDocumentOperationRows`); their routes follow. The Engine reads the catalogue from the project's `.nevo/definitions` (nothing is compiled in), and Create answers `DEFINITIONS_MISSING` without definitions; the catalogue route reports `problems`, `problemsTruncated` and `unstableRead` (its ETag covers them) and the `definitions` commands exist.
+**Routes.** The document tree, document content and raw rows and the write, status, retry, abandon, flush, `uncommitted` and `commit` rows are served by the Runtime through the Engine, which is the source of record in project mode; the document operations list is `GET /api/specs/document-operations`. The write routes are registered only outside demo mode. The Engine reads the catalogue from the project's `.nevo/definitions` (nothing is compiled in), and Create answers `DEFINITIONS_MISSING` without definitions; the catalogue route reports `problems`, `problemsTruncated` and `unstableRead` (its ETag covers them) and the `definitions` commands exist.
 
 All document responses, including their error responses, send `Cache-Control: no-store` except a successful `raw`
 (below). `specId` and `documentId` follow the
@@ -194,8 +192,7 @@ types and commits it under `packages/specflow-contracts/schema/definitions/`
 (`document-type.v1.schema.json`, `specification-archetype.v1.schema.json`; `$id`
 `urn:nevo:specflow:definition:<kind>:<schemaVersion>`, draft 2020-12). A unit test fails when a committed file differs
 from the generated one (prettier ignores the folder; regenerate with `pnpm --filter @nevo/specflow-contracts
-schema:generate`). The folder is not in the package `exports`; it is published as package files. The earlier aggregate
-`archetype-definitions.schema.json` and `ArchetypeDefinitionFile` (several entities in one file) are removed.
+schema:generate`). The folder is not in the package `exports`; it is published as package files.
 
 **Problems (`ArchetypeCatalogue.problems[]`).**
 
@@ -325,7 +322,7 @@ characters. The `revision` and
 `content` returned come from the same bytes. The current revision is the hash of the content up to 1 MiB, else
 `stat:<size>-<mtimeNs>`.
 
-Replaces `SpecificationDocumentResponse` (`filename` is replaced by `path`; `title` stays; new fields above). The
+The response carries `path` (not `filename`) and `title`, with the fields above. The
 `?revision=` query is kept: a revision other than the current one -> `DOCUMENT_REVISION_UNAVAILABLE` (409); there
 is no history read. Text above the JSON read limit -> `DOCUMENT_TOO_LARGE` (413) with the hint to use `raw`. A dangling id ->
 `DOCUMENT_FILE_MISSING` (404). Unknown id -> `DOCUMENT_NOT_FOUND` (404).
@@ -446,7 +443,7 @@ separate requests.
   creates); `coalescedWith` says how many others.
 - `failed`: the Engine cannot commit without a decision; files stay on disk. `reason` is one of `branch-changed`,
   `branch-protected`, `branch-not-allowed`, `detached`, `no-commits`, `path-ignored`, `index-unreadable`,
-  `commit-failed`, `content-changed`, `retries-exhausted` (legacy: no longer produced), `history-changed`, `uncertain`; `blockedBy` carries the
+  `commit-failed`, `content-changed`, `history-changed`, `uncertain`; `blockedBy` carries the
   port reason where applicable. `recoveryRequired` is true for `history-changed` and `uncertain`.
 - `uncommitted`: the files are on disk and recorded in the uncommitted-changes ledger, not in Git. `reason` is `auto-commit-off` (policy) or `abandoned` (the abandon action; there is no separate `abandoned` state). Resolved by a manual commit, a later operation that commits the path, or a hand commit (ADR 0018).
 - `not-applicable`: Git is disabled (plain write), or every path of a delete was never tracked (`nothing-to-commit`).
@@ -465,8 +462,8 @@ separate requests.
 `GET /api/specs/document-operations` (View per row; same ETag/304, `status` and `limit` query as
 `GET /api/specs/operations`, which stays Create-only; the UI panel merges the two). It is registered with
 `registerOperationListRoute` and a document-change adapter that reads the active journal directory only (no Git, no
-control lock, settled records excluded). **Prerequisite contract change (own task):** `OPERATION_LIST_KINDS` gains
-`document-change`; `OPERATION_LIST_RESERVED_STATUSES` no longer reserves `queued` (it is produced); the source row
+control lock, settled records excluded). **Contract:** `OPERATION_LIST_KINDS` gains
+`document-change`; `OPERATION_LIST_RESERVED_STATUSES` does not reserve `queued` (it is produced); the source row
 `state` gains `queued` and `failed`; `staleAfterMs` (5 min idle means interrupted) MUST NOT apply to
 document operations (a pending batch can legitimately wait); rows carry `operationId`, `kind`, `status`,
 `subject {specId, slug}`, `updatedAt`, `code?` and the additive `action` and `documentCount`; no paths. Listed: `failed`,
@@ -481,8 +478,7 @@ the failure. Rows never carry a path.
 
 ## Commit policy, uncommitted changes and manual commit
 
-Governing decision: [ADR 0018](../../architecture/decisions/0018-engine-commit-policy-and-manual-commit.md). Delivery: tasks
-DW.T18 (policy, ledger, uncommitted completion) and DW.T19 (manual commit).
+Governing decision: [ADR 0018](../../architecture/decisions/0018-engine-commit-policy-and-manual-commit.md).
 
 **Configuration** (reference: `reference.configuration.specflow-git-worktrees` when implemented):
 
@@ -624,7 +620,7 @@ never carries a message or a path). A registered file that is a symlink, a direc
 `DOCUMENT_FILE_MISSING` (dangling); a registered path below a symlinked folder is `SPEC_SOURCE_UNAVAILABLE`.
 
 Demo-only codes (`DEMO_WORKSPACE_UNAVAILABLE`, `DEMO_INVALID_SCENARIO`) stay; the demo's `demo_*` lowercase document
-errors are replaced by the codes above (demo emits the same codes).
+errors use the codes above (demo emits the same codes).
 
 ## UI impact (explicit list for the parallel UI work)
 
@@ -650,9 +646,8 @@ integrates D2/D3/D4; items marked _demo_ also change the demo contract and the d
 7. Document read: `SpecificationDocumentResponse.filename` -> `path`; new fields `classification`, `type`, `kind`,
    `mediaType`, `size`, `editable`; `content` is absent for `image` and `binary`; the UI chooses the viewer from
    `kind` and loads `raw` for images (`<img src>`) and downloads.
-8. Read errors: the lowercase bodies `specification_document_not_found`, `specification_source_unavailable`,
-   `document_revision_unavailable` are replaced by `{error, code}` with `DOCUMENT_NOT_FOUND`,
-   `SPEC_SOURCE_UNAVAILABLE`, `DOCUMENT_REVISION_UNAVAILABLE`.
+8. Read errors are `{error, code}` with `DOCUMENT_NOT_FOUND`, `SPEC_SOURCE_UNAVAILABLE`,
+   `DOCUMENT_REVISION_UNAVAILABLE`.
 9. Unclassified documents have derived ids prefixed `u-`; after classification the id changes, so the open tab and
    the route `documents/$documentId` MUST follow the returned `documents[].id`.
 10. Protected branch: write errors and `actions[].reason` expose `branch-protected` / `branch-not-allowed` /
@@ -725,4 +720,4 @@ integrates D2/D3/D4; items marked _demo_ also change the demo contract and the d
     clears on the next prune (the Close flush prunes).
 30. **Configuration.** The policy source (`project`, `local`, `default`) is shown read-only; editing is a file change
     (committed config or the local file). A `GIT_POLICY_INVALID` caused by `git.commits.auto` is shown with the key name.
-31. `CommitState` has no `abandoned`; a UI built on the earlier draft maps it to `uncommitted` (reason `abandoned`).
+31. `CommitState` has no `abandoned`: an abandoned commit is `uncommitted` (reason `abandoned`).

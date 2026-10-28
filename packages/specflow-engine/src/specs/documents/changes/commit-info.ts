@@ -41,7 +41,6 @@ export const RECOVERY_REQUIRED_BY_FAILURE_REASON = {
   'index-unreadable': false,
   'commit-failed': false,
   'content-changed': false,
-  'retries-exhausted': false,
   'history-changed': true,
   uncertain: true,
 } as const satisfies Record<CommitFailureReason, boolean>;

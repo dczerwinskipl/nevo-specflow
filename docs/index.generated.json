@@ -1948,7 +1948,7 @@
       "status": "draft",
       "file": "docs/architecture/decisions/0016-engine-owned-document-commits.md",
       "read_when": [],
-      "summary": "Every state-changing Specification document operation writes its files and registry change to disk immediately, answers once the content is durable and its commit request is durably queued, and lands in Git later as an Engine-owned path-limited commit executed by a per-checkout queue (one active batch per checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a batch save is one commit. The dirty window between write and commit is bounded and journaled; it relaxes the clean-checkout consequence of ADR 0013 for document operations only. Protected branches and commit blockers are checked before any file is written. Extends ADR 0013; amends the earlier draft of this ADR.",
+      "summary": "Every state-changing Specification document operation writes its files and registry change to disk immediately, answers once the content is durable and its commit request is durably queued, and lands in Git later as an Engine-owned path-limited commit executed by a per-checkout queue (one active batch per checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a batch save is one commit. The dirty window between write and commit is bounded and journaled; it relaxes the clean-checkout consequence of ADR 0013 for document operations only. Protected branches and commit blockers are checked before any file is written. Extends ADR 0013.",
       "related": [
         "adr.0013-engine-owned-commits-and-protected-branches",
         "adr.0014-feature-owned-operation-lists",
@@ -1984,7 +1984,7 @@
       "status": "draft",
       "file": "docs/architecture/decisions/0018-engine-commit-policy-and-manual-commit.md",
       "read_when": [],
-      "summary": "A general policy decides per Engine capability whether its edits are committed automatically (default on, git.commits.auto.<capability> in project config with a local override). With it off a write completes at once as uncommitted and is recorded in a durable, owner-keyed uncommitted-changes ledger in the durable core. A manual commit is the only way the Engine commits ledger content then: a normal operation through the same commit port, lease, claim algebra and journal, path-limited to the ledger paths of a scope, with the user's message, never arbitrary user changes. Abandoning a failed batch and policy-level auto-off are the same state. Create and definitions install stay always committed. Push is out of scope.",
+      "summary": "A general policy decides per Engine capability whether its edits are committed automatically (default OFF, git.commits.auto.<capability> in project config with a local override, configuration only). With it off a write completes at once as uncommitted and is recorded in a durable, owner-keyed uncommitted-changes ledger in the durable core. A manual commit is the only way the Engine commits ledger content then: a normal operation through the same commit port, lease, claim algebra and journal, path-limited to the ledger paths of a scope, with the user's message, never arbitrary user changes. Abandoning a failed batch and policy-level auto-off are the same state. Create and definitions install stay always committed. Push is out of scope.",
       "related": [
         "adr.0013-engine-owned-commits-and-protected-branches",
         "adr.0016-engine-owned-document-commits",

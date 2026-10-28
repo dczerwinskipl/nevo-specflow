@@ -454,7 +454,7 @@ Different Specifications are different commits. A batch of only saves waits for 
 configurable) bounded by the maximum hold (5 s); any structural operation makes it eligible at once. A barrier
 operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 
-**Formation, claim and lease (as implemented).** One pass of the queue takes the operations of one Specification that
+**Formation, claim and lease.** One pass of the queue takes the operations of one Specification that
 are `queued`, in `sequence` order, up to 50 operations and 200 distinct paths (paths compare case-insensitively). An
 operation is skipped, and no later operation that overlaps it may overtake it, while one of its paths is held by a
 barrier (`reserved`, `files-writing`, write-phase `recovery-required`), by a `failed` or `recovery-required` batch, or
@@ -471,7 +471,7 @@ completes the members of a `committed` one from the record without Git, and find
 `Nevo-Operation` trailer instead of committing twice. A record is never created under the id of a record that is not
 finished; a split after a failure forms two new batches with disjoint members, never two under one id.
 
-**Failures, retry, abandon and recover (as implemented).** A transient blocker (index lock, busy Git, timed-out or
+**Failures, retry, abandon and recover.** A transient blocker (index lock, busy Git, timed-out or
 hung Git, an effective set that changed under the attempt) dissolves the batch: its members are `queued` again with the
 attempt counted, `reason` and `blockedBy` visible and `nextAttemptAt` after the backoff (1 s doubling to 60 s, then every 60 s; the attempt counter saturates at 10). A transient blocker never
 ends the retries, a Git that is missing or cannot be started included: the operation stays `pending` and is committed once
@@ -529,7 +529,7 @@ different start time, or a different boot id), otherwise an operator assertion.
 own queue, branch and HEAD. Git deadlines: read 10 s, mutation 30 s plus 3 s grace, batch attempt 150 s; children are
 killed as a process group (tree on Windows).
 
-**Scheduler (as implemented).** The Engine owns one scheduler per Engine (Project Home); it has no transport and no
+**Scheduler.** The Engine owns one scheduler per Engine (Project Home); it has no transport and no
 process signals (`createDocumentQueueScheduler`, `specs/documents/scheduler/`). A host creates and starts it: the
 Runtime after its listener is up; the one-shot CLI commands start none and drain explicitly. Rules:
 
@@ -563,7 +563,7 @@ Runtime after its listener is up; the one-shot CLI commands start none and drain
 then calls `stop({ flush: true, deadlineMs: 10 s })`; SIGTERM and SIGINT reach it through the `start` command. A CLI
 command that writes documents calls `flushAllDocumentCommits(engine, { deadlineMs })` before it exits.
 
-**Close and the document queue (as implemented).** `reserveCloseOperation` (and so every Close use case) does this at
+**Close and the document queue.** `reserveCloseOperation` (and so every Close use case) does this at
 first admission, in this order:
 
 1. The pure preview. If it refuses with `CLOSE_PREFLIGHT` (a dirty tree may be Nevo's own queued documents), every
@@ -585,7 +585,7 @@ no document journal explains). A Close that was reserved earlier is read back wi
 integration destination requests `checkout:<destination>` and conflicts with the document claims of that checkout like a
 Close does (`CREATE_CONFLICT`). A Git-disabled project queues nothing, so the flush returns without asking Git.
 
-**Operator takeover (as implemented).** The control lock is never stolen by age, PID or timeout. `takeOverDocumentQueue`
+**Operator takeover.** The control lock is never stolen by age, PID or timeout. `takeOverDocumentQueue`
 (`--confirmed-stopped` of the recover command) is the operator's answer to a stopped Runtime on platforms where the Engine
 cannot prove the holder dead (Windows, macOS, containers without procfs). It needs the explicit assertion
 `confirmExecutorStopped`; without it nothing is touched. It then:
@@ -606,8 +606,7 @@ A pending path changed by another writer is `content-changed` at commit time, ne
 
 ## Commit policy, the uncommitted-changes ledger and manual commit
 
-Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual-commit.md). Delivery: tasks DW.T18 and
-DW.T19. Push and publishing remain out of scope ("Future: push" in the ADR).
+Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual-commit.md). Push and publishing remain out of scope ("Future: push" in the ADR).
 
 **Policy.** `git.commits.auto.documents` (committed `.nevo/config.yaml`, overridable in `.nevo/local/config.yaml`, default
 `false`: nothing is committed automatically unless the configuration enables it, and there is no per-request override; the closed key set grows with each capability that adopts it). The Create scaffold commit and the commits of
@@ -615,7 +614,7 @@ DW.T19. Push and publishing remain out of scope ("Future: push" in the ADR).
 admission; a change affects new operations only (a non-empty queue drains normally; a non-empty ledger is never
 committed silently).
 
-**As implemented (DW.T18).** `parseCommitsPolicy` accepts `auto` (a closed set of boolean capability keys, `documents`);
+`parseCommitsPolicy` accepts `auto` (a closed set of boolean capability keys, `documents`);
 `parseGitWorktreePolicy` reads the local `git.commits.auto` (the only local `git.commits` key) and `effectiveAutoCommit`
 returns the value with its source (`project`, `local`, `default`); an invalid value or an unknown key is
 `GIT_POLICY_INVALID`, also while Git is disabled (the setting is then inert: nothing is committed, writes complete
@@ -623,7 +622,7 @@ returns the value with its source (`project`, `local`, `default`); an invalid va
 without a commit; absent while Git is disabled). Manual-mode and queued operations never share a path state: the ledger holds
 the first, the queue the second. The reservation counts the ledger's paths plus the ones of manual writers still in
 flight and refuses the 201st distinct path with `DOCUMENT_UNCOMMITTED_LIMIT` before anything is written. The journal stage
-`abandoned` and the commit state `abandoned` no longer exist (`completed` with outcome `uncommitted`, state `uncommitted`).
+`abandoned` does not exist as a stage or a commit state (`completed` with outcome `uncommitted`, state `uncommitted`).
 
 **Auto-commit off.** The write is the Git-disabled path with Git present: admission without the commit `preflight`, files
 written at once, no queue, the operation completes `uncommitted` (reason `auto-commit-off`) in the same control-lock
@@ -647,12 +646,12 @@ plus the Engine trailers; author per ADR 0013. **It is not `git commit -a`**: no
 committed. States: `reserved` -> `committing` -> `completed` (`committed` or `nothing-to-commit`), `failed` (no effect),
 `recovery-required`; order commit, verify, prune, complete; each step idempotent, resumed by the trailer lookup.
 
-**As implemented (DW.T19).** `specs/manual-commit/` is a journal kind of the durable core (`engine/operations/manual-commit/`,
+`specs/manual-commit/` is a journal kind of the durable core (`engine/operations/manual-commit/`,
 `settled/`, a payload holding the ledger snapshot and the message, 16 KiB) with the stages `reserved`, `committing`,
 `completed`, `failed` and `recovery-required` of its own. The checkout lease moved to `specs/durable/lease.ts` (the record, the
 in-process mark and the dead proof; the queue binds it to its error vocabulary), so the queue and the manual commit exclude each
 other through one file. The module imports no other Specification slice: the composition `documents/manual-commit.ts` resolves the
-target (a Specification, the definitions, or a checkout) and supplies the ports (the claim check, the flush of the legacy queue,
+target (a Specification, the definitions, or a checkout) and supplies the ports (the claim check, the flush of the queue,
 the quiet check of the paths). Admission order: Git enabled, queue at rest after a flush, ledger not empty, `ledgerRevision`, subset
 closure, pinned branch, port preflight, no path edited since its post-image; the reservation re-reads the ledger under the control
 lock and starts over when it moved. The reservation holds the checkout claim and the paths (a write of them is `SPEC_BUSY`) until
@@ -671,7 +670,7 @@ entry that no prune removed yet); a foreign edit is a hash mismatch. Policy flip
 pinned mode and makes later writes `uncommitted`; `off -> on` commits nothing, the entries stay until a later `auto` write
 of the path commits it (and prunes) or a manual commit. `init` and `definitions install` register the paths they commit
 in the `definitions` owner before the commit and prune after it, so what an interrupted install leaves is known. With the policy on, a manual commit needs an empty queue for the scope (after a flush);
-with it off it is always available once legacy queued work has drained.
+with it off it is always available once queued work has drained.
 
 ## Windows-hosted paths
 

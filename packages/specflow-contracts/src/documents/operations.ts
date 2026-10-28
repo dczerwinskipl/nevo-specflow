@@ -45,7 +45,6 @@ export const COMMIT_FAILURE_REASONS = [
   'index-unreadable',
   'commit-failed',
   'content-changed',
-  'retries-exhausted',
   'history-changed',
   'uncertain',
 ] as const;

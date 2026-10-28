@@ -26,20 +26,19 @@ related:
 
 ## Status
 
-Draft (owner decision 2026-10-26, proposed with the D4 + D-config delivery). It **extends** ADR 0016 (queued commits) and
-**amends** its decision 15 and the state `abandoned`: abandon and auto-commit-off are one state (decision 5). It is
+Draft (owner decision, proposed with the document write and definitions delivery). It **extends** ADR 0016 (queued commits):
+abandon and auto-commit-off are one state (decision 5). It is
 **general**: the document capability is the first user; tasks and reviews adopt it when they exist. Language follows
 [normative language](../principles/normative-language.md).
 
-## Context (observed in the repository)
+## Context
 
-- `git.commits` (committed Project Home config, `parseCommitsPolicy`) holds `protectedBranches` and `allowedBranches`
-  and rejects every other key (`Unsupported git.commits policy key`). The policy reader `readProjectGitPolicy` reads the
-  committed file and the local file; the local file may set only `git.worktreesRoot` (`parseLocalWorktreesRoot`).
-  Protection is committed-only by ADR 0013 so a local file cannot loosen it.
-- The document queue (ADR 0016) has the stages `queued`, `committing`, `commit-failed`, `abandoned` (holds its claim,
-  never swept) and the per-checkout lease. `abandon` today leaves files on disk with a marker in the active journal
-  directory; nothing else knows which uncommitted paths the Engine produced.
+- `git.commits` (committed Project Home config, `parseCommitsPolicy`) holds `protectedBranches`, `allowedBranches` and
+  `auto`. The policy reader `readProjectGitPolicy` reads the committed file and the local file; the local file may set
+  only `git.worktreesRoot` and `git.commits.auto`. Protection is committed-only by ADR 0013 so a local file cannot
+  loosen it.
+- The document queue (ADR 0016) has the stages `queued`, `committing` and `commit-failed` and the per-checkout lease.
+  Without a ledger nothing would know which uncommitted paths the Engine produced.
 - Close claims `checkout:<workspaceId>` and flushes first (`reserveCloseOperation`); `SPEC_MANIFEST_DIRTY` compares the
   manifest with the post-image of the latest non-terminal operation or `HEAD`.
 - Create commits its scaffold in one synchronous stage (ADR 0013: "Spec exists implies a committed scaffold"); `init`
@@ -51,8 +50,7 @@ Draft (owner decision 2026-10-26, proposed with the D4 + D-config delivery). It 
 1. **Policy.** `git.commits.auto` is an object of booleans, one key per Engine capability, in the **committed**
    `.nevo/config.yaml`: `git: { commits: { auto: { documents: true } } }`. The key set starts with `documents` and is extended by the change
    that introduces a capability that can be committed manually (tasks, reviews, definitions, ...); an unknown key is
-   `GIT_POLICY_INVALID`. **Default `false` for every capability (owner decision of 2026-10-28, superseding the
-   original default `true`): nothing is committed automatically, in the CLI, the API or anywhere else, unless the
+   `GIT_POLICY_INVALID`. **Default `false` for every capability: nothing is committed automatically, in the CLI, the API or anywhere else, unless the
    configuration enables it.** Manual commit over the ledger scope of a capability is a capability of its own and
    needs no setting. The setting is configuration only (the UI reads and writes the configuration); there is no
    per-request or per-invocation override. It is validated by the same `parseCommitsPolicy` (so `init`
@@ -79,9 +77,9 @@ Draft (owner decision 2026-10-26, proposed with the D4 + D-config delivery). It 
 5. **One state: `uncommitted`.** `abandon` of a failed batch (ADR 0016 decision 15) and auto-commit-off both end in the
    same persistent state: the files are on disk, **not** in Git, recorded in the ledger. `abandon` is "manual: do not commit
    this batch" (reason `abandoned`); auto-off is the same at policy level (reason `auto-commit-off`). The journal stage
-   `abandoned` and the public commit state `abandoned` are replaced by `completed` with `outcome: 'uncommitted'` and by
-   the state `uncommitted`; an abandoned batch no longer holds a claim (the ledger is the marker). The public
-   `CommitState` becomes `pending | committed | failed | uncommitted | not-applicable`.
+   `abandoned` does not exist: the operation is `completed` with `outcome: 'uncommitted'` and the public commit state is
+   `uncommitted`; an abandoned batch holds no claim (the ledger is the marker). The public `CommitState` is
+   `pending | committed | failed | uncommitted | not-applicable`.
 6. **The ledger** (`specs/durable/ledger/`, generic; the documents slice is only a user). It is keyed by **owner** and
    checkout: owner kinds `specification` (id), `definitions` (the project) and, later, `task`, `review`.
    - One durable JSON record per `(workspaceId, owner)` under `engine/operations/ledger/<workspaceId>/`, written with the

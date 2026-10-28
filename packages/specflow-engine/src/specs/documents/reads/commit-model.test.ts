@@ -408,7 +408,7 @@ describe('deriveCommitView', () => {
       },
     );
 
-    it.each(['commit-failed', 'retries-exhausted', 'content-changed'])(
+    it.each(['commit-failed', 'content-changed'])(
       'does not call %s a blocker of the checkout',
       (reason) => {
         const result = view([entry('commit-failed', [doc('a.md')], { reason })]);

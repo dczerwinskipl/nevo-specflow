@@ -34,15 +34,15 @@ git:
       documents: true
 ```
 
-| Field                           | Effect                                                                                                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `git.enabled`                   | Required boolean if `git` exists; absent `git` disables managed new-worktree creation                                                                                   |
-| `git.worktrees.baseRef`         | Default `HEAD` at **Project Home**; accepted overrides also include local branches, full commit IDs and supported tags                                                  |
-| `git.worktrees.branchPattern`   | Default `feature/{slug}`; supports `{slug}` and an optional `{shortId}` (each at most once, at least one required)                                                      |
-| `git.integrationTargetBranch`   | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out                                         |
-| `git.commits.protectedBranches` | Optional list of branch patterns on which the Engine never commits (default: none). See [Engine commits and protected branches](#engine-commits-and-protected-branches) |
-| `git.commits.allowedBranches`   | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch)                                        |
-| `git.commits.auto.documents`    | Optional boolean (default `false`). `true`: the Engine commits document edits by itself; otherwise they are saved and recorded as uncommitted until a manual commit. See [Auto-commit per capability](#auto-commit-per-capability)     |
+| Field                           | Effect                                                                                                                                                                                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `git.enabled`                   | Required boolean if `git` exists; absent `git` disables managed new-worktree creation                                                                                                                                              |
+| `git.worktrees.baseRef`         | Default `HEAD` at **Project Home**; accepted overrides also include local branches, full commit IDs and supported tags                                                                                                             |
+| `git.worktrees.branchPattern`   | Default `feature/{slug}`; supports `{slug}` and an optional `{shortId}` (each at most once, at least one required)                                                                                                                 |
+| `git.integrationTargetBranch`   | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out                                                                                                    |
+| `git.commits.protectedBranches` | Optional list of branch patterns on which the Engine never commits (default: none). See [Engine commits and protected branches](#engine-commits-and-protected-branches)                                                            |
+| `git.commits.allowedBranches`   | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch)                                                                                                   |
+| `git.commits.auto.documents`    | Optional boolean (default `false`). `true`: the Engine commits document edits by itself; otherwise they are saved and recorded as uncommitted until a manual commit. See [Auto-commit per capability](#auto-commit-per-capability) |
 
 `nevo-specflow init` asks for the pattern right after the integration target: presets
 `feature/{slug}` (default, recommended), `feature/{slug}-{shortId}`, `spec/{slug}-{shortId}` or a
@@ -114,15 +114,15 @@ git:
       documents: true
 ```
 
-| Rule                    | Effect                                                                                                                                                                                                                                             |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Precedence              | Local value, else committed value, else `false`. The effective value and its source (`project`, `local`, `default`) are readable (`GET /api/specs/:specId/uncommitted`)                                                                             |
-| Local `git.commits`     | May contain **only** `auto`; `protectedBranches` and `allowedBranches` stay committed-only, so a local file never loosens protection                                                                                                               |
-| Validation              | A value that is not an object of booleans, or an unknown capability key, is `GIT_POLICY_INVALID` (committed and local file), also while `git.enabled` is `false`                                                                                   |
-| Git disabled            | The setting is inert: nothing is committed either way                                                                                                                                                                                              |
-| Never governed          | The Create scaffold commit and the commits of `init` and `definitions install` always happen                                                                                                                                                       |
+| Rule                           | Effect                                                                                                                                                                                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Precedence                     | Local value, else committed value, else `false`. The effective value and its source (`project`, `local`, `default`) are readable (`GET /api/specs/:specId/uncommitted`)                                                                            |
+| Local `git.commits`            | May contain **only** `auto`; `protectedBranches` and `allowedBranches` stay committed-only, so a local file never loosens protection                                                                                                               |
+| Validation                     | A value that is not an object of booleans, or an unknown capability key, is `GIT_POLICY_INVALID` (committed and local file), also while `git.enabled` is `false`                                                                                   |
+| Git disabled                   | The setting is inert: nothing is committed either way                                                                                                                                                                                              |
+| Never governed                 | The Create scaffold commit and the commits of `init` and `definitions install` always happen                                                                                                                                                       |
 | With `documents` off (default) | A save completes at once as `uncommitted` (no queue, no commit preflight, so a protected branch or a detached HEAD do not prevent editing); the paths are recorded in the uncommitted-changes ledger and Close is refused until they are committed |
-| Changing the value      | Read fresh at each admission; the mode of a queued operation is pinned. turning it off: queued work drains normally. Turning it on: nothing is committed silently                                                                           |
+| Changing the value             | Read fresh at each admission; the mode of a queued operation is pinned. turning it off: queued work drains normally. Turning it on: nothing is committed silently                                                                                  |
 
 See [ADR 0018](../../architecture/decisions/0018-engine-commit-policy-and-manual-commit.md).
 

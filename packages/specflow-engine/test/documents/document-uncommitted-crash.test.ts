@@ -151,7 +151,7 @@ describe.skipIf(!onLinux)('a batch committed and completed, the ledger not prune
       expectedRevision: notesRevision(1),
     });
     project.content.set(`${project.specId}:1`, 'left uncommitted\n');
-    await setLocalAutoCommit(project, undefined);
+    await setLocalAutoCommit(project, true);
     const second = await queueSave(project, 1, 'saved automatically\n');
     const before = commitCount(project);
     expect(await ledgerPaths(project)).toEqual([specPath(1)]);

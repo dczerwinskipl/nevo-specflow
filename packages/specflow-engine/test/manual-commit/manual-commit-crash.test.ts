@@ -322,7 +322,7 @@ describe.skipIf(!onLinux)(
       const checkpoint = await readProcessCheckpoint(signal, 'after-claim');
 
       // The policy is on again: a save is queued while the manual commit holds the checkout.
-      await setLocalAutoCommit(project, undefined);
+      await setLocalAutoCommit(project, true);
       await queueSave(project, 2, 'queued\n');
       const lease = await readQueueLease(project.engine.context, project.workspaceId);
       expect(lease).toMatchObject({ batchId: operationId, executor: { pid: checkpoint.pid } });

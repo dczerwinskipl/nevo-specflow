@@ -562,7 +562,7 @@ describe('with auto-commit on', () => {
   it('is unavailable while a batch failed, and adopts the entries an abandon left', async () => {
     const project = await manualModeProject();
     // Auto-commit back on: the save is queued, then its path becomes ignored so the batch fails.
-    await setLocalAutoCommit(project, undefined);
+    await setLocalAutoCommit(project, true);
     const id = await queueSave(project, 1, 'queued content\n');
     await appendFile(join(project.root, '.gitignore'), specPath(1) + '\n');
     await flushDocumentCommits(project.engine, project.engine.workspace, {
@@ -590,7 +590,7 @@ describe('with auto-commit on', () => {
 
   it('commits the queued work first and then has nothing left to commit', async () => {
     const project = await manualModeProject();
-    await setLocalAutoCommit(project, undefined);
+    await setLocalAutoCommit(project, true);
     await queueSave(project, 1, 'queued\n');
     const before = commitCount(project);
 

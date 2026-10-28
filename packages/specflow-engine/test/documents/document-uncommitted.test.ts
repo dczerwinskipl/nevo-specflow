@@ -450,7 +450,7 @@ describe('policy flips', () => {
     const project = await manualProject();
     await save(project, 1, 'left uncommitted\n');
     await save(project, 2, 'also left\n');
-    await setLocalAutoCommit(project, undefined);
+    await setLocalAutoCommit(project, true);
     const before = commitCount(project);
 
     const idle = await drainQueue(project.engine, isolatedQueue(), undefined, FLUSH);

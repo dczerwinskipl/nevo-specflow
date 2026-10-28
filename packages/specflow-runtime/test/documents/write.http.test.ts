@@ -619,7 +619,7 @@ describe('create, folders and structural operations', () => {
       Object.defineProperty(process, 'platform', original);
     }
     expect(response.statusCode, response.body).toBe(400);
-    const body = response.json();
+    const body: unknown = response.json();
     expect(Value.Check(DocumentErrorSchema, body)).toBe(true);
     expect(body).toMatchObject({
       code: 'DOCUMENT_OPERATION_INVALID',

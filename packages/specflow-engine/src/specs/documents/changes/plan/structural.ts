@@ -13,7 +13,7 @@ import { deriveFolders, foldPathKey, parentFolder } from '../../../document-rule
 import { folderContainsProtectedDocument } from '../../../document-rules/protection';
 import { samePhysicalPath } from '../../../document-rules/verified-file';
 import type { ManifestDocument } from '../../../model';
-import { documentChangeError } from '../errors';
+import { CASE_ONLY_RENAME_MESSAGE, documentChangeError } from '../errors';
 import {
   assertWritable,
   collides,
@@ -83,17 +83,15 @@ function destinationOf(request: PathOperation, current: string): string | undefi
 
 /**
  * A rename or move that only changes the letter case of the path names the SAME file (or folder) on a
- * file system that ignores case (Windows): the plan writes the new path and then removes the old one,
- * which would remove the file. Refused there with its own cause; a case-sensitive system renames it
- * like any other path. Only Windows is treated as ignoring case (see `physicalPathKey`).
+ * file system that ignores case: the plan writes the new path and then removes the old one, which
+ * would remove the file. This is the fast path without I/O, for Windows; the authoritative check asks
+ * the file system itself before anything is reserved or written (`write/physical-aliases.ts`), so any
+ * other case-insensitive volume is refused there with the same error, and a case-sensitive one renames
+ * it like any other path.
  */
 function assertNotCaseOnlyRename(from: string, to: string): void {
   if (from !== to && samePhysicalPath(from, to)) {
-    throw documentChangeError(
-      'case-only-rename',
-      'Changing only the letter case of a name is not supported on this file system. ' +
-        'Rename it to a different name first, then to the new spelling.',
-    );
+    throw documentChangeError('case-only-rename', CASE_ONLY_RENAME_MESSAGE);
   }
 }
 

@@ -1,8 +1,11 @@
+import { join } from 'node:path';
+
 import type { SpecFlowEngine } from '../../../application';
 import { openVersionControl } from '../../../version-control';
 import type { CommitPort } from '../../../version-control/commits/port';
 import { sha256Hex } from '../../../hash';
-import { documentChangeError } from '../changes/errors';
+import { nodeVerifiedFs } from '../../document-rules/verified-file';
+import { CASE_ONLY_RENAME_MESSAGE, documentChangeError } from '../changes/errors';
 import { planDocumentChange } from '../changes/plan';
 import { resolveDocument, type PlanResult } from '../changes/plan/draft';
 import type { DocumentChangeRequest, DocumentWriteRequest } from '../changes/plan/request';
@@ -13,6 +16,7 @@ import { folderRevisionOf } from './folder-revision';
 import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
 import { findManifestBaseline, assertManifestNotDirty } from './manifest-dirty';
 import { assertPlanFitsWindows, type WindowsPathBoundOptions } from './path-bound';
+import { planRemovesAnAliasedEntry } from './physical-aliases';
 import { readSpecificationSnapshot, type SpecificationSnapshot } from './snapshot';
 import {
   asPlannerRequest,
@@ -87,6 +91,12 @@ export async function admitDocumentChange(
     ...(catalogueRevision !== undefined ? { currentCatalogueRevision: catalogueRevision } : {}),
   });
   assertPlanFitsWindows(loaded.workspaceRoot, result.plan, options.windows);
+  // The file system, not the platform, decides whether a removed path is another planned path (a
+  // case-only rename on a volume that ignores case): refused before any journal or file exists.
+  const specDir = join(loaded.workspaceRoot, ...result.plan.directory.split('/'));
+  if (await planRemovesAnAliasedEntry(options.read?.fs ?? nodeVerifiedFs, specDir, result.plan)) {
+    throw documentChangeError('case-only-rename', CASE_ONLY_RENAME_MESSAGE);
+  }
 
   const commits = options.commits ?? openVersionControl(engine).commits;
   const manifestPath = manifestPathOf(result.plan);

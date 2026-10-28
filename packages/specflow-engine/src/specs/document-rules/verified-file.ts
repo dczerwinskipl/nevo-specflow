@@ -82,9 +82,10 @@ export function assertContainedRelativePath(relativePath: string): readonly stri
 }
 
 /**
- * The key under which a path names one entry of the file system: lowercased on Windows, whose file
- * systems ignore case, and the path itself elsewhere. Case-insensitive file systems other than
- * Windows (the default APFS volume of macOS) are not detected: there two spellings count as two entries.
+ * The key under which a path names one entry of the file system, by platform: lowercased on Windows,
+ * whose file systems ignore case, and the path itself elsewhere. A fast estimate without I/O; the
+ * document writer asks the file system itself (device and inode, `write/physical-aliases.ts`) before
+ * it reserves or writes, which covers every other case-insensitive volume.
  */
 export function physicalPathKey(path: string): string {
   return process.platform === 'win32' ? path.toLowerCase() : path;

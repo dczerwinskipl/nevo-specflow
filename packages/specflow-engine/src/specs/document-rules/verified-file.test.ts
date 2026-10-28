@@ -109,7 +109,7 @@ describe('aliasedPhysicalPath', () => {
     const paths = ['docs/bb.md', 'docs/other.md', 'docs/Bb.md'];
     expect(onPlatform('win32', () => aliasedPhysicalPath(paths))).toBe('docs/Bb.md');
     expect(onPlatform('linux', () => aliasedPhysicalPath(paths))).toBeUndefined();
-    // macOS is treated as case-sensitive (a case-insensitive APFS volume is not detected).
+    // By platform only: a case-insensitive macOS volume is found by the file-system check of the writer.
     expect(onPlatform('darwin', () => aliasedPhysicalPath(paths))).toBeUndefined();
     expect(onPlatform('linux', () => aliasedPhysicalPath(['a.md', 'a.md']))).toBe('a.md');
   });

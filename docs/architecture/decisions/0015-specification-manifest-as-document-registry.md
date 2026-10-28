@@ -2,7 +2,7 @@
 id: adr.0015-specification-manifest-as-document-registry
 type: adr
 title: The Specification manifest is the document registry; archetypes are project-defined catalogue entries
-status: draft
+status: current
 date: 2026-10-23
 summary: >
   specification.yaml becomes the canonical registry of a Specification's documents (stable id, path, type)
@@ -22,8 +22,7 @@ related:
 
 ## Status
 
-Draft (proposed with the specification `product.specflow.specification-documents`; becomes Current when the
-owner accepts the D0 pull request). The decisions below were taken by the product owner and are recorded here.
+Current. The decisions below were taken by the product owner.
 
 ## Context
 
@@ -87,16 +86,15 @@ evolve this later (project-defined archetypes, template overrides) without redef
 
 ## Consequences
 
-- Production code that builds or round-trips a manifest changes (`model.ts`, `lifecycle/archive-effects.ts`), as do the few tests that write manifest text by hand (four files; the delivery specification lists them). Suites that obtain manifests from Create change only if they assert scaffold content.
+- Production code that builds or round-trips a manifest changes (`model.ts`, `lifecycle/archive-effects.ts`), as do the few tests that write manifest text by hand. Suites that obtain manifests from Create change only if they assert scaffold content.
 - A checkout containing a manifest in the old shape fails closed. The Runtime reports the existing
   `SPEC_SOURCE_INVALID` (503) and logs the offending slug and field; operators repair the manifest by hand
   (add `archetype`, `documents`, drop `type`). There is no shim.
 - Rewriting the manifest (registry changes) must preserve unknown top-level keys and SHOULD preserve comments
   and key order (use a document-preserving YAML API); Close archive already round-trips the parsed manifest.
 - The Create journal intent grows (archetype, optional documents, added documents) and its format version
-  moves to 2; file contents live in hash-addressed payload files, not in the journal. Journals of the older
-  format are handled by a narrow retention rule, not read (confirmed by the owner; see the delivery
-  specification, D2).
+  moves to 2; file contents live in hash-addressed payload files, not in the journal. A journal file that is not JSON or has no
+  numeric `version` is ignored and swept by retention; any other file that does not validate is a corrupt journal.
 - Reviews and Tasks remain separate resources; they are not documents and are not registered here.
 
 ## Rejected

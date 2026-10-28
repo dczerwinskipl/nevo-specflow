@@ -2,7 +2,7 @@
 id: adr.0016-engine-owned-document-commits
 type: adr
 title: Document operations write files at once and land as Engine-owned path-limited commits through a durable queue
-status: draft
+status: current
 date: 2026-10-24
 summary: >
   Every state-changing Specification document operation writes its files and registry change to disk
@@ -27,7 +27,7 @@ related:
 
 ## Status
 
-Draft (proposed with `product.specflow.specification-documents`). This ADR **extends**
+Current. This ADR **extends**
 [ADR 0013](0013-engine-owned-commits-and-protected-branches.md) and **relaxes one of its consequences**: ADR 0013
 states that "a checkout is clean after Create". For document operations a checkout MAY be dirty because of Nevo for
 a bounded, journaled window (decision 9). Create keeps its synchronous commit stage and its clean-checkout

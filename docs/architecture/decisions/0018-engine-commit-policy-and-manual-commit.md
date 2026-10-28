@@ -2,7 +2,7 @@
 id: adr.0018-engine-commit-policy-and-manual-commit
 type: adr
 title: Engine commit policy per capability, the uncommitted-changes ledger and manual commit
-status: draft
+status: current
 date: 2026-10-26
 summary: >
   A general policy decides per Engine capability whether its edits are committed automatically (default OFF,
@@ -26,7 +26,7 @@ related:
 
 ## Status
 
-Draft (owner decision, proposed with the document write and definitions delivery). It **extends** ADR 0016 (queued commits):
+Current (owner decision). It **extends** ADR 0016 (queued commits):
 abandon and auto-commit-off are one state (decision 5). It is
 **general**: the document capability is the first user; tasks and reviews adopt it when they exist. Language follows
 [normative language](../principles/normative-language.md).
@@ -80,7 +80,7 @@ abandon and auto-commit-off are one state (decision 5). It is
    `abandoned` does not exist: the operation is `completed` with `outcome: 'uncommitted'` and the public commit state is
    `uncommitted`; an abandoned batch holds no claim (the ledger is the marker). The public `CommitState` is
    `pending | committed | failed | uncommitted | not-applicable`.
-6. **The ledger** (`specs/durable/ledger/`, generic; the documents slice is only a user). It is keyed by **owner** and
+6. **The ledger** (`specs/durable/ledger/`, generic; the documents capability is only a user). It is keyed by **owner** and
    checkout: owner kinds `specification` (id), `definitions` (the project) and, later, `task`, `review`.
    - One durable JSON record per `(workspaceId, owner)` under `engine/operations/ledger/<workspaceId>/`, written with the
      same atomic publish as journals, changed only by read, compare and write under the control lock, surviving restarts.
@@ -172,7 +172,7 @@ abandon and auto-commit-off are one state (decision 5). It is
 12. **Config validation.** `git.commits.auto` that is not an object, has a non-boolean value or an unknown capability key is
     `GIT_POLICY_INVALID` (project and local); the local `git.commits` may contain only `auto`.
 
-## Future: push (out of scope for this delivery)
+## Future: push (out of scope)
 
 Push is a separate capability and is **not** added here. Reasons it must be separate: the Engine has no push capability
 today; a push needs credentials, and the Engine runs Git as detached children with no terminal, so credential helpers
@@ -181,7 +181,7 @@ MUST NOT resolve it (never force, never rebase); the remote may protect branches
 publish result is not recoverable by the local journal. Seams that make it addable without redesign: the ledger scope
 (owner and checkout) says what is Engine-owned, the commit `sha` of a settled journal and the `Nevo-Operation` trailers
 identify Engine commits (`git rev-list @{u}..HEAD` filtered by trailer yields "unpushed Engine commits"), and the same
-lease serialises Git work per checkout. No `push`, `publish` or force code may be added by this delivery.
+lease serialises Git work per checkout. No `push`, `publish` or force code may be added by the commit policy or the manual commit.
 
 ## Consequences
 
@@ -205,4 +205,4 @@ lease serialises Git work per checkout. No `push`, `publish` or force code may b
 - **`git commit -a` or "all changes under the Specification"**: would commit someone else's edits under the Engine's name.
 - **A manual commit that bypasses the lease, claims or journal**: it would reintroduce the races the queue closed.
 - **Silent auto-commit when the policy flips back on**: the person decides what leaves the working tree.
-- **A push in this delivery** (see "Future: push").
+- **A push** (see "Future: push").

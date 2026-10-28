@@ -2,7 +2,7 @@
 id: product.specflow.specification-documents
 type: product
 title: Specification archetypes and documents
-status: draft
+status: current
 scope: specflow
 areas: [workflow, runtime, ui]
 tags: [specifications, documents, archetypes, requirements]
@@ -27,10 +27,8 @@ related:
 
 # Specification archetypes and documents
 
-Status: draft proposal prepared for owner acceptance. Exact contracts live in
-[the reference](../../reference/api/specification-documents.md); durable rules in
-[the architecture document](../../architecture/runtime/specification-documents.md); the delivery plan in
-[the delivery specification](../../ideas/specflow-engine/specification-documents-delivery.md).
+Exact contracts live in [the reference](../../reference/api/specification-documents.md); durable rules in
+[the architecture document](../../architecture/runtime/specification-documents.md).
 
 ## Goal
 
@@ -135,7 +133,7 @@ Archetype texts (normative; the shipped archetype files MUST carry these strings
 - `architecture` - description: "A structural change or design question: an architecture analysis plus recorded decisions, suggested and preselected." useWhen: "The work reshapes modules, ownership or dependencies, or answers a design question without a user-facing change." instructions: "Start with the overview, state the problem in the architecture document, record each decision in decisions as it is made and use research for evidence. Do not describe user-facing behaviour here; link to a feature Specification if one exists."
 
 `ux` and `exploration` archetypes are deliberately deferred. Owner-defined archetypes, document types and templates
-are definition files in the project (`.nevo/definitions/<kind>/<id>.yaml`, slice D-config); the shipped set is only
+are definition files in the project (`.nevo/definitions/<kind>/<id>.yaml`); the shipped set is only
 the default content installed there. CLI authoring beyond `definitions list|show|validate|install`, template overrides
 and switching the archetype of an existing Specification stay out of scope. The persisted `archetype.version`,
 stable document ids and the declarative schemas keep room for them.
@@ -159,8 +157,7 @@ validate`. The people who may change them are those who may commit to the projec
 - **Authoring text** (`description`, `useWhen`, `instructions`) stays mandatory, because AI agents and the UI choose
   and fill documents from it.
 
-> **Source of the shipped text.** Until slice D-config lands, the strings in this document are the authoritative
-> source of the default catalogue. From D-config the seed files in the Engine package are authoritative for the long
+> **Source of the shipped text.** The seed files in the Engine package are authoritative for the long
 > strings (descriptions, instructions, skeletons) and this document keeps only the structural matrix (ids, titles,
 > default files, requirements, suggestions, preselection); a conformance test then checks that matrix against the seeds.
 

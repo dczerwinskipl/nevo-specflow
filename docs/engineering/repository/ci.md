@@ -174,7 +174,7 @@ read `process.platform` to decide whether to run. A test that must adapt its inp
 The helper has a unit test (`test/support/platform.test.ts`) with injected platforms and capability
 probes.
 
-**Matrix of the document write, queue and commit tests.** The Linux, macOS and Windows columns
+**Matrix of the document write, queue and commit tests.** Engine integration tests live in `test/documents`, `test/create`, `test/manual-commit`, `test/definitions`, `test/lifecycle` and `test/git` (shared helpers in `test/support`), and in the root of `test/` for cross-cutting suites. The Linux, macOS and Windows columns
 say where a test runs on `main`. The gate is what keeps a test off a platform; a test without a gate
 must pass on all three.
 

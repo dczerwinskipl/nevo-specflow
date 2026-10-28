@@ -341,7 +341,6 @@
         "ideas.specflow-engine.plan-03",
         "ideas.specflow-engine.plan-04",
         "ideas.specflow-engine.plan-05",
-        "ideas.specflow-engine.plan-06",
         "architecture.runtime.specflow-engine"
       ],
       "scope": "specflow",
@@ -812,14 +811,14 @@
       "id": "architecture.runtime.specification-documents",
       "type": "architecture",
       "title": "Specification documents layer - registry, archetypes, ownership and invariants",
-      "status": "draft",
+      "status": "current",
       "file": "docs/architecture/runtime/specification-documents.md",
       "read_when": [
         "changing the Specification manifest, archetypes or document types",
         "implementing document reads or document write operations in the Engine or Runtime",
         "deciding where document logic lives"
       ],
-      "summary": "Ownership, manifest schema, identity and path rules, content kinds, validation results and invariants of the backend documents layer, the asynchronous commit queue for document writes and definitions as project data. The Engine owns all logic; Runtime and CLI are adapters. Draft until accepted.",
+      "summary": "Ownership, manifest schema, identity and path rules, content kinds, validation results and invariants of the backend documents layer, the asynchronous commit queue for document writes and definitions as project data. The Engine owns all logic; Runtime and CLI are adapters.",
       "related": [
         "adr.0015-specification-manifest-as-document-registry",
         "adr.0016-engine-owned-document-commits",
@@ -1928,7 +1927,7 @@
       "id": "adr.0015-specification-manifest-as-document-registry",
       "type": "adr",
       "title": "The Specification manifest is the document registry; archetypes are project-defined catalogue entries",
-      "status": "draft",
+      "status": "current",
       "file": "docs/architecture/decisions/0015-specification-manifest-as-document-registry.md",
       "read_when": [],
       "summary": "specification.yaml becomes the canonical registry of a Specification's documents (stable id, path, type) and records the selected archetype with a snapshot of its requirements. Archetypes and document types are project data files (ADR 0017), not compiled into the product. Frontmatter is optional and never authoritative; files outside the registry are unclassified. Structural completeness is a computed validation result.",
@@ -1945,7 +1944,7 @@
       "id": "adr.0016-engine-owned-document-commits",
       "type": "adr",
       "title": "Document operations write files at once and land as Engine-owned path-limited commits through a durable queue",
-      "status": "draft",
+      "status": "current",
       "file": "docs/architecture/decisions/0016-engine-owned-document-commits.md",
       "read_when": [],
       "summary": "Every state-changing Specification document operation writes its files and registry change to disk immediately, answers once the content is durable and its commit request is durably queued, and lands in Git later as an Engine-owned path-limited commit executed by a per-checkout queue (one active batch per checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a batch save is one commit. The dirty window between write and commit is bounded and journaled; it relaxes the clean-checkout consequence of ADR 0013 for document operations only. Protected branches and commit blockers are checked before any file is written. Extends ADR 0013.",
@@ -1964,7 +1963,7 @@
       "id": "adr.0017-definitions-as-project-data",
       "type": "adr",
       "title": "Definitions are project data files read from the project configuration, never compiled into the product",
-      "status": "draft",
+      "status": "current",
       "file": "docs/architecture/decisions/0017-definitions-as-project-data.md",
       "read_when": [],
       "summary": "Specification archetypes, document types and every later kind of definition (task archetypes, review kinds, ...) are YAML data files under .nevo/definitions/<kind>/ in the Project Home. The Engine reads definitions only from there, through a kind registry with a schema version and a JSON Schema per kind. The product ships default definitions as seed files used only to install them into a project. Nothing archetype-related is compiled in; deleting a file removes the definition for new work and existing Specifications keep their persisted snapshot.",
@@ -1973,15 +1972,14 @@
         "adr.0016-engine-owned-document-commits",
         "architecture.runtime.configuration",
         "architecture.runtime.specification-documents",
-        "reference.api.specification-documents",
-        "ideas.specflow-engine.specification-documents-delivery"
+        "reference.api.specification-documents"
       ]
     },
     {
       "id": "adr.0018-engine-commit-policy-and-manual-commit",
       "type": "adr",
       "title": "Engine commit policy per capability, the uncommitted-changes ledger and manual commit",
-      "status": "draft",
+      "status": "current",
       "file": "docs/architecture/decisions/0018-engine-commit-policy-and-manual-commit.md",
       "read_when": [],
       "summary": "A general policy decides per Engine capability whether its edits are committed automatically (default OFF, git.commits.auto.<capability> in project config with a local override, configuration only). With it off a write completes at once as uncommitted and is recorded in a durable, owner-keyed uncommitted-changes ledger in the durable core. A manual commit is the only way the Engine commits ledger content then: a normal operation through the same commit port, lease, claim algebra and journal, path-limited to the ledger paths of a scope, with the user's message, never arbitrary user changes. Abandoning a failed batch and policy-level auto-off are the same state. Create and definitions install stay always committed. Push is out of scope.",
@@ -3690,46 +3688,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.plan-06",
-      "type": "engineering",
-      "title": "Temporary execution plan 06 — Specification documents layer (D0 to D3, and D-config + D4 as PR5)",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/06-specification-documents/README.md",
-      "read_when": [
-        "executing or reviewing any task of slices D0, D1, D2 or D3, or of PR5 (D-config + D4), of the Specification documents layer",
-        "deciding the PR order, branch names or which tests may run on Windows",
-        "looking for the confirmed owner decisions or the (closed) gaps routed back to the specification"
-      ],
-      "summary": "Disposable task decomposition of slices D0 to D3 of the Specification documents layer into four PR-sized deliveries (D0, D1, D2, D3) with stable task ids, scope, dependencies, spec references, acceptance, unit versus Linux-only verification, implementer profile, review focus, confirmed owner decisions and gaps routed back to (and now closed in) the specification. Section 9a adds PR5: D-config (definitions as project data) and D4 (write operations with an asynchronous commit queue) as ONE pull request with ordered tasks DW.T00 to DW.T19. D5 is not planned here.",
-      "related": [
-        "ideas.specflow-engine.specification-documents-delivery",
-        "architecture.runtime.specification-documents",
-        "product.specflow.specification-documents",
-        "reference.api.specification-documents",
-        "adr.0015-specification-manifest-as-document-registry",
-        "adr.0016-engine-owned-document-commits",
-        "adr.0017-definitions-as-project-data",
-        "ideas.specflow-engine.execution-plans",
-        "engineering.repository.git-workflow",
-        "engineering.shared.testing"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "workflow",
-        "server",
-        "testing",
-        "ui"
-      ],
-      "tags": [
-        "execution-plan",
-        "temporary",
-        "specifications",
-        "documents",
-        "archetypes"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.specification-close-decisions",
       "type": "engineering",
       "title": "Proposed Specification and worktree closure decisions",
@@ -4702,46 +4660,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.specification-documents-delivery",
-      "type": "product",
-      "title": "Specification documents layer - delivery specification (slices D0 to D5 and D-config)",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/specification-documents-delivery.md",
-      "read_when": [
-        "planning or executing any slice of the Specification documents layer",
-        "decomposing the documents layer into tasks",
-        "checking which tests may run on Windows"
-      ],
-      "summary": "Decision-complete specification for slices D0 to D3 (delivered: contracts, Engine model, Create with an archetype, reading) and for the two remaining slices delivered together in one pull request: D-config (definitions as project data files, nothing compiled in) and D4 (write operations with an asynchronous commit queue); outline of D5 (UI consolidation). Planning artefact; durable rules live in the architecture, ADR and reference documents it links.",
-      "related": [
-        "product.specflow.specification-documents",
-        "architecture.runtime.specification-documents",
-        "reference.api.specification-documents",
-        "adr.0015-specification-manifest-as-document-registry",
-        "adr.0016-engine-owned-document-commits",
-        "adr.0017-definitions-as-project-data",
-        "adr.0018-engine-commit-policy-and-manual-commit",
-        "ideas.specflow-engine.plan-06",
-        "adr.0013-engine-owned-commits-and-protected-branches",
-        "engineering.shared.testing",
-        "engineering.repository.local-setup"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "workflow",
-        "server",
-        "testing"
-      ],
-      "tags": [
-        "specifications",
-        "documents",
-        "archetypes",
-        "delivery",
-        "slices"
-      ]
-    },
-    {
       "id": "ideas.specflow-runtime.managed-sessions-delivery",
       "type": "product",
       "title": "Managed Sessions migration delivery specification",
@@ -5522,7 +5440,7 @@
       "id": "product.specflow.specification-documents",
       "type": "product",
       "title": "Specification archetypes and documents",
-      "status": "draft",
+      "status": "current",
       "file": "docs/product/specflow/specification-documents.md",
       "read_when": [
         "defining or changing Specification archetypes, document types or their descriptions",
@@ -5878,14 +5796,14 @@
       "id": "reference.api.specification-documents",
       "type": "reference",
       "title": "Specification documents HTTP contract",
-      "status": "draft",
+      "status": "current",
       "file": "docs/reference/api/specification-documents.md",
       "read_when": [
         "implementing or consuming the archetype catalogue, document tree, document read or document operations",
-        "swapping the documents demo endpoints for the real backend",
+        "switching a client from the documents demo endpoints to the real backend",
         "mapping document error codes in the UI"
       ],
-      "summary": "Target contract of the Specification documents layer shared by the Runtime demo and the real backend: endpoints, schema outline, content kinds and raw-content headers, the write contract with asynchronous commit state, definition files and their problems, error codes and the explicit UI impact list. Exact schemas live in @nevo/specflow-contracts/documents once D0 lands.",
+      "summary": "Contract of the Specification documents layer shared by the Runtime demo and the real backend: endpoints, schema outline, content kinds and raw-content headers, the write contract with asynchronous commit state, definition files and their problems, error codes and the explicit notes for clients. Exact schemas live in @nevo/specflow-contracts/documents.",
       "related": [
         "architecture.runtime.specification-documents",
         "product.specflow.specification-documents",

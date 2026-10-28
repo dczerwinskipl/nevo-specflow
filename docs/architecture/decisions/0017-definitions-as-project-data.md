@@ -2,7 +2,7 @@
 id: adr.0017-definitions-as-project-data
 type: adr
 title: Definitions are project data files read from the project configuration, never compiled into the product
-status: draft
+status: current
 date: 2026-10-24
 summary: >
   Specification archetypes, document types and every later kind of definition (task archetypes, review kinds,
@@ -17,14 +17,13 @@ related:
   - architecture.runtime.configuration
   - architecture.runtime.specification-documents
   - reference.api.specification-documents
-  - ideas.specflow-engine.specification-documents-delivery
 ---
 
 # 0017 — Definitions are project data files
 
 ## Status
 
-Draft (proposed with the definitions-as-project-data delivery of `ideas.specflow-engine.specification-documents-delivery`).
+Current.
 Completes ADR 0015 decision 9: the built-in definitions are project data, never Engine code.
 
 ## Context

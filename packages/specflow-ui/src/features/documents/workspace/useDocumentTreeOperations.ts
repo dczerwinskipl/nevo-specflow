@@ -30,17 +30,19 @@ import {
   type FollowedDocument,
 } from './documentIdFollow';
 import { useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
+import type { PendingSave } from '../editor/useDocumentSave';
 
 /**
- * The pending save that blocks an operation able to change document ids (classify, rename, move of
- * a document, rename or move of a folder and so of the documents in it), if any.
+ * The pending save that blocks an operation on documents (classify, rename, move or delete of a
+ * document; rename, move or delete of a folder and so of the documents in it), if any. A retained
+ * save must replay exactly what was sent, so the document must neither change its id nor go away
+ * before that save is final.
  */
 export function pendingSaveOf(
   operation: DocumentOperation,
   tree: DocumentTree | undefined,
-  pendingOf: (id: string) => 'saving' | 'recovery' | undefined,
-): 'saving' | 'recovery' | undefined {
-  if (operation.action === 'delete') return undefined;
+  pendingOf: (id: string) => PendingSave | undefined,
+): PendingSave | undefined {
   const ids =
     operation.kind === 'document'
       ? operation.documentId
@@ -52,12 +54,15 @@ export function pendingSaveOf(
           )
           .map((document) => document.id);
   const states = ids.map(pendingOf);
-  return states.includes('recovery')
-    ? 'recovery'
-    : states.includes('saving')
-      ? 'saving'
-      : undefined;
+  return (['recovery', 'unconfirmed', 'saving'] as const).find((state) => states.includes(state));
 }
+
+/** The refusal code of an operation a pending save blocks (see `documentMutationError`). */
+const pendingSaveCode = {
+  saving: 'document-save-running',
+  recovery: 'document-save-to-resume',
+  unconfirmed: 'document-save-unconfirmed',
+} as const satisfies Record<PendingSave, string>;
 
 /**
  * Moves focus into a tab's panel once it is rendered: the source editor of a new document, else the
@@ -92,7 +97,13 @@ export interface DocumentTreeOperations {
    * Renames, moves, deletes or classifies; deleting a document closes its tab (no second question).
    * A document whose id changes keeps its tab, draft and position, and the route follows it.
    */
-  operate: (operation: DocumentOperation) => Promise<DocumentOperationResult>;
+  operate: (
+    operation: DocumentOperation,
+    options?: {
+      /** Runs once the Runtime confirmed the operation, before drafts follow changed ids. */
+      onConfirmed?: () => void;
+    },
+  ) => Promise<DocumentOperationResult>;
   /** Reads the tree (and what depends on it) again. */
   refresh: () => Promise<unknown>;
 }
@@ -218,10 +229,11 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       cache.removeQueries({ queryKey: documentKeys.detail(specId, move.from).slice(0, 4) });
   };
 
-  const operate: DocumentTreeOperations['operate'] = async (operation) => {
+  const operate: DocumentTreeOperations['operate'] = async (operation, operateOptions) => {
     const before = cache.getQueryData<DocumentTree>(documentTreeKeys.tree(specId));
-    // An operation that may give a document a new id waits for that document's save: a running
-    // save would settle under the old id, a save to resume would be replayed under the new one.
+    // An operation that changes or removes documents waits for their saves: a running save would
+    // settle under the old id, a retained one (to resume, or unconfirmed) must be replayed exactly
+    // as it was sent, for the document it was sent for.
     const pending = pendingSaveOf(operation, before, saves.pendingOf);
     if (pending)
       throw new ApiError({
@@ -229,7 +241,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
         operation: 'documents.operate',
         outcome: 'not-applied',
         retryable: true,
-        code: pending === 'recovery' ? 'document-save-to-resume' : 'document-save-running',
+        code: pendingSaveCode[pending],
       });
     const result = await sendRetained(
       operationAttempt,
@@ -238,6 +250,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       'operationId',
       definiteRefusal,
     );
+    operateOptions?.onConfirmed?.();
     for (const removed of result.removedDocumentIds) drafts.remove(specId, removed);
     const moves = followedDocuments(before, operation, result);
     // The revision each document had when the operation started: the one it names for a document

@@ -69,16 +69,21 @@ export interface DocumentSaveOwner {
   /** Forgets the failure of a document's save (the user resolved it, for example a conflict). */
   clearError: (id: string) => void;
   /**
-   * A document got a new id: its refused save (the conflict banner) and a save to resume follow it,
-   * so neither is orphaned under the old id.
+   * A document got a new id: its refused save (the conflict banner) follows it. A retained save is
+   * never moved to the new id (its replay must stay the request the Runtime may have run): the
+   * operations that change ids are refused while one exists (`pendingOf`).
    */
   follow: (from: string, to: string) => void;
   /**
-   * A save of the document is running (`saving`) or was written but not committed and waits for
-   * Resume (`recovery`); read when an operation would give the document a new id.
+   * A save of the document is running (`saving`), was written but not committed and waits for
+   * Resume (`recovery`), or got no answer (`unconfirmed`: Save sends it again with the same
+   * operation id); read before an operation would change or remove the document.
    */
-  pendingOf: (id: string) => 'saving' | 'recovery' | undefined;
+  pendingOf: (id: string) => PendingSave | undefined;
 }
+
+/** A save of a document that is not final yet (see `DocumentSaveOwner.pendingOf`). */
+export type PendingSave = 'saving' | 'recovery' | 'unconfirmed';
 
 /** The save was written but not committed: it is resumed with the same operation id and content. */
 const recoveryCode = 'DOCUMENT_RECOVERY_REQUIRED';
@@ -292,32 +297,22 @@ export function useDocumentSave({
     (from: string, to: string) => {
       const fromKey = documentDraftKey(specId, from);
       const toKey = documentDraftKey(specId, to);
-      const kept = retained.current.get(fromKey);
-      if (kept) {
-        retained.current.delete(fromKey);
-        retained.current.set(toKey, {
-          ...kept,
-          variables: {
-            ...kept.variables,
-            documentId: to,
-            incarnation: store.incarnation(specId, to),
-          },
-        });
-      }
       setErrors((all) => {
         if (!(fromKey in all)) return all;
         const { [fromKey]: error, ...rest } = all;
         return { ...rest, [toKey]: error };
       });
     },
-    [specId, store],
+    [specId],
   );
 
   const pendingOf = useCallback(
-    (id: string): 'saving' | 'recovery' | undefined => {
+    (id: string): PendingSave | undefined => {
       const pendingKey = documentDraftKey(specId, id);
       if (inFlight.current.has(pendingKey)) return 'saving';
-      return retainedFor(specId, id)?.reason === 'recovery' ? 'recovery' : undefined;
+      const kept = retainedFor(specId, id);
+      if (!kept) return undefined;
+      return kept.reason === 'recovery' ? 'recovery' : 'unconfirmed';
     },
     [specId, retainedFor],
   );

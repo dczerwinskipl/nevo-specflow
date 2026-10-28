@@ -371,7 +371,7 @@ export function DocumentsExplorer({
           <Alert tone="attention" title={error}>
             {retry.length > 0 && (
               <Button disabled={busy} onClick={operations.actions.retryImport}>
-                {t('documents.tree.retryImport')}
+                {resumable ? t('documents.tree.error.resume') : t('documents.tree.retryImport')}
               </Button>
             )}
           </Alert>

@@ -368,4 +368,28 @@ describe('a save that must be resumed or follows a new id', () => {
     expect(view.result.current.errorOf('b')).toBeUndefined();
     expect(view.result.current.errorOf('research')).toBeDefined();
   });
+
+  it('reports a save without an answer as unconfirmed until Save replays it to a definite result', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    // Operations that would change or remove the document are refused meanwhile (tree ops).
+    expect(view.result.current.pendingOf('b')).toBe('unconfirmed');
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map((call) => (call as unknown[])[2]);
+    expect(second).toEqual(first);
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
+  });
+
+  it('never moves a retained save to a new id (its replay stays the request that was sent)', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    act(() => view.result.current.follow('b', 'research'));
+    expect(view.result.current.pendingOf('research')).toBeUndefined();
+  });
 });

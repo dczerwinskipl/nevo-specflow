@@ -17,6 +17,7 @@ export function DocumentRouteGuard({
   specId,
   requestRef,
   commitRef,
+  takeDiscardedRef,
 }: {
   specId: string;
   /** Asks to leave the unsaved documents (tree operations, closing every tab); false = keep editing. */
@@ -26,6 +27,12 @@ export function DocumentRouteGuard({
    * operation went on): only then do the drafts the user discarded go.
    */
   commitRef?: RefObject<(() => void) | null>;
+  /**
+   * For an asker that removes the drafts itself, later and only if what it asked for succeeds (a
+   * tree operation): hands over the ids the user agreed to discard and forgets them here, so the
+   * guard itself never removes them.
+   */
+  takeDiscardedRef?: RefObject<(() => string[]) | null>;
 }) {
   const store = useDocumentDraftStore();
   const ops = useDocumentSaveOwner();
@@ -80,6 +87,13 @@ export function DocumentRouteGuard({
       commitRef.current = null;
     };
   }, [commit, commitRef]);
+  useEffect(() => {
+    if (!takeDiscardedRef) return;
+    takeDiscardedRef.current = () => discarded.current.splice(0);
+    return () => {
+      takeDiscardedRef.current = null;
+    };
+  }, [takeDiscardedRef]);
   const anyUnsaved = useCallback(() => store.dirtyIds(specId).length > 0, [store, specId]);
 
   useEffect(() => {

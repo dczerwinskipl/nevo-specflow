@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useRef, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, AppContent, Button, InlineNote, ScrollArea, Separator } from '@nevo/ui';
@@ -16,7 +16,7 @@ import {
   unmetRequirements,
 } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
-import { useDirtyDocuments } from '../editor/DocumentDraftProvider';
+import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
 import { CloseIssues } from './CloseIssues';
@@ -30,7 +30,7 @@ export function DocumentsTreePanel({
   controllerRef,
   operations,
   requestRef,
-  commitRef,
+  takeDiscardedRef,
   onSelect,
 }: {
   specId: string;
@@ -40,8 +40,8 @@ export function DocumentsTreePanel({
   operations: DocumentTreeOperations;
   /** Asks to leave unsaved edits before a tree operation; resolves false to cancel it. */
   requestRef: RefObject<(() => Promise<boolean>) | null>;
-  /** Carries out a discard the answer allowed, once the operation may go on. */
-  commitRef?: RefObject<(() => void) | null>;
+  /** Takes over the drafts the user agreed to discard (removed only once the operation succeeded). */
+  takeDiscardedRef?: RefObject<(() => string[]) | null>;
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -56,6 +56,11 @@ export function DocumentsTreePanel({
   const dirtyIds = useDirtyDocuments(specId);
   const specification = useSpecificationWorkspace(specId);
   const data = tree.data;
+  const drafts = useDocumentDraftStore();
+  // The drafts the user agreed to discard for the operation being prepared. They go only once that
+  // operation is confirmed: a cancelled dialog, a failed tree read or a refused operation loses
+  // nothing. Written in handlers only; every new action starts empty.
+  const discardOnSuccess = useRef<string[]>([]);
   // What needs the reader first, and only that: Close refusals, why nothing can be changed, and
   // the types the archetype expects that are missing.
   const issues = data ? closeRefusingIssues(data) : [];
@@ -108,12 +113,20 @@ export function DocumentsTreePanel({
             active={documentId}
             onSelect={onSelect}
             onAdd={operations.add}
-            onOperate={operations.operate}
+            onOperate={(operation) =>
+              operations.operate(operation, {
+                // Before the drafts follow a changed id: the agreed discard is about the old one.
+                onConfirmed: () => {
+                  for (const id of discardOnSuccess.current.splice(0)) drafts.remove(specId, id);
+                },
+              })
+            }
             beforeAction={async (options) => {
+              discardOnSuccess.current = [];
               // Create, classify and registration removal keep the drafts of open documents.
               if (!options?.keepDrafts) {
                 if (requestRef.current && !(await requestRef.current())) return false;
-                commitRef?.current?.();
+                discardOnSuccess.current = takeDiscardedRef?.current?.() ?? [];
               }
               const snapshot = await documentsApi.documentTree(specId);
               cache.setQueryData(documentTreeKeys.tree(specId), snapshot);

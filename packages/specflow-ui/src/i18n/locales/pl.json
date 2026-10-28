@@ -1162,7 +1162,8 @@
         "recovery": "Pliki zostały zmienione, ale bez commita. Dokończ operację przed kolejną zmianą.",
         "resume": "Wznów",
         "saveRunning": "Zapis tego dokumentu jeszcze trwa. Spróbuj ponownie, gdy się zakończy.",
-        "saveToResume": "Najpierw wznów lub odrzuć oczekujący zapis."
+        "saveToResume": "Najpierw wznów lub odrzuć oczekujący zapis.",
+        "saveUnconfirmed": "Wynik ostatniego zapisu nie jest jeszcze potwierdzony. Najpierw zapisz ponownie, aby go potwierdzić."
       },
       "nameError": {
         "characters": "Nazwa nie może zawierać znaków \\ / : * ? \" < > |",

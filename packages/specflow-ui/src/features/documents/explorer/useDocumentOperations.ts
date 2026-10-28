@@ -97,7 +97,7 @@ export interface DocumentOperationsActions {
   ) => Promise<void>;
   /** Validates and imports files into `folder`. */
   importFiles: (files: File[], folder: string) => Promise<void>;
-  /** Repeats the unconfirmed import with the same files. */
+  /** Repeats the unconfirmed (or written but uncommitted) import with the same files. */
   retryImport: () => void;
   /** Creates one document from New document; `onDone` runs when it succeeded. */
   createDocument: (input: NewDocumentInput, onDone: () => void) => Promise<TypeOperationOutcome>;
@@ -249,10 +249,37 @@ export function useDocumentOperations(
     }
   };
 
+  /**
+   * An import that did not end with a definite answer keeps its files: no answer at all (the
+   * Runtime may have applied it) or `DOCUMENT_RECOVERY_REQUIRED` (written, not committed). The same
+   * files are sent again as the same retained request (same `operationId` and body). A definite
+   * refusal drops them: the same batch would be refused again.
+   */
+  const failImport = (failure: unknown, files: PlannedDocument[], again: boolean) => {
+    const unknownOutcome = outcomeUnknown(failure);
+    const recovery = apiErrorCode(failure) === 'DOCUMENT_RECOVERY_REQUIRED';
+    setRecovery(unknownOutcome);
+    setResumable(recovery);
+    if (unknownOutcome || recovery) {
+      setRetry(files);
+      setError(
+        recovery
+          ? t('documents.tree.error.recovery')
+          : again
+            ? t('documents.tree.importStillUnconfirmed')
+            : t('documents.tree.importUnconfirmed'),
+      );
+      return;
+    }
+    setRetry([]);
+    setError(t('documents.tree.importRejected', { reason: documentMutationError(failure, t) }));
+  };
+
   const importFiles: DocumentOperationsActions['importFiles'] = async (files, folder) => {
     if (lock.busy) return;
     markBusy(true);
     setError('');
+    setResumable(false);
     setRetry([]);
     let accepted: PlannedDocument[] = [];
     try {
@@ -272,29 +299,25 @@ export function useDocumentOperations(
           : t('documents.tree.uploadDone', { count: accepted.length }),
       );
     } catch (failure) {
-      setRecovery(outcomeUnknown(failure));
-      if (outcomeUnknown(failure)) {
-        setRetry(accepted);
-        setError(t('documents.tree.importUnconfirmed'));
-      } else {
-        // A definite answer: the same batch would be rejected again, so no retry is offered.
-        setError(t('documents.tree.importRejected', { reason: documentMutationError(failure, t) }));
-      }
+      failImport(failure, accepted, false);
     } finally {
       markBusy(false);
     }
   };
 
   const retryImport = () => {
+    if (lock.busy) return;
+    const files = retry;
     markBusy(true);
-    void onAdd(retry)
+    void onAdd(files)
       .then(() => {
         setRecovery(false);
         setRetry([]);
+        setResumable(false);
         setError('');
         notify(t('documents.tree.importDone'));
       })
-      .catch(() => setError(t('documents.tree.importStillUnconfirmed')))
+      .catch((failure: unknown) => failImport(failure, files, true))
       .finally(() => markBusy(false));
   };
 
@@ -478,6 +501,8 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.saveRunning');
     case 'document-save-to-resume':
       return t('documents.tree.error.saveToResume');
+    case 'document-save-unconfirmed':
+      return t('documents.tree.error.saveUnconfirmed');
     case 'BRANCH_PROTECTED':
     case 'COMMIT_BLOCKED':
     case 'GIT_POLICY_INVALID':

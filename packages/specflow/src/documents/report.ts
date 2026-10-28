@@ -40,7 +40,7 @@ export function hintFor(error: DocumentError): string | undefined {
     case 'DOCUMENT_COMMITS_PENDING':
       if (details?.cause === 'commit-uncommitted') {
         return (
-          'The Engine left changes uncommitted (auto-commit is off, or a commit was abandoned). ' +
+          'The Engine left changes uncommitted (automatic commit is off, which is the default, or a commit was abandoned). ' +
           'Commit exactly those with "nevo-specflow commit --spec <slug|id>" (see them with ' +
           '"nevo-specflow commit status --spec <slug|id>"), or commit them with Git; the Engine ' +
           'drops them from its list on the next flush.'

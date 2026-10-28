@@ -262,9 +262,9 @@ describe('git.commits.auto (commit policy per capability)', () => {
     git: { enabled, commits: { auto } },
   });
 
-  it('defaults to automatic commits for every capability', () => {
+  it('defaults to NO automatic commit for every capability', () => {
     const policy = parseGitWorktreePolicy({ git: { enabled: true } });
-    expect(effectiveAutoCommit(policy, 'documents')).toEqual({ auto: true, source: 'default' });
+    expect(effectiveAutoCommit(policy, 'documents')).toEqual({ auto: false, source: 'default' });
     expect(parseGitWorktreePolicy({}).commits.auto).toBeUndefined();
   });
 

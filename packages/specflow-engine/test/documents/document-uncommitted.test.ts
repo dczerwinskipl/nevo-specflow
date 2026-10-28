@@ -303,6 +303,7 @@ describe('the policy does not apply where it must not', () => {
 
   it('reads the committed value, and the local one wins over it', async () => {
     const project = await queueProject();
+    await setLocalAutoCommit(project, undefined);
     await writeFile(
       join(project.root, '.nevo', 'config.yaml'),
       GIT_ON + '  commits:\n    auto:\n      documents: false\n',

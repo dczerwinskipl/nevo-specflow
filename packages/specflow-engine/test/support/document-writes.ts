@@ -16,15 +16,8 @@ import {
   type DocumentsFixture,
 } from './documents-fixture';
 
-/**
- * A project with Git on and auto-commit ENABLED for the documents through the committed configuration,
- * the same path production uses (the default is off). Use it for every test of the commit queue.
- */
-export const GIT_ON =
-  'runtime: {}\ngit:\n  enabled: true\n  commits:\n    auto:\n      documents: true\n';
-
-/** Git on, nothing else: the default, where no document is committed automatically. */
-export const GIT_ON_DEFAULT = 'runtime: {}\ngit:\n  enabled: true\n';
+/** Git on with the default policy: nothing is committed automatically (enable it with `enableAutoCommitForTesting`). */
+export const GIT_ON = 'runtime: {}\ngit:\n  enabled: true\n';
 
 export interface WritableProject extends DocumentsFixture {
   readonly specId: string;
@@ -38,11 +31,15 @@ export const notesRevision = (index: number): string => sha256Hex(notesText(inde
 
 /** A project with a committed, hand-built Specification of `overview` and `notes-1..notes-N`. */
 export async function writableProject(
-  options: { git?: boolean; notes?: number } = {},
+  options: { git?: boolean; notes?: number; autoCommit?: 'enabled' | 'default' } = {},
 ): Promise<WritableProject> {
   const count = options.notes ?? 6;
   const fixture = await documentsProject(options.git === true ? GIT_ON : GIT_OFF);
   if (options.git === true) git(fixture.root, 'checkout', '-q', '-b', 'feature/work');
+  // The queue is what most tests exercise: they run with auto-commit enabled unless they ask for the default.
+  if (options.git === true && options.autoCommit !== 'default') {
+    await enableAutoCommitForTesting(fixture.root);
+  }
   const indexes = Array.from({ length: count }, (_, index) => index + 1);
   const spec = await handBuiltSpecification(fixture, {
     documents: [
@@ -71,12 +68,25 @@ export async function setLocalAutoCommit(
   project: WritableProject,
   documents: boolean | undefined,
 ): Promise<void> {
-  const path = join(project.root, '.nevo', 'local', 'config.yaml');
+  await writeLocalAutoCommit(project.root, documents);
+}
+
+/**
+ * Enables `git.commits.auto.documents` through the local configuration, the same path production
+ * reads. Automatic commit is off by default, so every test of the queue, the scheduler, flush, retry and
+ * Close calls this (or uses `writableProject({ git: true })`, which does).
+ */
+export async function enableAutoCommitForTesting(root: string): Promise<void> {
+  await writeLocalAutoCommit(root, true);
+}
+
+async function writeLocalAutoCommit(root: string, documents: boolean | undefined): Promise<void> {
+  const path = join(root, '.nevo', 'local', 'config.yaml');
   if (documents === undefined) {
     await rm(path, { force: true });
     return;
   }
-  await mkdir(join(project.root, '.nevo', 'local'), { recursive: true });
+  await mkdir(join(root, '.nevo', 'local'), { recursive: true });
   await writeFile(
     path,
     ['git:', '  commits:', '    auto:', '      documents: ' + String(documents), ''].join('\n'),

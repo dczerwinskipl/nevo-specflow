@@ -610,7 +610,7 @@ Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual
 DW.T19. Push and publishing remain out of scope ("Future: push" in the ADR).
 
 **Policy.** `git.commits.auto.documents` (committed `.nevo/config.yaml`, overridable in `.nevo/local/config.yaml`, default
-`true`; the closed key set grows with each capability that adopts it). The Create scaffold commit and the commits of
+`false`: nothing is committed automatically unless the configuration enables it, and there is no per-request override; the closed key set grows with each capability that adopts it). The Create scaffold commit and the commits of
 `init` and `definitions install` are never governed by it. The effective mode is pinned in each operation's journal at
 admission; a change affects new operations only (a non-empty queue drains normally; a non-empty ledger is never
 committed silently).

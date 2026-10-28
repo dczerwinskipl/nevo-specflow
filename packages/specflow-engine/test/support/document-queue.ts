@@ -19,7 +19,9 @@ export interface QueueProject extends WritableProject {
 }
 
 /** A project with Git, one committed Specification (`hand`, notes-1..6) and nothing queued. */
-export async function queueProject(options: { notes?: number } = {}): Promise<QueueProject> {
+export async function queueProject(
+  options: { notes?: number; autoCommit?: 'enabled' | 'default' } = {},
+): Promise<QueueProject> {
   const project = await writableProject({ git: true, ...options });
   return Object.assign(project, { content: new Map<string, string>() });
 }

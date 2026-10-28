@@ -5,8 +5,8 @@ title: Engine commit policy per capability, the uncommitted-changes ledger and m
 status: draft
 date: 2026-10-26
 summary: >
-  A general policy decides per Engine capability whether its edits are committed automatically (default on,
-  git.commits.auto.<capability> in project config with a local override). With it off a write completes at once as
+  A general policy decides per Engine capability whether its edits are committed automatically (default OFF,
+  git.commits.auto.<capability> in project config with a local override, configuration only). With it off a write completes at once as
   uncommitted and is recorded in a durable, owner-keyed uncommitted-changes ledger in the durable core. A manual commit
   is the only way the Engine commits ledger content then: a normal operation through the same commit port, lease, claim
   algebra and journal, path-limited to the ledger paths of a scope, with the user's message, never arbitrary user
@@ -49,15 +49,19 @@ Draft (owner decision 2026-10-26, proposed with the D4 + D-config delivery). It 
 ## Decision
 
 1. **Policy.** `git.commits.auto` is an object of booleans, one key per Engine capability, in the **committed**
-   `.nevo/config.yaml`: `git: { commits: { auto: { documents: true } } }`. The key set is closed and starts with
-   `documents`; `tasks` and `reviews` are added by the change that introduces those capabilities, and an unknown key is
-   `GIT_POLICY_INVALID`. Default `true` for every capability. It is validated by the same `parseCommitsPolicy` (so `init`
+   `.nevo/config.yaml`: `git: { commits: { auto: { documents: true } } }`. The key set starts with `documents` and is extended by the change
+   that introduces a capability that can be committed manually (tasks, reviews, definitions, ...); an unknown key is
+   `GIT_POLICY_INVALID`. **Default `false` for every capability (owner decision of 2026-10-28, superseding the
+   original default `true`): nothing is committed automatically, in the CLI, the API or anywhere else, unless the
+   configuration enables it.** Manual commit over the ledger scope of a capability is a capability of its own and
+   needs no setting. The setting is configuration only (the UI reads and writes the configuration); there is no
+   per-request or per-invocation override. It is validated by the same `parseCommitsPolicy` (so `init`
    and the reader cannot disagree), also while Git is disabled (then inert). **Why `git.commits.auto` and not a sibling
    namespace:** it answers the same question as the neighbouring keys (when may the Engine commit), it needs the same
    fail-closed validation and the same reader, and `git` is already the Git capability's namespace in
    `architecture.runtime.configuration`; a sibling would duplicate the reader and the Git-disabled rule.
 2. **Local override.** `.nevo/local/config.yaml` MAY contain `git.commits.auto.<capability>`; the local value wins over the
-   committed one; absent in both means `true`. This is the second explicit exception to "local config cannot override
+   committed one; absent in both means `false`. This is the second explicit exception to "local config cannot override
    committed git policy" (after `worktreesRoot`) and it is limited to `auto`: the local `git.commits` object MUST NOT
    contain `protectedBranches` or `allowedBranches`. Justification: turning auto-commit off never loosens a safety
    control (protection stays committed-only; the Engine commits less, not more), and an individual developer may reasonably

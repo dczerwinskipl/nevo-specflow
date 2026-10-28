@@ -201,7 +201,7 @@ validate`. The people who may change them are those who may commit to the projec
 - **Abandon** keeps the saved files as ordinary working-tree changes and records them as "changed, not committed" (the
   same state as when auto-commit is off); they stay marked until a later save commits them, a manual commit includes
   them or someone commits them by hand; Close stays unavailable meanwhile.
-- **Auto-commit can be switched off** per project (`git.commits.auto.documents: false` in the committed configuration) or
+- **Auto-commit is off by default** and can be switched on per project (`git.commits.auto.documents: true` in the committed configuration) or
   per machine (the same key in the local configuration, which wins). With it off, saving still writes the file at once
   but the Engine never commits it: the document shows "changed, not committed" and a **Commit changes** button lists
   exactly the changes Nevo made (never anything else in the folder), asks for a message and makes one commit with that

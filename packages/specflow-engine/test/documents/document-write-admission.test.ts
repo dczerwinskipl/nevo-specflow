@@ -20,6 +20,7 @@ import type { DocumentChangeRequest } from '../../src/specs/documents/changes/pl
 import { admitDocumentChange } from '../../src/specs/documents/write/admission';
 import { readSpecificationDocumentTree } from '../../src/specs/documents/tree-reader';
 import { GitPreflightCache } from '../../src/specs/documents/write/preflight-cache';
+import { enableAutoCommitForTesting } from '../support/document-writes';
 import { commitStaged, git } from '../support/git-project';
 import {
   documentsProject,
@@ -39,6 +40,7 @@ const NOTES_REVISION = sha256Hex(NOTES);
 async function workProject(config = GIT_ON) {
   const fixture = await documentsProject(config);
   git(fixture.root, 'checkout', '-q', '-b', 'feature/work');
+  await enableAutoCommitForTesting(fixture.root);
   const spec = await handBuiltSpecification(fixture, {
     documents: [
       { id: 'overview', path: 'overview.md', type: 'overview' },

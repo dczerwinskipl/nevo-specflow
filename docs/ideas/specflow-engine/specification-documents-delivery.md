@@ -860,7 +860,7 @@ isolation; queue caps; Close flushes first; committed operations leave the list;
 owns its list route; the Windows path bound is 240 characters with a refusal (long paths are not enabled).
 
 **Owner decision (2026-10-26, applied; section 8b, ADR 0018):** a general Engine commit policy per capability
-(auto-commit on by default, off in project or local config), a general uncommitted-changes ledger in the durable core, and a
+(auto-commit OFF by default since the 2026-10-28 owner decision, on in project or local config), a general uncommitted-changes ledger in the durable core, and a
 manual commit capability through the same commit port, lease, claims and journal; Create and `init`/`definitions install`
 stay always committed; push is out of scope.
 

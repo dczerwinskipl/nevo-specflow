@@ -43,10 +43,12 @@ function parse(raw: string | null): WrapLinesPreference {
 
 // Without a usable storage the choice still applies for this page's lifetime.
 let memory: WrapLinesPreference = {};
+// The last write did not reach the storage (quota, privacy mode): `memory` is newer than it.
+let writeFailed = false;
 
 function read(): WrapLinesPreference {
   const store = storage();
-  if (!store) return memory;
+  if (!store || writeFailed) return memory;
   let raw: string | null;
   try {
     raw = store.getItem(WRAP_LINES_STORAGE_KEY);
@@ -63,8 +65,10 @@ export function setWrapLines(pane: PaneClass, wrap: boolean): void {
   memory = next;
   try {
     storage()?.setItem(WRAP_LINES_STORAGE_KEY, JSON.stringify(next));
+    writeFailed = false;
   } catch {
-    // Persistence is best effort; `memory` keeps the choice.
+    // Persistence is best effort; `memory` keeps the choice (and wins over the stale storage).
+    writeFailed = true;
   }
   for (const listener of listeners) listener();
 }

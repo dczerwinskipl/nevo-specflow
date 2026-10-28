@@ -82,21 +82,28 @@ export function toggleTemplate(
 
 /**
  * Unticking this template leaves a requirement of the archetype unmet (only owner-configured
- * archetypes do this): no `always` template and no other ticked template has its type.
+ * archetypes do this): the `always` templates and the other ticked templates of its type are
+ * fewer than the requirement's `minCount`.
  */
 export function unmetWhenUnticked(
   archetype: ArchetypeInfo,
   template: ArchetypeTemplateInfo,
   ticked: readonly string[],
 ): boolean {
-  const required = archetype.requirements.some(
-    (requirement) => requirement.documentType === template.type && requirement.minCount > 0,
+  const minCount = Math.max(
+    0,
+    ...archetype.requirements
+      .filter((requirement) => requirement.documentType === template.type)
+      .map((requirement) => requirement.minCount),
   );
-  if (!required || ticked.includes(template.id)) return false;
-  return !archetype.documents.some(
+  if (minCount === 0 || ticked.includes(template.id)) return false;
+  const created = archetype.documents.filter(
     (other) =>
-      other.type === template.type && (other.include === 'always' || ticked.includes(other.id)),
-  );
+      other.id !== template.id &&
+      other.type === template.type &&
+      (other.include === 'always' || ticked.includes(other.id)),
+  ).length;
+  return created < minCount;
 }
 
 /** The file names Create makes: the `always` templates, then the ticked optional ones. */

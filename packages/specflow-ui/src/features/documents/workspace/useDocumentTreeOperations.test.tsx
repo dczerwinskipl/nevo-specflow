@@ -9,7 +9,7 @@ import { DocumentDraftProvider } from '../editor/DocumentDraftProvider';
 import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { useDocumentOperations } from '../explorer/useDocumentOperations';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
-import { documentKeys } from '../read-model/queries';
+import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import type { PendingSave } from '../editor/useDocumentSave';
 import { pendingSaveOf } from './useDocumentTreeOperations';
 
@@ -524,5 +524,65 @@ describe('saves during an operation in flight', () => {
       await done;
     });
     expect(mocks.released).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the Engine reports the old id of a followed document as removed', () => {
+  const draft = { content: 'mine', baseline: 'disk', revision: 'r1', editing: true };
+
+  it('follows a classified unclassified file instead of dropping its draft and tab', async () => {
+    mocks.operateDocument.mockResolvedValue({
+      revision: 'r',
+      documents: [{ id: 'research', path: 'a.md', revision: 'r1', type: 'research' }],
+      removedDocumentIds: ['u-a'],
+      folders: [],
+    });
+    mocks.removeTabs.mockClear();
+    mocks.followTab.mockClear();
+    const { store, view } = setup();
+    store.set('s', 'u-a', draft);
+    await act(() =>
+      view.result.current.treeOps.operate({
+        action: 'classify',
+        kind: 'document',
+        documentId: 'u-a',
+        type: 'research',
+        expectedRevision: 'r1',
+      } as never),
+    );
+    expect(store.get('s', 'research')?.content).toBe('mine');
+    expect(mocks.followTab).toHaveBeenCalledWith('u-a', 'research');
+    expect(mocks.removeTabs).not.toHaveBeenCalled();
+  });
+
+  it('follows the unclassified files of a moved folder and closes only what really went', async () => {
+    mocks.operateDocument.mockResolvedValue({
+      revision: 'r',
+      documents: [{ id: 'u-new', path: 'archive/notes/a.md', revision: 'r1' }],
+      removedDocumentIds: ['u-old', 'gone'],
+      folders: ['archive/notes'],
+    });
+    mocks.removeTabs.mockClear();
+    const { store, view, cache } = setup();
+    cache.setQueryData(documentTreeKeys.tree('s'), {
+      documents: [
+        { id: 'u-old', path: 'notes/a.md', revision: 'r1' },
+        { id: 'gone', path: 'notes/missing.md', revision: 'r1' },
+      ],
+    });
+    store.set('s', 'u-old', draft);
+    store.set('s', 'gone', draft);
+    await act(() =>
+      view.result.current.treeOps.operate({
+        action: 'move',
+        kind: 'folder',
+        path: 'notes',
+        targetFolder: 'archive',
+        expectedRevision: 'f1',
+      } as never),
+    );
+    expect(store.get('s', 'u-new')?.content).toBe('mine');
+    expect(store.get('s', 'gone')).toBeUndefined();
+    await vi.waitFor(() => expect(mocks.removeTabs).toHaveBeenCalledWith(['gone']));
   });
 });

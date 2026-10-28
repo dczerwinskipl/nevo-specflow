@@ -267,8 +267,13 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       definiteRefusal,
     );
     operateOptions?.onConfirmed?.();
-    for (const removed of result.removedDocumentIds) drafts.remove(specId, removed);
     const moves = followedDocuments(before, operation, result);
+    // The Engine lists the OLD id of a document whose id changed (an unclassified file renamed,
+    // moved or classified, also inside a moved folder) in `removedDocumentIds`: that document is
+    // followed to its new id (draft, tab, route), never dropped. Only the others really went.
+    const followedFrom = new Set(moves.map((move) => move.from));
+    const removedIds = result.removedDocumentIds.filter((id) => !followedFrom.has(id));
+    for (const removed of removedIds) drafts.remove(specId, removed);
     // The revision each document had when the operation started: the one it names for a document
     // target, the tree's for the documents of a folder.
     const revisionBefore = (id: string) =>
@@ -290,7 +295,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       );
     if (moves.length > 0) await settleFollowUp(follow(moves, revisionBefore));
     await settleFollowUp(refresh());
-    if (result.removedDocumentIds.length > 0) setFollowUp({ removed: result.removedDocumentIds });
+    if (removedIds.length > 0) setFollowUp({ removed: removedIds });
     return result;
   };
   return { busy, setBusy, add, operate, refresh };

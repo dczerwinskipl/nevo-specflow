@@ -110,6 +110,21 @@ describe('archetype choice', () => {
     expect(unmetWhenUnticked(feature, feature.documents[1]!, [])).toBe(false);
   });
 
+  it('counts the templates of the type against a minCount above one', () => {
+    const first = template('notes-a', 'optional', true, 'note');
+    const second = template('notes-b', 'optional', true, 'note');
+    const two = archetype('two-notes', [first, second], [{ documentType: 'note', minCount: 2 }]);
+    // One of two notes unticked: one is created, two are required.
+    expect(unmetWhenUnticked(two, second, ['notes-a'])).toBe(true);
+    expect(unmetWhenUnticked(two, second, ['notes-a', 'notes-b'])).toBe(false);
+    const three = archetype(
+      'three-notes',
+      [first, second, template('notes-c', 'always', undefined, 'note')],
+      [{ documentType: 'note', minCount: 2 }],
+    );
+    expect(unmetWhenUnticked(three, second, ['notes-a'])).toBe(false);
+  });
+
   it('after a stale catalogue keeps the archetype with new default ticks; after an unknown one falls back', () => {
     const choice = toggleTemplate(
       chooseArchetype(initialArchetypeChoice, 'feature'),

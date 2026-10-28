@@ -105,6 +105,8 @@ const stack = defineSecondaryStack<{ id: string }, StackData, { editor: Record<s
 interface FixtureProps {
   loseAck?: boolean;
   concurrent?: boolean;
+  /** Every operation takes this long (ms) before it succeeds. */
+  slowMs?: number;
 }
 type StoryRecords = Record<string, DocumentContent>;
 interface WorkspaceProps extends FixtureProps {
@@ -116,6 +118,7 @@ interface WorkspaceProps extends FixtureProps {
 function Workspace({
   loseAck = false,
   concurrent = false,
+  slowMs = 0,
   records,
   setRecords,
   active,
@@ -200,6 +203,7 @@ function Workspace({
           data: { error: 'DOCUMENT_REVISION_CONFLICT', code: 'DOCUMENT_REVISION_CONFLICT' },
         }),
       );
+    if (slowMs > 0) return new Promise<void>((resolve) => setTimeout(resolve, slowMs));
     if (operation.action === 'rename')
       setTree((current) => ({
         ...current,
@@ -443,7 +447,7 @@ export const ConfirmationKeepsObservedRevision: Story = {
       'text-action-danger',
     );
     await userEvent.click(within(document.body).getByRole('button', { name: 'Anuluj' }));
-    await expect(canvas.getByRole('button', { name: 'decisions.md' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: /^decisions\.md/ })).toBeVisible();
   },
 };
 
@@ -508,6 +512,33 @@ export const FolderOperationsSendFolderRevision: Story = {
   },
 };
 
+/**
+ * A running operation is a small spinner in the tree's root header once it takes a while (never a
+ * text line under the tree); it goes as soon as the operation ends.
+ */
+export const SlowOperationShowsASpinnerInTheRootHeader: Story = {
+  render: () => <Fixture slowMs={1500} />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const spinner = () => canvasElement.querySelector('[data-testid="documents-tree-busy"]');
+    await expect(spinner()).toBeNull();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Akcje: notes' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Usuń' }));
+    await userEvent.click(
+      within(within(document.body).getByRole('alertdialog')).getByRole('button', { name: 'Usuń' }),
+    );
+    // The confirmation may still hide the page from the accessibility tree while it closes.
+    const header = canvas.getByRole('heading', { name: 'Dokumenty specyfikacji', hidden: true });
+    await waitFor(() => expect(header.parentElement!.contains(spinner())).toBe(true));
+    await expect(canvas.queryByText('Przetwarzanie…')).toBeNull();
+    // The confirmation stays (busy) until the operation ends, then the result is a toast.
+    await waitFor(() => expect(within(document.body).queryByRole('alertdialog')).toBeNull(), {
+      timeout: 5000,
+    });
+    await expectToast('Usunięto notes');
+    await waitFor(() => expect(spinner()).toBeNull());
+  },
+};
+
 /** Rename and delete confirm with a toast; nothing is left as a status line under the tree. */
 export const OperationResultsAreToasts: Story = {
   play: async ({ canvas, userEvent }) => {
@@ -539,6 +570,8 @@ const nestedTree: Tree = documentTreeFixture({
     { id: 'overview', path: 'guides/overview.md' },
     {
       id: 'onboarding-long',
+      // A realistic type title (the default would repeat the long stem as the label).
+      type: 'guide',
       path: 'guides/onboarding/a-very-long-descriptive-onboarding-guide-filename-for-connector-wrap-testing.md',
     },
   ],
@@ -579,16 +612,16 @@ async function verifyNestedExplorer(
     await expect(getComputedStyle(rowOf(name), '::after').content).toBe('none');
   }
   // Natural order: folders A-Z first, then files; the required file is not pinned.
-  const top = [...canvas.getAllByRole('list')[0]!.children].map((li) =>
-    li.querySelector('button')!.textContent.replace('Wymagany', ''),
+  const top = [...canvas.getAllByRole('list')[0]!.children].map(
+    (li) => li.querySelector('button .truncate')!.textContent,
   );
   await expect(top).toEqual(['empty-folder', 'guides', 'specification.md']);
   // Chevron + folder icon + name columns align across levels.
   await expect(Math.abs(iconLeft(/^specification\.md/) - iconLeft(/^guides$/, 1))).toBeLessThan(1);
-  await expect(Math.abs(iconLeft(/^overview\.md$/) - iconLeft(/^onboarding$/, 1))).toBeLessThan(1);
+  await expect(Math.abs(iconLeft(/^overview\.md/) - iconLeft(/^onboarding$/, 1))).toBeLessThan(1);
   // The deepest long name keeps more than half of its row.
   const long = canvas.getByRole('button', { name: /^a-very-long-descriptive/ });
-  const name = within(long).getByText(/^a-very-long-descriptive/);
+  const name = within(long).getByText(/^a-very-long-descriptive/, { selector: '.truncate' });
   await expect(name.getBoundingClientRect().width).toBeGreaterThan(
     long.getBoundingClientRect().width / 2,
   );

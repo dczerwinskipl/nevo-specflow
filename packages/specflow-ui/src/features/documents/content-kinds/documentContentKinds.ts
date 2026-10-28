@@ -1,5 +1,4 @@
 import type { ContentKind } from '@nevo/specflow-contracts/documents';
-import { Pencil } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { WorkspaceHeaderAction } from '@nevo/ui';
 import { hasTextDraft, kindIdOf } from './kindId';
@@ -105,7 +104,7 @@ const markdown: DocumentContentKind = {
             {
               id: editing ? 'document-preview' : 'document-edit',
               label: editing ? t('documents.actions.preview') : t('documents.actions.edit'),
-              icon: editing ? 'eye' : Pencil,
+              icon: editing ? 'eye' : 'edit',
               presentation: 'icon',
               group: 'actions',
               direct: editing && session.dirty ? 'wide' : 'always',
@@ -146,8 +145,8 @@ function downloadAction(
 ): WorkspaceHeaderAction {
   return {
     id: 'document-download',
-    // A text action: the registry has no download glyph.
     label: t('documents.actions.download'),
+    icon: 'download',
     group: 'actions',
     // The only action of an image tab is promoted; a file's Download is the body's button, so the
     // header keeps it in the menu and the two never differ in weight.
@@ -167,8 +166,8 @@ const image: DocumentContentKind = {
   actions: (_view, context) => [
     {
       id: 'document-actual-size',
-      // A text label: the registry has no zoom glyph.
       label: context.t('documents.image.actualSize'),
+      icon: 'actual-size',
       group: 'display',
       checked: context.session.actualSize,
       onPress: context.session.toggleActualSize,

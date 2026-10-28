@@ -1068,6 +1068,7 @@
       "label": "Properties"
     },
     "actions": {
+      "wrapLines": "Wrap lines",
       "showPath": "Show path",
       "edit": "Edit document",
       "preview": "Show preview",
@@ -1121,7 +1122,7 @@
       "checkResult": "Check the result of this operation",
       "emptyFolder": "This folder is empty. Add a file or folder from the menu.",
       "addFirst": "Add the first file from the actions menu.",
-      "processing": "Processing…",
+      "rootTitle": "Specification documents",
       "importDone": "Upload finished",
       "importStillUnconfirmed": "The import is still unconfirmed. The files are kept.",
       "importUnconfirmed": "The import was not confirmed. The files are kept so the same operation can be retried.",

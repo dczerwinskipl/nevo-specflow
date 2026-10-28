@@ -9,7 +9,6 @@ import {
   documentTrailingLabel,
   initialTypeChoice,
   menuReasonNote,
-  nameSaysType,
   specificationReadOnlyReason,
   typeChoices,
   typeTitle,
@@ -92,17 +91,18 @@ describe('type labels', () => {
     expect(typeTitle(catalogue, 'ux')).toBe('UX');
   });
 
-  it('says the type only when the file name does not', () => {
-    expect(nameSaysType('ux.md', 'ux', catalogue)).toBe(true);
-    expect(nameSaysType('docs/UX.md', 'ux', catalogue)).toBe(true);
-    // The stem of the type's default name says it too.
-    expect(nameSaysType('backend-design.md', 'backend', catalogue)).toBe(true);
-    expect(nameSaysType('login-flow.md', 'ux', catalogue)).toBe(false);
-    expect(documentTrailingLabel(tree.documents[1]!, catalogue)).toBeUndefined();
+  it('always says the type of a registered document, also when the name repeats it', () => {
+    expect(documentTrailingLabel(tree.documents[1]!, catalogue)).toEqual({
+      kind: 'type',
+      text: typeTitle(catalogue, tree.documents[1]!.type!),
+    });
     expect(documentTrailingLabel(tree.documents[2]!, catalogue)).toEqual({
       kind: 'type',
       text: 'UX',
     });
+    expect(
+      documentTrailingLabel({ path: 'ux.md', classification: 'registered', type: 'ux' }, catalogue),
+    ).toEqual({ kind: 'type', text: 'UX' });
     // An unclassified file has no row label (owner: the 'No type' text was noise).
     expect(documentTrailingLabel(tree.documents[3]!, catalogue)).toBeUndefined();
   });

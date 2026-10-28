@@ -135,18 +135,21 @@ export function DocumentNodeMenu({
           <>
             <MenuItem
               disabled={!tree.capabilities.createFile.available}
+              leadingIcon="file"
               onSelect={() => actions.newDocument(path)}
             >
               {t('documents.tree.newDocument')}
             </MenuItem>
             <MenuItem
               disabled={!tree.capabilities.createFolder.available}
+              leadingIcon="folder"
               onSelect={() => actions.create('folder', path)}
             >
               {t('documents.tree.newFolder')}
             </MenuItem>
             <MenuItem
               disabled={!tree.capabilities.import.available}
+              leadingIcon="upload"
               onSelect={() => actions.importInto(path)}
             >
               {t('documents.tree.upload')}
@@ -158,6 +161,7 @@ export function DocumentNodeMenu({
           <MenuItem
             tone="danger"
             disabled={!dangling.actions.delete.available}
+            leadingIcon="unlink"
             onSelect={() => actions.removeRegistration(dangling.id)}
           >
             {t('documents.tree.removeRegistration')}
@@ -167,6 +171,7 @@ export function DocumentNodeMenu({
           <>
             <MenuItem
               disabled={!classify?.available}
+              leadingIcon="classify"
               onSelect={() => actions.classify(document.id)}
             >
               {t('documents.tree.assignType')}
@@ -179,12 +184,14 @@ export function DocumentNodeMenu({
           <>
             <MenuItem
               disabled={!policy.rename.available}
+              leadingIcon="rename"
               onSelect={() => actions.rename(kind, path, id)}
             >
               {t('documents.tree.rename')}
             </MenuItem>
             <MenuItem
               disabled={!policy.move.available}
+              leadingIcon="move"
               onSelect={() => actions.move(kind, path, id)}
             >
               {t('documents.tree.move')}
@@ -192,6 +199,7 @@ export function DocumentNodeMenu({
             <MenuItem
               tone="danger"
               disabled={!policy.delete.available}
+              leadingIcon="trash"
               onSelect={() => actions.remove(kind, path, id)}
             >
               {t('documents.tree.delete')}

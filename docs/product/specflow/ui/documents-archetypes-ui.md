@@ -66,7 +66,7 @@ files arrive unclassified), split view, history of a document.
 
 | #   | Decision                                                                                                                                                                                                                                                                                     | Rejected alternatives (one line each)                                                                                                                                                                                                             |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | A tree row shows its **type as a quiet trailing label only when the file name does not already say it** (`login-flow.md · UX`, not `ux.md · UX`).                                                                                                                                            | Type on every row: repeats the file name on most rows and drowns the state that matters (File missing). Type only in a tooltip: hover-only, unreachable on touch.                                                                                 |
+| D1  | A registered tree row **always shows its type as a quiet trailing label** (`login-flow.md · UX`, also `ux.md · UX` and `overview.md · Overview`); only a narrow row hides it as a whole.                                                                                                     | Type only when the name does not say it: read as inconsistent in use (the type appeared only after a rename). Type only in a tooltip: hover-only, unreachable on touch.                                                                           |
 | D2  | **Unclassified** rows carry no label (their menu offers **Assign type…** first; Expected documents names what is missing); **dangling** rows keep their place in the tree with the warning glyph and `File missing`. Neither is grouped separately.                                          | A separate "Unclassified" / "Missing" group: moves files away from their folder, the user no longer finds them where they are on disk.                                                                                                            |
 | D3  | The tree pane starts with what needs the user, and only that: Close-refusing **issues** (attention Alert), then **Expected documents** listing **unmet requirements only**, each with **Add**. When nothing is unmet and nothing blocks Close, the region does not exist.                    | A permanent completeness summary ("3 of 3", a progress bar, a green check): reads as approval or "done", which the product explicitly forbids. Showing met requirements too: noise for every built-in archetype (only `overview: 1`, always met). |
 | D4  | **New document** is a type chooser (radio list: title + "use when", grouped "Suggested by <archetype>" / "Other types" / "No type"), a pre-filled editable **File name**, and the type instructions behind a disclosure. One `Dialog` at every width (see the scroll gap in section 11).     | Inline file-name entry in the tree (today): cannot carry a type, which is what satisfies a requirement. A type select: hides "use when", the criterion for choosing. A wizard: two steps for one decision.                                        |
@@ -115,6 +115,7 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
  Team feature expects these types. Only file presence is checked.     body-sm muted
  Decisions   0 of 1               [+ Add]   Add only while capabilities.createFile is available
  ──────────────────────────────────        divider (only when the region above exists)
+ SPECIFICATION DOCUMENTS            (o)   root section header (no chevron); small spinner while an operation runs long
  v architecture
      login-flow.md                    UX
      sequence.png                   Note
@@ -122,9 +123,9 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
      meeting-2026-10-20.md
      token-sample.bin
  ! backend.md               File missing   (warning glyph and label in attention tone)
-   behaviour.md
-   overview.md
-   ux.md
+   behaviour.md                Behaviour
+   overview.md                  Overview
+   ux.md                              UX
  1 entry in the folder could not be read.  muted line (skipped-entry; not shown as a Close refusal)
 ```
 
@@ -141,17 +142,24 @@ their registered path.
 
 ### 3.3 Row grammar
 
-| Entry                      | Glyph                        | Name             | Trailing label (muted unless noted) | Row press                      | Row menu                                                           |
-| -------------------------- | ---------------------------- | ---------------- | ----------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
-| Registered, name says type | `file` (images too)          | file name        | none                                | open tab                       | Rename, Move, Delete                                               |
-| Registered, other name     | as above                     | file name        | type title (`UX`)                   | open tab                       | Rename, Move, Delete                                               |
-| `overview.md` (protected)  | `file`                       | file name        | none                                | open tab                       | only the note with the `protected` reason (no dead disabled items) |
-| Unclassified               | as above                     | file name        | none                                | open tab                       | **Assign type…**, separator, Rename, Move, Delete                  |
-| Dangling                   | `triangle-alert` (attention) | file name, muted | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                                   |
+| Entry                     | Glyph                        | Name             | Trailing label (muted unless noted) | Row press                      | Row menu                                                           |
+| ------------------------- | ---------------------------- | ---------------- | ----------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
+| Registered                | `file` (images too)          | file name        | type title (`UX`)                   | open tab                       | Rename, Move, Delete                                               |
+| `overview.md` (protected) | `file`                       | file name        | type title (`Overview`)             | open tab                       | only the note with the `protected` reason (no dead disabled items) |
+| Unclassified              | as above                     | file name        | none                                | open tab                       | **Assign type…**, separator, Rename, Move, Delete                  |
+| Dangling                  | `triangle-alert` (attention) | file name, muted | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                                   |
 
-"The file name says the type" means the file stem equals the type id or the stem of the type's
-`defaultFilename`. Other disabled items keep today's pattern: the menu note carries at most two distinct
-reasons of the ActionReason set.
+Every item of a row menu has its icon (New document, New folder, Upload files, Assign type, Rename, Move,
+Delete, Remove registration). Other disabled items keep today's pattern: the menu note carries at most two
+distinct reasons of the ActionReason set.
+
+The tree starts with a root section header, **Specification documents**, that never collapses. Files of a main
+folder without subfolders start at the row edge: they are not indented as if they were in a folder. A tree
+operation that takes longer than a moment shows a small spinner in that header (never a text line under the
+tree); its result is a toast, its failure stays where it was started. A rename the file system refuses because
+only the letter case changes ("Renaming only the letter case is not supported on this file system.") is shown in
+the rename field with the typed name kept; the UI does not block it in advance. After a refusal the message
+never suggests refreshing when a refresh cannot help.
 
 ### 3.4 Unmet requirements (Expected documents)
 

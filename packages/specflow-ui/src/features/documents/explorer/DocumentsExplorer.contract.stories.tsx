@@ -116,7 +116,8 @@ export const NoRootRowAndNaturalOrder: Story = {
       canvas.queryByRole('button', { name: /Akcje: Dokumenty/ }),
     ).not.toBeInTheDocument();
     const topLevel = [...canvasElement.querySelector('ul')!.children].map(
-      (li) => li.querySelector('button')!.textContent,
+      // The name of each row (its type label follows it in the button).
+      (li) => li.querySelector('button .truncate')!.textContent,
     );
     // Folders A-Z, then files A-Z; the required file stays among its siblings by name.
     await expect(topLevel).toEqual([
@@ -145,31 +146,36 @@ export const NoRootRowAndNaturalOrder: Story = {
 export const SingleLineRowsWithoutAProtectedMarker: Story = {
   play: async ({ canvas }) => {
     const longName = adr.split('/').at(-1)!;
-    const longButton = await canvas.findByRole('button', { name: longName });
-    const shortButton = canvas.getByRole('button', { name: /^zeta\.md$/ });
+    const longButton = await canvas.findByRole('button', {
+      name: (name) => name.startsWith(longName),
+    });
+    const shortButton = canvas.getByRole('button', { name: /^zeta\.md/ });
     const label = within(longButton).getByText(longName);
     await expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
     await expect(getComputedStyle(label).whiteSpace).toBe('nowrap');
     await expect(getComputedStyle(label).textOverflow).toBe('ellipsis');
     // Same rhythm for the 62 character name and a short one.
     await expect(rect(longButton).height).toBe(rect(shortButton).height);
-    // The protected row has the same height and no trailing label (its menu says why).
+    // The protected row has the same height and no protected marker (its menu says why); like
+    // every registered document it shows its type.
     const protectedButton = canvas.getByRole('button', { name: /^specification\.md/ });
     await expect(rect(protectedButton).height).toBe(rect(shortButton).height);
-    await expect(protectedButton).toHaveAccessibleName('specification.md');
+    await expect(protectedButton).toHaveAccessibleName(/^specification\.md\s*specification$/);
     // The full name stays in the DOM (accessible name).
-    await expect(longButton).toHaveAccessibleName(longName);
+    await expect(longButton.textContent.startsWith(longName)).toBe(true);
   },
 };
 
 export const TooltipOnlyForClippedNames: Story = {
   play: async ({ canvas, userEvent }) => {
     const longName = adr.split('/').at(-1)!;
-    await userEvent.hover(await canvas.findByRole('button', { name: /^zeta\.md$/ }));
+    await userEvent.hover(await canvas.findByRole('button', { name: /^zeta\.md/ }));
     await new Promise((resolve) => setTimeout(resolve, 700));
     await expect(within(document.body).queryByRole('tooltip')).not.toBeInTheDocument();
-    await userEvent.unhover(canvas.getByRole('button', { name: /^zeta\.md$/ }));
-    await userEvent.hover(canvas.getByRole('button', { name: longName }));
+    await userEvent.unhover(canvas.getByRole('button', { name: /^zeta\.md/ }));
+    await userEvent.hover(
+      canvas.getByRole('button', { name: (name) => name.startsWith(longName) }),
+    );
     await expect(
       await within(document.body).findByRole('tooltip', {}, { timeout: 3000 }),
     ).toHaveTextContent(longName);
@@ -178,7 +184,7 @@ export const TooltipOnlyForClippedNames: Story = {
 
 export const MenuSlotIsReservedAndRevealed: Story = {
   play: async ({ canvas }) => {
-    const item = await canvas.findByRole('button', { name: /^zeta\.md$/ });
+    const item = await canvas.findByRole('button', { name: /^zeta\.md/ });
     const menu = canvas.getByRole('button', { name: 'Akcje: zeta.md' });
     const label = within(item).getByText('zeta.md');
     const atRest = rect(label).width;
@@ -327,14 +333,14 @@ export const ReadOnlyExplainsOnceInTheMenu: Story = {
     ).toHaveLength(1);
     await userEvent.keyboard('{Escape}');
     // The row stays openable.
-    await expect(canvas.getByRole('button', { name: /^zeta\.md$/ })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: /^zeta\.md/ })).toBeEnabled();
   },
 };
 
 export const SelectionExpandAndFocusAreSeparate: Story = {
   args: { onSelect: fn() },
   play: async ({ canvas, userEvent, args }) => {
-    const current = await canvas.findByRole('button', { name: /^kontekst-systemu\.md$/ });
+    const current = await canvas.findByRole('button', { name: /^kontekst-systemu\.md/ });
     await expect(current).toHaveAttribute('aria-current', 'true');
     await expect(
       canvas.getAllByRole('button').filter((b) => b.hasAttribute('aria-current')),
@@ -345,14 +351,14 @@ export const SelectionExpandAndFocusAreSeparate: Story = {
     await expect(canvas.getByLabelText('Aktywny dokument')).toHaveTextContent('ctx');
     await userEvent.click(canvas.getByRole('button', { name: /^architektura$/ }));
     await expect(
-      await canvas.findByRole('button', { name: /^kontekst-systemu\.md$/ }),
+      await canvas.findByRole('button', { name: /^kontekst-systemu\.md/ }),
     ).toHaveAttribute('aria-current', 'true');
     // Focus alone does not select.
-    canvas.getByRole('button', { name: /^zeta\.md$/ }).focus();
-    await expect(canvas.getByRole('button', { name: /^zeta\.md$/ })).not.toHaveAttribute(
+    canvas.getByRole('button', { name: /^zeta\.md/ }).focus();
+    await expect(canvas.getByRole('button', { name: /^zeta\.md/ })).not.toHaveAttribute(
       'aria-current',
     );
-    await userEvent.click(canvas.getByRole('button', { name: /^zeta\.md$/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /^zeta\.md/ }));
     await expect(args.onSelect).toHaveBeenCalledWith('zeta');
     await expect(
       canvas.getAllByRole('button').filter((b) => b.hasAttribute('aria-current')),

@@ -2,7 +2,6 @@ import type {
   DocumentOperationResult,
   DocumentTree as Tree,
 } from '@nevo/specflow-contracts/documents';
-import { Upload } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,7 +13,15 @@ import {
   type Ref,
   type RefObject,
 } from 'react';
-import { Alert, Button, TooltipProvider, type WorkspaceHeaderAction } from '@nevo/ui';
+import {
+  Alert,
+  Button,
+  Spinner,
+  TooltipProvider,
+  Typography,
+  treeSectionHeaderClassName,
+  type WorkspaceHeaderAction,
+} from '@nevo/ui';
 import type { CatalogueState } from './DocumentTypeDialogs';
 import { AssignTypeDialog, NewDocumentDialog } from './DocumentTypeDialogs';
 import { DocumentImporter, type DocumentImporterHandle } from './DocumentImporter';
@@ -31,6 +38,7 @@ import {
   type NewDocumentEntry,
 } from './useDocumentOperations';
 import { useInlineEntry } from './useInlineEntry';
+import { useDelayedFlag } from './useDelayedFlag';
 import { useTreeFocus } from './useTreeFocus';
 
 export type { DocumentOperation } from './useDocumentOperations';
@@ -95,7 +103,7 @@ export function documentRootActions(
     {
       id: 'documents-upload',
       label: t('documents.tree.upload'),
-      icon: Upload,
+      icon: 'upload',
       disabled: !capabilities?.import.available || busy,
       onPress: () => controller.current?.upload(),
     },
@@ -137,6 +145,7 @@ export function DocumentsExplorer({
 }: Props) {
   const { t } = useTranslation();
   const noteBase = useId();
+  const rootHeadingId = useId();
   const [closed, setClosed] = useState<string[]>([]),
     // Empty folders start collapsed; the hint shows only for those the user opened.
     [openedEmpty, setOpenedEmpty] = useState<string[]>([]),
@@ -158,6 +167,8 @@ export function DocumentsExplorer({
     onBusyChange,
   });
   const { busy, unknown, error, retry, resumable } = operations.state;
+  // A running operation shows a small spinner in the root header, only once it takes a while.
+  const working = useDelayedFlag(busy);
   const index = useMemo(() => createTreeIndex(treeRows(tree)), [tree]);
   const focus = useTreeFocus(index);
   const inline = useInlineEntry({
@@ -283,10 +294,23 @@ export function DocumentsExplorer({
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="grid min-w-0 gap-1">
+      <div className="grid min-w-0 gap-1" aria-busy={busy || undefined}>
+        {/* The root of the tree is a section header (no chevron, never collapses). */}
+        <div className={treeSectionHeaderClassName}>
+          <Typography
+            as="h2"
+            id={rootHeadingId}
+            variant="section-label"
+            className="min-w-0 flex-1 truncate text-content-muted"
+          >
+            {t('documents.tree.rootTitle')}
+          </Typography>
+          {working && <Spinner size="sm" data-testid="documents-tree-busy" />}
+        </div>
         <DocumentTreeLevel
           parent=""
           top
+          labelledBy={rootHeadingId}
           context={{
             index,
             catalogue: catalogue.data,
@@ -295,10 +319,11 @@ export function DocumentsExplorer({
             closed,
             openedEmpty,
             entry: inline.entry,
-            renderEntry: (entry) => (
+            renderEntry: (entry, flat) => (
               <InlineEntryEditor
                 key={entry.key}
                 entry={entry}
+                flat={flat}
                 busy={busy}
                 unknown={unknown}
                 inputRef={inline.inputRef}
@@ -342,11 +367,6 @@ export function DocumentsExplorer({
           <p className="px-2 text-body-sm text-content-muted">{t('documents.tree.truncated')}</p>
         )}
 
-        {busy && !inline.entry && (
-          <p role="status" className="text-body-sm">
-            {t('documents.tree.processing')}
-          </p>
-        )}
         {error && !request && !typeRequest && (
           <Alert tone="attention" title={error}>
             {retry.length > 0 && (

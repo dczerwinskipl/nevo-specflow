@@ -449,10 +449,10 @@ export const TreeStates: Story = {
     await expect(
       within(expected).getByRole('button', { name: 'Add a Decisions document' }),
     ).toBeTruthy();
-    // Rows: the type only where the name does not say it; File missing always; no label for an
-    // unclassified file (owner feedback removed "No type").
+    // Rows: the type of every registered document, also where the name repeats it; File missing
+    // always; no label for an unclassified file (owner feedback removed "No type").
     await expect(screen.getByRole('button', { name: /^login-flow\.md\s*UX$/ })).toBeTruthy();
-    await expect(screen.getByRole('button', { name: /^ux\.md$/ })).toBeTruthy();
+    await expect(screen.getByRole('button', { name: /^ux\.md\s*UX$/ })).toBeTruthy();
     await expect(screen.getByRole('button', { name: /^backend\.md\s*File missing$/ })).toBeTruthy();
     await expect(
       screen.getByRole('button', {

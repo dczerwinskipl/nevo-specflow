@@ -9,6 +9,7 @@ import type { InlineEntry } from './inlineEntry';
  */
 export function InlineEntryEditor({
   entry,
+  flat = false,
   busy,
   unknown,
   inputRef,
@@ -19,6 +20,8 @@ export function InlineEntryEditor({
   onCheckResult,
 }: {
   entry: InlineEntry;
+  /** In a level without folders a file starts at the row edge (no folder icon column). */
+  flat?: boolean;
   busy: boolean;
   unknown: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -35,7 +38,7 @@ export function InlineEntryEditor({
   return (
     <div
       className={
-        entry.kind === 'document'
+        entry.kind === 'document' && !flat
           ? 'ml-tree-leaf-offset grid min-w-0 flex-1 gap-1 py-1'
           : 'grid min-w-0 flex-1 gap-1 py-1'
       }

@@ -28,7 +28,8 @@ export interface DocumentTreeLevelContext {
   /** Empty folders the user opened. */
   openedEmpty: readonly string[];
   entry?: InlineEntry;
-  renderEntry: (entry: InlineEntry) => ReactNode;
+  /** `flat`: the entry is in a level without folders (no offset to a folder icon column). */
+  renderEntry: (entry: InlineEntry, flat?: boolean) => ReactNode;
   renderMenu: (kind: 'document' | 'folder', path: string, id?: string) => ReactNode;
   register: (key: string) => (node: HTMLButtonElement | null) => void;
   hintId: (path: string) => string;
@@ -41,10 +42,13 @@ export function DocumentTreeLevel({
   context,
   parent,
   top,
+  labelledBy,
 }: {
   context: DocumentTreeLevelContext;
   parent: string;
   top: boolean;
+  /** The top level's list is named by the tree's root header. */
+  labelledBy?: string;
 }): ReactNode {
   const { t } = useTranslation();
   const { index, entry } = context;
@@ -53,11 +57,14 @@ export function DocumentTreeLevel({
   const { folders, documents } = index.level(parent);
   const showEntry = creatingIn(parent);
   if (!folders.length && !documents.length && !showEntry) return null;
+  // A top level without folders is a flat list: its files have no folder icon column to line up
+  // with, so they start at the row edge instead of looking nested.
+  const flat = top && !folders.length && !(showEntry && entry?.kind === 'folder');
   return (
-    <ul className={top ? treeRootClassName : treeBranchClassName}>
+    <ul className={top ? treeRootClassName : treeBranchClassName} aria-labelledby={labelledBy}>
       {showEntry && entry && (
         <li key={entry.key} className={treeNodeClassName}>
-          <div className={treeRowClassName}>{context.renderEntry(entry)}</div>
+          <div className={treeRowClassName}>{context.renderEntry(entry, flat)}</div>
         </li>
       )}
       {folders.map((folder) => {
@@ -94,11 +101,12 @@ export function DocumentTreeLevel({
         <DocumentNode
           key={doc.id}
           path={doc.path}
+          flat={flat}
           label={doc.dangling ? { kind: 'missing' } : documentTrailingLabel(doc, context.catalogue)}
           selected={context.active !== undefined && context.active === doc.id}
           disabled={context.locked}
           buttonRef={context.register('doc:' + doc.id)}
-          editor={entry?.rename?.id === doc.id ? context.renderEntry(entry) : undefined}
+          editor={entry?.rename?.id === doc.id ? context.renderEntry(entry, flat) : undefined}
           menu={context.renderMenu('document', doc.path, doc.id)}
           onOpen={() => context.onOpen(doc.id)}
         />

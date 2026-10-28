@@ -1068,6 +1068,7 @@
       "label": "Właściwości"
     },
     "actions": {
+      "wrapLines": "Zawijaj wiersze",
       "showPath": "Pokaż ścieżkę",
       "edit": "Edytuj dokument",
       "preview": "Pokaż podgląd",
@@ -1121,7 +1122,7 @@
       "checkResult": "Sprawdź wynik tej operacji",
       "emptyFolder": "Folder jest pusty. Dodaj plik lub folder z menu.",
       "addFirst": "Dodaj pierwszy plik przez menu akcji.",
-      "processing": "Przetwarzanie…",
+      "rootTitle": "Dokumenty specyfikacji",
       "importDone": "Wgrywanie zakończone",
       "importStillUnconfirmed": "Nadal brak potwierdzenia importu. Pliki zachowane.",
       "importUnconfirmed": "Import nie został potwierdzony. Pliki zachowano do ponowienia tej samej operacji.",

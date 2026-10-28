@@ -40,7 +40,8 @@ export type TreeDocumentFixture = DocumentTree['documents'][number];
 
 /**
  * One document node of the tree: registered, editable Markdown with every action available. Its
- * type defaults to the file stem, so its name says the type and the row shows no type label.
+ * type defaults to the file stem (the row shows it as its type label; give a short `type` where a
+ * long file name would make a long label).
  */
 export function treeDocumentFixture(
   fields: Partial<TreeDocumentFixture> & Pick<TreeDocumentFixture, 'id' | 'path'>,

@@ -34,7 +34,11 @@ function setup(
         onAdd: () => Promise.resolve(),
         onOperate,
       });
-      return useInlineEntry({ operations: operations.actions, focus, onOpenFolder: () => {} });
+      return useInlineEntry({
+        operations: operations.actions,
+        focus,
+        onOpenFolder: () => undefined,
+      });
     },
     {
       wrapper: ({ children }: { children: ReactNode }) => (

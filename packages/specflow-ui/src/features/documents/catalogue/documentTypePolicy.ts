@@ -19,30 +19,9 @@ import { message, type Message } from '../../../i18n/message';
 /** The protected document type: never offered for a new document or a classification. */
 export const overviewTypeId = 'overview';
 
-const fileName = (path: string) => path.split('/').at(-1) ?? path;
-
-/** The file name without its last extension (`notes/login-flow.md` -> `login-flow`). */
-export function fileStem(path: string): string {
-  const name = fileName(path);
-  const dot = name.lastIndexOf('.');
-  return dot > 0 ? name.slice(0, dot) : name;
-}
-
 /** The type's title from the catalogue; without a catalogue (or an unknown id) the id itself. */
 export function typeTitle(catalogue: ArchetypeCatalogue | undefined, typeId: string): string {
   return catalogue?.documentTypes.find((type) => type.id === typeId)?.title ?? typeId;
-}
-
-/** "The file name says the type": its stem is the type id or the stem of the type's default name. */
-export function nameSaysType(
-  path: string,
-  typeId: string,
-  catalogue: ArchetypeCatalogue | undefined,
-): boolean {
-  const stem = fileStem(path).toLowerCase();
-  if (stem === typeId.toLowerCase()) return true;
-  const defaultName = catalogue?.documentTypes.find((type) => type.id === typeId)?.defaultFilename;
-  return defaultName !== undefined && stem === fileStem(defaultName).toLowerCase();
 }
 
 /** The quiet trailing label of a tree row. */
@@ -51,16 +30,16 @@ export type TrailingLabel = { kind: 'type'; text: string } | { kind: 'missing' }
 type TreeDocument = DocumentTree['documents'][number];
 
 /**
- * Type title only when the name does not already say it. An unclassified file carries no label:
- * its row menu offers `Assign type…` and Expected documents name what is still missing.
+ * The type title of every registered document, also when the file name repeats it (`ux.md · UX`):
+ * one rule the reader can rely on. An unclassified file carries no label: its row menu offers
+ * `Assign type…` and Expected documents name what is still missing.
  */
 export function documentTrailingLabel(
   document: Pick<TreeDocument, 'path' | 'classification' | 'type'>,
   catalogue: ArchetypeCatalogue | undefined,
 ): TrailingLabel | undefined {
   if (document.classification === 'unclassified') return undefined;
-  if (document.type && !nameSaysType(document.path, document.type, catalogue))
-    return { kind: 'type', text: typeTitle(catalogue, document.type) };
+  if (document.type) return { kind: 'type', text: typeTitle(catalogue, document.type) };
   return undefined;
 }
 

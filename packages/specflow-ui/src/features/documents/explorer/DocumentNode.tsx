@@ -86,6 +86,7 @@ export function FolderNode({
  */
 export function DocumentNode({
   path,
+  flat = false,
   label,
   selected,
   disabled,
@@ -95,6 +96,8 @@ export function DocumentNode({
   onOpen,
 }: {
   path: string;
+  /** In a level without folders: no offset to a folder icon column. */
+  flat?: boolean;
   label?: TrailingLabel;
   /** The document that is open, nothing else. */
   selected: boolean;
@@ -117,7 +120,7 @@ export function DocumentNode({
                 <button
                   type="button"
                   disabled={disabled}
-                  className={treeLeafItemClassName}
+                  className={flat ? treeItemClassName : treeLeafItemClassName}
                   ref={buttonRef}
                   aria-current={selected ? 'true' : undefined}
                   onClick={onOpen}

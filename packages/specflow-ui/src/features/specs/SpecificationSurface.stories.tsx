@@ -194,7 +194,7 @@ export const DocumentReturnNavigation: Story = {
 export const DocumentBackFromList: Story = {
   args: { path: '/specs/docs-spec/documents?collection=archive', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    const tree = await canvas.findAllByRole('button', { name: /\.md$/ }, { timeout: 5000 });
+    const tree = await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
     if (!tree[0]) throw new Error('Expected a document in the tree.');
     await userEvent.click(tree[0]);
     await canvas.findByRole('tabpanel', {}, { timeout: 5000 });
@@ -215,7 +215,7 @@ export const DocumentBackFromDirectLink: Story = {
       { timeout: 5000 },
     );
     await userEvent.click(back);
-    await canvas.findAllByRole('button', { name: /\.md$/ }, { timeout: 5000 });
+    await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
   },
 };
 
@@ -229,7 +229,7 @@ export const ArchivedDocumentBackFromDirectLink: Story = {
       { timeout: 5000 },
     );
     await userEvent.click(back);
-    await canvas.findAllByRole('button', { name: /\.md$/ }, { timeout: 5000 });
+    await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
     const overview = canvas.queryAllByRole('link', { name: 'Overview' })[0];
     if (overview && !overview.getAttribute('href')?.includes('collection=archive'))
       throw new Error('Mobile deep links must preserve Archive context.');

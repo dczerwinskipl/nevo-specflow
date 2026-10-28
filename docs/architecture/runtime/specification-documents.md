@@ -287,6 +287,13 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   classification. On a case-sensitive filesystem `A.md` and `a.md` are two files with two different ids; both are
   listed and readable, the tree reports an issue `path-case-collision`, and the Engine refuses any operation that
   would create, rename or move onto a path equal to another ignoring case.
+  A rename or move that changes only the letter case of a path (`bb.md` to `Bb.md`, a folder `docs` to `Docs`) is
+  applied as a write of the new path followed by the removal of the old one; where the file system ignores case both
+  name one file and the removal would delete it. The Engine therefore refuses it on Windows
+  (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`) and accepts it on case-sensitive systems; no
+  plan whose paths name one file twice is planned or applied (a journaled one is `DOCUMENT_RECOVERY_REQUIRED`,
+  `plan-invalid`). Case-insensitive file systems other than Windows (for example the default APFS volume of macOS)
+  are not detected.
 - **Paths**: POSIX `/`, relative to the Specification directory, at most 500 characters, every segment at most 200 UTF-8 bytes, no leading `/`, no
   `..`, no empty segment, no segment starting with `.` or ending with `.` or space, none of `\ : * ? " < > |` or
   control characters, no Windows reserved device name in any segment (with or without extension); folder depth

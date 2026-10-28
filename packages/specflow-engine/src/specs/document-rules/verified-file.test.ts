@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DocumentError } from './errors';
 import {
+  aliasedPhysicalPath,
   assertContainedRelativePath,
   inspectEntry,
   openVerifiedFile,
@@ -92,6 +93,27 @@ function harness(): Harness {
   };
   return { fs, events, closed, world, real, hooks };
 }
+
+function onPlatform<T>(platform: NodeJS.Platform, run: () => T): T {
+  const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+  Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+  try {
+    return run();
+  } finally {
+    Object.defineProperty(process, 'platform', original);
+  }
+}
+
+describe('aliasedPhysicalPath', () => {
+  it('finds two spellings of one entry only where the file system ignores case (Windows)', () => {
+    const paths = ['docs/bb.md', 'docs/other.md', 'docs/Bb.md'];
+    expect(onPlatform('win32', () => aliasedPhysicalPath(paths))).toBe('docs/Bb.md');
+    expect(onPlatform('linux', () => aliasedPhysicalPath(paths))).toBeUndefined();
+    // macOS is treated as case-sensitive (a case-insensitive APFS volume is not detected).
+    expect(onPlatform('darwin', () => aliasedPhysicalPath(paths))).toBeUndefined();
+    expect(onPlatform('linux', () => aliasedPhysicalPath(['a.md', 'a.md']))).toBe('a.md');
+  });
+});
 
 describe('assertContainedRelativePath', () => {
   it.each([

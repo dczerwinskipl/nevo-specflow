@@ -506,6 +506,27 @@ describe('rename and move of a document', () => {
     expect(failure.details?.cause).toBe('case-only-rename');
   });
 
+  it('treats a move into a folder that differs only in case like a case-only rename', () => {
+    const inFolder = snapshotWithBehaviour({
+      documents: [{ id: 'n', path: 'docs/n.md', type: 'notes' }],
+      files: [{ path: 'docs/n.md', content: 'n' }],
+    });
+    const request: DocumentChangeRequest = {
+      action: 'move',
+      target: { kind: 'document', documentId: 'n' },
+      targetFolder: 'Docs',
+      expectedRevision: revisionOf(inFolder, 'docs/n.md'),
+    };
+    expect(
+      onPlatform('linux', () =>
+        plan(inFolder, request).plan.paths.map((path) => path.path.slice(DIR.length)),
+      ),
+    ).toEqual(['Docs/n.md', 'docs/n.md', 'specification.yaml']);
+    const failure = onPlatform('win32', () => refusal(inFolder, request));
+    expect(failure.code).toBe('DOCUMENT_OPERATION_INVALID');
+    expect(failure.details?.cause).toBe('case-only-rename');
+  });
+
   it('moves into a folder, to the root, and refuses a no-op or a bad folder', () => {
     const moved = plan(snapshot, {
       action: 'move',
@@ -744,6 +765,52 @@ describe('folder operations', () => {
     const failure = onPlatform('win32', () => refusal(snapshot, rename('Docs'), options));
     expect(failure.code).toBe('DOCUMENT_OPERATION_INVALID');
     expect(failure.details?.cause).toBe('case-only-rename');
+  });
+
+  it('refuses where case is ignored a folder move whose parent differs only in case', () => {
+    const nested = snapshotWithBehaviour({
+      files: [
+        { path: 'a/docs/x.md', content: 'x' },
+        { path: 'a/y.md', content: 'y' },
+      ],
+    });
+    const move: DocumentChangeRequest = {
+      action: 'move',
+      target: { kind: 'folder', path: 'a/docs' },
+      targetFolder: 'A',
+      expectedRevision: 'rev:a/docs',
+    };
+    expect(
+      onPlatform('linux', () =>
+        plan(nested, move, options)
+          .plan.paths.filter((path) => path.source.kind === 'moved-from')
+          .map((path) => path.path.slice(DIR.length)),
+      ),
+    ).toEqual(['A/docs/x.md']);
+    const failure = onPlatform('win32', () => refusal(nested, move, options));
+    expect(failure.details?.cause).toBe('case-only-rename');
+  });
+
+  it('refuses a folder move that would write a path it also removes (a same-name ancestor), on every system', () => {
+    // Moving `b/b` to the root makes it `b`: `b/b/b/x.md` would be written to `b/b/x.md`, which the
+    // same plan then removes as the origin of `b/x.md`.
+    const sameName = snapshotWithBehaviour({
+      files: [
+        { path: 'b/b/x.md', content: 'same' },
+        { path: 'b/b/b/x.md', content: 'same' },
+      ],
+    });
+    const move: DocumentChangeRequest = {
+      action: 'move',
+      target: { kind: 'folder', path: 'b/b' },
+      targetFolder: '',
+      expectedRevision: 'rev:b/b',
+    };
+    for (const platform of ['linux', 'win32'] as const) {
+      const failure = onPlatform(platform, () => refusal(sameName, move, options));
+      expect(failure.code).toBe('DOCUMENT_OPERATION_INVALID');
+      expect(failure.details?.cause).toBeUndefined();
+    }
   });
 
   it('expands over 200 paths to DOCUMENT_OPERATION_INVALID, and accepts exactly the cap', () => {

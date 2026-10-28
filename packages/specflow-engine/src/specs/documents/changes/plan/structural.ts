@@ -82,15 +82,17 @@ function destinationOf(request: PathOperation, current: string): string | undefi
 }
 
 /**
- * A rename that only changes the letter case names the SAME file on a file system that ignores case
- * (Windows): the plan writes the new path and then removes the old one, which would remove the file.
- * Refused there with its own cause; a case-sensitive system renames it like any other path.
+ * A rename or move that only changes the letter case of the path names the SAME file (or folder) on a
+ * file system that ignores case (Windows): the plan writes the new path and then removes the old one,
+ * which would remove the file. Refused there with its own cause; a case-sensitive system renames it
+ * like any other path. Only Windows is treated as ignoring case (see `physicalPathKey`).
  */
 function assertNotCaseOnlyRename(from: string, to: string): void {
   if (from !== to && samePhysicalPath(from, to)) {
     throw documentChangeError(
       'case-only-rename',
-      'Renaming only the letter case is not supported on this file system.',
+      'Changing only the letter case of a name is not supported on this file system. ' +
+        'Rename it to a different name first, then to the new spelling.',
     );
   }
 }

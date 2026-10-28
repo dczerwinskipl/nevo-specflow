@@ -7,7 +7,7 @@ import { engineCommitRefusal } from '../../version-control/commits/branch-patter
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { PolicyReason } from './projection';
 import { ADVISORY_FILE_MAX_BYTES } from './limits';
-import { READ_OPEN_FLAGS } from './verified-file';
+import { READ_OPEN_FLAGS } from '../document-rules/verified-file';
 
 /**
  * Advisory branch reasons for the tree (`branch-protected`, `branch-not-allowed`,

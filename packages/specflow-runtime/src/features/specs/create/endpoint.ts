@@ -1,7 +1,8 @@
 import {
   inspectCreateOptions,
   inspectPublicCreateOperation,
-  projectCatalogue,
+  loadProjectCatalogue,
+  toArchetypeCatalogue,
   readPublicCreateOperationRow,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
@@ -33,7 +34,8 @@ import {
   type OperationProgressRegistry,
 } from '../../operations';
 import { matchesEtag, sendNotModified } from '../../../server/etag';
-import { createErrorCode, statusForCreateError } from './error-status';
+import { catalogueEtag } from './catalogue-etag';
+import { createErrorCode, createErrorDetails, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
 
@@ -166,12 +168,17 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           304: Type.Null(),
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
+          503: CreateSpecErrorSchema,
         },
       },
     },
     async (request, reply) => {
-      const catalogue = projectCatalogue();
-      const etag = `"${catalogue.revision}"`;
+      const engine = options.engine;
+      if (!engine) {
+        return reply.code(503).send({ error: 'ENGINE_UNAVAILABLE', code: 'ENGINE_UNAVAILABLE' });
+      }
+      const catalogue = toArchetypeCatalogue(await loadProjectCatalogue(engine));
+      const etag = catalogueEtag(catalogue);
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
       if (matchesEtag(request.headers['if-none-match'], etag)) {
         return sendNotModified(reply);
@@ -328,7 +335,10 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       } catch (error) {
         const code = createErrorCode(error);
         if (!code) throw error;
-        return reply.code(statusForCreateError(code)).send({ error: code, code });
+        const details = createErrorDetails(error);
+        return reply
+          .code(statusForCreateError(code))
+          .send({ error: code, code, ...(details ? { details } : {}) });
       }
     },
   );

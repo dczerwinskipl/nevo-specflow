@@ -148,6 +148,79 @@ pnpm exec turbo run build --filter=@nevo/specflow-runtime^...
 node tools/ci-windows-smoke.mjs        # add --list to audit the list only
 ```
 
+## Platform gating of the real-Git, process and filesystem tests
+
+Pull requests run the tests on Linux only. `engine-filesystem.yml` runs the full Engine suite on
+Ubuntu and macOS, the eight Windows shards (two hot, six rest) (`tools/ci-engine-hot-shard.mjs`,
+`tools/ci-engine-rest-shard.mjs`), the Engine unit tests next to the sources, and the Runtime and
+CLI suites on Windows, on `main`, nightly and with the `ci:full-platform` label. A test that was
+only verified on Linux therefore breaks `main`: every platform-dependent test is gated explicitly.
+
+**One helper.** `packages/specflow-engine/test/support/platform.ts` is the only place that reads
+the platform for gating (`packages/specflow/test/support/platform.ts` repeats the two constants the
+CLI needs). Tests write `describe.skipIf(!onLinux)` or `it.skipIf(!symlinksAvailable)` and do not
+read `process.platform` to decide whether to run. A test that must adapt its input to a platform
+(a shorter path on Windows) may use `onWindows`.
+
+| Export                                    | Meaning                                                                                                     |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `onLinux`                                 | `/proc`, a reliable dead-process proof and the SIGKILL contract: every test that kills a process on purpose |
+| `onPosix`                                 | process groups, signals, mode bits, `O_NOFOLLOW`: not Windows (macOS included)                              |
+| `onWindows`                               | adapt an input to Windows (never to skip a check that Windows can run)                                      |
+| `hardLinksAvailable`, `symlinksAvailable` | the temporary directory accepted the link (Windows needs a privilege or Developer Mode)                     |
+| `realGitAvailable`                        | a `git` executable answers `--version`                                                                      |
+| `SLOW_GIT_TEST_TIMEOUT_MS`                | 240 s: `vi.setConfig({ testTimeout })` of a file whose tests take seconds on Linux                          |
+
+The helper has a unit test (`test/support/platform.test.ts`) with injected platforms and capability
+probes.
+
+**Matrix of the document write, queue and commit tests.** Engine integration tests live in `test/documents`, `test/create`, `test/manual-commit`, `test/definitions`, `test/lifecycle` and `test/git` (shared helpers in `test/support`), and in the root of `test/` for cross-cutting suites. The Linux, macOS and Windows columns
+say where a test runs on `main`. The gate is what keeps a test off a platform; a test without a gate
+must pass on all three.
+
+| Class                                                 | Runs on               | Gate                                      | Files (Engine `test/` unless a path is given)                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------- | --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Pure (codecs, planners, state tables, injected seams) | Linux, macOS, Windows | none                                      | contracts `src/**`; Engine `src/specs/documents/**`, `src/specs/definitions/**`, `src/project/**`; Runtime `src/**`; CLI `documents-command`, `exit-codes`, `startup-hint`                                                                                                                                                                                                                                                                       |
+| Windows rules with an injected platform               | Linux, macOS, Windows | none (the platform is a parameter)        | `src/specs/documents/write/path-bound.test.ts`, `src/project/fs/windows-safe-fs.test.ts`, `src/specs/documents/write/executor-identity.test.ts`, `git-process-termination`, `file-effects.test.ts` (permission bits)                                                                                                                                                                                                                             |
+| Real filesystem, no Git                               | Linux, macOS, Windows | none                                      | `definitions-filesystem`, `definitions-inspect`, `definition-text-presence`, `document-index`, `document-reader-memo`, `document-reader-tree`                                                                                                                                                                                                                                                                                                    |
+| Real Git, in process                                  | Linux, macOS, Windows | none                                      | `document-writer`, `document-writer-faults`, `document-write-claims`, `document-queue`, `document-queue-failures`, `document-queue-held`, `document-queue-faults`, `document-queue-store`, `document-close-flush`, `document-create-templates`, `document-commit-reads`, `document-scheduler` (timers), `document-change-commit-policy`, `document-state-machine`; Runtime `test/documents/**`, `test/specs/documents-read`; CLI `documents-cli` |
+| Real Git, POSIX only                                  | Linux, macOS          | `onPosix`                                 | `document-change-commit` (hung filter), `document-change-commit-limits`, `document-write-admission` (save budget), `document-writer-races` (mode bits), `document-reader-hostile-fs` (two tests), `file-effects.test.ts` (mode)                                                                                                                                                                                                                  |
+| Needs links                                           | where the link works  | `symlinksAvailable`, `hardLinksAvailable` | `document-reader-hostile-fs`, `document-queue-store`, `create-archetype`, `document-writer-races` (hard links), `file-effects.test.ts`                                                                                                                                                                                                                                                                                                           |
+| Real process kill, `/proc`, independent processes     | Linux                 | `onLinux`                                 | `document-writer-crash`, `document-queue-crash`, `document-scheduler` (crash block), `document-crash-cutpoints`, `document-contention`, `document-open` (`O_NOFOLLOW`, descriptors); CLI `documents-cli-sigkill`                                                                                                                                                                                                                                 |
+
+The worker fixtures under `test/fixtures/` are tests that do nothing unless the parent test sets
+their environment variable; they sit in the rest shards with a weight of 1.
+
+**Windows shards.** The two shard scripts fail closed: the hot shard on a declaration of
+`git-integration-proof.test.ts` it cannot parse, the rest shards by partitioning every `*.test.ts`
+under `packages/specflow-engine/test` (a new file is placed automatically with a weight of 60 s unless
+`known` names it). `node tools/ci-engine-shard-audit.mjs` runs every `--list` of the matrix in
+`engine-filesystem.yml` and fails when a file is in no shard or in two, a shard is empty, or the hot
+cases are not covered once; the `plan tests` job runs it on every pull request. The shards pass
+`--testTimeout=120000` (Linux seconds are minutes on a Windows runner); a test that needs more sets
+its own timeout, and a file of real-Git tests that take seconds on Linux calls
+`vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS })`.
+
+**Windows assumptions of the document write path.** What the code assumes, and how it is checked
+without a Windows runner in the pull request:
+
+| Assumption                                                                                 | Where                                | Checked by                                                                                             |
+| ------------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Rename over a file another process has open fails transiently (`EPERM`, `EBUSY`, `EACCES`) | `renameWindowsSafe` in every write   | `windows-safe-fs.test.ts` (injected platform and errors); the Windows shards                           |
+| A path, or its stage file, is at most 240 characters                                       | `assertPlanFitsWindows` at admission | `path-bound.test.ts` (injected `win32`, exact bound)                                                   |
+| No mode bits: the executable bit is not carried                                            | `nodeDocumentFileOps.chmod`          | `file-effects.test.ts` (platform read at call time, stubbed)                                           |
+| A directory cannot be flushed                                                              | `syncDirectoryWhenSupported`         | the Windows shards (real); the error codes are not injected                                            |
+| No process groups: Git is stopped with `taskkill /T /F`                                    | `terminateGitProcessTree`            | `git-process-termination.test.ts` (injected seams); the hung filter runs on POSIX only                 |
+| No `/proc`: an executor is never proven dead, only taken over on the operator's assertion  | `proveExecutorState`, takeover       | `executor-identity.test.ts` (injected `win32` table); scheduler takeover tests with a foreign platform |
+| Case-insensitive volumes: `A.md` and `a.md` are one path                                   | `foldPathKey` in claims and barriers | `projection.test.ts`, `formation.test.ts`, `reservation-guard.test.ts` (folded keys)                   |
+| CRLF: `core.autocrlf` must not change what is hashed                                       | document commit port                 | `document-change-commit.test.ts` (same attributes as a hand `git add`); fixtures set `autocrlf=false`  |
+| Symbolic links need a privilege                                                            | writer, reader                       | the link probes above; the hostile-filesystem tests skip                                               |
+| Temporary and project paths may be 8.3 short names                                         | project resolution                   | fixtures resolve `realpath`; not verified on a runner with short names                                 |
+| Another process holds the control lock: `EPERM` instead of `EEXIST` on the lock file       | `withProjectControlLock`             | not verified: the branch reads `process.platform` directly and has no injected test                    |
+
+The Windows smoke list covers one save, queue and commit path through the Engine and through the
+CLI (`document-queue.test.ts`, `documents-cli.test.ts`).
+
 ## CodeQL
 
 CodeQL uses no-build JavaScript/TypeScript analysis. The stable check name is `codeql`.

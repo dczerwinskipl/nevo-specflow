@@ -37,10 +37,16 @@ export function observeChildProcess(child: ChildProcess): IndependentVitestWorke
   };
 }
 
+/**
+ * Runs one fixture (or several, which Vitest may run side by side) in a child Vitest.
+ * `runnerArgs` replaces the default of one serial worker, for example to run two fixtures as threads
+ * of one process.
+ */
 export function spawnVitestWorker(
-  fixture: string,
+  fixture: string | readonly string[],
   env: NodeJS.ProcessEnv,
   testTimeoutMs: number,
+  runnerArgs: readonly string[] = ['--maxWorkers=1'],
 ): IndependentVitestWorker {
   const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const vitestEntry = resolve(
@@ -51,7 +57,13 @@ export function spawnVitestWorker(
   return observeChildProcess(
     spawn(
       process.execPath,
-      [vitestEntry, 'run', fixture, '--maxWorkers=1', '--testTimeout=' + testTimeoutMs],
+      [
+        vitestEntry,
+        'run',
+        ...(typeof fixture === 'string' ? [fixture] : fixture),
+        ...runnerArgs,
+        '--testTimeout=' + testTimeoutMs,
+      ],
       {
         cwd: packageRoot,
         windowsHide: true,
@@ -89,7 +101,15 @@ export async function awaitProcessMarker(
     if (!worker) return await poll();
     return await Promise.race([
       poll(),
-      worker.done.then((outcome) => {
+      worker.done.then(async (outcome) => {
+        // A worker that writes its marker and exits at once wins this race: the marker is the answer.
+        if (
+          await access(marker).then(
+            () => true,
+            () => false,
+          )
+        )
+          return;
         throw new Error(
           'Worker exited before checkpoint ' +
             marker +

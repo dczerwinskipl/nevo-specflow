@@ -2,14 +2,20 @@ import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 
 import type { SpecFlowEngine } from '../../application';
 import { mapBounded } from '../../concurrency';
-import { getBuiltInCatalogue } from '../archetypes';
+import { lookupProjectArchetype } from '../definitions/catalogue-source';
 import { advisoryPolicyReason } from './advisory-policy';
+import { readCommitPolicyMode } from './commit-policy';
 import { countArchiveInventory, listSpecificationFiles, SKIPPED_PATHS_MAX } from './directory-scan';
-import { isReservedRootName } from './document-paths';
+import { isReservedRootName } from '../document-rules/document-paths';
 import { loadSpecification, type LoadedSpecification } from './loaded-specification';
 import { observe } from './observation';
 import { projectDocumentTree, type ObservedFile, type PolicyReason } from './projection';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
+import {
+  commitSubjectOf,
+  readDocumentCommitView,
+  type CommitReadOptions,
+} from './reads/commit-reader';
 
 /**
  * Filesystem reader of the documents layer (`docs/architecture/runtime/specification-documents.md`).
@@ -30,11 +36,12 @@ export async function readSpecificationDocumentTree(
 ): Promise<DocumentTree> {
   const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
   const policyReason = await advisoryPolicyReason(engine, loaded.workspaceRoot);
-  return buildDocumentTree(loaded, policyReason, options);
+  return buildDocumentTree(engine, loaded, policyReason, options);
 }
 
 /** The tree of an already loaded Specification (the part of the read that needs no Engine). */
 async function buildDocumentTree(
+  engine: SpecFlowEngine,
   loaded: LoadedSpecification,
   policyReason: PolicyReason | undefined,
   options: DocumentReadOptions = {},
@@ -70,11 +77,21 @@ async function buildDocumentTree(
   const registeredPaths = new Set(manifest.documents.map((document) => document.path));
   const unreadableRegisteredPaths = perFileSkipped.filter((path) => registeredPaths.has(path));
 
-  const archetypeTitle = getBuiltInCatalogue().findArchetype(manifest.archetype.id)?.title;
+  // One `lstat` of the archetype file plus the catalogue memo: no walk of the definitions folder.
+  const archetype = await lookupProjectArchetype(engine, manifest.archetype.id);
+
+  // The open commits are read last: a write that settled while the files were read is then seen as
+  // settled, and the marker never outlives the commit it describes. Lock-free, no Git.
+  const commits = await readDocumentCommitView(
+    engine.context,
+    commitSubjectOf(loaded),
+    commitReadOptions(options, resolved.now, await readCommitPolicyMode(engine.context)),
+  );
 
   return projectDocumentTree({
     manifest,
-    ...(archetypeTitle !== undefined ? { archetypeTitle } : {}),
+    ...(archetype.title !== undefined ? { archetypeTitle: archetype.title } : {}),
+    archetypeDefined: archetype.state,
     manifestBytes: loaded.manifestBytes,
     location: loaded.location,
     files,
@@ -87,5 +104,18 @@ async function buildDocumentTree(
       ...(archive.oversizedPath !== undefined ? { path: archive.oversizedPath } : {}),
     },
     ...(policyReason !== undefined ? { policyReason } : {}),
+    commits,
   });
+}
+
+function commitReadOptions(
+  options: DocumentReadOptions,
+  now: () => number,
+  policy: CommitReadOptions['policy'],
+): CommitReadOptions {
+  return {
+    now,
+    ...(policy !== undefined ? { policy } : {}),
+    ...(options.processTable !== undefined ? { processTable: options.processTable } : {}),
+  };
 }

@@ -8,7 +8,7 @@ import {
   addWorkspace,
   bindSpecToWorkspace,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   provisionLinkedWorkspaceIdentity,
   updateWorkspaceRegistry,
 } from '@nevo/specflow-engine/testing';

@@ -12,6 +12,7 @@ import {
   createSpecificationForTesting as createSpecification,
   discoverSpecifications,
   inspectCreateSpecification,
+  installDefinitionsForTesting,
   openSpecFlowEngine,
   workspaceRegistryPath,
   type CreateSpecificationInput,
@@ -34,7 +35,11 @@ async function project(enabled = true): Promise<{ root: string; engine: SpecFlow
     'runtime: {}\ngit:\n  enabled: ' + String(enabled) + '\n',
   );
   roots.push(root);
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone, and every process of the test finds them in place.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+  return { root, engine };
 }
 
 function existing(engine: SpecFlowEngine, title = 'Create durable spec'): CreateSpecificationInput {
@@ -355,7 +360,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         '',
       ].join('\n'),
     );
-    const { createSpecificationFromRequest } = await import('../src/index');
+    const { createSpecificationFromRequestForTesting: createSpecificationFromRequest } =
+      await import('../src/testing');
     const request = {
       operationId: randomUUID(),
       archetype: { id: 'minimal', version: 1 },
@@ -405,7 +411,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
   it('rejects a malformed explicit slug before reserving anything', async () => {
     const { engine } = await project(false);
-    const { createSpecificationFromRequest } = await import('../src/index');
+    const { createSpecificationFromRequestForTesting: createSpecificationFromRequest } =
+      await import('../src/testing');
     for (const slug of ['Upper', 'a--b', '../x', 'con', 'a_b', 'a'.repeat(81)]) {
       await expect(
         createSpecificationFromRequest(engine, {
@@ -437,7 +444,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         '',
       ].join('\n'),
     );
-    const { createSpecificationFromRequest } = await import('../src/index');
+    const { createSpecificationFromRequestForTesting: createSpecificationFromRequest } =
+      await import('../src/testing');
     const operationId = randomUUID();
     const request = {
       operationId,
@@ -466,6 +474,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
   it('VC05: reserved omitted defaults survive config changes', async () => {
     const { root, engine } = await project();
+    // This test enters Create below the test seam, so the project gets its definitions here.
+    await installDefinitionsForTesting(engine);
     const config = join(root, '.nevo/config.yaml');
     const head = git(root, 'rev-parse', 'HEAD');
     git(root, 'branch', 'develop');

@@ -22,7 +22,10 @@ import {
   updateWorkspaceRegistry,
   type SpecFlowEngine,
   type SpecificationScaffold,
+  seedCatalogueForTesting,
 } from '../src/testing';
+
+const catalogue = await seedCatalogueForTesting();
 
 // Real-Git and checkout-incarnation probes are disk-intensive on Windows,
 // especially when concurrent crash/multiprocess suites run in CI.
@@ -70,6 +73,7 @@ async function persist(root: string, scaffold: SpecificationScaffold): Promise<s
 
 function scaffold(specId: string, title: string): SpecificationScaffold {
   return createSpecificationScaffold({
+    catalogue,
     archetypeId: 'minimal',
     specId,
     title,

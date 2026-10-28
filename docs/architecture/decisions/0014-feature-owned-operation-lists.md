@@ -10,6 +10,7 @@ summary: >
   GET /api/specs/operations, authorized by spec view; status comes from one documented table; freshness is
   by polling with ETag; there is no global operations index.
 related:
+  - reference.api.specification-documents
   - reference.api.specs-operations-list
   - reference.api.operation-progress
   - engineering.shared.operation-progress
@@ -39,7 +40,9 @@ from API data alone.
 - Access goes through **feature-owned, read-only routes** registered by `registerOperationListRoute`,
   exactly like the per-operation events route. Specifications exposes `GET /api/specs/operations`; its
   authorization is that feature's capability (spec view per row, rows without a spec need Create). A new
-  kind or feature costs one adapter and one registration. There is **no global** `GET /api/operations`.
+  kind or feature costs one adapter and one registration. The documents feature registers a second such list,
+  `GET /api/specs/document-operations` (document changes that wait for their commit; status `queued`), with
+  the same helper, query and ETag. There is **no global** `GET /api/operations`.
 - **Status is derived by one documented table** from the journal, the registry and the idle time
   (reference.api.specs-operations-list). The registry keeps a listing record separate from its replay
   window (completed 10 min, failed 60 min, capped). A non terminal journal idle for 5 minutes with no live
@@ -67,12 +70,11 @@ from API data alone.
   accumulate until resolved. After the retention the same operationId is a new operation.
 - The Create journal format is `version: 2` (the archetype layer). The scaffold contents are not in the journal:
   they live in a hash-addressed payload folder next to it and the journal keeps only evidence (path, sha256,
-  bytes). No migration or compatibility reader exists: a journal of an older version, a file that is not JSON or a
-  file without a numeric `version` is _unsupported_ and nothing else is read from it. It never counts as a
+  bytes). A file that is not JSON or has no numeric `version` is _unsupported_ and nothing else is read from it (a parsable
+  file of any other shape is a corrupt journal and blocks). It never counts as a
   resource claim, so it blocks neither Create nor Close; the retention sweep deletes it after 7 days; reading it
   by operation id answers `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`), and the
-  tolerant list shows it as `recovery-required` with that code. Resume an interrupted Create before upgrading;
-  the evidence of an older journal that still had effects is lost after the retention.
+  tolerant list shows it as `recovery-required` with that code.
 
 ## Known gap: no product path to resume or abandon
 

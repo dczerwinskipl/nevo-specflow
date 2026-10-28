@@ -10,15 +10,15 @@ import {
   addWorkspace,
   bootstrapProjectHome,
   discoverSpecifications,
+  installDefinitionsForTesting,
   openSpecFlowEngine,
   provisionLinkedWorkspaceIdentity,
+  seedCatalogueForTesting,
   updateWorkspaceRegistry,
   workspaceRegistryPath,
 } from '@nevo/specflow-engine/testing';
 import { startRuntime } from '@nevo/specflow-runtime';
 import { afterEach, describe, expect, it } from 'vitest';
-
-import { catalogueRevision } from '@nevo/specflow-engine';
 
 import { createProgram } from '../src/program';
 
@@ -28,9 +28,11 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
+const seedRevision = (await seedCatalogueForTesting()).revision;
+
 /** The archetype fields of a `POST /api/specs` body: the same selection the CLI test passes. */
 function archetypeRequest() {
-  return { archetypeId: 'minimal', archetypeVersion: 1, catalogueRevision: catalogueRevision() };
+  return { archetypeId: 'minimal', archetypeVersion: 1, catalogueRevision: seedRevision };
 }
 
 function git(cwd: string, ...args: string[]): string {
@@ -87,7 +89,9 @@ async function fixture(gitEnabled: boolean, port: number) {
     '-qm',
     'bootstrap',
   );
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
+  return { root, engine };
 }
 
 function cli(cwd: string) {

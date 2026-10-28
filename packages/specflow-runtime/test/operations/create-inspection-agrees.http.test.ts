@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import {
   CREATE_JOURNAL_RELATIVE_DIR,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
 } from '@nevo/specflow-engine/testing';
 import type { OperationListResponse } from '@nevo/specflow-contracts/operations';
 import type { FastifyInstance } from 'fastify';

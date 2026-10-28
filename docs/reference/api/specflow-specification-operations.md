@@ -12,6 +12,7 @@ summary: >
   Implemented E2 endpoint routes, public payloads, response codes and authorization
   boundaries.
 related:
+  - reference.api.specification-documents
   - architecture.runtime.specflow-lifecycle
   - product.specflow.specification-creation
   - reference.configuration.specflow-git-worktrees
@@ -57,7 +58,7 @@ catalogue is `GET /api/specs/archetypes` and the fields are specified in
 body is **413** `DOCUMENT_TOO_LARGE`. Further typed errors: `CATALOGUE_STALE`/409 (revision or archetype version
 changed; nothing written), `ARCHETYPE_UNKNOWN`/422, `DOCUMENT_PATH_INVALID`/400, `DOCUMENT_PATH_CONFLICT`/409,
 `DOCUMENT_OPERATION_INVALID`/400 (counts, UTF-8 byte limits, an added type that cannot be registered) and
-`CREATE_JOURNAL_UNSUPPORTED`/503 (an older-format journal read by operation id). The catalogue revision is
+`CREATE_JOURNAL_UNSUPPORTED`/503 (an unreadable journal read by operation id). The catalogue revision is
 checked only when a new operation is admitted and is not part of the idempotency fingerprint.
 `slug` is optional, lowercase kebab-case ASCII (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 80 characters,
 not a Windows device name). It replaces the title-derived slug for the Spec folder, the
@@ -177,6 +178,10 @@ Spec-scoped Close requires the appropriate Spec capability and whole-branch inte
 needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 `CloseWorkspace` **and** `Integrate` before revealing occupants/journals.
 Shared spec-scoped integration refuses with 409 `CLOSE_SHARED_WORKTREE`.
+Close and integration first flush the document commit queue of the affected checkouts and refuse with 409
+`DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
+commits remain; the precedence and the preview behaviour are defined in
+[Specification documents](specification-documents.md).
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

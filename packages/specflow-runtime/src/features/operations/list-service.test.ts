@@ -166,3 +166,60 @@ describe('buildOperationList shaping', () => {
     expect(byId.get(id(2))?.startedAt).toBe(iso(20 * min));
   });
 });
+
+describe('document change rows', () => {
+  const documentRow = (n: number, over: Partial<OperationSourceRow> = {}): OperationSourceRow => ({
+    operationId: id(n),
+    state: 'queued',
+    subject: { specId: 'spec-1', slug: 'sample' },
+    action: 'save-all',
+    documentCount: 3,
+    updatedAt: iso(99 * min),
+    ...over,
+  });
+
+  it('never applies the idle-interrupted rule or the live registry to a waiting commit', async () => {
+    const registry = createOperationProgressRegistry({ now: () => new Date(NOW) });
+    registry.begin({ operationId: id(2), kind, steps: ['a'] });
+    const result = await run(
+      [
+        documentRow(1),
+        documentRow(2, { state: 'failed', code: 'COMMIT_BLOCKED' }),
+        documentRow(4, { state: 'recovery-required', code: 'OPERATION_INTERRUPTED' }),
+      ],
+      { registry },
+    );
+    const byId = new Map(result.items.map((item) => [item.operationId, item]));
+    expect(byId.get(id(1))).toMatchObject({ status: 'queued' });
+    expect(byId.get(id(1))).not.toHaveProperty('code');
+    expect(byId.get(id(2))).toMatchObject({ status: 'failed', code: 'COMMIT_BLOCKED' });
+    expect(byId.get(id(4))).toMatchObject({
+      status: 'recovery-required',
+      code: 'OPERATION_INTERRUPTED',
+    });
+  });
+
+  it('carries the action and the document count and nothing of the source state', async () => {
+    const result = await run([documentRow(1)]);
+    expect(result.items[0]).toEqual({
+      operationId: id(1),
+      kind,
+      status: 'queued',
+      subject: { specId: 'spec-1', slug: 'sample' },
+      action: 'save-all',
+      documentCount: 3,
+      updatedAt: iso(99 * min),
+    });
+  });
+
+  it('counts a queued row as in progress, lists it after failures and filters by its status', async () => {
+    const result = await run(
+      [documentRow(1), documentRow(2, { state: 'failed', code: 'COMMIT_FAILED' })],
+      { statuses: ['queued'] },
+    );
+    expect(result.counts).toEqual({ inProgress: 1, recoveryRequired: 0, failed: 1, completed: 0 });
+    expect(result.items.map((item) => item.status)).toEqual(['queued']);
+    const all = await run([documentRow(1), documentRow(2, { state: 'failed', code: 'X' })]);
+    expect(all.items.map((item) => item.status)).toEqual(['failed', 'queued']);
+  });
+});

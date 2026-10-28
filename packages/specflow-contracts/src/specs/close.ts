@@ -1,5 +1,7 @@
 import { Type, type Static } from 'typebox';
 
+import { DocumentErrorDetailsSchema } from '../documents/errors';
+
 export const CloseUuidSchema = Type.String({
   pattern:
     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
@@ -76,7 +78,13 @@ export const CloseResultSchema = Type.Object(
   { additionalProperties: false },
 );
 export const CloseErrorSchema = Type.Object(
-  { error: Type.String(), code: Type.String(), remedy: Type.Optional(Type.String()) },
+  {
+    error: Type.String(),
+    code: Type.String(),
+    remedy: Type.Optional(Type.String()),
+    /** Present for `DOCUMENT_COMMITS_PENDING` (`details.cause`: `commit-pending`, `commit-failed`, ...). */
+    details: Type.Optional(DocumentErrorDetailsSchema),
+  },
   { additionalProperties: false },
 );
 

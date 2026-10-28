@@ -1,0 +1,8 @@
+kind: document-type
+schemaVersion: 1
+id: overview
+title: Overview
+description: "Entry point of the Specification: context, goal, non-goals, constraints, affected areas, acceptance criteria."
+useWhen: Always. Every Specification has exactly one, and it cannot be deleted.
+instructions: Write this first and keep it current. State the context and the goal in plain terms, list explicit non-goals and constraints, name the affected areas, and write acceptance criteria that can be checked. Link to the other documents instead of repeating their content. Do not put detailed design here.
+defaultFilename: overview.md

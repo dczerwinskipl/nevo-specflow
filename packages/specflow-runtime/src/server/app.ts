@@ -198,6 +198,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         ? { readSource: dependencies.documents.readSource }
         : {}),
       ...(engine ? { engine } : {}),
+      operations: {
+        registry: progressRegistry,
+        ...(dependencies.operations?.now ? { now: dependencies.operations.now } : {}),
+      },
+      ...(dependencies.documents?.writeSource
+        ? { writeSource: dependencies.documents.writeSource }
+        : {}),
     }),
     createSessionsFeature({
       ...(engine ? { engine } : {}),

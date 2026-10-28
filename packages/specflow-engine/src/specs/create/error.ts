@@ -5,7 +5,7 @@ export type CreateOperationErrorCode =
   /** A user-typed branch override is not a valid branch name; nothing was reserved. */
   | 'BRANCH_NAME_INVALID'
   | 'CREATE_JOURNAL_CORRUPT'
-  /** An older-format journal read by id: never interpreted, never blocks Create or Close. */
+  /** An unreadable journal read by id: never interpreted, never blocks Create or Close. */
   | 'CREATE_JOURNAL_UNSUPPORTED';
 
 export class CreateOperationError extends Error {

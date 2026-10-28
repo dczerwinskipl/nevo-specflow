@@ -11,6 +11,7 @@ summary: >
   Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions,
   ignored workstation-local configuration, and application-owned local Runtime state.
 related:
+  - adr.0017-definitions-as-project-data
   - docs.architecture-runtime-readme
   - architecture.runtime.ownership-and-lifecycle
   - reference.cli.nevo-specflow-contract
@@ -26,6 +27,7 @@ Nevo SpecFlow uses one repository namespace:
 ├── config.yaml                 # committed product configuration container
 ├── agent-instructions.md       # committed
 ├── agents/                     # committed definitions/instructions
+├── definitions/                # committed archetype and document type definitions (ADR 0017)
 ├── workflows/                  # committed deterministic workflow definitions when migrated
 └── local/                      # entirely Git-ignored
     ├── config.yaml             # workstation/operator configuration + secrets
@@ -47,7 +49,8 @@ settings. It owns Git-root discovery, the `.nevo/` namespace, file locations, ig
 serialization, and the top-level namespaces contributed by capabilities. Git ownership: everything
 shareable about Git (`git.enabled`, `git.worktrees.*`, `git.integrationTargetBranch`,
 `git.commits.protectedBranches`/`allowedBranches`) lives in the committed project config; the local
-config holds only machine-local values such as `git.worktreesRoot`.
+config holds only machine-local values such as `git.worktreesRoot`, plus `git.commits.auto.<capability>`: the
+second explicit exception (ADR 0018), allowed because turning auto-commit off never loosens a safety control.
 
 Current shape:
 
@@ -121,6 +124,10 @@ Current ownership is explicit:
 - `authorization`: project-owned role assignments; workstation-local authorization is rejected.
 - `specs.overview.current.sections`: project-owned ordered Current Overview sections; local Specs
   configuration is rejected.
+
+- `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
+  `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
+  `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.

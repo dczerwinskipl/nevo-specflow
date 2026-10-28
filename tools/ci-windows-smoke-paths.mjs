@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 /**
  * Evaluates sample changed files against the pull_request `paths` globs of windows-smoke.yml
- * (GitHub semantics: `*` does not cross `/`, `**` does). Documents which changes start the slice.
+ * (GitHub semantics: `*` does not cross `/`, `**` does). Documents which changes start the check.
  *
  * Usage: node tools/ci-windows-smoke-paths.mjs [changed/file ...]
  *   With files: prints whether each triggers. Without: runs the built-in cases and exits 1 on mismatch.
@@ -41,10 +41,12 @@ const cases = [
   ['packages/specflow-engine/src/specs/create/journal/store.ts', true],
   ['packages/specflow-engine/src/specs/create/git/commit.ts', true],
   ['packages/specflow-engine/src/git/index.ts', true],
-  ['packages/specflow-engine/test/create-commit.test.ts', true],
+  ['packages/specflow-engine/test/create/create-commit.test.ts', true],
   ['packages/specflow-runtime/src/features/specs/http.ts', true],
   ['packages/specflow-runtime/test/specs/create-async.http.test.ts', true],
   ['packages/specflow-contracts/src/specs/create.ts', true],
+  ['packages/specflow/src/documents/command.ts', true],
+  ['packages/specflow-engine/src/specs/documents/queue/claim.ts', true],
   ['tools/ci-windows-smoke-tests.json', true],
   ['.github/workflows/windows-smoke.yml', true],
   ['packages/specflow-ui/src/components/button.tsx', false],

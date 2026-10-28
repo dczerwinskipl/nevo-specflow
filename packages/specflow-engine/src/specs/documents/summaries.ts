@@ -4,6 +4,8 @@ import { deriveDocumentTitle } from './document-title';
 import { decodeText } from './file-analysis';
 import { loadSpecification, type LoadedSpecification } from './loaded-specification';
 import { probeFile } from './observation';
+import type { DocumentCommitMarker } from './reads/commit-model';
+import { commitSubjectOf, readDocumentCommitView } from './reads/commit-reader';
 import {
   resolveReadOptions,
   type DocumentReadOptions,
@@ -18,6 +20,8 @@ export interface RegisteredDocumentSummary {
   readonly type: string;
   readonly title: string;
   readonly revision: string;
+  /** The open commit that covers the file (pending, failed, uncommitted); absent when none does. */
+  readonly commit?: DocumentCommitMarker;
 }
 
 /**
@@ -31,7 +35,15 @@ export async function readRegisteredDocumentSummaries(
   options: DocumentReadOptions = {},
 ): Promise<readonly RegisteredDocumentSummary[]> {
   const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
-  return summariesOfLoaded(loaded, options);
+  const summaries = await summariesOfLoaded(loaded, options);
+  const view = await readDocumentCommitView(engine.context, commitSubjectOf(loaded), {
+    now: resolveReadOptions(options).now,
+    ...(options.processTable !== undefined ? { processTable: options.processTable } : {}),
+  });
+  return summaries.map((summary) => {
+    const commit = view.markers.get(summary.path);
+    return commit === undefined ? summary : { ...summary, commit };
+  });
 }
 
 /** Registered document summaries of an already loaded Specification. */

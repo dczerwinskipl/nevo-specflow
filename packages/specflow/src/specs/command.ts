@@ -22,7 +22,12 @@ import {
 import { inspectCloseOperationDiagnostic } from '@nevo/specflow-engine/diagnostics';
 import { Command, InvalidArgumentError } from 'commander';
 
-export interface SpecsCommandContext {
+import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
+import { engineAt } from '../engine-at';
+
+export interface SpecsCommandContext extends Partial<
+  Omit<DocumentsCommandContext, 'cwd' | 'stdout'>
+> {
   readonly cwd: string;
   readonly stdout: (line: string) => void;
 }
@@ -99,9 +104,10 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           title: options.title,
           goal: options.goal,
           target: resolveCliCreateTarget(engine, options),
-          // The Engine resolves the current version and revision of the catalogue it runs with; an
-          // unknown archetype id is refused there as ARCHETYPE_UNKNOWN.
-          ...resolveCreateArchetype(options.archetype),
+          // The Engine resolves the current version and revision of the catalogue of the project's
+          // definitions; an unknown archetype id is refused there as ARCHETYPE_UNKNOWN and a project
+          // without definitions as DEFINITIONS_MISSING.
+          ...(await resolveCreateArchetype(engine, options.archetype)),
           optionalDocumentIds: options.with,
         });
         if (options.json) {
@@ -355,6 +361,15 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           context.stdout('Manifest: ' + item.specification.relativeManifestPath);
       }
     });
+  specs.addCommand(
+    createDocumentsCommand({
+      cwd: context.cwd,
+      stdout: context.stdout,
+      stderr: context.stderr ?? (() => undefined),
+      ...(context.readStdin ? { readStdin: context.readStdin } : {}),
+      ...(context.api ? { api: context.api } : {}),
+    }),
+  );
   return specs;
 }
 
@@ -364,13 +379,6 @@ async function engineForClose(cwd: string, projectRoot?: string): Promise<SpecFl
   return openSpecFlowEngine({
     cwd: selected.context.project.homeRoot,
     projectRoot: selected.context.project.homeRoot,
-  });
-}
-
-async function engineAt(cwd: string, projectRoot?: string): Promise<SpecFlowEngine> {
-  return openSpecFlowEngine({
-    cwd,
-    ...(projectRoot ? { projectRoot } : {}),
   });
 }
 

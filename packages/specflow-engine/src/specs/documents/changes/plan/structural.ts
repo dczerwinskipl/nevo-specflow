@@ -11,6 +11,7 @@ import {
 } from '../../../document-rules';
 import { deriveFolders, foldPathKey, parentFolder } from '../../../document-rules/document-paths';
 import { folderContainsProtectedDocument } from '../../../document-rules/protection';
+import { samePhysicalPath } from '../../../document-rules/verified-file';
 import type { ManifestDocument } from '../../../model';
 import { documentChangeError } from '../errors';
 import {
@@ -80,6 +81,20 @@ function destinationOf(request: PathOperation, current: string): string | undefi
   }
 }
 
+/**
+ * A rename that only changes the letter case names the SAME file on a file system that ignores case
+ * (Windows): the plan writes the new path and then removes the old one, which would remove the file.
+ * Refused there with its own cause; a case-sensitive system renames it like any other path.
+ */
+function assertNotCaseOnlyRename(from: string, to: string): void {
+  if (from !== to && samePhysicalPath(from, to)) {
+    throw documentChangeError(
+      'case-only-rename',
+      'Renaming only the letter case is not supported on this file system.',
+    );
+  }
+}
+
 function planDocumentOperation(
   snapshot: PlanningSnapshot,
   request: PathOperation,
@@ -118,6 +133,7 @@ function planDocumentOperation(
   if (destination === path) {
     throw documentChangeError('operation-invalid', 'The document is already there.');
   }
+  assertNotCaseOnlyRename(path, destination);
   if (!validateDocumentPath(destination).ok) {
     throw documentChangeError('path-invalid', 'The target path is not allowed.');
   }
@@ -245,6 +261,7 @@ function planFolderOperation(
     if (destination === folder) {
       throw documentChangeError('operation-invalid', 'The folder is already there.');
     }
+    assertNotCaseOnlyRename(folder, destination);
     if (foldPathKey(destination).startsWith(foldPathKey(folder) + '/')) {
       throw documentChangeError('operation-invalid', 'A folder cannot move into itself.');
     }

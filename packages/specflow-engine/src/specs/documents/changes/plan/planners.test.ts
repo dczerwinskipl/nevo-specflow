@@ -53,6 +53,17 @@ function revisionOf(snapshot: PlanningSnapshot, path: string): string {
   return snapshot.files.find((file) => file.path === path)!.revision;
 }
 
+/** Runs `run` as if the process ran on `platform` (the Engine decides case handling by platform). */
+function onPlatform<T>(platform: NodeJS.Platform, run: () => T): T {
+  const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+  Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+  try {
+    return run();
+  } finally {
+    Object.defineProperty(process, 'platform', original);
+  }
+}
+
 describe('save', () => {
   it('plans one path from the on-disk state to the new content and no registry change', () => {
     const snapshot = snapshotWithBehaviour();
@@ -459,14 +470,18 @@ describe('rename and move of a document', () => {
     );
   });
 
-  it('allows a rename that only changes case and refuses a rename onto another file', () => {
+  it('allows a rename that only changes case on a case-sensitive system and refuses a rename onto another file', () => {
     expect(
-      plan(snapshot, {
-        action: 'rename',
-        target: { kind: 'document', documentId: 'behaviour' },
-        name: 'Behaviour.md',
-        expectedRevision: revision(),
-      }).plan.paths,
+      onPlatform(
+        'linux',
+        () =>
+          plan(snapshot, {
+            action: 'rename',
+            target: { kind: 'document', documentId: 'behaviour' },
+            name: 'Behaviour.md',
+            expectedRevision: revision(),
+          }).plan.paths,
+      ),
     ).toHaveLength(3);
     expect(
       refusal(snapshot, {
@@ -476,6 +491,19 @@ describe('rename and move of a document', () => {
         expectedRevision: revision(),
       }).code,
     ).toBe('DOCUMENT_PATH_CONFLICT');
+  });
+
+  it('refuses a rename that only changes case where the file system ignores case (it would remove the file)', () => {
+    const failure = onPlatform('win32', () =>
+      refusal(snapshot, {
+        action: 'rename',
+        target: { kind: 'document', documentId: 'behaviour' },
+        name: 'Behaviour.md',
+        expectedRevision: revision(),
+      }),
+    );
+    expect(failure.code).toBe('DOCUMENT_OPERATION_INVALID');
+    expect(failure.details?.cause).toBe('case-only-rename');
   });
 
   it('moves into a folder, to the root, and refuses a no-op or a bad folder', () => {
@@ -701,6 +729,21 @@ describe('folder operations', () => {
     expect(refusal(snapshot, rename('OTHER'), options).code).toBe('DOCUMENT_PATH_CONFLICT');
     expect(refusal(snapshot, rename('docs'), options).code).toBe('DOCUMENT_OPERATION_INVALID');
     expect(refusal(snapshot, rename('a/b'), options).code).toBe('DOCUMENT_PATH_INVALID');
+  });
+
+  it('renames a folder that only changes case on a case-sensitive system and refuses it where case is ignored', () => {
+    const rename = (name: string): DocumentChangeRequest => ({
+      action: 'rename',
+      target: folderTarget,
+      name,
+      expectedRevision: 'rev:docs',
+    });
+    expect(
+      onPlatform('linux', () => plan(snapshot, rename('Docs'), options).plan.paths.length),
+    ).toBeGreaterThan(0);
+    const failure = onPlatform('win32', () => refusal(snapshot, rename('Docs'), options));
+    expect(failure.code).toBe('DOCUMENT_OPERATION_INVALID');
+    expect(failure.details?.cause).toBe('case-only-rename');
   });
 
   it('expands over 200 paths to DOCUMENT_OPERATION_INVALID, and accepts exactly the cap', () => {

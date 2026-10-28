@@ -106,7 +106,7 @@ describe('journal store', () => {
     const open = record();
     await publishJournal(context, KIND, open);
     const old = randomUUID();
-    await writeFile(journalPath(context, KIND, old), '{"version":6}');
+    await writeFile(journalPath(context, KIND, old), '{not json');
 
     expect(await readJournal(context, KIND, open.operationId)).toEqual(open);
     expect(await readJournal(context, KIND, randomUUID())).toBeUndefined();
@@ -268,7 +268,7 @@ describe('retention', () => {
     const fresh = record('done');
     for (const item of [done, open, fresh]) await publishJournal(context, KIND, item);
     const unsupported = randomUUID();
-    await writeFile(journalPath(context, KIND, unsupported), '{"version":1}');
+    await writeFile(journalPath(context, KIND, unsupported), '{not json');
     await writePayload(context, KIND, done.operationId, [{ sha256: sha256Hex('p'), content: 'p' }]);
     for (const id of [done.operationId, open.operationId, unsupported]) {
       await age(journalPath(context, KIND, id), 8 * DAY);

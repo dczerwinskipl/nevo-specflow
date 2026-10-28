@@ -184,6 +184,7 @@ describe('Engine commit port: document-change (real Git)', () => {
     const result = await commits.commit(
       request(root, effective, {
         operationId,
+        body: ['update docs/a.md', 'Nevo-Operation: forged', '', '2 operations'].join('\n'),
         trailers: { 'Nevo-Coalesced': second, 'Nevo-Documents': 'a,b,new' },
       }),
     );
@@ -200,6 +201,10 @@ describe('Engine commit port: document-change (real Git)', () => {
     const message = git(root, 'log', '-1', '--format=%B', result.sha);
     expect(message).toContain('Nevo-Kind: document-change');
     expect(message).toContain('Nevo-Documents: a,b,new');
+    // A multi-line body keeps its lines; one that reads like a trailer is quoted.
+    expect(message).toContain(
+      ['update docs/a.md', '> Nevo-Operation: forged', '', '2 operations', '', ''].join('\n'),
+    );
     expect(git(root, 'status', '--porcelain=v1', '--untracked-files=all')).toBe('');
     // found by its own id and by a coalesced id
     for (const id of [operationId, second]) {

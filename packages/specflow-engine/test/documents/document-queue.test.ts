@@ -73,6 +73,18 @@ describe('consolidation into one commit per Specification', () => {
     expect(git(project.root, 'show', `${committed.sha}:specs/active/hand/${notesPath(1)}`)).toBe(
       'version 5',
     );
+    // The message says what happened; the trailers stay the last paragraph.
+    expect(git(project.root, 'log', '-1', '--format=%s', committed.sha)).toBe(
+      `spec(documents): update ${notesPath(1)} in hand`,
+    );
+    const body = git(project.root, 'log', '-1', '--format=%b', committed.sha);
+    expect(body.split('\n').slice(0, 5)).toEqual([
+      `update ${notesPath(1)}`,
+      '',
+      '5 document operations in one commit',
+      '',
+      `Nevo-Operation: ${ids[0]}`,
+    ]);
 
     for (const id of ids) {
       const journal = await findDocumentChangeJournal(project.engine.context, id);
@@ -108,6 +120,9 @@ describe('consolidation into one commit per Specification', () => {
       [1, 2, 3].map((index) => `specs/active/hand/${notesPath(index)}`).sort(),
     );
     expect(trailersOf(project, result.sha)['Nevo-Action']).toBe('save-all');
+    expect(git(project.root, 'log', '-1', '--format=%s', result.sha)).toBe(
+      'spec(documents): update 3 documents in hand',
+    );
     expect(workingTreeClean(project)).toBe(true);
   });
 
@@ -168,6 +183,9 @@ describe('consolidation into one commit per Specification', () => {
     expect(result).toMatchObject({ status: 'committed', operationIds: [id] });
     if (result.status !== 'committed') return;
     expect(trailersOf(project, result.sha)['Nevo-Action']).toBe('rename');
+    expect(git(project.root, 'log', '-1', '--format=%s', result.sha)).toBe(
+      'spec(documents): rename notes-1.md to renamed.md in hand',
+    );
     expect(committedPaths(project, result.sha)).toEqual(
       [
         'specs/active/hand/notes-1.md',

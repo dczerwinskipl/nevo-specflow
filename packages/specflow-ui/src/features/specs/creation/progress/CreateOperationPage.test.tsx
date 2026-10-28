@@ -108,7 +108,7 @@ function renderPage(
     operationsApi,
   });
   const queryClient = createSpecFlowQueryClient();
-  const tree = (
+  const treeWith = (open: (created: unknown) => void) => (
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={services}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
@@ -117,7 +117,7 @@ function renderPage(
               <AppShell navigation={<div>Nav</div>}>
                 <CreateOperationScreen
                   operationId={operationId}
-                  onOpen={onOpen}
+                  onOpen={open}
                   onBackToForm={onBackToForm}
                   onBackToSpecifications={onBackToSpecifications}
                 />
@@ -128,12 +128,15 @@ function renderPage(
       </TestServicesRouterContext>
     </QueryClientProvider>
   );
+  const tree = treeWith(onOpen);
   const view = render(tree);
   return {
     onOpen,
     onBackToForm,
     onBackToSpecifications,
     rerender: () => view.rerender(tree),
+    /** As a route does: a new `onOpen` function on every render. */
+    rerenderWithNewOnOpen: () => view.rerender(treeWith((value) => void onOpen(value))),
     unmount: view.unmount,
   };
 }
@@ -438,6 +441,26 @@ describe('CreateOperationPage', () => {
       timeout: openAfterCreatedMs + 1500,
     });
     expect(storage().load(operationId)).toBeUndefined();
+  });
+
+  it('success: opens by itself on time even while the page keeps re-rendering', async () => {
+    store({ target: { kind: 'new-worktree' } });
+    const { onOpen, rerenderWithNewOnOpen } = renderPage({
+      post: vi.fn().mockResolvedValue(created),
+      get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
+    });
+    expect(await heading('Specification created')).toBeTruthy();
+    const started = Date.now();
+    // Before the fix every render with a new callback restarted the timer.
+    const ticker = setInterval(rerenderWithNewOnOpen, 200);
+    try {
+      await waitFor(() => expect(onOpen).toHaveBeenCalledWith(created), {
+        timeout: openAfterCreatedMs + 1500,
+      });
+    } finally {
+      clearInterval(ticker);
+    }
+    expect(Date.now() - started).toBeLessThan(openAfterCreatedMs + 1000);
   });
 
   it('success: the button opens the specification at once', async () => {

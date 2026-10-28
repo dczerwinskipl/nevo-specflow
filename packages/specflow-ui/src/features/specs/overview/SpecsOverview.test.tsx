@@ -135,14 +135,39 @@ describe('SpecsOverview states', () => {
 describe('SpecsOverview create', () => {
   const createButtons = () => screen.getAllByRole('button', { name: 'New specification' });
 
-  it('keeps Create visible but disabled until it can be used (header and empty state)', () => {
+  it('keeps Create visible but disabled until it can be used', () => {
+    renderOverview(loaded(), { createDisabled: true });
+    const buttons = createButtons();
+    expect(buttons).toHaveLength(1);
+    expect(buttons.every((button) => button.hasAttribute('disabled'))).toBe(true);
+    cleanup();
     renderOverview(
       { ...loaded(), projection: { ...createSpecsFixture(), items: [] } },
       { createDisabled: true },
     );
-    const buttons = createButtons();
-    expect(buttons.length).toBeGreaterThan(1);
-    expect(buttons.every((button) => button.hasAttribute('disabled'))).toBe(true);
+    expect(createButtons().every((button) => button.hasAttribute('disabled'))).toBe(true);
+  });
+
+  it('has one primary Create: the empty state owns it, the header has it otherwise', () => {
+    // Empty current list: only the empty state's action, the header does not repeat it.
+    renderOverview({ ...loaded(), projection: { ...createSpecsFixture(), items: [] } });
+    const empty = screen.getByText('No current specifications').parentElement!;
+    expect(createButtons()).toHaveLength(1);
+    expect(empty.contains(createButtons()[0]!)).toBe(true);
+    cleanup();
+    // A list with rows: the header action.
+    renderOverview(loaded());
+    expect(createButtons()).toHaveLength(1);
+    cleanup();
+    // An empty archive offers no creation in its empty state: the header keeps it.
+    renderOverview({
+      ...loaded('archive'),
+      projection: { ...createSpecsFixture('archive'), items: [] },
+    });
+    expect(createButtons()).toHaveLength(1);
+    expect(
+      screen.getByText('No archived specifications').parentElement!.contains(createButtons()[0]!),
+    ).toBe(false);
   });
 
   it('has no Create control at all when the host does not offer one', () => {

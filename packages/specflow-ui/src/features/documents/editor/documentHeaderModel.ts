@@ -108,7 +108,7 @@ export function documentHeaderModel(
       {
         id: 'document-path',
         label: t('documents.actions.showPath'),
-        icon: 'info',
+        icon: 'show-path',
         group: 'actions',
         onPress: session.showPath,
       },

@@ -74,7 +74,7 @@ function saveActions(view: DocumentView, { session, t }: DocumentActionContext) 
     {
       id: 'document-discard',
       label: t('documents.actions.discard'),
-      icon: 'close',
+      icon: 'undo',
       group: 'actions',
       disabled: session.saving,
       onPress: session.requestDiscard,

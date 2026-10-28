@@ -67,6 +67,11 @@ export function SpecsOverview({
   const visible = projection ? filterSpecsOverview(projection, search.term) : undefined;
   const busy = state.loading || state.refreshing;
   const appearance = useInitialAppearance(state.collection, state.loading, Boolean(projection));
+  const empty = Boolean(visible && !visible.items.length && !state.loading);
+  // An empty current collection offers New specification as its one primary action: the header
+  // does not repeat it then (it stays for a list with rows, a search and the archive).
+  const emptyOffersCreate =
+    empty && Boolean(onCreate) && state.collection === 'current' && !search.term;
 
   return (
     <AppWorkspace
@@ -83,7 +88,7 @@ export function SpecsOverview({
           <SpecsOverviewHeader
             refreshing={state.refreshing}
             busy={busy}
-            onCreate={onCreate}
+            onCreate={emptyOffersCreate ? undefined : onCreate}
             createDisabled={createDisabled}
             onCreateSession={onCreateSession}
             onRefresh={onRefresh}
@@ -154,7 +159,7 @@ export function SpecsOverview({
                     renderSpecificationLink={renderSpecificationLink}
                   />
                 ) : null}
-                {visible && !visible.items.length && !state.loading ? (
+                {empty ? (
                   <SpecsOverviewEmpty
                     collection={state.collection}
                     searching={Boolean(search.term)}

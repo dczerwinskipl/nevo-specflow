@@ -47,6 +47,8 @@ import {
   Upload,
   WrapText,
   ZoomIn,
+  Link,
+  Undo2,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -107,6 +109,8 @@ export const iconRegistry = {
   unlink: Unlink,
   wrap: WrapText,
   'actual-size': ZoomIn,
+  'show-path': Link,
+  undo: Undo2,
 } satisfies Record<IconName, LucideIcon>;
 
 export const iconSizeClasses = {

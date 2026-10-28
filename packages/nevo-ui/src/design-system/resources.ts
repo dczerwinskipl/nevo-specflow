@@ -46,6 +46,8 @@ export const iconNames = [
   'unlink',
   'wrap',
   'actual-size',
+  'show-path',
+  'undo',
 ] as const;
 
 export const iconSizes = ['sm', 'md'] as const;

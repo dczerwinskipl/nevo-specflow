@@ -140,36 +140,34 @@ export const CreateBottomFailure: Story = {
     await shot('create-bottom-before', 390, 844);
     await toFormEnd(canvas);
     await userEvent.click(submit);
-    await canvas.findByRole('alert');
-    await waitFor(() => {
-      if (
-        canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect().bottom >
-        844
-      )
-        throw new Error('CTA not revealed');
-    });
-    const feedback = canvas.getByRole('alert').getBoundingClientRect(),
-      cta = canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect();
-    console.info(
-      'OWNER_V5_CREATE_RESULT',
-      JSON.stringify({
+    const alert = await canvas.findByRole('alert');
+    // The reveal is an animation-frame step after the alert appears (frames are throttled while
+    // other story files run in parallel tabs): wait for the settled geometry, never read it once.
+    // Measured against the real boxes (the form's scroll view and the window), not fixed numbers.
+    const view = alert.closest<HTMLElement>('.scroll-area-viewport')!;
+    const visible = () => {
+      const feedback = alert.getBoundingClientRect(),
+        box = view.getBoundingClientRect(),
+        cta = canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect();
+      return {
         feedback: feedback.toJSON() as Record<string, number>,
         cta: cta.toJSON() as Record<string, number>,
-        viewport: 844,
-        feedbackVisible: feedback.top >= 56 && feedback.bottom <= 844,
-        ctaVisible: cta.top >= 56 && cta.bottom <= 844,
-      }),
+        view: box.toJSON() as Record<string, number>,
+        window: window.innerHeight,
+        feedbackVisible: feedback.top >= box.top - 1 && feedback.bottom <= box.bottom + 1,
+        ctaVisible: cta.top >= box.bottom - 1 && cta.bottom <= window.innerHeight + 1,
+      };
+    };
+    await waitFor(
+      () => {
+        const state = visible();
+        if (!state.feedbackVisible || !state.ctaVisible)
+          throw new Error('UX01 ' + JSON.stringify(state));
+      },
+      { timeout: 5000 },
     );
+    console.info('OWNER_V5_CREATE_RESULT', JSON.stringify(visible()));
     await shot('create-bottom-error', 390, 844);
-    if (feedback.bottom > 844 || cta.bottom > 844)
-      throw new Error(
-        'UX01 ' +
-          JSON.stringify({
-            feedback: feedback.toJSON() as Record<string, number>,
-            cta: cta.toJSON() as Record<string, number>,
-            viewport: 844,
-          }),
-      );
   },
 };
 export const CreateUnknown: Story = {

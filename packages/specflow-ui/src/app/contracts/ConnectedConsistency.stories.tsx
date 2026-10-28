@@ -823,17 +823,21 @@ export const FailedCreateAtTheBottomStaysVisible: Story = {
     await userEvent.click(submit);
     const alert = await canvas.findByRole('alert', {}, { timeout: 5000 });
     await expect(alert).toHaveTextContent('Nie udało się utworzyć specyfikacji');
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    );
+    // The reveal runs on an animation frame after the alert appears: wait for the settled
+    // geometry. The alert is inside the form's scroll view, the retry in the pinned footer.
     const retry = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-    const floating = document.querySelector('.mobile-floating-navigation');
-    const top = floating ? floating.getBoundingClientRect().bottom : 0;
-    for (const element of [alert, retry]) {
-      const rect = element.getBoundingClientRect();
-      await expect(rect.top).toBeGreaterThanOrEqual(top - 1);
-      await expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight + 1);
-    }
+    await waitFor(
+      () => {
+        const view = scroller.getBoundingClientRect(),
+          box = alert.getBoundingClientRect(),
+          button = retry.getBoundingClientRect();
+        if (box.top < view.top - 1 || box.bottom > view.bottom + 1)
+          throw new Error('Alert not revealed ' + JSON.stringify({ box, view }));
+        if (button.top < view.bottom - 1 || button.bottom > window.innerHeight + 1)
+          throw new Error('Retry not visible ' + JSON.stringify({ button, view }));
+      },
+      { timeout: 5000 },
+    );
   },
 };
 /**

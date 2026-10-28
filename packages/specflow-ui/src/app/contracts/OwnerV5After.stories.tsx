@@ -106,6 +106,15 @@ async function shot(name: string, width: number, height = 900) {
     }),
   );
 }
+/** Scrolls the Create form to its end (the submit button is pinned below it). */
+function toFormEnd(canvas: {
+  getByRole: (role: string, options: { name: string }) => HTMLElement;
+}) {
+  const scroller = canvas
+    .getByRole('textbox', { name: 'Nazwa specyfikacji' })
+    .closest<HTMLElement>('.scroll-area-viewport')!;
+  scroller.scrollTop = scroller.scrollHeight;
+}
 export const CreateBottomFailure: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
@@ -116,7 +125,8 @@ export const CreateBottomFailure: Story = {
       'Eksport CSV',
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-    submit.scrollIntoView({ block: 'end' });
+    // The submit button is pinned under the form: the owner scrolls the form to its end.
+    toFormEnd(canvas);
     await shot('create-bottom-before', 390, 844);
     await userEvent.click(submit);
     await canvas.findByRole('alert');
@@ -383,7 +393,8 @@ export const DeferredFailureKeepsReadingPosition: Story = {
     submit.scrollIntoView({ block: 'end' });
     await userEvent.click(submit);
     await canvas.findByRole('button', { name: 'Przygotowywanie…' });
-    const scroller = submit.closest<HTMLElement>('.scroll-area-viewport')!;
+    // The submit button is pinned under the form; the form itself scrolls.
+    const scroller = title.closest<HTMLElement>('.scroll-area-viewport')!;
     scroller.scrollTop = 0;
     await frame();
     const position = scroller.scrollTop;
@@ -406,11 +417,13 @@ export const OversizeFeedbackInShortViewport: Story = {
       'Eksport CSV',
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-    submit.scrollIntoView({ block: 'end' });
+    toFormEnd(canvas);
     await userEvent.click(submit);
     const alert = await canvas.findByRole('alert');
-    const region = submit.closest<HTMLElement>('[aria-label="Utworzenie specyfikacji"]')!,
-      scroller = submit.closest<HTMLElement>('.scroll-area-viewport')!;
+    // The failure is explained at the end of the scrolling form, above the pinned footer.
+    const region = alert.parentElement!,
+      scroller = alert.closest<HTMLElement>('.scroll-area-viewport')!;
+    await expect(scroller.contains(submit)).toBe(false);
     await expect(region.offsetHeight).toBeGreaterThan(scroller.clientHeight);
     await waitFor(() =>
       expect(alert.getBoundingClientRect().top).toBeGreaterThanOrEqual(

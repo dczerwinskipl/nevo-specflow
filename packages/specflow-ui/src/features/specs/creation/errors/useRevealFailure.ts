@@ -3,13 +3,15 @@ import { useEffect, useRef, type FormEvent, type RefObject } from 'react';
 export interface RevealFailure {
   /** The region at the end of the scrolling form that holds the failure alert. */
   actionRegion: RefObject<HTMLDivElement | null>;
-  /** Call when a submit is accepted: remembers whether the submit button was in view. */
+  /** Call when a submit is accepted: remembers whether the owner was at the end of the form. */
   captureSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
 /**
- * After a submit failed, scrolls the alert into view, but only when the submit button was visible
- * and the user has not scrolled since: it never fights the user's own scrolling.
+ * After a submit failed, scrolls the alert into view, but only when the owner was at the end of the
+ * form, where the alert appears (the submit button was in view inside the form, or the form was
+ * scrolled to its end when the button is pinned below it), and has not scrolled since: it never
+ * fights the user's own scrolling or pulls them away from what they are reading.
  */
 export function useRevealFailure(
   failed: boolean,
@@ -38,12 +40,16 @@ export function useRevealFailure(
         event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
       const rect = submitter?.getBoundingClientRect(),
         viewport = scroller?.getBoundingClientRect();
-      // A submit button outside the scroller is in the pinned footer: always in view.
-      const inView =
+      // A submit button outside the scroller is in the pinned footer, always in view: what counts
+      // then is whether the end of the form, where the alert appears, was in view.
+      const atEnd =
         Boolean(submitter) &&
-        (!scroller?.contains(submitter) ||
-          Boolean(rect && viewport && rect.top >= viewport.top && rect.bottom <= viewport.bottom));
-      submitted.current = scroller && inView ? { scroller, top: scroller.scrollTop } : null;
+        (scroller?.contains(submitter)
+          ? Boolean(rect && viewport && rect.top >= viewport.top && rect.bottom <= viewport.bottom)
+          : Boolean(
+              scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1,
+            ));
+      submitted.current = scroller && atEnd ? { scroller, top: scroller.scrollTop } : null;
     },
   };
 }

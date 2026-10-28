@@ -220,6 +220,44 @@ describe('transient failures wait and give up', () => {
     expect(engineCommits(project)).toHaveLength(1);
   });
 
+  it('refuses to abandon a waiting member while its batch is being claimed', async () => {
+    const project = await queueProject();
+    const first = await queueSave(project, 1, 'one\n');
+    const second = await queueSave(project, 2, 'two\n');
+    const lock = join(project.root, '.git', 'index.lock');
+    await writeFile(lock, '');
+    await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
+    expect(await stage(project, second)).toMatchObject({ stage: 'queued', reason: 'index-locked' });
+    await rm(lock);
+
+    // The claim wrote the batch and took over the first member; the second is still queued.
+    const stop = new QueueInterrupted();
+    const hooks: QueueHooks = { afterMemberClaimed: () => Promise.reject(stop) };
+    await expect(
+      runQueueOnce(
+        project.engine,
+        isolatedQueue({ clock: clockAfterBackoff(), hooks }),
+        undefined,
+        FLUSH,
+      ),
+    ).rejects.toBe(stop);
+    expect(await stage(project, first)).toMatchObject({ stage: 'committing' });
+    expect(await stage(project, second)).toMatchObject({ stage: 'queued' });
+
+    expect(await failure(abandonDocumentCommit(project.engine, second))).toMatchObject({
+      code: 'DOCUMENT_OPERATION_STATE_INVALID',
+    });
+    expect(await ledgerPaths(project)).toEqual([]);
+
+    const results = await settleQueue(project);
+    expect(results[0]).toMatchObject({ status: 'committed', operationIds: [first, second] });
+    expect(await stage(project, second)).toMatchObject({
+      stage: 'completed',
+      outcome: 'committed',
+    });
+    expect(engineCommits(project)).toHaveLength(1);
+  });
+
   it('lets a person abandon an operation that waits for Git: the files stay and the ledger holds the path', async () => {
     const project = await queueProject();
     const id = await queueSave(project, 1, 'give up\n');
@@ -807,6 +845,30 @@ describe('a checkout that cannot take commits', () => {
     expect(result).toMatchObject({ status: 'not-applicable', operationIds: [id] });
     expect(await stage(project, id)).toMatchObject({ stage: 'completed', reason: 'git-disabled' });
     expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
+  });
+
+  it('does not complete a started commit as not-applicable when its evidence is inconclusive', async () => {
+    const project = await queueProject();
+    const id = await queueSave(project, 1, 'one\n');
+    await expect(
+      runQueueOnce(
+        project.engine,
+        isolatedQueue({ hooks: { afterCommit: () => Promise.reject(new QueueInterrupted()) } }),
+        undefined,
+        FLUSH,
+      ),
+    ).rejects.toBeInstanceOf(QueueInterrupted);
+    // History is rewritten under the started commit, then Git is turned off.
+    git(project.root, 'reset', '-q', '--mixed', 'HEAD~2');
+    await writeFile(join(project.root, '.nevo', 'config.yaml'), GIT_OFF);
+
+    const result = await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
+    expect(result).toMatchObject({
+      status: 'failed',
+      outcome: 'recovery-required',
+      reason: 'history-changed',
+    });
+    expect(await stage(project, id)).toMatchObject({ stage: 'recovery-required' });
   });
 
   it('fails the queued operations as workspace-missing when the checkout is gone; abandon is allowed', async () => {

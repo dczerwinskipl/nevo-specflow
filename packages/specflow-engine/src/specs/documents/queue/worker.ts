@@ -67,7 +67,7 @@ export async function runQueueOnce(
     if (!(await hasQueueWork(rt))) return { status: 'idle', reason: 'no-queued-operations' };
     // A checkout that cannot take commits has no HEAD to read; a claimed batch is failed by its gate.
     const claim = await claimNextBatch(rt, () =>
-      gate === undefined ? rt.commits.head(checkout.root) : Promise.resolve(undefined),
+      gate === undefined ? rt.commits.head(rt.checkout.root) : Promise.resolve(undefined),
     );
     if (claim.kind === 'busy') return { status: 'busy', reason: 'lease-held' };
     if (claim.kind === 'idle') {
@@ -175,17 +175,41 @@ async function executeBatch(
   if (gate === 'git-disabled') {
     // A crash after the commit and before it was recorded: the commit is still the batch's, and its
     // sha is recorded before Git is given up on.
-    const landed = await landedCommit(rt, claimed);
-    if (landed !== undefined) {
-      await recordCommitted(rt, claimed, landed.sha, operationIds);
-      return {
-        status: 'committed',
-        batchId: claimed.operationId,
-        sha: landed.sha,
-        operationIds,
-        paths: landed.paths,
-        resumed,
-      };
+    if (claimed.commitStartedAt !== undefined) {
+      // The commit was started: only decisive evidence lets the batch end without one. A commit that
+      // is not exactly the batch, rewritten history, or a HEAD that moved is for the repository or an
+      // operator to resolve (`recovery-required`), never a silent `not-applicable`.
+      const evidence = await lookUpBatchCommit(
+        rt,
+        claimed,
+        await readBatchPaths(rt.context, claimed),
+      );
+      if (evidence.kind === 'committed') {
+        await recordCommitted(rt, claimed, evidence.sha, operationIds);
+        return {
+          status: 'committed',
+          batchId: claimed.operationId,
+          sha: evidence.sha,
+          operationIds,
+          paths: evidence.paths,
+          resumed,
+        };
+      }
+      if (
+        evidence.kind !== 'absent' ||
+        (await rt.commits.head(rt.checkout.root)) !== claimed.parentHead
+      ) {
+        return fail(
+          claimed,
+          evidence.kind === 'history-changed'
+            ? { kind: 'uncertain', reason: 'history-changed' }
+            : {
+                kind: 'uncertain',
+                reason: 'uncertain',
+                blockedBy: evidence.kind === 'foreign-commit' ? 'foreign-commit' : 'git-disabled',
+              },
+        );
+      }
     }
     await completeWithoutCommit(rt, claimed, operationIds, 'git-disabled');
     return { status: 'not-applicable', batchId: claimed.operationId, operationIds, resumed };

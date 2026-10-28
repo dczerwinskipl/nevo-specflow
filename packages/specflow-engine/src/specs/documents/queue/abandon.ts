@@ -11,6 +11,7 @@ import {
 import { cleanStageFiles } from '../write/write-phase';
 import {
   DOCUMENT_BATCH_KIND,
+  listDocumentBatches,
   publishDocumentBatch,
   readDocumentBatch,
   removeDocumentBatch,
@@ -46,6 +47,28 @@ const ABANDONABLE: readonly DocumentChangeJournal['stage'][] = [
  */
 function isWaitingAfterFailure(journal: DocumentChangeJournal): boolean {
   return journal.stage === 'queued' && journal.commit !== undefined && journal.reason !== undefined;
+}
+
+/**
+ * A claim writes the batch record first and moves the members to `committing` one by one afterwards.
+ * In that gap a waiting member is still `queued` but belongs to a batch the queue is committing: it
+ * must not be abandoned (it would end uncommitted while the batch commits it).
+ */
+async function assertNotInActiveBatch(
+  context: ResolvedProjectHome,
+  journal: DocumentChangeJournal,
+): Promise<void> {
+  const active = (await listDocumentBatches(context)).some(
+    (batch) =>
+      batch.memberIds.includes(journal.operationId) &&
+      (batch.state === 'formed' || batch.state === 'committing'),
+  );
+  if (active) {
+    throw documentChangeError(
+      'operation-state-invalid',
+      'The operation is being committed now; abandon it if the commit fails.',
+    );
+  }
 }
 
 /** Whether the operation already ended as an abandoned one (a repeat finds it so). */
@@ -113,6 +136,7 @@ export async function abandonCommit(
         'Only a failed commit or one that needs recovery can be abandoned.',
       );
     }
+    if (isWaitingAfterFailure(journal)) await assertNotInActiveBatch(context, journal);
     const stamp = now();
     const batch =
       journal.batchId !== undefined ? await readDocumentBatch(context, journal.batchId) : undefined;

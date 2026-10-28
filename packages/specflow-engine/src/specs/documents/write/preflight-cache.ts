@@ -18,7 +18,7 @@ const BUSY_STATE = [
 /**
  * What a cached Git preflight is valid for: the stat signatures of the checkout's `HEAD` file, the
  * existence of its index lock and of the merge, cherry-pick, revert, rebase and sequencer state, the
- * stat of the root `.gitignore` and `info/exclude`, and the mtimes of the project (and local) configuration. The branch
+ * stat of the root `.gitignore` and of the common directory's `info/exclude` and `config`, and the mtimes of the project (and local) configuration. The branch
  * the checkout is on comes from the same `HEAD` read, so a hit starts no Git process.
  */
 export interface PreflightSignature {
@@ -69,6 +69,19 @@ async function gitDirectoryOf(root: string): Promise<string | undefined> {
 }
 
 /**
+ * The directory the checkout shares with its siblings (`git rev-parse --git-common-dir`): the
+ * administrative directory itself, or what its `commondir` file names in a linked worktree. Per-worktree
+ * state (HEAD, index, merge and rebase state) lives in the worktree's own directory; `info/exclude` and
+ * `config` live here.
+ */
+async function commonDirectoryOf(gitDirectory: string): Promise<string> {
+  const text = await readSmall(join(gitDirectory, 'commondir')).catch(() => undefined);
+  const target = text?.trim();
+  if (target === undefined || target === '') return gitDirectory;
+  return isAbsolute(target) ? target : resolve(gitDirectory, target);
+}
+
+/**
  * The production signature reader: three or four `lstat`s and one 4 KiB read, no Git process.
  * Anything it cannot read makes the token unique, so nothing is ever served from the cache on a
  * doubt.
@@ -77,6 +90,7 @@ export const readPreflightSignature: PreflightSignatureReader = async (context, 
   try {
     const gitDirectory = await gitDirectoryOf(root);
     if (gitDirectory === undefined) throw new Error('no git directory');
+    const commonDirectory = await commonDirectoryOf(gitDirectory);
     const head = await readSmall(join(gitDirectory, 'HEAD'));
     const branch = head === undefined ? null : /^ref:\s*refs\/heads\/(.+?)\s*$/mu.exec(head);
     const [headToken, lockToken, projectConfig, localConfig, busy, ignores] = await Promise.all([
@@ -85,7 +99,13 @@ export const readPreflightSignature: PreflightSignatureReader = async (context, 
       statToken(context.project.projectConfigPath),
       statToken(context.project.localConfigPath),
       Promise.all(BUSY_STATE.map((name) => statToken(join(gitDirectory, name)))),
-      Promise.all([join(root, '.gitignore'), join(gitDirectory, 'info', 'exclude')].map(statToken)),
+      Promise.all(
+        [
+          join(root, '.gitignore'),
+          join(commonDirectory, 'info', 'exclude'),
+          join(commonDirectory, 'config'),
+        ].map(statToken),
+      ),
     ]);
     return {
       branchRef: branch?.[1],

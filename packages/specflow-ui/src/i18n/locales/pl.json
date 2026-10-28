@@ -1149,9 +1149,10 @@
       "deleteFolderWarning": "Usunięcie obejmuje folder i jego dokumenty jest nieodwracalne w tej sesji demo.",
       "error": {
         "pathConflict": "Ta ścieżka już istnieje. Wybierz inną nazwę lub folder.",
-        "revisionConflict": "Dokument lub drzewo zmieniło się. Zamknij akcję i otwórz ją ponownie, aby sprawdzić aktualny stan.",
-        "requestConflict": "Żądanie ma inny zapisany wynik. Odśwież dokumenty przed kolejną operacją.",
+        "revisionConflict": "Dokument lub folder zmienił się w międzyczasie. Zamknij akcję i rozpocznij ją ponownie: dokumenty zostały odświeżone.",
+        "requestConflict": "To żądanie ma już zapisany inny wynik. Spróbuj wykonać akcję ponownie.",
         "default": "Nie udało się wykonać zmiany. Sprawdź nazwę i ścieżkę; szkic pozostaje zachowany.",
+        "caseOnlyRename": "Zmiana samej wielkości liter nie jest obsługiwana na tym systemie plików.",
         "pathInvalid": "Tej nazwy lub ścieżki nie można użyć. Wybierz inną nazwę.",
         "alreadyClassified": "Ten plik ma już typ. Dokumenty zostały odświeżone.",
         "manifestDirty": "Plik specification.yaml ma niezacommitowane zmiany. Zacommituj je lub odrzuć i spróbuj ponownie.",

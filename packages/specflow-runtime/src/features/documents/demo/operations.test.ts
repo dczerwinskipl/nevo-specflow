@@ -31,6 +31,13 @@ async function code(work: Promise<unknown>) {
   return ['resolved'];
 }
 
+/** The FOLDER revision a folder operation sends (`DocumentTree.folders[].revision`). */
+const folderRevision = (tree: DocumentTree, path: string) => {
+  const found = tree.folders.find((folder) => folder.path === path)?.revision;
+  if (!found) throw new Error('No folder revision for ' + path);
+  return found;
+};
+
 const node = (tree: DocumentTree, path: string) => {
   const found = tree.documents.find((document) => document.path === path);
   if (!found) throw new Error('No document ' + path);
@@ -428,7 +435,7 @@ describe('demo document writes (D4 shapes)', () => {
         action: 'delete',
         kind: 'folder',
         path: 'evidence',
-        expectedRevision: (await tree('review')).revision,
+        expectedRevision: folderRevision(await tree('review'), 'evidence'),
       },
       find,
     );
@@ -512,7 +519,7 @@ describe('demo document writes (D4 shapes)', () => {
         kind: 'folder',
         path: 'badania',
         name: 'research',
-        expectedRevision: before.revision,
+        expectedRevision: folderRevision(before, 'badania'),
       },
       find,
     );
@@ -529,7 +536,7 @@ describe('demo document writes (D4 shapes)', () => {
       kind: 'folder' as const,
       path,
       ...(action === 'move' ? { targetFolder: 'architektura/decyzje' } : {}),
-      expectedRevision: current.revision,
+      expectedRevision: folderRevision(current, path),
     });
     expect(
       await code(
@@ -548,12 +555,52 @@ describe('demo document writes (D4 shapes)', () => {
       find,
     );
     expect(deleted.removedDocumentIds.sort()).toEqual(['architecture', 'decisions']);
-    // The tree changed: an operation planned on the old revision is refused.
+    // Another folder's revision did not change with that delete: `notatki` still goes.
     expect(
       await code(
         env.documents.operate('alice', 'admission', folderOperation(4, 'delete', 'notatki'), find),
       ),
-    ).toEqual(['DOCUMENT_REVISION_CONFLICT', undefined]);
+    ).toEqual(['resolved']);
+  });
+
+  it('checks the FOLDER revision of a folder operation, not the tree revision (as the Engine)', async () => {
+    const { env, find, tree } = setup({ showcase: true });
+    const before = await tree('admission');
+    const stale = folderRevision(before, 'badania');
+    const rename = (n: number, expectedRevision: string) =>
+      env.documents.operate(
+        'alice',
+        'admission',
+        {
+          operationId: op(n),
+          action: 'rename',
+          kind: 'folder',
+          path: 'badania',
+          name: 'research',
+          expectedRevision,
+        },
+        find,
+      );
+    // The tree revision is not a folder revision.
+    expect(await code(rename(1, before.revision))).toEqual([
+      'DOCUMENT_REVISION_CONFLICT',
+      undefined,
+    ]);
+    // A file under the folder changes: the folder revision read before is stale.
+    const file = node(before, 'badania/ocena-ryzyka.md');
+    await env.documents.save(
+      'alice',
+      'admission',
+      file.id,
+      { operationId: op(2), content: '# Changed', expectedRevision: file.revision },
+      find,
+    );
+    const after = await tree('admission');
+    expect(folderRevision(after, 'badania')).not.toBe(stale);
+    expect(await code(rename(3, stale))).toEqual(['DOCUMENT_REVISION_CONFLICT', undefined]);
+    // A change outside the folder leaves its revision as it was.
+    expect(folderRevision(after, 'architektura')).toBe(folderRevision(before, 'architektura'));
+    expect(await code(rename(4, folderRevision(after, 'badania')))).toEqual(['resolved']);
   });
 
   it('reports busy and refuses other writes while a write commits with latency', async () => {

@@ -183,11 +183,16 @@ function Workspace({
     setCalls((value) => value + 1);
     setSubmittedRevision(operation.expectedRevision);
     setSubmittedTarget(operation.targetFolder ?? 'none');
-    if (
-      concurrent &&
-      operation.expectedRevision !==
-        tree.documents.find((doc) => doc.id === operation.documentId)?.revision
-    )
+    // As the Engine: a folder operation is checked against the FOLDER revision, a document one
+    // (in the concurrent fixture) against the document's.
+    const stale =
+      operation.kind === 'folder'
+        ? operation.expectedRevision !==
+          tree.folders.find((folder) => folder.path === operation.path)?.revision
+        : concurrent &&
+          operation.expectedRevision !==
+            tree.documents.find((doc) => doc.id === operation.documentId)?.revision;
+    if (stale)
       return Promise.reject(
         new HttpClientError('Conflict', {
           kind: 'http',
@@ -433,7 +438,7 @@ export const ConfirmationKeepsObservedRevision: Story = {
     await expect(canvas.getByLabelText('Wysłana rewizja')).toHaveTextContent('1');
     // Irreversible delete is an AlertDialog with a destructive action.
     const confirmation = within(document.body).getByRole('alertdialog');
-    await expect(confirmation).toHaveTextContent('Dokument lub drzewo zmieniło się');
+    await expect(confirmation).toHaveTextContent('Dokument lub folder zmienił się');
     await expect(within(confirmation).getByRole('button', { name: 'Usuń' })).toHaveClass(
       'text-action-danger',
     );
@@ -466,6 +471,40 @@ export const MoveRootNamedFolder: Story = {
     await userEvent.click(within(document.body).getByRole('button', { name: 'Przenieś' }));
     await expect(canvas.getByLabelText('Folder wysłanej operacji')).toHaveTextContent('__root');
     await expectToast('Przeniesiono decisions.md');
+  },
+};
+
+/**
+ * Folder rename, move and delete send the FOLDER revision (`folders[].revision`), never the tree
+ * revision; the fixture refuses anything else with `DOCUMENT_REVISION_CONFLICT`, as the Engine does.
+ */
+export const FolderOperationsSendFolderRevision: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const sent = () => canvas.getByLabelText('Wysłana rewizja');
+    await userEvent.click(await canvas.findByRole('button', { name: 'Akcje: notes' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Zmień nazwę' }));
+    const name = await canvas.findByRole('textbox', { name: 'Nowa nazwa' });
+    await userEvent.clear(name);
+    await userEvent.type(name, 'archive');
+    await userEvent.keyboard('{Enter}');
+    await expectToast('Zmieniono nazwę na archive');
+    await expect(sent()).toHaveTextContent('folder:notes:1');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Akcje: notes' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Przenieś' }));
+    await userEvent.click(within(document.body).getByRole('combobox', { name: 'Folder docelowy' }));
+    await userEvent.click(await within(document.body).findByRole('option', { name: '__root' }));
+    await userEvent.click(within(document.body).getByRole('button', { name: 'Przenieś' }));
+    await expectToast('Przeniesiono notes');
+    await expect(sent()).toHaveTextContent('folder:notes:1');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Akcje: __root' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Usuń' }));
+    await userEvent.click(
+      within(within(document.body).getByRole('alertdialog')).getByRole('button', { name: 'Usuń' }),
+    );
+    await expectToast('Usunięto __root');
+    await expect(sent()).toHaveTextContent('folder:__root:1');
   },
 };
 

@@ -208,3 +208,21 @@ export function createTreeIndex<Tree extends IndexableTree>(tree: Tree): Documen
 export function treeLevel<Tree extends IndexableTree>(tree: Tree, parent: string) {
   return createTreeIndex(tree).level(parent);
 }
+
+type TreeFolder = DocumentTree['folders'][number];
+const noFolderRevision = { available: false, reason: 'root' } as const;
+
+/**
+ * The rename / move / delete policy of a folder row. A folder operation sends the FOLDER revision;
+ * a folder without one (the root, which no operation changes) offers none of them, so the tree
+ * revision is never sent in its place.
+ */
+export function folderActions(folder: TreeFolder): TreeFolder['actions'] {
+  if (folder.revision) return folder.actions;
+  return { rename: noFolderRevision, move: noFolderRevision, delete: noFolderRevision };
+}
+
+/** The revision a folder operation sends as `expectedRevision`; `undefined` when it cannot run. */
+export function folderOperationRevision(tree: DocumentTree, path: string): string | undefined {
+  return tree.folders.find((folder) => folder.path === path)?.revision;
+}

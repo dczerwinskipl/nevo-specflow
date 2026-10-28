@@ -15,7 +15,7 @@ import {
 } from '@nevo/ui';
 import { useMessage } from '../../../i18n/message';
 import { menuReasonNote } from '../catalogue/documentTypePolicy';
-import type { EntryKind } from './documentTreePolicy';
+import { folderActions, type EntryKind } from './documentTreePolicy';
 
 /** What the row menu can ask for; the explorer decides how each is carried out. */
 export interface DocumentNodeActions {
@@ -79,7 +79,7 @@ export function DocumentNodeMenu({
           reason: document.actions.classify.reason ?? tree.capabilities.classify.reason,
         }
     : undefined;
-  const policy = document?.actions ?? folder?.actions;
+  const policy = document?.actions ?? (folder ? folderActions(folder) : undefined);
   if (protectedDocument) addReason('protected');
   else if (dangling) {
     if (!dangling.actions.delete.available) addReason(dangling.actions.delete.reason);

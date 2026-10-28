@@ -1149,9 +1149,10 @@
       "deleteFolderWarning": "Deleting this folder and its documents cannot be undone in this demo session.",
       "error": {
         "pathConflict": "This path already exists. Choose a different name or folder.",
-        "revisionConflict": "The document or tree changed. Close the action and open it again to see the current state.",
-        "requestConflict": "The request has a different recorded result. Refresh the documents before the next operation.",
+        "revisionConflict": "The document or folder changed meanwhile. Close the action and start it again: the documents were refreshed.",
+        "requestConflict": "This request was already recorded with a different result. Try the action again.",
         "default": "Unable to make the change. Check the name and path; the draft is kept.",
+        "caseOnlyRename": "Renaming only the letter case is not supported on this file system.",
         "pathInvalid": "This name or path cannot be used. Choose another name.",
         "alreadyClassified": "This file already has a type. The documents were refreshed.",
         "manifestDirty": "specification.yaml has uncommitted changes. Commit or discard them, then try again.",

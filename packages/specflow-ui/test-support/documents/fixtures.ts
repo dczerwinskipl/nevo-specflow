@@ -69,7 +69,13 @@ export function treeDocumentFixture(
   };
 }
 
-/** A whole tree; `folders` are paths (the root is added) with every action available. */
+/** The folder revision of a fixture folder: distinct from the tree revision, as in the Engine. */
+export const folderRevisionFixture = (path: string) => `folder:${path}:1`;
+
+/**
+ * A whole tree; `folders` are paths (the root is added, without a revision) with every action
+ * available and their own folder revision (`folderRevisionFixture`).
+ */
 export function documentTreeFixture(
   fields: Partial<Omit<DocumentTree, 'folders' | 'documents'>> & {
     readonly folders?: readonly string[];
@@ -86,6 +92,7 @@ export function documentTreeFixture(
       { path: '', actions: { rename: root, move: root, delete: root } },
       ...folders.map((path) => ({
         path,
+        revision: folderRevisionFixture(path),
         actions: { rename: available, move: available, delete: available },
       })),
     ],

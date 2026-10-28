@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { polishText } from '../../../i18n/testing';
 import {
+  documentTreeFixture,
+  folderRevisionFixture,
+} from '../../../../test-support/documents/fixtures';
+import {
   allDocumentFolders,
+  folderActions,
+  folderOperationRevision,
   entryNameError as rawEntryNameError,
   finalEntryName,
   orderTreeLevel,
@@ -247,5 +253,27 @@ describe('createTreeIndex', () => {
       expect(index.level(parent)).toEqual(expected);
     }
     expect(index.level('f3')).toBe(index.level('F3'));
+  });
+});
+
+describe('folder operation policy', () => {
+  const tree = documentTreeFixture({ revision: 'tree-1', folders: ['notes'] });
+
+  it('uses the folder revision, never the tree revision', () => {
+    expect(folderOperationRevision(tree, 'notes')).toBe(folderRevisionFixture('notes'));
+    expect(folderOperationRevision(tree, '')).toBeUndefined();
+    expect(folderOperationRevision(tree, 'missing')).toBeUndefined();
+  });
+
+  it('offers no rename, move or delete for a folder without a revision', () => {
+    const [root, notes] = tree.folders;
+    expect(folderActions(notes!)).toBe(notes!.actions);
+    const { revision: _revision, ...withoutRevision } = notes!;
+    expect(folderActions(withoutRevision)).toEqual({
+      rename: { available: false, reason: 'root' },
+      move: { available: false, reason: 'root' },
+      delete: { available: false, reason: 'root' },
+    });
+    expect(folderActions(root!).rename.available).toBe(false);
   });
 });

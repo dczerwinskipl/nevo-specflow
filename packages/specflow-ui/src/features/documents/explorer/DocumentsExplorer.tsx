@@ -22,7 +22,7 @@ import { DocumentNodeMenu, type DocumentNodeActions } from './DocumentNodeMenu';
 import { DocumentOperationDialogs } from './DocumentOperationDialogs';
 import { DocumentTreeLevel } from './DocumentTreeLevel';
 import { InlineEntryEditor } from './InlineEntryEditor';
-import { createTreeIndex, treeRows } from './documentTreePolicy';
+import { createTreeIndex, folderOperationRevision, treeRows } from './documentTreePolicy';
 import {
   useDocumentOperations,
   type DocumentDialogRequest,
@@ -211,15 +211,14 @@ export function DocumentsExplorer({
   const requestDialog =
     (action: 'move' | 'delete') => (kind: 'document' | 'folder', path: string, id?: string) =>
       void operations.actions.guard((snapshot) => {
-        const document = id ? snapshot.documents.find((doc) => doc.id === id) : undefined;
+        const document =
+          kind === 'document' ? snapshot.documents.find((doc) => doc.id === id) : undefined;
+        // A document sends its own revision, a folder the FOLDER revision (never the tree's).
+        const expectedRevision =
+          kind === 'document' ? document?.revision : folderOperationRevision(snapshot, path);
+        if (!expectedRevision) return;
         if (action === 'move') setTarget('');
-        setRequest({
-          action,
-          kind,
-          path: document?.path ?? path,
-          id,
-          expectedRevision: document?.revision ?? snapshot.revision,
-        });
+        setRequest({ action, kind, path: document?.path ?? path, id, expectedRevision });
       });
   const nodeActions: DocumentNodeActions = {
     create: (kind, parent) => inline.start(kind, parent),

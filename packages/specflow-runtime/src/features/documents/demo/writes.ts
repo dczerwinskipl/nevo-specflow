@@ -245,7 +245,8 @@ function assertOperationShape(input: DocumentOperationInput) {
 /**
  * `POST .../document-operations`: rename, move, delete, classify of a document (by id) or a folder
  * (by path). Choices: deleting a dangling entry removes its registration (its tree action); a
- * dangling entry has no revision, so its `expectedRevision` is the tree revision, like a folder.
+ * dangling entry has no revision, so its `expectedRevision` is the tree revision; a folder sends
+ * its folder revision (`DocumentTree.folders[].revision`), as the Engine checks.
  * Renaming or moving an unclassified file changes its derived `u-` id (returned in `documents`).
  */
 export function planOperation(
@@ -342,14 +343,17 @@ function planFolderOperation(
       reason: 'root',
     });
   if (!allFolders(documents).includes(path)) throw refuse('DOCUMENT_NOT_FOUND', 'Unknown folder.');
+  // Like the Engine: the FOLDER revision the tree reports for this folder (commit state excluded),
+  // never the tree revision.
+  const folder = demoTree(documents).folders.find((candidate) => candidate.path === path);
+  if (folder?.revision !== input.expectedRevision)
+    throw refuse('DOCUMENT_REVISION_CONFLICT', 'The folder changed since it was read.');
   if (
     documents.registry.some(
       (entry) => entry.type === OVERVIEW_DOCUMENT_TYPE && within(entry.path, path),
     )
   )
     throw refuse('DOCUMENT_PROTECTED', 'The folder holds the overview.', { reason: 'protected' });
-  if (demoTree(documents).revision !== input.expectedRevision)
-    throw refuse('DOCUMENT_REVISION_CONFLICT', 'The tree changed since it was read.');
   if (input.action === 'delete') {
     const files = new Map([...documents.files].filter(([file]) => !within(file, path)));
     const removed = [...documents.files.keys()].filter((file) => within(file, path));

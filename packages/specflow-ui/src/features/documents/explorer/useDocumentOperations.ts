@@ -418,12 +418,16 @@ const refetchCodes = new Set([
   'SPEC_ARCHIVED',
 ]);
 
+/** The `details` of a refusal's error body, when it has any. */
+function refusalDetails(error: unknown): { reason?: ActionReason; cause?: string } | undefined {
+  return isHttpClientError(error) && typeof error.data === 'object' && error.data !== null
+    ? (error.data as { details?: { reason?: ActionReason; cause?: string } }).details
+    : undefined;
+}
+
 /** The reason a write refusal carries, else the one its code implies. */
 export function refusalReason(error: unknown, code: string | undefined): ActionReason {
-  const details =
-    isHttpClientError(error) && typeof error.data === 'object' && error.data !== null
-      ? (error.data as { details?: { reason?: ActionReason } }).details
-      : undefined;
+  const details = refusalDetails(error);
   if (details?.reason) return details.reason;
   switch (code) {
     case 'SPEC_ARCHIVED':
@@ -463,6 +467,12 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.catalogueStale');
     case 'DOCUMENT_RECOVERY_REQUIRED':
       return t('documents.tree.error.recovery');
+    // A file system that ignores letter case (Windows) cannot rename `bb.md` to `Bb.md`; the
+    // Runtime decides, the UI does not know the platform.
+    case 'DOCUMENT_OPERATION_INVALID':
+      return refusalDetails(error)?.cause === 'case-only-rename'
+        ? t('documents.tree.error.caseOnlyRename')
+        : t('documents.tree.error.default');
     // The document has a save running or one to resume: the operation waits for it.
     case 'document-save-running':
       return t('documents.tree.error.saveRunning');

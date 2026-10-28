@@ -8,7 +8,11 @@ import { documentKindOf, documentViewOf } from '../content-kinds/documentContent
 import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
 import { refusalReason } from '../explorer/useDocumentOperations';
 import { MarkdownSourceEditor } from './MarkdownSourceEditor';
-import { useDocumentEditor, type DocumentEditorSession } from './DocumentEditorProvider';
+import {
+  useDocumentEditor,
+  type DocumentEditorSession,
+  type GuidanceRoom,
+} from './DocumentEditorProvider';
 import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
 import { DocumentOutline } from '../outline/DocumentOutline';
 import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
@@ -150,7 +154,7 @@ export function DocumentEditor() {
 
 function DocumentContentView({ session }: { session: DocumentEditorSession }) {
   const { t } = useTranslation();
-  const { document, draft, editorRoot, save, setDraft, reportGuidanceColumnFits } = session;
+  const { document, draft, editorRoot, save, setDraft, reportGuidanceRoom } = session;
   const kind = documentKindOf(document);
   const plainText = kind.id === 'text';
   const view = documentViewOf(kind, draft, session.readOnlyReason !== undefined);
@@ -164,14 +168,16 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
     [editorRoot],
   );
   const width = useWidth(root);
-  const textView = view === 'edit' || view === 'source' || view === 'preview';
-  // The guidance is a column only for text on a panel wide enough for it beside the contents column
-  // (preview) or beside a still roomy source editor (edit); otherwise it opens as a sheet.
-  const columnFits = textView && width >= guidanceColumnMinWidth;
+  // The source editor keeps at least 960 px beside the guidance column, so it is a column there only
+  // from the two-column threshold; otherwise the guidance opens as a sheet. The preview reports its
+  // own room (it measures its panel), images and files have none.
+  const sourceView = view === 'edit' || view === 'source';
+  const sourceFits = sourceView && width >= guidanceColumnMinWidth;
   useLayoutEffect(() => {
-    reportGuidanceColumnFits(width > 0 ? columnFits : undefined);
-    return () => reportGuidanceColumnFits(undefined);
-  }, [columnFits, width, reportGuidanceColumnFits]);
+    if (view === 'preview') return;
+    reportGuidanceRoom(sourceFits ? 'beside' : undefined);
+    return () => reportGuidanceRoom(undefined);
+  }, [view, sourceFits, reportGuidanceRoom]);
   const guidance = session.guidanceShown === 'column' ? session.guidance : undefined;
   return (
     <div ref={rootRef} className="flex h-full min-h-0 w-full flex-col">
@@ -217,6 +223,8 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
           outline={session.outline}
           navigatorRef={session.outlineNavigator}
           reportColumnShown={session.reportColumnShown}
+          reportGuidanceRoom={reportGuidanceRoom}
+          contentsColumnShown={session.contentsColumnShown}
           guidance={guidance}
         />
       )}
@@ -262,6 +270,8 @@ function PreviewScroller({
   outline,
   navigatorRef,
   reportColumnShown,
+  reportGuidanceRoom,
+  contentsColumnShown,
   guidance,
 }: {
   /** The first line of the content (for example why the document is read-only), in the flow. */
@@ -273,7 +283,10 @@ function PreviewScroller({
   outline: DocumentOutlineData;
   navigatorRef: { current: OutlineNavigator | null };
   reportColumnShown: (shown: boolean | undefined) => void;
-  /** The guidance column to show beside the contents column (wide panels only). */
+  reportGuidanceRoom: (room: GuidanceRoom | undefined) => void;
+  /** False while the shared slot holds the guidance (or the reader closed the contents there). */
+  contentsColumnShown: boolean;
+  /** The guidance column to show beside the text (wide panels only). */
   guidance?: DocumentGuidance;
 }) {
   const markdownLabels = useMarkdownLabels();
@@ -289,6 +302,11 @@ function PreviewScroller({
   const [activeLine, setActiveLine] = useState<number>();
   const wide = panelWidth >= outlineColumnMinWidth;
   const hasAside = headings.length > 0 || properties !== undefined;
+  // From the contents threshold the preview has a right-hand slot; from the two-column threshold
+  // the contents and the guidance each have a column. The reading column never drops below 528 px.
+  const room: GuidanceRoom | undefined =
+    panelWidth >= guidanceColumnMinWidth ? 'beside' : wide ? 'shared' : undefined;
+  const contents = hasAside && contentsColumnShown;
   const latest = useRef({ content, anchor, onAnchorChange });
   useLayoutEffect(() => {
     latest.current = { content, anchor, onAnchorChange };
@@ -331,6 +349,11 @@ function PreviewScroller({
     reportColumnShown(wide);
     return () => reportColumnShown(undefined);
   }, [wide, reportColumnShown]);
+  useLayoutEffect(() => {
+    if (panelWidth === 0) return;
+    reportGuidanceRoom(room);
+    return () => reportGuidanceRoom(undefined);
+  }, [panelWidth, room, reportGuidanceRoom]);
   const headingElement = useCallback(
     (line: number) =>
       viewport.current?.querySelector<HTMLElement>(
@@ -432,7 +455,7 @@ function PreviewScroller({
   const text = <MarkdownDocument labels={markdownLabels} source={body} sourceLines />;
   // The columns beside the text, each with the 32 px gap before it.
   const asideWidth =
-    (hasAside ? outlineColumnWidth(panelWidth) + 32 : 0) +
+    (contents ? outlineColumnWidth(panelWidth) + 32 : 0) +
     (guidance ? guidanceColumnWidth(panelWidth) + 32 : 0);
   return (
     <ScrollArea
@@ -443,7 +466,7 @@ function PreviewScroller({
       // The focusable scroll viewport is the preview region the editor provider refocuses.
       viewportRef={viewportRef}
     >
-      {wide && (hasAside || guidance) ? (
+      {wide && (contents || guidance) ? (
         // The text keeps its readable measure and the contents (and the guidance) stay in view
         // beside it. The group is centred in a panel wider than itself, so the spare width becomes
         // two equal outer gutters instead of one empty band on the right.
@@ -455,7 +478,7 @@ function PreviewScroller({
             {lead && <div className="mb-4">{lead}</div>}
             {text}
           </div>
-          {hasAside && (
+          {contents && (
             <aside
               aria-label={t('documents.outline.columnLabel')}
               className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"

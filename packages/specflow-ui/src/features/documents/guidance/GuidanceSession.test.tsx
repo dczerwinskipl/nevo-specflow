@@ -45,7 +45,7 @@ const record = (id = 'a'): DocumentContent =>
     title: id,
     path: `${id}.md`,
     type: 'research',
-    content: '# A',
+    content: '# A\n\n## B',
     revision: '1',
   });
 
@@ -96,7 +96,7 @@ describe('the writing guidance of a document', () => {
 
   it('opens as a sheet on a narrow panel: the type, plain text with whitespace kept, focus back on close', async () => {
     const seen = setup();
-    act(() => seen.session!.reportGuidanceColumnFits(false));
+    act(() => seen.session!.reportGuidanceRoom(undefined));
     const button = toggle()!;
     expect(button.getAttribute('aria-pressed')).toBe('false');
     button.focus();
@@ -119,17 +119,17 @@ describe('the writing guidance of a document', () => {
 
   it('is a column on a wide panel, kept per document for the visit', () => {
     const seen = setup();
-    act(() => seen.session!.reportGuidanceColumnFits(true));
+    act(() => seen.session!.reportGuidanceRoom('beside'));
     fireEvent.click(toggle()!);
     expect(seen.session!.guidanceShown).toBe('column');
     expect(toggle()!.getAttribute('aria-pressed')).toBe('true');
     expect(screen.queryByRole('dialog')).toBeNull();
     // Another tab: closed there; back: still open.
     seen.show(record('b'));
-    act(() => seen.session!.reportGuidanceColumnFits(true));
+    act(() => seen.session!.reportGuidanceRoom('beside'));
     expect(seen.session!.guidanceShown).toBeUndefined();
     seen.show(record('a'));
-    act(() => seen.session!.reportGuidanceColumnFits(true));
+    act(() => seen.session!.reportGuidanceRoom('beside'));
     expect(seen.session!.guidanceShown).toBe('column');
     fireEvent.click(toggle()!);
     expect(seen.session!.guidanceShown).toBeUndefined();
@@ -137,13 +137,41 @@ describe('the writing guidance of a document', () => {
 
   it('does not pop up as a sheet when a column panel turns narrow', () => {
     const seen = setup();
-    act(() => seen.session!.reportGuidanceColumnFits(true));
+    act(() => seen.session!.reportGuidanceRoom('beside'));
     fireEvent.click(toggle()!);
-    act(() => seen.session!.reportGuidanceColumnFits(false));
+    act(() => seen.session!.reportGuidanceRoom(undefined));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(seen.session!.guidanceShown).toBeUndefined();
     // Wide again: the column the reader chose is back.
-    act(() => seen.session!.reportGuidanceColumnFits(true));
+    act(() => seen.session!.reportGuidanceRoom('beside'));
     expect(seen.session!.guidanceShown).toBe('column');
+  });
+
+  it('shares one slot with the contents column between the two thresholds', () => {
+    const seen = setup();
+    act(() => seen.session!.reportGuidanceRoom('shared'));
+    // The contents column is in the slot; its toggle is pressed.
+    expect(seen.session!.contentsColumnShown).toBe(true);
+    expect(seen.session!.contentsToggle?.pressed).toBe(true);
+    expect(seen.actions.find((action) => action.id === 'document-outline-column')?.checked).toBe(
+      true,
+    );
+    // Guidance takes the slot and hides the contents.
+    fireEvent.click(toggle()!);
+    expect(seen.session!.guidanceShown).toBe('column');
+    expect(seen.session!.contentsColumnShown).toBe(false);
+    expect(seen.session!.contentsToggle?.pressed).toBe(false);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Contents take it back and hide the guidance.
+    act(() => seen.session!.contentsToggle!.toggle());
+    expect(seen.session!.guidanceShown).toBeUndefined();
+    expect(seen.session!.contentsColumnShown).toBe(true);
+    // Pressing the shown contents closes the slot.
+    act(() => seen.session!.contentsToggle!.toggle());
+    expect(seen.session!.contentsColumnShown).toBe(false);
+    // With room for both, the contents are always a column and have no toggle.
+    act(() => seen.session!.reportGuidanceRoom('beside'));
+    expect(seen.session!.contentsToggle).toBeUndefined();
+    expect(seen.session!.contentsColumnShown).toBe(true);
   });
 });

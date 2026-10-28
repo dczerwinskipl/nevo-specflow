@@ -296,15 +296,19 @@ You can add, remove or classify documents later.             body-md secondary
 
 ### 4.3 Defaults and submit
 
-- Initial selection: the catalogue's `defaultArchetypeId` when present (demo), else the first archetype
-  of the catalogue. (Decision Q1.)
+- Initial selection: the catalogue's `defaultArchetypeId` when present (demo), else the only archetype
+  of a catalogue with one, else none. With nothing selected the radio list has no checked option (its
+  first radio is the Tab stop), the documents area shows the quiet prompt "Choose an archetype to see
+  the documents Create makes." and Create stays unavailable with the reason "Choose an archetype."
+  The same rule applies to a restored draft whose archetype no longer exists and after
+  `ARCHETYPE_UNKNOWN`; a stored or chosen archetype that still exists is kept. (Decision Q1.)
 - Submit adds `archetypeId`, `archetypeVersion`, `catalogueRevision` and `optionalDocumentIds` (the
   ticked optional template ids) to the Create request. The draft saved for "Back to form" stores the
   archetype id and the ticks.
 - `CATALOGUE_STALE`: failure Alert "The archetypes changed while you were filling the form" with
   **Refresh archetypes**; refresh keeps the selected id when it still exists and resets its ticks to the
   new defaults, announcing the change. `ARCHETYPE_UNKNOWN`: same Alert text, the selection falls back to
-  the default.
+  the initial rule above (the default, the only archetype, or none).
 
 ### 4.4 Method choice and progress page
 
@@ -460,6 +464,6 @@ the Create form order.
 
 | #   | Topic                  | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Q1  | Initial archetype      | **Decided:** the first archetype of the catalogue (the catalogue's `defaultArchetypeId` when it is present, as in the demo). The UI has no opinion of its own, so catalogue order is meaningful and the backend owns it.                                                                                                                                                                                                                                                                                                                                                                               |
+| Q1  | Initial archetype      | **Decided (re-opened by the owner):** the catalogue's `defaultArchetypeId` when present (the demo), else the only archetype when there is exactly one, else none: the user chooses. Catalogue order carries no preference (the real catalogue is sorted by id and sends no default).                                                                                                                                                                                                                                                                                                                   |
 | Q2  | Polish catalogue texts | **Decided:** the UI shows catalogue text as delivered (English for the built-ins), with no key-based translation in the UI. Translations of catalogue content will be added later through configuration, the client and the backend (probably with an expected-language header); the UI is expected to need no change beyond sending that language. Keep catalogue text out of `en.json`/`pl.json`.                                                                                                                                                                                                    |
 | Q4  | User-facing term       | **Open.** Constraint decided: do not use "Workflow" for this concept (it is not a state machine definition). The concept will be shared by definitions of Specifications, Tasks and similar objects, so the final name has to be generic. Working term until named: "Archetype" / "Archetyp". All its UI text goes through the `create.archetype.*` and related keys listed in section 8, so a rename touches translations only. Collision to resolve with the name: "archetype/role" already labels the agent in Session and Task metadata (`docs/ideas/specflow-ui/screens/task-detail-ui-spec.md`). |

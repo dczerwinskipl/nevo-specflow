@@ -781,12 +781,51 @@ export const GuidanceThreeColumns: Story = {
   },
 };
 
-/** Guidance on a medium panel (1440 px window): too narrow for three columns, so a sheet. */
-export const GuidanceSheetMedium: Story = {
+/**
+ * Guidance on a medium panel (1440 px window, 877 px pane): one right-hand slot for the contents or
+ * the guidance. Guidance takes the slot and hides the contents; Contents take it back. The text
+ * keeps at least 528 px.
+ */
+export const GuidanceSharedSlotMedium: Story = {
   args: { path: `/specs/${SPEC}/documents/ux` },
   play: async ({ userEvent }) => {
-    await wide();
+    await viewport(1440);
     const screen = body();
+    const guidance = await screen.findByRole('button', { name: 'Guidance' });
+    const contents = await screen.findByRole('button', { name: 'Contents' });
+    await expect(contents).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      screen.getByRole('complementary', { name: 'Document contents and properties' }),
+    ).toBeVisible();
+    await userEvent.click(guidance);
+    const column = await screen.findByRole('complementary', { name: 'How to write: UX' });
+    await expect(screen.queryByRole('dialog')).toBeNull();
+    await expect(guidance).toHaveAttribute('aria-pressed', 'true');
+    await expect(contents).toHaveAttribute('aria-pressed', 'false');
+    await expect(
+      screen.queryByRole('complementary', { name: 'Document contents and properties' }),
+    ).toBeNull();
+    await expect(
+      column.parentElement!.firstElementChild!.getBoundingClientRect().width,
+    ).toBeGreaterThanOrEqual(528);
+    await userEvent.click(contents);
+    await expect(
+      await screen.findByRole('complementary', { name: 'Document contents and properties' }),
+    ).toBeVisible();
+    await expect(screen.queryByRole('complementary', { name: 'How to write: UX' })).toBeNull();
+    await expect(guidance).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+/** Below the contents threshold (1100 px window, pane under 840 px) the guidance is a sheet. */
+export const GuidanceSheetBelowTheColumnThreshold: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux` },
+  play: async ({ userEvent }) => {
+    await viewport(1100);
+    const screen = body();
+    await waitFor(() =>
+      expect(document.querySelector('[data-document-preview]')!.clientWidth).toBeLessThan(840),
+    );
     const toggle = await screen.findByRole('button', { name: 'Guidance' });
     await userEvent.click(toggle);
     const sheet = within(await screen.findByRole('dialog', { name: 'Guidance' }));
@@ -797,6 +836,7 @@ export const GuidanceSheetMedium: Story = {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(toggle).toHaveFocus());
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await viewport(1440);
   },
 };
 

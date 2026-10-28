@@ -570,7 +570,7 @@
       "provider": "Wybierz dostępnego wykonawcę.",
       "model": "Wybierz model.",
       "mode": "Wybierz obsługiwany tryb pracy.",
-      "archetype": "Wybierz dostępny archetyp."
+      "archetype": "Wybierz archetyp."
     },
     "announce": {
       "refreshFailed": "Nie udało się odświeżyć opcji. Formularz zachowany.",
@@ -631,6 +631,7 @@
       "intro": "Kształt pracy: od jakich dokumentów zaczyna się specyfikacja i jakich się oczekuje. Dokumenty możesz później dodawać, usuwać i klasyfikować.",
       "guidance": "Jak pracować z archetypem {{archetype}}",
       "documents": "Dokumenty do utworzenia",
+      "choosePrompt": "Wybierz archetyp, aby zobaczyć dokumenty, które powstaną.",
       "always": "{{type}} ({{file}}) jest tworzony zawsze.",
       "expectedUnticked": "{{archetype}} oczekuje dokumentu typu {{type}}. Bez niego specyfikacja pokaże go jako brakujący, dopóki go nie dodasz.",
       "loading": "Wczytywanie archetypów",

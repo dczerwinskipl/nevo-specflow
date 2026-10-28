@@ -62,6 +62,19 @@ export function documentHeaderModel(
             } satisfies WorkspaceHeaderAction,
           ]
         : []),
+      // In the shared slot the contents column is a toggle too (checked while it is shown).
+      ...(session.contentsToggle
+        ? [
+            {
+              id: 'document-outline-column',
+              label: t('documents.outline.label'),
+              icon: 'list',
+              group: 'display',
+              checked: session.contentsToggle.pressed,
+              onPress: session.contentsToggle.toggle,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
       // The guidance toggle is also in the menu (Display), checked while it is shown.
       ...(session.guidance
         ? [

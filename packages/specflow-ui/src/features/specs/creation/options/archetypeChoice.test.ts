@@ -64,14 +64,20 @@ const catalogue = (defaultArchetypeId?: string): ArchetypeCatalogue => ({
 });
 
 describe('archetype choice', () => {
-  it('starts on the catalogue default, else on the first archetype', () => {
+  it('starts on the catalogue default, else on the only archetype, else on none (Q1)', () => {
     expect(selectedArchetype(catalogue('feature'), initialArchetypeChoice)?.id).toBe('feature');
-    expect(selectedArchetype(catalogue(), initialArchetypeChoice)?.id).toBe('minimal');
-    expect(selectedArchetype(catalogue('gone'), initialArchetypeChoice)?.id).toBe('minimal');
-    // A chosen archetype that the catalogue no longer has falls back to the default.
+    // Several archetypes without a default: nothing is selected, catalogue order means nothing.
+    expect(selectedArchetype(catalogue(), initialArchetypeChoice)).toBeUndefined();
+    expect(selectedArchetype(catalogue('gone'), initialArchetypeChoice)).toBeUndefined();
+    const single: ArchetypeCatalogue = { ...catalogue(), archetypes: [team] };
+    expect(selectedArchetype(single, initialArchetypeChoice)?.id).toBe('team');
+    // A chosen archetype that the catalogue no longer has falls back to the same rule.
     expect(selectedArchetype(catalogue('feature'), { archetypeId: 'gone', ticks: {} })?.id).toBe(
       'feature',
     );
+    expect(selectedArchetype(catalogue(), { archetypeId: 'gone', ticks: {} })).toBeUndefined();
+    // A stored choice that still exists is kept (a restored draft, a refreshed catalogue).
+    expect(selectedArchetype(catalogue(), { archetypeId: 'team', ticks: {} })?.id).toBe('team');
   });
 
   it('ticks the preselected suggestions and keeps the ticks per archetype within the visit', () => {

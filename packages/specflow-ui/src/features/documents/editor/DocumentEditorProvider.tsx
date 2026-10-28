@@ -109,15 +109,25 @@ export interface DocumentEditorSession {
   /** How to write a document of this type (registered documents of a described type only). */
   guidance?: DocumentGuidance;
   /**
-   * The content reports whether its panel has room for the guidance column (undefined: no content
-   * that can host it); otherwise the guidance opens as a sheet.
+   * The content reports the room its panel has for the guidance column: `beside` the contents
+   * column, `shared` with it (one slot for one of the two), or none (undefined: it opens as a sheet).
    */
-  reportGuidanceColumnFits: (fits: boolean | undefined) => void;
+  reportGuidanceRoom: (room: GuidanceRoom | undefined) => void;
   /** Where the guidance is shown now: beside the content, as a sheet, or not at all. */
   guidanceShown?: 'column' | 'sheet';
   /** Shows or hides the guidance: the column (kept per document for the visit) or the sheet. */
   toggleGuidance: () => void;
+  /** The preview shows its contents column (false: the shared slot holds the guidance or nothing). */
+  contentsColumnShown: boolean;
+  /**
+   * Only while the contents column and the guidance share one slot (and the document has a
+   * contents column): the contents toggle of the header (pressed while the column is shown).
+   */
+  contentsToggle?: { pressed: boolean; toggle: () => void };
 }
+
+/** The room of a panel for the guidance column (see `reportGuidanceRoom`). */
+export type GuidanceRoom = 'beside' | 'shared';
 
 const Context = createContext<DocumentEditorSession | null>(null);
 const SaveOwnerContext = createContext<DocumentSaveOwner | null>(null);
@@ -213,8 +223,10 @@ export function DocumentEditorProvider({
   const [guidanceColumnIds, setGuidanceColumnIds] = useState<readonly string[]>([]);
   const [guidanceSheetFor, setGuidanceSheetFor] = useState<string>();
   // Reported by the mounted content, which alone can measure its panel.
-  const [guidanceColumnFits, setGuidanceColumnFits] = useState<boolean>();
-  const guidanceInColumn = guidanceColumnFits === true;
+  const [guidanceRoom, setGuidanceRoom] = useState<GuidanceRoom>();
+  const guidanceInColumn = guidanceRoom !== undefined;
+  // Documents whose contents column the reader closed in the shared slot, for the visit.
+  const [contentsHiddenIds, setContentsHiddenIds] = useState<readonly string[]>([]);
   const guidanceShown: 'column' | 'sheet' | undefined = !guidance
     ? undefined
     : guidanceInColumn
@@ -226,6 +238,34 @@ export function DocumentEditorProvider({
         : undefined;
   // A wider panel, another document or no guidance ends the sheet, so it never reopens by itself.
   if (guidanceSheetFor !== undefined && guidanceShown !== 'sheet') setGuidanceSheetFor(undefined);
+  // Between the contents threshold and the room for two columns, one slot serves the contents or
+  // the guidance: showing one hides the other, and each can be closed.
+  const sharedSlot = guidanceRoom === 'shared';
+  const hasContentsColumn = outline.headings.length > 0 || outline.properties !== undefined;
+  const contentsColumnShown =
+    !sharedSlot || (guidanceShown !== 'column' && !contentsHiddenIds.includes(documentId));
+  const toggleContentsColumn = useCallback(() => {
+    if (contentsColumnShown) {
+      setContentsHiddenIds((ids) => [...ids, documentId]);
+      return;
+    }
+    setContentsHiddenIds((ids) => ids.filter((id) => id !== documentId));
+    setGuidanceColumnIds((ids) => ids.filter((id) => id !== documentId));
+  }, [contentsColumnShown, documentId]);
+  const contentsToggle = useMemo(
+    () =>
+      sharedSlot && hasContentsColumn && markdown && draft?.editing === false
+        ? { pressed: contentsColumnShown, toggle: toggleContentsColumn }
+        : undefined,
+    [
+      sharedSlot,
+      hasContentsColumn,
+      markdown,
+      draft?.editing,
+      contentsColumnShown,
+      toggleContentsColumn,
+    ],
+  );
   const guidanceOpener = useRef<HTMLElement | null>(null);
   const toggleGuidance = useCallback(() => {
     if (guidanceInColumn) {
@@ -392,9 +432,11 @@ export function DocumentEditorProvider({
       outlineOpen,
       openOutline,
       guidance,
-      reportGuidanceColumnFits: setGuidanceColumnFits,
+      reportGuidanceRoom: setGuidanceRoom,
       guidanceShown,
       toggleGuidance,
+      contentsColumnShown,
+      contentsToggle,
     };
   }, [
     specId,
@@ -429,6 +471,8 @@ export function DocumentEditorProvider({
     guidance,
     guidanceShown,
     toggleGuidance,
+    contentsColumnShown,
+    contentsToggle,
   ]);
 
   const name = document?.path ?? '';

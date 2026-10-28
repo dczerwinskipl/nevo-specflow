@@ -570,7 +570,7 @@
       "provider": "Choose an available executor.",
       "model": "Choose a model.",
       "mode": "Choose a supported working mode.",
-      "archetype": "Choose an available archetype."
+      "archetype": "Choose an archetype."
     },
     "announce": {
       "refreshFailed": "Unable to refresh the options. The form is kept.",
@@ -631,6 +631,7 @@
       "intro": "The shape of the work: which documents the specification starts with and which are expected. You can add, remove or classify documents later.",
       "guidance": "How to work with a {{archetype}} specification",
       "documents": "Documents to create",
+      "choosePrompt": "Choose an archetype to see the documents Create makes.",
       "always": "{{type}} ({{file}}) is always created.",
       "expectedUnticked": "{{archetype}} expects a {{type}} document. Without it the specification lists it as missing until you add one.",
       "loading": "Archetypes are loading",

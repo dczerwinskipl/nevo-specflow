@@ -80,10 +80,11 @@ export function ArchetypeSection({
           </Button>
         </Alert>
       )}
-      {catalogue && archetype && (
+      {catalogue && catalogue.archetypes.length > 0 && (
         <>
+          {/* Nothing selected until the user chooses (no default): the first radio is the tab stop. */}
           <RadioGroup
-            value={archetype.id}
+            value={archetype?.id ?? ''}
             onValueChange={(id) => onChange(chooseArchetype(choice, id))}
             aria-labelledby={headingId}
             disabled={locked}
@@ -97,62 +98,69 @@ export function ArchetypeSection({
               />
             ))}
           </RadioGroup>
-          <div className="grid gap-3 border-l border-border-subtle pl-4">
-            {archetype.instructions?.trim() && (
-              <Collapsible key={archetype.id} className="-ml-control-padding-compact">
-                <Collapsible.Trigger className="px-0">
-                  {t('create.archetype.guidance', { archetype: archetype.title })}
-                </Collapsible.Trigger>
-                <Collapsible.Content>
-                  <p className="whitespace-pre-line text-body-sm text-content-secondary">
-                    {archetype.instructions}
-                  </p>
-                </Collapsible.Content>
-              </Collapsible>
-            )}
-            <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0" disabled={locked}>
-              <legend className="mb-2 p-0 text-title-sm text-content-primary">
-                {t('create.archetype.documents')}
-              </legend>
-              {alwaysTemplates(archetype).map((template) => (
-                <InlineNote key={template.id} icon="check">
-                  {t('create.archetype.always', {
-                    type: typeTitle(template.type),
-                    file: template.filename,
-                  })}
-                </InlineNote>
-              ))}
-              {optionalTemplates(archetype).map((template) => {
-                const checked = ticked.includes(template.id);
-                const useWhen = typeUseWhen(template.type);
-                return (
-                  <CheckboxField
-                    key={`${archetype.id}:${template.id}`}
-                    checked={checked}
-                    disabled={locked}
-                    onCheckedChange={(value) =>
-                      onChange(toggleTemplate(choice, archetype, template.id, value === true))
-                    }
-                    label={template.title}
-                    description={
-                      <>
-                        <span className="font-mono">{template.filename}</span>
-                        {useWhen ? ` · ${useWhen}` : ''}
-                        {unmetWhenUnticked(archetype, template, ticked) && (
-                          <span className="mt-1 block text-content-secondary">
-                            {t('create.archetype.expectedUnticked', {
-                              archetype: archetype.title,
-                              type: typeTitle(template.type),
-                            })}
-                          </span>
-                        )}
-                      </>
-                    }
-                  />
-                );
-              })}
-            </fieldset>
-          </div>
+          {!archetype ? (
+            // A neutral state, not an error: the documents follow from the archetype.
+            <p className="m-0 border-l border-border-subtle pl-4 text-body-sm text-content-muted">
+              {t('create.archetype.choosePrompt')}
+            </p>
+          ) : (
+            <div className="grid gap-3 border-l border-border-subtle pl-4">
+              {archetype.instructions?.trim() && (
+                <Collapsible key={archetype.id} className="-ml-control-padding-compact">
+                  <Collapsible.Trigger className="px-0">
+                    {t('create.archetype.guidance', { archetype: archetype.title })}
+                  </Collapsible.Trigger>
+                  <Collapsible.Content>
+                    <p className="whitespace-pre-line text-body-sm text-content-secondary">
+                      {archetype.instructions}
+                    </p>
+                  </Collapsible.Content>
+                </Collapsible>
+              )}
+              <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0" disabled={locked}>
+                <legend className="mb-2 p-0 text-title-sm text-content-primary">
+                  {t('create.archetype.documents')}
+                </legend>
+                {alwaysTemplates(archetype).map((template) => (
+                  <InlineNote key={template.id} icon="check">
+                    {t('create.archetype.always', {
+                      type: typeTitle(template.type),
+                      file: template.filename,
+                    })}
+                  </InlineNote>
+                ))}
+                {optionalTemplates(archetype).map((template) => {
+                  const checked = ticked.includes(template.id);
+                  const useWhen = typeUseWhen(template.type);
+                  return (
+                    <CheckboxField
+                      key={`${archetype.id}:${template.id}`}
+                      checked={checked}
+                      disabled={locked}
+                      onCheckedChange={(value) =>
+                        onChange(toggleTemplate(choice, archetype, template.id, value === true))
+                      }
+                      label={template.title}
+                      description={
+                        <>
+                          <span className="font-mono">{template.filename}</span>
+                          {useWhen ? ` · ${useWhen}` : ''}
+                          {unmetWhenUnticked(archetype, template, ticked) && (
+                            <span className="mt-1 block text-content-secondary">
+                              {t('create.archetype.expectedUnticked', {
+                                archetype: archetype.title,
+                                type: typeTitle(template.type),
+                              })}
+                            </span>
+                          )}
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </fieldset>
+            </div>
+          )}
         </>
       )}
     </section>

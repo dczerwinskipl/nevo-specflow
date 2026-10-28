@@ -11,7 +11,7 @@ import type {
  * back restores the user's ticks; an archetype not visited yet starts from its preselected ones.
  */
 export interface ArchetypeChoice {
-  /** The chosen archetype; undefined means the catalogue's default (see `selectedArchetype`). */
+  /** The chosen archetype; undefined means the initial one, if any (see `selectedArchetype`). */
   readonly archetypeId?: string;
   /** Ticked optional template ids, by archetype id (only archetypes the user changed). */
   readonly ticks: Readonly<Record<string, readonly string[]>>;
@@ -19,15 +19,22 @@ export interface ArchetypeChoice {
 
 export const initialArchetypeChoice: ArchetypeChoice = { ticks: {} };
 
-/** The catalogue's `defaultArchetypeId` when it names an archetype, else the first archetype. */
+/**
+ * The archetype selected before the user chooses (decision Q1): the catalogue's
+ * `defaultArchetypeId` when it names an archetype, else the only archetype of a catalogue with
+ * one, else none. Catalogue order carries no preference (the real catalogue is sorted by id).
+ */
 export function defaultArchetype(catalogue: ArchetypeCatalogue): ArchetypeInfo | undefined {
   return (
     catalogue.archetypes.find((archetype) => archetype.id === catalogue.defaultArchetypeId) ??
-    catalogue.archetypes[0]
+    (catalogue.archetypes.length === 1 ? catalogue.archetypes[0] : undefined)
   );
 }
 
-/** The archetype on screen: the chosen one while the catalogue has it, else the default. */
+/**
+ * The archetype on screen: the chosen one while the catalogue has it, else the initial one (which
+ * may be none: the form then asks the user to choose).
+ */
 export function selectedArchetype(
   catalogue: ArchetypeCatalogue | undefined,
   choice: ArchetypeChoice,
@@ -123,7 +130,7 @@ export function archetypeSelection(
 /**
  * After the catalogue changed under the form (`CATALOGUE_STALE`): the selected archetype stays
  * when it still exists, every tick returns to the new defaults. After `ARCHETYPE_UNKNOWN` the
- * selection falls back to the default archetype.
+ * selection falls back to the initial rule (the default, the only archetype, or none).
  */
 export function refreshedArchetypeChoice(
   choice: ArchetypeChoice,

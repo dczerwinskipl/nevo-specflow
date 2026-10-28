@@ -35,7 +35,7 @@ import { fastColorTransitionClassName, hitAreaBlockClassName } from './interacti
 export const treeBranchClassName = 'm-0 grid min-w-0 list-none p-0 pl-tree-indent';
 
 /**
- * Root section header of a tree (the tree's own title, for example "Specification documents"), as
+ * Root section header of a tree (the tree's own title, for example "Project files"), as
  * an explorer names its root: one row height, text on the items' content edge (same border and
  * inline padding as an item), no chevron, never collapses, not interactive. A trailing slot may hold
  * a small busy `Spinner`. Its heading uses the `section-label` type in muted tone (as navigation

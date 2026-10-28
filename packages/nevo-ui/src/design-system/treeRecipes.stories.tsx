@@ -333,10 +333,10 @@ const flatFixture: TreeEntry[] = [
   { kind: 'file', name: 'ux.md', trailing: { text: 'UX', kind: 'label' } },
 ];
 export const FlatWithSectionHeader: Story = {
-  args: { entries: flatFixture, header: 'Specification documents' },
+  args: { entries: flatFixture, header: 'Project files' },
 };
 export const FlatWithSectionHeaderGeometry: Story = {
-  args: { entries: flatFixture, header: 'Specification documents' },
+  args: { entries: flatFixture, header: 'Project files' },
   tags: ['contract'],
   play: async ({ canvasElement }) => {
     const header = canvasElement.querySelector<HTMLElement>('[data-tree-header]')!;
@@ -354,7 +354,7 @@ export const FlatWithSectionHeaderGeometry: Story = {
 };
 /** With a folder the files keep the offset that aligns them with the folder icon. */
 export const SectionHeaderWithFolders: Story = {
-  args: { header: 'Specification documents' },
+  args: { header: 'Project files' },
 };
 export const Narrow: Story = {
   args: { selected: [`architektura/decyzje/${longName}`], width: 'w-full' },

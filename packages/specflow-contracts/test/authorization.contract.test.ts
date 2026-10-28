@@ -20,6 +20,7 @@ describe('SpecFlow authorization contracts', () => {
       Create: 'session.create',
       View: 'session.view',
       Manage: 'session.manage',
+      ExecuteWrite: 'session.execute-write',
     });
     expect(SettingsCapabilities.capabilities).toEqual({
       View: 'settings.view',

@@ -1,4 +1,5 @@
 import { createRuntimeOperationsApi, type OperationsApi } from '../shared/operations/operationsApi';
+import { createManagedSessionsApi, type ManagedSessionsApi } from '../features/sessions';
 import type { DemoCreationApi } from '../features/specs/creation/api/api.demo';
 import { createDemoCreationApi } from '../features/specs/creation/api/api.demo';
 import {
@@ -34,6 +35,7 @@ import { createDemoDocumentsApi } from '../features/documents/api.demo';
 import { createProjectDocumentsApi } from '../features/documents/api.project';
 
 export interface SpecFlowAppServices {
+  readonly managedSessionsApi: ManagedSessionsApi;
   readonly runtimeInfoApi: RuntimeInfoApi;
   readonly authApi: AuthApi;
   readonly authStore: AuthStore;
@@ -58,6 +60,7 @@ export interface SpecFlowAppServices {
 }
 
 export interface SpecFlowServicesOptions {
+  readonly managedSessionsApi?: ManagedSessionsApi;
   readonly http?: HttpClient;
   readonly runtimeInfoApi?: RuntimeInfoApi;
   readonly authApi?: AuthApi;
@@ -96,6 +99,7 @@ export function createSpecFlowAppServices(
   const specificationApi = options.specificationApi ?? createRuntimeSpecificationApi(specsRead);
 
   return {
+    managedSessionsApi: options.managedSessionsApi ?? createManagedSessionsApi(runtimeHttp),
     runtimeInfoApi: options.runtimeInfoApi ?? createRuntimeInfoApi(runtimeHttp),
     authApi,
     authStore,

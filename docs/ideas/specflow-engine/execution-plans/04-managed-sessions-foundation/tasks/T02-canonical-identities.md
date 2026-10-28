@@ -7,49 +7,60 @@ scope: specflow
 areas: [runtime, ai, security, testing]
 tags: [execution-task, temporary, implementation]
 read_when:
-  - implementing E4.T02 on the shared implementation branch
-  - checking dependencies, batch safety and acceptance evidence
+  - implementing E4.T02 on feature/managed-sessions-foundation
 summary: >
-  Temporary task for canonical identities within the SpecFlow Engine implementation.
+  Dependency-complete canonical identities task for independent Sessions.
 related:
   - ideas.specflow-engine.plan-04
-  - ideas.specflow-engine.execution-plans
-  - ideas.specflow-engine.test-plan
+  - ideas.specflow-runtime.managed-sessions-delivery
+  - architecture.ai.session-storage-and-lifecycle
+  - reference.api.sessions
+  - reference.protocols.session-provider-driver
 ---
 
 # E4.T02 — Canonical identities
 
-**Temporary implementation task.** Work on branch `feature/specflow-engine-foundation`; do not create a per-task PR or treat this document as a formal Specification. The [plan overview](../README.md) owns the acceptance boundary.
+Temporary implementation task on `feature/managed-sessions-foundation`.
+The [parent plan](../README.md) owns sequencing and independent review gates.
 
-## Required implementation / outcome
+## Goal and ownership
 
-Define stable product `sessionId`, `turnId`, `workId`, `interactionId` and separate provider native `ProviderSessionRef=(provider, providerSessionId)`; preserve existing normative adapter meaning until the new owned-ID contract is deliberately adopted. Do **not** derive Session from Task, workspace path or providerSessionId alone.
+Realize the fixed canonical and wire contracts with schemas/types and validation tests; no HTTP/store implementation.
 
-**Future compatibility only:** Keep product Session/Turn identities independent of `(spec, task, step, attempt)` and do not assume one Turn per workflow attempt. Stable step-instance/run identities are deferred to the [future plan](../../../multi-instance-plan/README.md).
+- Kind/profile: backend / nevo-agents:implementer.
+- Owner paths: specflow-contracts/src/sessions/** and exports; public Runtime driver/store port types.
+- Prerequisites: [E4.T01](T01-session-contract-reconnaissance.md).
+- Minimal context: API reference, driver reference, storage/lifecycle design, T01 evidence.
+- Acceptance coverage: MS01–MS08/MS12.
 
-## Prerequisites
+Check the [multi-project hosting direction](../../../../multi-project-hosting.md) when choosing persisted Session scope. E4 still targets one fixed verified checkout; this note does not add cross-project behavior to E4.
 
-- [E4.T01](T01-session-contract-reconnaissance.md)
+## Authoritative design entry points
 
-Original planning dependency: T01. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
+- [Delivery and acceptance](../../../../specflow-runtime/managed-sessions-delivery.md).
+- [Storage/lifecycle](../../../../../architecture/ai/session-storage-and-lifecycle.md).
+- [HTTP/read contract](../../../../../reference/api/sessions.md).
+- [Provider driver](../../../../../reference/protocols/session-provider-driver.md).
 
-## Execution & batching
+Read task-relevant sections; behavior stays with those owners, not duplicate schemas in UI.
 
-- Mode: **Solo / review gate** — separate execution and result inspection.
-- Reason: Stable product ID and provider reference contract; review before storage/provider work.
-- **No concurrent writes** to the same shared manifest, registry, journal, Git ref, auth/DTO contract or Runtime feature composition without explicit coordinated ownership; dependency-free alone does not imply safe parallel execution.
-- In a batch, execute tasks **in order** with a checkpoint after each and stop on unexpected contract changes. This is not simultaneous execution.
+## Acceptance
 
-## Verification evidence to attach to review
+- Core UUID identity is independent of Spec/Task/Engine; native composite locator stays private.
+- Define requests, snapshot/history/Work/actions/content, events, provider descriptor, states/outcomes and typed errors once according to references. Reuse session.create/view/manage.
+- Test valid empty/active/terminal/partial/interacting snapshots and reject unknown fields, impossible state/outcome, invalid identifiers and UTF-8 byte limits.
+- Driver facts preserve invocation identity/sequence/provenance and explicit settlement; UI DTOs exclude native IDs/raw payload.
 
-- Specific evidence: **S01/SI01; identifier uniqueness**. These IDs refer to the [canonical candidate test matrix](../../../test-plan.md); where evidence is qualitative, provide precise inspected source/contract and build/import checks instead of inventing a PASS result.
-- Show positive behavior and at least one meaningful failure/no-side-effect case for the changed boundary. Run relevant existing tests; report OS/Git/Node versions for actual Git/process cases.
-- Report modified modules, new/changed contracts, tests run (PASS/FAIL/SKIP), unresolved risk and any changes that affect later task dependencies.
-- Do not claim this task or its parent plan complete while required checks are skipped or unresolved security/lifecycle ownership remains.
+## Verification and review
 
-## References
+Contracts unit tests, build/typecheck/lint and public export checks. Validate API examples.
 
-- [Parent execution plan](../README.md)
-- [Program sequencing / parallel safety](../../README.md)
-- [Ideas acceptance gates](../../../acceptance-criteria.md)
-- [Ideas test plan](../../../test-plan.md)
+Report actual PASS/FAIL/SKIP, affected contracts and intentional legacy differences.
+Use owner-boundary tests and public feature ports. Independent review uses nevo-agents:reviewer
+at the parent plan's gates; this document does not claim review occurred.
+A newly evidenced material conflict blocks dependent work and returns to the owning design.
+
+## Out of scope
+
+No legacy compatibility/import, mandatory Spec ownership, full transcript hydration,
+real writable provider launch, automatic workflow finish or fabricated prerequisite readiness.

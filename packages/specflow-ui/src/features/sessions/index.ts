@@ -2,3 +2,4 @@
 export { useRequestSessionRecovery, useSessionReturn } from './SessionStateProvider';
 export { SessionRecoveryNotice } from './recovery/SessionRecoveryNotice';
 export { SessionProviderIcon } from './shared/SessionProviderIcon';
+export { createManagedSessionsApi, type ManagedSessionsApi } from './managed/api';

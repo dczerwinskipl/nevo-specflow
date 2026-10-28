@@ -34,6 +34,21 @@ concrete reason to use a different runner.
 
 Do not re-test framework behavior that the framework itself owns.
 
+## External AI providers and subscriptions
+
+Automated unit, integration, smoke and CI tests MUST NOT use a real AI subscription,
+paid model endpoint or personal provider login. Use controlled processes, protocol
+fixtures and synthetic credentials. A cancelled subscription, exhausted quota or
+missing local CLI login MUST NOT affect the automated test result. Do not place
+live-account tests in a test runner behind an opt-in environment flag.
+
+Real-provider checks are manual activities outside the automated suites and CI.
+Within the owner's authorization, use a short prompt explicitly identifying the
+request as an integration test and requesting a minimal answer. Run only the check
+needed, and stop on quota or authentication failure rather than retrying it.
+Never embed credentials in code, fixtures, prompts, documentation or committed
+configuration. Report manual evidence separately from automated verification.
+
 ## Test and story placement
 
 Placement follows **ownership**, not technology. A test or Storybook story that belongs to one
@@ -165,8 +180,9 @@ must not embed incidental timestamps.
 
 ### Storybook play functions
 
-Storybook play functions run in a shared browser and the whole corpus is executed on `main` and
-nightly, while pull requests run only the changed stories. A play function must therefore be
+Storybook play functions run in a shared browser. The full corpus is executed on `main` and
+nightly; pull requests run a path-scoped set (all stories for a changed UI package, or directly
+changed stories in other packages), as defined by `engineering.repository.ci`. A play function must therefore be
 order independent and load independent:
 
 - no fixed sleeps or timeouts as synchronization: wait on the condition (`findBy*`, `waitFor`,

@@ -20,6 +20,19 @@ afterEach(() => {
 });
 
 describe('HttpClient.sse', () => {
+  it('starts replay from the authoritative snapshot boundary supplied by its caller', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((_url, init) => {
+      expect(new Headers(init?.headers).get('Last-Event-ID')).toBe('42');
+      return Promise.resolve(sseResponse('id: 43\ndata: resumed\n\n'));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const stream = createHttpClient().sse('/events', { lastEventId: '42' });
+    expect((await stream[Symbol.asyncIterator]().next()).value).toMatchObject({
+      id: '43',
+      data: 'resumed',
+    });
+    stream.close();
+  });
   it('uses the shared base URL and exposes named, unnamed, and multiline events', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

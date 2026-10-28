@@ -68,13 +68,34 @@ the path/context needed to understand ongoing or completed work.
 Reloading the page yields an equivalent view of the same Session (reload equivalence). The composer
 preserves unsent text.
 
+### Opening and reading a long Session
+
+Open at the recent tail from one bounded snapshot, including current activity and pending interaction.
+Older conversation and Work detail load independently on demand; initial entry and reconnect never
+hydrate the full transcript. Large single messages/Turns remain progressively readable.
+The [managed Session API](../../../reference/api/sessions.md) owns exact paging/byte limits.
+
+Prepending an older page preserves the visible scroll anchor. New live activity does not pull a
+reader away from history; provide a return-to-latest action. Failure of an older page leaves the
+current chat/composer usable. Clearly indicate a partial message and let the user read more.
+
+The foundation supplies an independent routed Full Session and an explicitly labelled mock-session
+launcher when that test capability is configured. It does not require a global Sessions dashboard.
+Product association/context panels remain separate consumers above the same core.
+
 ## Session association vs current execution
 
-Every Session in the current product scope belongs to a Specification. A casual conversation with
-no Task execution still has that Specification context; there is no project-global unassociated
-Session collection in this scope.
+Session is an independent abstraction, as defined by
+[the canonical Session model](../../../architecture/ai/canonical-session-turn-work.md).
+Specification, Task and workflow associations are composed above it by product integrations.
+A Session without those associations remains a valid Session.
 
-Distinguish Specification ownership from the Session's current execution context:
+The current Specification UI may create and present Sessions through a Specification association.
+That entry point does not make Specification ownership a requirement of the Session model.
+A casual conversation needs no Task execution. A project-global unassociated Session collection
+is a separate UI scope decision and is not introduced by this model boundary alone.
+
+Distinguish contextual Specification/Task associations from the Session's current execution context:
 
 - a casual Specification conversation, currently also used for non-deterministic preparation;
 - deterministic execution of one or more Tasks;

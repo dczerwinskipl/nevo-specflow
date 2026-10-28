@@ -4,8 +4,10 @@
 
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
+import { copyWindowsBindings } from './windows-bindings.ts';
 
 export interface BundleInput {
   /** absolute or cwd-relative entry (`src/bin.ts`). */
@@ -57,6 +59,21 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     logLevel: 'silent',
   });
 
+  // A Worker must be an installed artifact beside bin.js; workspace source paths are never used.
+  await build({
+    absWorkingDir: cwd,
+    entryPoints: [
+      fileURLToPath(new URL('../../specflow-runtime/src/session-worker.ts', import.meta.url)),
+    ],
+    outfile: join(dirname(outfile), 'session-worker.js'),
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node24',
+    packages: 'bundle',
+    logLevel: 'silent',
+  });
+
   copyProductUiAssets(
     input.uiSourceDir ?? resolve(cwd, '..', 'specflow-ui', 'dist'),
     dirname(outfile),
@@ -64,7 +81,10 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
 
   return {
     outfile,
-    thirdPartyPackages: discoverThirdPartyPackages(Object.keys(result.metafile.inputs), cwd),
+    thirdPartyPackages: [
+      ...discoverThirdPartyPackages(Object.keys(result.metafile.inputs), cwd),
+      ...copyWindowsBindings(dirname(outfile)),
+    ],
   };
 }
 

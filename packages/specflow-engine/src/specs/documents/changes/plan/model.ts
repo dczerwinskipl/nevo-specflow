@@ -85,6 +85,8 @@ export interface DocumentChangePlan {
   readonly allocatedIds: readonly string[];
   readonly templates: readonly PlannedTemplate[];
   readonly registry?: PlannedRegistry;
+  /** A folder delete: the folder it removes (Specification-relative). Absent for every other plan. */
+  readonly removedFolder?: string;
 }
 
 /** Content the writer must put in the payload store before the journal is published. */

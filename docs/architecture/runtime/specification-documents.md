@@ -487,7 +487,7 @@ finished; a split after a failure forms two new batches with disjoint members, n
 
 **Message of a batch commit.** The subject says what the batch did, worded from the plans of its members and
 restricted to what the commit holds: `spec(documents): update notes.md in <slug>`, `update 3 documents in <slug>`,
-`add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>`, `classify <path> as <type> in <slug>`,
+`add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>` (`delete folder <name> from <slug>` for a folder, also an empty one), `classify <path> as <type> in <slug>`,
 and `change N documents in <slug>` when the members did different things. It is at most 72 characters: the longest
 name (document, folder, type or slug) is shortened first, with an ellipsis, never inside a character. The body lists
 one line per change (at most 20 lines and 1500 characters, then `… and N more`) and, for a coalesced batch, the number

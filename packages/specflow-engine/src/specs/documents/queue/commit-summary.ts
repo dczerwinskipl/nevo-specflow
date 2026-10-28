@@ -44,6 +44,8 @@ interface Change {
   readonly to?: string;
   /** Classify: the type. */
   readonly type?: string;
+  /** Listed in the body but not counted in the subject (the files of a deleted folder). */
+  readonly implied?: boolean;
 }
 
 const VERB_OF_ACTION: Readonly<Record<string, Verb>> = {
@@ -101,9 +103,20 @@ function changesOf(plan: DocumentChangePlan): Change[] {
       return [{ verb, folder: true, path: origin, to: destination }];
     }
     case 'delete':
-      return documents
-        .filter((path) => path.post === null)
-        .map((path) => ({ verb: 'delete', folder: false, path: inside(path.path) }));
+      // A folder delete names the folder, also when it holds no file (only the registry changes).
+      return [
+        ...(plan.removedFolder !== undefined
+          ? [{ verb: 'delete' as const, folder: true, path: plan.removedFolder }]
+          : []),
+        ...documents
+          .filter((path) => path.post === null)
+          .map((path) => ({
+            verb: 'delete' as const,
+            folder: false,
+            path: inside(path.path),
+            ...(plan.removedFolder !== undefined ? { implied: true } : {}),
+          })),
+      ];
     case 'classify':
       return plan.documents.map((document) => ({
         verb: 'classify',
@@ -140,10 +153,11 @@ function singleVerbPhrase(verb: Verb, changes: readonly Change[], slug: Part): P
   const preposition = verb === 'add' ? 'to' : verb === 'delete' ? 'from' : 'in';
   const tail: Part[] = [` ${preposition} `, slug];
   // A new folder that comes with created documents is not counted beside them.
+  const named = changes.filter((change) => change.implied !== true);
   const counted =
-    verb === 'add' && changes.some((change) => !change.folder)
-      ? changes.filter((change) => !change.folder)
-      : changes;
+    verb === 'add' && named.some((change) => !change.folder)
+      ? named.filter((change) => !change.folder)
+      : named;
   const count = unique(
     counted.map((change) => `${change.folder ? 'f' : 'd'}:${change.path}:${change.to ?? ''}`),
   ).length;
@@ -259,6 +273,11 @@ export function documentCommitMessage(
     ? members.flatMap((member) => changesOf(member.plan!))
     : [];
   const holds = (change: Change): boolean => {
+    if (change.folder && change.verb === 'delete') {
+      // A deleted folder is in the commit with its registry entry or with any of its files.
+      const prefix = `${directory}/${change.path}/`;
+      return committed.has(manifest) || effective.some((path) => path.startsWith(prefix));
+    }
     if (change.folder || change.verb === 'classify') return committed.has(manifest);
     return [change.path, change.to].some(
       (path) => path !== undefined && committed.has(`${directory}/${path}`),

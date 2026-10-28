@@ -276,6 +276,7 @@ function planFolderOperation(
   }
 
   const draft = newDraft();
+  if (destination === undefined) draft.removedFolder = folder;
   const rewrite = (path: string): string => (destination ?? '') + path.slice(folder.length);
   const registry: ManifestDocument[] = [];
   const registered = new Map(snapshot.manifest.documents.map((entry) => [entry.path, entry]));

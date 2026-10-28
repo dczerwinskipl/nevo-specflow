@@ -298,9 +298,10 @@ export function ProductNavigation({
       </nav>
       <Separator />
       <div
-        className="shrink-0 pt-4"
+        // The shared shell footer height (also the pinned Create footer): one line across the shell.
+        className="box-content flex h-shell-footer shrink-0 items-center"
         data-product-navigation-footer
-        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

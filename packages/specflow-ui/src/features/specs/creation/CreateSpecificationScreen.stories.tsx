@@ -612,11 +612,12 @@ export const SingleModeModel: Story = {
 export const SeparatorsOnlyBetweenRenderedSections: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
-    // Manual mode has no agent section: basics | archetype | git (the footer is pinned below).
-    await expect(canvas.getAllByRole('separator')).toHaveLength(2);
+    // Manual mode has no agent section: basics | archetype | git, then the divider above the pinned
+    // footer.
+    await expect(canvas.getAllByRole('separator')).toHaveLength(3);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień sposób pracy/ }));
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
-    await expect(canvas.getAllByRole('separator')).toHaveLength(3);
+    await expect(canvas.getAllByRole('separator')).toHaveLength(4);
   },
 };
 

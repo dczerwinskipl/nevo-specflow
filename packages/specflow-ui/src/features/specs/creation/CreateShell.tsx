@@ -1,6 +1,12 @@
 import type { FormHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppContent, AppContentContainer, AppWorkspace, AppWorkspaceBody } from '@nevo/ui';
+import {
+  AppContent,
+  AppContentContainer,
+  AppWorkspace,
+  AppWorkspaceBody,
+  Separator,
+} from '@nevo/ui';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
 
@@ -43,9 +49,15 @@ export function CreateShell({
         </div>
       </AppWorkspaceBody>
       {footer ? (
-        <div className="shrink-0 border-t border-border-subtle px-4 py-3 sm:px-6">
-          <AppContentContainer>{footer}</AppContentContainer>
-        </div>
+        <>
+          {/* The same divider and shared shell footer height as the navigation's account row, so
+              the two bars line up across the shell; taller only when the hint and the button stack
+              on a narrow screen. */}
+          <Separator />
+          <div className="flex min-h-shell-footer shrink-0 items-center px-4 py-3 sm:px-6">
+            <AppContentContainer>{footer}</AppContentContainer>
+          </div>
+        </>
       ) : null}
     </>
   );

@@ -171,7 +171,7 @@ export function CreateOperationPage({
       : t('create.submit.checkResult');
 
   return (
-    <CreateShell width="narrow" title={t('create.page.location')}>
+    <CreateShell title={t('create.page.location')}>
       <div className="grid gap-8">
         <ApplicationContextLine className="mb-0" view="new-specification" />
         <header className="flex min-w-0 items-start gap-4">

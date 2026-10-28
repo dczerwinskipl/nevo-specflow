@@ -272,6 +272,7 @@
     "specificationColumn": "Specyfikacja",
     "situationColumn": "Sytuacja",
     "progressColumn": "Postęp",
+    "updatedColumn": "Aktualizacja",
     "milestoneColumn": "Etap",
     "pullRequestColumn": "PR",
     "newestMilestoneFirst": "Najnowszy etap najpierw",
@@ -1214,6 +1215,7 @@
       "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
     },
     "empty": {
+      "heading": "Brak otwartego dokumentu",
       "title": "Wybierz dokument z drzewa albo utwórz nowy.",
       "choose": "Wybierz dokument z drzewa."
     },

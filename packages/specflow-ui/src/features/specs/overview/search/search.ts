@@ -21,15 +21,17 @@ export function filterSpecsOverview(projection: SpecsOverview, query: string): S
     : { ...projection, items: projection.items.filter(matches) };
 }
 
-/** The search box stays while a term is typed, so clearing the results never removes it. */
+/**
+ * The search box stays while a term is typed, so clearing the results never removes it. An empty
+ * collection has nothing to search, so the archive offers it only once it has a specification.
+ */
 export function isSearchable(
   collection: SpecsCollection,
   term: string,
   projection: SpecsOverview | undefined,
 ): boolean {
+  const count = projection?.items.length ?? 0;
   return (
-    collection === 'archive' ||
-    term.trim().length > 0 ||
-    (projection?.items.length ?? 0) >= searchThreshold
+    (collection === 'archive' && count > 0) || term.trim().length > 0 || count >= searchThreshold
   );
 }

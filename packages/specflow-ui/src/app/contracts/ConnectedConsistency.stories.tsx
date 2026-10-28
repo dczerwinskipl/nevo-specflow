@@ -809,9 +809,11 @@ export const FailedCreateAtTheBottomStaysVisible: Story = {
       'Logowanie SSO',
     );
     const submit = await canvas.findByRole('button', { name: 'Utwórz specyfikację' });
-    const scroller = scrollerOf(submit);
+    // The primary button is pinned under the form; the form itself scrolls.
+    const scroller = scrollerOf(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }));
     if (!scroller) throw new Error('The create form has no scroller at 390x844');
-    // The user is at the very bottom, where the primary button lives.
+    await expect(scroller.contains(submit)).toBe(false);
+    // The user is at the very bottom of the form.
     scroller.scrollTop = scroller.scrollHeight;
     await waitFor(() =>
       expect(scroller.scrollTop + scroller.clientHeight).toBeGreaterThanOrEqual(
@@ -1129,12 +1131,18 @@ export const DocumentsIdleSecondary: Story = {
     ).toBeGreaterThan(0);
     const idle = canvas.getByText('Wybierz dokument z drzewa albo utwórz nowy.');
     await expect(idle).toBeVisible();
-    // One line and the start actions; the tree beside it is not repeated as a list, and nothing
-    // opens by itself.
-    const area = within(idle.parentElement!);
+    // The shared empty screen (title, sentence, start actions with New document as the one
+    // primary); the tree beside it is not repeated as a list, and nothing opens by itself.
+    const empty = idle.closest<HTMLElement>('[data-empty-state="pane"]')!;
+    await expect(empty).not.toBeNull();
+    const area = within(empty);
+    await expect(area.getByText('Brak otwartego dokumentu')).toBeVisible();
     await expect(area.queryByRole('list')).toBeNull();
-    await expect(area.getByRole('button', { name: 'Nowy dokument…' })).toBeVisible();
-    await expect(area.getByRole('button', { name: 'Wgraj pliki' })).toBeVisible();
+    const [primary, secondary] = area.getAllByRole('button');
+    await expect(primary).toHaveAccessibleName('Nowy dokument…');
+    await expect(primary!.className).toContain('bg-action-primary');
+    await expect(secondary).toHaveAccessibleName('Wgraj pliki');
+    await expect(secondary!.className).not.toContain('bg-action-primary');
     await expect(area.getAllByRole('button')).toHaveLength(2);
     await expect(canvas.queryByRole('tab')).toBeNull();
     await settleViewport();

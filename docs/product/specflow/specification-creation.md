@@ -26,6 +26,10 @@ choices are: **Current project checkout** (primary), **Existing workspace**, or 
 (managed Git worktree when available). A field being optional in the API does not itself mandate
 a corresponding visible control in UI.
 
+The **Create** action and the one reason it is unavailable (or the note about what Create does)
+stay visible at the bottom of the screen at every width; only the form above them scrolls. What
+went wrong after a submit is explained at the end of the form, above that action.
+
 Display branch, Spec count and availability from `create-options`. Disabled, detached and
 (Git enabled) protected-branch workspaces cannot be selected. A dirty existing checkout can still be suitable for adding another
 Spec, while future integration requires an eligible clean attached destination. A missing branch
@@ -175,8 +179,9 @@ Submitting the form does not draw anything under the form: it stores the request
 entered, and continues on a dedicated page, `/specs/new/creating/:operationId` (bookmarkable and
 safe to reload). The page sends the request when the server has not seen it, follows the operation
 and tells the owner clearly what is going on. **Progress is the primary content**; the
-configuration is a compact secondary summary below it. The page is a focused single-task page in
-the narrow readable column (`w-content-narrow`, centred), stacked vertically, and works from 320 px.
+configuration is a compact secondary summary below it. The page is a focused single-task page,
+stacked vertically, and works from 320 px. It has the same content width and alignment as the form
+(one readable column, centred), so the layout does not jump on submit.
 
 From top to bottom:
 

@@ -50,7 +50,8 @@ export const iconNames = [
   'undo',
 ] as const;
 
-export const iconSizes = ['sm', 'md'] as const;
+/** `lg` and `xl` are illustration sizes (empty screens), drawn with a lighter stroke. */
+export const iconSizes = ['sm', 'md', 'lg', 'xl'] as const;
 
 export const typographyVariantNames = [
   'title-lg',

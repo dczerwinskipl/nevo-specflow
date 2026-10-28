@@ -116,7 +116,18 @@ export const iconRegistry = {
 export const iconSizeClasses = {
   sm: 'size-icon-sm',
   md: 'size-icon-md',
+  lg: 'size-icon-lg',
+  xl: 'size-icon-xl',
 } as const satisfies Record<IconSize, string>;
+
+/**
+ * Stroke in the 24-unit glyph grid: control sizes keep the standard 2; illustration sizes use a
+ * lighter line so a large glyph reads as a drawing rather than a heavy mark.
+ */
+const iconStrokeWidths = { sm: 2, md: 2, lg: 1.25, xl: 1 } as const satisfies Record<
+  IconSize,
+  number
+>;
 
 type IconAccessibilityProps =
   { decorative?: true; 'aria-label'?: never } | { decorative: false; 'aria-label': string };
@@ -151,7 +162,7 @@ export function Icon({
       aria-label={decorative ? undefined : ariaLabel}
       className={cn('block shrink-0', iconSizeClasses[size], className)}
       focusable="false"
-      strokeWidth="2"
+      strokeWidth={iconStrokeWidths[size]}
       {...props}
       {...capture}
     />

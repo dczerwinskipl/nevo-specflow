@@ -70,6 +70,9 @@
 
   --spacing-icon-sm: 0.875rem;
   --spacing-icon-md: 1.125rem;
+  /* Illustration sizes: a glyph that stands alone as the picture of an empty screen. */
+  --spacing-icon-lg: 3rem;
+  --spacing-icon-xl: 5rem;
 
   /* Compact indicators and content-authored workspace geometry. */
   --spacing-status-indicator-sm: 0.375rem;

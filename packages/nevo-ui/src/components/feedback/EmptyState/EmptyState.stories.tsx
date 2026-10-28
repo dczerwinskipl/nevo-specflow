@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'One empty screen for every "nothing here yet" area: an icon tile, a short title, a description on a readable measure and the actions. At most one primary action (the filled `Button`), first; every other action is `variant="secondary"`. `pane` fills an empty area (no border, vertically centred); `default` is an empty block inside a page.',
+          'One empty screen for every "nothing here yet" area: a large muted glyph (or a custom illustration), a short title, a description on a readable measure and the actions. At most one primary action (the filled `Button`), first; every other action is `variant="secondary"`. `pane` fills an empty area (no border, vertically centred); `default` is an empty block inside a page.',
       },
     },
   },
@@ -62,7 +62,7 @@ export const Pane: Story = {
     );
     assert(
       Math.abs(group.left + group.width / 2 - (host.left + host.width / 2)) < 2,
-      'The icon tile is centred horizontally.',
+      'The icon is centred horizontally.',
     );
     assert(getComputedStyle(region).borderTopWidth === '0px', 'A pane has no border.');
     const [primary, secondary] = [...region.querySelectorAll('button')];

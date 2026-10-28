@@ -23,9 +23,30 @@ describe('EmptyState', () => {
     expect(html).toContain('flex-1');
   });
 
-  it('shows the icon in a decorative tile and omits empty slots', () => {
-    const html = renderToStaticMarkup(<EmptyState icon="inbox" title="No data" />);
-    expect(html).toMatch(/<div aria-hidden="true" class="[^"]*size-12/);
+  it('draws the glyph alone, large and muted: xl in a pane, lg in a block, no tile', () => {
+    const pane = renderToStaticMarkup(<EmptyState variant="pane" icon="inbox" title="No data" />);
+    expect(pane).toContain('size-icon-xl');
+    expect(pane).toContain('text-content-muted');
+    expect(pane).not.toContain('rounded-composite');
+    expect(pane).not.toContain('bg-surface-subtle');
+    const block = renderToStaticMarkup(<EmptyState icon="inbox" title="No data" />);
+    expect(block).toContain('size-icon-lg');
+    const smaller = renderToStaticMarkup(
+      <EmptyState variant="pane" icon="inbox" iconSize="lg" title="No data" />,
+    );
+    expect(smaller).toContain('size-icon-lg');
+  });
+
+  it('takes a custom illustration element in place of the glyph', () => {
+    const html = renderToStaticMarkup(
+      <EmptyState icon={<span data-illustration="true" />} title="No data" />,
+    );
+    expect(html).toContain('data-illustration="true"');
+    expect(html).not.toContain('size-icon-');
+  });
+
+  it('omits empty slots', () => {
+    const html = renderToStaticMarkup(<EmptyState title="No data" />);
     expect(html).not.toContain('mt-2');
     expect(html).not.toContain('mt-6');
   });

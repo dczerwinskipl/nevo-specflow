@@ -212,9 +212,12 @@ No Figma projection in v1.
 ## Empty state
 
 `EmptyState` is the one empty screen of the system: whenever an area has nothing to show yet, use it
-instead of a local line and buttons. Anatomy (centred): a 48 px icon tile (`icon`, a registry glyph
-drawn at 24 px, decorative), a `title-md` title (a short noun phrase, no full stop), a `body-md`
-description in `content-secondary` on a `max-w-sm` measure, and the `actions` 24 px below.
+instead of a local line and buttons. Anatomy (centred): the picture (`icon`, decorative): a registry
+glyph alone, without a tile or container, in `content-muted` at an illustration size of `Icon`
+(`xl`, 80 px, in a `pane`; `lg`, 48 px, in the `default` block; `iconSize` overrides; both draw a
+lighter stroke), or an element (a custom illustration) in its place; then a `title-md` title (a short
+noun phrase, no full stop), a `body-md` description in `content-secondary` on a `max-w-sm` measure,
+and the `actions` 24 px below.
 
 - `variant="pane"`: the whole area is empty (a list with no rows, a document area with nothing open).
   No border; it takes the free block size of its host (`flex-1` + `min-h-full`, so the host is a flex

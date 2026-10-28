@@ -1,4 +1,10 @@
-import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
+import {
+  forwardRef,
+  isValidElement,
+  type HTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { tv } from 'tailwind-variants/lite';
 import { cn } from '../../../lib';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -24,8 +30,13 @@ export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 't
   title: ReactNode;
   /** One or two sentences: why the area is empty and what the user can do. */
   description?: ReactNode;
-  /** A registry glyph, drawn in a calm tile above the title (decorative). */
-  icon?: IconGlyph;
+  /**
+   * The picture above the title (decorative): a registry glyph drawn large and muted, or an
+   * element (a custom illustration) that replaces it.
+   */
+  icon?: IconGlyph | ReactElement;
+  /** Glyph size; defaults to `xl` in a `pane` and `lg` in the `default` block. */
+  iconSize?: 'lg' | 'xl';
   /**
    * The actions, in order. At most one primary (the filled default `Button`), and it comes first;
    * every other action is `variant="secondary"`. A state that only offers a way out (clear the
@@ -40,7 +51,7 @@ export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 't
 }
 
 export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function EmptyState(
-  { actions, className, description, icon, title, variant = 'default', ...props },
+  { actions, className, description, icon, iconSize, title, variant = 'default', ...props },
   ref,
 ) {
   const capture = useDesignMetadata('EmptyState', { variant });
@@ -55,11 +66,14 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function E
       {icon ? (
         <div
           aria-hidden="true"
-          // The registry has no larger icon size: the tile draws its glyph at 24 px.
-          className="mb-4 inline-flex size-12 shrink-0 items-center justify-center rounded-composite border border-border-subtle bg-surface-subtle text-content-secondary [&>svg]:size-6"
+          className="mb-5 flex shrink-0 justify-center text-content-muted"
           {...designSlot('EmptyState', 'icon')}
         >
-          <Icon name={icon} size="md" />
+          {isValidElement(icon) ? (
+            icon
+          ) : (
+            <Icon name={icon} size={iconSize ?? (variant === 'pane' ? 'xl' : 'lg')} />
+          )}
         </div>
       ) : null}
       <div

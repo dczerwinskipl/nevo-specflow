@@ -54,6 +54,13 @@ async function project(gitEnabled = true) {
     'initial',
   );
   git(root, 'checkout', '-q', '-b', 'feature/work');
+  // Automatic commit is off by default; these tests exercise the queue, so they enable it through the
+  // workstation-local configuration (ignored by Git), the path production reads.
+  await mkdir(join(root, '.nevo', 'local'), { recursive: true });
+  await writeFile(
+    join(root, '.nevo', 'local', 'config.yaml'),
+    ['git:', '  commits:', '    auto:', '      documents: true', ''].join('\n'),
+  );
   await installDefinitionsForTesting(await bootstrapProjectHome(root));
   const created = await cli(root, [
     'specs',

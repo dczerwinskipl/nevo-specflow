@@ -181,7 +181,8 @@ safe to reload). The page sends the request when the server has not seen it, fol
 and tells the owner clearly what is going on. **Progress is the primary content**; the
 configuration is a compact secondary summary below it. The page is a focused single-task page,
 stacked vertically, and works from 320 px. It has the same content width and alignment as the form
-(one readable column, centred), so the layout does not jump on submit.
+(one focused column of about 880 px, the `content-form` width, centred; narrower screens fill the
+workspace), so the layout does not jump on submit.
 
 From top to bottom:
 

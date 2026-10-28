@@ -503,14 +503,14 @@ export const Refused: Story = {
 };
 
 /**
- * The progress page and the form share one content width (`content-standard`, 1100 px, centred by
+ * The progress page and the form share one content width (`content-form`, 880 px, centred by
  * the bounded workspace): the layout does not jump on submit, running or refused alike. Narrower
  * screens fill the workspace with the normal gutters.
  */
 async function expectFormWidth() {
   const standard =
     parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-standard'),
+      getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-form'),
     ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
   const heading = await within(document.body).findByRole('heading', { level: 1 });
   const content = heading.closest('.scroll-area')!.parentElement!;

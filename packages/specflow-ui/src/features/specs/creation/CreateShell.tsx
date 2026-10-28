@@ -6,7 +6,7 @@ import { applicationLocationHeader } from '../../../app/navigation/ApplicationLo
 
 /**
  * The Primary pane every Create state is shown in (loading, error, the form and its progress page
- * alike). All of them share one content width (`content-standard`, centred by the bounded
+ * alike). All of them share one content width (`content-form`, centred by the bounded
  * workspace), so submitting the form never makes the page jump.
  */
 export function CreateShell({
@@ -58,7 +58,7 @@ export function CreateShell({
           specId,
         })}
       >
-        <AppContent className="w-content-standard max-w-full">
+        <AppContent className="w-content-form max-w-full">
           {form ? (
             <form {...form} className="flex min-h-0 flex-1 flex-col">
               {body}

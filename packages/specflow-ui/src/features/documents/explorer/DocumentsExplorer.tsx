@@ -227,7 +227,11 @@ export function DocumentsExplorer({
         // A document sends its own revision, a folder the FOLDER revision (never the tree's).
         const expectedRevision =
           kind === 'document' ? document?.revision : folderOperationRevision(snapshot, path);
-        if (!expectedRevision) return;
+        if (!expectedRevision) {
+          if (kind === 'folder')
+            operations.actions.refuse(t('documents.tree.error.folderRevisionMissing'));
+          return;
+        }
         if (action === 'move') setTarget('');
         setRequest({ action, kind, path: document?.path ?? path, id, expectedRevision });
       });

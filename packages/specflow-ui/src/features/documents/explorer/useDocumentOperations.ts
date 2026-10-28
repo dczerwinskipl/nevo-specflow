@@ -110,6 +110,8 @@ export interface DocumentOperationsActions {
   ) => Promise<TypeOperationOutcome>;
   /** Clears the failure of a dialog that is closed or reopened. */
   clearError: () => void;
+  /** Refuses an action before anything is sent, with the (translated) reason shown under the tree. */
+  refuse: (message: string) => void;
   /** Confirms a move, delete or registration removal; `onDone` runs when it succeeded. */
   confirmDialog: (
     request: DocumentDialogRequest,
@@ -425,6 +427,10 @@ export function useDocumentOperations(
       clearError: () => {
         setError('');
         setResumable(false);
+      },
+      refuse: (message) => {
+        setResumable(false);
+        setError(message);
       },
       confirmDialog,
     },

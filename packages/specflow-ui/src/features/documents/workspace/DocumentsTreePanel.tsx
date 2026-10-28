@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, AppContent, Button, InlineNote, ScrollArea, Separator } from '@nevo/ui';
@@ -20,6 +20,7 @@ import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraf
 import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
 import { CloseIssues } from './CloseIssues';
+import { createDiscardConsent } from './discardConsent';
 import { ExpectedDocuments } from './ExpectedDocuments';
 import type { DocumentTreeOperations } from './useDocumentTreeOperations';
 
@@ -57,10 +58,8 @@ export function DocumentsTreePanel({
   const specification = useSpecificationWorkspace(specId);
   const data = tree.data;
   const drafts = useDocumentDraftStore();
-  // The drafts the user agreed to discard for the operation being prepared. They go only once that
-  // operation is confirmed: a cancelled dialog, a failed tree read or a refused operation loses
-  // nothing. Written in handlers only; every new action starts empty.
-  const discardOnSuccess = useRef<string[]>([]);
+  // The drafts the user agreed to discard go only once the action is confirmed (see the helper).
+  const [consent] = useState(() => createDiscardConsent((id) => drafts.remove(specId, id)));
   // What needs the reader first, and only that: Close refusals, why nothing can be changed, and
   // the types the archetype expects that are missing.
   const issues = data ? closeRefusingIssues(data) : [];
@@ -112,21 +111,17 @@ export function DocumentsTreePanel({
             controllerRef={controllerRef}
             active={documentId}
             onSelect={onSelect}
-            onAdd={operations.add}
+            onAdd={(documents, folders) => consent.after(() => operations.add(documents, folders))}
             onOperate={(operation) =>
-              operations.operate(operation, {
-                // Before the drafts follow a changed id: the agreed discard is about the old one.
-                onConfirmed: () => {
-                  for (const id of discardOnSuccess.current.splice(0)) drafts.remove(specId, id);
-                },
-              })
+              // Before the drafts follow a changed id: the agreed discard is about the old one.
+              operations.operate(operation, { onConfirmed: consent.confirm })
             }
             beforeAction={async (options) => {
-              discardOnSuccess.current = [];
+              consent.begin([]);
               // Create, classify and registration removal keep the drafts of open documents.
               if (!options?.keepDrafts) {
                 if (requestRef.current && !(await requestRef.current())) return false;
-                discardOnSuccess.current = takeDiscardedRef?.current?.() ?? [];
+                consent.begin(takeDiscardedRef?.current?.() ?? []);
               }
               const snapshot = await documentsApi.documentTree(specId);
               cache.setQueryData(documentTreeKeys.tree(specId), snapshot);

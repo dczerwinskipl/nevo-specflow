@@ -1164,7 +1164,8 @@
         "resume": "Resume",
         "saveRunning": "A save of this document is still running. Try again when it has finished.",
         "saveToResume": "Resume or discard the pending save first.",
-        "saveUnconfirmed": "The result of the last save is not confirmed yet. Save again to confirm it first."
+        "saveUnconfirmed": "The result of the last save is not confirmed yet. Save again to confirm it first.",
+        "folderRevisionMissing": "This folder cannot be renamed, moved or deleted here: the Runtime did not report its revision."
       },
       "nameError": {
         "characters": "The name cannot contain the characters \\ / : * ? \" < > |",
@@ -1311,6 +1312,7 @@
       "saved": "Saved",
       "refused": "Not saved: {{reason}}",
       "busy": "Not saved: another change is in progress",
+      "operationRunning": "A change to this document in the tree is still running. Save again when it has finished.",
       "commitBlocked": "Not saved: Git cannot take a commit right now",
       "missing": "Not saved: the file is missing",
       "failed": "Not saved. Your changes are still here.",

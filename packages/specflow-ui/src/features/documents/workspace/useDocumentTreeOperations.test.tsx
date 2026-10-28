@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   followTab: vi.fn((_from: string, _to: string) => Promise.resolve()),
   followSave: vi.fn(),
   pendingOf: vi.fn((_id: string): PendingSave | undefined => undefined),
+  released: vi.fn(),
+  holdSaves: vi.fn((_ids: readonly string[]) => mocks.released),
   blocker: undefined as BlockerOptions | undefined,
 }));
 
@@ -42,7 +44,11 @@ vi.mock('../tabs/DocumentTabsProvider', () => ({
   }),
 }));
 vi.mock('../editor/DocumentEditorProvider', () => ({
-  useDocumentSaveOwner: () => ({ follow: mocks.followSave, pendingOf: mocks.pendingOf }),
+  useDocumentSaveOwner: () => ({
+    follow: mocks.followSave,
+    pendingOf: mocks.pendingOf,
+    holdSaves: mocks.holdSaves,
+  }),
 }));
 vi.mock('../../../app/useAppServices', () => ({
   useAppServices: () => ({ documentApi: { getDocument: mocks.getDocument } }),
@@ -491,5 +497,32 @@ describe('drafts the user agreed to discard for an operation', () => {
     const onConfirmed = vi.fn();
     await expect(view.result.current.treeOps.operate(classify, { onConfirmed })).rejects.toThrow();
     expect(onConfirmed).not.toHaveBeenCalled();
+  });
+});
+
+describe('saves during an operation in flight', () => {
+  it('are held for the documents of the operation until it has finished', async () => {
+    let finish!: (value: unknown) => void;
+    mocks.operateDocument.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    mocks.holdSaves.mockClear();
+    mocks.released.mockClear();
+    const { view } = setup();
+    let done: Promise<unknown> | undefined;
+    act(() => {
+      done = view.result.current.treeOps.operate({
+        action: 'classify',
+        kind: 'document',
+        documentId: 'u-a',
+        type: 'research',
+        expectedRevision: 'r1',
+      } as never);
+    });
+    expect(mocks.holdSaves).toHaveBeenCalledWith(['u-a']);
+    expect(mocks.released).not.toHaveBeenCalled();
+    await act(async () => {
+      finish({ revision: 'r', documents: [], removedDocumentIds: [], folders: [] });
+      await done;
+    });
+    expect(mocks.released).toHaveBeenCalledTimes(1);
   });
 });

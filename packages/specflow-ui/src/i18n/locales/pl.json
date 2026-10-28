@@ -1164,7 +1164,8 @@
         "resume": "Wznów",
         "saveRunning": "Zapis tego dokumentu jeszcze trwa. Spróbuj ponownie, gdy się zakończy.",
         "saveToResume": "Najpierw wznów lub odrzuć oczekujący zapis.",
-        "saveUnconfirmed": "Wynik ostatniego zapisu nie jest jeszcze potwierdzony. Najpierw zapisz ponownie, aby go potwierdzić."
+        "saveUnconfirmed": "Wynik ostatniego zapisu nie jest jeszcze potwierdzony. Najpierw zapisz ponownie, aby go potwierdzić.",
+        "folderRevisionMissing": "Tego folderu nie można tu przemianować, przenieść ani usunąć: Runtime nie podał jego rewizji."
       },
       "nameError": {
         "characters": "Nazwa nie może zawierać znaków \\ / : * ? \" < > |",
@@ -1311,6 +1312,7 @@
       "saved": "Zapisano",
       "refused": "Nie zapisano: {{reason}}",
       "busy": "Nie zapisano: trwa inna zmiana",
+      "operationRunning": "Zmiana tego dokumentu w drzewie jeszcze trwa. Zapisz ponownie, gdy się zakończy.",
       "commitBlocked": "Nie zapisano: Git nie może teraz przyjąć commita",
       "missing": "Nie zapisano: brak pliku",
       "failed": "Nie zapisano. Twoje zmiany są nadal tutaj.",

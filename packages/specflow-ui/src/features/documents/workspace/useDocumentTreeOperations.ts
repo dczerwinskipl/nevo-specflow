@@ -43,18 +43,20 @@ export function pendingSaveOf(
   tree: DocumentTree | undefined,
   pendingOf: (id: string) => PendingSave | undefined,
 ): PendingSave | undefined {
-  const ids =
-    operation.kind === 'document'
-      ? operation.documentId
-        ? [operation.documentId]
-        : []
-      : (tree?.documents ?? [])
-          .filter((document) =>
-            document.path.toLowerCase().startsWith((operation.path ?? '').toLowerCase() + '/'),
-          )
-          .map((document) => document.id);
-  const states = ids.map(pendingOf);
+  const states = operationScope(operation, tree).map(pendingOf);
   return (['recovery', 'unconfirmed', 'saving'] as const).find((state) => states.includes(state));
+}
+
+/** The documents an operation is about: its document, or every document under its folder. */
+export function operationScope(
+  operation: DocumentOperation,
+  tree: DocumentTree | undefined,
+): string[] {
+  if (operation.kind === 'document') return operation.documentId ? [operation.documentId] : [];
+  const prefix = (operation.path ?? '').toLowerCase() + '/';
+  return (tree?.documents ?? [])
+    .filter((document) => document.path.toLowerCase().startsWith(prefix))
+    .map((document) => document.id);
 }
 
 /** The refusal code of an operation a pending save blocks (see `documentMutationError`). */
@@ -243,6 +245,20 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
         retryable: true,
         code: pendingSaveCode[pending],
       });
+    // While the operation is in flight a save of its documents is refused (it would settle under
+    // an id the operation may change); released once the drafts have followed.
+    const release = saves.holdSaves(operationScope(operation, before));
+    try {
+      return await finishOperation(operation, before, operateOptions);
+    } finally {
+      release();
+    }
+  };
+  const finishOperation = async (
+    operation: DocumentOperation,
+    before: DocumentTree | undefined,
+    operateOptions: Parameters<DocumentTreeOperations['operate']>[1],
+  ) => {
     const result = await sendRetained(
       operationAttempt,
       operation,

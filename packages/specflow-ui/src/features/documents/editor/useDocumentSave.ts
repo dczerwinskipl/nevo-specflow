@@ -2,6 +2,7 @@ import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDocumentsApi } from '../useDocumentsApi';
+import { ApiError } from '../../../api';
 import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { newId } from '../../../shared/ids/newId';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
@@ -80,7 +81,15 @@ export interface DocumentSaveOwner {
    * operation id); read before an operation would change or remove the document.
    */
   pendingOf: (id: string) => PendingSave | undefined;
+  /**
+   * A tree operation on these documents is in flight: a save of them is refused (its id may change
+   * under it) until the returned release runs.
+   */
+  holdSaves: (ids: readonly string[]) => () => void;
 }
+
+/** The code of a save refused while a tree operation on the document is in flight. */
+export const operationRunningCode = 'document-operation-running';
 
 /** A save of a document that is not final yet (see `DocumentSaveOwner.pendingOf`). */
 export type PendingSave = 'saving' | 'recovery' | 'unconfirmed';
@@ -125,6 +134,8 @@ export function useDocumentSave({
   const inFlight = useRef(new Map<string, Promise<SaveResult>>());
   // Saves that must be resumed as they were sent (same operation id); owned by `save` only.
   const retained = useRef(new Map<string, RetainedSave>());
+  // Documents a tree operation in flight is about (draft keys, counted): owned by `holdSaves`.
+  const held = useRef(new Map<string, number>());
   /**
    * The retained save of a document while it still describes the draft: same incarnation (not
    * discarded or closed since) and the same text. A discarded, reloaded or edited draft drops it,
@@ -207,6 +218,19 @@ export function useDocumentSave({
       const key = documentDraftKey(openSpec, id);
       const joined = inFlight.current.get(key);
       if (joined) return joined;
+      if (held.current.has(key)) {
+        // A rename, move or classify of this document is running: a save now would settle under
+        // the id it had before. Nothing is sent; Save works again once the operation ended.
+        const error = new ApiError({
+          kind: 'conflict',
+          operation: 'documents.save',
+          outcome: 'not-applied',
+          retryable: true,
+          code: operationRunningCode,
+        });
+        setErrors((all) => ({ ...all, [key]: error }));
+        return { ok: false, specId: openSpec, documentId: id, content: source.content, error };
+      }
       // A save without a final result is sent again exactly as it was: Resume always replays the
       // written one; otherwise only while it still describes the draft.
       const kept = options?.resume ? retained.current.get(key) : retainedFor(openSpec, id);
@@ -317,8 +341,24 @@ export function useDocumentSave({
     [specId, retainedFor],
   );
 
+  const holdSaves = useCallback(
+    (ids: readonly string[]) => {
+      const keys = ids.map((id) => documentDraftKey(specId, id));
+      for (const heldKey of keys) held.current.set(heldKey, (held.current.get(heldKey) ?? 0) + 1);
+      return () => {
+        for (const heldKey of keys) {
+          const count = (held.current.get(heldKey) ?? 1) - 1;
+          if (count > 0) held.current.set(heldKey, count);
+          else held.current.delete(heldKey);
+        }
+      };
+    },
+    [specId],
+  );
+
   const key = document ? documentDraftKey(specId, document.id) : undefined;
   return {
+    holdSaves,
     follow,
     pendingOf,
     save,

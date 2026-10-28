@@ -392,4 +392,21 @@ describe('a save that must be resumed or follows a new id', () => {
     act(() => view.result.current.follow('b', 'research'));
     expect(view.result.current.pendingOf('research')).toBeUndefined();
   });
+
+  it('refuses a save while a tree operation on the document is in flight, sending nothing', async () => {
+    const { save, view } = setup();
+    let release!: () => void;
+    act(() => {
+      release = view.result.current.holdSaves(['b']);
+    });
+    let result: unknown;
+    await act(async () => {
+      result = await view.result.current.save('b');
+    });
+    expect(result).toMatchObject({ ok: false, error: { code: 'document-operation-running' } });
+    expect(save).not.toHaveBeenCalled();
+    act(() => release());
+    await act(async () => void (await view.result.current.save('b')));
+    expect(save).toHaveBeenCalledTimes(1);
+  });
 });

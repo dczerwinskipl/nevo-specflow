@@ -1,6 +1,6 @@
 import { useRef, useState, type RefObject } from 'react';
 import { newId } from '../../../shared/ids/newId';
-import { useMessage } from '../../../i18n/message';
+import { message, useMessage } from '../../../i18n/message';
 import { entryOriginKey, entryResultKey, resolveEntry, type InlineEntry } from './inlineEntry';
 import { folderOperationRevision, type EntryKind } from './documentTreePolicy';
 import type { DocumentOperationsActions } from './useDocumentOperations';
@@ -63,7 +63,10 @@ export function useInlineEntry(options: {
       // A folder rename sends the FOLDER revision; a folder without one cannot be renamed.
       const folderRevision =
         rename && kind === 'folder' ? folderOperationRevision(snapshot, rename.path) : undefined;
-      if (rename && kind === 'folder' && !folderRevision) return;
+      if (rename && kind === 'folder' && !folderRevision) {
+        operations.refuse(text(message('documents.tree.error.folderRevisionMissing')));
+        return;
+      }
       onOpenFolder(parent);
       put({
         key: newId(),

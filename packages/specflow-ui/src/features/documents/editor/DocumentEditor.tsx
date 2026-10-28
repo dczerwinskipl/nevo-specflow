@@ -8,6 +8,7 @@ import { documentKindOf, documentViewOf } from '../content-kinds/documentContent
 import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
 import { refusalReason } from '../explorer/useDocumentOperations';
 import { MarkdownSourceEditor } from './MarkdownSourceEditor';
+import { operationRunningCode } from './useDocumentSave';
 import {
   useDocumentEditor,
   type DocumentEditorSession,
@@ -105,6 +106,10 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
       break;
     case 'SPEC_BUSY':
       title = t('documents.save.busy');
+      actions = tryAgain;
+      break;
+    case operationRunningCode:
+      title = t('documents.save.operationRunning');
       actions = tryAgain;
       break;
     case 'DOCUMENT_RECOVERY_REQUIRED':

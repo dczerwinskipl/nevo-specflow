@@ -34,11 +34,14 @@ function setup(
         onAdd: () => Promise.resolve(),
         onOperate,
       });
-      return useInlineEntry({
-        operations: operations.actions,
-        focus,
-        onOpenFolder: () => undefined,
-      });
+      return {
+        inline: useInlineEntry({
+          operations: operations.actions,
+          focus,
+          onOpenFolder: () => undefined,
+        }),
+        error: operations.state.error,
+      };
     },
     {
       wrapper: ({ children }: { children: ReactNode }) => (
@@ -48,12 +51,12 @@ function setup(
   );
   const rename = async (kind: 'document' | 'folder', path: string, name: string, id?: string) => {
     await act(async () => {
-      view.result.current.start(kind, '', { id, path });
+      view.result.current.inline.start(kind, '', { id, path });
       await Promise.resolve();
     });
-    if (!view.result.current.entry) return;
-    act(() => view.result.current.change(name));
-    await act(() => view.result.current.commit('enter'));
+    if (!view.result.current.inline.entry) return;
+    act(() => view.result.current.inline.change(name));
+    await act(() => view.result.current.inline.commit('enter'));
   };
   return { view, onOperate, rename };
 }
@@ -91,8 +94,10 @@ describe('inline rename', () => {
     };
     const { view, onOperate, rename } = setup(withoutRevision);
     await rename('folder', 'notes', 'archive');
-    expect(view.result.current.entry).toBeUndefined();
+    expect(view.result.current.inline.entry).toBeUndefined();
     expect(onOperate).not.toHaveBeenCalled();
+    // Not silent: the reason is shown under the tree.
+    expect(view.result.current.error).toBe('documents.tree.error.folderRevisionMissing');
   });
 
   it('explains a case-only rename the file system refuses and keeps the typed name', async () => {
@@ -108,7 +113,7 @@ describe('inline rename', () => {
     const { view, onOperate, rename } = setup(tree, () => Promise.reject(caseOnly));
     await rename('document', 'notes/decisions.md', 'Decisions.md', 'decisions');
     expect(onOperate).toHaveBeenCalledTimes(1);
-    expect(view.result.current.entry).toMatchObject({
+    expect(view.result.current.inline.entry).toMatchObject({
       name: 'Decisions.md',
       error: 'documents.tree.error.caseOnlyRename',
     });

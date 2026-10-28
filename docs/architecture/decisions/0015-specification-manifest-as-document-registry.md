@@ -1,17 +1,18 @@
 ---
 id: adr.0015-specification-manifest-as-document-registry
 type: adr
-title: The Specification manifest is the document registry; archetypes are Engine-owned catalogue entries
-status: draft
+title: The Specification manifest is the document registry; archetypes are project-defined catalogue entries
+status: current
 date: 2026-10-23
 summary: >
   specification.yaml becomes the canonical registry of a Specification's documents (stable id, path, type)
   and records the selected archetype with a snapshot of its requirements. Archetypes and document types
-  are an Engine-built-in catalogue shaped like future YAML. Frontmatter is optional and never authoritative;
+  are project data files (ADR 0017), not compiled into the product. Frontmatter is optional and never authoritative;
   files outside the registry are unclassified. Structural completeness is a computed validation result.
 related:
   - architecture.runtime.specification-documents
   - adr.0016-engine-owned-document-commits
+  - adr.0017-definitions-as-project-data
   - adr.0013-engine-owned-commits-and-protected-branches
   - architecture.runtime.specflow-engine
   - product.specflow.specification-documents
@@ -21,8 +22,7 @@ related:
 
 ## Status
 
-Draft (proposed with the specification `product.specflow.specification-documents`; becomes Current when the
-owner accepts the D0 pull request). The decisions below were taken by the product owner and are recorded here.
+Current. The decisions below were taken by the product owner.
 
 ## Context
 
@@ -70,12 +70,13 @@ evolve this later (project-defined archetypes, template overrides) without redef
 8. **Completeness is computed, never stored.** "Structural completeness" (requirements met) is a pure function
    of the registry, the files and the persisted requirements snapshot. Readiness or content acceptance is not
    stored and is not decided here; it is a validation result of a separate (later) capability.
-9. **One declarative definition schema.** Archetypes, document types, templates and requirements are described by one
-   schema (`schemaVersion: 1`), published as a JSON Schema, used identically by the built-in definitions (Engine code,
-   D1 to D3) and by future user-defined YAML under `.nevo/archetypes`. Every archetype and document type has mandatory
-   `description` and `useWhen`; document types also have mandatory `instructions` (templates and archetypes optional
-   `instructions`), consumed by AI, CLI and UI. The first release ships `minimal`, `feature` and `architecture`. Loading
-   user definitions, precedence, collisions and error surface are the named design-level slice D-config, after D3.
+9. **Declarative definitions, owned by the project.** Archetypes, document types, templates and requirements are
+   described by declarative schemas (`schemaVersion` per kind), published as JSON Schemas. They are **project data
+   files** read from `.nevo/definitions/<kind>/` ([ADR 0017](0017-definitions-as-project-data.md)); nothing
+   archetype-related is compiled into the product (amended 2026-10-24: the first draft held the built-ins in Engine
+   code). The shipped `minimal`, `feature` and `architecture` archetypes and their document types are seed files that
+   install into a project. Every archetype and document type has mandatory `description` and `useWhen`; document types
+   also have mandatory `instructions` (templates and archetypes optional `instructions`), consumed by AI, CLI and UI.
 10. **Selected archetype version and requirements are persisted with the Specification.** `archetype.requirements`
     is a snapshot copied from the catalogue at Create. Later catalogue changes never alter an existing
     Specification's completeness. Archetype switching in an existing Specification is out of scope; the
@@ -85,16 +86,15 @@ evolve this later (project-defined archetypes, template overrides) without redef
 
 ## Consequences
 
-- Production code that builds or round-trips a manifest changes (`model.ts`, `lifecycle/archive-effects.ts`), as do the few tests that write manifest text by hand (four files; the delivery specification lists them). Suites that obtain manifests from Create change only if they assert scaffold content.
+- Production code that builds or round-trips a manifest changes (`model.ts`, `lifecycle/archive-effects.ts`), as do the few tests that write manifest text by hand. Suites that obtain manifests from Create change only if they assert scaffold content.
 - A checkout containing a manifest in the old shape fails closed. The Runtime reports the existing
   `SPEC_SOURCE_INVALID` (503) and logs the offending slug and field; operators repair the manifest by hand
   (add `archetype`, `documents`, drop `type`). There is no shim.
 - Rewriting the manifest (registry changes) must preserve unknown top-level keys and SHOULD preserve comments
   and key order (use a document-preserving YAML API); Close archive already round-trips the parsed manifest.
 - The Create journal intent grows (archetype, optional documents, added documents) and its format version
-  moves to 2; file contents live in hash-addressed payload files, not in the journal. Journals of the older
-  format are handled by a narrow retention rule, not read (confirmed by the owner; see the delivery
-  specification, D2).
+  moves to 2; file contents live in hash-addressed payload files, not in the journal. A journal file that is not JSON or has no
+  numeric `version` is ignored and swept by retention; any other file that does not validate is a corrupt journal.
 - Reviews and Tasks remain separate resources; they are not documents and are not registered here.
 
 ## Rejected

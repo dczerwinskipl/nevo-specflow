@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nevo:specflow:definition:specification-archetype:1",
+  "title": "Nevo SpecFlow specification archetype definition",
+  "description": "One Specification archetype with its requirements and templates (kind specification-archetype, schemaVersion 1).",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "title",
+    "description",
+    "useWhen",
+    "requirements",
+    "templates"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "const": "specification-archetype"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "useWhen": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "documentType",
+          "minCount"
+        ],
+        "properties": {
+          "documentType": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+          },
+          "minCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "documentType",
+              "filename",
+              "include",
+              "content"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "documentType": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "filename": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384,
+                "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "include": {
+                "type": "string",
+                "const": "always"
+              },
+              "content": {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "Limit: 65536 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "documentType",
+              "filename",
+              "include",
+              "contentFile"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "documentType": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "filename": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384,
+                "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "include": {
+                "type": "string",
+                "const": "always"
+              },
+              "contentFile": {
+                "type": "string",
+                "pattern": "^templates/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+){0,7}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "documentType",
+              "filename",
+              "include",
+              "content"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "documentType": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "filename": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384,
+                "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "include": {
+                "type": "string",
+                "const": "optional"
+              },
+              "preselected": {
+                "type": "boolean"
+              },
+              "content": {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "Limit: 65536 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "documentType",
+              "filename",
+              "include",
+              "contentFile"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "documentType": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "filename": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384,
+                "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "include": {
+                "type": "string",
+                "const": "optional"
+              },
+              "preselected": {
+                "type": "boolean"
+              },
+              "contentFile": {
+                "type": "string",
+                "pattern": "^templates/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+){0,7}$"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

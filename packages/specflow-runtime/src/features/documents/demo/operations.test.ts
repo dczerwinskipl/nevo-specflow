@@ -170,9 +170,14 @@ describe('demo document writes (D4 shapes)', () => {
     const before = await source.read('localization', 'overview');
     const input = { operationId: op(1), content: '# Saved', expectedRevision: before.revision };
     const saved = await env.documents.save('alice', 'localization', 'overview', input, find);
-    expect(saved).toMatchObject({ operationId: op(1), committed: true });
-    expect(saved.commit!.sha).toMatch(/^[0-9a-f]{40}$/u);
-    expect(saved.revision).not.toBe(before.revision);
+    // The new SaveResult: the written document and the commit (the demo commits at once).
+    expect(saved).toMatchObject({
+      operationId: op(1),
+      document: { id: 'overview', type: 'overview' },
+      commit: { state: 'committed' },
+    });
+    expect(saved.commit.sha).toMatch(/^[0-9a-f]{40}$/u);
+    expect(saved.document.revision).not.toBe(before.revision);
     expect(await env.documents.save('alice', 'localization', 'overview', input, find)).toEqual(
       saved,
     );

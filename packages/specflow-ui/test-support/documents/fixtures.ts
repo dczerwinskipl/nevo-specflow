@@ -106,7 +106,11 @@ export function documentTreeFixture(
   };
 }
 
-/** A committed save that produced `revision`. */
-export function saveResultFixture(revision: string): SaveResult {
-  return { operationId: '00000000-0000-4000-8000-000000000000', revision, committed: true };
+/** A save that wrote `revision` (its commit already made, as with auto-commit). */
+export function saveResultFixture(revision: string, id = 'document'): SaveResult {
+  return {
+    operationId: '00000000-0000-4000-8000-000000000000',
+    document: { id, path: `${id}.md`, revision },
+    commit: { state: 'committed', sha: 'f'.repeat(40) },
+  };
 }

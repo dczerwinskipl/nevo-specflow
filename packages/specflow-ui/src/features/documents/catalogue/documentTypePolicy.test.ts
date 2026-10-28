@@ -159,7 +159,7 @@ describe('type chooser', () => {
 });
 
 describe('read-only reason', () => {
-  const unavailable = (reason: 'branch-protected' | 'archived' | 'not-implemented') => ({
+  const unavailable = (reason: 'branch-protected' | 'archived') => ({
     available: false,
     reason,
   });

@@ -9,12 +9,16 @@ import {
   type SpecificationLocation,
   type SpecificationManifest,
 } from '../model';
-import { deriveUnclassifiedDocumentId, isDerivedDocumentId } from './document-ids';
-import { isReservedRootName } from './document-paths';
+import { deriveUnclassifiedDocumentId, isDerivedDocumentId } from '../document-rules/document-ids';
+import { isReservedRootName } from '../document-rules/document-paths';
 import { listSpecificationFiles } from './directory-scan';
-import { DocumentError } from './errors';
+import { DocumentError } from '../document-rules/errors';
 import { MANIFEST_MAX_BYTES } from './limits';
-import { assertCanonicalDirectory, openVerifiedFile, type VerifiedFs } from './verified-file';
+import {
+  assertCanonicalDirectory,
+  openVerifiedFile,
+  type VerifiedFs,
+} from '../document-rules/verified-file';
 
 const MANIFEST_NAME = 'specification.yaml';
 
@@ -22,6 +26,7 @@ export interface LoadedSpecification {
   readonly specId: string;
   readonly slug: string;
   readonly location: SpecificationLocation;
+  readonly workspaceId: string;
   readonly workspaceRoot: string;
   /** Canonical physical path of the Specification directory. */
   readonly specDir: string;
@@ -57,7 +62,7 @@ export async function loadSpecification(
   if (discovered.status !== 'available') {
     throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The Specification source is unavailable.');
   }
-  const { specification, workspaceRoot } = discovered;
+  const { specification, workspaceRoot, workspaceId } = discovered;
   const specDir = join(workspaceRoot, 'specs', specification.location, specification.slug);
   await assertCanonicalDirectory(fs, specDir);
 
@@ -89,6 +94,7 @@ export async function loadSpecification(
     specId,
     slug: specification.slug,
     location: specification.location,
+    workspaceId,
     workspaceRoot,
     specDir,
     manifest,

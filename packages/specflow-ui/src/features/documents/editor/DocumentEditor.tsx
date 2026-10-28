@@ -92,10 +92,6 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
       body = remedy ? text(remedy) : null;
       break;
     }
-    // This Runtime does not serve saves (refused before anything was applied): no Try again.
-    case 'not-implemented':
-      title = text(readOnlyLine('not-implemented', 'document'));
-      break;
     case 'COMMIT_BLOCKED':
       title = t('documents.save.commitBlocked');
       body = t('documents.remedy.commitBlocked');

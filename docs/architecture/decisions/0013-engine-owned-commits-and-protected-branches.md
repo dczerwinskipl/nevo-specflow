@@ -14,6 +14,7 @@ related:
   - reference.api.specflow-specification-operations
   - engineering.shared.specflow-git-recovery
   - adr.0016-engine-owned-document-commits
+  - adr.0018-engine-commit-policy-and-manual-commit
 ---
 
 # 0013 — Engine-owned scoped commits and protected branches
@@ -107,7 +108,7 @@ journal holds slug, branch and workspace capacity until then. See
 - A Specification cannot be created on a protected branch; "New workspace" remains the way forward
   unless the generated branch name is protected too, in which case the user types another name.
 - Scaffold commits appear in history with the user as author and the Engine as committer.
-- A checkout is clean after Create, so Close's clean-checkout admission is satisfiable immediately.
+- A checkout is clean after Create, so Close's clean-checkout admission is satisfiable immediately. (Document operations relax this for a bounded, journaled window: [ADR 0016](0016-engine-owned-document-commits.md).)
 - The Create journal gains two stages and an optional `commit` block (pinned at reservation when Git is
   enabled; an in-flight journal reserved earlier keeps the old stage graph). The public progress
   vocabulary gains `committing-specification` for Git-enabled projects.

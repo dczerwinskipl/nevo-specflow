@@ -80,6 +80,12 @@ export function ArchetypeSection({
           </Button>
         </Alert>
       )}
+      {catalogue?.archetypes.length === 0 && (
+        // The project has no definitions yet: a neutral state with the command that installs them.
+        <InlineNote className="max-w-content-narrow">
+          {t('create.archetype.none')} <code>{t('create.archetype.installCommand')}</code>
+        </InlineNote>
+      )}
       {catalogue && catalogue.archetypes.length > 0 && (
         <>
           {/* Nothing selected until the user chooses (no default): the first radio is the tab stop. */}

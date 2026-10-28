@@ -64,10 +64,10 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
   for (const doc of Object.values(docs))
     queryClient.setQueryData(documentKeys.detail(SPEC, doc.id), doc);
   const calls: SaveCall[] = [];
-  const pendingSaves: Deferred<{ revision: string }>[] = [];
+  const pendingSaves: Deferred<{ document: { revision: string } }>[] = [];
   const save = vi.fn((...args: SaveCall) => {
     calls.push(args);
-    const next = deferred<{ revision: string }>();
+    const next = deferred<{ document: { revision: string } }>();
     pendingSaves.push(next);
     return next.promise;
   });
@@ -182,7 +182,7 @@ describe('document save identity', () => {
     expect(screen.getByTestId('content').textContent).toBe('B1');
     expect(screen.getByTestId('saving').textContent).toBe('false');
 
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
 
     expect(screen.getByTestId('content').textContent).toBe('B1');
     expect(t.draftOf('b')).toMatchObject({ content: 'B1', baseline: 'B0', revision: 'b1' });
@@ -203,7 +203,7 @@ describe('document save identity', () => {
     fireEvent.click(await screen.findByText('Discard changes'));
     await waitFor(() => expect(t.draftOf('b')).toMatchObject({ content: 'B0' }));
 
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
 
     expect(t.draftOf('b')).toMatchObject({ content: 'B0', baseline: 'B0', revision: 'b1' });
     expect(t.cached('b')).toMatchObject({ content: 'B0', revision: 'b1' });
@@ -216,7 +216,7 @@ describe('document save identity', () => {
     t.type('A1');
     await t.clickSave();
     t.type('A2');
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
 
     expect(t.draftOf('a')).toMatchObject({ content: 'A2', baseline: 'A1', revision: 'a2' });
     expect(t.controls.session!.dirty).toBe(true);
@@ -232,7 +232,7 @@ describe('document save identity', () => {
     t.edit();
     t.type('A1');
     await t.clickSave();
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     expect(t.cached('a')).toMatchObject({ title: 'Cached title', content: 'A1', revision: 'a2' });
   });
 });
@@ -248,7 +248,7 @@ describe('one save owner', () => {
     });
     expect(t.save).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('saving').textContent).toBe('true');
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     expect(screen.getByTestId('saving').textContent).toBe('false');
     expect(t.save).toHaveBeenCalledTimes(1);
   });
@@ -267,7 +267,7 @@ describe('one save owner', () => {
       fireEvent.click(dialogSave);
     });
     expect(t.save).toHaveBeenCalledTimes(1);
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     await expect(departure).resolves.toBe(true);
     expect(t.draftOf('a')).toMatchObject({ baseline: 'A1', revision: 'a2' });
   });
@@ -312,7 +312,7 @@ describe('one save owner', () => {
       void t.controls.session!.save();
     });
     expect(t.save).toHaveBeenCalledTimes(1);
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     expect(t.draftOf('a')).toMatchObject({ content: 'A1', baseline: 'A1', revision: 'a2' });
     expect(t.save).toHaveBeenCalledTimes(1);
   });
@@ -347,7 +347,7 @@ describe('save failure and retry', () => {
       'a',
       { operationId: anyOperationId, content: 'A1', expectedRevision: 'a1' },
     ]);
-    await t.settle(() => t.pendingSaves[1]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[1]!.resolve({ document: { revision: 'a2' } }));
     expect(t.draftOf('a')).toMatchObject({ baseline: 'A1', revision: 'a2' });
     expect(t.save).toHaveBeenCalledTimes(2);
   });

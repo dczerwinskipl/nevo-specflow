@@ -44,7 +44,7 @@ function setup(failIds: string[] = []) {
     queryClient.setQueryData(documentKeys.detail(SPEC, id), record(id));
   const save = vi.fn((_spec: string, id: string) => {
     if (failIds.includes(id)) return Promise.reject(new Error(`fail ${id}`));
-    return Promise.resolve({ revision: `${id}2` });
+    return Promise.resolve({ document: { revision: `${id}2` } });
   });
   const services = createSpecFlowAppServices({
     demoDocumentsApi: { save } as unknown as DocumentsApi,
@@ -128,7 +128,7 @@ describe('useDocumentSave for any document', () => {
     const { save, store, view } = setup();
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, 'c');
-      return Promise.resolve({ revision: `${id}2` });
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     let result: Awaited<ReturnType<typeof view.result.current.saveAll>> | undefined;
     await act(async () => {
@@ -176,7 +176,7 @@ describe('useDocumentSave for any document', () => {
     const { save, store, view } = setup();
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, id);
-      return Promise.resolve({ revision: `${id}2` });
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
       await view.result.current.save('b');
@@ -190,7 +190,7 @@ describe('useDocumentSave for any document', () => {
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, id);
       store.set(SPEC, id, reopened);
-      return Promise.resolve({ revision: `${id}2` });
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
       await view.result.current.save('b');
@@ -204,7 +204,7 @@ describe('useDocumentSave for any document', () => {
     save.mockImplementationOnce((_spec: string, id: string) => {
       // No React commit is required to make the store's new content authoritative.
       store.patch(SPEC, 'a', { content: 'A2' }, () => draft('A2', 'a0', 'a1'));
-      return Promise.resolve({ revision: `${id}2` });
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
       await view.result.current.saveAll(['b', 'a']);
@@ -230,7 +230,7 @@ describe('useDocumentSave for any document', () => {
 
   it('exposes the same save owner without an active editor session', async () => {
     const queryClient = createSpecFlowQueryClient();
-    const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
+    const save = vi.fn(() => Promise.resolve({ document: { revision: 'b2' } }));
     const services = createSpecFlowAppServices({
       demoDocumentsApi: { save } as unknown as DocumentsApi,
     });

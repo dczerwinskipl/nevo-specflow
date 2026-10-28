@@ -4,7 +4,7 @@ import {
 } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
-import { isProtectedDocument, folderContainsProtectedDocument } from './protection';
+import { isProtectedDocument, folderContainsProtectedDocument } from '../document-rules/protection';
 import * as archive from '../lifecycle/limits';
 import * as createLimits from '../create/limits';
 import * as limits from './limits';

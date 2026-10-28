@@ -1,5 +1,5 @@
 import { DOCUMENT_ERROR_CODES } from '@nevo/specflow-contracts/documents';
-import { DocumentError, SpecificationError } from '@nevo/specflow-engine';
+import { DocumentError, ProjectControlLockError, SpecificationError } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import { documentFailure, statusForDocumentError } from './error-status';
@@ -32,6 +32,18 @@ describe('statusForDocumentError', () => {
       CREATE_JOURNAL_UNSUPPORTED: 503,
       CATALOGUE_STALE: 409,
       ARCHETYPE_UNKNOWN: 422,
+      DEFINITIONS_MISSING: 422,
+      DOCUMENT_COMMITS_PENDING: 409,
+      DOCUMENT_OPERATION_NOT_FOUND: 404,
+      DOCUMENT_OPERATION_STATE_INVALID: 409,
+      DOCUMENT_WRITE_FAILED: 503,
+      DOCUMENT_UNCOMMITTED_LIMIT: 409,
+      MANUAL_COMMIT_UNAVAILABLE: 409,
+      MANUAL_COMMIT_CONFLICT: 409,
+      MANUAL_COMMIT_SUBSET_INVALID: 422,
+      MANUAL_COMMIT_STALE: 409,
+      MANUAL_COMMIT_MESSAGE_INVALID: 400,
+      MANUAL_COMMIT_RECOVERY_REQUIRED: 503,
     };
     for (const code of DOCUMENT_ERROR_CODES) expect(statusForDocumentError(code)).toBe(table[code]);
     expect(Object.keys(table).sort()).toEqual([...DOCUMENT_ERROR_CODES].sort());
@@ -64,6 +76,13 @@ describe('documentFailure', () => {
         body: { error: 'SPEC_SOURCE_UNAVAILABLE', code: 'SPEC_SOURCE_UNAVAILABLE' },
       });
     }
+  });
+
+  it('maps a control lock failure to an unavailable source', () => {
+    expect(documentFailure(new ProjectControlLockError('CONTROL_LOCK_BUSY', 'x'))).toEqual({
+      status: 503,
+      body: { error: 'SPEC_SOURCE_UNAVAILABLE', code: 'SPEC_SOURCE_UNAVAILABLE' },
+    });
   });
 
   it('leaves defects to the generic handler', () => {

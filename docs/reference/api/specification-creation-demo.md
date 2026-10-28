@@ -98,8 +98,9 @@ Session scope. Document save requires `spec.manage` at that Specification. Exist
 retain existing authorization filtering. Do not bypass authorization because this is demo mode.
 
 The catalogue is the real `ArchetypeCatalogue` (`revision`, `documentTypes`, archetypes with an integer
-`version`, `requirements` and `always`/`optional` templates) resolved by the Engine's own catalogue rules: the
-three built-ins exactly as the Engine ships them plus one demo-only owner archetype (`cross-module`, which
+`version`, `requirements` and `always`/`optional` templates) resolved by the Engine's own catalogue resolver from
+definitions held in memory: the definitions `nevo-specflow definitions install` writes (a copy of the Engine's
+seeds, checked against them by a test) plus one demo-only owner archetype (`cross-module`, which
 requires a `decisions` document), and `defaultArchetypeId`. The demo-only part adds the demo
 project/current location, provider identities/marks/version/access/availability, and models and supported
 effort/mode choices. Workspace, branch pattern and worktree availability come from create-options, not from the
@@ -153,9 +154,8 @@ deferred; do not build a speculative prompt protocol now.
 
 Document creation uses the contract's `CreateDocumentsInput`
 (`{operationId, documents: [{path, type?, templateId | content}], folders?}`, at most ten files and 100 folders);
-folder creation uses the demo body `{operationId, path}` (the contract names the route but not its body). Both
-answer the contract's `DocumentOperationResult` (the created documents with their ids, the complete folder list,
-`committed`, `commit`). A template entry renders a template of the Specification's archetype and is registered
+folder creation uses the contract's `FolderInput` (`{operationId, path}`). Both answer the contract's
+`DocumentOperationResult` (the created documents with their ids, the complete folder list, `commit`). A template entry renders a template of the Specification's archetype and is registered
 with its type unless `type` says otherwise; a content entry without `type` is created unclassified (derived `u-`
 id). Created files are `md` or `txt`. Paths follow the Engine's portable path rules; collisions are
 case-insensitive and nothing existing is overwritten. The whole batch validates before any change.
@@ -166,7 +166,8 @@ documents whose file exists (like the project Runtime) plus the folder list. The
 change; browser refresh retains committed data.
 
 Save input is the contract's `SaveInput` (`operationId`, content, `expectedRevision`); the result is `SaveResult`
-(`operationId`, new `revision`, `committed`, `commit`). A stale revision answers 409 `DOCUMENT_REVISION_CONFLICT`
+(`operationId`, the written `document` with its new `revision`, `commit`). The demo commits at once: every
+write answers `commit.state: 'committed'` with a demo sha. A stale revision answers 409 `DOCUMENT_REVISION_CONFLICT`
 without overwriting; a non-editable file 415 `DOCUMENT_NOT_EDITABLE`. Template preview remains read-only before
 creation. An optional demo commit latency (`documentCommitLatencyMs`, default 0) makes a write hold the
 Specification busy: the tree reports `busy` and other writes answer 409 `SPEC_BUSY`.
@@ -227,8 +228,8 @@ no real account, subscription, usage value, unit or measurement window is fabric
 The document tree is the real `DocumentTree` (`GET /api/specs/:specId/document-tree`, `spec.view`), projected
 by the Engine's own tree projection from the in-memory directory: registered and unclassified documents (`kind`,
 `mediaType`, `size`, `revision`, `protected` only for `overview`, `editable`, `satisfiesRequirement`), dangling
-entries, completeness, issues and per-action availability with an `ActionReason`. Every write action the
-project Runtime reports as `not-implemented` is available in the demo (`busy` while a write commits); stronger
+entries, completeness, issues and per-action availability with an `ActionReason`. A write action the Engine
+reports as available is `busy` while a demo write runs; the refusal
 reasons (`protected`, `root`, `archived`, the branch policy) are kept. The seeded Specifications show every
 state: `admission` (the showcase: registered documents of several types, an unclassified file, an empty folder),
 `security` (the demo-only `cross-module` archetype with its `decisions` requirement unmet, an unclassified file),

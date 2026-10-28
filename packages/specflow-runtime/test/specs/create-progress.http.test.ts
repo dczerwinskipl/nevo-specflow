@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { bootstrapProjectHome } from '@nevo/specflow-engine/testing';
+import { bootstrapProjectHome, installDefinitionsForTesting } from '@nevo/specflow-engine/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -51,6 +51,7 @@ async function server(gitEnabled: boolean) {
   );
   if (gitEnabled) git(root, 'branch', '-m', 'develop');
   const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
 
   const store = new InMemoryAuthenticationStore();
   const session = store.createSession({

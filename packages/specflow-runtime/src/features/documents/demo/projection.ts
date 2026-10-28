@@ -30,13 +30,13 @@ export function observe(path: string, file: DemoFile): ObservedFile {
 }
 
 /**
- * The demo emulates the write operations the real backend does not serve yet (D4): every write
- * action the Engine reports as `not-implemented` is available, or `busy` while a write commits. Every
- * stronger reason (`archived`, `protected`, `root`, the branch policy) is kept as the Engine says.
+ * The demo emulates the Engine's writes: an action the Engine reports as available is `busy` while a
+ * demo write runs. Every refusal (`archived`, `protected`, `root`, the branch policy) is kept as the
+ * Engine says.
  */
 function emulateWrites(action: Action, busy: boolean): Action {
-  if (action.reason !== 'not-implemented') return action;
-  return busy ? { available: false, reason: 'busy' } : { available: true };
+  if (!action.available) return action;
+  return busy ? { available: false, reason: 'busy' } : action;
 }
 
 /** The document tree of a demo Specification: the Engine's projection of the in-memory directory. */

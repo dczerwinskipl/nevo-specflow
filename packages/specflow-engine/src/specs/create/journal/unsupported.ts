@@ -1,44 +1,24 @@
+import {
+  classifyJournalText,
+  isExpiredUnsupportedJournal,
+  type JournalFileClass,
+  type UnsupportedJournal,
+} from '../../durable';
 import { CreateOperationError } from '../error';
-import { CREATE_JOURNAL_VERSION } from './model';
 
 /**
- * The single home of the rule for Create journals this Engine cannot interpret (see
- * `docs/architecture/runtime/specification-documents.md`). It is NOT a compatibility reader: no old format is ever
- * interpreted. A journal file is _unsupported_ when
- *
- * - its text is not valid JSON, or
- * - it is not an object with a numeric `version`, or
- * - its `version` is not the current one.
- *
- * Nothing else is read from such a file. An unsupported journal:
- *
- * - is returned separately by the listing and is NEVER a resource claim, so it can block neither
- *   Create nor Close;
- * - is deleted by the retention sweep once it is older than the retention (by file mtime);
- * - answers `CREATE_JOURNAL_UNSUPPORTED` when read by operation id (distinct from
- *   `CREATE_JOURNAL_CORRUPT`, which stays a blocking, fail-closed state of a current-format file).
+ * Create's use of the generic rule for journals this Engine cannot interpret (see
+ * `../../durable/unsupported.ts` and `docs/architecture/runtime/specification-documents.md`): a
+ * journal file is _unsupported_ when its text is not JSON or is not an object with a numeric
+ * `version`. Such a file is never a
+ * resource claim, is deleted by retention after its age, and answers `CREATE_JOURNAL_UNSUPPORTED`
+ * when read by operation id.
  */
-export type CreateJournalFileClass =
-  { readonly kind: 'current'; readonly value: unknown } | { readonly kind: 'unsupported' };
+export type CreateJournalFileClass = JournalFileClass;
 
-/** Classifies the text of a journal file by its version only. */
+/** Classifies the text of a Create journal file by its shape only. */
 export function classifyCreateJournalText(text: string): CreateJournalFileClass {
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    return { kind: 'unsupported' };
-  }
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    Array.isArray(value) ||
-    typeof (value as { version?: unknown }).version !== 'number' ||
-    (value as { version: number }).version !== CREATE_JOURNAL_VERSION
-  ) {
-    return { kind: 'unsupported' };
-  }
-  return { kind: 'current', value };
+  return classifyJournalText(text);
 }
 
 /** The answer of a by-id read of an unsupported journal. */
@@ -49,17 +29,7 @@ export function unsupportedJournalError(): CreateOperationError {
   );
 }
 
-/** Whether the retention sweep deletes an unsupported journal of this age. */
-export function isExpiredUnsupportedJournal(
-  mtimeMs: number,
-  now: number,
-  retentionMs: number,
-): boolean {
-  return now - mtimeMs >= retentionMs;
-}
+export { isExpiredUnsupportedJournal };
 
 /** One unsupported journal found by a listing: only what the file name and stat reveal. */
-export interface UnsupportedCreateJournal {
-  readonly operationId: string;
-  readonly mtimeMs: number;
-}
+export type UnsupportedCreateJournal = UnsupportedJournal;

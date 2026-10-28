@@ -1,0 +1,8 @@
+kind: document-type
+schemaVersion: 1
+id: decisions
+title: Decisions
+description: "Recorded decisions: context, options, decision and consequences."
+useWhen: A choice with lasting consequences was made and should not be rediscovered.
+instructions: Record each decision as context, the options considered, the decision and its consequences, one decision per section, with who decided and when if known. Record decisions that are costly to rediscover, not routine choices.
+defaultFilename: decisions.md

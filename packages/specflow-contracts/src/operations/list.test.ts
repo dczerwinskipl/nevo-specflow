@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   OPERATION_INTERRUPTED_CODE,
   OPERATION_LIST_ALL_STATUSES,
+  OPERATION_LIST_KINDS,
+  OPERATION_LIST_RESERVED_STATUSES,
   OperationListQuerySchema,
   OperationListResponseSchema,
   SPECIFICATION_CREATE_STEPS,
@@ -63,6 +65,29 @@ describe('operation list contract', () => {
         ]),
       ),
     ).toBe(true);
+  });
+
+  it('lists document changes: queued is produced, the row carries action and documentCount', () => {
+    expect([...OPERATION_LIST_KINDS]).toEqual([
+      'specification-create',
+      'document-change',
+      'manual-commit',
+    ]);
+    expect([...OPERATION_LIST_RESERVED_STATUSES]).toEqual(['scheduled']);
+    const row = {
+      operationId,
+      kind: 'document-change',
+      status: 'queued',
+      subject: { specId: 'billing', slug: 'billing' },
+      action: 'save-all',
+      documentCount: 3,
+      updatedAt: now,
+    };
+    expect(Value.Check(OperationListResponseSchema, list([row]))).toBe(true);
+    expect(Value.Check(OperationListResponseSchema, list([{ ...row, documentCount: -1 }]))).toBe(
+      false,
+    );
+    expect(Value.Check(OperationListResponseSchema, list([{ ...row, path: 'a.md' }]))).toBe(false);
   });
 
   it('knows the reserved statuses but rejects an invented one', () => {

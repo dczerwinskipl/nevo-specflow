@@ -1,4 +1,5 @@
 import type {
+  CommitInfo,
   CreateDocumentsInput,
   DocumentOperationInput,
   DocumentOperationResult,
@@ -102,7 +103,9 @@ export function createDemoDocuments(
     return result;
   }
 
-  const commitOf = (operationId: string, revision: string) => ({
+  // The demo commits at once (like auto-commit on): a committed state with a stable fake sha.
+  const commitOf = (operationId: string, revision: string): CommitInfo => ({
+    state: 'committed',
     sha: sha256(operationId + ':' + revision).slice(0, 40),
   });
   const operationResult =
@@ -123,7 +126,6 @@ export function createDemoDocuments(
         }),
         removedDocumentIds: planned.removedDocumentIds,
         folders: allFolders(documents),
-        committed: true,
         commit: commitOf(operationId, revision),
       };
     };
@@ -155,11 +157,17 @@ export function createDemoDocuments(
         { name: 'save:' + documentId, operationId: input.operationId, input },
         (documents) => planSave(documents, documentId, input),
         (documents, planned) => {
-          const revision = documents.files.get(planned.affectedPaths[0]!)!.revision;
+          const path = planned.affectedPaths[0]!;
+          const revision = documents.files.get(path)!.revision;
+          const type = documents.registry.find((entry) => entry.path === path)?.type;
           return {
             operationId: input.operationId,
-            revision,
-            committed: true,
+            document: {
+              id: documentIdOf(documents, path),
+              path,
+              revision,
+              ...(type !== undefined ? { type } : {}),
+            },
             commit: commitOf(input.operationId, revision),
           };
         },

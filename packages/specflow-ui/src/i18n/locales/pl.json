@@ -570,7 +570,8 @@
       "provider": "Wybierz dostępnego wykonawcę.",
       "model": "Wybierz model.",
       "mode": "Wybierz obsługiwany tryb pracy.",
-      "archetype": "Wybierz archetyp."
+      "archetype": "Wybierz archetyp.",
+      "noArchetypes": "Nie zainstalowano archetypów."
     },
     "announce": {
       "refreshFailed": "Nie udało się odświeżyć opcji. Formularz zachowany.",
@@ -632,6 +633,8 @@
       "guidance": "Jak pracować z archetypem {{archetype}}",
       "documents": "Dokumenty do utworzenia",
       "choosePrompt": "Wybierz archetyp, aby zobaczyć dokumenty, które powstaną.",
+      "none": "W tym projekcie nie zainstalowano archetypów. Aby zainstalować domyślne, uruchom",
+      "installCommand": "nevo-specflow definitions install",
       "always": "{{type}} ({{file}}) jest tworzony zawsze.",
       "expectedUnticked": "{{archetype}} oczekuje dokumentu typu {{type}}. Bez niego specyfikacja pokaże go jako brakujący, dopóki go nie dodasz.",
       "loading": "Wczytywanie archetypów",
@@ -1153,6 +1156,7 @@
         "alreadyClassified": "Ten plik ma już typ. Dokumenty zostały odświeżone.",
         "manifestDirty": "Plik specification.yaml ma niezacommitowane zmiany. Zacommituj je lub odrzuć i spróbuj ponownie.",
         "busy": "Trwa inna zmiana tej specyfikacji. Spróbuj ponownie za chwilę.",
+        "catalogueStale": "Typy dokumentów zmieniły się w międzyczasie. Zamknij okno i wybierz typ ponownie.",
         "refused": "Nie zmieniono: {{reason}}",
         "recovery": "Pliki zostały zmienione, ale bez commita. Dokończ operację przed kolejną zmianą.",
         "resume": "Wznów",
@@ -1290,9 +1294,7 @@
       "gitPolicyInvalid": "ustawienia Git projektu są nieprawidłowe.",
       "busy": "trwa inna zmiana tej specyfikacji.",
       "notEditable": "ten typ pliku można tu oglądać, ale nie edytować.",
-      "dangling": "Brak pliku; można tylko usunąć jego rejestrację.",
-      "notImplemented": "jeszcze niedostępne w tej wersji.",
-      "notImplementedEditing": "Edytowanie dokumentów nie jest jeszcze dostępne w tej wersji."
+      "dangling": "Brak pliku; można tylko usunąć jego rejestrację."
     },
     "remedy": {
       "branch": "Aby edytować, otwórz specyfikację w środowisku pracy na dozwolonej gałęzi.",
@@ -1302,16 +1304,14 @@
     },
     "save": {
       "saving": "Zapisywanie…",
-      "committing": "Zapisywanie i commit…",
       "saved": "Zapisano",
-      "committed": "Zapisano i zacommitowano",
       "refused": "Nie zapisano: {{reason}}",
       "busy": "Nie zapisano: trwa inna zmiana",
       "commitBlocked": "Nie zapisano: Git nie może teraz przyjąć commita",
       "missing": "Nie zapisano: brak pliku",
       "failed": "Nie zapisano. Twoje zmiany są nadal tutaj.",
       "tryAgain": "Spróbuj ponownie",
-      "recoveryTitle": "Zapisano na dysku, ale bez commita",
+      "recoveryTitle": "Zapis nie został dokończony",
       "recoveryBody": "Dokończ zapis, zanim będziesz dalej edytować.",
       "resume": "Wznów"
     },

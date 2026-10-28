@@ -1,4 +1,7 @@
-import { getBuiltInCatalogue, type ResolvedCatalogue } from '../archetypes/catalogue';
+import type { SpecFlowEngine } from '../../application';
+import { getStableProjectCatalogue } from '../definitions/catalogue-source';
+import type { ProjectCatalogue } from '../definitions/project-catalogue';
+import { requireArchetype } from '../definitions/archetype-lookup';
 import { DocumentError } from '../documents';
 import { ScaffoldValidationError, createSpecificationScaffold, documentErrorOf } from '../scaffold';
 import { CreateOperationError } from './error';
@@ -16,21 +19,20 @@ export interface ResolvedCreateArchetype {
 }
 
 /**
- * The Engine's current version of an archetype and the catalogue revision, for a caller that runs
- * against this very Engine (the CLI). The Engine owns this resolution: an unknown id is refused here
- * as `ARCHETYPE_UNKNOWN`, never answered with an invented version.
+ * The Engine's current version of an archetype and the catalogue revision of the project's
+ * definitions, for a caller that runs against this very Engine (the CLI). The Engine owns this
+ * resolution: an unknown id is refused here as `ARCHETYPE_UNKNOWN`, never answered with an invented
+ * version, and a project without definitions as `DEFINITIONS_MISSING`.
  */
-export function resolveCreateArchetype(
+export async function resolveCreateArchetype(
+  engine: SpecFlowEngine,
   archetypeId: string,
-  catalogue: ResolvedCatalogue = getBuiltInCatalogue(),
-): ResolvedCreateArchetype {
-  const archetype = catalogue.findArchetype(archetypeId);
-  if (!archetype) {
-    throw new DocumentError('ARCHETYPE_UNKNOWN', `Unknown archetype "${archetypeId}".`);
-  }
+): Promise<ResolvedCreateArchetype> {
+  const project = await getStableProjectCatalogue(engine);
+  const archetype = requireArchetype(project, archetypeId);
   return {
     archetype: { id: archetype.id, version: archetype.version },
-    catalogueRevision: catalogue.revision,
+    catalogueRevision: project.catalogue.revision,
   };
 }
 
@@ -39,18 +41,22 @@ export function resolveCreateArchetype(
  * added contents and the catalogue, and writes nothing. Throws {@link DocumentError} (never a Create
  * error) so the caller refuses BEFORE any reservation, journal, payload or file exists.
  *
- * Order: a stale revision first (a client holding an old catalogue is told to refresh whatever else
- * it sent), then the archetype and its version, then the scaffold rules (templates, paths, limits).
+ * Order: no usable archetype at all, then a stale revision (a client holding an old catalogue is told
+ * to refresh whatever else it sent), then the archetype and its version, then the scaffold rules
+ * (templates, paths, limits).
  */
 export function admitCreateArchetype(
   intent: CreateClientIntent,
   addedContents: readonly string[],
-  catalogue: ResolvedCatalogue = getBuiltInCatalogue(),
+  project: ProjectCatalogue,
 ): void {
+  const { catalogue } = project;
+  // A project without any usable archetype is reported first: reloading the catalogue would not help.
+  if (catalogue.archetypes.length === 0) requireArchetype(project, intent.archetype.id);
   if (intent.catalogueRevision !== undefined && intent.catalogueRevision !== catalogue.revision) {
     throw new DocumentError('CATALOGUE_STALE', 'The archetype catalogue changed; reload it.');
   }
-  const { archetype } = resolveCreateArchetype(intent.archetype.id, catalogue);
+  const archetype = requireArchetype(project, intent.archetype.id);
   if (archetype.version !== intent.archetype.version) {
     throw new DocumentError(
       'CATALOGUE_STALE',

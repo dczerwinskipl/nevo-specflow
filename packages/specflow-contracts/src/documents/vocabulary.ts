@@ -24,6 +24,9 @@ export const IdSchema = Type.String({
   pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
 });
 
+/** `reason` and `blockedBy` of a commit state are open kebab-case strings: the documented vocabularies and later additions. */
+export const KEBAB_CASE_PATTERN = '^[a-z][a-z0-9]*(-[a-z0-9]+)*$';
+
 export const UuidSchema = Type.String({
   pattern:
     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
@@ -57,15 +60,17 @@ export const ACTION_REASONS = [
   'busy',
   'not-editable',
   'dangling',
-  /** Write actions have no route yet; removed once the write operations exist. */
-  // TODO(document write operations): temporary reason, removed once the write routes exist.
-  'not-implemented',
 ] as const;
 export const ActionReasonSchema = closedUnion(ACTION_REASONS);
 export type ActionReason = (typeof ACTION_REASONS)[number];
 
 export const ActionSchema = Type.Object(
-  { available: Type.Boolean(), reason: Type.Optional(ActionReasonSchema) },
+  {
+    available: Type.Boolean(),
+    reason: Type.Optional(ActionReasonSchema),
+    /** `busy` only: when a retry is worth trying, in milliseconds. Absent when waiting does not help. */
+    retryAfterMs: Type.Optional(Type.Integer({ minimum: 0 })),
+  },
   { additionalProperties: false },
 );
 export type Action = Static<typeof ActionSchema>;

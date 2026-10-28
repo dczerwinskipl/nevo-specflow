@@ -29,7 +29,7 @@ import {
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { admitCreateArchetype } from '../admission';
 import { assertCreatePathsFitWindows, type WindowsPathBoundOptions } from '../path-bound';
-import { getBuiltInCatalogue } from '../../archetypes/catalogue';
+import { getStableProjectCatalogue } from '../../definitions/catalogue-source';
 import { assertJournalFitsItsCap } from './journal-cap';
 import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';
@@ -66,6 +66,10 @@ export async function reserveCreateOperation(
           intent.target.integrationTargetWorkspaceId,
         )
       : undefined;
+  // The project catalogue is read outside the lock (stat-on-read, no lock, no Git); a read the files
+  // kept changing under is refused as `CATALOGUE_STALE` rather than pinned. A definition edited
+  // meanwhile is caught by the revision the journal pins and by `CATALOGUE_STALE`.
+  const project = previousOutsideLock ? undefined : await getStableProjectCatalogue(engine);
   return withCreateJournalLock(engine.context, async () => {
     // Retention sweep of settled journals under the reservation lock: bounded, Git-free, best effort.
     await removeExpiredCompletedCreateJournals(engine.context, { keepOperationId: operationId });
@@ -84,7 +88,8 @@ export async function reserveCreateOperation(
 
     // A new operation: the archetype part is admitted before anything is reserved or written. An
     // existing operation is replayed above regardless of the current catalogue.
-    admitCreateArchetype(intent, addedContents);
+    const loadedProject = project ?? (await getStableProjectCatalogue(engine));
+    admitCreateArchetype(intent, addedContents, loadedProject);
 
     // Date generated once under Project Home lock, after checking no journal.
     const created = creationDate();
@@ -99,7 +104,7 @@ export async function reserveCreateOperation(
       throw recovery('Cannot reserve new Spec while an existing canonical source is unavailable.');
     }
     const specId = randomUUID();
-    const catalogue = getBuiltInCatalogue();
+    const { catalogue } = loadedProject;
     const scaffold = scaffoldOf({
       specId,
       catalogue,

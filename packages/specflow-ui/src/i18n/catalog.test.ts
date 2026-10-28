@@ -69,6 +69,8 @@ describe('message catalogues', () => {
       'playground.title',
       'sessions.demo.writer',
       'specification.changesSourcePr',
+      // A shell command, the same in every language.
+      'create.archetype.installCommand',
     ]);
     const identical = plKeys.filter(
       (key) =>

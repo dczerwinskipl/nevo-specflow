@@ -90,49 +90,11 @@ const catalogue: ArchetypeCatalogue = {
 
 const available = { available: true };
 const protectedAction = { available: false, reason: 'protected' } as const;
-/** `project`: a project Runtime that does not serve the document writes yet (`not-implemented`). */
+/** `project`: the same Specification served by a project Runtime (the project adapter). */
 type Scenario = 'states' | 'read-only' | 'conflict' | 'project';
-const notImplemented = { available: false, reason: 'not-implemented' } as const;
-
-/** The tree a project Runtime without the write routes reports: every write unavailable. */
-function withoutWrites(tree: DocumentTree): DocumentTree {
-  return {
-    ...tree,
-    documents: tree.documents.map((document) =>
-      document.protected
-        ? document
-        : {
-            ...document,
-            actions: {
-              rename: notImplemented,
-              move: notImplemented,
-              delete: notImplemented,
-              classify:
-                document.classification === 'unclassified' ? notImplemented : { available: false },
-            },
-          },
-    ),
-    dangling: tree.dangling.map((entry) => ({ ...entry, actions: { delete: notImplemented } })),
-    folders: tree.folders.map((folder) =>
-      folder.path === ''
-        ? folder
-        : {
-            ...folder,
-            actions: { rename: notImplemented, move: notImplemented, delete: notImplemented },
-          },
-    ),
-    capabilities: {
-      createFile: notImplemented,
-      createFolder: notImplemented,
-      import: notImplemented,
-      classify: notImplemented,
-      formats: ['md', 'txt'],
-    },
-  };
-}
 
 function treeFor(scenario: Scenario): DocumentTree {
-  if (scenario === 'project') return withoutWrites(treeFor('states'));
+  if (scenario === 'project') return treeFor('states');
   const readOnly = { available: false, reason: 'branch-protected' } as const;
   return documentTreeFixture({
     archetype: { id: 'team', version: 1, title: 'Team feature' },
@@ -362,7 +324,7 @@ function Workspace({
             })),
             removedDocumentIds: [],
             folders: [],
-            committed: true,
+            commit: { state: 'committed', sha: 'c'.repeat(40) },
           };
           return Promise.resolve(result);
         },
@@ -385,7 +347,7 @@ function Workspace({
               documents: [{ id, path: moved.path, revision: moved.revision, type: input.type }],
               removedDocumentIds: [],
               folders: [],
-              committed: true,
+              commit: { state: 'committed', sha: 'c'.repeat(40) },
             };
             return Promise.resolve(result);
           }
@@ -404,7 +366,7 @@ function Workspace({
               documents: [],
               removedDocumentIds: [input.documentId!],
               folders: [],
-              committed: true,
+              commit: { state: 'committed', sha: 'c'.repeat(40) },
             };
             return Promise.resolve(result);
           }
@@ -504,63 +466,21 @@ export const TreeStates: Story = {
 };
 
 /**
- * A project Runtime that does not serve the document writes yet: one sentence above the tree, no
- * write offered anywhere (root actions, row menus, Expected documents, the idle area), and nothing
- * sent. The tree and the catalogue come from the project adapter.
+ * A project Runtime: the tree, the document and the save go through the project adapter (the demo
+ * adapter must stay unused); a save is acknowledged with "Saved", never with a commit promise.
  */
-export const ProjectRuntimeWithoutWrites: Story = {
-  args: { scenario: 'project' },
+export const ProjectRuntimeSavesThroughTheProjectAdapter: Story = {
+  args: { scenario: 'project', path: `/specs/${SPEC}/documents/ux` },
   play: async ({ userEvent }) => {
     await wide();
     const screen = body();
-    await screen.findByText('Editing documents is not available in this version yet.');
-    await expect(screen.queryByRole('button', { name: 'Add a Decisions document' })).toBeNull();
-    // The idle area offers no start action and does not suggest creating one; no demo notice.
-    await expect(screen.getByText('Choose a document from the tree.')).toBeTruthy();
-    await expect(screen.queryByRole('button', { name: 'New document…' })).toBeNull();
-    await userEvent.click(screen.getAllByRole('button', { name: 'More actions' })[0]!);
-    await expect(screen.queryByRole('menuitem', { name: /demo/i })).toBeNull();
-    await userEvent.keyboard('{Escape}');
-    // An unclassified file: Assign type is there but disabled, with the one sentence as the reason.
-    await userEvent.click(
-      screen.getByRole('button', {
-        name: 'Actions: meeting-2026-10-20-with-the-identity-team.md',
-      }),
-    );
-    const menu = await screen.findByRole('menu');
-    await expect(within(menu).getByRole('menuitem', { name: 'Assign type…' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    for (const name of ['Rename', 'Move', 'Delete'])
-      await expect(within(menu).getByRole('menuitem', { name })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      );
-    await expect(menu).toHaveTextContent('Editing documents is not available in this version yet.');
-    await userEvent.keyboard('{Escape}');
-    await expect(calls.addDocuments).not.toHaveBeenCalled();
-    await expect(calls.operateDocument).not.toHaveBeenCalled();
-  },
-};
-
-/** The same Runtime: a document opens read-only with the sentence as its first line, no Edit. */
-export const ProjectRuntimeReadOnlyDocument: Story = {
-  args: { scenario: 'project', path: `/specs/${SPEC}/documents/ux` },
-  play: async () => {
-    await wide();
-    const screen = body();
-    // Above the tree and as the document's first line: the same sentence.
-    await waitFor(() =>
-      expect(
-        screen.getAllByText('Editing documents is not available in this version yet.'),
-      ).toHaveLength(2),
-    );
-    await expect(screen.queryByRole('button', { name: 'Edit document' })).toBeNull();
-    await expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
-    // The writing guidance is a read, so it is offered in a project Runtime too.
-    await expect(screen.getByRole('button', { name: 'Guidance' })).toBeTruthy();
-    await expect(calls.save).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit document' }));
+    await userEvent.click(await screen.findByRole('textbox', { name: 'Content of ux.md' }));
+    await userEvent.keyboard('{Control>}{End}{/Control} Change.');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls.save).toHaveBeenCalled());
+    await expect(await screen.findByText('Saved')).toBeTruthy();
+    await expect(screen.queryByText(/commit/i)).toBeNull();
   },
 };
 
@@ -1013,12 +933,12 @@ export const SaveRefusedBusy: Story = {
   },
 };
 
-/** Written but not committed: Resume, and editing is locked until then. */
+/** The write did not finish (`DOCUMENT_RECOVERY_REQUIRED`): Resume, and editing is locked until then. */
 export const SaveRecoveryRequired: Story = {
   args: refused('DOCUMENT_RECOVERY_REQUIRED'),
   play: async ({ userEvent }) => {
     const alert = await refusedSave(userEvent);
-    await expect(alert.getByText('Saved to disk, but not committed')).toBeTruthy();
+    await expect(alert.getByText('The save did not finish')).toBeTruthy();
     await expect(alert.getByRole('button', { name: 'Resume' })).toBeTruthy();
     // Editing is locked until the save is resumed: typing changes nothing.
     const editor = body().getByRole('textbox', { name: 'Content of ux.md' });

@@ -12,7 +12,7 @@ import { isHttpClientError } from '@nevo/http-client';
 import { translateMessage, useMessage } from '../../../i18n/message';
 import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { useNotify } from '../../../shared/notifications/notifications';
-import { readOnlyLine, reasonFragment } from '../catalogue/documentTypePolicy';
+import { reasonFragment } from '../catalogue/documentTypePolicy';
 import { planImport } from './documentImport';
 import { joinDocumentPath, type PlannedDocument } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
@@ -457,6 +457,10 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.manifestDirty');
     case 'SPEC_BUSY':
       return t('documents.tree.error.busy');
+    // The definitions changed since the chooser was shown (the template's catalogue revision).
+    case 'CATALOGUE_STALE':
+    case 'ARCHETYPE_UNKNOWN':
+      return t('documents.tree.error.catalogueStale');
     case 'DOCUMENT_RECOVERY_REQUIRED':
       return t('documents.tree.error.recovery');
     // The document has a save running or one to resume: the operation waits for it.
@@ -464,9 +468,6 @@ export function documentMutationError(error: unknown, t: TFunction): string {
       return t('documents.tree.error.saveRunning');
     case 'document-save-to-resume':
       return t('documents.tree.error.saveToResume');
-    // A write the Runtime does not serve yet (project mode): refused before anything was sent.
-    case 'not-implemented':
-      return translateMessage(t, readOnlyLine('not-implemented', 'tree'));
     case 'BRANCH_PROTECTED':
     case 'COMMIT_BLOCKED':
     case 'GIT_POLICY_INVALID':

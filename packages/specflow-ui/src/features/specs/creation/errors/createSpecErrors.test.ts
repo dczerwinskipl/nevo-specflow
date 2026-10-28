@@ -39,6 +39,7 @@ describe('Create error codes', () => {
     // The name makes a path the Engine refuses: a name problem, never a stale option.
     [400, 'DOCUMENT_PATH_INVALID', 'name-invalid'],
     [409, 'DOCUMENT_PATH_CONFLICT', 'name-conflict'],
+    [422, 'DEFINITIONS_MISSING', 'catalogue-stale'],
     [503, 'SPEC_NOT_FOUND', 'stale'],
     [503, 'CREATE_RECOVERY_REQUIRED', 'recovery-required'],
     [503, 'CREATE_JOURNAL_CORRUPT', 'recovery-required'],

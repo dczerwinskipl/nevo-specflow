@@ -144,6 +144,7 @@ export function CreateProjectForm({
     forbidden: createOptions.forbidden,
     archetypesLoading: archetypes.isPending,
     archetype,
+    noArchetypes: catalogue?.archetypes.length === 0,
   });
 
   // Back from a name the Engine refused (invalid or too long path): the name says so until edited.

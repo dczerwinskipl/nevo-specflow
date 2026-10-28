@@ -1,4 +1,5 @@
 export { createDocumentsFeature, type DocumentsFeatureDependencies } from './feature';
+export { documentFailure, type DocumentFailure } from './content/error-status';
 export type { DocumentReadSource } from './content/document-read-source';
 export { createEngineDocumentReadSource } from './content/engine-source';
 export { createEngineWorkspaceDocuments } from './content/workspace-documents';

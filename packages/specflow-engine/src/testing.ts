@@ -73,7 +73,16 @@ export {
   type CreateSpecificationTarget,
 } from './specs/create';
 export { CREATE_JOURNAL_RELATIVE_DIR } from './specs/create';
-export { createSpecificationForTesting, type TestCreateOptions } from './specs/create';
+export { DOCUMENT_JOURNAL_RELATIVE_DIR } from './specs/documents/changes/journal/model';
+export {
+  createSpecificationForTesting,
+  createSpecificationFromRequestForTesting,
+  type TestCreateOptions,
+} from './specs/create';
+export {
+  installDefinitionsForTesting,
+  seedCatalogueForTesting,
+} from './specs/definitions/testing-install';
 
 // Internal verification surface for planned lifecycle operations; no transport mutations yet.
 export { previewCloseOperation, type CloseRequest } from './specs/lifecycle';
@@ -142,3 +151,7 @@ export { reconcileArchivedConflictScratch } from './specs/lifecycle';
 export { inspectCreateSpecification, type CreatedSpecification } from './specs/create';
 export { type CreateJournal, type CreateStage } from './specs/create';
 export { projectCloseOperation, projectClosePreview } from './specs/operations/projection';
+
+// The Git commit port, for tests that replace one of its operations (a commit whose outcome is unknown).
+export { createGitCommitPort } from './version-control/commits/git-adapter';
+export type { CommitPort, EngineCommitRequest } from './version-control/commits/port';

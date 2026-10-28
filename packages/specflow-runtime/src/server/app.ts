@@ -192,6 +192,15 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     createDocumentsFeature({
       ...(documentReadSource ? { readSource: documentReadSource } : {}),
       ...(engine ? { engine } : {}),
+      // The demo emulates the writes under `/api/demo/...`; the real write routes are project-only.
+      ...(demo ? { writeRoutes: false } : {}),
+      operations: {
+        registry: progressRegistry,
+        ...(dependencies.operations?.now ? { now: dependencies.operations.now } : {}),
+      },
+      ...(dependencies.documents?.writeSource
+        ? { writeSource: dependencies.documents.writeSource }
+        : {}),
     }),
     createSessionsFeature({
       ...(engine ? { engine } : {}),

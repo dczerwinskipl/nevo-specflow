@@ -28,15 +28,13 @@ const tree = documentTreeFixture({
   ],
 });
 
-/** The project Runtime refuses a write it does not serve before anything is sent. */
-const notImplemented = () =>
+/** A write refused before anything was sent (no connection at dispatch): definite. */
+const notApplied = () =>
   new ApiError({
-    kind: 'unavailable',
+    kind: 'network',
     operation: 'documents.operate',
     outcome: 'not-applied',
-    retryable: false,
-    code: 'not-implemented',
-    reason: 'not-in-runtime',
+    retryable: true,
   });
 
 function setup(onOperate: () => Promise<never>) {
@@ -60,7 +58,7 @@ function setup(onOperate: () => Promise<never>) {
 
 describe('a refused document operation', () => {
   it('treats a classified not-applied refusal as definite: nothing stays locked', async () => {
-    const { view, onBusyChange } = setup(() => Promise.reject(notImplemented()));
+    const { view, onBusyChange } = setup(() => Promise.reject(notApplied()));
     let outcome: unknown;
     await act(async () => {
       outcome = await view.result.current.actions.classify(
@@ -75,8 +73,7 @@ describe('a refused document operation', () => {
     expect(view.result.current.actions.isUnknown()).toBe(false);
     expect(view.result.current.state.busy).toBe(false);
     expect(onBusyChange).toHaveBeenLastCalledWith(false);
-    // The one sentence for a Runtime without document writes.
-    expect(view.result.current.state.error).toBe('documents.reason.notImplementedEditing');
+    expect(view.result.current.state.error).toBe('documents.tree.error.default');
   });
 
   it('keeps an answer without a status as an unknown outcome (it may have been applied)', async () => {
@@ -105,7 +102,7 @@ describe('Assign type of a tab', () => {
       ...tree,
       capabilities: {
         ...tree.capabilities,
-        classify: { available: false, reason: 'not-implemented' as const },
+        classify: { available: false, reason: 'branch-protected' as const },
       },
     };
     expect(assignTypeFor(actions, notServed, 'u-a')).toBeUndefined();

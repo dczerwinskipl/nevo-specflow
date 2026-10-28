@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nevo:specflow:definition:document-type:1",
+  "title": "Nevo SpecFlow document type definition",
+  "description": "One document type (kind document-type, schemaVersion 1).",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "title",
+    "description",
+    "useWhen",
+    "instructions"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "const": "document-type"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "useWhen": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "defaultFilename": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "additionalProperties": false
+}

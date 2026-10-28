@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import {
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   readCanonicalSpecDocument,
 } from '@nevo/specflow-engine/testing';
 import { CreateOptionsSchema } from '@nevo/specflow-contracts/specs';

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('./document-ids', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./document-ids')>()),
+vi.mock('../document-rules/document-ids', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../document-rules/document-ids')>()),
   // Every unclassified path derives the same id: the residual hash collision, forced.
   deriveUnclassifiedDocumentId: () => 'u-' + '0'.repeat(32),
 }));

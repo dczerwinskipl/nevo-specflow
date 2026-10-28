@@ -53,7 +53,12 @@ export {
 
 export {
   DEFAULT_BRANCH_PATTERN,
+  effectiveAutoCommit,
   parseCommitsPolicy,
+  type AutoCommitSettings,
+  type AutoCommitSource,
+  type CommitCapability,
+  type EffectiveAutoCommit,
   resolveWorktreesRoot,
   validateBranchPattern,
 } from './version-control/worktrees/policy';
@@ -90,20 +95,101 @@ export {
   readRegisteredDocumentSummaries,
   readSpecificationDocument,
   readSpecificationDocumentTree,
+  readSpecificationUncommitted,
+  DOCUMENT_ROW_PENDING_AFTER_MS,
+  listDocumentOperationRows,
+  readDocumentOperationStatus,
+  type DocumentChangeListingRow,
+  type OperationStatusOptions,
   type OpenedDocument,
   type OpenedDocumentMetadata,
   type RegisteredDocumentSummary,
 } from './specs/documents/reading';
-export { catalogueRevision, projectCatalogue } from './specs/archetypes';
+export { applyDocumentChange, resumeDocumentChange } from './specs/documents/api';
+export { normalizeDocumentOperationInput } from './specs/documents/changes/plan/request';
+export type { DocumentChangeResult, DocumentWriteOptions } from './specs/documents/write';
+export {
+  DOCUMENT_SHUTDOWN_DEADLINE_MS,
+  createDocumentQueueScheduler,
+  disabledDocumentQueueScheduler,
+  takeOverDocumentQueue,
+  type DocumentQueueScheduler,
+  type DocumentQueueTakeoverOptions,
+  type DocumentQueueTakeoverResult,
+  type SchedulerEvent,
+  type SchedulerOptions,
+  type SchedulerStopOptions,
+  type SchedulerStopOutcome,
+} from './specs/documents/scheduler';
+export {
+  DOCUMENT_FLUSH_WAIT_CAP_MS,
+  abandonDocumentCommit,
+  drainQueue,
+  flushAllDocumentCommits,
+  flushDocumentCommits,
+  retryDocumentCommit,
+  type FlushAllOutcome,
+  type FlushOutcome,
+  type RecoverMode,
+} from './specs/documents/queue';
+export type { QueueRunResult } from './specs/documents/queue';
+export {
+  manualCommit,
+  readUncommittedScope,
+  recoverOperation,
+  resolveLedgerOperation,
+  type ManualCommitCommand,
+  type ManualCommitCommandOptions,
+  type ManualCommitCommandResult,
+  type RecoverOperationResult,
+  type ResolveLedgerResult,
+  type UncommittedScopeEntry,
+  type UncommittedScopeView,
+} from './specs/documents/manual-commit';
+export {
+  MANUAL_COMMIT_RECOVERY_CODE,
+  listManualCommitRows,
+  type ManualCommitListingRow,
+  type ManualCommitRecoverMode,
+  type ManualCommitScope,
+} from './specs/manual-commit';
+export type { ControlLockTakeoverResult } from './project/control-lock-takeover';
+export { toArchetypeCatalogue } from './specs/archetypes';
+export {
+  DefinitionInstallError,
+  DefinitionSeedError,
+  getProjectCatalogue as loadProjectCatalogue,
+  listProjectDefinitions,
+  showProjectDefinition,
+  validateDefinitionsFolder,
+  validateProjectDefinitions,
+  type DefinitionsListing,
+  type DefinitionsReport,
+  type ListedDefinition,
+  type ShownDefinition,
+  assertInitialDefinitionsCommittable,
+  commitInstalledDefinitions,
+  installProjectDefinitionFiles,
+  installProjectDefinitions,
+  type InstalledCommit,
+  type InstallProjectResult,
+  type InstallOptions,
+  type InstallAction,
+  type InstallItem,
+  type InstallPlan,
+  type InstallPlanOutcome,
+  type InstallProjectOptions,
+  type InstallResult,
+  type ProjectCatalogue,
+  type ProjectCatalogueResult,
+  type ResolvedCatalogue,
+} from './specs/definitions';
 
 // Pure document rules (no I/O). The demo Runtime builds its in-memory Specifications with them, so
 // its document answers (catalogue, scaffold, ids, paths, kinds, titles, tree) match the Engine's.
-export {
-  renderTemplate,
-  resolveCatalogue,
-  templateValues,
-  type ResolvedCatalogue,
-} from './specs/archetypes';
+export { renderTemplate, templateValues } from './specs/archetypes';
+// Builds a catalogue from definitions already in memory (the demo Runtime's copy of the seeds).
+export { resolveCatalogue } from './specs/definitions';
 export {
   OVERVIEW_DOCUMENT_ID,
   OVERVIEW_DOCUMENT_TYPE,
@@ -169,6 +255,7 @@ export {
   previewPublicCloseOperation,
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  type PlanPublicCloseOptions,
   type PublicCloseInspection,
 } from './specs/operations/api';
 

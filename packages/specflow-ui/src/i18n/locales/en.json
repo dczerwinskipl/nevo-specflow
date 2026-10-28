@@ -570,7 +570,8 @@
       "provider": "Choose an available executor.",
       "model": "Choose a model.",
       "mode": "Choose a supported working mode.",
-      "archetype": "Choose an archetype."
+      "archetype": "Choose an archetype.",
+      "noArchetypes": "No archetypes are installed."
     },
     "announce": {
       "refreshFailed": "Unable to refresh the options. The form is kept.",
@@ -632,6 +633,8 @@
       "guidance": "How to work with a {{archetype}} specification",
       "documents": "Documents to create",
       "choosePrompt": "Choose an archetype to see the documents Create makes.",
+      "none": "No archetypes are installed in this project. To install the defaults, run",
+      "installCommand": "nevo-specflow definitions install",
       "always": "{{type}} ({{file}}) is always created.",
       "expectedUnticked": "{{archetype}} expects a {{type}} document. Without it the specification lists it as missing until you add one.",
       "loading": "Archetypes are loading",
@@ -1153,6 +1156,7 @@
         "alreadyClassified": "This file already has a type. The documents were refreshed.",
         "manifestDirty": "specification.yaml has uncommitted changes. Commit or discard them, then try again.",
         "busy": "Another change to this specification is in progress. Try again in a moment.",
+        "catalogueStale": "The document types changed meanwhile. Close the dialog and choose the type again.",
         "refused": "Not changed: {{reason}}",
         "recovery": "The files were changed but not committed. Finish the operation before the next change.",
         "resume": "Resume",
@@ -1290,9 +1294,7 @@
       "gitPolicyInvalid": "the project's Git settings are invalid.",
       "busy": "another change to this specification is in progress.",
       "notEditable": "this file type can be viewed but not edited here.",
-      "dangling": "The file is missing; only its registration can be removed.",
-      "notImplemented": "not available in this version yet.",
-      "notImplementedEditing": "Editing documents is not available in this version yet."
+      "dangling": "The file is missing; only its registration can be removed."
     },
     "remedy": {
       "branch": "To edit, open the specification in a workspace on an allowed branch.",
@@ -1302,16 +1304,14 @@
     },
     "save": {
       "saving": "Saving…",
-      "committing": "Saving and committing…",
       "saved": "Saved",
-      "committed": "Saved and committed",
       "refused": "Not saved: {{reason}}",
       "busy": "Not saved: another change is in progress",
       "commitBlocked": "Not saved: Git cannot take a commit right now",
       "missing": "Not saved: the file is missing",
       "failed": "Not saved. Your changes are still here.",
       "tryAgain": "Try again",
-      "recoveryTitle": "Saved to disk, but not committed",
+      "recoveryTitle": "The save did not finish",
       "recoveryBody": "Finish the save before editing further.",
       "resume": "Resume"
     },

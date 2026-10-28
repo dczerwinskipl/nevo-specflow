@@ -8,6 +8,7 @@ import type {
   FoundCommit,
 } from '../../../version-control/commits/port';
 import type { GitCommitsPolicy } from '../../../version-control/worktrees/policy';
+import { firstBlobMismatch, guardRefusalAsCommitFailed, isExactPathSet } from '../../durable';
 import { CreateOperationError, type CreateJournal } from '../journal';
 
 interface ScaffoldCommitInput {
@@ -110,17 +111,7 @@ export async function ensureScaffoldCommitted(
       )
     ).sha;
   } catch (error) {
-    if (
-      error instanceof GitCapabilityError &&
-      (error.code === 'BRANCH_PROTECTED' || error.code === 'COMMIT_BLOCKED')
-    ) {
-      throw new GitCapabilityError(
-        'COMMIT_FAILED',
-        'The Engine commit failed.',
-        error.code + ':' + (error.reason ?? ''),
-      );
-    }
-    throw error;
+    throw guardRefusalAsCommitFailed(error);
   }
 }
 
@@ -131,19 +122,20 @@ async function verifyCommittedScaffold(
   found: Extract<FoundCommit, { status: 'found' }>,
   record: CreateJournal,
 ): Promise<void> {
-  const expected = [...scaffoldPaths(record)].sort();
-  if (
-    found.paths.length !== expected.length ||
-    !expected.every((path, index) => path === found.paths[index])
-  ) {
+  if (!isExactPathSet(found.paths, scaffoldPaths(record))) {
     throw recovery('The scaffold commit does not contain exactly the scaffold files.');
   }
-  for (const file of record.files) {
-    // The working file was just verified against the pinned hash; the blob must be what Git stores
-    // for those bytes under the repository's attributes.
-    if (!(await commits.blobMatchesWorkingFile(root, found.sha, file.relativePath))) {
-      throw recovery('The scaffold commit content differs from the recorded creation intent.');
-    }
+  // The working file was just verified against the pinned hash; the blob must be what Git stores
+  // for those bytes under the repository's attributes.
+  if (
+    (await firstBlobMismatch(
+      commits,
+      root,
+      found.sha,
+      record.files.map((file) => file.relativePath),
+    )) !== undefined
+  ) {
+    throw recovery('The scaffold commit content differs from the recorded creation intent.');
   }
 }
 

@@ -15,7 +15,7 @@ summary: >
   Product behaviour of the UI for Specification archetypes and documents on the existing screens: the Documents tree
   (registered, unclassified, dangling, protected overview, unmet requirements, Close-refusing issues),
   New document from a type and Assign type, the Archetype section of Create and its progress rows, and
-  the document tab states (read-only reason on open, synchronous save, revision conflict, image, binary,
+  the document tab states (read-only reason on open, save, revision conflict, image, binary,
   missing file; tab labels stay file names).
 related:
   - product.specflow.specification-documents
@@ -54,7 +54,7 @@ In scope, on existing screens only:
 2. **Create Specification**: the Archetype section of the form (both the project and the demo form), and
    two new rows on the progress page. The method choice, the workspace-place section, the footer and the
    progress steps do not change (one copy line excepted, see 7).
-3. **Document tabs**: read-only with a reason shown on open, save as a synchronous commit (busy, success,
+3. **Document tabs**: read-only with a reason shown on open, save (acknowledged once written; busy, success,
    conflict and other refusals), image and binary tabs, a tab for a missing (dangling) file, and tabs
    that follow an id change. Tab labels stay file names (today's rule).
 
@@ -73,7 +73,7 @@ files arrive unclassified), split view, history of a document.
 | D5  | **Assign type** reuses the same chooser without "No type" and without a file name.                                                                                                                                                                                                           | Inline type select in the row: no room for "use when" in a 280-360 px tree.                                                                                                                                                                       |
 | D6  | **Create** shows archetypes as a **radio list** (title + `useWhen`), then for the selected one its instructions behind a disclosure and **Documents to create** as checkboxes (preselected ticked). The archetype `description` is not repeated: the checklist already says what it creates. | Keep the select (today): hides `useWhen`. Choice tiles (as the workspace place): need an icon per archetype the catalogue does not have, and three tall tiles of long text. Keep the workflow phases: the real backend has none.                  |
 | D7  | A tab shows **why it is read-only as one quiet line at the top of the document, on open**; the Edit action is not offered. The tree repeats the Specification-wide reason once above the tree.                                                                                               | A disabled Edit with a tooltip: hover-only, discovered late. Failing on Save: explicitly forbidden by the contract (UI impact 10).                                                                                                                |
-| D8  | **Save** stays the promoted primary action; while the commit runs it reads `Saving…` and is disabled, the editor stays editable, the dirty mark clears only on the response. A refusal is an Alert at the top of the document that keeps the draft.                                          | A toast for the conflict: transient, while the draft is at risk. A modal: blocks copying the user's own text.                                                                                                                                     |
+| D8  | **Save** stays the promoted primary action; while the save runs it reads `Saving…` and is disabled, the editor stays editable, the dirty mark clears only on the response. A refusal is an Alert at the top of the document that keeps the draft.                                            | A toast for the conflict: transient, while the draft is at risk. A modal: blocks copying the user's own text.                                                                                                                                     |
 | D9  | Image and binary files open as tabs like any document: image fit-to-area from `raw`, binary as a short file information list with **Download**. No Edit, no Save, never dirty.                                                                                                               | Opening binary files as a direct download: the user loses the tab context and the path.                                                                                                                                                           |
 
 Tab labels keep today's rule (`documentTabs.ts`): the **file name**. The derived title
@@ -325,27 +325,23 @@ You can add, remove or classify documents later.             body-md secondary
 
 - A document is read-only when `editable` is false or a Specification-wide write capability is
   unavailable (the contract has no per-document write action yet). The reason is chosen in this order: `archived`,
-  `git-policy-invalid`, `branch-protected`, `branch-not-allowed`, `commit-blocked`, `not-editable`,
-  `not-implemented`.
+  `git-policy-invalid`, `branch-protected`, `branch-not-allowed`, `commit-blocked`, `not-editable`.
 - The first line of the document content is an `InlineNote` (info): `Read-only: <reason>` plus the remedy
   for that reason. It is in the document flow, not sticky, not a box. The Edit action is not
   offered; Show path and Close tab stay.
-- `not-implemented` (a project Runtime that does not serve the document writes yet; every write action
-  and capability of its tree carries it) is not a property of the Specification: the document line, the
-  line above the tree and the row-menu note are the one sentence "Editing documents is not available in
-  this version yet." The same workspace renders in the demo and in a project Runtime; only the documents
-  adapter differs.
+- The same workspace renders in the demo and in a project Runtime; only the documents adapter differs.
 - The same Specification-wide reason appears once above the tree (3.1, item 2); the per-document
   `not-editable` reason appears only in the tab.
 
-### 5.2 Save (synchronous commit)
+### 5.2 Save
 
 - Save is promoted only while dirty (today). While the request runs: label `Saving…`, disabled, the
   Discard action disabled, the editor stays editable (edits after the request are a new draft), the tab
-  keeps its dirty mark. The live region announces "Saving and committing…" once if the save takes longer
-  than one second.
-- Success: dirty mark clears, the live region announces "Saved" (or "Saved and committed" when
-  `committed` is true). The document heading shows the new derived title; the tab label (file name)
+  keeps its dirty mark. The live region announces "Saving…" once if the save takes longer than one
+  second.
+- Success: the save is acknowledged once the content is on disk (its commit is the Engine's, queued
+  or made by the commit policy); the dirty mark clears and the live region announces "Saved". The commit
+  state is not shown in this release. The document heading shows the new derived title; the tab label (file name)
   does not change.
 - Refusals keep the draft and show an Alert (role `alert`) at the top of the document; focus stays in
   the editor. After DOCUMENT_REVISION_CONFLICT **Save is unavailable until the user chooses Copy my
@@ -360,7 +356,7 @@ You can add, remove or classify documents later.             body-md secondary
 | `BRANCH_PROTECTED`, `GIT_POLICY_INVALID`, `SPEC_ARCHIVED` | Not saved: <reason>                           | Remedy line. The tab switches to read-only (5.1) but keeps the draft until the user closes or discards it.                                                                                  |
 | `COMMIT_BLOCKED`                                          | Not saved: Git cannot take a commit right now | Remedy line; **Try again**.                                                                                                                                                                 |
 | `SPEC_BUSY`                                               | Not saved: another change is in progress      | **Try again**.                                                                                                                                                                              |
-| `DOCUMENT_RECOVERY_REQUIRED`                              | Saved to disk, but not committed              | "Finish the save before editing further." **Resume** (same operation id). Editing is locked until resumed.                                                                                  |
+| `DOCUMENT_RECOVERY_REQUIRED`                              | The save did not finish                       | "Finish the save before editing further." **Resume** (same operation id). Editing is locked until resumed.                                                                                  |
 | `DOCUMENT_FILE_MISSING`                                   | Not saved: the file is missing                | The tab becomes the missing state (5.5) and keeps the draft.                                                                                                                                |
 
 - Close tab / leave with a draft after a refusal uses the existing Unsaved changes dialog.
@@ -450,8 +446,7 @@ the Create form order.
   the result (keys `created`, `done`).
 - **Read-only line:** plain text in the reading order before the document, so screen readers reach the reason first.
 - **Save:** the busy state is `aria-disabled` on the Save action with the label `Saving…`; the live
-  region (polite) announces "Saving and committing…" after one second and "Saved"/"Saved and committed"
-  on success. Refusal Alerts are `role="alert"` and do not move focus out of the editor.
+  region (polite) announces "Saving…" after one second and "Saved" on success. Refusal Alerts are `role="alert"` and do not move focus out of the editor.
 - **Keyboard:** Ctrl/Cmd+S unchanged; it does nothing while a save runs or in a read-only tab (no
   error).
 - **Create:** the archetype radios are one `radiogroup` labelled by the section heading; the documents are

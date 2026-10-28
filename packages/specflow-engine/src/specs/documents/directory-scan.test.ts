@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { countArchiveInventory, listSpecificationFiles } from './directory-scan';
-import { isUnaddressable } from './document-paths';
+import { isUnaddressable } from '../document-rules/document-paths';
 
 const dirs: string[] = [];
 afterEach(async () => {

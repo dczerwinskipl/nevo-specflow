@@ -1,0 +1,109 @@
+kind: specification-archetype
+schemaVersion: 1
+id: feature
+version: 1
+title: Feature
+description: "A full slice of a product capability: observable behaviour, user experience and backend design, in addition to the overview. Behaviour, UX and backend documents are suggested and preselected; user stories are an optional suggestion."
+useWhen: One change spans what the product does, how it looks and how the server supports it.
+instructions: Start with the overview, then behaviour, then UX, then backend, keeping each to its own concern and linking between them. Add user stories only when the team works from stories. Treat the backend document as the contract that the UI and tests are checked against.
+requirements:
+  - documentType: overview
+    minCount: 1
+templates:
+  - id: overview
+    documentType: overview
+    filename: overview.md
+    include: always
+    instructions: Fill Context and Goal first; leave a section empty rather than inventing content.
+    contentFile: templates/overview.md
+  - id: behaviour
+    documentType: behaviour
+    filename: behaviour.md
+    include: optional
+    preselected: true
+    instructions: Write scenarios before rules; each acceptance scenario must be independently checkable.
+    content: |
+      # {{specificationTitle}} - Behaviour
+
+      ## Scenarios
+
+      ## Rules
+
+      ## Edge cases
+
+      ## Acceptance scenarios
+  - id: ux
+    documentType: ux
+    filename: ux.md
+    include: optional
+    preselected: true
+    instructions: Cover every state of every screen, including empty and error.
+    content: |
+      # {{specificationTitle}} - UX
+
+      ## Flows
+
+      ## Screens and states
+
+      ## Copy
+
+      ## Responsive behaviour
+
+      ## Accessibility
+  - id: backend
+    documentType: backend
+    filename: backend.md
+    include: optional
+    preselected: true
+    instructions: Name the owner of each contract and mark every test as unit or integration.
+    content: |
+      # {{specificationTitle}} - Backend
+
+      ## Contracts
+
+      ## Data and ownership
+
+      ## Invariants
+
+      ## Errors and recovery
+
+      ## Verification
+  - id: user-story
+    documentType: user-story
+    filename: user-story.md
+    include: optional
+    instructions: One story per section; keep acceptance criteria testable.
+    content: |
+      # {{specificationTitle}} - User story
+
+      ## Story
+
+      ## Acceptance criteria
+  - id: decisions
+    documentType: decisions
+    filename: decisions.md
+    include: optional
+    instructions: Add one section block per decision; do not rewrite earlier decisions, supersede them.
+    content: |
+      # {{specificationTitle}} - Decisions
+
+      ## Context
+
+      ## Options
+
+      ## Decision
+
+      ## Consequences
+  - id: research
+    documentType: research
+    filename: research.md
+    include: optional
+    instructions: List the questions first; every finding cites a source.
+    content: |
+      # {{specificationTitle}} - Research
+
+      ## Questions
+
+      ## Sources
+
+      ## Findings

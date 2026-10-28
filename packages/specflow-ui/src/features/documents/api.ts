@@ -6,10 +6,10 @@ import type {
   DocumentOperationInput,
   DocumentOperationResult,
   DocumentTree,
+  FolderInput,
   SaveInput,
   SaveResult,
 } from '@nevo/specflow-contracts/documents';
-import type { DemoFolderInput } from '@nevo/specflow-contracts/demo';
 
 const specPath = (specId: string) => `/api/specs/${encodeURIComponent(specId)}`;
 
@@ -41,8 +41,8 @@ export function documentRawUrl(specId: string, documentId: string, download = fa
   return `${specPath(specId)}/documents/${encodeURIComponent(documentId)}/raw${download ? '?download=1' : ''}`;
 }
 
-/** The body of a folder creation (the contract names the route but no body; see the demo schema). */
-export type CreateFolderInput = DemoFolderInput;
+/** The body of a folder creation (`FolderInput`, the same in the demo). */
+export type CreateFolderInput = FolderInput;
 
 /**
  * Port of the document explorer and editor: the tree read and the write operations, all in the

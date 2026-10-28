@@ -106,3 +106,14 @@ export const RefreshKeepsTheChoice: Story = {
     await expect(selected(canvas)).toHaveTextContent(last.id);
   },
 };
+
+/** No definitions installed in the project: a neutral line with the command, no radio list. */
+export const NoArchetypesInstalled: Story = {
+  args: { catalogue: { ...several, archetypes: [] } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/W tym projekcie nie zainstalowano archetypów/)).toBeVisible();
+    await expect(canvas.getByText('nevo-specflow definitions install')).toBeVisible();
+    await expect(canvas.queryByRole('radio')).toBeNull();
+    await expect(selected(canvas)).toHaveTextContent('none');
+  },
+};

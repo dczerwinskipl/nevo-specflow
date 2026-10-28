@@ -36,7 +36,6 @@ export interface SaveResult {
   /** The failure, when `ok` is false. */
   readonly error?: unknown;
   /** The save made a commit (false only when Git is disabled); absent when nothing was sent. */
-  readonly committed?: boolean;
 }
 
 export interface SaveAllResult {
@@ -155,7 +154,9 @@ export function useDocumentSave({
       // A response from a discarded incarnation cannot modify a new draft or its cache.
       if (store.incarnation(variables.specId, variables.documentId) === variables.incarnation) {
         store.update(variables.specId, variables.documentId, (saved) =>
-          saved ? reconcileSavedDraft(saved, variables.content, result.revision) : undefined,
+          saved
+            ? reconcileSavedDraft(saved, variables.content, result.document.revision)
+            : undefined,
         );
         cache.setQueryData<DocumentContent>(
           documentKeys.detail(variables.specId, variables.documentId),
@@ -165,7 +166,7 @@ export function useDocumentSave({
                   ...existing,
                   content: variables.content,
                   size: new TextEncoder().encode(variables.content).length,
-                  revision: result.revision,
+                  revision: result.document.revision,
                 }
               : existing,
         );
@@ -226,9 +227,9 @@ export function useDocumentSave({
         });
         setPending((keys) => [...keys, key]);
         try {
-          const result = await mutateAsync(variables);
+          await mutateAsync(variables);
           retained.current.delete(key);
-          return { ok: true, ...base, committed: result.committed };
+          return { ok: true, ...base };
         } catch (error) {
           // Kept for an exact replay: written but not committed, or no answer at all.
           if (apiErrorCode(error) === recoveryCode)

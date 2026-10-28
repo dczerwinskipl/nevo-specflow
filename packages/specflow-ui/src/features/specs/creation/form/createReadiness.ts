@@ -58,7 +58,9 @@ export function createReadiness(input: {
       : !title.trim() && !specId
         ? message('create.prerequisite.title')
         : !archetype && !specId
-          ? message('create.prerequisite.archetype')
+          ? catalogue.archetypes.length === 0
+            ? message('create.prerequisite.noArchetypes')
+            : message('create.prerequisite.archetype')
           : (workspaceProblem ??
             (method === 'ai'
               ? !provider?.available

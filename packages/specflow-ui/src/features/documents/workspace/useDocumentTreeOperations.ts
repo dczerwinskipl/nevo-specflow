@@ -10,6 +10,7 @@ import { useBlocker } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
 import { useDocumentsApi } from '../useDocumentsApi';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { ApiError } from '../../../api';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
@@ -105,6 +106,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
   const { specId } = options;
   const { documentApi } = useAppServices();
   const { api: documentsApi } = useDocumentsApi();
+  const catalogue = useDocumentCatalogue();
   const drafts = useDocumentDraftStore();
   const saves = useDocumentSaveOwner();
   const cache = useQueryClient();
@@ -140,9 +142,13 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
 
   const refresh = () => cache.invalidateQueries({ queryKey: ['specifications', specId] });
   const add: DocumentTreeOperations['add'] = async (documents, folders = []) => {
+    // A template is rendered from the catalogue the chooser showed: its revision is the precondition
+    // (`CATALOGUE_STALE` when the definitions changed since).
+    const templated = documents.some((entry) => 'templateId' in entry && entry.templateId);
+    const catalogueRevision = templated ? catalogue.data?.revision : undefined;
     const result = await sendRetained(
       importAttempt,
-      { documents, folders },
+      { documents, folders, ...(catalogueRevision ? { catalogueRevision } : {}) },
       (input) => documentsApi.addDocuments(specId, input),
       'operationId',
       definiteRefusal,

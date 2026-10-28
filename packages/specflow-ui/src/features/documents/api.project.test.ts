@@ -1,7 +1,6 @@
 import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiTransport, isApiError } from '../../api';
-import { writeOutcomeUnknown } from '../../shared/http/apiErrorCode';
 import { documentRawUrl } from './api';
 import { createProjectDocumentsApi } from './api.project';
 
@@ -81,30 +80,6 @@ describe('project documents adapter', () => {
     expect(post).toHaveBeenLastCalledWith('/api/specs/s/document-operations', operation);
   });
 
-  it('turns a missing write route (404 without any code, or 405) into a definite not-implemented refusal', async () => {
-    for (const failure of [
-      httpError(404, {
-        message: 'Route PUT:/api/specs/s/documents/d not found',
-        error: 'Not Found',
-      }),
-      httpError(404, '<!doctype html>'),
-      httpError(405, { error: 'Method Not Allowed' }),
-    ]) {
-      const { api, put } = build();
-      put.mockRejectedValueOnce(failure);
-      const error: unknown = await api
-        .save('s', 'd', { operationId, content: 'x', expectedRevision: '1' })
-        .catch((reason: unknown) => reason);
-      expect(isApiError(error) && [error.code, error.outcome, error.kind]).toEqual([
-        'not-implemented',
-        'not-applied',
-        'unavailable',
-      ]);
-      // Never an unknown outcome: nothing locks the tree.
-      expect(writeOutcomeUnknown(error)).toBe(false);
-    }
-  });
-
   it('passes every answered refusal through unchanged, as the demo adapter does', async () => {
     for (const failure of [
       httpError(404, { error: 'DOCUMENT_NOT_FOUND', code: 'DOCUMENT_NOT_FOUND' }),
@@ -112,6 +87,8 @@ describe('project documents adapter', () => {
       httpError(404, { error: 'specification_not_found' }),
       httpError(409, { error: 'DOCUMENT_REVISION_CONFLICT', code: 'DOCUMENT_REVISION_CONFLICT' }),
       new HttpClientError('offline', { kind: 'network' }),
+      // The write routes exist: a 404 is a real 404, never turned into anything else.
+      httpError(404, { message: 'Route POST:/api/specs/s/folders not found', error: 'Not Found' }),
     ]) {
       const { api, post } = build();
       post.mockRejectedValueOnce(failure);

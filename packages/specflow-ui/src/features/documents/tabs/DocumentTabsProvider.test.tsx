@@ -36,7 +36,7 @@ function setup(documentId: string | undefined, strict = false, treeFails = false
     b: record('b', 'B0', 'b1'),
   };
   const getDocument = vi.fn((_spec: string, id: string) => Promise.resolve(docs[id]!));
-  const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
+  const save = vi.fn(() => Promise.resolve({ document: { revision: 'b2' } }));
   const services = createSpecFlowAppServices({
     documentApi: { getDocument } as unknown as DocumentApi,
     demoDocumentsApi: {

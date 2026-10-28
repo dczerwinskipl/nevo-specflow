@@ -46,6 +46,11 @@ describe('projectCreateReadiness', () => {
     ['no permission', { forbidden: true }, 'create.prerequisite.forbidden'],
     ['loading archetypes', { archetypesLoading: true }, 'create.archetype.loading'],
     ['no archetype', { archetype: undefined }, 'create.prerequisite.archetype'],
+    [
+      'no archetypes installed',
+      { archetype: undefined, noArchetypes: true },
+      'create.prerequisite.noArchetypes',
+    ],
   ])('is blocked by %s with its reason', (_name, change, key) => {
     const result = projectCreateReadiness({ ...base, ...change });
     expect(result.canSubmit).toBe(false);

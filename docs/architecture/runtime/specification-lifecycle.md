@@ -12,6 +12,8 @@ summary: >
   Implemented E2 Create and explicit Specification/workspace Close invariants, Git
   publication proof and CAS rebind.
 related:
+  - architecture.runtime.specification-documents
+  - adr.0016-engine-owned-document-commits
   - architecture.runtime.specflow-project-home
   - engineering.shared.specflow-git-recovery
   - reference.api.specflow-specification-operations
@@ -53,11 +55,9 @@ the payload write and the journal publication) and an _unsupported_ journal olde
 window replay idempotently; afterwards the same operationId is a new operation and slug protection comes from the
 Specification on disk and the registry.
 
-An _unsupported_ journal (older version, not JSON, or no numeric `version`) is never interpreted. It is returned
+An _unsupported_ journal (not JSON, or no numeric `version`) is never interpreted. It is returned
 separately by the listing and is not a resource claim, so it can block neither Create nor Close; read by operation
 id it answers `CREATE_JOURNAL_UNSUPPORTED` (503); the tolerant list shows it as `recovery-required` with that code.
-**Resume interrupted Creates before upgrading** (and before downgrading, which would classify version 2 journals as
-unsupported): the evidence of an older journal that still had effects is lost after 7 days.
 
 The intent fingerprint covers the archetype id and version, the suggestions, the folders and, for added documents,
 path, type and the sha256 of the content. The catalogue revision is a precondition checked when a new operation is
@@ -163,6 +163,11 @@ Workspace Close derives the full occupant set from verified registry and canonic
 It records exact IDs, locations, statuses and binding generations in its durable journal.
 Callers cannot name an arbitrary subset or disguise a whole-branch merge as one Spec operation.
 Active Specs remain active after whole-workspace rebind; already archived Specs remain archived.
+
+Every Close and integration first flushes the document commit queue of the checkouts it touches and is refused
+with `DOCUMENT_COMMITS_PENDING` while document commits are pending, failed or uncommitted; the rule, its precedence and
+the recovery of document operations are owned by the [documents layer](specification-documents.md) and
+[ADR 0016](../decisions/0016-engine-owned-document-commits.md).
 
 ## Safe integration, rebind and disposal
 

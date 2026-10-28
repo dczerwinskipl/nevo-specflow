@@ -19,3 +19,4 @@ Exact contracts and factual lookup material live here.
 - [Specification Create/Close HTTP API](api/specflow-specification-operations.md)
 - [Offline Specification CLI commands](cli/specflow-specification-commands.md)
 - [SpecFlow Git/worktree configuration](configuration/specflow-git-worktrees.md)
+- [Specification documents HTTP API](api/specification-documents.md)

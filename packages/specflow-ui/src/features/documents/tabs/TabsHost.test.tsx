@@ -66,7 +66,7 @@ function setup({
   const save = vi.fn((_spec: string, id: string) =>
     failSave.includes(id as Id)
       ? Promise.reject(new Error('offline'))
-      : Promise.resolve({ revision: `${id}2` }),
+      : Promise.resolve({ document: { revision: `${id}2` } }),
   );
   const services = createSpecFlowAppServices({
     documentApi: { getDocument } as unknown as DocumentApi,

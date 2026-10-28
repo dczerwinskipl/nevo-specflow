@@ -67,11 +67,11 @@ export interface DocumentEditorSession {
    * editable, not implemented); undefined when it can be edited. No Edit is offered then.
    */
   readOnlyReason?: ActionReason;
-  /** A save was written but not committed: editing is locked until it is resumed. */
+  /** A save whose write did not finish (`DOCUMENT_RECOVERY_REQUIRED`): locked until resumed. */
   locked: boolean;
   /** Save would only repeat a refusal (conflict not resolved, read-only, locked). */
   saveBlocked: boolean;
-  /** Resumes the save that was written but not committed (same operation id). */
+  /** Resumes that save (same operation id and content). */
   resume: () => void;
   /** Conflict: puts the user's text on the clipboard and loads the version on disk as the base. */
   copyMine: () => void;
@@ -296,11 +296,11 @@ export function DocumentEditorProvider({
   const save = useCallback(
     async (options?: { restoreFocus?: boolean }) => {
       // A slow commit is announced once, after a second; the result is announced when it comes.
-      const slow = setTimeout(() => announce(t('documents.save.committing')), 1000);
+      const slow = setTimeout(() => announce(t('documents.save.saving')), 1000);
       const result = await saveOwned().finally(() => clearTimeout(slow));
       if (!result?.ok) return false;
-      if (result.committed !== undefined)
-        announce(result.committed ? t('documents.save.committed') : t('documents.save.saved'));
+      // Acknowledged once the content is on disk; the commit is the Engine's own (not promised here).
+      announce(t('documents.save.saved'));
       // Only the document still on screen is affected by what happens after the response.
       const open = shown.current;
       if (open.key !== documentDraftKey(result.specId, result.documentId)) return true;

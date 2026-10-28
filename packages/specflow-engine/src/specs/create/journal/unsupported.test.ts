@@ -7,7 +7,7 @@ import {
 } from './unsupported';
 
 describe('unsupported Create journals', () => {
-  it('classifies the current version as current and reads nothing else', () => {
+  it('classifies a parsable journal as current and reads nothing else', () => {
     expect(classifyCreateJournalText('{"version":2,"anything":"else"}')).toEqual({
       kind: 'current',
       value: { version: 2, anything: 'else' },
@@ -15,8 +15,6 @@ describe('unsupported Create journals', () => {
   });
 
   it.each([
-    ['an older version', '{"version":1,"files":[1,2]}'],
-    ['a newer version', '{"version":3}'],
     ['a string version', '{"version":"2"}'],
     ['no version', '{"operationId":"x"}'],
     ['invalid JSON', '{not json'],

@@ -208,3 +208,24 @@ export function integrationTargetProtectedNote(
     ? `The integration branch '${integrationTargetBranch}' is protected: Nevo cannot commit specifications directly on it, so specifications are created in a new or existing worktree. Merging worktrees into it is not affected.`
     : undefined;
 }
+
+/**
+ * Whether the Engine commits document edits by itself (`git.commits.auto.documents`). The answer
+ * defaults to "no": automatic commit is off unless the configuration enables it, so declining, an
+ * unanswered prompt and a non-interactive run all write nothing.
+ */
+export async function chooseAutoCommit(ui: RuntimeSetupUi): Promise<boolean> {
+  const answer = await ui.select<'no' | 'yes'>(
+    'Commit documents automatically?',
+    [
+      {
+        value: 'no',
+        label: 'No (default)',
+        hint: 'Edits stay uncommitted until "nevo-specflow commit"',
+      },
+      { value: 'yes', label: 'Yes', hint: 'The Engine commits document edits by itself' },
+    ],
+    'no',
+  );
+  return answer === 'yes';
+}

@@ -193,7 +193,6 @@ const readOnlyOrder: readonly ActionReason[] = [
   'branch-not-allowed',
   'commit-blocked',
   'not-editable',
-  'not-implemented',
 ];
 
 const firstReason = (reasons: readonly (ActionReason | undefined)[]) =>
@@ -249,8 +248,6 @@ export function reasonFragment(reason: ActionReason): Message {
       return message('documents.reason.busy');
     case 'not-editable':
       return message('documents.reason.notEditable');
-    case 'not-implemented':
-      return message('documents.reason.notImplemented');
     case 'protected':
       return message('documents.reason.protected');
     case 'root':
@@ -280,16 +277,9 @@ export function reasonRemedy(reason: ActionReason): Message | undefined {
 /** Reasons that are whole sentences on their own (row-menu notes). */
 const sentenceReasons: readonly ActionReason[] = ['protected', 'root', 'dangling'];
 
-/**
- * A Runtime that does not serve the document writes yet (`not-implemented`) is not a property of
- * this Specification or branch: one plain sentence says so wherever a write is unavailable.
- */
-const notImplementedSentence = message('documents.reason.notImplementedEditing');
-
 /** The row-menu note of an unavailable action: a sentence, or `Unavailable: <fragment>`. */
 export function menuReasonNote(reason: ActionReason | undefined): Message | undefined {
   if (!reason) return undefined;
-  if (reason === 'not-implemented') return notImplementedSentence;
   return sentenceReasons.includes(reason)
     ? reasonFragment(reason)
     : message('documents.reason.note', { reason: reasonFragment(reason) });
@@ -300,7 +290,6 @@ export function menuReasonNote(reason: ActionReason | undefined): Message | unde
  * read-only document (`document`).
  */
 export function readOnlyLine(reason: ActionReason, where: 'tree' | 'document'): Message {
-  if (reason === 'not-implemented') return notImplementedSentence;
   return message(
     where === 'tree' ? 'documents.tree.editingUnavailable' : 'documents.readOnly.line',
     {

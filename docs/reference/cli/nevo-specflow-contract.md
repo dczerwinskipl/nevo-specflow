@@ -29,7 +29,8 @@ related:
 ```bash
 nevo-specflow --help        # usage and the command list; exit 0
 nevo-specflow --version     # the installed product version, carried in the artifact; exit 0
-nevo-specflow init             # initialize .nevo project/local configuration
+nevo-specflow init             # initialize .nevo project/local configuration (and seed the default definitions)
+nevo-specflow definitions list|show|validate|install   # the project's archetype and document type definitions
 nevo-specflow start                                      # start the configured local SpecFlow server and UI; exit 0 after shutdown
 nevo-specflow auth hash-password --password-stdin         # hash one password line from stdin
 ```
@@ -37,10 +38,10 @@ nevo-specflow auth hash-password --password-stdin         # hash one password li
 - `--version` prints the version baked into the installed build (from the repository's
   release model). It does not depend on any file outside the installed package.
 - An unknown command or bad usage exits non-zero with usage on stderr.
-- `init` discovers the Git repository root, creates committed `.nevo/config.yaml` plus ignored `.nevo/local/config.yaml`, ensures `.nevo/local/` is in `.gitignore`, and interactively configures no-auth, password, or OIDC authentication. New password users use their username as their user id; additional login identities explicitly choose New user or Existing user. OIDC profile data is provider-owned and is not entered manually. Password secrets are hashed internally and OIDC client secrets are written only to local config. When the owner enables Git, `init` also asks for the integration target, the worktree branch pattern, the local worktree folder and the protected branches (suggesting the local `main` and `master`, plus custom patterns validated by the Engine), and writes `git.commits.protectedBranches` to the project config only when something is protected; see `reference.configuration.specflow-git-worktrees`.
+- `init` discovers the Git repository root, creates committed `.nevo/config.yaml` plus ignored `.nevo/local/config.yaml`, ensures `.nevo/local/` is in `.gitignore`, and interactively configures no-auth, password, or OIDC authentication. New password users use their username as their user id; additional login identities explicitly choose New user or Existing user. OIDC profile data is provider-owned and is not entered manually. Password secrets are hashed internally and OIDC client secrets are written only to local config. When the owner enables Git, `init` also asks for the integration target, the worktree branch pattern, the local worktree folder and the protected branches (suggesting the local `main` and `master`, plus custom patterns validated by the Engine), and writes `git.commits.protectedBranches` to the project config only when something is protected; see `reference.configuration.specflow-git-worktrees`. `init` also installs the default definitions into `.nevo/definitions` (before it writes the configuration marker; they are removed again if init fails) and, with Git enabled, commits them with one Engine commit; it skips them with a note where Nevo may not commit (protected branch, detached HEAD, no commits) and with `--no-definitions`.
 - `start` is defined by the Runtime vertical (`@nevo/specflow-runtime/cli`) and
   composed into the shell. It loads Runtime configuration, starts the Fastify HTTP server,
-  reports the Runtime API listening address, and owns graceful shutdown through the CLI process signal. The Runtime API root is not currently the SpecFlow UI.
+  reports the Runtime API listening address (and one hint line when the project has no usable definitions), and owns graceful shutdown through the CLI process signal. The Runtime API root is not currently the SpecFlow UI.
 - `auth hash-password --password-stdin` is owned by the Runtime auth feature. It reads
   exactly one password line from stdin and prints a supported scrypt hash for the local
   Runtime configuration; the plaintext password is not accepted as a command argument.
@@ -50,6 +51,10 @@ nevo-specflow auth hash-password --password-stdin         # hash one password li
 ## Specification commands
 
 Engine-backed `nevo-specflow specs create`, `list`, `resolve`, `close`, `worktree close` and `workspace close/inspect` are implemented. See the [Specification CLI reference](specflow-specification-commands.md).
+
+## Definition commands
+
+`nevo-specflow definitions list|show|validate|install` are implemented; see [Definitions commands](specflow-specification-commands.md#definitions-commands).
 
 ## Not implemented
 

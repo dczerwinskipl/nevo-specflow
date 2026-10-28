@@ -8,6 +8,7 @@ import {
   CREATE_JOURNAL_RELATIVE_DIR,
   bootstrapProjectHome,
   discoverSpecifications,
+  installDefinitionsForTesting,
   workspaceRegistryPath,
   updateWorkspaceRegistry,
 } from '@nevo/specflow-engine/testing';
@@ -17,14 +18,18 @@ import { createProgram } from '../src/program';
 
 const roots: string[] = [];
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
-async function fixture(gitEnabled = false) {
+async function fixture(gitEnabled = false, options: { definitions?: boolean } = {}) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-cli-create-Ż ')));
   roots.push(root);
   git(root, 'init', '-q');
@@ -45,7 +50,9 @@ async function fixture(gitEnabled = false) {
     '-qm',
     'initial',
   );
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  if (options.definitions !== false) await installDefinitionsForTesting(engine);
+  return { root, engine };
 }
 
 function command(cwd: string) {
@@ -243,6 +250,15 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     await expect(
       cli.run(['create', '--archetype', 'nope', '--title', 'Unknown']),
     ).rejects.toMatchObject({ code: 'ARCHETYPE_UNKNOWN' });
+    expect(await discoverSpecifications(engine)).toEqual([]);
+  });
+
+  it('refuses Create in a project without definitions as DEFINITIONS_MISSING', async () => {
+    const { root, engine } = await fixture(false, { definitions: false });
+    const cli = command(root);
+    await expect(
+      cli.run(['create', '--archetype', 'minimal', '--title', 'No definitions']),
+    ).rejects.toMatchObject({ code: 'DEFINITIONS_MISSING' });
     expect(await discoverSpecifications(engine)).toEqual([]);
   });
 

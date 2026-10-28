@@ -586,3 +586,39 @@ describe('the Engine reports the old id of a followed document as removed', () =
     await vi.waitFor(() => expect(mocks.removeTabs).toHaveBeenCalledWith(['gone']));
   });
 });
+
+describe('a tree operation the Engine could not write (503 DOCUMENT_WRITE_FAILED)', () => {
+  it('locks the tree and replays the same operation id and body', async () => {
+    mocks.operateDocument
+      .mockRejectedValueOnce(
+        new HttpClientError('Service Unavailable', {
+          kind: 'http',
+          status: 503,
+          data: {
+            error: 'DOCUMENT_WRITE_FAILED',
+            code: 'DOCUMENT_WRITE_FAILED',
+            details: { cause: 'no-space' },
+          },
+        }),
+      )
+      .mockResolvedValueOnce({ revision: 'r', documents: [], removedDocumentIds: [], folders: [] });
+    const { view } = setup();
+    const done = vi.fn();
+    const request = {
+      action: 'move' as const,
+      kind: 'document' as const,
+      id: 'd1',
+      path: 'd1.md',
+      expectedRevision: 'r1',
+    };
+    await act(() => view.result.current.ops.actions.confirmDialog(request, 'notes', done));
+    // Not a definite refusal: the outcome is open, the tree stays locked.
+    expect(view.result.current.ops.state.unknown).toBe(true);
+    expect(view.result.current.ops.state.error).toBe('documents.tree.unconfirmed');
+    await act(() => view.result.current.ops.actions.confirmDialog(request, 'notes', done));
+    const [first, second] = mocks.operateDocument.mock.calls.map((call) => (call as unknown[])[1]);
+    expect(JSON.stringify(second)).toBe(JSON.stringify(first));
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(view.result.current.ops.state.unknown).toBe(false);
+  });
+});

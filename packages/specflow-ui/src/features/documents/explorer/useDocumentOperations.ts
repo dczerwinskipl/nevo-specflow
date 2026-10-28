@@ -10,7 +10,8 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { isHttpClientError } from '@nevo/http-client';
 import { translateMessage, useMessage } from '../../../i18n/message';
-import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
+import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { writeRetention } from '../writeRetention';
 import { useNotify } from '../../../shared/notifications/notifications';
 import { reasonFragment } from '../catalogue/documentTypePolicy';
 import { planImport } from './documentImport';
@@ -126,11 +127,11 @@ export interface DocumentOperationsModel {
 }
 
 /**
- * A failure without an HTTP status never proves the server did not apply the request; a classified
- * refusal before anything was sent (`not-applied`, for example a write the Runtime does not serve)
- * is definite.
+ * The outcome may still change and only a replay of the same operation decides it: no answer at
+ * all, or an answer `writeRetention` keeps for a replay (`DOCUMENT_WRITE_FAILED`). A classified
+ * refusal before anything was sent (`not-applied`) is definite.
  */
-const outcomeUnknown = writeOutcomeUnknown;
+const outcomeUnknown = (failure: unknown) => writeRetention(failure) === 'unknown';
 
 const lastSegment = (path: string) => path.split('/').at(-1) ?? path;
 
@@ -174,7 +175,7 @@ export function useDocumentOperations(
     const unknownOutcome = outcomeUnknown(failure);
     setRecovery(unknownOutcome);
     const code = apiErrorCode(failure);
-    setResumable(code === 'DOCUMENT_RECOVERY_REQUIRED');
+    setResumable(writeRetention(failure) === 'recovery');
     if (code && refetchCodes.has(code)) void onRefresh?.();
     return unknownOutcome;
   };
@@ -259,7 +260,7 @@ export function useDocumentOperations(
    */
   const failImport = (failure: unknown, files: PlannedDocument[], again: boolean) => {
     const unknownOutcome = outcomeUnknown(failure);
-    const recovery = apiErrorCode(failure) === 'DOCUMENT_RECOVERY_REQUIRED';
+    const recovery = writeRetention(failure) === 'recovery';
     setRecovery(unknownOutcome);
     setResumable(recovery);
     if (unknownOutcome || recovery) {

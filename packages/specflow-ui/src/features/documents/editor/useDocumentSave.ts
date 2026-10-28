@@ -3,7 +3,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDocumentsApi } from '../useDocumentsApi';
 import { ApiError } from '../../../api';
-import { apiErrorCode, writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
+import { writeRetention } from '../writeRetention';
 import { newId } from '../../../shared/ids/newId';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import { specificationKeys } from '../../specs/read-model';
@@ -94,8 +94,6 @@ export const operationRunningCode = 'document-operation-running';
 /** A save of a document that is not final yet (see `DocumentSaveOwner.pendingOf`). */
 export type PendingSave = 'saving' | 'recovery' | 'unconfirmed';
 
-/** The save was written but not committed: it is resumed with the same operation id and content. */
-const recoveryCode = 'DOCUMENT_RECOVERY_REQUIRED';
 
 /**
  * A save sent whose result is not final: written but not committed (`recovery`, finished by
@@ -261,10 +259,8 @@ export function useDocumentSave({
           return { ok: true, ...base };
         } catch (error) {
           // Kept for an exact replay: written but not committed, or no answer at all.
-          if (apiErrorCode(error) === recoveryCode)
-            retained.current.set(key, { variables, reason: 'recovery' });
-          else if (writeOutcomeUnknown(error))
-            retained.current.set(key, { variables, reason: 'unknown' });
+          const retention = writeRetention(error);
+          if (retention) retained.current.set(key, { variables, reason: retention });
           else retained.current.delete(key);
           setErrors((all) => ({ ...all, [key]: error }));
           return { ok: false, ...base, error };

@@ -13,6 +13,7 @@ import { useDocumentsApi } from '../useDocumentsApi';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { ApiError } from '../../../api';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { writeRetention } from '../writeRetention';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { draftFor } from '../editor/documentDraftStore';
@@ -82,12 +83,10 @@ const noop = () => undefined;
 const settleFollowUp = (work: Promise<unknown>) => work.then(noop, noop);
 /**
  * A coded answer is the server's definite refusal: its operation id must not be replayed, except
- * `DOCUMENT_RECOVERY_REQUIRED`, which is resumed with the same operation id.
+ * the answers `writeRetention` keeps for a replay with the same operation id.
  */
-const definiteRefusal = (error: unknown) => {
-  const code = apiErrorCode(error);
-  return Boolean(code) && code !== 'DOCUMENT_RECOVERY_REQUIRED';
-};
+const definiteRefusal = (error: unknown) =>
+  Boolean(apiErrorCode(error)) && writeRetention(error) === undefined;
 
 export interface DocumentTreeOperations {
   /** A tree operation is in flight (or unconfirmed): leaving the page is blocked meanwhile. */

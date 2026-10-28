@@ -409,4 +409,27 @@ describe('a save that must be resumed or follows a new id', () => {
     await act(async () => void (await view.result.current.save('b')));
     expect(save).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps a save the Engine could not write (503 DOCUMENT_WRITE_FAILED) for an exact replay', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(
+        new HttpClientError('Service Unavailable', {
+          kind: 'http',
+          status: 503,
+          data: {
+            error: 'DOCUMENT_WRITE_FAILED',
+            code: 'DOCUMENT_WRITE_FAILED',
+            details: { cause: 'no-space' },
+          },
+        }),
+      ),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.pendingOf('b')).toBe('unconfirmed');
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map((call) => (call as unknown[])[2]);
+    expect(second).toEqual(first);
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
+  });
 });

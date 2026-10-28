@@ -13,7 +13,13 @@ import {
   type DocumentEditorSession,
   type GuidanceRoom,
 } from './DocumentEditorProvider';
-import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
+import {
+  clampAnchor,
+  restoreWhileIdle,
+  sameAnchor,
+  trackUserScroll,
+  type ScrollAnchor,
+} from './documentScrollAnchor';
 import { DocumentOutline } from '../outline/DocumentOutline';
 import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
 import {
@@ -324,7 +330,11 @@ function PreviewScroller({
     readerRef.current = read;
     const initial = latest.current.anchor;
     const cancelRestore = initial
-      ? restoreWhileIdle(scroller, () => applyPreviewAnchor(scroller, initial, lines()), 3)
+      ? restoreWhileIdle(
+          scroller,
+          () => applyPreviewAnchor(scroller, initial, lines()),
+          () => sameAnchor(read(), clampAnchor(initial, lines())),
+        )
       : undefined;
     const stop = trackUserScroll(scroller, read, (next) => latest.current.onAnchorChange(next));
     return () => {

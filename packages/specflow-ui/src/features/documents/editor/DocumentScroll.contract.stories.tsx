@@ -219,6 +219,22 @@ const frames = () =>
   new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   );
+/**
+ * A measured value once the layout holds it: the same on three frames in a row. Right after a
+ * scroll the editor may still be measuring lines it had estimated, so a single read is a race.
+ */
+async function settled(read: () => number): Promise<number> {
+  let last = read();
+  let same = 0;
+  for (let frame = 0; frame < 120 && same < 3; frame++) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const next = read();
+    same = next === last ? same + 1 : 0;
+    last = next;
+  }
+  if (same < 3) throw new Error(`The position did not settle (last ${last})`);
+  return last;
+}
 /** Scrolls the source so that `line` is at the top, the way a user reaches it (measured, not estimated). */
 async function scrollEditorToLine(view: EditorView, line: number) {
   view.scrollDOM.dispatchEvent(new Event('wheel'));
@@ -397,7 +413,7 @@ export const CloseAndReopenRestoresModeAndPosition: Story = {
     const { canvas, canvasElement, userEvent } = context;
     const view = await openEditor(context);
     await scrollEditorToLine(view, 120);
-    const entered = editorTopLine(view);
+    const entered = await settled(() => editorTopLine(view));
     // Put the caret on the visible line so typing does not scroll the view.
     view.dispatch({ selection: { anchor: view.state.doc.line(entered + 2).from } });
     view.focus();
@@ -439,7 +455,7 @@ export const MobileKeyboardDoesNotMoveTheAnchor: Story = {
     const { canvas, canvasElement, userEvent } = context;
     const view = await openEditor(context);
     await scrollEditorToLine(view, 200);
-    const entered = editorTopLine(view);
+    const entered = await settled(() => editorTopLine(view));
     view.focus();
     // The keyboard takes the lower half of the screen.
     const panel = canvas.getByTestId('panel');

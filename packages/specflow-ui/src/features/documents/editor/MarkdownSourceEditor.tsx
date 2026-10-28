@@ -17,6 +17,7 @@ import {
   clampAnchor,
   ratioOf,
   restoreWhileIdle,
+  sameAnchor,
   trackUserScroll,
   type ScrollAnchor,
 } from './documentScrollAnchor';
@@ -231,8 +232,15 @@ export function MarkdownSourceEditor({
         );
       }
     };
-    const cancelRestore = initial
-      ? restoreWhileIdle(scroller, () => applyAnchor(initial), 3)
+    // The editor estimates the heights of lines it has not measured yet (wrapped lines above the
+    // target): the restore re-applies until the view reads back the target.
+    const target = initial && clampAnchor(initial, editor.state.doc.lines);
+    const cancelRestore = target
+      ? restoreWhileIdle(
+          scroller,
+          () => applyAnchor(target),
+          () => sameAnchor(readAnchor(), target),
+        )
       : undefined;
     const restore = requestAnimationFrame(() => {
       if (!initial && viewState && !viewState.scrollSnapshot) {

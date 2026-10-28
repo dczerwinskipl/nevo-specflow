@@ -435,7 +435,7 @@ export const ResponsiveDirtyDocument: Story = {
     );
     await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
     // A tab switch is not leaving: the dirty document stays in its tab and nothing asks.
-    await userEvent.click(canvas.getByRole('button', { name: /^CLIENT.TXT$/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /^CLIENT.TXT/ }));
     await expect(document.querySelector('[role="alertdialog"]')).toBeNull();
     // Plain text has one view: it opens as the editable source.
     await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
@@ -481,32 +481,35 @@ export const DocumentsLayoutKeepsTheExplorerMounted: Story = {
     const folder = await canvas.findByRole('button', { name: /^notes$/ });
     await expect(folder).toHaveAttribute('aria-expanded', 'true');
     await userEvent.click(folder);
-    await expect(folder).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(folder).toHaveAttribute('aria-expanded', 'false'));
     const route = canvas.getByLabelText('Bieżąca trasa');
+    // The route, the active tab and the tree selection settle over a few renders: every check
+    // waits for the state it names instead of reading it once right after the route changed.
+    const current = (name: RegExp) =>
+      waitFor(() =>
+        expect(canvas.getByRole('button', { name })).toHaveAttribute('aria-current', 'true'),
+      );
 
     // List -> document: same explorer instance, folder still collapsed.
     await userEvent.click(await canvas.findByRole('button', { name: /^specification.md/ }));
     await waitFor(() => expect(route).toHaveTextContent('/documents/spec'));
+    await current(/^specification.md/);
     await expect(canvas.getByRole('button', { name: /^notes$/ })).toBe(folder);
     await expect(folder.isConnected).toBe(true);
     await expect(folder).toHaveAttribute('aria-expanded', 'false');
-    await expect(canvas.getByRole('button', { name: /^specification.md/ })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
 
     // Document -> document: still the same instance; the selection follows the route.
     await userEvent.click(folder);
-    await userEvent.click(await canvas.findByRole('button', { name: /^CLIENT.TXT$/ }));
+    await waitFor(() => expect(folder).toHaveAttribute('aria-expanded', 'true'));
+    await userEvent.click(await canvas.findByRole('button', { name: /^CLIENT\.TXT/ }));
     await waitFor(() => expect(route).toHaveTextContent('/documents/transcript'));
+    await current(/^CLIENT\.TXT/);
     await expect(canvas.getByRole('button', { name: /^notes$/ })).toBe(folder);
     await expect(folder).toHaveAttribute('aria-expanded', 'true');
-    await expect(canvas.getByRole('button', { name: /^CLIENT.TXT$/ })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
-    await expect(canvas.getByRole('button', { name: /^specification.md/ })).not.toHaveAttribute(
-      'aria-current',
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: /^specification.md/ })).not.toHaveAttribute(
+        'aria-current',
+      ),
     );
   },
 };
@@ -515,7 +518,7 @@ export const DeepLinkSelectsTheDocumentInTheTree: Story = {
   play: async ({ canvas }) => {
     await viewport(1440, 900);
     // A reload (F5) is a fresh mount at the document URL: the tree selects that document.
-    await expect(await canvas.findByRole('button', { name: /^CLIENT.TXT$/ })).toHaveAttribute(
+    await expect(await canvas.findByRole('button', { name: /^CLIENT.TXT/ })).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -581,7 +584,7 @@ export const MultiTabWide: Story = {
   play: async ({ canvas, userEvent }) => {
     await viewport(1440, 900);
     await openFromTree(canvas, userEvent, /^specification.md/);
-    await openFromTree(canvas, userEvent, /^CLIENT.TXT$/);
+    await openFromTree(canvas, userEvent, /^CLIENT.TXT/);
     await openFromTree(canvas, userEvent, /^plan.md/);
     await waitFor(() => expect(canvas.getAllByRole('tab')).toHaveLength(3));
     await expect(canvas.getByRole('tab', { name: /plan.md/ })).toHaveAttribute(
@@ -676,7 +679,7 @@ export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Etap 3'));
     // Plain text has no contents.
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
-    await openFromTree(canvas, userEvent, /^CLIENT.TXT$/);
+    await openFromTree(canvas, userEvent, /^CLIENT.TXT/);
     await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
     await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
   },
@@ -688,12 +691,16 @@ export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
   play: async ({ canvas, userEvent }) => {
     await viewport(1280, 900);
     await openFromTree(canvas, userEvent, /^plan.md/);
-    await waitFor(() => expect(canvas.getAllByRole('tab')).toHaveLength(1));
-    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
-    const tab = canvas.getByRole('tab');
-    await expect(icon.getBoundingClientRect().left).toBeGreaterThan(
-      tab.getBoundingClientRect().right,
-    );
+    await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    // The strip measures itself again once the contents icon has appeared: compare the tab and the
+    // icon of one settled layout (waiting on the measured values), not a single early read.
+    await waitFor(() => {
+      const tabs = canvas.getAllByRole('tab');
+      if (tabs.length !== 1) throw new Error(`Expected one tab, got ${tabs.length}`);
+      const icon = canvas.getByRole('button', { name: 'Otwórz spis treści' });
+      const gap = icon.getBoundingClientRect().left - tabs[0]!.getBoundingClientRect().right;
+      if (gap <= 0) throw new Error(`The contents icon is not after the strip (gap ${gap})`);
+    });
     await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
   },
 };
@@ -709,7 +716,8 @@ export const ContentsSheetKeepsALongTitleInsideTheScreen: Story = {
       await openFromTree(canvas, userEvent, /^adr-001.md/);
       await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
       const sheet = await within(document.body).findByRole('dialog');
-      const list = within(sheet).getByRole('list');
+      // The contents are a tree: the outermost list holds every row.
+      const list = within(sheet).getAllByRole('list')[0]!;
       await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth + 1);
       const sheetRight = sheet.getBoundingClientRect().right;
       for (const link of within(sheet).getAllByRole('link')) {

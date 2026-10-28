@@ -125,9 +125,11 @@ export const CreateBottomFailure: Story = {
       'Eksport CSV',
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-    // The submit button is pinned under the form: the owner scrolls the form to its end.
-    toFormEnd(canvas);
+    // The submit button is pinned under the form: the owner scrolls the form, fully loaded, to its
+    // end right before submitting.
+    await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     await shot('create-bottom-before', 390, 844);
+    toFormEnd(canvas);
     await userEvent.click(submit);
     await canvas.findByRole('alert');
     await waitFor(() => {
@@ -417,6 +419,7 @@ export const OversizeFeedbackInShortViewport: Story = {
       'Eksport CSV',
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
+    await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     toFormEnd(canvas);
     await userEvent.click(submit);
     const alert = await canvas.findByRole('alert');

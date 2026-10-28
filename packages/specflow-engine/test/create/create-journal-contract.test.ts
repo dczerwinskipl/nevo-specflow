@@ -114,12 +114,12 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(await readCreateJournal(context, record.operationId)).toEqual(record);
   });
 
-  it('answers CREATE_JOURNAL_UNSUPPORTED for the previous version and rejects change.yaml rather than migrating them', async () => {
+  it('rejects another version and a change.yaml path as corrupt', async () => {
     const context = await fixture();
     const record = currentJournal(context);
     await seed(context, { ...record, version: 1 }, record.operationId);
     await expect(readCreateJournal(context, record.operationId)).rejects.toMatchObject({
-      code: 'CREATE_JOURNAL_UNSUPPORTED',
+      code: 'CREATE_JOURNAL_CORRUPT',
     });
 
     await seed(

@@ -42,6 +42,7 @@ export function documentHeaderModel(
           {
             id: 'document-assign-type',
             label: t('documents.tree.assignType'),
+            icon: 'classify',
             group: 'actions',
             onPress: () => onAssignType(session.document.id),
           },
@@ -85,6 +86,20 @@ export function documentHeaderModel(
               group: 'display',
               checked: session.guidanceShown !== undefined,
               onPress: session.toggleGuidance,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
+      // Only while the source editor is shown: a display choice of this browser (checked = wraps).
+      ...(session.wrapLines
+        ? [
+            {
+              id: 'document-wrap-lines',
+              label: t('documents.actions.wrapLines'),
+              icon: 'wrap',
+              group: 'display',
+              direct: 'never',
+              checked: session.wrapLines.checked,
+              onPress: session.wrapLines.toggle,
             } satisfies WorkspaceHeaderAction,
           ]
         : []),

@@ -44,6 +44,12 @@ import { DocumentGuidanceSheet } from '../guidance/DocumentGuidance';
 import type { ScrollAnchor } from './documentScrollAnchor';
 import { useDocumentSave, type DocumentSaveOwner } from './useDocumentSave';
 import { useEditorFocus } from './useEditorFocus';
+import {
+  setWrapLines,
+  useWrapLinesPreference,
+  wrapLinesFor,
+  type PaneClass,
+} from './wrapLinesPreference';
 
 /**
  * One owner of the open document's edit session (draft, save, discard guard). The workspace
@@ -124,6 +130,13 @@ export interface DocumentEditorSession {
    * contents column): the contents toggle of the header (pressed while the column is shown).
    */
   contentsToggle?: { pressed: boolean; toggle: () => void };
+  /**
+   * The mounted source editor reports the class of its pane (`undefined`: no source editor shown).
+   * Wrapping is a choice per pane class, kept in this browser.
+   */
+  reportSourcePane: (pane: PaneClass | undefined) => void;
+  /** Only while the source editor is shown: whether it wraps long lines, and the toggle. */
+  wrapLines?: { checked: boolean; toggle: () => void };
 }
 
 /** The room of a panel for the guidance column (see `reportGuidanceRoom`). */
@@ -280,6 +293,14 @@ export function DocumentEditorProvider({
         : null;
     setGuidanceSheetFor((current) => (current === documentId ? undefined : documentId));
   }, [guidanceInColumn, documentId]);
+  // Reported by the mounted source editor, which alone can measure its pane.
+  const [sourcePane, setSourcePane] = useState<PaneClass>();
+  const wrapPreference = useWrapLinesPreference();
+  const wrapLines = useMemo(() => {
+    if (!sourcePane) return undefined;
+    const checked = wrapLinesFor(wrapPreference, sourcePane);
+    return { checked, toggle: () => setWrapLines(sourcePane, !checked) };
+  }, [sourcePane, wrapPreference]);
   const owner = useDocumentSave({ specId, document, draft });
   const { save: saveOwned } = owner;
 
@@ -437,6 +458,8 @@ export function DocumentEditorProvider({
       toggleGuidance,
       contentsColumnShown,
       contentsToggle,
+      reportSourcePane: setSourcePane,
+      wrapLines,
     };
   }, [
     specId,
@@ -473,6 +496,7 @@ export function DocumentEditorProvider({
     toggleGuidance,
     contentsColumnShown,
     contentsToggle,
+    wrapLines,
   ]);
 
   const name = document?.path ?? '';
@@ -517,7 +541,6 @@ export function DocumentEditorProvider({
         {session && (
           <DocumentOutlineSheet
             open={outlineOpen}
-            documentName={name.split('/').at(-1) ?? name}
             headings={outline.headings}
             activeLine={outlineActive}
             onOpenChange={(next) => {

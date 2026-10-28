@@ -174,6 +174,14 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
     reportGuidanceRoom(sourceFits ? 'beside' : undefined);
     return () => reportGuidanceRoom(undefined);
   }, [view, sourceFits, reportGuidanceRoom]);
+  // The source editor tells the session the class of its pane: Wrap lines is a choice per class.
+  const sourcePane =
+    !sourceView || width === 0 ? undefined : width < outlineColumnMinWidth ? 'narrow' : 'wide';
+  const { reportSourcePane } = session;
+  useLayoutEffect(() => {
+    reportSourcePane(sourcePane);
+    return () => reportSourcePane(undefined);
+  }, [sourcePane, reportSourcePane]);
   const guidance = session.guidanceShown === 'column' ? session.guidance : undefined;
   return (
     <div ref={rootRef} className="flex h-full min-h-0 w-full flex-col">
@@ -194,6 +202,7 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
             plainText={plainText}
             // Read-only text, or editing locked until a written save is resumed.
             readOnly={view === 'source' || session.locked}
+            wrapLines={session.wrapLines?.checked ?? true}
             value={draft.content}
             viewState={draft.viewState}
             onViewStateChange={(viewState) => setDraft({ viewState })}
@@ -414,8 +423,17 @@ function PreviewScroller({
       if (!scroller || !element) return;
       // A deliberate move: the shared reading position follows it like a user scroll.
       scroller.dispatchEvent(new Event('wheel'));
-      scroller.scrollTop +=
-        element.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16;
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Smooth unless motion is reduced; the chosen heading is current at once (`pinned`), so the
+      // marker does not walk through the sections the scroll passes.
+      scroller.scrollTo({
+        top:
+          scroller.scrollTop +
+          element.getBoundingClientRect().top -
+          scroller.getBoundingClientRect().top -
+          16,
+        behavior: reduced ? 'auto' : 'smooth',
+      });
       scroller.dispatchEvent(new Event('scroll'));
       element.tabIndex = -1;
       // A marker for the heading just reached: after a pointer its ring is dropped (a class of the
@@ -423,7 +441,7 @@ function PreviewScroller({
       viewport.current?.querySelector('[data-quiet-focus]')?.removeAttribute('data-quiet-focus');
       element.setAttribute('data-quiet-focus', pointer ? 'pointer' : 'keyboard');
       // The tint fades by itself (Web Animations, no timer to clean up) unless motion is reduced.
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      if (!reduced)
         element.animate?.(
           [
             { backgroundColor: 'var(--color-surface-selected)' },

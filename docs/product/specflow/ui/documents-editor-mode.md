@@ -33,14 +33,23 @@ document owns only what they mean in the product. Approved mock: Storybook
   its contents. When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps
   at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column
   beside it holds the properties and the contents, the current heading marked while reading; the column
-  is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover. In a
+  is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover. The
+  contents are a compact tree of the headings in the file tree's family: one row height, one indent step per
+  real heading level (a flat list when all headings share a level), normal weight, no icons or numbering; the
+  current section is a quiet tint with an accent bar and follows the reading position; choosing a heading
+  scrolls to it smoothly (at once with reduced motion). In a
   narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow
   switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of
   the Display group of the `...` menu. The icon is region navigation, not a header action, so it costs no
-  direct slot. Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a
+  direct slot. The sheet is titled Contents only (the tab already names the document). Choosing a heading
+  closes the sheet, scrolls to the heading and focuses it; closing without a
   choice returns focus to the icon. The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch. Editing, plain text
   and documents with fewer than two headings have no contents. Split view (editor beside preview) is deferred
   to a later change, and a permanent contents bar was considered and rejected in review.
+- **Source editor.** Line numbers are a quiet band of their own beside the text, and the current line is marked
+  from that band to the end of the line. While the source editor is shown, the Display group of the `...`
+  menu has a checked **Wrap lines**: on unless the reader turned it off, kept in this browser separately for a
+  narrow panel (below 840 px) and a wide one; turning it off lets long lines scroll sideways.
 - **Narrow.** The workspace stacks: tree, then the document with Back to the tree. Tabs are not
   shown; the document header carries the `name (N)` switcher. Back only returns to the tree and
   MUST NOT close tabs or change the route. The region has no close of its own while stacked (it would repeat

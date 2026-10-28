@@ -1,30 +1,45 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Typography, cn } from '@nevo/ui';
+import {
+  Typography,
+  cn,
+  treeBranchClassName,
+  treeItemLabelTruncateClassName,
+  treeLinkItemClassName,
+  treeNodeClassName,
+  treeRootClassName,
+  treeSectionHeaderClassName,
+} from '@nevo/ui';
 import type { OutlineHeading } from './markdownOutline';
 
-/** Indentation per depth below the document's top heading level (column, sheet). */
-const indent = {
-  column: ['pl-0', 'pl-3', 'pl-6', 'pl-9'],
-  sheet: ['pl-0', 'pl-4', 'pl-8', 'pl-12'],
-} as const;
+interface OutlineNode {
+  heading: OutlineHeading;
+  children: OutlineNode[];
+}
 
 /**
- * The structure reads from the type: the top level is semibold, the next one medium, deeper
- * levels regular and quieter. Depth counts from the shallowest heading of the document, so a
- * document that starts at `##` still starts flush.
+ * The headings as a tree by their real levels: a heading holds the deeper ones that follow it
+ * until the next heading of its level or higher. Only H2 gives a flat list; a skipped level
+ * (`##` then `####`) nests one step, not two.
  */
-const weight = [
-  'font-semibold text-content-primary',
-  'font-medium text-content-primary',
-  'text-content-secondary',
-  'text-content-secondary',
-] as const;
+export function outlineTree(headings: readonly OutlineHeading[]): OutlineNode[] {
+  const roots: OutlineNode[] = [];
+  const open: OutlineNode[] = [];
+  for (const heading of headings) {
+    const node: OutlineNode = { heading, children: [] };
+    while (open.length > 0 && open.at(-1)!.heading.level >= heading.level) open.pop();
+    (open.at(-1)?.children ?? roots).push(node);
+    open.push(node);
+  }
+  return roots;
+}
 
 /**
- * The headings as a list of links, one renderer for the column beside the text and for the sheet:
- * the same indentation, weight and current-section mark. The sheet has 44 px rows and wraps long
- * titles to two lines; the column keeps one truncated line (full title in the tooltip).
+ * The headings as a compact tree of links, one renderer for the column beside the text and for
+ * the sheet, in the file tree's family (`treeLinkItemClassName`): one row height, one indent step
+ * per real level, normal weight, and the current section a quiet tint with an accent bar. The
+ * column keeps one truncated line (full title in the tooltip); the sheet wraps to two lines. Touch
+ * keeps a 44 px hit area without taller rows.
  */
 export function OutlineEntries({
   headings,
@@ -41,45 +56,45 @@ export function OutlineEntries({
   /** `pointer`: chosen with a mouse or a finger (a click with no detail is the keyboard). */
   onSelect: (line: number, pointer: boolean) => void;
 }) {
-  const top = Math.min(...headings.map((heading) => heading.level));
   const sheet = variant === 'sheet';
-  return (
-    <ol className="m-0 grid list-none grid-cols-1 gap-0.5 p-0">
-      {headings.map((heading, index) => {
-        const depth = Math.min(3, heading.level - top);
+  const first = headings[0]?.line;
+  const level = (nodes: readonly OutlineNode[], depth: number): ReactNode => (
+    <ol className={depth === 0 ? treeRootClassName : treeBranchClassName}>
+      {nodes.map(({ heading, children }) => {
         const active = heading.line === activeLine;
         return (
-          <li key={heading.line} className={cn('min-w-0', indent[variant][depth])}>
+          <li key={heading.line} className={treeNodeClassName}>
             <a
-              ref={active || (activeLine === undefined && index === 0) ? focusRef : undefined}
+              ref={
+                active || (activeLine === undefined && heading.line === first)
+                  ? focusRef
+                  : undefined
+              }
               href={`#line-${heading.line}`}
               title={heading.text}
               aria-current={active ? 'location' : undefined}
               data-outline-depth={depth}
-              className={cn(
-                'block min-w-0 rounded-control no-underline hover:bg-surface-hover hover:text-content-primary',
-                sheet
-                  ? 'flex min-h-11 items-center px-3 py-2 text-body-md'
-                  : 'truncate px-2 py-1 text-body-sm',
-                weight[depth],
-                active && 'bg-surface-selected text-content-primary',
-              )}
+              className={cn(treeLinkItemClassName, sheet && 'py-1')}
               onClick={(event) => {
                 event.preventDefault();
                 onSelect(heading.line, event.detail > 0);
               }}
             >
-              {sheet ? (
-                <span className="line-clamp-2 min-w-0 break-words">{heading.text}</span>
-              ) : (
-                heading.text
-              )}
+              <span
+                className={
+                  sheet ? 'line-clamp-2 min-w-0 break-words' : treeItemLabelTruncateClassName
+                }
+              >
+                {heading.text}
+              </span>
             </a>
+            {children.length > 0 && level(children, depth + 1)}
           </li>
         );
       })}
     </ol>
   );
+  return level(outlineTree(headings), 0);
 }
 
 /**
@@ -99,9 +114,11 @@ export function DocumentOutline({
   const label = t('documents.outline.label');
   return (
     <nav aria-label={label} className="min-w-0">
-      <Typography as="p" variant="label-md" className="mb-2 px-2 text-content-muted">
-        {label}
-      </Typography>
+      <div className={treeSectionHeaderClassName}>
+        <Typography as="p" variant="section-label" className="min-w-0 truncate text-content-muted">
+          {label}
+        </Typography>
+      </div>
       <OutlineEntries
         headings={headings}
         activeLine={activeLine}

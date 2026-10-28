@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { render, cleanup } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { MarkdownDocument } from '@nevo/ui';
+import { outlineTree } from './DocumentOutline';
 import {
   markdownOutline,
   outlineColumnMinWidth,
@@ -122,5 +123,33 @@ describe('contents column geometry', () => {
     expect(outlineTextMinWidth).toBe(528);
     for (const width of [840, 847, 877, 900, 922, 997, 1035, 1100, 1290])
       expect(outlineTextWidth(width)).toBeGreaterThanOrEqual(outlineTextMinWidth);
+  });
+});
+
+describe('the contents tree', () => {
+  const heading = (line: number, level: 1 | 2 | 3 | 4) => ({ line, level, text: `h${line}` });
+  const shape = (nodes: ReturnType<typeof outlineTree>): unknown =>
+    nodes.map((node) =>
+      node.children.length ? [node.heading.line, shape(node.children)] : node.heading.line,
+    );
+
+  it('is a flat list when every heading has the same level', () => {
+    expect(shape(outlineTree([heading(1, 2), heading(3, 2), heading(5, 2)]))).toEqual([1, 3, 5]);
+  });
+
+  it('nests by the real levels, a skipped level one step only', () => {
+    expect(
+      shape(
+        outlineTree([heading(1, 1), heading(2, 2), heading(3, 4), heading(4, 2), heading(5, 3)]),
+      ),
+    ).toEqual([
+      [
+        1,
+        [
+          [2, [3]],
+          [4, [5]],
+        ],
+      ],
+    ]);
   });
 });

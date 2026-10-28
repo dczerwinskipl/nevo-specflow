@@ -5,7 +5,6 @@ import {
   DrawerBody,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   IconButton,
@@ -16,15 +15,14 @@ import { OutlineEntries } from './DocumentOutline';
 import type { OutlineHeading } from './markdownOutline';
 
 /**
- * The contents of the previewed document as a bottom sheet, titled with the document's name. The
- * list is the column's renderer (`OutlineEntries`) in its sheet density: the same indentation and
- * weight per level and the current section marked, with at least 44 px rows and long titles wrapped
- * to two lines. Choosing a heading closes the sheet and hands the heading to `onSelected` once the
+ * The contents of the previewed document as a bottom sheet (titled "Contents"; the tab already names
+ * the document). The list is the column's renderer (`OutlineEntries`): the same compact tree rows,
+ * indentation per real level and current-section mark, long titles wrapped to two lines and a 44 px
+ * hit area on touch. Choosing a heading closes the sheet and hands the heading to `onSelected` once the
  * sheet has gone, so focus can land on the heading and is not pulled back.
  */
 export function DocumentOutlineSheet({
   open,
-  documentName,
   headings,
   activeLine,
   onOpenChange,
@@ -32,8 +30,6 @@ export function DocumentOutlineSheet({
   restoreFocusTo,
 }: {
   open: boolean;
-  /** The file name of the document, under the title. */
-  documentName: string;
   headings: readonly OutlineHeading[];
   /** The heading the reader was at when the sheet opened. */
   activeLine?: number;
@@ -53,6 +49,7 @@ export function DocumentOutlineSheet({
         // Ten headings must not take most of a phone: the compact sheet caps its height.
         size="compact"
         showClose={false}
+        aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           // Focus the heading the reader is at (it scrolls into view with it), else the first one.
           event.preventDefault();
@@ -76,13 +73,9 @@ export function DocumentOutlineSheet({
           onSelected(choice.line, choice.pointer);
         }}
       >
-        <DrawerHeader className="flex items-start justify-between gap-3 pr-3">
-          <div className="grid min-w-0 gap-0.5">
-            <DrawerTitle>{t('documents.outline.label')}</DrawerTitle>
-            <DrawerDescription className="truncate" title={documentName}>
-              {documentName}
-            </DrawerDescription>
-          </div>
+        <DrawerHeader className="flex items-center justify-between gap-3 pr-3">
+          {/* The tab and the header already name the document: the title is enough. */}
+          <DrawerTitle className="min-w-0 truncate">{t('documents.outline.label')}</DrawerTitle>
           <DrawerClose asChild>
             <IconButton
               aria-label={t('documents.outline.close')}

@@ -68,7 +68,9 @@ export function treeLines(tree: DocumentTree): string[] {
         (tree.commits.uncommitted ? `, ${tree.commits.uncommitted} uncommitted` : ''),
     );
     if (tree.commits.policy === 'manual') {
-      lines.push('Commit policy: manual (automatic commit is off, the default; changes stay uncommitted until "nevo-specflow commit". Enable it with git.commits.auto.documents: true)');
+      lines.push(
+        'Commit policy: manual (automatic commit is off, the default; changes stay uncommitted until "nevo-specflow commit". Enable it with git.commits.auto.documents: true)',
+      );
     }
   }
   for (const folder of tree.folders) {

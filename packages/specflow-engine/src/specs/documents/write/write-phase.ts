@@ -370,7 +370,11 @@ export async function rollForward(
   // it: it is never applied. Asked before any file of the operation is touched.
   const aliased =
     aliasedPhysicalPath(plan.paths.map((planned) => planned.path)) !== undefined ||
-    (await planRemovesAnAliasedEntry(rt.files.verified, specDir, plan));
+    (await planRemovesAnAliasedEntry(
+      { lstat: (path) => rt.files.verified.lstat(path), list: (path) => rt.files.list(path) },
+      specDir,
+      plan,
+    ));
   if (journal.stage === 'reserved') {
     if (aliased) {
       return refuseWithoutChanges(rt, journal, plan, [], {

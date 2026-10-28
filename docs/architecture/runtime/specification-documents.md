@@ -293,10 +293,12 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   case (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`, nothing reserved or written) and accepts
   it on case-sensitive volumes. The file system decides, not the platform: before the reservation (and again before
   a journaled operation touches a file) every planned path that exists is `lstat`ed, and a removed path with the
-  device and inode of another planned path is one entry under two names (this also covers the default APFS volume
-  of macOS, a Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs). On a volume
-  that reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with
-  its letter case swapped, is found. A path pair that is the same file only by a hard link is refused the same way.
+  device and inode of a path the plan keeps (writes, or the manifest) is one entry under two names when both sit in
+  one directory and that directory does not list both names (this also covers the default APFS volume of macOS, a
+  Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs). Two hard links are two
+  listed entries of one inode and are not refused (moving a folder that holds them is accepted). On a volume that
+  reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with its
+  letter case swapped, is found.
   On Windows the planner also refuses it at once without I/O. A journaled operation refused this way after its
   reservation is `DOCUMENT_RECOVERY_REQUIRED` (`plan-invalid`), its files untouched.
 - **Paths**: POSIX `/`, relative to the Specification directory, at most 500 characters, every segment at most 200 UTF-8 bytes, no leading `/`, no

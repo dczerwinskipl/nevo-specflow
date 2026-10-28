@@ -19,13 +19,15 @@ export interface GitCommitsPolicy {
 }
 
 /**
- * Engine capabilities whose edits the Engine may commit by itself (ADR 0018). The set is closed: a
- * capability is added by the change that introduces it.
+ * Engine capabilities that have a manual commit over their ledger scope and an automatic-commit
+ * setting of their own (ADR 0018). Extensible: a capability (later tasks, definitions, ...) is added by
+ * the change that introduces it. The automatic setting is configuration only (never a per-request
+ * option) and defaults to off.
  */
 export const COMMIT_CAPABILITIES = ['documents'] as const;
 export type CommitCapability = (typeof COMMIT_CAPABILITIES)[number];
 
-/** `git.commits.auto.<capability>` values; a missing key means "not configured here" (default `true`). */
+/** `git.commits.auto.<capability>` values; a missing key means "not configured here" (the default is `false`: nothing is committed automatically unless the configuration enables it). */
 export type AutoCommitSettings = Readonly<Partial<Record<CommitCapability, boolean>>>;
 
 /** Where the effective value of `git.commits.auto.<capability>` comes from. */
@@ -57,7 +59,7 @@ export interface GitWorktreePolicy {
   readonly localAutoCommit?: AutoCommitSettings;
 }
 
-/** The effective `git.commits.auto.<capability>`: local, else committed, else `true` (ADR 0018 decisions 1 and 2). */
+/** The effective `git.commits.auto.<capability>`: local, else committed, else `false` (ADR 0018 decisions 1 and 2, default off). */
 export function effectiveAutoCommit(
   policy: GitWorktreePolicy,
   capability: CommitCapability,
@@ -66,7 +68,7 @@ export function effectiveAutoCommit(
   if (local !== undefined) return { auto: local, source: 'local' };
   const project = policy.commits.auto?.[capability];
   if (project !== undefined) return { auto: project, source: 'project' };
-  return { auto: true, source: 'default' };
+  return { auto: false, source: 'default' };
 }
 
 export const DEFAULT_BRANCH_PATTERN = 'feature/{slug}';

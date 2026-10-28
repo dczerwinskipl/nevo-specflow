@@ -16,7 +16,15 @@ import {
   type DocumentsFixture,
 } from './documents-fixture';
 
-export const GIT_ON = 'runtime: {}\ngit:\n  enabled: true\n';
+/**
+ * A project with Git on and auto-commit ENABLED for the documents through the committed configuration,
+ * the same path production uses (the default is off). Use it for every test of the commit queue.
+ */
+export const GIT_ON =
+  'runtime: {}\ngit:\n  enabled: true\n  commits:\n    auto:\n      documents: true\n';
+
+/** Git on, nothing else: the default, where no document is committed automatically. */
+export const GIT_ON_DEFAULT = 'runtime: {}\ngit:\n  enabled: true\n';
 
 export interface WritableProject extends DocumentsFixture {
   readonly specId: string;

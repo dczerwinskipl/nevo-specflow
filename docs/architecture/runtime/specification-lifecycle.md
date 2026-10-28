@@ -55,11 +55,9 @@ the payload write and the journal publication) and an _unsupported_ journal olde
 window replay idempotently; afterwards the same operationId is a new operation and slug protection comes from the
 Specification on disk and the registry.
 
-An _unsupported_ journal (older version, not JSON, or no numeric `version`) is never interpreted. It is returned
+An _unsupported_ journal (not JSON, or no numeric `version`) is never interpreted. It is returned
 separately by the listing and is not a resource claim, so it can block neither Create nor Close; read by operation
 id it answers `CREATE_JOURNAL_UNSUPPORTED` (503); the tolerant list shows it as `recovery-required` with that code.
-**Resume interrupted Creates before upgrading** (and before downgrading, which would classify version 2 journals as
-unsupported): the evidence of an older journal that still had effects is lost after 7 days.
 
 The intent fingerprint covers the archetype id and version, the suggestions, the folders and, for added documents,
 path, type and the sha256 of the content. The catalogue revision is a precondition checked when a new operation is

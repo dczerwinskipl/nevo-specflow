@@ -133,16 +133,10 @@ describe('Create journal retention', () => {
     const now = Date.now();
     const keep = await seed(context, 'completed', 30, now);
     const old = new Date(now - 30 * DAY);
-    // Not JSON and an other version are unsupported: deleted by age, never parsed further.
+    // A file that is not JSON is unsupported: deleted by age, never parsed further.
     const notJson = createJournalPath(context, randomUUID());
     await withCreateJournalLock(context, () => writeFile(notJson, '{not json'));
     await utimes(notJson, old, old);
-    const oldVersion = await seed(context, 'completed', 30, now);
-    await writeFile(
-      createJournalPath(context, oldVersion.operationId),
-      JSON.stringify({ ...oldVersion, version: 1 }),
-    );
-    await utimes(createJournalPath(context, oldVersion.operationId), old, old);
     // A broken journal of the CURRENT format is evidence and stays.
     const broken = await seed(context, 'completed', 30, now);
     await writeFile(
@@ -150,7 +144,7 @@ describe('Create journal retention', () => {
       JSON.stringify({ ...broken, stage: 'nonsense' }),
     );
     await utimes(createJournalPath(context, broken.operationId), old, old);
-    expect(await sweep(context, now, { keepOperationId: keep.operationId })).toBe(2);
+    expect(await sweep(context, now, { keepOperationId: keep.operationId })).toBe(1);
     const dir = await readdir(join(context.project.stateRoot, 'engine/operations/create'));
     expect(dir.sort()).toEqual([keep.operationId + '.json', broken.operationId + '.json'].sort());
   });

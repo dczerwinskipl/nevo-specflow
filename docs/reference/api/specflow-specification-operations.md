@@ -58,7 +58,7 @@ catalogue is `GET /api/specs/archetypes` and the fields are specified in
 body is **413** `DOCUMENT_TOO_LARGE`. Further typed errors: `CATALOGUE_STALE`/409 (revision or archetype version
 changed; nothing written), `ARCHETYPE_UNKNOWN`/422, `DOCUMENT_PATH_INVALID`/400, `DOCUMENT_PATH_CONFLICT`/409,
 `DOCUMENT_OPERATION_INVALID`/400 (counts, UTF-8 byte limits, an added type that cannot be registered) and
-`CREATE_JOURNAL_UNSUPPORTED`/503 (an older-format journal read by operation id). The catalogue revision is
+`CREATE_JOURNAL_UNSUPPORTED`/503 (an unreadable journal read by operation id). The catalogue revision is
 checked only when a new operation is admitted and is not part of the idempotency fingerprint.
 `slug` is optional, lowercase kebab-case ASCII (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 80 characters,
 not a Windows device name). It replaces the title-derived slug for the Spec folder, the

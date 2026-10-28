@@ -339,20 +339,20 @@ Review checkpoints: after D2.T03 (journal contract), after D2.T05 (Engine end to
 - **Verification:** U: codec, helpers, size test with in-memory contents. **L (Linux only):** `create-journal` additions with real files,
   retention sweep with payload directories.
 
-### D2.T04 — Unsupported older journals (PC-2)
+### D2.T04 — Unreadable journals (PC-2)
 
-- **Goal:** an older-version journal never blocks Create or Close, is swept after retention and answers `CREATE_JOURNAL_UNSUPPORTED` by id.
+- **Goal:** an unreadable journal never blocks Create or Close, is swept after retention and answers `CREATE_JOURNAL_UNSUPPORTED` by id.
 - **Profile / kind:** `implementer` / `backend`.
 - **Scope:** `create/journal/unsupported.ts` (single home of the rule), `store.ts` (`listCreateJournals`), `inspect/listing.ts`, `retention.ts`,
   `coordination/resources.ts` (confirm it never claims), tests.
 - **Implements:** DS 6 item 3 (a) to (d); DS 10 item 2.
-- **Details:** a file whose `version` is not current, is not valid JSON or has no numeric `version` is _unsupported_ and nothing else is read;
+- **Details:** a file that is not valid JSON or has no numeric `version` is _unsupported_ and nothing else is read;
   it is returned separately, never throws, never a resource claim; sweep deletes it when older than 7 days without parsing; by-id read
   answers `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`); the tolerant operations list shows `recovery-required`
   with that code.
-- **Out of scope:** interpreting any old format.
+- **Out of scope:** interpreting any other format.
 - **Depends on:** D2.T03.
-- **Acceptance:** DS 6 acceptance (8); a corrupt current-version journal still blocks as today; unsupported detection lives in one place.
+- **Acceptance:** DS 6 acceptance (8); a parsable but corrupt journal still blocks as today; unsupported detection lives in one place.
 - **Verification:** U: classifier on in-memory contents, sweep predicate with injected clock. **L (Linux only):** real files; Create and Close
   admission not blocked by an old file; sweep after retention.
 

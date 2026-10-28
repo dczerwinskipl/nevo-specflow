@@ -1,4 +1,4 @@
-// Linux-only integration (real Git, real files): older-format Create journals and the
+// Linux-only integration (real Git, real files): unreadable Create journals and the
 // payload store lifecycle (orphan sweep, crash between payload write and journal publication).
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
@@ -71,15 +71,14 @@ async function plant(
   return operationId;
 }
 
-const OLD_FORMAT = JSON.stringify({ version: 1, stage: 'manifest-writing', files: [1, 2] });
+const STRAY = JSON.stringify({ stage: 'manifest-writing', files: [1, 2] });
 
-describe('older-format Create journals', () => {
+describe('unreadable Create journals', () => {
   it('never block Create or Close', async () => {
     const { root, engine, directory, registry } = await fixture();
-    await plant(directory, OLD_FORMAT);
+    await plant(directory, STRAY);
     await plant(directory, '{not json');
     await plant(directory, JSON.stringify({ stage: 'reserved' }));
-    await plant(directory, JSON.stringify({ version: 3 }));
 
     const created = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
@@ -101,7 +100,7 @@ describe('older-format Create journals', () => {
 
   it('are listed separately, never throw and never claim a resource', async () => {
     const { engine, directory, registry } = await fixture();
-    await plant(directory, OLD_FORMAT);
+    await plant(directory, STRAY);
     await plant(directory, '{not json');
     expect(await listCreateJournals(engine.context)).toEqual([]);
     await expect(
@@ -114,7 +113,7 @@ describe('older-format Create journals', () => {
 
   it('answer CREATE_JOURNAL_UNSUPPORTED by id and CREATE_JOURNAL_CORRUPT stays for a broken current journal', async () => {
     const { engine, directory } = await fixture();
-    const old = await plant(directory, OLD_FORMAT);
+    const old = await plant(directory, STRAY);
     for (const read of [
       () => readCreateJournal(engine.context, old),
       () => inspectPublicCreateOperation(engine, old),
@@ -125,7 +124,7 @@ describe('older-format Create journals', () => {
     }
     // The file is left exactly as it was: nothing interprets or rewrites it.
     expect(await stat(createJournalPath(engine.context, old))).toMatchObject({
-      size: OLD_FORMAT.length,
+      size: STRAY.length,
     });
 
     const broken = await plant(directory, JSON.stringify({ version: 2, stage: 'nonsense' }));
@@ -140,7 +139,7 @@ describe('older-format Create journals', () => {
 
   it('show as recovery-required with the unsupported code in the tolerant listing', async () => {
     const { engine, directory } = await fixture();
-    const old = await plant(directory, OLD_FORMAT);
+    const old = await plant(directory, STRAY);
     const rows = await listPublicCreateOperations(engine);
     expect(rows).toEqual([
       expect.objectContaining({
@@ -161,8 +160,8 @@ describe('older-format Create journals', () => {
     const { engine, directory } = await fixture();
     const now = Date.now();
     const oldNotJson = await plant(directory, '{not json', 8, now);
-    const oldVersion = await plant(directory, OLD_FORMAT, 30, now);
-    const young = await plant(directory, OLD_FORMAT, 6, now);
+    const stray = await plant(directory, STRAY, 30, now);
+    const young = await plant(directory, STRAY, 6, now);
     // An old, corrupt CURRENT-format journal is evidence and is never deleted by age.
     const corrupt = await plant(
       directory,
@@ -176,7 +175,7 @@ describe('older-format Create journals', () => {
     expect(removed).toBe(2);
     const names = await readdir(directory);
     expect(names).not.toContain(oldNotJson + '.json');
-    expect(names).not.toContain(oldVersion + '.json');
+    expect(names).not.toContain(stray + '.json');
     expect(names).toContain(young + '.json');
     expect(names).toContain(corrupt + '.json');
   });
@@ -211,7 +210,7 @@ describe('payload store lifecycle', () => {
         await writeCreatePayload(engine.context, id, [content('x' + id)]);
       }
     });
-    await writeFile(join(directory, withUnsupportedJournal + '.json'), OLD_FORMAT);
+    await writeFile(join(directory, withUnsupportedJournal + '.json'), STRAY);
     const old = new Date(now - 8 * DAY);
     for (const id of [orphanOld, withUnsupportedJournal, kept]) {
       await utimes(createPayloadDirectory(engine.context, id), old, old);

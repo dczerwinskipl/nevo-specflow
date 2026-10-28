@@ -1,24 +1,23 @@
 /**
- * The single home of the rule for journals this Engine cannot interpret (see
- * `docs/architecture/runtime/specification-documents.md`). It is NOT a compatibility reader: no old
- * format is ever interpreted. A journal file is _unsupported_ when
+ * The single home of the rule for journal files this Engine cannot interpret at all (see
+ * `docs/architecture/runtime/specification-documents.md`). A journal file is _unsupported_ when
  *
  * - its text is not valid JSON, or
- * - it is not an object with a numeric `version`, or
- * - its `version` is not the current one of its kind.
+ * - it is not an object with a numeric `version`.
  *
- * Nothing else is read from such a file. An unsupported journal:
+ * Nothing else is read from such a file (a stray, truncated or hostile file). An unsupported journal:
  *
  * - is returned separately by the listing and is NEVER a resource claim, so it can block no admission;
  * - is deleted by the retention sweep once it is older than the retention (by file mtime);
  * - answers the kind's `unsupported` error when read by operation id (distinct from the
- *   `invalid` error, which stays a blocking, fail-closed state of a current-format file).
+ *   `invalid` error, which stays a blocking, fail-closed state of any file that parses as a journal
+ *   but is not a valid one of its kind, whatever its `version`).
  */
 export type JournalFileClass =
   { readonly kind: 'current'; readonly value: unknown } | { readonly kind: 'unsupported' };
 
-/** Classifies the text of a journal file by its version only. */
-export function classifyJournalText(text: string, currentVersion: number): JournalFileClass {
+/** Classifies the text of a journal file by its shape only. */
+export function classifyJournalText(text: string): JournalFileClass {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -29,8 +28,7 @@ export function classifyJournalText(text: string, currentVersion: number): Journ
     typeof value !== 'object' ||
     value === null ||
     Array.isArray(value) ||
-    typeof (value as { version?: unknown }).version !== 'number' ||
-    (value as { version: number }).version !== currentVersion
+    typeof (value as { version?: unknown }).version !== 'number'
   ) {
     return { kind: 'unsupported' };
   }

@@ -25,7 +25,7 @@ export function createJournalPath(context: ResolvedProjectHome, operationId: str
 }
 
 /**
- * The journal of one operation. An unsupported (older-format) file answers
+ * The journal of one operation. An unsupported (unreadable) file answers
  * `CREATE_JOURNAL_UNSUPPORTED`; a corrupt current-format file stays `CREATE_JOURNAL_CORRUPT`.
  */
 export async function readCreateJournal(

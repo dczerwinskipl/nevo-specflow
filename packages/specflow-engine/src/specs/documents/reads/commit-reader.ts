@@ -72,7 +72,7 @@ export interface ActiveDocumentOperations {
 
 /**
  * The active (not yet settled) document journals and batch records of the Project Home. Lock-free
- * and Git-free; a bad file is counted, never thrown. Older-format files are ignored: they claim
+ * and Git-free; a bad file is counted, never thrown. Unreadable files are ignored: they claim
  * nothing and block nothing.
  */
 export async function listActiveDocumentOperations(

@@ -31,7 +31,7 @@ import {
 import { DOCUMENT_JOURNAL_MAX_BYTES } from '../changes/limits';
 
 /**
- * The current-format document-change journals of the Project Home. Unsupported (older-format) files
+ * The current-format document-change journals of the Project Home. Unsupported (unreadable) files
  * never claim and never fail the listing; a corrupt current-format journal fails closed.
  */
 export function listDocumentChangeJournals(

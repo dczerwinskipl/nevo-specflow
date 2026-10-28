@@ -25,7 +25,7 @@ export interface PublicCreateListingRow {
   readonly state: PublicCreateListingState;
   /** The journal could not be read or validated: only the id is known. */
   readonly unreadable?: true;
-  /** Stable code of the cause when it is known (an older-format journal). */
+  /** Stable code of the cause when it is known (an unreadable journal). */
   readonly code?: 'CREATE_JOURNAL_UNSUPPORTED';
   readonly specId?: string;
   readonly slug?: string;
@@ -121,7 +121,7 @@ async function readRow(
   }
 }
 
-/** A row for an older-format journal: only its id; the cause is a stable code, never its content. */
+/** A row for an unreadable journal: only its id; the cause is a stable code, never its content. */
 function unsupported(operationId: string, updatedAt: Date): PublicCreateListingRow {
   return { ...unreadable(operationId, updatedAt), code: 'CREATE_JOURNAL_UNSUPPORTED' };
 }

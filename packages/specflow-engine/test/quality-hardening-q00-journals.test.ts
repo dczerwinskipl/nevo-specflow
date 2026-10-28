@@ -105,11 +105,11 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     }
 
     const rejected: readonly [string, unknown][] = [
-      ['version 1 (unsupported)', { ...original, version: 1 }],
+      ['another version', { ...original, version: 1 }],
       ['foreign Project Home', { ...original, projectId: randomUUID() }],
       ['forged fingerprint', { ...original, inputFingerprint: 'a'.repeat(64) }],
       [
-        'legacy change.yaml',
+        'a change.yaml path',
         {
           ...original,
           files: [

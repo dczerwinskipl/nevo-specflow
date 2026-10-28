@@ -49,7 +49,7 @@ export interface JournalKind<T> extends JournalKindBase {
 export interface JournalKindErrors {
   /** A corrupt, redirected or oversize file of the current format. Fail closed. */
   readonly invalid: () => Error;
-  /** An older-format file read by operation id. */
+  /** An unreadable file read by operation id. */
   readonly unsupported: () => Error;
   /** A value that is not an operation id. */
   readonly invalidOperationId: () => Error;
@@ -113,7 +113,7 @@ async function readJournalFile<T>(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > kind.maxBytes) {
       throw kind.errors.invalid();
     }
-    const classified = classifyJournalText(await readFileWindowsSafe(path), kind.version);
+    const classified = classifyJournalText(await readFileWindowsSafe(path));
     if (classified.kind === 'unsupported') return { kind: 'unsupported', mtimeMs: stat.mtimeMs };
     return { kind: 'journal', journal: kind.parse(context, classified.value, operationId) };
   } catch (error) {
@@ -123,7 +123,7 @@ async function readJournalFile<T>(
 }
 
 /**
- * The journal of one operation. An unsupported (older-format) file answers the kind's
+ * The journal of one operation. An unsupported (unreadable) file answers the kind's
  * `unsupported` error; a corrupt current-format file stays the kind's `invalid` error.
  */
 export async function readJournal<T>(
@@ -139,7 +139,7 @@ export async function readJournal<T>(
 export interface JournalListing<T> {
   /** Valid current-format journals: the only resource claims. */
   readonly journals: readonly T[];
-  /** Older-format or unparseable files: never claims, never an error. */
+  /** Unreadable or unparseable files: never claims, never an error. */
   readonly unsupported: readonly UnsupportedJournal[];
 }
 

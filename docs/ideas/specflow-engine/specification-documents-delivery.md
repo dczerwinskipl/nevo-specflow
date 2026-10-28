@@ -98,7 +98,7 @@ State at specification time of D4 and D-config (main `db000a40`, D0 to D3 merged
    (reservation) and `create/scaffold.ts:11` (`expectedScaffold`, regenerating the scaffold for writing and
    recovery). Both pass the archetype `minimal` internally (not an API default) until D2 replaces them. A Create
    journal reserved before D1 holds scaffold hashes of the old shape and fails recovery by design; operators abandon
-   such a journal (existing procedure). Journals of the older format at D2 follow section 6, item 2.
+   such a journal (existing procedure). Unreadable journals follow section 6, item 3.
 4. **Error vocabulary.** One list (reference page) shared by Engine (`DocumentError` with these codes plus the
    existing `SpecificationError`, `CreateOperationError`, `GitCapabilityError`) and the Runtime status table.
 5. **Ids.** Rules (pattern, deterministic suffix, `u-` derived ids from the exact path) are owned by the
@@ -241,14 +241,13 @@ item 6 (they only change fixtures) and the listing test with a real directory; r
    `CreateJournal.version` becomes `2`; the codec accepts `files` of the new shape and the new intent keys, and
    the journal pins `catalogueRevision` (diagnostic only: recovery uses the payload, never the live catalogue, so
    a catalogue that changed between crash and resume has **no effect** on the outcome).
-3. **Older journals - narrow handling (confirmed by the owner; not a compatibility reader).** Observed:
+3. **Unreadable journals - narrow handling.** Observed:
    `listCreateJournals` is strict and throws on any invalid file, and it is used by Create admission
    (`reservation.ts:62`, `durable.ts:406`) and, through `assertSharedResourcesAvailable`
-   (`coordination/resources.ts:89`), by **Close** admission. One old-format file would therefore block Create and
-   Close permanently. The handling: (a) `listCreateJournals` classifies a file whose `version` field is not the
-   current one as _unsupported_ (read nothing else from it), returns it separately and does **not** throw and
+   (`coordination/resources.ts:89`), by **Close** admission. One unreadable file would therefore block Create and
+   Close permanently. The handling: (a) `listCreateJournals` classifies a file that is not valid JSON or has no numeric `version` as _unsupported_ (read nothing else from it), returns it separately and does **not** throw and
    does **not** count it as a resource claim; Create and Close are never blocked by it; (b) the existing
-   retention sweep deletes unsupported-version files whose mtime is older than the 7-day retention (no parsing of
+   retention sweep deletes unsupported files whose mtime is older than the 7-day retention (no parsing of
    their content; a file that is not valid JSON or has no numeric `version` is "unsupported" the same way);
    (c) reading such a journal **by operation id** (inspection, replay) answers the new code
    `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`); (d) the tolerant operations list

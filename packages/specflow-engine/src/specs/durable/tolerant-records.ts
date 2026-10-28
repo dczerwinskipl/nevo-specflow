@@ -11,7 +11,7 @@ import { classifyJournalText } from './unsupported';
 /**
  * One record file as a read-only listing sees it. A reader never fails because of one bad file:
  * a corrupt, redirected, oversize or unparseable current-format file is `unreadable`, an
- * older-format one is `unsupported` (never a claim, never an error).
+ * unreadable one is `unsupported` (never a claim, never an error).
  */
 export type TolerantRecord<T> =
   | { readonly kind: 'record'; readonly record: T }
@@ -28,7 +28,7 @@ function readerOf<T>(
         return { kind: 'unreadable', operationId, updatedAt };
       }
       try {
-        const classified = classifyJournalText(await readFileWindowsSafe(path), kind.version);
+        const classified = classifyJournalText(await readFileWindowsSafe(path));
         if (classified.kind === 'unsupported') return { kind: 'unsupported', operationId };
         return { kind: 'record', record: kind.parse(context, classified.value, operationId) };
       } catch {

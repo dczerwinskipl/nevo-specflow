@@ -46,10 +46,9 @@ describe('journal codec', () => {
     expect(parse(JSON.parse(text))).toEqual(journal);
   });
 
-  it('classifies a journal of another version as unsupported, like Create does', () => {
-    expect(classifyJournalText(JSON.stringify({ version: 2 }), 1).kind).toBe('unsupported');
-    expect(classifyJournalText('not json', 1).kind).toBe('unsupported');
-    expect(classifyJournalText(JSON.stringify(buildJournal('queued')), 1).kind).toBe('current');
+  it('classifies an unparsable file as unsupported, like Create does', () => {
+    expect(classifyJournalText('not json').kind).toBe('unsupported');
+    expect(classifyJournalText(JSON.stringify(buildJournal('queued'))).kind).toBe('current');
   });
 
   it('answers a corrupt current-format file and an unsupported one with distinct recovery causes', () => {

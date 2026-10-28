@@ -440,7 +440,7 @@ part of this layer. Numbers are in "Limits".
 **Reads of the commit state.** The tree, the workspace `documents` section, the status of one operation and the rows of
 the document operation list read the active journals and batch records of the Project Home and nothing else: no control
 lock, no Git process, no write, bounded by the listing cap of the journal directory. A bad file is counted and reported
-(`commit-blocked` for the writes, a `recovery-required` row), never a failure of the read; older-format files are ignored.
+(`commit-blocked` for the writes, a `recovery-required` row), never a failure of the read; a file that is not JSON is ignored.
 The plan file of an operation names the paths it covers (immutable, addressed by its hash, so a read remembers it). Only
 operations that have not settled appear, so a committed one leaves the tree; the tree revision covers the markers, the held
 paths, the capacity of the queue and the blockers but not the age of anything, so an unrelated read never changes it. A

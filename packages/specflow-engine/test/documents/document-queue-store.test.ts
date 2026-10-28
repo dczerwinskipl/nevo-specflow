@@ -106,7 +106,7 @@ describe('the batch store', () => {
     expect(await documentBatchViews.list(project.engine.context, project.workspaceId)).toEqual([]);
   });
 
-  it('ignores stray stage files, other names and unsupported versions; a corrupt record fails closed', async () => {
+  it('ignores stray stage files and other names; a corrupt record fails closed', async () => {
     const project = await queueProject();
     const batch = await record(project);
     await withJournalLock(project.engine.context, DOCUMENT_BATCH_KIND, () =>
@@ -115,7 +115,6 @@ describe('the batch store', () => {
     const directory = join(project.engine.context.project.stateRoot, DOCUMENT_BATCH_RELATIVE_DIR);
     await writeFile(join(directory, `.${randomUUID()}.json.${randomUUID()}.tmp`), '{');
     await writeFile(join(directory, 'notes.txt'), 'not a record');
-    await writeFile(join(directory, `${randomUUID()}.json`), JSON.stringify({ version: 99 }));
     expect(await listDocumentBatches(project.engine.context)).toEqual([batch]);
 
     await writeFile(join(directory, `${randomUUID()}.json`), JSON.stringify({ version: 1 }));

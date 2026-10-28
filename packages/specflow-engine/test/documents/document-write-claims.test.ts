@@ -117,13 +117,12 @@ describe('document-change journals as claims', () => {
     expect(created.slug).toBe('coexisting-feature');
   });
 
-  it('fail closed on a corrupt journal and ignore stray files and older formats', async () => {
+  it('fail closed on a corrupt journal and ignore stray files', async () => {
     const fixture = await documentsProject();
     await publish(fixture, 'completed');
     const directory = journalDirectory(fixture.engine.context, DOCUMENT_CHANGE_JOURNAL_KIND);
     await mkdir(join(directory, 'batches'), { recursive: true });
     await writeFile(join(directory, 'notes.txt'), 'x');
-    await writeFile(join(directory, `${randomUUID()}.json`), JSON.stringify({ version: 0 }));
     await expect(
       assertSharedResourcesAvailable(fixture.engine.context, exclusive(fixture)),
     ).resolves.toBeUndefined();

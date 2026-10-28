@@ -191,21 +191,19 @@ describe('journal store', () => {
 
 describe('unsupported classification', () => {
   it.each([
-    ['an older version', '{"version":6}'],
     ['a string version', '{"version":"7"}'],
     ['invalid JSON', '{no'],
     ['an array', '[7]'],
     ['null', 'null'],
-  ])('classifies %s as unsupported for any kind version', (_name, text) => {
-    expect(classifyJournalText(text, 7)).toEqual({ kind: 'unsupported' });
+  ])('classifies %s as unsupported', (_name, text) => {
+    expect(classifyJournalText(text)).toEqual({ kind: 'unsupported' });
   });
 
-  it('reads nothing but the version of a current file and ages by mtime', () => {
-    expect(classifyJournalText('{"version":7,"x":1}', 7)).toEqual({
+  it('reads nothing but the shape of a parsable file and ages by mtime', () => {
+    expect(classifyJournalText('{"version":7,"x":1}')).toEqual({
       kind: 'current',
       value: { version: 7, x: 1 },
     });
-    expect(classifyJournalText('{"version":7}', 8)).toEqual({ kind: 'unsupported' });
     expect(isExpiredUnsupportedJournal(0, 100, 100)).toBe(true);
     expect(isExpiredUnsupportedJournal(1, 100, 100)).toBe(false);
   });

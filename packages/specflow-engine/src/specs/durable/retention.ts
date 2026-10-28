@@ -36,7 +36,7 @@ export interface JournalSweepOptions {
 }
 
 /**
- * Removes settled journals and unsupported (older-format) journals older than the retention, plus
+ * Removes settled journals and unsupported (unreadable) journals older than the retention, plus
  * stray stage files and orphaned payload directories. Only records the kind calls settled are
  * removed; every other stage is evidence and is never removed. Age is the journal file's mtime: each
  * stage transition rewrites the file, so for a settled journal it is the settlement time.
@@ -94,9 +94,9 @@ export async function removeExpiredSettledJournals<T>(
       const stat = await lstat(path);
       if (!stat.isFile() || stat.isSymbolicLink() || stat.size > kind.maxBytes) continue;
       if (now - stat.mtimeMs < retentionMs) continue;
-      const classified = classifyJournalText(await readFileWindowsSafe(path), kind.version);
+      const classified = classifyJournalText(await readFileWindowsSafe(path));
       if (classified.kind === 'unsupported') {
-        // An older-format (or unparseable) journal is evidence nobody can interpret: it is deleted
+        // An unreadable (or unparseable) journal is evidence nobody can interpret: it is deleted
         // after the retention, by age only (see unsupported.ts).
         if (!isExpiredUnsupportedJournal(stat.mtimeMs, now, retentionMs)) continue;
         await removeFileWindowsSafe(path);

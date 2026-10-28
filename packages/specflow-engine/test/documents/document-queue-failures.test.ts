@@ -21,8 +21,14 @@ import {
   retryDocumentCommit,
 } from '../../src/specs/documents/queue/actions';
 import { backoffMs } from '../../src/specs/documents/queue/backoff';
+import { applyGateToQueued } from '../../src/specs/documents/queue/gates';
+import { createQueueRuntime } from '../../src/specs/documents/queue/runtime';
 import { listDocumentBatches } from '../../src/specs/documents/queue/batch-store';
-import { QueueInterrupted, type QueueHooks } from '../../src/specs/documents/queue/types';
+import {
+  QueueInterrupted,
+  checkoutOfEngine,
+  type QueueHooks,
+} from '../../src/specs/documents/queue/types';
 import { drainQueue, runQueueOnce } from '../../src/specs/documents/queue/worker';
 import { publishJournal, withJournalLock } from '../../src/specs/durable';
 import { pruneUncommitted } from '../../src/specs/uncommitted';
@@ -845,6 +851,48 @@ describe('a checkout that cannot take commits', () => {
     expect(result).toMatchObject({ status: 'not-applicable', operationIds: [id] });
     expect(await stage(project, id)).toMatchObject({ stage: 'completed', reason: 'git-disabled' });
     expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
+  });
+
+  it('leaves the members of an active batch to the batch when Git is turned off mid-claim', async () => {
+    const project = await queueProject();
+    const first = await queueSave(project, 1, 'one\n');
+    const second = await queueSave(project, 2, 'two\n');
+    // The claim wrote the batch and took over the first member; the second is still queued.
+    await expect(
+      runQueueOnce(
+        project.engine,
+        isolatedQueue({
+          hooks: { afterMemberClaimed: () => Promise.reject(new QueueInterrupted()) },
+        }),
+        undefined,
+        FLUSH,
+      ),
+    ).rejects.toBeInstanceOf(QueueInterrupted);
+    expect(await stage(project, first)).toMatchObject({ stage: 'committing' });
+    expect(await stage(project, second)).toMatchObject({ stage: 'queued' });
+    const batch = (await listDocumentBatches(project.engine.context))[0]!;
+    expect(batch.memberIds).toEqual([first, second]);
+
+    // Git is turned off before the claim is resumed: the gate must not complete the second member alone.
+    await writeFile(join(project.root, '.nevo', 'config.yaml'), GIT_OFF);
+    await applyGateToQueued(
+      createQueueRuntime(project.engine, isolatedQueue(), checkoutOfEngine(project.engine), FLUSH),
+      'git-disabled',
+    );
+    expect(await stage(project, second)).toMatchObject({ stage: 'queued' });
+
+    const result = await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
+    expect(result).toMatchObject({ status: 'not-applicable', operationIds: [first, second] });
+    for (const id of [first, second]) {
+      expect(await stage(project, id)).toMatchObject({
+        stage: 'completed',
+        outcome: 'not-applicable',
+        reason: 'git-disabled',
+      });
+    }
+    expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
+    expect(engineCommits(project)).toEqual([]);
+    expect(await ledgerOf(project)).toBeUndefined();
   });
 
   it('does not complete a started commit as not-applicable when its evidence is inconclusive', async () => {

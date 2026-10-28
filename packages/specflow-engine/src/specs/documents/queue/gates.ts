@@ -4,7 +4,7 @@ import { GitCapabilityError } from '../../../git/errors';
 import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
 import { withJournalLock } from '../../durable';
 import { listDocumentChangeJournals } from '../write/journal-store';
-import { DOCUMENT_BATCH_KIND } from './batch-store';
+import { DOCUMENT_BATCH_KIND, listDocumentBatches } from './batch-store';
 import type { QueueRuntime } from './runtime';
 import { moveMember } from './settlement';
 
@@ -35,16 +35,25 @@ export async function checkoutGate(rt: QueueRuntime): Promise<CheckoutGate | und
  * Applies a gate to the operations of the checkout that are still `queued`, which no batch holds:
  * with Git disabled they complete as `not-applicable` (`git-disabled`, the files stay as they are),
  * with the checkout gone they become `commit-failed` (`workspace-missing`; `abandon` is allowed).
+ * An operation that is a member of a `formed` or `committing` batch is not touched, even while it is
+ * still `queued` in the gap of a claim: the durable batch record decides the fate of its members, and
+ * the batch's own execution (or recovery) settles them, the Git-disabled branch included.
  * Returns their ids.
  */
 export async function applyGateToQueued(rt: QueueRuntime, gate: CheckoutGate): Promise<string[]> {
   return withJournalLock(rt.context, DOCUMENT_BATCH_KIND, async () => {
     const ids: string[] = [];
+    const owned = new Set(
+      (await listDocumentBatches(rt.context))
+        .filter((batch) => batch.state === 'formed' || batch.state === 'committing')
+        .flatMap((batch) => batch.memberIds),
+    );
     for (const journal of await listDocumentChangeJournals(rt.context)) {
       if (
         journal.workspaceId !== rt.checkout.workspaceId ||
         journal.stage !== 'queued' ||
-        journal.commit === undefined
+        journal.commit === undefined ||
+        owned.has(journal.operationId)
       ) {
         continue;
       }

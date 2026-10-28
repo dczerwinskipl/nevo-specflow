@@ -23,6 +23,7 @@ import {
   type InitializeProjectResult,
 } from './initialize-project';
 import {
+  chooseAutoCommit,
   chooseBranchPattern,
   chooseIntegrationTargetBranch,
   chooseProtectedBranches,
@@ -70,6 +71,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         commits?: { protectedBranches: string[] };
       } = { enabled: false };
       let protectedBranches: string[] = [];
+      let autoCommit = false;
       if (gitEnabled) {
         const integrationTargetBranch = await chooseIntegrationTargetBranch(ui, layout.root);
         const branchPattern = await chooseBranchPattern(ui);
@@ -79,6 +81,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         if (protectedBranches.length > 0) {
           gitConfig = { ...gitConfig, commits: { protectedBranches } };
         }
+        autoCommit = await chooseAutoCommit(ui);
       }
       // The definitions are written only where Nevo may commit them; otherwise init says so and goes on
       // without them, so it never leaves them untracked in the worktree.
@@ -96,7 +99,17 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
         localConfig: {
           runtime: runtime.localConfig,
-          ...(worktreesRoot !== undefined ? { git: { worktreesRoot } } : {}),
+          // Opting in is a personal workflow choice: it goes to the workstation-local config (which
+          // wins over the committed one); a team can commit the same key in the project config.
+          // Declining writes nothing: an unset key is off.
+          ...(worktreesRoot !== undefined || autoCommit
+            ? {
+                git: {
+                  ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
+                  ...(autoCommit ? { commits: { auto: { documents: true } } } : {}),
+                },
+              }
+            : {}),
         },
       };
 
@@ -115,6 +128,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
                     join(dirname(layout.root), basename(layout.root) + '-worktrees')),
                 'Protected branches: ' +
                   (protectedBranches.length > 0 ? protectedBranches.join(', ') : 'none'),
+                'Automatic commit of documents: ' + (autoCommit ? 'on (local config)' : 'off'),
               ]
             : []),
           ...(protectedNote ? ['', protectedNote] : []),

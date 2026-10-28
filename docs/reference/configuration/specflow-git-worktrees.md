@@ -104,7 +104,7 @@ in a new or an existing worktree, and that merging worktrees into it is not affe
 `git.commits.auto` is an object of booleans, one key per Engine capability; the key set starts with `documents` (tasks,
 reviews, definitions join it when they gain a manual commit). **Default `false` for every capability**: the Engine
 commits nothing by itself unless the configuration enables it; a manual commit over the uncommitted changes is always
-available. There is no per-request or CLI option.
+available. There is no per-request or CLI option. `nevo-specflow init` asks "Commit documents automatically?" (default: no) when Git is enabled; only a yes is written, to the workstation-local config (`git.commits.auto.documents: true`), and no answer writes nothing.
 
 ```yaml
 # .nevo/config.yaml (committed) or .nevo/local/config.yaml (this machine)

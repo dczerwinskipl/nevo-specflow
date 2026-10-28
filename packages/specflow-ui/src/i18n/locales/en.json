@@ -272,6 +272,7 @@
     "specificationColumn": "Specification",
     "situationColumn": "Situation",
     "progressColumn": "Progress",
+    "updatedColumn": "Updated",
     "milestoneColumn": "Milestone",
     "pullRequestColumn": "PR",
     "newestMilestoneFirst": "Newest milestone first",
@@ -1212,6 +1213,7 @@
       "closeBusy": "Finish the open question about unsaved changes first, then close this document."
     },
     "empty": {
+      "heading": "No document open",
       "title": "Choose a document from the tree or create a new one.",
       "choose": "Choose a document from the tree."
     },

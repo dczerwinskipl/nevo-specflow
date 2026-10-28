@@ -111,6 +111,10 @@ describe('SpecsOverview states', () => {
     });
     expect(screen.getByText('No current specifications')).toBeTruthy();
     const empty = screen.getByText('No current specifications').parentElement!;
+    // The shared empty screen of a whole area, alone: no column headers that describe no row.
+    expect(empty.getAttribute('data-empty-state')).toBe('pane');
+    expect(document.querySelector('[data-spec-columns]')).toBeNull();
+    expect(within(empty).getAllByRole('button')).toHaveLength(1);
     fireEvent.click(within(empty).getByRole('button', { name: 'New specification' }));
     expect(onCreate).toHaveBeenCalled();
   });
@@ -122,6 +126,8 @@ describe('SpecsOverview states', () => {
     });
     expect(screen.getByText('No archived specifications')).toBeTruthy();
     const empty = screen.getByText('No archived specifications').parentElement!;
+    expect(empty.getAttribute('data-empty-state')).toBe('pane');
+    expect(document.querySelector('[data-spec-columns]')).toBeNull();
     expect(within(empty).queryByRole('button')).toBeNull();
   });
 });
@@ -156,9 +162,14 @@ describe('SpecsOverview search', () => {
     expect(screen.getByRole('textbox', { name: 'Search specifications' })).toBeTruthy();
   });
 
-  it('is always offered in the archive', () => {
-    renderOverview(loaded('archive'));
+  it('is always offered in an archive with specifications, never in an empty one', () => {
+    const view = renderOverview(loaded('archive'));
     expect(screen.getByRole('textbox', { name: 'Search specifications' })).toBeTruthy();
+    view.rerender({
+      ...loaded('archive'),
+      projection: { ...createSpecsFixture('archive'), items: [] },
+    });
+    expect(screen.queryByRole('textbox', { name: 'Search specifications' })).toBeNull();
   });
 
   it('filters rows, explains an empty result and clears it', () => {
@@ -245,16 +256,44 @@ describe('SpecsOverview without work status', () => {
     projection: { ...createSpecsFixture(), sections: ['unknown'], items },
   });
 
-  it('shows a flat list: no group, no empty columns, the updated time as a fact', () => {
+  it('shows a flat list: no group, no empty columns, the updated time in its own column', () => {
     renderOverview(unavailable());
     expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
     expect(document.querySelectorAll('[data-spec-id]')).toHaveLength(2);
     expect(screen.queryByText('Status unavailable')).toBeNull();
     expect(screen.queryByText('Work status not available yet')).toBeNull();
     expect(screen.queryByText('Progress unavailable')).toBeNull();
-    expect(document.querySelector('[data-spec-columns]')).toBeNull();
+    // Columns of what exists: the specification and when it was updated, no situation or progress.
+    expect(document.querySelector('[data-spec-columns]')?.textContent).toBe('SpecificationUpdated');
     expect(document.querySelector('[data-spec-section-header]')).toBeNull();
+    expect(document.querySelectorAll('[data-spec-updated] time')).toHaveLength(2);
     expect(screen.getAllByText(/Updated .*2026/)).toHaveLength(2);
+    // The date is not repeated among the facts under the title.
+    expect(document.querySelector('[data-spec-metadata]')).toBeNull();
+  });
+
+  it('shows what a project Runtime really provides: the title and the update date', () => {
+    renderOverview(
+      unavailable([
+        createSpecItem({
+          id: 'real',
+          title: 'Logowanie SSO',
+          key: undefined,
+          tags: [],
+          pullRequests: [],
+          updatedAt: '2026-10-28T18:54:17.623Z',
+          progress: null,
+          classification: { section: 'unknown' },
+          signals: null,
+          currentExecutions: null,
+        }),
+      ]),
+    );
+    const row = document.querySelector<HTMLElement>('[data-spec-id="real"]')!;
+    expect(within(row).getByRole('heading', { name: 'Logowanie SSO' })).toBeTruthy();
+    expect(row.querySelector('[data-spec-metadata]')).toBeNull();
+    expect(row.querySelector('time')?.getAttribute('dateTime')).toBe('2026-10-28T18:54:17.623Z');
+    expect(row.querySelector('[data-spec-progress]')).toBeNull();
   });
 
   it('keeps the progress column when only progress exists', () => {
@@ -262,7 +301,9 @@ describe('SpecsOverview without work status', () => {
       unavailable([unknownItem('a', { progress: { completed: 1, total: 2 } }), unknownItem('b')]),
     );
     expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
-    expect(document.querySelector('[data-spec-columns]')).not.toBeNull();
+    expect(document.querySelector('[data-spec-columns]')?.textContent).toBe(
+      'SpecificationUpdatedProgress',
+    );
   });
 
   it('keeps the layout while searching (decided from the whole collection)', () => {

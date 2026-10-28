@@ -240,9 +240,11 @@ operation returns it, it is shown as the protected-document reason.
 
 ### 3.7 Idle document area (nothing open)
 
-`DocumentsEmptyState` is one line, "Choose a document from the tree or create a new one.", and, when the
-capabilities allow them, the start actions **New document…** and **Upload files**; when neither is
-available the line is only "Choose a document from the tree." It does not list
+`DocumentsEmptyState` is the shared empty screen (the design-system `EmptyState`, centred in the
+area, the same one as the empty Specifications list): the title "No document open", the line "Choose a
+document from the tree or create a new one." and, when the capabilities allow them, the start actions
+**New document…** (the one primary action) and **Upload files** (secondary, also when it is the only
+one); when neither is available the line is only "Choose a document from the tree." It does not list
 documents: the tree beside it already does, and Expected documents in the tree names what is missing. No
 completeness, no issues here: they belong to the tree, which is also what Narrow shows first.
 

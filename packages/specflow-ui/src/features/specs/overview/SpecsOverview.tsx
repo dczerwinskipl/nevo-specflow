@@ -91,8 +91,9 @@ export function SpecsOverview({
         }
       >
         <AppContent className="w-content-standard max-w-full">
-          <AppWorkspaceBody scroll="area" contentClassName="py-6">
-            <AppContentContainer align="start" className="grid gap-4" size="full">
+          {/* A flex column down to the list, so an empty collection can centre in the free height. */}
+          <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
+            <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">
               <ViewPageTitle className="mb-2">{t('specifications.title')}</ViewPageTitle>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl
@@ -135,7 +136,7 @@ export function SpecsOverview({
                 />
               ) : null}
               {operationsPanel}
-              <div ref={appearance} className="min-w-0">
+              <div ref={appearance} className="flex min-w-0 flex-1 flex-col">
                 {state.loading || state.paused ? (
                   <LoadingPresentation
                     shape="overview"

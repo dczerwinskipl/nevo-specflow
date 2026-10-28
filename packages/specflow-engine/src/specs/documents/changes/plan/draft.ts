@@ -5,6 +5,7 @@ import {
   deriveFolders,
   foldPathKey,
 } from '../../../document-rules/document-paths';
+import { aliasedPhysicalPath } from '../../../document-rules/verified-file';
 import { SpecificationError, type ManifestDocument } from '../../../model';
 import { updateManifestRegistry } from '../../../manifest-serializer';
 import { documentChangeError } from '../errors';
@@ -220,6 +221,12 @@ export function finishPlan(
     }
   }
 
+  // The paths are applied one after the other (writes before removals): two of them naming one file
+  // would write it and then remove it. The planners refuse such requests with a precise cause first;
+  // this guards everything they do not single out.
+  if (aliasedPhysicalPath(paths.map((planned) => planned.path)) !== undefined) {
+    throw documentChangeError('operation-invalid', 'The operation names one file twice.');
+  }
   if (paths.length > DOCUMENT_BATCH_MAX_PATHS) {
     throw documentChangeError(
       'folder-expansion-limit',

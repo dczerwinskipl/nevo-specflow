@@ -18,6 +18,7 @@ import {
 } from '../../src/specs/durable';
 import { buildJournal } from '../../src/specs/documents/changes/test-support';
 import { DOCUMENT_CHANGE_JOURNAL_KIND } from '../../src/specs/documents/changes/journal/kind';
+import { fingerprintDocumentChange } from '../../src/specs/documents/changes/fingerprint';
 import { encodePlan } from '../../src/specs/documents/changes/plan/codec';
 import type { DocumentChangePlan } from '../../src/specs/documents/changes/plan/model';
 import { applyDocumentChange, documentWriteDependencies } from '../../src/specs/documents/api';
@@ -738,5 +739,101 @@ describe('taking over a writer that stopped', () => {
       { ...foreign, confirmWriterStopped: true },
     );
     expect(asserted.stage).toBe('completed');
+  });
+});
+
+describe('a journaled plan that names one file twice', () => {
+  /** Runs `run` as if the process ran on `platform` (the Engine decides case handling by platform). */
+  async function onPlatform<T>(platform: NodeJS.Platform, run: () => Promise<T>): Promise<T> {
+    const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+    try {
+      return await run();
+    } finally {
+      Object.defineProperty(process, 'platform', original);
+    }
+  }
+
+  it('is never applied where the file system ignores case: the file stays and the write needs recovery', async () => {
+    // A case-only rename journaled by a writer from before the planner refused it on Windows. Applied
+    // there, the write of `Notes-1.md` finds `notes-1.md` already "in place" and the removal of
+    // `notes-1.md` then deletes the only copy.
+    const project = await writableProject();
+    const operationId = randomUUID();
+    const request = {
+      action: 'rename',
+      target: { kind: 'document', documentId: 'notes-1' },
+      name: 'Notes-1.md',
+      expectedRevision: notesRevision(1),
+    } as const;
+    const state = { sha256: notesRevision(1), bytes: Buffer.byteLength(notesText(1)) };
+    const plan: DocumentChangePlan = {
+      version: 1,
+      action: 'rename',
+      specId: project.specId,
+      slug: 'hand',
+      directory: 'specs/active/hand',
+      paths: [
+        {
+          path: 'specs/active/hand/Notes-1.md',
+          role: 'document',
+          pre: null,
+          post: state,
+          source: { kind: 'moved-from', path: 'specs/active/hand/notes-1.md' },
+        },
+        {
+          path: 'specs/active/hand/notes-1.md',
+          role: 'document',
+          pre: state,
+          post: null,
+          source: { kind: 'none' },
+        },
+      ],
+      documents: [],
+      removedDocumentIds: [],
+      folders: [],
+      allocatedIds: [],
+      templates: [],
+    };
+    const encoded = encodePlan(plan);
+    const { writePayload } = await import('../../src/specs/durable');
+    await withJournalLock(project.engine.context, DOCUMENT_CHANGE_JOURNAL_KIND, async () => {
+      await writePayload(project.engine.context, DOCUMENT_CHANGE_JOURNAL_KIND, operationId, [
+        { sha256: encoded.sha256, content: encoded.text },
+      ]);
+      await publishJournal(
+        project.engine.context,
+        DOCUMENT_CHANGE_JOURNAL_KIND,
+        buildJournal('recovery-required', {
+          operationId,
+          action: 'rename',
+          inputFingerprint: fingerprintDocumentChange(request),
+          projectId: project.engine.context.project.projectId,
+          specId: project.specId,
+          workspaceId: project.workspaceId,
+          workspaceRoot: project.root,
+          plan: { sha256: encoded.sha256, bytes: encoded.bytes, pathCount: 2, documentCount: 0 },
+          sequence: 5,
+          recoveryPhase: 'write',
+        }),
+      );
+    });
+
+    const error = await onPlatform('win32', () =>
+      failure(
+        applyDocumentChange(project.engine, project.specId, operationId, request, {
+          sleep: noSleep,
+        }),
+      ),
+    );
+    expect(error).toMatchObject({
+      code: 'DOCUMENT_RECOVERY_REQUIRED',
+      details: { cause: 'plan-invalid' },
+    });
+    expect(await text(project, notesPath(1))).toBe(notesText(1));
+    expect((await readDocumentChangeJournal(project.engine.context, operationId))?.stage).toBe(
+      'recovery-required',
+    );
+    expect(await strayStageFiles(project.dir)).toEqual([]);
   });
 });

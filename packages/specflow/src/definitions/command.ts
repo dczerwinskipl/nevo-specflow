@@ -1,6 +1,8 @@
 import { resolve } from 'node:path';
 
 import {
+  GitCapabilityError,
+  inspectLocalBranches,
   installProjectDefinitions,
   listProjectDefinitions,
   openSpecFlowEngine,
@@ -12,6 +14,8 @@ import {
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import { Command, InvalidArgumentError } from 'commander';
+
+import { definitionsBranchRefusalLines } from './branch-refusal';
 
 export interface DefinitionsCommandContext {
   readonly cwd: string;
@@ -161,12 +165,27 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
           throw new InvalidArgumentError('Name definitions or use --add-missing, not both.');
         }
         const engine = await engineAt(context.cwd, options.projectRoot);
-        const result = await installProjectDefinitions(engine, {
-          targets,
-          ...(options.addMissing ? { addMissing: true } : {}),
-          ...(options.force ? { force: true } : {}),
-          ...(options.dryRun ? { dryRun: true } : {}),
-        });
+        let result: InstallProjectResult;
+        try {
+          result = await installProjectDefinitions(engine, {
+            targets,
+            ...(options.addMissing ? { addMissing: true } : {}),
+            ...(options.force ? { force: true } : {}),
+            ...(options.dryRun ? { dryRun: true } : {}),
+          });
+        } catch (error) {
+          // Refused before anything is written: say which branch and how to go on.
+          if (error instanceof GitCapabilityError && error.code === 'BRANCH_PROTECTED') {
+            const { current } = await inspectLocalBranches(engine.context.project.homeRoot);
+            const lines = [
+              ...definitionsBranchRefusalLines(current, error.reason),
+              'Nothing was written.',
+            ];
+            // Same code and reason (scripts read them), a message that names the way out.
+            throw new GitCapabilityError('BRANCH_PROTECTED', lines.join('\n'), error.reason);
+          }
+          throw error;
+        }
         const projectHome = engine.context.project.homeRoot;
         report(context, options, projectHome, result);
         if (result.outcome.status === 'refused') throw new Error(result.outcome.hint);

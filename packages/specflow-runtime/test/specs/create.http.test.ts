@@ -352,6 +352,53 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     }
   });
 
+  it(
+    'answers a path beyond the Windows bound as DOCUMENT_PATH_INVALID with details.cause path-too-long',
+    async () => {
+      const { engine } = await fixture();
+      const app = await createRuntimeApp(
+        {
+          ...passwordConfig(),
+          authentication: { ...passwordConfig().authentication, mode: 'none' },
+        },
+        { specs: { engine } },
+      );
+      // Three 100-character folders: every segment is valid, only the absolute length is not.
+      const over = Array.from({ length: 3 }, () => 'f'.repeat(100)).join('/');
+      const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+      // The bound applies on Windows only (a simulated host on the other systems).
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+      try {
+        const before = await readFile(workspaceRegistryPath(engine.context), 'utf8');
+        for (const prefer of [undefined, 'respond-async']) {
+          const response = await app.inject({
+            method: 'POST',
+            url: '/api/specs',
+            ...(prefer !== undefined ? { headers: { prefer } } : {}),
+            payload: {
+              ...ARCHETYPE_REQUEST,
+              operationId: randomUUID(),
+              title: 'Too long',
+              addedDocuments: [{ path: over + '/a.md', type: 'note', content: 'x' }],
+            },
+          });
+          expect(response.statusCode, response.body).toBe(400);
+          expect(response.json()).toEqual({
+            error: 'DOCUMENT_PATH_INVALID',
+            code: 'DOCUMENT_PATH_INVALID',
+            details: { cause: 'path-too-long' },
+          });
+        }
+        expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
+        expect(await discoverSpecifications(engine)).toEqual([]);
+      } finally {
+        Object.defineProperty(process, 'platform', original);
+        await app.close();
+      }
+    },
+    createTestTimeoutMs,
+  );
+
   it('returns a typed 503 for a busy Project Home lock during default target selection', async () => {
     const { engine } = await fixture();
     const failingEngine = {

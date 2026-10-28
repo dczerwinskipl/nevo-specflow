@@ -11,6 +11,7 @@ import {
 } from '../../../document-rules';
 import { deriveFolders, foldPathKey, parentFolder } from '../../../document-rules/document-paths';
 import { folderContainsProtectedDocument } from '../../../document-rules/protection';
+import { samePhysicalPath } from '../../../document-rules/verified-file';
 import type { ManifestDocument } from '../../../model';
 import { documentChangeError } from '../errors';
 import {
@@ -80,6 +81,22 @@ function destinationOf(request: PathOperation, current: string): string | undefi
   }
 }
 
+/**
+ * A rename or move that only changes the letter case of the path names the SAME file (or folder) on a
+ * file system that ignores case (Windows): the plan writes the new path and then removes the old one,
+ * which would remove the file. Refused there with its own cause; a case-sensitive system renames it
+ * like any other path. Only Windows is treated as ignoring case (see `physicalPathKey`).
+ */
+function assertNotCaseOnlyRename(from: string, to: string): void {
+  if (from !== to && samePhysicalPath(from, to)) {
+    throw documentChangeError(
+      'case-only-rename',
+      'Changing only the letter case of a name is not supported on this file system. ' +
+        'Rename it to a different name first, then to the new spelling.',
+    );
+  }
+}
+
 function planDocumentOperation(
   snapshot: PlanningSnapshot,
   request: PathOperation,
@@ -118,6 +135,7 @@ function planDocumentOperation(
   if (destination === path) {
     throw documentChangeError('operation-invalid', 'The document is already there.');
   }
+  assertNotCaseOnlyRename(path, destination);
   if (!validateDocumentPath(destination).ok) {
     throw documentChangeError('path-invalid', 'The target path is not allowed.');
   }
@@ -245,6 +263,7 @@ function planFolderOperation(
     if (destination === folder) {
       throw documentChangeError('operation-invalid', 'The folder is already there.');
     }
+    assertNotCaseOnlyRename(folder, destination);
     if (foldPathKey(destination).startsWith(foldPathKey(folder) + '/')) {
       throw documentChangeError('operation-invalid', 'A folder cannot move into itself.');
     }

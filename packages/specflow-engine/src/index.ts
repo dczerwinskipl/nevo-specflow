@@ -42,7 +42,11 @@ export {
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
 export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
-export { bootstrapProjectHome, assertPrimaryGitCheckout } from './project/bootstrap';
+export {
+  bootstrapProjectHome,
+  assertPrimaryGitCheckout,
+  findOrphanedGitInstance,
+} from './project/bootstrap';
 
 export {
   SpecificationError,
@@ -169,6 +173,9 @@ export {
   type ShownDefinition,
   assertInitialDefinitionsCommittable,
   commitInstalledDefinitions,
+  initialDefinitionsBranchOffer,
+  INITIAL_DEFINITIONS_BRANCH,
+  startInitialDefinitionsBranch,
   installProjectDefinitionFiles,
   installProjectDefinitions,
   type InstalledCommit,

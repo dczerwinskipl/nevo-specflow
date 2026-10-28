@@ -6,6 +6,7 @@ import type { DocumentErrorDetails } from '@nevo/specflow-contracts/documents';
 import { CONTENT_HASH_MAX_BYTES } from '../limits';
 import { errnoCode } from '../../document-rules/errno';
 import { DocumentError } from '../../document-rules/errors';
+import { aliasedPhysicalPath } from '../../document-rules/verified-file';
 import { readPayload, removePayload, removePayloadFilesExcept } from '../../durable';
 import {
   documentChangeError,
@@ -367,6 +368,18 @@ export async function rollForward(
     journal = await moveJournal(rt, journal.operationId, ['reserved'], 'files-writing', {
       executor: await rt.executor(),
     });
+  }
+  // A plan two of whose paths are one file here (a case-only rename journaled before the planner
+  // refused it on Windows) would write that file and then remove it: it is never applied.
+  if (aliasedPhysicalPath(plan.paths.map((planned) => planned.path)) !== undefined) {
+    throw await stopWriting(
+      rt,
+      journal,
+      plan,
+      'plan-invalid',
+      'plan-invalid',
+      'The operation names one file twice on this file system; nothing more is written.',
+    );
   }
   // What an earlier executor of this operation left behind is not needed any more.
   await cleanStageFiles(rt, journal, plan);

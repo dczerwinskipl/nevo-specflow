@@ -81,9 +81,29 @@ export function assertContainedRelativePath(relativePath: string): readonly stri
   return segments;
 }
 
+/**
+ * The key under which a path names one entry of the file system: lowercased on Windows, whose file
+ * systems ignore case, and the path itself elsewhere. Case-insensitive file systems other than
+ * Windows (the default APFS volume of macOS) are not detected: there two spellings count as two entries.
+ */
+export function physicalPathKey(path: string): string {
+  return process.platform === 'win32' ? path.toLowerCase() : path;
+}
+
 /** True when two physical paths are the same entry (case-insensitive on Windows). */
 export function samePhysicalPath(left: string, right: string): boolean {
-  return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right;
+  return physicalPathKey(left) === physicalPathKey(right);
+}
+
+/** The first path of a list that names the same entry as an earlier one, `undefined` when none does. */
+export function aliasedPhysicalPath(paths: readonly string[]): string | undefined {
+  const seen = new Set<string>();
+  for (const path of paths) {
+    const key = physicalPathKey(path);
+    if (seen.has(key)) return path;
+    seen.add(key);
+  }
+  return undefined;
 }
 
 /** Classify one entry by `lstat` only; follows nothing. */

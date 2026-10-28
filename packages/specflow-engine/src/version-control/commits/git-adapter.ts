@@ -696,6 +696,17 @@ function messageArguments(request: EngineCommitRequest): string[] {
     const multiline = request.body ? commitBodyForGit(request.body) : '';
     return ['-m', subject, ...(multiline ? ['-m', multiline] : []), '-m', trailers];
   }
+  if (request.kind === 'document-change') {
+    // The Engine's own list of the changes (document names are user input): cleaned the same way.
+    const multiline = request.body ? commitBodyForGit(request.body) : '';
+    return [
+      '-m',
+      text(request.subject, 200),
+      ...(multiline ? ['-m', multiline] : []),
+      '-m',
+      trailers,
+    ];
+  }
   const body = request.body ? text(request.body, 100) : '';
   return ['-m', text(request.subject, 200), ...(body ? ['-m', body] : []), '-m', trailers];
 }

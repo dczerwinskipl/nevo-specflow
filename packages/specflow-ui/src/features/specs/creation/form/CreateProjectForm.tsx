@@ -146,8 +146,14 @@ export function CreateProjectForm({
     archetype,
   });
 
+  // Back from a name the Engine refused (invalid or too long path): the name says so until edited.
+  const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
+  const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    headingRef.current?.focus();
+    if (nameRefused) nameRef.current?.focus();
+    else headingRef.current?.focus();
+    // Once, on arrival: the refusal decides where focus starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshOptions = () =>
@@ -212,18 +218,21 @@ export function CreateProjectForm({
         />
         <Separator />
         <div className="grid gap-4">
-          <Field>
+          <Field invalid={nameRefused}>
             <Field.Label>{t('create.nameLabel')}</Field.Label>
             <TextInput
+              ref={nameRef}
               value={title}
               maxLength={createTitleMaxLength}
               disabled={locked}
               onChange={(event) => {
                 setUnprepared(false);
+                setNameRefused(false);
                 setTitle(event.target.value);
               }}
               placeholder={t('create.namePlaceholder')}
             />
+            {nameRefused && <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>}
           </Field>
           <Field>
             <Field.Label>{t('create.project.goalLabel')}</Field.Label>

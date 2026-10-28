@@ -36,6 +36,9 @@ describe('Create error codes', () => {
     [409, 'COMMIT_BLOCKED', 'commit-blocked'],
     [503, 'COMMIT_FAILED', 'recovery-required'],
     [422, 'BRANCH_NAME_INVALID', 'branch-invalid'],
+    // The name makes a path the Engine refuses: a name problem, never a stale option.
+    [400, 'DOCUMENT_PATH_INVALID', 'name-invalid'],
+    [409, 'DOCUMENT_PATH_CONFLICT', 'name-conflict'],
     [503, 'SPEC_NOT_FOUND', 'stale'],
     [503, 'CREATE_RECOVERY_REQUIRED', 'recovery-required'],
     [503, 'CREATE_JOURNAL_CORRUPT', 'recovery-required'],

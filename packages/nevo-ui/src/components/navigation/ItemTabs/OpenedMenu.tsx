@@ -53,19 +53,21 @@ export function OpenedMenuBody({
             <span className="flex w-full min-w-0 items-center gap-2">
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{item.label}</span>
-                {/*
-                 * Start truncation: the ellipsis eats the leading folders and the file-name end
-                 * stays visible; the inner span isolates the path back to left-to-right. A row
-                 * whose path is just its label (or that has none) keeps the line, hidden from
-                 * assistive technology, so every row has the same height.
-                 */}
-                <span
-                  dir="rtl"
-                  aria-hidden={distinctDescription(item) ? undefined : 'true'}
-                  className="block truncate text-left text-content-muted"
-                >
-                  <span dir="ltr">{item.description ?? '\u00a0'}</span>
-                </span>
+                {distinctDescription(item) ? (
+                  // Start truncation: the ellipsis eats the leading folders and the file-name end
+                  // stays visible; the inner span isolates the path back to left-to-right.
+                  <span dir="rtl" className="block truncate text-left text-content-muted">
+                    <span dir="ltr">{item.description}</span>
+                  </span>
+                ) : item.description !== undefined ? (
+                  // The path is just the name (an item at the root): say where it is instead.
+                  <span className="block truncate text-content-muted">{labels.rootLocation}</span>
+                ) : (
+                  // No description: the line is kept (hidden) so every row has the same height.
+                  <span aria-hidden="true" className="block">
+                    {'\u00a0'}
+                  </span>
+                )}
               </span>
               {item.dirty ? (
                 <>

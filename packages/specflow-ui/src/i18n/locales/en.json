@@ -6,6 +6,8 @@
     "polish": "Polski",
     "retry": "Retry",
     "moreActions": "More actions",
+    "notification": "Notification",
+    "notificationsRegion": "Notifications ({{hotkey}})",
     "dismissNotification": "Dismiss notification",
     "retrying": "Retrying…",
     "cancel": "Cancel",
@@ -694,6 +696,11 @@
         "title": "A specification with this name may already exist",
         "body": "The specification was not created: the name is already taken or the state of the workspaces changed. Change the name or refresh the options. The next attempt uses a new operation identifier."
       },
+      "nameInvalid": {
+        "title": "The name gives the specification an invalid or too long path",
+        "body": "The specification was not created: its folder and branch are made from the name, and the result is not a valid path or is too long. Shorten the name or use simpler characters, then create it again.",
+        "field": "Shorten the name: the path made from it is invalid or too long."
+      },
       "branchInvalid": {
         "title": "The branch name is not valid",
         "body": "The specification was not created. The branch name you typed is not accepted by Git. Enter a different branch name or let Nevo generate one automatically."
@@ -1187,6 +1194,7 @@
       "closeHint": "Close: Delete or middle-click",
       "menuHint": "Delete closes the highlighted document.",
       "menuClose": "Close",
+      "rootLocation": "Root folder",
       "statusLoading": "loading",
       "statusMissing": "not found",
       "statusDirty": "unsaved changes",
@@ -1248,7 +1256,7 @@
       "nameRequired": "Enter a file name.",
       "guidance": "How to write a {{type}} document",
       "create": "Create",
-      "created": "{{type}} added",
+      "created": "{{name}} added ({{type}})",
       "loadingTypes": "Loading document types…",
       "typesFailed": "The document types could not be loaded"
     },

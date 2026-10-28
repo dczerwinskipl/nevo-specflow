@@ -20,6 +20,7 @@ export function useDocumentTabLabels(): Partial<ItemTabsLabels> {
       closeHint: t('documents.tabs.closeHint'),
       menuHint: t('documents.tabs.menuHint'),
       menuClose: t('documents.tabs.menuClose'),
+      rootLocation: t('documents.tabs.rootLocation'),
       status: {
         loading: t('documents.tabs.statusLoading'),
         missing: t('documents.tabs.statusMissing'),

@@ -37,7 +37,7 @@ export interface NewDocumentInput {
   path: string;
   type?: string;
   templateId?: string;
-  /** The type's title, for the confirmation toast ("<type> added"). */
+  /** The type's title, for the confirmation toast ("<name> added (<type>)"). */
   title?: string;
 }
 
@@ -313,7 +313,7 @@ export function useDocumentOperations(
       onDone();
       notify(
         input.title
-          ? t('documents.newDocument.created', { type: input.title })
+          ? t('documents.newDocument.created', { name: lastSegment(input.path), type: input.title })
           : t('documents.tree.fileAdded', { name: lastSegment(input.path) }),
       );
       return { ok: true };

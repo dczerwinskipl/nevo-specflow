@@ -62,17 +62,19 @@ function NotificationHost({ store }: { store: NotificationStore }) {
           <ToastClose dismissLabel={t('common.dismissNotification')} />
         </Toast>
       )}
-      <ToastViewport />
+      <ToastViewport label={t('common.notificationsRegion', { hotkey: '{hotkey}' })} />
     </>
   );
 }
 
 /** Visit-scoped notifications and their toast host; children never re-render for a notification. */
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [store] = useState(createNotificationStore);
   return (
     <Context.Provider value={store}>
-      <ToastProvider>
+      {/* The label prefixes every announcement ("Powiadomienie …"), so it is translated. */}
+      <ToastProvider label={t('common.notification')}>
         {children}
         <NotificationHost store={store} />
       </ToastProvider>

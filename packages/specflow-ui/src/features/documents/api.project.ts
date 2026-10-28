@@ -1,6 +1,5 @@
 import { isHttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import {
-  DOCUMENT_ERROR_CODES,
   type ArchetypeCatalogue,
   type CreateDocumentsInput,
   type DocumentOperationInput,
@@ -10,6 +9,7 @@ import {
   type SaveResult,
 } from '@nevo/specflow-contracts/documents';
 import { ApiError, readServerCode, type ApiTransport } from '../../api';
+import { isArchetypeCatalogue } from '../../shared/http/isArchetypeCatalogue';
 import { documentTreePath, type CreateFolderInput, type DocumentsApi } from './api';
 
 const isObject = (data: unknown): data is Record<string, unknown> =>
@@ -17,10 +17,8 @@ const isObject = (data: unknown): data is Record<string, unknown> =>
 
 const specPath = (specId: string) => `/api/specs/${encodeURIComponent(specId)}`;
 
-const documentCodes: ReadonlySet<string> = new Set(DOCUMENT_ERROR_CODES);
-
 /**
- * A write route this Runtime does not serve (no route: `404` without a documents code, or `405`):
+ * A write route this Runtime does not serve (no route: a `404` without any code, or `405`):
  * a definite refusal, nothing was applied. It reads as the `not-implemented` refusal the tree
  * reports for every write action of a Runtime without the write routes; never as an unknown
  * outcome, so it never locks the tree.
@@ -28,8 +26,9 @@ const documentCodes: ReadonlySet<string> = new Set(DOCUMENT_ERROR_CODES);
 function routeMissing(error: unknown, operation: string): ApiError | undefined {
   if (!isHttpClientError(error) || error.kind !== 'http') return undefined;
   const code = readServerCode(error.data);
-  const missing =
-    error.status === 405 || (error.status === 404 && !(code && documentCodes.has(code)));
+  // A 404 that names any code (`DOCUMENT_NOT_FOUND`, `specification_not_found`) is an answer of
+  // the route; only a bare 404 (Fastify's "Route … not found", an HTML page) means no route.
+  const missing = error.status === 405 || (error.status === 404 && code === undefined);
   return missing
     ? new ApiError({
         kind: 'unavailable',
@@ -80,7 +79,8 @@ export function createProjectDocumentsApi(
       api.get<ArchetypeCatalogue>('/api/specs/archetypes', {
         operation: 'documents.catalogue',
         signal,
-        isValid: (data) => isObject(data) && Array.isArray(data.documentTypes),
+        // The same check as Create's read of this route: both fill one cache entry.
+        isValid: isArchetypeCatalogue,
       }),
     save: (specId, documentId, input: SaveInput) =>
       write('documents.save', () =>

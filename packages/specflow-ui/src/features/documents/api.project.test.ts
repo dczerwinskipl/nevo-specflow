@@ -31,7 +31,9 @@ const httpError = (status: number, data?: unknown) =>
 
 describe('project documents adapter', () => {
   it('reads the archetype catalogue from the real route', async () => {
-    const { api, get } = build(vi.fn().mockResolvedValue({ revision: 'r', documentTypes: [] }));
+    const { api, get } = build(
+      vi.fn().mockResolvedValue({ revision: 'r', documentTypes: [], archetypes: [] }),
+    );
     const signal = new AbortController().signal;
     await api.catalogue(signal);
     expect(get).toHaveBeenCalledWith('/api/specs/archetypes', { signal });
@@ -79,7 +81,7 @@ describe('project documents adapter', () => {
     expect(post).toHaveBeenLastCalledWith('/api/specs/s/document-operations', operation);
   });
 
-  it('turns a missing write route (404 without a documents code, or 405) into a definite not-implemented refusal', async () => {
+  it('turns a missing write route (404 without any code, or 405) into a definite not-implemented refusal', async () => {
     for (const failure of [
       httpError(404, {
         message: 'Route PUT:/api/specs/s/documents/d not found',
@@ -106,6 +108,8 @@ describe('project documents adapter', () => {
   it('passes every answered refusal through unchanged, as the demo adapter does', async () => {
     for (const failure of [
       httpError(404, { error: 'DOCUMENT_NOT_FOUND', code: 'DOCUMENT_NOT_FOUND' }),
+      // Any other code is an answer of the route too, never a missing route.
+      httpError(404, { error: 'specification_not_found' }),
       httpError(409, { error: 'DOCUMENT_REVISION_CONFLICT', code: 'DOCUMENT_REVISION_CONFLICT' }),
       new HttpClientError('offline', { kind: 'network' }),
     ]) {

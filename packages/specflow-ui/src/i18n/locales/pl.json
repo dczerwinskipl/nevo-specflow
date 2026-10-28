@@ -6,6 +6,8 @@
     "polish": "Polski",
     "retry": "Spróbuj ponownie",
     "moreActions": "Więcej akcji",
+    "notification": "Powiadomienie",
+    "notificationsRegion": "Powiadomienia ({{hotkey}})",
     "dismissNotification": "Zamknij powiadomienie",
     "retrying": "Ponawianie…",
     "cancel": "Anuluj",
@@ -694,6 +696,11 @@
         "title": "Specyfikacja o tej nazwie może już istnieć",
         "body": "Specyfikacja nie została utworzona: nazwa jest zajęta lub zmienił się stan środowisk pracy. Zmień nazwę albo odśwież opcje. Przy następnej próbie użyjemy nowego identyfikatora operacji."
       },
+      "nameInvalid": {
+        "title": "Nazwa daje specyfikacji nieprawidłową lub zbyt długą ścieżkę",
+        "body": "Specyfikacja nie została utworzona: jej folder i gałąź powstają z nazwy, a wynik nie jest prawidłową ścieżką albo jest zbyt długi. Skróć nazwę lub użyj prostszych znaków i utwórz ją ponownie.",
+        "field": "Skróć nazwę: ścieżka utworzona z niej jest nieprawidłowa lub zbyt długa."
+      },
       "branchInvalid": {
         "title": "Nazwa gałęzi jest nieprawidłowa",
         "body": "Specyfikacja nie została utworzona. Git nie przyjmuje wpisanej nazwy gałęzi. Wpisz inną nazwę gałęzi albo pozwól Nevo wygenerować ją automatycznie."
@@ -1187,6 +1194,7 @@
       "closeHint": "Zamknij: Delete lub środkowy przycisk myszy",
       "menuHint": "Delete zamyka wyróżniony dokument.",
       "menuClose": "Zamknij",
+      "rootLocation": "Katalog główny",
       "statusLoading": "ładowanie",
       "statusMissing": "nie znaleziono",
       "statusDirty": "niezapisane zmiany",
@@ -1248,7 +1256,7 @@
       "nameRequired": "Wpisz nazwę pliku.",
       "guidance": "Jak napisać dokument: {{type}}",
       "create": "Utwórz",
-      "created": "Dodano: {{type}}",
+      "created": "Dodano {{name}} ({{type}})",
       "loadingTypes": "Wczytywanie typów dokumentów…",
       "typesFailed": "Nie udało się wczytać typów dokumentów"
     },

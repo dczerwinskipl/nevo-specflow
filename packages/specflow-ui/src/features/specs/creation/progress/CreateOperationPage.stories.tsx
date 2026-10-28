@@ -48,6 +48,7 @@ type Server =
   | 'lost'
   | 'refuses-protected'
   | 'refuses-blocked'
+  | 'refuses-path'
   | 'commit-failed';
 type Stream = 'steps' | 'unavailable' | 'commit-steps' | 'commit-steps-existing';
 
@@ -138,6 +139,7 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
     case 'refuses-branch':
     case 'refuses-protected':
     case 'refuses-blocked':
+    case 'refuses-path':
     case 'commit-failed':
       return Promise.reject(apiError({ kind: 'not-found', outcome: 'not-applied', status: 404 }));
     case 'lost':
@@ -210,36 +212,45 @@ function Fixture({
                     code: 'BRANCH_PROTECTED',
                   }),
                 )
-              : server === 'refuses-blocked'
+              : server === 'refuses-path'
                 ? Promise.reject(
                     apiError({
-                      kind: 'conflict',
+                      kind: 'validation',
                       outcome: 'not-applied',
-                      status: 409,
-                      code: 'COMMIT_BLOCKED',
+                      status: 400,
+                      code: 'DOCUMENT_PATH_INVALID',
                     }),
                   )
-                : server === 'commit-failed'
+                : server === 'refuses-blocked'
                   ? Promise.reject(
                       apiError({
-                        kind: 'recovery-required',
-                        outcome: 'unknown',
-                        status: 503,
-                        code: 'COMMIT_FAILED',
+                        kind: 'conflict',
+                        outcome: 'not-applied',
+                        status: 409,
+                        code: 'COMMIT_BLOCKED',
                       }),
                     )
-                  : server === 'refuses-branch'
+                  : server === 'commit-failed'
                     ? Promise.reject(
                         apiError({
-                          kind: 'conflict',
-                          outcome: 'not-applied',
-                          status: 409,
-                          code: 'BRANCH_ALREADY_EXISTS',
+                          kind: 'recovery-required',
+                          outcome: 'unknown',
+                          status: 503,
+                          code: 'COMMIT_FAILED',
                         }),
                       )
-                    : server === 'unknown'
-                      ? Promise.reject(apiError({ kind: 'network' }))
-                      : Promise.resolve(accepted),
+                    : server === 'refuses-branch'
+                      ? Promise.reject(
+                          apiError({
+                            kind: 'conflict',
+                            outcome: 'not-applied',
+                            status: 409,
+                            code: 'BRANCH_ALREADY_EXISTS',
+                          }),
+                        )
+                      : server === 'unknown'
+                        ? Promise.reject(apiError({ kind: 'network' }))
+                        : Promise.resolve(accepted),
           inspectOperation: () => inspect(server),
           operationEventsUrl: createOperationEventsUrl,
         },
@@ -600,6 +611,31 @@ export const RefusedBecauseTheBranchIsProtected: Story = {
     await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByText(/Gałąź wybranego środowiska pracy jest chroniona/)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje' }));
+    await expect(args.onBackToForm).toHaveBeenCalledOnce();
+  },
+};
+
+/**
+ * A long name makes a path the Engine refuses (`DOCUMENT_PATH_INVALID`): the name is the problem,
+ * so the page says to shorten it and offers the form, never Refresh options.
+ */
+export const RefusedBecauseTheNameMakesAnInvalidPath: Story = {
+  args: {
+    request: {
+      ...newWorkspace,
+      title: 'Przegląd projektu z bardzo długą nazwą specyfikacji do sprawdzenia zawijania',
+    },
+    facts: newWorkspaceFacts,
+    server: 'refuses-path',
+    onBackToForm: fn(),
+  },
+  play: async ({ canvas, userEvent, args }) => {
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Nazwa daje specyfikacji nieprawidłową lub zbyt długą ścieżkę',
+    );
+    await expect(canvas.getByText(/Skróć nazwę lub użyj prostszych znaków/)).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Odśwież opcje' })).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
   },
 };

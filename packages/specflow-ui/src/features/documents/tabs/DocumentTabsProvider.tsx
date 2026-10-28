@@ -104,11 +104,12 @@ export function DocumentTabsProvider({
     queryKey: documentKeys.detail(specId, documentId ?? ''),
     queryFn: ({ signal }) => documentApi.getDocument(specId, documentId!, signal),
     // A dangling entry has no file to read: its tab shows the missing state from the tree.
-    // The tree comes first, so a dangling id is never requested.
+    // The tree settles first, so a dangling id is never requested; a tree that failed to load does
+    // not hold the document back (it opens, the tree shows its own failure and Retry).
     enabled:
       Boolean(documentId) &&
-      tree.data !== undefined &&
-      !tree.data.dangling.some((entry) => entry.id === documentId),
+      !tree.isPending &&
+      !tree.data?.dangling.some((entry) => entry.id === documentId),
   });
   const record = useMemo<DocumentRecordState | null>(
     () => (documentId ? { documentId, query } : null),
@@ -116,13 +117,25 @@ export function DocumentTabsProvider({
   );
   const document = query.data && documentId ? query.data : undefined;
   const catalogue = useDocumentCatalogue();
+  // Memoised on what it reads, so the editor session is not rebuilt on every render.
+  const archetype = tree.data?.archetype;
+  const classification = document?.classification;
+  const documentType = document?.type;
+  const guidance = useMemo(
+    () =>
+      documentGuidance(catalogue.data, archetype && { archetype }, {
+        classification,
+        type: documentType,
+      }),
+    [catalogue.data, archetype, classification, documentType],
+  );
   return (
     <RecordContext.Provider value={record}>
       <DocumentEditorProvider
         specId={specId}
         document={document}
         readOnlyReason={document ? documentReadOnlyReason(tree.data, document) : undefined}
-        guidance={document ? documentGuidance(catalogue.data, tree.data, document) : undefined}
+        guidance={document ? guidance : undefined}
       >
         <TabsHost specId={specId} documentId={documentId} tree={tree.data}>
           {children}

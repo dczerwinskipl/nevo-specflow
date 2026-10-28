@@ -615,7 +615,7 @@ export const NewDocument: Story = {
     await expect(name.value).toBe('meeting-notes');
     // Trying again succeeds: the dialog closes and a toast confirms what was added.
     await userEvent.click(dialog.getByRole('button', { name: 'Create' }));
-    await expectToast('Note added');
+    await expectToast('meeting-notes.md added (Note)');
     await expect(screen.queryByRole('dialog', { name: 'New document' })).toBeNull();
   },
 };
@@ -839,6 +839,30 @@ export const PreviewCentredOnWideScreens: Story = {
         throw new Error(`Gutters are not equal: ${left} px left, ${right} px right`);
     });
     await expect(group.firstElementChild!.getBoundingClientRect().width).toBeLessThanOrEqual(760);
+    await viewport(1440);
+  },
+};
+
+/** A document without a contents column (one heading) is centred the same way on its measure. */
+export const PreviewWithoutContentsCentredOnWideScreens: Story = {
+  args: { path: `/specs/${SPEC}/documents/ux-2` },
+  play: async () => {
+    await viewport(2560, 1200);
+    const screen = body();
+    const heading = await screen.findByRole('heading', { name: 'architecture/login-flow.md' });
+    await expect(
+      screen.queryByRole('complementary', { name: 'Document contents and properties' }),
+    ).toBeNull();
+    const measure = heading.closest('[data-document-preview] > * > div')!;
+    await waitFor(() => {
+      const box = measure.getBoundingClientRect();
+      const panel = document.querySelector('[data-document-preview]')!.getBoundingClientRect();
+      const left = box.left - panel.left;
+      const right = panel.right - box.right;
+      if (left <= 24 || Math.abs(left - right) > 2)
+        throw new Error(`Gutters are not equal: ${left} px left, ${right} px right`);
+    });
+    await expect(measure.getBoundingClientRect().width).toBeLessThanOrEqual(760);
     await viewport(1440);
   },
 };

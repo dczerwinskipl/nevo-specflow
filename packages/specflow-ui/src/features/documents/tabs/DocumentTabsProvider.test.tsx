@@ -30,7 +30,7 @@ const SPEC = 'spec';
 const record = (id: string, content: string, revision: string): DocumentContent =>
   documentContentFixture({ id, title: id, path: `${id}.md`, content, revision });
 
-function setup(documentId: string | undefined, strict = false) {
+function setup(documentId: string | undefined, strict = false, treeFails = false) {
   const docs: Record<string, DocumentContent> = {
     a: record('a', 'A0', 'a1'),
     b: record('b', 'B0', 'b1'),
@@ -41,20 +41,23 @@ function setup(documentId: string | undefined, strict = false) {
     documentApi: { getDocument } as unknown as DocumentApi,
     demoDocumentsApi: {
       documentTree: () =>
-        Promise.resolve(
-          documentTreeFixture({
-            revision: 't',
-            documents: [
-              { id: 'a', path: 'docs/a.md' },
-              { id: 'b', path: 'docs/b.md' },
-            ],
-          }),
-        ),
+        treeFails
+          ? Promise.reject(new Error('Tree unavailable'))
+          : Promise.resolve(
+              documentTreeFixture({
+                revision: 't',
+                documents: [
+                  { id: 'a', path: 'docs/a.md' },
+                  { id: 'b', path: 'docs/b.md' },
+                ],
+              }),
+            ),
       save,
     } as unknown as DocumentsApi,
   });
   const store = createDocumentDraftStore();
   const queryClient = createSpecFlowQueryClient();
+  queryClient.setDefaultOptions({ queries: { retry: false } });
   const seen: { ops?: DocumentSaveOwner; sessionOfB?: unknown; sessionOfA?: unknown } = {};
   function Probe() {
     const session = useDocumentEditor();
@@ -93,6 +96,12 @@ describe('DocumentTabsProvider', () => {
     expect(t.seen.sessionOfA).not.toBeNull();
     // A document that is not on screen has no session of its own.
     expect(t.seen.sessionOfB).toBeNull();
+  });
+
+  it('opens the document when the tree read fails instead of waiting for it forever', async () => {
+    const t = setup('a', false, true);
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toBe('a|a|success'));
+    expect(t.getDocument).toHaveBeenCalledTimes(1);
   });
 
   it('loads nothing without a route document', () => {

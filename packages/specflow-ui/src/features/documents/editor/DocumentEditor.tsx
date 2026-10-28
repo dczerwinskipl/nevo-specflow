@@ -482,8 +482,9 @@ function PreviewScroller({
           )}
         </div>
       ) : (
-        // A readable measure (about 80 characters) aligned with the tabs; the editor keeps the full width.
-        <div className="max-w-content-narrow">
+        // A readable measure (about 80 characters), centred in a pane wider than it so the spare
+        // width becomes two equal gutters; the editor keeps the full width.
+        <div className="mx-auto max-w-content-narrow">
           {lead && <div className="mb-4">{lead}</div>}
           {properties && <DocumentProperties properties={properties} />}
           {text}

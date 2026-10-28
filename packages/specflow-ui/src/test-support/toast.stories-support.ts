@@ -5,7 +5,9 @@ import { expect, waitFor, within } from 'storybook/test';
  * transient status region is the only live region carrying the message.
  */
 export async function expectToast(text: string | RegExp) {
-  const viewport = await within(document.body).findByRole('region', { name: /^Notifications/ });
+  const viewport = await within(document.body).findByRole('region', {
+    name: /^(Notifications|Powiadomienia)/,
+  });
   await waitFor(() => expect(within(viewport).getByText(text)).toBeVisible());
   const matches = (node: Element) =>
     typeof text === 'string' ? node.textContent?.includes(text) : text.test(node.textContent ?? '');

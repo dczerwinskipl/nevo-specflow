@@ -41,6 +41,8 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
       return 'create.errors.conflict.title';
     case 'name-conflict':
       return 'create.errors.nameConflict.title';
+    case 'name-invalid':
+      return 'create.errors.nameInvalid.title';
     case 'forbidden':
       return 'create.errors.forbiddenTitle';
     case 'unauthenticated':
@@ -80,6 +82,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
       return 'create.errors.conflict.body';
     case 'name-conflict':
       return 'create.errors.nameConflict.body';
+    case 'name-invalid':
+      return 'create.errors.nameInvalid.body';
     case 'forbidden':
       return 'create.errors.readOnlyForm';
     case 'unauthenticated':

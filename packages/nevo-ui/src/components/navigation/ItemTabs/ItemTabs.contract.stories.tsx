@@ -209,6 +209,12 @@ async function assertCompactRows(menu: HTMLElement) {
   assert(first && second, 'Two rows at least.');
   const gap = second.getBoundingClientRect().top - first.getBoundingClientRect().bottom;
   assert(gap < 1, `The hidden Close item adds no gap between rows (got ${gap}px).`);
+  const root = rows.find((row) => row.textContent?.startsWith('README.md'));
+  assert(
+    root?.textContent?.includes('Root folder') === true &&
+      root.textContent.split('README.md').length === 2,
+    'A root item says where it is instead of repeating its name.',
+  );
   const long = rows[0];
   const path = longPathItems[0]?.description ?? '';
   assert(long?.getAttribute('title') === path, 'The full path is the row tooltip.');

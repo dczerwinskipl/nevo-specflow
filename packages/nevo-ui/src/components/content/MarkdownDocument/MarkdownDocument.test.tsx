@@ -25,6 +25,12 @@ describe('MarkdownDocument', () => {
     expect(html).not.toContain('<b>');
     expect(html).toContain('&lt;b&gt;bold&lt;/b&gt;');
   });
+  it('keeps text that sits between two comments on one line', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument source={'<!-- a --> Important <!-- b -->\n\nNext.'} />,
+    );
+    expect(html).toContain('Important');
+  });
   it('supports GFM and safe external links', () => {
     const html = renderToStaticMarkup(
       <MarkdownDocument

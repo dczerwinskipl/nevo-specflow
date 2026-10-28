@@ -16,6 +16,11 @@ export type CreateFailure =
   | { kind: 'operation-conflict' }
   /** The project Runtime CREATE_CONFLICT: the name (slug) may be taken or the state changed. */
   | { kind: 'name-conflict' }
+  /**
+   * The name gives the Specification a path the Engine refuses (`DOCUMENT_PATH_INVALID`: invalid or
+   * too long). Field-level: the form focuses the name; refreshing the options cannot help.
+   */
+  | { kind: 'name-invalid' }
   | { kind: 'forbidden' }
   /** 401: the session is not authenticated (the form is kept). */
   | { kind: 'unauthenticated' }

@@ -44,6 +44,9 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   // The archetype catalogue changed under the form, or the chosen archetype is gone (admission).
   CATALOGUE_STALE: { kind: 'conflict', outcome: 'not-applied' },
   ARCHETYPE_UNKNOWN: { kind: 'validation', outcome: 'not-applied' },
+  // The path the name gives the Specification is invalid (or too long), or already taken.
+  DOCUMENT_PATH_INVALID: { kind: 'validation', outcome: 'not-applied' },
+  DOCUMENT_PATH_CONFLICT: { kind: 'conflict', outcome: 'not-applied' },
 };
 
 const branchConflictCodes = new Set([
@@ -79,6 +82,8 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
     return { kind: 'catalogue-stale', code };
   if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
   if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
+  if (code === 'DOCUMENT_PATH_INVALID') return { kind: 'name-invalid' };
+  if (code === 'DOCUMENT_PATH_CONFLICT') return { kind: 'name-conflict' };
   // The server cannot rule out that the operation was reserved: never claim a definite refusal.
   if (
     error.outcome === 'unknown' &&

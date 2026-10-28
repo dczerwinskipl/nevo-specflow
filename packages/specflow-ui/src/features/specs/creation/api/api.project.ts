@@ -6,6 +6,7 @@ import type {
   CreateSpecRequest,
   CreatedSpec,
 } from '@nevo/specflow-contracts/specs';
+import { isArchetypeCatalogue } from '../../../../shared/http/isArchetypeCatalogue';
 import type { ApiTransport } from '../../../../api';
 
 /**
@@ -78,8 +79,7 @@ export function createProjectCreationApi(api: ApiTransport): ProjectCreationApi 
       api.get<ArchetypeCatalogue>('/api/specs/archetypes', {
         operation: 'specs.create.archetypes',
         signal,
-        isValid: (data) =>
-          isObject(data) && typeof data.revision === 'string' && Array.isArray(data.archetypes),
+        isValid: isArchetypeCatalogue,
       }),
     create: (input, signal) =>
       api.post<CreatedSpec | CreateOperationAccepted, ProjectCreateRequest>('/api/specs', input, {

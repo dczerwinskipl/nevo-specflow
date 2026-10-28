@@ -91,7 +91,8 @@ interface MdastNode {
   children?: MdastNode[];
 }
 
-const htmlComment = /^\s*<!--[\s\S]*?-->\s*$/;
+// One comment, start to end: text between two comments on one line is not a comment.
+const htmlComment = /^\s*<!--(?:(?!-->)[\s\S])*-->\s*$/;
 
 /**
  * Remark step: an HTML comment (`<!-- note to the writer -->`) is not content. Raw HTML is never

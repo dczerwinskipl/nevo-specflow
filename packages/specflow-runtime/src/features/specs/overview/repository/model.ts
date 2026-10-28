@@ -40,6 +40,8 @@ export interface CurrentSpecSignalRecord {
 }
 
 export interface CurrentSpecRecord extends SpecOverviewRecord {
+  /** Workflow status; project mode: `draft` (the read-model constant `OVERVIEW_SPEC_STATUS`). */
+  readonly status?: string;
   readonly readyForWork: boolean | null;
   readonly signals: readonly CurrentSpecSignalRecord[] | null;
   readonly currentExecutions:

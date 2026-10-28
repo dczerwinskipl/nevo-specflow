@@ -6,6 +6,7 @@ import {
 } from '@nevo/specflow-engine';
 
 import { SpecsReadError } from '../../read/error';
+import { manifestOverviewFacts } from './manifest-facts';
 import type { ArchivedSpecRecord, CurrentSpecRecord, SpecOverviewRecord } from './model';
 import type { SpecsOverviewRepository } from './read-repository';
 
@@ -67,19 +68,23 @@ export function createEngineSpecsOverviewRepository(
 
 function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
   const spec = item.specification;
+  const facts = manifestOverviewFacts(spec);
   const common: SpecOverviewRecord = {
     id: item.specId,
     title: spec.title,
     updatedAt: item.sourceUpdatedAt,
-    // Engine currently owns no verified task outcome/progress projection.
-    progress: null,
+    progress: facts.progress,
   };
   const current: CurrentSpecRecord = {
     ...common,
-    // Manifest status is not proof of execution or human-attention state.
-    readyForWork: null,
-    signals: null,
-    currentExecutions: null,
+    status: facts.status,
+    readyForWork: facts.readyForWork,
+    // No execution or attention can belong to a Specification in project mode: a managed Session is
+    // created without any Specification or Task association (the Sessions contract refuses one) and
+    // project mode composes no Session reference owner. The empty lists are that answer, not a guess;
+    // they become real evidence once Sessions can be bound to a Specification.
+    signals: [],
+    currentExecutions: [],
   };
   const archive: ArchivedSpecRecord = common;
   return {

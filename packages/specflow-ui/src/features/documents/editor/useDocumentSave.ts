@@ -94,7 +94,6 @@ export const operationRunningCode = 'document-operation-running';
 /** A save of a document that is not final yet (see `DocumentSaveOwner.pendingOf`). */
 export type PendingSave = 'saving' | 'recovery' | 'unconfirmed';
 
-
 /**
  * A save sent whose result is not final: written but not committed (`recovery`, finished by
  * Resume), or without an answer (`unknown`, the server may have applied it). Retrying it sends

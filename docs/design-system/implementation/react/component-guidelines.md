@@ -209,6 +209,23 @@ action is unavailable. `tone` is `info` (muted icon) or `attention` (status colo
 decorative. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
+## Empty state
+
+`EmptyState` is the one empty screen of the system: whenever an area has nothing to show yet, use it
+instead of a local line and buttons. Anatomy (centred): a 48 px icon tile (`icon`, a registry glyph
+drawn at 24 px, decorative), a `title-md` title (a short noun phrase, no full stop), a `body-md`
+description in `content-secondary` on a `max-w-sm` measure, and the `actions` 24 px below.
+
+- `variant="pane"`: the whole area is empty (a list with no rows, a document area with nothing open).
+  No border; it takes the free block size of its host (`flex-1` + `min-h-full`, so the host is a flex
+  column or has a definite height) and centres the group on both axes. Do not draw table or column
+  headers above it: they describe rows that do not exist.
+- `variant="default"`: an empty block inside a page that keeps its own quiet border (`min-h-40`).
+- `actions` takes nodes in order. At most **one primary** action (the filled default `Button`), first;
+  every other action is `variant="secondary"`. A state that only offers a way out (clear the search,
+  go back) has no primary. The component does not enforce this, because actions can be buttons or
+  router links.
+
 ## Alert actions
 
 `Alert` lays out its `actions` by its own width (a size container): below `@2xl` (42rem) they sit

@@ -81,15 +81,31 @@ export const BadgeCapture: Story = {
 export const EmptyStateCapture: Story = {
   render: () => (
     <DesignCaptureProvider captureComponents={['EmptyState']}>
-      <div className="w-[32rem] p-8">
+      <div className="grid w-[32rem] gap-8 p-8">
         <EmptyState
-          actions={<Button size="sm">Create customer</Button>}
+          actions={<Button leadingIcon="plus">Create customer</Button>}
           data-design-canonical="true"
           data-design-source-id="default"
           description="Create the first customer to start working with this account."
           icon="inbox"
           title="No customers"
         />
+        <div className="flex h-96 flex-col">
+          <EmptyState
+            actions={
+              <>
+                <Button leadingIcon="plus">Create customer</Button>
+                <Button variant="secondary">Import customers</Button>
+              </>
+            }
+            data-design-canonical="true"
+            data-design-source-id="pane"
+            description="Create the first customer to start working with this account."
+            icon="inbox"
+            title="No customers"
+            variant="pane"
+          />
+        </div>
       </div>
     </DesignCaptureProvider>
   ),

@@ -1118,7 +1118,6 @@
       "inputRename": "Nowa nazwa",
       "inputFolder": "Nazwa nowego folderu",
       "inputFile": "Nazwa nowego pliku",
-      "saving": "Zapisywanie…",
       "checkResult": "Sprawdź wynik tej operacji",
       "emptyFolder": "Folder jest pusty. Dodaj plik lub folder z menu.",
       "addFirst": "Dodaj pierwszy plik przez menu akcji.",
@@ -1146,8 +1145,8 @@
       "topLevel": "Najwyższy poziom",
       "deleteFileTitle": "Usuń plik",
       "deleteFolderTitle": "Usuń folder",
-      "deleteFileWarning": "Usunięcie tego pliku jest nieodwracalne w tej sesji demo.",
-      "deleteFolderWarning": "Usunięcie obejmuje folder i jego dokumenty jest nieodwracalne w tej sesji demo.",
+      "deleteFileWarning": "Usunięcia tego pliku nie można tu cofnąć.",
+      "deleteFolderWarning": "Usunięcia folderu wraz z jego dokumentami nie można tu cofnąć.",
       "error": {
         "pathConflict": "Ta ścieżka już istnieje. Wybierz inną nazwę lub folder.",
         "revisionConflict": "Dokument lub folder zmienił się w międzyczasie. Zamknij akcję i rozpocznij ją ponownie: dokumenty zostały odświeżone.",

@@ -204,6 +204,26 @@ function Workspace({
         }),
       );
     if (slowMs > 0) return new Promise<void>((resolve) => setTimeout(resolve, slowMs));
+    // As the Runtime on a file system that ignores letter case (Windows).
+    const renamed = tree.documents.find((doc) => doc.id === operation.documentId);
+    const current = renamed?.path.split('/').at(-1);
+    if (
+      operation.action === 'rename' &&
+      current !== undefined &&
+      operation.name !== current &&
+      operation.name?.toLowerCase() === current.toLowerCase()
+    )
+      return Promise.reject(
+        new HttpClientError('Bad Request', {
+          kind: 'http',
+          status: 400,
+          data: {
+            error: 'DOCUMENT_OPERATION_INVALID',
+            code: 'DOCUMENT_OPERATION_INVALID',
+            details: { cause: 'case-only-rename' },
+          },
+        }),
+      );
     if (operation.action === 'rename')
       setTree((current) => ({
         ...current,
@@ -536,6 +556,28 @@ export const SlowOperationShowsASpinnerInTheRootHeader: Story = {
     });
     await expectToast('Usunięto notes');
     await waitFor(() => expect(spinner()).toBeNull());
+  },
+};
+
+/**
+ * A rename that changes only the letter case, refused by a case-insensitive file system: the reason
+ * is in the rename field and the typed name stays; nothing suggests a refresh.
+ */
+export const CaseOnlyRenameIsExplainedInTheField: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Akcje: decisions.md' }));
+    await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Zmień nazwę' }));
+    const name = await canvas.findByRole('textbox', { name: 'Nowa nazwa' });
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Decisions.md');
+    await userEvent.keyboard('{Enter}');
+    const alert = await canvas.findByRole('alert');
+    await expect(alert).toHaveTextContent(
+      'Zmiana samej wielkości liter nie jest obsługiwana na tym systemie plików.',
+    );
+    await expect(alert).not.toHaveTextContent(/odśwież/i);
+    await expect(name).toHaveValue('Decisions.md');
+    await expect(name).toHaveAttribute('aria-invalid', 'true');
   },
 };
 

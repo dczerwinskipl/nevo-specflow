@@ -90,11 +90,6 @@ export function InlineEntryEditor({
           {entry.error}
         </p>
       )}
-      {busy && (
-        <p role="status" className="text-body-sm text-content-muted">
-          {t('documents.tree.saving')}
-        </p>
-      )}
       {unknown && (
         <Button size="sm" disabled={busy} onClick={onCheckResult}>
           {t('documents.tree.checkResult')}

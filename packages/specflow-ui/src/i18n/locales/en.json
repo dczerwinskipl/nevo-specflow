@@ -1118,7 +1118,6 @@
       "inputRename": "New name",
       "inputFolder": "New folder name",
       "inputFile": "New file name",
-      "saving": "Saving…",
       "checkResult": "Check the result of this operation",
       "emptyFolder": "This folder is empty. Add a file or folder from the menu.",
       "addFirst": "Add the first file from the actions menu.",
@@ -1146,8 +1145,8 @@
       "topLevel": "Top level",
       "deleteFileTitle": "Delete file",
       "deleteFolderTitle": "Delete folder",
-      "deleteFileWarning": "Deleting this file cannot be undone in this demo session.",
-      "deleteFolderWarning": "Deleting this folder and its documents cannot be undone in this demo session.",
+      "deleteFileWarning": "Deleting this file cannot be undone here.",
+      "deleteFolderWarning": "Deleting this folder and its documents cannot be undone here.",
       "error": {
         "pathConflict": "This path already exists. Choose a different name or folder.",
         "revisionConflict": "The document or folder changed meanwhile. Close the action and start it again: the documents were refreshed.",

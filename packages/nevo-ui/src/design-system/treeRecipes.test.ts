@@ -7,12 +7,14 @@ import {
   treeItemLabelClassName,
   treeItemLabelTruncateClassName,
   treeLeafItemClassName,
+  treeLinkItemClassName,
   treeNodeClassName,
   treeRequiredLabelClassName,
   treeRequiredMarkerClassName,
   treeRootClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeSectionHeaderClassName,
   treeAttentionGlyphClassName,
   treeAttentionStateLabelClassName,
   treeStateLabelClassName,
@@ -53,6 +55,27 @@ describe('compact tree geometry', () => {
     expect(treeItemClassName).toContain('gap-tree-gap');
     expect(treeLeafItemClassName).toContain('ml-tree-leaf-offset');
     expect(treeHintClassName).toContain('pl-tree-name-offset');
+  });
+
+  it('marks the current place of a link tree with a tint and an accent bar, not a block', () => {
+    expect(treeLinkItemClassName).toContain('min-h-tree-row-height');
+    expect(treeLinkItemClassName).toContain('after:h-[max(100%,var(--target-size))]');
+    expect(treeLinkItemClassName).not.toMatch(/font-(semibold|medium|bold)/);
+    expect(treeLinkItemClassName).not.toContain('bg-surface-selected');
+    expect(treeLinkItemClassName).toContain(
+      '[&[aria-current]:not([aria-current=false])]:before:bg-content-link',
+    );
+    expect(treeLinkItemClassName).toContain('before:w-0.5');
+  });
+
+  it('puts the root section header text on the items content edge, one row high', () => {
+    expect(treeSectionHeaderClassName).not.toMatch(/\d(?:\.\d+)?(?:px|rem)/);
+    expect(treeSectionHeaderClassName).toContain('min-h-tree-row-height');
+    // Same border box and inline padding as an item, so the title starts where item content does.
+    expect(treeSectionHeaderClassName).toContain('border border-solid border-transparent');
+    expect(treeSectionHeaderClassName).toContain('px-control-padding-inline');
+    expect(treeItemClassName).toContain('border border-solid border-transparent');
+    expect(treeItemClassName).toContain('px-control-padding-inline');
   });
 
   it('keeps the DS hit area on the item instead of tall padding', () => {
@@ -111,7 +134,7 @@ describe('tree row actions and labels', () => {
     // Shown in full or visually hidden (never an ellipsis), by the row's own width.
     expect(treeTrailingLabelClassName).toContain('shrink-0');
     expect(treeTrailingLabelClassName).toContain('whitespace-nowrap');
-    expect(treeTrailingLabelClassName).toContain('@max-xs/tree-row:sr-only');
+    expect(treeTrailingLabelClassName).toContain('@max-3xs/tree-row:sr-only');
     expect(treeTrailingLabelClassName).not.toMatch(/truncate|text-ellipsis/);
     for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
       expect(label).toContain('shrink-0');

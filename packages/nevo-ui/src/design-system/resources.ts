@@ -37,6 +37,15 @@ export const iconNames = [
   'settings',
   'log-out',
   'refresh',
+  'edit',
+  'rename',
+  'move',
+  'upload',
+  'download',
+  'classify',
+  'unlink',
+  'wrap',
+  'actual-size',
 ] as const;
 
 export const iconSizes = ['sm', 'md'] as const;

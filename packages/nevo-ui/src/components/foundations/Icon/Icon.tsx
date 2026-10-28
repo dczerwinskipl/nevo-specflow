@@ -38,6 +38,15 @@ import {
   Users,
   Workflow,
   X,
+  Download,
+  FolderInput,
+  Pencil,
+  PencilLine,
+  Tag,
+  Unlink,
+  Upload,
+  WrapText,
+  ZoomIn,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -88,6 +97,16 @@ export const iconRegistry = {
   list: List,
   settings: Settings,
   'log-out': LogOut,
+  // Actions on an item: the name says what the action does, not a state.
+  edit: Pencil,
+  rename: PencilLine,
+  move: FolderInput,
+  upload: Upload,
+  download: Download,
+  classify: Tag,
+  unlink: Unlink,
+  wrap: WrapText,
+  'actual-size': ZoomIn,
 } satisfies Record<IconName, LucideIcon>;
 
 export const iconSizeClasses = {

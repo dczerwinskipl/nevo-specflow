@@ -31,6 +31,24 @@ describe('Icon', () => {
     expect(iconAssetRef('list', 'md')).toBe('Icon/list/md');
   });
 
+  it('registers the item action glyphs (named for the action) with their design resource identity', () => {
+    const actions = [
+      'edit',
+      'rename',
+      'move',
+      'upload',
+      'download',
+      'classify',
+      'unlink',
+      'wrap',
+      'actual-size',
+    ] as const;
+    for (const name of actions) {
+      expect(renderToStaticMarkup(<Icon name={name} />)).toContain('<svg');
+      expect(iconAssetRef(name, 'sm')).toBe(`Icon/${name}/sm`);
+    }
+  });
+
   it('separates decorative and semantic icon accessibility', () => {
     const decorative = renderToStaticMarkup(<Icon name="branch" />);
     const semantic = renderToStaticMarkup(

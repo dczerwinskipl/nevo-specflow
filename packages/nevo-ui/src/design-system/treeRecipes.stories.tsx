@@ -16,6 +16,7 @@ import {
   treeAttentionStateLabelClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeSectionHeaderClassName,
   treeStateLabelClassName,
   treeTrailingLabelClassName,
 } from './treeRecipes';
@@ -88,6 +89,8 @@ function TreeLevel({
   toggle: (path: string) => void;
   top?: boolean;
 }) {
+  // A top level without folders is flat: its leaves have no folder icon column to align with.
+  const flat = top && entries.every((entry) => entry.kind === 'file');
   return (
     <ul
       className={top ? treeRootClassName : treeBranchClassName}
@@ -101,7 +104,7 @@ function TreeLevel({
               <div className={treeRowClassName}>
                 <button
                   aria-current={selected.includes(path) ? 'true' : undefined}
-                  className={treeLeafItemClassName}
+                  className={flat ? treeItemClassName : treeLeafItemClassName}
                   data-tree-item={path}
                   data-tree-leaf
                   disabled={entry.disabled}
@@ -204,11 +207,14 @@ function TreeExample({
   width = 'w-full max-w-sm',
   opened = nothing,
   entries = fixture,
+  header,
 }: {
   selected?: string[];
   width?: string;
   opened?: string[];
   entries?: TreeEntry[];
+  /** The root section header (the tree's own title). */
+  header?: string;
 }) {
   const [closed, setClosed] = useState<string[]>(opened);
   const toggle = (path: string) =>
@@ -217,6 +223,13 @@ function TreeExample({
     );
   return (
     <nav aria-label="Documents" className={`${width} min-w-0`}>
+      {header && (
+        <div className={treeSectionHeaderClassName} data-tree-header>
+          <span className="min-w-0 flex-1 truncate text-section-label uppercase text-content-muted">
+            {header}
+          </span>
+        </div>
+      )}
       <TreeLevel
         closed={closed}
         entries={entries}
@@ -312,6 +325,36 @@ export const SelectedMissingRowKeepsItsWarning: Story = {
     if (getComputedStyle(glyph).color !== getComputedStyle(label).color)
       throw new Error('The warning glyph keeps the attention tone on the selected row.');
   },
+};
+/** Files only: the root section header names the tree and the files are not indented. */
+const flatFixture: TreeEntry[] = [
+  { kind: 'file', name: 'behaviour.md', trailing: { text: 'Behaviour', kind: 'label' } },
+  { kind: 'file', name: 'overview.md', trailing: { text: 'Overview', kind: 'label' } },
+  { kind: 'file', name: 'ux.md', trailing: { text: 'UX', kind: 'label' } },
+];
+export const FlatWithSectionHeader: Story = {
+  args: { entries: flatFixture, header: 'Specification documents' },
+};
+export const FlatWithSectionHeaderGeometry: Story = {
+  args: { entries: flatFixture, header: 'Specification documents' },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const header = canvasElement.querySelector<HTMLElement>('[data-tree-header]')!;
+    const title = header.querySelector('span')!.getBoundingClientRect();
+    const file = item(canvasElement, 'overview.md');
+    assert(
+      near(file.querySelector('svg')!.getBoundingClientRect().left, title.left),
+      'A flat file starts on the header text edge: it does not look nested.',
+    );
+    assert(
+      near(header.getBoundingClientRect().height, file.getBoundingClientRect().height, 1),
+      'The header is one row high.',
+    );
+  },
+};
+/** With a folder the files keep the offset that aligns them with the folder icon. */
+export const SectionHeaderWithFolders: Story = {
+  args: { header: 'Specification documents' },
 };
 export const Narrow: Story = {
   args: { selected: [`architektura/decyzje/${longName}`], width: 'w-full' },

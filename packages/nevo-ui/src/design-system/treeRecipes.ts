@@ -5,6 +5,7 @@ import { fastColorTransitionClassName, hitAreaBlockClassName } from './interacti
  * geometry that has to line up with control padding, border and icon size. There are no guide lines:
  * hierarchy is carried by a small indent step and the chevron + folder icon + name alignment.
  *
+ *   <div className={treeSectionHeaderClassName}>Root title</div>       // optional root header
  *   <ul className={treeRootClassName}>                                // top-level list: no indent
  *     <li className={treeNodeClassName}>
  *       <div className={treeRowClassName}>                            // row line: item + trailing action
@@ -20,6 +21,8 @@ import { fastColorTransitionClassName, hitAreaBlockClassName } from './interacti
  *   </ul>
  *
  * A leaf uses `treeLeafItemClassName` (no glyph slot): its icon aligns with the sibling folders' icons.
+ * A top level without folders is flat: its leaves use `treeItemClassName` (there is no folder icon
+ * column to align with, so an offset would read as nesting).
  * The visual row is one compact control height; the hit area keeps the DS target size (24px, 44px on
  * coarse pointers) through `hitAreaBlockClassName` on the item and `IconButton`'s own hit area, so
  * touch never enlarges the visual rhythm. Neighbouring hit areas may overlap on coarse pointers; the
@@ -30,6 +33,16 @@ import { fastColorTransitionClassName, hitAreaBlockClassName } from './interacti
 // Class strings stay literal so Tailwind can detect them.
 /** Indented group of child nodes under an expanded folder (one small indent step per level). */
 export const treeBranchClassName = 'm-0 grid min-w-0 list-none p-0 pl-tree-indent';
+
+/**
+ * Root section header of a tree (the tree's own title, for example "Specification documents"), as
+ * an explorer names its root: one row height, text on the items' content edge (same border and
+ * inline padding as an item), no chevron, never collapses, not interactive. A trailing slot may hold
+ * a small busy `Spinner`. Its heading uses the `section-label` type in muted tone (as navigation
+ * group labels) and names the root list.
+ */
+export const treeSectionHeaderClassName =
+  'flex min-h-tree-row-height min-w-0 items-center gap-tree-gap border border-solid border-transparent px-control-padding-inline';
 
 /** Top-level list: no indent. */
 export const treeRootClassName = 'm-0 grid min-w-0 list-none p-0';
@@ -54,6 +67,23 @@ export const treeItemClassName = [
   'hover:bg-surface-hover hover:text-content-primary',
   '[&[aria-current]:not([aria-current=false])]:bg-surface-selected [&[aria-current]:not([aria-current=false])]:text-content-primary [&[aria-current]:not([aria-current=false])]:*:first:text-content-link',
   'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-content-secondary',
+  fastColorTransitionClassName,
+].join(' ');
+
+/**
+ * A tree row that links to a place (for example a heading in a document's contents): the same
+ * compact row, indent and hit area as `treeItemClassName`, normal weight at every level. The current
+ * place (`aria-current`, for example `location`) is a quiet tint with a 2 px accent bar at the inline
+ * start, never the selected-item block of an explorer. No icons: the row is its text.
+ */
+export const treeLinkItemClassName = [
+  hitAreaBlockClassName,
+  'flex min-h-tree-row-height min-w-0 items-center rounded-control border border-solid border-transparent px-control-padding-inline text-left text-body-md no-underline',
+  'text-content-secondary',
+  'hover:bg-surface-hover hover:text-content-primary',
+  '[&[aria-current]:not([aria-current=false])]:bg-surface-hover [&[aria-current]:not([aria-current=false])]:text-content-primary',
+  "before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-transparent before:content-['']",
+  '[&[aria-current]:not([aria-current=false])]:before:bg-content-link',
   fastColorTransitionClassName,
 ].join(' ');
 
@@ -111,13 +141,14 @@ export const treeRequiredMarkerClassName =
 
 /**
  * Quiet trailing label of a row item (for example the item's type), on the right before the row
- * action. It is shown in full or not at all: on a row narrower than `@xs` (20rem, room for the
- * glyph, about 16 characters of name and the label) it is visually hidden, so the name keeps its
- * room. It is never shortened and always stays in the item's accessible name. One rule at every
- * pane width, decided by the row's own width (`@container/tree-row`).
+ * action. It is shown in full or not at all: on a row narrower than `@3xs` (16rem, the same
+ * threshold as the required marker: room for the glyph, about 16 characters of name and a short
+ * label) it is visually hidden, so the name keeps its room. A Primary pane of a wide window keeps
+ * it visible on its top two levels. It is never shortened and always stays in the item's accessible
+ * name. One rule at every pane width, decided by the row's own width (`@container/tree-row`).
  */
 export const treeTrailingLabelClassName =
-  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-xs/tree-row:sr-only';
+  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-3xs/tree-row:sr-only';
 
 /**
  * Trailing label of a row STATE the reader must always see (for example "Read-only"): it never

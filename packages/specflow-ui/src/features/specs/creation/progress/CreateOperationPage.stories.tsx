@@ -505,7 +505,7 @@ export const Refused: Story = {
 /**
  * The progress page and the form share one content width (`content-form`, 880 px, centred by
  * the bounded workspace): the layout does not jump on submit, running or refused alike. Narrower
- * screens fill the workspace with the normal gutters.
+ * screens fill the workspace; a drawer layout a little wider than the form centres it.
  */
 async function expectFormWidth() {
   const standard =
@@ -518,9 +518,12 @@ async function expectFormWidth() {
     content.closest<HTMLElement>('[data-workspace-surface]') ?? content.parentElement!;
   for (const width of [1440, 1920, 2560, 900, 390]) {
     await settleViewport(width, 900);
-    const box = content.getBoundingClientRect();
-    if (width >= 1440) await expect(Math.abs(box.width - standard)).toBeLessThan(1);
-    else await expect(Math.abs(box.width - surface.getBoundingClientRect().width)).toBeLessThan(2);
+    const box = content.getBoundingClientRect(),
+      host = surface.getBoundingClientRect();
+    // One width everywhere: the form width, or the whole surface when it is narrower; centred, so a
+    // surface a little wider than the form (a drawer layout) leaves equal gutters, no strip.
+    await expect(Math.abs(box.width - Math.min(standard, host.width))).toBeLessThan(2);
+    await expect(Math.abs(box.left - host.left - (host.right - box.right))).toBeLessThan(2);
   }
   await settleViewport();
 }

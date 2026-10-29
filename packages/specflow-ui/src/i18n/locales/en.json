@@ -266,7 +266,7 @@
       "description": "You do not have permission to view these specifications."
     },
     "progressUnknown": "Progress unavailable",
-    "noTasks": "Tasks not defined yet",
+    "noTasks": "No tasks yet",
     "invalidProgress": "Progress unavailable",
     "progressLabel": "Task completion for {{title}}",
     "specificationColumn": "Specification",

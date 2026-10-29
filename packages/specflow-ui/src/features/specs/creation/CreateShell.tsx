@@ -70,7 +70,7 @@ export function CreateShell({
           specId,
         })}
       >
-        <AppContent className="w-content-form max-w-full">
+        <AppContent className="mx-auto w-content-form max-w-full">
           {form ? (
             <form {...form} className="flex min-h-0 flex-1 flex-col">
               {body}

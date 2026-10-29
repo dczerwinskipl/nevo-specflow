@@ -42,15 +42,18 @@ export type AppWorkspaceFit = 'content' | 'available' | 'bounded';
 /**
  * Resolves the rendered workspace fit. `content` makes the workspace `max-content` wide so the
  * shell centres navigation and workspace together; `available` fills the measured width.
- * Stacked layouts always fill.
+ * Stacked layouts always fill, and so does a `bounded` workspace while the navigation is a drawer:
+ * there is nothing to centre it with, and a content-wide surface would leave a bare strip beside
+ * it (the bounded content centres itself inside instead).
  */
 export function resolveWorkspaceFit(
   fit: AppWorkspaceFit,
   mode: 'split' | 'stacked',
   showSecondary: boolean,
+  navigationMode: 'persistent' | 'drawer' = 'persistent',
 ): 'content' | 'available' {
   if (mode === 'stacked' || fit === 'available') return 'available';
-  if (fit === 'bounded') return 'content';
+  if (fit === 'bounded') return navigationMode === 'drawer' ? 'available' : 'content';
   return showSecondary ? 'content' : 'available';
 }
 

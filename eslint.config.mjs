@@ -14,7 +14,10 @@ import { packageConfig } from './eslint.base.mjs';
 const workspaceRoots = ['packages', 'tools', 'examples', 'apps'];
 const packageDirs = workspaceRoots.flatMap((group) => {
   const groupDir = path.join(import.meta.dirname, group);
-  if (!existsSync(groupDir)) return [];
+  if (!existsSync(groupDir)) {
+    return [];
+  }
+
   return readdirSync(groupDir, { withFileTypes: true })
     .filter(
       (entry) =>
@@ -38,5 +41,6 @@ export default packageConfig({
     '.local/**',
     '.artifacts/**',
     '.claude/worktrees/**',
+    'work/**',
   ],
 });

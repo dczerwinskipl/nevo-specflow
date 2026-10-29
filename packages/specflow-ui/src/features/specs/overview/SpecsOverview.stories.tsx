@@ -770,7 +770,7 @@ export const ProgressStates: Story = {
   },
   tags: ['contract', '!autodocs'],
   play: ({ canvas, canvasElement }) => {
-    canvas.getByText('No tasks');
+    canvas.getByText('Tasks not defined yet');
     if (canvasElement.querySelector('[data-spec-id="progress-0"] [role="progressbar"]'))
       throw new Error('Zero tasks has no determinate bar.');
     const row = canvasElement.querySelector('[data-spec-id="progress-9"]')!;

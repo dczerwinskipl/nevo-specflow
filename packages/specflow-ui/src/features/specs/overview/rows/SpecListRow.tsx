@@ -193,7 +193,10 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
       ) : progress === 'invalid' ? (
         t('specifications.invalidProgress')
       ) : progress === 'empty' ? (
-        t('specifications.noTasks')
+        // Not a final state: the tasks are not written yet. Muted, in the place of the bar.
+        <span className="text-content-muted" data-spec-progress-empty>
+          {t('specifications.noTasks')}
+        </span>
       ) : details ? (
         <>
           <div className="w-28 shrink-0">

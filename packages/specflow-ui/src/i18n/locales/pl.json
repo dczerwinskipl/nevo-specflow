@@ -266,7 +266,7 @@
       "description": "Nie masz uprawnień do przeglądania tych specyfikacji."
     },
     "progressUnknown": "Postęp niedostępny",
-    "noTasks": "Brak zadań",
+    "noTasks": "Zadania nie zdefiniowane",
     "invalidProgress": "Postęp niedostępny",
     "progressLabel": "Ukończenie zadań dla {{title}}",
     "specificationColumn": "Specyfikacja",

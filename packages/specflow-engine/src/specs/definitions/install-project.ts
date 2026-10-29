@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { SpecFlowEngine } from '../../application';
 import { sha256Hex } from '../../hash';
 import { GitCapabilityError } from '../../git/errors';
+import { executeGit } from '../../git/process';
 import { openVersionControl } from '../../version-control';
 import { engineCommitRefusal } from '../../version-control/commits/branch-patterns';
 import type { EngineCommitRequest } from '../../version-control/commits/port';
@@ -226,6 +227,67 @@ export async function installProjectDefinitions(
   const written = await applyInstall(input, outcome.plan);
   const commit = await commitInstalledDefinitions(engine, paths);
   return { outcome, written, ...(commit ? { commit } : {}) };
+}
+
+/** The branch `init` offers for the default definitions when the current branch may not take them. */
+export const INITIAL_DEFINITIONS_BRANCH = 'nevo-specflow/definitions';
+
+/**
+ * The new branch `init` may put the default definitions on when the current branch is protected or
+ * not allowed: {@link INITIAL_DEFINITIONS_BRANCH}, offered only when it does not exist yet and the
+ * policy the wizard collected lets the Engine commit on it. `undefined` when there is nothing to offer
+ * (Git disabled, no commits, a detached HEAD, a current branch that takes them, or a refused name).
+ */
+export async function initialDefinitionsBranchOffer(
+  root: string,
+  git: { readonly enabled: boolean; readonly commits?: Partial<GitCommitsPolicy> },
+): Promise<string | undefined> {
+  if (!git.enabled) return undefined;
+  const { current, branches } = await inspectLocalBranches(root);
+  if (current === undefined || branches.length === 0) return undefined;
+  const policy = {
+    protectedBranches: git.commits?.protectedBranches ?? [],
+    ...(git.commits?.allowedBranches ? { allowedBranches: git.commits.allowedBranches } : {}),
+  };
+  if (engineCommitRefusal(policy, current) === undefined) return undefined;
+  if (branches.includes(INITIAL_DEFINITIONS_BRANCH)) return undefined;
+  return engineCommitRefusal(policy, INITIAL_DEFINITIONS_BRANCH) === undefined
+    ? INITIAL_DEFINITIONS_BRANCH
+    : undefined;
+}
+
+/**
+ * Creates the offered branch at the current commit and switches the checkout to it (`git checkout -b`):
+ * the working tree and the index stay exactly as they are, nothing is committed, and the protected
+ * branch is left untouched. Refuses (`BRANCH_ALREADY_EXISTS`, `BRANCH_PROTECTED`) unless the offer
+ * still stands, so the definitions can then be committed with the usual guard.
+ */
+export async function startInitialDefinitionsBranch(
+  root: string,
+  git: { readonly enabled: boolean; readonly commits?: Partial<GitCommitsPolicy> },
+): Promise<string> {
+  const offer = await initialDefinitionsBranchOffer(root, git);
+  if (offer === undefined) {
+    const { branches } = await inspectLocalBranches(root);
+    throw branches.includes(INITIAL_DEFINITIONS_BRANCH)
+      ? new GitCapabilityError(
+          'BRANCH_ALREADY_EXISTS',
+          `The branch '${INITIAL_DEFINITIONS_BRANCH}' already exists.`,
+        )
+      : new GitCapabilityError(
+          'BRANCH_PROTECTED',
+          `The Engine may not commit on '${INITIAL_DEFINITIONS_BRANCH}' either.`,
+        );
+  }
+  const result = await executeGit(root, ['checkout', '-q', '-b', offer]);
+  if (result.exitCode !== 0) {
+    throw new GitCapabilityError(
+      'GIT_OPERATION_FAILED',
+      `The branch '${offer}' could not be created.`,
+      result.stderr.trim() || undefined,
+    );
+  }
+  return offer;
 }
 
 /**

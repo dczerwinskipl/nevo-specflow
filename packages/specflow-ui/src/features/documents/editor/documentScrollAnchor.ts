@@ -126,26 +126,46 @@ export function trackUserScroll(
   };
 }
 
-/** Marks a restore as ours: it stops as soon as the user scrolls or presses a key. */
-export function restoreWhileIdle(scroller: HTMLElement, apply: () => void, frames = 3): () => void {
+/** The longest a restore keeps re-applying a position the layout has not settled on (frames). */
+export const RESTORE_MAX_FRAMES = 30;
+
+/** Two anchors name the same place: the same line and (almost) the same offset, else the same ratio. */
+export function sameAnchor(read: ScrollAnchor | undefined, target: ScrollAnchor): boolean {
+  if (!read) return false;
+  if (target.line === undefined) return Math.abs(read.ratio - target.ratio) < 0.01;
+  return read.line === target.line && Math.abs(read.offset - target.offset) < 0.05;
+}
+
+/**
+ * Restores a position as ours, and stops as soon as the user scrolls or presses a key. `apply`
+ * runs once per frame until the view reads back the target (`settled`) on two frames in a row: a
+ * layout still being measured (estimated line heights of the editor, a preview still rendering)
+ * moves the target after each apply, and a fixed number of frames is not enough on a busy machine.
+ * It gives up after `maxFrames` when the target cannot be reached (the end of a short document).
+ */
+export function restoreWhileIdle(
+  scroller: HTMLElement,
+  apply: () => void,
+  settled: () => boolean,
+  maxFrames = RESTORE_MAX_FRAMES,
+): () => void {
   let cancelled = false;
+  let handle = 0;
   const stop = () => (cancelled = true);
   for (const name of INPUT_EVENTS)
     scroller.addEventListener(name, stop, { passive: true, once: true });
-  const handles: number[] = [];
-  const step = (remaining: number) => {
-    handles.push(
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        apply();
-        if (remaining > 1) step(remaining - 1);
-      }),
-    );
+  const step = (remaining: number, stable: number) => {
+    handle = requestAnimationFrame(() => {
+      if (cancelled) return;
+      apply();
+      const next = settled() ? stable + 1 : 0;
+      if (next < 2 && remaining > 1) step(remaining - 1, next);
+    });
   };
-  step(frames);
+  step(maxFrames, 0);
   return () => {
     cancelled = true;
-    for (const handle of handles) cancelAnimationFrame(handle);
+    cancelAnimationFrame(handle);
     for (const name of INPUT_EVENTS) scroller.removeEventListener(name, stop);
   };
 }

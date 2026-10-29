@@ -47,26 +47,34 @@ function NotificationHost({ store }: { store: NotificationStore }) {
       {notification && (
         <Toast
           key={notification.id}
+          // A confirmation, not an interruption: announced politely (role="status").
+          type="background"
           open
           onOpenChange={(open) => {
             if (!open) store.dismiss();
           }}
         >
-          <ToastTitle role="status">{notification.message}</ToastTitle>
+          {/*
+           * No live role here: the toast primitive announces the message once through its own
+           * transient status region; a second role="status" would announce it twice.
+           */}
+          <ToastTitle>{notification.message}</ToastTitle>
           <ToastClose dismissLabel={t('common.dismissNotification')} />
         </Toast>
       )}
-      <ToastViewport />
+      <ToastViewport label={t('common.notificationsRegion', { hotkey: '{hotkey}' })} />
     </>
   );
 }
 
 /** Visit-scoped notifications and their toast host; children never re-render for a notification. */
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [store] = useState(createNotificationStore);
   return (
     <Context.Provider value={store}>
-      <ToastProvider>
+      {/* The label prefixes every announcement ("Powiadomienie …"), so it is translated. */}
+      <ToastProvider label={t('common.notification')}>
         {children}
         <NotificationHost store={store} />
       </ToastProvider>

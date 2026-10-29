@@ -38,19 +38,19 @@ git:
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `git.enabled`                   | Required boolean if `git` exists; absent `git` disables managed new-worktree creation                                                                                                                                              |
 | `git.worktrees.baseRef`         | Default `HEAD` at **Project Home**; accepted overrides also include local branches, full commit IDs and supported tags                                                                                                             |
-| `git.worktrees.branchPattern`   | Default `feature/{slug}`; supports `{slug}` and an optional `{shortId}` (each at most once, at least one required)                                                                                                                 |
+| `git.worktrees.branchPattern`   | Default `feature/{key}-{slug}`; supports `{slug}`, `{key}` (the Specification key, `nevo-12`) and `{shortId}` (each at most once, at least one required)                                                                           |
 | `git.integrationTargetBranch`   | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out                                                                                                    |
 | `git.commits.protectedBranches` | Optional list of branch patterns on which the Engine never commits (default: none). See [Engine commits and protected branches](#engine-commits-and-protected-branches)                                                            |
 | `git.commits.allowedBranches`   | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch)                                                                                                   |
 | `git.commits.auto.documents`    | Optional boolean (default `false`). `true`: the Engine commits document edits by itself; otherwise they are saved and recorded as uncommitted until a manual commit. See [Auto-commit per capability](#auto-commit-per-capability) |
 
 `nevo-specflow init` asks for the pattern right after the integration target: presets
-`feature/{slug}` (default, recommended), `feature/{slug}-{shortId}`, `spec/{slug}-{shortId}` or a
+`feature/{key}-{slug}` (default, recommended: the Specification key is part of the branch), `feature/{slug}-{shortId}`, `spec/{slug}-{shortId}` or a
 custom text validated by the Engine's own pattern validator. `{shortId}` is optional; without it
 a taken branch is a normal conflict (`BRANCH_ALREADY_EXISTS` at planning, `CREATE_CONFLICT` for
 overlapping reservations) and an existing branch is never overwritten. The effective pattern is
-returned as `branchPattern` by create-options, so the UI previews exactly `feature/<slug>` unless
-the pattern contains `{shortId}`.
+returned as `branchPattern` by create-options. The key of a new Specification is allocated only at the
+reservation, so a client preview cannot know its number before the Create runs.
 
 The workstation-local config cannot override committed `git` policy, with two exceptions: the
 machine-specific worktree folder and `git.commits.auto` (see below).

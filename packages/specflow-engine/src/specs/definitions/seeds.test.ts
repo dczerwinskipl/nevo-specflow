@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import goldenFixtures from '../archetypes/fixtures/overview-golden.json';
+import { toArchetypeCatalogue } from '../archetypes/projection';
 import { renderTemplate, templateValues } from '../archetypes/template-renderer';
 import { createDefaultDefinitionRegistry } from './kinds';
 import { loadDefinitions, type LoadResult } from './loader';
@@ -36,6 +37,24 @@ beforeAll(async () => {
 });
 
 describe('seed files', () => {
+  it('give the shipped document types Design System icons, and the API catalogue carries them', () => {
+    const icons = Object.fromEntries(
+      toArchetypeCatalogue(project).documentTypes.map((type) => [type.id, type.icon]),
+    );
+    // The owner's icons; the Engine does not check the registry (the UI falls back). `note` has none.
+    expect(icons).toEqual({
+      architecture: 'network',
+      backend: 'server',
+      behaviour: 'list-ordered',
+      decisions: 'file-check',
+      note: undefined,
+      overview: 'book-open',
+      research: 'file-search',
+      'user-story': 'book-user',
+      ux: 'panels-top-left',
+    });
+  });
+
   it('load without a single problem', () => {
     expect(loaded.problems).toEqual([]);
     expect(project.catalogue.documentTypes).toHaveLength(9);
@@ -67,7 +86,7 @@ describe('seed files', () => {
   it('pin the revision of the shipped catalogue', () => {
     // Recompute (and re-pin) only when the shipped definitions change on purpose.
     expect(project.catalogue.revision).toBe(
-      '528e58fe38ca9ee305c80f0131a9ad02473cbc99edb7bd325caec7115dfcdbfe',
+      '900fd261f4bb33c4f816e81d8c002baad92c2b85429d6f2bfe2c24ac2bdfe6e4',
     );
   });
 });

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpClientError } from '@nevo/http-client';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode, createRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,16 +20,13 @@ import { DocumentTabsProvider } from '../tabs/DocumentTabsProvider';
 import { documentHeaderModel } from './documentHeaderModel';
 import { DocumentRouteGuard } from './DocumentRouteGuard';
 
+/** Every save carries a fresh `operationId` (idempotency key). */
+const anyOperationId: unknown = expect.any(String);
+
 const SPEC = 'spec';
 
-function record(id: string, content: string, revision: string): SpecificationDocumentResponse {
-  return {
-    id,
-    title: id,
-    filename: `${id}.md`,
-    content,
-    revision,
-  };
+function record(id: string, content: string, revision: string): DocumentContent {
+  return documentContentFixture({ id, title: id, path: `${id}.md`, content, revision });
 }
 
 interface Deferred<T> {
@@ -66,15 +64,15 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
   for (const doc of Object.values(docs))
     queryClient.setQueryData(documentKeys.detail(SPEC, doc.id), doc);
   const calls: SaveCall[] = [];
-  const pendingSaves: Deferred<{ revision: string }>[] = [];
+  const pendingSaves: Deferred<{ document: { revision: string } }>[] = [];
   const save = vi.fn((...args: SaveCall) => {
     calls.push(args);
-    const next = deferred<{ revision: string }>();
+    const next = deferred<{ document: { revision: string } }>();
     pendingSaves.push(next);
     return next.promise;
   });
   const services = createSpecFlowAppServices({
-    documentsApi: { save } as unknown as DocumentsApi,
+    demoDocumentsApi: { save } as unknown as DocumentsApi,
   });
   const store = createDocumentDraftStore();
   const controls: Controls = { session: null, leave: createRef() };
@@ -149,7 +147,7 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
   const open = (id: 'a' | 'b') => fireEvent.click(screen.getByText(`open-${id}`));
   const draftOf = (id: 'a' | 'b') => store.get(SPEC, id);
   const cached = (id: 'a' | 'b') =>
-    queryClient.getQueryData<SpecificationDocumentResponse>(documentKeys.detail(SPEC, id));
+    queryClient.getQueryData<DocumentContent>(documentKeys.detail(SPEC, id));
   return {
     save,
     calls,
@@ -174,7 +172,9 @@ describe('document save identity', () => {
     t.edit();
     t.type('A1');
     await t.clickSave();
-    expect(t.calls).toEqual([[SPEC, 'a', { content: 'A1', expectedRevision: 'a1' }]]);
+    expect(t.calls).toEqual([
+      [SPEC, 'a', { operationId: anyOperationId, content: 'A1', expectedRevision: 'a1' }],
+    ]);
 
     t.open('b');
     t.edit();
@@ -182,7 +182,7 @@ describe('document save identity', () => {
     expect(screen.getByTestId('content').textContent).toBe('B1');
     expect(screen.getByTestId('saving').textContent).toBe('false');
 
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
 
     expect(screen.getByTestId('content').textContent).toBe('B1');
     expect(t.draftOf('b')).toMatchObject({ content: 'B1', baseline: 'B0', revision: 'b1' });
@@ -203,7 +203,7 @@ describe('document save identity', () => {
     fireEvent.click(await screen.findByText('Discard changes'));
     await waitFor(() => expect(t.draftOf('b')).toMatchObject({ content: 'B0' }));
 
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
 
     expect(t.draftOf('b')).toMatchObject({ content: 'B0', baseline: 'B0', revision: 'b1' });
     expect(t.cached('b')).toMatchObject({ content: 'B0', revision: 'b1' });
@@ -216,7 +216,7 @@ describe('document save identity', () => {
     t.type('A1');
     await t.clickSave();
     t.type('A2');
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
 
     expect(t.draftOf('a')).toMatchObject({ content: 'A2', baseline: 'A1', revision: 'a2' });
     expect(t.controls.session!.dirty).toBe(true);
@@ -232,7 +232,7 @@ describe('document save identity', () => {
     t.edit();
     t.type('A1');
     await t.clickSave();
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     expect(t.cached('a')).toMatchObject({ title: 'Cached title', content: 'A1', revision: 'a2' });
   });
 });
@@ -248,7 +248,7 @@ describe('one save owner', () => {
     });
     expect(t.save).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('saving').textContent).toBe('true');
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     expect(screen.getByTestId('saving').textContent).toBe('false');
     expect(t.save).toHaveBeenCalledTimes(1);
   });
@@ -267,7 +267,7 @@ describe('one save owner', () => {
       fireEvent.click(dialogSave);
     });
     expect(t.save).toHaveBeenCalledTimes(1);
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     await expect(departure).resolves.toBe(true);
     expect(t.draftOf('a')).toMatchObject({ baseline: 'A1', revision: 'a2' });
   });
@@ -312,7 +312,7 @@ describe('one save owner', () => {
       void t.controls.session!.save();
     });
     expect(t.save).toHaveBeenCalledTimes(1);
-    await t.settle(() => t.pendingSaves[0]!.resolve({ revision: 'a2' }));
+    await t.settle(() => t.pendingSaves[0]!.resolve({ document: { revision: 'a2' } }));
     expect(t.draftOf('a')).toMatchObject({ content: 'A1', baseline: 'A1', revision: 'a2' });
     expect(t.save).toHaveBeenCalledTimes(1);
   });
@@ -342,8 +342,12 @@ describe('save failure and retry', () => {
 
     await t.clickSave();
     expect(screen.getByTestId('error').textContent).toBe('none');
-    expect(t.calls[1]).toEqual([SPEC, 'a', { content: 'A1', expectedRevision: 'a1' }]);
-    await t.settle(() => t.pendingSaves[1]!.resolve({ revision: 'a2' }));
+    expect(t.calls[1]).toEqual([
+      SPEC,
+      'a',
+      { operationId: anyOperationId, content: 'A1', expectedRevision: 'a1' },
+    ]);
+    await t.settle(() => t.pendingSaves[1]!.resolve({ document: { revision: 'a2' } }));
     expect(t.draftOf('a')).toMatchObject({ baseline: 'A1', revision: 'a2' });
     expect(t.save).toHaveBeenCalledTimes(2);
   });

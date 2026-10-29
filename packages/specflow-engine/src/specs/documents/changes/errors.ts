@@ -20,6 +20,7 @@ export const DOCUMENT_CHANGE_CAUSES = [
   'not-editable',
   'too-large',
   'operation-invalid',
+  'case-only-rename',
   'limit-exceeded',
   'folder-expansion-limit',
   'operation-conflict',
@@ -85,6 +86,7 @@ export const DOCUMENT_CHANGE_ERROR_MAP = {
   'not-editable': { code: 'DOCUMENT_NOT_EDITABLE', reason: 'not-editable' },
   'too-large': { code: 'DOCUMENT_TOO_LARGE' },
   'operation-invalid': { code: 'DOCUMENT_OPERATION_INVALID' },
+  'case-only-rename': { code: 'DOCUMENT_OPERATION_INVALID', detail: 'case-only-rename' },
   'limit-exceeded': { code: 'DOCUMENT_OPERATION_INVALID', detail: 'limit-exceeded' },
   'folder-expansion-limit': {
     code: 'DOCUMENT_OPERATION_INVALID',
@@ -125,6 +127,10 @@ export const DOCUMENT_CHANGE_ERROR_MAP = {
   'close-commit-uncommitted': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'commit-uncommitted' },
   'uncommitted-limit': { code: 'DOCUMENT_UNCOMMITTED_LIMIT' },
 } as const satisfies Record<DocumentChangeCause, DocumentChangeErrorMapping>;
+
+/** The message of `case-only-rename`, the same from the planner and from the file-system check. */
+export const CASE_ONLY_RENAME_MESSAGE =
+  'Renaming only the letter case is not supported on this file system.';
 
 /** Extra `details` a caller adds to the mapped ones. */
 export interface DocumentChangeErrorExtras {

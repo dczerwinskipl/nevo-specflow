@@ -1,11 +1,15 @@
 import type { EngineCommitRequest } from '../../../version-control/commits/port';
 import { cutIdsAtBoundaries } from '../../../version-control/commits/document-change';
 import type { DocumentBatchRecord } from '../changes/journal';
+import type { DocumentChangePlan } from '../changes/plan/model';
+import { documentCommitMessage } from './commit-summary';
 
 /** What the commit of a batch is made of: only the operations that still hold it, in sequence order. */
 export interface BatchCommitMember {
   readonly operationId: string;
   readonly action: string;
+  /** The operation's plan, which the message is worded from; absent when it could not be read. */
+  readonly plan?: DocumentChangePlan;
 }
 
 /**
@@ -34,7 +38,10 @@ export function batchTrailers(
   };
 }
 
-/** The request the port commits: the effective set, the dropped rest, the pinned branch, the trailers. */
+/**
+ * The request the port commits: the effective set, the dropped rest, the pinned branch, a message that
+ * says what changed (`commit-summary.ts`) and the trailers.
+ */
 export function batchCommitRequest(
   batch: DocumentBatchRecord,
   root: string,
@@ -49,8 +56,7 @@ export function batchCommitRequest(
     droppedPaths: split.dropped,
     operationId: batch.operationId,
     kind: 'document-change',
-    subject: 'spec(documents): ' + batch.slug,
-    body: `${members.length} document operation${members.length === 1 ? '' : 's'}`,
+    ...documentCommitMessage(batch.slug, members, split.effective),
     trailers: batchTrailers(batch, members, split.effective),
     ...(deadlineMs !== undefined ? { deadlineMs } : {}),
   };

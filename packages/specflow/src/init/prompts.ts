@@ -79,7 +79,7 @@ export async function chooseBranchPattern(ui: RuntimeSetupUi): Promise<string> {
   for (let attempt = 1; attempt <= MAX_PATTERN_ATTEMPTS; attempt += 1) {
     const text = (
       await ui.input(
-        'Custom branch pattern ({slug} and optional {shortId})',
+        'Custom branch pattern ({slug}, {key} and optional {shortId})',
         DEFAULT_BRANCH_PATTERN,
       )
     ).trim();

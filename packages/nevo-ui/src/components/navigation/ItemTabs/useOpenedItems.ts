@@ -48,6 +48,12 @@ export interface OpenedItemsState<T extends OpenedItem> {
   requestClose: (id: string) => Promise<boolean>;
   /** Closes everything without asking. */
   closeAll: () => void;
+  /**
+   * Gives an open item a new identity in place (for example after the host renamed its resource):
+   * same position, still active when it was active. Ignored when `id` is not open; when `item.id`
+   * is already open elsewhere, the old entry is dropped instead of duplicating it.
+   */
+  replace: (id: string, item: T) => void;
 }
 
 interface Snapshot<T extends OpenedItem> {
@@ -95,6 +101,16 @@ function closeIn<T extends OpenedItem>(snapshot: Snapshot<T>, id: string): Snaps
   return { ...snapshot, items, activeId };
 }
 
+function replaceIn<T extends OpenedItem>(snapshot: Snapshot<T>, id: string, item: T): Snapshot<T> {
+  const index = snapshot.items.findIndex((candidate) => candidate.id === id);
+  if (index < 0 || id === item.id) return snapshot;
+  const duplicate = snapshot.items.some((candidate) => candidate.id === item.id);
+  const items = duplicate
+    ? snapshot.items.filter((candidate) => candidate.id !== id)
+    : snapshot.items.map((candidate, at) => (at === index ? item : candidate));
+  return { ...snapshot, items, activeId: snapshot.activeId === id ? item.id : snapshot.activeId };
+}
+
 /**
  * Headless state for a set of opened items and the active one. Product-agnostic: it knows ids only.
  * Pair it with `ItemTabs` (items need `id`; display fields are the host's mapping).
@@ -137,6 +153,10 @@ export function useOpenedItems<T extends OpenedItem>({
   const close = useCallback((id: string) => update((snapshot) => closeIn(snapshot, id)), [update]);
   const closeAll = useCallback(
     () => update((snapshot) => ({ ...snapshot, items: [], activeId: null })),
+    [update],
+  );
+  const replace = useCallback(
+    (id: string, item: T) => update((snapshot) => replaceIn(snapshot, id, item)),
     [update],
   );
 
@@ -185,5 +205,6 @@ export function useOpenedItems<T extends OpenedItem>({
     close,
     requestClose,
     closeAll,
+    replace,
   };
 }

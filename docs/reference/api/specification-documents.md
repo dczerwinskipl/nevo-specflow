@@ -33,10 +33,12 @@ owned by [the architecture document](../../architecture/runtime/specification-do
 
 ## Principle: one contract for demo and real
 
-The demo (`/api/demo/...`) and the real backend (`/api/...`) use the **same schemas, re-exported under demo
-names** (the technique already used for `DemoCreateOptionsSchema`). Swapping demo for real changes the path
-prefix and the data source, never a shape. Demo-only data (providers, simulated location, `DEMO_*` codes) stays in
-the demo-only part.
+The demo and the real backend use the **same schemas, re-exported under demo names** (the technique already
+used for `DemoCreateOptionsSchema`). The **reads** (document tree, document content, raw) are served on the real
+routes in both Runtimes: the demo Runtime supplies its data through the same document read-source port. Only the
+D4 **writes**, which the real Runtime does not serve yet, and the demo creation catalogue live under `/api/demo`
+as an emulation with the real shapes. Swapping demo for real changes the data source (and, for the writes, the path
+prefix), never a shape. Demo-only data (providers, simulated location, `DEMO_*` codes) stays in the demo-only part.
 
 ## Endpoints
 
@@ -47,9 +49,9 @@ Authorization uses the existing `SpecCapabilities`: `View` for reads, `Manage` f
 | ------ | ------------------------------------------------------------------------- | ----------------------------------------- | ------------------- | ------------------------------------------------------------ |
 | GET    | `/api/specs/archetypes`                                                   | in `GET /api/demo/specification-creation` | as `create-options` | `ArchetypeCatalogue`                                         |
 | POST   | `/api/specs`                                                              | `/api/demo/specifications`                | Create              | Create (extended request, below)                             |
-| GET    | `/api/specs/:specId/document-tree`                                        | same suffix                               | View                | `DocumentTree`                                               |
-| GET    | `/api/specs/:specId/documents/:documentId`                                | same suffix (demo today: fixtures)        | View                | `DocumentContent` (JSON, text kinds)                         |
-| GET    | `/api/specs/:specId/documents/:documentId/raw`                            | new                                       | View                | Raw bytes with safe headers                                  |
+| GET    | `/api/specs/:specId/document-tree`                                        | the real path (demo read source)          | View                | `DocumentTree`                                               |
+| GET    | `/api/specs/:specId/documents/:documentId`                                | the real path (demo read source)          | View                | `DocumentContent` (JSON, text kinds)                         |
+| GET    | `/api/specs/:specId/documents/:documentId/raw`                            | the real path (demo read source)          | View                | Raw bytes with safe headers                                  |
 | PUT    | `/api/specs/:specId/documents/:documentId`                                | same suffix                               | Manage              | Save text (written at once, commit queued)                   |
 | POST   | `/api/specs/:specId/documents/save`                                       | new                                       | Manage              | Batch save (all-or-nothing preconditions, one commit)        |
 | POST   | `/api/specs/:specId/documents`                                            | same suffix                               | Manage              | Create documents from template or content                    |
@@ -91,7 +93,7 @@ Action        = { available: boolean; reason?: ActionReason; retryAfterMs?: inte
 ## Archetype catalogue and Create request
 
 ```ts
-DocumentTypeInfo = { id; title; description; useWhen; instructions: string; defaultFilename?: string }   // all text mandatory except defaultFilename
+DocumentTypeInfo = { id; title; description; useWhen; instructions: string; defaultFilename?: string; icon?: string }   // all text mandatory except defaultFilename and icon; icon: a Design System icon name for documents of this type in the tree (an unknown name falls back to the default icon in the UI)
 ArchetypeCatalogue = {
   revision: string                     // sha256 of the VALID catalogue content (problems excluded); changes when it changes
   defaultArchetypeId?: string          // absent in the real backend (the UI chooses); optional in demo
@@ -150,7 +152,15 @@ description: Operational steps for running or recovering a system.
 useWhen: The change adds something that operators must run or recover.
 instructions: List preconditions, numbered steps and the expected result of each step.
 defaultFilename: runbook.md
+icon: list-ordered # optional
 ```
+
+`icon` (optional) names an icon of the Design System registry (`nevo-ui`), which the UI owns. The
+Engine checks only its shape: kebab-case (`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`), at most 64 characters. A
+name the registry does not know is not an error; the UI shows its default icon. The shipped types use
+`overview` `book-open`, `architecture` `network`, `backend` `server`, `behaviour` `list-ordered`,
+`decisions` `file-check`, `research` `file-search`, `user-story` `book-user`, `ux` `panels-top-left`; `note` has
+none.
 
 ```yaml
 # .nevo/definitions/specification-archetype/operations-change.yaml
@@ -584,7 +594,7 @@ of the Create errors; `details` is new and optional: the shared error schema is 
 | `DOCUMENT_ALREADY_CLASSIFIED`      | 409  | Classify of a registered document                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `DOCUMENT_NOT_EDITABLE`            | 415  | Save to a kind/extension that is not editable                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `DOCUMENT_TOO_LARGE`               | 413  | Above the JSON, raw or save limits                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `DOCUMENT_OPERATION_INVALID`       | 400  | Malformed combination of fields, an added document type that cannot be registered, or a type that is not the type of the template                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `DOCUMENT_OPERATION_INVALID`       | 400  | Malformed combination of fields, an added document type that cannot be registered, or a type that is not the type of the template. `details.cause`: `case-only-rename` (a rename or move that only changes the letter case of a path, refused wherever the file system ignores case, detected by device and inode before anything is written; case-sensitive systems accept it), `limit-exceeded`, `folder-expansion-limit`                                                                                                                                                                                                                                                                              |
 | `DOCUMENT_OPERATION_CONFLICT`      | 409  | `operationId` reused with a different body                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `DOCUMENT_RECOVERY_REQUIRED`       | 503  | The WRITE phase of an operation is ambiguous (files may be partly written, not queued); only on replay of that `operationId`. `details.cause: 'write-conflict'` is a foreign edit found while part of the write was already in place (`details.conflicts` names the documents; the client keeps its draft). Operator recovery: `specs documents recover`. A commit that fails after the acknowledgement is never an error: it is `commit.state: failed`                                                                                                                                                                                                                                                  |
 | `SPEC_MANIFEST_DIRTY`              | 409  | Registry change requested while `specification.yaml` has uncommitted changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -640,7 +650,7 @@ the demo endpoints.
 5. _demo_ Create request: `addedDocuments[].title` removed (title is derived), `addedDocuments[].type` optional;
    (Create already uses `operationId`.) Separately, the demo's document endpoints (save, tree operations, add,
    folders) rename `requestId` to `operationId`.
-6. _demo_ Save: result gains `operationId`, `committed`, optional `commit`; body gains `operationId`.
+6. _demo_ Save: body gains `operationId`; the result is `SaveResult` (`operationId`, the written `document`, `commit`).
 7. Document read: `SpecificationDocumentResponse.filename` -> `path`; new fields `classification`, `type`, `kind`,
    `mediaType`, `size`, `editable`; `content` is absent for `image` and `binary`; the UI chooses the viewer from
    `kind` and loads `raw` for images (`<img src>`) and downloads.

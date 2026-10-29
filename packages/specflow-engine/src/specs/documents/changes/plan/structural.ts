@@ -11,8 +11,9 @@ import {
 } from '../../../document-rules';
 import { deriveFolders, foldPathKey, parentFolder } from '../../../document-rules/document-paths';
 import { folderContainsProtectedDocument } from '../../../document-rules/protection';
+import { samePhysicalPath } from '../../../document-rules/verified-file';
 import type { ManifestDocument } from '../../../model';
-import { documentChangeError } from '../errors';
+import { CASE_ONLY_RENAME_MESSAGE, documentChangeError } from '../errors';
 import {
   assertWritable,
   collides,
@@ -80,6 +81,20 @@ function destinationOf(request: PathOperation, current: string): string | undefi
   }
 }
 
+/**
+ * A rename or move that only changes the letter case of the path names the SAME file (or folder) on a
+ * file system that ignores case: the plan writes the new path and then removes the old one, which
+ * would remove the file. This is the fast path without I/O, for Windows; the authoritative check asks
+ * the file system itself before anything is reserved or written (`write/physical-aliases.ts`), so any
+ * other case-insensitive volume is refused there with the same error, and a case-sensitive one renames
+ * it like any other path.
+ */
+function assertNotCaseOnlyRename(from: string, to: string): void {
+  if (from !== to && samePhysicalPath(from, to)) {
+    throw documentChangeError('case-only-rename', CASE_ONLY_RENAME_MESSAGE);
+  }
+}
+
 function planDocumentOperation(
   snapshot: PlanningSnapshot,
   request: PathOperation,
@@ -118,6 +133,7 @@ function planDocumentOperation(
   if (destination === path) {
     throw documentChangeError('operation-invalid', 'The document is already there.');
   }
+  assertNotCaseOnlyRename(path, destination);
   if (!validateDocumentPath(destination).ok) {
     throw documentChangeError('path-invalid', 'The target path is not allowed.');
   }
@@ -245,6 +261,7 @@ function planFolderOperation(
     if (destination === folder) {
       throw documentChangeError('operation-invalid', 'The folder is already there.');
     }
+    assertNotCaseOnlyRename(folder, destination);
     if (foldPathKey(destination).startsWith(foldPathKey(folder) + '/')) {
       throw documentChangeError('operation-invalid', 'A folder cannot move into itself.');
     }
@@ -259,6 +276,7 @@ function planFolderOperation(
   }
 
   const draft = newDraft();
+  if (destination === undefined) draft.removedFolder = folder;
   const rewrite = (path: string): string => (destination ?? '') + path.slice(folder.length);
   const registry: ManifestDocument[] = [];
   const registered = new Map(snapshot.manifest.documents.map((entry) => [entry.path, entry]));

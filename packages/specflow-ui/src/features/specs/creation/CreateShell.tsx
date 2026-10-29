@@ -1,27 +1,66 @@
-import type { ReactNode } from 'react';
+import type { FormHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppContent, AppContentContainer, AppWorkspace, AppWorkspaceBody } from '@nevo/ui';
+import {
+  AppContent,
+  AppContentContainer,
+  AppWorkspace,
+  AppWorkspaceBody,
+  Separator,
+} from '@nevo/ui';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
 
-/** The Primary pane every Create state is shown in (loading, error and the form alike). */
+/**
+ * The Primary pane every Create state is shown in (loading, error, the form and its progress page
+ * alike). All of them share one content width (`content-form`, centred by the bounded
+ * workspace), so submitting the form never makes the page jump.
+ */
 export function CreateShell({
   specId,
   title,
   containerClassName,
-  width = 'standard',
+  form,
+  footer,
   children,
 }: {
   specId?: string;
   /** Names the page in the header and the breadcrumb; the default is the Create form's. */
   title?: string;
   containerClassName?: string;
-  /** `narrow` is the readable column of a focused single-task page (the progress page). */
-  width?: 'standard' | 'narrow';
+  /**
+   * Makes the pane one form: the scrolling content and the footer are both inside it, so the
+   * footer's submit button submits it (also with Enter in a field).
+   */
+  form?: Omit<FormHTMLAttributes<HTMLFormElement>, 'children' | 'className'>;
+  /**
+   * Always visible at the bottom of the pane (the primary action and its hint); only the content
+   * above it scrolls.
+   */
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
+  const body = (
+    <>
+      <AppWorkspaceBody scroll="area" padding="none">
+        <div className="p-4 sm:p-6">
+          <AppContentContainer className={containerClassName}>{children}</AppContentContainer>
+        </div>
+      </AppWorkspaceBody>
+      {footer ? (
+        <>
+          {/* The same divider and shared shell footer height as the navigation's account row, so
+              the two bars line up across the shell; taller only when the hint and the button stack
+              on a narrow screen. */}
+          <Separator />
+          <div className="flex min-h-shell-footer shrink-0 items-center px-4 py-shell-footer-padding sm:px-6">
+            <AppContentContainer>{footer}</AppContentContainer>
+          </div>
+        </>
+      ) : null}
+    </>
+  );
   return (
     <AppWorkspace fit="bounded" labels={workspaceLabels} scroll="content">
       <AppWorkspace.Primary
@@ -31,20 +70,14 @@ export function CreateShell({
           specId,
         })}
       >
-        <AppContent
-          className={
-            width === 'narrow'
-              ? 'mx-auto w-content-narrow max-w-full'
-              : 'w-content-standard max-w-full'
-          }
-        >
-          <AppWorkspaceBody scroll="area" padding="none">
-            <div className="p-4 sm:p-6">
-              <AppContentContainer size={width} className={containerClassName}>
-                {children}
-              </AppContentContainer>
-            </div>
-          </AppWorkspaceBody>
+        <AppContent className="mx-auto w-content-form max-w-full">
+          {form ? (
+            <form {...form} className="flex min-h-0 flex-1 flex-col">
+              {body}
+            </form>
+          ) : (
+            body
+          )}
         </AppContent>
       </AppWorkspace.Primary>
     </AppWorkspace>

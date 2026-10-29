@@ -33,8 +33,9 @@ export interface EngineCommitRequest {
   readonly subject: string;
   /**
    * Optional description. A single line (e.g. the Specification title) for every kind but
-   * `manual-commit`, whose body is the person's text: several lines, at most 2000 characters, cleaned
-   * and with every line that looks like an Engine trailer quoted (see `commit-message.ts`).
+   * `manual-commit`, whose body is the person's text, and `document-change`, whose body lists the
+   * changes: several lines, at most 2000 characters, cleaned and with every line that looks like an
+   * Engine trailer quoted (see `commit-message.ts`).
    */
   readonly body?: string;
   /** Additional `Nevo-*` trailers (`Nevo-Operation` and `Nevo-Kind` are added by the port). */

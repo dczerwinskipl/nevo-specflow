@@ -15,7 +15,7 @@ import {
   readBatchPaths,
   readDocumentBatch,
 } from './batch-store';
-import { batchCommitRequest } from './commit-request';
+import { batchCommitRequest, type BatchCommitMember } from './commit-request';
 import {
   lookUpBatchCommit,
   pathsRefusedWith,
@@ -30,6 +30,8 @@ import {
 } from './failure';
 import { inspectBatch } from './inspect';
 import type { QueueRuntime } from './runtime';
+import { QueueInterrupted } from './types';
+import { planOfJournal } from './uncommitted';
 import { commitHoldsPaths } from './verify';
 
 /** How one attempt to commit a claimed batch ended. */
@@ -143,17 +145,12 @@ export async function attemptCommit(
       // A->B->A, or already in HEAD: nothing to commit and no Git mutation.
       return result({ kind: 'nothing' });
     }
+    const members = await Promise.all(held.map((journal) => commitMember(rt, journal)));
     await rt.hooks.beforeCommit?.(batch);
     // Recorded before Git runs: from here on a commit may exist.
     batch = await updateOwnRecord(rt, batch, () => ({ commitStartedAt: rt.nowIso() }));
     const committed = await commits.commit(
-      batchCommitRequest(
-        batch,
-        root,
-        held.map((journal) => ({ operationId: journal.operationId, action: journal.action })),
-        split,
-        rt.options.commitDeadlineMs,
-      ),
+      batchCommitRequest(batch, root, members, split, rt.options.commitDeadlineMs),
     );
     await rt.hooks.afterCommit?.(batch, committed.sha);
     // A foreign write between the guard and the add is inside the commit: it is not the recorded content.
@@ -167,6 +164,23 @@ export async function attemptCommit(
     const classified = classifyCommitError(error);
     if (classified === undefined) throw error;
     return result(await refined(rt, batch, classified));
+  }
+}
+
+/**
+ * A member of the commit with its plan, which only words the message: a plan that cannot be read
+ * (the claim already failed such an operation alone) leaves the member with its action.
+ */
+async function commitMember(
+  rt: QueueRuntime,
+  journal: DocumentChangeJournal,
+): Promise<BatchCommitMember> {
+  const member = { operationId: journal.operationId, action: journal.action };
+  try {
+    return { ...member, plan: await planOfJournal(rt.context, journal) };
+  } catch (error) {
+    if (error instanceof QueueInterrupted) throw error;
+    return member;
   }
 }
 

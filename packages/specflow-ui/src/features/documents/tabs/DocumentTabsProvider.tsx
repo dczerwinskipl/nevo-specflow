@@ -1,3 +1,4 @@
+import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
 import {
   createContext,
   useCallback,
@@ -14,10 +15,11 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
 import { useOpenedItems, type OpenedItem } from '@nevo/ui';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
+import { documentGuidance, documentReadOnlyReason } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { DocumentEditorProvider, useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
 import { isDraftDirty } from '../editor/documentDraftStore';
@@ -28,7 +30,7 @@ import { documentTabs, neighbourOf, survivorOf, type DocumentTab } from './docum
 /** The record query of the document on screen: the one place that loads it. */
 export interface DocumentRecordState {
   documentId: string;
-  query: UseQueryResult<SpecificationDocumentResponse>;
+  query: UseQueryResult<DocumentContent>;
 }
 
 const RecordContext = createContext<DocumentRecordState | null>(null);
@@ -49,7 +51,8 @@ export interface DocumentTabs {
   activeId: string | null;
   isOpen: (id: string) => boolean;
   /** Opens a new tab (history push) or switches to the open one (history replace). */
-  show: (id: string) => Promise<void>;
+  /** Activates the document's tab (opening it); `replace` keeps the history entry (an automatic open). */
+  show: (id: string, options?: { replace?: boolean }) => Promise<void>;
   /**
    * Closes one tab after asking about its unsaved changes. Resolves true only when it closed;
    * a failure of the question is a refusal and `closeFailed` tells the user.
@@ -59,6 +62,11 @@ export interface DocumentTabs {
   closeAll: () => Promise<boolean>;
   /** Closes the tabs of deleted documents and drops their drafts; the user already confirmed. */
   removeTabs: (ids: readonly string[]) => Promise<void>;
+  /**
+   * A document got a new id (classified, or an unclassified file renamed or moved): its tab keeps
+   * its place and, when it is the active one, the route is replaced with the new id.
+   */
+  follow: (from: string, to: string) => Promise<void>;
   closeFailed: boolean;
   /** A close was refused because another tab's question was still open. */
   closeBusy: boolean;
@@ -87,7 +95,8 @@ export function DocumentTabsProvider({
   documentId?: string;
   children: ReactNode;
 }) {
-  const { documentApi, documentsApi } = useAppServices();
+  const { documentApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
@@ -95,27 +104,40 @@ export function DocumentTabsProvider({
   const query = useQuery({
     queryKey: documentKeys.detail(specId, documentId ?? ''),
     queryFn: ({ signal }) => documentApi.getDocument(specId, documentId!, signal),
-    enabled: Boolean(documentId),
+    // A dangling entry has no file to read: its tab shows the missing state from the tree.
+    // The tree settles first, so a dangling id is never requested; a tree that failed to load does
+    // not hold the document back (it opens, the tree shows its own failure and Retry).
+    enabled:
+      Boolean(documentId) &&
+      !tree.isPending &&
+      !tree.data?.dangling.some((entry) => entry.id === documentId),
   });
   const record = useMemo<DocumentRecordState | null>(
     () => (documentId ? { documentId, query } : null),
     [documentId, query],
   );
-  const document = useMemo(
+  const document = query.data && documentId ? query.data : undefined;
+  const catalogue = useDocumentCatalogue();
+  // Memoised on what it reads, so the editor session is not rebuilt on every render.
+  const archetype = tree.data?.archetype;
+  const classification = document?.classification;
+  const documentType = document?.type;
+  const guidance = useMemo(
     () =>
-      query.data && documentId
-        ? {
-            ...query.data,
-            filename:
-              query.data.filename ??
-              tree.data?.documents.find((doc) => doc.id === documentId)?.path,
-          }
-        : undefined,
-    [query.data, tree.data, documentId],
+      documentGuidance(catalogue.data, archetype && { archetype }, {
+        classification,
+        type: documentType,
+      }),
+    [catalogue.data, archetype, classification, documentType],
   );
   return (
     <RecordContext.Provider value={record}>
-      <DocumentEditorProvider specId={specId} document={document}>
+      <DocumentEditorProvider
+        specId={specId}
+        document={document}
+        readOnlyReason={document ? documentReadOnlyReason(tree.data, document) : undefined}
+        guidance={document ? guidance : undefined}
+      >
         <TabsHost specId={specId} documentId={documentId} tree={tree.data}>
           {children}
         </TabsHost>
@@ -132,7 +154,7 @@ function TabsHost({
 }: {
   specId: string;
   documentId?: string;
-  tree: DemoDocumentTree | undefined;
+  tree: DocumentTree | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -148,7 +170,7 @@ function TabsHost({
   // Every path the tree has shown, so a tab keeps its name when its document disappears. Adjusted
   // while rendering (the tree is the source), not synchronised by an effect.
   const [known, setKnown] = useState<{
-    tree?: DemoDocumentTree;
+    tree?: DocumentTree;
     paths: Readonly<Record<string, string>>;
   }>({ paths: {} });
   if (tree && known.tree !== tree)
@@ -168,7 +190,7 @@ function TabsHost({
     scope: specId,
     canClose: (id) => canCloseRef.current(id),
   });
-  const { open: ensureOpen, close: closeNow, closeAll: closeEvery } = opened;
+  const { open: ensureOpen, close: closeNow, closeAll: closeEvery, replace: replaceItem } = opened;
   const ids = useMemo(() => opened.items.map((item) => item.id), [opened.items]);
   // Event-time reads: closing outlives the render that started it.
   const latest = useRef({ ids, documentId, requestClose: opened.requestClose });
@@ -214,10 +236,10 @@ function TabsHost({
   );
 
   const show = useCallback(
-    async (id: string) => {
+    async (id: string, options?: { replace?: boolean }) => {
       const { ids: openIds, documentId: shown } = latest.current;
       if (id === shown) return;
-      await goTo(id, openIds.includes(id));
+      await goTo(id, options?.replace === true || openIds.includes(id));
     },
     [goTo],
   );
@@ -313,6 +335,16 @@ function TabsHost({
     [store, specId, goTo, closeNow],
   );
 
+  const follow = useCallback(
+    async (from: string, to: string) => {
+      const { ids: openIds, documentId: shown } = latest.current;
+      if (!openIds.includes(from)) return;
+      replaceItem(from, { id: to });
+      if (shown === from) await goTo(to, true);
+    },
+    [replaceItem, goTo],
+  );
+
   const recordGone = isHttpClientError(record?.query.error) && record.query.error.status === 404;
   const tabs = useMemo(
     () =>
@@ -335,6 +367,7 @@ function TabsHost({
       requestClose,
       closeAll,
       removeTabs,
+      follow,
       closeFailed,
       closeBusy,
       dismissCloseFailed: () => {
@@ -351,6 +384,7 @@ function TabsHost({
       requestClose,
       closeAll,
       removeTabs,
+      follow,
       closeFailed,
       closeBusy,
     ],

@@ -1,13 +1,13 @@
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../i18n/message';
 
 const hasControlCharacter = (value: string) =>
   [...value].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
 /** Device names the Runtime refuses as a path segment (with or without an extension). */
 const isReservedName = (name: string) => /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name);
+/** A file to create or import; its display title is derived by the Engine (first H1, else stem). */
 export interface PlannedDocument {
   path: string;
-  title?: string;
   content: string;
 }
 export function validEntryName(name: string, document = false) {
@@ -68,20 +68,6 @@ export function pathCollides(
     )
   );
 }
-/** Maps a Runtime reason code to the explanation shown to the reader; the server text is never shown. */
-export function documentActionReason(reason?: string): Message | undefined {
-  switch (reason) {
-    case 'demo_document_required':
-      return message('documents.tree.reason.required');
-    case 'demo_document_operations_unavailable':
-      return message('documents.tree.reason.operationsUnavailable');
-    case 'root_protected':
-      return message('documents.tree.reason.rootProtected');
-    default:
-      return reason ? message('documents.tree.reason.unavailable') : undefined;
-  }
-}
-
 const collator = new Intl.Collator('pl', { numeric: true, sensitivity: 'base' });
 export const compareNames = (a: string, b: string) => collator.compare(a, b);
 const baseName = (path: string) => path.split('/').at(-1) ?? path;
@@ -105,18 +91,28 @@ export function orderTreeLevel<F extends { path: string }, D extends { path: str
 
 export type EntryKind = 'document' | 'folder';
 /** Client-side name check (on the trimmed name); `undefined` means acceptable. */
-export function entryNameError(rawName: string, kind: EntryKind): Message | undefined {
+export function entryNameError(
+  rawName: string,
+  kind: EntryKind,
+  /** Extensions a new text document may have (`capabilities.formats`). */
+  formats: readonly string[] = ['md', 'txt'],
+): Message | undefined {
   const name = rawName.trim();
   if (!name) return undefined;
   if (/[\\/:*?"<>|]/.test(name)) return message('documents.tree.nameError.characters');
   if (hasControlCharacter(name)) return message('documents.tree.nameError.control');
   if (name.length > 200) return message('documents.tree.nameError.tooLong');
-  if (name === '.' || name === '..') return message('documents.tree.nameError.other');
+  if (name === '.' || name === '..') return message('documents.tree.nameError.dotsOnly');
   if (name.startsWith('.')) return message('documents.tree.nameError.dot');
   if (isReservedName(name)) return message('documents.tree.nameError.reserved');
   if (/[. ]$/.test(name)) return message('documents.tree.nameError.trailing');
-  if (kind === 'document' && name.includes('.') && !/.\.(md|txt)$/i.test(name))
-    return message('documents.tree.nameError.format');
+  if (kind === 'document' && name.includes('.')) {
+    const extension = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
+    if (name.lastIndexOf('.') === 0 || !formats.map((f) => f.toLowerCase()).includes(extension))
+      return message('documents.tree.nameError.format', {
+        formats: formats.map((format) => `.${format}`).join(', '),
+      });
+  }
   return undefined;
 }
 
@@ -129,8 +125,47 @@ export function finalEntryName(rawName: string, kind: EntryKind, currentName?: s
 
 const containerOf = (path: string) => path.substring(0, path.lastIndexOf('/')).toLowerCase();
 
+/** The minimal shape the index groups: folders and rows with a path (a row may set its level). */
+export interface IndexableTree {
+  folders: readonly { path: string }[];
+  /** `placement`: the folder the row is shown in when it is not its path's folder. */
+  documents: readonly { path: string; placement?: string }[];
+}
+
+/** A row of the tree: a document on disk, or a registry entry whose file is missing (dangling). */
+export type TreeRowDocument =
+  | (DocumentTree['documents'][number] & { dangling?: undefined; placement?: undefined })
+  | (DocumentTree['dangling'][number] & { dangling: true; placement?: string });
+
+export interface TreeRows {
+  folders: DocumentTree['folders'];
+  documents: TreeRowDocument[];
+}
+
+/**
+ * The rows the explorer draws: the documents, and each dangling entry at its registered path (in
+ * the main folder when its folder no longer exists). State never reorders a level.
+ */
+export function treeRows(tree: Pick<DocumentTree, 'folders' | 'documents' | 'dangling'>): TreeRows {
+  const folders = new Set(tree.folders.map((folder) => folder.path.toLowerCase()));
+  return {
+    folders: tree.folders,
+    documents: [
+      ...tree.documents,
+      ...tree.dangling.map((entry) => {
+        const container = containerOf(entry.path);
+        return {
+          ...entry,
+          dangling: true as const,
+          ...(container && !folders.has(container) ? { placement: '' } : {}),
+        };
+      }),
+    ],
+  };
+}
+
 /** Every level of a tree, grouped once: a lookup never scans the folder and document lists again. */
-export interface DocumentTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 'documents'>> {
+export interface DocumentTreeIndex<Tree extends IndexableTree> {
   /** The level directly inside `parent` (case-insensitive), in presentation order; memoized. */
   level: (
     parent: string,
@@ -141,9 +176,7 @@ export interface DocumentTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders'
  * Groups a tree's folders and documents by container in one pass. Build it once per tree change
  * (the explorer memoizes it) and use it for rendering and for the emptiness checks.
  */
-export function createTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 'documents'>>(
-  tree: Tree,
-): DocumentTreeIndex<Tree> {
+export function createTreeIndex<Tree extends IndexableTree>(tree: Tree): DocumentTreeIndex<Tree> {
   type Folder = Tree['folders'][number];
   type Doc = Tree['documents'][number];
   const groups = new Map<string, { folders: Folder[]; documents: Doc[] }>();
@@ -154,7 +187,8 @@ export function createTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 
   };
   for (const folder of tree.folders)
     if (folder.path.length > 0) group(containerOf(folder.path)).folders.push(folder);
-  for (const doc of tree.documents) group(containerOf(doc.path)).documents.push(doc);
+  for (const doc of tree.documents)
+    group(doc.placement?.toLowerCase() ?? containerOf(doc.path)).documents.push(doc);
   const levels = new Map<string, ReturnType<DocumentTreeIndex<Tree>['level']>>();
   return {
     level(parent) {
@@ -171,9 +205,24 @@ export function createTreeIndex<Tree extends Pick<DemoDocumentTree, 'folders' | 
 }
 
 /** The folders and documents directly inside `parent` (one-off lookup; render paths use the index). */
-export function treeLevel<Tree extends Pick<DemoDocumentTree, 'folders' | 'documents'>>(
-  tree: Tree,
-  parent: string,
-) {
+export function treeLevel<Tree extends IndexableTree>(tree: Tree, parent: string) {
   return createTreeIndex(tree).level(parent);
+}
+
+type TreeFolder = DocumentTree['folders'][number];
+const noFolderRevision = { available: false, reason: 'root' } as const;
+
+/**
+ * The rename / move / delete policy of a folder row. A folder operation sends the FOLDER revision;
+ * a folder without one (the root, which no operation changes) offers none of them, so the tree
+ * revision is never sent in its place.
+ */
+export function folderActions(folder: TreeFolder): TreeFolder['actions'] {
+  if (folder.revision) return folder.actions;
+  return { rename: noFolderRevision, move: noFolderRevision, delete: noFolderRevision };
+}
+
+/** The revision a folder operation sends as `expectedRevision`; `undefined` when it cannot run. */
+export function folderOperationRevision(tree: DocumentTree, path: string): string | undefined {
+  return tree.folders.find((folder) => folder.path === path)?.revision;
 }

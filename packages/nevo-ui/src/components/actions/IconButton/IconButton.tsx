@@ -12,7 +12,7 @@ import { Icon, type IconGlyph } from '../../foundations/Icon';
 export const iconButtonDefaults = { variant: 'ghost', size: 'md' } as const;
 
 export const iconButtonVariants = tv({
-  base: `${hitAreaClassName} inline-flex shrink-0 cursor-pointer items-center justify-center border border-solid disabled:pointer-events-none disabled:opacity-50 ${fastColorTransitionClassName}`,
+  base: `${hitAreaClassName} inline-flex shrink-0 cursor-pointer items-center justify-center border border-solid disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 ${fastColorTransitionClassName}`,
   variants: {
     variant: {
       ...actionVariantClasses,

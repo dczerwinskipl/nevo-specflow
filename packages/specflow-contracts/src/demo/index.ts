@@ -1,35 +1,30 @@
 import { Type, type Static } from 'typebox';
-import { ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema } from '../specs/create';
+import {
+  ArchetypeCatalogueSchema,
+  CreateDocumentsInputSchema,
+  DocumentContentSchema,
+  DocumentErrorSchema,
+  DocumentOperationInputSchema,
+  DocumentOperationResultSchema,
+  DocumentTreeSchema,
+  RegisteredDocumentIdSchema,
+  SaveInputSchema,
+  SaveResultSchema,
+  UuidSchema,
+} from '../documents';
+import {
+  CreateSpecRequestSchema,
+  CreatedSpecSchema,
+  ExistingSpecTargetSchema,
+  NewSpecWorktreeTargetSchema,
+} from '../specs/create';
 import { CreateOptionsSchema } from '../specs/create-options';
-import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from '../specs/slug';
 const Id = Type.String({ minLength: 1, maxLength: 200, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' });
-const Text = Type.String({ maxLength: 200000 });
 export const DemoLocationSchema = Type.Object({
   kind: Type.Union([Type.Literal('current'), Type.Literal('simulated-worktree')]),
   path: Type.String(),
   branch: Type.String(),
   simulated: Type.Boolean(),
-});
-const Template = Type.Object({
-  id: Id,
-  title: Type.String(),
-  filename: Type.String(),
-  required: Type.Boolean(),
-  content: Text,
-});
-const Archetype = Type.Object({
-  id: Id,
-  version: Type.String(),
-  title: Type.String(),
-  description: Type.String(),
-  documents: Type.Array(Template),
-  workflow: Type.Optional(
-    Type.Object({
-      phases: Type.Array(Type.String()),
-      requiredDocuments: Type.Array(Type.String()),
-      suggestedDocuments: Type.Array(Type.String()),
-    }),
-  ),
 });
 const Model = Type.Object({
   id: Id,
@@ -52,49 +47,27 @@ const Provider = Type.Object({
   reason: Type.Optional(Type.String()),
   models: Type.Array(Model),
 });
-export const DemoCatalogueSchema = Type.Object({
-  revision: Type.String(),
-  demo: Type.Literal(true),
-  project: Type.Object({ id: Id, title: Type.String() }),
-  currentLocation: DemoLocationSchema,
-  archetypes: Type.Array(Archetype),
-  providers: Type.Array(Provider),
-  defaultArchetypeId: Type.Optional(Id),
-});
-export const DemoAddedDocumentSchema = Type.Object(
+/**
+ * The demo archetype catalogue IS the real `ArchetypeCatalogue` (`GET /api/specs/archetypes`),
+ * re-exported under a demo name so the two can never drift.
+ */
+export const DemoArchetypeCatalogueSchema = ArchetypeCatalogueSchema;
+/**
+ * `GET /api/demo/specification-creation`: the real `ArchetypeCatalogue` fields (same property
+ * schemas) plus the demo-only part: `demo`, the project, the simulated location and the providers.
+ * `revision` is the archetype catalogue revision; Create and Session allocation check it.
+ */
+export const DemoCatalogueSchema = Type.Object(
   {
-    path: Type.String({ minLength: 1, maxLength: 500 }),
-    title: Type.Optional(Type.String({ minLength: 1, maxLength: 240 })),
-    content: Text,
+    ...ArchetypeCatalogueSchema.properties,
+    demo: Type.Literal(true),
+    project: Type.Object({ id: Id, title: Type.String() }),
+    currentLocation: DemoLocationSchema,
+    providers: Type.Array(Provider),
   },
   { additionalProperties: false },
 );
-export const DemoDocumentsInputSchema = Type.Object(
-  {
-    requestId: Id,
-    documents: Type.Array(DemoAddedDocumentSchema, { maxItems: 10 }),
-    folders: Type.Optional(
-      Type.Array(Type.String({ minLength: 1, maxLength: 500 }), {
-        maxItems: 100,
-        uniqueItems: true,
-      }),
-    ),
-  },
-  { additionalProperties: false },
-);
-export const DemoDocumentsResultSchema = Type.Object({
-  documentIds: Type.Array(Id),
-  folders: Type.Array(Type.String()),
-});
-export const DemoFolderInputSchema = Type.Object(
-  { requestId: Id, path: Type.String({ minLength: 1, maxLength: 500 }) },
-  { additionalProperties: false },
-);
-export const DemoFolderResultSchema = Type.Object({ folders: Type.Array(Type.String()) });
-const Uuid = Type.String({
-  pattern:
-    '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-});
+const Uuid = UuidSchema;
 /**
  * The demo answers EXACTLY the real create contract: these are the real schemas, re-exported under
  * demo names, so the two can never drift (swapping to the real Engine changes no shape). See
@@ -112,11 +85,14 @@ export const DemoCreateTargetSchema = Type.Union([
 ]);
 /**
  * Create error codes (shape `{ error, code }` as in the real `CreateSpecErrorSchema`, where `error`
- * repeats the code). The first five are the REAL Engine codes with their real HTTP statuses:
+ * repeats the code). The REAL Engine codes keep their real HTTP statuses:
  * `BRANCH_ALREADY_EXISTS` 409, `BASE_REF_NOT_FOUND` 422, `CREATE_CONFLICT` 409,
- * `CREATE_OPERATION_INVALID` 400, `CREATE_RECOVERY_REQUIRED` 503, plus the commit codes
- * `BRANCH_PROTECTED` 422, `COMMIT_BLOCKED` 409 and `COMMIT_FAILED` 503. The Engine reuses
- * `CREATE_OPERATION_INVALID` for an unusable integration target and for bad input alike.
+ * `CREATE_OPERATION_INVALID` 400, `CREATE_RECOVERY_REQUIRED` 503, the commit codes
+ * `BRANCH_PROTECTED` 422, `COMMIT_BLOCKED` 409 and `COMMIT_FAILED` 503, and the archetype admission
+ * codes `CATALOGUE_STALE` 409, `ARCHETYPE_UNKNOWN` 422, `DOCUMENT_PATH_INVALID` 400,
+ * `DOCUMENT_PATH_CONFLICT` 409 and `DOCUMENT_OPERATION_INVALID` 400 (limits, an added document type
+ * that cannot be registered). The Engine reuses `CREATE_OPERATION_INVALID` for an unusable
+ * integration target and for bad input alike.
  * Demo-only additions (no Engine counterpart): `DEMO_WORKSPACE_UNAVAILABLE` (409; the Engine
  * overloads `CREATE_RECOVERY_REQUIRED`/`REGISTRY_CONFLICT` for this) and `DEMO_INVALID_SCENARIO` (400).
  * A 403 answers `{ error: 'forbidden' }` without a code, like the real authorization handler.
@@ -132,6 +108,11 @@ export const DemoCreateErrorCodeSchema = Type.Union([
   Type.Literal('COMMIT_FAILED'),
   /** The project Git policy is invalid: every Create fails closed (503), nothing is created. */
   Type.Literal('GIT_POLICY_INVALID'),
+  Type.Literal('CATALOGUE_STALE'),
+  Type.Literal('ARCHETYPE_UNKNOWN'),
+  Type.Literal('DOCUMENT_PATH_INVALID'),
+  Type.Literal('DOCUMENT_PATH_CONFLICT'),
+  Type.Literal('DOCUMENT_OPERATION_INVALID'),
   Type.Literal('DEMO_WORKSPACE_UNAVAILABLE'),
   Type.Literal('DEMO_INVALID_SCENARIO'),
 ]);
@@ -139,42 +120,27 @@ export const DemoCreateErrorSchema = Type.Object(
   { error: Type.String(), code: DemoCreateErrorCodeSchema },
   { additionalProperties: false },
 );
+/**
+ * The real `CreateSpecRequest` (same property schemas: target, slug, archetype selection, added
+ * documents, folders) with one demo restriction: `operationId` is required, because the demo keys
+ * its idempotent create on it.
+ */
 export const DemoCreateInputSchema = Type.Object(
+  { ...CreateSpecRequestSchema.properties, operationId: Uuid },
+  { additionalProperties: false },
+);
+/**
+ * The real `CreatedSpec` (including `documentIds`, the registered ids in manifest order) except that
+ * a demo `specId` is a demo id (`demo-...`), not a UUID.
+ */
+export const DemoCreateResultSchema = Type.Object(
   {
-    /** Idempotency key of the atomic create (the real `operationId`). */
-    operationId: Uuid,
-    /** Where the specification lives. Absent = main (primary) workspace. */
-    target: Type.Optional(DemoCreateTargetSchema),
-    title: Type.String({ minLength: 1, maxLength: 240 }),
-    /** Mirror of the real `slug`: optional lowercase kebab-case override of the title-derived slug. */
-    slug: Type.Optional(
-      Type.String({ minLength: 1, maxLength: SPEC_SLUG_MAX_LENGTH, pattern: SPEC_SLUG_PATTERN }),
-    ),
-    catalogueRevision: Type.String(),
-    archetypeId: Id,
-    archetypeVersion: Type.String(),
-    optionalDocumentIds: Type.Array(Id, { uniqueItems: true }),
-    addedDocuments: Type.Optional(Type.Array(DemoAddedDocumentSchema, { maxItems: 10 })),
-    folders: Type.Optional(
-      Type.Array(Type.String({ minLength: 1, maxLength: 500 }), {
-        maxItems: 100,
-        uniqueItems: true,
-      }),
-    ),
+    ...CreatedSpecSchema.properties,
+    specId: Id,
+    documentIds: Type.Array(RegisteredDocumentIdSchema),
   },
   { additionalProperties: false },
 );
-/** The real `CreatedSpec` plus the demo-only `documentIds` of the scaffolded documents. */
-export const DemoCreateResultSchema = Type.Object({
-  specId: Id,
-  documentIds: Type.Array(Id),
-  operationId: Uuid,
-  kind: Type.Literal('specification-create'),
-  status: Type.Literal('completed'),
-  slug: Type.String(),
-  workspaceId: Uuid,
-  relativeManifestPath: Type.String(),
-});
 /** Demo-PROPOSED operation status read (not part of the real contract). */
 export const DemoOperationStatusSchema = Type.Object(
   {
@@ -228,30 +194,54 @@ export const DemoSessionDetailSchema = Type.Object({
     instructions: Type.Array(Type.String()),
   }),
 });
-export const DemoSaveInputSchema = Type.Object(
-  { content: Text, expectedRevision: Type.String() },
-  { additionalProperties: false },
-);
-export const DemoSaveResultSchema = Type.Object({ revision: Type.String() });
+/**
+ * Demo errors outside the documents layer (Session allocation, demo options, catalogue lookups).
+ * Every document endpoint answers the real `DocumentErrorSchema` (`{ error, code, details? }`).
+ */
 export const DemoErrorSchema = Type.Object({
   error: Type.Union([
     Type.Literal('demo_specification_creation_failed'),
     Type.Literal('demo_session_allocation_failed'),
-    Type.Literal('demo_document_save_failed'),
-    Type.Literal('demo_document_required'),
-    Type.Literal('demo_document_operations_unavailable'),
-    Type.Literal('demo_document_path_conflict'),
     Type.Literal('demo_catalogue_stale'),
-    Type.Literal('demo_document_revision_conflict'),
     Type.Literal('demo_request_conflict'),
     Type.Literal('demo_invalid_selection'),
     Type.Literal('demo_session_detail_unavailable'),
     Type.Literal('demo_create_options_unavailable'),
     Type.Literal('specification_not_found'),
-    Type.Literal('specification_document_not_found'),
     Type.Literal('session_not_found'),
   ]),
 });
+
+/*
+ * Documents. The demo answers EXACTLY the real documents contract (`../documents`): the schemas
+ * below are the real ones re-exported under demo names. The reads are the real routes
+ * (`/api/specs/:specId/document-tree`, `/documents/:documentId`, `/raw`) served from the demo data;
+ * the writes, which the real backend does not serve yet, are emulated under `/api/demo/specs/...`
+ * with the operation shapes of the contract.
+ */
+export const DemoDocumentTreeSchema = DocumentTreeSchema;
+export const DemoDocumentContentSchema = DocumentContentSchema;
+export const DemoDocumentErrorSchema = DocumentErrorSchema;
+/** `PUT /api/demo/specs/:specId/documents/:documentId`. */
+export const DemoSaveInputSchema = SaveInputSchema;
+export const DemoSaveResultSchema = SaveResultSchema;
+/** `POST /api/demo/specs/:specId/document-operations` (rename, move, delete, classify). */
+export const DemoDocumentOperationInputSchema = DocumentOperationInputSchema;
+export const DemoDocumentOperationResultSchema = DocumentOperationResultSchema;
+/**
+ * `POST /api/demo/specs/:specId/documents`. The contract names no result for this route; the demo
+ * answers the operation result (`documents` holds the created documents).
+ */
+export const DemoCreateDocumentsInputSchema = CreateDocumentsInputSchema;
+/**
+ * `POST /api/demo/specs/:specId/folders`. The contract names the route but no body; this demo-only
+ * body follows the operation shape. The answer is the operation result.
+ */
+export const DemoFolderInputSchema = Type.Object(
+  { operationId: Uuid, path: Type.String({ minLength: 1 }) },
+  { additionalProperties: false },
+);
+
 export type DemoCatalogue = Static<typeof DemoCatalogueSchema>;
 /** Create body keyed by `operationId` with the optional `target` (the real create request shape). */
 export type DemoCreateRequest = Static<typeof DemoCreateInputSchema>;
@@ -268,61 +258,5 @@ export type DemoSessionInput = Static<typeof DemoSessionInputSchema>;
 export type DemoSessionDetail = Static<typeof DemoSessionDetailSchema>;
 export type DemoSessionResult = Static<typeof DemoSessionResultSchema>;
 export type DemoLocation = Static<typeof DemoLocationSchema>;
-export type DemoSaveInput = Static<typeof DemoSaveInputSchema>;
 export type DemoError = Static<typeof DemoErrorSchema>;
-
-export type DemoAddedDocument = Static<typeof DemoAddedDocumentSchema>;
-export type DemoDocumentsInput = Static<typeof DemoDocumentsInputSchema>;
-export type DemoDocumentsResult = Static<typeof DemoDocumentsResultSchema>;
 export type DemoFolderInput = Static<typeof DemoFolderInputSchema>;
-
-const DemoActionSchema = Type.Object({
-  available: Type.Boolean(),
-  reason: Type.Optional(Type.String()),
-});
-const DemoDocumentActionsSchema = Type.Object({
-  rename: DemoActionSchema,
-  move: DemoActionSchema,
-  delete: DemoActionSchema,
-});
-export const DemoDocumentTreeSchema = Type.Object({
-  revision: Type.String(),
-  folders: Type.Array(Type.Object({ path: Type.String(), actions: DemoDocumentActionsSchema })),
-  documents: Type.Array(
-    Type.Object({
-      id: Id,
-      path: Type.String(),
-      required: Type.Optional(Type.Boolean()),
-      revision: Type.String(),
-      actions: DemoDocumentActionsSchema,
-    }),
-  ),
-  capabilities: Type.Object({
-    createFile: DemoActionSchema,
-    createFolder: DemoActionSchema,
-    import: DemoActionSchema,
-    formats: Type.Array(Type.String()),
-  }),
-});
-export const DemoDocumentOperationInputSchema = Type.Object(
-  {
-    requestId: Id,
-    action: Type.Union([Type.Literal('rename'), Type.Literal('move'), Type.Literal('delete')]),
-    kind: Type.Union([Type.Literal('document'), Type.Literal('folder')]),
-    documentId: Type.Optional(Id),
-    path: Type.Optional(Type.String({ maxLength: 500 })),
-    name: Type.Optional(Type.String({ minLength: 1, maxLength: 240 })),
-    targetFolder: Type.Optional(Type.String({ maxLength: 500 })),
-    expectedRevision: Type.String(),
-  },
-  { additionalProperties: false },
-);
-export const DemoDocumentOperationResultSchema = Type.Object({
-  revision: Type.String(),
-  documents: Type.Array(Type.Object({ id: Id, path: Type.String(), revision: Type.String() })),
-  removedDocumentIds: Type.Array(Id),
-  folders: Type.Array(Type.String()),
-});
-export type DemoDocumentTree = Static<typeof DemoDocumentTreeSchema>;
-export type DemoDocumentOperationInput = Static<typeof DemoDocumentOperationInputSchema>;
-export type DemoDocumentOperationResult = Static<typeof DemoDocumentOperationResultSchema>;

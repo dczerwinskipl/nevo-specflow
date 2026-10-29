@@ -49,7 +49,7 @@ async function createBody(url: string, operationId: string, target?: unknown) {
     title: 'Demo progress',
     catalogueRevision: catalogue.revision,
     archetypeId: 'feature',
-    archetypeVersion: '2',
+    archetypeVersion: 1,
     optionalDocumentIds: ['decisions'],
     ...(target ? { target } : {}),
   };

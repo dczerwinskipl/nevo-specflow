@@ -74,6 +74,29 @@ describe('loadDefinitions', () => {
     expect(catalogue.findTemplate('minimal', 'overview')?.content).not.toContain('\r');
   });
 
+  it('carries an optional document type icon into the catalogue, checking only its shape', async () => {
+    const source = sampleProject();
+    source.set('document-type/overview.yaml', documentTypeFile('overview', { icon: 'info' }));
+    // Not a Design System icon today: still valid (the UI falls back), the Engine owns no registry.
+    source.set('document-type/note.yaml', documentTypeFile('note', { icon: 'some-future-icon' }));
+    const result = await load(source);
+    expect(result.problems).toEqual([]);
+    const types = resolveProjectCatalogue(result).catalogue.documentTypes;
+    expect(types.find((type) => type.id === 'overview')?.icon).toBe('info');
+    expect(types.find((type) => type.id === 'note')?.icon).toBe('some-future-icon');
+
+    // Without the field nothing changes; a malformed name rejects the file.
+    const plain = await load(sampleProject());
+    expect(
+      resolveProjectCatalogue(plain).catalogue.documentTypes.every((type) => !('icon' in type)),
+    ).toBe(true);
+    for (const icon of ['', 'Info', 'file_text', 'a'.repeat(65), 7]) {
+      const bad = sampleProject();
+      bad.set('document-type/note.yaml', documentTypeFile('note', { icon }));
+      expect(problemOf(await load(bad), 'document-type/note.yaml').code).toBe('schema-invalid');
+    }
+  });
+
   it('reports nothing for a tree that does not exist', async () => {
     const result = await load(new MemoryDefinitionSource());
     expect(result).toMatchObject({ rootPresent: false, problems: [] });

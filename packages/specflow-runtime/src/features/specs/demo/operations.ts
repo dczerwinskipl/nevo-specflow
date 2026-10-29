@@ -6,7 +6,8 @@ import type {
   DemoLocation,
 } from '@nevo/specflow-contracts/demo';
 import { isValidSpecSlug } from '@nevo/specflow-contracts/specs';
-import { DemoOperationError, fingerprintInput, type DemoState } from '../../../demo/state';
+import { DocumentError } from '@nevo/specflow-engine';
+import { fingerprintInput, type DemoState } from '../../../demo/state';
 import type { DemoDocuments } from '../../documents';
 import { DemoTargetError, demoSlugFor, resolveTarget, type ResolvedTarget } from './create-target';
 import {
@@ -31,18 +32,14 @@ interface CreateOperation {
 
 /**
  * Specs-owned demo operations over the shared demo state: the workspace registry and create-options
- * scenarios, atomic specification creation with idempotency and operation inspection. Document
- * validation and seeding go through the narrow documents API (`plan`, `append`).
+ * scenarios, atomic specification creation with idempotency and operation inspection. The
+ * Specification's documents are validated and built by the narrow documents API (`scaffold`, the
+ * Engine's own scaffold), so Create refuses with the real archetype and document codes.
  */
-export function createDemoSpecs(
-  state: DemoState,
-  documents: Pick<DemoDocuments, 'plan' | 'append'>,
-) {
+export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments, 'scaffold'>) {
   const { catalogue, specifications, locations } = state;
   const liveOptions: DemoCreateOptions = seedCreateOptions();
   const operations = new Map<string, CreateOperation>();
-  const { plan, append } = documents;
-  const stale = state.stale;
   const fail = state.fail;
   const id = state.id;
   const uuid = state.uuid;
@@ -93,18 +90,16 @@ export function createDemoSpecs(
         return { result: previous.commit!(), fresh: false };
       throw new DemoTargetError(503, 'CREATE_RECOVERY_REQUIRED', 'CREATE_RECOVERY_REQUIRED');
     }
-    stale(input.catalogueRevision);
-    const archetype = catalogue.archetypes.find(
-      (a) => a.id === input.archetypeId && a.version === input.archetypeVersion,
-    );
-    if (!archetype) throw new DemoOperationError(409, 'demo_catalogue_stale');
-    if (
-      !input.title.trim() ||
-      input.optionalDocumentIds.some(
-        (d) => !archetype.documents.some((t) => t.id === d && !t.required),
-      )
-    )
-      throw new DemoOperationError(400, 'demo_invalid_selection');
+    // Archetype admission, in the Engine's order: a stale catalogue first, then the archetype and
+    // its version; the templates, paths and limits are checked by the scaffold below.
+    if (input.catalogueRevision !== catalogue.revision)
+      throw new DocumentError('CATALOGUE_STALE', 'The archetype catalogue changed; reload it.');
+    const archetype = catalogue.archetypes.find((a) => a.id === input.archetypeId);
+    if (!archetype) throw new DocumentError('ARCHETYPE_UNKNOWN', 'Unknown archetype.');
+    if (archetype.version !== input.archetypeVersion)
+      throw new DocumentError('CATALOGUE_STALE', 'The archetype is at another version.');
+    if (!input.title.trim())
+      throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
     forcedFailure(scenarios, input.target);
     const usedSlugs = new Set([...specifications.values()].map((spec) => spec.slug));
     let slug: string;
@@ -121,37 +116,37 @@ export function createDemoSpecs(
       for (let n = 2; usedSlugs.has(slug); n += 1) slug = baseSlug + '-' + n;
     }
     const resolved: ResolvedTarget = resolveTarget(optionsFor(scenarios), input.target, slug);
-    const selectedPaths = archetype.documents
-      .filter((d) => d.required || input.optionalDocumentIds.includes(d.id))
-      .map((d) => d.filename);
-    const additions =
-      input.addedDocuments?.length || input.folders?.length
-        ? plan(selectedPaths, [], { documents: input.addedDocuments ?? [], folders: input.folders })
-        : { documents: [], folders: [] };
+    const now = state.now();
+    const created = /^\d{4}-\d{2}-\d{2}/u.test(now)
+      ? now.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    const scaffold = (specId: string) => {
+      try {
+        return documents.scaffold({
+          specId,
+          title: input.title,
+          ...(input.goal !== undefined ? { goal: input.goal } : {}),
+          slug,
+          created,
+          archetypeId: archetype.id,
+          ...(input.optionalDocumentIds ? { optionalDocumentIds: input.optionalDocumentIds } : {}),
+          ...(input.addedDocuments ? { addedDocuments: input.addedDocuments } : {}),
+          ...(input.folders ? { folders: input.folders } : {}),
+        });
+      } catch (error) {
+        if (error instanceof DocumentError) throw error;
+        // An invalid title or slug is the Engine's SPEC_VALIDATION_ERROR: bad Create input.
+        throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
+      }
+    };
+    // Validate before anything is created (the Engine admits the scaffold the same way).
+    scaffold('demo-admission');
     fail('create', 'demo_specification_creation_failed');
     const newWorkspaceId = resolved.kind === 'new-worktree' ? uuid() : undefined;
     const workspaceId = (newWorkspaceId ?? resolved.workspaceId)!;
     const commit = (): DemoCreatedSpec => {
       const specId = 'demo-' + id();
-      const documents = new Map(
-        archetype.documents
-          .filter((d) => d.required || input.optionalDocumentIds.includes(d.id))
-          .map((d) => {
-            const documentId = 'document-' + id();
-            return [
-              documentId,
-              {
-                id: documentId,
-                title: d.title,
-                filename: d.filename,
-                content: d.content,
-                revision: '1',
-                required: d.required,
-              },
-            ] as const;
-          }),
-      );
-      append(documents, additions.documents);
+      const built = scaffold(specId);
       let branch: string | undefined;
       if (resolved.kind === 'new-worktree') {
         branch = resolved.branch!;
@@ -203,18 +198,7 @@ export function createDemoSpecs(
           currentExecutions: [],
         },
         archetype: archetype.title + ' v' + archetype.version,
-        documents,
-        folders: [
-          ...new Set([
-            ...additions.folders,
-            ...selectedPaths.flatMap((path) => {
-              const parts = path.split('/');
-              return parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/'));
-            }),
-          ]),
-        ],
-        requiredPaths: archetype.documents.filter((d) => d.required).map((d) => d.filename),
-        treeRevision: '1',
+        documents: built.documents,
         location,
         workspaceId,
         ...(branch ? { branch } : {}),
@@ -227,7 +211,7 @@ export function createDemoSpecs(
       locations.set(specId, structuredClone(location));
       const result: DemoCreatedSpec = {
         specId,
-        documentIds: [...documents.keys()],
+        documentIds: built.documentIds,
         operationId,
         kind: 'specification-create',
         status: 'completed',

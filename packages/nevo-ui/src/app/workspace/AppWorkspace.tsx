@@ -635,7 +635,7 @@ function AppWorkspaceRoot({
     secondaryPresentation?.canStack ?? false,
     primaryMaxPx,
   );
-  const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary);
+  const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary, navigationMode);
   const mobileRuntime = useMobileWorkspaceTransition({
     secondaryInstanceKey:
       state.mode === 'stacked' && state.showSecondary ? secondaryPresentation?.key : undefined,

@@ -79,6 +79,25 @@ describe('useOpenedItems', () => {
     expect(ids(result.current.items)).toEqual(['a']);
   });
 
+  it('replaces an item in place and keeps it active', () => {
+    const { result } = setup({
+      initialItems: [entry('a'), entry('u-b'), entry('c')],
+      initialActiveId: 'u-b',
+    });
+    act(() => result.current.replace('u-b', entry('b')));
+    expect(ids(result.current.items)).toEqual(['a', 'b', 'c']);
+    expect(result.current.activeId).toBe('b');
+    act(() => result.current.replace('missing', entry('x')));
+    expect(ids(result.current.items)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('drops the old entry when the new id is already open (no duplicate)', () => {
+    const { result } = setup({ initialItems: [entry('a'), entry('b')], initialActiveId: 'a' });
+    act(() => result.current.replace('a', entry('b')));
+    expect(ids(result.current.items)).toEqual(['b']);
+    expect(result.current.activeId).toBe('b');
+  });
+
   it('resets to the initial state when the scope changes', () => {
     const { result, rerender } = setup({ scope: 'one', initialItems: [entry('a')] });
     act(() => result.current.open(entry('b')));

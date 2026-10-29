@@ -6,8 +6,10 @@ import type { DocumentErrorDetails } from '@nevo/specflow-contracts/documents';
 import { CONTENT_HASH_MAX_BYTES } from '../limits';
 import { errnoCode } from '../../document-rules/errno';
 import { DocumentError } from '../../document-rules/errors';
+import { aliasedPhysicalPath } from '../../document-rules/verified-file';
 import { readPayload, removePayload, removePayloadFilesExcept } from '../../durable';
 import {
+  CASE_ONLY_RENAME_MESSAGE,
   documentChangeError,
   type DocumentChangeCause,
   type DocumentChangeErrorExtras,
@@ -37,6 +39,7 @@ import {
   settleDocumentChangeJournal,
   transitionDocumentChangeJournal,
 } from './journal-store';
+import { planRemovesAnAliasedEntry } from './physical-aliases';
 import { completeUncommittedWrite, reimageUncommittedPaths } from './uncommitted-write';
 import type { WriteRuntime } from './writer-types';
 
@@ -257,23 +260,26 @@ export async function cleanStageFiles(
 /**
  * A refusal while NOTHING of the operation is on disk (a foreign edit found at the reservation, or
  * right after `files-writing` was written): the journal becomes `failed` (no claim, no barrier), moves
- * to `settled/` and the payload goes. Throws `DOCUMENT_REVISION_CONFLICT`.
+ * to `settled/` and the payload goes. Throws `DOCUMENT_REVISION_CONFLICT`, or the given refusal (its
+ * cause is the recorded reason, so a replay answers the same).
  */
 export async function refuseWithoutChanges(
   rt: WriteRuntime,
   journal: DocumentChangeJournal,
   plan: DocumentChangePlan,
   dispositions: readonly PathDisposition[],
+  refusal?: { readonly cause: DocumentChangeCause; readonly message: string },
 ): Promise<never> {
   const conflicts = await conflictsOf(rt, journal, plan, dispositions);
   await moveJournal(rt, journal.operationId, [journal.stage], 'failed', {
-    reason: 'revision-conflict',
+    reason: refusal?.cause ?? 'revision-conflict',
   });
   await cleanStageFiles(rt, journal, plan);
   await settleDocumentChangeJournal(rt.context, journal.operationId).catch(skipUnlessCut);
   await removePayload(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, journal.operationId).catch(
     skipUnlessCut,
   );
+  if (refusal !== undefined) throw documentChangeError(refusal.cause, refusal.message);
   throw documentChangeError(
     'revision-conflict',
     'A document changed since it was read; nothing was written.',
@@ -359,7 +365,23 @@ export async function rollForward(
 ): Promise<DocumentChangeJournal> {
   let journal = start;
   const specDir = specDirOf(journal, plan);
+  // A plan that removes an entry it also writes here (a case-only rename on a volume that ignores
+  // case, journaled before admission asked the file system) would write that file and then remove
+  // it: it is never applied. Asked before any file of the operation is touched.
+  const aliased =
+    aliasedPhysicalPath(plan.paths.map((planned) => planned.path)) !== undefined ||
+    (await planRemovesAnAliasedEntry(
+      { lstat: (path) => rt.files.verified.lstat(path), list: (path) => rt.files.list(path) },
+      specDir,
+      plan,
+    ));
   if (journal.stage === 'reserved') {
+    if (aliased) {
+      return refuseWithoutChanges(rt, journal, plan, [], {
+        cause: 'case-only-rename',
+        message: CASE_ONLY_RENAME_MESSAGE,
+      });
+    }
     const before = await inspectPlanPaths(rt, journal, plan);
     if (before.includes('foreign') && !before.includes('at-post')) {
       return refuseWithoutChanges(rt, journal, plan, before);
@@ -367,6 +389,16 @@ export async function rollForward(
     journal = await moveJournal(rt, journal.operationId, ['reserved'], 'files-writing', {
       executor: await rt.executor(),
     });
+  }
+  if (aliased) {
+    throw await stopWriting(
+      rt,
+      journal,
+      plan,
+      'plan-invalid',
+      'plan-invalid',
+      'The operation names one file twice on this file system; nothing more is written.',
+    );
   }
   // What an earlier executor of this operation left behind is not needed any more.
   await cleanStageFiles(rt, journal, plan);

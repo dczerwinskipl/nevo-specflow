@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { documentCatalogueKeys } from '../../documents/read-model';
 import { Alert, Button } from '@nevo/ui';
 import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
@@ -59,6 +60,7 @@ function DemoCreateSpecification(props: Props) {
   const { t } = useTranslation();
   const services = useAppServices();
   const runtime = useRuntimeInfo();
+  const cache = useQueryClient();
   const view = props.specId ? 'new-session' : 'new-specification';
   const catalogue = useQuery({
     queryKey: demoCreationKeys.catalogue(props.specId),
@@ -87,6 +89,12 @@ function DemoCreateSpecification(props: Props) {
       catalogue={catalogue.data}
       configurationUnavailable={runtime.isError || catalogue.isError}
       onRefresh={() => void Promise.all([runtime.refetch(), catalogue.refetch()])}
+      onRefreshCatalogue={async () => {
+        // The documents feature reads the same catalogue: it is refreshed with it.
+        void cache.invalidateQueries({ queryKey: documentCatalogueKeys.all });
+        const result = await catalogue.refetch();
+        return result.isError ? undefined : result.data;
+      }}
     />
   );
 }

@@ -27,6 +27,18 @@ describe('document tabs', () => {
     ]);
   });
 
+  it('shows a dangling entry as a missing tab named after its registered file', () => {
+    expect(
+      documentTabs({
+        ids: ['backend'],
+        tree: { documents: [], dangling: [{ id: 'backend', path: 'backend.md' }] },
+        dirty: [],
+      }),
+    ).toEqual([
+      { id: 'backend', label: 'backend.md', path: 'backend.md', dirty: false, state: 'missing' },
+    ]);
+  });
+
   it('refreshes the name after a rename (the id is stable) without a request', () => {
     const before = documentTabs({ ids: ['a'], tree: tree(['a', 'a.md']), dirty: [] });
     const after = documentTabs({ ids: ['a'], tree: tree(['a', 'notes/b.md']), dirty: [] });

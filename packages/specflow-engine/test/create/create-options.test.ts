@@ -52,7 +52,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
         path: root,
       },
     ]);
-    expect(options.branchPattern).toBe('feature/{slug}');
+    expect(options.branchPattern).toBe('feature/{key}-{slug}');
     expect(options.worktreesRoot).toEqual({ path: root + '-worktrees', exists: false });
     expect(options.defaultBaseRef).toBe('develop');
     expect(options.integrationTargetBranch).toBe('develop');

@@ -64,6 +64,11 @@ export type CurrentSpecClassification = Static<typeof CurrentSpecClassificationS
 export const CurrentSpecOverviewItemSchema = Type.Object(
   {
     ...SpecOverviewItemSchema.properties,
+    /**
+     * Workflow status of the Specification. Additive and optional; project mode answers `draft` for
+     * every Specification until a workflow defines other values.
+     */
+    status: Type.Optional(Type.String({ minLength: 1 })),
     classification: CurrentSpecClassificationSchema,
     signals: Type.Union([Type.Array(CurrentSpecSignalSchema), Type.Null()]),
     currentExecutions: Type.Union([

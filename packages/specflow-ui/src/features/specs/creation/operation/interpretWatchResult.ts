@@ -87,7 +87,10 @@ function refused(
     kind: 'failed',
     failure,
     releaseStorage: true,
-    discardAttempt: failure.kind === 'operation-conflict' || failure.kind === 'name-conflict',
+    discardAttempt:
+      failure.kind === 'operation-conflict' ||
+      failure.kind === 'name-conflict' ||
+      failure.kind === 'name-invalid',
     ...(announce ? { announce } : {}),
   };
 }

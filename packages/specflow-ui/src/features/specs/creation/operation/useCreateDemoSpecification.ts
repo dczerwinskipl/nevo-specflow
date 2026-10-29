@@ -29,7 +29,12 @@ import type { CreateFailure } from '../errors/createFailure';
 /** Everything the form contributes to one submit, captured when the user submits. */
 export interface CreateSubmission {
   title: string;
-  archetype: { id: string; version: DemoCreateRequest['archetypeVersion'] };
+  archetype: {
+    id: string;
+    version: DemoCreateRequest['archetypeVersion'];
+    /** The ticked optional templates of the archetype. */
+    optionalDocumentIds: readonly string[];
+  };
   /** Real slug override the owner typed (never an untouched default), else undefined. */
   slug?: string;
   /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
@@ -141,7 +146,7 @@ export function useCreateDemoSpecification(
                         catalogueRevision,
                         archetypeId: submission.archetype.id,
                         archetypeVersion: submission.archetype.version,
-                        optionalDocumentIds: [],
+                        optionalDocumentIds: [...submission.archetype.optionalDocumentIds],
                         ...(target ? { target } : {}),
                       },
                       undefined,

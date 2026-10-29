@@ -517,9 +517,47 @@ export const FlatListWithoutStatus: Story = {
     await expect(canvasElement.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
     await expect(canvas.queryByText('Status unavailable')).toBeNull();
     await expect(canvas.queryByText('Work status not available yet')).toBeNull();
-    await expect(canvasElement.querySelector('[data-spec-columns]')).toBeNull();
+    // Only the columns of what exists: the specification and when it was last updated.
+    await expect(canvasElement.querySelector('[data-spec-columns]')).toHaveTextContent(
+      'SpecificationUpdated',
+    );
     await expect(canvas.queryByRole('button', { name: /Specification actions: / })).toBeNull();
   },
+};
+/**
+ * Exactly what a project Runtime provides today (no key, tags, pull requests, progress or work
+ * status): the title and when it was last updated, in the flat list's own columns.
+ */
+const projectRuntimeState: SpecsOverviewState = {
+  ...loaded,
+  projection: {
+    ...createSpecsFixture(),
+    sections: ['requires-attention', 'active', 'ready', 'draft', 'unknown'],
+    items: [
+      ['logowanie-sso', 'Logowanie SSO', '2026-10-28T18:54:17Z'],
+      ['limity', 'Limity płatności w trybie offline', '2026-10-27T09:12:00Z'],
+      [
+        'eksport',
+        'Eksport raportów miesięcznych do formatu CSV z podziałem na zespoły i projekty',
+        '2026-09-30T14:00:00Z',
+      ],
+    ].map(([id, title, updatedAt]) =>
+      noStatus(id!, title!, { key: undefined, tags: [], pullRequests: [], updatedAt }),
+    ),
+  },
+};
+export const ProjectRuntimeList: Story = {
+  args: { state: projectRuntimeState, locale: 'pl' },
+  tags: ['visual'],
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('link', { name: 'Otwórz specyfikację: Logowanie SSO' });
+    await expect(canvasElement.querySelectorAll('[data-spec-updated] time')).toHaveLength(3);
+    await expect(canvasElement.querySelector('[data-spec-metadata]')).toBeNull();
+  },
+};
+export const ProjectRuntimeListMobile: Story = {
+  args: { state: projectRuntimeState, locale: 'pl' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 /** Only progress exists: the flat list keeps one progress column, still no status column. */
 export const FlatListWithProgressOnly: Story = {
@@ -732,7 +770,7 @@ export const ProgressStates: Story = {
   },
   tags: ['contract', '!autodocs'],
   play: ({ canvas, canvasElement }) => {
-    canvas.getByText('No tasks');
+    canvas.getByText('No tasks yet');
     if (canvasElement.querySelector('[data-spec-id="progress-0"] [role="progressbar"]'))
       throw new Error('Zero tasks has no determinate bar.');
     const row = canvasElement.querySelector('[data-spec-id="progress-9"]')!;

@@ -598,6 +598,57 @@ describe('create, folders and structural operations', () => {
     expect(code(malformed)).toBe('DOCUMENT_OPERATION_INVALID');
   });
 
+  it('refuses where the file system ignores case a rename that only changes the case, and keeps the file', async () => {
+    const fx = await project();
+    const l = await listen(fx);
+    const head = git(fx.root, 'rev-parse', 'HEAD');
+    const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    // The Engine treats Windows as the case-insensitive file system (the real write route, simulated host).
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    let response;
+    try {
+      response = await call(l, 'POST', `${base(fx)}/document-operations`, {
+        operationId: randomUUID(),
+        action: 'rename',
+        kind: 'document',
+        documentId: 'notes-1',
+        name: 'Notes-1.md',
+        expectedRevision: sha256(notes(1)),
+      });
+    } finally {
+      Object.defineProperty(process, 'platform', original);
+    }
+    expect(response.statusCode, response.body).toBe(400);
+    const body: unknown = response.json();
+    expect(Value.Check(DocumentErrorSchema, body)).toBe(true);
+    expect(body).toMatchObject({
+      code: 'DOCUMENT_OPERATION_INVALID',
+      details: { cause: 'case-only-rename' },
+    });
+    expect(await readFile(join(fx.dir, 'notes-1.md'), 'utf8')).toBe(notes(1));
+    expect(git(fx.root, 'status', '--porcelain')).toBe('');
+    expect(git(fx.root, 'rev-parse', 'HEAD')).toBe(head);
+  });
+
+  // Only a real case-sensitive file system can hold both spellings; on Windows this would be the bug.
+  it.runIf(process.platform === 'linux')(
+    'renames a document by its case alone where the file system is case-sensitive',
+    async () => {
+      const fx = await project();
+      const l = await listen(fx);
+      const response = await call(l, 'POST', `${base(fx)}/document-operations`, {
+        operationId: randomUUID(),
+        action: 'rename',
+        kind: 'document',
+        documentId: 'notes-1',
+        name: 'Notes-1.md',
+        expectedRevision: sha256(notes(1)),
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(await readFile(join(fx.dir, 'Notes-1.md'), 'utf8')).toBe(notes(1));
+    },
+  );
+
   it('classifies an unclassified file', async () => {
     const fx = await project();
     await writeFile(join(fx.dir, 'loose.md'), 'loose\n');

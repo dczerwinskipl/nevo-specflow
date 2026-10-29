@@ -38,8 +38,8 @@ async function body(app: FastifyInstance, n: number, extra: Partial<DemoCreateRe
     operationId: op(n),
     title: 'Nowa obsługa płatności',
     catalogueRevision: cat.revision,
-    archetypeId: 'simple',
-    archetypeVersion: '1',
+    archetypeId: 'minimal',
+    archetypeVersion: 1,
     optionalDocumentIds: [],
     ...extra,
   } satisfies DemoCreateRequest;

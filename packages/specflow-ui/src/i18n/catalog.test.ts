@@ -65,10 +65,13 @@ describe('message catalogues', () => {
     const sameInBoth = new Set([
       'create.workspace.settings.unavailableReason',
       'documents.tree.skippedItem',
+      'documents.tabs.typeAndPath',
       'common.pullRequestNumber',
       'playground.title',
       'sessions.demo.writer',
       'specification.changesSourcePr',
+      // A shell command, the same in every language.
+      'create.archetype.installCommand',
     ]);
     const identical = plKeys.filter(
       (key) =>

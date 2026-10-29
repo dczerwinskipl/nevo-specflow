@@ -25,6 +25,9 @@ import { createSpecFlowAppServices } from '../services';
 import { specificationKeys } from '../features/specs/read-model/queries';
 import { taskKeys } from '../features/tasks/queries';
 import { documentKeys } from '../features/documents/read-model/queries';
+import type { DocumentsApi } from '../features/documents/api';
+import type { SpecificationWorkspaceData } from '../features/specs/read-model/model';
+import { documentContentFixture, documentTreeFixture } from '../../test-support/documents/fixtures';
 import {
   createSpecificationWorkspaceFixture,
   type SpecificationScenario,
@@ -180,22 +183,26 @@ export function RoutedApplication({
         }
       }
       for (const doc of fixture.documents) {
-        query.setQueryData(documentKeys.detail(id, doc.id), {
-          id: doc.id,
-          title: doc.title,
-          content:
-            doc.content ??
-            (doc.sections ?? [])
-              .map((section) =>
-                [
-                  '# ' + section.heading,
-                  section.content ?? '',
-                  ...(section.items ?? []).map((item) => '- ' + item),
-                ].join('\n\n'),
-              )
-              .join('\n\n'),
-          revision: 'story-fixture',
-        });
+        query.setQueryData(
+          documentKeys.detail(id, doc.id),
+          documentContentFixture({
+            id: doc.id,
+            path: `${doc.id}.md`,
+            title: doc.title,
+            content:
+              doc.content ??
+              (doc.sections ?? [])
+                .map((section) =>
+                  [
+                    '# ' + section.heading,
+                    section.content ?? '',
+                    ...(section.items ?? []).map((item) => '- ' + item),
+                  ].join('\n\n'),
+                )
+                .join('\n\n'),
+            revision: 'story-fixture',
+          }),
+        );
       }
     }
     return query;
@@ -246,7 +253,30 @@ export function RoutedApplication({
     const workspaceSource = createWorkspaceIntegrationApi();
     const taskSource = createTaskIntegrationApi();
     const documentSource = createDocumentIntegrationApi();
+    // The Documents workspace reads the tree through the documents port of the Runtime mode: the
+    // tree lists the documents of the Specification fixture (the integration DTO has one).
+    const documentsApi: DocumentsApi = {
+      emulated: dataMode === 'demo',
+      documentTree: async (specId) => {
+        await wait();
+        const fixture = queryClient.getQueryData<SpecificationWorkspaceData>(
+          specificationKeys.detail(specId),
+        );
+        return documentTreeFixture({
+          documents: integrationDto
+            ? [{ id: 'spec', path: 'specification.md', type: 'overview', protected: true }]
+            : (fixture?.documents ?? []).map((doc) => ({ id: doc.id, path: `${doc.id}.md` })),
+        });
+      },
+      catalogue: () => Promise.reject(new Error('No catalogue in this story')),
+      operateDocument: () => Promise.reject(new Error('No writes in this story')),
+      addDocuments: () => Promise.reject(new Error('No writes in this story')),
+      addFolder: () => Promise.reject(new Error('No writes in this story')),
+      save: () => Promise.reject(new Error('No writes in this story')),
+    };
     return createSpecFlowAppServices({
+      demoDocumentsApi: documentsApi,
+      projectDocumentsApi: documentsApi,
       http,
       authStore: auth,
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode }) },
@@ -274,7 +304,7 @@ export function RoutedApplication({
           }
         : {}),
     });
-  }, [auth, specsStatus, integrationDto, catalogueFailure, loadingDelayMs, dataMode]);
+  }, [auth, specsStatus, integrationDto, catalogueFailure, loadingDelayMs, dataMode, queryClient]);
 
   const router = useMemo(() => {
     const history = createMemoryHistory({ initialEntries: [path] });
@@ -1074,9 +1104,16 @@ export const FigmaCaptureContract: Story = {
     if (!navigation) throw new Error('Desktop application shell navigation must be present.');
     const visibleBottomGap =
       navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
-    if (visibleBottomGap < 14 || visibleBottomGap > 18) {
+    // The shell footer's own padding (one token for every bottom bar of the shell, 10px).
+    const footerPadding =
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          '--spacing-shell-footer-padding',
+        ),
+      ) * Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    if (Math.abs(visibleBottomGap - footerPadding) > 2) {
       throw new Error(
-        `Desktop account trigger should retain the compact 16px bottom gap; received ${visibleBottomGap}px.`,
+        `Desktop account trigger should keep the shell footer padding (${footerPadding}px) below it; received ${visibleBottomGap}px.`,
       );
     }
 

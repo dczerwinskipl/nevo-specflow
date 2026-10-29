@@ -130,6 +130,33 @@ export const DisabledPrimary: Story = {
   },
 };
 
+const busyPresses = { count: 0 };
+/** A running action keeps focus: `aria-disabled`, presses ignored (for example Save while it commits). */
+export const BusyPrimaryKeepsFocus: Story = {
+  args: {
+    actions: [
+      {
+        id: 'save',
+        label: 'Saving…',
+        icon: 'save',
+        primary: true,
+        busy: true,
+        onPress: () => void busyPresses.count++,
+      },
+    ],
+  },
+  tags: ['contract'],
+  play: async ({ canvas, userEvent }) => {
+    busyPresses.count = 0;
+    const save = canvas.getByRole('button', { name: 'Saving…' });
+    save.focus();
+    await userEvent.click(save);
+    if (document.activeElement !== save) throw new Error('The busy action keeps focus.');
+    if (save.getAttribute('aria-disabled') !== 'true') throw new Error('It is aria-disabled.');
+    if (busyPresses.count > 0) throw new Error('A press while busy does nothing.');
+  },
+};
+
 const documentEditActions = [
   {
     id: 'preview',

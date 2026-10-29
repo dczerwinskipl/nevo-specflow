@@ -168,7 +168,7 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
             <div className="shrink-0 border-b border-border-subtle p-4">
               <strong className="block text-title-sm">{query.data.title}</strong>
               <p className="break-all text-body-sm text-content-muted">
-                {t('sessions.demo.previewLine', { filename: query.data.filename })}
+                {t('sessions.demo.previewLine', { filename: query.data.path })}
               </p>
               <Button
                 size="sm"
@@ -187,12 +187,17 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
               </Button>
             </div>
             <ScrollArea className="min-h-0 flex-1" contentClassName="p-5">
-              {query.data.filename?.toLowerCase().endsWith('.txt') ? (
+              {query.data.content === undefined ? (
+                // An image or a file without text to render: it opens in Documents (above).
+                <p className="text-body-sm text-content-secondary">
+                  {t('sessions.demo.cannotShow')}
+                </p>
+              ) : query.data.path.toLowerCase().endsWith('.txt') ? (
                 <pre className="whitespace-pre-wrap break-words text-body-sm">
                   {query.data.content}
                 </pre>
               ) : (
-                <MarkdownDocument source={query.data.content} />
+                <MarkdownDocument source={query.data.content ?? ''} />
               )}
             </ScrollArea>
           </>

@@ -151,7 +151,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
           title: 'Closed',
           catalogueRevision: catalogue.revision,
           archetypeId: 'feature',
-          archetypeVersion: '2',
+          archetypeVersion: 1,
           optionalDocumentIds: [],
         },
       });

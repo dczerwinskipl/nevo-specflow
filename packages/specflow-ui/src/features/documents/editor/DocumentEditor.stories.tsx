@@ -1,3 +1,8 @@
+import {
+  documentContentFixture,
+  saveResultFixture,
+} from '../../../../test-support/documents/fixtures';
+import type { SaveInput, SaveResult } from '@nevo/specflow-contracts/documents';
 import { useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -6,7 +11,6 @@ import { Button, WorkspaceHeader } from '@nevo/ui';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
-import type { DemoSaveInput } from '@nevo/specflow-contracts/demo';
 import { invokeDocumentAction } from './documentHeaderActions.stories-support';
 import { DocumentEditor } from './DocumentEditor';
 import { DocumentEditorProvider, useDocumentEditor } from './DocumentEditorProvider';
@@ -34,14 +38,14 @@ function DocumentHeader() {
     />
   );
 }
-const record = {
+const record = documentContentFixture({
   id: 'specification',
   title: 'Specification',
-  filename: 'specification.md',
+  path: 'specification.md',
   content:
     '# Feature: Logowanie SSO\n\n## Problem\n\nPracownicy logują się przez firmowego dostawcę tożsamości.\n\n- Powrót do projektu\n\nUżyj `identity_token`.',
   revision: '1',
-};
+});
 function EditorFixture({
   deferred = false,
   plainText = false,
@@ -60,17 +64,17 @@ function EditorFixture({
     const services = createSpecFlowAppServices();
     return {
       ...services,
-      documentsApi: {
-        ...services.documentsApi,
-        save: (_spec: string, _document: string, _input: DemoSaveInput) =>
+      demoDocumentsApi: {
+        ...services.demoDocumentsApi,
+        save: (_spec: string, _document: string, _input: SaveInput) =>
           deferred
-            ? new Promise<{ revision: string }>((resolve) =>
+            ? new Promise<SaveResult>((resolve) =>
                 setRelease(() => () => {
-                  resolve({ revision: '2' });
+                  resolve(saveResultFixture('2'));
                   setRelease(null);
                 }),
               )
-            : Promise.resolve({ revision: '2' }),
+            : Promise.resolve(saveResultFixture('2')),
       },
     };
   }, [deferred]);
@@ -95,7 +99,7 @@ function EditorFixture({
                   specId="sso"
                   document={
                     textFormat
-                      ? { ...record, filename: 'CLIENT.TXT' }
+                      ? { ...record, path: 'CLIENT.TXT' }
                       : content === undefined
                         ? record
                         : { ...record, content }
@@ -134,7 +138,7 @@ export const RetainedDraftAndGuard: Story = {
     await userEvent.click(editor);
     await userEvent.keyboard('{Control>}End{/Control}');
     await userEvent.type(editor, ' Retained draft');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Otwórz dokument' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
@@ -154,7 +158,7 @@ export const RetainedDraftAndGuard: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
     // Save exists only while the draft differs.
     await expect(canvas.queryByRole('button', { name: /^Zapisz$/ })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Niezapisane zmiany')).not.toBeInTheDocument();
   },
 };
 export const KeyboardSave: Story = {
@@ -208,7 +212,7 @@ export const EditsDuringSave: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
       'UnsavedLater',
     );
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await invokeDocumentAction(canvas, userEvent, 'Zapisz');
     await userEvent.click(canvas.getByRole('button', { name: 'Potwierdź zapis' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();

@@ -478,7 +478,7 @@ describe('install against a real project', () => {
       'minimal',
     ]);
     expect(project.catalogue.revision).toBe(
-      '528e58fe38ca9ee305c80f0131a9ad02473cbc99edb7bd325caec7115dfcdbfe',
+      '900fd261f4bb33c4f816e81d8c002baad92c2b85429d6f2bfe2c24ac2bdfe6e4',
     );
   });
 

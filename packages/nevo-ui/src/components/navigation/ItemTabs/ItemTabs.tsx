@@ -66,13 +66,17 @@ export const getItemTabId = (scope: string, id: string) => `${scope}-tab-${encod
 export const getItemTabPanelId = (scope: string, id: string) =>
   `${scope}-panel-${encodeURIComponent(id)}`;
 
-/** Keeps the tail (extension) visible. One accessible name: the visual halves are hidden. */
+/**
+ * Keeps the tail (extension) visible. One accessible name: the visual halves are hidden. Both halves
+ * keep their white space (`whitespace-pre`): a space at the split point would otherwise collapse at
+ * the end of the head ("Single sign-on- UX").
+ */
 function MiddleTruncate({ text, maxChars }: { text: string; maxChars?: number }) {
   const { head, tail } = splitMiddle(text, maxChars);
   return (
     <span className="flex min-w-0 items-baseline">
       <span className="sr-only">{text}</span>
-      <span aria-hidden="true" className="min-w-0 truncate">
+      <span aria-hidden="true" className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">
         {head}
       </span>
       {tail ? (

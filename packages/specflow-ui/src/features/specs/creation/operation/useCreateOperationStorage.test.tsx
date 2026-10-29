@@ -6,9 +6,14 @@ import type { AuthStore, AuthStoreState } from '../../../../auth/store';
 import { createSpecFlowAppServices } from '../../../../services';
 import { TestServicesRouterContext } from '../../../../../test-support/app/TestServicesRouterContext';
 import { createSessionOperationStorage, useCreateOperationStorage } from './createOperationStorage';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operation = {
-  request: { title: 'T', operationId: '11111111-1111-4111-8111-111111111111' },
+  request: {
+    title: 'T',
+    operationId: '11111111-1111-4111-8111-111111111111',
+    ...archetypeSelectionFixture,
+  },
   startedAt: 1,
 };
 const session = {

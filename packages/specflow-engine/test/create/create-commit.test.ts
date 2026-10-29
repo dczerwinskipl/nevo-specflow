@@ -144,8 +144,9 @@ describe('Create commits the scaffold when Git is enabled', () => {
     const created = await createSpecification(engine, input);
     roots.push(dirname(created.workspaceRoot));
 
+    // The default pattern feature/{key}-{slug} carries the Specification key.
     expect(git(created.workspaceRoot, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe(
-      'feature/linked-commit',
+      'feature/nevo-1-linked-commit',
     );
     expect(git(created.workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(base);
     expect(committedPaths(created.workspaceRoot, 'HEAD')).toEqual([
@@ -158,7 +159,7 @@ describe('Create commits the scaffold when Git is enabled', () => {
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
     const journal = await inspectCreateSpecification(engine, created.operationId);
     expect(journal?.commit).toMatchObject({
-      branch: 'feature/linked-commit',
+      branch: 'feature/nevo-1-linked-commit',
       parentHead: base,
       commitSha: git(created.workspaceRoot, 'rev-parse', 'HEAD'),
     });

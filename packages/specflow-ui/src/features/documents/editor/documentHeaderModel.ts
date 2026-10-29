@@ -12,7 +12,11 @@ import type { DocumentEditorSession } from './DocumentEditorProvider';
 export function documentHeaderModel(
   session: DocumentEditorSession | null,
   t: TFunction,
-  options: { onCloseTab?: () => void } = {},
+  options: {
+    onCloseTab?: () => void;
+    /** Offered for an unclassified document (its tab's `...` menu). */
+    onAssignType?: (id: string) => void;
+  } = {},
 ): {
   actions: readonly WorkspaceHeaderAction[];
   dirty: boolean;
@@ -29,8 +33,21 @@ export function documentHeaderModel(
       ]
     : [];
   if (!session) return { actions: close, dirty: false };
-  const kind = documentKindOf(session.document.filename ?? session.document.title);
+  const kind = documentKindOf(session.document);
   const view = documentViewOf(kind, session.draft);
+  const { onAssignType } = options;
+  const assignType: WorkspaceHeaderAction[] =
+    onAssignType && session.document.classification === 'unclassified'
+      ? [
+          {
+            id: 'document-assign-type',
+            label: t('documents.tree.assignType'),
+            icon: 'classify',
+            group: 'actions',
+            onPress: () => onAssignType(session.document.id),
+          },
+        ]
+      : [];
   return {
     dirty: session.dirty,
     actions: [
@@ -46,11 +63,52 @@ export function documentHeaderModel(
             } satisfies WorkspaceHeaderAction,
           ]
         : []),
+      // In the shared slot the contents column is a toggle too (checked while it is shown).
+      ...(session.contentsToggle
+        ? [
+            {
+              id: 'document-outline-column',
+              label: t('documents.outline.label'),
+              icon: 'list',
+              group: 'display',
+              checked: session.contentsToggle.pressed,
+              onPress: session.contentsToggle.toggle,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
+      // The guidance toggle is also in the menu (Display), checked while it is shown.
+      ...(session.guidance
+        ? [
+            {
+              id: 'document-guidance',
+              label: t('documents.guidance.label'),
+              icon: 'info',
+              group: 'display',
+              checked: session.guidanceShown !== undefined,
+              onPress: session.toggleGuidance,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
+      // Only while the source editor is shown: a display choice of this browser (checked = wraps).
+      ...(session.wrapLines
+        ? [
+            {
+              id: 'document-wrap-lines',
+              label: t('documents.actions.wrapLines'),
+              icon: 'wrap',
+              group: 'display',
+              direct: 'never',
+              checked: session.wrapLines.checked,
+              onPress: session.wrapLines.toggle,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
       ...kind.actions(view, { session, t }),
+      ...assignType,
       {
         id: 'document-path',
         label: t('documents.actions.showPath'),
-        icon: 'info',
+        icon: 'show-path',
         group: 'actions',
         onPress: session.showPath,
       },

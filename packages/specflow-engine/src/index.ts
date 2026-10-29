@@ -42,7 +42,11 @@ export {
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
 export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
-export { bootstrapProjectHome, assertPrimaryGitCheckout } from './project/bootstrap';
+export {
+  bootstrapProjectHome,
+  assertPrimaryGitCheckout,
+  findOrphanedGitInstance,
+} from './project/bootstrap';
 
 export {
   SpecificationError,
@@ -169,6 +173,9 @@ export {
   type ShownDefinition,
   assertInitialDefinitionsCommittable,
   commitInstalledDefinitions,
+  initialDefinitionsBranchOffer,
+  INITIAL_DEFINITIONS_BRANCH,
+  startInitialDefinitionsBranch,
   installProjectDefinitionFiles,
   installProjectDefinitions,
   type InstalledCommit,
@@ -184,6 +191,35 @@ export {
   type ProjectCatalogueResult,
   type ResolvedCatalogue,
 } from './specs/definitions';
+
+// Pure document rules (no I/O). The demo Runtime builds its in-memory Specifications with them, so
+// its document answers (catalogue, scaffold, ids, paths, kinds, titles, tree) match the Engine's.
+export { renderTemplate, templateValues } from './specs/archetypes';
+// Builds a catalogue from definitions already in memory (the demo Runtime's copy of the seeds).
+export { resolveCatalogue } from './specs/definitions';
+export {
+  OVERVIEW_DOCUMENT_ID,
+  OVERVIEW_DOCUMENT_TYPE,
+  TEXT_CONTENT_MAX_BYTES,
+  allocateDocumentId,
+  classifyContent,
+  deriveDocumentTitle,
+  deriveUnclassifiedDocumentId,
+  extensionOf,
+  isEditable,
+  validateDocumentPath,
+  validateFolderPath,
+} from './specs/documents';
+export {
+  projectDocumentTree,
+  type ObservedFile,
+  type PolicyReason,
+} from './specs/documents/reading';
+export {
+  ScaffoldValidationError,
+  createSpecificationScaffold,
+  documentErrorOf,
+} from './specs/scaffold';
 
 export {
   resolveCreateArchetype,

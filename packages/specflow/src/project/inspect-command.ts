@@ -1,5 +1,12 @@
-import { bootstrapProjectHome, openSpecFlowEngine } from '@nevo/specflow-engine';
+import {
+  bootstrapProjectHome,
+  findOrphanedGitInstance,
+  openSpecFlowEngine,
+  ProjectHomeError,
+} from '@nevo/specflow-engine';
 import { Command } from 'commander';
+
+import { claimedGitInstanceLines } from './claimed-instance';
 
 export interface ProjectInspectCommandContext {
   readonly cwd: string;
@@ -43,7 +50,22 @@ export function createProjectInspectCommand(context: ProjectInspectCommandContex
     .command('bootstrap')
     .description('Explicitly designate the uninitialized primary checkout as Project Home')
     .action(async () => {
-      const engine = await bootstrapProjectHome(context.cwd);
+      let engine;
+      try {
+        engine = await bootstrapProjectHome(context.cwd);
+      } catch (error) {
+        // The evidence of an earlier project blocks a new identity: name it and the explicit recovery.
+        const claimed =
+          error instanceof ProjectHomeError
+            ? await findOrphanedGitInstance(context.cwd).catch(() => undefined)
+            : undefined;
+        if (claimed === undefined || !(error instanceof Error)) throw error;
+        const lines = [
+          error.message,
+          ...claimedGitInstanceLines(claimed, 'nevo-specflow project bootstrap'),
+        ];
+        throw new Error(lines.join('\n'), { cause: error });
+      }
       context.stdout('Project Home initialized: ' + engine.context.project.homeRoot);
       context.stdout('Project ID: ' + engine.context.project.projectId);
     });

@@ -37,9 +37,31 @@ export const iconNames = [
   'settings',
   'log-out',
   'refresh',
+  'edit',
+  'rename',
+  'move',
+  'upload',
+  'download',
+  'classify',
+  'unlink',
+  'wrap',
+  'actual-size',
+  'show-path',
+  'undo',
+  'image',
+  'file-binary',
+  'filter',
+  'book-open',
+  'network',
+  'server',
+  'list-ordered',
+  'file-check',
+  'book-user',
+  'panels-top-left',
 ] as const;
 
-export const iconSizes = ['sm', 'md'] as const;
+/** `lg` and `xl` are illustration sizes (empty screens), drawn with a lighter stroke. */
+export const iconSizes = ['sm', 'md', 'lg', 'xl'] as const;
 
 export const typographyVariantNames = [
   'title-lg',

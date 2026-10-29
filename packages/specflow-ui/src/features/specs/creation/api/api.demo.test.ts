@@ -12,7 +12,7 @@ describe('demo creation adapter', () => {
       title: 'Płatności',
       catalogueRevision: 'v4',
       archetypeId: 'feature',
-      archetypeVersion: '2',
+      archetypeVersion: 1,
       optionalDocumentIds: [],
       target: { kind: 'new-worktree' as const },
     };

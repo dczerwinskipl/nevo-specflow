@@ -16,6 +16,11 @@ export const DocumentTypeInfoSchema = Type.Object(
     useWhen: Type.String({ minLength: 1 }),
     instructions: Type.String({ minLength: 1 }),
     defaultFilename: Type.Optional(Type.String({ minLength: 1 })),
+    /**
+     * Optional icon of the type (a Design System icon name, kebab-case) from its definition. The UI
+     * shows it for documents of this type; an unknown name falls back to the default icon.
+     */
+    icon: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );

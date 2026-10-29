@@ -147,7 +147,10 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       } catch (error) {
         const code = createErrorCode(error);
         if (!code) throw error;
-        return reply.code(statusForCreateError(code)).send({ error: code, code });
+        const details = createErrorDetails(error);
+        return reply
+          .code(statusForCreateError(code))
+          .send({ error: code, code, ...(details ? { details } : {}) });
       }
     },
   );
@@ -255,7 +258,10 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       } catch (error) {
         const code = createErrorCode(error);
         if (!code) throw error;
-        return reply.code(statusForCreateError(code)).send({ code, error: code });
+        const details = createErrorDetails(error);
+        return reply
+          .code(statusForCreateError(code))
+          .send({ error: code, code, ...(details ? { details } : {}) });
       }
     },
   );

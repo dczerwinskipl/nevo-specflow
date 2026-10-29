@@ -148,11 +148,12 @@ The current list groups specifications by work status (Requires attention, Activ
 with a situation and a progress column only when the Runtime really provides that data. A project
 Runtime may know the specifications but not their work status or progress; the list then shows
 **one flat list** of specifications: the name, the facts that exist (key, tags, pull requests) and
-when it was last updated. It never shows a group "Status unavailable" with empty columns. The choice
+when it was last updated (its own column, Updated, on wide lists). It never shows a group "Status unavailable" with empty columns. The choice
 is data-driven (`overviewCapabilities` in the overview presentation: status exists when any
 specification has a real section, progress when any has a progress; decided from the whole
 collection, so a search does not change the layout), not tied to the runtime mode, so the demo with
-real statuses stays grouped. Loading, error and empty states are unchanged.
+real statuses stays grouped. An empty collection (Current or Archive) shows only the shared empty
+screen, without column headers or a search box; Current offers **New specification** there.
 
 Rows follow the design-system interaction grammar
 (`design-system.principles.information-row-hierarchy`): a row is one link to the specification with

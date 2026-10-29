@@ -12,6 +12,8 @@ export {
 export type { DocumentReadOptions } from './read-options';
 export { readRegisteredDocumentSummaries, type RegisteredDocumentSummary } from './summaries';
 export { readSpecificationDocumentTree } from './tree-reader';
+/** The pure projection the tree reader applies to what it observed (no I/O). */
+export { projectDocumentTree, type ObservedFile, type PolicyReason } from './projection';
 export { readSpecificationUncommitted } from './uncommitted-reader';
 export {
   DOCUMENT_ROW_PENDING_AFTER_MS,

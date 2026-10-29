@@ -6,6 +6,7 @@ import {
   DEFINITION_SHORT_TEXT_MAX_BYTES,
   DEFINITION_TEMPLATE_MAX_BYTES,
   byteLimitNote,
+  iconName,
   instructionsText,
   shortText,
   templateId,
@@ -24,6 +25,8 @@ import {
 
 // The byte limits are part of the public contract; the schema builders are internal to this package.
 export {
+  DEFINITION_ICON_MAX_LENGTH,
+  DEFINITION_ICON_PATTERN,
   DEFINITION_INSTRUCTIONS_MAX_BYTES,
   DEFINITION_SHORT_TEXT_MAX_BYTES,
   DEFINITION_TEMPLATE_MAX_BYTES,
@@ -47,6 +50,8 @@ export const DocumentTypeDefinitionSchema = Type.Object(
     defaultFilename: Type.Optional(
       Type.String({ minLength: 1, maxLength: DOCUMENT_PATH_MAX_LENGTH }),
     ),
+    /** Optional icon of the type in the document tree (a Design System icon name). */
+    icon: Type.Optional(iconName()),
   },
   { additionalProperties: false },
 );

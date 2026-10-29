@@ -33,6 +33,8 @@ export function classifyDemoCreateFailure(error: unknown, sent: SentCreate = {})
     typeof data === 'object' && data && 'error' in data && typeof data.error === 'string'
       ? data.error
       : undefined;
+  if (code === 'CATALOGUE_STALE' || code === 'ARCHETYPE_UNKNOWN')
+    return { kind: 'catalogue-stale', code };
   if (code === 'BRANCH_ALREADY_EXISTS')
     return { kind: 'branch-exists', automatic: !sent.customBranch };
   if (code && staleCodes.has(code)) return { kind: 'stale', code };

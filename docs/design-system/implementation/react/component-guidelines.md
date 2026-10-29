@@ -209,6 +209,42 @@ action is unavailable. `tone` is `info` (muted icon) or `attention` (status colo
 decorative. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
+## Shell footer
+
+Every bar pinned to the bottom of the shell (the navigation's account row, a page's sticky footer
+such as Create's) is one default control high plus `--spacing-shell-footer-padding` (10 px) above and
+below: `--spacing-shell-footer` (56 px), under one `Separator`, so the bars of the navigation and the
+workspace meet on one line. Use `h-shell-footer` / `min-h-shell-footer` with `py-shell-footer-padding`;
+do not add local paddings. Keep the content on one line (a short hint, then the action); it may grow
+only when a long hint wraps. The safe area is added below it, never inside.
+
+## Empty state
+
+`EmptyState` is the one empty screen of the system: whenever an area has nothing to show yet, use it
+instead of a local line and buttons. Anatomy (centred): the picture (`icon`, decorative): a registry
+glyph alone, without a tile or container, in `content-muted` at an illustration size of `Icon`
+(`xl`, 80 px, in a `pane`; `lg`, 48 px, in the `default` block; `iconSize` overrides; both draw a
+lighter stroke), or an element (a custom illustration) in its place; then a `title-md` title (a short
+noun phrase, no full stop), a `body-md` description in `content-secondary` on a `max-w-sm` measure,
+and the `actions` 24 px below.
+
+- `variant="pane"`: the whole area is empty (a list with no rows, a document area with nothing open).
+  No border; it takes the free block size of its host (`flex-1` + `min-h-full`, so the host is a flex
+  column or has a definite height) and centres the group on both axes. Do not draw table or column
+  headers above it: they describe rows that do not exist.
+- `variant="default"`: an empty block inside a page that keeps its own quiet border (`min-h-40`).
+- `actions` takes nodes in order. At most **one primary** action (the filled default `Button`), first;
+  every other action is `variant="secondary"`. A state that only offers a way out (clear the search,
+  go back) has no primary. The component does not enforce this, because actions can be buttons or
+  router links.
+
+## Alert actions
+
+`Alert` lays out its `actions` by its own width (a size container): below `@2xl` (42rem) they sit
+under the text, wider they sit beside it; several actions keep the standard gap and wrap. Because
+it measures itself, an `Alert` needs an inline size from its container (a block, grid cell or
+stretched flex child); it is not usable as an auto-width flex item, which would collapse it.
+
 ## Option picker
 
 `OptionPicker` chooses one option from a list the owner cannot bound in advance and owns the rule of
@@ -238,6 +274,7 @@ hierarchy is carried by one small indent step and the chevron + folder icon + na
 | `treeItemLabelTruncateClassName`                   | the name on one line with an ellipsis (keep the full name reachable elsewhere, for example a tooltip shown only when clipped)                                                                                                                          |
 | `treeRowActionClassName`                           | the trailing action trigger of a row (`IconButton size="sm"`, sibling of the item): revealed on hover, focus-within, open menu and the selected row on fine pointers, always visible on touch; its slot is always laid out, so the label never reflows |
 | `treeRequiredLabelClassName`, `...MarkerClassName` | a quiet muted "Required" text inside the item before the row action; below `@3xs` row width the text is visually hidden and the workflow icon stands in. It never reorders rows and never selects one                                                  |
+| `treeStateLabelClassName`, `treeAttention...`      | a trailing state label that never hides (the name truncates instead); the attention forms tone the label and the leading glyph (`treeAttentionGlyphClassName`), never colour alone                                                                     |
 | `treeHintClassName`                                | a quiet inline hint under an opened empty folder (muted, aligned to the folder name column by `--spacing-tree-name-offset`, no icon, not focusable, not a tree item); the product removes it when the folder gets content                              |
 
 Geometry tokens are derived, not hand-tuned: `--spacing-tree-row-height` is one compact control

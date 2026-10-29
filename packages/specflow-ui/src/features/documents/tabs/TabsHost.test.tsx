@@ -1,4 +1,9 @@
 // @vitest-environment jsdom
+import {
+  documentContentFixture,
+  documentTreeFixture,
+} from '../../../../test-support/documents/fixtures';
+import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
   RouterProvider,
@@ -8,8 +13,6 @@ import {
   createRouter,
   useParams,
 } from '@tanstack/react-router';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { StrictMode, createRef } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -23,35 +26,27 @@ import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { createDocumentDraftStore, type DocumentDraftStore } from '../editor/documentDraftStore';
 import { DocumentTabsProvider, useDocumentTabs } from './DocumentTabsProvider';
 
+/** Every save carries a fresh `operationId` (idempotency key). */
+const anyOperationId: unknown = expect.any(String);
+
 const SPEC = 'spec';
 const names = { a: 'a.md', b: 'b.md', c: 'c.md' } as const;
 type Id = keyof typeof names;
 
-const record = (id: Id): SpecificationDocumentResponse => ({
-  id,
-  title: id,
-  filename: names[id],
-  content: `${id.toUpperCase()}0`,
-  revision: `${id}1`,
-});
+const record = (id: Id): DocumentContent =>
+  documentContentFixture({
+    id,
+    title: id,
+    path: `docs/${names[id]}`,
+    content: `${id.toUpperCase()}0`,
+    revision: `${id}1`,
+  });
 
-function tree(ids: readonly Id[]): DemoDocumentTree {
-  const actions = {
-    rename: { available: true },
-    move: { available: true },
-    delete: { available: true },
-  };
-  return {
+function tree(ids: readonly Id[]): DocumentTree {
+  return documentTreeFixture({
     revision: 't',
-    folders: [],
-    documents: ids.map((id) => ({ id, path: `docs/${names[id]}`, revision: `${id}1`, actions })),
-    capabilities: {
-      createFile: { available: true },
-      createFolder: { available: true },
-      import: { available: true },
-      formats: [],
-    },
-  };
+    documents: ids.map((id) => ({ id, path: `docs/${names[id]}`, revision: `${id}1` })),
+  });
 }
 
 function setup({
@@ -71,11 +66,11 @@ function setup({
   const save = vi.fn((_spec: string, id: string) =>
     failSave.includes(id as Id)
       ? Promise.reject(new Error('offline'))
-      : Promise.resolve({ revision: `${id}2` }),
+      : Promise.resolve({ document: { revision: `${id}2` } }),
   );
   const services = createSpecFlowAppServices({
     documentApi: { getDocument } as unknown as DocumentApi,
-    documentsApi: {
+    demoDocumentsApi: {
       documentTree: () => Promise.resolve(tree(treeIds)),
       save,
     } as unknown as DocumentsApi,
@@ -345,7 +340,11 @@ describe('closing tabs', () => {
     await screen.findByRole('alertdialog');
     await t.click('Save changes');
     await waitFor(() => expect(t.text('tabs')).toBe('b:ready'));
-    expect(t.save).toHaveBeenCalledWith(SPEC, 'a', { content: 'EDIT', expectedRevision: 'a1' });
+    expect(t.save).toHaveBeenCalledWith(SPEC, 'a', {
+      operationId: anyOperationId,
+      content: 'EDIT',
+      expectedRevision: 'a1',
+    });
   });
 
   it('keeps the tab and the dialog when Save fails', async () => {

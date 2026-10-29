@@ -1,4 +1,5 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
+import type { ProjectCreateRequest } from '../api/api.project';
 import { retainRequest, type RequestAttempt } from '../../../../shared/operations/retainedRequest';
 import type {
   CreateDraft,
@@ -16,6 +17,11 @@ export interface StartCreateInput {
   slug?: string;
   /** Lazy: building the target may throw, and that must not escape the submit. */
   buildTarget: () => CreateSpecRequest['target'] | undefined;
+  /** The archetype part of the request (archetype, version, catalogue revision, ticks). */
+  selection: Pick<
+    ProjectCreateRequest,
+    'archetypeId' | 'archetypeVersion' | 'catalogueRevision' | 'optionalDocumentIds'
+  >;
   now?: () => number;
 }
 
@@ -27,7 +33,7 @@ export interface StartCreateInput {
  * prepared (nothing was stored or sent, the form stays usable).
  */
 export function startCreate(input: StartCreateInput): SentCreateRequest | undefined {
-  const { attempt, storage, draft, slug, buildTarget, now = Date.now } = input;
+  const { attempt, storage, draft, slug, buildTarget, selection, now = Date.now } = input;
   let request: SentCreateRequest;
   try {
     const target = buildTarget();
@@ -39,6 +45,7 @@ export function startCreate(input: StartCreateInput): SentCreateRequest | undefi
         ...(goal ? { goal } : {}),
         ...(slug ? { slug } : {}),
         ...(target ? { target } : {}),
+        ...selection,
       },
       undefined,
       'operationId',

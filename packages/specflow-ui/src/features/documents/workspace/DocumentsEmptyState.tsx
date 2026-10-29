@@ -1,56 +1,56 @@
 import { useTranslation } from 'react-i18next';
-import { Button, Typography } from '@nevo/ui';
-import { fileNameOf } from '../tabs/documentTabs';
+import { Button, EmptyState, type IconGlyph } from '@nevo/ui';
 
-/** At most this many documents are suggested. */
-export const suggestedDocumentCount = 5;
-
-/** The documents worth opening first: required ones, then the rest in tree order. */
-export function suggestedDocuments<T extends { id: string; path: string; required?: boolean }>(
-  documents: readonly T[],
-): T[] {
-  return [
-    ...documents.filter((document) => document.required),
-    ...documents.filter((document) => !document.required),
-  ].slice(0, suggestedDocumentCount);
+/** A start action offered in the empty area (New document…, Upload). */
+export interface DocumentsEmptyStateAction {
+  id: string;
+  label: string;
+  icon?: IconGlyph;
+  disabled?: boolean;
+  onPress: () => void;
 }
 
+/** Creating a document is the one primary start action; Upload stays secondary even when alone. */
+const primaryActionId = 'documents-new-file';
+
 /**
- * The document area with nothing open: one line and a few documents to start from. Nothing opens by
- * itself, so closing the last tab does not bring a document back.
+ * The document area with nothing open: the shared empty screen (centred in the area) with, when the
+ * Specification allows them, the start actions. It does not repeat the tree beside it. Nothing
+ * opens by itself, so closing the last tab does not bring a document back.
  */
 export function DocumentsEmptyState({
-  documents,
-  onOpen,
+  actions = [],
 }: {
-  documents: readonly { id: string; path: string; required?: boolean }[];
-  onOpen: (id: string) => void;
+  /** Only the actions the capabilities allow; one that waits for a running operation is disabled. */
+  actions?: readonly DocumentsEmptyStateAction[];
 }) {
   const { t } = useTranslation();
-  const suggested = suggestedDocuments(documents);
+  // The primary comes first, whatever order the caller uses.
+  const ordered = [
+    ...actions.filter((action) => action.id === primaryActionId),
+    ...actions.filter((action) => action.id !== primaryActionId),
+  ];
   return (
-    // Left-aligned on the reading measure under the header, like the document and the list.
-    <div className="flex h-full min-h-0 max-w-content-narrow flex-col gap-4 p-6">
-      <Typography as="p" variant="title-sm">
-        {t('documents.empty.title')}
-      </Typography>
-      {suggested.length > 0 && (
-        <ul aria-label={t('documents.empty.suggested')} className="flex flex-col items-start gap-1">
-          {suggested.map((document) => (
-            <li key={document.id}>
+    <EmptyState
+      variant="pane"
+      icon="file"
+      title={t('documents.empty.heading')}
+      description={actions.length > 0 ? t('documents.empty.title') : t('documents.empty.choose')}
+      actions={
+        ordered.length > 0
+          ? ordered.map((action) => (
               <Button
-                variant="ghost"
-                leadingIcon="file"
-                title={document.path}
-                aria-label={t('documents.empty.open', { name: fileNameOf(document.path) })}
-                onClick={() => onOpen(document.id)}
+                key={action.id}
+                variant={action.id === primaryActionId ? 'primary' : 'secondary'}
+                leadingIcon={action.icon}
+                disabled={action.disabled}
+                onClick={action.onPress}
               >
-                {fileNameOf(document.path)}
+                {action.label}
               </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+            ))
+          : undefined
+      }
+    />
   );
 }

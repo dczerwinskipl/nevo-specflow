@@ -108,11 +108,14 @@ async function resolveSpecification(engine: SpecFlowEngine, specId: string) {
     ) {
       throw new DocumentError('DOCUMENT_NOT_FOUND', 'The Specification does not exist.');
     }
+
     throw error;
   }
+
   if (discovered.status !== 'available') {
     throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The Specification source is unavailable.');
   }
+
   return discovered;
 }
 
@@ -130,6 +133,7 @@ export async function resolveManualCommitTarget(
         'The definitions are committed from the command line only.',
       );
     }
+
     return {
       scope: 'definitions',
       checkout: {
@@ -139,14 +143,17 @@ export async function resolveManualCommitTarget(
       owners: [{ kind: 'definitions' }],
     };
   }
+
   if (command.scope === 'specification' && command.specId === undefined) {
     throw manualCommitError('operation-invalid', 'A Specification is required for this scope.');
   }
+
   const specification =
     command.specId !== undefined ? await resolveSpecification(engine, command.specId) : undefined;
   if (specification?.specification.location === 'archive') {
     throw manualCommitError('archived', 'The Specification is archived.');
   }
+
   const checkout =
     specification !== undefined
       ? { workspaceId: specification.workspaceId, root: specification.workspaceRoot }
@@ -161,10 +168,12 @@ export async function resolveManualCommitTarget(
       ...(slug !== undefined ? { slug } : {}),
     };
   }
+
   const listing = await listLedgerRecords(engine.context, { workspaceId: checkout.workspaceId });
   if (listing.unreadable > 0) {
     throw manualCommitError('journal-corrupt', 'The uncommitted-changes ledger is corrupt.');
   }
+
   const owners: LedgerOwner[] = listing.records
     .map((record) => record.owner)
     .filter((owner) => allowDefinitions || owner.kind !== 'definitions')
@@ -174,6 +183,7 @@ export async function resolveManualCommitTarget(
         canManageSpecification === undefined ||
         canManageSpecification(owner.id),
     );
+
   return {
     scope: 'all',
     checkout,
@@ -191,6 +201,7 @@ function journalsOfScope<T extends { readonly specId: string; readonly workspace
   const specs = new Set(
     target.owners.flatMap((owner) => (owner.kind === 'specification' ? [owner.id] : [])),
   );
+
   return journals.filter(
     (journal) =>
       journal.workspaceId === target.checkout.workspaceId &&
@@ -216,7 +227,9 @@ export function manualCommitPorts(
           ...(options.queue !== undefined ? { queue: options.queue } : {}),
         });
       }
+
       const after = journalsOfScope(await listDocumentChangeJournals(engine.context), target);
+
       return {
         pending: after.filter((journal) => isPendingStage(journal.stage)).length,
         failed: after.filter((journal) => journal.stage === 'commit-failed').length,
@@ -227,16 +240,26 @@ export function manualCommitPorts(
     async assertQuiet(target, paths) {
       const wanted = new Set(paths.map(foldPathKey));
       for (const journal of await listDocumentChangeJournals(engine.context)) {
-        if (journal.workspaceId !== target.checkout.workspaceId) continue;
-        if (journal.stage === 'completed' || journal.stage === 'failed') continue;
+        if (journal.workspaceId !== target.checkout.workspaceId) {
+          continue;
+        }
+
+        if (journal.stage === 'completed' || journal.stage === 'failed') {
+          continue;
+        }
+
         const plan = await planOfJournal(engine.context, journal);
-        if (!plan.paths.some((path) => wanted.has(foldPathKey(path.path)))) continue;
+        if (!plan.paths.some((path) => wanted.has(foldPathKey(path.path)))) {
+          continue;
+        }
+
         if (journal.stage === 'recovery-required' || journal.stage === 'commit-failed') {
           throw documentChangeError(
             'busy-recovery-required',
             'A document change of these paths waits for a decision.',
           );
         }
+
         throw documentChangeError(
           isBarrierStage(journal.stage, journal.recoveryPhase)
             ? 'busy-write-in-progress'
@@ -245,9 +268,13 @@ export function manualCommitPorts(
           { retryAfterMs: 1000 },
         );
       }
+
       const views = await documentBatchViews.list(engine.context, target.checkout.workspaceId);
       for (const view of views) {
-        if (![...view.paths].some((path) => wanted.has(foldPathKey(path)))) continue;
+        if (![...view.paths].some((path) => wanted.has(foldPathKey(path)))) {
+          continue;
+        }
+
         throw documentChangeError(
           view.state === 'recovery-required' ? 'busy-recovery-required' : 'busy-commit-in-progress',
           'These documents are being committed; retry shortly.',
@@ -267,15 +294,20 @@ async function remainingOf(
   for (const owner of target.owners) {
     try {
       const record = await readLedgerRecord(engine.context, target.checkout.workspaceId, owner);
-      if (record !== undefined) records.push(record);
+      if (record !== undefined) {
+        records.push(record);
+      }
     } catch (error) {
       if (error instanceof LedgerCorruptError) {
         throw manualCommitError('journal-corrupt', 'The uncommitted-changes ledger is corrupt.');
       }
+
       throw error;
     }
   }
+
   const entries = scopeEntriesOf(records);
+
   return { entries: entries.length, ledgerRevision: revisionOfScope(entries) };
 }
 
@@ -289,6 +321,7 @@ function commitInfoOf(done: ManualCommitDone): CommitInfo {
       ...(journal.stage === 'recovery-required' ? { recoveryRequired: true } : {}),
     };
   }
+
   if (journal.outcome === 'committed' && journal.sha !== undefined) {
     return {
       state: 'committed',
@@ -296,6 +329,7 @@ function commitInfoOf(done: ManualCommitDone): CommitInfo {
       ...(journal.settledAt !== undefined ? { settledAt: journal.settledAt } : {}),
     };
   }
+
   return {
     state: 'not-applicable',
     reason: journal.reason ?? 'nothing-to-commit',
@@ -346,6 +380,7 @@ export async function manualCommit(
     },
     manualCommitPorts(engine, options),
   );
+
   return resultOf(engine, target, done);
 }
 
@@ -366,6 +401,7 @@ export async function recoverManualCommitOperation(
   const done = await recoverManualCommit(rt, operationId, mode);
   const owners: LedgerOwner[] = done.journal.owners.flatMap((key) => {
     const owner = ledgerOwnerOfKey(key);
+
     return owner !== undefined ? [owner] : [];
   });
   const target: ManualCommitTarget = {
@@ -373,6 +409,7 @@ export async function recoverManualCommitOperation(
     checkout: { workspaceId: done.journal.workspaceId, root: done.journal.workspaceRoot },
     owners,
   };
+
   return resultOf(engine, target, done);
 }
 
@@ -384,6 +421,7 @@ export const documentAndManualCommitViews: BatchViewProvider = {
   async list(context, workspaceId) {
     const batches = await documentBatchViews.list(context, workspaceId);
     const manual = await listManualCommitPathViews(context, workspaceId);
+
     return [
       ...batches,
       ...manual.map((view) => ({
@@ -428,12 +466,14 @@ export async function readUncommittedScope(
   );
   if (target.scope === 'specification' && target.specId !== undefined) {
     const view = await readSpecificationUncommitted(engine, target.specId);
+
     return {
       scope: 'specification',
       ...view,
       entries: view.entries.map((entry) => ({ ...entry, owner: target.specId! })),
     };
   }
+
   const records = [];
   for (const owner of target.owners) {
     const record = await readLedgerRecord(engine.context, target.checkout.workspaceId, owner).catch(
@@ -441,17 +481,22 @@ export async function readUncommittedScope(
         if (error instanceof LedgerCorruptError) {
           throw manualCommitError('journal-corrupt', 'The uncommitted-changes ledger is corrupt.');
         }
+
         throw error;
       },
     );
-    if (record !== undefined) records.push(record);
+    if (record !== undefined) {
+      records.push(record);
+    }
   }
+
   const entries = scopeEntriesOf(records);
   const { policy } = await readProjectGitPolicy(engine.context).catch(() => ({
     policy: undefined,
   }));
   const effective = policy !== undefined ? effectiveAutoCommit(policy, 'documents') : undefined;
   const mine = journalsOfScope(await listDocumentChangeJournals(engine.context), target);
+
   return {
     scope: target.scope,
     ledgerRevision: revisionOfScope(entries),
@@ -504,6 +549,7 @@ export async function recoverOperation(
       }),
     };
   }
+
   return {
     kind: 'document-change',
     journals: await recoverDocumentOperation(
@@ -542,6 +588,7 @@ export async function resolveLedgerOperation(
   if (found === undefined) {
     throw manualCommitError('operation-not-found', 'The operation does not exist.');
   }
+
   const records = (
     await listLedgerRecords(engine.context, { workspaceId: found.workspaceId })
   ).records.filter((record) =>
@@ -569,11 +616,13 @@ export async function resolveLedgerOperation(
         () => new Date(now()).toISOString(),
       );
     }
+
     resolved.push(...removable.map((entry) => entry.path));
     stillUncommitted.push(
       ...mine.filter((entry) => !removable.includes(entry)).map((entry) => entry.path),
     );
   }
+
   return { resolved: resolved.sort(), stillUncommitted: stillUncommitted.sort() };
 }
 
@@ -600,8 +649,14 @@ export async function resumeStoppedManualCommits(
 ): Promise<ManualCommitResumeOutcome[]> {
   const outcomes: ManualCommitResumeOutcome[] = [];
   for (const journal of await listManualCommitJournals(engine.context)) {
-    if (journal.stage !== 'reserved' && journal.stage !== 'committing') continue;
-    if (options.workspaceId !== undefined && journal.workspaceId !== options.workspaceId) continue;
+    if (journal.stage !== 'reserved' && journal.stage !== 'committing') {
+      continue;
+    }
+
+    if (options.workspaceId !== undefined && journal.workspaceId !== options.workspaceId) {
+      continue;
+    }
+
     try {
       await recoverManualCommitOperation(engine, journal.operationId, 'resume', {
         ...options.manual,
@@ -617,5 +672,6 @@ export async function resumeStoppedManualCommits(
       });
     }
   }
+
   return outcomes;
 }

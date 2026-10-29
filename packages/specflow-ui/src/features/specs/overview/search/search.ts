@@ -5,7 +5,9 @@ const searchThreshold = 12;
 
 export function filterSpecsOverview(projection: SpecsOverview, query: string): SpecsOverview {
   const term = query.trim().toLowerCase();
-  if (!term) return projection;
+  if (!term) {
+    return projection;
+  }
 
   const matches = (item: SpecOverviewItem) =>
     [
@@ -31,6 +33,7 @@ export function isSearchable(
   projection: SpecsOverview | undefined,
 ): boolean {
   const count = projection?.items.length ?? 0;
+
   return (
     (collection === 'archive' && count > 0) || term.trim().length > 0 || count >= searchThreshold
   );

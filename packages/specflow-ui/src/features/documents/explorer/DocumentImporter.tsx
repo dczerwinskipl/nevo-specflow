@@ -29,6 +29,7 @@ export function DocumentImporter({
       input.current?.click();
     },
   }));
+
   return (
     <input
       hidden
@@ -39,7 +40,9 @@ export function DocumentImporter({
       onChange={(event) => {
         const files = Array.from(event.target.files ?? []);
         void onFiles(files, folder.current).finally(() => {
-          if (input.current) input.current.value = '';
+          if (input.current) {
+            input.current.value = '';
+          }
         });
       }}
     />

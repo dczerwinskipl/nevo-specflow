@@ -20,6 +20,7 @@ export function SpecSectionHeader({
   readonly onToggle: () => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <OperationalGroupHeader
       label={label}
@@ -36,7 +37,9 @@ export function SpecSectionHeader({
         { label },
       )}
       onToggle={() => {
-        if (!searching) onToggle();
+        if (!searching) {
+          onToggle();
+        }
       }}
       selectable={false}
       ariaDisabled={searching}

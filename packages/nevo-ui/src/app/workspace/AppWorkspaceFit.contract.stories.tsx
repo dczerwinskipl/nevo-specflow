@@ -92,7 +92,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function settle() {
@@ -118,6 +120,7 @@ async function measure(canvasElement: HTMLElement, width: number) {
   const style = getComputedStyle(main);
   const borders =
     Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.borderRightWidth);
+
   return {
     mainRect,
     borders,

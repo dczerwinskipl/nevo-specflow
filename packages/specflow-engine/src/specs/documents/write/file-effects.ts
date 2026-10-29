@@ -69,13 +69,18 @@ export const nodeDocumentFileOps: DocumentFileOps = {
   link: (existing, created) => link(existing, created),
   chmod: async (path, mode) => {
     // Windows keeps one read-only bit and no execute bit: there is no mode to carry over.
-    if (process.platform !== 'win32') await chmod(path, mode);
+    if (process.platform !== 'win32') {
+      await chmod(path, mode);
+    }
   },
   list: async (path) => {
     try {
       return await readdir(path);
     } catch (error) {
-      if (isAbsent(error)) return [];
+      if (isAbsent(error)) {
+        return [];
+      }
+
       throw error;
     }
   },
@@ -99,13 +104,20 @@ export async function observePath(
     let position = 0;
     for (;;) {
       const chunk = await readAt(open.handle, position, HASH_CHUNK_BYTES);
-      if (chunk.length === 0) break;
+      if (chunk.length === 0) {
+        break;
+      }
+
       hash.update(chunk);
       position += chunk.length;
     }
+
     return { sha256: hash.digest('hex'), bytes: position };
   });
-  if (outcome.state !== 'opened') return outcome.state === 'absent' ? null : NOT_REGULAR;
+  if (outcome.state !== 'opened') {
+    return outcome.state === 'absent' ? null : NOT_REGULAR;
+  }
+
   return outcome.value;
 }
 
@@ -120,24 +132,40 @@ export async function readFileBytes(
 ): Promise<Buffer | undefined> {
   const tooLarge = () => documentChangeError('too-large', 'The document to move is too large.');
   const outcome = await withOpenFile(ops.verified, specDir, relativePath, async (open) => {
-    if (open.stat.size > BigInt(RAW_CONTENT_MAX_BYTES)) throw tooLarge();
+    if (open.stat.size > BigInt(RAW_CONTENT_MAX_BYTES)) {
+      throw tooLarge();
+    }
+
     const parts: Buffer[] = [];
     let position = 0;
     for (;;) {
       const chunk = await readAt(open.handle, position, HASH_CHUNK_BYTES);
-      if (chunk.length === 0) break;
+      if (chunk.length === 0) {
+        break;
+      }
+
       parts.push(chunk);
       position += chunk.length;
-      if (position > RAW_CONTENT_MAX_BYTES) throw tooLarge();
+      if (position > RAW_CONTENT_MAX_BYTES) {
+        throw tooLarge();
+      }
     }
+
     return Buffer.concat(parts);
   });
+
   return outcome.state === 'opened' ? outcome.value : undefined;
 }
 
 export function sameFileState(left: ObservedState, right: FileState): boolean {
-  if (left === NOT_REGULAR) return false;
-  if (left === null || right === null) return left === right;
+  if (left === NOT_REGULAR) {
+    return false;
+  }
+
+  if (left === null || right === null) {
+    return left === right;
+  }
+
   return left.sha256 === right.sha256 && left.bytes === right.bytes;
 }
 
@@ -149,8 +177,14 @@ export function dispositionOf(
   planned: Pick<PlannedPath, 'pre' | 'post'>,
 ): PathDisposition {
   // `post` first: a replay of a path that is already in place must not look like a foreign edit.
-  if (sameFileState(current, planned.post)) return 'at-post';
-  if (sameFileState(current, planned.pre)) return 'at-pre';
+  if (sameFileState(current, planned.post)) {
+    return 'at-post';
+  }
+
+  if (sameFileState(current, planned.pre)) {
+    return 'at-pre';
+  }
+
   return 'foreign';
 }
 
@@ -193,6 +227,7 @@ export function stagedFileName(
   if (name.length > DOCUMENT_TEMP_NAME_LENGTH || !STAGE_NAME.test(name)) {
     throw new Error('Staged name out of shape.');
   }
+
   return name;
 }
 
@@ -208,7 +243,9 @@ export async function removeStageFiles(
   operationId: string,
 ): Promise<void> {
   for (const name of await ops.list(directory)) {
-    if (isStageFileOf(operationId, name)) await ops.remove(join(directory, name));
+    if (isStageFileOf(operationId, name)) {
+      await ops.remove(join(directory, name));
+    }
   }
 }
 
@@ -230,20 +267,31 @@ export async function ensureParentDirectories(
   for (const segment of segments) {
     current = join(current, segment);
     let stat = await ops.verified.lstat(current).catch((error: unknown) => {
-      if (isAbsent(error)) return undefined;
+      if (isAbsent(error)) {
+        return undefined;
+      }
+
       throw error;
     });
     if (stat === undefined) {
       await ops.mkdir(current).catch((error: unknown) => {
-        if (errnoCode(error) !== 'EEXIST') throw error;
+        if (errnoCode(error) !== 'EEXIST') {
+          throw error;
+        }
       });
       stat = await ops.verified.lstat(current);
     }
-    if (!stat.isDirectory() || stat.isSymbolicLink()) throw unavailable();
+
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw unavailable();
+    }
   }
+
   if (segments.length > 0) {
     const real = await ops.verified.realpath(current);
-    if (!samePhysicalPath(real, current)) throw unavailable();
+    if (!samePhysicalPath(real, current)) {
+      throw unavailable();
+    }
   }
 }
 
@@ -314,9 +362,13 @@ async function tryBackupLink(
   await ops.remove(backup);
   try {
     await ops.link(target, backup);
+
     return true;
   } catch (error) {
-    if (LINK_UNAVAILABLE.has(errnoCode(error) ?? '')) return false;
+    if (LINK_UNAVAILABLE.has(errnoCode(error) ?? '')) {
+      return false;
+    }
+
     throw error;
   }
 }
@@ -351,25 +403,36 @@ export async function applyPlannedPath(
   const backupRelative = [...relative.split('/').slice(0, -1), nameOf('backup')].join('/');
 
   const first = dispositionOf(await observePath(ops, specDir, relative), planned);
-  if (first === 'at-post') return { kind: 'already' };
-  if (first === 'foreign') return { kind: 'foreign' };
+  if (first === 'at-post') {
+    return { kind: 'already' };
+  }
+
+  if (first === 'foreign') {
+    return { kind: 'foreign' };
+  }
 
   /** After the change: the backup must still hold `pre`; otherwise the foreign bytes go back. */
   const verifyBackup = async (backup: string): Promise<boolean> => {
     const held = await observePath(ops, specDir, backupRelative);
     if (sameFileState(held, planned.pre)) {
       await ops.remove(backup);
+
       return true;
     }
+
     await ops.rename(backup, full);
     await ops.syncDirectory(parent);
+
     return false;
   };
 
   if (planned.post === null) {
     await event('before-replace');
     const again = dispositionOf(await observePath(ops, specDir, relative), planned);
-    if (again === 'foreign') return { kind: 'foreign' };
+    if (again === 'foreign') {
+      return { kind: 'foreign' };
+    }
+
     const backup = join(parent, nameOf('backup'));
     const linked = await tryBackupLink(ops, full, backup);
     try {
@@ -378,11 +441,17 @@ export async function applyPlannedPath(
       if (linked && !(error instanceof WriterInterrupted)) {
         await ops.remove(backup).catch(() => undefined);
       }
+
       throw error;
     }
-    if (linked && !(await verifyBackup(backup))) return { kind: 'foreign' };
+
+    if (linked && !(await verifyBackup(backup))) {
+      return { kind: 'foreign' };
+    }
+
     await ops.syncDirectory(parent);
     await event('removed');
+
     return { kind: 'applied' };
   }
 
@@ -394,6 +463,7 @@ export async function applyPlannedPath(
       { cause: 'payload-unprovable' },
     );
   }
+
   await ensureParentDirectories(ops, specDir, relative);
   const staged = join(parent, nameOf('stage'));
   const backup = join(parent, nameOf('backup'));
@@ -404,32 +474,50 @@ export async function applyPlannedPath(
     if (planned.pre !== null) {
       // The replacement keeps the mode of the file it replaces (the executable bit of a script).
       const existing = await ops.verified.lstat(full).catch(() => undefined);
-      if (existing !== undefined) await ops.chmod(staged, Number(existing.mode & 0o7777n));
+      if (existing !== undefined) {
+        await ops.chmod(staged, Number(existing.mode & 0o7777n));
+      }
     } else if (context.modeFrom !== undefined) {
       // A moved or renamed file is new at its path but keeps the mode of the file it came from.
       const origin = await ops.verified
         .lstat(join(specDir, ...context.modeFrom.split('/')))
         .catch(() => undefined);
-      if (origin?.isFile()) await ops.chmod(staged, Number(origin.mode & 0o7777n));
+      if (origin?.isFile()) {
+        await ops.chmod(staged, Number(origin.mode & 0o7777n));
+      }
     }
+
     await event('staged');
     const again = dispositionOf(await observePath(ops, specDir, relative), planned);
     if (again === 'foreign') {
       await ops.remove(staged);
+
       return { kind: 'foreign' };
     }
+
     await event('before-replace');
-    if (planned.pre !== null) linked = await tryBackupLink(ops, full, backup);
+    if (planned.pre !== null) {
+      linked = await tryBackupLink(ops, full, backup);
+    }
+
     await ops.rename(staged, full);
   } catch (error) {
     if (!(error instanceof WriterInterrupted)) {
       await ops.remove(staged).catch(() => undefined);
-      if (linked) await ops.remove(backup).catch(() => undefined);
+      if (linked) {
+        await ops.remove(backup).catch(() => undefined);
+      }
     }
+
     throw error;
   }
-  if (linked && !(await verifyBackup(backup))) return { kind: 'foreign' };
+
+  if (linked && !(await verifyBackup(backup))) {
+    return { kind: 'foreign' };
+  }
+
   await ops.syncDirectory(parent);
   await event('replaced');
+
   return { kind: 'applied' };
 }

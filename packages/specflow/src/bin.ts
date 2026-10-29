@@ -28,14 +28,23 @@ async function main(argv: string[]): Promise<number> {
 
   try {
     await program.parseAsync(argv);
+
     return 0;
   } catch (err) {
     if (err instanceof CommanderError) {
       return commanderExitCode(err);
     }
-    if (err instanceof ProjectSetupCancelledError) return 0;
-    if (err instanceof ReportedFailure) return err.exitCode;
+
+    if (err instanceof ProjectSetupCancelledError) {
+      return 0;
+    }
+
+    if (err instanceof ReportedFailure) {
+      return err.exitCode;
+    }
+
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
+
     return 1;
   } finally {
     process.off('SIGINT', abort);

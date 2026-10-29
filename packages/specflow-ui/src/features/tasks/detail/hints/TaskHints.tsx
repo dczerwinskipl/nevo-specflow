@@ -14,7 +14,10 @@ export function TaskHints({
   readonly scope?: string;
 }) {
   const { t } = useTranslation();
-  if (!hints.length) return null;
+  if (!hints.length) {
+    return null;
+  }
+
   return (
     <section className="grid min-w-0 gap-2">
       <Typography as="h4" variant="title-sm">

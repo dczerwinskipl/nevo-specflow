@@ -24,6 +24,7 @@ describe('Tailwind Variants metadata derivation', () => {
   it('derives a unique Button capture identity from every recipe axis', () => {
     const ids = variantCombinations(buttonVariants).flatMap(({ variant, size, width }) => {
       const base = `${variant}-${size}-${width}`;
+
       return [base, `${base}-disabled`];
     });
 

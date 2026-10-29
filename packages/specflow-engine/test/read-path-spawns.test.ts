@@ -23,6 +23,7 @@ async function countGit<T>(work: () => Promise<T>): Promise<{ result: T; spawns:
   const listener = (message: unknown): void => {
     spawns.push([...(message as { args: readonly string[] }).args]);
   };
+
   subscribe('nevo.specflow.engine.git-process', listener);
   try {
     return { result: await work(), spawns };

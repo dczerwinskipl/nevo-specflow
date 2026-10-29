@@ -70,6 +70,7 @@ async function refusal(promise: Promise<unknown>) {
   const error = await failure(promise);
   expect(error).toBeInstanceOf(DocumentError);
   const { code, details } = error as DocumentError;
+
   return { code, details };
 }
 
@@ -275,7 +276,10 @@ describe('the subset of a manual commit', () => {
       ]),
     );
     // 50 later saves of notes-2 push the shared operation out of its newest-50 ids.
-    for (let round = 0; round < 50; round += 1) await saveUncommitted(project, 2, `two ${round}\n`);
+    for (let round = 0; round < 50; round += 1) {
+      await saveUncommitted(project, 2, `two ${round}\n`);
+    }
+
     const before = headCount(project);
 
     const refused = await refusal(commitUncommitted(project, { paths: [specPath(1)] }));
@@ -463,6 +467,7 @@ describe('what refuses a manual commit', () => {
         details: { cause },
       });
     }
+
     expect(manualCommits(project)).toEqual([]);
   });
 
@@ -640,6 +645,7 @@ describe('the lease and the claims', () => {
     } finally {
       markLeaseIdle(project.workspaceId);
     }
+
     expect((await commitUncommitted(project)).paths).toEqual([specPath(1)]);
   });
 

@@ -31,8 +31,10 @@ describe('sendRetained', () => {
     let fail = true;
     const send = (input: { requestId: string }) => {
       seen.push(input.requestId);
+
       return fail ? Promise.reject(new Error('timeout')) : Promise.resolve('ok');
     };
+
     const body = { folders: ['x'], documents: [] };
     await expect(sendRetained(holder, body, send)).rejects.toThrow();
     fail = false;
@@ -49,8 +51,10 @@ describe('sendRetained', () => {
     let failure: Error = new Error('timeout');
     const send = (input: { requestId: string }) => {
       seen.push(input.requestId);
+
       return Promise.reject(failure);
     };
+
     const definite = (error: unknown) => error === refuse;
     const body = { name: 'a' };
     await expect(sendRetained(holder, body, send, 'requestId', definite)).rejects.toThrow();

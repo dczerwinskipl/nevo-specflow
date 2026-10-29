@@ -151,7 +151,9 @@ export function CreateDemoForm({
   });
 
   useEffect(() => {
-    if (method && !supportsSplit) headingRef.current?.focus();
+    if (method && !supportsSplit) {
+      headingRef.current?.focus();
+    }
   }, [method, supportsSplit]);
 
   const refreshOptions = () =>
@@ -166,6 +168,7 @@ export function CreateDemoForm({
     const slug = workspaceOptions
       ? buildCreateSlug(place.choice, workspaceOptions, title)
       : undefined;
+
     return {
       title,
       archetype: { id: chosen.id, version: chosen.version, optionalDocumentIds },
@@ -188,13 +191,14 @@ export function CreateDemoForm({
   };
 
   const leaveDialog = <CreateLeaveDialog guard={leaveGuard} />;
-  if (!method && !specId)
+  if (!method && !specId) {
     return (
       <CreateShell>
         <CreateMethodChoice onChoose={setMethod} />
         {leaveDialog}
       </CreateShell>
     );
+  }
 
   const working = busy || state.checking;
   const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
@@ -274,7 +278,10 @@ export function CreateDemoForm({
             void (async () => {
               const code = failure.kind === 'catalogue-stale' ? failure.code : undefined;
               const fresh = await onRefreshCatalogue();
-              if (!fresh || !code) return;
+              if (!fresh || !code) {
+                return;
+              }
+
               setArchetypeChoice((current) => refreshedArchetypeChoice(current, code));
               actions.dismissFailure();
               announce(t('create.archetype.refreshed'));
@@ -301,8 +308,10 @@ export function CreateDemoForm({
           event.preventDefault();
           if (recovery) {
             void actions.submit(submission());
+
             return;
           }
+
           if (!busy && (uncertain || canSubmit)) {
             reveal.captureSubmit(event);
             void actions.submit(submission());

@@ -23,11 +23,16 @@ export function defaultManualCommitSubject(input: {
   readonly scope: ManualCommitScope;
   readonly slug: string | undefined;
 }): string {
-  if (input.scope === 'definitions') return 'definitions: manual commit';
+  if (input.scope === 'definitions') {
+    return 'definitions: manual commit';
+  }
+
   if (input.scope === 'specification' && input.slug !== undefined) {
     const subject = `spec(docs): manual commit ${input.slug}`;
+
     return Array.from(subject).slice(0, COMMIT_SUBJECT_MAX).join('');
   }
+
   return 'manual commit: uncommitted Engine changes';
 }
 
@@ -38,7 +43,9 @@ export function resolveMessage(
   if (text === undefined) {
     return { ok: true, message: { subject: defaultManualCommitSubject(fallback), body: '' } };
   }
+
   const parsed = parseUserCommitMessage(text);
+
   return parsed.ok ? { ok: true, message: parsed.message } : { ok: false, problem: parsed.problem };
 }
 
@@ -63,11 +70,13 @@ export function manualCommitTrailers(input: {
 }): Record<string, string> {
   const specIds = input.owners.flatMap((key) => {
     const owner = ledgerOwnerOfKey(key);
+
     return owner?.kind === 'specification' ? [owner.id] : [];
   });
   const documents = input.effective
     .filter((path) => ledgerOwnerOfKey(input.ownerOfPath.get(path) ?? '')?.kind === 'specification')
     .map(documentPathOf);
+
   return {
     'Nevo-Action': 'manual-commit',
     'Nevo-Scope': input.scope,

@@ -14,13 +14,17 @@ import { useSpecsOverview } from './useSpecsOverview';
 function render(getOverview: SpecsOverviewApi['getOverview'], seed = false) {
   const client = createSpecFlowQueryClient();
   if (seed)
-    // Cached long ago: mounting refreshes it, so a failing read is a failed refresh.
+  // Cached long ago: mounting refreshes it, so a failing read is a failed refresh.
+  {
     client.setQueryData(specsOverviewKeys.collection('current'), createSpecsFixture('current'), {
       updatedAt: 0,
     });
+  }
+
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
+
   return renderHook(() => useSpecsOverview({ getOverview }, 'current'), { wrapper });
 }
 

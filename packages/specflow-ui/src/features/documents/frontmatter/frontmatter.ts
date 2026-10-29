@@ -29,12 +29,22 @@ const opening = /^---[ \t]*\r?\n/;
 const closing = /^(---|\.\.\.)[ \t]*$/;
 
 function stringify(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint')
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value);
-  if (Array.isArray(value) && value.every((item) => item === null || typeof item !== 'object'))
+  }
+
+  if (Array.isArray(value) && value.every((item) => item === null || typeof item !== 'object')) {
     return value.map((item) => stringify(item)).join(', ');
+  }
+
   try {
     return JSON.stringify(value) ?? '';
   } catch {
@@ -44,7 +54,10 @@ function stringify(value: unknown): string {
 
 /** Returns null unless the source starts with a well-formed, non-empty YAML mapping block. */
 export function parseFrontmatter(source: string): ParsedFrontmatter | null {
-  if (!opening.test(source)) return null;
+  if (!opening.test(source)) {
+    return null;
+  }
+
   const lines = source.split('\n');
   let end = -1;
   for (let index = 1; index < lines.length; index++) {
@@ -53,12 +66,19 @@ export function parseFrontmatter(source: string): ParsedFrontmatter | null {
       break;
     }
   }
-  if (end === -1) return null;
+
+  if (end === -1) {
+    return null;
+  }
+
   const yaml = lines
     .slice(1, end)
     .map((line) => line.replace(/\r$/, ''))
     .join('\n');
-  if (yaml.trim() === '' || yaml.length > maxFrontmatterLength) return null;
+  if (yaml.trim() === '' || yaml.length > maxFrontmatterLength) {
+    return null;
+  }
+
   let data: unknown;
   try {
     const document = parseDocument(yaml, {
@@ -66,17 +86,28 @@ export function parseFrontmatter(source: string): ParsedFrontmatter | null {
       prettyErrors: false,
       logLevel: 'silent',
     });
-    if (document.errors.length > 0) return null;
+    if (document.errors.length > 0) {
+      return null;
+    }
+
     data = document.toJS({ maxAliasCount: 10 });
   } catch {
     return null;
   }
-  if (data === null || typeof data !== 'object' || Array.isArray(data)) return null;
+
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+    return null;
+  }
+
   const properties = Object.entries(data as Record<string, unknown>)
     .slice(0, maxProperties)
     .map(([key, value]) => ({ key, value: stringify(value) }));
-  if (properties.length === 0) return null;
+  if (properties.length === 0) {
+    return null;
+  }
+
   const lineCount = end + 1;
+
   return {
     properties,
     lineCount,

@@ -14,6 +14,7 @@ describe('why Git could not be started', () => {
     for (const code of ['EMFILE', 'ENFILE', 'EAGAIN', 'ENOMEM', 'EPERM']) {
       expect(spawnFailureReason(errno(code))).toBe('spawn-failed');
     }
+
     expect(spawnFailureReason(new Error('no code'))).toBe('spawn-failed');
   });
 });

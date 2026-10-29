@@ -63,6 +63,7 @@ async function inputFor(
   const seed = await openSeedSource(
     seedDirectory !== undefined ? { directory: seedDirectory } : {},
   );
+
   return {
     installOptions,
     input: {
@@ -86,7 +87,10 @@ export async function installProjectDefinitionFiles(
 ): Promise<InstallResult> {
   const { input } = await inputFor(homeRoot, options);
   const outcome = await planInstall(input);
-  if (outcome.status === 'refused' || options.dryRun === true) return { outcome, written: [] };
+  if (outcome.status === 'refused' || options.dryRun === true) {
+    return { outcome, written: [] };
+  }
+
   return { outcome, written: await applyInstall(input, outcome.plan) };
 }
 
@@ -125,11 +129,17 @@ export async function assertDefinitionsCommittable(
   paths: readonly string[],
 ): Promise<string | undefined> {
   const { policy } = await readProjectGitPolicy(engine.context);
-  if (!policy.enabled) return undefined;
+  if (!policy.enabled) {
+    return undefined;
+  }
+
   const commits = openVersionControl(engine).commits;
   const root = engine.context.project.homeRoot;
   const branch = await commits.currentBranch(root);
-  if (paths.length > 0) await commits.preflight(commitRequest(root, branch, paths));
+  if (paths.length > 0) {
+    await commits.preflight(commitRequest(root, branch, paths));
+  }
+
   return branch;
 }
 
@@ -188,14 +198,23 @@ export async function commitInstalledDefinitions(
   paths: readonly string[],
 ): Promise<InstalledCommit | undefined> {
   const { policy } = await readProjectGitPolicy(engine.context);
-  if (!policy.enabled) return undefined;
+  if (!policy.enabled) {
+    return undefined;
+  }
+
   const commits = openVersionControl(engine).commits;
   const root = engine.context.project.homeRoot;
   const pending: string[] = [];
   for (const path of paths) {
-    if ((await commits.inspectPaths(root, [path])).state !== 'committed') pending.push(path);
+    if ((await commits.inspectPaths(root, [path])).state !== 'committed') {
+      pending.push(path);
+    }
   }
-  if (pending.length === 0) return undefined;
+
+  if (pending.length === 0) {
+    return undefined;
+  }
+
   const branch = await commits.currentBranch(root);
   const request = commitRequest(root, branch, pending);
   await registerPendingDefinitions(
@@ -207,6 +226,7 @@ export async function commitInstalledDefinitions(
   await pruneUncommitted(engine, { workspaceId: engine.workspace.workspaceId, commits }).catch(
     () => undefined,
   );
+
   return { sha, paths: pending };
 }
 
@@ -220,12 +240,15 @@ export async function installProjectDefinitions(
   const homeRoot = engine.context.project.homeRoot;
   const { input } = await inputFor(homeRoot, options);
   const outcome = await planInstall(input);
-  if (outcome.status === 'refused' || options.dryRun === true) return { outcome, written: [] };
+  if (outcome.status === 'refused' || options.dryRun === true) {
+    return { outcome, written: [] };
+  }
 
   const paths = committablePaths(outcome.plan);
   await assertDefinitionsCommittable(engine, paths);
   const written = await applyInstall(input, outcome.plan);
   const commit = await commitInstalledDefinitions(engine, paths);
+
   return { outcome, written, ...(commit ? { commit } : {}) };
 }
 
@@ -242,15 +265,27 @@ export async function initialDefinitionsBranchOffer(
   root: string,
   git: { readonly enabled: boolean; readonly commits?: Partial<GitCommitsPolicy> },
 ): Promise<string | undefined> {
-  if (!git.enabled) return undefined;
+  if (!git.enabled) {
+    return undefined;
+  }
+
   const { current, branches } = await inspectLocalBranches(root);
-  if (current === undefined || branches.length === 0) return undefined;
+  if (current === undefined || branches.length === 0) {
+    return undefined;
+  }
+
   const policy = {
     protectedBranches: git.commits?.protectedBranches ?? [],
     ...(git.commits?.allowedBranches ? { allowedBranches: git.commits.allowedBranches } : {}),
   };
-  if (engineCommitRefusal(policy, current) === undefined) return undefined;
-  if (branches.includes(INITIAL_DEFINITIONS_BRANCH)) return undefined;
+  if (engineCommitRefusal(policy, current) === undefined) {
+    return undefined;
+  }
+
+  if (branches.includes(INITIAL_DEFINITIONS_BRANCH)) {
+    return undefined;
+  }
+
   return engineCommitRefusal(policy, INITIAL_DEFINITIONS_BRANCH) === undefined
     ? INITIAL_DEFINITIONS_BRANCH
     : undefined;
@@ -269,6 +304,7 @@ export async function startInitialDefinitionsBranch(
   const offer = await initialDefinitionsBranchOffer(root, git);
   if (offer === undefined) {
     const { branches } = await inspectLocalBranches(root);
+
     throw branches.includes(INITIAL_DEFINITIONS_BRANCH)
       ? new GitCapabilityError(
           'BRANCH_ALREADY_EXISTS',
@@ -279,6 +315,7 @@ export async function startInitialDefinitionsBranch(
           `The Engine may not commit on '${INITIAL_DEFINITIONS_BRANCH}' either.`,
         );
   }
+
   const result = await executeGit(root, ['checkout', '-q', '-b', offer]);
   if (result.exitCode !== 0) {
     throw new GitCapabilityError(
@@ -287,6 +324,7 @@ export async function startInitialDefinitionsBranch(
       result.stderr.trim() || undefined,
     );
   }
+
   return offer;
 }
 
@@ -299,7 +337,10 @@ export async function assertInitialDefinitionsCommittable(
   root: string,
   git: { readonly enabled: boolean; readonly commits?: Partial<GitCommitsPolicy> },
 ): Promise<void> {
-  if (!git.enabled) return;
+  if (!git.enabled) {
+    return;
+  }
+
   const { current, branches } = await inspectLocalBranches(root);
   if (branches.length === 0) {
     throw new GitCapabilityError(
@@ -308,6 +349,7 @@ export async function assertInitialDefinitionsCommittable(
       'no-commits',
     );
   }
+
   if (current === undefined) {
     throw new GitCapabilityError(
       'COMMIT_BLOCKED',
@@ -315,6 +357,7 @@ export async function assertInitialDefinitionsCommittable(
       'detached',
     );
   }
+
   const refusal = engineCommitRefusal(
     {
       protectedBranches: git.commits?.protectedBranches ?? [],

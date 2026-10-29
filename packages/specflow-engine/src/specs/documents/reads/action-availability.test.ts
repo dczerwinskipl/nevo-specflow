@@ -16,7 +16,10 @@ function commits(patch: Partial<DocumentCommitView> = {}): DocumentCommitView {
 
 function holdsOf(entries: Record<string, PathHold>): DocumentCommitView['holds'] {
   const view = emptyCommitView();
-  for (const [path, hold] of Object.entries(entries)) view.holds.add(path, hold);
+  for (const [path, hold] of Object.entries(entries)) {
+    view.holds.add(path, hold);
+  }
+
   return view.holds;
 }
 

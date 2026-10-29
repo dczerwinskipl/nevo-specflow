@@ -21,8 +21,10 @@ export function createSessionCursors(generation: string, projectId: string, curs
         expires: Date.now() + 86400000,
       }),
     ).toString('base64url');
+
     return data + '.' + createHmac('sha256', cursorKey).update(data).digest('base64url');
   }
+
   function boundary(
     token: string,
     sid: string,
@@ -32,11 +34,16 @@ export function createSessionCursors(generation: string, projectId: string, curs
   ): number {
     try {
       const [data, signature, ...rest] = token.split('.');
-      if (!data || !signature || rest.length) throw new Error();
+      if (!data || !signature || rest.length) {
+        throw new Error();
+      }
+
       const expected = createHmac('sha256', cursorKey).update(data).digest();
       const actual = Buffer.from(signature, 'base64url');
-      if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
+      if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
         throw new Error();
+      }
+
       const value = JSON.parse(Buffer.from(data, 'base64url').toString()) as {
         generation: string;
         project: string;
@@ -55,13 +62,20 @@ export function createSessionCursors(generation: string, projectId: string, curs
         value.collection !== collection ||
         value.parent !== parent ||
         !Number.isSafeInteger(value.upper)
-      )
+      ) {
         throw new Error();
-      if (value.expires < Date.now())
+      }
+
+      if (value.expires < Date.now()) {
         fail('SESSION_CURSOR_EXPIRED', 'History cursor expired. Open the current Session again.');
+      }
+
       return value.upper;
     } catch (error) {
-      if (error instanceof StoreFault) throw error;
+      if (error instanceof StoreFault) {
+        throw error;
+      }
+
       return fail('SESSION_CURSOR_INVALID', 'Invalid history cursor.');
     }
   }

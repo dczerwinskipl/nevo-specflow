@@ -31,11 +31,16 @@ function thread() {
 for await (const line of createInterface({ input: process.stdin })) {
   const frame = JSON.parse(line);
   const { id, method, params } = frame;
-  if (method === 'initialized') continue;
+  if (method === 'initialized') {
+    continue;
+  }
+
   let result;
-  if (method === 'initialize') result = { userAgent: 'controlled-codex', codexHome: home };
-  else if (method === 'configRequirements/read') result = { requirements: null };
-  else if (method === 'experimentalFeature/list')
+  if (method === 'initialize') {
+    result = { userAgent: 'controlled-codex', codexHome: home };
+  } else if (method === 'configRequirements/read') {
+    result = { requirements: null };
+  } else if (method === 'experimentalFeature/list') {
     result = {
       data: [
         ...args.flatMap((arg, at) =>
@@ -44,9 +49,11 @@ for await (const line of createInterface({ input: process.stdin })) {
         { name: 'code_mode_host', enabled: true },
       ],
     };
-  else if (method === 'mcpServerStatus/list') result = { data: [] };
-  else if (method === 'account/read') result = { account: { type: 'chatgpt' } };
-  else if (method === 'model/list')
+  } else if (method === 'mcpServerStatus/list') {
+    result = { data: [] };
+  } else if (method === 'account/read') {
+    result = { account: { type: 'chatgpt' } };
+  } else if (method === 'model/list') {
     result = {
       data: [
         {
@@ -56,12 +63,15 @@ for await (const line of createInterface({ input: process.stdin })) {
         },
       ],
     };
-  else if (method === 'thread/start') {
+  } else if (method === 'thread/start') {
     threadId = randomUUID();
     result = thread();
   } else if (method === 'thread/resume') {
     const previous = JSON.parse(await readFile(join(home, params.threadId + '.json'), 'utf8'));
-    if (previous.workspace !== workspace) throw new Error('Fixture workspace changed');
+    if (previous.workspace !== workspace) {
+      throw new Error('Fixture workspace changed');
+    }
+
     threadId = params.threadId;
     token = previous.token;
     turns = previous.turns;
@@ -87,6 +97,7 @@ for await (const line of createInterface({ input: process.stdin })) {
       });
       continue;
     }
+
     if (message.startsWith('write:')) {
       token = message.slice(6);
       const item = {
@@ -97,7 +108,10 @@ for await (const line of createInterface({ input: process.stdin })) {
       notify('item/started', { turnId, item: { ...item, status: 'inProgress' } });
       await writeFile(join(workspace, 'controlled-agent.txt'), token);
       notify('item/completed', { turnId, item: { ...item, status: 'completed' } });
-    } else if (message !== 'recall') throw new Error('Unsupported fixture intent');
+    } else if (message !== 'recall') {
+      throw new Error('Unsupported fixture intent');
+    }
+
     turns++;
     await writeFile(join(home, threadId + '.json'), JSON.stringify({ workspace, token, turns }));
     const answer = { id: 'answer', type: 'agentMessage', phase: 'final_answer' };
@@ -109,6 +123,9 @@ for await (const line of createInterface({ input: process.stdin })) {
     });
     notify('turn/completed', { turnId, turn: { id: turnId, status: 'completed' } });
     continue;
-  } else throw new Error('Unsupported fixture RPC');
+  } else {
+    throw new Error('Unsupported fixture RPC');
+  }
+
   send({ id, result });
 }

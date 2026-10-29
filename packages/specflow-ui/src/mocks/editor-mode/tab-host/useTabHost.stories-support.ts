@@ -18,10 +18,16 @@ export function useTabHost(
     initialItems: initial.open.map((id) => ({ id })),
     initialActiveId: initial.active,
     canClose: (id) => {
-      if (!content(id).dirty) return true;
+      if (!content(id).dirty) {
+        return true;
+      }
+
       // One unsaved-changes dialog at a time: while it is open, other close requests are refused
       // (resolved false) instead of overwriting the pending answer.
-      if (answer.current || pendingClose) return false;
+      if (answer.current || pendingClose) {
+        return false;
+      }
+
       return new Promise<boolean>((resolve) => {
         answer.current = resolve;
         setPendingClose(id);
@@ -38,8 +44,12 @@ export function useTabHost(
   );
 
   const settle = (allowed: boolean) => {
-    if (answer.current) answer.current(allowed);
-    else if (allowed && pendingClose) opened.close(pendingClose);
+    if (answer.current) {
+      answer.current(allowed);
+    } else if (allowed && pendingClose) {
+      opened.close(pendingClose);
+    }
+
     answer.current = null;
     setPendingClose(null);
   };
@@ -58,7 +68,10 @@ export function useTabHost(
       }),
     cancelClose: () => settle(false),
     confirmClose: (action: 'save' | 'discard') => {
-      if (!pendingClose) return;
+      if (!pendingClose) {
+        return;
+      }
+
       content(pendingClose).settle(action);
       settle(true);
     },

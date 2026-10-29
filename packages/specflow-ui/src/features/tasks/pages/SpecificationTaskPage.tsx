@@ -51,6 +51,7 @@ export function SpecificationTaskPage({
       />
     );
   }
+
   return (
     <AppWorkspace
       split="primary"

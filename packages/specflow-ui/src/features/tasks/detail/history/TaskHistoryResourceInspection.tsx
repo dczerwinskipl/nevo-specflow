@@ -27,17 +27,23 @@ export function TaskHistoryResourceInspection({
   const { t } = useTranslation();
   const query = useTaskHistory(specId, taskId, snapshot);
   const section = snapshot?.sections.history;
-  if (query.accessDenied || section?.state === 'forbidden')
+  if (query.accessDenied || section?.state === 'forbidden') {
     return <TaskSourceState state="forbidden" />;
-  if (section?.state !== 'available' || !query.readerAvailable)
+  }
+
+  if (section?.state !== 'available' || !query.readerAvailable) {
     return <TaskSourceState state="unavailable" />;
-  if (snapshot?.revision !== params.revision || section.data.token !== params.token)
+  }
+
+  if (snapshot?.revision !== params.revision || section.data.token !== params.token) {
     return (
       <Typography as="p" variant="body-sm" role="status">
         {t('taskDetails.contextChanged')}
       </Typography>
     );
-  if (query.isPending)
+  }
+
+  if (query.isPending) {
     return (
       <LoadingPresentation
         shape="detail"
@@ -45,10 +51,13 @@ export function TaskHistoryResourceInspection({
         fetching={query.fetchStatus === 'fetching'}
       />
     );
+  }
+
   const entry = query.data?.pages
     .filter((page) => page.token === params.token)
     .flatMap((page) => page.items)
     .find((item) => item.id === params.entryId);
+
   return (
     <TaskResourceInspection
       resource={entry?.resources.find((item) => item.id === params.resourceId)}

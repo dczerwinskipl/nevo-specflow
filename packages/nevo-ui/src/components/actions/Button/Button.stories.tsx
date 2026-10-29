@@ -59,7 +59,9 @@ type Story = StoryObj<typeof meta>;
 type CanonicalButtonVariant = (typeof canonicalVariants)[number];
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function activationCount(button: HTMLElement): string | null {
@@ -68,6 +70,7 @@ function activationCount(button: HTMLElement): string | null {
 
 function ButtonContractExample({ disabled = false }: { disabled?: boolean }) {
   const [activations, setActivations] = useState(0);
+
   return (
     <div data-activation-count={activations}>
       <Button disabled={disabled} onClick={() => setActivations((value) => value + 1)}>
@@ -97,6 +100,7 @@ function canonicalSourceId(
   state: 'default' | 'disabled',
 ): string {
   const base = `${combination.variant}-${combination.size}-${combination.width}`;
+
   return state === 'disabled' ? `${base}-disabled` : base;
 }
 

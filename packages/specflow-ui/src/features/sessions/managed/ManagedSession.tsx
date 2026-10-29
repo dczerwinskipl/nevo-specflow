@@ -37,6 +37,7 @@ function InteractionPrompt({
   const { t } = useTranslation();
   const [answer, setAnswer] = useState('');
   const unsupported = interaction.kind === 'question' && (interaction.maxSelections ?? 1) > 1;
+
   return (
     <section
       aria-label={t('managedSession.responseRequired')}
@@ -99,6 +100,7 @@ function InteractionPrompt({
     </section>
   );
 }
+
 export function ManagedSession({
   sessionId,
   owner,
@@ -116,26 +118,35 @@ export function ManagedSession({
   const state = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
   useEffect(() => {
     feed.connect();
+
     return () => feed.disconnect();
   }, [feed]);
   const scroller = useRef<HTMLDivElement>(null),
     anchor = useRef<{ height: number; top: number } | undefined>(undefined);
   useLayoutEffect(() => {
     const node = scroller.current;
-    if (!node) return;
+    if (!node) {
+      return;
+    }
+
     if (anchor.current) {
       node.scrollTop = anchor.current.top + node.scrollHeight - anchor.current.height;
       anchor.current = undefined;
-    } else if (!state.away) node.scrollTop = node.scrollHeight;
+    } else if (!state.away) {
+      node.scrollTop = node.scrollHeight;
+    }
   }, [state.snapshot?.entries, state.away]);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
   function older() {
-    if (scroller.current)
+    if (scroller.current) {
       anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
+    }
+
     void feed.older();
   }
+
   const snapshot = state.snapshot;
   const outcomeLabels: Record<string, string> = {
     completed: t('managedSession.outcome.completed'),
@@ -143,6 +154,7 @@ export function ManagedSession({
     cancelled: t('managedSession.outcome.cancelled'),
     interrupted: t('managedSession.outcome.interrupted'),
   };
+
   return (
     <AppWorkspace scroll="content" fit="available" split="primary" labels={labels}>
       <AppWorkspace.Primary

@@ -148,7 +148,10 @@ const SaveOwnerContext = createContext<DocumentSaveOwner | null>(null);
 /** One workspace-scoped save owner, available even while no document is shown. */
 export function useDocumentSaveOwner(): DocumentSaveOwner {
   const owner = useContext(SaveOwnerContext);
-  if (!owner) throw new Error('Document save owner missing');
+  if (!owner) {
+    throw new Error('Document save owner missing');
+  }
+
   return owner;
 }
 
@@ -163,6 +166,7 @@ export function useDocumentEditor() {
  */
 export function useDocumentSession(documentId: string): DocumentEditorSession | null {
   const session = useContext(Context);
+
   return session?.document.id === documentId ? session : null;
 }
 
@@ -221,7 +225,10 @@ export function DocumentEditorProvider({
     markdown && draft?.editing === false && columnShown === false && outline.headings.length > 0;
   const outlineOpen = openedFor !== undefined && openedFor === documentId && outlineAvailable;
   // Editing, a wide panel or another document ends the question, so coming back never reopens it.
-  if (openedFor !== undefined && !outlineOpen) setOpenedFor(undefined);
+  if (openedFor !== undefined && !outlineOpen) {
+    setOpenedFor(undefined);
+  }
+
   const outlineOpener = useRef<HTMLElement | null>(null);
   const openOutline = useCallback(() => {
     outlineOpener.current =
@@ -250,7 +257,10 @@ export function DocumentEditorProvider({
         ? 'sheet'
         : undefined;
   // A wider panel, another document or no guidance ends the sheet, so it never reopens by itself.
-  if (guidanceSheetFor !== undefined && guidanceShown !== 'sheet') setGuidanceSheetFor(undefined);
+  if (guidanceSheetFor !== undefined && guidanceShown !== 'sheet') {
+    setGuidanceSheetFor(undefined);
+  }
+
   // Between the contents threshold and the room for two columns, one slot serves the contents or
   // the guidance: showing one hides the other, and each can be closed.
   const sharedSlot = guidanceRoom === 'shared';
@@ -260,8 +270,10 @@ export function DocumentEditorProvider({
   const toggleContentsColumn = useCallback(() => {
     if (contentsColumnShown) {
       setContentsHiddenIds((ids) => [...ids, documentId]);
+
       return;
     }
+
     setContentsHiddenIds((ids) => ids.filter((id) => id !== documentId));
     setGuidanceColumnIds((ids) => ids.filter((id) => id !== documentId));
   }, [contentsColumnShown, documentId]);
@@ -285,8 +297,10 @@ export function DocumentEditorProvider({
       setGuidanceColumnIds((ids) =>
         ids.includes(documentId) ? ids.filter((id) => id !== documentId) : [...ids, documentId],
       );
+
       return;
     }
+
     guidanceOpener.current =
       globalThis.document.activeElement instanceof HTMLElement
         ? globalThis.document.activeElement
@@ -297,8 +311,12 @@ export function DocumentEditorProvider({
   const [sourcePane, setSourcePane] = useState<PaneClass>();
   const wrapPreference = useWrapLinesPreference();
   const wrapLines = useMemo(() => {
-    if (!sourcePane) return undefined;
+    if (!sourcePane) {
+      return undefined;
+    }
+
     const checked = wrapLinesFor(wrapPreference, sourcePane);
+
     return { checked, toggle: () => setWrapLines(sourcePane, !checked) };
   }, [sourcePane, wrapPreference]);
   const owner = useDocumentSave({ specId, document, draft });
@@ -309,7 +327,10 @@ export function DocumentEditorProvider({
   const setDraft = useCallback(
     (change: Partial<DocumentDraft>) => {
       const { document: record } = shown.current;
-      if (!record || !hasTextDraft(record)) return;
+      if (!record || !hasTextDraft(record)) {
+        return;
+      }
+
       store.patch(shown.current.specId, record.id, change, () => draftFor(record));
     },
     [store],
@@ -319,12 +340,18 @@ export function DocumentEditorProvider({
       // A slow commit is announced once, after a second; the result is announced when it comes.
       const slow = setTimeout(() => announce(t('documents.save.saving')), 1000);
       const result = await saveOwned().finally(() => clearTimeout(slow));
-      if (!result?.ok) return false;
+      if (!result?.ok) {
+        return false;
+      }
+
       // Acknowledged once the content is on disk; the commit is the Engine's own (not promised here).
       announce(t('documents.save.saved'));
       // Only the document still on screen is affected by what happens after the response.
       const open = shown.current;
-      if (open.key !== documentDraftKey(result.specId, result.documentId)) return true;
+      if (open.key !== documentDraftKey(result.specId, result.documentId)) {
+        return true;
+      }
+
       if (options?.restoreFocus) {
         // The header action that triggered the save is disabled once the draft is clean.
         const active = globalThis.document.activeElement;
@@ -332,9 +359,11 @@ export function DocumentEditorProvider({
           !active ||
           active === globalThis.document.body ||
           active.closest('[data-workspace-header]')
-        )
+        ) {
           focusEditorSoon();
+        }
       }
+
       return open.draft?.content === result.content;
     },
     [saveOwned, focusEditorSoon, announce, t],
@@ -343,7 +372,10 @@ export function DocumentEditorProvider({
   /** Replaces the draft of the shown document with the version on disk (the new base). */
   const loadDisk = useCallback(async () => {
     const { specId: openSpec, document: open, draft: openDraft } = shown.current;
-    if (!open) return false;
+    if (!open) {
+      return false;
+    }
+
     try {
       const fresh = await documentApi.getDocument(openSpec, open.id);
       cache.setQueryData(documentKeys.detail(openSpec, open.id), fresh);
@@ -352,9 +384,11 @@ export function DocumentEditorProvider({
         editing: openDraft?.editing ?? false,
       });
       clearError(open.id);
+
       return true;
     } catch {
       announce(t('documents.conflict.loadFailed'));
+
       return false;
     }
   }, [documentApi, cache, store, clearError, announce, t]);
@@ -362,54 +396,82 @@ export function DocumentEditorProvider({
     const content = shown.current.draft?.content ?? '';
     void (async () => {
       try {
-        if (!navigator.clipboard) throw new Error('Clipboard is unavailable');
+        if (!navigator.clipboard) {
+          throw new Error('Clipboard is unavailable');
+        }
+
         await navigator.clipboard.writeText(content);
       } catch {
         announce(t('documents.conflict.copyFailed'));
+
         return;
       }
-      if (await loadDisk()) announce(t('documents.conflict.copied'));
+
+      if (await loadDisk()) {
+        announce(t('documents.conflict.copied'));
+      }
     })();
   }, [loadDisk, announce, t]);
   const requestLoadDisk = useCallback(() => {
     const { document: open } = shown.current;
-    if (open) setLoadDiskFor(open.id);
+    if (open) {
+      setLoadDiskFor(open.id);
+    }
   }, []);
   // Resume replays the written save exactly (its text may no longer be the draft's).
   const resume = useCallback(() => void saveOwned(undefined, { resume: true }), [saveOwned]);
   const toggleActualSize = useCallback(() => {
     const { document: open } = shown.current;
-    if (!open) return;
+    if (!open) {
+      return;
+    }
+
     setActualSizeOf((ids) =>
       ids.includes(open.id) ? ids.filter((id) => id !== open.id) : [...ids, open.id],
     );
   }, []);
   const download = useCallback(() => {
     const { specId: openSpec, document: open } = shown.current;
-    if (!open) return;
+    if (!open) {
+      return;
+    }
+
     downloadDocument(openSpec, open);
   }, []);
   const toggleEditing = useCallback(() => {
     const { specId: openSpec, document: openDocument, draft: openDraft } = shown.current;
-    if (!openDraft || !openDocument) return;
+    if (!openDraft || !openDocument) {
+      return;
+    }
+
     // Read the position first: hiding the keyboard or swapping the view changes the geometry.
     const position = anchorReader.current?.();
-    if (position) store.setAnchor(openSpec, openDocument.id, position);
+    if (position) {
+      store.setAnchor(openSpec, openDocument.id, position);
+    }
+
     const active = globalThis.document.activeElement;
-    if (active instanceof HTMLElement && editorRoot.current?.contains(active)) active.blur();
+    if (active instanceof HTMLElement && editorRoot.current?.contains(active)) {
+      active.blur();
+    }
+
     setDraft({ editing: !openDraft.editing });
     // Wait for the mode switch to render before moving focus into its content.
     focusContentSoon();
   }, [store, setDraft, focusContentSoon, editorRoot]);
   const requestDiscard = useCallback(() => {
     const { document: open, draft: openDraft } = shown.current;
-    if (open && openDraft && isDraftDirty(openDraft)) setGuardFor(open.id);
+    if (open && openDraft && isDraftDirty(openDraft)) {
+      setGuardFor(open.id);
+    }
   }, []);
   const showPath = useCallback(() => setPathOpen(true), []);
   const rememberAnchor = useCallback(
     (next: ScrollAnchor) => {
       const { specId: openSpec, document: open } = shown.current;
-      if (open) store.setAnchor(openSpec, open.id, next);
+      if (open) {
+        store.setAnchor(openSpec, open.id, next);
+      }
     },
     [store],
   );
@@ -417,7 +479,10 @@ export function DocumentEditorProvider({
   const saveCode = apiErrorCode(owner.saveError);
   const locked = saveCode === 'DOCUMENT_RECOVERY_REQUIRED';
   const session = useMemo<DocumentEditorSession | null>(() => {
-    if (!document || !draft) return null;
+    if (!document || !draft) {
+      return null;
+    }
+
     return {
       specId,
       document,
@@ -500,6 +565,7 @@ export function DocumentEditorProvider({
   ]);
 
   const name = document?.path ?? '';
+
   return (
     <SaveOwnerContext.Provider value={owner}>
       <Context.Provider value={session}>
@@ -509,7 +575,9 @@ export function DocumentEditorProvider({
           <AlertDialog
             open={loadDiskFor !== undefined && loadDiskFor === document?.id}
             onOpenChange={(next) => {
-              if (!next) setLoadDiskFor(undefined);
+              if (!next) {
+                setLoadDiskFor(undefined);
+              }
             }}
           >
             <AlertDialogContent>
@@ -527,7 +595,9 @@ export function DocumentEditorProvider({
                   variant="destructive"
                   onClick={() =>
                     void loadDisk().then((loaded) => {
-                      if (loaded) setLoadDiskFor(undefined);
+                      if (loaded) {
+                        setLoadDiskFor(undefined);
+                      }
                     })
                   }
                 >
@@ -544,7 +614,9 @@ export function DocumentEditorProvider({
             headings={outline.headings}
             activeLine={outlineActive}
             onOpenChange={(next) => {
-              if (!next) setOpenedFor(undefined);
+              if (!next) {
+                setOpenedFor(undefined);
+              }
             }}
             onSelected={(line, pointer) => outlineNavigator.current?.goTo(line, pointer)}
             restoreFocusTo={() =>
@@ -558,7 +630,9 @@ export function DocumentEditorProvider({
             open={guidanceShown === 'sheet'}
             guidance={guidance}
             onOpenChange={(next) => {
-              if (!next) setGuidanceSheetFor(undefined);
+              if (!next) {
+                setGuidanceSheetFor(undefined);
+              }
             }}
             restoreFocusTo={() =>
               // Opened from the menu: its item is gone, so the guidance toggle takes focus back.
@@ -583,7 +657,9 @@ export function DocumentEditorProvider({
             }}
             onSave={() =>
               void session.save().then((saved) => {
-                if (saved) setGuardFor(undefined);
+                if (saved) {
+                  setGuardFor(undefined);
+                }
               })
             }
             onCloseAutoFocus={(event) => {

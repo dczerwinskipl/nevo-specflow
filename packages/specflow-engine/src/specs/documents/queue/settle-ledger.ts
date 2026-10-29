@@ -39,20 +39,26 @@ export class SettleLedger {
   /** The monotonic time at which the operation counts as queued. */
   observe(operationId: string, queuedAtIso: string, clock: QueueClock): number {
     const known = this.queuedAt.get(operationId);
-    if (known !== undefined) return known;
+    if (known !== undefined) {
+      return known;
+    }
+
     const wall = Date.parse(queuedAtIso);
     const age = Number.isNaN(wall)
       ? this.maxHoldMs
       : Math.min(Math.max(clock.wallMs() - wall, 0), this.maxHoldMs);
     const placed = clock.monotonicMs() - age;
     this.queuedAt.set(operationId, placed);
+
     return placed;
   }
 
   /** Forgets every operation that is not in `operationIds`. */
   retain(operationIds: ReadonlySet<string>): void {
     for (const id of this.queuedAt.keys()) {
-      if (!operationIds.has(id)) this.queuedAt.delete(id);
+      if (!operationIds.has(id)) {
+        this.queuedAt.delete(id);
+      }
     }
   }
 }
@@ -62,5 +68,6 @@ const SHARED = Symbol.for('nevo.specflow.engine.documentQueue.settleLedger');
 /** The ledger of this process, shared by every run (and every copy of this module). */
 export function sharedSettleLedger(): SettleLedger {
   const holder = globalThis as Record<symbol, unknown>;
+
   return (holder[SHARED] ??= new SettleLedger()) as SettleLedger;
 }

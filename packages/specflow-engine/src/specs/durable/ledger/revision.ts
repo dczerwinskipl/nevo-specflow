@@ -10,5 +10,6 @@ export function ledgerRevisionOf(
 ): string {
   const lines = entries.map((entry) => entry.path + ':' + (entry.postSha256 ?? 'absent'));
   lines.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+
   return sha256Hex(lines.join('\n'));
 }

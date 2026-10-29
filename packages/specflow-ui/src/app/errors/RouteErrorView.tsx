@@ -24,6 +24,7 @@ export function RouteErrorView({
 
 function ApiErrorScreen({ error, reset }: { error: ApiError; reset?: () => void }) {
   const message = useApiErrorMessage(error);
+
   return <ErrorScreen title={message.title} description={message.description} reset={reset} />;
 }
 
@@ -38,6 +39,7 @@ function ErrorScreen({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
   return (
     <SpecFlowStandaloneShell>
       <div role="alert" className="grid w-full gap-8">

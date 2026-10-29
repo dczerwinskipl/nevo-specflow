@@ -6,14 +6,19 @@ import { isApiError } from '../../api';
  * error, `ApiError.code`) gave one.
  */
 export function apiErrorCode(error: unknown): string | undefined {
-  if (isApiError(error)) return error.code;
+  if (isApiError(error)) {
+    return error.code;
+  }
+
   if (
     !isHttpClientError(error) ||
     typeof error.data !== 'object' ||
     !error.data ||
     !('error' in error.data)
-  )
+  ) {
     return undefined;
+  }
+
   return typeof error.data.error === 'string' ? error.data.error : undefined;
 }
 
@@ -22,6 +27,9 @@ export function apiErrorCode(error: unknown): string | undefined {
  * before anything was sent is `not-applied`); an HTTP failure without a status proves nothing.
  */
 export function writeOutcomeUnknown(error: unknown): boolean {
-  if (isApiError(error)) return error.outcome !== 'not-applied';
+  if (isApiError(error)) {
+    return error.outcome !== 'not-applied';
+  }
+
   return !isHttpClientError(error) || error.status === undefined;
 }

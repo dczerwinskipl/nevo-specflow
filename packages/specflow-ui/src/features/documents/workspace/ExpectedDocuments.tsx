@@ -24,7 +24,10 @@ export function ExpectedDocuments({
 }) {
   const { t } = useTranslation();
   const headingId = useId();
-  if (requirements.length === 0) return null;
+  if (requirements.length === 0) {
+    return null;
+  }
+
   return (
     <section aria-labelledby={headingId} className="grid gap-1 px-2">
       <Typography as="h2" id={headingId} variant="label-sm">
@@ -36,6 +39,7 @@ export function ExpectedDocuments({
       <ul className="grid">
         {requirements.map((requirement) => {
           const title = typeTitle(requirement.documentType);
+
           return (
             <li
               key={requirement.documentType}

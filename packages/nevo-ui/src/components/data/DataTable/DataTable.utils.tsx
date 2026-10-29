@@ -24,8 +24,14 @@ export const defaultDataTableMessages: DataTableMessages = {
 };
 
 export function dataTableAlignClassName(align: DataTableAlign = 'start') {
-  if (align === 'center') return 'text-center';
-  if (align === 'end') return 'text-right';
+  if (align === 'center') {
+    return 'text-center';
+  }
+
+  if (align === 'end') {
+    return 'text-right';
+  }
+
   return 'text-left';
 }
 
@@ -34,15 +40,23 @@ export function renderDataTableValue<TData extends RowData>(
   messages: Readonly<DataTableMessages>,
   formatter?: DataTableValueFormatter<TData>,
 ) {
-  if (formatter) return formatter(context, messages);
+  if (formatter) {
+    return formatter(context, messages);
+  }
+
   const { value } = context;
   if (value === null || value === undefined || value === '') {
     return <span className="text-content-muted">—</span>;
   }
-  if (typeof value === 'boolean') return value ? messages.booleanTrue : messages.booleanFalse;
+
+  if (typeof value === 'boolean') {
+    return value ? messages.booleanTrue : messages.booleanFalse;
+  }
+
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') {
     return String(value);
   }
+
   return JSON.stringify(value) ?? '—';
 }
 
@@ -83,7 +97,11 @@ const interactiveTableContent = [
 ].join(',');
 
 export function isInteractiveTableTarget(target: EventTarget | null, row: HTMLTableRowElement) {
-  if (!(target instanceof Element)) return false;
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
   const interactive = target.closest(interactiveTableContent);
+
   return interactive !== null && row.contains(interactive);
 }

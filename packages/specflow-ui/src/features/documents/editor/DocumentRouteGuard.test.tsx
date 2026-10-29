@@ -37,6 +37,7 @@ function setup() {
       </TestServicesRouterContext>
     </QueryClientProvider>,
   );
+
   return { store, leave, take, view };
 }
 

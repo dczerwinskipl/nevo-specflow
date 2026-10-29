@@ -5,7 +5,10 @@ import { canInspectTaskReference } from './taskReference';
 
 export function TaskReferenceAvailability({ link }: { readonly link: TaskLink }) {
   const { t } = useTranslation();
-  if (canInspectTaskReference(link)) return null;
+  if (canInspectTaskReference(link)) {
+    return null;
+  }
+
   return (
     <Typography as="span" variant="body-sm" className="text-content-muted">
       {t(

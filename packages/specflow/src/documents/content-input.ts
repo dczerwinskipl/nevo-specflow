@@ -42,9 +42,13 @@ export async function readBoundedUtf8(
   for await (const chunk of stream) {
     const bytes = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : Buffer.from(chunk);
     size += bytes.length;
-    if (size > CONTENT_INPUT_MAX_BYTES) throw tooLarge();
+    if (size > CONTENT_INPUT_MAX_BYTES) {
+      throw tooLarge();
+    }
+
     chunks.push(bytes);
   }
+
   return decodeUtf8Content(Buffer.concat(chunks), name);
 }
 
@@ -54,15 +58,31 @@ export async function readContentInput(
   context: ContentInputContext,
 ): Promise<string> {
   if (source.stdin) {
-    if (!context.readStdin) throw new Error('Standard input is not available.');
+    if (!context.readStdin) {
+      throw new Error('Standard input is not available.');
+    }
+
     const text = await context.readStdin();
-    if (Buffer.byteLength(text, 'utf8') > CONTENT_INPUT_MAX_BYTES) throw tooLarge();
+    if (Buffer.byteLength(text, 'utf8') > CONTENT_INPUT_MAX_BYTES) {
+      throw tooLarge();
+    }
+
     return text;
   }
-  if (source.contentFile === undefined) throw new Error('No content was given.');
+
+  if (source.contentFile === undefined) {
+    throw new Error('No content was given.');
+  }
+
   const path = resolve(context.cwd, source.contentFile);
   const info = await stat(path);
-  if (!info.isFile()) throw new Error(`Not a regular file: ${source.contentFile}`);
-  if (info.size > CONTENT_INPUT_MAX_BYTES) throw tooLarge();
+  if (!info.isFile()) {
+    throw new Error(`Not a regular file: ${source.contentFile}`);
+  }
+
+  if (info.size > CONTENT_INPUT_MAX_BYTES) {
+    throw tooLarge();
+  }
+
   return decodeUtf8Content(await readFile(path), `The file ${source.contentFile}`);
 }

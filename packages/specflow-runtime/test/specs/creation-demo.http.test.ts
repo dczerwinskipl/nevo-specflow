@@ -32,13 +32,17 @@ async function runtime(state = createDemoEnvironment(), dataMode: 'demo' | 'proj
     { dataMode, demoEnvironment: state },
   );
   apps.push(app);
+
   return app;
 }
+
 async function catalogue(app: FastifyInstance) {
   const result = await app.inject('/api/demo/specification-creation');
   expect(result.statusCode).toBe(200);
+
   return result.json<DemoCatalogue>();
 }
+
 const op = (n: number) => `7f3a91c2-4b6e-4d1a-9c0e-${String(n).padStart(12, '0')}`;
 function creation(
   cat: DemoCatalogue,
@@ -54,6 +58,7 @@ function creation(
     ...overrides,
   };
 }
+
 function session(cat: DemoCatalogue, overrides: Partial<DemoSessionInput> = {}): DemoSessionInput {
   return {
     requestId: 'session-1',
@@ -64,18 +69,23 @@ function session(cat: DemoCatalogue, overrides: Partial<DemoSessionInput> = {}):
     ...overrides,
   };
 }
+
 async function create(app: FastifyInstance, body: DemoCreateRequest) {
   return app.inject({ method: 'POST', url: '/api/demo/specifications', payload: body });
 }
+
 async function allocate(app: FastifyInstance, specId: string, body: DemoSessionInput) {
   return app.inject({ method: 'POST', url: `/api/demo/specs/${specId}/sessions`, payload: body });
 }
+
 async function read(app: FastifyInstance, specId: string, documentId: string) {
   return (await app.inject(`/api/specs/${specId}/documents/${documentId}`)).json<DocumentContent>();
 }
+
 async function tree(app: FastifyInstance, specId: string) {
   return (await app.inject(`/api/specs/${specId}/document-tree`)).json<DocumentTree>();
 }
+
 function save(
   app: FastifyInstance,
   specId: string,
@@ -88,6 +98,7 @@ function save(
     payload: body,
   });
 }
+
 describe('Temporary Specification creation HTTP boundary', () => {
   it('allows only one concurrent save with the same revision, including seeded documents', async () => {
     const app = await runtime();
@@ -136,7 +147,10 @@ describe('Temporary Specification creation HTTP boundary', () => {
     const before = (
       await app.inject(`/api/specs/${specId}/workspace`)
     ).json<SpecificationWorkspaceResponse>();
-    if (before.sections.documents.state !== 'available') throw new Error('Documents unavailable');
+    if (before.sections.documents.state !== 'available') {
+      throw new Error('Documents unavailable');
+    }
+
     expect(before.sections.documents.data.items.map((d: { id: string }) => d.id)).toEqual(
       documentIds,
     );
@@ -168,7 +182,10 @@ describe('Temporary Specification creation HTTP boundary', () => {
     const workspace = (
       await app.inject(`/api/specs/${specId}/workspace`)
     ).json<SpecificationWorkspaceResponse>();
-    if (workspace.sections.sessions.state !== 'available') throw new Error('Sessions unavailable');
+    if (workspace.sections.sessions.state !== 'available') {
+      throw new Error('Sessions unavailable');
+    }
+
     expect(workspace.sections.sessions.data.items).toEqual([
       expect.objectContaining({ id: sessionId, status: 'quiet' }),
     ]);
@@ -452,8 +469,10 @@ describe('Nested document collection HTTP boundary', () => {
     const workspace = (
       await app.inject(`/api/specs/${specId}/workspace`)
     ).json<SpecificationWorkspaceResponse>();
-    if (workspace.sections.documents.state !== 'available')
+    if (workspace.sections.documents.state !== 'available') {
       throw new Error('Documents unavailable');
+    }
+
     expect(workspace.sections.documents.data.folders).toContain('architecture/decisions');
     // Registered documents only: the unclassified `research/call.txt` is in the tree, not here.
     expect(workspace.sections.documents.data.items).toHaveLength(3);
@@ -500,8 +519,10 @@ describe('Nested document collection HTTP boundary', () => {
     const workspace = (
       await app.inject('/api/specs/admission/workspace')
     ).json<SpecificationWorkspaceResponse>();
-    if (workspace.sections.documents.state !== 'available')
+    if (workspace.sections.documents.state !== 'available') {
       throw new Error('Documents unavailable');
+    }
+
     expect(workspace.sections.documents.data.items).toHaveLength(2);
     const seeded = await tree(app, 'admission');
     expect(seeded.documents.find((document) => document.id === 'overview')).toMatchObject({
@@ -519,7 +540,7 @@ describe('Nested document collection HTTP boundary', () => {
     );
     expect(saved.revision).not.toBe(seeded.revision);
     const project = await runtime(undefined, 'project');
-    for (const endpoint of ['documents', 'folders', 'document-operations'])
+    for (const endpoint of ['documents', 'folders', 'document-operations']) {
       expect(
         (
           await project.inject({
@@ -529,6 +550,7 @@ describe('Nested document collection HTTP boundary', () => {
           })
         ).statusCode,
       ).toBe(404);
+    }
   });
 });
 
@@ -637,10 +659,12 @@ describe('demo document operation transport', () => {
       await app.inject('/api/specs/' + result.specId + '/workspace')
     ).json<SpecificationWorkspaceResponse>();
     expect(workspace.sections.documents.state).toBe('available');
-    if (workspace.sections.documents.state === 'available')
+    if (workspace.sections.documents.state === 'available') {
       expect(workspace.sections.documents.data.items).toContainEqual(
         expect.objectContaining({ id: 'note', filename: 'transcript.txt' }),
       );
+    }
+
     const denied = await operate({
       operationId: op(102),
       action: 'delete',
@@ -677,13 +701,17 @@ describe('demo showcase seed', () => {
     const workspace = (
       await app.inject('/api/specs/admission/workspace')
     ).json<SpecificationWorkspaceResponse>();
-    if (workspace.sections.documents.state !== 'available')
+    if (workspace.sections.documents.state !== 'available') {
       throw new Error('Documents unavailable');
+    }
+
     expect(workspace.sections.documents.data.items).toHaveLength(4);
-    for (const document of admission.documents)
+    for (const document of admission.documents) {
       expect((await app.inject(`/api/specs/admission/documents/${document.id}`)).statusCode).toBe(
         200,
       );
+    }
+
     expect((await tree(app, 'security')).folders.map((folder) => folder.path)).toEqual([
       '',
       'notes',

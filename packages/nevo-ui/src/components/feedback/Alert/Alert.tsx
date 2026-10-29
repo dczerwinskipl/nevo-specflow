@@ -49,6 +49,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
 ) {
   const capture = useDesignMetadata('Alert', { tone });
   const resolvedIcon = icon === undefined ? toneIcons[tone] : icon;
+
   return (
     <div
       ref={ref}

@@ -54,7 +54,10 @@ const noop = () => undefined;
 function saveActions(view: DocumentView, { session, t }: DocumentActionContext) {
   // Save and Discard exist only while the draft differs; the header keeps its geometry because
   // the direct slots are decided by the host's budget, not by what is present.
-  if (!session.dirty) return [];
+  if (!session.dirty) {
+    return [];
+  }
+
   return [
     {
       id: 'document-save',
@@ -117,6 +120,7 @@ const markdown: DocumentContentKind = {
     // Markdown the Runtime reports as not editable (for example an archived specification) can be
     // downloaded, as its read-only line says.
     const download = session.document.editable ? [] : [downloadAction(context, false)];
+
     return [...mode, ...saveActions(view, context), ...download];
   },
 };
@@ -192,6 +196,7 @@ export const documentContentKinds: readonly DocumentContentKind[] = [image, file
 
 export function documentKindOf(document: DocumentKindInput | undefined): DocumentContentKind {
   const input = document ?? { path: '', content: '' };
+
   return documentContentKinds.find((kind) => kind.matches(input)) ?? text;
 }
 
@@ -203,5 +208,6 @@ export function documentViewOf(
 ): DocumentView {
   const views = readOnly ? kind.readOnlyViews : kind.views;
   const wanted: DocumentView = draft.editing ? 'edit' : kind.defaultView;
+
   return views.includes(wanted) ? wanted : (views[0] ?? kind.defaultView);
 }

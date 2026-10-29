@@ -73,6 +73,7 @@ async function project(gitEnabled = true) {
   ]);
   const specId = (JSON.parse(created.out[0]!) as { specId: string }).specId;
   const dir = join(root, 'specs', 'active', 'cli-documents');
+
   return { root, specId, dir };
 }
 
@@ -97,10 +98,17 @@ async function cli(
   });
   try {
     await program.parseAsync(['node', 'nevo-specflow', ...args]);
+
     return { out, err, exit: 0 };
   } catch (error) {
-    if (error instanceof CommanderError) return { out, err, exit: commanderExitCode(error) };
-    if (error instanceof ReportedFailure) return { out, err, exit: error.exitCode };
+    if (error instanceof CommanderError) {
+      return { out, err, exit: commanderExitCode(error) };
+    }
+
+    if (error instanceof ReportedFailure) {
+      return { out, err, exit: error.exitCode };
+    }
+
     throw error;
   }
 }

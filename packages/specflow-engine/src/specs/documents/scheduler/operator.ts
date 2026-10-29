@@ -73,12 +73,20 @@ export async function takeOverDocumentQueue(
     ...options.lock,
     confirmExecutorStopped: options.confirmExecutorStopped,
   });
-  if (lock.status === 'refused') return { lock, writes: [], manualCommits: [], passes: [] };
+  if (lock.status === 'refused') {
+    return { lock, writes: [], manualCommits: [], passes: [] };
+  }
 
   const writes: DocumentQueueTakeoverResult['writes'][number][] = [];
   for (const journal of await listDocumentChangeJournals(engine.context)) {
-    if (!isWriterStage(journal.stage)) continue;
-    if (options.workspaceId !== undefined && journal.workspaceId !== options.workspaceId) continue;
+    if (!isWriterStage(journal.stage)) {
+      continue;
+    }
+
+    if (options.workspaceId !== undefined && journal.workspaceId !== options.workspaceId) {
+      continue;
+    }
+
     try {
       await resumeDocumentChange(engine, journal.operationId, {
         ...options.write,
@@ -116,5 +124,6 @@ export async function takeOverDocumentQueue(
       }),
     });
   }
+
   return { lock, writes, manualCommits, passes };
 }

@@ -43,8 +43,10 @@ function causeOf(overrides: Partial<SpecificationScaffoldInput> & { archetypeId:
     const failure = error as ScaffoldValidationError;
     expect(failure.code).toBe('SPEC_VALIDATION_ERROR');
     expect(failure.message).not.toMatch(/[A-Za-z]:\\|\/home\/|\/tmp\//u);
+
     return failure.cause;
   }
+
   throw new Error('Expected the scaffold to be refused.');
 }
 

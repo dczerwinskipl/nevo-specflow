@@ -20,6 +20,7 @@ export function SpecsOverviewHeader({
   readonly onRefresh: () => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <WorkspaceHeader
       as="span"

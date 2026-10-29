@@ -28,6 +28,7 @@ class FakeTime implements QueueTimers, QueueClock {
   set(fn: () => void, ms: number, options?: { readonly unref?: boolean }): unknown {
     this.seq += 1;
     this.pending.set(this.seq, { at: this.now + ms, fn, unref: options?.unref === true });
+
     return this.seq;
   }
   clear(handle: unknown): void {
@@ -40,12 +41,16 @@ class FakeTime implements QueueTimers, QueueClock {
       const next = [...this.pending.entries()]
         .filter(([, timer]) => timer.at <= target)
         .sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
-      if (next === undefined) break;
+      if (next === undefined) {
+        break;
+      }
+
       this.pending.delete(next[0]);
       this.now = Math.max(this.now, next[1].at);
       next[1].fn();
       await settle();
     }
+
     this.now = target;
     await settle();
   }
@@ -55,7 +60,9 @@ class FakeTime implements QueueTimers, QueueClock {
 }
 
 async function settle(): Promise<void> {
-  for (let index = 0; index < 30; index += 1) await Promise.resolve();
+  for (let index = 0; index < 30; index += 1) {
+    await Promise.resolve();
+  }
 }
 
 function journal(
@@ -99,15 +106,20 @@ function harness(overrides: Partial<SchedulerOptions> = {}): Harness {
     drain: (checkout) => {
       self.drained.push(checkout.workspaceId);
       const result = self.results(checkout);
-      if (result instanceof Error) return Promise.reject(result);
+      if (result instanceof Error) {
+        return Promise.reject(result);
+      }
+
       return Promise.resolve([result]);
     },
     resume: (operationId) => {
       self.resumed.push(operationId);
+
       return Promise.resolve();
     },
     ...overrides,
   });
+
   return Object.assign(self, { scheduler });
 }
 
@@ -205,8 +217,10 @@ describe('timers follow what the queue reports', () => {
     let calls = 0;
     h.results = () => {
       calls += 1;
+
       return calls < 3 ? { status: 'idle', reason: 'settling', waitMs: 120 } : IDLE;
     };
+
     h.journals = [journal('queued')];
     await h.scheduler.start();
     await h.time.advance(0);
@@ -268,8 +282,10 @@ describe('errors', () => {
     let calls = 0;
     h.results = () => {
       calls += 1;
+
       return calls <= 2 ? new Error('boom with /some/path') : IDLE;
     };
+
     h.journals = [journal('queued')];
     await h.scheduler.start();
     await h.time.advance(0);
@@ -290,7 +306,10 @@ describe('errors', () => {
     h.results = () => new Error('again');
     h.journals = [journal('queued')];
     await h.scheduler.start();
-    for (let index = 0; index < 120; index += 1) await h.time.advance(60_000);
+    for (let index = 0; index < 120; index += 1) {
+      await h.time.advance(60_000);
+    }
+
     expect(h.scheduler.recentEvents().length).toBeLessThanOrEqual(50);
     await h.scheduler.stop();
   });
@@ -305,6 +324,7 @@ describe('never overlapping passes', () => {
       drain: () => {
         active += 1;
         peak = Math.max(peak, active);
+
         return new Promise((resolve) => {
           releases.push(() => {
             active -= 1;
@@ -363,6 +383,7 @@ describe('sweep', () => {
     const h = harness({
       prune: () => {
         pruned += 1;
+
         return failing ? Promise.reject(new Error('git is busy')) : Promise.resolve();
       },
     });
@@ -386,7 +407,10 @@ describe('sweep', () => {
     notifyDocumentChangeApplied({ stateRoot: STATE_ROOT });
     await settle();
     expect(h.time.pending.size).toBeGreaterThan(0);
-    for (const timer of h.time.pending.values()) expect(timer.unref).toBe(true);
+    for (const timer of h.time.pending.values()) {
+      expect(timer.unref).toBe(true);
+    }
+
     await h.scheduler.stop();
   });
 });
@@ -415,6 +439,7 @@ describe('stop', () => {
         }),
       flushAll: (deadlineMs) => {
         flushDeadline = deadlineMs;
+
         return Promise.resolve({ checkouts: 1, remaining: 0, timedOut: false });
       },
     });
@@ -458,6 +483,7 @@ describe('stop', () => {
     const h = harness({
       flushAll: () => {
         flushed = true;
+
         return Promise.resolve({ checkouts: 0, remaining: 0, timedOut: false });
       },
     });

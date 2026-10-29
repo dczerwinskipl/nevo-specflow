@@ -31,6 +31,7 @@ describe('AppShell', () => {
         wide: false,
       });
     }
+
     expect(resolveAppShellLayout(WIDE_SHELL_MIN_WIDTH).workspaceMaterialOwner).toBe('shell');
   });
 
@@ -96,6 +97,7 @@ describe('workspace content width', () => {
         width - 268 - APP_WORKSPACE_EDGE_BORDER,
       );
     }
+
     expect(resolveWorkspaceContentWidth(1172, { bordered: true, inset: true })).toBe(1170);
   });
 

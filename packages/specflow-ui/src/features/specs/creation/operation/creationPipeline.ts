@@ -24,9 +24,13 @@ export async function continueDemoCreation(
     allocate?: (spec: string) => Promise<DemoSessionResult>;
   },
 ): Promise<{ specId: string; documentId?: string; sessionId?: string }> {
-  if (!operations.existingSpecId && !progress.created) progress.created = await operations.create();
+  if (!operations.existingSpecId && !progress.created) {
+    progress.created = await operations.create();
+  }
+
   const specId = operations.existingSpecId ?? progress.created!.specId;
   const session = operations.allocate ? await operations.allocate(specId) : undefined;
+
   return {
     specId,
     documentId: progress.created?.documentIds[0],

@@ -59,15 +59,21 @@ export function createProjectInspectCommand(context: ProjectInspectCommandContex
           error instanceof ProjectHomeError
             ? await findOrphanedGitInstance(context.cwd).catch(() => undefined)
             : undefined;
-        if (claimed === undefined || !(error instanceof Error)) throw error;
+        if (claimed === undefined || !(error instanceof Error)) {
+          throw error;
+        }
+
         const lines = [
           error.message,
           ...claimedGitInstanceLines(claimed, 'nevo-specflow project bootstrap'),
         ];
+
         throw new Error(lines.join('\n'), { cause: error });
       }
+
       context.stdout('Project Home initialized: ' + engine.context.project.homeRoot);
       context.stdout('Project ID: ' + engine.context.project.projectId);
     });
+
   return project;
 }

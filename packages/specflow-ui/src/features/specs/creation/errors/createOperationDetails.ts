@@ -43,6 +43,7 @@ export function buildOperationDetails(input: {
     ['step', status?.step ? text(operationStageLabel(status.step)) : undefined],
     ['attempt', status?.updatedAt ? formatOperationTime(status.updatedAt, language) : undefined],
   ];
+
   return entries
     .filter((entry): entry is [OperationDetail['id'], string] => Boolean(entry[1]))
     .map(([id, value]) => ({ id, value }));
@@ -56,6 +57,7 @@ export const operationStageLabel = (step: string): Message | string => stageKeys
 /** Localised "last attempt" time; an unreadable value is shown as it is. */
 export function formatOperationTime(iso: string, locale: string): string {
   const time = new Date(iso);
+
   return Number.isNaN(time.getTime())
     ? iso
     : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(time);

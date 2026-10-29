@@ -20,8 +20,10 @@ export async function openSessionStore(options: {
   directory: string;
   projectId: string;
 }): Promise<SessionStore> {
-  if (!isAbsolute(options.directory))
+  if (!isAbsolute(options.directory)) {
     throw new SessionError('SESSION_INPUT_INVALID', 'Session storage path must be absolute.');
+  }
+
   const source = import.meta.url.endsWith('.ts')
     ? new URL('../../../session-worker.ts', import.meta.url)
     : new URL('./session-worker.js', import.meta.url);
@@ -48,9 +50,13 @@ export async function openSessionStore(options: {
     closed = true;
     admission.fail(error);
     readyReject(error);
-    for (const task of pending.values()) task.reject(error);
+    for (const task of pending.values()) {
+      task.reject(error);
+    }
+
     pending.clear();
   };
+
   worker.on('error', () =>
     failure(new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Worker failed.')),
   );
@@ -58,9 +64,16 @@ export async function openSessionStore(options: {
     failure(new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Worker closed.')),
   );
   worker.on('message', (message: WorkerReply) => {
-    for (const sessionId of message.changed ?? [])
-      for (const listener of listeners.get(sessionId) ?? []) listener();
-    if (message.metrics) metrics = message.metrics;
+    for (const sessionId of message.changed ?? []) {
+      for (const listener of listeners.get(sessionId) ?? []) {
+        listener();
+      }
+    }
+
+    if (message.metrics) {
+      metrics = message.metrics;
+    }
+
     const error = message.error
       ? new SessionError(
           message.error.code as SessionErrorCode,
@@ -69,27 +82,42 @@ export async function openSessionStore(options: {
         )
       : undefined;
     if (message.id === 0) {
-      if (error) readyReject(error);
-      else readyResolve();
+      if (error) {
+        readyReject(error);
+      } else {
+        readyResolve();
+      }
+
       return;
     }
+
     const task = pending.get(message.id);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
+
     pending.delete(message.id);
-    if (error) task.reject(error);
-    else task.resolve(message.result);
+    if (error) {
+      task.reject(error);
+    } else {
+      task.resolve(message.result);
+    }
   });
   try {
     await ready;
   } catch (error) {
     await worker.terminate();
+
     throw error;
   }
+
   async function call<T>(command: StoreCommand): Promise<T> {
-    if (closed || (closing && command.op !== 'close'))
+    if (closed || (closing && command.op !== 'close')) {
       return Promise.reject(
         new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.'),
       );
+    }
+
     const critical = [
       'fact',
       'dispatch-intent',
@@ -99,7 +127,10 @@ export async function openSessionStore(options: {
     ].includes(command.op);
     const release = await admission.acquire(critical);
     try {
-      if (closed) throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.');
+      if (closed) {
+        throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session store is closed.');
+      }
+
       return await new Promise<T>((resolve, reject) => {
         const requestId = ++id;
         pending.set(requestId, { resolve: (value) => resolve(value as T), reject });
@@ -109,15 +140,19 @@ export async function openSessionStore(options: {
       release();
     }
   }
+
   return {
     call,
     subscribe(sessionId, listener) {
       const owned = listeners.get(sessionId) ?? new Set<() => void>();
       owned.add(listener);
       listeners.set(sessionId, owned);
+
       return () => {
         owned.delete(listener);
-        if (!owned.size) listeners.delete(sessionId);
+        if (!owned.size) {
+          listeners.delete(sessionId);
+        }
       };
     },
     readMetrics: () => metrics,
@@ -134,6 +169,7 @@ export async function openSessionStore(options: {
           await worker.terminate();
         }
       })();
+
       return closing;
     },
   };

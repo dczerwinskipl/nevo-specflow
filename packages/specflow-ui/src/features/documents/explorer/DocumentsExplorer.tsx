@@ -195,8 +195,10 @@ export function DocumentsExplorer({
       : row?.classification === 'registered'
         ? row.type
         : undefined;
+
     return type ? typeName(type) : undefined;
   };
+
   const focus = useTreeFocus(index);
   const inline = useInlineEntry({
     operations: operations.actions,
@@ -207,8 +209,11 @@ export function DocumentsExplorer({
   const noteId = (kind: string, path: string) =>
     `${noteBase}-note-${kind}-${path.replace(/[^\p{L}\p{N}_-]/gu, '_')}`;
   const select = (id: string) => {
-    if (operations.actions.canSelect()) onSelect(id);
+    if (operations.actions.canSelect()) {
+      onSelect(id);
+    }
   };
+
   const parentOf = (path: string) =>
     path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
   // These actions never change an open document's text: its draft stays, nobody is asked.
@@ -227,10 +232,15 @@ export function DocumentsExplorer({
         ? active
         : null;
   };
+
   const restoreOpener = () =>
     requestAnimationFrame(() => {
-      if (opener.current?.isConnected) opener.current.focus();
-      else focus.request('folder:');
+      if (opener.current?.isConnected) {
+        opener.current.focus();
+      } else {
+        focus.request('folder:');
+      }
+
       opener.current = null;
     });
   const openTypeDialog = (next: TypeRequest) =>
@@ -244,8 +254,10 @@ export function DocumentsExplorer({
     const level = index.level(parentOf(path));
     const at = level.documents.findIndex((doc) => doc.id === id);
     const next = level.documents[at + 1] ?? level.documents[at - 1];
+
     return next ? 'doc:' + next.id : 'folder:';
   };
+
   const requestDialog =
     (action: 'move' | 'delete') => (kind: 'document' | 'folder', path: string, id?: string) =>
       void operations.actions.guard((snapshot) => {
@@ -255,11 +267,17 @@ export function DocumentsExplorer({
         const expectedRevision =
           kind === 'document' ? document?.revision : folderOperationRevision(snapshot, path);
         if (!expectedRevision) {
-          if (kind === 'folder')
+          if (kind === 'folder') {
             operations.actions.refuse(t('documents.tree.error.folderRevisionMissing'));
+          }
+
           return;
         }
-        if (action === 'move') setTarget('');
+
+        if (action === 'move') {
+          setTarget('');
+        }
+
         setRequest({ action, kind, path: document?.path ?? path, id, expectedRevision });
       });
   const nodeActions: DocumentNodeActions = {
@@ -273,8 +291,10 @@ export function DocumentsExplorer({
           !document ||
           !document.actions.classify.available ||
           !snapshot.capabilities.classify.available
-        )
+        ) {
           return;
+        }
+
         rememberOpener();
         operations.actions.clearError();
         setTypeRequest({
@@ -288,7 +308,10 @@ export function DocumentsExplorer({
     removeRegistration: (id) =>
       void operations.actions.guard((snapshot) => {
         const entry = snapshot.dangling.find((candidate) => candidate.id === id);
-        if (!entry?.actions.delete.available) return;
+        if (!entry?.actions.delete.available) {
+          return;
+        }
+
         rememberOpener();
         operations.actions.clearError();
         // A dangling entry has no revision of its own: the tree revision guards it.
@@ -461,7 +484,10 @@ export function DocumentsExplorer({
           dirtyIds={dirtyIds}
           onTargetChange={setTarget}
           onConfirm={() => {
-            if (!request) return;
+            if (!request) {
+              return;
+            }
+
             const after =
               request.action === 'remove-registration' && request.id
                 ? rowAfter(request.path, request.id)
@@ -473,6 +499,7 @@ export function DocumentsExplorer({
                 closedByResult.current = true;
                 focus.request(after);
               }
+
               setRequest(undefined);
             });
           }}
@@ -482,9 +509,15 @@ export function DocumentsExplorer({
           }}
           onCloseAutoFocus={(event) => {
             // Only the dialogs that remembered their opener decide focus; the others keep Radix's.
-            if (!opener.current && !closedByResult.current) return;
+            if (!opener.current && !closedByResult.current) {
+              return;
+            }
+
             event.preventDefault();
-            if (!closedByResult.current) restoreOpener();
+            if (!closedByResult.current) {
+              restoreOpener();
+            }
+
             closedByResult.current = false;
           }}
         />

@@ -24,6 +24,7 @@ export function SpecsOverviewEmpty({
 }) {
   const { t } = useTranslation();
   const kind = searching ? 'noResults' : collection === 'current' ? 'emptyCurrent' : 'emptyArchive';
+
   return (
     <EmptyState
       variant="pane"

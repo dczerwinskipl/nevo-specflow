@@ -55,6 +55,7 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function E
   ref,
 ) {
   const capture = useDesignMetadata('EmptyState', { variant });
+
   return (
     <div
       ref={ref}

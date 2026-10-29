@@ -115,6 +115,7 @@ export function parseDocumentChangeJournal(
   ) {
     throw invalidDocumentChangeJournal();
   }
+
   return value as unknown as DocumentChangeJournal;
 }
 
@@ -124,6 +125,7 @@ export function encodeDocumentChangeJournal(
   journal: DocumentChangeJournal,
 ): string {
   parseDocumentChangeJournal(context, journal, journal.operationId);
+
   return JSON.stringify(journal);
 }
 
@@ -174,7 +176,10 @@ function isValidPlanEvidence(value: unknown): boolean {
 /** Which optional fields a stage requires, allows or forbids. */
 function isValidStageFields(value: Record<string, unknown>): boolean {
   const stage = value.stage;
-  if (!isDocumentChangeStage(stage)) return false;
+  if (!isDocumentChangeStage(stage)) {
+    return false;
+  }
+
   const has = (key: string): boolean => value[key] !== undefined;
 
   if (has('commit')) {
@@ -189,17 +194,38 @@ function isValidStageFields(value: Record<string, unknown>): boolean {
       return false;
     }
   }
+
   if (has('commitMode')) {
-    if (!(DOCUMENT_COMMIT_MODES as readonly unknown[]).includes(value.commitMode)) return false;
-    // `auto` pins the branch of its commit; `manual` ran no preflight, so it has no commit and never queues.
-    if ((value.commitMode === 'auto') !== has('commit')) return false;
-    if (value.commitMode === 'manual' && (stage === 'queued' || stage === 'committing'))
+    if (!(DOCUMENT_COMMIT_MODES as readonly unknown[]).includes(value.commitMode)) {
       return false;
-    if (value.commitMode === 'manual' && stage === 'commit-failed') return false;
+    }
+
+    // `auto` pins the branch of its commit; `manual` ran no preflight, so it has no commit and never queues.
+    if ((value.commitMode === 'auto') !== has('commit')) {
+      return false;
+    }
+
+    if (value.commitMode === 'manual' && (stage === 'queued' || stage === 'committing')) {
+      return false;
+    }
+
+    if (value.commitMode === 'manual' && stage === 'commit-failed') {
+      return false;
+    }
   }
-  if (has('executor') !== isWriterStage(stage)) return false;
-  if (has('executor') && !isExecutorIdentity(value.executor)) return false;
-  if (has('recoveryPhase') !== (stage === 'recovery-required')) return false;
+
+  if (has('executor') !== isWriterStage(stage)) {
+    return false;
+  }
+
+  if (has('executor') && !isExecutorIdentity(value.executor)) {
+    return false;
+  }
+
+  if (has('recoveryPhase') !== (stage === 'recovery-required')) {
+    return false;
+  }
+
   if (
     has('recoveryPhase') &&
     !(DOCUMENT_RECOVERY_PHASES as readonly unknown[]).includes(value.recoveryPhase)
@@ -211,32 +237,64 @@ function isValidStageFields(value: Record<string, unknown>): boolean {
   // before it never had one.
   const acknowledged = stage === 'queued' || stage === 'committing' || stage === 'commit-failed';
   const neverAcknowledged = isWriterStage(stage) || stage === 'failed';
-  if (acknowledged && !isIsoInstant(value.queuedAt)) return false;
-  if (neverAcknowledged && has('queuedAt')) return false;
-  if (has('queuedAt') && !isIsoInstant(value.queuedAt)) return false;
+  if (acknowledged && !isIsoInstant(value.queuedAt)) {
+    return false;
+  }
+
+  if (neverAcknowledged && has('queuedAt')) {
+    return false;
+  }
+
+  if (has('queuedAt') && !isIsoInstant(value.queuedAt)) {
+    return false;
+  }
 
   if (has('batchId')) {
     if (typeof value.batchId !== 'string' || !UUID.test(value.batchId) || neverAcknowledged) {
       return false;
     }
   }
-  if (stage === 'committing' && !has('batchId')) return false;
+
+  if (stage === 'committing' && !has('batchId')) {
+    return false;
+  }
+
   // A queued operation belongs to no claimed batch; a dissolve removes the id.
-  if (stage === 'queued' && has('batchId')) return false;
-  if (stage === 'committing' && !has('commit')) return false;
+  if (stage === 'queued' && has('batchId')) {
+    return false;
+  }
+
+  if (stage === 'committing' && !has('commit')) {
+    return false;
+  }
 
   if (has('nextAttemptAt') && (!isIsoInstant(value.nextAttemptAt) || stage !== 'queued')) {
     return false;
   }
-  if (has('reason') && !isReason(value.reason)) return false;
-  if (has('blockedBy') && !isReason(value.blockedBy)) return false;
+
+  if (has('reason') && !isReason(value.reason)) {
+    return false;
+  }
+
+  if (has('blockedBy') && !isReason(value.blockedBy)) {
+    return false;
+  }
+
   const needsReason =
     stage === 'failed' || stage === 'commit-failed' || stage === 'recovery-required';
-  if (needsReason && !has('reason')) return false;
-  if (has('blockedBy') && !has('reason')) return false;
+  if (needsReason && !has('reason')) {
+    return false;
+  }
+
+  if (has('blockedBy') && !has('reason')) {
+    return false;
+  }
 
   const completed = stage === 'completed';
-  if (has('outcome') !== completed || has('settledAt') !== completed) return false;
+  if (has('outcome') !== completed || has('settledAt') !== completed) {
+    return false;
+  }
+
   if (completed) {
     if (
       !(DOCUMENT_CHANGE_OUTCOMES as readonly unknown[]).includes(value.outcome) ||
@@ -244,6 +302,7 @@ function isValidStageFields(value: Record<string, unknown>): boolean {
     ) {
       return false;
     }
+
     const outcome = value.outcome as DocumentChangeOutcome;
     if (outcome === 'committed') {
       if (typeof value.sha !== 'string' || !OBJECT_ID.test(value.sha) || !has('commit')) {
@@ -253,14 +312,16 @@ function isValidStageFields(value: Record<string, unknown>): boolean {
       if (
         has('sha') ||
         !(UNCOMMITTED_REASONS as readonly string[]).includes(value.reason as string)
-      )
+      ) {
         return false;
+      }
     } else if (has('sha') || !has('reason')) {
       return false;
     }
   } else if (has('sha')) {
     return false;
   }
+
   return (
     !has('coalescedWith') ||
     (completed && isCount(value.coalescedWith, DOCUMENT_QUEUE_MAX_OPERATIONS_PER_CHECKOUT))

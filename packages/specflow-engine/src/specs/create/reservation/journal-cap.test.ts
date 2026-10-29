@@ -10,6 +10,7 @@ function record(parts: {
   documents?: number;
 }): CreateJournal {
   const paths = parts.paths ?? [];
+
   return {
     goal: parts.goal,
     requestIntent: {
@@ -27,8 +28,10 @@ function messageOf(journal: CreateJournal): string {
     assertJournalFitsItsCap(journal);
   } catch (error) {
     expect(error).toMatchObject({ code: 'DOCUMENT_OPERATION_INVALID' });
+
     return (error as Error).message;
   }
+
   throw new Error('Expected the journal to be refused.');
 }
 

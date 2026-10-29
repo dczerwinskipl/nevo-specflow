@@ -34,6 +34,7 @@ export const OverflowMenu = forwardRef<HTMLButtonElement, OverflowMenuProps>(fun
           const { width, height } = triggerRef.current.getBoundingClientRect();
           setAnchor({ width, height });
         }
+
         setOpen(nextOpen);
       }}
     >
@@ -41,8 +42,13 @@ export const OverflowMenu = forwardRef<HTMLButtonElement, OverflowMenuProps>(fun
         <IconButton
           ref={(node) => {
             triggerRef.current = node;
-            if (typeof ref === 'function') return ref(node);
-            if (ref) ref.current = node;
+            if (typeof ref === 'function') {
+              return ref(node);
+            }
+
+            if (ref) {
+              ref.current = node;
+            }
           }}
           aria-label={triggerLabel}
           className={cn('data-[state=open]:opacity-0', className)}

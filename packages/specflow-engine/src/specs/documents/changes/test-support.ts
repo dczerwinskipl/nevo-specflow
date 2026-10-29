@@ -26,6 +26,7 @@ export interface SnapshotInput {
 
 export function observed(path: string, content: string): ObservedFile {
   const sha256 = sha256Hex(content);
+
   return { path, revision: sha256, sha256, bytes: Buffer.byteLength(content, 'utf8') };
 }
 
@@ -53,6 +54,7 @@ export function buildSnapshot(input: SnapshotInput = {}): PlanningSnapshot {
   };
   const manifestText = serializeSpecificationManifest(manifest);
   const files = input.files ?? [{ path: 'overview.md', content: '# Overview\n' }];
+
   return {
     manifest: parseSpecificationManifestText(manifestText, TEST_SLUG, location),
     manifestText,
@@ -111,5 +113,6 @@ export function buildJournal(
       ? { outcome: 'committed', sha: 'b'.repeat(40), settledAt: TEST_LATER }
       : {}),
   };
+
   return { ...base, ...overrides } as unknown as DocumentChangeJournal;
 }

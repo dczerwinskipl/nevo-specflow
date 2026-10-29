@@ -15,11 +15,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function ControlledTextArea({ maxRows = 4 }: { maxRows?: number }) {
   const [value, setValue] = useState('');
+
   return (
     <div className="w-96" data-value={value}>
       <TextArea
@@ -80,7 +83,10 @@ export const MaxHeightReached: Story = {
   render: () => <ControlledTextArea maxRows={4} />,
   play: async ({ canvas, userEvent }) => {
     const textarea = canvas.getByRole('textbox', { name: 'Internal note' });
-    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error('Expected a textarea.');
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected a textarea.');
+    }
+
     Object.defineProperty(textarea, 'scrollHeight', {
       configurable: true,
       get: () => Math.max(62, textarea.value.split('\n').length * 20 + 22),

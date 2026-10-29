@@ -77,6 +77,7 @@ function renderScreen(
       </TestServicesRouterContext>
     </QueryClientProvider>,
   );
+
   return { onProjectStarted };
 }
 

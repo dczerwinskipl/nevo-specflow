@@ -68,6 +68,7 @@ async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
     '-qm',
     'initial',
   );
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -92,6 +93,7 @@ async function server(
     },
     { auth: { store }, specs: { engine } },
   );
+
   return { app, headers };
 }
 
@@ -105,6 +107,7 @@ async function createFeature(engine: SpecFlowEngine, root: string) {
     optionalDocumentIds: ['behaviour', 'ux', 'backend'],
     target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
   });
+
   return { ...created, dir: join(root, 'specs', 'active', created.slug) };
 }
 
@@ -146,6 +149,7 @@ async function handBuilt(
     await mkdir(join(dir, ...path.split('/').slice(0, -1)), { recursive: true });
     await writeFile(join(dir, ...path.split('/')), content);
   }
+
   return { specId, dir };
 }
 
@@ -341,6 +345,7 @@ describe('kinds and raw headers over HTTP', () => {
         expect(response.headers['content-length']).toBe(String(Buffer.byteLength(bytes)));
         expect(response.rawPayload.equals(Buffer.from(bytes)), path).toBe(true);
       }
+
       const download = await app.inject({
         url: raw(hand.specId, derivedId('pic.png'), '?download=1'),
         headers,
@@ -440,8 +445,10 @@ describe('symlinks, collisions, archive and authorization over HTTP', () => {
     const hand = await handBuilt(root, { slug: 'case', files: { 'overview.md': '# o\n' } });
     await writeFile(join(hand.dir, 'A.md'), '# upper');
     await writeFile(join(hand.dir, 'a.md'), '# lower');
-    if ((await readdir(hand.dir)).filter((name) => name.toLowerCase() === 'a.md').length !== 2)
+    if ((await readdir(hand.dir)).filter((name) => name.toLowerCase() === 'a.md').length !== 2) {
       return;
+    }
+
     const { app, headers } = await server(engine);
     try {
       const body = (await app.inject({ url: tree(hand.specId), headers })).json<DocumentTree>();
@@ -519,7 +526,10 @@ describe('workspace documents section', () => {
       expect(response.statusCode, response.body).toBe(200);
       const section = response.json<SpecificationWorkspaceResponse>().sections.documents;
       expect(section.state).toBe('available');
-      if (section.state !== 'available') return;
+      if (section.state !== 'available') {
+        return;
+      }
+
       expect(section.data.items.map((item) => [item.id, item.kind, item.filename])).toEqual([
         ['overview', 'overview', 'overview.md'],
         ['behaviour', 'behaviour', 'behaviour.md'],

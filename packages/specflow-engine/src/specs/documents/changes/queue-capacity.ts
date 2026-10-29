@@ -23,8 +23,14 @@ export function queueCapacityOf(
 ): QueueCapacity {
   // Operations that wait for a person do not fill the queue (they are bounded by the larger cap).
   const waiting = journals.filter((journal) => WAITS_FOR_A_PERSON.has(journal.stage)).length;
-  if (journals.length - waiting >= DOCUMENT_QUEUE_MAX_OPERATIONS_PER_CHECKOUT) return 'queue-full';
+  if (journals.length - waiting >= DOCUMENT_QUEUE_MAX_OPERATIONS_PER_CHECKOUT) {
+    return 'queue-full';
+  }
+
   // What waits for a person has to be acted on, so it is bounded by a larger cap of its own.
-  if (journals.length >= DOCUMENT_QUEUE_MAX_JOURNALS_PER_CHECKOUT) return 'held-limit';
+  if (journals.length >= DOCUMENT_QUEUE_MAX_JOURNALS_PER_CHECKOUT) {
+    return 'held-limit';
+  }
+
   return 'open';
 }

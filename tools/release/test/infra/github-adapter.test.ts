@@ -37,7 +37,9 @@ describe('classifyReleaseLookup — absent vs indeterminate', () => {
   it('no HTTP status line at all (network failure) -> indeterminate, not absent', () => {
     const r = classifyReleaseLookup({ stdout: '', exitCode: null });
     expect(r.outcome).toBe('indeterminate');
-    if (r.outcome === 'indeterminate') expect(r.reason).toMatch(/no HTTP status line/);
+    if (r.outcome === 'indeterminate') {
+      expect(r.reason).toMatch(/no HTTP status line/);
+    }
   });
 
   it('a body that merely contains the text "Not Found" is NOT read as 404', () => {

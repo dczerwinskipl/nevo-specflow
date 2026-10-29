@@ -42,8 +42,10 @@ async function journalOf(rt: QueueRuntime, operationId: string): Promise<Documen
         'A manual commit is not a document commit; recover it instead.',
       );
     }
+
     throw documentChangeError('operation-not-found', 'The document operation does not exist.');
   }
+
   return journal;
 }
 
@@ -73,17 +75,25 @@ export async function retryDocumentCommit(
   options: QueueOptions = {},
 ): Promise<readonly DocumentChangeJournal[]> {
   const rt = runtimeFor(engine, await probe(engine, operationId), deps, options);
+
   return withJournalLock(rt.context, DOCUMENT_BATCH_KIND, async () => {
     const journal = await journalOf(rt, operationId);
     // A repeat finds the operation on its way already: that is the answer.
-    if (journal.stage === 'queued' || journal.stage === 'committing') return [journal];
-    if (journal.stage === 'completed' && journal.outcome === 'committed') return [journal];
+    if (journal.stage === 'queued' || journal.stage === 'committing') {
+      return [journal];
+    }
+
+    if (journal.stage === 'completed' && journal.outcome === 'committed') {
+      return [journal];
+    }
+
     if (journal.stage !== 'commit-failed') {
       throw documentChangeError(
         'operation-state-invalid',
         'Only an operation whose commit failed can be retried.',
       );
     }
+
     const now = rt.nowIso();
     const batch =
       journal.batchId !== undefined
@@ -94,9 +104,12 @@ export async function retryDocumentCommit(
       await publishDocumentBatch(rt.context, dissolved);
       await reconcileBatchMembers(rt.context, dissolved, now);
       await removeDocumentBatch(rt.context, batch.operationId);
+
       return membersOf(rt, batch);
     }
+
     await moveMember(rt.context, journal, 'queued', { attempts: 0 }, now);
+
     return [await journalOf(rt, operationId)];
   });
 }
@@ -109,6 +122,7 @@ async function probe(engine: SpecFlowEngine, operationId: string): Promise<Docum
     { workspaceId: engine.workspace.workspaceId, root: engine.workspace.root },
     {},
   );
+
   return journalOf(rt, operationId);
 }
 
@@ -119,8 +133,11 @@ async function membersOf(
   const journals: DocumentChangeJournal[] = [];
   for (const id of batch.memberIds) {
     const journal = await readDocumentChangeJournal(rt.context, id);
-    if (journal !== undefined) journals.push(journal);
+    if (journal !== undefined) {
+      journals.push(journal);
+    }
   }
+
   return journals;
 }
 
@@ -132,6 +149,7 @@ export async function abandonDocumentCommit(
   options: QueueOptions = {},
 ): Promise<readonly DocumentChangeJournal[]> {
   const rt = runtimeFor(engine, await probe(engine, operationId), deps, options);
+
   return abandonCommit(rt.context, operationId, () => rt.nowIso(), rt.hooks);
 }
 
@@ -154,6 +172,7 @@ async function recoveryBatch(
       'Only a commit that needs recovery can be recovered.',
     );
   }
+
   const batch =
     journal.batchId !== undefined
       ? await readDocumentBatch(rt.context, journal.batchId)
@@ -161,6 +180,7 @@ async function recoveryBatch(
   if (batch?.state !== 'recovery-required') {
     throw documentChangeError('journal-corrupt', 'The batch of the operation is missing.');
   }
+
   return batch;
 }
 
@@ -198,11 +218,18 @@ export async function recoverDocumentOperation(
   const rt = runtimeFor(engine, await probe(engine, operationId), deps, options);
   const journal = await journalOf(rt, operationId);
   // A repeat of the same recovery finds the operation where it ended up.
-  if (mode === 'abandon' && isAbandonedJournal(journal)) return [journal];
+  if (mode === 'abandon' && isAbandonedJournal(journal)) {
+    return [journal];
+  }
+
   if (mode !== 'abandon' && journal.stage === 'completed' && journal.outcome === 'committed') {
     return [journal];
   }
-  if (mode === 'resume' && journal.stage === 'queued') return [journal];
+
+  if (mode === 'resume' && journal.stage === 'queued') {
+    return [journal];
+  }
+
   const batch = await recoveryBatch(rt, journal);
   if (mode === 'abandon') {
     return abandonCommit(rt.context, operationId, () => rt.nowIso(), rt.hooks);
@@ -212,7 +239,10 @@ export async function recoverDocumentOperation(
   const whole = async (): Promise<boolean> =>
     headHoldsWholeBatch(rt.commits, rt.checkout.root, expectations);
   if (mode === 'adopt') {
-    if (!(await whole())) throw unresolved();
+    if (!(await whole())) {
+      throw unresolved();
+    }
+
     return finishCommitted(
       rt,
       batch,
@@ -224,8 +254,14 @@ export async function recoverDocumentOperation(
   }
 
   const evidence = await lookUpBatchCommit(rt, batch, expectations);
-  if (evidence.kind === 'committed') return finishCommitted(rt, batch, evidence.sha);
-  if (evidence.kind === 'foreign-commit') throw unresolved();
+  if (evidence.kind === 'committed') {
+    return finishCommitted(rt, batch, evidence.sha);
+  }
+
+  if (evidence.kind === 'foreign-commit') {
+    throw unresolved();
+  }
+
   if (await whole()) {
     return finishCommitted(
       rt,
@@ -236,6 +272,7 @@ export async function recoverDocumentOperation(
       ),
     );
   }
+
   const split = await rt.commits.effectivePaths(
     rt.checkout.root,
     expectations.map((entry) => entry.path),
@@ -243,16 +280,25 @@ export async function recoverDocumentOperation(
   const states = (await inspectBatch(rt.checkout.root, expectations, split.facts)).map(
     (entry) => entry.state,
   );
-  if (!states.every((state) => state === 'at-pre' || state === 'at-post')) throw unresolved();
+  if (!states.every((state) => state === 'at-pre' || state === 'at-post')) {
+    throw unresolved();
+  }
+
   return requeue(rt, batch);
 }
 
 /** The commit that last touched the paths when they are all committed together, otherwise HEAD. */
 async function adoptedSha(rt: QueueRuntime, paths: readonly string[]): Promise<string> {
   const state = await rt.commits.inspectPaths(rt.checkout.root, paths);
-  if (state.state === 'committed') return state.sha;
+  if (state.state === 'committed') {
+    return state.sha;
+  }
+
   const head = await rt.commits.head(rt.checkout.root);
-  if (head === undefined) throw unresolved();
+  if (head === undefined) {
+    throw unresolved();
+  }
+
   return head;
 }
 
@@ -266,23 +312,28 @@ async function finishCommitted(
     if (current?.state !== 'recovery-required') {
       throw documentChangeError('operation-state-invalid', 'The document batch moved.');
     }
+
     const now = rt.nowIso();
     const committed = transitionDocumentBatch(rt.context, current, 'committed', { sha }, now);
     await publishDocumentBatch(rt.context, committed);
     await reconcileBatchMembers(rt.context, committed, now);
+
     return committed;
   });
   const members = await membersOf(rt, completed);
   for (const member of members) {
-    if (member.stage === 'completed')
+    if (member.stage === 'completed') {
       await settleDocumentChangeJournal(rt.context, member.operationId);
+    }
   }
+
   await withJournalLock(rt.context, DOCUMENT_BATCH_KIND, async () => {
     await removeDocumentBatch(rt.context, completed.operationId);
     await removeQueueLeaseOf(rt.context, completed.workspaceId, completed.operationId).catch(
       () => undefined,
     );
   });
+
   return members;
 }
 
@@ -295,11 +346,13 @@ async function requeue(
     if (current?.state !== 'recovery-required') {
       throw documentChangeError('operation-state-invalid', 'The document batch moved.');
     }
+
     const now = rt.nowIso();
     const dissolved = transitionDocumentBatch(rt.context, current, 'dissolved', {}, now);
     await publishDocumentBatch(rt.context, dissolved);
     await reconcileBatchMembers(rt.context, dissolved, now);
     await removeDocumentBatch(rt.context, current.operationId);
+
     return membersOf(rt, current);
   });
 }

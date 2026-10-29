@@ -6,10 +6,14 @@ export function createStreamWakeup(subscribe: (listener: () => void) => () => vo
     revision++;
     wake?.();
   });
+
   return {
     revision: () => revision,
     async wait(observed: number, signal: AbortSignal, timeoutMs: number) {
-      if (observed !== revision || signal.aborted) return;
+      if (observed !== revision || signal.aborted) {
+        return;
+      }
+
       await new Promise<void>((resolve) => {
         const finish = () => {
           clearTimeout(timer);
@@ -17,11 +21,14 @@ export function createStreamWakeup(subscribe: (listener: () => void) => () => vo
           wake = undefined;
           resolve();
         };
+
         const timer = setTimeout(finish, timeoutMs);
         timer.unref();
         wake = finish;
         signal.addEventListener('abort', finish, { once: true });
-        if (observed !== revision || signal.aborted) finish();
+        if (observed !== revision || signal.aborted) {
+          finish();
+        }
       });
     },
     close() {

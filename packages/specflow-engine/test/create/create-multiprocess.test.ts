@@ -46,6 +46,7 @@ async function project() {
   const engine = await bootstrapProjectHome(root);
   // The definitions are installed up front, so every process of the test finds them in place.
   await installDefinitionsForTesting(engine).catch(() => undefined);
+
   return { root, engine };
 }
 
@@ -107,6 +108,7 @@ function spawnCreateWorker(
     120000,
   );
   activeProcesses.push(child);
+
   return { ready, start, paused, release, observed, result, done: child.done, process: child };
 }
 
@@ -316,6 +318,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
     } finally {
       await writeFile(writer.release, 'continue');
     }
+
     const outcome = await writer.done;
     expect(outcome.code, outcome.log).toBe(0);
     expect((await engine.readRegistry()).specBindings).toHaveLength(2);

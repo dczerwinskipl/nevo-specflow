@@ -18,6 +18,7 @@ function refusal(run: () => void): unknown {
   } catch (error) {
     return error;
   }
+
   return undefined;
 }
 

@@ -39,7 +39,10 @@ export function selectedArchetype(
   catalogue: ArchetypeCatalogue | undefined,
   choice: ArchetypeChoice,
 ): ArchetypeInfo | undefined {
-  if (!catalogue) return undefined;
+  if (!catalogue) {
+    return undefined;
+  }
+
   return (
     catalogue.archetypes.find((archetype) => archetype.id === choice.archetypeId) ??
     defaultArchetype(catalogue)
@@ -55,6 +58,7 @@ export const alwaysTemplates = (archetype: ArchetypeInfo) =>
 export function tickedTemplates(archetype: ArchetypeInfo, choice: ArchetypeChoice): string[] {
   const own = choice.ticks[archetype.id];
   const ids = optionalTemplates(archetype).map((template) => template.id);
+
   return own
     ? ids.filter((id) => own.includes(id))
     : optionalTemplates(archetype)
@@ -73,6 +77,7 @@ export function toggleTemplate(
   ticked: boolean,
 ): ArchetypeChoice {
   const current = tickedTemplates(archetype, choice).filter((id) => id !== templateId);
+
   return {
     ...choice,
     archetypeId: archetype.id,
@@ -96,19 +101,24 @@ export function unmetWhenUnticked(
       .filter((requirement) => requirement.documentType === template.type)
       .map((requirement) => requirement.minCount),
   );
-  if (minCount === 0 || ticked.includes(template.id)) return false;
+  if (minCount === 0 || ticked.includes(template.id)) {
+    return false;
+  }
+
   const created = archetype.documents.filter(
     (other) =>
       other.id !== template.id &&
       other.type === template.type &&
       (other.include === 'always' || ticked.includes(other.id)),
   ).length;
+
   return created < minCount;
 }
 
 /** The file names Create makes: the `always` templates, then the ticked optional ones. */
 export function documentsToCreate(archetype: ArchetypeInfo, choice: ArchetypeChoice): string[] {
   const ticked = tickedTemplates(archetype, choice);
+
   return [
     ...alwaysTemplates(archetype).map((template) => template.filename),
     ...optionalTemplates(archetype)

@@ -60,8 +60,10 @@ function fixture() {
     .fn<ManagedSessionsApi['create']>()
     .mockRejectedValueOnce(new Error('Lost response'))
     .mockResolvedValue({ sessionId: 'created' });
+
   return { providers, create, api: { providers, create } as unknown as ManagedSessionsApi };
 }
+
 function view(api: ManagedSessionsApi, owner = 'alice') {
   return render(
     <StrictMode>
@@ -77,11 +79,13 @@ function view(api: ManagedSessionsApi, owner = 'alice') {
     </StrictMode>,
   );
 }
+
 async function clickCreate() {
   const button = await screen.findByRole('button', { name: 'Create session' });
   await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false));
   fireEvent.click(button);
 }
+
 it('explains external login and only refreshes discovery after the operator signs in', async () => {
   const f = fixture();
   const provider = (await f.providers()).items[0]!;

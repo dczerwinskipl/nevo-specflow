@@ -23,6 +23,7 @@ function build(overrides: Partial<HttpRequestClient> = {}) {
       isOnline: () => true,
     }),
   );
+
   return { api, http };
 }
 

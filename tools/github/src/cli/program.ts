@@ -20,6 +20,9 @@ export function createProgram(ctx: GithubCliContext): Command {
   program.addCommand(configureCommand(ctx.client, ctx.stdout, ctx.stderr));
 
   program.exitOverride();
-  for (const cmd of program.commands) cmd.exitOverride();
+  for (const cmd of program.commands) {
+    cmd.exitOverride();
+  }
+
   return program;
 }

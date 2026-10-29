@@ -47,12 +47,15 @@ async function continueExisting(
       'This operation id was used for a different request.',
     );
   }
+
   switch (existing.stage) {
     case 'completed':
       await settleEnded(rt, existing);
+
       return doneOf(rt, existing, true);
     case 'failed':
       await settleEnded(rt, existing);
+
       throw errorOfFailedJournal(existing);
     case 'recovery-required':
       throw manualCommitError('recovery-required', 'The manual commit needs recovery.');
@@ -71,12 +74,14 @@ export async function commitUncommitted(
   if (!OPERATION_ID_PATTERN.test(request.operationId)) {
     throw manualCommitError('operation-invalid', 'A UUID operationId is required.');
   }
+
   const resolved = resolveMessage(request.message, { scope: target.scope, slug: target.slug });
   if (!resolved.ok) {
     throw manualCommitError('message-invalid', 'The commit message is not valid.', {
       cause: resolved.problem,
     });
   }
+
   const { message } = resolved;
   const fingerprint = fingerprintOfRequest({
     scope: target.scope,
@@ -87,15 +92,24 @@ export async function commitUncommitted(
   });
 
   const known = await findManualCommitJournal(rt.context, request.operationId);
-  if (known !== undefined) return continueExisting(rt, known, fingerprint);
+  if (known !== undefined) {
+    return continueExisting(rt, known, fingerprint);
+  }
 
   for (let attempt = 1; attempt <= MAX_ADMISSIONS; attempt += 1) {
     const admitted = await admitManualCommit(rt, target, request, message, fingerprint, ports);
     const reserved = await reserveManualCommit(rt, admitted, request.operationId, ports);
-    if (reserved.kind === 'replan') continue;
-    if (reserved.kind === 'existing') return continueExisting(rt, reserved.journal, fingerprint);
+    if (reserved.kind === 'replan') {
+      continue;
+    }
+
+    if (reserved.kind === 'existing') {
+      return continueExisting(rt, reserved.journal, fingerprint);
+    }
+
     return executeManualCommit(rt, reserved.journal);
   }
+
   throw manualCommitError(
     'busy-commit-in-progress',
     'The uncommitted changes keep changing; retry shortly.',

@@ -47,20 +47,30 @@ const control = vi.hoisted(
 
 /** The next durable step of the run; the process is dead from the chosen one on. */
 function durableStep(kind: 'record' | 'rename'): void {
-  if (!control.armed) return;
+  if (!control.armed) {
+    return;
+  }
+
   if (control.mode === kind) {
     control.count += 1;
-    if (control.count === control.failAt) control.dead = true;
+    if (control.count === control.failAt) {
+      control.dead = true;
+    }
   }
-  if (control.dead) throw new QueueInterrupted('a durable step');
+
+  if (control.dead) {
+    throw new QueueInterrupted('a durable step');
+  }
 }
 
 vi.mock('../../src/project/fs/atomic-json', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../src/project/fs/atomic-json')>();
+
   return {
     ...original,
     writeJsonAtomically: async (...args: Parameters<typeof original.writeJsonAtomically>) => {
       durableStep('record');
+
       return original.writeJsonAtomically(...args);
     },
   };
@@ -68,10 +78,12 @@ vi.mock('../../src/project/fs/atomic-json', async (importOriginal) => {
 
 vi.mock('../../src/project/fs/windows-safe-fs', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../src/project/fs/windows-safe-fs')>();
+
   return {
     ...original,
     renameWindowsSafe: (...args: Parameters<typeof original.renameWindowsSafe>) => {
       durableStep('rename');
+
       return original.renameWindowsSafe(...args);
     },
   };
@@ -94,7 +106,10 @@ async function expectStoppedInvariants(project: QueueProject, before: number): P
   expect(commits.length).toBeLessThanOrEqual(1);
   expect(headCount(project)).toBe(before + commits.length);
   // The ledger is pruned only after the commit exists and holds the paths.
-  if (paths.length === 0) expect(commits).toHaveLength(1);
+  if (paths.length === 0) {
+    expect(commits).toHaveLength(1);
+  }
+
   if (commits.length === 1) {
     expect(git(project.root, 'diff-tree', '--no-commit-id', '--name-only', '-r', commits[0]!)).toBe(
       [specPath(1), specPath(2)].join('\n'),
@@ -119,13 +134,19 @@ async function runOnce(mode: 'record' | 'rename', failAt: number): Promise<numbe
   try {
     await commitUncommitted(project, { operationId, message: MESSAGE });
   } catch (error) {
-    if (!control.dead) throw error;
+    if (!control.dead) {
+      throw error;
+    }
+
     stopped = true;
   }
+
   control.armed = false;
   control.dead = false;
   const steps = control.count;
-  if (failAt > 0) expect(stopped, `no stop before step ${failAt}`).toBe(true);
+  if (failAt > 0) {
+    expect(stopped, `no stop before step ${failAt}`).toBe(true);
+  }
 
   await expectStoppedInvariants(project, before);
 
@@ -142,6 +163,7 @@ async function runOnce(mode: 'record' | 'rename', failAt: number): Promise<numbe
   expect(await checkoutClaimFree(project)).toBe(true);
   expect(await listManualCommitJournals(project.engine.context)).toEqual([]);
   await removeTrackedRoots();
+
   return steps;
 }
 

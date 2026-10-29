@@ -14,6 +14,7 @@ import { documentTreePath, type DocumentsApi } from './api';
  */
 export function createDemoDocumentsApi(http: HttpRequestClient): DocumentsApi {
   const spec = (id: string) => `/api/demo/specs/${encodeURIComponent(id)}`;
+
   return {
     emulated: true,
     documentTree: (id, signal) => http.get<DocumentTree>(documentTreePath(id), { signal }),

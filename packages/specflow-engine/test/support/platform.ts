@@ -41,11 +41,14 @@ export function probeInScratchDirectory(attempt: (directory: string) => void): b
   try {
     directory = mkdtempSync(join(tmpdir(), 'specflow-capability-probe-'));
     attempt(directory);
+
     return true;
   } catch {
     return false;
   } finally {
-    if (directory) rmSync(directory, { recursive: true, force: true });
+    if (directory) {
+      rmSync(directory, { recursive: true, force: true });
+    }
   }
 }
 

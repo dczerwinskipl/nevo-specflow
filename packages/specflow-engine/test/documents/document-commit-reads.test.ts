@@ -62,6 +62,7 @@ function uncertainPort(project: QueueProject, before: () => void): CommitPort {
     ...openVersionControl(project.engine).commits,
     commit: () => {
       before();
+
       throw new GitCapabilityError('GIT_OPERATION_UNCERTAIN', 'uncertain', 'mutation-timeout');
     },
   };
@@ -70,6 +71,7 @@ function uncertainPort(project: QueueProject, before: () => void): CommitPort {
 /** A save that stays `queued`: the queue has not run. */
 async function pendingProject(): Promise<{ project: QueueProject; id: string }> {
   const project = await queueProject();
+
   return { project, id: await queueSave(project, 1, 'one\n') };
 }
 
@@ -78,6 +80,7 @@ async function failedProject(): Promise<{ project: QueueProject; id: string }> {
   const { project, id } = await pendingProject();
   git(project.root, 'checkout', '-q', '-b', 'somewhere-else');
   await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
+
   return { project, id };
 }
 
@@ -204,6 +207,7 @@ describe('a commit that needs recovery', () => {
       git(project.root, ...HUMAN, 'commit', '-q', '--allow-empty', '-m', 'human'),
     );
     await runQueueOnce(project.engine, isolatedQueue({ commits: port }), undefined, FLUSH);
+
     return { project, id };
   }
 
@@ -315,6 +319,7 @@ describe('a committed operation', () => {
         code: 'DOCUMENT_OPERATION_NOT_FOUND',
       });
     }
+
     expect(
       await failure(readDocumentOperationStatus(project.engine, id, { specId: 'someone-else' })),
     ).toMatchObject({ code: 'DOCUMENT_OPERATION_NOT_FOUND' });
@@ -423,6 +428,7 @@ describe('a write whose process is gone', () => {
         }),
       );
     });
+
     return operationId;
   }
 
@@ -472,6 +478,7 @@ describe('what a read does not do', () => {
     const listener = (message: unknown): void => {
       spawns.push([...(message as { args: readonly string[] }).args]);
     };
+
     // The control lock is HELD while the reads run: a read that tried to take it would fail or hang.
     await withProjectControlLock(project.engine.context, async () => {
       subscribe('nevo.specflow.engine.git-process', listener);
@@ -528,6 +535,7 @@ describe('performance', () => {
     for (let index = 0; index < 2000; index += 1) {
       files[`bulk/doc-${index}.md`] = `document ${index}\n`;
     }
+
     const spec = await handBuiltSpecification(project, {
       slug: 'bulk',
       documents,

@@ -7,7 +7,10 @@ import {
 import { ResumeSessionSection } from './contributions/specification-work/ResumeSessionSection';
 
 function SpecificationResumeSession({ data, actions }: SpecificationWorkSectionContext) {
-  if (!data.resumeSession) return null;
+  if (!data.resumeSession) {
+    return null;
+  }
+
   return (
     <ResumeSessionSection
       session={data.resumeSession}
@@ -36,7 +39,11 @@ export const sessionsUiModule: UiModule = {
         if (!source || (source.state === 'unavailable' && source.reason === 'source_unavailable')) {
           return { state: 'unavailable' };
         }
-        if (source.state !== 'available') return { state: 'excluded' };
+
+        if (source.state !== 'available') {
+          return { state: 'excluded' };
+        }
+
         return source.items.map((item) => ({
           item,
           icon: 'chat',

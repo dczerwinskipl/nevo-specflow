@@ -25,9 +25,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Fastify answers `{ error: 'Bad Request' }`). The server's message text is never read.
  */
 export function readServerCode(data: unknown): string | undefined {
-  if (!isRecord(data)) return undefined;
-  if (typeof data.code === 'string' && data.code.length > 0) return data.code;
-  if (typeof data.error === 'string' && codePattern.test(data.error)) return data.error;
+  if (!isRecord(data)) {
+    return undefined;
+  }
+
+  if (typeof data.code === 'string' && data.code.length > 0) {
+    return data.code;
+  }
+
+  if (typeof data.error === 'string' && codePattern.test(data.error)) {
+    return data.error;
+  }
+
   return undefined;
 }
 
@@ -63,8 +72,12 @@ function kindOfStatus(status: number, hasCode: boolean): ApiErrorKind {
 
 function retryAfterMs(headers: HttpClientError['headers']): number | undefined {
   const raw = headers?.['retry-after'];
-  if (raw === undefined) return undefined;
+  if (raw === undefined) {
+    return undefined;
+  }
+
   const seconds = Number(raw);
+
   return Number.isFinite(seconds) && seconds >= 0 ? Math.round(seconds * 1000) : undefined;
 }
 
@@ -76,12 +89,15 @@ export function classifyHttpError(
   error: HttpClientError,
   context: ClassifyContext,
 ): ApiError | HttpClientError {
-  if (error.kind === 'cancelled') return error;
+  if (error.kind === 'cancelled') {
+    return error;
+  }
+
   const { operation } = context;
   const isRead = readMethods.has(context.method.toUpperCase());
   const unknownForMutation: MutationOutcome = isRead ? 'not-applied' : 'unknown';
 
-  if (error.kind === 'timeout')
+  if (error.kind === 'timeout') {
     return new ApiError({
       kind: 'timeout',
       operation,
@@ -89,7 +105,9 @@ export function classifyHttpError(
       retryable: true,
       cause: error,
     });
-  if (error.kind === 'network')
+  }
+
+  if (error.kind === 'network') {
     return new ApiError({
       kind: 'network',
       operation,
@@ -97,7 +115,9 @@ export function classifyHttpError(
       retryable: true,
       cause: error,
     });
-  if (error.kind !== 'http' || error.status === undefined)
+  }
+
+  if (error.kind !== 'http' || error.status === undefined) {
     return new ApiError({
       kind: 'protocol',
       operation,
@@ -105,11 +125,16 @@ export function classifyHttpError(
       retryable: false,
       cause: error,
     });
+  }
 
   const status = error.status;
   const requestId = error.headers?.['x-request-id'];
   // A non-JSON answer (HTML from a proxy or the SPA fallback) proves nothing about the commit.
-  if (typeof error.data === 'string' && error.data.length > 0 && ![401, 403, 429].includes(status))
+  if (
+    typeof error.data === 'string' &&
+    error.data.length > 0 &&
+    ![401, 403, 429].includes(status)
+  ) {
     return new ApiError({
       kind: 'protocol',
       operation,
@@ -119,6 +144,7 @@ export function classifyHttpError(
       requestId,
       cause: error,
     });
+  }
 
   const code = readServerCode(error.data);
   const rule = code ? (lookup(context.codes, code) ?? lookup(commonErrorCodes, code)) : undefined;
@@ -149,8 +175,15 @@ export function classifyHttpError(
  * are not HTTP failures (and cancellations) yield `undefined`.
  */
 export function asApiError(error: unknown, context: ClassifyContext): ApiError | undefined {
-  if (error instanceof ApiError) return error;
-  if (!isHttpClientError(error)) return undefined;
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  if (!isHttpClientError(error)) {
+    return undefined;
+  }
+
   const classified = classifyHttpError(error, context);
+
   return classified instanceof ApiError ? classified : undefined;
 }

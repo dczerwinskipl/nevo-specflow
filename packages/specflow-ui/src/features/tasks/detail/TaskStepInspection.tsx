@@ -39,24 +39,30 @@ export function TaskStepInspection({
   const source = snapshot?.sections.humanRequirements;
   // Authorization takes precedence over stale-context diagnostics.
   const owner = page === 'work' ? work : source;
-  if (owner?.state !== 'available')
+  if (owner?.state !== 'available') {
     return <TaskSourceState state={owner?.state === 'forbidden' ? 'forbidden' : 'unavailable'} />;
-  if (anchor && anchor.revision !== snapshot?.revision)
+  }
+
+  if (anchor && anchor.revision !== snapshot?.revision) {
     return (
       <Typography as="p" variant="body-sm" role="status">
         {t('taskDetails.contextChanged')}
       </Typography>
     );
+  }
+
   const requirement =
     page === 'requirement' && source?.state === 'available'
       ? source.data.items.find((item) => item.id === requirementId)
       : undefined;
-  if (page === 'requirement' && !requirement)
+  if (page === 'requirement' && !requirement) {
     return (
       <Typography as="p" variant="body-sm" role="status">
         {t('taskDetails.requirementChanged')}
       </Typography>
     );
+  }
+
   const combined = !!requirement && matchesWork(snapshot, task.id, requirement);
   const data = work?.state === 'available' && (page === 'work' || combined) ? work.data : undefined;
   const step = data ? inspectionStep(snapshot) : undefined;
@@ -71,6 +77,7 @@ export function TaskStepInspection({
       ].filter((text): text is string => !!text),
     ),
   ];
+
   return (
     <div ref={root} className="grid min-w-0 gap-3 p-4 [overflow-wrap:anywhere]">
       {texts.map((text, index) => (

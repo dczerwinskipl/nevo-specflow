@@ -69,6 +69,7 @@ export function SideNavigation<TTarget>({
     ) {
       return;
     }
+
     previousWarning.current = warningSignature;
     console.warn(unsupportedNavigationDepthWarning(unsupported));
   }, [unsupported, warningSignature]);

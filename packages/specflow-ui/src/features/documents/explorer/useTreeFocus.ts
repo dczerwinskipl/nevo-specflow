@@ -16,7 +16,10 @@ export function useTreeFocus(index: DocumentTreeIndex<TreeRows>): TreeFocus {
   const nodes = useRef(new Map<string, HTMLButtonElement>());
   const [target, setTarget] = useState<string>();
   useEffect(() => {
-    if (!target) return;
+    if (!target) {
+      return;
+    }
+
     // Root-level creation has no source row (its action lives in the header menu): land on the list.
     const root = index.level('');
     const first = root.folders[0]
@@ -30,10 +33,14 @@ export function useTreeFocus(index: DocumentTreeIndex<TreeRows>): TreeFocus {
       setTarget(undefined);
     }
   }, [target, index]);
+
   return {
     register: (key) => (node) => {
-      if (node) nodes.current.set(key, node);
-      else nodes.current.delete(key);
+      if (node) {
+        nodes.current.set(key, node);
+      } else {
+        nodes.current.delete(key);
+      }
     },
     request: setTarget,
   };

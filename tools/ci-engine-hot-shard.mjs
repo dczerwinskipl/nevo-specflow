@@ -43,7 +43,10 @@ if (
 const buckets = Array.from({ length: total }, () => []);
 namedCases.forEach((name, index) => buckets[index % total].push(name));
 const selected = buckets[part - 1];
-if (!selected?.length) throw new Error('Selected empty test shard.');
+if (!selected?.length) {
+  throw new Error('Selected empty test shard.');
+}
+
 const escapeRegex = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const pattern = '(?:' + selected.map(escapeRegex).join('|') + ')$';
 
@@ -55,7 +58,9 @@ const summary = {
   cases: selected,
 };
 console.log(JSON.stringify(summary, null, 2));
-if (listOnly) process.exit(0);
+if (listOnly) {
+  process.exit(0);
+}
 
 const vitestMain = join(engineRoot, 'node_modules', 'vitest', 'vitest.mjs');
 const args = [
@@ -75,9 +80,13 @@ const child = spawnSync(process.execPath, args, {
   stdio: 'inherit',
   windowsHide: true,
 });
-if (child.error) throw child.error;
+if (child.error) {
+  throw child.error;
+}
+
 if (child.signal) {
   console.error('Vitest terminated by signal:', child.signal);
   process.exit(1);
 }
+
 process.exit(child.status ?? 1);

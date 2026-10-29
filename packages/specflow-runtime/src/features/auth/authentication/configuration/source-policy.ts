@@ -17,12 +17,17 @@ const LOCAL_OIDC_KEYS = new Set(['instances']);
 const LOCAL_OIDC_INSTANCE_KEYS = new Set(['clientSecret']);
 
 export function assertProjectAuthenticationSource(value: unknown): void {
-  if (value === undefined) return;
+  if (value === undefined) {
+    return;
+  }
 
   const authentication = record(value, 'authentication');
   onlyKeys(authentication, PROJECT_AUTHENTICATION_KEYS, 'authentication');
 
-  if (authentication.providers === undefined) return;
+  if (authentication.providers === undefined) {
+    return;
+  }
+
   const providers = record(authentication.providers, 'authentication.providers');
   onlyKeys(providers, PROVIDER_KEYS, 'authentication.providers');
 
@@ -42,12 +47,17 @@ export function assertProjectAuthenticationSource(value: unknown): void {
 }
 
 export function assertLocalAuthenticationSource(value: unknown): void {
-  if (value === undefined) return;
+  if (value === undefined) {
+    return;
+  }
 
   const authentication = record(value, 'authentication');
   onlyKeys(authentication, LOCAL_AUTHENTICATION_KEYS, 'authentication');
 
-  if (authentication.providers === undefined) return;
+  if (authentication.providers === undefined) {
+    return;
+  }
+
   const providers = record(authentication.providers, 'authentication.providers');
   onlyKeys(providers, PROVIDER_KEYS, 'authentication.providers');
 
@@ -74,7 +84,9 @@ function assertOidcOwnership(
 ): void {
   const oidc = record(value, path);
   onlyKeys(oidc, containerKeys, path);
-  if (oidc.instances === undefined) return;
+  if (oidc.instances === undefined) {
+    return;
+  }
 
   const instances = record(oidc.instances, `${path}.instances`);
   for (const [providerId, rawProvider] of Object.entries(instances)) {

@@ -20,6 +20,7 @@ async function spec(files: Record<string, string>): Promise<string> {
     await mkdir(join(full, '..'), { recursive: true });
     await writeFile(full, content);
   }
+
   return dir;
 }
 

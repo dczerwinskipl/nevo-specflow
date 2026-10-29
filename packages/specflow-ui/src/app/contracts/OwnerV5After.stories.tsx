@@ -22,6 +22,7 @@ type Story = StoryObj<typeof meta>;
 async function frame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
+
 async function settle(width: number, height = 900) {
   await (await browserPage()).viewport(width, height);
   await frame();
@@ -37,25 +38,31 @@ async function settle(width: number, height = 900) {
           motion: element.dataset.workspaceMotion,
         }));
       const first = read();
-      if (first.some((item) => item.motion && item.motion !== 'idle'))
+      if (first.some((item) => item.motion && item.motion !== 'idle')) {
         throw new Error('Workspace motion pending');
+      }
+
       await frame();
       await frame();
       const next = read();
-      if (JSON.stringify(first) !== JSON.stringify(next))
+      if (JSON.stringify(first) !== JSON.stringify(next)) {
         throw new Error('Responsive bounds pending');
+      }
+
       const active = document.querySelector<HTMLElement>(
         '[data-workspace-surface="secondary"][data-workspace-active="true"]',
       );
       if (width < 840 && active) {
         const box = active.getBoundingClientRect();
-        if (Math.abs(box.x) > 1 || Math.abs(box.right - width) > 1)
+        if (Math.abs(box.x) > 1 || Math.abs(box.right - width) > 1) {
           throw new Error('Narrow Secondary bounds pending');
+        }
       }
     },
     { timeout: 5000 },
   );
 }
+
 function contrast(name: string) {
   const nodes = [...document.querySelectorAll<HTMLElement>('[class*="text-content-"]')].filter(
     (e) => e.textContent?.trim() && e.getBoundingClientRect().height && e.children.length < 2,
@@ -66,9 +73,13 @@ function contrast(name: string) {
     const backgrounds = [];
     while (parent) {
       const color = getComputedStyle(parent).backgroundColor;
-      if (color !== 'rgba(0, 0, 0, 0)') backgrounds.push(color);
+      if (color !== 'rgba(0, 0, 0, 0)') {
+        backgrounds.push(color);
+      }
+
       parent = parent.parentElement;
     }
+
     return {
       text: e.textContent?.trim().slice(0, 100),
       color: style.color,
@@ -80,6 +91,7 @@ function contrast(name: string) {
   });
   console.info('OWNER_V5_CONTRAST', JSON.stringify({ name, pairs }));
 }
+
 async function shot(name: string, width: number, height = 900) {
   await settle(width, height);
   contrast(name);
@@ -106,6 +118,7 @@ async function shot(name: string, width: number, height = 900) {
     }),
   );
 }
+
 /**
  * Scrolls the Create form to its end (the submit button is pinned below it) and waits until it
  * stays there: late layout (options, focus on narrow screens) may still move it.
@@ -120,10 +133,12 @@ async function toFormEnd(canvas: {
     scroller.scrollTop = scroller.scrollHeight;
     await frame();
     await frame();
-    if (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1)
+    if (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1) {
       throw new Error('The form did not stay at its end');
+    }
   });
 }
+
 export const CreateBottomFailure: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
@@ -149,6 +164,7 @@ export const CreateBottomFailure: Story = {
       const feedback = alert.getBoundingClientRect(),
         box = view.getBoundingClientRect(),
         cta = canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect();
+
       return {
         feedback: feedback.toJSON() as Record<string, number>,
         cta: cta.toJSON() as Record<string, number>,
@@ -158,11 +174,13 @@ export const CreateBottomFailure: Story = {
         ctaVisible: cta.top >= box.bottom - 1 && cta.bottom <= window.innerHeight + 1,
       };
     };
+
     await waitFor(
       () => {
         const state = visible();
-        if (!state.feedbackVisible || !state.ctaVisible)
+        if (!state.feedbackVisible || !state.ctaVisible) {
           throw new Error('UX01 ' + JSON.stringify(state));
+        }
       },
       { timeout: 5000 },
     );
@@ -206,7 +224,10 @@ export const DocumentsTablet: Story = {
   play: async ({ canvas, userEvent }) => {
     // The active document opens in Preview by default; wait for its toolbar, not the textbox.
     await waitForDocumentActions(canvas);
-    for (const width of [839, 840, 1024, 1180, 1280]) await shot('documents-tablet', width);
+    for (const width of [839, 840, 1024, 1180, 1280]) {
+      await shot('documents-tablet', width);
+    }
+
     await settle(390, 844);
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
     await userEvent.click((await canvas.findAllByRole('button', { name: 'Więcej akcji' }))[0]!);
@@ -239,14 +260,18 @@ export const OverviewTablet: Story = {
       name: 'Deterministic admission and execution boundaries',
       level: 1,
     });
-    for (const width of [839, 840, 1024, 1180, 1280]) await shot('overview-tablet', width);
+    for (const width of [839, 840, 1024, 1180, 1280]) {
+      await shot('overview-tablet', width);
+    }
   },
 };
 export const SessionTablet: Story = {
   args: { path: '/specs/api-integration/sessions/session?collection=current' },
   play: async ({ canvas }) => {
     await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' });
-    for (const width of [839, 840, 1024, 1180]) await shot('session-tablet', width);
+    for (const width of [839, 840, 1024, 1180]) {
+      await shot('session-tablet', width);
+    }
   },
 };
 export const ProviderAndCapabilities: Story = {
@@ -300,6 +325,7 @@ export const GuardFromDrawer: Story = {
       await userEvent.tab();
       await expect(top.contains(document.activeElement)).toBe(true);
     }
+
     await userEvent.tab({ shift: true });
     await expect(top.contains(document.activeElement)).toBe(true);
     await userEvent.keyboard('{Escape}');
@@ -322,7 +348,9 @@ export const SharedLoading: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open pending detail' }));
     await canvas.findByText('Loading…');
-    for (const width of [840, 1024, 1180]) await shot('shared-loading', width);
+    for (const width of [840, 1024, 1180]) {
+      await shot('shared-loading', width);
+    }
   },
 };
 export const SharedNullLoading: Story = {
@@ -330,7 +358,9 @@ export const SharedNullLoading: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open pending detail' }));
     await canvas.findByText('Pending detail');
-    for (const width of [840, 1024, 1180]) await shot('shared-null-loading', width);
+    for (const width of [840, 1024, 1180]) {
+      await shot('shared-null-loading', width);
+    }
   },
 };
 
@@ -338,7 +368,9 @@ export const GlobalSpecsOverviewTablet: Story = {
   render: () => <RoutedApplication path="/?collection=current" locale="pl" />,
   play: async ({ canvas }) => {
     await canvas.findByRole('heading', { name: 'Specyfikacje', level: 1 });
-    for (const width of [839, 840, 1024, 1180]) await shot('global-overview-tablet', width);
+    for (const width of [839, 840, 1024, 1180]) {
+      await shot('global-overview-tablet', width);
+    }
   },
 };
 

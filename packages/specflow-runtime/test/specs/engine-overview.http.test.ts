@@ -26,6 +26,7 @@ import { passwordConfig } from '../auth/support/config';
 
 function trustedLocalConfig() {
   const config = passwordConfig();
+
   return { ...config, authentication: { ...config.authentication, mode: 'none' as const } };
 }
 
@@ -58,6 +59,7 @@ async function fixture() {
     '-qm',
     'initial',
   );
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -119,7 +121,10 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         });
         const manifest = await reads.readDocument(created.specId, 'manifest');
         expect(manifest.status).toBe('available');
-        if (manifest.status !== 'available') throw new Error('Manifest must exist.');
+        if (manifest.status !== 'available') {
+          throw new Error('Manifest must exist.');
+        }
+
         expect(manifest.value.content).toContain(created.specId);
 
         const manifestPath = join(root, created.relativeManifestPath);
@@ -326,6 +331,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     } finally {
       await app.close();
     }
+
     const unrestricted = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
     try {
       const result = await unrestricted.inject('/api/specs/overview');

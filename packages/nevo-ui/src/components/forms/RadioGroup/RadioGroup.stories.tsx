@@ -53,32 +53,42 @@ export const DisabledWithReasonContract: Story = {
   play: async ({ canvas }) => {
     const reason = canvas.getByText(/repository is read-only/);
     for (let node: HTMLElement | null = reason; node; node = node.parentElement) {
-      if (getComputedStyle(node).opacity !== '1')
+      if (getComputedStyle(node).opacity !== '1') {
         throw new Error('The disabled reason must not fade.');
+      }
     }
+
     const disabledLabel = canvas.getByText('Create a new branch');
     if (
       getComputedStyle(disabledLabel).color ===
       getComputedStyle(canvas.getByText('Use the current branch')).color
-    )
+    ) {
       throw new Error('The disabled label shows the disabled role.');
+    }
+
     const radio = canvas.getByRole('radio', { name: 'Create a new branch' });
-    if (!radio.hasAttribute('disabled') || radio.getAttribute('aria-describedby') !== reason.id)
+    if (!radio.hasAttribute('disabled') || radio.getAttribute('aria-describedby') !== reason.id) {
       throw new Error('The option stays disabled and described by its reason.');
+    }
   },
 };
 
 /** Polls until the condition holds (no storybook/test import in the design-system package). */
 async function until(condition: () => boolean, message: string) {
   for (let attempt = 0; attempt < 60; attempt++) {
-    if (condition()) return;
+    if (condition()) {
+      return;
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
+
   throw new Error(message);
 }
 
 function ControlledArchetypes({ initial, loop }: { initial: string; loop?: boolean }) {
   const [value, setValue] = useState(initial);
+
   return (
     <div className="grid max-w-md gap-3">
       <RadioGroup value={value} onValueChange={setValue} loop={loop} aria-label="Archetype">
@@ -139,7 +149,8 @@ export const TabAfterAnArrowThatMovedNothing: Story = {
     await userEvent.tab({ shift: true });
     await until(() => document.activeElement === first, 'Shift+Tab returns to the first option.');
     await new Promise((resolve) => setTimeout(resolve, 150));
-    if (canvas.getByLabelText('Selected archetype').textContent !== 'none')
+    if (canvas.getByLabelText('Selected archetype').textContent !== 'none') {
       throw new Error('Tab onto an unchecked option selects nothing.');
+    }
   },
 };

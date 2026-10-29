@@ -45,6 +45,7 @@ it.skipIf(!process.env.NEVO_LIVE_REFRESH_ROOT)(
     if (lines.length !== 1) {
       throw new Error('Expected exactly one JSON result from independent CLI command.');
     }
+
     await writeFile(process.env.NEVO_LIVE_REFRESH_RESULT!, lines[0]!);
   },
   120000,

@@ -62,7 +62,10 @@ export async function findManifestBaseline(
     );
     const plan = decodePlanWithEvidence(text, journal.plan);
     const manifest = plan.paths.find((path) => path.path === target.manifestPath);
-    if (manifest?.post == null) continue;
+    if (manifest?.post == null) {
+      continue;
+    }
+
     return {
       kind: 'operation',
       operationId: journal.operationId,
@@ -71,8 +74,12 @@ export async function findManifestBaseline(
       writing: isBarrierStage(journal.stage, journal.recoveryPhase),
     };
   }
+
   const entry = await ledgerEntryOf(context, target);
-  if (entry !== undefined) return { kind: 'ledger', postSha256: entry.postSha256 };
+  if (entry !== undefined) {
+    return { kind: 'ledger', postSha256: entry.postSha256 };
+  }
+
   return { kind: 'head' };
 }
 
@@ -85,12 +92,14 @@ async function ledgerEntryOf(
       kind: 'specification',
       id: target.specId,
     });
+
     return record?.entries.find((entry) => entry.path === target.manifestPath);
   } catch (error) {
     // A ledger that cannot be read cannot vouch for the manifest: fail closed.
     if (error instanceof LedgerCorruptError) {
       throw documentChangeError('journal-corrupt', 'The uncommitted-changes ledger is corrupt.');
     }
+
     throw error;
   }
 }
@@ -122,14 +131,17 @@ export function assertManifestNotDirty(judgement: ManifestJudgement): void {
         'The Specification registry is being changed by another operation.',
       );
     }
+
     if (judgement.diskSha256 !== baseline.postSha256) {
       throw documentChangeError(
         'manifest-dirty',
         'The Specification manifest was changed outside the pending operations.',
       );
     }
+
     return;
   }
+
   if (baseline.kind === 'ledger') {
     // A manifest that equals HEAD is clean whatever the ledger still says (an entry that a commit made
     // stale and no prune removed yet).
@@ -139,8 +151,10 @@ export function assertManifestNotDirty(judgement: ManifestJudgement): void {
         'The Specification manifest was changed outside the uncommitted changes the Engine recorded.',
       );
     }
+
     return;
   }
+
   if (baseline.kind === 'head' && judgement.cleanInGit === false) {
     throw documentChangeError(
       'manifest-dirty',

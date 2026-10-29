@@ -42,6 +42,7 @@ async function fixture() {
     '-qm',
     'bootstrap',
   );
+
   return root;
 }
 
@@ -53,6 +54,7 @@ async function invoke(cwd: string, ...args: string[]) {
     stderr: () => undefined,
   });
   await program.parseAsync(['node', 'nevo-specflow', ...args]);
+
   return out.join('\n');
 }
 
@@ -154,6 +156,7 @@ describe('Explicit Project Home bootstrap', () => {
     const ui = new Proxy({} as RuntimeSetupUi, {
       get() {
         wizardCalls++;
+
         throw new Error('Init wizard must not start in linked checkout.');
       },
     });
@@ -192,5 +195,6 @@ describe('Explicit Project Home bootstrap', () => {
 async function bootstrapFailureProof(primary: string) {
   // A read-only Engine open must not change previously bootstrapped identity.
   const { openSpecFlowEngine } = await import('@nevo/specflow-engine');
+
   return openSpecFlowEngine({ cwd: primary });
 }

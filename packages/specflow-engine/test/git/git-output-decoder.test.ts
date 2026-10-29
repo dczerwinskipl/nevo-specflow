@@ -9,8 +9,13 @@ describe('Git subprocess UTF-8 output decoding', () => {
     const stderr = Buffer.from('Błąd: zażółć gęślą jaźń', 'utf8');
 
     for (let i = 0; i < Math.max(stdout.length, stderr.length); i++) {
-      if (i < stdout.length) result.write('stdout', stdout.subarray(i, i + 1));
-      if (i < stderr.length) result.write('stderr', stderr.subarray(i, i + 1));
+      if (i < stdout.length) {
+        result.write('stdout', stdout.subarray(i, i + 1));
+      }
+
+      if (i < stderr.length) {
+        result.write('stderr', stderr.subarray(i, i + 1));
+      }
     }
 
     expect(result.finish()).toEqual({

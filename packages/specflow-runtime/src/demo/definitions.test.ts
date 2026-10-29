@@ -25,6 +25,7 @@ function readKind(kind: string): Record<string, unknown>[] {
         schemaVersion: _version,
         ...rest
       } = parse(readFileSync(join(seeds, kind, name), 'utf8')) as Record<string, unknown>;
+
       return rest;
     });
 }
@@ -57,7 +58,8 @@ describe('demo definitions', () => {
     expect(creationCatalogue.revision).toBe(demoArchetypes.revision);
     expect(creationCatalogue.defaultArchetypeId).toBe('feature');
     expect(creationCatalogue).not.toHaveProperty('workflow');
-    for (const archetype of creationCatalogue.archetypes)
+    for (const archetype of creationCatalogue.archetypes) {
       expect(Number.isInteger(archetype.version)).toBe(true);
+    }
   });
 });

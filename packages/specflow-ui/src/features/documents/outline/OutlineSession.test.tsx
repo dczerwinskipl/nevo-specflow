@@ -49,8 +49,10 @@ function setup(document: DocumentContent) {
     const actions = documentHeaderModel(session, t).actions;
     seen.actions = actions.map((action) => action.id);
     seen.groups = actions.map((action) => String(action.group));
+
     return <OutlineButton />;
   }
+
   const store = createDocumentDraftStore();
   const tree = (shown: DocumentContent) => (
     <QueryClientProvider client={queryClient}>
@@ -66,10 +68,12 @@ function setup(document: DocumentContent) {
     </QueryClientProvider>
   );
   const view = render(tree(document));
+
   return Object.assign(seen, {
     show: (next: DocumentContent) => view.rerender(tree(next)),
   });
 }
+
 const icon = () => screen.queryByRole('button', { name: 'Open contents' });
 
 describe('the contents of a previewed document', () => {

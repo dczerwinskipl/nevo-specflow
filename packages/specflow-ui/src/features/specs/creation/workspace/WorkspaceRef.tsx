@@ -13,6 +13,7 @@ export function WorkspaceLabel({
   truncate?: boolean;
 }) {
   const text = useMessage();
+
   return workspace.branch ? (
     <BranchRef name={workspace.branch} truncate={truncate} />
   ) : (
@@ -31,6 +32,7 @@ export function WorkspaceRef({
   truncate?: boolean;
 }) {
   const text = useMessage();
+
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <span className={truncate ? 'truncate' : undefined}>{workspace.name}</span>{' '}

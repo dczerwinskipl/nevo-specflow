@@ -63,9 +63,15 @@ export async function propertyKey(
   const local = Object.entries(instance.componentProperties).find(
     ([name, definition]) => name.split('#')[0] === displayName && definition.type === type,
   )?.[0];
-  if (local) return local;
+  if (local) {
+    return local;
+  }
+
   const set = (await instance.getMainComponentAsync())?.parent;
-  if (set?.type !== 'COMPONENT_SET') return undefined;
+  if (set?.type !== 'COMPONENT_SET') {
+    return undefined;
+  }
+
   return Object.entries(set.componentPropertyDefinitions).find(
     ([name, definition]) => name.split('#')[0] === displayName && definition.type === type,
   )?.[0];
@@ -76,10 +82,16 @@ export function nestedMainComponent(
   definitions: ReadonlyMap<string, FigmaComponentDefinition>,
 ) {
   const spec = definitions.get(child.componentRef);
-  if (!spec) throw new Error(`Missing definition for nested ${child.componentRef}`);
+  if (!spec) {
+    throw new Error(`Missing definition for nested ${child.componentRef}`);
+  }
+
   const stableId = stableIdForProperties(spec, child.properties);
   const mainComponent = findStable<ComponentNode>(stableId, ['COMPONENT']);
-  if (!mainComponent) throw new Error(`Missing nested main component ${stableId}`);
+  if (!mainComponent) {
+    throw new Error(`Missing nested main component ${stableId}`);
+  }
+
   return { component: mainComponent, spec };
 }
 
@@ -119,6 +131,7 @@ export function applyNestedSizing(
       Math.max(px(style.height, instance.height), 0.01),
     );
   }
+
   applyNestedLayerSizing(instance, child.style, parent);
 }
 
@@ -132,7 +145,10 @@ export function applyNestedSizing(
  * setProperties()/swapComponent(), which can restore the main component defaults.
  */
 export function applyNestedPresentation(instance: InstanceNode, style: ComputedStyle | undefined) {
-  if (!style) return;
+  if (!style) {
+    return;
+  }
+
   applyAutoLayout(instance, style);
   instance.clipsContent = style.overflow === 'hidden' || style.overflow === 'clip';
   applyPaint(instance, style, 'backgroundColor');
@@ -148,7 +164,10 @@ export function bindNestedPresentation(
   resources: DesignResources,
 ) {
   const style = child.style;
-  if (!style) return;
+  if (!style) {
+    return;
+  }
+
   const background = colorVariableFor(
     ir,
     resources,
@@ -156,8 +175,13 @@ export function bindNestedPresentation(
     child.bindings?.background,
   );
   const border = colorVariableFor(ir, resources, style.borderTopColor, child.bindings?.border);
-  if (background) bindPaintVariable(instance, 'fills', background);
-  if (border) bindPaintVariable(instance, 'strokes', border);
+  if (background) {
+    bindPaintVariable(instance, 'fills', background);
+  }
+
+  if (border) {
+    bindPaintVariable(instance, 'strokes', border);
+  }
 }
 
 export function isNestedComponent(child: NestedLayerIR): child is NestedComponentIR {
@@ -169,7 +193,10 @@ export function materializeStructure(
   slots: ComponentCaptureIR['slots'],
 ): NestedLayerIR[] {
   return structure.flatMap((layer): NestedLayerIR[] => {
-    if (isNestedComponent(layer) || layer.kind === 'text' || layer.kind === 'asset') return [layer];
+    if (isNestedComponent(layer) || layer.kind === 'text' || layer.kind === 'asset') {
+      return [layer];
+    }
+
     if (layer.kind === 'element') {
       return [
         {
@@ -178,14 +205,20 @@ export function materializeStructure(
         },
       ];
     }
+
     const slot = slots[layer.name];
-    if (!slot) return [];
+    if (!slot) {
+      return [];
+    }
+
     if (slot.kind === 'text') {
       return [nestedTextFromSlot(slot)];
     }
+
     if (slot.kind === 'asset-swap') {
       return [{ ...slot.asset, style: { ...slot.asset.style, ...slot.style } }];
     }
+
     return [
       {
         kind: 'element',
@@ -215,12 +248,16 @@ export async function upsertNestedText(
     textNode = figma.createText();
     parent.appendChild(textNode);
   }
+
   textNode.name = child.text.length > 32 ? `${child.text.slice(0, 29)}…` : child.text;
   mark(textNode, stableId);
   const textStyle = child.textStyleRef ? resources.textStyles.get(child.textStyleRef) : undefined;
   textNode.fontName = textStyle?.fontName ?? (await loadProjectFont(child.style.fontWeight));
   textNode.characters = child.text;
-  if (textStyle) await textNode.setTextStyleIdAsync(textStyle.id);
+  if (textStyle) {
+    await textNode.setTextStyleIdAsync(textStyle.id);
+  }
+
   applyTextPresentation(textNode, child.style);
   applyTextSizing(textNode, parent, child.style);
   applyOpacity(textNode, child.style);
@@ -231,8 +268,12 @@ export async function upsertNestedText(
     child.style.color,
     child.colorRef ?? child.bindings?.content,
   );
-  if (variable) bindPaintVariable(textNode, 'fills', variable);
+  if (variable) {
+    bindPaintVariable(textNode, 'fills', variable);
+  }
+
   applyChildPlacement(textNode, parent, child.style);
+
   return textNode;
 }
 
@@ -249,8 +290,10 @@ export async function upsertNestedAsset(
   if (!instance) {
     instance = mainComponent.createInstance();
     parent.appendChild(instance);
-  } else if (!(await instanceUsesMainComponent(instance, mainComponent)))
+  } else if (!(await instanceUsesMainComponent(instance, mainComponent))) {
     instance.swapComponent(mainComponent);
+  }
+
   instance.name = child.assetRef;
   mark(instance, stableId);
   instance.resizeWithoutConstraints(
@@ -265,6 +308,7 @@ export async function upsertNestedAsset(
     colorVariableFor(ir, resources, child.style.color, child.colorRef),
   );
   applyChildPlacement(instance, parent, child.style);
+
   return instance;
 }
 
@@ -284,6 +328,7 @@ export async function upsertNestedElement(
     frame = figma.createFrame();
     parent.appendChild(frame);
   }
+
   frame.name = child.name;
   mark(frame, stableId);
   configureNestedElementFrame(frame, child, parent, ir, resources);
@@ -298,6 +343,7 @@ export async function upsertNestedElement(
     slotNodes,
   );
   applyChildPlacement(frame, parent, child.style);
+
   return frame;
 }
 
@@ -337,17 +383,34 @@ export function configureNestedElementFrame(
     child.style.borderTopColor,
     child.bindings?.border,
   );
-  if (background) bindPaintVariable(frame, 'fills', background);
-  if (border) bindPaintVariable(frame, 'strokes', border);
+  if (background) {
+    bindPaintVariable(frame, 'fills', background);
+  }
+
+  if (border) {
+    bindPaintVariable(frame, 'strokes', border);
+  }
+
   frame.layoutGrow = 0;
   frame.layoutAlign = 'INHERIT';
   if (parent.layoutMode === 'VERTICAL') {
-    if (child.style.widthSizing === 'fill') frame.layoutAlign = 'STRETCH';
-    if (child.style.heightSizing === 'fill') frame.layoutGrow = 1;
+    if (child.style.widthSizing === 'fill') {
+      frame.layoutAlign = 'STRETCH';
+    }
+
+    if (child.style.heightSizing === 'fill') {
+      frame.layoutGrow = 1;
+    }
   } else if (parent.layoutMode === 'HORIZONTAL') {
-    if (child.style.heightSizing === 'fill') frame.layoutAlign = 'STRETCH';
-    if (child.style.widthSizing === 'fill') frame.layoutGrow = 1;
+    if (child.style.heightSizing === 'fill') {
+      frame.layoutAlign = 'STRETCH';
+    }
+
+    if (child.style.widthSizing === 'fill') {
+      frame.layoutGrow = 1;
+    }
   }
+
   frame.layoutSizingHorizontal = layoutSizingForChild(
     child.style.widthSizing,
     frame.layoutMode,
@@ -376,14 +439,21 @@ export async function syncNestedChildren(
   const childIds = nestedStableIds(stableId, children);
   for (const [index, child] of children.entries()) {
     const childId = childIds[index];
-    if (!childId) throw new Error(`Missing nested identity at index ${index}`);
+    if (!childId) {
+      throw new Error(`Missing nested identity at index ${index}`);
+    }
+
     expected.add(childId);
     if (!isNestedComponent(child)) {
       if (child.kind === 'slot-ref') {
         const slotNode = slotNodes?.get(child.name);
-        if (slotNode) parent.insertChild(index, slotNode);
+        if (slotNode) {
+          parent.insertChild(index, slotNode);
+        }
+
         continue;
       }
+
       const node =
         child.kind === 'element'
           ? await upsertNestedElement(
@@ -404,19 +474,27 @@ export async function syncNestedChildren(
       parent.insertChild(index, node);
       continue;
     }
+
     const childSpec = definitions.get(child.componentRef);
     if (childSpec?.target === 'fragment') {
       const source = canonicalCaptures(childSpec, ir.components[child.componentRef] ?? []);
       const sourceId = stableIdForProperties(childSpec, child.properties);
       const template = source.get(sourceId) ?? source.values().next().value;
-      if (!template) throw new Error(`Missing screen fragment ${sourceId}`);
+      if (!template) {
+        throw new Error(`Missing screen fragment ${sourceId}`);
+      }
+
       const projectedSlots = { ...template.slots };
       for (const [slotName, value] of Object.entries(child.slots)) {
         const base = projectedSlots[slotName];
         if (typeof value === 'string') {
-          if (base?.kind === 'text') projectedSlots[slotName] = { ...base, text: value };
+          if (base?.kind === 'text') {
+            projectedSlots[slotName] = { ...base, text: value };
+          }
+
           continue;
         }
+
         if (
           (value.kind === 'container' || value.kind === 'slot') &&
           (base?.kind === 'container' || base?.kind === 'slot')
@@ -438,12 +516,14 @@ export async function syncNestedChildren(
           };
         }
       }
+
       await removeWrongTypeSibling(parent, childId, ['FRAME']);
       let frame = await findLiveChild<FrameNode>(parent, childId, ['FRAME']);
       if (!frame) {
         frame = figma.createFrame();
         parent.appendChild(frame);
       }
+
       mark(frame, childId);
       await configureComponent(
         frame,
@@ -474,6 +554,7 @@ export async function syncNestedChildren(
     } else if (!(await instanceUsesMainComponent(instance, resolved.component))) {
       instance.swapComponent(resolved.component);
     }
+
     instance.name = resolved.spec.displayName ?? child.componentRef;
     mark(instance, childId);
     await applyNestedOverrides(
@@ -494,14 +575,16 @@ export async function syncNestedChildren(
     applyNestedSizing(instance, child, parent);
     applyChildPlacement(instance, parent, child.style ?? {});
   }
+
   for (const child of [...parent.children]) {
     const childId = child.getPluginData(DATA_KEY);
     if (
       child.getPluginData(MANAGED_KEY) === 'true' &&
       childId.startsWith(`${stableId}/child/`) &&
       !expected.has(childId)
-    )
+    ) {
       child.remove();
+    }
   }
 }
 
@@ -518,9 +601,15 @@ export async function syncNestedOverridesInPlace(
   const childIds = nestedStableIds(stableId, children);
   for (const [index, child] of children.entries()) {
     const childId = childIds[index];
-    if (!childId) throw new Error(`Missing nested identity at index ${index}`);
+    if (!childId) {
+      throw new Error(`Missing nested identity at index ${index}`);
+    }
+
     if (!isNestedComponent(child)) {
-      if (child.kind !== 'element') continue;
+      if (child.kind !== 'element') {
+        continue;
+      }
+
       const frame = await findLiveChild<FrameNode>(parent, childId, ['FRAME']);
       if (frame) {
         configureNestedElementFrame(frame, child, parent, ir, resources);
@@ -535,14 +624,20 @@ export async function syncNestedOverridesInPlace(
         );
         applyChildPlacement(frame, parent, child.style);
       }
+
       continue;
     }
+
     const instance = await findLiveChild<InstanceNode>(parent, childId, ['INSTANCE']);
-    if (!instance) continue;
+    if (!instance) {
+      continue;
+    }
+
     const resolved = nestedMainComponent(child, definitions);
     if (!(await instanceUsesMainComponent(instance, resolved.component))) {
       instance.swapComponent(resolved.component);
     }
+
     await applyNestedOverrides(
       instance,
       child,
@@ -573,33 +668,48 @@ export async function applyNestedOverrides(
   const overrides: Record<string, string | boolean> = {};
   const nestedContainers: { slotName: string; value: NestedSlotIR }[] = [];
   for (const [slotName, slotSpec] of Object.entries(childSpec?.slots ?? {})) {
-    if (slotSpec.required || (slotSpec.kind !== 'container' && slotSpec.kind !== 'asset-swap'))
+    if (slotSpec.required || (slotSpec.kind !== 'container' && slotSpec.kind !== 'asset-swap')) {
       continue;
+    }
+
     const displayName =
       slotSpec.kind === 'asset-swap'
         ? `Show ${slotSpec.propertyName.toLowerCase()}`
         : `Show ${slotName}`;
     const key = await propertyKey(instance, displayName, 'BOOLEAN');
-    if (key) overrides[key] = Boolean(child.slots[slotName]);
+    if (key) {
+      overrides[key] = Boolean(child.slots[slotName]);
+    }
   }
+
   for (const [slotName, value] of Object.entries(child.slots)) {
     if (typeof value === 'string') {
       const displayName =
         childSpec?.slots[slotName]?.kind === 'text'
           ? childSpec.slots[slotName].propertyName
           : undefined;
-      if (!displayName) continue;
+      if (!displayName) {
+        continue;
+      }
+
       const key = await propertyKey(instance, displayName, 'TEXT');
-      if (key) overrides[key] = value;
+      if (key) {
+        overrides[key] = value;
+      }
+
       continue;
     }
+
     const slotSpec = childSpec?.slots[slotName];
     if (value.kind === 'slot' && slotSpec?.kind === 'slot') {
       const nativeSlot = instance
         .findAllWithCriteria({ types: ['SLOT'] })
         .find((candidate) => candidate.name === slotSpec.propertyName);
       if (nativeSlot) {
-        for (const existingChild of [...nativeSlot.children]) existingChild.remove();
+        for (const existingChild of [...nativeSlot.children]) {
+          existingChild.remove();
+        }
+
         await syncNestedChildren(
           nativeSlot,
           value.children,
@@ -614,26 +724,45 @@ export async function applyNestedOverrides(
       nestedContainers.push({ slotName, value });
     }
   }
-  if (Object.keys(overrides).length) instance.setProperties(overrides);
+
+  if (Object.keys(overrides).length) {
+    instance.setProperties(overrides);
+  }
+
   // Project typography from the concrete rendered public text slot, never
   // from the component host. A host's inherited font can differ from its own
   // label, while a contextual link can
   // legitimately inherit a smaller contextual size.
   for (const [slotName, slotSpec] of Object.entries(childSpec?.slots ?? {})) {
-    if (slotSpec.kind !== 'text' || typeof child.slots[slotName] !== 'string') continue;
+    if (slotSpec.kind !== 'text' || typeof child.slots[slotName] !== 'string') {
+      continue;
+    }
+
     const textStyle = child.textSlotStyles?.[slotName];
-    if (!textStyle) continue;
+    if (!textStyle) {
+      continue;
+    }
+
     const textNode = instance
       .findAllWithCriteria({ types: ['TEXT'] })
       .find((candidate) => candidate.getPluginData(DATA_KEY).endsWith(`/slot/${slotName}`));
-    if (textNode) applyTextPresentation(textNode, textStyle);
+    if (textNode) {
+      applyTextPresentation(textNode, textStyle);
+    }
   }
+
   for (const [slotName, value] of Object.entries(child.slots)) {
-    if (typeof value === 'string' || value.kind !== 'asset-swap') continue;
+    if (typeof value === 'string' || value.kind !== 'asset-swap') {
+      continue;
+    }
+
     const asset = value.children.find(
       (child): child is AssetLayerIR => 'kind' in child && child.kind === 'asset',
     );
-    if (!asset) continue;
+    if (!asset) {
+      continue;
+    }
+
     const assetInstance = instance
       .findAllWithCriteria({ types: ['INSTANCE'] })
       .find((candidate) => candidate.getPluginData(DATA_KEY).endsWith(`/slot/${slotName}`));
@@ -646,6 +775,7 @@ export async function applyNestedOverrides(
       assetInstance.swapComponent(mainComponent);
     }
   }
+
   for (const { slotName, value } of nestedContainers) {
     const container = instance
       .findAllWithCriteria({ types: ['FRAME'] })

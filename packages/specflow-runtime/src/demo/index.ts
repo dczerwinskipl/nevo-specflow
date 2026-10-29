@@ -43,8 +43,10 @@ export function createDemoEnvironment(options: DemoEnvironmentOptions = {}) {
     onPathsChanged: (specId, paths) => sessions.refreshDocuments(specId, paths),
   });
   const specs = createDemoSpecs(state, documents);
+
   return { state, documents, sessions, specs };
 }
+
 export type DemoEnvironment = ReturnType<typeof createDemoEnvironment>;
 
 /**
@@ -60,6 +62,7 @@ export function createDemoRuntime(
   const sessionReferences = sessions.overlayReferences(
     overrides.references ?? createDemoSessionReferences(repositories.catalogue),
   );
+
   return {
     environment,
     ...repositories,
@@ -68,6 +71,7 @@ export function createDemoRuntime(
     taskSources: createDemoTaskSources(repositories.catalogue),
   };
 }
+
 export type DemoRuntime = ReturnType<typeof createDemoRuntime>;
 
 /** Registers every demo-only route (`/api/demo/**`), each owned by its feature module. */

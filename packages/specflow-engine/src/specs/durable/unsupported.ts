@@ -24,6 +24,7 @@ export function classifyJournalText(text: string): JournalFileClass {
   } catch {
     return { kind: 'unsupported' };
   }
+
   if (
     typeof value !== 'object' ||
     value === null ||
@@ -32,6 +33,7 @@ export function classifyJournalText(text: string): JournalFileClass {
   ) {
     return { kind: 'unsupported' };
   }
+
   return { kind: 'current', value };
 }
 

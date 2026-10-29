@@ -49,6 +49,7 @@ export function SpecListRow({
       renderLink={renderSpecificationLink}
     />
   );
+
   return (
     <InformationList.Item
       interactive={
@@ -94,6 +95,7 @@ function SpecRowIdentity({
   flat: boolean;
 }) {
   const facts = rowMetadata(item);
+
   return (
     <div className="min-w-0">
       <Typography
@@ -137,6 +139,7 @@ function SpecRowIdentity({
     </div>
   );
 }
+
 /**
  * When the specification last changed, in the flat list: one line under the title on narrow rows,
  * its own column from 48rem, where the column header names it (the full phrase stays readable to
@@ -149,6 +152,7 @@ function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
     updatedAt && Number.isFinite(Date.parse(updatedAt))
       ? formatSpecDate(updatedAt, i18n.resolvedLanguage)
       : undefined;
+
   return (
     <Typography
       as="div"
@@ -179,6 +183,7 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
     ? t('specifications.progress', details)
     : t('specifications.progressUnknown');
   const progress = rowProgress(details);
+
   return (
     <Typography
       as="div"
@@ -215,6 +220,7 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
     </Typography>
   );
 }
+
 function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
   return (
     <>
@@ -230,6 +236,7 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
     </>
   );
 }
+
 function ArchivedSpecRowContent({ item }: { item: ArchiveSpecRowModel }) {
   return (
     <>

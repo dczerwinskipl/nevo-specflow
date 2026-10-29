@@ -15,7 +15,10 @@ export interface OperationsPanelHostProps extends UseOperationsListOptions {
  */
 export function OperationsPanelHost({ kinds, renderLink, ...options }: OperationsPanelHostProps) {
   const view = useOperationsList(options);
-  if (view.loading || view.unavailable) return null;
+  if (view.loading || view.unavailable) {
+    return null;
+  }
+
   return (
     <OperationsPanel
       list={view.list}

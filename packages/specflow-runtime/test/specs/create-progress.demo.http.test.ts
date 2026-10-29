@@ -22,11 +22,13 @@ async function demo(scenarios: boolean) {
   );
   apps.push(app);
   await app.listen({ port: 0, host: '127.0.0.1' });
+
   return `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 }
 
 async function readEvents(response: Response) {
   const text = await response.text();
+
   return text
     .split('\n\n')
     .map((raw) => ({
@@ -44,6 +46,7 @@ async function createBody(url: string, operationId: string, target?: unknown) {
   const catalogue = (await (
     await fetch(`${url}/api/demo/specification-creation`)
   ).json()) as DemoCatalogue;
+
   return {
     operationId,
     title: 'Demo progress',

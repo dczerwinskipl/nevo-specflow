@@ -31,7 +31,10 @@ export async function runSessionWorker(): Promise<void> {
     runtimeId: string;
     pid: number;
   };
-  if (!parentPort || options.kind !== 'session-store') return;
+  if (!parentPort || options.kind !== 'session-store') {
+    return;
+  }
+
   const port = parentPort;
   await mkdir(options.directory, { recursive: true });
   const db = new DatabaseSync(join(options.directory, 'sessions.sqlite'));
@@ -42,20 +45,31 @@ export async function runSessionWorker(): Promise<void> {
     contentBytes = 0;
   function account(rows: Row[]) {
     readRows += rows.length;
-    for (const row of rows)
-      for (const value of Object.values(row))
-        if (value instanceof Uint8Array) contentBytes += value.byteLength;
+    for (const row of rows) {
+      for (const value of Object.values(row)) {
+        if (value instanceof Uint8Array) {
+          contentBytes += value.byteLength;
+        }
+      }
+    }
   }
+
   const get = (sql: string, ...args: SQLInputValue[]) => {
     const row = db.prepare(sql).get(...args) as Row | undefined;
-    if (row) account([row]);
+    if (row) {
+      account([row]);
+    }
+
     return row;
   };
+
   const all = (sql: string, ...args: SQLInputValue[]) => {
     const rows = db.prepare(sql).all(...args) as Row[];
     account(rows);
+
     return rows;
   };
+
   const run = (sql: string, ...args: SQLInputValue[]) => db.prepare(sql).run(...args);
   initializeSessionSchema(db, get);
   let epoch = 0;
@@ -68,36 +82,47 @@ export async function runSessionWorker(): Promise<void> {
     try {
       if (!acquiring) {
         const owner = get('SELECT * FROM owner WHERE id=1');
-        if (owner?.runtime !== options.runtimeId || Number(owner.epoch) !== epoch)
+        if (owner?.runtime !== options.runtimeId || Number(owner.epoch) !== epoch) {
           fail('SESSION_STORE_BUSY', 'Session store ownership was lost.');
+        }
       }
+
       const result = fn();
       db.exec('COMMIT');
-      for (const sessionId of transactionChanges) committedChanges.add(sessionId);
+      for (const sessionId of transactionChanges) {
+        committedChanges.add(sessionId);
+      }
+
       return result;
     } catch (error) {
       db.exec('ROLLBACK');
+
       throw error;
     }
   }
+
   transaction(() => {
     const previous = get('SELECT * FROM owner WHERE id=1');
     if (previous?.runtime) {
       try {
         process.kill(Number(previous.pid), 0);
+
         return fail('SESSION_STORE_BUSY', 'Another Runtime owns this Session store.');
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ESRCH')
+        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
           return fail('SESSION_STORE_BUSY', 'The previous Runtime could not be proven stopped.');
+        }
       }
     }
+
     epoch = Number(previous?.epoch ?? 0) + 1;
     run('INSERT OR REPLACE INTO owner VALUES(1,?,?,?)', options.runtimeId, options.pid, epoch);
     run('INSERT OR IGNORE INTO meta VALUES(?,?)', 'generation', randomUUID());
     run('INSERT OR IGNORE INTO meta VALUES(?,?)', 'cursor-key', randomBytes(32).toString('hex'));
     run('INSERT OR IGNORE INTO meta VALUES(?,?)', 'project', options.projectId);
-    if (get('SELECT value FROM meta WHERE key=?', 'project')?.value !== options.projectId)
+    if (get('SELECT value FROM meta WHERE key=?', 'project')?.value !== options.projectId) {
       fail('SESSION_STORE_UNAVAILABLE', 'Session store belongs to another project.');
+    }
   }, true);
   const generation = String(get('SELECT value FROM meta WHERE key=?', 'generation')!.value);
   const cursorKey = Buffer.from(
@@ -106,12 +131,17 @@ export async function runSessionWorker(): Promise<void> {
   );
   function session(id: string): StoredSession {
     const row = get('SELECT data FROM sessions WHERE id=?', id);
-    if (!row) return fail('SESSION_NOT_FOUND', 'Session not found.');
+    if (!row) {
+      return fail('SESSION_NOT_FOUND', 'Session not found.');
+    }
+
     return decode<StoredSession>(row);
   }
+
   function turn(id: string, sid: string): StoredTurn {
     return decode<StoredTurn>(get('SELECT data FROM turns WHERE id=? AND session=?', id, sid));
   }
+
   function saveSession(s: StoredSession): void {
     run(
       'UPDATE sessions SET seq=?,ordinal=?,data=? WHERE id=?',
@@ -121,6 +151,7 @@ export async function runSessionWorker(): Promise<void> {
       s.snapshot.session.sessionId,
     );
   }
+
   function saveTurn(sid: string, t: StoredTurn): void {
     run(
       'UPDATE turns SET state=?,data=? WHERE id=? AND session=?',
@@ -130,8 +161,10 @@ export async function runSessionWorker(): Promise<void> {
       sid,
     );
   }
+
   function projection(s: StoredSession) {
     const p = s.snapshot;
+
     return {
       session: p.session,
       activeTurn: p.activeTurn ?? null,
@@ -139,6 +172,7 @@ export async function runSessionWorker(): Promise<void> {
       interaction: p.interaction ?? null,
     };
   }
+
   function emit(s: StoredSession, kind: SessionChange['kind'], changes: unknown): void {
     transactionChanges.add(s.snapshot.session.sessionId);
     s.snapshot.eventSeq++;
@@ -151,13 +185,16 @@ export async function runSessionWorker(): Promise<void> {
       changes,
     };
     const encoded = JSON.stringify(event);
-    if (Buffer.byteLength(encoded) > 65536)
+    if (Buffer.byteLength(encoded) > 65536) {
       fail('SESSION_PAYLOAD_TOO_LARGE', 'Canonical event exceeds its byte budget.');
+    }
+
     run('INSERT INTO events VALUES(?,?,?,?)', event.sessionId, event.eventSeq, Date.now(), encoded);
     run('DELETE FROM events WHERE session=? AND seq<=?', event.sessionId, event.eventSeq - 10000);
     run('DELETE FROM events WHERE session=? AND at<?', event.sessionId, Date.now() - 86400000);
     saveSession(s);
   }
+
   const content = createContentStorage({ get, all, run });
   const { body, preview } = content;
   function entry(
@@ -190,8 +227,10 @@ export async function runSessionWorker(): Promise<void> {
       JSON.stringify(item),
     );
     emit(s, 'conversation', { entries: [item], projection: projection(s) });
+
     return item;
   }
+
   const { request, remember } = createRequestJournal({ get, run });
   const cursors = createSessionCursors(generation, options.projectId, cursorKey);
   const readQueries = createSessionReads({ get, all, run, session, turn, cursors, content });
@@ -201,7 +240,10 @@ export async function runSessionWorker(): Promise<void> {
       s.snapshot.session.sessionId,
     );
     delete s.snapshot.interaction;
-    if (pending) s.snapshot.interaction = decode<Interaction>(pending);
+    if (pending) {
+      s.snapshot.interaction = decode<Interaction>(pending);
+    }
+
     const state = t.summary.state;
     s.snapshot.session.readiness =
       state === 'unknown'
@@ -214,10 +256,14 @@ export async function runSessionWorker(): Promise<void> {
     if (state === 'terminal') {
       delete s.snapshot.activeTurn;
       delete s.snapshot.currentActivity;
+
       return;
     }
-    if (state !== 'unknown' && state !== 'cancelling')
+
+    if (state !== 'unknown' && state !== 'cancelling') {
       t.summary.state = pending ? 'waitingForUser' : 'active';
+    }
+
     s.snapshot.activeTurn = {
       turnId: t.summary.turnId,
       ...(t.summary.mode ? { mode: t.summary.mode } : {}),
@@ -232,7 +278,7 @@ export async function runSessionWorker(): Promise<void> {
       pending ||
       !s.snapshot.currentActivity ||
       s.snapshot.currentActivity.kind === 'attention'
-    )
+    ) {
       s.snapshot.currentActivity = {
         turnId: t.summary.turnId,
         kind:
@@ -250,17 +296,25 @@ export async function runSessionWorker(): Promise<void> {
               ? 'Response required'
               : 'Working',
       };
+    }
   }
+
   function settle(
     s: StoredSession,
     t: StoredTurn,
     outcome: 'completed' | 'failed' | 'cancelled' | 'interrupted',
     error?: { code: string; message: string },
   ): void {
-    if (t.summary.state === 'terminal') return;
+    if (t.summary.state === 'terminal') {
+      return;
+    }
+
     const completedAt = now();
     t.summary = terminalizeTurn(t.summary, outcome, completedAt, t.cancelRequested, error);
-    if (t.summary.state === 'terminal') outcome = t.summary.outcome;
+    if (t.summary.state === 'terminal') {
+      outcome = t.summary.outcome;
+    }
+
     run(
       "UPDATE interactions SET state='expired' WHERE turn=? AND state IN ('pending','admitted')",
       t.summary.turnId,
@@ -279,6 +333,7 @@ export async function runSessionWorker(): Promise<void> {
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
       }
     }
+
     for (const row of all('SELECT data FROM actions WHERE turn=?', t.summary.turnId)) {
       const action = decode<ToolActionSummary>(row);
       if (['queued', 'active', 'waiting'].includes(action.state)) {
@@ -293,6 +348,7 @@ export async function runSessionWorker(): Promise<void> {
         run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
       }
     }
+
     saveTurn(s.snapshot.session.sessionId, t);
     refreshAttention(s, t);
     emit(s, 'turn', { turn: t.summary, projection: projection(s) });
@@ -301,6 +357,7 @@ export async function runSessionWorker(): Promise<void> {
       complete: true,
     });
   }
+
   const { applyFact } = createProviderFacts({
     get,
     run,
@@ -329,14 +386,14 @@ export async function runSessionWorker(): Promise<void> {
       // The durable dispatch barrier precedes native input. A dead owner that never
       // crossed it cannot later send this Turn; recovery never replays that input.
       const undispatched = context && Number(context.dispatched) === 0;
-      if (s.snapshot.session.providerId === 'mock' || (undispatched && !t.effectBinding))
+      if (s.snapshot.session.providerId === 'mock' || (undispatched && !t.effectBinding)) {
         settle(s, t, 'interrupted', {
           code: 'INTERRUPTED',
           message: undispatched
             ? 'Runtime stopped before native dispatch.'
             : 'Interrupted by Runtime restart.',
         });
-      else {
+      } else {
         run(
           "UPDATE interactions SET state='expired' WHERE turn=? AND state IN ('pending','admitted')",
           t.summary.turnId,
@@ -359,24 +416,40 @@ export async function runSessionWorker(): Promise<void> {
     }
   });
   function execute(c: StoreCommand): unknown {
-    if (c.op === 'effect-candidates') return effects.candidates(c);
-    if (c.op === 'reconcile-effect') return transaction(() => effects.reconcile(c));
+    if (c.op === 'effect-candidates') {
+      return effects.candidates(c);
+    }
+
+    if (c.op === 'reconcile-effect') {
+      return transaction(() => effects.reconcile(c));
+    }
+
     if (c.op === 'close') {
       transaction(() =>
         run("UPDATE owner SET runtime='',pid=0 WHERE id=1 AND runtime=?", options.runtimeId),
       );
       db.close();
+
       return null;
     }
-    if (c.op === 'replay') return request(c.actor, c.command, c.scope, c.requestId, c.input);
+
+    if (c.op === 'replay') {
+      return request(c.actor, c.command, c.scope, c.requestId, c.input);
+    }
+
     if (c.op === 'identity') {
       const s = session(c.sessionId);
+
       return { projectId: s.snapshot.session.projectId, sessionId: c.sessionId };
     }
-    if (c.op === 'create')
+
+    if (c.op === 'create') {
       return transaction(() => {
         const cached = request(c.actor, 'create', options.projectId, c.input.requestId, c.input);
-        if (cached) return cached;
+        if (cached) {
+          return cached;
+        }
+
         const id = randomUUID(),
           date = now();
         const s: StoredSession = {
@@ -419,19 +492,27 @@ export async function runSessionWorker(): Promise<void> {
         );
         const result = { sessionId: id };
         remember(c.actor, 'create', options.projectId, c.input.requestId, c.input, result);
+
         return result;
       });
-    if (c.op === 'start')
+    }
+
+    if (c.op === 'start') {
       return transaction(() => {
         const cached = request(c.actor, 'start', c.sessionId, c.input.requestId, c.input) as
           { turnId: string } | undefined;
-        if (cached) return { ...cached, fresh: false };
+        if (cached) {
+          return { ...cached, fresh: false };
+        }
+
         const s = session(c.sessionId),
           active = get("SELECT id FROM turns WHERE session=? AND state!='terminal'", c.sessionId);
-        if (active)
+        if (active) {
           throw new StoreFault('TURN_CONFLICT', 'Session already has a nonterminal Turn.', {
             turnId: String(active.id),
           });
+        }
+
         const writing = (c.input.mode ?? s.snapshot.session.mode) === 'workspace-write';
         if (
           writing &&
@@ -439,13 +520,17 @@ export async function runSessionWorker(): Promise<void> {
             !c.nativeWorkspaceIdentity ||
             !c.effectBinding ||
             !/^[0-9a-f]{64}$/.test(c.effectBinding))
-        )
+        ) {
           fail(
             'SESSION_INPUT_INVALID',
             'Writable execution requires a verified workspace and effect binding.',
           );
-        if (!writing && c.effectBinding)
+        }
+
+        if (!writing && c.effectBinding) {
           fail('SESSION_INPUT_INVALID', 'Read-only execution cannot carry a write claim binding.');
+        }
+
         const tid = randomUUID(),
           invocationId = randomUUID(),
           date = now();
@@ -458,46 +543,66 @@ export async function runSessionWorker(): Promise<void> {
             Buffer.byteLength(c.nativeWorkspace) > 8192 ||
             !c.nativeScope ||
             Buffer.byteLength(c.nativeScope) > 256
-          )
+          ) {
             fail('SESSION_INPUT_INVALID', 'A verified native workspace is required.');
+          }
+
           const previous = get('SELECT * FROM provider_contexts WHERE session=?', c.sessionId);
           if (
             c.nativeWorkspaceIdentity !== undefined &&
             !/^[0-9a-f]{64}$/.test(c.nativeWorkspaceIdentity)
-          )
+          ) {
             fail('SESSION_INPUT_INVALID', 'Workspace incarnation identity is invalid.');
+          }
+
           if (
             (previous || s.nativeWorkspaceIdentity) &&
             s.nativeWorkspaceIdentity !== c.nativeWorkspaceIdentity
-          )
+          ) {
             fail(
               'SESSION_RECOVERY_REQUIRED',
               'Native workspace incarnation binding is missing or changed.',
             );
-          if (!previous && get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native)
+          }
+
+          if (!previous && get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native) {
             fail(
               'SESSION_RECOVERY_REQUIRED',
               'Confirmed native context evidence is missing; replacement is forbidden.',
             );
-          if (c.nativeWorkspaceIdentity) s.nativeWorkspaceIdentity = c.nativeWorkspaceIdentity;
-          if (previous && previous.workspace !== c.nativeWorkspace)
+          }
+
+          if (c.nativeWorkspaceIdentity) {
+            s.nativeWorkspaceIdentity = c.nativeWorkspaceIdentity;
+          }
+
+          if (previous && previous.workspace !== c.nativeWorkspace) {
             fail('SESSION_RECOVERY_REQUIRED', 'Native context belongs to another workspace.');
-          if (previous && previous.scope !== c.nativeScope)
+          }
+
+          if (previous && previous.scope !== c.nativeScope) {
             fail(
               'SESSION_RECOVERY_REQUIRED',
               'Native context belongs to another provider account.',
             );
-          if (previous?.dispatched && !previous.confirmed)
+          }
+
+          if (previous?.dispatched && !previous.confirmed) {
             fail('SESSION_RECOVERY_REQUIRED', 'An unconfirmed dispatch cannot be retried.');
+          }
+
           const reservation = previous?.confirmed ? String(previous.native) : randomUUID();
           let nativeSessionId = reservation;
           if (previous?.confirmed) {
             const correlated = get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native;
             const prefix = s.snapshot.session.providerId + '\u0000';
-            if (typeof correlated !== 'string' || !correlated.startsWith(prefix))
+            if (typeof correlated !== 'string' || !correlated.startsWith(prefix)) {
               fail('SESSION_RECOVERY_REQUIRED', 'Confirmed provider context is unavailable.');
+            }
+
             nativeSessionId = correlated.slice(prefix.length);
           }
+
           providerContext = {
             nativeSessionId,
             resume: !!previous?.confirmed,
@@ -513,6 +618,7 @@ export async function runSessionWorker(): Promise<void> {
             c.nativeScope,
           );
         }
+
         const t: StoredTurn = {
           ...(c.nativeContextMode ? { nativeContextMode: c.nativeContextMode } : {}),
           invocationId,
@@ -543,37 +649,64 @@ export async function runSessionWorker(): Promise<void> {
           ...(providerContext ? { providerContext } : {}),
         };
         remember(c.actor, 'start', c.sessionId, c.input.requestId, c.input, result);
+
         return { ...result, fresh: true };
       });
-    if (c.op === 'fact') return transaction(() => applyFact(c));
-    if (c.op === 'dispatch-intent')
+    }
+
+    if (c.op === 'fact') {
+      return transaction(() => applyFact(c));
+    }
+
+    if (c.op === 'dispatch-intent') {
       return transaction(() => {
         const t = turn(c.turnId, c.sessionId);
-        if (t.invocationId !== c.invocationId || t.summary.state !== 'active' || t.cancelRequested)
+        if (
+          t.invocationId !== c.invocationId ||
+          t.summary.state !== 'active' ||
+          t.cancelRequested
+        ) {
           fail('SESSION_RECOVERY_REQUIRED', 'Invocation cannot dispatch.');
+        }
+
         const context = get('SELECT * FROM provider_contexts WHERE session=?', c.sessionId);
-        if (!context) fail('SESSION_RECOVERY_REQUIRED', 'Native context is missing.');
-        if (t.nativeContextMode === 'provider-assigned' && !context.confirmed)
+        if (!context) {
+          fail('SESSION_RECOVERY_REQUIRED', 'Native context is missing.');
+        }
+
+        if (t.nativeContextMode === 'provider-assigned' && !context.confirmed) {
           fail('SESSION_RECOVERY_REQUIRED', 'Provider-assigned context has not been bound.');
-        if (context.dispatched)
+        }
+
+        if (context.dispatched) {
           fail('SESSION_RECOVERY_REQUIRED', 'Invocation has already dispatched.');
+        }
+
         run('UPDATE provider_contexts SET dispatched=1 WHERE session=?', c.sessionId);
+
         return true;
       });
-    if (c.op === 'cancel')
+    }
+
+    if (c.op === 'cancel') {
       return transaction(() => {
         const input = { requestId: c.requestId };
         const scope = c.sessionId + ':' + c.turnId;
         const cached = request(c.actor, 'cancel', scope, c.requestId, input);
-        if (cached) return cached;
+        if (cached) {
+          return cached;
+        }
+
         const s = session(c.sessionId),
           t = turn(c.turnId, c.sessionId);
         if (t.summary.state !== 'terminal') {
-          if (t.summary.state === 'unknown')
+          if (t.summary.state === 'unknown') {
             fail(
               'SESSION_RECOVERY_REQUIRED',
               'Unknown execution requires recovery before cancellation.',
             );
+          }
+
           t.cancelRequested = true;
           t.summary.state = 'cancelling';
           t.summary.revision++;
@@ -581,21 +714,32 @@ export async function runSessionWorker(): Promise<void> {
           saveTurn(c.sessionId, t);
           emit(s, 'turn', { turn: t.summary, projection: projection(s) });
         }
+
         const result = { turnId: c.turnId };
         remember(c.actor, 'cancel', scope, c.requestId, input, result);
+
         return result;
       });
-    if (c.op === 'respond')
+    }
+
+    if (c.op === 'respond') {
       return transaction(() => {
         const scope = c.sessionId + ':' + c.interactionId;
         const cached = request(c.actor, 'respond', scope, c.input.requestId, c.input);
-        if (cached) return { ...cached, fresh: false };
+        if (cached) {
+          return { ...cached, fresh: false };
+        }
+
         const s = session(c.sessionId),
           i = s.snapshot.interaction;
-        if (i?.interactionId !== c.interactionId)
+        if (i?.interactionId !== c.interactionId) {
           fail('INTERACTION_EXPIRED', 'Interaction is no longer answerable.');
-        if (i.kind !== c.input.kind)
+        }
+
+        if (i.kind !== c.input.kind) {
           fail('INTERACTION_RESPONSE_INVALID', 'Wrong interaction response type.');
+        }
+
         if (i.kind === 'question' && c.input.kind === 'question') {
           const answer = c.input.answer;
           if (
@@ -604,16 +748,20 @@ export async function runSessionWorker(): Promise<void> {
             (i.maxSelections !== undefined && answer.optionIds.length > i.maxSelections) ||
             new Set(answer.optionIds).size !== answer.optionIds.length ||
             answer.optionIds.some((id) => !i.options?.some((o) => o.id === id))
-          )
+          ) {
             fail('INTERACTION_RESPONSE_INVALID', 'Answer does not match the question.');
+          }
         }
+
         const t = turn(i.turnId, c.sessionId);
         if (
           t.summary.state === 'terminal' ||
           t.summary.state === 'unknown' ||
           t.summary.state === 'cancelling'
-        )
+        ) {
           fail('INTERACTION_EXPIRED', 'Interaction operation has ended.');
+        }
+
         // Removing attention acknowledges command admission, not native delivery.
         // Keep the Work waiting until the same live invocation confirms its write.
         run("UPDATE interactions SET state='admitted' WHERE id=?", c.interactionId);
@@ -628,22 +776,30 @@ export async function runSessionWorker(): Promise<void> {
         emit(s, 'interaction', { projection: projection(s) });
         const result = { turnId: i.turnId, interactionId: i.interactionId };
         remember(c.actor, 'respond', scope, c.input.requestId, c.input, result);
+
         return {
           ...result,
           fresh: true,
           nativeKey: String(get('SELECT native FROM work WHERE id=?', i.workId)!.native),
         };
       });
-    if (c.op === 'response-delivered')
+    }
+
+    if (c.op === 'response-delivered') {
       return transaction(() => {
         const t = turn(c.turnId, c.sessionId);
         if (
           t.invocationId !== c.invocationId ||
           t.summary.state === 'unknown' ||
           t.summary.state === 'terminal'
-        )
+        ) {
           return false;
-        if (c.nativeKeys.length > 32) fail('SESSION_INPUT_INVALID', 'Too many delivered answers.');
+        }
+
+        if (c.nativeKeys.length > 32) {
+          fail('SESSION_INPUT_INVALID', 'Too many delivered answers.');
+        }
+
         const s = session(c.sessionId);
         for (const nativeKey of c.nativeKeys) {
           const row = get(
@@ -652,7 +808,10 @@ export async function runSessionWorker(): Promise<void> {
             c.turnId,
             nativeKey,
           );
-          if (!row) continue;
+          if (!row) {
+            continue;
+          }
+
           const interaction = decode<Interaction>(row);
           const work = decode<WorkSummary>(
             get('SELECT data FROM work WHERE id=?', interaction.workId),
@@ -664,10 +823,14 @@ export async function runSessionWorker(): Promise<void> {
           run('UPDATE work SET data=? WHERE id=?', JSON.stringify(work), work.workId);
           emit(s, 'work', { turnId: c.turnId, items: [work] });
         }
+
         return true;
       });
+    }
+
     return readQueries.execute(c);
   }
+
   port.on('message', (message: WorkerRequest) => {
     committedChanges.clear();
     readRows = 0;
@@ -680,7 +843,9 @@ export async function runSessionWorker(): Promise<void> {
         changed: [...committedChanges],
         metrics: { rows: readRows, contentBytes },
       });
-      if (message.command.op === 'close') port.close();
+      if (message.command.op === 'close') {
+        port.close();
+      }
     } catch (error) {
       const e =
         error instanceof StoreFault
@@ -694,6 +859,7 @@ export async function runSessionWorker(): Promise<void> {
   });
   port.postMessage({ id: 0, result: 'ready' });
 }
+
 if (!isMainThread && (workerData as { kind?: string })?.kind === 'session-store') {
   void runSessionWorker().catch((error) => {
     const e =

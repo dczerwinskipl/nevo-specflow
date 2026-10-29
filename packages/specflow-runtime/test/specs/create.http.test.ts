@@ -54,7 +54,10 @@ async function fixture(gitEnabled = false, extraGitConfig = '') {
     '-qm',
     'initial',
   );
-  if (gitEnabled) git(root, 'branch', '-m', 'develop');
+  if (gitEnabled) {
+    git(root, 'branch', '-m', 'develop');
+  }
+
   const engine = await bootstrapProjectHome(root);
   await installDefinitionsForTesting(engine);
   if (extraGitConfig !== '') {
@@ -76,6 +79,7 @@ async function fixture(gitEnabled = false, extraGitConfig = '') {
       'protect the branch',
     );
   }
+
   return { root, engine };
 }
 
@@ -86,6 +90,7 @@ function authenticatedStore() {
     authenticatedWith: { kind: 'password' },
   });
   const cookie = authCookieNames(passwordConfig().server.port).session;
+
   return { store, headers: { cookie: cookie + '=' + session } };
 }
 
@@ -258,7 +263,10 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
         (item) => item.workspaceId === result.workspaceId,
       );
       expect(registered?.kind).toBe('linked');
-      if (registered?.kind !== 'linked') throw new Error('HTTP linked checkout not registered.');
+      if (registered?.kind !== 'linked') {
+        throw new Error('HTTP linked checkout not registered.');
+      }
+
       expect(registered.integrationDestination).toMatchObject({
         workspaceId: feature.workspaceId,
         branch: 'feature/x',
@@ -346,6 +354,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
         const response = await app.inject({ method: 'POST', url: '/api/specs', payload });
         expect(response.statusCode, response.body).toBe(400);
       }
+
       expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
     } finally {
       await app.close();
@@ -389,6 +398,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
             details: { cause: 'path-too-long' },
           });
         }
+
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
         expect(await discoverSpecifications(engine)).toEqual([]);
       } finally {
@@ -806,6 +816,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
           expect(response.body).not.toContain('workspaceId');
           expect(await readFile(path, 'utf8')).toBe(before);
         }
+
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
       } finally {
         await app.close();

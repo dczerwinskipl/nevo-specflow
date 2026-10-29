@@ -62,9 +62,13 @@ it.skipIf(!enabled)(
       } catch (error) {
         const code = (error as { code?: unknown }).code;
         // A coded refusal is the contract (the test knows which ones are allowed); a raw error is a defect.
-        if (typeof code === 'string') outcome.refused.push(code);
-        else outcome.unexpected.push(String((error as Error).stack ?? error));
+        if (typeof code === 'string') {
+          outcome.refused.push(code);
+        } else {
+          outcome.unexpected.push(String((error as Error).stack ?? error));
+        }
       }
+
       try {
         const run = await runQueueOnce(engine, { ledger }, undefined, { flush: true });
         outcome.queue.push(run.status);
@@ -72,6 +76,7 @@ it.skipIf(!enabled)(
         outcome.unexpected.push(String((error as Error).stack ?? error));
       }
     }
+
     await writeFile(result, JSON.stringify(outcome));
   },
   240000,

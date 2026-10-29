@@ -13,8 +13,11 @@ async function collect(
   const events: StoredProgressEvent[] = [];
   for await (const event of iterable) {
     events.push(event);
-    if (events.length >= limit) break;
+    if (events.length >= limit) {
+      break;
+    }
   }
+
   return events;
 }
 
@@ -230,6 +233,7 @@ describe('operation progress registry', () => {
 describe('operation progress registry listing', () => {
   function clock(start = '2026-10-20T10:00:00.000Z') {
     let at = Date.parse(start);
+
     return {
       now: () => new Date(at),
       advance: (ms: number) => {
@@ -237,6 +241,7 @@ describe('operation progress registry listing', () => {
       },
     };
   }
+
   const id = (n: number) => `3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f${String(n).padStart(2, '0')}`;
 
   it('lists a running operation with timestamps, steps and current step', () => {
@@ -296,6 +301,7 @@ describe('operation progress registry listing', () => {
     for (let n = 1; n <= 5; n += 1) {
       registry.begin({ operationId: id(n), kind, steps }).fail('X');
     }
+
     expect(registry.list().map((item) => item.operationId)).toEqual([id(3), id(4), id(5)]);
   });
 

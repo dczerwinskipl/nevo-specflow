@@ -71,6 +71,7 @@ export function parseCheckoutLease(
   ) {
     throw errors.invalid();
   }
+
   return value as unknown as CheckoutLease;
 }
 
@@ -102,16 +103,24 @@ export async function readCheckoutLease(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CHECKOUT_LEASE_MAX_BYTES) {
       throw errors.invalid();
     }
+
     let value: unknown;
     try {
       value = JSON.parse(await readFileWindowsSafe(path));
     } catch (error) {
-      if (isMissing(error)) throw error;
+      if (isMissing(error)) {
+        throw error;
+      }
+
       throw errors.invalid();
     }
+
     return parseCheckoutLease(context, value, workspaceId, errors);
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
     throw error;
   }
 }
@@ -130,6 +139,7 @@ export async function writeCheckoutLease(
   parseCheckoutLease(context, record, record.workspaceId, errors);
   await ensureLeaseDirectory(context, errors);
   await writeJsonAtomically(leasePath(context, record.workspaceId), record);
+
   return record;
 }
 
@@ -139,7 +149,9 @@ export async function removeCheckoutLease(
   workspaceId: string,
 ): Promise<void> {
   await removeFileWindowsSafe(leasePath(context, workspaceId)).catch((error: unknown) => {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
   });
 }
 
@@ -154,7 +166,9 @@ export async function removeCheckoutLeaseOf(
   errors: LeaseErrors,
 ): Promise<void> {
   const lease = await readCheckoutLease(context, workspaceId, errors);
-  if (lease?.batchId === batchId) await removeCheckoutLease(context, workspaceId);
+  if (lease?.batchId === batchId) {
+    await removeCheckoutLease(context, workspaceId);
+  }
 }
 
 /**
@@ -167,8 +181,12 @@ const active: Set<string> = ((globalThis as Record<symbol, unknown>)[ACTIVE] ??=
   new Set<string>()) as Set<string>;
 
 export function markLeaseActive(workspaceId: string): boolean {
-  if (active.has(workspaceId)) return false;
+  if (active.has(workspaceId)) {
+    return false;
+  }
+
   active.add(workspaceId);
+
   return true;
 }
 
@@ -200,10 +218,15 @@ export async function judgeExecutor(
   if (state === 'self') {
     return options.activeInProcess ? { kind: 'held', state } : { kind: 'takeover', proof: state };
   }
-  if (state === 'dead') return { kind: 'takeover', proof: state };
+
+  if (state === 'dead') {
+    return { kind: 'takeover', proof: state };
+  }
+
   // An operator assertion never overrides a process that is provably running.
   if (options.confirmStopped === true && state === 'unknown') {
     return { kind: 'takeover', proof: 'asserted' };
   }
+
   return { kind: 'held', state };
 }

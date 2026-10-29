@@ -23,6 +23,7 @@ let mountSequence = 0;
 
 function Mounted({ children }: { children: ReactNode }) {
   const [instance] = useState(() => ++mountSequence);
+
   return (
     <AppContent className="w-content-narrow max-w-full">
       <AppWorkspaceBody>
@@ -37,6 +38,7 @@ function Mounted({ children }: { children: ReactNode }) {
 
 export function TodoDetails({ data: todo }: SecondaryScreenProps<Todo, TodoPages['details']>) {
   const nav = useSecondaryStack<TodoPages>();
+
   return (
     <Mounted>
       <div className="grid gap-3 p-4">
@@ -47,8 +49,10 @@ export function TodoDetails({ data: todo }: SecondaryScreenProps<Todo, TodoPages
     </Mounted>
   );
 }
+
 export function TodoHistory({ data: todo }: SecondaryScreenProps<Todo, TodoPages['history']>) {
   const nav = useSecondaryStack<TodoPages>();
+
   return (
     <Mounted>
       <div className="grid gap-3 p-4">
@@ -63,8 +67,10 @@ export function TodoHistory({ data: todo }: SecondaryScreenProps<Todo, TodoPages
     </Mounted>
   );
 }
+
 export function TodoEvent({ data: todo, params }: SecondaryScreenProps<Todo, TodoPages['event']>) {
   const event = todo.history.find((item) => item.id === params.eventId);
+
   return (
     <Mounted>
       <div className="grid gap-3 p-4">
@@ -79,6 +85,7 @@ export function TodoEvent({ data: todo, params }: SecondaryScreenProps<Todo, Tod
     </Mounted>
   );
 }
+
 export function UserDetails({ data: user }: SecondaryScreenProps<User, UserPages['details']>) {
   return (
     <Mounted>
@@ -89,6 +96,7 @@ export function UserDetails({ data: user }: SecondaryScreenProps<User, UserPages
     </Mounted>
   );
 }
+
 export function ItemDetails({ data: item }: SecondaryScreenProps<Item, ItemPages['details']>) {
   return (
     <Mounted>

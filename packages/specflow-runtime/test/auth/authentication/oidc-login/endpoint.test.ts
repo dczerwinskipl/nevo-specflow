@@ -39,6 +39,7 @@ describe('OIDC HTTP adapter', () => {
         expect(redirectUri).toBe(
           'https://specflow.example.test:4318/api/auth/oidc/company/callback',
         );
+
         return Promise.resolve({
           authorizationUrl: new URL('https://issuer.example.test/authorize?state=state'),
           transaction,
@@ -49,6 +50,7 @@ describe('OIDC HTTP adapter', () => {
           'https://specflow.example.test:4318/api/auth/oidc/company/callback?code=abc&state=state',
         );
         expect(stored).toMatchObject(transaction);
+
         return Promise.resolve({ email: ' Demo@Example.com ', name: 'Demo User' });
       },
     };
@@ -152,6 +154,7 @@ describe('OIDC HTTP adapter', () => {
     const oidc: OidcClient = {
       start: () => {
         startCalls += 1;
+
         return Promise.reject(new Error('must not run'));
       },
       complete: () => Promise.reject(new Error('not used')),
@@ -179,6 +182,7 @@ describe('OIDC HTTP adapter', () => {
     const oidc: OidcClient = {
       start() {
         startCalls += 1;
+
         return Promise.resolve({
           authorizationUrl: new URL('https://issuer.example.test/authorize'),
           transaction: {
@@ -274,6 +278,7 @@ describe('OIDC HTTP adapter', () => {
         }),
       complete: () => {
         completeCalls += 1;
+
         return Promise.resolve({ email: 'demo@example.com', name: 'Demo User' });
       },
     };

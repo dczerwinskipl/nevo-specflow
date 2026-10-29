@@ -19,6 +19,7 @@ export function createChangesStack(
 ) {
   function ChangesDetails({ data }: SecondaryScreenProps<ChangeRecord, ChangesPages['details']>) {
     const navigation = useSecondaryStack<ChangesPages>();
+
     return (
       <div className="grid gap-3 p-4">
         <p>Changes: {data.title}</p>
@@ -32,6 +33,7 @@ export function createChangesStack(
 
   function useChanges({ id }: { id: string }): SecondaryData<ChangeRecord> {
     const change = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+
     return change.id === id ? { status: 'ready', data: change } : { status: 'unavailable' };
   }
 

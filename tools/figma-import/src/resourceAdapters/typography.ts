@@ -23,10 +23,12 @@ export async function loadProjectFont(weight: string | undefined): Promise<FontN
   const preferred: FontName = { family, style: px(weight) >= 600 ? 'Semi Bold' : 'Regular' };
   try {
     await figma.loadFontAsync(preferred);
+
     return preferred;
   } catch {
     const fallback: FontName = { family, style: 'Regular' };
     await figma.loadFontAsync(fallback);
+
     return fallback;
   }
 }
@@ -45,6 +47,7 @@ export async function upsertSemanticText(
     node = figma.createText();
     parent.appendChild(node);
   }
+
   const firstRun = richText.runs?.[0];
   const firstStyle = resources.textStyles.get(
     richText.textStyleRef ?? firstRun?.textStyleRef ?? '',
@@ -55,14 +58,20 @@ export async function upsertSemanticText(
   await figma.loadFontAsync(baseFont);
   node.fontName = baseFont;
   node.characters = richText.text;
-  if (firstStyle) await node.setTextStyleIdAsync(firstStyle.id);
+  if (firstStyle) {
+    await node.setTextStyleIdAsync(firstStyle.id);
+  }
+
   applyTextPresentation(node, richText.style);
   // Establish one deterministic full-node base before range overrides. This
   // gives separators the same metrics and semantic color as the first run.
   applyPaint(node, richText.style, 'color');
   const baseBinding = richText.colorRef ?? firstRun?.colorRef ?? richText.bindings?.content;
   const baseVariable = colorVariableFor(ir, resources, richText.style.color, baseBinding);
-  if (baseVariable) bindPaintVariable(node, 'fills', baseVariable);
+  if (baseVariable) {
+    bindPaintVariable(node, 'fills', baseVariable);
+  }
+
   applyTextSizing(node, parent, richText.style);
   applyOpacity(node, richText.style);
   for (const run of richText.runs ?? []) {
@@ -72,6 +81,7 @@ export async function upsertSemanticText(
       node.setRangeFontName(run.start, run.end, style.fontName);
       await node.setRangeTextStyleIdAsync(run.start, run.end, style.id);
     }
+
     const variable = colorVariableFor(
       ir,
       resources,
@@ -88,8 +98,10 @@ export async function upsertSemanticText(
       ]);
     }
   }
+
   // Restore whole-flow CSS without flattening the distinct metrics belonging
   // to the actor/action ranges.
   applyTextFlowPresentation(node, richText.style);
+
   return node;
 }

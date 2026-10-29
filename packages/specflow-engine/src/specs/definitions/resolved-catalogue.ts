@@ -35,6 +35,7 @@ export interface CatalogueEntities {
 export function resolveCatalogue(entities: CatalogueEntities): ResolvedCatalogue {
   const documentTypes = deepFreeze(structuredClone([...entities.documentTypes]));
   const archetypes = deepFreeze(structuredClone([...entities.archetypes]));
+
   return {
     revision: catalogueRevisionOf({ documentTypes, archetypes }),
     documentTypes,
@@ -58,7 +59,10 @@ export function canonicalJson(value: unknown): string {
 }
 
 function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys);
+  if (Array.isArray(value)) {
+    return value.map(sortKeys);
+  }
+
   if (typeof value === 'object' && value !== null) {
     return Object.fromEntries(
       Object.entries(value)
@@ -67,13 +71,17 @@ function sortKeys(value: unknown): unknown {
         .map(([key, entry]) => [key, sortKeys(entry)]),
     );
   }
+
   return value;
 }
 
 function deepFreeze<T>(value: T): T {
   if (typeof value === 'object' && value !== null && !Object.isFrozen(value)) {
     Object.freeze(value);
-    for (const entry of Object.values(value)) deepFreeze(entry);
+    for (const entry of Object.values(value)) {
+      deepFreeze(entry);
+    }
   }
+
   return value;
 }

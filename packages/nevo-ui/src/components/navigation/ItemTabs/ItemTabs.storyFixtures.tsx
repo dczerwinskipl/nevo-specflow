@@ -37,7 +37,10 @@ export const manyItems: readonly ItemTab[] = [
 export const SCOPE = 'item-tabs-story';
 
 export function ItemPanel({ item }: { item: ItemTab | undefined }) {
-  if (!item) return null;
+  if (!item) {
+    return null;
+  }
+
   return (
     <div
       role="tabpanel"
@@ -79,6 +82,7 @@ export function ItemTabsHost({ items, activeId, guard, frame, ...props }: ItemTa
     />
   );
   const panel = <ItemPanel item={active} />;
+
   return frame ? (
     frame(strip, panel)
   ) : (

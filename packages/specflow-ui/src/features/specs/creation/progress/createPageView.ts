@@ -19,7 +19,10 @@ export function createPageView(
   state: Pick<CreateOperationState, 'phase'>,
   unknownOperation: boolean,
 ): CreatePageView {
-  if (unknownOperation) return 'not-found';
+  if (unknownOperation) {
+    return 'not-found';
+  }
+
   switch (state.phase) {
     case 'completed':
       return 'completed';
@@ -107,12 +110,20 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
     case 'not-found':
       return undefined;
     case 'working':
-      if (input.stillWorking) return message('create.page.status.stillWorking');
-      if (input.runningStep) return input.runningStep;
-      if (input.monitoring)
+      if (input.stillWorking) {
+        return message('create.page.status.stillWorking');
+      }
+
+      if (input.runningStep) {
+        return input.runningStep;
+      }
+
+      if (input.monitoring) {
         return message(
           input.newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working',
         );
+      }
+
       return message(input.reading ? 'create.page.status.reading' : 'create.page.status.sending');
   }
 }
@@ -122,10 +133,17 @@ export const goalPreviewLength = 160;
 /** The goal as a short preview: whitespace collapsed, cut on a word edge with an ellipsis. */
 export function shortenGoal(goal: string | undefined, max = goalPreviewLength): string | undefined {
   const flat = goal?.replace(/\s+/gu, ' ').trim();
-  if (!flat) return undefined;
-  if (flat.length <= max) return flat;
+  if (!flat) {
+    return undefined;
+  }
+
+  if (flat.length <= max) {
+    return flat;
+  }
+
   const cut = flat.slice(0, max);
   const edge = cut.lastIndexOf(' ');
+
   return `${(edge > max / 2 ? cut.slice(0, edge) : cut).trimEnd()}…`;
 }
 
@@ -162,7 +180,10 @@ export function createSettingsModel(
   draftTitle?: string,
   archetype?: { title?: string; documents?: readonly string[] },
 ): CreateSettingsModel | undefined {
-  if (!request && !facts) return undefined;
+  if (!request && !facts) {
+    return undefined;
+  }
+
   const target = request?.target;
   const place =
     facts?.place ??
@@ -171,6 +192,7 @@ export function createSettingsModel(
   const name = (request?.title ?? draftTitle)?.trim();
   const slug = facts?.slug ?? request?.slug;
   const branch = facts?.branch ?? (target?.kind === 'new-worktree' ? target.branch : undefined);
+
   return {
     ...(name ? { name } : {}),
     ...(archetype?.title ? { archetype: archetype.title } : {}),

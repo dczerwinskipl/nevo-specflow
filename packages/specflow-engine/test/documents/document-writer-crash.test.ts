@@ -94,6 +94,7 @@ function spawnWriter(
     60000,
   );
   workers.push(worker);
+
   return { signal, worker };
 }
 
@@ -103,11 +104,13 @@ async function renamedState(
   const exists = async (path: string): Promise<boolean> => {
     try {
       await text(project, path);
+
       return true;
     } catch {
       return false;
     }
   };
+
   return { moved: await exists('renamed.md'), origin: await exists(notesPath(1)) };
 }
 
@@ -128,6 +131,7 @@ describe.skipIf(!onLinux)('a writer killed with SIGKILL', () => {
             await failure(applyDocumentChange(project.engine, project.specId, operationId, RENAME)),
           ).toMatchObject({ code: 'SPEC_BUSY', details: { cause: 'write-in-progress' } });
         }
+
         await terminateCheckpointPid(checkpoint.pid, worker);
 
         // At the cut: pre or post for every path, a journal, the claim held (also once queued).
@@ -135,7 +139,9 @@ describe.skipIf(!onLinux)('a writer killed with SIGKILL', () => {
         expect(journal?.stage).toBe(stage);
         expect(await renamedState(project)).toEqual(DISK_AT_CUT[cut]);
         expect(await checkoutClaimFree(project)).toBe(false);
-        if (stage !== 'queued') expect(journal?.executor?.pid).toBe(checkpoint.pid);
+        if (stage !== 'queued') {
+          expect(journal?.executor?.pid).toBe(checkpoint.pid);
+        }
 
         const result = await applyDocumentChange(
           project.engine,
@@ -150,7 +156,9 @@ describe.skipIf(!onLinux)('a writer killed with SIGKILL', () => {
         expect(await text(project, 'specification.yaml')).toContain('renamed.md');
         expect(await strayStageFiles(project.dir)).toEqual([]);
         expect(await checkoutClaimFree(project)).toBe(!withGit);
-        if (withGit) expect(git(project.root, 'rev-parse', 'HEAD')).toBe(head);
+        if (withGit) {
+          expect(git(project.root, 'rev-parse', 'HEAD')).toBe(head);
+        }
       }, 120000);
     }
   }

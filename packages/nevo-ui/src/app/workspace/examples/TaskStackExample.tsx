@@ -19,6 +19,7 @@ export function createTaskStack(
 ) {
   function TaskDetails({ data }: SecondaryScreenProps<TaskRecord, TaskPages['details']>) {
     const navigation = useSecondaryStack<TaskPages>();
+
     return (
       <div className="grid gap-3 p-4">
         <p>Task: {data.title}</p>
@@ -32,6 +33,7 @@ export function createTaskStack(
 
   function useTask({ id }: { id: string }): SecondaryData<TaskRecord> {
     const task = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+
     return task.id === id ? { status: 'ready', data: task } : { status: 'unavailable' };
   }
 

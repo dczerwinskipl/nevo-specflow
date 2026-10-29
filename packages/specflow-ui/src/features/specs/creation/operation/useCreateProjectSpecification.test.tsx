@@ -109,6 +109,7 @@ function setup(
     { wrapper },
   );
   const model = (): ProjectCreateModel => hook.result.current;
+
   return { hook, model, onCreated, announce, invalidate, client };
 }
 

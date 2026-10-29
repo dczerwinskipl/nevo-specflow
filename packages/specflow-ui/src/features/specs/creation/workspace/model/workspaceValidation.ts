@@ -36,26 +36,42 @@ export function revalidate(choice: WorkspaceChoice, options: CreateOptions): Wor
     !options.workspaces.some(
       (w) => w.workspaceId === choice.existingWorkspaceId && w.kind === 'linked' && w.selectable,
     )
-  )
+  ) {
     errors.existing = staleMessages.existing;
-  if (choice.base.on && choice.base.ref && !options.baseRefs.some((b) => b.ref === choice.base.ref))
+  }
+
+  if (
+    choice.base.on &&
+    choice.base.ref &&
+    !options.baseRefs.some((b) => b.ref === choice.base.ref)
+  ) {
     errors.base = staleMessages.base;
+  }
+
   if (
     choice.target.on &&
     choice.target.workspaceId &&
     !options.workspaces.some(
       (w) => w.workspaceId === choice.target.workspaceId && w.integrationSelectable === true,
     )
-  )
+  ) {
     errors.target = staleMessages.target;
+  }
+
   if (choice.slug.on && choice.slug.edited && choice.slug.value) {
     const error = slugError(choice.slug.value);
-    if (error) errors.slug = error;
+    if (error) {
+      errors.slug = error;
+    }
   }
+
   if (choice.branch.on && choice.branch.edited && choice.branch.name.trim()) {
     const error = branchNameError(choice.branch.name, options);
-    if (error) errors.branch = error;
+    if (error) {
+      errors.branch = error;
+    }
   }
+
   return errors;
 }
 
@@ -63,31 +79,57 @@ export function revalidate(choice: WorkspaceChoice, options: CreateOptions): Wor
 export function problems(choice: WorkspaceChoice, options: CreateOptions, title = ''): Message[] {
   const tile = activeTile(choice, options);
   const availability = tileAvailability(options);
-  if (!tile) return [message('create.workspace.errors.noWorkspace')];
-  if (!availability[tile].ok) return [staleMessages.tile];
+  if (!tile) {
+    return [message('create.workspace.errors.noWorkspace')];
+  }
+
+  if (!availability[tile].ok) {
+    return [staleMessages.tile];
+  }
+
   const errors = revalidate(choice, options);
   const list: Message[] = [];
   if (tile === 'existing') {
-    if (!choice.existingWorkspaceId) list.push(message('create.workspace.errors.pickWorkspace'));
-    else if (errors.existing) list.push(errors.existing);
+    if (!choice.existingWorkspaceId) {
+      list.push(message('create.workspace.errors.pickWorkspace'));
+    } else if (errors.existing) {
+      list.push(errors.existing);
+    }
   }
+
   if (tile === 'new') {
-    if (choice.base.on && !choice.base.ref) list.push(message('create.workspace.errors.pickBase'));
-    else if (errors.base) list.push(errors.base);
-    if (choice.target.on && !choice.target.workspaceId)
+    if (choice.base.on && !choice.base.ref) {
+      list.push(message('create.workspace.errors.pickBase'));
+    } else if (errors.base) {
+      list.push(errors.base);
+    }
+
+    if (choice.target.on && !choice.target.workspaceId) {
       list.push(message('create.workspace.errors.pickTarget'));
-    else if (errors.target) list.push(errors.target);
+    } else if (errors.target) {
+      list.push(errors.target);
+    }
+
     if (choice.slug.on && choice.slug.edited) {
       const error = slugError(choice.slug.value);
-      if (error) list.push(error);
+      if (error) {
+        list.push(error);
+      }
     }
+
     if (choice.branch.on && choice.branch.edited) {
       const error = branchNameError(choice.branch.name, options);
-      if (error) list.push(error);
+      if (error) {
+        list.push(error);
+      }
     }
+
     const generated = generatedBranchProblem(choice, options, title);
-    if (generated) list.push(generated);
+    if (generated) {
+      list.push(generated);
+    }
   }
+
   return list;
 }
 
@@ -103,7 +145,10 @@ export function generatedBranchProblem(
 ): Message | undefined {
   const slug = effectiveSlug(choice, title);
   const refusal = generatedBranchRefusal(options, slug);
-  if (!refusal || createOverrides(choice, options, title).branch) return undefined;
+  if (!refusal || createOverrides(choice, options, title).branch) {
+    return undefined;
+  }
+
   return message(
     refusal === 'branch-protected'
       ? 'create.workspace.errors.generatedBranchProtected'
@@ -143,18 +188,23 @@ export function branchNameError(name: string, options: CreateOptions): Message |
     default:
       break;
   }
+
   if (
     options.baseRefs.some((item) => item.ref === branch) ||
     options.workspaces.some((item) => item.branch === branch)
-  )
+  ) {
     return message('create.workspace.errors.branchExists');
+  }
+
   const refusal = options.commits ? engineCommitRefusal(options.commits, branch) : undefined;
-  if (refusal)
+  if (refusal) {
     return message(
       refusal === 'branch-protected'
         ? 'create.workspace.errors.branchProtected'
         : 'create.workspace.errors.branchNotAllowed',
     );
+  }
+
   return undefined;
 }
 
@@ -192,5 +242,6 @@ export function workspaceFieldErrors(
     (conflicts?.slug && choice.slug.edited && choice.slug.value === conflicts.slug.value
       ? message('create.workspace.errors.slugTaken')
       : undefined);
+
   return { ...(branch ? { branch } : {}), ...(slug ? { slug } : {}) };
 }

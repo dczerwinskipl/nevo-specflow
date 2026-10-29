@@ -16,6 +16,7 @@ export function toArchetypeCatalogue(
 ): ArchetypeCatalogue {
   const { catalogue } = source;
   const titleOfType = (id: string): string => catalogue.findDocumentType(id)?.title ?? id;
+
   return {
     revision: catalogue.revision,
     ...(source.problems !== undefined && source.problems.length > 0

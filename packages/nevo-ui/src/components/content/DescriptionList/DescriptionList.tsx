@@ -45,6 +45,7 @@ const DescriptionListRoot = forwardRef<HTMLDListElement, DescriptionListProps>(
 const DescriptionListItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function DescriptionListItem({ className, ...props }, ref) {
     const layout = useContext(LayoutContext);
+
     return <div ref={ref} className={cn(itemClasses[layout], className)} {...props} />;
   },
 );
@@ -52,6 +53,7 @@ const DescriptionListItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEle
 const DescriptionListTerm = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>>(
   function DescriptionListTerm({ className, ...props }, ref) {
     const layout = useContext(LayoutContext);
+
     return (
       <dt
         ref={ref}

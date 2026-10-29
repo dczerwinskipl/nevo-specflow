@@ -49,9 +49,13 @@ export function useWorkspacePlace(
     () => initial?.choice ?? initialWorkspaceChoice,
   );
   const [conflicts, setConflicts] = useState<WorkspaceConflicts>(() => {
-    if (!initial?.failure) return {};
+    if (!initial?.failure) {
+      return {};
+    }
+
     const { choice: restored } = initial;
     const slug = restored.slug.on && restored.slug.edited ? restored.slug.value : undefined;
+
     return conflictsOfFailure(initial.failure, { slug, branch: restored.branch.name.trim() }) ?? {};
   });
   const handleRef = useRef<WorkspacePlaceSectionHandle>(null);
@@ -63,7 +67,10 @@ export function useWorkspacePlace(
   );
   const optionsReady = createOptions.state.status === 'ready';
   useEffect(() => {
-    if (!optionsReady || !pendingFocus.current) return;
+    if (!optionsReady || !pendingFocus.current) {
+      return;
+    }
+
     const field = pendingFocus.current;
     pendingFocus.current = undefined;
     handleRef.current?.focusField(field);
@@ -79,10 +86,16 @@ export function useWorkspacePlace(
         slug: sent.slug,
         branch: choice.branch.name.trim(),
       });
-      if (!change) return;
+      if (!change) {
+        return;
+      }
+
       setConflicts((current) => ({ ...current, ...change }));
-      if (change.slug) handleRef.current?.focusField('slug');
-      else if (change.branch) handleRef.current?.focusField('branch');
+      if (change.slug) {
+        handleRef.current?.focusField('slug');
+      } else if (change.branch) {
+        handleRef.current?.focusField('branch');
+      }
     },
     chooseAutomaticBranch() {
       setChoice((current) => ({ ...current, branch: initialWorkspaceChoice.branch }));
@@ -96,11 +109,16 @@ export function useWorkspacePlace(
     },
     async refresh({ failure, dismissFailure, fallbackFocus }) {
       const result = await createOptions.refresh();
-      if (!result) return;
-      if (result.kind === 'failed') {
-        announce(t('create.announce.refreshFailed'));
+      if (!result) {
         return;
       }
+
+      if (result.kind === 'failed') {
+        announce(t('create.announce.refreshFailed'));
+
+        return;
+      }
+
       const stale = Object.keys(revalidate(choice, result.options)).length > 0;
       announce(stale ? t('create.announce.refreshedStale') : t('create.announce.refreshed'));
       if (

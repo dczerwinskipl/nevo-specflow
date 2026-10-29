@@ -21,6 +21,7 @@ async function tempRoot(): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), 'specflow-engine-checkout-'));
   const root = await realpath(directory);
   temporaryRoots.push(root);
+
   return root;
 }
 
@@ -29,6 +30,7 @@ async function canonicalGitRoot(cwd: string): Promise<string> {
     cwd,
     encoding: 'utf8',
   }).trim();
+
   return realpath(gitRoot);
 }
 
@@ -84,8 +86,11 @@ describe('Engine Git checkout bootstrap boundary', () => {
       expect(await readdir(nonGit)).toEqual([]);
     } finally {
       for (const [key, value] of Object.entries(original)) {
-        if (value === undefined) delete process.env[key];
-        else process.env[key] = value;
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
       }
     }
   });

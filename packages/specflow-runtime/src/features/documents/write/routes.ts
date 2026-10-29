@@ -82,7 +82,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
 ) => {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const need = (): DocumentWriteSource => {
-    if (!options.source) throw unavailable();
+    if (!options.source) {
+      throw unavailable();
+    }
+
     return options.source;
   };
 
@@ -100,6 +103,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
     },
     documentRoute(async (request, reply) => {
       const { specId, documentId } = request.params;
+
       return reply.code(200).send(await need().save(specId, documentId, request.body));
     }),
   );
@@ -190,7 +194,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       const status = await need().status(specId, operationId);
       const etag = statusEtag(status);
       reply.header('ETag', etag);
-      if (matchesEtag(request.headers['if-none-match'], etag)) return sendNotModified(reply);
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return sendNotModified(reply);
+      }
+
       return reply.code(200).send(status);
     }),
   );
@@ -212,7 +219,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       const view = await need().uncommitted(request.params.specId);
       const etag = statusEtag(view);
       reply.header('ETag', etag);
-      if (matchesEtag(request.headers['if-none-match'], etag)) return sendNotModified(reply);
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return sendNotModified(reply);
+      }
+
       return reply.code(200).send(view);
     }),
   );
@@ -239,6 +249,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
           capability: SpecCapabilities.capabilities.Manage,
           scope: { specId },
         });
+
       return reply
         .code(200)
         .send(await need().commit(request.params.specId, request.body, canManage));
@@ -264,6 +275,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       },
       documentRoute(async (request, reply) => {
         const { specId, operationId } = request.params;
+
         return reply.code(200).send(await need()[action](specId, operationId));
       }),
     );

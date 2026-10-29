@@ -54,6 +54,7 @@ export function ArchetypeSection({
   const typeUseWhen = (typeId: string) =>
     catalogue?.documentTypes.find((type) => type.id === typeId)?.useWhen;
   const ticked = archetype ? tickedTemplates(archetype, choice) : [];
+
   return (
     <section aria-labelledby={headingId} className="grid gap-4">
       <header className="grid gap-1">
@@ -138,6 +139,7 @@ export function ArchetypeSection({
                 {optionalTemplates(archetype).map((template) => {
                   const checked = ticked.includes(template.id);
                   const useWhen = typeUseWhen(template.type);
+
                   return (
                     <CheckboxField
                       key={`${archetype.id}:${template.id}`}

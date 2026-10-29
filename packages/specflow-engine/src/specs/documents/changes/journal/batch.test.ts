@@ -63,6 +63,7 @@ function record(
   overrides: Record<string, unknown> = {},
 ): DocumentBatchRecord {
   const claimed = batchState !== 'formed';
+
   return {
     version: 1,
     projectId: TEST_PROJECT_ID,

@@ -53,6 +53,7 @@ async function fixture() {
     ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial'],
     { cwd: root },
   );
+
   return (await bootstrapProjectHome(root)).context;
 }
 
@@ -74,6 +75,7 @@ function journal(context: Context, stage: CreateStage): CreateJournal {
     title,
     target: { kind: 'existing', workspaceId },
   });
+
   return {
     version: 2,
     projectId: context.project.projectId,
@@ -101,6 +103,7 @@ async function seed(context: Context, stage: CreateStage, ageDays: number, now: 
   await withCreateJournalLock(context, () => publishCreateJournal(context, record));
   const when = new Date(now - ageDays * DAY);
   await utimes(createJournalPath(context, record.operationId), when, when);
+
   return record;
 }
 
@@ -152,7 +155,10 @@ describe('Create journal retention', () => {
   it('respects the per-call limit and finishes on later calls', async () => {
     const context = await fixture();
     const now = Date.now();
-    for (let i = 0; i < 5; i++) await seed(context, 'completed', 9, now);
+    for (let i = 0; i < 5; i++) {
+      await seed(context, 'completed', 9, now);
+    }
+
     expect(await sweep(context, now, { limit: 2 })).toBe(2);
     expect(await sweep(context, now, { limit: 2 })).toBe(2);
     expect(await sweep(context, now, { limit: 2 })).toBe(1);

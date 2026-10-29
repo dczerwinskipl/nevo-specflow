@@ -36,6 +36,7 @@ import { TaskViewStateProvider } from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
+
   return `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${search}`;
 }
 
@@ -126,8 +127,10 @@ function SpecificationWorkspaceInner({
       void secondaryNavigation.close();
       if (onOpenTask) {
         onOpenTask(taskId);
+
         return;
       }
+
       // Standalone presentation surfaces also promote Full Task to its canonical route.
       window.location.assign(fullTaskHref(specId, taskId, collection));
     },
@@ -148,7 +151,9 @@ function SpecificationWorkspaceInner({
       openFullTask: handleOpenFullTask,
       openFullDocument: (documentId: string) => {
         void secondaryNavigation.close();
-        if (onOpenFullDocument) onOpenFullDocument(documentId);
+        if (onOpenFullDocument) {
+          onOpenFullDocument(documentId);
+        }
       },
       openSession: onOpenSession,
       openDoc: (docId) => handleOpenDoc(docId, 'work'),
@@ -182,7 +187,9 @@ function SpecificationWorkspaceInner({
       startConversation: (_agent) => openConversationDialog(),
       executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
       refresh: () => {
-        if (!refreshing) return onRefresh?.();
+        if (!refreshing) {
+          return onRefresh?.();
+        }
       },
       canExecute: Boolean(onExecute),
       canStartConversation: Boolean(onNewConversation),
@@ -262,7 +269,9 @@ function SpecificationWorkspaceInner({
                           ),
                           disabled: refreshing,
                           onPress: () => {
-                            if (!refreshing) void onRefresh();
+                            if (!refreshing) {
+                              void onRefresh();
+                            }
                           },
                         },
                       ]

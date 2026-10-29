@@ -7,6 +7,7 @@ import { executeGit } from '../../src/git/process';
 
 function available(...paths: string[]) {
   const known = new Set(paths.map((path) => win32.normalize(path).toLowerCase()));
+
   return (path: string): boolean => known.has(win32.normalize(path).toLowerCase());
 }
 
@@ -62,6 +63,7 @@ describe('Git executable discovery (Windows process performance)', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+
     expect((await executeGit(cwd, ['--version'])).exitCode).toBe(0);
   });
 });

@@ -182,7 +182,10 @@ describe('resolveCreateArchetype', () => {
   }): Promise<{ engine: SpecFlowEngine; home: string }> {
     const home = await mkdtemp(join(tmpdir(), 'specflow-resolve-archetype-'));
     homes.push(home);
-    if (options.seeds) await installProjectDefinitionFiles(home);
+    if (options.seeds) {
+      await installProjectDefinitionFiles(home);
+    }
+
     return { engine: { context: { project: { homeRoot: home } } } as SpecFlowEngine, home };
   }
 

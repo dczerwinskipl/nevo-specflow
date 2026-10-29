@@ -46,22 +46,32 @@ export class InMemoryAuthenticationStore implements AuthenticationStore {
     }
 
     const id = this.uniqueId(this.sessions);
-    if (replacementExists) this.sessions.delete(replacingSessionId);
+    if (replacementExists) {
+      this.sessions.delete(replacingSessionId);
+    }
+
     this.sessions.set(id, {
       value: { ...session },
       expiresAt: this.now() + this.policy.sessionTtlMs,
     });
+
     return id;
   }
 
   getSession(id: string | undefined): StoredAuthSession | null {
-    if (!id) return null;
+    if (!id) {
+      return null;
+    }
+
     const value = this.read(this.sessions, id);
+
     return value ? { ...value } : null;
   }
 
   deleteSession(id: string | undefined): void {
-    if (id) this.sessions.delete(id);
+    if (id) {
+      this.sessions.delete(id);
+    }
   }
 
   createOidcTransaction(
@@ -76,11 +86,15 @@ export class InMemoryAuthenticationStore implements AuthenticationStore {
     }
 
     const id = this.uniqueId(this.oidcTransactions);
-    if (replacementExists) this.oidcTransactions.delete(replacingTransactionId);
+    if (replacementExists) {
+      this.oidcTransactions.delete(replacingTransactionId);
+    }
+
     this.oidcTransactions.set(id, {
       value: { ...transaction },
       expiresAt: this.now() + this.policy.oidcTransactionTtlMs,
     });
+
     return id;
   }
 
@@ -88,27 +102,42 @@ export class InMemoryAuthenticationStore implements AuthenticationStore {
     id: string | undefined,
     expectedState: string,
   ): OidcTransactionConsumption {
-    if (!id) return { status: 'missing' };
+    if (!id) {
+      return { status: 'missing' };
+    }
 
     const transaction = this.read(this.oidcTransactions, id);
-    if (!transaction) return { status: 'missing' };
-    if (transaction.state !== expectedState) return { status: 'state_mismatch' };
+    if (!transaction) {
+      return { status: 'missing' };
+    }
+
+    if (transaction.state !== expectedState) {
+      return { status: 'state_mismatch' };
+    }
 
     this.oidcTransactions.delete(id);
+
     return { status: 'consumed', transaction: { ...transaction } };
   }
 
   deleteOidcTransaction(id: string | undefined): void {
-    if (id) this.oidcTransactions.delete(id);
+    if (id) {
+      this.oidcTransactions.delete(id);
+    }
   }
 
   private read<T>(map: Map<string, Expiring<T>>, id: string): T | null {
     const entry = map.get(id);
-    if (!entry) return null;
-    if (entry.expiresAt <= this.now()) {
-      map.delete(id);
+    if (!entry) {
       return null;
     }
+
+    if (entry.expiresAt <= this.now()) {
+      map.delete(id);
+
+      return null;
+    }
+
     return entry.value;
   }
 
@@ -121,14 +150,19 @@ export class InMemoryAuthenticationStore implements AuthenticationStore {
   private uniqueId<T>(map: ReadonlyMap<string, T>): string {
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const id = this.idFactory();
-      if (id && !map.has(id)) return id;
+      if (id && !map.has(id)) {
+        return id;
+      }
     }
+
     throw new Error('Could not allocate a unique authentication state identifier.');
   }
 }
 
 function pruneMap<T>(map: Map<string, Expiring<T>>, now: number): void {
   for (const [key, entry] of map) {
-    if (entry.expiresAt <= now) map.delete(key);
+    if (entry.expiresAt <= now) {
+      map.delete(key);
+    }
   }
 }

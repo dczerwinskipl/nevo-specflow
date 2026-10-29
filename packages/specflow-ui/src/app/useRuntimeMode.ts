@@ -16,6 +16,7 @@ export type RuntimeMode = 'loading' | 'project' | 'demo' | 'unavailable';
 export function useRuntimeInfo() {
   const router = useRouter({ warn: false });
   const services = router?.options.context?.services;
+
   return useQuery({
     queryKey: runtimeKeys.info,
     queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
@@ -28,6 +29,9 @@ export function useRuntimeInfo() {
 /** The single reader of the Runtime mode; every mode decision goes through it. */
 export function useRuntimeMode(): RuntimeMode {
   const runtime = useRuntimeInfo();
-  if (runtime.data) return runtime.data.dataMode;
+  if (runtime.data) {
+    return runtime.data.dataMode;
+  }
+
   return runtime.isError ? 'unavailable' : 'loading';
 }

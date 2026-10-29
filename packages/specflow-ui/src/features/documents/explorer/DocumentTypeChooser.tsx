@@ -9,6 +9,7 @@ export const noTypeValue = '-none';
 function TypeOption({ choice }: { choice: TypeChoice }) {
   const { t } = useTranslation();
   const { fact } = choice;
+
   return (
     <RadioGroupOption
       value={choice.type.id}
@@ -54,6 +55,7 @@ export function DocumentTypeChooser({
       {text}
     </Typography>
   );
+
   return (
     <RadioGroup
       value={value}
@@ -90,8 +92,12 @@ export function DocumentTypeChooser({
 export function DocumentTypeGuidance({ choice }: { choice: TypeChoice | undefined }) {
   const { t } = useTranslation();
   const root = useRef<HTMLDivElement>(null);
-  if (!choice) return null;
+  if (!choice) {
+    return null;
+  }
+
   const templateInstructions = choice.template?.instructions?.trim();
+
   return (
     <Collapsible
       ref={root}
@@ -99,12 +105,18 @@ export function DocumentTypeGuidance({ choice }: { choice: TypeChoice | undefine
       // Opened at the bottom of a scrolling dialog body: bring the instructions into view.
       onExpandedChange={(expanded) => {
         // The panel grows while it opens: keep the disclosure's end in view until it has grown.
-        if (!expanded) return;
+        if (!expanded) {
+          return;
+        }
+
         const until = performance.now() + 600;
         const follow = () => {
           root.current?.scrollIntoView({ block: 'nearest' });
-          if (performance.now() < until) requestAnimationFrame(follow);
+          if (performance.now() < until) {
+            requestAnimationFrame(follow);
+          }
         };
+
         requestAnimationFrame(follow);
       }}
     >

@@ -62,6 +62,7 @@ async function project(withInheritedSpec = false) {
     );
     commitStaged(root, 'commit separate primary Specification before linked checkout');
   }
+
   const spec = await createSpecificationForTesting(engine, {
     operationId: randomUUID(),
     title: withInheritedSpec ? 'Alpha spec' : 'Integrate complete branch',
@@ -78,12 +79,14 @@ async function project(withInheritedSpec = false) {
     'specs/active/' + spec.slug + '/overview.md',
   );
   commitStaged(spec.workspaceRoot, 'commit spec');
+
   return { root, engine, spec };
 }
 
 async function reserve(engine: Awaited<ReturnType<typeof bootstrapProjectHome>>, specId: string) {
   const operationId = randomUUID();
   await reserveCloseOperation(engine, { kind: 'worktree-close', operationId, specId });
+
   return operationId;
 }
 
@@ -409,6 +412,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     await expect(
       publishCloseGitFastForward(engine, operationId, () => {
         git(root, 'switch', '-c', 'unrelated-but-same-sha');
+
         return Promise.resolve();
       }),
     ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });

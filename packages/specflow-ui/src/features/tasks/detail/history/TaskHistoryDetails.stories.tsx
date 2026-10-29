@@ -36,6 +36,7 @@ export const TechnicalReachability: Story = {
     await canvas.findByRole('heading', { name: 'Material relationships' });
     const values = [...canvasElement.querySelectorAll('pre')].map((element) => {
       const value: unknown = JSON.parse(element.textContent);
+
       return value;
     });
     const entry = args.entry;
@@ -47,10 +48,14 @@ export const TechnicalReachability: Story = {
         startedAt: entry.startedAt,
         completedAt: entry.completedAt,
       })
-    )
+    ) {
       throw Error('Lost attempt identity or timestamps');
-    if (JSON.stringify(values[1]) !== JSON.stringify(entry.provenance))
+    }
+
+    if (JSON.stringify(values[1]) !== JSON.stringify(entry.provenance)) {
       throw Error('Lost provenance');
+    }
+
     for (const [index, resource] of entry.resources
       .filter((item) => item.link.state !== 'forbidden')
       .entries()) {
@@ -63,18 +68,24 @@ export const TechnicalReachability: Story = {
           producedFor: resource.producedFor,
           neededFor: resource.neededFor,
         })
-      )
+      ) {
         throw Error('Lost material identity or membership');
+      }
     }
+
     const text = canvasElement.textContent;
-    for (const secret of ['secret-material-id', 'Secret material title', 'secret-source'])
-      if (text.includes(secret))
+    for (const secret of ['secret-material-id', 'Secret material title', 'secret-source']) {
+      if (text.includes(secret)) {
         throw Error('Forbidden material leaked through technical disclosure');
+      }
+    }
+
     const hide = canvas.getByRole('button', { name: 'Hide technical data' });
     await userEvent.click(hide);
     await waitFor(() => {
-      if (canvasElement.ownerDocument.activeElement !== hide)
+      if (canvasElement.ownerDocument.activeElement !== hide) {
         throw Error('Technical collapse lost focus');
+      }
     });
   },
 };

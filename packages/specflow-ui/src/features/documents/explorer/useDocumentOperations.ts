@@ -162,6 +162,7 @@ export function useDocumentOperations(
     setBusy(value);
     onBusyChange?.(value || lock.unknown);
   };
+
   const setRecovery = (value: boolean) => {
     lock.setUnknown(value);
     setUnknown(value);
@@ -176,7 +177,10 @@ export function useDocumentOperations(
     setRecovery(unknownOutcome);
     const code = apiErrorCode(failure);
     setResumable(writeRetention(failure) === 'recovery');
-    if (code && refetchCodes.has(code)) void onRefresh?.();
+    if (code && refetchCodes.has(code)) {
+      void onRefresh?.();
+    }
+
     return unknownOutcome;
   };
 
@@ -185,6 +189,7 @@ export function useDocumentOperations(
     const unknownOutcome = settleFailure(failure);
     const code = apiErrorCode(failure);
     setError(unknownOutcome ? t('documents.tree.unconfirmed') : documentMutationError(failure, t));
+
     return {
       ok: false,
       focusName: code === 'DOCUMENT_PATH_CONFLICT' || code === 'DOCUMENT_PATH_INVALID',
@@ -192,11 +197,17 @@ export function useDocumentOperations(
   };
 
   const guard: DocumentOperationsActions['guard'] = async (action, guardOptions) => {
-    if (!lock.canBegin()) return;
+    if (!lock.canBegin()) {
+      return;
+    }
+
     lock.setChecking(true);
     try {
       const snapshot = beforeAction ? await beforeAction(guardOptions) : tree;
-      if (!snapshot) return;
+      if (!snapshot) {
+        return;
+      }
+
       setError('');
       action(snapshot);
     } catch {
@@ -213,7 +224,7 @@ export function useDocumentOperations(
   ) => {
     markBusy(true);
     try {
-      if (entry.rename)
+      if (entry.rename) {
         await onOperate({
           action: 'rename',
           kind: entry.kind,
@@ -223,13 +234,14 @@ export function useDocumentOperations(
           name: finalName,
           expectedRevision: entry.expectedRevision!,
         });
-      else {
+      } else {
         const path = joinDocumentPath(entry.parent, finalName);
         await onAdd(
           entry.kind === 'document' ? [{ path, content: '' }] : [],
           entry.kind === 'folder' ? [path] : [],
         );
       }
+
       setRecovery(false);
       settle({ ok: true });
       notify(
@@ -272,14 +284,19 @@ export function useDocumentOperations(
             ? t('documents.tree.importStillUnconfirmed')
             : t('documents.tree.importUnconfirmed'),
       );
+
       return;
     }
+
     setRetry([]);
     setError(t('documents.tree.importRejected', { reason: documentMutationError(failure, t) }));
   };
 
   const importFiles: DocumentOperationsActions['importFiles'] = async (files, folder) => {
-    if (lock.busy) return;
+    if (lock.busy) {
+      return;
+    }
+
     markBusy(true);
     setError('');
     setResumable(false);
@@ -291,7 +308,10 @@ export function useDocumentOperations(
       const skipped = plan.skipped.map(({ name, reason }) =>
         t('documents.tree.skippedItem', { name, reason: text(reason) }),
       );
-      if (accepted.length) await onAdd(accepted);
+      if (accepted.length) {
+        await onAdd(accepted);
+      }
+
       setRecovery(false);
       notify(
         skipped.length
@@ -309,7 +329,10 @@ export function useDocumentOperations(
   };
 
   const retryImport = () => {
-    if (lock.busy) return;
+    if (lock.busy) {
+      return;
+    }
+
     const files = retry;
     markBusy(true);
     void onAdd(files)
@@ -325,7 +348,10 @@ export function useDocumentOperations(
   };
 
   const createDocument: DocumentOperationsActions['createDocument'] = async (input, onDone) => {
-    if (lock.busy) return { ok: false };
+    if (lock.busy) {
+      return { ok: false };
+    }
+
     markBusy(true);
     setError('');
     setResumable(false);
@@ -342,6 +368,7 @@ export function useDocumentOperations(
           ? t('documents.newDocument.created', { name: lastSegment(input.path), type: input.title })
           : t('documents.tree.fileAdded', { name: lastSegment(input.path) }),
       );
+
       return { ok: true };
     } catch (failure) {
       return fail(failure);
@@ -351,7 +378,10 @@ export function useDocumentOperations(
   };
 
   const classify: DocumentOperationsActions['classify'] = async (request, type, title, onDone) => {
-    if (lock.busy) return { ok: false };
+    if (lock.busy) {
+      return { ok: false };
+    }
+
     markBusy(true);
     setError('');
     setResumable(false);
@@ -370,6 +400,7 @@ export function useDocumentOperations(
         .at(-1);
       onDone(result ? result.documents[0]?.id : undefined);
       notify(t('documents.classify.done', { name: name ?? request.id, type: title }));
+
       return { ok: true };
     } catch (failure) {
       return fail(failure);
@@ -383,7 +414,10 @@ export function useDocumentOperations(
     target,
     onDone,
   ) => {
-    if (lock.busy) return;
+    if (lock.busy) {
+      return;
+    }
+
     markBusy(true);
     setError('');
     setResumable(false);
@@ -458,7 +492,10 @@ function refusalDetails(error: unknown): { reason?: ActionReason; cause?: string
 /** The reason a write refusal carries, else the one its code implies. */
 export function refusalReason(error: unknown, code: string | undefined): ActionReason {
   const details = refusalDetails(error);
-  if (details?.reason) return details.reason;
+  if (details?.reason) {
+    return details.reason;
+  }
+
   switch (code) {
     case 'SPEC_ARCHIVED':
       return 'archived';

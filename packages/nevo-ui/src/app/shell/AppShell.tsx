@@ -93,11 +93,14 @@ function useDescendantWidth<T extends HTMLElement>(
   useLayoutEffect(() => {
     if (!enabled) {
       setWidth(undefined);
+
       return;
     }
 
     const element = rootRef.current?.querySelector<HTMLElement>(selector);
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     const update = () => setWidth(element.getBoundingClientRect().width);
     const observer = new ResizeObserver(update);
@@ -130,6 +133,7 @@ const defaultAppShellLabels: AppShellLabels = {
 
 export function resolveAppShellLayout(width: number | undefined) {
   const wide = width !== undefined && width >= WIDE_SHELL_MIN_WIDTH;
+
   return {
     availableWidth:
       width === undefined
@@ -169,7 +173,10 @@ export function AppShell({
     workspaceWidth !== undefined &&
     workspaceWidth < availableWidth - 1;
   const closeNavigation = useCallback((focusTarget?: () => HTMLElement | null) => {
-    if (navigationOpenRef.current) navigationFocusTarget.current = focusTarget;
+    if (navigationOpenRef.current) {
+      navigationFocusTarget.current = focusTarget;
+    }
+
     navigationOpenRef.current = false;
     setNavigationOpen(false);
   }, []);
@@ -224,6 +231,7 @@ export function AppShell({
                   navigationOpener.current =
                     document.activeElement instanceof HTMLElement ? document.activeElement : null;
                 }
+
                 setNavigationOpen(open);
               }}
             >

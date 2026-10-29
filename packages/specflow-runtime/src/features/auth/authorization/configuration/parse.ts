@@ -76,6 +76,7 @@ function parseAssignmentScope(value: unknown, path: string): Scope {
         `${path}.workspaceId is a local workspace selector, not a portable authorization scope.`,
       );
     }
+
     if (!SCOPE_KEY.test(key)) {
       throw new RuntimeConfigError(
         `${path} key '${key}' must contain only letters, digits, '_' or '-', and must start with a letter or digit.`,

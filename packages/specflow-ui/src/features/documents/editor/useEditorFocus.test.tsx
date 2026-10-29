@@ -18,6 +18,7 @@ function mountPreview(root: HTMLDivElement | null) {
   preview.setAttribute('data-document-preview', '');
   preview.tabIndex = -1;
   root?.append(preview);
+
   return vi.spyOn(preview, 'focus');
 }
 

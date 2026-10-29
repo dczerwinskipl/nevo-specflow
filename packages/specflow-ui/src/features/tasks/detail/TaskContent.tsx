@@ -7,6 +7,7 @@ export function TaskContent(props: TaskDetailsProps) {
   const resources = useTaskResources(props.specKey, props.task.id, snapshot);
   const document = snapshot?.sections.document;
   const ref = document?.state === 'available' ? document.data : undefined;
+
   return (
     <TaskDetails
       {...props}

@@ -17,6 +17,7 @@ function entry(id: string, ordinal: number, revision = 1): ConversationEntry {
     text: { text: id, complete: true },
   };
 }
+
 const snapshot = {
   session: { sessionId: 'session' },
   revision: 3,

@@ -71,6 +71,7 @@ function renderTabs(props: Partial<ItemTabsProps> = {}) {
       {...props}
     />,
   );
+
   return { ...utils, onActivate, onClose };
 }
 
@@ -219,6 +220,7 @@ describe('ItemTabs', () => {
           initialItems: makeItems(2),
           canClose: () => Promise.resolve(answer),
         });
+
         return (
           <ItemTabs
             items={opened.items}
@@ -229,6 +231,7 @@ describe('ItemTabs', () => {
           />
         );
       }
+
       render(<Host />);
       fireEvent.click(screen.getByRole('button', { name: 'Close item-0.md' }));
       await act(async () => {});
@@ -250,6 +253,7 @@ describe('ItemTabs', () => {
       canClose?: (id: string) => boolean | Promise<boolean>;
     }) {
       const opened = useOpenedItems<ItemTab>({ initialItems: initial, canClose });
+
       return (
         <ItemTabs
           items={opened.items}
@@ -266,8 +270,10 @@ describe('ItemTabs', () => {
       const focusTab = (name: string) => {
         const tab = screen.getByRole('tab', { name });
         tab.focus();
+
         return tab;
       };
+
       fireEvent.keyDown(focusTab('item-1.md'), { key: 'Delete' });
       expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-2.md' }));
       fireEvent.keyDown(document.activeElement!, { key: 'Delete' });
@@ -293,8 +299,10 @@ describe('ItemTabs', () => {
         ctrlKey: false,
         pointerType: 'mouse',
       });
+
       return screen.findByRole('menu');
     }
+
     const rowOf = (menu: HTMLElement, label: string) =>
       within(menu).getByRole('menuitem', { name: new RegExp(`^${label.replace('.', '\\.')}`) });
     const closers = {

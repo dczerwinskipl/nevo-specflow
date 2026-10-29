@@ -38,6 +38,7 @@ export const Human: Story = {};
 function PreviewFixture({ data }: { data: ReturnType<typeof createWorkspaceFixture> }) {
   const [full, setFull] = useState(false);
   const preview = useRef<HTMLDivElement>(null);
+
   return (
     <>
       <div ref={preview} hidden={full}>
@@ -69,6 +70,7 @@ function PreviewFixture({ data }: { data: ReturnType<typeof createWorkspaceFixtu
     </>
   );
 }
+
 export const Preview: Story = { render: (args) => <PreviewFixture {...args} /> };
 export const PreviewReturnContract: Story = {
   tags: ['contract'],
@@ -103,6 +105,7 @@ export const LongMaterialNames: Story = {
   args: {
     data: (() => {
       const data = createWorkspaceFixture('human', true);
+
       return {
         ...data,
         handoffs: data.handoffs.map((event, index) =>
@@ -128,6 +131,7 @@ export const UnavailableMaterials: Story = {
   args: {
     data: (() => {
       const data = createWorkspaceFixture();
+
       return {
         ...data,
         handoffs: data.handoffs.map((event, index) =>
@@ -157,6 +161,7 @@ export const SessionProviders: Story = {
   args: {
     data: (() => {
       const data = createWorkspaceFixture();
+
       return {
         ...data,
         sessions: data.sessions.map((session, index) =>
@@ -198,6 +203,7 @@ export const MultipleSessions: Story = {
     data: (() => {
       const data = createWorkspaceFixture('review');
       const session = data.sessions[0]!;
+
       return {
         ...data,
         sessions: [
@@ -267,6 +273,7 @@ export const MaterialReferencePointerContract: Story = {
         within(scope).getByText(new RegExp(`${expectedTail}$`), { selector: 'pre' }),
       ).toBeVisible();
     }
+
     await expandReference(
       canvasElement.querySelector<HTMLElement>('[data-task-workspace="primary"]')!,
       'review-3.md',
@@ -329,11 +336,14 @@ export const NarrowHistoryCloseContract: Story = {
         if (
           /(auto|scroll)/.test(getComputedStyle(element).overflowY) &&
           element.scrollHeight > element.clientHeight + 1
-        )
+        ) {
           return element;
+        }
       }
+
       throw new Error('History must have a scroll owner');
     };
+
     const before = Math.min(30, scrollOwner().scrollHeight - scrollOwner().clientHeight);
     scrollOwner().scrollTop = before;
     await new Promise<void>((resolve) =>
@@ -355,8 +365,10 @@ export const NarrowHistoryCloseContract: Story = {
             /(auto|scroll)/.test(getComputedStyle(owner).overflowY) &&
             owner.scrollHeight > owner.clientHeight + 1
           )
-        )
+        ) {
           owner = owner.parentElement;
+        }
+
         await expect(owner?.scrollTop).toBe(before);
       },
       { timeout: 5000 },

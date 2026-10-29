@@ -40,9 +40,13 @@ async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
   );
   roots.push(root);
   git(root, 'checkout', '-q', '-b', 'feature/work');
-  for (const name of ['a', 'b']) await write(root, `docs/${name}.md`, `${name}\n`);
+  for (const name of ['a', 'b']) {
+    await write(root, `docs/${name}.md`, `${name}\n`);
+  }
+
   git(root, 'add', 'docs');
   commitStaged(root, 'base documents');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -71,6 +75,7 @@ async function spawnedArguments<T>(
   const listener = (message: unknown): void => {
     spawns.push([...(message as { args: readonly string[] }).args]);
   };
+
   subscribe('nevo.specflow.engine.git-process', listener);
   try {
     return { result: await run(), spawns };
@@ -89,13 +94,17 @@ describe.skipIf(!onPosix)('a large document batch (real Git)', () => {
       (_, index) => `docs/${'segment-'.repeat(18)}${String(index).padStart(4, '0')}.md`,
     );
     expect(paths[0]!.length).toBeGreaterThanOrEqual(150);
-    for (const path of paths) await write(root, path, `${path}\n`);
+    for (const path of paths) {
+      await write(root, path, `${path}\n`);
+    }
+
     await write(root, 'docs/a.md', 'a changed\n');
     const batch = ['docs/a.md', ...paths];
     const commits = createGitCommitPort(engine);
 
     const { result, spawns } = await spawnedArguments(async () => {
       const { effective } = await commits.effectivePaths(root, batch);
+
       return commits.commit(request(root, effective));
     });
 
@@ -115,7 +124,9 @@ describe.skipIf(!onPosix)('a large document batch (real Git)', () => {
       ['add', 'commit'].some((verb) => args.includes(verb)),
     );
     expect(mutations.length).toBeGreaterThanOrEqual(2);
-    for (const args of mutations) expect(args.join(' ')).toContain('--pathspec-from-file=');
+    for (const args of mutations) {
+      expect(args.join(' ')).toContain('--pathspec-from-file=');
+    }
   }, 240_000);
 });
 
@@ -172,6 +183,7 @@ describe('an add that gets killed (real Git)', () => {
         if (args.includes('add')) {
           throw new GitCapabilityError('GIT_OPERATION_UNCERTAIN', 'killed', 'terminated');
         }
+
         return result;
       },
     });
@@ -217,6 +229,7 @@ describe('the budget of one attempt (real Git)', () => {
         timeouts.push(options?.timeoutMs);
         // Slow reads: together they use up the budget before the first mutation.
         await new Promise((resolve) => setTimeout(resolve, 450));
+
         return executeGit(cwd, args, options);
       },
     });
@@ -254,8 +267,11 @@ describe.skipIf(!onPosix)('a read-only Git process that has to end (real Git)', 
       const state = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' });
       alive =
         state.status === 0 && state.stdout.trim() !== '' && !state.stdout.trim().startsWith('Z');
-      if (alive) await new Promise((resolve) => setTimeout(resolve, 100));
+      if (alive) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
     }
+
     expect(alive).toBe(false);
     expect(existsSync(trapFile)).toBe(true);
   }, 30_000);

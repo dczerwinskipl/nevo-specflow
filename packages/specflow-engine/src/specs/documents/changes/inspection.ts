@@ -25,7 +25,10 @@ export interface BatchPathInspection {
 }
 
 function sameState(left: FileState, right: FileState): boolean {
-  if (left === null || right === null) return left === right;
+  if (left === null || right === null) {
+    return left === right;
+  }
+
   return left.sha256 === right.sha256 && left.bytes === right.bytes;
 }
 
@@ -38,9 +41,18 @@ export function classifyBatchPath(
   observation: BatchPathObservation,
   expectation: BatchPathExpectation,
 ): DocumentPathState {
-  if (observation.headHoldsPost) return 'committed';
-  if (sameState(observation.working, expectation.post)) return 'at-post';
-  if (sameState(observation.working, expectation.pre)) return 'at-pre';
+  if (observation.headHoldsPost) {
+    return 'committed';
+  }
+
+  if (sameState(observation.working, expectation.post)) {
+    return 'at-post';
+  }
+
+  if (sameState(observation.working, expectation.pre)) {
+    return 'at-pre';
+  }
+
   return 'foreign';
 }
 
@@ -53,11 +65,13 @@ export function inspectBatchPaths(
   expectations: readonly BatchPathExpectation[],
 ): BatchPathInspection[] {
   const byPath = new Map(observations.map((entry) => [entry.path, entry]));
+
   return expectations.map((expectation) => {
     const observation = byPath.get(expectation.path);
     if (observation === undefined) {
       throw new Error('A batch path was not observed.');
     }
+
     return { path: expectation.path, state: classifyBatchPath(observation, expectation) };
   });
 }

@@ -82,6 +82,7 @@ export const CanonicalCapture: Story = {
 
 function ResponsiveFixture() {
   const [width, setWidth] = useState(480);
+
   return (
     <div className="grid gap-3 p-3">
       <div className="flex gap-2">
@@ -102,14 +103,20 @@ function ResponsiveFixture() {
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 export const ResponsiveContract: Story = {
@@ -184,6 +191,7 @@ function StackLevel({ level }: { level: number }) {
   const navigation = useSecondaryStack<ShellPages>();
   const nextLevel = level + 1;
   const nextTitle = nextLevel === 2 ? 'Billing' : 'Invoice #INV-2048';
+
   return (
     <AppContent className="w-content-narrow max-w-full">
       <AppWorkspaceBody>
@@ -397,6 +405,7 @@ export const CombinedMobileStress: Story = {
 
 function StatefulWorkspaceDraft() {
   const [title, setTitle] = useState('');
+
   return (
     <AppWorkspace fit="available" split="primary">
       <AppWorkspace.Primary header={<WorkspaceHeader title="Draft" />}>
@@ -419,8 +428,10 @@ function StatefulWorkspaceDraft() {
     </AppWorkspace>
   );
 }
+
 function ResponsiveDraftFrame() {
   const [width, setWidth] = useState(1280);
+
   return (
     <div>
       <div className="flex gap-2 p-2">
@@ -433,6 +444,7 @@ function ResponsiveDraftFrame() {
     </div>
   );
 }
+
 /** Resizing changes shell material ownership, never the identity of application content. */
 export const ResponsiveDraftLifetime: Story = {
   render: () => <ResponsiveDraftFrame />,
@@ -450,9 +462,13 @@ export const ResponsiveDraftLifetime: Story = {
       const button = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('button')).find(
         (element) => element.textContent === label,
       );
-      if (!button) throw new Error(`Missing ${label} control`);
+      if (!button) {
+        throw new Error(`Missing ${label} control`);
+      }
+
       button.click();
     };
+
     click('Narrow');
     await waitFor(
       () => canvasElement.querySelector('[data-app-shell-workspace-material-owner="panel"]'),

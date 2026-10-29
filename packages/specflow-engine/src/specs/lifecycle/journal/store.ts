@@ -10,7 +10,10 @@ import { CloseOperationError, type CloseJournal } from '../model';
 const JOURNAL_DIR = 'engine/operations/close';
 
 export function closeJournalPath(context: ResolvedProjectHome, operationId: string): string {
-  if (!CLOSE_UUID.test(operationId)) throw invalid();
+  if (!CLOSE_UUID.test(operationId)) {
+    throw invalid();
+  }
+
   return join(context.project.stateRoot, JOURNAL_DIR, operationId + '.json');
 }
 
@@ -21,17 +24,28 @@ export async function listCloseJournals(
   try {
     await requireRealDirectory(directory);
   } catch (error) {
-    if (isMissing(error)) return [];
+    if (isMissing(error)) {
+      return [];
+    }
+
     throw error;
   }
+
   const entries = await readdir(directory, { withFileTypes: true });
   const records: CloseJournal[] = [];
   for (const entry of entries) {
-    if (!entry.isFile() || entry.isSymbolicLink() || !entry.name.endsWith('.json')) throw invalid();
+    if (!entry.isFile() || entry.isSymbolicLink() || !entry.name.endsWith('.json')) {
+      throw invalid();
+    }
+
     const record = await readCloseJournal(context, entry.name.slice(0, -5));
-    if (!record) throw invalid();
+    if (!record) {
+      throw invalid();
+    }
+
     records.push(record);
   }
+
   return records;
 }
 
@@ -46,13 +60,25 @@ export async function readCloseJournal(
     await requireRealDirectory(join(context.project.stateRoot, 'engine', 'operations'));
     await requireRealDirectory(join(context.project.stateRoot, JOURNAL_DIR));
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) throw invalid();
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) {
+      throw invalid();
+    }
+
     const parsed = JSON.parse(await readFileWindowsSafe(path)) as unknown;
-    if (!isCloseJournal(context, parsed, operationId)) throw invalid();
+    if (!isCloseJournal(context, parsed, operationId)) {
+      throw invalid();
+    }
+
     return parsed;
   } catch (error) {
-    if (isMissing(error)) return undefined;
-    if (error instanceof SyntaxError) throw invalid();
+    if (isMissing(error)) {
+      return undefined;
+    }
+
+    if (error instanceof SyntaxError) {
+      throw invalid();
+    }
+
     throw error;
   }
 }
@@ -62,7 +88,10 @@ export async function publishCloseJournal(
   context: ResolvedProjectHome,
   journal: CloseJournal,
 ): Promise<void> {
-  if (!isCloseJournal(context, journal, journal.plan.operationId)) throw invalid();
+  if (!isCloseJournal(context, journal, journal.plan.operationId)) {
+    throw invalid();
+  }
+
   const directory = join(context.project.stateRoot, JOURNAL_DIR);
   let ancestor = context.project.stateRoot;
   for (const part of ['engine', 'operations', 'close']) {
@@ -70,18 +99,23 @@ export async function publishCloseJournal(
     try {
       await mkdir(ancestor, { mode: 0o700 });
     } catch (error) {
-      if (!isExists(error)) throw error;
+      if (!isExists(error)) {
+        throw error;
+      }
     }
+
     await requireRealDirectory(ancestor);
   }
+
   await requireRealDirectory(directory);
   await writeJsonAtomically(closeJournalPath(context, journal.plan.operationId), journal);
 }
 
 async function requireRealDirectory(path: string): Promise<void> {
   const stat = await lstat(path);
-  if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path)
+  if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
     throw invalid();
+  }
 }
 
 function invalid(): CloseOperationError {
@@ -94,6 +128,7 @@ function invalid(): CloseOperationError {
 function isMissing(error: unknown): boolean {
   return isRecord(error) && error.code === 'ENOENT';
 }
+
 function isExists(error: unknown): boolean {
   return isRecord(error) && error.code === 'EEXIST';
 }

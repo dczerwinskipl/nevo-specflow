@@ -28,6 +28,7 @@ async function fixture() {
   );
   roots.push(root);
   const engine = await bootstrapProjectHome(root);
+
   return { root, context: engine.context };
 }
 
@@ -48,6 +49,7 @@ describe('P2 Project Home lock filesystem-only post-acquisition proof', () => {
     const observe = () => {
       spawns++;
     };
+
     gitProcessChannel.subscribe(observe);
     try {
       await resolveProjectHome({ cwd: root, projectRoot: root });
@@ -56,6 +58,7 @@ describe('P2 Project Home lock filesystem-only post-acquisition proof', () => {
       spawns = 0;
       await withProjectControlLock(context, () => {
         expect(spawns).toBe(oneVerification);
+
         return Promise.resolve();
       });
       expect(spawns).toBe(oneVerification);
@@ -76,6 +79,7 @@ describe('P2 Project Home lock filesystem-only post-acquisition proof', () => {
     } finally {
       await writeFile(markerPath, markerBytes);
     }
+
     const gitInstancePath = join(context.project.gitCommonDir, GIT_INSTANCE_SENTINEL_FILE);
     const instanceBytes = await readFile(gitInstancePath, 'utf8');
     try {
@@ -85,6 +89,7 @@ describe('P2 Project Home lock filesystem-only post-acquisition proof', () => {
     } finally {
       await writeFile(gitInstancePath, instanceBytes);
     }
+
     await expect(assertProjectHomeLockProof(context, proof)).resolves.toBeUndefined();
   });
 

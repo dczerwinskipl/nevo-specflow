@@ -14,22 +14,35 @@ export function resolveGitExecutable(
   pathValue: string = process.env.PATH ?? '',
   existsFile: (path: string) => boolean = existsSync,
 ): string {
-  if (platform !== 'win32') return 'git';
+  if (platform !== 'win32') {
+    return 'git';
+  }
 
   for (const rawDirectory of pathValue.split(';')) {
     const directory = rawDirectory.trim().replace(/^"|"$/gu, '');
-    if (!directory) continue;
-    if (!existsFile(win32.join(directory, 'git.exe'))) continue;
+    if (!directory) {
+      continue;
+    }
+
+    if (!existsFile(win32.join(directory, 'git.exe'))) {
+      continue;
+    }
 
     const kind = win32.basename(directory).toLowerCase();
-    if (kind !== 'cmd' && kind !== 'bin') return 'git';
+    if (kind !== 'cmd' && kind !== 'bin') {
+      return 'git';
+    }
 
     const installation = win32.dirname(directory);
     for (const runtime of ['ucrt64', 'mingw64']) {
       const executable = win32.join(installation, runtime, 'bin', 'git.exe');
-      if (existsFile(executable)) return executable;
+      if (existsFile(executable)) {
+        return executable;
+      }
     }
+
     return 'git';
   }
+
   return 'git';
 }

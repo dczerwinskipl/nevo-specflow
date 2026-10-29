@@ -60,12 +60,17 @@ export function applyLedgerUpsert(
       !entries.has(change.path) &&
       upsert.paths.findIndex((other) => other.path === change.path) === index,
   );
-  if (entries.size + fresh.length > LEDGER_MAX_PATHS) throw new LedgerLimitError();
+  if (entries.size + fresh.length > LEDGER_MAX_PATHS) {
+    throw new LedgerLimitError();
+  }
 
   let changed = false;
   for (const change of upsert.paths) {
     const known = entries.get(change.path);
-    if (known?.operationIds.includes(upsert.operationId) === true) continue;
+    if (known?.operationIds.includes(upsert.operationId) === true) {
+      continue;
+    }
+
     changed = true;
     entries.set(change.path, {
       path: change.path,
@@ -78,9 +83,13 @@ export function applyLedgerUpsert(
       reason: upsert.reason,
     });
   }
-  if (!changed && record !== undefined) return record;
+
+  if (!changed && record !== undefined) {
+    return record;
+  }
 
   const empty = record === undefined || record.entries.length === 0;
+
   return {
     version: LEDGER_VERSION,
     projectId: subject.projectId,
@@ -102,6 +111,9 @@ export function removeLedgerPaths(
   updatedAt: string,
 ): LedgerRecord {
   const kept = record.entries.filter((entry) => !paths.has(entry.path));
-  if (kept.length === record.entries.length) return record;
+  if (kept.length === record.entries.length) {
+    return record;
+  }
+
   return { ...record, updatedAt, entries: kept };
 }

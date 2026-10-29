@@ -42,6 +42,7 @@ export function CreateAgentSection({
       : catalogue.providers.length > 1 && '@lg:grid-cols-2',
     catalogue.providers.length >= 5 && '@2xl:grid-cols-3',
   );
+
   return (
     <div className="grid gap-4">
       <fieldset disabled={locked} className="grid gap-4">
@@ -61,6 +62,7 @@ export function CreateAgentSection({
         <ChoiceTileGroup aria-labelledby={legendId} columns={providerColumns}>
           {catalogue.providers.map((p) => {
             const status = providerStatus(p, catalogue);
+
             return (
               <ChoiceTile
                 key={p.id}

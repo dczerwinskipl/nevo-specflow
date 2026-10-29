@@ -18,6 +18,7 @@ export const AlertDialogContent = forwardRef<
   ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & { container?: HTMLElement | null }
 >(function AlertDialogContent({ className, container, ...props }, ref) {
   const capture = useDesignMetadata('AlertDialog');
+
   return (
     <AlertDialogPrimitive.Portal container={container}>
       <AlertDialogPrimitive.Overlay className="fixed inset-0 z-40 bg-overlay" />

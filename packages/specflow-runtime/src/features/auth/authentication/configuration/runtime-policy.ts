@@ -43,11 +43,13 @@ function isLoopbackHost(host: string): boolean {
   if (normalized === 'localhost' || normalized.endsWith('.localhost')) {
     return true;
   }
+
   if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
     return true;
   }
 
   const parts = normalized.split('.');
+
   return (
     parts.length === 4 &&
     parts[0] === '127' &&

@@ -11,12 +11,16 @@ export function useUnmountSignal(): AbortSignal {
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
+
     return () => {
       mounted.current = false;
       setTimeout(() => {
-        if (!mounted.current) controller.abort();
+        if (!mounted.current) {
+          controller.abort();
+        }
       }, 0);
     };
   }, [controller]);
+
   return controller.signal;
 }

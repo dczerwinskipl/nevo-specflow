@@ -15,6 +15,9 @@ export function UiModulesProvider({ modules, children }: UiModulesProviderProps)
 
 export function useUiModules(): UiRegistry {
   const registry = useContext(UiRegistryContext);
-  if (!registry) throw new Error('UiModulesProvider is required to render UI contributions.');
+  if (!registry) {
+    throw new Error('UiModulesProvider is required to render UI contributions.');
+  }
+
   return registry;
 }

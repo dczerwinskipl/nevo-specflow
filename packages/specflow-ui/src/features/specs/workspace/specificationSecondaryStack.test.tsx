@@ -19,6 +19,7 @@ const taskId = 'TASK-77';
 
 function PreviewStatus() {
   const preview = useTaskPreviewData({ specId, taskId });
+
   return (
     <span>
       {preview.status === 'ready' ? (
@@ -47,7 +48,7 @@ describe('Task preview by identity', () => {
         },
         acceptanceCriteria: [],
       });
-      if (status)
+      if (status) {
         queryClient
           .getQueryCache()
           .find({ queryKey: taskKeys.detail(specId, taskId), exact: true })!
@@ -56,6 +57,8 @@ describe('Task preview by identity', () => {
             error: new HttpClientError('Refresh failed', { kind: 'http', status }),
             fetchStatus: 'idle',
           });
+      }
+
       const data = { ...createSpecificationWorkspaceFixture('working', specId), taskGroups: [] };
       const markup = renderToStaticMarkup(
         <QueryClientProvider client={queryClient}>
@@ -78,7 +81,10 @@ describe('Task preview by identity', () => {
         expect(markup).not.toContain('Referenced outside Task list');
       } else {
         expect(markup).toContain('Referenced outside Task list');
-        if (status === 503) expect(markup).toContain('stale with retry');
+        if (status === 503) {
+          expect(markup).toContain('stale with retry');
+        }
+
         expect(markup).toContain('retry available');
       }
     },
@@ -90,7 +96,10 @@ describe('Task Preview HTTP failure states', () => {
     const retry = vi.fn();
     const state = taskPreviewFailure(401, false, taskId, retry);
     expect(state.status).toBe('error');
-    if (state.status !== 'error') throw new Error('Expected retryable error');
+    if (state.status !== 'error') {
+      throw new Error('Expected retryable error');
+    }
+
     expect(state.message).toBe(appI18n.t('specification.taskPreviewSessionExpired'));
     state.retry?.();
     expect(retry).toHaveBeenCalledOnce();
@@ -115,7 +124,10 @@ describe('Task Preview HTTP failure states', () => {
     const retry = vi.fn();
     const state = taskPreviewFailure(503, false, taskId, retry);
     expect(state.status).toBe('error');
-    if (state.status !== 'error') throw new Error('Expected recoverable error');
+    if (state.status !== 'error') {
+      throw new Error('Expected recoverable error');
+    }
+
     state.retry?.();
     expect(retry).toHaveBeenCalledOnce();
   });

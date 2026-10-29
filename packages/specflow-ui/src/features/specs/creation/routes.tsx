@@ -40,6 +40,7 @@ function NewSpecification() {
   const navigate = createSpecificationRoute.useNavigate();
   const collection = useApplicationCollection();
   const { draft } = createSpecificationRoute.useSearch();
+
   return (
     <AppWorkspaceProvider>
       <CreateSpecificationScreen
@@ -53,18 +54,19 @@ function NewSpecification() {
           })
         }
         onCreated={(specId, documentId) => {
-          if (documentId)
+          if (documentId) {
             void navigate({
               to: '/specs/$specId/documents/$documentId',
               params: { specId, documentId },
               search: { collection },
             });
-          else
+          } else {
             void navigate({
               to: '/specs/$specId/documents',
               params: { specId },
               search: { collection },
             });
+          }
         }}
         onSession={(specId, sessionId) =>
           void navigate({
@@ -77,10 +79,12 @@ function NewSpecification() {
     </AppWorkspaceProvider>
   );
 }
+
 function CreatingSpecification() {
   const { operationId } = createOperationRoute.useParams();
   const navigate = createOperationRoute.useNavigate();
   const collection = useApplicationCollection();
+
   return (
     <AppWorkspaceProvider>
       <CreateOperationScreen
@@ -104,10 +108,12 @@ function CreatingSpecification() {
     </AppWorkspaceProvider>
   );
 }
+
 function NewSession() {
   const { specId } = newSessionRoute.useParams();
   const navigate = newSessionRoute.useNavigate();
   const { collection } = newSessionRoute.useSearch();
+
   return (
     <AppWorkspaceProvider>
       <CreateSpecificationScreen

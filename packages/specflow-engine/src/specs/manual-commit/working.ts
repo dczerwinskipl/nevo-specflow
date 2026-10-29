@@ -11,7 +11,10 @@ import type { WorkingContent } from './selection';
  */
 export async function readWorkingContent(root: string, path: string): Promise<WorkingContent> {
   const found = await hashWorkingFile(join(root, path), RAW_CONTENT_MAX_BYTES);
-  if (found.kind === 'absent') return null;
+  if (found.kind === 'absent') {
+    return null;
+  }
+
   return found.kind === 'file' ? found.sha256 : undefined;
 }
 
@@ -21,6 +24,9 @@ export async function readWorkingContents(
   paths: readonly string[],
 ): Promise<Map<string, WorkingContent>> {
   const found = new Map<string, WorkingContent>();
-  for (const path of paths) found.set(path, await readWorkingContent(root, path));
+  for (const path of paths) {
+    found.set(path, await readWorkingContent(root, path));
+  }
+
   return found;
 }

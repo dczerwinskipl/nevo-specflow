@@ -63,9 +63,13 @@ function refusalOf(request: DocumentChangeRequest): string | undefined {
     planDocumentChange(snapshot, request, {
       folderRevision: (folder) => folderRevisionOf(folder, snapshot.files, snapshot.manifest),
     });
+
     return undefined;
   } catch (error) {
-    if (error instanceof DocumentError) return error.code;
+    if (error instanceof DocumentError) {
+      return error.code;
+    }
+
     throw error;
   }
 }
@@ -123,8 +127,10 @@ describe('the tree actions and the planners agree', () => {
       if (folder.path === '') {
         expect(folder.actions.rename).toEqual({ available: false, reason: 'root' });
         expect(folder.revision).toBeUndefined();
+
         return;
       }
+
       const target = { kind: 'folder', path: folder.path } as const;
       // The revision the tree reports is the one a folder operation compares.
       const expectedRevision = folder.revision!;

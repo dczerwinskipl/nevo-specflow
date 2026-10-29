@@ -39,7 +39,9 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
   readonly calls = { list: 0, read: 0, stat: 0 };
 
   constructor(files: Readonly<Record<string, string | Uint8Array>> = {}) {
-    for (const [path, content] of Object.entries(files)) this.set(path, content);
+    for (const [path, content] of Object.entries(files)) {
+      this.set(path, content);
+    }
   }
 
   /** Logical clock in nanoseconds; tests set it to simulate "modified just now". */
@@ -49,6 +51,7 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
 
   private stamp(): bigint {
     this.tickNs += 1_000_000n;
+
     return this.tickNs;
   }
 
@@ -68,7 +71,10 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
   /** Change the modification time of an entry without changing its content. */
   touch(path: string, atNs?: bigint): void {
     const node = this.nodes.get(path);
-    if (!node) throw new Error(`No entry ${path}.`);
+    if (!node) {
+      throw new Error(`No entry ${path}.`);
+    }
+
     const now = atNs ?? this.stamp();
     node.mtimeNs = now;
     node.ctimeNs = now;
@@ -105,6 +111,7 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
 
   private fresh(): { mtimeNs: bigint; ctimeNs: bigint; ino: bigint } {
     const now = this.stamp();
+
     return { mtimeNs: now, ctimeNs: now, ino: this.nextIno++ };
   }
 
@@ -112,20 +119,31 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
     if (options.exclusive === true && this.nodes.has(path)) {
       return Promise.reject(new Error(`The file ${path} exists.`));
     }
+
     this.set(path, bytes);
+
     return Promise.resolve();
   }
 
   list(directory: string, maxEntries: number): Promise<ListOutcome> {
     this.calls.list += 1;
-    if (this.unsafeDirectories.has(directory)) return Promise.resolve({ state: 'unsafe' });
+    if (this.unsafeDirectories.has(directory)) {
+      return Promise.resolve({ state: 'unsafe' });
+    }
+
     const prefix = directory === '' ? '' : `${directory}/`;
     const children = new Map<string, SourceEntry>();
     for (const [path, node] of this.nodes) {
-      if (!path.startsWith(prefix)) continue;
+      if (!path.startsWith(prefix)) {
+        continue;
+      }
+
       const rest = path.slice(prefix.length);
       const [first, ...tail] = rest.split('/');
-      if (first === undefined || first === '') continue;
+      if (first === undefined || first === '') {
+        continue;
+      }
+
       if (tail.length === 0) {
         children.set(first, {
           name: first,
@@ -137,7 +155,10 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
         });
       } else {
         const current = children.get(first);
-        if (current !== undefined && current.type !== 'directory') continue;
+        if (current !== undefined && current.type !== 'directory') {
+          continue;
+        }
+
         children.set(first, {
           name: first,
           type: this.unsafeDirectories.has(`${prefix}${first}`) ? 'symlink' : 'directory',
@@ -148,10 +169,15 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
         });
       }
     }
+
     if (children.size === 0 && !this.hasDirectory(directory)) {
       return Promise.resolve({ state: 'absent' });
     }
-    if (children.size > maxEntries) return Promise.resolve({ state: 'overflow' });
+
+    if (children.size > maxEntries) {
+      return Promise.resolve({ state: 'overflow' });
+    }
+
     return Promise.resolve({
       state: 'ok',
       entries: [...children.values()],
@@ -159,9 +185,17 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
   }
 
   private hasDirectory(directory: string): boolean {
-    if (directory === '') return this.nodes.size > 0;
+    if (directory === '') {
+      return this.nodes.size > 0;
+    }
+
     const prefix = `${directory}/`;
-    for (const path of this.nodes.keys()) if (path.startsWith(prefix)) return true;
+    for (const path of this.nodes.keys()) {
+      if (path.startsWith(prefix)) {
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -173,20 +207,42 @@ export class MemoryDefinitionSource implements DefinitionSource, DefinitionWrite
         return Promise.resolve({ state: 'unsafe' });
       }
     }
+
     const node = this.nodes.get(path);
-    if (!node) return Promise.resolve({ state: 'absent' });
-    if (node.type === 'symlink') return Promise.resolve({ state: 'unsafe' });
-    if (node.type !== 'file') return Promise.resolve({ state: 'not-regular' });
-    if (node.bytes.length > maxBytes) return Promise.resolve({ state: 'too-large' });
+    if (!node) {
+      return Promise.resolve({ state: 'absent' });
+    }
+
+    if (node.type === 'symlink') {
+      return Promise.resolve({ state: 'unsafe' });
+    }
+
+    if (node.type !== 'file') {
+      return Promise.resolve({ state: 'not-regular' });
+    }
+
+    if (node.bytes.length > maxBytes) {
+      return Promise.resolve({ state: 'too-large' });
+    }
+
     return Promise.resolve({ state: 'ok', bytes: Buffer.from(node.bytes) });
   }
 
   stat(path: string): Promise<StatOutcome> {
     this.calls.stat += 1;
     const node = this.nodes.get(path);
-    if (!node) return Promise.resolve({ state: 'absent' });
-    if (node.type === 'symlink') return Promise.resolve({ state: 'unsafe' });
-    if (node.type !== 'file') return Promise.resolve({ state: 'not-regular' });
+    if (!node) {
+      return Promise.resolve({ state: 'absent' });
+    }
+
+    if (node.type === 'symlink') {
+      return Promise.resolve({ state: 'unsafe' });
+    }
+
+    if (node.type !== 'file') {
+      return Promise.resolve({ state: 'not-regular' });
+    }
+
     return Promise.resolve({
       state: 'ok',
       entry: {

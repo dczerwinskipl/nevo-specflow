@@ -29,6 +29,7 @@ async function installedHome(): Promise<{ home: string; engine: SpecFlowEngine }
   const home = join(scratch, `home-${counter}`);
   await mkdir(home, { recursive: true });
   await installProjectDefinitionFiles(home);
+
   return { home, engine: { context: { project: { homeRoot: home } } } as SpecFlowEngine };
 }
 
@@ -84,7 +85,10 @@ describe('showProjectDefinition', () => {
     await writeFile(archetypeFile(home, 'feature'), 'kind: specification-archetype\n: [broken');
     const invalid = await showProjectDefinition(engine, 'specification-archetype/feature');
     expect(invalid).toMatchObject({ state: 'invalid' });
-    if (invalid.state === 'invalid') expect(invalid.problems.length).toBeGreaterThan(0);
+    if (invalid.state === 'invalid') {
+      expect(invalid.problems.length).toBeGreaterThan(0);
+    }
+
     expect(await showProjectDefinition(engine, 'document-type/ghost')).toEqual({
       state: 'absent',
       kind: 'document-type',

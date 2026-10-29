@@ -63,44 +63,71 @@ export async function listSpecificationFiles(specDir: string): Promise<ListedFil
         withFileTypes: true,
       });
     } catch (error) {
-      if (relativeDir === '') throw rootUnreadable();
+      if (relativeDir === '') {
+        throw rootUnreadable();
+      }
+
       // A folder that vanished is simply gone; one that cannot be read is reported, never dropped.
-      if (!isAbsent(error)) unaddressable.push(relativeDir);
+      if (!isAbsent(error)) {
+        unaddressable.push(relativeDir);
+      }
+
       return;
     }
+
     entries.sort((left, right) => compareNames(left.name, right.name));
     for (const entry of entries) {
-      if (truncated) return;
+      if (truncated) {
+        return;
+      }
+
       entriesSeen += 1;
       if (entriesSeen > ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX) {
         truncated = true;
+
         return;
       }
-      if (entry.name.startsWith('.')) continue;
+
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
       const relative = relativeDir === '' ? entry.name : relativeDir + '/' + entry.name;
-      if (entry.isSymbolicLink()) continue; // counted and reported by the archive traversal
-      if (!entry.isDirectory() && !entry.isFile()) continue; // special file: same
+      if (entry.isSymbolicLink()) {
+        continue;
+      } // counted and reported by the archive traversal
+
+      if (!entry.isDirectory() && !entry.isFile()) {
+        continue;
+      } // special file: same
+
       if (isUnaddressable(entry.name)) {
         unaddressable.push(relative);
         continue;
       }
+
       if (entry.isDirectory()) {
         if (depth >= FOLDER_DEPTH_MAX) {
           truncated = true;
+
           return;
         }
+
         await walk(relative, depth + 1);
       } else {
         if (paths.length >= LISTED_FILES_MAX) {
           truncated = true;
+
           return;
         }
+
         paths.push(relative);
       }
     }
   }
 
   await walk('', 0);
+
   return { paths, truncated, unaddressable };
 }
 
@@ -138,7 +165,9 @@ export async function countArchiveInventory(specDir: string): Promise<ArchiveCou
 
   const skip = (relative: string): void => {
     skippedCount += 1;
-    if (skippedPaths.length < SKIPPED_PATHS_MAX) skippedPaths.push(relative);
+    if (skippedPaths.length < SKIPPED_PATHS_MAX) {
+      skippedPaths.push(relative);
+    }
   };
 
   async function walk(relativeDir: string): Promise<void> {
@@ -148,19 +177,31 @@ export async function countArchiveInventory(specDir: string): Promise<ArchiveCou
         withFileTypes: true,
       });
     } catch (error) {
-      if (relativeDir === '') throw rootUnreadable();
+      if (relativeDir === '') {
+        throw rootUnreadable();
+      }
+
       // A directory Close archive could not read either: it will refuse, like a special entry.
-      if (!isAbsent(error)) skip(relativeDir);
+      if (!isAbsent(error)) {
+        skip(relativeDir);
+      }
+
       return;
     }
+
     names.sort((left, right) => compareNames(left.name, right.name));
     for (const entry of names) {
-      if (bounded) return;
+      if (bounded) {
+        return;
+      }
+
       entries += 1;
       if (entries > ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX) {
         bounded = true;
+
         return;
       }
+
       const relative = relativeDir === '' ? entry.name : relativeDir + '/' + entry.name;
       if (entry.isSymbolicLink()) {
         skip(relative);
@@ -172,10 +213,14 @@ export async function countArchiveInventory(specDir: string): Promise<ArchiveCou
           const stat = await lstat(join(specDir, relative), { bigint: true }).catch(
             () => undefined,
           );
-          if (stat && stat.size > BigInt(ARCHIVE_FILE_MAX_BYTES)) oversizedPath = relative;
+          if (stat && stat.size > BigInt(ARCHIVE_FILE_MAX_BYTES)) {
+            oversizedPath = relative;
+          }
         }
+
         if (files >= ARCHIVE_COUNT_TRAVERSAL_FILES_STOP) {
           bounded = true;
+
           return;
         }
       } else {
@@ -185,6 +230,7 @@ export async function countArchiveInventory(specDir: string): Promise<ArchiveCou
   }
 
   await walk('');
+
   return {
     files,
     bounded,

@@ -41,7 +41,10 @@ function DocumentLifecycle({
   const client = useMemo(() => {
     const result = createSpecFlowQueryClient();
     result.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
-    if (cached) result.setQueryData(documentKeys.detail('spec', 'doc-a', 'r1'), response('doc-a'));
+    if (cached) {
+      result.setQueryData(documentKeys.detail('spec', 'doc-a', 'r1'), response('doc-a'));
+    }
+
     return result;
     // The fixture's initial cache is deliberately fixed at mount.
   }, []);
@@ -59,10 +62,17 @@ function DocumentLifecycle({
   );
   const settle = (documentId: string, status?: number) => {
     const request = requests.current.get(documentId);
-    if (!request) throw new Error('Expected document request');
-    if (status) request.reject(new HttpClientError('Fixture response', { kind: 'http', status }));
-    else request.resolve(response(documentId));
+    if (!request) {
+      throw new Error('Expected document request');
+    }
+
+    if (status) {
+      request.reject(new HttpClientError('Fixture response', { kind: 'http', status }));
+    } else {
+      request.resolve(response(documentId));
+    }
   };
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -148,8 +158,10 @@ export const RetentionAndAccessLoss: Story = {
         ? 'none'
         : 'initial-content-appearance',
     );
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       await expect(getComputedStyle(owner).animationDuration).toBe('0.15s');
+    }
+
     await userEvent.click(canvas.getByRole('button', { name: 'Refresh document' }));
     await expect(canvas.getByText('Continue reading this protected content.')).toBe(paragraph);
     await userEvent.click(canvas.getByRole('button', { name: 'Fail refresh' }));

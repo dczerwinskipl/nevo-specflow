@@ -20,7 +20,10 @@ export function assertCreatePathsFitWindows(
   relativePaths: readonly string[],
   options: WindowsPathBoundOptions = {},
 ): void {
-  if ((options.platform ?? process.platform) !== 'win32') return;
+  if ((options.platform ?? process.platform) !== 'win32') {
+    return;
+  }
+
   for (const path of relativePaths) {
     const slash = path.lastIndexOf('/');
     const staged = slash < 0 ? STAGED_FILE_NAME_LENGTH : slash + 1 + STAGED_FILE_NAME_LENGTH;

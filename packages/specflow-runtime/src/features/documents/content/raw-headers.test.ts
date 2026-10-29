@@ -96,6 +96,7 @@ describe('safeMediaType', () => {
       expect(safeMediaType({ kind: 'text', mediaType })).toBe('text/plain; charset=utf-8');
       expect(safeMediaType({ kind: 'binary', mediaType })).toBe('application/octet-stream');
     }
+
     expect(safeMediaType({ kind: 'image', mediaType: 'text/html' })).toBe(
       'application/octet-stream',
     );

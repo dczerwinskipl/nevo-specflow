@@ -96,8 +96,12 @@ const protectedAction = { available: false, reason: 'protected' } as const;
 type Scenario = 'states' | 'read-only' | 'conflict' | 'project';
 
 function treeFor(scenario: Scenario): DocumentTree {
-  if (scenario === 'project') return treeFor('states');
+  if (scenario === 'project') {
+    return treeFor('states');
+  }
+
   const readOnly = { available: false, reason: 'branch-protected' } as const;
+
   return documentTreeFixture({
     archetype: { id: 'team', version: 1, title: 'Team feature' },
     folders: ['architecture', 'notes'],
@@ -213,6 +217,7 @@ const control = { removeFile: (_id: string) => undefined as void };
 
 function record(tree: DocumentTree, id: string): DocumentContent {
   const document = tree.documents.find((candidate) => candidate.id === id)!;
+
   return documentContentFixture({
     id,
     path: document.path,
@@ -265,6 +270,7 @@ function Workspace({
       specificationApi: {
         getSpecificationWorkspace: async () => {
           const dto = await workspace.getSpecificationWorkspace('api-integration');
+
           return { ...dto, specification: { ...dto.specification, title: 'Single sign-on' } };
         },
       },
@@ -299,7 +305,7 @@ function Workspace({
         documentTree: () => Promise.resolve(tree),
         addDocuments: (_spec, input) => {
           calls.addDocuments(input);
-          if (creates++ === 0)
+          if (creates++ === 0) {
             return Promise.reject(
               new HttpClientError('Conflict', {
                 kind: 'http',
@@ -307,6 +313,8 @@ function Workspace({
                 data: { error: 'SPEC_BUSY', code: 'SPEC_BUSY' },
               }),
             );
+          }
+
           const added = documentTreeFixture({
             documents: input.documents.map((entry) => ({
               id: entry.path,
@@ -328,6 +336,7 @@ function Workspace({
             folders: [],
             commit: { state: 'committed', sha: 'c'.repeat(40) },
           };
+
           return Promise.resolve(result);
         },
         operateDocument: (_spec, input) => {
@@ -351,8 +360,10 @@ function Workspace({
               folders: [],
               commit: { state: 'committed', sha: 'c'.repeat(40) },
             };
+
             return Promise.resolve(result);
           }
+
           if (
             input.action === 'delete' &&
             tree.dangling.some((entry) => entry.id === input.documentId)
@@ -370,14 +381,17 @@ function Workspace({
               folders: [],
               commit: { state: 'committed', sha: 'c'.repeat(40) },
             };
+
             return Promise.resolve(result);
           }
+
           return Promise.reject(new Error('Not part of this story'));
         },
         save: () => {
           calls.save();
           const code =
             saveRefusal ?? (scenario === 'conflict' ? 'DOCUMENT_REVISION_CONFLICT' : undefined);
+
           return code
             ? Promise.reject(
                 new HttpClientError('Refused', {
@@ -392,7 +406,10 @@ function Workspace({
     });
     control.removeFile = (id) => {
       const document = tree.documents.find((item) => item.id === id);
-      if (!document) return;
+      if (!document) {
+        return;
+      }
+
       tree = {
         ...tree,
         documents: tree.documents.filter((item) => item.id !== id),
@@ -408,9 +425,12 @@ function Workspace({
       };
       void query.invalidateQueries({ queryKey: ['specifications', SPEC] });
     };
+
     const router = createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] }), services);
+
     return { query, router };
   }, [scenario, path, saveRefusal]);
+
   return (
     <QueryClientProvider client={setup.query}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
@@ -797,8 +817,9 @@ export const PreviewCentredOnWideScreens: Story = {
       const panel = document.querySelector('[data-document-preview]')!.getBoundingClientRect();
       const left = box.left - panel.left;
       const right = panel.right - box.right;
-      if (left <= 24 || Math.abs(left - right) > 2)
+      if (left <= 24 || Math.abs(left - right) > 2) {
         throw new Error(`Gutters are not equal: ${left} px left, ${right} px right`);
+      }
     });
     await expect(group.firstElementChild!.getBoundingClientRect().width).toBeLessThanOrEqual(760);
     await viewport(1440);
@@ -821,8 +842,9 @@ export const PreviewWithoutContentsCentredOnWideScreens: Story = {
       const panel = document.querySelector('[data-document-preview]')!.getBoundingClientRect();
       const left = box.left - panel.left;
       const right = panel.right - box.right;
-      if (left <= 24 || Math.abs(left - right) > 2)
+      if (left <= 24 || Math.abs(left - right) > 2) {
         throw new Error(`Gutters are not equal: ${left} px left, ${right} px right`);
+      }
     });
     await expect(measure.getBoundingClientRect().width).toBeLessThanOrEqual(760);
     await viewport(1440);
@@ -892,6 +914,7 @@ async function refusedSave(userEvent: {
   await userEvent.click(await screen.findByRole('textbox', { name: 'Content of ux.md' }));
   await userEvent.keyboard('{Control>}{End}{/Control} Change.');
   await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
   return within(await screen.findByRole('alert'));
 }
 

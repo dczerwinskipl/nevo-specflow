@@ -42,14 +42,19 @@ export function createDemoDocuments(
   /** The directory of a Specification whose record is known (created, or seeded on first use). */
   const directoryOf = (specId: string, record?: DemoSpecification) => {
     const created = state.specifications.get(specId)?.documents;
-    if (created) return created;
+    if (created) {
+      return created;
+    }
+
     let documents = seeded.get(specId);
     if (!documents && record) {
       documents = seedDocuments(record, state.archetypes, { showcase: options.showcase });
       seeded.set(specId, documents);
     }
+
     return documents;
   };
+
   const directory = async (specId: string, find: Find) =>
     directoryOf(specId, state.specifications.has(specId) ? undefined : await find(specId));
 
@@ -64,7 +69,10 @@ export function createDemoDocuments(
     answer: (documents: DemoSpecDocuments, planned: PlannedWrite) => R,
   ): Promise<R> {
     const documents = await directory(specId, find);
-    if (!documents) throw new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown Specification.');
+    if (!documents) {
+      throw new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown Specification.');
+    }
+
     const entry = state.request(
       subject,
       operation.name + ':' + specId,
@@ -76,14 +84,19 @@ export function createDemoDocuments(
           'The operation id was used with another body.',
         ),
     );
-    if (entry.result) return entry.result as R;
+    if (entry.result) {
+      return entry.result as R;
+    }
+
     assertWritable(documents);
     const planned = plan(documents);
-    if (state.failing('save'))
+    if (state.failing('save')) {
       throw new DocumentError('COMMIT_BLOCKED', 'The checkout cannot take a commit now.', {
         reason: 'commit-blocked',
         blockedBy: 'git-busy',
       });
+    }
+
     if (latency > 0) {
       documents.busy = true;
       try {
@@ -92,14 +105,19 @@ export function createDemoDocuments(
         documents.busy = false;
       }
     }
+
     const pathsBefore = pathsOf(documents).join('\n');
     documents.registry = planned.registry;
     documents.files = planned.files;
     documents.folders = planned.folders;
     const paths = pathsOf(documents);
-    if (paths.join('\n') !== pathsBefore) options.onPathsChanged?.(specId, paths);
+    if (paths.join('\n') !== pathsBefore) {
+      options.onPathsChanged?.(specId, paths);
+    }
+
     const result = answer(documents, planned);
     entry.result = result;
+
     return result;
   }
 
@@ -112,11 +130,13 @@ export function createDemoDocuments(
     (operationId: string) =>
     (documents: DemoSpecDocuments, planned: PlannedWrite): DocumentOperationResult => {
       const revision = demoTree(documents).revision;
+
       return {
         operationId,
         revision,
         documents: planned.affectedPaths.map((path) => {
           const type = documents.registry.find((entry) => entry.path === path)?.type;
+
           return {
             id: documentIdOf(documents, path),
             path,
@@ -141,6 +161,7 @@ export function createDemoDocuments(
     /** All file paths of a specification as seen by a session context snapshot. */
     pathsFor: (specId: string, record: DemoSpecification) => {
       const documents = directoryOf(specId, record);
+
       return documents ? pathsOf(documents) : [];
     },
     save(
@@ -160,6 +181,7 @@ export function createDemoDocuments(
           const path = planned.affectedPaths[0]!;
           const revision = documents.files.get(path)!.revision;
           const type = documents.registry.find((entry) => entry.path === path)?.type;
+
           return {
             operationId: input.operationId,
             document: {
@@ -210,16 +232,22 @@ export function createDemoDocuments(
      */
     async contribution(specId: string, find: Find) {
       const documents = await directory(specId, find);
-      if (!documents)
+      if (!documents) {
         return { state: 'unavailable' as const, reason: 'source_unavailable' as const };
+      }
+
       return {
         state: 'available' as const,
         data: {
           folders: allFolders(documents),
           items: documents.registry.flatMap((entry) => {
             const file = documents.files.get(entry.path);
-            if (!file) return [];
+            if (!file) {
+              return [];
+            }
+
             const text = /\.(md|markdown)$/iu.test(entry.path) ? decodeText(file.bytes) : undefined;
+
             return [
               {
                 id: entry.id,
@@ -235,4 +263,5 @@ export function createDemoDocuments(
     },
   };
 }
+
 export type DemoDocuments = ReturnType<typeof createDemoDocuments>;

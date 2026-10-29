@@ -42,6 +42,7 @@ export const documentTypeKind = defineDefinitionKind<
         message: `The document type id "${type.id}" is in the reserved "u-" space.`,
       });
     }
+
     if (type.defaultFilename !== undefined && !validateDocumentPath(type.defaultFilename).ok) {
       issues.push({
         code: 'schema-invalid',
@@ -49,6 +50,7 @@ export const documentTypeKind = defineDefinitionKind<
         message: 'The default filename is not a valid document path.',
       });
     }
+
     return issues;
   },
   references: () => [],

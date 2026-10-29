@@ -38,8 +38,14 @@ export function assertManualCommitClaimsAvailable(
   self: ClaimSelf | undefined,
 ): void {
   for (const record of records) {
-    if (self?.kind === 'manual-commit' && self.operationId === record.operationId) continue;
-    if (!manualCommitHoldsClaim(record)) continue;
+    if (self?.kind === 'manual-commit' && self.operationId === record.operationId) {
+      continue;
+    }
+
+    if (!manualCommitHoldsClaim(record)) {
+      continue;
+    }
+
     if (overlaps(requested, resourcesForManualCommit(record))) {
       throw new SharedResourceError(
         'RESOURCE_CONFLICT',
@@ -74,7 +80,10 @@ export async function listManualCommitPathViews(
 ): Promise<readonly ManualCommitPathView[]> {
   const views: ManualCommitPathView[] = [];
   for (const journal of await listManualCommitJournals(context)) {
-    if (journal.workspaceId !== workspaceId) continue;
+    if (journal.workspaceId !== workspaceId) {
+      continue;
+    }
+
     if (
       journal.stage !== 'reserved' &&
       journal.stage !== 'committing' &&
@@ -82,6 +91,7 @@ export async function listManualCommitPathViews(
     ) {
       continue;
     }
+
     const entries = await readSnapshot(context, journal);
     views.push({
       operationId: journal.operationId,
@@ -90,5 +100,6 @@ export async function listManualCommitPathViews(
       paths: new Set(entries.map((entry) => entry.path)),
     });
   }
+
   return views;
 }

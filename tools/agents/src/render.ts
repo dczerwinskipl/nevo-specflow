@@ -17,19 +17,23 @@ function effectiveDelivery(
   instruction: LoadedInstruction,
   mode: ContentMode,
 ): 'inline' | 'reference' {
-  if (instruction.delivery === 'inline' || instruction.delivery === 'reference')
+  if (instruction.delivery === 'inline' || instruction.delivery === 'reference') {
     return instruction.delivery;
+  }
+
   return mode === 'embed' ? 'inline' : 'reference';
 }
 
 function linkFrom(skillPath: string, sourcePath: string, repoRoot: string): string {
   const target = relative(dirname(skillPath), sourcePath).replaceAll('\\', '/');
   const repositoryPath = relative(repoRoot, sourcePath).replaceAll('\\', '/');
+
   return `[\`${repositoryPath}\`](${target.startsWith('.') ? target : `./${target}`})`;
 }
 
 function renderInline(instruction: LoadedInstruction): string {
   const when = appliesWhen(instruction);
+
   return [
     `## ${instruction.title}`,
     ...(when
@@ -51,7 +55,10 @@ function renderReferenceTable(
   repoRoot: string,
   conditional: boolean,
 ): string {
-  if (instructions.length === 0) return '';
+  if (instructions.length === 0) {
+    return '';
+  }
+
   const lines = [`## ${title}`, ''];
   if (conditional) {
     lines.push('| What | When | Description | Source |', '|---|---|---|---|');
@@ -72,12 +79,17 @@ function renderReferenceTable(
       );
     }
   }
+
   lines.push('');
+
   return lines.join('\n');
 }
 
 function renderRequiredKnowledge(agent: LoadedAgent): string {
-  if (agent.knowledge.required.length === 0) return '';
+  if (agent.knowledge.required.length === 0) {
+    return '';
+  }
+
   return [
     '## Required repository knowledge',
     '',
@@ -97,6 +109,7 @@ function projectedDescription(agent: LoadedAgent): string {
   if (!allowsAutomaticSelection(agent)) {
     return `Use only when the ${agent.id} profile is explicitly selected by the user, workflow, or orchestrator. ${agent.description}`;
   }
+
   return agent.description;
 }
 
@@ -127,9 +140,13 @@ export function renderSkill(
 
   for (const instruction of agent.instructions) {
     const delivery = effectiveDelivery(instruction, mode);
-    if (delivery === 'inline') inline.push(instruction);
-    else if (instruction.applies === 'always') alwaysRefs.push(instruction);
-    else conditionalRefs.push(instruction);
+    if (delivery === 'inline') {
+      inline.push(instruction);
+    } else if (instruction.applies === 'always') {
+      alwaysRefs.push(instruction);
+    } else {
+      conditionalRefs.push(instruction);
+    }
   }
 
   const frontmatter = [

@@ -22,6 +22,7 @@ export const documentChangeClaims: ClaimSource<DocumentChangeJournal> = {
           'A document change journal is corrupt or unreadable; recover it.',
         );
       }
+
       throw error;
     }
   },

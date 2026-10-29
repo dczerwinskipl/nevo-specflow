@@ -67,6 +67,7 @@ function useTableStateUpdater<Key extends keyof InternalTableState>(
           [key]: functionalUpdate(updater, previous[key]),
         }));
       }
+
       onChange?.(updater);
     },
     [controlledValue, key, onChange, setInternalState],
@@ -174,6 +175,7 @@ export function useDataTable<TData extends RowData>({
             rowIndex: info.row.index,
             value: info.getValue(),
           };
+
           return column.cell
             ? column.cell(context)
             : renderDataTableValue(context, messages, valueFormatter);

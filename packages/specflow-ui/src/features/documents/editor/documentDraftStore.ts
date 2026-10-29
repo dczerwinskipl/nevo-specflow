@@ -30,6 +30,7 @@ export const documentDraftKey = (spec: string, document: string) =>
  */
 export function parseDocumentDraftKey(key: string): { specId: string; documentId: string } {
   const at = key.indexOf(':');
+
   return {
     specId: decodeURIComponent(key.slice(0, at)),
     documentId: key.slice(at + 1),
@@ -47,6 +48,7 @@ export const isDraftDirty = (draft: Pick<DocumentDraft, 'content' | 'baseline'>)
  */
 export function draftFor(record: DocumentContent): DocumentDraft {
   const content = record.content ?? '';
+
   return {
     content,
     baseline: content,
@@ -103,6 +105,7 @@ export function createDocumentDraftStore(): DocumentDraftStore {
   const drafts: KeyedStore<DocumentDraft> = createKeyedStore();
   const anchors = new Map<string, ScrollAnchor>();
   const incarnations = new Map<string, number>();
+
   return {
     get: (s, d) => drafts.get(documentDraftKey(s, d)),
     set: (s, d, draft) => drafts.set(documentDraftKey(s, d), draft),
@@ -123,15 +126,23 @@ export function createDocumentDraftStore(): DocumentDraftStore {
       const ids: string[] = [];
       for (const key of drafts.keys()) {
         const parsed = parseDocumentDraftKey(key);
-        if (parsed.specId !== specId) continue;
+        if (parsed.specId !== specId) {
+          continue;
+        }
+
         const draft = drafts.get(key);
-        if (draft && isDraftDirty(draft)) ids.push(parsed.documentId);
+        if (draft && isDraftDirty(draft)) {
+          ids.push(parsed.documentId);
+        }
       }
+
       return ids;
     },
     subscribeSpec: (specId, listener) =>
       drafts.subscribeAll((key) => {
-        if (parseDocumentDraftKey(key).specId === specId) listener();
+        if (parseDocumentDraftKey(key).specId === specId) {
+          listener();
+        }
       }),
     getAnchor: (s, d) => anchors.get(documentDraftKey(s, d)),
     setAnchor: (s, d, anchor) => void anchors.set(documentDraftKey(s, d), anchor),

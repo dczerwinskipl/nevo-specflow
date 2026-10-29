@@ -109,7 +109,10 @@ describe('Task reference authorization and incomplete source regression', () => 
       };
       const result = await readTaskDetail(deps, 'admission', 'TASK-03', authz);
       expect(result.kind).toBe('ok');
-      if (result.kind !== 'ok') throw Error('Expected detail');
+      if (result.kind !== 'ok') {
+        throw Error('Expected detail');
+      }
+
       const body = JSON.stringify(result.value);
       expect(body).not.toContain('secret-');
       expect(body).not.toContain('Secret foreign');

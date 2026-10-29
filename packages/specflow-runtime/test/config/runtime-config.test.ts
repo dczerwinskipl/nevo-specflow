@@ -664,6 +664,7 @@ describe('runtime configuration', () => {
 
     try {
       await loadFrom(cwd);
+
       throw new Error('Expected malformed local YAML to fail.');
     } catch (error) {
       expect(error).toBeInstanceOf(RuntimeConfigError);

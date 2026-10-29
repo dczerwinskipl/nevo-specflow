@@ -62,6 +62,7 @@ async function closeProject(): Promise<QueueProject> {
   );
   git(project.root, 'add', '.nevo/config.yaml');
   commitStaged(project.root, 'pin the integration target');
+
   return project;
 }
 
@@ -194,6 +195,7 @@ describe('Close flushes document commits first', () => {
           clock,
           sleep: (ms: number) => {
             clock.advance(ms);
+
             return Promise.resolve();
           },
         }),
@@ -243,6 +245,7 @@ describe('flushDocumentCommits', () => {
         sleep: (ms) => {
           slept.push(ms);
           clock.advance(ms);
+
           return Promise.resolve();
         },
       },
@@ -282,6 +285,7 @@ describe('flushDocumentCommits', () => {
         queue: isolatedQueue(),
         sleep: () => {
           slept = true;
+
           return Promise.resolve();
         },
       },

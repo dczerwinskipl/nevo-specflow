@@ -42,7 +42,9 @@ export async function loginWithPassword(
   }
 
   const user = await verifyPasswordCredentials(authentication, username, password);
-  if (!user) return { ok: false, error: 'invalid_credentials' };
+  if (!user) {
+    return { ok: false, error: 'invalid_credentials' };
+  }
 
   accountThrottle.reset(username);
 
@@ -56,6 +58,7 @@ export async function loginWithPassword(
     if (error instanceof AuthenticationStoreCapacityError) {
       return { ok: false, error: 'service_unavailable' };
     }
+
     throw error;
   }
 

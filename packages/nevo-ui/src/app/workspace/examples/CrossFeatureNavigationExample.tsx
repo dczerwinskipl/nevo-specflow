@@ -18,6 +18,7 @@ function CrossFeaturePrimary({ sources }: { sources: CrossFeatureSources }) {
   const [taskStack] = useState(() => {
     const file = createFileStack(sources.file);
     const changes = createChangesStack(sources.changes, file);
+
     return createTaskStack(sources.task, changes);
   });
 
@@ -45,6 +46,7 @@ function CrossFeaturePrimary({ sources }: { sources: CrossFeatureSources }) {
 export function CrossFeatureNavigationExample({ width = 1400 }: { width?: number }) {
   const [sources] = useState(createCrossFeatureSources);
   const [scopeKey, setScopeKey] = useState('spec-A');
+
   return (
     <div style={{ height: 700, width, maxWidth: '100%' }}>
       <button

@@ -9,6 +9,7 @@ import { expect } from 'storybook/test';
 
 function DemoScreen({ session }: { readonly session?: DemoSession }) {
   const { t } = useTranslation();
+
   return (
     <ScrollArea className="h-dvh" aria-label={t('taskWorkspace.sessionDemo.title')}>
       <div
@@ -75,6 +76,7 @@ function DemoScreen({ session }: { readonly session?: DemoSession }) {
     </ScrollArea>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Screens/Task Session Demo',
   component: DemoScreen,

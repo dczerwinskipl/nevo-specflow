@@ -17,6 +17,7 @@ export function DocumentProperties({
   anchored?: boolean;
 }) {
   const { t } = useTranslation();
+
   return (
     <div
       // The block stands for the file's first lines: the scroll anchor maps it to source line 1.

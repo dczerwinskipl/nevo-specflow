@@ -62,7 +62,10 @@ async function memberPlansOf(
   const plans = new Map<string, DocumentChangePlan>();
   for (const id of batch.memberIds) {
     const journal = await readDocumentChangeJournal(context, id);
-    if (journal === undefined) continue;
+    if (journal === undefined) {
+      continue;
+    }
+
     plans.set(
       id,
       decodePlanWithEvidence(
@@ -71,6 +74,7 @@ async function memberPlansOf(
       ),
     );
   }
+
   return plans;
 }
 
@@ -100,6 +104,7 @@ export async function recordCommitFailureLocked(
   ) {
     throw documentChangeError('operation-state-invalid', 'The document batch moved.');
   }
+
   const now = failureContext.now();
   const attempts = countFailedAttempt(batch.attempts);
   const effective: ClassifiedCommitFailure = failure;
@@ -114,6 +119,7 @@ export async function recordCommitFailureLocked(
     );
     if (split !== undefined) {
       await splitLocked({ ...failureContext, batch }, effective, split.failed, plans, now);
+
       return 'split';
     }
   }
@@ -137,8 +143,12 @@ export async function recordCommitFailureLocked(
   );
   await publishDocumentBatch(context, next);
   await reconcileBatchMembers(context, next, now);
-  if (to === 'dissolved') await removeDocumentBatch(context, next.operationId);
+  if (to === 'dissolved') {
+    await removeDocumentBatch(context, next.operationId);
+  }
+
   await removeQueueLeaseOf(context, next.workspaceId, next.operationId);
+
   return to === 'dissolved' ? 'requeued' : to;
 }
 
@@ -216,6 +226,7 @@ export async function recordCommitFailure(
     failure.kind === 'permanent' && failure.paths !== undefined
       ? await memberPlansOf(failureContext.context, failureContext.batch)
       : new Map<string, DocumentChangePlan>();
+
   return withJournalLock(failureContext.context, DOCUMENT_BATCH_KIND, () =>
     recordCommitFailureLocked(failureContext, failure, plans),
   );

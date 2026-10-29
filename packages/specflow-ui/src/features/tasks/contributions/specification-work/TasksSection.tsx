@@ -43,6 +43,7 @@ export function TasksSection({
       } else {
         next.delete(taskId);
       }
+
       return next;
     });
   };
@@ -55,6 +56,7 @@ export function TasksSection({
       } else {
         next.add(groupId);
       }
+
       return next;
     });
   };
@@ -68,7 +70,10 @@ export function TasksSection({
   useEffect(() => {
     const available = new Set(taskGroups.flatMap((group) => group.tasks).map((task) => task.id));
     setSelectedTasks((prev) => {
-      if ([...prev].every((id) => available.has(id))) return prev;
+      if ([...prev].every((id) => available.has(id))) {
+        return prev;
+      }
+
       return new Set([...prev].filter((id) => available.has(id)));
     });
   }, [taskGroups]);

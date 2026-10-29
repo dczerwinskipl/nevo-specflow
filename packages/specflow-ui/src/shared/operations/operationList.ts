@@ -44,18 +44,26 @@ const emptyCounts: OperationListCounts = {
 };
 
 function decodeItem(value: unknown): OperationListItem | undefined {
-  if (!isObject(value)) return undefined;
+  if (!isObject(value)) {
+    return undefined;
+  }
+
   const operationId = text(value.operationId);
   const kind = text(value.kind);
   const status = text(value.status);
-  if (!operationId || !kind || !status) return undefined;
+  if (!operationId || !kind || !status) {
+    return undefined;
+  }
+
   const steps = Array.isArray(value.steps)
     ? value.steps.flatMap((step: unknown) => {
         const id = isObject(step) ? text(step.id) : undefined;
         const stepStatus = isObject(step) ? text(step.status) : undefined;
+
         return id && stepStatus ? [{ id, status: stepStatus }] : [];
       })
     : undefined;
+
   return {
     operationId,
     kind,
@@ -77,9 +85,13 @@ function decodeItem(value: unknown): OperationListItem | undefined {
  * answer that is not a list at all is `undefined` (the caller treats that as a failed read).
  */
 export function decodeOperationList(data: unknown): OperationList | undefined {
-  if (!isObject(data) || !Array.isArray(data.items)) return undefined;
+  if (!isObject(data) || !Array.isArray(data.items)) {
+    return undefined;
+  }
+
   const response = data as Partial<OperationListResponse>;
   const counts = isObject(response.counts) ? { ...emptyCounts, ...response.counts } : emptyCounts;
+
   return {
     items: data.items.flatMap((item: unknown) => decodeItem(item) ?? []),
     counts,

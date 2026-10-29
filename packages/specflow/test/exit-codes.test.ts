@@ -14,9 +14,13 @@ async function exitCodeOf(args: string[]): Promise<number> {
   try {
     await program.parseAsync(['node', 'nevo-specflow', ...args]);
   } catch (error) {
-    if (error instanceof CommanderError) return commanderExitCode(error);
+    if (error instanceof CommanderError) {
+      return commanderExitCode(error);
+    }
+
     throw error;
   }
+
   throw new Error('Expected a Commander outcome for: ' + args.join(' '));
 }
 

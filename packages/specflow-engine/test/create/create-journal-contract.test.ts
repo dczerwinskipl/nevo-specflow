@@ -51,6 +51,7 @@ async function fixture() {
     ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial'],
     { cwd: root },
   );
+
   return (await bootstrapProjectHome(root)).context;
 }
 
@@ -73,6 +74,7 @@ function currentJournal(
     title,
     target: { kind: 'existing', workspaceId: targetWorkspaceId },
   });
+
   return {
     version: 2,
     projectId: context.project.projectId,

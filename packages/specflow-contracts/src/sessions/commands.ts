@@ -196,5 +196,6 @@ export function utf8Bytes(value: string): number {
     const code = point.codePointAt(0)!;
     bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
   }
+
   return bytes;
 }

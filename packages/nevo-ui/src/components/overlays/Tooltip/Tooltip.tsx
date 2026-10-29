@@ -12,6 +12,7 @@ export const TooltipContent = forwardRef<
   ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> & { container?: HTMLElement | null }
 >(function TooltipContent({ children, className, container, sideOffset = 6, ...props }, ref) {
   const capture = useDesignMetadata('Tooltip');
+
   return (
     <TooltipPrimitive.Portal container={container}>
       <TooltipPrimitive.Content

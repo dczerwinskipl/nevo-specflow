@@ -10,6 +10,7 @@ export function Gallery() {
     description: captureSections.find((section) => section.component === spec.component)
       ?.description,
   }));
+
   return (
     <DesignCaptureProvider>
       <main className="gallery-root">

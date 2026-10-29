@@ -8,8 +8,10 @@ function pathParts(hint: Hint) {
     hint.kind === 'skill' ||
     /[?#]/.test(hint.ref) ||
     (/^[a-z][a-z\d+.-]*:/i.test(hint.ref) && !/^[a-z]:[\\/]/i.test(hint.ref))
-  )
+  ) {
     return null;
+  }
+
   const parts = hint.ref.split(/[\\/]/);
   const name = parts.at(-1);
   const documentSuffix = /\.(?:md|mdx|txt|rst|adoc|pdf|docx?|html?)$/i;
@@ -17,15 +19,20 @@ function pathParts(hint: Hint) {
     /\.(?:tsx?|jsx?|json|ya?ml|toml|xml|css|scss|less|vue|svelte|py|cs|go|rs|java|kt|swift|sh|ps1|sql|c|cpp|h|hpp|svg|png|jpe?g|webp)$/i;
   const recognized =
     name && (documentSuffix.test(name) || (hint.kind === 'file' && fileSuffix.test(name)));
+
   return parts.length > 1 && recognized ? parts : null;
 }
 
 export function presentTaskHints(hints: readonly Hint[]) {
   const paths = hints.map(pathParts);
+
   return hints.map((hint, index) => {
     const parts = paths[index];
     const name = parts?.at(-1) ?? hint.ref;
-    if (!parts) return { hint, name };
+    if (!parts) {
+      return { hint, name };
+    }
+
     const others = hints.flatMap((other, otherIndex) =>
       other.ref !== hint.ref && paths[otherIndex]?.at(-1) === name ? [paths[otherIndex]] : [],
     );
@@ -42,10 +49,12 @@ export function presentTaskHints(hints: readonly Hint[]) {
                 .slice(-count)
                 .join(hint.ref.includes('\\') ? '\\' : '/') !== parent,
           )
-        )
+        ) {
           break;
+        }
       }
     }
+
     return { hint, name, parent };
   });
 }

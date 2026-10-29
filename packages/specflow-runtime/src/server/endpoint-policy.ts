@@ -17,7 +17,10 @@ export async function registerEndpointPolicy<RawServer extends RawServerBase>(
     errorResponseBuilder: () => ({ statusCode: 429, error: 'rate_limited' }),
   });
   app.addHook('onSend', (_request, reply, payload, done) => {
-    if (reply.statusCode === 429) reply.header('Cache-Control', 'no-store');
+    if (reply.statusCode === 429) {
+      reply.header('Cache-Control', 'no-store');
+    }
+
     done(null, payload);
   });
 }

@@ -17,6 +17,8 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:staged": "node tools/git/format-staged.mjs",
+    "prepare": "node -e \"try { require('child_process').execSync('git config core.hooksPath .githooks', { stdio: 'ignore' }); } catch {}\"",
     "quality:build-prerequisites": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release",
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",
@@ -53,5 +55,13 @@
     "turbo": "2.11.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "source-map-js": "^1.2.2",
+      "ip-address": "^10.7.4",
+      "fast-uri@>=3.0.0 <4.0.0": "^3.1.9",
+      "fast-uri@>=4.0.0": "^4.2.3"
+    }
   }
 }

@@ -48,6 +48,7 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
           : [],
       )
     : [];
+
   return {
     revision: 'demo-workspace-1',
     specification: {
@@ -98,6 +99,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
     async readCurrent() {
       const snapshot = await seeded.readCurrent();
       const created = state?.specifications.size ?? 0;
+
       return {
         // The seeded revision is kept as is until something is created, so the packaged Runtime
         // contract stays stable; every created specification then advances the revision.
@@ -116,6 +118,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
       overviewRepository.readArchive(),
     ]);
     const record = [...current.items, ...archive.items].find((spec) => spec.id === specId);
+
     return record ? normalizeDemoSpec(record) : undefined;
   }
 
@@ -124,9 +127,13 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
     workspaceRepository: {
       async readSpecification(specId) {
         const record = await find(specId);
-        if (!record) return null;
+        if (!record) {
+          return null;
+        }
+
         const specification = buildSpecification(record);
         const created = state?.specifications.get(specId);
+
         return {
           ...specification,
           specification: {
@@ -144,6 +151,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
     contributions: {
       async tasks(specId) {
         const record = await find(specId);
+
         return record
           ? buildDemoTaskContribution(record)
           : { state: 'unavailable', reason: 'source_unavailable' };
@@ -162,6 +170,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
           overviewRepository.readCurrent(),
           overviewRepository.readArchive(),
         ]);
+
         return [...current.items, ...archive.items].map(normalizeDemoSpec);
       },
     },

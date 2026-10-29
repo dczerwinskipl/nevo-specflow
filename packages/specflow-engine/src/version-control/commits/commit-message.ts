@@ -37,6 +37,7 @@ export type ParsedCommitMessage =
 /** Builds a character class from code point ranges, so the source holds no invisible characters. */
 function characterClass(ranges: readonly (readonly [number, number])[]): string {
   const point = (code: number): string => '\\u{' + code.toString(16) + '}';
+
   return (
     '[' +
     ranges.map(([from, to]) => point(from) + (to > from ? '-' + point(to) : '')).join('') +
@@ -110,13 +111,25 @@ export function neutralizeTrailerLikeLines(text: string): string {
  * The result is already neutralised: no line of it reads like an Engine trailer.
  */
 export function parseUserCommitMessage(text: string): ParsedCommitMessage {
-  if (text.includes('\0')) return { ok: false, problem: 'contains-nul' };
+  if (text.includes('\0')) {
+    return { ok: false, problem: 'contains-nul' };
+  }
+
   const lines = cleaned(text).trim().split('\n');
   const subject = (lines[0] ?? '').replace(/\t/gu, ' ').trim();
-  if (subject.length === 0) return { ok: false, problem: 'empty' };
-  if (characters(subject) > COMMIT_SUBJECT_MAX) return { ok: false, problem: 'subject-too-long' };
+  if (subject.length === 0) {
+    return { ok: false, problem: 'empty' };
+  }
+
+  if (characters(subject) > COMMIT_SUBJECT_MAX) {
+    return { ok: false, problem: 'subject-too-long' };
+  }
+
   const body = lines.slice(1).join('\n').trim();
-  if (characters(body) > COMMIT_BODY_MAX) return { ok: false, problem: 'body-too-long' };
+  if (characters(body) > COMMIT_BODY_MAX) {
+    return { ok: false, problem: 'body-too-long' };
+  }
+
   return {
     ok: true,
     message: {
@@ -133,6 +146,7 @@ export function parseUserCommitMessage(text: string): ParsedCommitMessage {
  */
 export function commitBodyForGit(body: string): string {
   const text = cleaned(body.replace(/\0/gu, '')).trim();
+
   return neutralizeTrailerLikeLines(
     Array.from(text)
       .slice(0, COMMIT_BODY_MAX * 2)
@@ -146,5 +160,6 @@ export function commitSubjectForGit(subject: string, max: number): string {
     .replace(/\n+/gu, ' ')
     .replace(/\t/gu, ' ')
     .trim();
+
   return neutralizeTrailerLikeLines(Array.from(line).slice(0, max).join(''));
 }

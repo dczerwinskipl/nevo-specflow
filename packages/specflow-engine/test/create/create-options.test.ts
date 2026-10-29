@@ -70,7 +70,10 @@ describe('E2.I01 authorized create-options Engine read model', () => {
 
     // A selector returned by GET must be directly accepted as Create baseRef.
     const feature = options.baseRefs.find((item) => item.ref === 'refs/heads/feature/x');
-    if (!feature) throw new Error('Missing selectable feature/x base.');
+    if (!feature) {
+      throw new Error('Missing selectable feature/x base.');
+    }
+
     const created = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
       title: 'From feature branch option',
@@ -108,6 +111,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
         target: { kind: 'existing', workspaceId: first.workspaceId },
       });
     }
+
     const before = await readFile(workspaceRegistryPath(engine.context), 'utf8');
     const options = await inspectCreateOptions(engine);
     const linked = options.workspaces.find((item) => item.workspaceId === first.workspaceId);

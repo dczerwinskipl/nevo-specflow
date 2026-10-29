@@ -27,6 +27,7 @@ function render(href?: string) {
       },
     ],
   };
+
   return renderToStaticMarkup(
     <LocalizationProvider instance={createSpecFlowI18n('en')}>
       <TaskWorkspaceState data={data}>

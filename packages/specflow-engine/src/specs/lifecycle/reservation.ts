@@ -21,6 +21,7 @@ export async function inspectCloseOperation(
   operationId: string,
 ): Promise<CloseJournal | undefined> {
   await engine.readRegistry();
+
   return readCloseJournal(engine.context, operationId);
 }
 
@@ -51,8 +52,10 @@ export async function reserveCloseOperation(
   const existing = await readCloseJournal(engine.context, request.operationId);
   if (existing) {
     assertMatchingRequest(existing, request);
+
     return { journal: existing, existing: true };
   }
+
   // Git inspection is outside the short coordination lock. The immutable
   // snapshot is verified against registry/config CAS inside the lock, and
   // future effects must re-verify pinned HEAD/index/physical source.
@@ -66,16 +69,20 @@ export async function reserveCloseOperation(
     options.flush,
   );
   await options.hooks?.afterFlush?.();
+
   return withProjectControlLock(engine.context, async () => {
     const previous = await readCloseJournal(engine.context, request.operationId);
     if (previous) {
       assertMatchingRequest(previous, request);
+
       return { journal: previous, existing: true };
     }
+
     const latest = await readWorkspaceRegistry(engine.context);
     if (latest.revision !== plan.registryRevision) {
       throw new CloseOperationError('CLOSE_CONFLICT', 'Registry revision changed after preview.');
     }
+
     if (plan.configRevision !== undefined) {
       const config = await readProjectGitPolicy(engine.context);
       if (
@@ -88,6 +95,7 @@ export async function reserveCloseOperation(
         );
       }
     }
+
     // A manual-mode save writes no claim: one that landed after the flush above is judged here.
     await assertNoUncommittedHold(
       engine,
@@ -114,6 +122,7 @@ export async function reserveCloseOperation(
         'Close reservation was not durably verified.',
       );
     }
+
     return { journal: stored, existing: false };
   });
 }
@@ -133,6 +142,7 @@ function assertMatchingRequest(
       'OperationId belongs to another lifecycle intent.',
     );
   }
+
   if (request.kind === 'specification-close') {
     // The original linked/primary scope is pinned by the journal, not the
     // current registry. Omitting the option is an intentional default, not a
@@ -164,7 +174,10 @@ export async function previewWithDocumentFlush(
   try {
     return await previewCloseOperation(engine, request);
   } catch (error) {
-    if (!(error instanceof CloseOperationError) || error.code !== 'CLOSE_PREFLIGHT') throw error;
+    if (!(error instanceof CloseOperationError) || error.code !== 'CLOSE_PREFLIGHT') {
+      throw error;
+    }
+
     await flushAllCheckouts(engine, options.flush);
     try {
       return await previewCloseOperation(engine, request);
@@ -172,6 +185,7 @@ export async function previewWithDocumentFlush(
       if (second instanceof CloseOperationError && second.code === 'CLOSE_PREFLIGHT') {
         await assertNoDocumentCommitsHold(engine, await workspacesNamedBy(engine, request));
       }
+
       throw second;
     }
   }
@@ -187,5 +201,6 @@ async function workspacesNamedBy(
     request.kind === 'workspace-close'
       ? request.workspaceId
       : registry.specBindings.find((binding) => binding.specId === request.specId)?.workspaceId;
+
   return [...(source !== undefined ? [source] : []), registry.primaryWorkspaceId];
 }

@@ -22,6 +22,7 @@ function renamePlan(): DocumentChangePlan {
       { path: 'behaviour.md', content: 'b' },
     ],
   });
+
   return planDocumentChange(snapshot, {
     action: 'rename',
     target: { kind: 'document', documentId: 'behaviour' },
@@ -36,6 +37,7 @@ function mutate(
 ): string {
   const draft = JSON.parse(encodePlan(plan).text) as Record<string, unknown>;
   change(draft);
+
   return JSON.stringify(draft);
 }
 

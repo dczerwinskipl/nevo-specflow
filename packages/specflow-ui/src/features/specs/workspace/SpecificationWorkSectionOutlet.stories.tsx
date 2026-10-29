@@ -5,12 +5,16 @@ import { SectionBoundary } from './SpecificationWorkSectionOutlet';
 const expectedFailure = 'Expected contribution render failure';
 
 function WorkSection({ fail }: { readonly fail: boolean }) {
-  if (fail) throw new Error(expectedFailure);
+  if (fail) {
+    throw new Error(expectedFailure);
+  }
+
   return <p>Contribution restored</p>;
 }
 
 function RecoverableWorkSection() {
   const [fail, setFail] = useState(true);
+
   return (
     <div>
       <button type="button" onClick={() => setFail(false)}>
@@ -38,9 +42,13 @@ const meta = {
     // React reports the intentionally thrown test error. Preserve all other console errors.
     const originalError = console.error;
     console.error = (...args) => {
-      if (args.some((arg) => arg instanceof Error && arg.message === expectedFailure)) return;
+      if (args.some((arg) => arg instanceof Error && arg.message === expectedFailure)) {
+        return;
+      }
+
       originalError(...args);
     };
+
     return () => {
       console.error = originalError;
     };

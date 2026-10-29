@@ -12,15 +12,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -130,6 +136,7 @@ export const OverflowContract: Story = {
       const { width } = tab.getBoundingClientRect();
       assert(width >= 140 && width <= 180, `A tab is 140-180 px wide (got ${width}).`);
     }
+
     await userEvent.click(
       canvas.getByRole('button', { name: `Opened items (${manyItems.length})` }),
     );
@@ -222,8 +229,11 @@ async function assertCompactRows(menu: HTMLElement) {
   const walker = document.createTreeWalker(long, NodeFilter.SHOW_TEXT);
   let pathText: Text | null = null;
   while (walker.nextNode()) {
-    if (walker.currentNode.textContent === path) pathText = walker.currentNode as Text;
+    if (walker.currentNode.textContent === path) {
+      pathText = walker.currentNode as Text;
+    }
   }
+
   assert(pathText, 'The path is one text node.');
   const fileName = document.createRange();
   fileName.setStart(pathText, path.length - 12);

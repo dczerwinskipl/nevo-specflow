@@ -39,6 +39,7 @@ function toHostActions(actions: ContentAction[], budget: number): TabAction[] {
     }) as TabAction;
   const icons = promoted.map((action) => ({ ...base(action), direct: 'always' as const }));
   const menu = actions.filter((action) => !(action.primary && promoted.includes(action))).map(base);
+
   return [...icons, ...menu];
 }
 
@@ -51,11 +52,13 @@ export function editorProvider(
   env: { layout: MockLayout; splitAvailable: boolean },
 ): TabContentProvider {
   const narrow = env.layout === 'narrow';
+
   return (id: string): TabContent => {
     const doc = documentById(id);
     const descriptor = contentRegistry[doc.kind];
     const view = effectiveView(session, doc, env.splitAvailable);
     const dirty = session.isDirty(id);
+
     return {
       label: fileName(doc.path),
       path: doc.path,

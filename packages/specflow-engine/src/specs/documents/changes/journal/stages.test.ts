@@ -53,6 +53,7 @@ describe('operation stage machine', () => {
           expected.get(from)!.includes(to),
         );
       }
+
       expect([...DOCUMENT_CHANGE_TRANSITIONS[from]].sort()).toEqual(
         [...expected.get(from)!].sort(),
       );
@@ -76,6 +77,7 @@ describe('operation stage machine', () => {
         }
       }
     }
+
     expect([...reached].sort()).toEqual([...DOCUMENT_CHANGE_STAGES].sort());
     for (const stage of DOCUMENT_CHANGE_STAGES) {
       if (DOCUMENT_CHANGE_TRANSITIONS[stage].length === 0) {
@@ -86,7 +88,10 @@ describe('operation stage machine', () => {
 
   it('lets every active stage reach `completed`', () => {
     for (const start of DOCUMENT_CHANGE_STAGES) {
-      if (!DOCUMENT_CHANGE_STAGE_FACTS[start].active) continue;
+      if (!DOCUMENT_CHANGE_STAGE_FACTS[start].active) {
+        continue;
+      }
+
       const seen = new Set<DocumentChangeStage>([start]);
       const queue = [start];
       while (queue.length > 0) {
@@ -97,6 +102,7 @@ describe('operation stage machine', () => {
           }
         }
       }
+
       // `reserved` can also end as a refusal; the others must be able to complete.
       expect(seen.has('completed'), start).toBe(true);
     }
@@ -106,11 +112,15 @@ describe('operation stage machine', () => {
     for (const stage of DOCUMENT_CHANGE_STAGES) {
       const facts = DOCUMENT_CHANGE_STAGE_FACTS[stage];
       // A barrier holds the claim; a settled record holds nothing and is not active.
-      if (facts.barrier) expect(facts.holdsClaim).toBe(true);
+      if (facts.barrier) {
+        expect(facts.holdsClaim).toBe(true);
+      }
+
       if (facts.settled) {
         expect(facts.holdsClaim).toBe(false);
         expect(facts.active).toBe(false);
       }
+
       // What is active holds its claim: the listing of active journals is the claim set.
       expect(facts.active).toBe(facts.holdsClaim);
     }
@@ -137,6 +147,7 @@ describe('batch state machine', () => {
           expected.get(from)!.includes(to),
         );
       }
+
       expect([...DOCUMENT_BATCH_TRANSITIONS[from]].sort()).toEqual([...expected.get(from)!].sort());
     }
   });

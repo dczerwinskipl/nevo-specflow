@@ -93,7 +93,11 @@ const SPEC_OWNER =
 
 /** The owner a file name stem names, or `undefined` for a name that is not a ledger record. */
 export function ledgerOwnerOfKey(key: string): LedgerOwner | undefined {
-  if (key === 'definitions') return { kind: 'definitions' };
+  if (key === 'definitions') {
+    return { kind: 'definitions' };
+  }
+
   const match = SPEC_OWNER.exec(key);
+
   return match?.[1] !== undefined ? { kind: 'specification', id: match[1] } : undefined;
 }

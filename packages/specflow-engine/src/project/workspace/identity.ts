@@ -43,6 +43,7 @@ export async function provisionLinkedWorkspaceIdentity(
       'A linked checkout requires a distinct root and valid workspace identity.',
     );
   }
+
   await verifyWorkspaceMembership(context, root);
   if (!(await isGitIgnored(root, WORKSPACE_IDENTITY_RELATIVE_PATH))) {
     throw new WorkspaceRegistryError(
@@ -57,8 +58,11 @@ export async function provisionLinkedWorkspaceIdentity(
     try {
       await mkdir(path, { mode: 0o700 });
     } catch (error) {
-      if (!isNodeError(error, 'EEXIST')) throw error;
+      if (!isNodeError(error, 'EEXIST')) {
+        throw error;
+      }
     }
+
     const stat = await lstat(path);
     if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
       throw new WorkspaceRegistryError(
@@ -85,14 +89,17 @@ export async function provisionLinkedWorkspaceIdentity(
         'A workspace identity marker already exists; recovery is required, not reassignment.',
       );
     }
+
     throw error;
   }
+
   try {
     await handle.writeFile(JSON.stringify(marker) + '\n', 'utf8');
     await handle.sync();
   } finally {
     await handle.close();
   }
+
   return { workspaceId, kind: 'linked', root, managed, instanceId: marker.instanceId };
 }
 
@@ -101,7 +108,10 @@ export async function verifyLinkedWorkspaceIdentity(
   context: ResolvedProjectHome,
   registration: WorkspaceRegistration,
 ): Promise<void> {
-  if (registration.kind === 'primary') return;
+  if (registration.kind === 'primary') {
+    return;
+  }
+
   const markerPath = join(registration.root, WORKSPACE_IDENTITY_RELATIVE_PATH);
   for (const relative of ['.nevo', '.nevo/local', '.nevo/local/state']) {
     const directory = join(registration.root, relative);
@@ -118,13 +128,17 @@ export async function verifyLinkedWorkspaceIdentity(
         );
       }
     } catch (error) {
-      if (!isNodeError(error, 'ENOENT')) throw error;
+      if (!isNodeError(error, 'ENOENT')) {
+        throw error;
+      }
+
       throw new WorkspaceRegistryError(
         'REGISTRY_WORKSPACE_MISMATCH',
         'Registered linked workspace identity directory is missing.',
       );
     }
   }
+
   let content: string;
   try {
     const stat = await lstat(markerPath);
@@ -134,9 +148,13 @@ export async function verifyLinkedWorkspaceIdentity(
         'Linked workspace identity marker is redirected or not a regular file.',
       );
     }
+
     content = await readFile(markerPath, 'utf8');
   } catch (error) {
-    if (!isNodeError(error, 'ENOENT')) throw error;
+    if (!isNodeError(error, 'ENOENT')) {
+      throw error;
+    }
+
     throw new WorkspaceRegistryError(
       'REGISTRY_WORKSPACE_MISMATCH',
       'Registered workspace incarnation marker is absent; possible replaced worktree.',
@@ -152,6 +170,7 @@ export async function verifyLinkedWorkspaceIdentity(
       'Linked workspace incarnation marker is corrupt.',
     );
   }
+
   // The ignore-rule audit needs Git: mutations only (reads never spawn Git).
   if (
     !isReadRequest() &&
@@ -162,6 +181,7 @@ export async function verifyLinkedWorkspaceIdentity(
       'Linked identity marker is no longer protected by Git ignore rules.',
     );
   }
+
   if (
     !isRecord(parsed) ||
     parsed.version !== 1 ||

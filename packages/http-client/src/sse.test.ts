@@ -23,6 +23,7 @@ describe('HttpClient.sse', () => {
   it('starts replay from the authoritative snapshot boundary supplied by its caller', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockImplementation((_url, init) => {
       expect(new Headers(init?.headers).get('Last-Event-ID')).toBe('42');
+
       return Promise.resolve(sseResponse('id: 43\ndata: resumed\n\n'));
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -307,6 +308,7 @@ describe('HttpClient.sse', () => {
       'fetch',
       vi.fn<typeof fetch>().mockImplementation((_input, init) => {
         request.signal = init?.signal ?? undefined;
+
         return Promise.resolve(sseResponse('data: one\n\n'));
       }),
     );

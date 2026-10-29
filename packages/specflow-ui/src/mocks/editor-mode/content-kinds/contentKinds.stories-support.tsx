@@ -73,10 +73,18 @@ function nonEmpty(node: ReactNode): ReactNode {
 }
 
 function mdLine(line: string): ReactNode {
-  if (/^#{1,6}\s/.test(line))
+  if (/^#{1,6}\s/.test(line)) {
     return <span className="font-semibold text-content-link">{line}</span>;
-  if (/^(```|---)/.test(line)) return <span className="text-content-muted">{line}</span>;
-  if (line.startsWith('>')) return <span className="text-content-muted">{line}</span>;
+  }
+
+  if (/^(```|---)/.test(line)) {
+    return <span className="text-content-muted">{line}</span>;
+  }
+
+  if (line.startsWith('>')) {
+    return <span className="text-content-muted">{line}</span>;
+  }
+
   const marker = /^(\s*(?:[-*]|\d+\.)\s)(.*)$/.exec(line);
   const body = marker ? marker[2]! : line;
   const parts = body.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).map((part, index) =>
@@ -92,6 +100,7 @@ function mdLine(line: string): ReactNode {
       part
     ),
   );
+
   return marker ? (
     <>
       <span className="text-content-link-hover">{marker[1]}</span>
@@ -106,30 +115,38 @@ const csPattern =
   /(\/\/.*$|"(?:[^"\\]|\\.)*"|\b(?:using|namespace|public|private|class|const|readonly|async|await|return|var|new|if|throw|null|int|string|true|false)\b|\b\d+\b)/g;
 function codeLine(line: string): ReactNode {
   return line.split(csPattern).map((part, index) => {
-    if (part.startsWith('//'))
+    if (part.startsWith('//')) {
       return (
         <span key={index} className="text-content-muted">
           {part}
         </span>
       );
-    if (part.startsWith('"'))
+    }
+
+    if (part.startsWith('"')) {
       return (
         <span key={index} className="text-status-success">
           {part}
         </span>
       );
-    if (/^\d+$/.test(part))
+    }
+
+    if (/^\d+$/.test(part)) {
       return (
         <span key={index} className="text-status-attention">
           {part}
         </span>
       );
-    if (/^[a-z]+$/.test(part) && index % 2 === 1)
+    }
+
+    if (/^[a-z]+$/.test(part) && index % 2 === 1) {
       return (
         <span key={index} className="text-content-link">
           {part}
         </span>
       );
+    }
+
     return part;
   });
 }
@@ -224,27 +241,37 @@ function EditorSurface({
   const rows = value.split('\n');
   useLayoutEffect(() => {
     const el = area.current;
-    if (!el || !wrap) return undefined;
+    if (!el || !wrap) {
+      return undefined;
+    }
+
     const update = () => setAreaWidth(el.clientWidth);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
+
     return () => observer.disconnect();
   }, [wrap]);
   useLayoutEffect(() => {
     setHeights(wrap ? rowRefs.current.map((el) => el?.offsetHeight ?? LINE_HEIGHT) : undefined);
   }, [value, areaWidth, wrap]);
   useLayoutEffect(() => {
-    if (restore && area.current) area.current.scrollTop = restore.top;
+    if (restore && area.current) {
+      area.current.scrollTop = restore.top;
+    }
     // Mount only: later scrolls are written, not restored.
   }, []);
   const syncCurrent = () => {
     const el = area.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
+
     const line = el.value.slice(0, el.selectionStart).split('\n').length - 1;
     setCurrent(line);
     remember?.({ line });
   };
+
   return (
     <div className="flex min-h-0 flex-1 bg-canvas" data-editor-surface="true">
       {lineNumbers ? (
@@ -321,8 +348,9 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
   const name = fileName(doc.path);
   const previewViewport = useRef<HTMLDivElement>(null);
   if (view === 'split')
-    // Editor | rendered preview, 50/50, each column scrolls on its own; the preview follows the
-    // editor proportionally (one-way scroll sync).
+  // Editor | rendered preview, 50/50, each column scrolls on its own; the preview follows the
+  // editor proportionally (one-way scroll sync).
+  {
     return (
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 basis-1/2 flex-col">
@@ -338,7 +366,9 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
             lineNumbers={lineNumbers}
             onScrollRatio={(ratio) => {
               const el = previewViewport.current;
-              if (el) el.scrollTop = ratio * (el.scrollHeight - el.clientHeight);
+              if (el) {
+                el.scrollTop = ratio * (el.scrollHeight - el.clientHeight);
+              }
             }}
           />
         </div>
@@ -358,7 +388,9 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
         </div>
       </div>
     );
-  if (view === 'edit')
+  }
+
+  if (view === 'edit') {
     return (
       <EditorSurface
         key={doc.id}
@@ -373,6 +405,8 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
         narrow={narrow}
       />
     );
+  }
+
   return (
     <ScrollArea
       aria-label={`Preview of ${name}`}
@@ -410,6 +444,7 @@ function CodeRenderer({ doc, files, narrow, wrap, lineNumbers }: RendererProps) 
 function ImageRenderer({ doc, files }: RendererProps) {
   const zoom = files.zooms[doc.id];
   const fit = zoom === undefined;
+
   return (
     <div
       role="group"
@@ -538,7 +573,10 @@ const saveActions = (ctx: ActionContext): ContentAction[] =>
  */
 function mdActions(view: ViewId, ctx: ActionContext): ContentAction[] {
   const { files, doc, layout, dirty, splitAvailable } = ctx;
-  if (!doc.editable) return [];
+  if (!doc.editable) {
+    return [];
+  }
+
   const set = (next: ViewId) => () => files.setView(doc.id, next);
   const actions: ContentAction[] = [];
   if (view !== 'split') {
@@ -552,7 +590,8 @@ function mdActions(view: ViewId, ctx: ActionContext): ContentAction[] {
       onPress: set(editing ? 'preview' : 'edit'),
     });
   }
-  if (splitAvailable)
+
+  if (splitAvailable) {
     actions.push({
       id: 'split',
       label: view === 'split' ? 'Close split' : 'Split view',
@@ -561,8 +600,14 @@ function mdActions(view: ViewId, ctx: ActionContext): ContentAction[] {
       promoted: 2,
       onPress: set(view === 'split' ? 'edit' : 'split'),
     });
-  if (view === 'edit' || view === 'split') actions.unshift(...displayActions(ctx));
+  }
+
+  if (view === 'edit' || view === 'split') {
+    actions.unshift(...displayActions(ctx));
+  }
+
   actions.push(...saveActions(ctx));
+
   return actions;
 }
 
@@ -576,6 +621,7 @@ function imageActions(_view: ViewId, ctx: ActionContext): ContentAction[] {
   const zoom = files.zooms[doc.id];
   const fit = zoom === undefined;
   const pct = fit ? undefined : `${Math.round(zoom * 100)}%`;
+
   return [
     {
       id: 'fit',
@@ -667,6 +713,7 @@ export const effectiveView = (
   splitAvailable: boolean,
 ): ViewId => {
   const view = viewOf(files, doc);
+
   return view === 'split' && !splitAvailable ? 'edit' : view;
 };
 

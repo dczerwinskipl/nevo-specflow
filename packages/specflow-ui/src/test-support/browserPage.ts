@@ -4,5 +4,6 @@
  */
 export async function browserPage() {
   const { page } = await import('vitest/browser');
+
   return page;
 }

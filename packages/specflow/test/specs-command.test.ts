@@ -51,7 +51,10 @@ async function fixture(gitEnabled = false, options: { definitions?: boolean } = 
     'initial',
   );
   const engine = await bootstrapProjectHome(root);
-  if (options.definitions !== false) await installDefinitionsForTesting(engine);
+  if (options.definitions !== false) {
+    await installDefinitionsForTesting(engine);
+  }
+
   return { root, engine };
 }
 
@@ -63,6 +66,7 @@ function command(cwd: string) {
     stderr: () => undefined,
   });
   const run = (args: string[]) => program.parseAsync(['node', 'nevo-specflow', 'specs', ...args]);
+
   return { run, output };
 }
 

@@ -48,8 +48,12 @@ import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
 function ReadOnlyLine({ session }: { session: DocumentEditorSession }) {
   const text = useMessage();
   const reason = session.readOnlyReason;
-  if (!reason) return null;
+  if (!reason) {
+    return null;
+  }
+
   const remedy = reasonRemedy(reason);
+
   return (
     <InlineNote>
       {text(readOnlyLine(reason, 'document'))}
@@ -65,7 +69,10 @@ function ReadOnlyLine({ session }: { session: DocumentEditorSession }) {
 function SaveRefusal({ session }: { session: DocumentEditorSession }) {
   const { t } = useTranslation();
   const text = useMessage();
-  if (session.saveError === undefined) return null;
+  if (session.saveError === undefined) {
+    return null;
+  }
+
   const code = apiErrorCode(session.saveError);
   const name = session.document.path.split('/').at(-1) ?? session.document.path;
   const tryAgain = (
@@ -105,6 +112,7 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
       body = remedy ? text(remedy) : null;
       break;
     }
+
     case 'COMMIT_BLOCKED':
       title = t('documents.save.commitBlocked');
       body = t('documents.remedy.commitBlocked');
@@ -135,6 +143,7 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
       title = t('documents.save.failed');
       actions = tryAgain;
   }
+
   return (
     <div className="shrink-0 px-4 pt-4">
       <Alert role="alert" tone="attention" title={title} actions={actions}>
@@ -148,20 +157,28 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
 function useWidth(element: HTMLElement | null) {
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
+
     const measure = () => setWidth(element.clientWidth);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
+
     return () => observer.disconnect();
   }, [element]);
+
   return width;
 }
 
 /** Document content (preview, source, image or file). Identity and actions live in the workspace header. */
 export function DocumentEditor() {
   const session = useDocumentEditor();
-  if (!session) return null;
+  if (!session) {
+    return null;
+  }
+
   return <DocumentContentView session={session} />;
 }
 
@@ -188,8 +205,12 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
   const sourceView = view === 'edit' || view === 'source';
   const sourceFits = sourceView && width >= guidanceColumnMinWidth;
   useLayoutEffect(() => {
-    if (view === 'preview') return;
+    if (view === 'preview') {
+      return;
+    }
+
     reportGuidanceRoom(sourceFits ? 'beside' : undefined);
+
     return () => reportGuidanceRoom(undefined);
   }, [view, sourceFits, reportGuidanceRoom]);
   // The source editor tells the session the class of its pane: Wrap lines is a choice per class.
@@ -198,6 +219,7 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
   const { reportSourcePane } = session;
   useLayoutEffect(() => {
     reportSourcePane(sourcePane);
+
     return () => reportSourcePane(undefined);
   }, [sourcePane, reportSourcePane]);
   const guidance = session.guidanceShown === 'column' ? session.guidance : undefined;
@@ -207,6 +229,7 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
     document.classification === 'registered' && document.type
       ? t('documents.tree.typeOf', { type: typeTitle(catalogue.data, document.type) })
       : undefined;
+
   return (
     <div ref={rootRef} className="flex h-full min-h-0 w-full flex-col">
       {typeLine && (
@@ -246,7 +269,9 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
             onChange={(content) => setDraft({ content })}
             // Ctrl/Cmd+S does nothing while a save runs (it joins it) or when Save is blocked.
             onSave={() => {
-              if (!session.saveBlocked) void save();
+              if (!session.saveBlocked) {
+                void save();
+              }
             }}
             label={t('documents.editor.sourceLabel', { name: document.path })}
           />
@@ -284,7 +309,10 @@ function SourceWithGuidance({
   width: number;
   children: ReactNode;
 }) {
-  if (!guidance) return <>{children}</>;
+  if (!guidance) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
@@ -352,7 +380,10 @@ function PreviewScroller({
   });
   useLayoutEffect(() => {
     const scroller = viewport.current;
-    if (!scroller) return;
+    if (!scroller) {
+      return;
+    }
+
     const lines = () => lineCountOf(latest.current.content);
     const read = () => readPreviewAnchor(scroller, lines());
     readerRef.current = read;
@@ -365,10 +396,13 @@ function PreviewScroller({
         )
       : undefined;
     const stop = trackUserScroll(scroller, read, (next) => latest.current.onAnchorChange(next));
+
     return () => {
       cancelRestore?.();
       stop();
-      if (readerRef.current === read) readerRef.current = null;
+      if (readerRef.current === read) {
+        readerRef.current = null;
+      }
     };
   }, [readerRef]);
   const viewportRef = useCallback((node: HTMLDivElement | null) => {
@@ -377,24 +411,34 @@ function PreviewScroller({
     setPanel(node);
   }, []);
   useLayoutEffect(() => {
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
+
     const measure = () => {
       setPanelWidth(panel.clientWidth);
       setPanelHeight(panel.clientHeight);
     };
+
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(panel);
+
     return () => observer.disconnect();
   }, [panel]);
   // The panel tells the header whether the contents are already a column (then no sheet is offered).
   useLayoutEffect(() => {
     reportColumnShown(wide);
+
     return () => reportColumnShown(undefined);
   }, [wide, reportColumnShown]);
   useLayoutEffect(() => {
-    if (panelWidth === 0) return;
+    if (panelWidth === 0) {
+      return;
+    }
+
     reportGuidanceRoom(room);
+
     return () => reportGuidanceRoom(undefined);
   }, [panelWidth, room, reportGuidanceRoom]);
   const headingElement = useCallback(
@@ -406,59 +450,92 @@ function PreviewScroller({
   );
   const pinned = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
+
     const release = () => {
       pinned.current = undefined;
     };
+
     // Reading on by hand ends the choice; scrolling done by the choice itself does not.
     const events = ['wheel', 'touchmove', 'keydown'] as const;
-    for (const name of events) panel.addEventListener(name, release, { passive: true });
+    for (const name of events) {
+      panel.addEventListener(name, release, { passive: true });
+    }
+
     return () => {
-      for (const name of events) panel.removeEventListener(name, release);
+      for (const name of events) {
+        panel.removeEventListener(name, release);
+      }
     };
   }, [panel]);
   // The heading the reader is at: the last one that has reached the top of the panel.
   const measureActive = useCallback(() => {
     const scroller = viewport.current;
-    if (!scroller) return undefined;
+    if (!scroller) {
+      return undefined;
+    }
+
     // At the very end the last section is the one being read, even if its heading never reaches the top.
     // A heading the reader chose stays current until the next manual scroll, even when a short last
     // section cannot be scrolled up to the top and the end of the document wins otherwise.
-    if (pinned.current !== undefined) return pinned.current;
+    if (pinned.current !== undefined) {
+      return pinned.current;
+    }
+
     const scrollable = scroller.scrollHeight - scroller.clientHeight > 2;
-    if (scrollable && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2)
+    if (scrollable && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
       return headings.at(-1)?.line;
+    }
+
     const top = scroller.getBoundingClientRect().top + 48;
     let current: number | undefined;
     for (const heading of headings) {
       const element = headingElement(heading.line);
-      if (element && element.getBoundingClientRect().top <= top) current = heading.line;
+      if (element && element.getBoundingClientRect().top <= top) {
+        current = heading.line;
+      }
     }
+
     return current ?? headings[0]?.line;
   }, [headings, headingElement]);
   // A wide panel keeps the column current while reading; a narrow one measures once, when the sheet opens.
   useEffect(() => {
-    if (!panel || !wide || headings.length === 0) return;
+    if (!panel || !wide || headings.length === 0) {
+      return;
+    }
+
     let frame = 0;
     const update = () => {
       frame = 0;
       setActiveLine(measureActive());
     };
+
     const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(update);
+      if (!frame) {
+        frame = requestAnimationFrame(update);
+      }
     };
+
     update();
     panel.addEventListener('scroll', schedule, { passive: true });
+
     return () => {
       panel.removeEventListener('scroll', schedule);
-      if (frame) cancelAnimationFrame(frame);
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
     };
   }, [panel, wide, headings, measureActive]);
   const goToHeading = useCallback(
     (line: number, pointer = false) => {
       const scroller = viewport.current;
       const element = headingElement(line);
-      if (!scroller || !element) return;
+      if (!scroller || !element) {
+        return;
+      }
+
       // A deliberate move: the shared reading position follows it like a user scroll.
       scroller.dispatchEvent(new Event('wheel'));
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -479,7 +556,7 @@ function PreviewScroller({
       viewport.current?.querySelector('[data-quiet-focus]')?.removeAttribute('data-quiet-focus');
       element.setAttribute('data-quiet-focus', pointer ? 'pointer' : 'keyboard');
       // The tint fades by itself (Web Animations, no timer to clean up) unless motion is reduced.
-      if (!reduced)
+      if (!reduced) {
         element.animate?.(
           [
             { backgroundColor: 'var(--color-surface-selected)' },
@@ -487,6 +564,8 @@ function PreviewScroller({
           ],
           { duration: 600, easing: 'ease-out' },
         );
+      }
+
       element.addEventListener('blur', () => element.removeAttribute('data-quiet-focus'), {
         once: true,
       });
@@ -500,8 +579,11 @@ function PreviewScroller({
   useLayoutEffect(() => {
     const navigator = { goTo: goToHeading, activeLine: measureActive };
     navigatorRef.current = navigator;
+
     return () => {
-      if (navigatorRef.current === navigator) navigatorRef.current = null;
+      if (navigatorRef.current === navigator) {
+        navigatorRef.current = null;
+      }
     };
   }, [navigatorRef, goToHeading, measureActive]);
   const text = <MarkdownDocument labels={markdownLabels} source={body} sourceLines />;
@@ -509,6 +591,7 @@ function PreviewScroller({
   const asideWidth =
     (contents ? outlineColumnWidth(panelWidth) + 32 : 0) +
     (guidance ? guidanceColumnWidth(panelWidth) + 32 : 0);
+
   return (
     <ScrollArea
       direction="both"

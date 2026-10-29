@@ -31,6 +31,7 @@ async function countGit<T>(work: () => Promise<T>): Promise<{ result: T; spawns:
   const listener = (message: unknown): void => {
     spawns.push([...(message as { args: readonly string[] }).args]);
   };
+
   subscribe('nevo.specflow.engine.git-process', listener);
   try {
     return { result: await work(), spawns };
@@ -45,6 +46,7 @@ async function project(gitEnabled: boolean): Promise<{ root: string; engine: Spe
     'runtime: {}\ngit:\n  enabled: ' + String(gitEnabled) + '\n',
   );
   roots.push(root, root + '-worktrees');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -75,7 +77,10 @@ describe('read endpoints never spawn Git (regression guard)', () => {
     it.each(readOperations)(
       '%s spawns zero Git processes',
       async (_name, read) => {
-        if (gitEnabled && _name === 'create-options') return; // budgeted separately below
+        if (gitEnabled && _name === 'create-options') {
+          return;
+        } // budgeted separately below
+
         const { engine } = await project(gitEnabled);
         const created = await createSpecificationForTesting(engine, {
           operationId: randomUUID(),
@@ -107,6 +112,7 @@ describe('git-disabled project end to end', () => {
       const options = await inspectCreateOptions(engine);
       const sources = await readCanonicalSpecSources(engine);
       const document = await readCanonicalSpecDocument(engine, created.specId, 'overview');
+
       return { created, options, sources, document };
     });
     expect(spawns).toEqual([]);
@@ -136,6 +142,7 @@ describe('git-enabled create-options Git budget', () => {
         target: { kind: 'new-worktree', baseRef: 'HEAD' },
       });
     }
+
     const { spawns, result } = await countGit(() => inspectCreateOptions(engine));
     expect(result.workspaces).toHaveLength(3);
     expect(spawns.length).toBeLessThanOrEqual(8);

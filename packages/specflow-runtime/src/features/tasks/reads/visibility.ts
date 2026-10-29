@@ -9,10 +9,20 @@ export function taskVisibility(
   sessions?: SessionReferenceOwner,
 ) {
   return async (link: ReferenceFacts): Promise<boolean> => {
-    if (link.state === 'forbidden') return false;
-    if (link.state !== 'available') return true;
-    if (link.target.kind !== 'session') return link.target.specId === identity.specId;
+    if (link.state === 'forbidden') {
+      return false;
+    }
+
+    if (link.state !== 'available') {
+      return true;
+    }
+
+    if (link.target.kind !== 'session') {
+      return link.target.specId === identity.specId;
+    }
+
     const owner = await sessions?.resolve(link.target.sessionId);
+
     return (
       owner?.sessionId === link.target.sessionId &&
       owner.projectId === identity.projectId &&

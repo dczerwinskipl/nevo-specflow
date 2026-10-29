@@ -27,6 +27,8 @@ export class GitCapabilityError extends Error {
     super(message);
     this.name = 'GitCapabilityError';
     this.code = code;
-    if (reason !== undefined) this.reason = reason;
+    if (reason !== undefined) {
+      this.reason = reason;
+    }
   }
 }

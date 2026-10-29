@@ -94,6 +94,7 @@ describe('commit fact (Git enabled only)', () => {
         'commit',
       );
     }
+
     expect(
       buildCreateFacts(
         choice({ tile: 'existing', existingWorkspaceId: ids.platform }),

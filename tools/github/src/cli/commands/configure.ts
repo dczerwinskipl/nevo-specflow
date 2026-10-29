@@ -38,7 +38,9 @@ export function configureCommand(client: GitHubAdminClient, out: Logger, err: Lo
       const policy = parsePolicy(loadPolicyText());
       const result = configureRepository(client, policy, { checkOnly: opts.check });
 
-      for (const line of result.log) out(line);
+      for (const line of result.log) {
+        out(line);
+      }
 
       if (result.aborted && result.review.kind === 'unverifiable') {
         err('');
@@ -52,6 +54,7 @@ export function configureCommand(client: GitHubAdminClient, out: Logger, err: Lo
             ? 'Reported as drift: the ruleset was NOT inspected against a guessed policy.'
             : 'No ruleset was changed. Nothing was applied.',
         );
+
         throw new GovernanceError('reviewer eligibility could not be verified');
       }
 
@@ -78,12 +81,17 @@ export function configureCommand(client: GitHubAdminClient, out: Logger, err: Lo
 
       if (result.changed.length) {
         out('\nChanged:');
-        for (const c of result.changed) out(`  - ${c}`);
+        for (const c of result.changed) {
+          out(`  - ${c}`);
+        }
       }
 
       if (result.problems.length) {
         err(`\n${opts.check ? 'Drift found' : 'Problems'}:`);
-        for (const p of result.problems) err(`  - ${p}`);
+        for (const p of result.problems) {
+          err(`  - ${p}`);
+        }
+
         throw new GovernanceError(
           `${opts.check ? 'governance drift' : 'reconciliation failed'} (${String(
             result.problems.length,

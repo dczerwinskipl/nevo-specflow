@@ -67,6 +67,7 @@ export function dirtyPaths(project: QueueProject): string[] {
     git(project.root, 'diff', '--name-only', 'HEAD', '--', 'specs'),
     git(project.root, 'ls-files', '--others', '--exclude-standard', '--', 'specs'),
   ].flatMap((listing) => listing.split(NEWLINE));
+
   return [...new Set(lines.filter((line) => line !== ''))]
     .map((path) => (path.startsWith(prefix) ? path.slice(prefix.length) : path))
     .filter((path) => !STAGE_FILE.test(path))
@@ -85,10 +86,16 @@ async function uncommittedJournals(
     SETTLED_DIRECTORY_NAME,
   );
   for (const name of await readdir(directory).catch(() => [])) {
-    if (!name.endsWith('.json')) continue;
+    if (!name.endsWith('.json')) {
+      continue;
+    }
+
     const journal = await readSettledDocumentChangeJournal(context, name.slice(0, -5));
-    if (journal !== undefined) found.set(journal.operationId, journal);
+    if (journal !== undefined) {
+      found.set(journal.operationId, journal);
+    }
   }
+
   return [...found.values()].filter(
     (journal) => journal.stage === 'completed' && journal.outcome === 'uncommitted',
   );
@@ -100,6 +107,7 @@ async function uncommittedJournals(
  */
 export function operationsOfCommit(project: QueueProject, sha: string): string[] {
   const trailers = trailersOf(project, sha);
+
   return [
     trailers['Nevo-Operation']!,
     ...(trailers['Nevo-Coalesced'] ?? '')
@@ -148,6 +156,7 @@ export async function expectPipelineInvariants(
       expect(model.paths(), `${path} is not a path of the model`).toContain(path);
     }
   }
+
   const unrecorded = dirty.filter((path) => !recorded.includes(path));
   if (unrecorded.length > 0) {
     expect(
@@ -155,6 +164,7 @@ export async function expectPipelineInvariants(
       `dirty ${unrecorded.join(',')} without an unfinished operation or a ledger entry`,
     ).toBeGreaterThan(0);
   }
+
   // I8
   for (const journal of await uncommittedJournals(project, active)) {
     for (const path of (await readJournalPlanPaths(context, journal)) ?? []) {
@@ -167,6 +177,7 @@ export async function expectPipelineInvariants(
       }
     }
   }
+
   for (const path of model?.paths() ?? []) {
     let head: string | undefined;
     try {
@@ -174,12 +185,14 @@ export async function expectPipelineInvariants(
     } catch {
       head = undefined; // not in HEAD: created by a save in flight
     }
+
     let onDisk: string;
     try {
       onDisk = await readFile(join(project.dir, path), 'utf8');
     } catch {
       continue; // a path that does not exist is the pre state of a creation or the post state of a delete
     }
+
     expect(
       onDisk.trimEnd() === head?.trimEnd() || model?.allows(path, onDisk) === true,
       `${path} holds bytes that are neither HEAD's nor a save's`,
@@ -188,29 +201,41 @@ export async function expectPipelineInvariants(
 
   // I3: an unfinished operation holds the claim; with none, only a Close (when the caller says so) may.
   const claimFree = await checkoutClaimFree(project);
-  if (unfinished.length > 0)
+  if (unfinished.length > 0) {
     expect(claimFree, 'an unfinished operation without the claim').toBe(false);
-  else if (options.claimHeldByClose !== true)
+  } else if (options.claimHeldByClose !== true) {
     expect(claimFree, 'a claim without an operation').toBe(true);
+  }
 
   // I5: one active batch per checkout; a failed batch only holds its paths and may wait beside it.
   // I6: no operation is a member of two batches and no path is in two batches.
   const batches = await listDocumentBatches(context);
   const activeBatches = new Map<string, number>();
   for (const batch of batches) {
-    if (batch.state !== 'committing') continue;
+    if (batch.state !== 'committing') {
+      continue;
+    }
+
     activeBatches.set(batch.workspaceId, (activeBatches.get(batch.workspaceId) ?? 0) + 1);
   }
+
   for (const [workspaceId, count] of activeBatches) {
     expect(count, `${count} active batches for checkout ${workspaceId}`).toBeLessThanOrEqual(1);
   }
+
   const members = batches.flatMap((batch) => batch.memberIds);
   expect(new Set(members).size, 'an operation is a member of two batches').toBe(members.length);
   const batchPaths: string[] = [];
   for (const batch of batches) {
-    if (batch.state === 'committed' || batch.state === 'dissolved') continue;
-    for (const entry of await readBatchPaths(context, batch)) batchPaths.push(entry.path);
+    if (batch.state === 'committed' || batch.state === 'dissolved') {
+      continue;
+    }
+
+    for (const entry of await readBatchPaths(context, batch)) {
+      batchPaths.push(entry.path);
+    }
   }
+
   expect(new Set(batchPaths).size, 'a path is in two batches').toBe(batchPaths.length);
 
   // I4 and I6 (commits)
@@ -225,6 +250,7 @@ export async function expectPipelineInvariants(
       }
     }
   }
+
   expect(new Set(named).size, 'an operation is in two commits').toBe(named.length);
 
   if (phase === 'drained') {

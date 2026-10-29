@@ -11,6 +11,7 @@ export const ATTEMPT_COUNTER_CAP = 10;
 /** The wait after the `failedAttempts`-th failed attempt (1 for the first). */
 export function backoffMs(failedAttempts: number): number {
   const exponent = Math.max(0, Math.min(failedAttempts - 1, 30));
+
   return Math.min(BACKOFF_FIRST_MS * 2 ** exponent, BACKOFF_MAX_MS);
 }
 

@@ -30,11 +30,17 @@ export function TaskHistory({
   const prepared = useRef(false);
   useLayoutEffect(() => {
     const node = root.current;
-    if (!node) return;
+    if (!node) {
+      return;
+    }
+
     const stopRestoring = restoreScrollPosition(node, () => initialScroll.current);
+
     return () => {
       stopRestoring();
-      if (!prepared.current) saveHistoryScroll(descriptionScrollOwner(node).scrollTop);
+      if (!prepared.current) {
+        saveHistoryScroll(descriptionScrollOwner(node).scrollTop);
+      }
     };
   }, [saveHistoryScroll]);
   const rememberScroll = () => {
@@ -46,13 +52,19 @@ export function TaskHistory({
 
   const query = useTaskHistory(specId, taskId, snapshot);
   const section = snapshot?.sections.history;
-  if (query.accessDenied) return <TaskSourceState state="forbidden" />;
-  if (section?.state !== 'available' || !query.readerAvailable)
+  if (query.accessDenied) {
+    return <TaskSourceState state="forbidden" />;
+  }
+
+  if (section?.state !== 'available' || !query.readerAvailable) {
     return <TaskSourceState state={section?.state === 'forbidden' ? 'forbidden' : 'unavailable'} />;
+  }
+
   const entries =
     query.data?.pages.flatMap((page) =>
       page.items.map((entry) => ({ entry, token: page.token })),
     ) ?? [];
+
   return (
     <div ref={root} className="grid min-w-0 gap-3 p-4">
       {query.isPending && !query.isError ? (
@@ -115,8 +127,12 @@ export function TaskHistory({
                   aria-controls={`${id}-${entry.id}`}
                   onClick={(event) => {
                     const expanded = { ...state.historyExpanded };
-                    if (expanded[entry.id]) delete expanded[entry.id];
-                    else expanded[entry.id] = `${snapshot?.revision}:${token}`;
+                    if (expanded[entry.id]) {
+                      delete expanded[entry.id];
+                    } else {
+                      expanded[entry.id] = `${snapshot?.revision}:${token}`;
+                    }
+
                     update({ historyExpanded: expanded });
                     event.currentTarget.focus({ preventScroll: true });
                   }}

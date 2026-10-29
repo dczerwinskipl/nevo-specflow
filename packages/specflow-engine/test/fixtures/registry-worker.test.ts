@@ -29,7 +29,10 @@ it.skipIf(!process.env.NEVO_REGISTRY_WORKER)('independent registry mutation proc
       await access(go);
       break;
     } catch {
-      if (Date.now() > deadline) throw new Error('Worker barrier timed out.');
+      if (Date.now() > deadline) {
+        throw new Error('Worker barrier timed out.');
+      }
+
       await sleep(20);
     }
   }

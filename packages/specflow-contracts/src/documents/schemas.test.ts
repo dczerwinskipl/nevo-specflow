@@ -302,6 +302,7 @@ describe('documents contract schemas', () => {
     ]) {
       expect(Value.Check(DocumentOperationInputSchema, input)).toBe(true);
     }
+
     expect(Value.Check(DocumentOperationInputSchema, { ...base, action: 'copy' })).toBe(false);
     expect(
       Value.Check(DocumentOperationInputSchema, { ...base, action: 'delete', requestId: 'x' }),
@@ -374,6 +375,7 @@ describe('documents contract schemas', () => {
     for (const state of COMMIT_STATES) {
       expect(Value.Check(CommitInfoSchema, { state })).toBe(true);
     }
+
     expect([...COMMIT_STATES]).toEqual([
       'pending',
       'committed',
@@ -614,6 +616,7 @@ describe('documents contract schemas', () => {
     for (const code of DOCUMENT_ERROR_CODES) {
       expect(Value.Check(DocumentErrorSchema, { error: code, code })).toBe(true);
     }
+
     expect(
       Value.Check(DocumentErrorSchema, {
         error: 'BRANCH_PROTECTED',
@@ -688,14 +691,17 @@ describe('documents contract schemas', () => {
     for (const id of ['', '-a', '.a', 'a b', 'a/b', 'a'.repeat(201)]) {
       expect(Value.Check(IdSchema, id)).toBe(false);
     }
+
     for (const id of ['Overview', '1abc', 'a_b', '', 'a'.repeat(33)]) {
       expect(Value.Check(CatalogueIdSchema, id)).toBe(false);
     }
+
     expect(Value.Check(CatalogueIdSchema, 'a'.repeat(32))).toBe(true);
     expect(DOCUMENT_ID_PATTERN).toBe('^[a-z0-9][a-z0-9-]{0,63}$');
     for (const id of ['-a', 'A', 'a_b', '', 'a'.repeat(65)]) {
       expect(Value.Check(RegisteredDocumentIdSchema, id)).toBe(false);
     }
+
     expect(Value.Check(RegisteredDocumentIdSchema, '0abc-1')).toBe(true);
 
     const base = { action: 'delete', kind: 'document', documentId: 'a', expectedRevision: 'h1' };

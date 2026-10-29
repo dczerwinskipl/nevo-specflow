@@ -11,7 +11,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(value: unknown, message: string): asserts value {
-  if (!value) throw new Error(message);
+  if (!value) {
+    throw new Error(message);
+  }
 }
 
 export const TaskChangesFileAndScope: Story = {

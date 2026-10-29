@@ -117,7 +117,9 @@ export function parseAuthenticationConfig(value: unknown): RuntimeAuthentication
 }
 
 function parseUsers(value: unknown): Readonly<Record<string, RuntimeUserConfig>> {
-  if (value === undefined) return dictionary<RuntimeUserConfig>();
+  if (value === undefined) {
+    return dictionary<RuntimeUserConfig>();
+  }
 
   const users = record(value, 'authentication.users');
   const result = dictionary<RuntimeUserConfig>();
@@ -152,6 +154,7 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
         `${path}.accounts usernames must be at most ${String(PASSWORD_USERNAME_MAX_LENGTH)} characters.`,
       );
     }
+
     if (Object.hasOwn(result, username)) {
       throw new RuntimeConfigError(
         `${path}.accounts contains a duplicate username after normalization: '${rawUsername}'.`,
@@ -241,11 +244,13 @@ function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderCon
         `${path}.allowedEmails contains an invalid email key '${email}'.`,
       );
     }
+
     if (Object.hasOwn(mappings, normalizedEmail)) {
       throw new RuntimeConfigError(
         `${path}.allowedEmails contains a duplicate email after normalization: '${email}'.`,
       );
     }
+
     mappings[normalizedEmail] = nonEmptyString(rawUserId, `${path}.allowedEmails.${email}`);
   }
 
@@ -255,11 +260,13 @@ function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderCon
         `${path}.issuer, clientId, and clientSecret are required when the OIDC provider is enabled.`,
       );
     }
+
     if (Object.keys(mappings).length === 0) {
       throw new RuntimeConfigError(
         `${path}.allowedEmails must contain at least one mapping when the OIDC provider is enabled.`,
       );
     }
+
     return {
       name,
       enabled: true,

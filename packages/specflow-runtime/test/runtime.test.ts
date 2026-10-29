@@ -20,10 +20,14 @@ async function freePort(): Promise<number> {
     server.listen(0, '127.0.0.1', resolve);
   });
   const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Could not allocate a test port.');
+  if (!address || typeof address === 'string') {
+    throw new Error('Could not allocate a test port.');
+  }
+
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve())),
   );
+
   return address.port;
 }
 
@@ -107,6 +111,7 @@ describe('startRuntime', () => {
         ].join('\n'),
         'utf8',
       );
+
       return { cwd, port };
     }
 
@@ -115,6 +120,7 @@ describe('startRuntime', () => {
         running: false,
         start: () => {
           calls.push('start');
+
           return Promise.resolve();
         },
         wake: () => Promise.resolve(),
@@ -122,6 +128,7 @@ describe('startRuntime', () => {
         recentEvents: () => [],
         stop: (options) => {
           calls.push('stop ' + JSON.stringify(options));
+
           return Promise.resolve({ complete: true, timedOut: false, remaining: 0 });
         },
       };

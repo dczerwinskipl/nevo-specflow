@@ -4,13 +4,17 @@ import type { StoreDatabase } from './database';
 
 export function initializeSessionSchema(db: DatabaseSync, get: StoreDatabase['get']): void {
   const version = Number(get('PRAGMA user_version')?.user_version ?? 0);
-  if (version !== 0 && version !== 1)
+  if (version !== 0 && version !== 1) {
     return fail('SESSION_STORE_UNAVAILABLE', 'Unsupported Session schema.');
+  }
+
   if (
     version === 0 &&
     get("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' LIMIT 1")
-  )
+  ) {
     return fail('SESSION_STORE_UNAVAILABLE', 'Unrecognized Session database.');
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS owner(id INTEGER PRIMARY KEY CHECK(id=1),runtime TEXT NOT NULL,pid INTEGER NOT NULL,epoch INTEGER NOT NULL);

@@ -62,12 +62,14 @@ async function fixture(includeUnicodeFile = false) {
     git(root, 'add', '--', ':(literal)' + active);
     commitStaged(root, 'add literal Unicode archive file');
   }
+
   const operationId = randomUUID();
   await reserveCloseOperation(engine, {
     kind: 'specification-close',
     operationId,
     specId: spec.specId,
   });
+
   return { root, engine, spec, operationId };
 }
 

@@ -53,6 +53,7 @@ export type OptionsVariant =
 
 export function seedOptions(): DemoCreateOptions {
   const ids = workspaceIds;
+
   return {
     primaryWorkspaceId: ids.main,
     workspaces: [
@@ -151,9 +152,15 @@ export function seedOptions(): DemoCreateOptions {
 
 const strip = (workspace: Workspace): Workspace => {
   const copy: Record<string, unknown> = { ...workspace };
-  for (const key of Object.keys(copy)) if (copy[key] === undefined) delete copy[key];
+  for (const key of Object.keys(copy)) {
+    if (copy[key] === undefined) {
+      delete copy[key];
+    }
+  }
+
   return copy as unknown as Workspace;
 };
+
 const dirty = (workspace: Workspace): Workspace =>
   strip({
     ...workspace,
@@ -176,6 +183,7 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
   const mapWorkspaces = (fn: (w: Workspace) => Workspace, only: (w: Workspace) => boolean) => {
     next.workspaces = next.workspaces.map((w) => (only(w) ? fn(w) : w));
   };
+
   switch (variant) {
     case 'default':
       break;
@@ -336,6 +344,7 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
         });
         next.baseRefs.push({ ref: branch, checkedOutWorkspaceId: workspaceId });
       }
+
       break;
     case 'no-selectable-targets':
       next.workspaces = next.workspaces.map((w) => strip({ ...w, integrationSelectable: false }));
@@ -358,6 +367,7 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
       break;
     }
   }
+
   return next;
 }
 

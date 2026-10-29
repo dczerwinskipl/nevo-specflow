@@ -48,20 +48,30 @@ const control = vi.hoisted(
 
 /** The next durable step of the run; the process is dead from the chosen one on. */
 function durableStep(kind: 'record' | 'rename'): void {
-  if (!control.armed) return;
+  if (!control.armed) {
+    return;
+  }
+
   if (control.mode === kind) {
     control.count += 1;
-    if (control.count === control.failAt) control.dead = true;
+    if (control.count === control.failAt) {
+      control.dead = true;
+    }
   }
-  if (control.dead) throw new QueueInterrupted('a durable step');
+
+  if (control.dead) {
+    throw new QueueInterrupted('a durable step');
+  }
 }
 
 vi.mock('../../src/project/fs/atomic-json', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../src/project/fs/atomic-json')>();
+
   return {
     ...original,
     writeJsonAtomically: async (...args: Parameters<typeof original.writeJsonAtomically>) => {
       durableStep('record');
+
       return original.writeJsonAtomically(...args);
     },
   };
@@ -69,10 +79,12 @@ vi.mock('../../src/project/fs/atomic-json', async (importOriginal) => {
 
 vi.mock('../../src/project/fs/windows-safe-fs', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../src/project/fs/windows-safe-fs')>();
+
   return {
     ...original,
     renameWindowsSafe: (...args: Parameters<typeof original.renameWindowsSafe>) => {
       durableStep('rename');
+
       return original.renameWindowsSafe(...args);
     },
   };
@@ -106,6 +118,7 @@ function saveBody(n: number) {
   const previous = SAVES.slice(0, n)
     .filter((earlier) => earlier.index === save.index)
     .at(-1);
+
   return {
     action: 'save' as const,
     documentId: `notes-${save.index}`,
@@ -116,7 +129,10 @@ function saveBody(n: number) {
 
 async function saveAll(run: Run, acknowledged: Set<number>): Promise<void> {
   for (const [n, save] of SAVES.entries()) {
-    if (acknowledged.has(n)) continue;
+    if (acknowledged.has(n)) {
+      continue;
+    }
+
     const path = notesPath(save.index);
     run.model.attempt(path, save.content);
     await applyDocumentChange(run.project.engine, run.project.specId, run.ids[n]!, saveBody(n));
@@ -160,13 +176,19 @@ async function runPipeline(
     await act(run, acknowledged);
   } catch (error) {
     // A stop inside a save surfaces as the writer's own error; a stop in the queue as the interruption.
-    if (!control.dead) throw error;
+    if (!control.dead) {
+      throw error;
+    }
+
     stopped = true;
   }
+
   control.armed = false;
   control.dead = false;
   const writes = control.count;
-  if (failAt > 0) expect(stopped, `no stop before write ${failAt}`).toBe(true);
+  if (failAt > 0) {
+    expect(stopped, `no stop before write ${failAt}`).toBe(true);
+  }
 
   // The process is gone: whatever it left is consistent at this very instant.
   await expectPipelineInvariants(run.project, run.model, 'stopped');
@@ -180,7 +202,9 @@ async function runPipeline(
   for (const [n] of SAVES.entries()) {
     expect(run.model.acknowledged.has(run.ids[n]!), `save ${n} was never acknowledged`).toBe(true);
   }
+
   await removeTrackedRoots();
+
   return writes;
 }
 
@@ -189,6 +213,7 @@ describe('a stop before every durable step of save, queue and settle', () => {
     await saveAll(run, acknowledged);
     await runQueueOnce(run.project.engine, isolatedQueue(), undefined, FLUSH);
   };
+
   const finish = (run: Run, acknowledged: Set<number>) => saveAll(run, acknowledged);
 
   for (const [mode, label, least] of [
@@ -219,6 +244,7 @@ async function closeProject(): Promise<QueueProject> {
   );
   git(project.root, 'add', '.nevo/config.yaml');
   commitStaged(project.root, 'pin the integration target');
+
   return project;
 }
 
@@ -238,6 +264,7 @@ describe('a stop before every record write of the Close hook', () => {
         { flush: { queue: isolatedQueue() } },
       );
     };
+
     const finish = async (run: Run, acknowledged: Set<number>) => {
       await saveAll(run, acknowledged);
       // The Close the client repeats: the flush drains whatever the stop left, then it is admitted.
@@ -253,6 +280,7 @@ describe('a stop before every record write of the Close hook', () => {
         expect(again).toMatchObject({ journal: { stage: 'reserved' } });
       }
     };
+
     const closing = (failAt: number) => runClose(failAt, act, finish, closeProject);
 
     const total = await closing(0);
@@ -293,13 +321,20 @@ async function runClose(
   try {
     await act(run, acknowledged);
   } catch (error) {
-    if (!control.dead) throw error;
+    if (!control.dead) {
+      throw error;
+    }
+
     stopped = true;
   }
+
   control.armed = false;
   control.dead = false;
   const writes = control.count;
-  if (failAt > 0) expect(stopped).toBe(true);
+  if (failAt > 0) {
+    expect(stopped).toBe(true);
+  }
+
   await expectPipelineInvariants(run.project, run.model, 'stopped', { claimHeldByClose: true });
 
   await finish(run, acknowledged);
@@ -310,5 +345,6 @@ async function runClose(
   expect(commitCount(run.project)).toBe(before + 1);
   expect(git(run.project.root, 'status', '--porcelain', '--', 'specs')).toBe('');
   await removeTrackedRoots();
+
   return writes;
 }

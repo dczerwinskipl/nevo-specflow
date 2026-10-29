@@ -34,8 +34,11 @@ const planPathsMemo = new Map<string, readonly string[]>();
 function remember(key: string, paths: readonly string[]): void {
   if (planPathsMemo.size >= PLAN_MEMO_MAX) {
     const oldest = planPathsMemo.keys().next();
-    if (!oldest.done) planPathsMemo.delete(oldest.value);
+    if (!oldest.done) {
+      planPathsMemo.delete(oldest.value);
+    }
   }
+
   planPathsMemo.set(key, paths);
 }
 
@@ -82,6 +85,7 @@ export async function listActiveDocumentOperations(
     listRecordsTolerant(context, DOCUMENT_CHANGE_JOURNAL_KIND),
     listRecordsTolerant(context, DOCUMENT_BATCH_KIND),
   ]);
+
   return {
     journals: journals.records,
     batches: batches.records,
@@ -98,7 +102,10 @@ export async function readJournalPlanPaths(
 ): Promise<readonly string[] | undefined> {
   const key = journal.plan.sha256;
   const known = planPathsMemo.get(key);
-  if (known !== undefined) return known;
+  if (known !== undefined) {
+    return known;
+  }
+
   try {
     const plan = decodePlanWithEvidence(
       await readPayload(context, DOCUMENT_CHANGE_JOURNAL_KIND, journal.operationId, journal.plan),
@@ -106,9 +113,13 @@ export async function readJournalPlanPaths(
     );
     const paths = plan.paths.map((path) => path.path);
     remember(key, paths);
+
     return paths;
   } catch (error) {
-    if (error instanceof DocumentError) return undefined;
+    if (error instanceof DocumentError) {
+      return undefined;
+    }
+
     throw error;
   }
 }
@@ -119,13 +130,20 @@ async function readBatchPathList(
 ): Promise<readonly string[] | undefined> {
   const key = 'batch:' + batch.paths.sha256;
   const known = planPathsMemo.get(key);
-  if (known !== undefined) return known;
+  if (known !== undefined) {
+    return known;
+  }
+
   try {
     const paths = (await readBatchPaths(context, batch)).map((entry) => entry.path);
     remember(key, paths);
+
     return paths;
   } catch (error) {
-    if (error instanceof DocumentError) return undefined;
+    if (error instanceof DocumentError) {
+      return undefined;
+    }
+
     throw error;
   }
 }
@@ -187,6 +205,7 @@ export async function readDocumentCommitView(
     .filter((journal) => !mine.includes(journal))
     .map((journal): OperationPaths => ({ journal, paths: [] }));
   const ledger = await readLedgerMarkers(context, subject);
+
   return deriveCommitView({
     ...subject,
     journals: [...journals, ...others],
@@ -208,6 +227,7 @@ async function readLedgerMarkers(
       kind: 'specification',
       id: subject.specId,
     });
+
     return (record?.entries ?? []).map((entry) => ({
       path: entry.path,
       operationId: entry.operationIds.at(-1)!,

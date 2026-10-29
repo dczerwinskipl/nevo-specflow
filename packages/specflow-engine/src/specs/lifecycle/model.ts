@@ -145,6 +145,7 @@ export interface CloseJournal {
 /** Intent fingerprint is independent of git defaults and mutable filesystem state. */
 export function fingerprintCloseIntent(input: CloseIntent): string {
   validateOperationId(input.operationId);
+
   return createHash('sha256').update(JSON.stringify(input), 'utf8').digest('hex');
 }
 
@@ -154,18 +155,22 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
     if (!isValidSpecificationId(input.workspaceId)) {
       throw new CloseOperationError('CLOSE_INVALID', 'Invalid workspace identity.');
     }
+
     return {
       kind: 'workspace-close',
       operationId: input.operationId,
       workspaceId: input.workspaceId,
     };
   }
+
   if (!isValidSpecificationId(input.specId)) {
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
+
   if (input.kind === 'worktree-close') {
     return { kind: 'worktree-close', operationId: input.operationId, specId: input.specId };
   }
+
   if (input.kind === 'specification-close' && typeof input.integrateToTargetBranch === 'boolean') {
     return {
       kind: 'specification-close',
@@ -174,6 +179,7 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
       integrateToTargetBranch: input.integrateToTargetBranch,
     };
   }
+
   throw new CloseOperationError('CLOSE_INVALID', 'Invalid lifecycle operation kind or options.');
 }
 
@@ -197,6 +203,7 @@ export function resourcesForClosePlan(plan: ClosePlan, projectId: string): reado
       : []),
     ...(plan.source.instanceId && integrate ? ['git-worktree-admin:' + projectId] : []),
   ];
+
   return [...new Set(values)].sort();
 }
 

@@ -40,16 +40,22 @@ export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadS
       if (!source?.open) {
         throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The document source is unavailable.');
       }
+
       const opened = await source.open(request.params.specId, request.params.documentId);
 
       if (matchesEtag(request.headers['if-none-match'], rawEtag(opened.metadata.revision))) {
         opened.stream.destroy();
+
         return sendNotModified(reply.headers(rawNotModifiedHeaders(opened.metadata.revision)));
       }
+
       // A client that goes away mid-transfer releases the file even if the framework does not.
       reply.raw.once('close', () => {
-        if (!opened.stream.destroyed) opened.stream.destroy();
+        if (!opened.stream.destroyed) {
+          opened.stream.destroy();
+        }
       });
+
       return reply
         .headers(
           rawResponseHeaders({

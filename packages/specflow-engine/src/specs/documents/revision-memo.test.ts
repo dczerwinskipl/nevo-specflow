@@ -27,7 +27,10 @@ describe('RevisionMemo', () => {
 
   it('keeps at most 5000 entries by default', () => {
     const memo = new RevisionMemo<number>();
-    for (let index = 0; index < 5100; index += 1) memo.set(String(index), index);
+    for (let index = 0; index < 5100; index += 1) {
+      memo.set(String(index), index);
+    }
+
     expect(memo.size).toBe(5000);
     expect(memo.get('0')).toBeUndefined();
     expect(memo.get('5099')).toBe(5099);

@@ -34,6 +34,7 @@ export function selectModel(
   modelId: string,
 ): AgentChoice {
   const model = provider?.models.find((m) => m.id === modelId);
+
   return {
     ...choice,
     modelId,

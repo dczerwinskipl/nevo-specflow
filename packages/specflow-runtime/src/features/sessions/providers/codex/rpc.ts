@@ -18,16 +18,21 @@ export class CodexRpcError extends Error {
   }
 }
 export function rpcObject(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new CodexRpcError('protocol');
+  }
+
   return value as Record<string, unknown>;
 }
+
 function id(value: unknown): RpcId {
   if (
     (typeof value === 'number' && Number.isSafeInteger(value)) ||
     (typeof value === 'string' && value.length > 0 && Buffer.byteLength(value) <= 256)
-  )
+  ) {
     return value;
+  }
+
   throw new CodexRpcError('protocol');
 }
 
@@ -53,18 +58,31 @@ export function createCodexRpc(
       task.cleanup();
       task.reject(error);
     }
+
     pending.clear();
   }
+
   async function write(frame: unknown, guard: () => boolean = () => true) {
     const line = JSON.stringify(frame) + '\n';
     const bytes = Buffer.byteLength(line);
-    if (closed) throw new CodexRpcError('transport');
-    if (queued >= 32 || queuedBytes + bytes > 1024 * 1024) throw new CodexRpcError('capacity');
+    if (closed) {
+      throw new CodexRpcError('transport');
+    }
+
+    if (queued >= 32 || queuedBytes + bytes > 1024 * 1024) {
+      throw new CodexRpcError('capacity');
+    }
+
     queued++;
     queuedBytes += bytes;
     const task = writes.then(async () => {
-      if (closed) throw new CodexRpcError('transport');
-      if (guard()) await process.write(line);
+      if (closed) {
+        throw new CodexRpcError('transport');
+      }
+
+      if (guard()) {
+        await process.write(line);
+      }
     });
     writes = task.catch(() => undefined);
     try {
@@ -74,13 +92,20 @@ export function createCodexRpc(
       queuedBytes -= bytes;
     }
   }
+
   const done = (async () => {
     try {
       for await (const line of process.lines()) {
-        if (Buffer.byteLength(line) > 1024 * 1024) throw new CodexRpcError('protocol');
+        if (Buffer.byteLength(line) > 1024 * 1024) {
+          throw new CodexRpcError('protocol');
+        }
+
         const frame = rpcObject(JSON.parse(line));
         if (typeof frame.method === 'string') {
-          if (frame.method.length > 128) throw new CodexRpcError('protocol');
+          if (frame.method.length > 128) {
+            throw new CodexRpcError('protocol');
+          }
+
           await onMessage({
             method: frame.method,
             params: frame.params === undefined ? {} : rpcObject(frame.params),
@@ -88,12 +113,19 @@ export function createCodexRpc(
           });
         } else {
           const requestId = id(frame.id);
-          if (typeof requestId !== 'number' || requestId < 1 || requestId > nextId)
+          if (typeof requestId !== 'number' || requestId < 1 || requestId > nextId) {
             throw new CodexRpcError('protocol');
+          }
+
           const task = pending.get(requestId);
-          if (!task) continue; // A timed-out request is never reused or redispatched.
-          if (Object.hasOwn(frame, 'result') === Object.hasOwn(frame, 'error'))
+          if (!task) {
+            continue;
+          } // A timed-out request is never reused or redispatched.
+
+          if (Object.hasOwn(frame, 'result') === Object.hasOwn(frame, 'error')) {
             throw new CodexRpcError('protocol');
+          }
+
           const remote = Object.hasOwn(frame, 'error') ? rpcObject(frame.error) : undefined;
           pending.delete(requestId);
           task.cleanup();
@@ -104,10 +136,15 @@ export function createCodexRpc(
                 typeof remote?.code === 'number' ? remote.code : undefined,
               ),
             );
-          } else task.resolve(frame.result);
+          } else {
+            task.resolve(frame.result);
+          }
         }
       }
-      if (!closed) throw new CodexRpcError('transport');
+
+      if (!closed) {
+        throw new CodexRpcError('transport');
+      }
     } catch (error) {
       throw error instanceof CodexRpcError ? error : new CodexRpcError('protocol');
     } finally {
@@ -117,6 +154,7 @@ export function createCodexRpc(
   })();
   void done.catch(() => undefined);
   let closing: Promise<Awaited<ReturnType<Process['dispose']>>> | undefined;
+
   return {
     done,
     request(
@@ -125,26 +163,36 @@ export function createCodexRpc(
       signal: AbortSignal,
       timeoutMs = 10000,
     ): Promise<unknown> {
-      if (closed || signal.aborted)
+      if (closed || signal.aborted) {
         return Promise.reject(new CodexRpcError(signal.aborted ? 'cancelled' : 'transport'));
-      if (pending.size >= 16 || nextId >= Number.MAX_SAFE_INTEGER)
+      }
+
+      if (pending.size >= 16 || nextId >= Number.MAX_SAFE_INTEGER) {
         return Promise.reject(new CodexRpcError('capacity'));
+      }
+
       if (
         !/^[A-Za-z][A-Za-z0-9/._-]{0,127}$/.test(method) ||
         !Number.isSafeInteger(timeoutMs) ||
         timeoutMs < 1 ||
         timeoutMs > 10000
-      )
+      ) {
         return Promise.reject(new CodexRpcError('protocol'));
+      }
+
       const requestId = ++nextId;
       const result = new Promise<unknown>((resolve, reject) => {
         function fail(kind: CodexRpcError['kind']) {
           const task = pending.get(requestId);
-          if (!task) return;
+          if (!task) {
+            return;
+          }
+
           pending.delete(requestId);
           task.cleanup();
           reject(new CodexRpcError(kind));
         }
+
         const abort = () => fail('cancelled');
         const timer = setTimeout(() => fail('timeout'), timeoutMs);
         timer.unref();
@@ -163,6 +211,7 @@ export function createCodexRpc(
       });
       // Cancellation may race a caller attaching its continuation; keep an explicit owner.
       void result.catch(() => undefined);
+
       return result;
     },
     notify(method: string, params?: Record<string, unknown>) {
@@ -184,8 +233,10 @@ export function createCodexRpc(
         const disposition = await process.dispose();
         await writes;
         await done.catch(() => undefined);
+
         return disposition;
       })();
+
       return closing;
     },
   };

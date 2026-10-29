@@ -92,7 +92,10 @@ export function createProgram(io: ProgramIO): Command {
         io.startRuntime ??
         (async (options) => {
           const handle = await startProjectRuntime(io.cwd ?? '.', {}, options);
-          if (!options.demo) await printDefinitionsMissingHint(io.cwd ?? '.', io.stdout);
+          if (!options.demo) {
+            await printDefinitionsMissingHint(io.cwd ?? '.', io.stdout);
+          }
+
           return handle;
         }),
       ...(io.signal ? { signal: io.signal } : {}),
@@ -103,8 +106,11 @@ export function createProgram(io: ProgramIO): Command {
   // thrown like the top-level ones instead of ending the process.
   const overrideExit = (command: Command): void => {
     command.exitOverride();
-    for (const child of command.commands) overrideExit(child);
+    for (const child of command.commands) {
+      overrideExit(child);
+    }
   };
+
   overrideExit(program);
 
   return program;

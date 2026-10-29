@@ -30,8 +30,10 @@ vi.mock('./DocumentPane', () => ({ documentStack: { id: 'document-stack' } }));
 const deferred = () => {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => (resolve = done));
+
   return { promise, resolve };
 };
+
 const flush = () => act(() => Promise.resolve());
 
 function render(
@@ -45,6 +47,7 @@ function render(
     { initialProps: { documentId: initial }, ...(strict ? { wrapper: StrictMode } : {}) },
   );
 }
+
 const opened = () =>
   mocks.controller.open.mock.calls.map(
     ([, params]) => (params as { documentId: string }).documentId,
@@ -60,6 +63,7 @@ describe('useDocumentOpening stacked navigation (narrow layout)', () => {
       close: vi.fn(() => {
         const pending = deferred();
         closes.push(pending);
+
         return pending.promise;
       }),
     };
@@ -77,6 +81,7 @@ describe('useDocumentOpening stacked navigation (narrow layout)', () => {
       closes[index]!.resolve();
       await flush();
     }
+
     expect(opened()).toEqual(['C']);
   });
 

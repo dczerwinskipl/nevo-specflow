@@ -31,11 +31,13 @@ it.skipIf(!enabled)(
           {
             beforePublish: async () => {
               await writeFile(signal, JSON.stringify({ stage: 'staged', pid: process.pid }));
+
               return new Promise<void>(() => undefined);
             },
           },
         ),
       );
+
       throw new Error('Atomic crash barrier unexpectedly returned.');
     }
 
@@ -43,15 +45,22 @@ it.skipIf(!enabled)(
       const checkpoint = process.env.NEVO_CREATE_CRASH_STAGE!;
       await createSpecification(engine, input, {
         afterEffect: async (stage) => {
-          if (stage !== checkpoint) return;
+          if (stage !== checkpoint) {
+            return;
+          }
+
           await writeFile(signal, JSON.stringify({ stage, pid: process.pid }));
           await new Promise<void>(() => undefined);
         },
       });
+
       throw new Error('Create crash barrier unexpectedly returned.');
     }
 
-    if (mode !== 'resume') throw new Error('Unexpected crash worker mode.');
+    if (mode !== 'resume') {
+      throw new Error('Unexpected crash worker mode.');
+    }
+
     const expectedError = process.env.NEVO_CREATE_CRASH_EXPECT_ERROR;
     try {
       const result = await createSpecification(engine, input, {
@@ -60,7 +69,10 @@ it.skipIf(!enabled)(
         resumeInterruptedOperation: true,
         confirmInterruptedGitSettled: process.env.NEVO_CREATE_CRASH_GIT_SETTLED === '1',
       });
-      if (expectedError) throw new Error('Unexpected successful recovery: ' + result.specId);
+      if (expectedError) {
+        throw new Error('Unexpected successful recovery: ' + result.specId);
+      }
+
       await writeFile(signal, JSON.stringify(result));
     } catch (error) {
       if (
@@ -71,8 +83,10 @@ it.skipIf(!enabled)(
         error.code === expectedError
       ) {
         await writeFile(signal, 'expected:' + expectedError);
+
         return;
       }
+
       throw error;
     }
   },

@@ -29,6 +29,7 @@ export const documentWriteErrorResponses = {
 /** `Retry-After` (whole seconds, at least 1) of a refusal that says when a retry helps. */
 function retryAfterSeconds(failure: DocumentFailure): number | undefined {
   const ms = failure.body.details?.retryAfterMs;
+
   return failure.body.code === 'SPEC_BUSY' && ms !== undefined
     ? Math.max(1, Math.ceil(ms / 1000))
     : undefined;
@@ -37,21 +38,31 @@ function retryAfterSeconds(failure: DocumentFailure): number | undefined {
 /** Answer a read failure with the `{error, code}` body, or rethrow a defect. */
 export function replyWithDocumentFailure<R extends FastifyReply>(error: unknown, reply: R): R {
   const failure = documentFailure(error);
-  if (!failure) throw error;
+  if (!failure) {
+    throw error;
+  }
+
   reply.header('Cache-Control', 'no-store');
   const retryAfter = retryAfterSeconds(failure);
-  if (retryAfter !== undefined) reply.header('Retry-After', String(retryAfter));
+  if (retryAfter !== undefined) {
+    reply.header('Retry-After', String(retryAfter));
+  }
+
   // The failure statuses and body are declared by every document route (documentReadErrorResponses);
   // the typed reply only knows the success codes of its own route.
   (reply as FastifyReply).code(failure.status).send(failure.body);
+
   return reply;
 }
 
 /** The `specId` of a route whose params schema has already been validated. */
 function specIdOf(params: unknown): string {
   if (typeof params === 'object' && params !== null && 'specId' in params) {
-    if (typeof params.specId === 'string') return params.specId;
+    if (typeof params.specId === 'string') {
+      return params.specId;
+    }
   }
+
   throw new Error('The route has no specId parameter.');
 }
 

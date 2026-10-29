@@ -8,5 +8,6 @@ export function errnoCode(error: unknown): string | undefined {
 /** The entry is not there: it does not exist, or an ancestor is not a directory. */
 export function isAbsent(error: unknown): boolean {
   const code = errnoCode(error);
+
   return code === 'ENOENT' || code === 'ENOTDIR';
 }

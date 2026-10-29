@@ -27,6 +27,7 @@ export async function readSpecificationDocument(
   options: ReadDocumentOptions = {},
 ): Promise<DocumentContent> {
   const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
+
   return readDocumentOfLoaded(loaded, documentId, options);
 }
 
@@ -46,14 +47,17 @@ async function readDocumentOfLoaded(
         'The requested revision is not the current one.',
       );
     }
+
     if (analysis.kind === 'text' && analysis.size > TEXT_CONTENT_MAX_BYTES) {
       throw new DocumentError(
         'DOCUMENT_TOO_LARGE',
         'The document is too large to read as JSON; use the raw endpoint.',
       );
     }
+
     const content =
       analysis.kind === 'text' && analysis.bytes ? decodeText(analysis.bytes) : undefined;
+
     return {
       id: located.id,
       path: located.path,
@@ -73,5 +77,6 @@ async function readDocumentOfLoaded(
   if (outcome.state !== 'opened') {
     throw new DocumentError('DOCUMENT_FILE_MISSING', 'The document has no file.');
   }
+
   return outcome.value;
 }

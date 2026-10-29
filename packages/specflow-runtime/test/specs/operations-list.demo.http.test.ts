@@ -27,6 +27,7 @@ async function demo(scenarios: boolean) {
   );
   apps.push(app);
   await app.listen({ port: 0, host: '127.0.0.1' });
+
   return `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 }
 
@@ -121,6 +122,7 @@ describe('GET /api/demo/specifications/operations', () => {
         code: 'OPERATION_LIST_QUERY_INVALID',
       });
     }
+
     expect((await fetch(listUrl(url, '?demoScenario=nope'))).status).toBe(400);
   });
 

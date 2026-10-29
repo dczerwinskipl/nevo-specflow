@@ -6,6 +6,7 @@ import { manifestOverviewFacts } from './manifest-facts';
 /** A Current record as the Engine repository builds it from the manifest. */
 function current(tasks: readonly unknown[]) {
   const { status: _status, ...facts } = manifestOverviewFacts({ tasks });
+
   return {
     id: 'spec-1',
     title: 'Spec',

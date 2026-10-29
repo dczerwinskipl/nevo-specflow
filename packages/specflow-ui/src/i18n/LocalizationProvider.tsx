@@ -17,6 +17,7 @@ export function LocalizationProvider({
 
     syncDocumentLanguage(instance.resolvedLanguage ?? instance.language);
     instance.on('languageChanged', syncDocumentLanguage);
+
     return () => instance.off('languageChanged', syncDocumentLanguage);
   }, [instance]);
 

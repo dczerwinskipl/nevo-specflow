@@ -80,6 +80,7 @@ export function sessionFixture(waiting = false): SessionSnapshot {
       : {}),
   };
 }
+
 /** Isolated presentation adapter: never imported by a production route. */
 export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
   return {
@@ -156,8 +157,11 @@ export function fixtureApi(snapshot: SessionSnapshot, historyError = false): Man
     respond: () => Promise.resolve({ turnId }),
     async *watch(_id, _after, signal) {
       await new Promise<void>((resolve) => {
-        if (signal.aborted) resolve();
-        else signal.addEventListener('abort', () => resolve(), { once: true });
+        if (signal.aborted) {
+          resolve();
+        } else {
+          signal.addEventListener('abort', () => resolve(), { once: true });
+        }
       });
       yield undefined;
     },

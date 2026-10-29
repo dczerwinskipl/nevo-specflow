@@ -70,6 +70,7 @@ export function compileDesignDefinition(
       slots[name] = slot;
       continue;
     }
+
     const { allowAssetValueRemap: _authoringOnly, ...resolvedSlot } = slot;
     slots[name] = resolvedSlot;
   }
@@ -141,6 +142,7 @@ export function defineDesignComponent<
     bindings,
     figma,
   } = input;
+
   return {
     component,
     ...(displayName === undefined ? {} : { displayName }),
@@ -183,9 +185,13 @@ export function createComponentAuthoring<
         never
       >,
   ) => {
-    if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
+    if (!componentIds.has(component)) {
+      throw new Error(`Unknown design component ${component}`);
+    }
+
     return { componentRef: component, properties };
   };
+
   const slot = <
     Id extends ComponentId<Definitions>,
     Slot extends keyof ComponentDefinitionFor<Definitions, Id>['slots'] & string,
@@ -193,9 +199,13 @@ export function createComponentAuthoring<
     component: Id,
     slotName: Slot,
   ) => {
-    if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
+    if (!componentIds.has(component)) {
+      throw new Error(`Unknown design component ${component}`);
+    }
+
     return slotName;
   };
+
   const variantProperty = <
     Id extends ComponentId<Definitions>,
     Axis extends keyof ComponentAxes<ComponentDefinitionFor<Definitions, Id>> & string,
@@ -203,7 +213,10 @@ export function createComponentAuthoring<
     component: Id,
     axis: Axis,
   ) => {
-    if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
+    if (!componentIds.has(component)) {
+      throw new Error(`Unknown design component ${component}`);
+    }
+
     return axis;
   };
 

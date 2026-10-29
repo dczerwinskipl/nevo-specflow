@@ -77,11 +77,13 @@ function changesOf(plan: DocumentChangePlan): Change[] {
       const folders = plan.folders.filter(
         (folder) => !added.some((change) => change.path.startsWith(folder + '/')),
       );
+
       return [
         ...added,
         ...folders.map((folder) => ({ verb: 'add' as const, folder: true, path: folder })),
       ];
     }
+
     case 'rename':
     case 'move': {
       const verb = plan.action;
@@ -94,14 +96,17 @@ function changesOf(plan: DocumentChangePlan): Change[] {
       if (destination === undefined) {
         return moved.map((pair) => ({ verb, folder: false, path: pair.from, to: pair.to }));
       }
+
       // A folder operation: every file keeps its path below the folder, so the first one tells the origin.
       const first = moved[0];
       const origin =
         first === undefined
           ? ''
           : first.from.slice(0, first.from.length - (first.to.length - destination.length));
+
       return [{ verb, folder: true, path: origin, to: destination }];
     }
+
     case 'delete':
       // A folder delete names the folder, also when it holds no file (only the registry changes).
       return [
@@ -126,6 +131,7 @@ function changesOf(plan: DocumentChangePlan): Change[] {
       }));
     default: {
       const exhaustive: never = plan.action;
+
       return exhaustive;
     }
   }
@@ -139,8 +145,14 @@ function plural(count: number, noun: string): string {
 }
 
 function nounFor(changes: readonly Change[]): string {
-  if (changes.every((change) => change.folder)) return 'folder';
-  if (changes.every((change) => !change.folder)) return 'document';
+  if (changes.every((change) => change.folder)) {
+    return 'folder';
+  }
+
+  if (changes.every((change) => !change.folder)) {
+    return 'document';
+  }
+
   return 'item';
 }
 
@@ -169,11 +181,14 @@ function singleVerbPhrase(verb: Verb, changes: readonly Change[], slug: Part): P
         ? [`${verb} a folder to `, { name: only.to }, ...tail]
         : [`${verb} ${kind}`, { name: only.path }, ' to ', { name: only.to }, ...tail];
     }
+
     if (verb === 'classify' && only.type !== undefined) {
       return ['classify ', { name: only.path }, ' as ', { name: only.type }, ...tail];
     }
+
     return [`${verb} ${kind}`, { name: only.path }, ...tail];
   }
+
   return [`${verb} ${plural(count, nounFor(counted))}`, ...tail];
 }
 
@@ -185,8 +200,14 @@ function fallbackPhrase(
 ): Part[] {
   const verbs = unique(actions.map((action) => VERB_OF_ACTION[action] ?? 'change'));
   const verb = verbs.length === 1 ? verbs[0]! : 'change';
-  if (documentPaths.length === 1) return [`${verb} `, { name: documentPaths[0]! }, ' in ', slug];
-  if (documentPaths.length === 0) return [`${verb} documents in `, slug];
+  if (documentPaths.length === 1) {
+    return [`${verb} `, { name: documentPaths[0]! }, ' in ', slug];
+  }
+
+  if (documentPaths.length === 0) {
+    return [`${verb} documents in `, slug];
+  }
+
   return [`${verb} ${plural(documentPaths.length, 'document')} in `, slug];
 }
 
@@ -207,13 +228,23 @@ export function fitParts(parts: readonly Part[], max: number): string {
   while (total() > max) {
     let longest = -1;
     for (const [index, part] of parts.entries()) {
-      if (typeof part === 'string' || shown(index) <= 2) continue;
-      if (longest === -1 || shown(index) > shown(longest)) longest = index;
+      if (typeof part === 'string' || shown(index) <= 2) {
+        continue;
+      }
+
+      if (longest === -1 || shown(index) > shown(longest)) {
+        longest = index;
+      }
     }
-    if (longest === -1) break;
+
+    if (longest === -1) {
+      break;
+    }
+
     // The first cut removes two characters for the ellipsis; each later one removes one more.
     kept[longest] = kept[longest] === full[longest] ? full[longest]! - 2 : kept[longest]! - 1;
   }
+
   return chars
     .map((_, index) =>
       kept[index] === full[index]
@@ -249,10 +280,13 @@ function boundedLines(lines: readonly string[]): string[] {
     ) {
       break;
     }
+
     listed.push(line);
     characters += size;
   }
+
   const rest = lines.length - listed.length;
+
   return rest > 0 ? [...listed, `${ELLIPSIS} and ${rest} more`] : listed;
 }
 
@@ -276,13 +310,19 @@ export function documentCommitMessage(
     if (change.folder && change.verb === 'delete') {
       // A deleted folder is in the commit with its registry entry or with any of its files.
       const prefix = `${directory}/${change.path}/`;
+
       return committed.has(manifest) || effective.some((path) => path.startsWith(prefix));
     }
-    if (change.folder || change.verb === 'classify') return committed.has(manifest);
+
+    if (change.folder || change.verb === 'classify') {
+      return committed.has(manifest);
+    }
+
     return [change.path, change.to].some(
       (path) => path !== undefined && committed.has(`${directory}/${path}`),
     );
   };
+
   const kept = all.filter(holds);
   const changes = kept.length > 0 ? kept : all;
   const slugPart: Part = { name: slug };
@@ -306,6 +346,7 @@ export function documentCommitMessage(
         ? ['change documents in ', slugPart]
         : [`change ${plural(documentPaths.length, 'document')} in `, slugPart];
   }
+
   const subject = fitParts(
     [DOCUMENT_COMMIT_SUBJECT_PREFIX, ...phrase],
     DOCUMENT_COMMIT_SUBJECT_MAX,
@@ -315,5 +356,6 @@ export function documentCommitMessage(
   const coalesced =
     members.length > 1 ? [`${members.length} document operations in one commit`] : [];
   const body = [lines.join('\n'), ...coalesced].filter((part) => part.length > 0).join('\n\n');
+
   return { subject, body };
 }

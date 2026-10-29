@@ -27,6 +27,7 @@ export async function inspectExplicitIntegrationDestination(
       'Integration destination must be a registered managed or primary checkout.',
     );
   }
+
   const inspected = await inspectRegisteredWorkspace(engine.context, registry, workspaceId);
   if (inspected.status !== 'available') {
     throw new CreateOperationError(
@@ -34,12 +35,14 @@ export async function inspectExplicitIntegrationDestination(
       'Selected integration checkout is unavailable.',
     );
   }
+
   const physical = await inspectCleanGitWorkspace(registration).catch(() => {
     throw new CreateOperationError(
       'CREATE_OPERATION_INVALID',
       'Integration destination must have an attached, clean local branch.',
     );
   });
+
   return {
     registryRevision: registry.revision,
     destination: {

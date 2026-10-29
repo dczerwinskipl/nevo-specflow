@@ -68,7 +68,9 @@ export const FieldComposition: Story = {
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 export const InteractionContract: Story = {
@@ -92,6 +94,7 @@ export const InteractionContract: Story = {
     for (let attempt = 0; document.activeElement !== trigger && attempt < 60; attempt += 1) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     }
+
     assert(document.activeElement === trigger, 'The calendar should restore trigger focus.');
   },
 };

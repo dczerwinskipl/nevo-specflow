@@ -16,5 +16,6 @@ export function useNoSpecifications(): boolean {
     queryKey: specsOverviewKeys.collection('archive'),
     queryFn: skipToken,
   });
+
   return current.data?.items.length === 0 && (archive.data?.items.length ?? 0) === 0;
 }

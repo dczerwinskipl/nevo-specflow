@@ -27,7 +27,9 @@ export function LocaleMenuItems() {
       <MenuRadioGroup
         value={locale}
         onValueChange={(value) => {
-          if (isAppLocale(value)) void setLocale(value);
+          if (isAppLocale(value)) {
+            void setLocale(value);
+          }
         }}
       >
         {supportedLocales.map((option) => (

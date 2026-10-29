@@ -25,9 +25,18 @@ export function writeResultJson(result: DocumentChangeResult, commit: Commit = r
 
 export function commitLine(commit: Commit): string {
   const parts: string[] = [commit.state];
-  if (commit.sha !== undefined) parts.push(commit.sha.slice(0, 12));
-  if (commit.reason !== undefined) parts.push(`(${commit.reason})`);
-  if (commit.recoveryRequired) parts.push('[recovery required]');
+  if (commit.sha !== undefined) {
+    parts.push(commit.sha.slice(0, 12));
+  }
+
+  if (commit.reason !== undefined) {
+    parts.push(`(${commit.reason})`);
+  }
+
+  if (commit.recoveryRequired) {
+    parts.push('[recovery required]');
+  }
+
   return parts.join(' ');
 }
 
@@ -36,9 +45,17 @@ export function writeResultLines(result: DocumentChangeResult, commit: Commit): 
   for (const document of result.documents) {
     lines.push(`Document: ${document.id} ${document.path} revision ${document.sha256}`);
   }
-  for (const id of result.removedDocumentIds) lines.push(`Removed: ${id}`);
-  for (const folder of result.folders) lines.push(`Folder: ${folder}`);
+
+  for (const id of result.removedDocumentIds) {
+    lines.push(`Removed: ${id}`);
+  }
+
+  for (const folder of result.folders) {
+    lines.push(`Folder: ${folder}`);
+  }
+
   lines.push(`Commit: ${commitLine(commit)}`);
+
   return lines;
 }
 
@@ -52,6 +69,7 @@ export function statusLines(status: DocumentOperationStatus): string[] {
   if (status.documentIds && status.documentIds.length > 0) {
     lines.push(`Documents: ${status.documentIds.join(', ')}`);
   }
+
   return lines;
 }
 
@@ -73,18 +91,24 @@ export function treeLines(tree: DocumentTree): string[] {
       );
     }
   }
+
   for (const folder of tree.folders) {
-    if (folder.path !== '') lines.push(`folder  ${folder.path}/`);
+    if (folder.path !== '') {
+      lines.push(`folder  ${folder.path}/`);
+    }
   }
+
   for (const document of tree.documents) {
     const marker = document.commit ? ` [commit ${document.commit.state}]` : '';
     lines.push(
       `${document.id}  ${document.path}  ${document.type ?? 'unclassified'}  ${document.revision}${marker}`,
     );
   }
+
   for (const dangling of tree.dangling) {
     lines.push(`dangling  ${dangling.id}  ${dangling.path}  ${dangling.type}`);
   }
+
   return lines;
 }
 
@@ -102,6 +126,7 @@ export interface ValidationVerdict {
 export function validationOf(tree: DocumentTree): ValidationVerdict {
   const blocking =
     tree.dangling.length > 0 || tree.issues.some((issue) => BLOCKING_ISSUES.has(issue.code));
+
   return {
     valid: tree.completeness.complete && !blocking,
     complete: tree.completeness.complete,
@@ -118,6 +143,7 @@ export function validationLines(verdict: ValidationVerdict): string[] {
       `${requirement.satisfied ? 'ok     ' : 'missing'} ${requirement.documentType}: ${requirement.count}/${requirement.minCount}`,
     );
   }
+
   for (const issue of verdict.issues) {
     lines.push(
       `issue ${issue.code}` +
@@ -125,6 +151,10 @@ export function validationLines(verdict: ValidationVerdict): string[] {
         (issue.documentType !== undefined ? ` ${issue.documentType}` : ''),
     );
   }
-  for (const dangling of verdict.dangling) lines.push(`dangling ${dangling.id} ${dangling.path}`);
+
+  for (const dangling of verdict.dangling) {
+    lines.push(`dangling ${dangling.id} ${dangling.path}`);
+  }
+
   return lines;
 }

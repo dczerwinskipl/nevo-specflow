@@ -10,6 +10,7 @@ import { RouteErrorView } from './RouteErrorView';
 
 function inRouter(node: React.ReactNode) {
   const router = createSpecFlowRouter(createMemoryHistory({ initialEntries: ['/'] }));
+
   return renderToStaticMarkup(
     <RouterContextProvider router={router}>{node}</RouterContextProvider>,
   );

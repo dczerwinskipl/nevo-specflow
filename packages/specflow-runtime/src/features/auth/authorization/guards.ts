@@ -30,6 +30,7 @@ export function requireCapabilityInAnyScope<R extends ResourceDefinition>(
 ) {
   return (request: FastifyRequest): Promise<void> => {
     request.authz.requireCapabilityInAnyScope(input);
+
     return Promise.resolve();
   };
 }

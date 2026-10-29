@@ -26,6 +26,7 @@ export function observe(path: string, file: DemoFile): ObservedFile {
     extensionOf(path),
     file.bytes.subarray(0, SNIFF_BYTES),
   );
+
   return { path, size: file.bytes.length, revision: file.revision, kind, mediaType };
 }
 
@@ -35,7 +36,10 @@ export function observe(path: string, file: DemoFile): ObservedFile {
  * Engine says.
  */
 function emulateWrites(action: Action, busy: boolean): Action {
-  if (!action.available) return action;
+  if (!action.available) {
+    return action;
+  }
+
   return busy ? { available: false, reason: 'busy' } : action;
 }
 
@@ -58,6 +62,7 @@ export function demoTree(documents: DemoSpecDocuments): DocumentTree {
     ...(documents.policyReason ? { policyReason: documents.policyReason } : {}),
   });
   const write = (action: Action) => emulateWrites(action, documents.busy);
+
   return {
     ...tree,
     // A commit in flight changes advisory reasons, so it changes the revision (and the ETag) too.
@@ -111,13 +116,21 @@ export function locate(documents: DemoSpecDocuments, id: string): LocatedDocumen
   const entry = documents.registry.find((candidate) => candidate.id === id);
   if (entry) {
     const file = documents.files.get(entry.path);
+
     return file ? { kind: 'file', id, path: entry.path, entry, file } : { kind: 'dangling', entry };
   }
-  if (!id.startsWith('u-')) return undefined;
+
+  if (!id.startsWith('u-')) {
+    return undefined;
+  }
+
   const registered = new Set(documents.registry.map((candidate) => candidate.path));
-  for (const [path, file] of documents.files)
-    if (!registered.has(path) && deriveUnclassifiedDocumentId(path) === id)
+  for (const [path, file] of documents.files) {
+    if (!registered.has(path) && deriveUnclassifiedDocumentId(path) === id) {
       return { kind: 'file', id, path, file };
+    }
+  }
+
   return undefined;
 }
 
@@ -135,9 +148,12 @@ export function demoContent(
   located: Extract<LocatedDocument, { kind: 'file' }>,
 ): DocumentContent {
   const observed = observe(located.path, located.file);
-  if (observed.kind === 'text' && observed.size > TEXT_CONTENT_MAX_BYTES)
+  if (observed.kind === 'text' && observed.size > TEXT_CONTENT_MAX_BYTES) {
     throw new DocumentError('DOCUMENT_TOO_LARGE', 'The document is above the JSON read limit.');
+  }
+
   const text = observed.kind === 'text' ? decodeText(located.file.bytes) : undefined;
+
   return {
     id: located.id,
     path: located.path,

@@ -32,11 +32,22 @@ function transitionMessage(
   name: Message | string,
   from: string,
 ): Message | undefined {
-  if (from === item.status) return undefined;
-  if (item.status === 'completed') return message('operations.announce.completed', { name });
-  if (item.status === 'recovery-required')
+  if (from === item.status) {
+    return undefined;
+  }
+
+  if (item.status === 'completed') {
+    return message('operations.announce.completed', { name });
+  }
+
+  if (item.status === 'recovery-required') {
     return message('operations.announce.attention', { name });
-  if (item.status === 'failed') return message('operations.announce.failed', { name });
+  }
+
+  if (item.status === 'failed') {
+    return message('operations.announce.failed', { name });
+  }
+
   return undefined;
 }
 
@@ -74,19 +85,30 @@ export function OperationsPanel({
     announce.current = text;
   });
   useEffect(() => {
-    if (!list) return;
+    if (!list) {
+      return;
+    }
+
     const before = previous.current;
     previous.current = new Map(list.items.map((item) => [item.operationId, item.status]));
-    if (!before) return;
+    if (!before) {
+      return;
+    }
+
     const messages = list.items.flatMap((item) => {
       const from = before.get(item.operationId);
-      if (from === undefined) return [];
+      if (from === undefined) {
+        return [];
+      }
+
       const kind = findOperationKind(kinds, item.kind);
       const name = item.title ?? kind?.label ?? message('operations.kind.unknown');
+
       return transitionMessage(item, name, from) ?? [];
     });
-    if (messages.length)
+    if (messages.length) {
       setAnnouncement(messages.map((value) => announce.current(value)).join('. '));
+    }
   }, [list, kinds]);
 
   const liveRegion = (
@@ -104,7 +126,7 @@ export function OperationsPanel({
     </>
   );
 
-  if (!list && failed)
+  if (!list && failed) {
     return withLiveRegion(
       <Alert
         tone="info"
@@ -118,7 +140,11 @@ export function OperationsPanel({
         {t('operations.panel.loadFailed')}
       </Alert>,
     );
-  if (!rows.length) return withLiveRegion(null);
+  }
+
+  if (!rows.length) {
+    return withLiveRegion(null);
+  }
 
   const count = (status: string, serverCount: number | undefined) =>
     Math.max(serverCount ?? 0, rows.filter((row) => row.status === status).length);

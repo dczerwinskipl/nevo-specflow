@@ -120,6 +120,7 @@ export function computeTreeRevision(
   const lines = files
     .map((file) => JSON.stringify([file.path, file.revision]))
     .sort(compareCodeUnits);
+
   return createHash('sha256')
     .update(manifestBytes)
     .update('\0')
@@ -236,6 +237,7 @@ function evaluateRequirements(
       requirement.minCount,
     ]),
   );
+
   return { validation, minCountByType };
 }
 
@@ -265,6 +267,7 @@ function projectDocumentNodes(
       const target = { kind: 'file', path: file.path } as const;
       const marker = context.commits.markers.get(file.path);
       const minCount = entry ? (minCountByType.get(entry.type) ?? 0) : 0;
+
       return {
         id: entry ? entry.id : deriveUnclassifiedDocumentId(file.path),
         path: file.path,
@@ -309,7 +312,10 @@ function assertDistinctDerivedIds(
 ): void {
   const derivedPaths = new Map<string, string>();
   for (const file of files) {
-    if (registeredByPath.has(file.path)) continue;
+    if (registeredByPath.has(file.path)) {
+      continue;
+    }
+
     const id = deriveUnclassifiedDocumentId(file.path);
     const other = derivedPaths.get(id);
     if (other !== undefined && other !== file.path) {
@@ -318,6 +324,7 @@ function assertDistinctDerivedIds(
         'Two files of the Specification derive the same document id.',
       );
     }
+
     derivedPaths.set(id, file.path);
   }
 }
@@ -331,6 +338,7 @@ function projectFolders(
 ): DocumentTree['folders'] {
   const root: SubjectRefusal = { kind: 'refused', reason: 'root' };
   const rootTarget = { kind: 'folder', path: '' } as const;
+
   return [
     {
       path: '',
@@ -342,6 +350,7 @@ function projectFolders(
     },
     ...folderPaths.map((path) => {
       const target = { kind: 'folder', path } as const;
+
       return {
         path,
         revision: folderRevisionOf(path, files, manifest),
@@ -390,6 +399,9 @@ function compareCodeUnits(left: string, right: string): number {
 function compareByFoldedKey(left: string, right: string): number {
   const a = foldPathKey(left);
   const b = foldPathKey(right);
-  if (a !== b) return a < b ? -1 : 1;
+  if (a !== b) {
+    return a < b ? -1 : 1;
+  }
+
   return compareCodeUnits(left, right);
 }

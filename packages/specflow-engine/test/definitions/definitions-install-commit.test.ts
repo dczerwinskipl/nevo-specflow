@@ -28,6 +28,7 @@ afterEach(async () => {
 async function project(config: string) {
   const root = await createGitTestProject('definitions-commit-', config);
   roots.push(root);
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -37,6 +38,7 @@ const GIT_OFF = 'runtime: {}\ngit:\n  enabled: false\n';
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path);
+
     return true;
   } catch {
     return false;

@@ -30,21 +30,31 @@ export function TaskPreview({
   const preparedNavigation = useRef(false);
   useLayoutEffect(() => {
     const node = root.current;
-    if (!node) return;
+    if (!node) {
+      return;
+    }
+
     // The workspace resets its mobile viewport and restores the opener in the next frame, and a
     // preserved long description lays out after mounting. Keep restoring until the position
     // holds instead of assuming a fixed number of frames.
     const stopRestoring = restoreScrollPosition(node, () => initialScroll.current);
+
     return () => {
       stopRestoring();
-      if (!preparedNavigation.current) saveScroll(descriptionScrollOwner(node).scrollTop);
+      if (!preparedNavigation.current) {
+        saveScroll(descriptionScrollOwner(node).scrollTop);
+      }
     };
   }, [saveScroll]);
   const rememberScroll = () => {
-    if (!root.current) return;
+    if (!root.current) {
+      return;
+    }
+
     preparedNavigation.current = true;
     saveScroll(descriptionScrollOwner(root.current).scrollTop);
   };
+
   return (
     <aside ref={root} className="min-w-0 p-4" aria-label={t('specification.taskPreviewAriaLabel')}>
       {onClose ? (

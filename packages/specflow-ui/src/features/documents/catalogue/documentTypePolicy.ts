@@ -50,7 +50,10 @@ export function declaredTypeIcon(
   catalogue: ArchetypeCatalogue | undefined,
   typeId: string | undefined,
 ): string | undefined {
-  if (!typeId) return undefined;
+  if (!typeId) {
+    return undefined;
+  }
+
   return catalogue?.documentTypes.find((type) => type.id === typeId)?.icon;
 }
 
@@ -65,8 +68,14 @@ export function documentTrailingLabel(
   document: Pick<TreeDocument, 'path' | 'classification' | 'type'>,
   catalogue: ArchetypeCatalogue | undefined,
 ): TrailingLabel | undefined {
-  if (document.classification === 'unclassified') return undefined;
-  if (document.type) return { kind: 'type', text: typeTitle(catalogue, document.type) };
+  if (document.classification === 'unclassified') {
+    return undefined;
+  }
+
+  if (document.type) {
+    return { kind: 'type', text: typeTitle(catalogue, document.type) };
+  }
+
   return undefined;
 }
 
@@ -121,7 +130,10 @@ export function typeChoices(
   catalogue: ArchetypeCatalogue | undefined,
   tree: Pick<DocumentTree, 'archetype' | 'documents' | 'completeness'>,
 ): TypeChoices {
-  if (!catalogue) return { suggested: [], other: [] };
+  if (!catalogue) {
+    return { suggested: [], other: [] };
+  }
+
   const archetype = archetypeOf(catalogue, tree);
   const suggestedIds = [
     ...new Set(
@@ -138,6 +150,7 @@ export function typeChoices(
     const count = tree.documents.filter(
       (document) => document.classification === 'registered' && document.type === type.id,
     ).length;
+
     return {
       type,
       ...(template ? { template } : {}),
@@ -148,10 +161,13 @@ export function typeChoices(
           : {}),
     };
   };
+
   const known = (id: string) => catalogue.documentTypes.find((type) => type.id === id);
+
   return {
     suggested: suggestedIds.flatMap((id) => {
       const type = known(id);
+
       return type ? [choice(type)] : [];
     }),
     other: catalogue.documentTypes
@@ -166,10 +182,14 @@ export function typeChoices(
  */
 export function initialTypeChoice(choices: TypeChoices, requested?: string): string | undefined {
   const all = [...choices.suggested, ...choices.other];
-  if (requested && all.some((choice) => choice.type.id === requested)) return requested;
+  if (requested && all.some((choice) => choice.type.id === requested)) {
+    return requested;
+  }
+
   const absent = choices.suggested.find(
     (choice) => choice.fact === undefined || choice.fact.kind === 'expected',
   );
+
   return absent?.type.id ?? choices.suggested[0]?.type.id ?? choices.other[0]?.type.id;
 }
 
@@ -178,13 +198,17 @@ export const untypedFileName = 'untitled.md';
 
 /** The pre-filled file name: the template's, else the type's default, else `<type id>.md`. */
 export function defaultFileName(choice: TypeChoice | undefined): string {
-  if (!choice) return untypedFileName;
+  if (!choice) {
+    return untypedFileName;
+  }
+
   return choice.template?.filename ?? choice.type.defaultFilename ?? `${choice.type.id}.md`;
 }
 
 /** The extension of a file name, lower-case, without the dot (`''` when it has none). */
 export function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
+
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
@@ -212,8 +236,12 @@ export function specificationReadOnlyReason(
   tree: Pick<DocumentTree, 'capabilities'>,
 ): ActionReason | undefined {
   const { createFile, createFolder, import: importFiles } = tree.capabilities;
-  if (createFile.available || createFolder.available || importFiles.available) return undefined;
+  if (createFile.available || createFolder.available || importFiles.available) {
+    return undefined;
+  }
+
   const reasons = [createFile.reason, createFolder.reason, importFiles.reason];
+
   return (
     firstReason(reasons) ?? reasons.find((reason) => reason !== undefined && reason !== 'busy')
   );
@@ -233,7 +261,10 @@ export function documentReadOnlyReason(
         .filter((action) => !action.available)
         .map((action) => action.reason)
     : [];
-  if (!document.editable) reasons.push('not-editable');
+  if (!document.editable) {
+    reasons.push('not-editable');
+  }
+
   return firstReason(reasons);
 }
 
@@ -285,7 +316,10 @@ const sentenceReasons: readonly ActionReason[] = ['protected', 'root', 'dangling
 
 /** The row-menu note of an unavailable action: a sentence, or `Unavailable: <fragment>`. */
 export function menuReasonNote(reason: ActionReason | undefined): Message | undefined {
-  if (!reason) return undefined;
+  if (!reason) {
+    return undefined;
+  }
+
   return sentenceReasons.includes(reason)
     ? reasonFragment(reason)
     : message('documents.reason.note', { reason: reasonFragment(reason) });
@@ -323,15 +357,22 @@ export function documentGuidance(
   tree: Pick<DocumentTree, 'archetype'> | undefined,
   document: { classification?: 'registered' | 'unclassified'; type?: string },
 ): DocumentGuidance | undefined {
-  if (document.classification === 'unclassified' || !document.type) return undefined;
+  if (document.classification === 'unclassified' || !document.type) {
+    return undefined;
+  }
+
   const type = catalogue?.documentTypes.find((candidate) => candidate.id === document.type);
   const own = type?.instructions.trim();
-  if (!type || !own) return undefined;
+  if (!type || !own) {
+    return undefined;
+  }
+
   const template = tree
     ? archetypeOf(catalogue, tree)
         ?.documents.find((candidate) => candidate.type === type.id)
         ?.instructions?.trim()
     : undefined;
+
   return {
     title: type.title,
     description: type.description,

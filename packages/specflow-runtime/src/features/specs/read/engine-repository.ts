@@ -41,7 +41,10 @@ export function createEngineSpecsReadRepository(engine: SpecFlowEngine): EngineS
   return {
     async readWorkspace(specId) {
       const found = await resolve(specId);
-      if (found.status !== 'available') return unavailable(found);
+      if (found.status !== 'available') {
+        return unavailable(found);
+      }
+
       return {
         status: 'available',
         value: {
@@ -53,7 +56,10 @@ export function createEngineSpecsReadRepository(engine: SpecFlowEngine): EngineS
     },
     async readDocument(specId, kind) {
       const source = await readCanonicalSpecDocument(engine, specId, kind);
-      if (source.status !== 'available') return source;
+      if (source.status !== 'available') {
+        return source;
+      }
+
       return {
         status: 'available',
         value: { relativePath: source.relativePath, content: source.content },

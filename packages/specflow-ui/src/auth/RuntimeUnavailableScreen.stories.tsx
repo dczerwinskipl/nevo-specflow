@@ -32,6 +32,7 @@ export const Default: Story = {
     if (!surface || !desktopHeader || !root || !surface.contains(desktopHeader)) {
       throw new Error('Desktop recovery header must stay inside the standalone surface.');
     }
+
     if (!desktopHeader.querySelector('[aria-description="Change language"]')) {
       throw new Error('Desktop recovery header must expose the product language action.');
     }
@@ -46,6 +47,7 @@ export const Default: Story = {
         `Desktop recovery surface should remain compact; received ${surfaceRect.width}px.`,
       );
     }
+
     if (centerDelta > 2) {
       throw new Error('Desktop recovery surface must remain horizontally centered.');
     }
@@ -87,15 +89,19 @@ export const Mobile: Story = {
     if (Math.abs(headerRect.bottom - surfaceRect.top) > 1) {
       throw new Error('Runtime recovery workspace must begin directly below the mobile header.');
     }
+
     if (surfaceRect.bottom < rootRect.bottom - 1) {
       throw new Error('Runtime recovery workspace must fill the remaining viewport height.');
     }
+
     if (!mobileHeader.contains(mobileSelector)) {
       throw new Error('Mobile recovery language selection must belong to the auth header.');
     }
+
     if (root.scrollWidth > root.clientWidth + 1) {
       throw new Error('Runtime recovery must not introduce horizontal overflow on small screens.');
     }
+
     if (root.scrollHeight > root.clientHeight + 1) {
       throw new Error('Runtime recovery must remain constrained to the mobile viewport.');
     }

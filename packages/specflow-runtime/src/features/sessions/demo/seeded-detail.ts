@@ -15,11 +15,15 @@ export function buildCatalogueSessionDetail(input: {
   documents: string[];
 }): DemoSessionDetail | null {
   const summary = buildDemoSessions(input.record).find((item) => item.id === input.sessionId);
-  if (!summary) return null;
+  if (!summary) {
+    return null;
+  }
+
   const execution = input.record.currentExecutions?.find(
     (item) => item.sessionId === input.sessionId,
   );
   const profile = execution?.agentRole ?? 'Spec Writer';
+
   return {
     sessionId: input.sessionId,
     specId: input.record.id,

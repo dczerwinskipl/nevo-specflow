@@ -36,6 +36,7 @@ async function featureProject() {
   const dir = join(fixture.root, 'specs', 'active', created.slug);
   const revision = async (): Promise<string> =>
     (await getStableProjectCatalogue(fixture.engine)).catalogue.revision;
+
   return { ...fixture, specId: created.specId, dir, revision };
 }
 

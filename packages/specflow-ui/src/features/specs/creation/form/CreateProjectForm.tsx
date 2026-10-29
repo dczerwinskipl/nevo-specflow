@@ -81,6 +81,7 @@ export function CreateProjectForm({
   // new default ticks; after an unknown archetype the default archetype is selected.
   const [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(() => {
     const restored = draft?.archetype ?? initialArchetypeChoice;
+
     return draft?.failure?.kind === 'catalogue-stale'
       ? refreshedArchetypeChoice(restored, draft.failure.code)
       : restored;
@@ -125,7 +126,9 @@ export function CreateProjectForm({
 
   // The draft is consumed by the first render: a reload of the form starts clean again.
   useEffect(() => {
-    if (draft) storage.clearDraft(draft.operationId);
+    if (draft) {
+      storage.clearDraft(draft.operationId);
+    }
   }, [draft, storage]);
 
   // Only unsaved edits ask before leaving; an operation outlives this screen (it has its page).
@@ -151,8 +154,11 @@ export function CreateProjectForm({
   const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (nameRefused) nameRef.current?.focus();
-    else headingRef.current?.focus();
+    if (nameRefused) {
+      nameRef.current?.focus();
+    } else {
+      headingRef.current?.focus();
+    }
     // Once, on arrival: the refusal decides where focus starts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -167,11 +173,15 @@ export function CreateProjectForm({
   /** What the form says this Create does, so the progress page can state it without guessing. */
   const factsOf = (choice: WorkspaceChoice) => {
     const facts = workspaceOptions && buildCreateFacts(choice, workspaceOptions, title);
+
     return facts ? { facts } : {};
   };
 
   const submit = () => {
-    if (!canSubmit || started.current || !catalogue || !archetype) return;
+    if (!canSubmit || started.current || !catalogue || !archetype) {
+      return;
+    }
+
     const slug = workspaceOptions
       ? buildCreateSlug(place.choice, workspaceOptions, title)
       : undefined;
@@ -196,8 +206,10 @@ export function CreateProjectForm({
       // Nothing was stored or sent: the form stays usable.
       setUnprepared(true);
       announce(t('create.errors.failed.title'));
+
       return;
     }
+
     started.current = true;
     onStarted(request.operationId);
   };

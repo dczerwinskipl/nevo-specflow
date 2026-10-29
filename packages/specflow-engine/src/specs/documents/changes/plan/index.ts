@@ -37,6 +37,7 @@ export function planDocumentChange(
       return planStructural(snapshot, request, options);
     default: {
       const exhaustive: never = request;
+
       return exhaustive;
     }
   }

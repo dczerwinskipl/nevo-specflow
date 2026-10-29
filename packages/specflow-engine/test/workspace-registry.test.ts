@@ -61,6 +61,7 @@ async function fixture() {
   );
   const context = await resolveProjectHome({ cwd: root });
   const registry = registerInitialPrimary(initialWorkspaceRegistry(context), context);
+
   return { root, context, registry };
 }
 
@@ -109,8 +110,10 @@ describe('Engine workspace registry model (E1.T04)', () => {
     let current = linked;
     const first = randomUUID();
     current = bindSpecToWorkspace(current, first, workspaceId);
-    for (let i = 1; i < MAX_MANAGED_WORKSPACE_SPECIFICATIONS; i++)
+    for (let i = 1; i < MAX_MANAGED_WORKSPACE_SPECIFICATIONS; i++) {
       current = bindSpecToWorkspace(current, randomUUID(), workspaceId);
+    }
+
     expect(current.specBindings.filter((x) => x.workspaceId === workspaceId)).toHaveLength(
       MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
     );

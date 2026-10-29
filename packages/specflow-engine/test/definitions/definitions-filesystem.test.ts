@@ -55,12 +55,14 @@ async function probeCapabilities(): Promise<void> {
   } catch {
     canSymlink = false;
   }
+
   try {
     await link(target, join(scratch, 'probe-hard'));
     canHardLink = true;
   } catch {
     canHardLink = false;
   }
+
   try {
     const fifo = join(scratch, 'probe-fifo');
     execFileSync('mkfifo', [fifo], { stdio: 'ignore' });
@@ -69,6 +71,7 @@ async function probeCapabilities(): Promise<void> {
   } catch {
     canFifo = false;
   }
+
   try {
     const denied = join(scratch, 'probe-denied');
     await writeFile(denied, 'x');
@@ -79,6 +82,7 @@ async function probeCapabilities(): Promise<void> {
     } catch {
       canDenyRead = true;
     }
+
     await chmod(denied, 0o600);
   } catch {
     canDenyRead = false;
@@ -99,6 +103,7 @@ async function newHome(): Promise<string> {
   counter += 1;
   const home = join(scratch, `home-${counter}`);
   await mkdir(home, { recursive: true });
+
   return home;
 }
 
@@ -116,6 +121,7 @@ async function writeProject(home: string, files: Record<string, string>): Promis
 
 function sampleFiles(): Record<string, string> {
   const memory = sampleProject();
+
   return Object.fromEntries(memory.paths().map((path) => [path, memory.text(path) ?? '']));
 }
 
@@ -137,6 +143,7 @@ describe('filesystem source', () => {
         ['specification-archetype', 'directory'],
       ]);
     }
+
     const read = await source.read('document-type/note.yaml', 100_000);
     expect(read.state === 'ok' && read.bytes.toString('utf8')).toContain('id: note');
     const stats = await source.stat('document-type/note.yaml');
@@ -169,13 +176,17 @@ describe('filesystem source', () => {
     ]) {
       expect((await source.read(path, 10)).state, path).toBe('unsafe');
     }
+
     expect((await source.read('document-type', 10)).state).toBe('not-regular');
   });
 
   it('reports a directory with more entries than allowed as overflowing', async () => {
     const home = await newHome();
     const files: Record<string, string> = {};
-    for (let index = 0; index < 30; index += 1) files[`document-type/f${index}.yaml`] = 'x';
+    for (let index = 0; index < 30; index += 1) {
+      files[`document-type/f${index}.yaml`] = 'x';
+    }
+
     await writeProject(home, files);
     const source = createFilesystemDefinitionSource(definitionsRoot(home));
     expect(await source.list('document-type', 29)).toEqual({ state: 'overflow' });
@@ -189,6 +200,7 @@ describe('filesystem source', () => {
       const id = `t${String(index).padStart(3, '0')}`;
       files[`document-type/${id}.yaml`] = documentTypeFile(id);
     }
+
     await writeProject(home, files);
     const result = await loadDefinitions(
       createFilesystemDefinitionSource(definitionsRoot(home)),
@@ -199,7 +211,10 @@ describe('filesystem source', () => {
   });
 
   it('reports an unreadable file and still loads the others', async (context) => {
-    if (!canDenyRead) return context.skip();
+    if (!canDenyRead) {
+      return context.skip();
+    }
+
     const home = await newHome();
     await writeProject(home, sampleFiles());
     const target = join(definitionsRoot(home), 'document-type', 'note.yaml');
@@ -220,7 +235,10 @@ describe('filesystem source', () => {
 describe('hostile entries', () => {
   // `describe.skipIf` is evaluated at collection time, before the probes ran: each test checks its own capability.
   it('does not follow a symlinked definition file', async (context) => {
-    if (!canSymlink) return context.skip();
+    if (!canSymlink) {
+      return context.skip();
+    }
+
     const home = await newHome();
     await writeProject(home, sampleFiles());
     const outside = join(scratch, 'outside.yaml');
@@ -236,7 +254,10 @@ describe('hostile entries', () => {
   });
 
   it('does not follow a symlinked kind directory or definitions root', async (context) => {
-    if (!canSymlink) return context.skip();
+    if (!canSymlink) {
+      return context.skip();
+    }
+
     const outside = join(scratch, 'outside-tree');
     await mkdir(join(outside, 'document-type'), { recursive: true });
     await writeFile(join(outside, 'document-type', 'overview.yaml'), documentTypeFile('overview'));
@@ -266,7 +287,10 @@ describe('hostile entries', () => {
   });
 
   it('does not follow a symlinked template file or template folder', async (context) => {
-    if (!canSymlink) return context.skip();
+    if (!canSymlink) {
+      return context.skip();
+    }
+
     const outside = join(scratch, 'outside-template.md');
     await writeFile(outside, '# outside\n');
 
@@ -310,7 +334,10 @@ describe('hostile entries', () => {
   });
 
   it('does not block on, or read, a FIFO', async (context) => {
-    if (!canFifo) return context.skip();
+    if (!canFifo) {
+      return context.skip();
+    }
+
     const home = await newHome();
     await writeProject(home, sampleFiles());
     execFileSync('mkfifo', [join(definitionsRoot(home), 'document-type', 'pipe.yaml')]);
@@ -322,7 +349,10 @@ describe('hostile entries', () => {
   });
 
   it('reads a hard-linked file as the regular file it is', async (context) => {
-    if (!canHardLink) return context.skip();
+    if (!canHardLink) {
+      return context.skip();
+    }
+
     const home = await newHome();
     await writeProject(home, sampleFiles());
     const original = join(scratch, 'hard-original.yaml');
@@ -344,6 +374,7 @@ describe('catalogue stat memo against real timestamps', () => {
       stat: (path) => source.stat(path),
       read: (path, max) => {
         counter.reads += 1;
+
         return source.read(path, max);
       },
     };
@@ -410,6 +441,7 @@ describe('catalogue stat memo against real timestamps', () => {
 describe('install against a real project', () => {
   async function runInstall(home: string, options = {}) {
     const seed = (await openSeedSource()).source;
+
     return installDefinitions({
       seed,
       target: createFilesystemDefinitionSource(definitionsRoot(home)),
@@ -423,10 +455,13 @@ describe('install against a real project', () => {
     const out: string[] = [];
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const path = join(directory, entry.name);
-      if (entry.isDirectory())
+      if (entry.isDirectory()) {
         out.push(...(await filesBelow(path)).map((name) => `${entry.name}/${name}`));
-      else out.push(entry.name);
+      } else {
+        out.push(entry.name);
+      }
     }
+
     return out.sort();
   }
 
@@ -515,7 +550,10 @@ describe('install against a real project', () => {
   });
 
   it('refuses to write through a symlinked definitions folder or file', async (context) => {
-    if (!canSymlink) return context.skip();
+    if (!canSymlink) {
+      return context.skip();
+    }
+
     const outside = join(scratch, 'outside-install');
     await mkdir(outside, { recursive: true });
 

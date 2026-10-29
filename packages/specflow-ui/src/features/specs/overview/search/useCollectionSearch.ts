@@ -9,6 +9,7 @@ import type { SpecsCollection } from '../model';
 export function useCollectionSearch(collection: SpecsCollection) {
   const [search, setSearch] = useState({ collection, value: '' });
   const term = search.collection === collection ? search.value : '';
+
   return {
     term,
     setTerm: (value: string) => setSearch({ collection, value }),

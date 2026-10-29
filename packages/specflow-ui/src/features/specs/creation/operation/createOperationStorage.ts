@@ -64,9 +64,14 @@ function toDraft(value: unknown): CreateDraft | undefined {
     typeof value.operationId !== 'string' ||
     typeof value.title !== 'string' ||
     typeof value.goal !== 'string'
-  )
+  ) {
     return undefined;
-  if (!isRecord(value.choice)) return undefined;
+  }
+
+  if (!isRecord(value.choice)) {
+    return undefined;
+  }
+
   const failure =
     isRecord(value.failure) && typeof value.failure.kind === 'string'
       ? (value.failure as unknown as CreateFailure)
@@ -78,6 +83,7 @@ function toDraft(value: unknown): CreateDraft | undefined {
     value.documentFiles.every((file): file is string => typeof file === 'string')
       ? value.documentFiles
       : undefined;
+
   return {
     operationId: value.operationId,
     title: value.title,
@@ -93,12 +99,19 @@ function toDraft(value: unknown): CreateDraft | undefined {
 
 /** A stored archetype choice; a damaged one is dropped (the form then starts from the default). */
 function toArchetypeChoice(value: unknown): ArchetypeChoice | undefined {
-  if (!isRecord(value) || !isRecord(value.ticks)) return undefined;
+  if (!isRecord(value) || !isRecord(value.ticks)) {
+    return undefined;
+  }
+
   const ticks: Record<string, readonly string[]> = {};
   for (const [archetypeId, ids] of Object.entries(value.ticks)) {
-    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) return undefined;
+    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) {
+      return undefined;
+    }
+
     ticks[archetypeId] = ids;
   }
+
   return {
     ...(typeof value.archetypeId === 'string' ? { archetypeId: value.archetypeId } : {}),
     ticks,
@@ -112,8 +125,12 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
  * outdated entry (for example a malformed target) is dropped, never sent.
  */
 function isStored(value: unknown): value is StoredCreateOperation {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
   const { request, startedAt } = value as Partial<StoredCreateOperation>;
+
   return (
     typeof startedAt === 'number' &&
     isCreateSpecRequest(request) &&
@@ -140,17 +157,25 @@ export function createSessionOperationStorage(
       // Persistence is best effort.
     }
   };
+
   return {
     load(operationId) {
       try {
         const raw = storage?.getItem(key(operationId));
-        if (!raw) return undefined;
+        if (!raw) {
+          return undefined;
+        }
+
         const parsed: unknown = JSON.parse(raw);
-        if (isStored(parsed) && parsed.request.operationId === operationId) return parsed;
+        if (isStored(parsed) && parsed.request.operationId === operationId) {
+          return parsed;
+        }
+
         remove(key(operationId));
       } catch {
         // Unreadable entry: treated as absent.
       }
+
       return undefined;
     },
     save(operation) {
@@ -164,13 +189,20 @@ export function createSessionOperationStorage(
     loadDraft(operationId) {
       try {
         const raw = storage?.getItem(draftKey(operationId));
-        if (!raw) return undefined;
+        if (!raw) {
+          return undefined;
+        }
+
         const draft = toDraft(JSON.parse(raw));
-        if (draft?.operationId === operationId) return draft;
+        if (draft?.operationId === operationId) {
+          return draft;
+        }
+
         remove(draftKey(operationId));
       } catch {
         // Unreadable draft: treated as absent.
       }
+
       return undefined;
     },
     saveDraft(draft) {
@@ -196,6 +228,7 @@ function browserSessionStorage(): StorageLike | undefined {
 export function createOperationStorageFor(authStore: AuthStore): CreateOperationStorage {
   const state = authStore.getState();
   const identity = state.status === 'ready' ? authSessionIdentity(state.session) : 'unknown';
+
   return createSessionOperationStorage(identity, browserSessionStorage());
 }
 
@@ -207,5 +240,6 @@ export function createOperationStorageFor(authStore: AuthStore): CreateOperation
 export function useCreateOperationStorage(): CreateOperationStorage {
   const { authStore } = useAppServices();
   const [storage] = useState(() => createOperationStorageFor(authStore));
+
   return storage;
 }

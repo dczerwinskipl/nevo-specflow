@@ -51,8 +51,10 @@ function stubApi(overrides: Partial<DocumentsEngineApi> = {}): {
     <A extends unknown[], R>(name: string, value: (...args: A) => R) =>
     (...args: A): R => {
       calls.names.push(name);
+
       return value(...args);
     };
+
   const api: DocumentsEngineApi = {
     openEngine: record('openEngine', () => Promise.resolve(ENGINE)),
     readTree: record('readTree', () =>
@@ -70,6 +72,7 @@ function stubApi(overrides: Partial<DocumentsEngineApi> = {}): {
     ),
     write: record('write', (_engine, specId, operationId, request) => {
       calls.writes.push({ specId, operationId, request });
+
       return Promise.resolve(resultOf());
     }),
     status: record('status', () =>
@@ -100,6 +103,7 @@ function stubApi(overrides: Partial<DocumentsEngineApi> = {}): {
     resolve: record('resolve', () => Promise.resolve({ resolved: [], stillUncommitted: [] })),
     ...overrides,
   };
+
   return { api, calls };
 }
 
@@ -125,10 +129,17 @@ async function run(
   });
   try {
     await program.parseAsync(['node', 'nevo-specflow', 'specs', 'documents', ...args]);
+
     return { out, err, exit: 0 };
   } catch (error) {
-    if (error instanceof CommanderError) return { out, err, exit: commanderExitCode(error) };
-    if (error instanceof ReportedFailure) return { out, err, exit: error.exitCode };
+    if (error instanceof CommanderError) {
+      return { out, err, exit: commanderExitCode(error) };
+    }
+
+    if (error instanceof ReportedFailure) {
+      return { out, err, exit: error.exitCode };
+    }
+
     throw error;
   }
 }
@@ -417,6 +428,7 @@ describe('queue commands', () => {
     const { api } = stubApi({
       recover: (...args) => {
         seen.push(args.slice(1));
+
         return Promise.resolve([]);
       },
     });

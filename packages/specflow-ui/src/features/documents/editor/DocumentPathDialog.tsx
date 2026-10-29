@@ -28,18 +28,25 @@ export function DocumentPathDialog({
   const [status, setStatus] = useState<'copied' | 'failed' | null>(null);
   const copy = async () => {
     try {
-      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard unavailable');
+      }
+
       await navigator.clipboard.writeText(path);
       setStatus('copied');
     } catch {
       setStatus('failed');
     }
   };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) setStatus(null);
+        if (!next) {
+          setStatus(null);
+        }
+
         onOpenChange(next);
       }}
     >

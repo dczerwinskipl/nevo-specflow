@@ -22,22 +22,29 @@ describe('visit state stores', () => {
 
     function DocumentA() {
       renders.a += 1;
+
       return <output data-testid="a">{useDocumentDraft('s', 'a')?.content}</output>;
     }
+
     function DocumentB() {
       renders.b += 1;
+
       return <output data-testid="b">{useDocumentDraft('s', 'b')?.content}</output>;
     }
+
     function Composer() {
       renders.composer += 1;
       const [message, set] = useComposerDraft('s:session');
       setComposer = set;
+
       return <output data-testid="composer">{message}</output>;
     }
+
     function Actions() {
       renders.actions += 1;
       store = useDocumentDraftStore();
       notify = useNotify();
+
       return null;
     }
 

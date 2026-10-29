@@ -142,13 +142,19 @@ export function useDocumentSave({
     (spec: string, id: string): RetainedSave | undefined => {
       const key = documentDraftKey(spec, id);
       const entry = retained.current.get(key);
-      if (!entry) return undefined;
+      if (!entry) {
+        return undefined;
+      }
+
       if (
         entry.variables.incarnation === store.incarnation(spec, id) &&
         store.get(spec, id)?.content === entry.variables.content
-      )
+      ) {
         return entry;
+      }
+
       retained.current.delete(key);
+
       return undefined;
     },
     [store],
@@ -189,6 +195,7 @@ export function useDocumentSave({
           exact: true,
         });
       }
+
       await cache.invalidateQueries({
         queryKey: specificationKeys.detail(variables.specId),
         exact: true,
@@ -207,14 +214,23 @@ export function useDocumentSave({
     ): Promise<SaveResult | undefined> => {
       const { specId: openSpec, document: open, draft: openDraft } = current.current;
       const id = documentId ?? open?.id;
-      if (id === undefined) return undefined;
+      if (id === undefined) {
+        return undefined;
+      }
+
       // The store is authoritative, including after a previous save updated the revision.
       // Only the shown document may fall back to a draft derived from its loaded record.
       const source = store.get(openSpec, id) ?? (id === open?.id ? openDraft : undefined);
-      if (!source) return undefined;
+      if (!source) {
+        return undefined;
+      }
+
       const key = documentDraftKey(openSpec, id);
       const joined = inFlight.current.get(key);
-      if (joined) return joined;
+      if (joined) {
+        return joined;
+      }
+
       if (held.current.has(key)) {
         // A rename, move or classify of this document is running: a save now would settle under
         // the id it had before. Nothing is sent; Save works again once the operation ended.
@@ -226,8 +242,10 @@ export function useDocumentSave({
           code: operationRunningCode,
         });
         setErrors((all) => ({ ...all, [key]: error }));
+
         return { ok: false, specId: openSpec, documentId: id, content: source.content, error };
       }
+
       // A save without a final result is sent again exactly as it was: Resume always replays the
       // written one; otherwise only while it still describes the draft.
       const kept = options?.resume ? retained.current.get(key) : retainedFor(openSpec, id);
@@ -244,24 +262,34 @@ export function useDocumentSave({
         documentId: variables.documentId,
         content: variables.content,
       };
-      if (!isDraftDirty(source) && !(options?.resume && kept)) return { ok: true, ...base };
+      if (!isDraftDirty(source) && !(options?.resume && kept)) {
+        return { ok: true, ...base };
+      }
+
       const run = (async (): Promise<SaveResult> => {
         setErrors((all) => {
           const rest = { ...all };
           delete rest[key];
+
           return rest;
         });
         setPending((keys) => [...keys, key]);
         try {
           await mutateAsync(variables);
           retained.current.delete(key);
+
           return { ok: true, ...base };
         } catch (error) {
           // Kept for an exact replay: written but not committed, or no answer at all.
           const retention = writeRetention(error);
-          if (retention) retained.current.set(key, { variables, reason: retention });
-          else retained.current.delete(key);
+          if (retention) {
+            retained.current.set(key, { variables, reason: retention });
+          } else {
+            retained.current.delete(key);
+          }
+
           setErrors((all) => ({ ...all, [key]: error }));
+
           return { ok: false, ...base, error };
         } finally {
           inFlight.current.delete(key);
@@ -269,6 +297,7 @@ export function useDocumentSave({
         }
       })();
       inFlight.current.set(key, run);
+
       return run;
     },
     [mutateAsync, store, retainedFor],
@@ -283,9 +312,14 @@ export function useDocumentSave({
           outcome.failed.push({ id, error: result.error });
           break;
         }
-        if (result) outcome.saved.push(id);
-        else outcome.skipped.push(id);
+
+        if (result) {
+          outcome.saved.push(id);
+        } else {
+          outcome.skipped.push(id);
+        }
       }
+
       return outcome;
     },
     [save],
@@ -304,9 +338,13 @@ export function useDocumentSave({
     (id: string) =>
       setErrors((all) => {
         const errorKey = documentDraftKey(specId, id);
-        if (!(errorKey in all)) return all;
+        if (!(errorKey in all)) {
+          return all;
+        }
+
         const rest = { ...all };
         delete rest[errorKey];
+
         return rest;
       }),
     [specId],
@@ -317,8 +355,12 @@ export function useDocumentSave({
       const fromKey = documentDraftKey(specId, from);
       const toKey = documentDraftKey(specId, to);
       setErrors((all) => {
-        if (!(fromKey in all)) return all;
+        if (!(fromKey in all)) {
+          return all;
+        }
+
         const { [fromKey]: error, ...rest } = all;
+
         return { ...rest, [toKey]: error };
       });
     },
@@ -328,9 +370,15 @@ export function useDocumentSave({
   const pendingOf = useCallback(
     (id: string): PendingSave | undefined => {
       const pendingKey = documentDraftKey(specId, id);
-      if (inFlight.current.has(pendingKey)) return 'saving';
+      if (inFlight.current.has(pendingKey)) {
+        return 'saving';
+      }
+
       const kept = retainedFor(specId, id);
-      if (!kept) return undefined;
+      if (!kept) {
+        return undefined;
+      }
+
       return kept.reason === 'recovery' ? 'recovery' : 'unconfirmed';
     },
     [specId, retainedFor],
@@ -339,12 +387,18 @@ export function useDocumentSave({
   const holdSaves = useCallback(
     (ids: readonly string[]) => {
       const keys = ids.map((id) => documentDraftKey(specId, id));
-      for (const heldKey of keys) held.current.set(heldKey, (held.current.get(heldKey) ?? 0) + 1);
+      for (const heldKey of keys) {
+        held.current.set(heldKey, (held.current.get(heldKey) ?? 0) + 1);
+      }
+
       return () => {
         for (const heldKey of keys) {
           const count = (held.current.get(heldKey) ?? 1) - 1;
-          if (count > 0) held.current.set(heldKey, count);
-          else held.current.delete(heldKey);
+          if (count > 0) {
+            held.current.set(heldKey, count);
+          } else {
+            held.current.delete(heldKey);
+          }
         }
       };
     },
@@ -352,6 +406,7 @@ export function useDocumentSave({
   );
 
   const key = document ? documentDraftKey(specId, document.id) : undefined;
+
   return {
     holdSaves,
     follow,

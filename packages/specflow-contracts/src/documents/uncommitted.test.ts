@@ -66,6 +66,7 @@ describe('uncommitted changes contract', () => {
         }),
       ).toBe(true);
     }
+
     expect(
       Value.Check(commits, { pending: 0, failed: 0, recoveryRequired: 0, policy: 'off' }),
     ).toBe(false);
@@ -89,6 +90,7 @@ describe('manual commit contract', () => {
     ]) {
       expect(Value.Check(ManualCommitInputSchema, good)).toBe(true);
     }
+
     for (const bad of [
       {},
       { operationId: 'nope' },

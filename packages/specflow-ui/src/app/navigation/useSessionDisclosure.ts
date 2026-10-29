@@ -9,9 +9,11 @@ export function useSessionDisclosure(
 ) {
   const attention = summary.state === 'available' && summary.attention;
   useEffect(() => {
-    if (specId && !preferences.has(specId) && summary.state === 'available')
+    if (specId && !preferences.has(specId) && summary.state === 'available') {
       onPreference(specId, attention);
+    }
   }, [specId, preferences, onPreference, summary.state, attention]);
+
   return Boolean(specId && (preferences.get(specId) ?? attention));
 }
 
@@ -21,6 +23,8 @@ export function useSessionDisclosurePreferences() {
   const setExpanded = useCallback((id: string, expanded: boolean) => {
     setPreferences((previous) => new Map(previous).set(id, expanded));
   }, []);
+
   return { preferences, setExpanded };
 }
+
 export type SessionDisclosurePreferences = ReturnType<typeof useSessionDisclosurePreferences>;

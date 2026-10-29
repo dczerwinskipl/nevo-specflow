@@ -42,6 +42,7 @@ export function fitItemTabs<T extends FitItem>(
 ): ItemTabsFit<T> {
   if (items.length * ITEM_TAB_MIN_WIDTH <= available) {
     const spare = Math.floor(available / Math.max(1, items.length));
+
     return {
       visible: items,
       widths: items.map((item) =>
@@ -50,15 +51,20 @@ export function fitItemTabs<T extends FitItem>(
       overflowing: false,
     };
   }
+
   const room = available - ITEM_TABS_OVERFLOW_WIDTH;
   const count = Math.max(1, Math.floor(room / ITEM_TAB_MIN_WIDTH));
   let visible = items.slice(0, count);
   const active = items.find((item) => item.id === activeId);
-  if (active && !visible.includes(active)) visible = [...visible.slice(0, count - 1), active];
+  if (active && !visible.includes(active)) {
+    visible = [...visible.slice(0, count - 1), active];
+  }
+
   const width = Math.min(
     ITEM_TAB_MAX_WIDTH,
     Math.max(ITEM_TAB_MIN_WIDTH, Math.floor(room / visible.length)),
   );
+
   return { visible, widths: visible.map(() => width), overflowing: true };
 }
 
@@ -86,11 +92,17 @@ function graphemes(text: string): string[] {
  */
 export function splitMiddle(text: string, maxChars?: number) {
   const chars = graphemes(text);
-  if (maxChars === undefined || chars.length <= maxChars) return { head: text, tail: '' };
+  if (maxChars === undefined || chars.length <= maxChars) {
+    return { head: text, tail: '' };
+  }
+
   const dot = chars.lastIndexOf('.');
   const extLength = dot > 0 ? chars.length - dot : 0;
   const tailLength = Math.min(extLength + 4, Math.max(extLength, Math.floor(maxChars * 0.5)));
-  if (tailLength === 0) return { head: text, tail: '' };
+  if (tailLength === 0) {
+    return { head: text, tail: '' };
+  }
+
   return {
     head: chars.slice(0, chars.length - tailLength).join(''),
     tail: chars.slice(chars.length - tailLength).join(''),

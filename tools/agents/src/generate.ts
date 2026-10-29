@@ -14,7 +14,10 @@ const PROVIDER_ROOTS: Record<Provider, string> = {
 export const DEFAULT_PROVIDERS: readonly Provider[] = ['claude', 'codex', 'antigravity'];
 
 export function parseProviders(value: string | undefined): Provider[] {
-  if (!value) return [...DEFAULT_PROVIDERS];
+  if (!value) {
+    return [...DEFAULT_PROVIDERS];
+  }
+
   const providers = [
     ...new Set(
       value
@@ -25,9 +28,15 @@ export function parseProviders(value: string | undefined): Provider[] {
   ];
   const known = new Set(DEFAULT_PROVIDERS);
   for (const provider of providers) {
-    if (!known.has(provider as Provider)) throw new Error(`unknown provider '${provider}'`);
+    if (!known.has(provider as Provider)) {
+      throw new Error(`unknown provider '${provider}'`);
+    }
   }
-  if (providers.length === 0) throw new Error('at least one provider is required');
+
+  if (providers.length === 0) {
+    throw new Error('at least one provider is required');
+  }
+
   return providers as Provider[];
 }
 
@@ -48,17 +57,22 @@ export function expectedFiles(
       files.push(renderSkill(repoRoot, agent, path, mode));
     }
   }
+
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 function managedSkillDirectories(repoRoot: string, providerRoot: string): string[] {
   const root = resolve(repoRoot, providerRoot);
-  if (!existsSync(root)) return [];
+  if (!existsSync(root)) {
+    return [];
+  }
+
   return readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.startsWith('nevo-agents-'))
     .map((entry) => join(root, entry.name))
     .filter((dir) => {
       const skill = join(dir, 'SKILL.md');
+
       return existsSync(skill) && readFileSync(skill, 'utf8').includes(GENERATED_MARKER);
     });
 }
@@ -73,7 +87,9 @@ export function buildAgents(
 
   for (const providerRoot of uniqueProviderRoots(providers)) {
     for (const dir of managedSkillDirectories(repoRoot, providerRoot)) {
-      if (!expectedDirs.has(resolve(dir))) rmSync(dir, { recursive: true, force: true });
+      if (!expectedDirs.has(resolve(dir))) {
+        rmSync(dir, { recursive: true, force: true });
+      }
     }
   }
 
@@ -97,14 +113,19 @@ export function checkAgents(
       problems.push(`missing: ${file.path}`);
       continue;
     }
+
     const actual = readFileSync(file.path, 'utf8').replace(/\r\n/g, '\n');
-    if (actual !== file.content) problems.push(`stale: ${file.path}`);
+    if (actual !== file.content) {
+      problems.push(`stale: ${file.path}`);
+    }
   }
 
   for (const providerRoot of uniqueProviderRoots(providers)) {
     for (const dir of managedSkillDirectories(repoRoot, providerRoot)) {
       const skill = resolve(dir, 'SKILL.md');
-      if (!expectedPaths.has(skill)) problems.push(`stale generated skill: ${skill}`);
+      if (!expectedPaths.has(skill)) {
+        problems.push(`stale generated skill: ${skill}`);
+      }
     }
   }
 

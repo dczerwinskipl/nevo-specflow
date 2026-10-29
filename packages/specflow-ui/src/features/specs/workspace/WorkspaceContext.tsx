@@ -40,6 +40,7 @@ export function useWorkspaceRuntime(): WorkspaceRuntime {
   if (!context) {
     throw new Error('useWorkspaceRuntime must be used within a WorkspaceProvider');
   }
+
   return context;
 }
 

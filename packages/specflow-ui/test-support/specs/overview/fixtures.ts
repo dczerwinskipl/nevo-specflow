@@ -243,6 +243,7 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
 
 export function createLongContentFixture(): CurrentSpecsOverview {
   const base = createSpecsFixture();
+
   return {
     ...base,
     items: [

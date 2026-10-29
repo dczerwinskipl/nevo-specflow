@@ -19,8 +19,14 @@ export function createStartCommand(ctx: RuntimeCommandContext): Command {
       const handle = await ctx.start({ demo: options.demo === true });
       ctx.stdout(`Nevo SpecFlow available at ${handle.address}`);
 
-      if (!ctx.signal) return;
-      if (!ctx.signal.aborted) await aborted(ctx.signal);
+      if (!ctx.signal) {
+        return;
+      }
+
+      if (!ctx.signal.aborted) {
+        await aborted(ctx.signal);
+      }
+
       await handle.close();
     });
 }

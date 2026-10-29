@@ -21,6 +21,7 @@ function SpecificationTaskRouteScreen() {
   const taskState = useSpecificationTask(specId, taskId, services.taskApi);
   const onBack = () =>
     void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
+
   return (
     <SpecificationTaskPage
       specId={specId}

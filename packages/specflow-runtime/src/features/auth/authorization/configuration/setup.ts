@@ -51,7 +51,9 @@ export function createAuthorizationSetup(ui: RuntimeSetupUi): AuthorizationSetup
           'Authorization',
         );
         const firstUserId = assignments[0]?.userId;
-        if (!firstUserId) throw new Error('Authorization setup expected at least one user.');
+        if (!firstUserId) {
+          throw new Error('Authorization setup expected at least one user.');
+        }
 
         const adminUserId = await ui.select(
           'Administrator',
@@ -65,6 +67,7 @@ export function createAuthorizationSetup(ui: RuntimeSetupUi): AuthorizationSetup
         if (!assignment) {
           throw new Error(`Unknown authorization setup user '${adminUserId}'.`);
         }
+
         assignment.role = 'admin';
       }
 

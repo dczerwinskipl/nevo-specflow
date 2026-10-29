@@ -22,6 +22,7 @@ function Host({ catalogue }: { catalogue: ArchetypeCatalogue }) {
   const [choice, setChoice] = useState<ArchetypeChoice>(initialArchetypeChoice);
   const [served, setServed] = useState(catalogue);
   const chosen = selectedArchetype(served, choice);
+
   return (
     <div className="grid max-w-content-narrow gap-4 p-6">
       <ArchetypeSection
@@ -83,7 +84,10 @@ export const SeveralWithoutDefault: Story = {
   args: { catalogue: several },
   play: async ({ canvas, userEvent }) => {
     await expect(selected(canvas)).toHaveTextContent('none');
-    for (const radio of canvas.getAllByRole('radio')) await expect(radio).not.toBeChecked();
+    for (const radio of canvas.getAllByRole('radio')) {
+      await expect(radio).not.toBeChecked();
+    }
+
     await expect(
       canvas.getByText('Wybierz archetyp, aby zobaczyć dokumenty, które powstaną.'),
     ).toBeVisible();

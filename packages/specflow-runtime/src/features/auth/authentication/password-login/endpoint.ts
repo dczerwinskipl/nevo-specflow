@@ -67,12 +67,14 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
         if (result.error === 'rate_limited') {
           reply.header('Retry-After', String(result.retryAfterSeconds));
         }
+
         if (result.error === 'service_unavailable') {
           request.log.warn('Authentication session store capacity reached during password login');
         }
 
         reply.code(passwordErrorStatus(result.error));
         const response: PasswordLoginErrorResponse = { error: result.error };
+
         return response;
       }
 
@@ -80,6 +82,7 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
         ...options.cookieOptions,
         maxAge: ttlSeconds(options.store.policy.sessionTtlMs),
       });
+
       return result.session;
     },
   );

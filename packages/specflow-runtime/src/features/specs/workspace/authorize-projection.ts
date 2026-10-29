@@ -18,6 +18,7 @@ export function authorizeSessionReferences(
   const visibleAttention = <T extends { kind: string; targetId?: string }>(items: readonly T[]) =>
     items.filter((item) => item.kind !== 'session' || isAllowed(item.targetId));
   const activity = sections.activity;
+
   return {
     ...data,
     ...(data.recommendedSessionId && visibleSessionIds.has(data.recommendedSessionId)

@@ -57,11 +57,15 @@ export function createDemoStore() {
   };
   const listeners = new Set<() => void>();
   const notify = () => {
-    for (const listener of listeners) listener();
+    for (const listener of listeners) {
+      listener();
+    }
   };
+
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
@@ -101,4 +105,5 @@ export function createDemoStore() {
     },
   };
 }
+
 export type DemoStore = ReturnType<typeof createDemoStore>;

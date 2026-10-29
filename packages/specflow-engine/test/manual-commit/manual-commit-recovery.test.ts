@@ -68,6 +68,7 @@ async function refusal(promise: Promise<unknown>) {
   const error = await failure(promise);
   expect(error).toBeInstanceOf(DocumentError);
   const { code, details } = error as DocumentError;
+
   return { code, details };
 }
 
@@ -84,6 +85,7 @@ function portWith(
   ) => Promise<{ sha: string; parentHead: string }>,
 ): CommitPort {
   const real = createGitCommitPort(project.engine);
+
   return { ...real, commit: (request) => commit(real, request) };
 }
 
@@ -259,6 +261,7 @@ describe('a manual commit whose outcome Git cannot prove', () => {
       ),
     );
     expect(refused.code).toBe('MANUAL_COMMIT_RECOVERY_REQUIRED');
+
     return { project, operationId, before };
   }
 
@@ -378,6 +381,7 @@ describe('a manual commit whose outcome Git cannot prove', () => {
         deps: {
           commits: portWith(project, async (real, request) => {
             await real.commit(request);
+
             throw uncertain('commit-interrupted');
           }),
         },
@@ -639,6 +643,7 @@ describe('a manual commit that stopped while holding the checkout', () => {
       ),
     );
     expect(error).toBeInstanceOf(ManualCommitInterrupted);
+
     return { project, operationId };
   }
 

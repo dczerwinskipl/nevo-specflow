@@ -17,12 +17,14 @@ function withRouter(Story: ComponentType) {
       () => createSpecFlowRouter(createMemoryHistory({ initialEntries: ['/'] })),
       [],
     );
+
     return (
       <RouterContextProvider router={router}>
         <Story />
       </RouterContextProvider>
     );
   }
+
   return <RouterDecorator />;
 }
 
@@ -83,6 +85,7 @@ export const FeatureUnavailablePage: Story = {
   args: {},
   render: () => {
     const onBack = fn();
+
     return (
       <div className="p-6" data-testid="feature-unavailable">
         <FeatureUnavailable onBack={onBack} />

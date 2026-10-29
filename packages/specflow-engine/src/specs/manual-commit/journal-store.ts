@@ -92,11 +92,19 @@ export async function readSettledManualCommitJournal(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MANUAL_COMMIT_JOURNAL_MAX_BYTES) {
       throw invalidManualCommitJournal();
     }
+
     const value: unknown = JSON.parse(await readFileWindowsSafe(path));
+
     return MANUAL_COMMIT_JOURNAL_KIND.parse(context, value, operationId);
   } catch (error) {
-    if (isMissing(error)) return undefined;
-    if (error instanceof SyntaxError) throw invalidManualCommitJournal();
+    if (isMissing(error)) {
+      return undefined;
+    }
+
+    if (error instanceof SyntaxError) {
+      throw invalidManualCommitJournal();
+    }
+
     throw error;
   }
 }
@@ -106,7 +114,10 @@ export async function findManualCommitJournal(
   context: ResolvedProjectHome,
   operationId: string,
 ): Promise<ManualCommitJournal | undefined> {
-  if (!OPERATION_ID_PATTERN.test(operationId)) return undefined;
+  if (!OPERATION_ID_PATTERN.test(operationId)) {
+    return undefined;
+  }
+
   return (
     (await readManualCommitJournal(context, operationId)) ??
     (await readSettledManualCommitJournal(context, operationId))
@@ -147,12 +158,15 @@ export function transitionManualCommitJournal(
     if (current === undefined) {
       throw manualCommitError('operation-not-found', 'The manual commit does not exist.');
     }
+
     if (!from.includes(current.stage) || options.guard?.(current) === false) {
       throw new ManualCommitMovedError(current);
     }
+
     const next = transitionManualCommit(current, to, patch, now);
     await options.beforePublish?.(next);
     await publishJournal(context, MANUAL_COMMIT_JOURNAL_KIND, next);
+
     return next;
   });
 }
@@ -164,10 +178,14 @@ export async function settleManualCommitJournal(
 ): Promise<void> {
   await withManualCommitLock(context, async () => {
     const current = await readManualCommitJournal(context, operationId);
-    if (current === undefined) return;
+    if (current === undefined) {
+      return;
+    }
+
     if (!MANUAL_COMMIT_STAGE_FACTS[current.stage].settled) {
       throw manualCommitError('operation-state-invalid', 'Only a settled operation is moved.');
     }
+
     await moveJournalToSettled(context, MANUAL_COMMIT_JOURNAL_KIND, operationId);
   });
 }
@@ -183,6 +201,7 @@ export async function readSnapshot(
   if (entries.length !== journal.snapshot.pathCount) {
     throw manualCommitError('payload-unprovable', 'The manual commit snapshot does not match.');
   }
+
   return entries;
 }
 
@@ -224,17 +243,28 @@ export async function sweepSettledManualCommits(
   } catch {
     settled = [];
   }
+
   let removed = 0;
   for (const name of settled) {
-    if (outOfTime()) return removed;
-    if (!name.endsWith('.json')) continue;
+    if (outOfTime()) {
+      return removed;
+    }
+
+    if (!name.endsWith('.json')) {
+      continue;
+    }
+
     const operationId = name.slice(0, -5);
     if (!OPERATION_ID_PATTERN.test(operationId) || operationId === options.keepOperationId) {
       continue;
     }
+
     try {
       const stat = await lstat(join(directory, name));
-      if (!stat.isFile() || clock - stat.mtimeMs < retention) continue;
+      if (!stat.isFile() || clock - stat.mtimeMs < retention) {
+        continue;
+      }
+
       await removePayload(context, MANUAL_COMMIT_JOURNAL_KIND, operationId);
       await removeSettledJournal(context, MANUAL_COMMIT_JOURNAL_KIND, operationId);
       removed += 1;
@@ -249,9 +279,13 @@ export async function sweepSettledManualCommits(
   } catch {
     return removed;
   }
+
   const known = new Set([...entries, ...settled].filter((name) => name.endsWith('.json')));
   for (const name of entries) {
-    if (outOfTime()) break;
+    if (outOfTime()) {
+      break;
+    }
+
     const operationId = payloadOperationIdOf(name);
     if (
       operationId === undefined ||
@@ -260,14 +294,19 @@ export async function sweepSettledManualCommits(
     ) {
       continue;
     }
+
     try {
       const stat = await lstat(join(base, name));
-      if (!stat.isDirectory() || clock - stat.mtimeMs < retention) continue;
+      if (!stat.isDirectory() || clock - stat.mtimeMs < retention) {
+        continue;
+      }
+
       await removePayload(context, MANUAL_COMMIT_JOURNAL_KIND, operationId);
       removed += 1;
     } catch {
       // Vanished or not removable: never fatal for the reservation.
     }
   }
+
   return removed;
 }

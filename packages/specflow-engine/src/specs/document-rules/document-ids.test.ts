@@ -15,6 +15,7 @@ const SPEC_ID = '11111111-2222-4333-8444-555555555555';
 
 function expectedSuffix(position: number, length = 6): string {
   const digest = createHash('sha256').update(`${SPEC_ID}:${position}`).digest();
+
   return base32Lower(digest).slice(0, length);
 }
 

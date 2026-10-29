@@ -73,6 +73,7 @@ function initialSnapshot<T extends OpenedItem>(
   // `undefined` means "first item"; an explicit `null` means "none active".
   const first = items[0]?.id ?? null;
   const known = activeId != null && items.some((item) => item.id === activeId);
+
   return {
     scope,
     generation,
@@ -83,6 +84,7 @@ function initialSnapshot<T extends OpenedItem>(
 
 function openIn<T extends OpenedItem>(snapshot: Snapshot<T>, item: T): Snapshot<T> {
   const exists = snapshot.items.some((candidate) => candidate.id === item.id);
+
   return {
     ...snapshot,
     items: exists ? snapshot.items : [...snapshot.items, item],
@@ -92,22 +94,30 @@ function openIn<T extends OpenedItem>(snapshot: Snapshot<T>, item: T): Snapshot<
 
 function closeIn<T extends OpenedItem>(snapshot: Snapshot<T>, id: string): Snapshot<T> {
   const index = snapshot.items.findIndex((item) => item.id === id);
-  if (index < 0) return snapshot;
+  if (index < 0) {
+    return snapshot;
+  }
+
   const items = snapshot.items.filter((item) => item.id !== id);
   const activeId =
     snapshot.activeId === id
       ? (items[Math.min(index, items.length - 1)]?.id ?? null)
       : snapshot.activeId;
+
   return { ...snapshot, items, activeId };
 }
 
 function replaceIn<T extends OpenedItem>(snapshot: Snapshot<T>, id: string, item: T): Snapshot<T> {
   const index = snapshot.items.findIndex((candidate) => candidate.id === id);
-  if (index < 0 || id === item.id) return snapshot;
+  if (index < 0 || id === item.id) {
+    return snapshot;
+  }
+
   const duplicate = snapshot.items.some((candidate) => candidate.id === item.id);
   const items = duplicate
     ? snapshot.items.filter((candidate) => candidate.id !== id)
     : snapshot.items.map((candidate, at) => (at === index ? item : candidate));
+
   return { ...snapshot, items, activeId: snapshot.activeId === id ? item.id : snapshot.activeId };
 }
 
@@ -132,6 +142,7 @@ export function useOpenedItems<T extends OpenedItem>({
     current = initialSnapshot(scope, stored.generation + 1, initialItems, initialActiveId);
     setStored(current);
   }
+
   const { generation } = current;
 
   // Updates only apply to the generation they were started in, so a late async close cannot touch
@@ -168,6 +179,7 @@ export function useOpenedItems<T extends OpenedItem>({
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
+
     return () => {
       mounted.current = false;
     };
@@ -177,7 +189,10 @@ export function useOpenedItems<T extends OpenedItem>({
   const requestClose = (id: string) => {
     const key = `${generation}:${id}`;
     const running = inFlight.current.get(key);
-    if (running) return running;
+    if (running) {
+      return running;
+    }
+
     const run = (async () => {
       const guard = latest.current.canClose;
       const allowed = guard ? await guard(id) : true;
@@ -190,10 +205,13 @@ export function useOpenedItems<T extends OpenedItem>({
       ) {
         return false;
       }
+
       close(id);
+
       return true;
     })().finally(() => inFlight.current.delete(key));
     inFlight.current.set(key, run);
+
     return run;
   };
 

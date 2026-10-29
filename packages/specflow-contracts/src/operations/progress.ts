@@ -42,6 +42,7 @@ export function createOperationProgressEventSchema<
     kind,
     at: Type.String(),
   };
+
   return Type.Union([
     Type.Object(
       {

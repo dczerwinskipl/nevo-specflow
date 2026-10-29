@@ -40,7 +40,9 @@ export function SpecsOverviewCollection({
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
 
   // No rows: the empty state stands alone, without column headers that describe no row.
-  if (!projection.items.length) return null;
+  if (!projection.items.length) {
+    return null;
+  }
 
   if (projection.collection === 'archive') {
     return (
@@ -95,7 +97,9 @@ export function SpecsOverviewCollection({
       <OverviewColumns />
       {projection.sections.map((section) => {
         const rows = projection.items.filter((item) => item.classification.section === section);
-        if (!rows.length) return null;
+        if (!rows.length) {
+          return null;
+        }
 
         const expanded = searching || !collapsed.has(section);
         const controls = id + '-' + section;
@@ -116,8 +120,12 @@ export function SpecsOverviewCollection({
               onToggle={() =>
                 setCollapsed((current) => {
                   const next = new Set(current);
-                  if (next.has(section)) next.delete(section);
-                  else next.add(section);
+                  if (next.has(section)) {
+                    next.delete(section);
+                  } else {
+                    next.add(section);
+                  }
+
                   return next;
                 })
               }
@@ -153,6 +161,7 @@ function OverviewColumns({
   progress?: boolean;
 }) {
   const { t } = useTranslation();
+
   return (
     <Typography
       as="div"

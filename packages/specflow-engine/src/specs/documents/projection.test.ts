@@ -83,6 +83,7 @@ describe('projectDocumentTree', () => {
       expect(overview.actions[name]).toEqual({ available: false, reason: 'protected' });
       expect(behaviour.actions[name]).toEqual(AVAILABLE);
     }
+
     expect(behaviour.protected).toBe(false);
   });
 
@@ -195,7 +196,11 @@ describe('projectDocumentTree', () => {
       expect(document.actions.classify).toEqual(archived);
       expect(document.actions.delete).toEqual(archived);
     }
-    for (const folder of tree.folders) expect(folder.actions.delete).toEqual(archived);
+
+    for (const folder of tree.folders) {
+      expect(folder.actions.delete).toEqual(archived);
+    }
+
     expect(tree.capabilities.createFile).toEqual(archived);
     expect(tree.capabilities.classify).toEqual(archived);
   });

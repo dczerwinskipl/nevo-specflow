@@ -26,12 +26,18 @@ export function commitResultLines(result: ManualCommitCommandResult): string[] {
   if (result.commit.state === 'committed' && result.commit.sha !== undefined) {
     const files = result.paths.length === 1 ? '1 file' : `${String(result.paths.length)} files`;
     lines.push(`Committed ${result.commit.sha.slice(0, 12)} (${files})`);
-    for (const path of result.paths) lines.push(`  ${path}`);
+    for (const path of result.paths) {
+      lines.push(`  ${path}`);
+    }
   } else {
     lines.push('Nothing to commit: every path already equals HEAD.');
   }
+
   lines.push(`Remaining uncommitted: ${String(result.remaining.entries)}`);
-  if (result.replayed) lines.push('(the result of an earlier request with this operation id)');
+  if (result.replayed) {
+    lines.push('(the result of an earlier request with this operation id)');
+  }
+
   return lines;
 }
 
@@ -47,6 +53,7 @@ export function uncommittedLines(view: UncommittedScopeView): string[] {
       `  ${entry.path}  ${entry.reason}  ${String(entry.operations)} operation(s)  [${entry.owner}]`,
     );
   }
+
   const { pending, failed, recoveryRequired } = view.queue;
   lines.push(
     `Queue: ${String(pending)} pending, ${String(failed)} failed, ${String(recoveryRequired)} need recovery`,
@@ -57,5 +64,6 @@ export function uncommittedLines(view: UncommittedScopeView): string[] {
         'commits above with "nevo-specflow specs documents".',
     );
   }
+
   return lines;
 }

@@ -174,8 +174,10 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
     const sha = git.addCommit({ parents: [parent], files });
     git.state.refs.set(`origin/${ADVANCE_BRANCH}`, sha);
     git.state.remoteBranches.add(ADVANCE_BRANCH);
+
     return sha;
   };
+
   const releaseFiles = () => git.state.commits.get(HEAD)!.files;
 
   it('fresh stable: dry-run describes tag+release+advance and mutates nothing', async () => {

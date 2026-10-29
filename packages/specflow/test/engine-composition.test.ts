@@ -36,6 +36,7 @@ function git(root: string, ...args: string[]): string {
 async function tempRoot(): Promise<string> {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-compose-Ż ')));
   roots.push(root);
+
   return root;
 }
 
@@ -89,6 +90,7 @@ async function fixture() {
     join(linked, '.nevo/config.yaml'),
     'runtime:\n  server:\n    port: 9999\n  authentication:\n    mode: trusted-local\n',
   );
+
   return { primary, linked, context, registered, projectId };
 }
 
@@ -130,6 +132,7 @@ describe('E1.T06 CLI / Runtime Engine composition', () => {
       loadWebApp: () => Promise.resolve(webApp),
       start: (options) => {
         calls.push(options);
+
         return Promise.resolve({ address: 'ignored', close: () => Promise.resolve() });
       },
     });
@@ -180,10 +183,12 @@ describe('E1.T06 CLI / Runtime Engine composition', () => {
       startProjectRuntime(unregistered, {
         loadWebApp: () => {
           sideEffects++;
+
           return Promise.resolve(webApp);
         },
         start: () => {
           sideEffects++;
+
           return Promise.resolve({ address: 'unused', close: () => Promise.resolve() });
         },
       }),

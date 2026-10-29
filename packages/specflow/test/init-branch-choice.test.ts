@@ -22,9 +22,11 @@ function fakeUi(): { ui: RuntimeSetupUi; calls: { choices: string[]; initial?: s
   const ui = {
     select: (_message: string, choices: readonly { value: string }[], initial?: string) => {
       calls.push({ choices: choices.map((choice) => choice.value), initial });
+
       return Promise.resolve(initial ?? choices[0]!.value);
     },
   } as unknown as RuntimeSetupUi;
+
   return { ui, calls };
 }
 
@@ -74,11 +76,13 @@ describe('chooseBranchPattern', () => {
     const ui = {
       select: (_m: string, c: readonly { value: string }[], initial?: string) => {
         choices.push(...c.map((item) => item.value));
+
         return Promise.resolve(answers.shift() ?? initial!);
       },
       input: () => Promise.resolve(answers.shift()!),
       note: (message: string) => notes.push(message),
     } as unknown as RuntimeSetupUi;
+
     return { ui, notes, choices };
   }
 
@@ -125,10 +129,12 @@ describe('chooseWorktreesRoot', () => {
     const ui = {
       input: (_m: string, def?: string) => {
         defaults.push(def);
+
         return Promise.resolve(answers.shift() ?? def!);
       },
       note: (message: string) => notes.push(message),
     } as unknown as RuntimeSetupUi;
+
     return { ui, notes, defaults };
   }
 

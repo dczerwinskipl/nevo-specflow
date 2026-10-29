@@ -14,9 +14,12 @@ function managedNode(type: SceneNode['type'], stableId: string) {
       key === MANAGED_KEY ? 'true' : key === DATA_KEY ? stableId : '',
     remove: vi.fn(function (this: { parent?: { children: SceneNode[] } }) {
       const index = this.parent?.children.indexOf(this as unknown as SceneNode) ?? -1;
-      if (index >= 0) this.parent?.children.splice(index, 1);
+      if (index >= 0) {
+        this.parent?.children.splice(index, 1);
+      }
     }),
   } as unknown as SceneNode;
+
   return node;
 }
 
@@ -35,9 +38,15 @@ describe('public slot recovery', () => {
       appendChild(node: SceneNode) {
         const oldParent = node.parent as unknown as { children?: SceneNode[] } | undefined;
         const oldIndex = oldParent?.children?.indexOf(node) ?? -1;
-        if (oldIndex >= 0) oldParent?.children?.splice(oldIndex, 1);
+        if (oldIndex >= 0) {
+          oldParent?.children?.splice(oldIndex, 1);
+        }
+
         const current = children.indexOf(node);
-        if (current >= 0) children.splice(current, 1);
+        if (current >= 0) {
+          children.splice(current, 1);
+        }
+
         children.push(node);
         (node as unknown as { parent: ComponentNode }).parent = this as ComponentNode;
       },

@@ -25,12 +25,16 @@ export function DocumentDraftProvider({
   children: ReactNode;
 }) {
   const [own] = useState(createDocumentDraftStore);
+
   return <Context.Provider value={store ?? own}>{children}</Context.Provider>;
 }
 
 export function useDocumentDraftStore(): DocumentDraftStore {
   const store = useContext(Context);
-  if (!store) throw new Error('DocumentDraftProvider missing');
+  if (!store) {
+    throw new Error('DocumentDraftProvider missing');
+  }
+
   return store;
 }
 
@@ -42,6 +46,7 @@ export function useDocumentDraft(specId: string, documentId: string): DocumentDr
     [store, specId, documentId],
   );
   const read = useCallback(() => store.get(specId, documentId), [store, specId, documentId]);
+
   return useSyncExternalStore(subscribe, read, read);
 }
 
@@ -60,12 +65,18 @@ export function useDirtyDocuments(specId: string): readonly string[] {
   );
   const read = useMemo(() => {
     let last: readonly string[] = [];
+
     return () => {
       const next = store.dirtyIds(specId);
-      if (sameIds(last, next)) return last;
+      if (sameIds(last, next)) {
+        return last;
+      }
+
       last = next;
+
       return next;
     };
   }, [store, specId]);
+
   return useSyncExternalStore(subscribe, read, read);
 }

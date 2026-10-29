@@ -44,6 +44,7 @@ async function project() {
   git(root, 'add', '.nevo/config.yaml');
   commitStaged(root, 'configure target branch');
   const engine = await bootstrapProjectHome(root);
+
   return { root, engine };
 }
 
@@ -61,7 +62,10 @@ async function specification(
       ? { kind: 'new-worktree' as const, baseRef: 'HEAD' }
       : { kind: 'existing' as const, workspaceId: fixture.engine.workspace.workspaceId },
   });
-  if (linked) cleanup.push(dirname(spec.workspaceRoot));
+  if (linked) {
+    cleanup.push(dirname(spec.workspaceRoot));
+  }
+
   git(
     spec.workspaceRoot,
     'add',
@@ -70,6 +74,7 @@ async function specification(
     'specs/active/' + spec.slug + '/overview.md',
   );
   commitStaged(spec.workspaceRoot, 'commit source ' + title);
+
   return spec;
 }
 
@@ -122,6 +127,7 @@ function spawnCloseWorker(
     120000,
   );
   activeProcesses.push(worker);
+
   return { ready, start, result, done: worker.done, process: worker, kill: () => worker.kill() };
 }
 
@@ -161,6 +167,7 @@ function spawnPausedCreateWorker(root: string, workspaceId: string): PausedCreat
     120000,
   );
   activeProcesses.push(worker);
+
   return {
     ready,
     start,
@@ -192,16 +199,21 @@ async function race(
     await Promise.all(workers.map((worker) => waitFor(worker.ready, worker)));
     await Promise.all(workers.map((worker) => writeFile(worker.start, 'go')));
     const outcomes = await Promise.all(workers.map((worker) => worker.done));
-    for (const outcome of outcomes) expect(outcome.code, outcome.log).toBe(0);
+    for (const outcome of outcomes) {
+      expect(outcome.code, outcome.log).toBe(0);
+    }
+
     const results = await Promise.all(
       workers.map(async (worker) => {
         const parsed: unknown = JSON.parse(await readFile(worker.result, 'utf8'));
         if (typeof parsed !== 'object' || parsed === null || !('result' in parsed)) {
           throw new Error('Malformed Close worker response.');
         }
+
         if (parsed.result === 'conflict') {
           return { result: 'conflict' as const, operationId: undefined };
         }
+
         if (
           parsed.result === 'reserved' &&
           'operationId' in parsed &&
@@ -209,6 +221,7 @@ async function race(
         ) {
           return { result: 'reserved' as const, operationId: parsed.operationId };
         }
+
         throw new Error('Malformed Close worker outcome.');
       }),
     );
@@ -419,6 +432,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
         'specs/active/' + child.slug + '/overview.md',
       );
     }
+
     commitStaged(a.workspaceRoot, 'shared A B C for OS contention');
     const registry = await fixture.engine.readRegistry();
     expect(registry.specBindings.filter((x) => x.workspaceId === a.workspaceId)).toHaveLength(3);
@@ -450,6 +464,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
         [create, ...(close ? [close] : [])].map((w) => reapVitestWorker(w.process)),
       );
     }
+
     expect(createOutcome?.code, createOutcome?.log).toBe(0);
     const latest = await fixture.engine.readRegistry();
     expect(latest.specBindings.filter((x) => x.workspaceId === a.workspaceId)).toHaveLength(4);
@@ -485,7 +500,10 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
       await Promise.all(workers.map((worker) => waitFor(worker.ready, worker)));
       await Promise.all(workers.map((worker) => writeFile(worker.start, 'go')));
       const outcomes = await Promise.all(workers.map((worker) => worker.done));
-      for (const outcome of outcomes) expect(outcome.code, outcome.log).toBe(0);
+      for (const outcome of outcomes) {
+        expect(outcome.code, outcome.log).toBe(0);
+      }
+
       const results = await Promise.all(
         workers.map(
           async (worker) => JSON.parse(await readFile(worker.result, 'utf8')) as { result: string },
@@ -538,6 +556,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
         [create, ...(close ? [close] : [])].map((worker) => reapVitestWorker(worker.process)),
       );
     }
+
     expect(createOutcome.code, createOutcome.log).toBe(0);
     const registry = await fixture.engine.readRegistry();
     expect(registry.specBindings).toHaveLength(2);

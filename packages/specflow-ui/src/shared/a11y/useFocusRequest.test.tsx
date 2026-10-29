@@ -11,6 +11,7 @@ function Panel() {
   const focusField = useFocusRequest<string>((field) => {
     document.getElementById(field)?.focus();
   });
+
   return (
     <div>
       <button

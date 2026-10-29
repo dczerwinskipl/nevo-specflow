@@ -51,6 +51,7 @@ export function payloadDirectory(
   operationId: string,
 ): string {
   validateJournalOperationId(kind, operationId);
+
   return join(journalDirectory(context, kind), operationId + PAYLOAD_DIRECTORY_SUFFIX);
 }
 
@@ -70,11 +71,15 @@ export async function writePayload(
   await mkdir(directory, { mode: 0o700 });
   const written = new Set<string>();
   for (const file of files) {
-    if (written.has(file.sha256)) continue;
+    if (written.has(file.sha256)) {
+      continue;
+    }
+
     written.add(file.sha256);
     if (!SHA256.test(file.sha256) || sha256Hex(file.content) !== file.sha256) {
       throw new Error(`${kind.label} payload content does not match its hash.`);
     }
+
     const path = join(directory, file.sha256);
     const staged = join(directory, `.${file.sha256}.${randomUUID()}.tmp`);
     const handle = await open(staged, 'wx', 0o600);
@@ -84,8 +89,10 @@ export async function writePayload(
     } finally {
       await handle.close();
     }
+
     await renameWindowsSafe(staged, path);
   }
+
   await syncDirectoryWhenSupported(directory);
 }
 
@@ -102,19 +109,26 @@ export async function readPayload(
   const path = join(payloadDirectory(context, kind, operationId), file.sha256);
   let content: string;
   try {
-    if (!SHA256.test(file.sha256)) throw new Error('hash');
+    if (!SHA256.test(file.sha256)) {
+      throw new Error('hash');
+    }
+
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== file.bytes)
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== file.bytes) {
       throw new Error('shape');
+    }
+
     content = await readFileWindowsSafe(path);
   } catch {
     throw kind.errors.payloadUnprovable(`${kind.label} payload is missing or unreadable.`);
   }
+
   if (Buffer.byteLength(content, 'utf8') !== file.bytes || sha256Hex(content) !== file.sha256) {
     throw kind.errors.payloadUnprovable(
       `${kind.label} payload does not match the recorded evidence.`,
     );
   }
+
   return content;
 }
 
@@ -151,12 +165,18 @@ export async function removePayloadFilesExcept(
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
       return;
     }
+
     throw error;
   }
+
   const kept = new Set(keep);
   for (const name of names) {
-    if (kept.has(name)) continue;
+    if (kept.has(name)) {
+      continue;
+    }
+
     await rm(join(directory, name), { force: true, maxRetries: 3, retryDelay: 50 });
   }
+
   await syncDirectoryWhenSupported(directory);
 }

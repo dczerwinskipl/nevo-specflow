@@ -4,11 +4,15 @@ import { describe, expect, it } from 'vitest';
 
 async function sourceFiles(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true });
+
   return (
     await Promise.all(
       entries.map(async (entry) => {
         const candidate = path.join(root, entry.name);
-        if (entry.isDirectory()) return sourceFiles(candidate);
+        if (entry.isDirectory()) {
+          return sourceFiles(candidate);
+        }
+
         return /\.(?:ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')
           ? [candidate]
           : [];
@@ -28,6 +32,7 @@ async function runtimeDependencies(packageRoot: string) {
     dependencies?: Record<string, string>;
     peerDependencies?: Record<string, string>;
   };
+
   return {
     ...manifest.dependencies,
     ...manifest.peerDependencies,

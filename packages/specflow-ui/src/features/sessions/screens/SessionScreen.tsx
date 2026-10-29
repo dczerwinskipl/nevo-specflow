@@ -45,6 +45,7 @@ export function SessionScreen({
   });
   // A definitive 404 is not transient: retrying cannot change the outcome.
   const notFound = isHttpClientError(query.error) && query.error.status === 404;
+
   return (
     <AppWorkspace
       scroll="content"

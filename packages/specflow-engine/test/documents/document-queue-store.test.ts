@@ -57,6 +57,7 @@ async function record(
     writeBatchPaths(project.engine.context, id, encoded),
   );
   const now = new Date().toISOString();
+
   return {
     version: 1,
     projectId: project.engine.context.project.projectId,

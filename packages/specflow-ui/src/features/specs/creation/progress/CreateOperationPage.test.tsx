@@ -57,18 +57,26 @@ function controlledOperations() {
     async *watchProgress(_url, signal) {
       for (;;) {
         while (queue.length === 0) {
-          if (signal?.aborted) return;
+          if (signal?.aborted) {
+            return;
+          }
+
           await new Promise<void>((resolve) => {
             wake = resolve;
             signal?.addEventListener('abort', () => resolve(), { once: true });
           });
         }
+
         const next = queue.shift()!;
-        if (next instanceof Error) throw next;
+        if (next instanceof Error) {
+          throw next;
+        }
+
         yield next;
       }
     },
   };
+
   return {
     api,
     push(item: OperationProgressEvent | Error) {
@@ -77,6 +85,7 @@ function controlledOperations() {
     },
   };
 }
+
 const silentOperations: OperationsApi = {
   list: () => Promise.resolve({ kind: 'unavailable' as const }),
   // eslint-disable-next-line require-yield
@@ -130,6 +139,7 @@ function renderPage(
   );
   const tree = treeWith(onOpen);
   const view = render(tree);
+
   return {
     onOpen,
     onBackToForm,
@@ -435,7 +445,10 @@ describe('CreateOperationPage', () => {
     ).getAllByRole('listitem');
     // Every step says "done" in text, not only by its icon.
     expect(items).toHaveLength(4);
-    for (const item of items) expect(item.textContent).toMatch(/ done/);
+    for (const item of items) {
+      expect(item.textContent).toMatch(/ done/);
+    }
+
     expect(onOpen).not.toHaveBeenCalled();
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(created), {
       timeout: openAfterCreatedMs + 1500,
@@ -460,6 +473,7 @@ describe('CreateOperationPage', () => {
     } finally {
       clearInterval(ticker);
     }
+
     expect(Date.now() - started).toBeLessThan(openAfterCreatedMs + 1000);
   });
 
@@ -550,10 +564,12 @@ describe('CreateOperationPage', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     renderPage({ get: vi.fn().mockResolvedValue(accepted) });
     // Let the Runtime mode and the first reading settle (they are scheduled with timers too).
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < 5; i++) {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(50);
       });
+    }
+
     await act(async () => {
       await vi.advanceTimersByTimeAsync(21_000);
     });

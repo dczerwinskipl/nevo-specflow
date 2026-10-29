@@ -72,7 +72,10 @@ export function createResourceAuthoring<const Definitions extends readonly AnyRe
 
   function serialize(kind: ResourceKind, id: string, properties: Record<string, DesignValue>) {
     const definition = definitionsById.get(id);
-    if (definition?.kind !== kind) throw new Error(`Unknown ${kind} resource ${id}`);
+    if (definition?.kind !== kind) {
+      throw new Error(`Unknown ${kind} resource ${id}`);
+    }
+
     return [id, ...Object.keys(definition.variants).map((axis) => String(properties[axis]))].join(
       '/',
     );
@@ -94,6 +97,7 @@ export function createResourceAuthoring<const Definitions extends readonly AnyRe
   ) => {
     return serialize('asset', id, properties) as AssetRef<Id, Properties>;
   };
+
   const textStyleRef = <
     Id extends ResourceIdForKind<Definitions, 'text-style'>,
     const Properties extends VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>,
@@ -110,8 +114,12 @@ export function createResourceAuthoring<const Definitions extends readonly AnyRe
   ) => {
     return serialize('text-style', id, properties) as TextStyleRef<Id, Properties>;
   };
+
   const resourceSetRef = <Id extends ResourceId<Definitions>>(id: Id): ResourceSetRef<Id> => {
-    if (!definitionsById.has(id)) throw new Error(`Unknown design resource ${id}`);
+    if (!definitionsById.has(id)) {
+      throw new Error(`Unknown design resource ${id}`);
+    }
+
     return `${id}/set`;
   };
 

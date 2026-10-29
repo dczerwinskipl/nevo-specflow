@@ -17,12 +17,18 @@ export function createRequestJournal({ get, run }: Pick<StoreDatabase, 'get' | '
       scope,
       id,
     );
-    if (!row) return undefined;
+    if (!row) {
+      return undefined;
+    }
+
     const hash = createHash('sha256').update(stable(input)).digest('hex');
-    if (row.hash !== hash)
+    if (row.hash !== hash) {
       fail('IDEMPOTENCY_CONFLICT', 'Request ID has already been used with different input.');
+    }
+
     return JSON.parse(String(row.result)) as unknown;
   }
+
   function remember(
     actor: string,
     command: string,

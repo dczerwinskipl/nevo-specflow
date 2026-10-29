@@ -18,7 +18,10 @@ export function SessionRecoveryNotice({ specId }: { specId: string }) {
   const collection = useApplicationCollection();
   const retry = useMutation({
     mutationFn: async () => {
-      if (!recovery) return;
+      if (!recovery) {
+        return;
+      }
+
       const session = await sessionsApi.allocate(specId, recovery.session);
       resolve();
       notify(t('create.sessionReady'));
@@ -30,7 +33,10 @@ export function SessionRecoveryNotice({ specId }: { specId: string }) {
       });
     },
   });
-  if (!recovery) return null;
+  if (!recovery) {
+    return null;
+  }
+
   return (
     <div className="shrink-0 border-b border-border-subtle p-3">
       <Alert tone="attention" title={t('create.recovery.title')}>

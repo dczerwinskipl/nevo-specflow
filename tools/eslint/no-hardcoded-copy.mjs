@@ -39,13 +39,18 @@ export const noHardcodedCopy = {
   },
   create(context) {
     const preview = (text) => JSON.stringify(text.trim().slice(0, 40));
+
     return {
       JSXText(node) {
-        if (hasLetter(node.value))
+        if (hasLetter(node.value)) {
           context.report({ node, messageId: 'text', data: { text: preview(node.value) } });
+        }
       },
       JSXExpressionContainer(node) {
-        if (node.parent.type === 'JSXAttribute') return;
+        if (node.parent.type === 'JSXAttribute') {
+          return;
+        }
+
         const { expression } = node;
         const value =
           expression.type === 'Literal' && typeof expression.value === 'string'
@@ -53,11 +58,15 @@ export const noHardcodedCopy = {
             : expression.type === 'TemplateLiteral' && expression.expressions.length === 0
               ? expression.quasis[0].value.cooked
               : undefined;
-        if (value !== undefined && hasLetter(value))
+        if (value !== undefined && hasLetter(value)) {
           context.report({ node, messageId: 'text', data: { text: preview(value) } });
+        }
       },
       JSXAttribute(node) {
-        if (node.name.type !== 'JSXIdentifier' || !COPY_ATTRIBUTES.has(node.name.name)) return;
+        if (node.name.type !== 'JSXIdentifier' || !COPY_ATTRIBUTES.has(node.name.name)) {
+          return;
+        }
+
         const { value } = node;
         const text =
           value?.type === 'Literal' && typeof value.value === 'string'
@@ -67,12 +76,13 @@ export const noHardcodedCopy = {
                 typeof value.expression.value === 'string'
               ? value.expression.value
               : undefined;
-        if (text !== undefined && hasLetter(text))
+        if (text !== undefined && hasLetter(text)) {
           context.report({
             node,
             messageId: 'attribute',
             data: { name: node.name.name, text: preview(text) },
           });
+        }
       },
     };
   },

@@ -32,7 +32,10 @@ async function run(
 }
 
 function planOf(outcome: InstallPlanOutcome): InstallPlan {
-  if (outcome.status !== 'planned') throw new Error('Expected a plan.');
+  if (outcome.status !== 'planned') {
+    throw new Error('Expected a plan.');
+  }
+
   return outcome.plan;
 }
 
@@ -83,6 +86,7 @@ describe('bare install (bootstrap)', () => {
     if (outcome.status !== 'refused' || outcome.reason !== 'definitions-exist') {
       throw new Error('Expected a refusal because definitions exist.');
     }
+
     expect(outcome.hint).toContain('--add-missing');
     expect(outcome.hint).toContain('<kind>/<id>');
     expect(outcome.missing).toContain('specification-archetype/feature');
@@ -282,7 +286,10 @@ describe('dry run and safety', () => {
     const failing: DefinitionWriter = {
       writeAtomic: async (path, bytes) => {
         writes += 1;
-        if (writes === 3) throw new Error('disk full');
+        if (writes === 3) {
+          throw new Error('disk full');
+        }
+
         await target.writeAtomic(path, bytes);
       },
     };

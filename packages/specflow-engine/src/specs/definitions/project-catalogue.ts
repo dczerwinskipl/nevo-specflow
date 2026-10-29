@@ -33,6 +33,7 @@ export function capProblems(problems: readonly DefinitionProblem[]): {
   readonly problemsTruncated: boolean;
 } {
   const sorted = [...problems].sort(compareProblems);
+
   return {
     problems: sorted.slice(0, DEFINITION_PROBLEMS_MAX),
     problemsTruncated: sorted.length > DEFINITION_PROBLEMS_MAX,
@@ -52,6 +53,7 @@ export function resolveProjectCatalogue(result: LoadResult): ProjectCatalogue {
     archetypes: entitiesOf<ArchetypeDefinition>(result, SPECIFICATION_ARCHETYPE_KIND),
   });
   const capped = capProblems(result.problems);
+
   return {
     catalogue,
     problems: capped.problems,

@@ -9,6 +9,7 @@ export function claudeArguments(
   context?: Invocation['providerContext'],
 ): string[] {
   const mode = claudeMode(selection);
+
   return [
     '--print',
     '--verbose',
@@ -40,8 +41,12 @@ export function claudeArguments(
     ...(selection?.effort ? ['--effort', selection.effort] : []),
   ];
 }
+
 export function claudeModels(payload: Record<string, unknown>): ProviderDescriptor['models'] {
-  if (!Array.isArray(payload.models) || payload.models.length > 64) throw new ClaudeProtocolError();
+  if (!Array.isArray(payload.models) || payload.models.length > 64) {
+    throw new ClaudeProtocolError();
+  }
+
   const models = payload.models.map((entry) => {
     const model = object(entry);
     if (
@@ -50,8 +55,10 @@ export function claudeModels(payload: Record<string, unknown>): ProviderDescript
       typeof model.displayName !== 'string' ||
       !model.displayName ||
       Buffer.byteLength(model.displayName) > 256
-    )
+    ) {
       throw new ClaudeProtocolError();
+    }
+
     const efforts = model.supportsEffort === true ? model.supportedEffortLevels : [];
     if (
       !Array.isArray(efforts) ||
@@ -59,14 +66,19 @@ export function claudeModels(payload: Record<string, unknown>): ProviderDescript
       efforts.some(
         (value) => typeof value !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(value),
       )
-    )
+    ) {
       throw new ClaudeProtocolError();
+    }
+
     return { modelId: model.value, title: model.displayName, efforts: efforts as string[] };
   });
-  if (new Set(models.map((model) => model.modelId)).size !== models.length)
+  if (new Set(models.map((model) => model.modelId)).size !== models.length) {
     throw new ClaudeProtocolError();
+  }
+
   return models;
 }
+
 export function verifyClaudeInit(
   frame: Record<string, unknown>,
   workspace: string,
@@ -94,6 +106,7 @@ export function verifyClaudeInit(
       (!Array.isArray(frame.plugins) ||
         frame.plugins.some((value) => {
           const plugin = object(value);
+
           return (
             !['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'].includes(
               String(plugin.name),
@@ -102,13 +115,15 @@ export function verifyClaudeInit(
             plugin.source !== String(plugin.name) + '@builtin'
           );
         })))
-  )
+  ) {
     throw new ClaudeProtocolError();
+  }
 }
 
 /** Missing/non-version diagnostic text must not become a fabricated version or leak native prose. */
 export function claudeVersion(payload: Record<string, unknown>): string | undefined {
   const value = payload.claude_code_version;
+
   return typeof value === 'string' &&
     /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(value) &&
     value.length <= 128

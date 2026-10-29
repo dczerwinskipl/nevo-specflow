@@ -54,7 +54,10 @@ export async function runQueueOnce(
 ): Promise<QueueRunResult> {
   const rt = createQueueRuntime(engine, deps, checkout, options);
   // One run per checkout in this process (the module-wide registry also covers a second copy of it).
-  if (!markLeaseActive(checkout.workspaceId)) return { status: 'busy', reason: 'lease-held' };
+  if (!markLeaseActive(checkout.workspaceId)) {
+    return { status: 'busy', reason: 'lease-held' };
+  }
+
   try {
     await settleCompletedJournals(rt);
     const gate = await checkoutGate(rt);
@@ -62,28 +65,43 @@ export async function runQueueOnce(
       // Git turned off, or the checkout gone: what waits in the queue cannot be committed.
       const operationIds = await applyGateToQueued(rt, gate);
       await settleCompletedJournals(rt);
-      if (operationIds.length > 0) return { status: 'unavailable', reason: gate, operationIds };
+      if (operationIds.length > 0) {
+        return { status: 'unavailable', reason: gate, operationIds };
+      }
     }
-    if (!(await hasQueueWork(rt))) return { status: 'idle', reason: 'no-queued-operations' };
+
+    if (!(await hasQueueWork(rt))) {
+      return { status: 'idle', reason: 'no-queued-operations' };
+    }
+
     // A checkout that cannot take commits has no HEAD to read; a claimed batch is failed by its gate.
     const claim = await claimNextBatch(rt, () =>
       gate === undefined ? rt.commits.head(rt.checkout.root) : Promise.resolve(undefined),
     );
-    if (claim.kind === 'busy') return { status: 'busy', reason: 'lease-held' };
+    if (claim.kind === 'busy') {
+      return { status: 'busy', reason: 'lease-held' };
+    }
+
     if (claim.kind === 'idle') {
       // A takeover may have completed members of a batch that was recorded before a stop.
       await settleCompletedJournals(rt);
+
       return {
         status: 'idle',
         reason: claim.reason,
         ...(claim.waitMs !== undefined ? { waitMs: claim.waitMs } : {}),
       };
     }
+
     await rt.hooks.afterClaim?.(claim.batch);
+
     return await executeBatch(rt, claim.batch, claim.resumed);
   } catch (error) {
     // An error that is not a simulated stop must not leave the lease to a live process.
-    if (!(error instanceof QueueInterrupted)) await releaseAfterError(rt).catch(() => undefined);
+    if (!(error instanceof QueueInterrupted)) {
+      await releaseAfterError(rt).catch(() => undefined);
+    }
+
     throw error;
   } finally {
     markLeaseIdle(checkout.workspaceId);
@@ -117,7 +135,10 @@ export async function drainQueue(
 /** Completed journals still in the active directory (a stop before the move) go to `settled/`. */
 async function settleCompletedJournals(rt: QueueRuntime): Promise<void> {
   for (const journal of await listDocumentChangeJournals(rt.context)) {
-    if (journal.workspaceId !== rt.checkout.workspaceId || journal.stage !== 'completed') continue;
+    if (journal.workspaceId !== rt.checkout.workspaceId || journal.stage !== 'completed') {
+      continue;
+    }
+
     await settleDocumentChangeJournal(rt.context, journal.operationId).catch(() => undefined);
   }
 }
@@ -129,8 +150,11 @@ async function heldMembers(
   const held: DocumentChangeJournal[] = [];
   for (const id of batch.memberIds) {
     const journal = await readDocumentChangeJournal(rt.context, id);
-    if (journal !== undefined && holdsMember(journal, batch.operationId)) held.push(journal);
+    if (journal !== undefined && holdsMember(journal, batch.operationId)) {
+      held.push(journal);
+    }
   }
+
   return held;
 }
 
@@ -150,6 +174,7 @@ async function executeBatch(
   if (held.length === 0) {
     // Every member finished before the stop: only the cleanup is left.
     await finishWithoutCommit(rt, claimed, claimed.memberIds);
+
     return { status: 'not-applicable', batchId: claimed.operationId, operationIds, resumed };
   }
 
@@ -162,6 +187,7 @@ async function executeBatch(
       { context: rt.context, batch, executor: await rt.executor(), now: () => rt.nowIso() },
       failure,
     );
+
     return {
       status: 'failed',
       batchId: batch.operationId,
@@ -186,6 +212,7 @@ async function executeBatch(
       );
       if (evidence.kind === 'committed') {
         await recordCommitted(rt, claimed, evidence.sha, operationIds);
+
         return {
           status: 'committed',
           batchId: claimed.operationId,
@@ -195,6 +222,7 @@ async function executeBatch(
           resumed,
         };
       }
+
       if (
         evidence.kind !== 'absent' ||
         (await rt.commits.head(rt.checkout.root)) !== claimed.parentHead
@@ -211,20 +239,29 @@ async function executeBatch(
         );
       }
     }
+
     await completeWithoutCommit(rt, claimed, operationIds, 'git-disabled');
+
     return { status: 'not-applicable', batchId: claimed.operationId, operationIds, resumed };
   }
+
   if (gate === 'workspace-missing') {
     return fail(claimed, { kind: 'permanent', reason: 'workspace-missing' });
   }
 
   const { attempt, batch } = await attemptCommit(rt, claimed, held, resumed);
-  if (attempt.kind === 'failed') return fail(batch, attempt.failure);
+  if (attempt.kind === 'failed') {
+    return fail(batch, attempt.failure);
+  }
+
   if (attempt.kind === 'nothing') {
     await completeWithoutCommit(rt, batch, operationIds, NOTHING_TO_COMMIT);
+
     return { status: 'not-applicable', batchId: batch.operationId, operationIds, resumed };
   }
+
   await recordCommitted(rt, batch, attempt.sha, operationIds);
+
   return {
     status: 'committed',
     batchId: batch.operationId,
@@ -247,8 +284,10 @@ async function recordCommitted(
     if (current?.state !== 'committing') {
       throw documentChangeError('operation-state-invalid', 'The document batch moved.');
     }
+
     const next = transitionDocumentBatch(rt.context, current, 'committed', { sha }, rt.nowIso());
     await publishDocumentBatch(rt.context, next);
+
     return next;
   });
   await rt.hooks.afterBatchRecorded?.(recorded);
@@ -258,6 +297,7 @@ async function recordCommitted(
       reconcileBatchMember(rt.context, recorded, memberId, rt.nowIso()),
     );
   }
+
   await rt.hooks.afterMembersCompleted?.(recorded);
   // Paths of the ledger (an abandoned batch, a stretch with auto-commit off) that this commit holds
   // are committed now. A stop before this leaves them for the next prune (flush, sweep, Close).
@@ -296,7 +336,9 @@ async function finishWithoutCommit(
 async function settleMembers(rt: QueueRuntime, operationIds: readonly string[]): Promise<void> {
   for (const id of operationIds) {
     const journal = await readDocumentChangeJournal(rt.context, id);
-    if (journal?.stage === 'completed') await settleDocumentChangeJournal(rt.context, id);
+    if (journal?.stage === 'completed') {
+      await settleDocumentChangeJournal(rt.context, id);
+    }
   }
 }
 
@@ -313,8 +355,12 @@ async function landedCommit(
   rt: QueueRuntime,
   batch: DocumentBatchRecord,
 ): Promise<{ sha: string; paths: readonly string[] } | undefined> {
-  if (batch.commitStartedAt === undefined) return undefined;
+  if (batch.commitStartedAt === undefined) {
+    return undefined;
+  }
+
   const evidence = await lookUpBatchCommit(rt, batch, await readBatchPaths(rt.context, batch));
+
   return evidence.kind === 'committed' ? { sha: evidence.sha, paths: evidence.paths } : undefined;
 }
 
@@ -333,7 +379,10 @@ async function releaseAfterError(rt: QueueRuntime): Promise<void> {
   const lease = await withJournalLock(rt.context, DOCUMENT_BATCH_KIND, () =>
     readQueueLease(rt.context, rt.checkout.workspaceId),
   );
-  if (lease === undefined || !isDeepStrictEqual(lease.executor, own)) return;
+  if (lease === undefined || !isDeepStrictEqual(lease.executor, own)) {
+    return;
+  }
+
   const batch = await readDocumentBatch(rt.context, lease.batchId);
   if (batch?.state === 'committing') {
     const context = { context: rt.context, batch, executor: own, now: () => rt.nowIso() };
@@ -342,8 +391,10 @@ async function releaseAfterError(rt: QueueRuntime): Promise<void> {
       landed = await landedCommit(rt, batch);
     } catch {
       await handler(context, { kind: 'uncertain', reason: 'uncertain', blockedBy: 'queue-error' });
+
       return;
     }
+
     if (landed !== undefined) {
       const held = await heldMembers(rt, batch);
       await recordCommitted(
@@ -352,11 +403,15 @@ async function releaseAfterError(rt: QueueRuntime): Promise<void> {
         landed.sha,
         held.map((journal) => journal.operationId),
       );
+
       return;
     }
+
     await handler(context, { kind: 'transient', reason: 'queue-error' });
+
     return;
   }
+
   await withJournalLock(rt.context, DOCUMENT_BATCH_KIND, () =>
     removeQueueLeaseOf(rt.context, rt.checkout.workspaceId, lease.batchId),
   );

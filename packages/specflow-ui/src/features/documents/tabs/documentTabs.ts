@@ -12,21 +12,29 @@ export interface DocumentTab {
 
 export function fileNameOf(path: string) {
   const name = path.split('/').at(-1);
+
   return name === undefined || name === '' ? path : name;
 }
 
 /** The tab that takes over when `id` closes: right neighbour, else left; none for the last one. */
 export function neighbourOf(ids: readonly string[], id: string): string | undefined {
   const index = ids.indexOf(id);
-  if (index < 0) return undefined;
+  if (index < 0) {
+    return undefined;
+  }
+
   return ids[index + 1] ?? ids[index - 1];
 }
 
 /** As `neighbourOf`, when several tabs close at once: the nearest tab that stays. */
 export function survivorOf(ids: readonly string[], id: string, removed: readonly string[]) {
   const index = ids.indexOf(id);
-  if (index < 0) return undefined;
+  if (index < 0) {
+    return undefined;
+  }
+
   const stays = (candidate: string) => !removed.includes(candidate);
+
   return ids.slice(index + 1).find(stays) ?? ids.slice(0, index).reverse().find(stays);
 }
 
@@ -46,12 +54,14 @@ export function documentTabs(options: {
   knownPaths?: Readonly<Record<string, string>>;
 }): DocumentTab[] {
   const { ids, tree, dirty, unavailable = [], knownPaths = {} } = options;
+
   return ids.map((id) => {
     const entry = tree?.documents.find((document) => document.id === id);
     const dangling = tree?.dangling?.find((document) => document.id === id);
     const missing = unavailable.includes(id) || (tree !== undefined && !entry);
     const path = entry?.path ?? dangling?.path ?? knownPaths[id] ?? id;
     const type = entry?.type ?? dangling?.type;
+
     return {
       id,
       label: fileNameOf(path),

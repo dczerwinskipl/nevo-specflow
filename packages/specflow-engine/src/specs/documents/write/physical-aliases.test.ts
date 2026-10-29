@@ -61,12 +61,15 @@ function fakeFs(
       dirs.set(join(SPEC, parent), options.dirs?.[parent] ?? stat((next += 1n)));
     }
   }
+
   const stored = options.stored ?? Object.keys(files);
+
   return {
     asked,
     lstat: (path) => {
       asked.push(path);
       const found = byPath.get(path) ?? dirs.get(path);
+
       return found !== undefined
         ? Promise.resolve(found)
         : Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
@@ -200,6 +203,7 @@ describe('planRemovesAnAliasedEntry on the real file system', () => {
     } catch {
       return; // No hard links here: nothing to prove.
     }
+
     const probe: AliasProbeFs = {
       lstat: (path) => nodeVerifiedFs.lstat(path),
       list: (path) => nodeDocumentFileOps.list(path),

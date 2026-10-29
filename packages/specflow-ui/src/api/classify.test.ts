@@ -16,7 +16,10 @@ function http(status: number, data?: unknown, headers?: Record<string, string>):
 
 function classify(error: HttpClientError, method = 'POST') {
   const result = classifyHttpError(error, { operation: 'specs.create', method, codes });
-  if (!(result instanceof ApiError)) throw new Error('expected an ApiError');
+  if (!(result instanceof ApiError)) {
+    throw new Error('expected an ApiError');
+  }
+
   return result;
 }
 

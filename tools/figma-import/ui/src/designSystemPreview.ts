@@ -8,8 +8,12 @@ function incomingAction(
   inspection: IRInspection | null,
   kinds: InspectionItemKind[],
 ) {
-  if (!inspection) return null;
+  if (!inspection) {
+    return null;
+  }
+
   const exists = kinds.every((kind) => inspectionItem(stableId, inspection, kind)?.exists);
+
   return actionBadge(exists ? 'update' : 'new');
 }
 
@@ -35,9 +39,13 @@ export function renderDesignSystemPreview(
       const row = element('div', undefined, 'leaf');
       row.append(element('span', properties, 'node-name'));
       const status = incomingAction(variant.stableId, inspection, ['component']);
-      if (status) row.append(status);
+      if (status) {
+        row.append(status);
+      }
+
       children.append(row);
     }
+
     group.append(children);
     parent.append(group);
   }
@@ -64,9 +72,13 @@ export function renderDesignSystemPreview(
       const row = element('div', undefined, 'leaf');
       row.append(element('span', 'name' in item ? item.name : item.stableId, 'node-name'));
       const status = incomingAction(item.stableId, inspection, [...resource.kinds]);
-      if (status) row.append(status);
+      if (status) {
+        row.append(status);
+      }
+
       children.append(row);
     }
+
     group.append(children);
     parent.append(group);
   }
@@ -87,6 +99,7 @@ export function renderDesignSystemPreview(
       );
       children.append(row);
     }
+
     group.append(children);
     parent.prepend(group);
   }

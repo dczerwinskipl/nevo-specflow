@@ -52,13 +52,18 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
         request.params.taskId,
         request.authz,
       );
-      if (result.kind === 'ok') return result.value;
-      if (result.kind === 'not_found')
+      if (result.kind === 'ok') {
+        return result.value;
+      }
+
+      if (result.kind === 'not_found') {
         return reply.code(404).send({ error: 'specification_task_not_found' });
+      }
+
       return reply.code(503).send({ error: 'specification_source_unavailable' });
     },
   );
-  for (const kind of ['resources', 'history'] as const)
+  for (const kind of ['resources', 'history'] as const) {
     app.withTypeProvider<TypeBoxTypeProvider>().get(
       `/api/specs/:specId/tasks/:taskId/${kind}`,
       {
@@ -82,13 +87,22 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
           request.query,
           request.authz,
         );
-        if (result.kind === 'ok') return result.value;
-        if (result.kind === 'expired')
+        if (result.kind === 'ok') {
+          return result.value;
+        }
+
+        if (result.kind === 'expired') {
           return reply.code(409).send({ error: 'task_snapshot_expired' });
-        if (result.kind === 'not_found')
+        }
+
+        if (result.kind === 'not_found') {
           return reply.code(404).send({ error: 'specification_task_not_found' });
+        }
+
         return reply.code(503).send({ error: 'specification_source_unavailable' });
       },
     );
+  }
+
   done();
 };

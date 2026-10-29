@@ -34,6 +34,7 @@ export function codexArguments(
   selection?: Invocation['selection'],
 ): string[] {
   const writing = selection?.mode === 'workspace-write';
+
   return [
     'app-server',
     '--strict-config',
@@ -61,22 +62,29 @@ export function codexArguments(
     ].flatMap((setting) => ['-c', setting]),
   ];
 }
+
 function unavailable(): never {
   throw new SessionError(
     'PROVIDER_UNAVAILABLE',
     'Codex installation or managed configuration cannot be verified.',
   );
 }
+
 async function fingerprint(executable: string) {
   const hash = createHash('sha256');
   let bytes = 0;
   for await (const chunk of createReadStream(executable)) {
     bytes += (chunk as Buffer).length;
-    if (bytes > 512 * 1024 * 1024) unavailable();
+    if (bytes > 512 * 1024 * 1024) {
+      unavailable();
+    }
+
     hash.update(chunk as Buffer);
   }
+
   return hash.digest('hex');
 }
+
 /** Bounded local config discovery. P1 owns this process even if a future CLI
  * stops recognizing the print-only flag; no prompt or model request is sent. */
 async function preflight(options: {
@@ -103,24 +111,38 @@ async function preflight(options: {
   try {
     for await (const line of owner.lines()) {
       bytes += Buffer.byteLength(line) + 1;
-      if (bytes > 1024 * 1024) unavailable();
+      if (bytes > 1024 * 1024) {
+        unavailable();
+      }
+
       lines.push(line);
     }
+
     const exit = await owner.done;
-    if (exit.code !== 0) unavailable();
+    if (exit.code !== 0) {
+      unavailable();
+    }
+
     const value = rpcObject(JSON.parse(lines.join('\n')));
-    if (rpcObject(value.configRequirements).requirements !== null) unavailable();
+    if (rpcObject(value.configRequirements).requirements !== null) {
+      unavailable();
+    }
+
     const version =
       typeof value.appServerVersion === 'string' &&
       /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(value.appServerVersion) &&
       value.appServerVersion.length <= 128
         ? value.appServerVersion
         : undefined;
+
     return { version };
   } finally {
-    if ((await owner.dispose()).process.state !== 'stopped') unavailable();
+    if ((await owner.dispose()).process.state !== 'stopped') {
+      unavailable();
+    }
   }
 }
+
 export async function inspectCodexInstallation(options: {
   executable?: string;
   workspace: string;
@@ -129,7 +151,10 @@ export async function inspectCodexInstallation(options: {
   signal: AbortSignal;
   environment?: ProviderEnvironment;
 }) {
-  if (process.platform !== 'win32' || process.arch !== 'x64') unavailable();
+  if (process.platform !== 'win32' || process.arch !== 'x64') {
+    unavailable();
+  }
+
   const base =
     options.environment ??
     projectProviderEnvironment({ host: process.env, inherit: ['PROGRAMDATA'] });
@@ -149,17 +174,21 @@ export async function inspectCodexInstallation(options: {
           'PROGRAMDATA',
         ].includes(key),
     )
-  )
+  ) {
     unavailable();
+  }
+
   if (
     !isAbsolute(options.workspace) ||
     options.workspace.includes('\0') ||
     !base.values.USERPROFILE
-  )
+  ) {
     unavailable();
+  }
+
   try {
     let executable = options.executable;
-    if (!executable)
+    if (!executable) {
       for (const path of (base.values.PATH ?? '').split(delimiter)) {
         const candidate = join(path.replace(/^"|"$/g, ''), 'codex.exe');
         try {
@@ -170,12 +199,19 @@ export async function inspectCodexInstallation(options: {
           /* Continue native executable discovery. */
         }
       }
-    if (!executable || !isAbsolute(executable)) unavailable();
+    }
+
+    if (!executable || !isAbsolute(executable)) {
+      unavailable();
+    }
+
     await regularCodexFile(executable, 512 * 1024 * 1024);
     const sha256 = await fingerprint(executable);
     const machine = join(base.values.PROGRAMDATA ?? 'C:\\ProgramData', 'OpenAI', 'Codex');
-    for (const name of ['requirements.toml', 'config.toml', 'managed_config.toml'])
+    for (const name of ['requirements.toml', 'config.toml', 'managed_config.toml']) {
       await absentCodexPath(join(machine, name));
+    }
+
     const credentials = await prepareCodexCredentials(
       base.values.USERPROFILE,
       options.homeRoot,
@@ -187,6 +223,7 @@ export async function inspectCodexInstallation(options: {
     };
     options.signal.throwIfAborted();
     const metadata = await preflight({ ...options, ...credentials, executable, environment });
+
     return {
       ...credentials,
       executable,
@@ -211,7 +248,10 @@ export async function inspectCodexInstallation(options: {
         .digest('hex'),
     };
   } catch (error) {
-    if (error instanceof SessionError) throw error;
+    if (error instanceof SessionError) {
+      throw error;
+    }
+
     return unavailable();
   }
 }

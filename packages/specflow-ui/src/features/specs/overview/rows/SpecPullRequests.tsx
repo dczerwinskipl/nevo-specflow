@@ -6,9 +6,14 @@ import type { SpecRowModel } from '../presentation';
 export function SpecPullRequests({ item }: { readonly item: SpecRowModel }) {
   const { t } = useTranslation();
   const pr = item.pullRequests;
-  if (pr?.kind === 'multiple')
+  if (pr?.kind === 'multiple') {
     return <span>{t('specifications.pullRequests', { count: pr.count })}</span>;
-  if (pr?.kind !== 'single') return null;
+  }
+
+  if (pr?.kind !== 'single') {
+    return null;
+  }
+
   return (
     <Link
       className={cn(

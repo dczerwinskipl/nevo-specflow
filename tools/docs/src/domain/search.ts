@@ -5,6 +5,7 @@ import { asString, type DocRecord } from './frontmatter.js';
 
 function isAsciiAlphanumeric(char: string): boolean {
   const code = char.charCodeAt(0);
+
   return (code >= 48 && code <= 57) || (code >= 97 && code <= 122);
 }
 
@@ -25,11 +26,26 @@ function trimNonAlphanumeric(value: string): string {
 
 export function normalizeTerm(term: string): string {
   const t = trimNonAlphanumeric(term.toLowerCase());
-  if (!t) return '';
-  if (t.endsWith('ies') && t.length > 4) return `${t.slice(0, -3)}y`;
-  if (t.endsWith('sses')) return t.slice(0, -2);
-  if (/(shes|ches|xes|zes)$/.test(t)) return t.slice(0, -2);
-  if (t.endsWith('s') && !/(ss|us|is)$/.test(t)) return t.slice(0, -1);
+  if (!t) {
+    return '';
+  }
+
+  if (t.endsWith('ies') && t.length > 4) {
+    return `${t.slice(0, -3)}y`;
+  }
+
+  if (t.endsWith('sses')) {
+    return t.slice(0, -2);
+  }
+
+  if (/(shes|ches|xes|zes)$/.test(t)) {
+    return t.slice(0, -2);
+  }
+
+  if (t.endsWith('s') && !/(ss|us|is)$/.test(t)) {
+    return t.slice(0, -1);
+  }
+
   return t;
 }
 
@@ -59,7 +75,10 @@ const FIELD_WEIGHTS: readonly (readonly [field: string, weight: number])[] = [
 
 function fieldText(doc: DocRecord, field: string): string {
   const v = doc[field];
-  if (Array.isArray(v)) return v.map((x) => asString(x)).join(' ');
+  if (Array.isArray(v)) {
+    return v.map((x) => asString(x)).join(' ');
+  }
+
   return asString(v);
 }
 
@@ -77,7 +96,9 @@ export interface ScoreResult {
 
 export function scoreDoc(doc: DocRecord, query: string): ScoreResult {
   const queryTokens = tokenize(query);
-  if (queryTokens.length === 0) return { score: 0, matchedTerms: [], matchedFields: [] };
+  if (queryTokens.length === 0) {
+    return { score: 0, matchedTerms: [], matchedFields: [] };
+  }
 
   const matchedTerms = new Set<string>();
   const matchedFields = new Set<string>();
@@ -93,10 +114,15 @@ export function scoreDoc(doc: DocRecord, query: string): ScoreResult {
         hit = true;
       }
     }
-    if (hit) matchedFields.add(field);
+
+    if (hit) {
+      matchedFields.add(field);
+    }
   }
 
-  if (matchedTerms.size === 0) return { score: 0, matchedTerms: [], matchedFields: [] };
+  if (matchedTerms.size === 0) {
+    return { score: 0, matchedTerms: [], matchedFields: [] };
+  }
 
   const coverage = matchedTerms.size / queryTokens.length;
   const allTermsBonus = matchedTerms.size === queryTokens.length ? 500 : 0;
@@ -122,7 +148,10 @@ export interface SearchOptions {
 }
 
 function includesString(value: unknown, expected: string | undefined): boolean {
-  if (!expected) return true;
+  if (!expected) {
+    return true;
+  }
+
   return Array.isArray(value) && value.includes(expected);
 }
 

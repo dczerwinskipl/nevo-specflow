@@ -85,7 +85,9 @@ export function NewWorkspaceSettings({
   // panel as open, it would collapse (and hide the field) mid-keystroke, dropping the rest of the
   // typed name. Once flagged, the panel stays open until the owner closes it.
   useEffect(() => {
-    if (flagged && !choice.settingsOpen) set({ settingsOpen: true });
+    if (flagged && !choice.settingsOpen) {
+      set({ settingsOpen: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `set` only wraps the stable `update`.
   }, [flagged, choice.settingsOpen]);
 

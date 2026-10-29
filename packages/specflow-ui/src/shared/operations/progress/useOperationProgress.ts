@@ -72,16 +72,25 @@ export function useOperationProgress(options: UseOperationProgressOptions): Oper
 
   useEffect(() => {
     dispatch({ type: 'reset' });
-    if (!enabled || !streamUrl) return;
+    if (!enabled || !streamUrl) {
+      return;
+    }
+
     const controller = new AbortController();
     void (async () => {
       try {
         for await (const event of api.watchProgress(streamUrl, controller.signal)) {
-          if (controller.signal.aborted) return;
+          if (controller.signal.aborted) {
+            return;
+          }
+
           dispatch({ type: 'event', event });
         }
+
         // The stream ended (the server closes it after a terminal event, which `outcome` records).
-        if (!controller.signal.aborted) dispatch({ type: 'lost' });
+        if (!controller.signal.aborted) {
+          dispatch({ type: 'lost' });
+        }
       } catch {
         // Best effort: the operation's own monitoring is the source of truth.
         if (!controller.signal.aborted) {
@@ -90,6 +99,7 @@ export function useOperationProgress(options: UseOperationProgressOptions): Oper
         }
       }
     })();
+
     return () => controller.abort();
   }, [api, enabled, streamUrl]);
 

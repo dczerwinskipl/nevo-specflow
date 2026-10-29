@@ -117,16 +117,24 @@ export async function abandonCommit(
     if (journal === undefined) {
       // A settled operation: an abandoned one is the answer of a repeat, any other cannot be abandoned.
       const settled = await findDocumentChangeJournal(context, operationId);
-      if (settled !== undefined && isAbandonedJournal(settled)) return [settled];
+      if (settled !== undefined && isAbandonedJournal(settled)) {
+        return [settled];
+      }
+
       if (settled !== undefined) {
         throw documentChangeError(
           'operation-state-invalid',
           'Only a failed commit or one that needs recovery can be abandoned.',
         );
       }
+
       throw documentChangeError('operation-not-found', 'The document operation does not exist.');
     }
-    if (isAbandonedJournal(journal)) return [journal];
+
+    if (isAbandonedJournal(journal)) {
+      return [journal];
+    }
+
     if (
       !isWaitingAfterFailure(journal) &&
       (!ABANDONABLE.includes(journal.stage) || journal.recoveryPhase === 'write')
@@ -136,7 +144,11 @@ export async function abandonCommit(
         'Only a failed commit or one that needs recovery can be abandoned.',
       );
     }
-    if (isWaitingAfterFailure(journal)) await assertNotInActiveBatch(context, journal);
+
+    if (isWaitingAfterFailure(journal)) {
+      await assertNotInActiveBatch(context, journal);
+    }
+
     const stamp = now();
     const batch =
       journal.batchId !== undefined ? await readDocumentBatch(context, journal.batchId) : undefined;
@@ -156,15 +168,21 @@ export async function abandonCommit(
             { reason: DISSOLVED_BY_ABANDON },
             stamp,
           );
-      if (!dissolvedByAbandon) await publishDocumentBatch(context, dissolved);
+      if (!dissolvedByAbandon) {
+        await publishDocumentBatch(context, dissolved);
+      }
+
       await reconcileBatchMembers(context, dissolved, stamp, undefined, hooks);
       await removeDocumentBatch(context, batch.operationId);
       await removeQueueLeaseOf(context, batch.workspaceId, batch.operationId).catch(
         () => undefined,
       );
+
       return collect(context, batch);
     }
+
     await completeUncommitted(context, journal, batch?.parentHead, stamp, hooks);
+
     return [(await readDocumentChangeJournal(context, operationId))!];
   });
   const result: DocumentChangeJournal[] = [];
@@ -172,9 +190,12 @@ export async function abandonCommit(
     if (journal.stage === 'completed') {
       await settleDocumentChangeJournal(context, journal.operationId);
     }
+
     result.push((await findDocumentChangeJournal(context, journal.operationId)) ?? journal);
   }
+
   await cleanLeftovers(context, result);
+
   return result;
 }
 
@@ -185,7 +206,10 @@ async function collect(
   const journals: DocumentChangeJournal[] = [];
   for (const id of batch.memberIds) {
     const journal = await readDocumentChangeJournal(context, id);
-    if (journal !== undefined) journals.push(journal);
+    if (journal !== undefined) {
+      journals.push(journal);
+    }
   }
+
   return journals;
 }

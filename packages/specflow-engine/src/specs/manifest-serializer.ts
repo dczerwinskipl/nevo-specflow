@@ -74,6 +74,7 @@ export function serializeSpecificationManifest(
       `Specification "${manifest.slug}" manifest: serialization did not round-trip.`,
     );
   }
+
   return text;
 }
 
@@ -105,6 +106,7 @@ export function updateManifestRegistry(
       `Specification "${slug}" manifest: is not valid YAML.`,
     );
   }
+
   const current = document.toJS() as Record<string, unknown>;
   const unchanged =
     isDeepStrictEqual(current.documents, plainDocuments(update.documents)) &&
@@ -114,15 +116,20 @@ export function updateManifestRegistry(
   if (unchanged) {
     // A no-op never rewrites a byte; the source must still be a valid manifest.
     parseSpecificationManifestText(sourceText, slug, location);
+
     return sourceText;
   }
 
   if (update.archetype !== undefined) {
     document.set('archetype', document.createNode(plainArchetype(update.archetype)));
   }
+
   document.set('documents', document.createNode(plainDocuments(update.documents)));
-  if (update.folders.length > 0) document.set('folders', document.createNode([...update.folders]));
-  else document.delete('folders');
+  if (update.folders.length > 0) {
+    document.set('folders', document.createNode([...update.folders]));
+  } else {
+    document.delete('folders');
+  }
 
   const eol = sourceText.includes('\r\n') ? '\r\n' : '\n';
   const text = document.toString({ lineWidth: 0 }).replace(/\r?\n/gu, eol);
@@ -137,6 +144,7 @@ export function updateManifestRegistry(
       `Specification "${slug}" manifest: registry update did not round-trip.`,
     );
   }
+
   return text;
 }
 

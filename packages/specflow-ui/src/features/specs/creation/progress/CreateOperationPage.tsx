@@ -118,8 +118,12 @@ export function CreateOperationPage({
     openLatest.current = onOpen;
   });
   useEffect(() => {
-    if (!created) return;
+    if (!created) {
+      return;
+    }
+
     const timer = setTimeout(() => openLatest.current(created), openAfterCreatedMs);
+
     return () => clearTimeout(timer);
   }, [created]);
 
@@ -148,6 +152,7 @@ export function CreateOperationPage({
         ...(refusal ? { failure: refusal } : {}),
       });
     }
+
     onBackToForm(operationId);
   };
 
@@ -167,7 +172,9 @@ export function CreateOperationPage({
   });
   const statusText = status ? text(status) : undefined;
   useEffect(() => {
-    if (statusText) announce(statusText);
+    if (statusText) {
+      announce(statusText);
+    }
   }, [announce, statusText]);
 
   const checkLabel = state.checking

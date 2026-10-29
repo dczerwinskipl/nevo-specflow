@@ -11,8 +11,14 @@ const utilityPrefixes: Record<BindingTarget, string> = {
 };
 
 function classTokens(value: unknown): string[] {
-  if (typeof value === 'string') return value.split(/\s+/).filter(Boolean);
-  if (Array.isArray(value)) return value.flatMap(classTokens);
+  if (typeof value === 'string') {
+    return value.split(/\s+/).filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(classTokens);
+  }
+
   return [];
 }
 
@@ -27,6 +33,7 @@ function inferredToken(
     .map((className) => className.slice(prefix.length).split('/')[0])
     .map((name) => tokens.find((token) => token.cssVariable === `--color-${name}`)?.stableId)
     .filter((stableId): stableId is string => Boolean(stableId));
+
   return candidates.at(-1);
 }
 
@@ -41,22 +48,30 @@ export function inferRecipeSemanticColorBindings(
   for (const target of Object.keys(utilityPrefixes) as BindingTarget[]) {
     for (const property of properties) {
       const variants = recipe.variants[property];
-      if (!variants) continue;
+      if (!variants) {
+        continue;
+      }
+
       const values = Object.fromEntries(
         Object.entries(variants).flatMap(([variant, classValue]) => {
           const token = overrides[target]?.[variant] ?? inferredToken(classValue, target, tokens);
+
           return token ? [[variant, token]] : [];
         }),
       );
       const baseToken = inferredToken(recipe.base, target, tokens);
       if (baseToken) {
-        for (const variant of Object.keys(variants)) values[variant] ??= baseToken;
+        for (const variant of Object.keys(variants)) {
+          values[variant] ??= baseToken;
+        }
       }
+
       if (Object.keys(values).length) {
         result[target] = { property, values };
         break;
       }
     }
   }
+
   return result;
 }

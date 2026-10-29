@@ -14,8 +14,10 @@ export function admitProvider(
   compatibility: ProviderCompatibility,
   prerequisites: ProviderAdmissionPrerequisites,
 ): { allowed: boolean; reason?: string } {
-  if (compatibility.classification === 'unsupported')
+  if (compatibility.classification === 'unsupported') {
     return { allowed: false, reason: compatibility.reason };
+  }
+
   if (
     !prerequisites.configured ||
     !prerequisites.authenticated ||
@@ -26,7 +28,9 @@ export function admitProvider(
       (prerequisites.executionMode === 'workspace-write' &&
         prerequisites.managedEffectsAvailable === true)
     )
-  )
+  ) {
     return { allowed: false, reason: 'Provider admission prerequisites are not satisfied.' };
+  }
+
   return { allowed: true };
 }

@@ -64,14 +64,20 @@ export function DocumentNodeMenu({
   const dangling =
     kind === 'document' && !document ? tree.dangling.find((entry) => entry.id === id) : undefined;
   const folder = kind === 'folder' ? tree.folders.find((entry) => entry.path === path) : undefined;
-  if (!document && !dangling && !folder) return null;
+  if (!document && !dangling && !folder) {
+    return null;
+  }
+
   const name = path.split('/').at(-1) ?? path;
   const reasons: string[] = [];
   const addReason = (reason?: ActionReason) => {
     const note = menuReasonNote(reason);
     const noteText = note ? text(note) : undefined;
-    if (noteText && !reasons.includes(noteText)) reasons.push(noteText);
+    if (noteText && !reasons.includes(noteText)) {
+      reasons.push(noteText);
+    }
   };
+
   // The protected overview offers no action at all: its menu is the note that says why.
   const protectedDocument = document?.protected === true;
   const unclassified = document?.classification === 'unclassified';
@@ -84,20 +90,44 @@ export function DocumentNodeMenu({
         }
     : undefined;
   const policy = document?.actions ?? (folder ? folderActions(folder) : undefined);
-  if (protectedDocument) addReason('protected');
-  else if (dangling) {
-    if (!dangling.actions.delete.available) addReason(dangling.actions.delete.reason);
+  if (protectedDocument) {
+    addReason('protected');
+  } else if (dangling) {
+    if (!dangling.actions.delete.available) {
+      addReason(dangling.actions.delete.reason);
+    }
   } else if (policy) {
-    if (unclassified && classify && !classify.available) addReason(classify.reason);
-    if (!policy.rename.available) addReason(policy.rename.reason);
-    if (!policy.move.available) addReason(policy.move.reason);
-    if (!policy.delete.available) addReason(policy.delete.reason);
+    if (unclassified && classify && !classify.available) {
+      addReason(classify.reason);
+    }
+
+    if (!policy.rename.available) {
+      addReason(policy.rename.reason);
+    }
+
+    if (!policy.move.available) {
+      addReason(policy.move.reason);
+    }
+
+    if (!policy.delete.available) {
+      addReason(policy.delete.reason);
+    }
   }
+
   if (folder) {
-    if (!tree.capabilities.createFile.available) addReason(tree.capabilities.createFile.reason);
-    if (!tree.capabilities.createFolder.available) addReason(tree.capabilities.createFolder.reason);
-    if (!tree.capabilities.import.available) addReason(tree.capabilities.import.reason);
+    if (!tree.capabilities.createFile.available) {
+      addReason(tree.capabilities.createFile.reason);
+    }
+
+    if (!tree.capabilities.createFolder.available) {
+      addReason(tree.capabilities.createFolder.reason);
+    }
+
+    if (!tree.capabilities.import.available) {
+      addReason(tree.capabilities.import.reason);
+    }
   }
+
   const describedBy = reasons.length ? noteId : undefined;
   const typeLine = typeTitle ? t('documents.tree.typeOf', { type: typeTitle }) : undefined;
   const note = describedBy && <MenuNote id={describedBy}>{reasons.slice(0, 2).join(' ')}</MenuNote>;
@@ -112,7 +142,7 @@ export function DocumentNodeMenu({
   );
   // The protected overview has no action at all: its "..." explains why instead of a menu of
   // dead disabled items (a menu without items would not be a valid menu either).
-  if (protectedDocument)
+  if (protectedDocument) {
     return (
       <Popover>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
@@ -127,6 +157,8 @@ export function DocumentNodeMenu({
         </PopoverContent>
       </Popover>
     );
+  }
+
   return (
     <Menu modal={false}>
       <MenuTrigger asChild>{trigger}</MenuTrigger>
@@ -134,7 +166,9 @@ export function DocumentNodeMenu({
         align="end"
         aria-describedby={describedBy}
         onCloseAutoFocus={(event) => {
-          if (actions.restoreEntryFocus()) event.preventDefault();
+          if (actions.restoreEntryFocus()) {
+            event.preventDefault();
+          }
         }}
       >
         {typeLine && <MenuLabel>{typeLine}</MenuLabel>}

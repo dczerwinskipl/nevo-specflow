@@ -61,16 +61,21 @@ export function productNavigationItems(
   // plain route owner is active once no sibling's hash claims it.
   const hashesByPath = new Map<string, string[]>();
   for (const view of views) {
-    if (!('hash' in view)) continue;
+    if (!('hash' in view)) {
+      continue;
+    }
+
     const list = hashesByPath.get(view.to) ?? [];
     list.push(view.hash);
     hashesByPath.set(view.to, list);
   }
+
   return views.map((view) => {
     const path = specId && view.to?.replace('$specId', encodeURIComponent(specId));
     const siblingHashes = hashesByPath.get(view.to) ?? [];
     const ownHash = 'hash' in view ? view.hash : undefined;
     const hashMatches = ownHash ? hash === ownHash : !siblingHashes.includes(hash);
+
     return {
       ...view,
       active: Boolean(

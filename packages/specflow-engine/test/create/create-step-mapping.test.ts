@@ -27,8 +27,11 @@ describe('createStepForStage', () => {
   it('maps every non terminal stage to a step (a new stage must be classified)', () => {
     for (const stage of CREATE_STAGES) {
       const step = createStepForStage(stage, 'new-worktree', true);
-      if (stage === 'completed' || stage === 'recovery-required') expect(step).toBeUndefined();
-      else expect(step, stage).toBeDefined();
+      if (stage === 'completed' || stage === 'recovery-required') {
+        expect(step).toBeUndefined();
+      } else {
+        expect(step, stage).toBeDefined();
+      }
     }
   });
 });

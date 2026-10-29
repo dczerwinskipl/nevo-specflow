@@ -43,21 +43,33 @@ export function variantName(spec: FigmaComponentDefinition, capture: ComponentCa
 
 export function canonicalCaptures(spec: FigmaComponentDefinition, captures: ComponentCaptureIR[]) {
   void spec;
+
   return selectCanonicalCaptures(captures, spec.target !== 'fragment' && spec.target !== 'screen');
 }
 
 export function align(value: string | undefined): 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN' {
-  if (value === 'center' || value === 'middle') return 'CENTER';
-  if (value === 'flex-end' || value === 'end') return 'MAX';
-  if (value === 'space-between') return 'SPACE_BETWEEN';
+  if (value === 'center' || value === 'middle') {
+    return 'CENTER';
+  }
+
+  if (value === 'flex-end' || value === 'end') {
+    return 'MAX';
+  }
+
+  if (value === 'space-between') {
+    return 'SPACE_BETWEEN';
+  }
+
   return 'MIN';
 }
 
 export function applyAutoLayout(node: AutoLayoutNode, style: ComputedStyle) {
   if (style.layoutProjection === 'measured') {
     node.layoutMode = 'NONE';
+
     return;
   }
+
   const isFlex = style.display?.includes('flex');
   const isGrid = style.display?.includes('grid');
   const gridColumns = style.gridTemplateColumns?.trim().split(/\s+/).filter(Boolean).length ?? 0;
@@ -83,6 +95,7 @@ export function applyAutoLayout(node: AutoLayoutNode, style: ComputedStyle) {
   if (node.layoutWrap === 'WRAP') {
     node.counterAxisSpacing = px(style.rowGap, node.itemSpacing);
   }
+
   node.paddingTop = px(style.paddingTop);
   node.paddingRight = px(style.paddingRight);
   node.paddingBottom = px(style.paddingBottom);
@@ -99,6 +112,7 @@ export function applySizingModes(node: AutoLayoutNode, style: ComputedStyle, for
     node.primaryAxisSizingMode = vertical === 'hug' ? 'AUTO' : 'FIXED';
     node.counterAxisSizingMode = horizontal === 'hug' ? 'AUTO' : 'FIXED';
   }
+
   node.minWidth = px(style.minWidth) || null;
   node.minHeight = px(style.minHeight) || null;
   node.maxWidth = style.maxWidth && style.maxWidth !== 'none' ? px(style.maxWidth) || null : null;
@@ -112,15 +126,28 @@ export function layoutSizingForChild(
   parentLayoutMode: AutoLayoutNode['layoutMode'],
   absolute = false,
 ): 'FIXED' | 'HUG' | 'FILL' {
-  if (absolute) return 'FIXED';
-  if (requested === 'fill') return parentLayoutMode === 'NONE' ? 'FIXED' : 'FILL';
-  if (requested === 'hug') return ownLayoutMode === 'NONE' ? 'FIXED' : 'HUG';
+  if (absolute) {
+    return 'FIXED';
+  }
+
+  if (requested === 'fill') {
+    return parentLayoutMode === 'NONE' ? 'FIXED' : 'FILL';
+  }
+
+  if (requested === 'hug') {
+    return ownLayoutMode === 'NONE' ? 'FIXED' : 'HUG';
+  }
+
   return 'FIXED';
 }
 
 export function finiteInset(value: string | undefined) {
-  if (!value || value === 'auto') return undefined;
+  if (!value || value === 'auto') {
+    return undefined;
+  }
+
   const parsed = Number.parseFloat(value);
+
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
@@ -137,13 +164,18 @@ export function applyChildPlacement(
     } else {
       node.layoutPositioning = 'AUTO';
     }
+
     return;
   }
+
   const left = finiteInset(style.left);
   const right = finiteInset(style.right);
   const top = finiteInset(style.top);
   const bottom = finiteInset(style.bottom);
-  if (parent.layoutMode !== 'NONE') node.layoutPositioning = 'ABSOLUTE';
+  if (parent.layoutMode !== 'NONE') {
+    node.layoutPositioning = 'ABSOLUTE';
+  }
+
   node.x = left ?? (right === undefined ? node.x : parent.width - right - node.width);
   node.y = top ?? (bottom === undefined ? node.y : parent.height - bottom - node.height);
   node.constraints = {
@@ -194,6 +226,11 @@ export function configureRoot(
     capture.root.borderTopColor,
     capture.bindings.border,
   );
-  if (background) bindPaintVariable(component, 'fills', background);
-  if (border) bindPaintVariable(component, 'strokes', border);
+  if (background) {
+    bindPaintVariable(component, 'fills', background);
+  }
+
+  if (border) {
+    bindPaintVariable(component, 'strokes', border);
+  }
 }

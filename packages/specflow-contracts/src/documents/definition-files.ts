@@ -154,9 +154,14 @@ function checkLimit(
   text: string | undefined,
   limitBytes: number,
 ): void {
-  if (text === undefined) return;
+  if (text === undefined) {
+    return;
+  }
+
   const actualBytes = utf8ByteLength(text);
-  if (actualBytes > limitBytes) violations.push({ path, limitBytes, actualBytes });
+  if (actualBytes > limitBytes) {
+    violations.push({ path, limitBytes, actualBytes });
+  }
 }
 
 /**
@@ -170,6 +175,7 @@ export function findDocumentTypeFileLimitViolations(
   checkLimit(violations, '/description', file.description, DEFINITION_SHORT_TEXT_MAX_BYTES);
   checkLimit(violations, '/useWhen', file.useWhen, DEFINITION_SHORT_TEXT_MAX_BYTES);
   checkLimit(violations, '/instructions', file.instructions, DEFINITION_INSTRUCTIONS_MAX_BYTES);
+
   return violations;
 }
 
@@ -196,6 +202,7 @@ export function findArchetypeFileLimitViolations(
       checkLimit(violations, `${base}/content`, template.content, DEFINITION_TEMPLATE_MAX_BYTES);
     }
   });
+
   return violations;
 }
 
@@ -227,6 +234,7 @@ export function definitionJsonSchemaFileName(
  */
 export function createDefinitionJsonSchema(kind: DefinitionKind): Record<string, unknown> {
   const entry = DEFINITION_FILE_SCHEMAS[kind];
+
   return {
     $schema: JSON_SCHEMA_DRAFT_2020_12,
     $id: definitionSchemaId(kind, DEFINITION_FILE_SCHEMA_VERSION),

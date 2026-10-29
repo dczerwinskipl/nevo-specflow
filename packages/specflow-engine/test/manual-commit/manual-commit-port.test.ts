@@ -41,6 +41,7 @@ async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
   await write(root, 'docs/a.md', 'a\n');
   git(root, 'add', 'docs');
   commitStaged(root, 'base');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -127,6 +128,7 @@ describe('Engine commit port: manual-commit (real Git)', () => {
     for (const line of message.split('\n').slice(0, -4)) {
       expect(/^\s*Nevo-[A-Za-z]+\s*:/iu.test(line)).toBe(false);
     }
+
     expect(message).toContain('> Nevo-Operation: ' + stolen);
     expect(message).toContain('> nevo-kind: document-change');
     expect(message).toContain('> Nevo-Coalesced: ' + stolen);

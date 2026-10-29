@@ -35,7 +35,10 @@ export function translateMessage(
   value: Message | string,
   locale: string | undefined = (t as { lng?: string }).lng,
 ): string {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') {
+    return value;
+  }
+
   const resolved: Record<string, string | number> = {};
   for (const [name, entry] of Object.entries(value.values ?? {})) {
     resolved[name] =
@@ -48,6 +51,7 @@ export function translateMessage(
               locale,
             );
   }
+
   return (t as (key: string, options?: Record<string, string | number>) => string)(
     value.key,
     resolved,
@@ -57,6 +61,7 @@ export function translateMessage(
 /** Hook form of {@link translateMessage}: `const text = useMessage(); text(policy.reason)`. */
 export function useMessage(): (value: Message | string) => string {
   const { t, i18n } = useTranslation();
+
   return useCallback(
     (value: Message | string) => translateMessage(t, value, i18n.resolvedLanguage),
     [t, i18n.resolvedLanguage],
@@ -70,5 +75,6 @@ export function useMessage(): (value: Message | string) => string {
  */
 export function translateNow(key: MessageKey, values?: MessageValues): string {
   const instance = getI18n();
+
   return translateMessage(instance.t, message(key, values), instance.resolvedLanguage);
 }

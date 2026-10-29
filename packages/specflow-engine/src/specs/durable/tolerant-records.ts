@@ -27,9 +27,13 @@ function readerOf<T>(
       if (!stat.isFile() || stat.isSymbolicLink() || stat.size > kind.maxBytes) {
         return { kind: 'unreadable', operationId, updatedAt };
       }
+
       try {
         const classified = classifyJournalText(await readFileWindowsSafe(path));
-        if (classified.kind === 'unsupported') return { kind: 'unsupported', operationId };
+        if (classified.kind === 'unsupported') {
+          return { kind: 'unsupported', operationId };
+        }
+
         return { kind: 'record', record: kind.parse(context, classified.value, operationId) };
       } catch {
         return { kind: 'unreadable', operationId, updatedAt };
@@ -66,11 +70,15 @@ export async function listRecordsTolerant<T>(
   const unreadable: { operationId: string; updatedAt: Date }[] = [];
   let unsupported = 0;
   for (const row of rows) {
-    if (row.kind === 'record') records.push(row.record);
-    else if (row.kind === 'unreadable') {
+    if (row.kind === 'record') {
+      records.push(row.record);
+    } else if (row.kind === 'unreadable') {
       unreadable.push({ operationId: row.operationId, updatedAt: row.updatedAt });
-    } else unsupported += 1;
+    } else {
+      unsupported += 1;
+    }
   }
+
   return { records, unreadable, unsupported, truncated };
 }
 

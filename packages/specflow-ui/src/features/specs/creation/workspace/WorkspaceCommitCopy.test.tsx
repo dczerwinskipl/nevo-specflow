@@ -23,16 +23,22 @@ const text = (markup: string) => {
   let readable = '';
   let inTag = false;
   for (const character of markup) {
-    if (character === '<') inTag = true;
-    else if (character === '>') inTag = false;
-    else if (!inTag) readable += character;
+    if (character === '<') {
+      inTag = true;
+    } else if (character === '>') {
+      inTag = false;
+    } else if (!inTag) {
+      readable += character;
+    }
   }
+
   return readable.replace(/\s+/g, ' ');
 };
 
 const newSummary = (variant: Parameters<typeof createOptionsFixture>[0], title = 'Payments') => {
   const options = createOptionsFixture(variant);
   const value = choice({ tile: 'new' });
+
   return html(
     <NewSummary
       options={options}

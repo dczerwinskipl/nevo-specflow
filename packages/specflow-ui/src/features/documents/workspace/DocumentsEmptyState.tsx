@@ -30,6 +30,7 @@ export function DocumentsEmptyState({
     ...actions.filter((action) => action.id === primaryActionId),
     ...actions.filter((action) => action.id !== primaryActionId),
   ];
+
   return (
     <EmptyState
       variant="pane"

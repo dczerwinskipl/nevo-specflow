@@ -18,6 +18,7 @@ function harness() {
       }),
   });
   const run = (args: string[]) => program.parseAsync(['node', 'nevo-specflow', ...args]);
+
   return { run, out, err };
 }
 

@@ -22,13 +22,18 @@ function setup() {
   });
   const count = (workspaceId: string) =>
     env.specs.createOptions().workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
+
   return { env, body, count };
 }
+
 const failure = (fn: () => unknown) => {
   try {
     fn();
   } catch (error) {
-    if (error instanceof DemoTargetError) return [error.status, error.code];
+    if (error instanceof DemoTargetError) {
+      return [error.status, error.code];
+    }
+
     throw error;
   }
 };
@@ -165,8 +170,10 @@ describe('target-aware demo create', () => {
       { kind: 'new-worktree' as const, baseRef: 'nope' },
       { kind: 'new-worktree' as const, integrationTargetWorkspaceId: ids.payments },
       { kind: 'new-worktree' as const, branch: 'main' },
-    ])
+    ]) {
       expect(failure(() => env.specs.create('alice', body(1, { target })))).toBeDefined();
+    }
+
     expect(env.state.specifications.size).toBe(0);
     expect(count(ids.main)).toBe(0);
     expect(env.specs.createOptions().workspaces).toHaveLength(6);

@@ -51,13 +51,19 @@ export function buildCreateFacts(
   const commit = options.commits ? ({ commit: true } as const) : {};
   if (tile === 'existing') {
     const selected = options.workspaces.find((w) => w.workspaceId === choice.existingWorkspaceId);
+
     return { place: 'existing', ...(selected ? { workspace: named(selected) } : {}), ...commit };
   }
+
   if (tile === 'main') {
     const primary = primaryWorkspace(options);
+
     return { place: 'main', ...(primary ? { workspace: named(primary) } : {}), ...commit };
   }
-  if (tile !== 'new') return undefined;
+
+  if (tile !== 'new') {
+    return undefined;
+  }
 
   const overrides = createOverrides(choice, options, title);
   const primary = primaryWorkspace(options);
@@ -73,6 +79,7 @@ export function buildCreateFacts(
     (status.kind === 'ok' || status.kind === 'unavailable' ? status.workspace : undefined);
   const mergeReason =
     !picked && status.kind === 'unavailable' ? (status.workspace.reason ?? 'other') : undefined;
+
   return {
     place: 'new',
     ...(base ? { base } : { baseHead: true }),
@@ -90,17 +97,26 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const text = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
 
 function factWorkspace(value: unknown): FactWorkspace | undefined {
-  if (!isRecord(value)) return undefined;
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
   const name = text(value.name);
   const branch = text(value.branch);
+
   return name ? { name, ...(branch ? { branch } : {}) } : undefined;
 }
 
 /** Reads stored facts defensively: a damaged value is dropped, a damaged part is left out. */
 export function toCreateFacts(value: unknown): CreateSettingsFacts | undefined {
-  if (!isRecord(value)) return undefined;
-  if (value.place !== 'new' && value.place !== 'existing' && value.place !== 'main')
+  if (!isRecord(value)) {
     return undefined;
+  }
+
+  if (value.place !== 'new' && value.place !== 'existing' && value.place !== 'main') {
+    return undefined;
+  }
+
   const workspace = factWorkspace(value.workspace);
   const mergeInto = factWorkspace(value.mergeInto);
   const base = text(value.base);
@@ -108,6 +124,7 @@ export function toCreateFacts(value: unknown): CreateSettingsFacts | undefined {
   const folder = text(value.folder);
   const mergeReason = text(value.mergeReason);
   const slug = text(value.slug);
+
   return {
     place: value.place,
     ...(workspace ? { workspace } : {}),

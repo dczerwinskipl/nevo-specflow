@@ -71,6 +71,7 @@ interface Pages {
 }
 function useTaskContext(params: RootParams): SecondaryData<TaskContextData> {
   const data = useContext(Context);
+
   return data
     ? {
         status: 'ready',
@@ -83,15 +84,18 @@ function useTaskContext(params: RootParams): SecondaryData<TaskContextData> {
       }
     : { status: 'loading' };
 }
+
 function WorkHeader({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   return <TaskContextHeader task={data.task} />;
 }
+
 function RequirementHeader({
   data,
   params,
 }: SecondaryScreenProps<TaskContextData, { id: string }>) {
   return <TaskContextHeader task={data.task} requirementId={params.id ?? data.itemId} />;
 }
+
 function WorkScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   return (
     <AppContent className="w-content-standard max-w-full">
@@ -101,6 +105,7 @@ function WorkScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never
     </AppContent>
   );
 }
+
 function FlowScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   return (
     <AppContent className="w-content-standard max-w-full">
@@ -110,6 +115,7 @@ function FlowScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never
     </AppContent>
   );
 }
+
 function EvidenceScreen({
   data,
   params,
@@ -124,11 +130,13 @@ function EvidenceScreen({
     </AppContent>
   );
 }
+
 function RequirementScreen({
   data,
   params,
 }: SecondaryScreenProps<TaskContextData, Pages['requirement']>) {
   const nav = useSecondaryStack<Pages>();
+
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
@@ -145,6 +153,7 @@ function RequirementScreen({
     </AppContent>
   );
 }
+
 function ResourceScreen({
   data,
   params,
@@ -155,6 +164,7 @@ function ResourceScreen({
     resources?.state === 'available' ? resources.data.recommended : [],
     pages.data?.pages.map((page) => page.items) ?? [],
   );
+
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
@@ -167,6 +177,7 @@ function ResourceScreen({
     </AppContent>
   );
 }
+
 function HistoryResourceScreen({
   data,
   params,
@@ -186,8 +197,10 @@ function HistoryResourceScreen({
     </AppContent>
   );
 }
+
 function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   const nav = useSecondaryStack<Pages>();
+
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
@@ -203,6 +216,7 @@ function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<ne
     </AppContent>
   );
 }
+
 const stack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
   id: 'task-inspection',
   initial: 'work',
@@ -310,6 +324,7 @@ export function FullTaskWorkspace(props: {
     </AppWorkspaceProvider>
   );
 }
+
 function Workspace({
   task,
   specId,
@@ -328,6 +343,7 @@ function Workspace({
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
   const navigation = useSecondaryNavigation();
+
   return (
     <AppWorkspace
       split="primary"

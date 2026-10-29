@@ -17,8 +17,12 @@ export function inspectionAnchor(snapshot?: TaskSnapshot): TaskInspectionAnchor 
 
 export function inspectionStep(snapshot?: TaskSnapshot) {
   const work = snapshot?.sections.work;
-  if (work?.state !== 'available') return undefined;
+  if (work?.state !== 'available') {
+    return undefined;
+  }
+
   const position = work.data.position;
+
   return position.state === 'active'
     ? position.step
     : position.state === 'checkpoint' || position.state === 'not_started'
@@ -34,19 +38,26 @@ export function matchesWork(
 ): boolean {
   const work = snapshot?.sections.work;
   const step = inspectionStep(snapshot);
-  if (!snapshot || work?.state !== 'available' || step?.executor !== 'human') return false;
+  if (!snapshot || work?.state !== 'available' || step?.executor !== 'human') {
+    return false;
+  }
+
   if (
     requirement.state !== 'pending' ||
     requirement.source.kind !== 'human-step' ||
     requirement.source.stepId !== step.id ||
     requirement.definitionRevision !== work.data.definition.revision
-  )
+  ) {
     return false;
+  }
+
   const position = work.data.position;
   if (position.state !== 'active') {
     return requirement.source.relation === 'next-ready' && requirement.key === null;
   }
+
   const key = requirement.key;
+
   return (
     requirement.source.relation === 'current' &&
     !!key &&

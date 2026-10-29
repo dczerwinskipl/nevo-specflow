@@ -11,7 +11,10 @@ export interface QueueTimers {
 export const systemQueueTimers: QueueTimers = {
   set: (fn, ms, options) => {
     const handle = setTimeout(fn, ms);
-    if (options?.unref === true) handle.unref();
+    if (options?.unref === true) {
+      handle.unref();
+    }
+
     return handle;
   },
   clear: (handle) => {

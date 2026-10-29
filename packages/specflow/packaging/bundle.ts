@@ -105,15 +105,21 @@ function discoverThirdPartyPackages(
   for (const input of inputs) {
     const absolute = isAbsolute(input) ? input : resolve(cwd, input);
     const markerIndex = absolute.lastIndexOf(marker);
-    if (markerIndex < 0) continue;
+    if (markerIndex < 0) {
+      continue;
+    }
 
     const packageRelative = absolute.slice(markerIndex + marker.length);
     const segments = packageRelative.split(sep);
     const first = segments[0];
-    if (!first) continue;
+    if (!first) {
+      continue;
+    }
 
     const name = first.startsWith('@') ? `${first}/${segments[1] ?? ''}` : first;
-    if (!name || name.endsWith('/') || name.startsWith('@nevo/')) continue;
+    if (!name || name.endsWith('/') || name.startsWith('@nevo/')) {
+      continue;
+    }
 
     const rootSegments = name.split('/');
     const root = join(absolute.slice(0, markerIndex + marker.length), ...rootSegments);

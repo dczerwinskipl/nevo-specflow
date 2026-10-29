@@ -33,10 +33,19 @@ export function projectSpecificationNavigation(
   specId: string | null,
   query: SpecificationNavigationQueryState,
 ): SpecificationNavigationState {
-  if (!specId) return { status: 'idle' };
-  if ([401, 403, 404].includes(getHttpErrorStatus(query.error) ?? 0)) return { status: 'denied' };
+  if (!specId) {
+    return { status: 'idle' };
+  }
+
+  if ([401, 403, 404].includes(getHttpErrorStatus(query.error) ?? 0)) {
+    return { status: 'denied' };
+  }
+
   const data = query.data;
-  if (!data) return { status: query.status === 'error' ? 'failed' : 'loading' };
+  if (!data) {
+    return { status: query.status === 'error' ? 'failed' : 'loading' };
+  }
+
   return {
     status: 'available',
     metadata: {
@@ -59,6 +68,7 @@ export function projectSpecificationNavigation(
  */
 export function useSpecificationNavigationSource(specId: string | null) {
   const workspace = useSpecificationWorkspace(specId ?? '');
+
   return {
     ...projectSpecificationNavigation(specId, workspace),
     retry: () => void workspace.refetch(),

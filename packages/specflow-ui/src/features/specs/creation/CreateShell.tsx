@@ -61,6 +61,7 @@ export function CreateShell({
       ) : null}
     </>
   );
+
   return (
     <AppWorkspace fit="bounded" labels={workspaceLabels} scroll="content">
       <AppWorkspace.Primary

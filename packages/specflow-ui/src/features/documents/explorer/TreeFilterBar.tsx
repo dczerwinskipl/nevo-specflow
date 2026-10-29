@@ -48,6 +48,7 @@ export function TreeFilterBar({
       ...filter,
       types: on ? [...filter.types, type] : filter.types.filter((value) => value !== type),
     });
+
   return (
     <div className="grid gap-1 px-1">
       <div className="flex min-w-0 items-center gap-1">

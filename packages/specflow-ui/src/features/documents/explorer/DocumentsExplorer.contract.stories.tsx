@@ -73,6 +73,7 @@ function Fixture({
   onSelect,
 }: Props) {
   const [current, setCurrent] = useState(active);
+
   return (
     <NotificationProvider>
       <TooltipProvider>
@@ -135,6 +136,7 @@ export const NoRootRowAndNaturalOrder: Story = {
       await expect(getComputedStyle(row, '::after').content).toBe('none');
       await expect(getComputedStyle(row, '::before').content).toBe('none');
     }
+
     // Rows are compact (one control height) and sit flush against each other.
     const folder = rect(canvas.getByRole('button', { name: /^architektura$/ }));
     const nested = rect(canvas.getByRole('button', { name: /^decyzje$/ }));
@@ -284,6 +286,7 @@ async function openMenu(
   name: string,
 ) {
   await userEvent.click(await canvas.findByRole('button', { name: `Akcje: ${name}` }));
+
   return within(await within(document.body).findByRole('menu'));
 }
 
@@ -333,8 +336,10 @@ export const ReadOnlyExplainsOnceInTheMenu: Story = {
       'Zmień nazwę',
       'Przenieś',
       'Usuń',
-    ])
+    ]) {
       await expect(menu.getByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
+    }
+
     await expect(
       menu.getAllByText('Niedostępne: ta gałąź jest chroniona przed commitami SpecFlow.'),
     ).toHaveLength(1);
@@ -381,6 +386,7 @@ async function startFile(
   const menu = await openMenu(canvas, userEvent, folder);
   // New document opens the type chooser; inline entry stays for folders (and rename).
   await userEvent.click(menu.getByRole('menuitem', { name: 'Nowy folder' }));
+
   return canvas.findByRole('textbox', { name: 'Nazwa nowego folderu' });
 }
 
@@ -444,6 +450,7 @@ export const WindowBlurKeepsTheTypedName: Story = {
     } finally {
       hasFocus.mockRestore();
     }
+
     // Back in the window, Enter still commits.
     canvas.getByRole('textbox').focus();
     await userEvent.keyboard('{Enter}');

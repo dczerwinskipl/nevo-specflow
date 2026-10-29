@@ -148,19 +148,29 @@ export async function runClaimed(
 ): Promise<ManualCommitDone> {
   if (!markLeaseActive(journal.workspaceId)) {
     await discardIfNeverRan(rt, journal);
+
     throw busyError();
   }
+
   try {
-    if (journal.stage === 'reserved') await rt.hooks.afterReserved?.(journal);
+    if (journal.stage === 'reserved') {
+      await rt.hooks.afterReserved?.(journal);
+    }
+
     const claimed = await claim(rt, journal);
     await rt.hooks.afterClaim?.(claimed);
+
     return await work(claimed);
   } catch (error) {
-    if (error instanceof ManualCommitMovedError) return movedOutcome(rt, error.current);
+    if (error instanceof ManualCommitMovedError) {
+      return movedOutcome(rt, error.current);
+    }
+
     // An error that is not a simulated stop must not leave the lease to a live process.
     if (!(error instanceof ManualCommitInterrupted)) {
       await releaseAfterError(rt, journal.operationId).catch(() => undefined);
     }
+
     throw error;
   } finally {
     markLeaseIdle(journal.workspaceId);
@@ -172,11 +182,18 @@ async function movedOutcome(
   rt: ManualCommitRuntime,
   current: ManualCommitJournal,
 ): Promise<ManualCommitDone> {
-  if (current.stage === 'completed') return doneOf(rt, current, true);
-  if (current.stage === 'failed') throw errorOfFailedJournal(current);
+  if (current.stage === 'completed') {
+    return doneOf(rt, current, true);
+  }
+
+  if (current.stage === 'failed') {
+    throw errorOfFailedJournal(current);
+  }
+
   if (current.stage === 'recovery-required') {
     throw manualCommitError('recovery-required', 'The manual commit needs recovery.');
   }
+
   throw busyError();
 }
 
@@ -189,6 +206,7 @@ export async function doneOf(
   if (journal.outcome !== 'committed' || journal.parentHead === undefined) {
     return { journal, paths: [], replayed };
   }
+
   let paths: readonly string[] | undefined;
   try {
     const found = await rt.commits.findByOperation(
@@ -196,11 +214,15 @@ export async function doneOf(
       journal.operationId,
       journal.parentHead,
     );
-    if (found.status === 'found') paths = found.paths;
+    if (found.status === 'found') {
+      paths = found.paths;
+    }
   } catch {
     // The history cannot be asked (rewritten or unreadable): the snapshot names what was committed.
   }
+
   paths ??= (await readSnapshot(rt.context, journal)).map((entry) => entry.path);
+
   return { journal, paths, replayed };
 }
 
@@ -209,14 +231,22 @@ async function discardIfNeverRan(
   rt: ManualCommitRuntime,
   journal: ManualCommitJournal,
 ): Promise<void> {
-  if (journal.stage !== 'reserved') return;
+  if (journal.stage !== 'reserved') {
+    return;
+  }
+
   await withManualCommitLock(rt.context, async () => {
     const current = await readManualCommitJournal(rt.context, journal.operationId);
-    if (current?.stage !== 'reserved') return;
+    if (current?.stage !== 'reserved') {
+      return;
+    }
+
     await removeFileWindowsSafe(
       journalPath(rt.context, MANUAL_COMMIT_JOURNAL_KIND, journal.operationId),
     ).catch((error: unknown) => {
-      if (!isMissing(error)) throw error;
+      if (!isMissing(error)) {
+        throw error;
+      }
     });
     await removePayload(rt.context, MANUAL_COMMIT_JOURNAL_KIND, journal.operationId);
   });
@@ -247,6 +277,7 @@ async function claim(
       ) {
         throw new ManualCommitMovedError(current ?? journal);
       }
+
       const lease = await readCheckoutLease(rt.context, journal.workspaceId, rt.leaseErrors);
       if (lease !== undefined) {
         const verdict = await judgeExecutor(lease.executor, own, {
@@ -255,8 +286,11 @@ async function claim(
           confirmStopped: rt.options.confirmExecutorStopped === true,
           table: rt.table,
         });
-        if (verdict.kind === 'held') throw busyError();
+        if (verdict.kind === 'held') {
+          throw busyError();
+        }
       }
+
       const parentHead = current.parentHead ?? head;
       if (parentHead === undefined) {
         throw gitRefusal(
@@ -267,6 +301,7 @@ async function claim(
           ),
         );
       }
+
       await writeCheckoutLease(
         rt.context,
         {
@@ -282,10 +317,14 @@ async function claim(
         executor: own,
         parentHead,
       });
+
       return next;
     });
   } catch (error) {
-    if (isBusy(error)) await discardIfNeverRan(rt, journal);
+    if (isBusy(error)) {
+      await discardIfNeverRan(rt, journal);
+    }
+
     throw error;
   }
 }
@@ -302,6 +341,7 @@ async function publishTransition(
 ): Promise<ManualCommitJournal> {
   const next = transitionManualCommit(current, to, patch, rt.nowIso());
   await publishJournal(rt.context, MANUAL_COMMIT_JOURNAL_KIND, next);
+
   return next;
 }
 
@@ -312,6 +352,7 @@ async function updateOwn(
   patch: ManualCommitTransitionPatch,
 ): Promise<ManualCommitJournal> {
   const own = await rt.executor();
+
   return transitionManualCommitJournal(
     rt.context,
     journal.operationId,
@@ -346,9 +387,15 @@ export async function finish(
     rt.nowIso(),
     { guard: (current) => isDeepStrictEqual(current.executor, own) },
   );
-  if (to === 'completed') await rt.hooks.afterCompleted?.(next);
+  if (to === 'completed') {
+    await rt.hooks.afterCompleted?.(next);
+  }
+
   await releaseLease(rt, next);
-  if (to !== 'recovery-required') await settleManualCommitJournal(rt.context, next.operationId);
+  if (to !== 'recovery-required') {
+    await settleManualCommitJournal(rt.context, next.operationId);
+  }
+
   return next;
 }
 
@@ -360,7 +407,10 @@ export async function settleEnded(
   rt: ManualCommitRuntime,
   journal: ManualCommitJournal,
 ): Promise<void> {
-  if ((await readManualCommitJournal(rt.context, journal.operationId)) === undefined) return;
+  if ((await readManualCommitJournal(rt.context, journal.operationId)) === undefined) {
+    return;
+  }
+
   await releaseLease(rt, journal);
   await settleManualCommitJournal(rt.context, journal.operationId);
 }
@@ -372,10 +422,16 @@ export async function pruneSnapshot(
   entries: readonly SnapshotEntry[],
 ): Promise<void> {
   const owners = new Map<string, SnapshotEntry[]>();
-  for (const entry of entries) owners.set(entry.owner, [...(owners.get(entry.owner) ?? []), entry]);
+  for (const entry of entries) {
+    owners.set(entry.owner, [...(owners.get(entry.owner) ?? []), entry]);
+  }
+
   for (const [key, judged] of owners) {
     const owner: LedgerOwner | undefined = ledgerOwnerOfKey(key);
-    if (owner === undefined) continue;
+    if (owner === undefined) {
+      continue;
+    }
+
     await removeLedgerEntriesJudged(
       rt.context,
       journal.workspaceId,
@@ -407,6 +463,7 @@ export async function complete(
       ? { outcome: 'not-applicable', reason: NOTHING_TO_COMMIT }
       : { outcome: 'committed', sha: committed.sha, pathCount: committed.paths.length },
   );
+
   return { journal: done, paths: committed?.paths ?? [], replayed: false };
 }
 
@@ -422,6 +479,7 @@ async function refuse(
     reason,
     ...(blockedBy !== undefined ? { blockedBy } : {}),
   });
+
   throw error;
 }
 
@@ -436,6 +494,7 @@ export async function needsRecovery(
     reason,
     ...(blockedBy !== undefined ? { blockedBy } : {}),
   });
+
   throw manualCommitError('recovery-required', 'The manual commit needs recovery.');
 }
 
@@ -459,7 +518,9 @@ async function attempt(
     if (journal.commitStartedAt !== undefined) {
       const evidence = await lookUpCommit(rt.commits, journal, entries);
       const resolved = await resolveEvidence(rt, journal, entries, evidence);
-      if (resolved !== undefined) return resolved;
+      if (resolved !== undefined) {
+        return resolved;
+      }
     }
 
     const head = await rt.commits.head(root);
@@ -470,6 +531,7 @@ async function attempt(
         'no-commits',
       );
     }
+
     // No commit was started, so none can be lost: a parent that history left behind is read again.
     if (journal.commitStartedAt === undefined && head !== journal.parentHead) {
       journal = await updateOwn(rt, journal, { parentHead: head });
@@ -536,11 +598,16 @@ async function attempt(
     if (!(await commitHoldsEntries(rt.commits, root, entries, split.effective, committed.sha))) {
       return await needsRecovery(rt, journal, 'uncertain', 'commit-content-mismatch');
     }
+
     await rt.hooks.afterVerify?.(journal, committed.sha);
+
     return await complete(rt, journal, entries, { sha: committed.sha, paths: split.effective });
   } catch (error) {
     const classified = classifyCommitError(error);
-    if (classified === undefined) throw error;
+    if (classified === undefined) {
+      throw error;
+    }
+
     return handleFailure(rt, journal, entries, classified);
   }
 }
@@ -600,16 +667,24 @@ async function handleFailure(
       ? needsRecovery(rt, latest, kebab(failure.reason) ?? 'uncertain', failure.blockedBy)
       : refusal();
   }
+
   let evidence: CommitEvidence;
   try {
     evidence = await lookUpCommit(rt.commits, latest, entries);
   } catch (error) {
-    if (classifyCommitError(error) === undefined) throw error;
+    if (classifyCommitError(error) === undefined) {
+      throw error;
+    }
+
     // The repository cannot be asked whether the commit landed.
     return needsRecovery(rt, latest, 'uncertain', kebab(failure.reason));
   }
+
   const resolved = await resolveEvidence(rt, latest, entries, evidence);
-  if (resolved !== undefined) return resolved;
+  if (resolved !== undefined) {
+    return resolved;
+  }
+
   // No commit. A Git process that may still be running makes that no proof.
   if (
     failure.blockedBy !== NOT_TERMINATED &&
@@ -621,6 +696,7 @@ async function handleFailure(
   ) {
     return refusal();
   }
+
   return needsRecovery(rt, latest, 'uncertain', kebab(failure.blockedBy ?? failure.reason));
 }
 
@@ -629,12 +705,14 @@ function refusalError(failure: ClassifiedCommitFailure): Error {
   if (failure.reason === 'branch-protected' || failure.reason === 'branch-not-allowed') {
     return manualCommitError(failure.reason, 'The Engine does not commit on this branch.');
   }
+
   if (failure.reason === 'branch-changed') {
     return manualCommitError(
       'branch-changed',
       'The checkout is on another branch than the one the changes were made on.',
     );
   }
+
   return manualCommitError(
     'commit-blocked',
     'The checkout cannot take an Engine commit right now.',
@@ -650,15 +728,20 @@ function refusalError(failure: ClassifiedCommitFailure): Error {
 async function releaseAfterError(rt: ManualCommitRuntime, operationId: string): Promise<void> {
   const own = await rt.executor();
   const journal = await readManualCommitJournal(rt.context, operationId);
-  if (journal === undefined) return;
+  if (journal === undefined) {
+    return;
+  }
+
   if (journal.stage === 'committing' && isDeepStrictEqual(journal.executor, own)) {
     if (journal.commitStartedAt !== undefined) {
       await finish(rt, journal, 'recovery-required', {
         reason: 'uncertain',
         blockedBy: 'engine-error',
       });
+
       return;
     }
   }
+
   await releaseLease(rt, journal);
 }

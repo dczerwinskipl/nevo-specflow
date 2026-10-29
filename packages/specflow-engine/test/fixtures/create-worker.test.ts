@@ -25,17 +25,25 @@ it.skipIf(!process.env.NEVO_CREATE_WORKER)(
         await access(start);
         break;
       } catch {
-        if (Date.now() > deadline) throw new Error('Create worker barrier timed out.');
+        if (Date.now() > deadline) {
+          throw new Error('Create worker barrier timed out.');
+        }
+
         await sleep(25);
       }
     }
+
     const result = await createSpecification(engine, input, {
       confirmInterruptedGitSettled: process.env.NEVO_CREATE_WORKER_GIT_SETTLED === '1',
       afterEffect: async (effect) => {
         if (effect === 'reservation' && process.env.NEVO_CREATE_WORKER_OBSERVED) {
           await writeFile(process.env.NEVO_CREATE_WORKER_OBSERVED, 'reserved');
         }
-        if (effect !== process.env.NEVO_CREATE_WORKER_PAUSE_STAGE) return;
+
+        if (effect !== process.env.NEVO_CREATE_WORKER_PAUSE_STAGE) {
+          return;
+        }
+
         await writeFile(process.env.NEVO_CREATE_WORKER_PAUSED!, effect);
         const release = process.env.NEVO_CREATE_WORKER_RELEASE!;
         // This is a test-only barrier. Cross-process Windows startup and CI
@@ -47,14 +55,19 @@ it.skipIf(!process.env.NEVO_CREATE_WORKER)(
             await access(release);
             break;
           } catch {
-            if (Date.now() > deadline) throw new Error('Create pause barrier timed out.');
+            if (Date.now() > deadline) {
+              throw new Error('Create pause barrier timed out.');
+            }
+
             await sleep(25);
           }
         }
       },
     });
-    if (!result.specId)
+    if (!result.specId) {
       throw new Error('Create did not produce a canonical specification identity.');
+    }
+
     if (process.env.NEVO_CREATE_WORKER_RESULT) {
       await writeFile(process.env.NEVO_CREATE_WORKER_RESULT, JSON.stringify(result));
     }

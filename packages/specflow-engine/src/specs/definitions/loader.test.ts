@@ -32,7 +32,10 @@ function codes(result: LoadResult): string[] {
 
 function problemOf(result: LoadResult, source: string): DefinitionProblem {
   const problem = result.problems.find((item) => item.source === source);
-  if (!problem) throw new Error(`No problem for ${source}: ${JSON.stringify(codes(result))}`);
+  if (!problem) {
+    throw new Error(`No problem for ${source}: ${JSON.stringify(codes(result))}`);
+  }
+
   return problem;
 }
 
@@ -136,6 +139,7 @@ describe('loadDefinitions', () => {
       // The rest of the project still loads.
       expect(result.definitions.get('document-type')?.has('overview')).toBe(true);
       expect(result.definitions.get('specification-archetype')?.has('minimal')).toBe(true);
+
       return result;
     }
 
@@ -175,6 +179,7 @@ describe('loadDefinitions', () => {
       ] as const) {
         lines.push(`${name}: &${name} [*${previous}, *${previous}, *${previous}, *${previous}]`);
       }
+
       const result = await withBadFile('document-type/bomb.yaml', `${lines.join('\n')}\n`);
       expect(problemOf(result, 'document-type/bomb.yaml').code).toBe('yaml-invalid');
     });
@@ -393,6 +398,7 @@ describe('loadDefinitions', () => {
     async function withTemplate(prepare: (source: MemoryDefinitionSource) => void) {
       const source = sampleProject();
       prepare(source);
+
       return load(source);
     }
 
@@ -620,6 +626,7 @@ describe('loadDefinitions', () => {
         names.push(id);
         source.set(`document-type/${id}.yaml`, documentTypeFile(id));
       }
+
       const result = await load(source);
       // note, overview and 498 numbered files fit; the last numbered ones are over the entry limit.
       const limited = result.problems
@@ -637,6 +644,7 @@ describe('loadDefinitions', () => {
         const id = `t${String(index).padStart(3, '0')}`;
         source.set(`document-type/${id}.yaml`, documentTypeFile(id));
       }
+
       const result = await load(source);
       expect(result.definitions.get('document-type')?.size).toBe(100);
       expect(result.problems.filter((p) => p.code === 'limit-exceeded')).toHaveLength(5);
@@ -653,6 +661,7 @@ describe('loadDefinitions', () => {
           documentTypeFile(id, { instructions: 'ok' }) + `# ${filler}\n`,
         );
       }
+
       const result = await load(source);
       expect(result.problems.some((p) => p.code === 'limit-exceeded')).toBe(true);
       expect(result.bytesRead).toBeLessThanOrEqual(DEFINITION_LOAD_MAX_BYTES);
@@ -681,8 +690,12 @@ describe('loadDefinitions', () => {
     const duplicating: DefinitionSource = {
       list: async (directory, max) => {
         const listing = await base.list(directory, max);
-        if (directory !== 'document-type' || listing.state !== 'ok') return listing;
+        if (directory !== 'document-type' || listing.state !== 'ok') {
+          return listing;
+        }
+
         const twin = listing.entries.find((entry) => entry.name === 'note.yaml');
+
         return twin ? { state: 'ok', entries: [...listing.entries, twin] } : listing;
       },
       read: (path, max) => base.read(path, max),

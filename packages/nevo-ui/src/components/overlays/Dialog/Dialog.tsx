@@ -36,6 +36,7 @@ export const DialogContent = forwardRef<
 ) {
   const capture = useDesignMetadata('Dialog');
   const labels = { ...defaultDialogLabels, ...labelsProp };
+
   return (
     <DialogPrimitive.Portal container={container}>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-overlay" />
@@ -112,13 +113,19 @@ export const DialogBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
     const setRefs = useCallback(
       (element: HTMLDivElement | null) => {
         setNode(element);
-        if (typeof ref === 'function') ref(element);
-        else if (ref) ref.current = element;
+        if (typeof ref === 'function') {
+          ref(element);
+        } else if (ref) {
+          ref.current = element;
+        }
       },
       [ref],
     );
     useEffect(() => {
-      if (!node) return;
+      if (!node) {
+        return;
+      }
+
       const measure = () => setMore(node.scrollTop + node.clientHeight < node.scrollHeight - 1);
       measure();
       node.addEventListener('scroll', measure, { passive: true });
@@ -126,11 +133,17 @@ export const DialogBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
       // without ResizeObserver the scroll position and content changes still update the edge.
       const sizes = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure);
       const observeAll = () => {
-        if (!sizes) return;
+        if (!sizes) {
+          return;
+        }
+
         sizes.disconnect();
         sizes.observe(node);
-        for (const child of Array.from(node.children)) sizes.observe(child);
+        for (const child of Array.from(node.children)) {
+          sizes.observe(child);
+        }
       };
+
       observeAll();
       const content =
         typeof MutationObserver === 'undefined'
@@ -140,12 +153,14 @@ export const DialogBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
               measure();
             });
       content?.observe(node, { childList: true, subtree: true });
+
       return () => {
         node.removeEventListener('scroll', measure);
         sizes?.disconnect();
         content?.disconnect();
       };
     }, [node]);
+
     return (
       <div
         ref={setRefs}

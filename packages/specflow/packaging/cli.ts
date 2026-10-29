@@ -66,12 +66,18 @@ export function createProgram(io: CliIO): Command {
         io.stdout(JSON.stringify(result));
       } else {
         io.stdout(`\ninstalled ${result.name} ${result.version} from ${result.tarball}`);
-        for (const c of result.checks) io.stdout(`  ✓ ${c}`);
+        for (const c of result.checks) {
+          io.stdout(`  ✓ ${c}`);
+        }
+
         io.stdout(`\nnevo-spec is on PATH via ${result.globalBinDir}`);
       }
     });
 
   program.exitOverride();
-  for (const cmd of program.commands) cmd.exitOverride();
+  for (const cmd of program.commands) {
+    cmd.exitOverride();
+  }
+
   return program;
 }

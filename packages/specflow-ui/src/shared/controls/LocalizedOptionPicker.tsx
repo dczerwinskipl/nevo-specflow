@@ -9,6 +9,7 @@ export type { OptionPickerItem as OptionSelectItem } from '@nevo/ui';
  */
 export function LocalizedOptionPicker(props: Omit<OptionPickerProps, 'labels'>) {
   const { t } = useTranslation();
+
   return (
     <OptionPicker
       {...props}

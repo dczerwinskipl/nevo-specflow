@@ -40,7 +40,10 @@ export function createFakeAdminClient(overrides: Partial<FakeClientState> = {}):
       Object.assign(state.repoSettings, body);
     },
     listCollaborators: () => {
-      if (state.collaborators instanceof Error) throw state.collaborators;
+      if (state.collaborators instanceof Error) {
+        throw state.collaborators;
+      }
+
       return state.collaborators;
     },
     listRulesets: (): RulesetSummary[] =>
@@ -50,6 +53,7 @@ export function createFakeAdminClient(overrides: Partial<FakeClientState> = {}):
       const id = nextId++;
       createdRulesets.push(body);
       state.rulesets.set(id, { ...(body as Record<string, unknown>) });
+
       return { id };
     },
     updateRuleset: (_repo, id, body) => {

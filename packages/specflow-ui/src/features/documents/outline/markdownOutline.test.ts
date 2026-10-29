@@ -115,14 +115,20 @@ describe('contents column geometry', () => {
   it('shows the column from a 840 px panel and not below', () => {
     const showsColumn = (width: number) => width >= outlineColumnMinWidth;
     expect(outlineColumnMinWidth).toBe(840);
-    for (const width of [820, 831, 832, 839]) expect(showsColumn(width)).toBe(false);
-    for (const width of [840, 847, 877, 900, 1035, 1290]) expect(showsColumn(width)).toBe(true);
+    for (const width of [820, 831, 832, 839]) {
+      expect(showsColumn(width)).toBe(false);
+    }
+
+    for (const width of [840, 847, 877, 900, 1035, 1290]) {
+      expect(showsColumn(width)).toBe(true);
+    }
   });
 
   it('leaves the text at least 528 px (about 62 characters) from the threshold up', () => {
     expect(outlineTextMinWidth).toBe(528);
-    for (const width of [840, 847, 877, 900, 922, 997, 1035, 1100, 1290])
+    for (const width of [840, 847, 877, 900, 922, 997, 1035, 1100, 1290]) {
       expect(outlineTextWidth(width)).toBeGreaterThanOrEqual(outlineTextMinWidth);
+    }
   });
 });
 

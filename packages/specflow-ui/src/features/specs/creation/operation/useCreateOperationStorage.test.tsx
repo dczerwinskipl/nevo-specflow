@@ -32,6 +32,7 @@ function setup(initial: AuthStoreState) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <TestServicesRouterContext services={services}>{children}</TestServicesRouterContext>
   );
+
   return { wrapper, set: (next: AuthStoreState) => (state = next) };
 }
 

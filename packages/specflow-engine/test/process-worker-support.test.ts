@@ -73,7 +73,10 @@ describe('Q06 real-process harness negative outcomes', () => {
 
   it('kills and reaps a real hanging OS process, leaving no running PID', async () => {
     const worker = realWorker('setInterval(() => undefined, 1000)');
-    if (!worker.pid) throw new Error('Expected an independent child PID.');
+    if (!worker.pid) {
+      throw new Error('Expected an independent child PID.');
+    }
+
     const pid = worker.pid;
     const result = await reapVitestWorker(worker, 10000);
     expect(result.code).not.toBe(0);

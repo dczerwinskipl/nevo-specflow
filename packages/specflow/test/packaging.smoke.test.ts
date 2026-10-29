@@ -56,6 +56,7 @@ function declaredDependencyVersion(packageName: string, dependencyName: string):
       `Expected a declared version for ${dependencyName} in ${packageName}/package.json.`,
     );
   }
+
   return version;
 }
 
@@ -76,6 +77,7 @@ beforeAll(() => {
         `Expected exactly one prebuilt .tgz in ${prebuiltDir}, found ${String(candidates.length)}.`,
       );
     }
+
     tarball = candidates[0];
   } else {
     // Local/default path: build the package before proving its installed boundary.
@@ -113,6 +115,7 @@ beforeAll(() => {
   if (typeof manifestVersion !== 'string') {
     throw new Error('Installed artifact package.json has no string version.');
   }
+
   version = manifestVersion;
 
   binDir = join(prefix, 'node_modules', '.bin');
@@ -125,6 +128,7 @@ afterAll(async () => {
       // Give Windows a moment to release executable/file handles after the child exits.
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
+
     rmSync(prefix, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
@@ -142,6 +146,7 @@ function nevoSpec(args: string[], input?: string, cwd = prefix): Run {
     input,
     windowsHide: true,
   });
+
   return {
     code: result.status ?? 1,
     stdout: `${result.stdout ?? ''}${result.stderr ?? ''}`,
@@ -158,9 +163,11 @@ async function freePort(): Promise<number> {
   if (!address || typeof address === 'string') {
     throw new Error('Could not allocate a test port.');
   }
+
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve())),
   );
+
   return address.port;
 }
 
@@ -386,6 +393,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     if (!childStdout || !childStderr) {
       throw new Error('Runtime smoke requires piped stdout and stderr.');
     }
+
     childStdout.setEncoding('utf8');
     childStderr.setEncoding('utf8');
 
@@ -411,6 +419,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
             resolve();
           }
         };
+
         childStdout.on('data', onData);
         child.once('exit', (code, signal) => {
           clearTimeout(timeout);
@@ -584,6 +593,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       } catch {
         // Always clear temporary paths, including after a failed Git assertion.
       }
+
       rmSync(linked, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
       rmSync(clone, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
@@ -618,6 +628,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     for (const name of ['list', 'add', 'save', 'flush', 'recover', 'validate']) {
       expect(help.stdout).toContain(name);
     }
+
     // Usage error: exit 2.
     expect(nevoSpec(['specs', 'documents', 'add'], undefined, home).code).toBe(2);
     // A domain refusal: exit 1, one JSON error object on stdout.
@@ -640,6 +651,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     for (const name of ['--scope', '--spec', '--path', '--ledger-revision', 'status']) {
       expect(help.stdout).toContain(name);
     }
+
     // Usage error: exit 2.
     expect(nevoSpec(['commit'], undefined, home).code).toBe(2);
     // A domain refusal: exit 1, one JSON error object on stdout.

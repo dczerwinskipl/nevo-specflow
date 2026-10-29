@@ -33,29 +33,40 @@ async function checkDirectory(directory: string, canonical: string): Promise<boo
         'A folder on the way to the definitions is not a plain directory.',
       );
     }
+
     if (!samePhysicalPath(await realpath(directory), canonical)) {
       throw new DefinitionWriteError('A folder on the way to the definitions is redirected.');
     }
+
     return true;
   } catch (error) {
-    if (!isAbsent(error)) throw error;
+    if (!isAbsent(error)) {
+      throw error;
+    }
+
     return false;
   }
 }
 
 async function ensureDirectory(directory: string, canonical: string): Promise<void> {
-  if (await checkDirectory(directory, canonical)) return;
+  if (await checkDirectory(directory, canonical)) {
+    return;
+  }
+
   try {
     await mkdir(directory);
   } catch (error) {
     // Another writer created it first: it still has to be a plain directory.
-    if (errnoCode(error) !== 'EEXIST' || !(await checkDirectory(directory, canonical))) throw error;
+    if (errnoCode(error) !== 'EEXIST' || !(await checkDirectory(directory, canonical))) {
+      throw error;
+    }
   }
 }
 
 /** `homeRoot` is the Engine-verified canonical root of the Project Home. */
 export function createFilesystemDefinitionWriter(homeRoot: string): DefinitionWriter {
   const definitionsRoot = join(homeRoot, ...DEFINITIONS_RELATIVE_PATH.split('/'));
+
   return {
     async writeAtomic(path, bytes, options: WriteOptions = {}) {
       if (
@@ -66,6 +77,7 @@ export function createFilesystemDefinitionWriter(homeRoot: string): DefinitionWr
       ) {
         throw new DefinitionWriteError('The definition path leaves the definitions folder.');
       }
+
       const target = join(definitionsRoot, ...path.split('/'));
       let directory = homeRoot;
       // The home may be spelled through a short name or a case variant; the folders below it may not redirect.
@@ -78,13 +90,16 @@ export function createFilesystemDefinitionWriter(homeRoot: string): DefinitionWr
         canonical = join(canonical, segment);
         await ensureDirectory(directory, canonical);
       }
+
       try {
         const existing = await lstat(target);
         if (!existing.isFile() || existing.isSymbolicLink()) {
           throw new DefinitionWriteError('The definition path is not a regular file.');
         }
       } catch (error) {
-        if (!isAbsent(error)) throw error;
+        if (!isAbsent(error)) {
+          throw error;
+        }
       }
 
       const staged = join(dirname(target), `.${randomBytes(4).toString('hex')}.tmp`);
@@ -97,6 +112,7 @@ export function createFilesystemDefinitionWriter(homeRoot: string): DefinitionWr
         } finally {
           await handle.close();
         }
+
         if (options.exclusive === true) {
           try {
             await link(staged, target);
@@ -106,15 +122,20 @@ export function createFilesystemDefinitionWriter(homeRoot: string): DefinitionWr
                 'The definition file appeared after the install was planned.',
               );
             }
+
             throw error;
           }
+
           await removeFileWindowsSafe(staged);
         } else {
           await renameWindowsSafe(staged, target);
         }
+
         published = true;
       } finally {
-        if (!published) await removeFileWindowsSafe(staged).catch(() => undefined);
+        if (!published) {
+          await removeFileWindowsSafe(staged).catch(() => undefined);
+        }
       }
     },
   };

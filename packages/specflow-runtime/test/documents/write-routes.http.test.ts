@@ -88,9 +88,13 @@ interface Calls {
 function fakeSource(calls: Calls): DocumentWriteSource {
   const run = <T>(name: string, value: T): Promise<T> => {
     calls.names.push(name);
-    if (calls.fail) return Promise.reject(calls.fail());
+    if (calls.fail) {
+      return Promise.reject(calls.fail());
+    }
+
     return Promise.resolve(value);
   };
+
   return {
     save: () => run('save', { operationId: OPERATION, document: written, commit }),
     saveAll: () => run('saveAll', { operationId: OPERATION, documents: [written], commit }),
@@ -151,6 +155,7 @@ async function listen(
     },
   );
   apps.push(app);
+
   return { app, headers, calls };
 }
 
@@ -344,7 +349,10 @@ describe.each(ROUTES)('$method $url ($name)', (route) => {
   });
 
   it('refuses a field the contract does not name', async () => {
-    if (route.method === 'GET') return;
+    if (route.method === 'GET') {
+      return;
+    }
+
     const fx = await listen();
     const body = { ...(route.body as object), confirmExecutorStopped: true };
     const response = await send(fx, route, { body });
@@ -363,7 +371,10 @@ describe.each(ROUTES)('$method $url ($name)', (route) => {
   });
 
   it('answers 401 and 403 before it reads an oversized body', async () => {
-    if (route.limit === undefined) return;
+    if (route.limit === undefined) {
+      return;
+    }
+
     const filler = 'a'.repeat(route.limit + 1);
     const unauthenticated = await listen({ authenticated: false });
     expect((await send(unauthenticated, route, { body: { filler } })).statusCode).toBe(401);
@@ -372,7 +383,10 @@ describe.each(ROUTES)('$method $url ($name)', (route) => {
   });
 
   it('answers a body above its own limit with DOCUMENT_TOO_LARGE (413) and nothing above it', async () => {
-    if (route.limit === undefined) return;
+    if (route.limit === undefined) {
+      return;
+    }
+
     const fx = await listen();
     const over = await send(fx, route, { body: { filler: 'a'.repeat(route.limit + 1) } });
     expect(over.statusCode).toBe(413);
@@ -511,6 +525,7 @@ describe('the manual commit request', () => {
       ...fakeSource({ names: [] }),
       commit: (specId: string, input: unknown) => {
         seen.push([specId, input]);
+
         return Promise.resolve({
           operationId: OPERATION,
           commit: { state: 'committed' as const, sha: 'f'.repeat(40) },
@@ -593,6 +608,7 @@ describe('request schemas', () => {
       });
       expect(response.statusCode).toBe(400);
     }
+
     expect(fx.calls.names).toEqual([]);
   });
 
@@ -611,6 +627,7 @@ describe('request schemas', () => {
       const response = await fx.app.inject({ method: 'POST', url: route.url, headers: fx.headers });
       expect(response.statusCode).toBe(200);
     }
+
     expect(fx.calls.names).toEqual(['retry', 'abandon']);
   });
 

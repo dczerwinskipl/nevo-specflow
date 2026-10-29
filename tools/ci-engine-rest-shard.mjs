@@ -27,13 +27,23 @@ if (
 function discover(folder) {
   return readdirSync(folder, { withFileTypes: true }).flatMap((item) => {
     const path = join(folder, item.name);
-    if (item.isDirectory()) return discover(path);
-    if (!item.isFile() || !item.name.endsWith('.test.ts')) return [];
+    if (item.isDirectory()) {
+      return discover(path);
+    }
+
+    if (!item.isFile() || !item.name.endsWith('.test.ts')) {
+      return [];
+    }
+
     return [relative(engineRoot, path).split(sep).join('/')];
   });
 }
+
 const allFiles = discover(testRoot).sort();
-if (!allFiles.includes(hot)) throw new Error('Pinned hot test file is missing from the suite.');
+if (!allFiles.includes(hot)) {
+  throw new Error('Pinned hot test file is missing from the suite.');
+}
+
 const files = allFiles.filter((name) => name !== hot);
 
 // Historical durations in seconds from the Windows run 39288746460 of the Create branch.
@@ -91,16 +101,21 @@ const known = {
 };
 function weight(file) {
   const base = file.slice(file.lastIndexOf('/') + 1).replace(/\.test\.ts$/, '');
+
   return known[base] ?? (file.includes('/fixtures/') ? 1 : 60);
 }
+
 const buckets = Array.from({ length: total }, () => ({ seconds: 0, files: [] }));
 for (const file of files.sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
   const target = buckets.reduce((best, bucket) => (bucket.seconds < best.seconds ? bucket : best));
   target.files.push(file);
   target.seconds += weight(file);
 }
+
 const selected = buckets[part - 1];
-if (!selected?.files.length) throw new Error('Selected empty test shard.');
+if (!selected?.files.length) {
+  throw new Error('Selected empty test shard.');
+}
 
 const summary = {
   shard: part + '/' + total,
@@ -110,7 +125,9 @@ const summary = {
   selected: selected.files,
 };
 console.log(JSON.stringify(summary, null, 2));
-if (process.argv.includes('--list')) process.exit(0);
+if (process.argv.includes('--list')) {
+  process.exit(0);
+}
 
 const vitestMain = join(engineRoot, 'node_modules', 'vitest', 'vitest.mjs');
 const args = [
@@ -128,9 +145,13 @@ const child = spawnSync(process.execPath, args, {
   stdio: 'inherit',
   windowsHide: true,
 });
-if (child.error) throw child.error;
+if (child.error) {
+  throw child.error;
+}
+
 if (child.signal) {
   console.error('Vitest terminated by signal:', child.signal);
   process.exit(1);
 }
+
 process.exit(child.status ?? 1);

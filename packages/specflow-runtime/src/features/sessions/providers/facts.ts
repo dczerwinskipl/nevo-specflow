@@ -101,29 +101,53 @@ const schema = Type.Union([
   ),
 ]);
 export function validateDriverFact(fact: DriverFact): void {
-  if (!Value.Check(schema, fact))
+  if (!Value.Check(schema, fact)) {
     throw new SessionError(
       'SESSION_INPUT_INVALID',
       'Provider fact violates the canonical protocol.',
     );
-  function bounded(value: string, bytes: number) {
-    if (utf8Bytes(value) > bytes)
-      throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Provider fact exceeds its byte budget.');
   }
-  if (fact.kind === 'text') bounded(fact.text, 16384);
-  if (fact.kind === 'work-open' || fact.kind === 'action-open') bounded(fact.title, 2048);
-  if (fact.kind === 'progress') bounded(fact.label, 1024);
-  if (fact.kind === 'lost') bounded(fact.message, 2048);
-  if (fact.kind === 'outcome' && fact.error) bounded(fact.error.message, 2048);
+
+  function bounded(value: string, bytes: number) {
+    if (utf8Bytes(value) > bytes) {
+      throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Provider fact exceeds its byte budget.');
+    }
+  }
+
+  if (fact.kind === 'text') {
+    bounded(fact.text, 16384);
+  }
+
+  if (fact.kind === 'work-open' || fact.kind === 'action-open') {
+    bounded(fact.title, 2048);
+  }
+
+  if (fact.kind === 'progress') {
+    bounded(fact.label, 1024);
+  }
+
+  if (fact.kind === 'lost') {
+    bounded(fact.message, 2048);
+  }
+
+  if (fact.kind === 'outcome' && fact.error) {
+    bounded(fact.error.message, 2048);
+  }
+
   if (fact.kind === 'interaction') {
     const i = fact.interaction;
     bounded(i.prompt, 8192);
     bounded(JSON.stringify(i), 24576);
-    if (i.kind === 'permission') bounded(i.actionSummary, 8192);
-    else {
-      for (const option of i.options ?? []) bounded(option.label, 512);
-      if (new Set(i.options?.map((o) => o.id)).size !== (i.options?.length ?? 0))
+    if (i.kind === 'permission') {
+      bounded(i.actionSummary, 8192);
+    } else {
+      for (const option of i.options ?? []) {
+        bounded(option.label, 512);
+      }
+
+      if (new Set(i.options?.map((o) => o.id)).size !== (i.options?.length ?? 0)) {
         throw new SessionError('SESSION_INPUT_INVALID', 'Duplicate interaction option.');
+      }
     }
   }
 }

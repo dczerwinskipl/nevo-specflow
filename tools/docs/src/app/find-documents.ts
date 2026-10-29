@@ -52,6 +52,7 @@ function inactiveDocumentDescription(doc: DocRecord): string {
     typeof doc.superseded_by === 'string' && doc.superseded_by
       ? `; use '${doc.superseded_by}' instead`
       : '';
+
   return `'${id}' (${status}${replacement})`;
 }
 
@@ -60,7 +61,9 @@ export function getDocuments(repo: DocRepository, ids: readonly string[]): Conte
   const docs = loadValidatedCorpus(repo);
   const byId = new Map(docs.map((doc) => [asString(doc.id), doc]));
   const missing = ids.filter((id) => !byId.has(id));
-  if (missing.length) throw new UsageError(`get: unknown document id(s): ${missing.join(', ')}`);
+  if (missing.length) {
+    throw new UsageError(`get: unknown document id(s): ${missing.join(', ')}`);
+  }
 
   const inactive = ids
     .map((id) => byId.get(id)!)
@@ -91,5 +94,6 @@ export function getContext(
     limit,
     excludeStatuses: INACTIVE_STATUSES,
   });
+
   return results.map(contextEntry);
 }

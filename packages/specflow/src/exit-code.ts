@@ -6,7 +6,10 @@ import { CommanderError } from 'commander';
  * error (2). Operation failures are not Commander errors and exit 1 (see the executable boundary).
  */
 export function commanderExitCode(error: CommanderError): number {
-  if (error.code === 'commander.helpDisplayed' || error.code === 'commander.version') return 0;
+  if (error.code === 'commander.helpDisplayed' || error.code === 'commander.version') {
+    return 0;
+  }
+
   return 2;
 }
 

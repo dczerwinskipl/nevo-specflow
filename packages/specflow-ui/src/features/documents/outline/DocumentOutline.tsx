@@ -27,10 +27,14 @@ export function outlineTree(headings: readonly OutlineHeading[]): OutlineNode[] 
   const open: OutlineNode[] = [];
   for (const heading of headings) {
     const node: OutlineNode = { heading, children: [] };
-    while (open.length > 0 && open.at(-1)!.heading.level >= heading.level) open.pop();
+    while (open.length > 0 && open.at(-1)!.heading.level >= heading.level) {
+      open.pop();
+    }
+
     (open.at(-1)?.children ?? roots).push(node);
     open.push(node);
   }
+
   return roots;
 }
 
@@ -62,6 +66,7 @@ export function OutlineEntries({
     <ol className={depth === 0 ? treeRootClassName : treeBranchClassName}>
       {nodes.map(({ heading, children }) => {
         const active = heading.line === activeLine;
+
         return (
           <li key={heading.line} className={treeNodeClassName}>
             <a
@@ -94,6 +99,7 @@ export function OutlineEntries({
       })}
     </ol>
   );
+
   return level(outlineTree(headings), 0);
 }
 
@@ -112,6 +118,7 @@ export function DocumentOutline({
 }) {
   const { t } = useTranslation();
   const label = t('documents.outline.label');
+
   return (
     <nav aria-label={label} className="min-w-0">
       <div className={treeSectionHeaderClassName}>

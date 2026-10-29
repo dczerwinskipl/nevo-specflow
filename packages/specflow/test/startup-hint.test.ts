@@ -19,6 +19,7 @@ afterEach(async () => {
 async function home(): Promise<{ root: string; engine: SpecFlowEngine }> {
   const root = await mkdtemp(join(tmpdir(), 'specflow-hint-'));
   roots.push(root);
+
   return { root, engine: { context: { project: { homeRoot: root } } } as SpecFlowEngine };
 }
 

@@ -82,6 +82,7 @@ function toEntry(name: string, stat: BigIntStats): SourceEntry {
       : stat.isFile()
         ? 'file'
         : 'other';
+
   return {
     name,
     type,
@@ -106,14 +107,27 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
     const full = join(root, ...pathSegments(path));
     try {
       const rootStat = await lstat(root, { bigint: true });
-      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return 'unsafe';
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+        return 'unsafe';
+      }
+
       const stat = await lstat(full, { bigint: true });
-      if (!stat.isDirectory() || stat.isSymbolicLink()) return 'unsafe';
+      if (!stat.isDirectory() || stat.isSymbolicLink()) {
+        return 'unsafe';
+      }
+
       const expected = join(await realpath(root), ...pathSegments(path));
+
       return samePhysicalPath(await realpath(full), expected) ? 'ok' : 'unsafe';
     } catch (error) {
-      if (isAbsent(error)) return 'absent';
-      if (errnoCode(error)?.startsWith('E')) return 'unreadable';
+      if (isAbsent(error)) {
+        return 'absent';
+      }
+
+      if (errnoCode(error)?.startsWith('E')) {
+        return 'unreadable';
+      }
+
       throw error;
     }
   }
@@ -121,7 +135,10 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
   return {
     async list(directory, maxEntries) {
       const checked = await checkDirectory(directory);
-      if (checked !== 'ok') return { state: checked };
+      if (checked !== 'ok') {
+        return { state: checked };
+      }
+
       const full = join(root, ...pathSegments(directory));
       const names: string[] = [];
       try {
@@ -129,26 +146,39 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
         try {
           for await (const entry of handle) {
             names.push(entry.name);
-            if (names.length > maxEntries) return { state: 'overflow' };
+            if (names.length > maxEntries) {
+              return { state: 'overflow' };
+            }
           }
         } finally {
           await handle.close().catch(() => undefined);
         }
+
         const found = await mapBounded(names, LIST_CONCURRENCY, async (name) => {
           try {
             return toEntry(name, await lstat(join(full, name), { bigint: true }));
           } catch (error) {
-            if (isAbsent(error)) return undefined; // removed while listing
+            if (isAbsent(error)) {
+              return undefined;
+            } // removed while listing
+
             throw error;
           }
         });
+
         return {
           state: 'ok',
           entries: found.filter((entry): entry is SourceEntry => entry !== undefined),
         };
       } catch (error) {
-        if (isAbsent(error)) return { state: 'absent' };
-        if (errnoCode(error)?.startsWith('E')) return { state: 'unreadable' };
+        if (isAbsent(error)) {
+          return { state: 'absent' };
+        }
+
+        if (errnoCode(error)?.startsWith('E')) {
+          return { state: 'unreadable' };
+        }
+
         throw error;
       }
     },
@@ -156,19 +186,35 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
     async read(path, maxBytes) {
       try {
         const rootState = await checkDirectory('');
-        if (rootState !== 'ok') return { state: rootState === 'absent' ? 'absent' : 'unsafe' };
+        if (rootState !== 'ok') {
+          return { state: rootState === 'absent' ? 'absent' : 'unsafe' };
+        }
+
         const opened = await openVerifiedFile(nodeVerifiedFs, await realpath(root), path);
-        if (opened.state !== 'opened') return { state: opened.state };
+        if (opened.state !== 'opened') {
+          return { state: opened.state };
+        }
+
         try {
-          if (opened.stat.size > BigInt(maxBytes)) return { state: 'too-large' };
+          if (opened.stat.size > BigInt(maxBytes)) {
+            return { state: 'too-large' };
+          }
+
           const bytes = await readBoundedBytes(opened.handle, maxBytes);
+
           return bytes.length > maxBytes ? { state: 'too-large' } : { state: 'ok', bytes };
         } finally {
           await opened.handle.close().catch(() => undefined);
         }
       } catch (error) {
-        if (error instanceof DocumentError) return { state: 'unsafe' };
-        if (errnoCode(error)?.startsWith('E')) return { state: 'unreadable' };
+        if (error instanceof DocumentError) {
+          return { state: 'unsafe' };
+        }
+
+        if (errnoCode(error)?.startsWith('E')) {
+          return { state: 'unreadable' };
+        }
+
         throw error;
       }
     },
@@ -178,12 +224,20 @@ export function createFilesystemDefinitionSource(root: string): DefinitionSource
         const state = await inspectEntry(nodeVerifiedFs, root, path);
         if (state.state === 'file') {
           const name = pathSegments(path).at(-1) ?? '';
+
           return { state: 'ok', entry: toEntry(name, state.stat) };
         }
+
         return { state: state.state === 'redirected' ? 'unsafe' : state.state };
       } catch (error) {
-        if (error instanceof DocumentError) return { state: 'unsafe' };
-        if (errnoCode(error)?.startsWith('E')) return { state: 'unreadable' };
+        if (error instanceof DocumentError) {
+          return { state: 'unsafe' };
+        }
+
+        if (errnoCode(error)?.startsWith('E')) {
+          return { state: 'unreadable' };
+        }
+
         throw error;
       }
     },

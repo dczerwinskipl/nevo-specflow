@@ -24,7 +24,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: boolean, message: string) {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 /** An empty block inside a page: bordered, one primary action. */

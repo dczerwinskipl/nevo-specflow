@@ -145,8 +145,10 @@ export function WorkspacePlaceSection({
   const resolveFocus = (request: FocusRequest) => {
     if ('field' in request) {
       controls[request.field].current?.focus();
+
       return;
     }
+
     const order = [
       ['existing', existingControl],
       ['base', controls.base],
@@ -155,9 +157,13 @@ export function WorkspacePlaceSection({
       ['branch', controls.branch],
     ] as const;
     const invalid = order.find(([key, ref]) => errors[key] && ref.current);
-    if (invalid) invalid[1].current?.focus();
-    else request.fallback?.();
+    if (invalid) {
+      invalid[1].current?.focus();
+    } else {
+      request.fallback?.();
+    }
   };
+
   const requestFocus = useFocusRequest(resolveFocus);
   useImperativeHandle(handleRef, () => ({
     focusField: (field) => {
@@ -168,7 +174,10 @@ export function WorkspacePlaceSection({
   }));
 
   const select = (tile: Tile) => {
-    if (!options || !availability || locked || !availability[tile].ok) return;
+    if (!options || !availability || locked || !availability[tile].ok) {
+      return;
+    }
+
     const next: WorkspaceChoice = { ...choice, tile };
     const nextErrors = revalidate(next, options);
     const { existing: existingError, ...settingsErrors } = nextErrors;
@@ -176,15 +185,25 @@ export function WorkspacePlaceSection({
       tile === 'new'
         ? Object.keys(settingsErrors).length > 0
         : tile === 'existing' && existingError !== undefined;
-    if (stale) onAnnounce(t('create.workspace.staleAnnouncement'));
+    if (stale) {
+      onAnnounce(t('create.workspace.staleAnnouncement'));
+    }
+
     update({ ...next, settingsOpen: tile === 'new' && stale ? true : next.settingsOpen });
   };
 
   const meta = (tile: Tile): ReactNode => {
-    if (!options || !availability) return null;
-    if (tile === 'new') return <Badge tone="info">{t('create.workspace.recommended')}</Badge>;
+    if (!options || !availability) {
+      return null;
+    }
+
+    if (tile === 'new') {
+      return <Badge tone="info">{t('create.workspace.recommended')}</Badge>;
+    }
+
     if (tile === 'main') {
       const primary = primaryWorkspace(options);
+
       return (
         <>
           {primary?.branch ? (
@@ -198,6 +217,7 @@ export function WorkspacePlaceSection({
         </>
       );
     }
+
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
         <StatusIndicator tone="success" />
@@ -207,7 +227,7 @@ export function WorkspacePlaceSection({
   };
 
   const body = (() => {
-    if (state.status === 'loading')
+    if (state.status === 'loading') {
       return (
         <div aria-busy="true" className="grid gap-4">
           <div className="grid gap-3 @2xl:grid-cols-3">
@@ -223,7 +243,9 @@ export function WorkspacePlaceSection({
           </AccentBlock>
         </div>
       );
-    if (state.status === 'error')
+    }
+
+    if (state.status === 'error') {
       return (
         <Alert
           role="alert"
@@ -237,7 +259,9 @@ export function WorkspacePlaceSection({
           </Button>
         </Alert>
       );
-    if (state.status === 'forbidden')
+    }
+
+    if (state.status === 'forbidden') {
       return (
         <Alert
           role="alert"
@@ -249,14 +273,18 @@ export function WorkspacePlaceSection({
           <p>{t('create.errors.readOnlyForm')}</p>
         </Alert>
       );
+    }
+
     const ready = state.options;
     const available = tileAvailability(ready);
+
     return (
       <>
         <ChoiceTileGroup aria-labelledby={headingId} columns="@2xl:grid-cols-3">
           {tiles.map((tile) => {
             const tileState = available[tile.id];
             const blocked = !tileState.ok;
+
             return (
               <ChoiceTile
                 key={tile.id}

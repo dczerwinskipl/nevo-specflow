@@ -37,7 +37,10 @@ export function SpecPrimaryLink({
   const label = t('specifications.openSpec', { title });
   const target: CurrentSpecTarget = { kind: 'specification', specId };
   const hosted = renderLink?.(specId, title, label);
-  if (hosted) return hosted;
+  if (hosted) {
+    return hosted;
+  }
+
   if (href) {
     return (
       <a
@@ -46,7 +49,10 @@ export function SpecPrimaryLink({
         data-focus-ring="delegated"
         aria-label={label}
         onClick={(event) => {
-          if (!onOpenTarget || !isPlainPrimaryClick(event)) return;
+          if (!onOpenTarget || !isPlainPrimaryClick(event)) {
+            return;
+          }
+
           event.preventDefault();
           onOpenTarget(target);
         }}
@@ -55,6 +61,7 @@ export function SpecPrimaryLink({
       </a>
     );
   }
+
   if (onOpenTarget) {
     return (
       <button
@@ -68,5 +75,6 @@ export function SpecPrimaryLink({
       </button>
     );
   }
+
   return <>{title}</>;
 }

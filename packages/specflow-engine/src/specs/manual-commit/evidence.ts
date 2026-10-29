@@ -26,13 +26,23 @@ export async function lookUpCommit(
 ): Promise<CommitEvidence> {
   const root = journal.workspaceRoot;
   const found = await commits.findByOperation(root, journal.operationId, journal.parentHead!);
-  if (found.status === 'history-changed') return { kind: 'history-changed' };
-  if (found.status === 'absent') return { kind: 'absent' };
+  if (found.status === 'history-changed') {
+    return { kind: 'history-changed' };
+  }
+
+  if (found.status === 'absent') {
+    return { kind: 'absent' };
+  }
+
   const known = new Map(entries.map((entry) => [entry.path, entry]));
-  if (found.paths.some((path) => !known.has(path))) return { kind: 'foreign-commit' };
+  if (found.paths.some((path) => !known.has(path))) {
+    return { kind: 'foreign-commit' };
+  }
+
   if (!(await headHoldsSnapshot(commits, root, entries, found.paths))) {
     return { kind: 'foreign-commit' };
   }
+
   return { kind: 'committed', sha: found.sha, paths: found.paths };
 }
 
@@ -52,13 +62,17 @@ export async function headHoldsSnapshot(
     root,
     entries.map((entry) => entry.path),
   );
-  if (split.effective.length > 0) return false;
+  if (split.effective.length > 0) {
+    return false;
+  }
+
   const wanted = new Set(committed);
   const subset = entries.filter((entry) => wanted.has(entry.path));
   const working = await readWorkingContents(
     root,
     subset.map((entry) => entry.path),
   );
+
   return subset.every((entry) => working.get(entry.path) === entry.postSha256);
 }
 
@@ -77,7 +91,10 @@ export async function commitHoldsEntries(
 ): Promise<boolean> {
   const wanted = new Set(effective);
   const subset = entries.filter((entry) => wanted.has(entry.path));
-  if (subset.length === 0) return true;
+  if (subset.length === 0) {
+    return true;
+  }
+
   const facts = await commits.pathFacts(
     root,
     subset.map((entry) => entry.path),
@@ -88,10 +105,17 @@ export async function commitHoldsEntries(
     root,
     subset.map((entry) => entry.path),
   );
+
   return subset.every((entry) => {
     const fact = byPath.get(entry.path);
-    if (fact === undefined) return false;
-    if (entry.postSha256 === null) return fact.head === null && working.get(entry.path) === null;
+    if (fact === undefined) {
+      return false;
+    }
+
+    if (entry.postSha256 === null) {
+      return fact.head === null && working.get(entry.path) === null;
+    }
+
     return (
       fact.head !== null &&
       fact.head === fact.working &&
@@ -114,8 +138,14 @@ export async function provablyNotCommitted(
   try {
     const root = journal.workspaceRoot;
     const found = await commits.findByOperation(root, journal.operationId, journal.parentHead!);
-    if (found.status !== 'absent') return false;
-    if ((await commits.head(root)) !== journal.parentHead) return false;
+    if (found.status !== 'absent') {
+      return false;
+    }
+
+    if ((await commits.head(root)) !== journal.parentHead) {
+      return false;
+    }
+
     await commits.preflight({
       root,
       expectedBranch: journal.branch,
@@ -124,6 +154,7 @@ export async function provablyNotCommitted(
       kind: 'manual-commit',
       subject: 'preflight',
     });
+
     return true;
   } catch {
     return false;

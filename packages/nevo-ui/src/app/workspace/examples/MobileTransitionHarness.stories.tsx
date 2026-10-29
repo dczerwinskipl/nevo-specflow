@@ -13,7 +13,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 interface FrameSample {
@@ -44,6 +46,7 @@ async function sampleTransition(root: HTMLElement, action: () => Promise<void>) 
         }
       }
     }
+
     frames.push({
       surfaces: nodes
         .filter((node) => getComputedStyle(node).display !== 'none')
@@ -55,8 +58,11 @@ async function sampleTransition(root: HTMLElement, action: () => Promise<void>) 
         })),
       scrolled: [...scrolled],
     });
-    if (sampling) requestAnimationFrame(sample);
+    if (sampling) {
+      requestAnimationFrame(sample);
+    }
   };
+
   requestAnimationFrame(sample);
   await action();
 
@@ -67,7 +73,9 @@ async function sampleTransition(root: HTMLElement, action: () => Promise<void>) 
     const last = frames.at(-1);
     idleFrames = last?.surfaces.every((s) => s.motion === 'idle') ? idleFrames + 1 : 0;
   }
+
   sampling = false;
+
   return frames;
 }
 
@@ -87,6 +95,7 @@ function assertCleanTransition(name: string, frames: FrameSample[]) {
       `${name}: frame ${index} mounts more than incoming + outgoing Secondary`,
     );
   }
+
   const settled = frames.at(-1)!;
   assert(
     settled.surfaces.filter((s) => s.interactive).length === 1,
@@ -151,14 +160,17 @@ async function tapWhenOnScreen(root: HTMLElement, name: string) {
     const button = [...root.querySelectorAll<HTMLElement>('button')].find((candidate) => {
       const label = candidate.getAttribute('aria-label') ?? candidate.textContent?.trim();
       const rect = candidate.getBoundingClientRect();
+
       return (
         label === name && rect.left >= 0 && rect.right <= width && !candidate.closest('[inert]')
       );
     });
     if (button) {
       button.click();
+
       return;
     }
+
     assert(performance.now() < deadline, `"${name}" never became tappable`);
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
@@ -179,6 +191,7 @@ export const NarrowRapidTransitionsStayAligned: Story = {
 
 function ScopeSwitchingHarness() {
   const [scope, setScope] = useState('specification-a');
+
   return (
     <>
       <button onClick={() => setScope('specification-b')} type="button">

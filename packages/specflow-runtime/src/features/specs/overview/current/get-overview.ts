@@ -33,6 +33,7 @@ export async function getCurrentOverview(
   ) {
     sections.push('unknown');
   }
+
   const items = candidates.filter((item) => sections.includes(item.classification.section));
 
   return {

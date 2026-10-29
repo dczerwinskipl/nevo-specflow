@@ -46,6 +46,7 @@ async function publish(
       }),
     );
   });
+
   return operationId;
 }
 

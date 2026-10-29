@@ -60,9 +60,12 @@ export async function locateSeedDirectory(options: LocateSeedOptions = {}): Prom
   for (const layout of SEED_LAYOUTS) {
     const candidate = join(moduleDirectory, layout, SEED_DIRECTORY_NAME);
     for (const kind of kinds) {
-      if (await isDirectory(join(candidate, kind))) return realpath(candidate);
+      if (await isDirectory(join(candidate, kind))) {
+        return realpath(candidate);
+      }
     }
   }
+
   throw new DefinitionSeedError('The default definitions are not available in this installation.');
 }
 
@@ -79,5 +82,6 @@ export async function openSeedSource(
     options.directory !== undefined
       ? await realpath(options.directory)
       : await locateSeedDirectory(options);
+
   return { directory, source: createFilesystemDefinitionSource(directory) };
 }

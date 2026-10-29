@@ -65,10 +65,15 @@ export async function checkSingleVersionFileCommit(
   { headRef, baseBranch, expected }: { headRef: string; baseBranch: string; expected: VersionFile },
 ): Promise<StructuralCheck> {
   const baseHead = await git.resolveCommit(`origin/${baseBranch}`);
-  if (!baseHead) return { ok: false, reason: `origin/${baseBranch} cannot be resolved` };
+  if (!baseHead) {
+    return { ok: false, reason: `origin/${baseBranch} cannot be resolved` };
+  }
 
   const parents = await git.commitParents(headRef);
-  if (parents === null) return { ok: false, reason: `${headRef} cannot be resolved` };
+  if (parents === null) {
+    return { ok: false, reason: `${headRef} cannot be resolved` };
+  }
+
   if (parents.length !== 1 || parents[0] !== baseHead) {
     return {
       ok: false,
@@ -96,6 +101,7 @@ export async function checkSingleVersionFileCommit(
         `{ channel: "${expected.channel}", version: "${expected.version}" }`,
     };
   }
+
   return { ok: true };
 }
 
@@ -139,6 +145,7 @@ export async function ensureVersionFileChangePr(
         `origin/${baseBranch} is already { ${nextState.channel}, ${nextState.version} } — ${input.verb}, nothing to do.`,
       ),
     );
+
     return { status: 'already-applied', changed: false };
   }
 
@@ -152,6 +159,7 @@ export async function ensureVersionFileChangePr(
           `exist on origin. Fail closed — do not trust the PR alone. Investigate.`,
       );
     }
+
     const check = await checkSingleVersionFileCommit(git, {
       headRef,
       baseBranch,
@@ -163,13 +171,16 @@ export async function ensureVersionFileChangePr(
           `to treat the operation as done. Investigate; delete the branch/PR if wrong.`,
       );
     }
+
     events.push(info(`${headBranch} is verified and its PR is open:\n  ${openPr.url}`));
     // Converge auto-merge — a re-run repairs a PR whose earlier auto-merge
     // request failed transiently.
     if (hasToken && mutate) {
       await requestAutoMerge(github, openPr.url, events);
     }
+
     events.push(info('Nothing to do here — merge that PR to finish.'));
+
     return { status: 'pr-pending', changed: false };
   }
 
@@ -186,6 +197,7 @@ export async function ensureVersionFileChangePr(
           `it, or open a PR from it. Delete it if it is wrong, then re-run.`,
       );
     }
+
     reuseBranch = true;
     events.push(info(`Reusing existing ${headBranch} (verified against origin/${baseBranch}).`));
   }
@@ -199,15 +211,20 @@ export async function ensureVersionFileChangePr(
         ),
       );
     }
+
     events.push(
       info(`Would ${hasToken ? 'open' : 'hand off'} the PR (${headBranch} -> ${baseBranch}).`),
     );
+
     return { status: 'validated', changed: false };
   }
 
   if (!reuseBranch) {
     const baseSha = await git.resolveCommit(`origin/${baseBranch}`);
-    if (!baseSha) throw new InconsistentStateError(`Cannot resolve origin/${baseBranch}.`);
+    if (!baseSha) {
+      throw new InconsistentStateError(`Cannot resolve origin/${baseBranch}.`);
+    }
+
     const sha = await git.commitSingleFileOnto({
       baseRef: baseSha,
       path: 'version.json',

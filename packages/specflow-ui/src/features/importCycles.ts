@@ -23,7 +23,10 @@ const specifierPattern =
 export function productionSources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) return entry.name === 'test-support' ? [] : productionSources(path);
+    if (entry.isDirectory()) {
+      return entry.name === 'test-support' ? [] : productionSources(path);
+    }
+
     return sourcePattern.test(entry.name) &&
       !nonProduction.test(entry.name) &&
       !/\.(stories-support|test-support)\.tsx?$/.test(entry.name)
@@ -41,22 +44,30 @@ function resolveRelative(from: string, specifier: string): string | undefined {
     join(base, 'index.tsx'),
     base,
   ];
+
   return candidates.find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
 }
 
 /** file -> files it imports (only files inside `files`). */
 export function importGraph(files: readonly string[]): Map<string, string[]> {
   const known = new Set(files);
+
   return new Map(
     files.map((file) => {
       const source = readFileSync(file, 'utf8');
       const targets = new Set<string>();
       for (const match of source.matchAll(specifierPattern)) {
         const specifier = match[1] ?? match[2];
-        if (!specifier?.startsWith('.')) continue;
+        if (!specifier?.startsWith('.')) {
+          continue;
+        }
+
         const target = resolveRelative(file, specifier);
-        if (target && known.has(target) && target !== file) targets.add(target);
+        if (target && known.has(target) && target !== file) {
+          targets.add(target);
+        }
       }
+
       return [file, [...targets]];
     }),
   );
@@ -68,8 +79,14 @@ const compositionPattern = /(?:^|\/)(?:routes|uiModule)\.tsx?$|^contributions\//
 export function featureNode(path: string): string {
   const [feature = '', ...rest] = path.split('/');
   const inside = rest.join('/');
-  if (inside.startsWith('read-model/')) return `${feature}/read-model`;
-  if (compositionPattern.test(inside)) return `${feature}/composition`;
+  if (inside.startsWith('read-model/')) {
+    return `${feature}/read-model`;
+  }
+
+  if (compositionPattern.test(inside)) {
+    return `${feature}/composition`;
+  }
+
   return feature;
 }
 
@@ -86,9 +103,12 @@ export function nodeGraph(root: string): Map<string, Set<string>> {
     nodes.set(from, edges);
     for (const target of targets) {
       const to = featureNode(rel(target));
-      if (to !== from) edges.add(to);
+      if (to !== from) {
+        edges.add(to);
+      }
     }
   }
+
   return nodes;
 }
 
@@ -115,20 +135,32 @@ export function cycles(graph: ReadonlyMap<string, Iterable<string>>): string[][]
         low.set(node, Math.min(low.get(node) ?? 0, index.get(next) ?? 0));
       }
     }
+
     if (low.get(node) === index.get(node)) {
       const component: string[] = [];
       let member: string | undefined;
       do {
         member = stack.pop();
-        if (member === undefined) break;
+        if (member === undefined) {
+          break;
+        }
+
         onStack.delete(member);
         component.push(member);
       } while (member !== node);
-      if (component.length > 1) found.push(component.sort());
+
+      if (component.length > 1) {
+        found.push(component.sort());
+      }
     }
   };
 
-  for (const node of graph.keys()) if (!index.has(node)) visit(node);
+  for (const node of graph.keys()) {
+    if (!index.has(node)) {
+      visit(node);
+    }
+  }
+
   return found;
 }
 
@@ -140,5 +172,6 @@ export function fileCycles(root: string): string[][] {
       targets.map((target) => relative(root, target).split(sep).join('/')),
     ]),
   );
+
   return cycles(graph);
 }

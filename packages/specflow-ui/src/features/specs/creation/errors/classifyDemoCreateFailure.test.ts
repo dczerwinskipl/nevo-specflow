@@ -23,8 +23,10 @@ describe('classifyDemoCreateFailure', () => {
       [409, 'DEMO_WORKSPACE_UNAVAILABLE'],
       [400, 'CREATE_OPERATION_INVALID'],
       [422, 'BASE_REF_NOT_FOUND'],
-    ] as const)
+    ] as const) {
       expect(classifyDemoCreateFailure(http(status, { error: code, code })).kind).toBe('stale');
+    }
+
     expect(
       classifyDemoCreateFailure(http(409, { error: 'CREATE_CONFLICT', code: 'CREATE_CONFLICT' }))
         .kind,
@@ -72,10 +74,12 @@ describe('classifyDemoCreateFailure', () => {
   // F-02 rule: only "never dispatched" is a definite "nothing happened".
   it('a request that was never dispatched is offline; a timeout or reset after dispatch is not', () => {
     expect(classifyDemoCreateFailure(new RequestNotSentError()).kind).toBe('offline');
-    for (const code of ['ECONNABORTED', 'ERR_NETWORK', 'ETIMEDOUT'])
+    for (const code of ['ECONNABORTED', 'ERR_NETWORK', 'ETIMEDOUT']) {
       expect(
         classifyDemoCreateFailure(new HttpClientError('t', { kind: 'network', code })).kind,
       ).toBe('uncertain');
+    }
+
     expect(classifyDemoCreateFailure(new HttpClientError('c', { kind: 'cancelled' })).kind).toBe(
       'uncertain',
     );

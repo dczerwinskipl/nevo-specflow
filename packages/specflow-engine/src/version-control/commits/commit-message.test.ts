@@ -12,12 +12,19 @@ import {
 
 const accepted = (text: string): { subject: string; body: string } => {
   const parsed = parseUserCommitMessage(text);
-  if (!parsed.ok) throw new Error('refused: ' + parsed.problem);
+  if (!parsed.ok) {
+    throw new Error('refused: ' + parsed.problem);
+  }
+
   return parsed.message;
 };
+
 const refused = (text: string): CommitMessageProblem => {
   const parsed = parseUserCommitMessage(text);
-  if (parsed.ok) throw new Error('accepted');
+  if (parsed.ok) {
+    throw new Error('accepted');
+  }
+
   return parsed.problem;
 };
 
@@ -66,6 +73,7 @@ describe('parseUserCommitMessage: limits', () => {
         text.trim().length > 0 && text.startsWith(' \t'),
       );
     }
+
     expect(refused('')).toBe('empty');
     expect(refused('   \n  \n')).toBe('empty');
   });
@@ -146,12 +154,17 @@ describe('trailer neutralisation', () => {
   it.each(lines)('quotes %j in the body', (line) => {
     const { body } = accepted('Subject\n\nfirst\n' + line + '\nlast');
     expect(body.split('\n')[1]).toBe('> ' + line.trimStart());
-    for (const out of body.split('\n')) expect(/^\s*Nevo-[A-Za-z]+\s*:/iu.test(out)).toBe(false);
+    for (const out of body.split('\n')) {
+      expect(/^\s*Nevo-[A-Za-z]+\s*:/iu.test(out)).toBe(false);
+    }
   });
 
   it.each(lines)('quotes %j as the subject', (line) => {
     const parsed = parseUserCommitMessage(line);
-    if (!parsed.ok) throw new Error('refused');
+    if (!parsed.ok) {
+      throw new Error('refused');
+    }
+
     expect(parsed.message.subject.toLowerCase().startsWith('> nevo-')).toBe(true);
   });
 

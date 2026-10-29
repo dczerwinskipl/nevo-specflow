@@ -28,6 +28,7 @@ export function assignTypeFor(
   documentId: string | undefined,
 ): ((id: string) => void) | undefined {
   const document = tree?.documents.find((item) => item.id === documentId);
+
   return actions &&
     document?.actions.classify.available === true &&
     tree?.capabilities.classify.available === true

@@ -73,7 +73,9 @@ function resolvePackage(pkg: BundledThirdPartyPackage): ResolvedNoticePackage {
     repository?: string | { url?: string };
     author?: string | { name?: string; email?: string };
   };
-  if (!manifest.version) throw new Error(`package version missing in ${pkg.root}`);
+  if (!manifest.version) {
+    throw new Error(`package version missing in ${pkg.root}`);
+  }
 
   return {
     name: manifest.name ?? pkg.name,
@@ -89,23 +91,36 @@ function resolvePackage(pkg: BundledThirdPartyPackage): ResolvedNoticePackage {
 }
 
 function repositoryUrl(repository: string | { url?: string } | undefined): string | undefined {
-  if (typeof repository === 'string') return repository;
+  if (typeof repository === 'string') {
+    return repository;
+  }
+
   return repository?.url;
 }
 
 function authorText(
   author: string | { name?: string; email?: string } | undefined,
 ): string | undefined {
-  if (typeof author === 'string') return author;
-  if (!author?.name) return undefined;
+  if (typeof author === 'string') {
+    return author;
+  }
+
+  if (!author?.name) {
+    return undefined;
+  }
+
   return author.email ? `${author.name} <${author.email}>` : author.name;
 }
 
 function deduplicate(packages: readonly ResolvedNoticePackage[]): readonly ResolvedNoticePackage[] {
   const result = new Map<string, ResolvedNoticePackage>();
-  for (const pkg of packages) result.set(`${pkg.name}@${pkg.version}`, pkg);
+  for (const pkg of packages) {
+    result.set(`${pkg.name}@${pkg.version}`, pkg);
+  }
+
   return [...result.values()].sort((a, b) => {
     const name = a.name.localeCompare(b.name);
+
     return name === 0 ? a.version.localeCompare(b.version) : name;
   });
 }
@@ -113,8 +128,11 @@ function deduplicate(packages: readonly ResolvedNoticePackage[]): readonly Resol
 function readLicense(pkgDir: string): string | undefined {
   for (const file of ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'license', 'COPYING']) {
     const path = join(pkgDir, file);
-    if (existsSync(path)) return readFileSync(path, 'utf8').trimEnd();
+    if (existsSync(path)) {
+      return readFileSync(path, 'utf8').trimEnd();
+    }
   }
+
   return undefined;
 }
 
@@ -142,12 +160,16 @@ export function discoverThirdPartyDependencyClosure(
     const workspacePackage = workspacePackages.get(dependencyName);
     if (workspacePackage) {
       visit(workspacePackage);
+
       return;
     }
 
     const dependencyRoot = resolveDependencyRoot(packageRoot, dependencyName);
     if (!dependencyRoot) {
-      if (optional) return;
+      if (optional) {
+        return;
+      }
+
       throw new Error(
         `Could not resolve production dependency ${dependencyName} from ${packageRoot} while generating product notices.`,
       );
@@ -157,6 +179,7 @@ export function discoverThirdPartyDependencyClosure(
     const canonicalName = dependencyManifest.name ?? dependencyName;
     if (canonicalName.startsWith('@nevo/')) {
       visit(dependencyRoot);
+
       return;
     }
 
@@ -165,13 +188,17 @@ export function discoverThirdPartyDependencyClosure(
   }
 
   function visit(packageRoot: string): void {
-    if (visited.has(packageRoot)) return;
+    if (visited.has(packageRoot)) {
+      return;
+    }
+
     visited.add(packageRoot);
 
     const manifest = readManifest<DependencyManifest>(packageRoot);
     for (const dependencyName of Object.keys(manifest.dependencies ?? {})) {
       visitDependency(packageRoot, dependencyName, false);
     }
+
     for (const dependencyName of Object.keys(manifest.optionalDependencies ?? {})) {
       visitDependency(packageRoot, dependencyName, true);
     }
@@ -183,13 +210,20 @@ function workspacePackageRoots(workspaceRoot: string): ReadonlyMap<string, strin
   const result = new Map<string, string>();
 
   for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
     const packageRoot = join(packagesDir, entry.name);
     const manifestPath = join(packageRoot, 'package.json');
-    if (!existsSync(manifestPath)) continue;
+    if (!existsSync(manifestPath)) {
+      continue;
+    }
 
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: string };
-    if (manifest.name) result.set(manifest.name, packageRoot);
+    if (manifest.name) {
+      result.set(manifest.name, packageRoot);
+    }
   }
 
   return result;
@@ -204,18 +238,25 @@ function resolveDependencyRoot(
   for (const request of [`${dependencyName}/package.json`, dependencyName]) {
     try {
       const resolved = require.resolve(request);
-      if (request.endsWith('/package.json')) return dirname(resolved);
+      if (request.endsWith('/package.json')) {
+        return dirname(resolved);
+      }
 
       let current = dirname(resolved);
       for (;;) {
         const manifestPath = join(current, 'package.json');
         if (existsSync(manifestPath)) {
           const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: string };
-          if (manifest.name === dependencyName) return current;
+          if (manifest.name === dependencyName) {
+            return current;
+          }
         }
 
         const parent = dirname(current);
-        if (parent === current) break;
+        if (parent === current) {
+          break;
+        }
+
         current = parent;
       }
     } catch {

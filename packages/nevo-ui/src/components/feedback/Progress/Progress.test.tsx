@@ -28,8 +28,10 @@ describe('Progress', () => {
       [-1, 2],
       [1.5, 2],
       [1, Infinity],
-    ])
+    ]) {
       expect(validProgressCounts(completed!, total!)).toBe(false);
+    }
+
     expect(
       renderToStaticMarkup(
         <Progress aria-label="Invalid" variant="segmented" completed={3} total={2} />,

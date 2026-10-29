@@ -17,9 +17,13 @@ import {
 async function until<T>(read: () => T | null | undefined): Promise<T> {
   for (let attempt = 0; attempt < 100; attempt++) {
     const value = read();
-    if (value) return value;
+    if (value) {
+      return value;
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+
   throw new Error('Timed out waiting for the dialog.');
 }
 
@@ -84,7 +88,9 @@ export const CompactContent: Story = {
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 export const InteractionContract: Story = {

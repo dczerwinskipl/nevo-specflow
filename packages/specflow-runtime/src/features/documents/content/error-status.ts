@@ -68,6 +68,7 @@ export function statusForDocumentError(code: DocumentErrorCode): DocumentHttpSta
       return 503;
     default: {
       const exhaustive: never = code;
+
       return exhaustive;
     }
   }
@@ -95,7 +96,10 @@ function failure(code: DocumentErrorCode, details?: DocumentErrorDetails): Docum
  * never a path.
  */
 export function documentFailure(error: unknown): DocumentFailure | undefined {
-  if (error instanceof DocumentError) return failure(error.code, error.details);
+  if (error instanceof DocumentError) {
+    return failure(error.code, error.details);
+  }
+
   // The Engine turns an unknown or malformed id into DOCUMENT_NOT_FOUND itself, but a manifest that
   // fails to parse reaches here as SPEC_SOURCE_INVALID, so this branch is live (and tested).
   if (error instanceof SpecificationError) {
@@ -103,6 +107,7 @@ export function documentFailure(error: unknown): DocumentFailure | undefined {
       ? failure('DOCUMENT_NOT_FOUND')
       : failure('SPEC_SOURCE_UNAVAILABLE');
   }
+
   // The canonical source (registry, Project Home, control lock, Git configuration) cannot be used.
   if (
     error instanceof WorkspaceRegistryError ||
@@ -112,5 +117,6 @@ export function documentFailure(error: unknown): DocumentFailure | undefined {
   ) {
     return failure('SPEC_SOURCE_UNAVAILABLE');
   }
+
   return undefined;
 }

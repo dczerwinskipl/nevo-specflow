@@ -22,15 +22,23 @@ export function sortedResources(resources: readonly string[]): readonly Mutation
  * (an external execution) conflicts with every other claim.
  */
 export function overlaps(left: readonly string[], right: readonly string[]): boolean {
-  if (right.length > 0 && left.some((resource) => resource.startsWith('project-write:')))
+  if (right.length > 0 && left.some((resource) => resource.startsWith('project-write:'))) {
     return true;
+  }
+
   for (const first of left) {
     for (const second of right) {
       if (first === second) {
-        if (first.startsWith('checkout-scoped:') || first.startsWith('git-worktree-admin-scoped:'))
+        if (
+          first.startsWith('checkout-scoped:') ||
+          first.startsWith('git-worktree-admin-scoped:')
+        ) {
           continue;
+        }
+
         return true;
       }
+
       for (const [exclusive, scoped] of [
         ['checkout:', 'checkout-scoped:'],
         ['git-worktree-admin:', 'git-worktree-admin-scoped:'],
@@ -44,6 +52,7 @@ export function overlaps(left: readonly string[], right: readonly string[]): boo
       }
     }
   }
+
   return false;
 }
 
@@ -77,6 +86,7 @@ export function claimCheckOf<TRecord>(source: ClaimSource<TRecord>): ClaimCheck 
   return {
     load: async (context) => {
       const records = await source.list(context);
+
       return (requested, self) => source.assertAvailable(records, requested, self);
     },
   };
@@ -95,5 +105,7 @@ export async function assertClaimsAvailable(
   self?: ClaimSelf,
 ): Promise<void> {
   const asserts = await Promise.all(checks.map((check) => check.load(context)));
-  for (const assertAvailable of asserts) assertAvailable(requested, self);
+  for (const assertAvailable of asserts) {
+    assertAvailable(requested, self);
+  }
 }

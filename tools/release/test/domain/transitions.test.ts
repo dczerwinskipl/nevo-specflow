@@ -95,7 +95,10 @@ describe('resolveTransitionTarget', () => {
     resolveTransitionTarget({
       env: opts.env ?? {},
       readWorkingVersion: () => {
-        if (opts.working instanceof Error) throw opts.working;
+        if (opts.working instanceof Error) {
+          throw opts.working;
+        }
+
         return opts.working ?? { channel: 'alpha', version: '0.1.0' };
       },
       refExists: (ref) => (opts.refs ?? []).includes(ref),

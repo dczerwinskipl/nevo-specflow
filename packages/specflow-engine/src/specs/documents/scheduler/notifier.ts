@@ -19,6 +19,7 @@ const listeners: Set<Listener> = ((globalThis as Record<symbol, unknown>)[LISTEN
 /** Subscribes to finished writes; returns the unsubscribe function. */
 export function onDocumentChangeApplied(listener: Listener): () => void {
   listeners.add(listener);
+
   return () => {
     listeners.delete(listener);
   };

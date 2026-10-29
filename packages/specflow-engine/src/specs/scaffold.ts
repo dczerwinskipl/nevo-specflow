@@ -137,6 +137,7 @@ const DOCUMENT_CODE_BY_CAUSE: Record<ScaffoldValidationCause['kind'], DocumentEr
 
 export function documentErrorOf(error: ScaffoldValidationError): DocumentError {
   const code = DOCUMENT_CODE_BY_CAUSE[error.cause.kind];
+
   return error.cause.kind === 'path-too-long'
     ? new DocumentError(code, error.message, { cause: 'path-too-long' })
     : new DocumentError(code, error.message);
@@ -169,8 +170,10 @@ class DocumentRegistry {
           type,
         });
       }
+
       throw error;
     }
+
     this.usedIds.add(id);
     this.documents.push({ id, path, type });
   }
@@ -195,6 +198,7 @@ export function createSpecificationScaffold(
   if (!isValidSpecificationId(input.specId)) {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'A canonical specId is required.');
   }
+
   validateSpecificationScaffoldInput({
     title: input.title,
     created: input.created,
@@ -207,6 +211,7 @@ export function createSpecificationScaffold(
       'Specification slug must be lowercase kebab-case ASCII of at most 80 characters.',
     );
   }
+
   const slug = input.slug ?? specificationSlugFromTitle(title, input.specId);
 
   const archetype = input.catalogue.findArchetype(input.archetypeId);
@@ -235,6 +240,7 @@ export function createSpecificationScaffold(
     folders,
   });
   const base = 'specs/active/' + slug + '/';
+
   return {
     specId: input.specId,
     slug,
@@ -261,6 +267,7 @@ function selectTemplates(
       );
     }
   }
+
   return archetype.templates.filter(
     (template) => template.include === 'always' || chosen.has(template.id),
   );
@@ -286,9 +293,11 @@ function renderArchetypeFiles(
         path,
       });
     }
+
     registry.register(path, template.documentType);
     files.push({ path, content });
   }
+
   return files;
 }
 
@@ -300,6 +309,7 @@ function admitAddedDocuments(
   if (added.length > ADDED_DOCUMENTS_MAX_FILES) {
     throw limit('added-files', ADDED_DOCUMENTS_MAX_FILES, added.length);
   }
+
   const files: ScaffoldSource[] = [];
   let totalBytes = 0;
   for (const document of added) {
@@ -310,10 +320,12 @@ function admitAddedDocuments(
         path,
       });
     }
+
     const bytes = Buffer.byteLength(document.content, 'utf8');
     if (bytes > TEXT_CONTENT_MAX_BYTES) {
       throw limit('file-bytes', TEXT_CONTENT_MAX_BYTES, bytes, path);
     }
+
     totalBytes += bytes;
     if (document.type !== undefined) {
       if (!CATALOGUE_ID.test(document.type) || document.type === OVERVIEW_DOCUMENT_TYPE) {
@@ -323,13 +335,17 @@ function admitAddedDocuments(
           type: document.type,
         });
       }
+
       registry.register(path, document.type);
     }
+
     files.push({ path, content: document.content });
   }
+
   if (totalBytes > ADDED_DOCUMENTS_MAX_TOTAL_BYTES) {
     throw limit('added-total-bytes', ADDED_DOCUMENTS_MAX_TOTAL_BYTES, totalBytes);
   }
+
   return files;
 }
 
@@ -348,15 +364,20 @@ function admitFolders(
   if (requestedFolders.length > ADDED_DOCUMENTS_MAX_FOLDERS) {
     throw limit('added-folders', ADDED_DOCUMENTS_MAX_FOLDERS, requestedFolders.length);
   }
+
   const folders = [...new Set(requestedFolders)].sort(compareFolded);
   for (const folder of folders) {
     const result = validateFolderPath(folder);
-    if (!result.ok) throw pathInvalid(folder, result.violation);
+    if (!result.ok) {
+      throw pathInvalid(folder, result.violation);
+    }
   }
+
   assertNoPathConflicts(
     files.map((file) => file.path),
     folders,
   );
+
   return folders;
 }
 
@@ -371,6 +392,7 @@ function buildManifest(
   },
 ): SpecificationManifest {
   const { archetype } = parts;
+
   return {
     specId: input.specId,
     slug: parts.slug,
@@ -396,7 +418,10 @@ function buildManifest(
 
 function checkedPath(path: string): string {
   const result = validateDocumentPath(path);
-  if (!result.ok) throw pathInvalid(path, result.violation);
+  if (!result.ok) {
+    throw pathInvalid(path, result.violation);
+  }
+
   return path;
 }
 
@@ -431,24 +456,40 @@ function assertNoPathConflicts(filePaths: readonly string[], folders: readonly s
   const seen = new Set<string>();
   for (const path of filePaths) {
     const key = foldPathKey(path);
-    if (seen.has(key)) throw conflict(path);
+    if (seen.has(key)) {
+      throw conflict(path);
+    }
+
     seen.add(key);
   }
+
   const folderKeys = new Set<string>();
   for (const folder of folders) {
     const key = foldPathKey(folder);
-    if (folderKeys.has(key)) throw conflict(folder);
+    if (folderKeys.has(key)) {
+      throw conflict(folder);
+    }
+
     folderKeys.add(key);
   }
+
   // Every folder implied by a file path or by an explicit folder is a folder, so no file may use it.
   for (const path of filePaths) {
-    for (const ancestor of ancestorFolders(path)) folderKeys.add(foldPathKey(ancestor));
+    for (const ancestor of ancestorFolders(path)) {
+      folderKeys.add(foldPathKey(ancestor));
+    }
   }
+
   for (const folder of folders) {
-    for (const ancestor of ancestorFolders(folder + '/x')) folderKeys.add(foldPathKey(ancestor));
+    for (const ancestor of ancestorFolders(folder + '/x')) {
+      folderKeys.add(foldPathKey(ancestor));
+    }
   }
+
   for (const path of filePaths) {
-    if (folderKeys.has(foldPathKey(path))) throw conflict(path);
+    if (folderKeys.has(foldPathKey(path))) {
+      throw conflict(path);
+    }
   }
 }
 
@@ -462,7 +503,10 @@ function conflict(path: string): ScaffoldValidationError {
 function compareFolded(left: string, right: string): number {
   const a = foldPathKey(left);
   const b = foldPathKey(right);
-  if (a !== b) return a < b ? -1 : 1;
+  if (a !== b) {
+    return a < b ? -1 : 1;
+  }
+
   return left < right ? -1 : left > right ? 1 : 0;
 }
 

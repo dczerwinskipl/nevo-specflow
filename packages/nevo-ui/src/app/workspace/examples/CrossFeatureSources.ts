@@ -25,20 +25,25 @@ export interface ExampleSource<T extends { updatedAt: string }> {
 function createSource<T extends { updatedAt: string }>(initial: T): ExampleSource<T> {
   let value = initial;
   const listeners = new Set<() => void>();
+
   return {
     getSnapshot: () => value,
     subscribe: (listener) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
     },
     refresh: (revision) => {
       value = { ...value, updatedAt: `revision ${revision}` };
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
   };
 }
+
 export function createCrossFeatureSources() {
   const task = createSource<TaskRecord>({
     id: 'task-1',
@@ -59,6 +64,7 @@ export function createCrossFeatureSources() {
     updatedAt: 'revision 1',
   });
   let revision = 1;
+
   return {
     task,
     changes,
@@ -71,4 +77,5 @@ export function createCrossFeatureSources() {
     },
   };
 }
+
 export type CrossFeatureSources = ReturnType<typeof createCrossFeatureSources>;

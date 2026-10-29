@@ -94,11 +94,15 @@ export function DateTimePickerContent({
     if (minValue && nextValue.compare(minValue) < 0) {
       nextValue = ceilBoundaryToStep(minValue, minuteStep);
     }
+
     if (maxValue && nextValue.compare(maxValue) > 0) {
       nextValue = floorBoundaryToStep(maxValue, minuteStep);
     }
+
     state?.setValue(nextValue);
-    if (presentation === 'mobile') setMobileStep('time');
+    if (presentation === 'mobile') {
+      setMobileStep('time');
+    }
   };
 
   if (presentation === 'mobile') {

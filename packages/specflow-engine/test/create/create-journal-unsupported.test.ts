@@ -34,8 +34,9 @@ import { createGitTestProject, git, commitStaged } from '../support/git-project'
 const DAY = 24 * 60 * 60 * 1000;
 const cleanup: string[] = [];
 afterEach(async () => {
-  for (const root of cleanup.splice(0).reverse())
+  for (const root of cleanup.splice(0).reverse()) {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
+  }
 });
 
 async function fixture() {
@@ -54,6 +55,7 @@ async function fixture() {
   const engine = await bootstrapProjectHome(root);
   const directory = join(engine.context.project.stateRoot, CREATE_JOURNAL_RELATIVE_DIR);
   await withCreateJournalLock(engine.context, () => Promise.resolve());
+
   return { root, engine, directory, registry: await engine.readRegistry() };
 }
 
@@ -68,6 +70,7 @@ async function plant(
   await writeFile(path, text);
   const when = new Date(now - ageDays * DAY);
   await utimes(path, when, when);
+
   return operationId;
 }
 
@@ -122,6 +125,7 @@ describe('unreadable Create journals', () => {
     ]) {
       await expect(read()).rejects.toMatchObject({ code: 'CREATE_JOURNAL_UNSUPPORTED' });
     }
+
     // The file is left exactly as it was: nothing interprets or rewrites it.
     expect(await stat(createJournalPath(engine.context, old))).toMatchObject({
       size: STRAY.length,
@@ -215,6 +219,7 @@ describe('payload store lifecycle', () => {
     for (const id of [orphanOld, withUnsupportedJournal, kept]) {
       await utimes(createPayloadDirectory(engine.context, id), old, old);
     }
+
     // The unsupported journal is young (the sweep keeps it), so its payload must stay too.
     await withCreateJournalLock(engine.context, () =>
       removeExpiredCompletedCreateJournals(engine.context, { now, keepOperationId: kept }),

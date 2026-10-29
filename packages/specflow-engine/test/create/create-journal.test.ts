@@ -52,6 +52,7 @@ async function fixture() {
     { cwd: root },
   );
   const engine = await bootstrapProjectHome(root);
+
   return { root, context: engine.context };
 }
 
@@ -63,6 +64,7 @@ function intent(projectId: string, workspaceId: string, root: string): CreateJou
     title,
     target: { kind: 'existing', workspaceId },
   });
+
   return {
     version: 2,
     projectId,

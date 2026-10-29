@@ -7,7 +7,13 @@ export function clampPickerValue<T extends ComparablePickerValue<T>>(
   minValue?: T | null,
   maxValue?: T | null,
 ): T {
-  if (minValue && value.compare(minValue) < 0) return minValue;
-  if (maxValue && value.compare(maxValue) > 0) return maxValue;
+  if (minValue && value.compare(minValue) < 0) {
+    return minValue;
+  }
+
+  if (maxValue && value.compare(maxValue) > 0) {
+    return maxValue;
+  }
+
   return value;
 }

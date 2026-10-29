@@ -8,11 +8,15 @@ import { dirname, join } from 'node:path';
 export function findRepoRoot(start: string): string {
   let dir = start;
   for (;;) {
-    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
+      return dir;
+    }
+
     const parent = dirname(dir);
     if (parent === dir) {
       throw new Error(`could not find the repository root (no pnpm-workspace.yaml above ${start})`);
     }
+
     dir = parent;
   }
 }

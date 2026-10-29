@@ -43,6 +43,7 @@ export function Select({ disabled = false, invalid = false, ...props }: SelectPr
     disabled,
   });
   const resolvedInvalid = isAriaInvalid(field.ariaInvalid);
+
   return (
     <SelectContext.Provider value={{ disabled: field.disabled, invalid: resolvedInvalid }}>
       <SelectPrimitive.Root disabled={field.disabled} {...props} />
@@ -252,15 +253,21 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
         disabled={disabled}
         onClick={(event) => {
           onClick?.(event);
-          if (unavailable) block(event);
+          if (unavailable) {
+            block(event);
+          }
         }}
         onKeyDown={(event) => {
           onKeyDown?.(event);
-          if (unavailable && (event.key === 'Enter' || event.key === ' ')) block(event);
+          if (unavailable && (event.key === 'Enter' || event.key === ' ')) {
+            block(event);
+          }
         }}
         onPointerUp={(event) => {
           onPointerUp?.(event);
-          if (unavailable) block(event);
+          if (unavailable) {
+            block(event);
+          }
         }}
         {...props}
         {...capture}

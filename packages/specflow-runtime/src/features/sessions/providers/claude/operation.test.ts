@@ -25,6 +25,7 @@ function fixture(
     frames.push(JSON.stringify(frame));
     wake?.();
   };
+
   const beforeDispatch = vi.fn(() => Promise.resolve());
   const invocation: Invocation = {
     sessionId: randomUUID(),
@@ -40,7 +41,7 @@ function fixture(
     write(line) {
       const frame = JSON.parse(line) as Record<string, unknown>;
       sent.push(frame);
-      if (frame.type === 'control_request')
+      if (frame.type === 'control_request') {
         push({
           type: 'control_response',
           response: {
@@ -49,22 +50,29 @@ function fixture(
             response: { claude_code_version: '2.1.296' },
           },
         });
+      }
+
       return Promise.resolve();
     },
     async *lines() {
       while (!ended) {
-        if (!frames.length)
+        if (!frames.length) {
           await new Promise<void>((resolve) => {
             wake = resolve;
           });
+        }
+
         wake = undefined;
         const frame = frames.shift();
-        if (frame !== undefined) yield frame;
+        if (frame !== undefined) {
+          yield frame;
+        }
       }
     },
     dispose: vi.fn(() => {
       ended = true;
       wake?.();
+
       return Promise.resolve({
         process: {
           state: disposition,
@@ -77,13 +85,16 @@ function fixture(
   };
   const controller = new AbortController();
   controller.signal.addEventListener('abort', () => {
-    if (disposeOnCancel) void owner.dispose();
+    if (disposeOnCancel) {
+      void owner.dispose();
+    }
   });
   const operation = createClaudeOperation(
     invocation,
     (fact) => {
       validateDriverFact(fact);
       facts.push(fact);
+
       return Promise.resolve();
     },
     controller.signal,
@@ -93,7 +104,9 @@ function fixture(
           ? new Promise((resolve) => setTimeout(() => resolve(owner), launchDelay))
           : Promise.resolve(owner),
       initialize: () => {
-        if (initializeError) throw initializeError;
+        if (initializeError) {
+          throw initializeError;
+        }
       },
       verifyFrame: options.verifyFrame,
     },
@@ -122,6 +135,7 @@ function fixture(
       },
     },
   });
+
   return {
     facts,
     sent,
@@ -136,6 +150,7 @@ function fixture(
     beforeDispatch,
   };
 }
+
 describe('Claude bidirectional operation', () => {
   it('verifies native inventory before accepting a host permission or question request', async () => {
     const verifyFrame = vi.fn(() => {

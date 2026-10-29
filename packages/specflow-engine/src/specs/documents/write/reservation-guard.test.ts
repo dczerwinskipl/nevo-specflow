@@ -16,6 +16,7 @@ function refusal(run: () => void): unknown {
   } catch (error) {
     return error;
   }
+
   return undefined;
 }
 
@@ -36,11 +37,15 @@ describe('assertNoClaimedBatchOverlap', () => {
 
   it('lets a request through that only meets unclaimed, failed, finished or foreign batches', () => {
     for (const state of DOCUMENT_BATCH_STATES) {
-      if (state === 'committing' || state === 'recovery-required') continue;
+      if (state === 'committing' || state === 'recovery-required') {
+        continue;
+      }
+
       expect(
         refusal(() => assertNoClaimedBatchOverlap(WORKSPACE, ['a.md'], [batch(state, ['a.md'])])),
       ).toBe(undefined);
     }
+
     expect(
       refusal(() =>
         assertNoClaimedBatchOverlap(WORKSPACE, ['a.md'], [batch('committing', ['a.md'], 'w-2')]),

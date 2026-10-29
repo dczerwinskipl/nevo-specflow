@@ -196,7 +196,9 @@ describe('per-kind definition files', () => {
 
     it('validates the example and rejects the same cases through the published schema', () => {
       expect(compiled.Check(valid())).toBe(true);
-      for (const [, build] of invalid) expect(compiled.Check(build())).toBe(false);
+      for (const [, build] of invalid) {
+        expect(compiled.Check(build())).toBe(false);
+      }
     });
   });
 

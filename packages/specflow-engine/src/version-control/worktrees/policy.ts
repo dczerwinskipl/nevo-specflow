@@ -65,9 +65,15 @@ export function effectiveAutoCommit(
   capability: CommitCapability,
 ): EffectiveAutoCommit {
   const local = policy.localAutoCommit?.[capability];
-  if (local !== undefined) return { auto: local, source: 'local' };
+  if (local !== undefined) {
+    return { auto: local, source: 'local' };
+  }
+
   const project = policy.commits.auto?.[capability];
-  if (project !== undefined) return { auto: project, source: 'project' };
+  if (project !== undefined) {
+    return { auto: project, source: 'project' };
+  }
+
   return { auto: false, source: 'default' };
 }
 
@@ -82,7 +88,10 @@ export function parseGitWorktreePolicy(
   projectConfig: unknown,
   localConfig?: unknown,
 ): GitWorktreePolicy {
-  if (!isRecord(projectConfig)) throw invalid('Project configuration must be an object.');
+  if (!isRecord(projectConfig)) {
+    throw invalid('Project configuration must be an object.');
+  }
+
   const { worktreesRoot, auto: localAutoCommit } = parseLocalGit(localConfig);
 
   const value = projectConfig.git;
@@ -96,9 +105,11 @@ export function parseGitWorktreePolicy(
       ...(localAutoCommit !== undefined ? { localAutoCommit } : {}),
     };
   }
+
   if (!isRecord(value) || typeof value.enabled !== 'boolean') {
     throw invalid('Project git.enabled must be a boolean.');
   }
+
   if (
     Object.keys(value).some(
       (key) =>
@@ -110,30 +121,39 @@ export function parseGitWorktreePolicy(
   ) {
     throw invalid('Unsupported Git policy key.');
   }
+
   const worktrees = value.worktrees;
   if (worktrees !== undefined && !isRecord(worktrees)) {
     throw invalid('git.worktrees must be an object.');
   }
+
   if (
     worktrees !== undefined &&
     Object.keys(worktrees).some((key) => key !== 'branchPattern' && key !== 'baseRef')
   ) {
     throw invalid('Unsupported git.worktrees policy key.');
   }
+
   const branchPattern = worktrees?.branchPattern ?? DEFAULT_BRANCH_PATTERN;
   const baseRef = worktrees?.baseRef ?? DEFAULT_BASE_REF;
   if (typeof branchPattern !== 'string' || typeof baseRef !== 'string') {
     throw invalid('Git worktree policy values must be strings.');
   }
+
   validateBranchPattern(branchPattern);
   validateBaseRef(baseRef);
   const target = value.integrationTargetBranch;
   if (target !== undefined) {
-    if (typeof target !== 'string')
+    if (typeof target !== 'string') {
       throw invalid('git.integrationTargetBranch must be a local branch.');
+    }
+
     validateBranchName(target);
-    if (target === 'HEAD') throw invalid('Integration target must be a named local branch.');
+    if (target === 'HEAD') {
+      throw invalid('Integration target must be a named local branch.');
+    }
   }
+
   return {
     enabled: value.enabled,
     branchPattern,
@@ -151,8 +171,14 @@ export function parseGitWorktreePolicy(
  * policy that `init` writes can never later yield `GIT_POLICY_INVALID`.
  */
 export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
-  if (value === undefined) return { protectedBranches: [] };
-  if (!isRecord(value)) throw invalid('git.commits must be an object.');
+  if (value === undefined) {
+    return { protectedBranches: [] };
+  }
+
+  if (!isRecord(value)) {
+    throw invalid('git.commits must be an object.');
+  }
+
   if (
     Object.keys(value).some(
       (key) => key !== 'protectedBranches' && key !== 'allowedBranches' && key !== 'auto',
@@ -160,6 +186,7 @@ export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
   ) {
     throw invalid('Unsupported git.commits policy key.');
   }
+
   const auto = parseAutoCommit('git.commits.auto', value.auto);
   const protectedBranches = parsePatternList(
     'git.commits.protectedBranches',
@@ -172,6 +199,7 @@ export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
   if (allowed?.some((pattern) => protectedBranches.includes(pattern))) {
     throw invalid('A branch pattern cannot be both protected and allowed.');
   }
+
   return {
     protectedBranches,
     ...(allowed !== undefined && allowed.length > 0 ? { allowedBranches: allowed } : {}),
@@ -181,37 +209,66 @@ export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
 
 /** `git.commits.auto`: a closed set of capability keys with boolean values (committed and local alike). */
 function parseAutoCommit(label: string, value: unknown): AutoCommitSettings | undefined {
-  if (value === undefined) return undefined;
-  if (!isRecord(value)) throw invalid(label + ' must be an object.');
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(value)) {
+    throw invalid(label + ' must be an object.');
+  }
+
   const settings: Partial<Record<CommitCapability, boolean>> = {};
   for (const [key, entry] of Object.entries(value)) {
     if (!(COMMIT_CAPABILITIES as readonly string[]).includes(key)) {
       throw invalid(label + ' has an unknown capability.');
     }
-    if (typeof entry !== 'boolean') throw invalid(label + '.' + key + ' must be a boolean.');
+
+    if (typeof entry !== 'boolean') {
+      throw invalid(label + '.' + key + ' must be a boolean.');
+    }
+
     settings[key as CommitCapability] = entry;
   }
+
   return settings;
 }
 
 function parsePatternList(label: string, value: unknown): readonly string[] {
-  if (value === undefined) return [];
-  if (!Array.isArray(value)) throw invalid(label + ' must be a list of branch patterns.');
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw invalid(label + ' must be a list of branch patterns.');
+  }
+
   if (value.length > BRANCH_PATTERN_MAX_ENTRIES) {
     throw invalid(label + ' has too many entries.');
   }
+
   const patterns: string[] = [];
   for (const entry of value as unknown[]) {
-    if (typeof entry !== 'string') throw invalid(label + ' entries must be strings.');
+    if (typeof entry !== 'string') {
+      throw invalid(label + ' entries must be strings.');
+    }
+
     const pattern = entry.trim();
     if (branchPatternProblem(pattern) !== undefined) {
       throw invalid(label + ' contains an invalid branch pattern.');
     }
+
     // A literal (wildcard-free) entry names one branch and must be a valid branch name.
-    if (!/[*?[]/u.test(pattern)) validateBranchName(pattern);
-    if (patterns.includes(pattern)) throw invalid(label + ' contains a duplicate pattern.');
+    if (!/[*?[]/u.test(pattern)) {
+      validateBranchName(pattern);
+    }
+
+    if (patterns.includes(pattern)) {
+      throw invalid(label + ' contains a duplicate pattern.');
+    }
+
     patterns.push(pattern);
   }
+
   return patterns;
 }
 
@@ -223,7 +280,10 @@ function parseLocalGit(localConfig: unknown): {
   readonly worktreesRoot?: string;
   readonly auto?: AutoCommitSettings;
 } {
-  if (!isRecord(localConfig) || localConfig.git === undefined) return {};
+  if (!isRecord(localConfig) || localConfig.git === undefined) {
+    return {};
+  }
+
   const local = localConfig.git;
   if (
     !isRecord(local) ||
@@ -233,15 +293,21 @@ function parseLocalGit(localConfig: unknown): {
       'Only git.worktreesRoot and git.commits.auto can be set in workstation-local configuration.',
     );
   }
+
   let auto: AutoCommitSettings | undefined;
   if (local.commits !== undefined) {
     if (!isRecord(local.commits) || Object.keys(local.commits).some((key) => key !== 'auto')) {
       throw invalid('Only git.commits.auto can be set in workstation-local configuration.');
     }
+
     auto = parseAutoCommit('git.commits.auto', local.commits.auto);
   }
+
   const value = local.worktreesRoot;
-  if (value === undefined) return auto !== undefined ? { auto } : {};
+  if (value === undefined) {
+    return auto !== undefined ? { auto } : {};
+  }
+
   if (
     typeof value !== 'string' ||
     !value.trim() ||
@@ -250,6 +316,7 @@ function parseLocalGit(localConfig: unknown): {
   ) {
     throw invalid('git.worktreesRoot must be a non-empty path.');
   }
+
   return { worktreesRoot: value, ...(auto !== undefined ? { auto } : {}) };
 }
 
@@ -268,6 +335,7 @@ export function resolveWorktreesRoot(
       ? join(dirname(home), basename(home) + '-worktrees')
       : resolve(home, configured);
   assertWorktreeTargetOutsideRepository(home, gitCommonDir, root, 'git.worktreesRoot');
+
   return root;
 }
 
@@ -287,6 +355,7 @@ function isInsideOrSame(parent: string, child: string): boolean {
   const fold = (value: string) =>
     process.platform === 'win32' ? resolve(value).toLowerCase() : resolve(value);
   const rel = relative(fold(parent), fold(child));
+
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
@@ -295,7 +364,10 @@ function isInsideOrSame(parent: string, child: string): boolean {
  * least one token is required.
  */
 export function validateBranchPattern(pattern: string): void {
-  if (!pattern || pattern.length > 200) throw invalid('Invalid Git worktree branch pattern.');
+  if (!pattern || pattern.length > 200) {
+    throw invalid('Invalid Git worktree branch pattern.');
+  }
+
   const tokens = [...pattern.matchAll(/\{([^{}]*)\}/gu)].map((match) => match[1]);
   if (
     tokens.some((token) => !SUPPORTED_TEMPLATE_FIELDS.some((field) => field === token)) ||
@@ -308,9 +380,13 @@ export function validateBranchPattern(pattern: string): void {
       'Branch pattern supports at most one {slug}, one {shortId} and one {key}, and needs at least one.',
     );
   }
+
   // Detect unmatched braces and hidden template expressions.
   const withoutTokens = pattern.replace(/\{(?:slug|shortId|key)\}/gu, '');
-  if (/[{}]/u.test(withoutTokens)) throw invalid('Malformed Git branch template.');
+  if (/[{}]/u.test(withoutTokens)) {
+    throw invalid('Malformed Git branch template.');
+  }
+
   validateBranchName(expandBranchPattern(pattern, 'example', '12345678', 'nevo-1'));
 }
 
@@ -341,11 +417,14 @@ export function resolveWorktreeBranch(
   ) {
     throw invalid('Invalid worktree naming token.');
   }
+
   if (override === undefined && key === undefined && policy.branchPattern.includes('{key}')) {
     throw invalid('The branch pattern names {key}, but the Specification has none.');
   }
+
   const branch = override ?? expandBranchPattern(policy.branchPattern, slug, shortId, key ?? '');
   validateBranchName(branch);
+
   return branch;
 }
 

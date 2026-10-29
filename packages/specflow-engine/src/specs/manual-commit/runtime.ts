@@ -83,6 +83,7 @@ export function createManualCommitRuntime(
   const table = deps.processTable ?? nodeProcessTable;
   const nowMs = deps.nowMs ?? (() => Date.now());
   let captured = deps.executor;
+
   return {
     engine,
     context: engine.context,
@@ -96,6 +97,7 @@ export function createManualCommitRuntime(
     nowIso: () => new Date(nowMs()).toISOString(),
     executor: async () => {
       captured ??= await captureExecutorIdentity(table);
+
       return captured;
     },
   };

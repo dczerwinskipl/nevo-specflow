@@ -11,6 +11,7 @@ export function selectExportProfileRoots(
   profile: ExportProfileSelection,
 ) {
   const roots = new Set(profile.roots);
+
   return {
     componentRoots: definitions.filter(
       (definition) =>

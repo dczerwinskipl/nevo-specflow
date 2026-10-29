@@ -22,6 +22,7 @@ function table(procs: Record<number, string>): ProcessTable {
     readText: (path) => {
       const match = /^\/proc\/(\d+)\/stat$/u.exec(path);
       const start = match ? procs[Number(match[1])] : undefined;
+
       return Promise.resolve(
         start === undefined ? undefined : '1 (name) S ' + '0 '.repeat(18) + start + ' 0',
       );

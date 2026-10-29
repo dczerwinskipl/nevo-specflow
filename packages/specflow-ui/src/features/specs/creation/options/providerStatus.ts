@@ -20,7 +20,10 @@ export interface ProviderStatus {
 
 function nonEmpty(value?: string) {
   const trimmed = value?.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
+
   return trimmed;
 }
 
@@ -42,13 +45,15 @@ export function providerStatus(
       ? accessLabels[provider.connection]
       : undefined;
   const reason = nonEmpty(provider.reason);
-  if (!provider.available)
+  if (!provider.available) {
     return {
       access: undefined,
       availability: reason ?? message('create.provider.unavailable'),
       tone: undefined,
       note: undefined,
     };
+  }
+
   return {
     access,
     availability: message(

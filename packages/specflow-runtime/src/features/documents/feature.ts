@@ -48,7 +48,10 @@ export function createDocumentsFeature(
         (dependencies.engine ? createEngineDocumentReadSource(dependencies.engine) : undefined);
       app.register(documentContentEndpoint, { source });
       app.register(rawDocumentEndpoint, { source });
-      if (dependencies.writeRoutes === false) return;
+      if (dependencies.writeRoutes === false) {
+        return;
+      }
+
       // Writes and the list of document operations need the Engine; without it they are unavailable.
       const writeSource =
         dependencies.writeSource ??

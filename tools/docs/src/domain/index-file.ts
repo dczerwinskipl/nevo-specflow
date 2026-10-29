@@ -16,6 +16,7 @@ const TYPE_ORDER = [
 
 function typeRank(type: string): number {
   const i = TYPE_ORDER.indexOf(type);
+
   return i === -1 ? TYPE_ORDER.length : i;
 }
 
@@ -31,7 +32,9 @@ function encodeMarkdownTableCell(value: string): string {
 
     if (char === '\r') {
       result.push(' ');
-      if (value[i + 1] === '\n') i += 1;
+      if (value[i + 1] === '\n') {
+        i += 1;
+      }
     } else if (char === '\n') {
       result.push(' ');
     } else if (char === '|') {
@@ -79,6 +82,7 @@ export function buildIndex(docs: readonly DocRecord[]): BuiltIndex {
         `| \`${asString(doc.id)}\` | [${asString(doc.title)}](${relLink(doc.file)}) | ` +
         `${asString(doc.status)} | ${summary} |\n`;
     }
+
     md += '\n';
   }
 
@@ -118,10 +122,12 @@ export function diffIndex(built: BuiltIndex, onDisk: OnDiskIndex): string[] {
   } else if (onDisk.json.replace(/\r\n/g, '\n') !== built.json) {
     problems.push('stale: docs/index.generated.json — run `pnpm docs:check --write`');
   }
+
   if (onDisk.md === null) {
     problems.push('missing: docs/index.generated.md — run `pnpm docs:check --write`');
   } else if (onDisk.md.replace(/\r\n/g, '\n') !== built.md) {
     problems.push('stale: docs/index.generated.md — run `pnpm docs:check --write`');
   }
+
   return problems;
 }

@@ -10,7 +10,10 @@ import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
  */
 export function catalogueEtag(catalogue: ArchetypeCatalogue): string {
   const problems = catalogue.problems ?? [];
-  if (problems.length === 0 && catalogue.unstableRead !== true) return `"${catalogue.revision}"`;
+  if (problems.length === 0 && catalogue.unstableRead !== true) {
+    return `"${catalogue.revision}"`;
+  }
+
   const digest = createHash('sha256')
     .update(
       JSON.stringify({
@@ -21,5 +24,6 @@ export function catalogueEtag(catalogue: ArchetypeCatalogue): string {
     )
     .digest('hex')
     .slice(0, 16);
+
   return `"${catalogue.revision}.${digest}"`;
 }

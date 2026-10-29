@@ -41,6 +41,7 @@ function deferred<T>(): Deferred<T> {
     resolve = res;
     reject = rej;
   });
+
   return { promise, resolve, reject };
 }
 
@@ -61,14 +62,17 @@ type SaveCall = Parameters<DocumentsApi['save']>;
 function setup({ strict = false }: { strict?: boolean } = {}) {
   const docs = { a: record('a', 'A0', 'a1'), b: record('b', 'B0', 'b1') };
   const queryClient: QueryClient = createSpecFlowQueryClient();
-  for (const doc of Object.values(docs))
+  for (const doc of Object.values(docs)) {
     queryClient.setQueryData(documentKeys.detail(SPEC, doc.id), doc);
+  }
+
   const calls: SaveCall[] = [];
   const pendingSaves: Deferred<{ document: { revision: string } }>[] = [];
   const save = vi.fn((...args: SaveCall) => {
     calls.push(args);
     const next = deferred<{ document: { revision: string } }>();
     pendingSaves.push(next);
+
     return next.promise;
   });
   const services = createSpecFlowAppServices({
@@ -84,6 +88,7 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
     controls.session = session;
     const actions = documentHeaderModel(session, t).actions;
     const saveAction = actions.find((action) => action.id === 'document-save');
+
     return (
       <div>
         <output data-testid="content">{session?.draft.content}</output>
@@ -105,9 +110,11 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
       </div>
     );
   }
+
   function Harness() {
     const [id, setId] = useState<'a' | 'b'>('a');
     go = setId;
+
     return (
       <DocumentTabsProvider specId={SPEC} documentId={id}>
         <DocumentRouteGuard specId={SPEC} requestRef={controls.leave} />
@@ -115,6 +122,7 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
       </DocumentTabsProvider>
     );
   }
+
   const tree = (
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={services}>
@@ -148,6 +156,7 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
   const draftOf = (id: 'a' | 'b') => store.get(SPEC, id);
   const cached = (id: 'a' | 'b') =>
     queryClient.getQueryData<DocumentContent>(documentKeys.detail(SPEC, id));
+
   return {
     save,
     calls,

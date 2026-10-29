@@ -26,5 +26,6 @@ export function folderRevisionOf(
       .filter((explicit) => explicit === folder || explicit.startsWith(prefix))
       .map((explicit) => `folder:${explicit}`),
   ].sort();
+
   return sha256Hex(lines.join('\n'));
 }

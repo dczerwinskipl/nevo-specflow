@@ -64,8 +64,9 @@ describe('Create progress copy', () => {
         'committing-specification',
         'registering',
       ]) {
-        for (const part of ['title', 'running', 'done'])
+        for (const part of ['title', 'running', 'done']) {
           expect(catalogue.exists(`create.progress.steps.${id}.${part}`)).toBe(true);
+        }
       }
     }
   });

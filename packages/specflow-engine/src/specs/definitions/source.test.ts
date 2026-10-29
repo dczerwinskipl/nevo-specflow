@@ -17,6 +17,7 @@ async function fixture() {
   roots.push(base);
   await mkdir(join(base, 'real', 'definitions', 'document-type'), { recursive: true });
   await writeFile(join(base, 'real', 'definitions', 'document-type', 'a.yaml'), 'id: a\n');
+
   return base;
 }
 
@@ -28,6 +29,7 @@ describe('filesystem definition source', () => {
     } catch {
       return; // links are not creatable here (Windows without the privilege)
     }
+
     const source = createFilesystemDefinitionSource(join(base, 'link', 'definitions'));
 
     expect(await source.list('document-type', 10)).toMatchObject({ state: 'ok' });
@@ -41,6 +43,7 @@ describe('filesystem definition source', () => {
     } catch {
       return;
     }
+
     const source = createFilesystemDefinitionSource(join(base, 'definitions'));
 
     expect(await source.list('document-type', 10)).toEqual({ state: 'unsafe' });

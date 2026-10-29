@@ -33,15 +33,24 @@ function stepDetail(
   item: OperationListItem,
   kind: OperationKindPresentation | undefined,
 ): Message | undefined {
-  if (!kind || !item.steps?.length) return undefined;
+  if (!kind || !item.steps?.length) {
+    return undefined;
+  }
+
   const steps = item.steps.filter((step) => step.status !== 'skipped');
   const current =
     steps.findIndex((step) => step.id === item.currentStep) >= 0
       ? steps.findIndex((step) => step.id === item.currentStep)
       : steps.findIndex((step) => step.status === 'running');
-  if (current < 0) return undefined;
+  if (current < 0) {
+    return undefined;
+  }
+
   const step = steps[current];
-  if (!step) return undefined;
+  if (!step) {
+    return undefined;
+  }
+
   return message('operations.row.step', {
     current: current + 1,
     total: steps.length,
@@ -58,11 +67,14 @@ export function presentOperation(
   const name: Message | string = item.title ?? kind?.label ?? message('operations.kind.unknown');
   if (item.status === 'in-progress') {
     const detail = stepDetail(item, kind);
+
     return { tone, status, name, ...(detail ? { detail } : {}) };
   }
+
   if (item.status === 'recovery-required') {
     const minutes = minutesSince(item.updatedAt, now);
     const interrupted = item.code === OPERATION_INTERRUPTED_CODE && minutes !== undefined;
+
     return {
       tone,
       status,
@@ -71,5 +83,6 @@ export function presentOperation(
       ...(interrupted ? { detail: message('operations.row.interrupted', { minutes }) } : {}),
     };
   }
+
   return { tone, status, name };
 }

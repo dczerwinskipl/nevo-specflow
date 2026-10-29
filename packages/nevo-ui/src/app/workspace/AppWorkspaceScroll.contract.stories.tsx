@@ -8,6 +8,7 @@ import { AppContent } from './AppContent';
 function BoundedContent() {
   return <EditorContent />;
 }
+
 function EditorContent({ hiddenInput = false }: { hiddenInput?: boolean }) {
   return (
     <AppContent>
@@ -28,6 +29,7 @@ function EditorContent({ hiddenInput = false }: { hiddenInput?: boolean }) {
     </AppContent>
   );
 }
+
 const boundedStack = defineSecondaryStack<
   Record<string, never>,
   Record<string, never>,
@@ -42,10 +44,12 @@ const boundedStack = defineSecondaryStack<
 });
 function OpenEditor() {
   const navigation = useSecondaryNavigation();
+
   return (
     <button onClick={() => void navigation.open(boundedStack, {})}>Open retained editor</button>
   );
 }
+
 function BoundedFixture({
   scroll = 'content',
   secondary = false,
@@ -69,6 +73,7 @@ function BoundedFixture({
     </div>
   );
 }
+
 const meta = {
   title: 'Nevo UI/Workspace/Content scroll ownership',
   component: BoundedFixture,
@@ -78,8 +83,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
+
 async function assertBounded(canvasElement: HTMLElement, save: HTMLElement) {
   const shell = canvasElement.querySelector<HTMLElement>('[data-bounded-shell]')!;
   const content = canvasElement.querySelector<HTMLElement>('[data-editor-scroll]')!;
@@ -106,6 +114,7 @@ async function assertBounded(canvasElement: HTMLElement, save: HTMLElement) {
     'Save must stay visible after scrolling',
   );
 }
+
 export const BoundedMobileEditor: Story = {
   play: async ({ canvas, canvasElement }) => {
     await assertBounded(canvasElement, canvas.getByRole('button', { name: 'Save document' }));
@@ -189,6 +198,7 @@ function overlayBottom(canvasElement: HTMLElement) {
     ...canvasElement.querySelectorAll<HTMLElement>('.mobile-floating-navigation > button'),
   ];
   assert(buttons.length > 0, 'The stacked workspace should expose the floating navigation row.');
+
   return Math.max(...buttons.map((button) => button.getBoundingClientRect().bottom));
 }
 

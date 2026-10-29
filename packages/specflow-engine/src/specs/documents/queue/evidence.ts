@@ -27,8 +27,14 @@ export async function lookUpBatchCommit(
 ): Promise<BatchEvidence> {
   const root = rt.checkout.root;
   const found = await rt.commits.findByOperation(root, batch.operationId, batch.parentHead!);
-  if (found.status === 'history-changed') return { kind: 'history-changed' };
-  if (found.status === 'absent') return { kind: 'absent' };
+  if (found.status === 'history-changed') {
+    return { kind: 'history-changed' };
+  }
+
+  if (found.status === 'absent') {
+    return { kind: 'absent' };
+  }
+
   const known = new Set(expectations.map((entry) => entry.path));
   if (
     found.paths.some((path) => !known.has(path)) ||
@@ -36,6 +42,7 @@ export async function lookUpBatchCommit(
   ) {
     return { kind: 'foreign-commit' };
   }
+
   return { kind: 'committed', sha: found.sha, paths: found.paths };
 }
 
@@ -69,9 +76,16 @@ export async function provablyNotCommitted(
   try {
     const root = rt.checkout.root;
     const found = await rt.commits.findByOperation(root, batch.operationId, batch.parentHead!);
-    if (found.status !== 'absent') return false;
-    if ((await rt.commits.head(root)) !== batch.parentHead) return false;
+    if (found.status !== 'absent') {
+      return false;
+    }
+
+    if ((await rt.commits.head(root)) !== batch.parentHead) {
+      return false;
+    }
+
     await rt.commits.preflight(preflightRequest(rt, batch, paths));
+
     return true;
   } catch {
     return false;
@@ -104,20 +118,36 @@ export async function pathsRefusedWith(
     checks += 1;
     try {
       await rt.commits.preflight(preflightRequest(rt, batch, subset));
+
       return false;
     } catch (error) {
       return error instanceof GitCapabilityError && error.reason === reason;
     }
   };
+
   const search = async (subset: readonly string[]): Promise<string[] | undefined> => {
-    if (subset.length === 0) return [];
-    if (exhausted()) return undefined;
-    if (!(await refuses(subset))) return [];
-    if (subset.length === 1) return [...subset];
+    if (subset.length === 0) {
+      return [];
+    }
+
+    if (exhausted()) {
+      return undefined;
+    }
+
+    if (!(await refuses(subset))) {
+      return [];
+    }
+
+    if (subset.length === 1) {
+      return [...subset];
+    }
+
     const middle = Math.ceil(subset.length / 2);
     const left = await search(subset.slice(0, middle));
     const right = left === undefined ? undefined : await search(subset.slice(middle));
+
     return left === undefined || right === undefined ? undefined : [...left, ...right];
   };
+
   return search(paths);
 }

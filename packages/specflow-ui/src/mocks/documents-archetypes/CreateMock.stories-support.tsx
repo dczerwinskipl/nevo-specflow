@@ -60,6 +60,7 @@ function ArchetypeSection({ catalogue, initial }: { catalogue: MockArchetype[]; 
   const required = (type: string) =>
     archetype.requirements.some((r) => r.documentType === type && r.minCount > 0) &&
     !always.some((doc) => doc.type === type);
+
   return (
     <section aria-labelledby={headingId} className="grid gap-4">
       <header className="grid gap-1">
@@ -108,6 +109,7 @@ function ArchetypeSection({ catalogue, initial }: { catalogue: MockArchetype[]; 
             const key = `${archetype.id}:${doc.id}`;
             const type = documentTypes.find((item) => item.id === doc.type)!;
             const unmet = required(doc.type) && !ticked[key];
+
             return (
               <CheckboxField
                 key={key}
@@ -241,6 +243,7 @@ function Page({ scenario }: { scenario: CreateScenario }) {
         }
       />
     );
+
   return (
     <AppWorkspace fit="bounded" scroll="content">
       <AppWorkspace.Primary

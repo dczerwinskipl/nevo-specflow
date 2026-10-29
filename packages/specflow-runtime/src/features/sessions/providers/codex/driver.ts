@@ -59,8 +59,11 @@ export function createCodexDriver(
     const authRequired = error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED';
     if (authRequired && authenticationFingerprint) {
       const current = authentication.reject(authenticationFingerprint);
-      if (source === 'operation' && !current) return;
+      if (source === 'operation' && !current) {
+        return;
+      }
     }
+
     checkedAt = 0;
     scope = '';
     const incompatible = error instanceof CodexRpcError && error.kind === 'protocol';
@@ -77,21 +80,28 @@ export function createCodexDriver(
         error instanceof SessionError ? error.message : 'Codex availability must be rechecked.',
     };
     delete descriptor.compatibility;
-    if (incompatible)
+    if (incompatible) {
       descriptor.compatibility = {
         classification: 'unsupported',
         protocolProfile: 'codex-app-server-v2',
       };
+    }
   }
+
   function requireAuthentication(fingerprint: string) {
-    if (!authentication.isRejected(fingerprint)) return;
+    if (!authentication.isRejected(fingerprint)) {
+      return;
+    }
+
     const error = new SessionError(
       'PROVIDER_AUTH_REQUIRED',
       'Sign in again using the Codex CLI, then recheck provider availability.',
     );
     invalidate(error, fingerprint);
+
     throw error;
   }
+
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
       const bounded = AbortSignal.any([signal, AbortSignal.timeout(ProviderTimeouts.discoveryMs)]);
@@ -102,14 +112,18 @@ export function createCodexDriver(
           const installation = await inspect(bounded);
           inspectedAuthentication = installation.authenticationFingerprint;
           requireAuthentication(installation.authenticationFingerprint);
-          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
+          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000) {
             return structuredClone(descriptor);
+          }
+
           const compatibility = classifyProviderInstallation({
             ...installation,
             providerId: 'codex',
           });
-          if (compatibility.classification === 'unsupported')
+          if (compatibility.classification === 'unsupported') {
             throw new SessionError('PROVIDER_UNAVAILABLE', compatibility.reason);
+          }
+
           const result = await probe({
             ...installation,
             workspace: options.workspace,
@@ -117,7 +131,10 @@ export function createCodexDriver(
             signal: bounded,
           });
           inspectedAuthentication = undefined;
-          if ((await inspect(bounded)).fingerprint !== installation.fingerprint) continue;
+          if ((await inspect(bounded)).fingerprint !== installation.fingerprint) {
+            continue;
+          }
+
           requireAuthentication(installation.authenticationFingerprint);
           const modes = codexModes.map((mode) => {
             const compatible = compatibilityForExecution(compatibility, mode.mode);
@@ -133,11 +150,14 @@ export function createCodexDriver(
               managedEffectsAvailable: options.managedWrites,
             });
             let reason: string | undefined;
-            if (!supported) reason = 'The installed Codex does not expose this native mode.';
-            else if (mode.mode === 'workspace-write' && !options.managedWrites)
+            if (!supported) {
+              reason = 'The installed Codex does not expose this native mode.';
+            } else if (mode.mode === 'workspace-write' && !options.managedWrites) {
               reason = 'Managed workspace execution is unavailable.';
-            else if (!enforcement)
+            } else if (!enforcement) {
               reason = 'Native Codex execution restrictions could not be verified.';
+            }
+
             return {
               modeId: mode.modeId,
               nativeMode: mode.nativeMode,
@@ -163,20 +183,25 @@ export function createCodexDriver(
           };
           delete descriptor.reason;
           delete descriptor.reasonCode;
-          if (descriptor.readiness !== 'ready')
+          if (descriptor.readiness !== 'ready') {
             descriptor.reason = 'No Codex execution mode is currently available.';
+          }
+
           checkedFingerprint = installation.fingerprint;
           authentication.verified(installation.authenticationFingerprint);
           checkedAt = Date.now();
           scope = installation.accountScope;
+
           return structuredClone(descriptor);
         }
+
         throw new SessionError(
           'PROVIDER_UNAVAILABLE',
           'Codex installation changed repeatedly during discovery.',
         );
       } catch (error) {
         invalidate(error, inspectedAuthentication);
+
         return structuredClone(descriptor);
       }
     })();
@@ -186,50 +211,67 @@ export function createCodexDriver(
       discovery = undefined;
     }
   }
+
   async function readyInstallation(signal: AbortSignal) {
     for (let attempt = 0; attempt < 2; attempt++) {
       await refresh(signal);
-      if (descriptor.readiness !== 'ready')
+      if (descriptor.readiness !== 'ready') {
         throw new SessionError(
           descriptor.readiness === 'authenticationRequired'
             ? 'PROVIDER_AUTH_REQUIRED'
             : 'PROVIDER_UNAVAILABLE',
           descriptor.reason ?? 'Codex is unavailable.',
         );
+      }
+
       const current = await inspect(signal).catch((error: unknown) => {
         invalidate(error);
+
         throw error;
       });
       if (current.fingerprint === checkedFingerprint && current.accountScope === scope) {
         requireAuthentication(current.authenticationFingerprint);
+
         return current;
       }
     }
+
     invalidate();
+
     throw new SessionError('PROVIDER_UNAVAILABLE', 'Codex installation changed before invocation.');
   }
+
   function validateSelection(selection: Invocation['selection']) {
     const mode = codexMode(selection);
     if (
       descriptor.providerModes?.find((item) => item.modeId === mode.modeId)?.readiness !== 'ready'
-    )
+    ) {
       throw new SessionError(
         'CAPABILITY_UNSUPPORTED',
         'Requested native Codex mode is unavailable.',
       );
-    if (!selection.modelId && !selection.effort) return;
+    }
+
+    if (!selection.modelId && !selection.effort) {
+      return;
+    }
+
     const model = descriptor.models.find((model) => model.modelId === selection.modelId);
-    if (!model)
+    if (!model) {
       throw new SessionError(
         'MODEL_UNSUPPORTED',
         'Select an available native Codex model before overriding model or effort.',
       );
-    if (selection.effort && !model.efforts.includes(selection.effort))
+    }
+
+    if (selection.effort && !model.efforts.includes(selection.effort)) {
       throw new SessionError(
         'CAPABILITY_UNSUPPORTED',
         'Requested Codex effort is unavailable for this model.',
       );
+    }
   }
+
   return {
     nativeContextMode: 'provider-assigned',
     supportsManagedWrites: options.managedWrites === true,
@@ -237,8 +279,10 @@ export function createCodexDriver(
     refresh,
     contextScope: () => scope,
     async validate(selection, signal = AbortSignal.timeout(ProviderTimeouts.discoveryMs)) {
-      if (selection.providerId !== 'codex')
+      if (selection.providerId !== 'codex') {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Codex provider identity is required.');
+      }
+
       await readyInstallation(signal);
       validateSelection(selection);
     },
@@ -250,16 +294,19 @@ export function createCodexDriver(
         context.kind !== invocation.selection.mode ||
         (context.kind === 'workspace-write' &&
           (!options.managedWrites || context.admission.operationId !== invocation.invocationId))
-      )
+      ) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',
           'Verified matching workspace execution authority is required.',
         );
+      }
+
       let fingerprint: string | undefined;
       let launchAuthentication: string | undefined;
       let nativeHome: string | undefined;
       let dispatched = false;
       const beforeDispatch = invocation.beforeDispatch;
+
       return createCodexOperation(
         {
           ...invocation,
@@ -267,7 +314,10 @@ export function createCodexDriver(
             ? {
                 beforeDispatch: async () => {
                   await beforeDispatch();
-                  if (launchAuthentication) requireAuthentication(launchAuthentication);
+                  if (launchAuthentication) {
+                    requireAuthentication(launchAuthentication);
+                  }
+
                   dispatched = true;
                 },
               }
@@ -281,7 +331,7 @@ export function createCodexDriver(
               ['PROVIDER_UNAVAILABLE', 'PROVIDER_AUTH_REQUIRED', 'TIMEOUT'].includes(
                 fact.error.code,
               ))
-          )
+          ) {
             invalidate(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
                 ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
@@ -289,13 +339,18 @@ export function createCodexDriver(
               dispatched ? launchAuthentication : undefined,
               dispatched ? 'operation' : 'discovery',
             );
+          }
+
           await emit(fact);
         },
         signal,
         {
           workspace: options.workspace,
           home() {
-            if (!nativeHome) throw new CodexRpcError('protocol');
+            if (!nativeHome) {
+              throw new CodexRpcError('protocol');
+            }
+
             return nativeHome;
           },
           async beforeInput(operationSignal) {
@@ -303,21 +358,25 @@ export function createCodexDriver(
             if (
               current.fingerprint !== fingerprint ||
               current.accountScope !== invocation.providerContext?.scope
-            )
+            ) {
               throw new SessionError(
                 'SESSION_RECOVERY_REQUIRED',
                 'Codex installation or account changed before dispatch.',
               );
+            }
+
             requireAuthentication(current.authenticationFingerprint);
           },
           async launch(operationSignal) {
             const installation = await readyInstallation(operationSignal);
             validateSelection(invocation.selection);
-            if (installation.accountScope !== invocation.providerContext?.scope)
+            if (installation.accountScope !== invocation.providerContext?.scope) {
               throw new SessionError(
                 'SESSION_RECOVERY_REQUIRED',
                 'Codex account changed after native context admission.',
               );
+            }
+
             fingerprint = installation.fingerprint;
             launchAuthentication = installation.authenticationFingerprint;
             nativeHome = installation.home;
@@ -325,6 +384,7 @@ export function createCodexDriver(
               options.temporaryRoot,
               invocation.invocationId,
             );
+
             return launchOwnedProcess({
               ...installation,
               invocationId: invocation.invocationId,

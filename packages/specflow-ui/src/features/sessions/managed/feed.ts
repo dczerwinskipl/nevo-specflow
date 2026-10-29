@@ -39,14 +39,19 @@ export function createSessionFeed(
       return '';
     }
   };
+
   const save = (suffix: string, value: string) => {
     try {
-      if (value) storage?.setItem(key + suffix, value);
-      else storage?.removeItem(key + suffix);
+      if (value) {
+        storage?.setItem(key + suffix, value);
+      } else {
+        storage?.removeItem(key + suffix);
+      }
     } catch {
       /* Browser storage may be unavailable; current in-memory draft remains usable. */
     }
   };
+
   let pending: StartTurn | undefined;
   let pendingReadable = true;
   try {
@@ -59,14 +64,17 @@ export function createSessionFeed(
       typeof value.message === 'string' &&
       'requestId' in value &&
       typeof value.requestId === 'string'
-    )
+    ) {
       pending = value as StartTurn;
-    else if (encoded) pendingReadable = false;
+    } else if (encoded) {
+      pendingReadable = false;
+    }
   } catch {
     // An unreadable record may contain a dispatched command whose ACK was lost.
     // Do not overwrite it with a newly generated request ID.
     pendingReadable = false;
   }
+
   let state: FeedState = {
     connection: 'loading',
     historyBusy: false,
@@ -84,10 +92,16 @@ export function createSessionFeed(
     generation = 0;
   const notify = (next: FeedState) => {
     state = next;
-    for (const listener of listeners) listener();
+    for (const listener of listeners) {
+      listener();
+    }
   };
+
   function apply(event: SessionChange) {
-    if (!state.snapshot) return;
+    if (!state.snapshot) {
+      return;
+    }
+
     let incoming = event;
     if (state.away && event.kind === 'conversation') {
       const existing = new Set(state.snapshot.entries.map((e) => e.id));
@@ -99,6 +113,7 @@ export function createSessionFeed(
         },
       };
     }
+
     const snapshot = applySessionEvent(state.snapshot, incoming);
     notify({
       ...state,
@@ -114,13 +129,21 @@ export function createSessionFeed(
           : event.kind === 'interaction'
             ? event.changes.projection.activeTurn?.turnId
             : undefined;
-    if (changedTurn) for (const listener of workListeners) listener(changedTurn);
+    if (changedTurn) {
+      for (const listener of workListeners) {
+        listener(changedTurn);
+      }
+    }
   }
+
   async function run(signal: AbortSignal, token: number) {
     try {
       while (!signal.aborted && token === generation) {
         const fresh = await api.snapshot(sessionId, signal);
-        if (signal.aborted || token !== generation) return;
+        if (signal.aborted || token !== generation) {
+          return;
+        }
+
         const old = state.snapshot;
         const entries = old ? mergeEntries(old.entries, fresh.entries) : fresh.entries;
         const gap =
@@ -140,13 +163,19 @@ export function createSessionFeed(
         });
         let restart = false;
         for await (const event of api.watch(sessionId, fresh.eventSeq, signal, () => {
-          if (token === generation) notify({ ...state, connection: 'reconnecting' });
+          if (token === generation) {
+            notify({ ...state, connection: 'reconnecting' });
+          }
         })) {
-          if (signal.aborted || token !== generation) return;
+          if (signal.aborted || token !== generation) {
+            return;
+          }
+
           if (!event) {
             restart = true;
             break;
           }
+
           if (
             state.snapshot &&
             event.sessionId === sessionId &&
@@ -155,49 +184,80 @@ export function createSessionFeed(
             restart = true;
             break;
           }
+
           apply(event);
           if ((state.snapshot?.entries.length ?? 0) > conversationWindow) {
             restart = true;
             break;
           }
         }
-        if (!restart) return;
+
+        if (!restart) {
+          return;
+        }
       }
     } catch {
-      if (!signal.aborted && token === generation) notify({ ...state, connection: 'error' });
+      if (!signal.aborted && token === generation) {
+        notify({ ...state, connection: 'error' });
+      }
     }
   }
+
   async function send() {
-    if (state.commandBusy) return;
+    if (state.commandBusy) {
+      return;
+    }
+
     const request = state.pending ?? { requestId: crypto.randomUUID(), message: state.draft };
-    if (!request.message.trim()) return;
+    if (!request.message.trim()) {
+      return;
+    }
+
     if (utf8Bytes(request.message) > SessionLimits.messageBytes) {
       notify({ ...state, commandError: true });
+
       return;
     }
+
     try {
-      if (!storage || !pendingReadable) throw new Error('Pending command storage is unavailable.');
+      if (!storage || !pendingReadable) {
+        throw new Error('Pending command storage is unavailable.');
+      }
+
       const encoded = JSON.stringify(request);
       const retained = storage.getItem(key + ':pending');
-      if (retained && retained !== encoded) throw new Error('Another command is retained.');
+      if (retained && retained !== encoded) {
+        throw new Error('Another command is retained.');
+      }
+
       storage.setItem(key + ':pending', encoded);
-      if (storage.getItem(key + ':pending') !== encoded)
+      if (storage.getItem(key + ':pending') !== encoded) {
         throw new Error('Pending command retention could not be confirmed.');
+      }
     } catch {
       notify({ ...state, pending: request, commandError: true });
+
       return;
     }
+
     notify({ ...state, pending: request, commandBusy: true, commandError: false });
     try {
       await api.start(sessionId, request);
       // Keep the exact command retryable until its durable record is gone.
       // Acknowledgement alone must not let a newer command replace this record.
-      if (storage.getItem(key + ':pending') === JSON.stringify(request))
+      if (storage.getItem(key + ':pending') === JSON.stringify(request)) {
         storage.removeItem(key + ':pending');
-      if (storage.getItem(key + ':pending') !== null)
+      }
+
+      if (storage.getItem(key + ':pending') !== null) {
         throw new Error('Pending command cleanup could not be confirmed.');
+      }
+
       const draft = state.draft === request.message ? '' : state.draft;
-      if (read(':draft') === request.message) save(':draft', '');
+      if (read(':draft') === request.message) {
+        save(':draft', '');
+      }
+
       const next = { ...state, draft, commandBusy: false };
       delete next.pending;
       notify(next);
@@ -205,14 +265,17 @@ export function createSessionFeed(
       notify({ ...state, commandBusy: false, commandError: true });
     }
   }
+
   return {
     getSnapshot: () => state,
     subscribe: (listener: () => void) => {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
     subscribeWork(listener: (turnId: string) => void) {
       workListeners.add(listener);
+
       return () => workListeners.delete(listener);
     },
     connect() {
@@ -225,6 +288,7 @@ export function createSessionFeed(
         connection: state.snapshot ? 'reconnecting' : 'loading',
       });
       void run(controller.signal, token);
+
       return () => {
         if (token === generation) {
           generation++;
@@ -241,17 +305,25 @@ export function createSessionFeed(
       notify({ ...state, draft });
     },
     setAway(away: boolean) {
-      if (state.away !== away) notify({ ...state, away });
+      if (state.away !== away) {
+        notify({ ...state, away });
+      }
     },
     send,
     async recheckProvider() {
-      if (state.commandBusy) return;
+      if (state.commandBusy) {
+        return;
+      }
+
       const token = generation;
       notify({ ...state, commandBusy: true, commandError: false });
       try {
         await api.providers(controller?.signal);
         notify({ ...state, commandBusy: false });
-        if (token !== generation) return;
+        if (token !== generation) {
+          return;
+        }
+
         this.connect();
       } catch {
         notify({
@@ -263,18 +335,29 @@ export function createSessionFeed(
     },
     async older() {
       const before = state.snapshot?.history.before;
-      if (!before || state.historyBusy) return;
+      if (!before || state.historyBusy) {
+        return;
+      }
+
       const token = generation;
       notify({ ...state, historyBusy: true, historyError: false, away: true });
       try {
         const page = await api.history(sessionId, before, controller?.signal);
-        if (token !== generation || !state.snapshot) return;
+        if (token !== generation || !state.snapshot) {
+          return;
+        }
+
         const snapshot = prependHistory(state.snapshot, page);
         const trimmed = snapshot.entries.length > conversationWindow;
-        if (trimmed) snapshot.entries = snapshot.entries.slice(0, conversationWindow);
+        if (trimmed) {
+          snapshot.entries = snapshot.entries.slice(0, conversationWindow);
+        }
+
         notify({ ...state, snapshot, historyBusy: false, hasNew: state.hasNew || trimmed });
       } catch {
-        if (token === generation) notify({ ...state, historyBusy: false, historyError: true });
+        if (token === generation) {
+          notify({ ...state, historyBusy: false, historyError: true });
+        }
       }
     },
     latest() {
@@ -286,11 +369,15 @@ export function createSessionFeed(
         historyError: false,
         historyBusy: false,
       };
+
       return this.connect();
     },
     async cancel() {
       const turnId = state.snapshot?.activeTurn?.turnId;
-      if (!turnId || state.commandBusy) return;
+      if (!turnId || state.commandBusy) {
+        return;
+      }
+
       notify({ ...state, commandBusy: true, commandError: false });
       try {
         await api.cancel(sessionId, turnId, crypto.randomUUID());
@@ -300,7 +387,10 @@ export function createSessionFeed(
       }
     },
     async respond(interactionId: string, input: RespondInteraction) {
-      if (state.commandBusy) return;
+      if (state.commandBusy) {
+        return;
+      }
+
       notify({ ...state, commandBusy: true, commandError: false });
       try {
         await api.respond(sessionId, interactionId, input);
@@ -311,4 +401,5 @@ export function createSessionFeed(
     },
   };
 }
+
 export type SessionFeed = ReturnType<typeof createSessionFeed>;

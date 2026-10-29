@@ -1,7 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -60,6 +59,7 @@ function fixture(): string {
       '',
     ].join('\n'),
   );
+
   return root;
 }
 

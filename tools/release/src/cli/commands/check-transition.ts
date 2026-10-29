@@ -20,6 +20,7 @@ export function checkTransitionCommand(ctx: CliContext): Command {
         if (outcome.kind === 'illegal') {
           throw new InconsistentStateError(`Illegal version.json transition: ${outcome.error}`);
         }
+
         return;
       }
 
@@ -27,16 +28,20 @@ export function checkTransitionCommand(ctx: CliContext): Command {
         ctx.stdout(
           `no version.json at ${outcome.baseRef} (${outcome.source}) — skipping transition check`,
         );
+
         return;
       }
+
       if (outcome.kind === 'ok') {
         ctx.stdout(
           `version.json ${outcome.from.channel} ${outcome.from.version} -> ` +
             `${outcome.to.channel} ${outcome.to.version} on ${outcome.targetBranch} ` +
             `(${outcome.source}): ${outcome.transition}`,
         );
+
         return;
       }
+
       throw new InconsistentStateError(
         `Illegal version.json transition on '${outcome.targetBranch}' (${outcome.source}):\n` +
           `  ${outcome.from.channel} ${outcome.from.version} -> ` +

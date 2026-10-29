@@ -40,8 +40,10 @@ export async function readRegisteredDocumentSummaries(
     now: resolveReadOptions(options).now,
     ...(options.processTable !== undefined ? { processTable: options.processTable } : {}),
   });
+
   return summaries.map((summary) => {
     const commit = view.markers.get(summary.path);
+
     return commit === undefined ? summary : { ...summary, commit };
   });
 }
@@ -69,9 +71,13 @@ async function summariesOfLoaded(
           revision: analysis.revision,
         }),
       );
-      if (probe.kind !== 'file') return undefined;
+      if (probe.kind !== 'file') {
+        return undefined;
+      }
+
       return { id: document.id, path: document.path, type: document.type, ...probe.value };
     },
   );
+
   return rows.filter((row): row is RegisteredDocumentSummary => row !== undefined);
 }

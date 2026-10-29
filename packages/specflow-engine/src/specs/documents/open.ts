@@ -56,6 +56,7 @@ export async function openSpecificationDocument(
   options: DocumentReadOptions = {},
 ): Promise<OpenedDocument> {
   const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
+
   return openDocumentOfLoaded(loaded, documentId, options);
 }
 
@@ -72,6 +73,7 @@ async function openDocumentOfLoaded(
     if (stat.size > BigInt(RAW_CONTENT_MAX_BYTES)) {
       throw new DocumentError('DOCUMENT_TOO_LARGE', 'The document is larger than the raw limit.');
     }
+
     const analysis = await analyzeOpenFile(handle, stat, located.path);
     const metadata: OpenedDocumentMetadata = {
       specId: loaded.specId,
@@ -89,6 +91,7 @@ async function openDocumentOfLoaded(
       // Within the hash limit the bytes are already in memory and match the revision exactly.
       return { metadata, stream: Readable.from([analysis.bytes], { objectMode: false }) };
     }
+
     // Large file: the revision is a stat signature, so the file must still be the one that was
     // stat'ed. A change in the window is reported instead of served under a stale ETag.
     const current = await handle.stat({ bigint: true });
@@ -98,13 +101,16 @@ async function openDocumentOfLoaded(
         'A document changed while it was being opened.',
       );
     }
+
     // The stream now owns the handle and closes it when it ends or is destroyed.
     adopt();
+
     return { metadata, stream: new FileStream(handle, analysis.size) };
   });
   if (outcome.state !== 'opened') {
     throw new DocumentError('DOCUMENT_FILE_MISSING', 'The document has no file.');
   }
+
   return outcome.value;
 }
 
@@ -125,16 +131,20 @@ class FileStream extends Readable {
   override _read(): void {
     if (this.position >= this.size) {
       this.push(null);
+
       return;
     }
+
     const length = Math.min(CHUNK_BYTES, this.size - this.position);
     const buffer = Buffer.allocUnsafe(length);
     this.handle.read(buffer, 0, length, this.position).then(
       ({ bytesRead }) => {
         if (bytesRead === 0) {
           this.destroy(new Error('The document became shorter while it was being sent.'));
+
           return;
         }
+
         this.position += bytesRead;
         this.push(buffer.subarray(0, bytesRead));
       },
@@ -145,8 +155,10 @@ class FileStream extends Readable {
   override _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
     if (this.handleClosed) {
       callback(error);
+
       return;
     }
+
     this.handleClosed = true;
     this.handle.close().then(
       () => callback(error),

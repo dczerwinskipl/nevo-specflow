@@ -41,6 +41,7 @@ export function DataTableHeader<TData extends RowData>({
             const resizeBy = (delta: number) => {
               table.setColumnSizing((previous) => {
                 const current = previous[header.column.id] ?? header.column.getSize();
+
                 return {
                   ...previous,
                   [header.column.id]: Math.min(maximum, Math.max(minimum, current + delta)),
@@ -114,14 +115,17 @@ export function DataTableHeader<TData extends RowData>({
                         event.preventDefault();
                         resizeBy(-DATA_TABLE_KEYBOARD_RESIZE_STEP);
                       }
+
                       if (event.key === 'ArrowRight') {
                         event.preventDefault();
                         resizeBy(DATA_TABLE_KEYBOARD_RESIZE_STEP);
                       }
+
                       if (event.key === 'Home') {
                         event.preventDefault();
                         resizeBy(minimum - header.column.getSize());
                       }
+
                       if (event.key === 'End') {
                         event.preventDefault();
                         resizeBy(maximum - header.column.getSize());

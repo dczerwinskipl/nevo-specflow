@@ -11,14 +11,24 @@ export class StoreFault extends Error {
 export function fail(code: string, message: string): never {
   throw new StoreFault(code, message);
 }
+
 export const decode = <T>(value: Row | undefined, key = 'data'): T => {
-  if (!value || typeof value[key] !== 'string')
+  if (!value || typeof value[key] !== 'string') {
     return fail('SESSION_RESOURCE_NOT_FOUND', 'Resource is unavailable.');
+  }
+
   return JSON.parse(value[key]) as T;
 };
+
 export function stable(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return '[' + value.map(stable).join(',') + ']';
+  }
+
   return (
     '{' +
     Object.entries(value)
@@ -29,6 +39,7 @@ export function stable(value: unknown): string {
     '}'
   );
 }
+
 export function prefix(bytes: Uint8Array, limit: number): string {
   let end = Math.min(bytes.length, limit);
   while (end > 0) {
@@ -36,9 +47,12 @@ export function prefix(bytes: Uint8Array, limit: number): string {
       return new TextDecoder('utf8', { fatal: true }).decode(bytes.subarray(0, end));
     } catch {
       end--;
-      if (end < Math.min(bytes.length, limit) - 4) throw new Error('Invalid content encoding');
+      if (end < Math.min(bytes.length, limit) - 4) {
+        throw new Error('Invalid content encoding');
+      }
     }
   }
+
   return '';
 }
 
@@ -51,9 +65,14 @@ export function boundedPage<Item, Page>(
   for (;;) {
     const page = project(items, hasOlder);
     // HTTP may replace capability true with false and readiness with unavailable after this read.
-    if (Buffer.byteLength(JSON.stringify(page), 'utf8') <= 256 * 1024 - 64) return page;
-    if (items.length <= 1)
+    if (Buffer.byteLength(JSON.stringify(page), 'utf8') <= 256 * 1024 - 64) {
+      return page;
+    }
+
+    if (items.length <= 1) {
       fail('SESSION_PAYLOAD_TOO_LARGE', 'Session page metadata exceeds its byte budget.');
+    }
+
     items = items.slice(1);
     hasOlder = true;
   }

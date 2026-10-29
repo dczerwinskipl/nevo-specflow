@@ -31,6 +31,7 @@ async function project(commits = ''): Promise<{ root: string; engine: SpecFlowEn
   );
   roots.push(root);
   git(root, 'checkout', '-q', '-b', 'feature/work');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -105,6 +106,7 @@ describe('Engine commit port (real Git)', () => {
     for (const hook of ['pre-commit', 'commit-msg']) {
       await writeFile(join(root, '.git/hooks', hook), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
+
     await writeScaffold(root);
 
     const { sha } = await openVersionControl(engine).commits.commit(request(root));
@@ -152,6 +154,7 @@ describe('Engine commit port (real Git)', () => {
       ]) {
         await expect(call()).rejects.toMatchObject({ code: 'BRANCH_PROTECTED', reason });
       }
+
       expect(git(root, 'rev-parse', 'HEAD')).toBe(parent);
       expect(git(root, 'diff', '--cached', '--name-only')).toBe('');
     },
@@ -178,6 +181,7 @@ describe('Engine commit port (real Git)', () => {
       'detached HEAD',
       (root) => {
         git(root, 'checkout', '-q', '--detach');
+
         return Promise.resolve();
       },
       'detached',
@@ -186,6 +190,7 @@ describe('Engine commit port (real Git)', () => {
       'another branch checked out',
       (root) => {
         git(root, 'checkout', '-q', '-b', 'elsewhere');
+
         return Promise.resolve();
       },
       'branch-changed',
@@ -249,6 +254,7 @@ describe('Engine commit port (real Git)', () => {
     } catch {
       // The conflict is the point.
     }
+
     // Only the unresolved index entries remain (no MERGE_HEAD): the unmerged check still blocks.
     await rm(join(root, '.git/MERGE_HEAD'), { force: true });
     await expect(openVersionControl(engine).commits.preflight(request(root))).rejects.toMatchObject(
@@ -335,6 +341,7 @@ describe('Engine commit port (real Git)', () => {
         'id: ' + name + '\n',
       );
     }
+
     const results = await Promise.all(
       names.map((name) =>
         commits.commit(
@@ -373,6 +380,7 @@ describe('Engine commit port: branch race and trailer poisoning (real Git)', () 
     const commits = createGitCommitPort(engine, {
       afterPreflight: () => {
         git(root, 'checkout', '-q', '-b', 'elsewhere');
+
         return Promise.resolve();
       },
     });
@@ -391,6 +399,7 @@ describe('Engine commit port: branch race and trailer poisoning (real Git)', () 
     const commits = createGitCommitPort(engine, {
       afterPreflight: () => {
         git(root, 'checkout', '-q', '-b', 'release');
+
         return Promise.resolve();
       },
     });
@@ -406,6 +415,7 @@ describe('Engine commit port: branch race and trailer poisoning (real Git)', () 
     const commits = createGitCommitPort(engine, {
       afterRecheck: () => {
         git(root, 'checkout', '-q', '-b', 'elsewhere');
+
         return Promise.resolve();
       },
     });

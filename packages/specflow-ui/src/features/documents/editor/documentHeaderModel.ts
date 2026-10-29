@@ -32,7 +32,10 @@ export function documentHeaderModel(
         },
       ]
     : [];
-  if (!session) return { actions: close, dirty: false };
+  if (!session) {
+    return { actions: close, dirty: false };
+  }
+
   const kind = documentKindOf(session.document);
   const view = documentViewOf(kind, session.draft);
   const { onAssignType } = options;
@@ -48,6 +51,7 @@ export function documentHeaderModel(
           },
         ]
       : [];
+
   return {
     dirty: session.dirty,
     actions: [

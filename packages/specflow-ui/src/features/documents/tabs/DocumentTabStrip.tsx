@@ -13,6 +13,7 @@ export const documentTabsScope = 'documents-tabs';
 /** The strip's copy, in the user's language. */
 export function useDocumentTabLabels(): Partial<ItemTabsLabels> {
   const { t } = useTranslation();
+
   return useMemo(
     () => ({
       tablist: t('documents.tabs.tablist'),
@@ -64,6 +65,7 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
     [tabs.tabs, catalogue.data, t],
   );
   const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
+
   return (
     <>
       {/* The region's heading: the strip is not a heading, and focus lands here after a switch. */}

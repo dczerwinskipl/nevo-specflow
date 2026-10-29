@@ -24,13 +24,16 @@ export function codexMode(selection: Invocation['selection']): CodexMode {
   const id =
     selection.providerModeId ?? (selection.mode === 'workspace-write' ? 'default' : 'plan');
   const mode = codexModes.find((mode) => mode.modeId === id);
-  if (mode?.mode !== selection.mode)
+  if (mode?.mode !== selection.mode) {
     throw new SessionError(
       'CAPABILITY_UNSUPPORTED',
       'Select a supported native Codex mode with matching effect authority.',
     );
+  }
+
   return mode;
 }
+
 export function codexSandbox(workspace: string, mode: CodexMode) {
   return mode.mode === 'workspace-write'
     ? {

@@ -59,14 +59,19 @@ export function useInlineEntry(options: {
       const document = rename?.id
         ? snapshot.documents.find((doc) => doc.id === rename.id)
         : undefined;
-      if (rename && kind === 'document' && !document) throw new Error('Missing document');
+      if (rename && kind === 'document' && !document) {
+        throw new Error('Missing document');
+      }
+
       // A folder rename sends the FOLDER revision; a folder without one cannot be renamed.
       const folderRevision =
         rename && kind === 'folder' ? folderOperationRevision(snapshot, rename.path) : undefined;
       if (rename && kind === 'folder' && !folderRevision) {
         operations.refuse(text(message('documents.tree.error.folderRevisionMissing')));
+
         return;
       }
+
       onOpenFolder(parent);
       put({
         key: newId(),
@@ -80,23 +85,33 @@ export function useInlineEntry(options: {
 
   const commit: InlineEntrySession['commit'] = async (source) => {
     const current = latest.current;
-    if (!current || operations.isBusy() || (operations.isUnknown() && source !== 'retry')) return;
+    if (!current || operations.isBusy() || (operations.isUnknown() && source !== 'retry')) {
+      return;
+    }
+
     const signature = current.key + ':' + current.name;
-    if (source === 'blur' && lastSubmitted.current === signature) return;
+    if (source === 'blur' && lastSubmitted.current === signature) {
+      return;
+    }
+
     lastSubmitted.current = signature;
     const decision = resolveEntry(current);
     if (decision.type === 'cancel') {
       focus.request(entryOriginKey(current));
       put(undefined);
+
       return;
     }
+
     if (decision.type === 'invalid') {
       lastSubmitted.current = '';
       const error = text(decision.message);
       setEntry((now) => (now?.key === current.key ? { ...now, error } : now));
       latest.current = { ...current, error };
+
       return;
     }
+
     await operations.submitEntry(current, decision.finalName, (outcome) => {
       if (outcome.ok) {
         focus.request(entryResultKey(current, decision.finalName));
@@ -112,13 +127,19 @@ export function useInlineEntry(options: {
     inputRef,
     start,
     change: (name) => {
-      if (!entry) return;
+      if (!entry) {
+        return;
+      }
+
       put({ ...entry, name, error: undefined });
     },
     commit,
     cancel: () => {
       const current = latest.current;
-      if (!current || operations.isUnknown()) return;
+      if (!current || operations.isUnknown()) {
+        return;
+      }
+
       focus.request(entryOriginKey(current));
       put(undefined);
     },
@@ -132,12 +153,19 @@ export function useInlineEntry(options: {
     },
     blur: () => {
       // The header menu that started this entry still holds focus while it closes.
-      if (awaitingMenuClose.current) return;
+      if (awaitingMenuClose.current) {
+        return;
+      }
+
       void commit('blur');
     },
     focusInput: () => {
-      if (!latest.current) return false;
+      if (!latest.current) {
+        return false;
+      }
+
       queueMicrotask(() => inputRef.current?.focus());
+
       return true;
     },
   };

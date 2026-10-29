@@ -86,6 +86,7 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
             : {}),
         });
       }
+
       app.register(specsCloseEndpoint, { engine: options.dependencies?.engine });
       app.register(specsOverviewEndpoint, {
         repository,

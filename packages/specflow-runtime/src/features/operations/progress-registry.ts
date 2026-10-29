@@ -147,7 +147,9 @@ export function createOperationProgressRegistry(
 
   const stamp = () => now().toISOString();
   const notify = (entry: Entry) => {
-    for (const listener of [...entry.listeners]) listener();
+    for (const listener of [...entry.listeners]) {
+      listener();
+    }
   };
 
   function publish(entry: Entry, event: (at: string) => OperationProgressEvent): void {
@@ -167,7 +169,9 @@ export function createOperationProgressRegistry(
     pruneFinished();
     setTimeout(() => {
       const key = keyOf(entry.kind, entry.operationId);
-      if (entries.get(key) === entry) entries.delete(key);
+      if (entries.get(key) === entry) {
+        entries.delete(key);
+      }
     }, graceMs).unref();
   }
 
@@ -175,10 +179,17 @@ export function createOperationProgressRegistry(
     const running = () => entry.status === 'running';
     const moveStep = (stepId: string, status: Exclude<OperationStepStatus, 'pending'>) => {
       const step = entry.steps.find((item) => item.id === stepId);
-      if (!step || step.status === status) return;
+      if (!step || step.status === status) {
+        return;
+      }
+
       step.status = status;
-      if (status === 'running') entry.currentStep = stepId;
-      else if (entry.currentStep === stepId) delete entry.currentStep;
+      if (status === 'running') {
+        entry.currentStep = stepId;
+      } else if (entry.currentStep === stepId) {
+        delete entry.currentStep;
+      }
+
       publish(entry, (at) => ({
         type: 'step',
         operationId: entry.operationId,
@@ -188,15 +199,24 @@ export function createOperationProgressRegistry(
         at,
       }));
     };
+
     return {
       step(stepId, status) {
-        if (running()) moveStep(stepId, status);
+        if (running()) {
+          moveStep(stepId, status);
+        }
       },
       complete(result) {
-        if (!running()) return;
-        for (const step of entry.steps) {
-          if (step.status !== 'done' && step.status !== 'skipped') moveStep(step.id, 'done');
+        if (!running()) {
+          return;
         }
+
+        for (const step of entry.steps) {
+          if (step.status !== 'done' && step.status !== 'skipped') {
+            moveStep(step.id, 'done');
+          }
+        }
+
         finish(entry, 'completed');
         publish(entry, (at) => ({
           type: 'completed',
@@ -207,7 +227,10 @@ export function createOperationProgressRegistry(
         }));
       },
       fail(code) {
-        if (!running()) return;
+        if (!running()) {
+          return;
+        }
+
         entry.failureCode = code;
         finish(entry, 'failed');
         publish(entry, (at) => ({
@@ -219,7 +242,10 @@ export function createOperationProgressRegistry(
         }));
       },
       recoveryRequired() {
-        if (!running()) return;
+        if (!running()) {
+          return;
+        }
+
         finish(entry, 'recovery-required');
         publish(entry, (at) => ({
           type: 'recovery-required',
@@ -250,11 +276,17 @@ export function createOperationProgressRegistry(
     const at = now().getTime();
     for (const [key, item] of finished) {
       const limit = item.status === 'completed' ? completedMs : failedMs;
-      if (at - Date.parse(item.finishedAt ?? item.updatedAt) >= limit) finished.delete(key);
+      if (at - Date.parse(item.finishedAt ?? item.updatedAt) >= limit) {
+        finished.delete(key);
+      }
     }
+
     // Map preserves insertion order: the first keys are the oldest finishes.
     for (const key of finished.keys()) {
-      if (finished.size <= listCap) break;
+      if (finished.size <= listCap) {
+        break;
+      }
+
       finished.delete(key);
     }
   }
@@ -289,7 +321,10 @@ export function createOperationProgressRegistry(
     waitMs: number,
     signal: AbortSignal | undefined,
   ): Promise<void> {
-    if (entries.has(key) || signal?.aborted || waitMs <= 0) return;
+    if (entries.has(key) || signal?.aborted || waitMs <= 0) {
+      return;
+    }
+
     await new Promise<void>((resolve) => {
       const set = arrivals.get(key) ?? new Set<() => void>();
       arrivals.set(key, set);
@@ -297,9 +332,13 @@ export function createOperationProgressRegistry(
         clearTimeout(timer);
         signal?.removeEventListener('abort', done);
         set.delete(done);
-        if (set.size === 0) arrivals.delete(key);
+        if (set.size === 0) {
+          arrivals.delete(key);
+        }
+
         resolve();
       };
+
       const timer = setTimeout(done, waitMs);
       set.add(done);
       signal?.addEventListener('abort', done, { once: true });
@@ -311,7 +350,10 @@ export function createOperationProgressRegistry(
       const key = keyOf(input.kind, input.operationId);
       // Only a still running entry is a concurrent replay of the same work. A finished one (inside
       // its grace window) belongs to an earlier run; a retry that really runs again replaces it.
-      if (entries.get(key)?.status === 'running') return noopReporter;
+      if (entries.get(key)?.status === 'running') {
+        return noopReporter;
+      }
+
       const entry: Entry = {
         operationId: input.operationId,
         kind: input.kind,
@@ -326,7 +368,10 @@ export function createOperationProgressRegistry(
       entries.set(key, entry);
       // A new run replaces the finished record of an earlier run with the same id.
       finished.delete(key);
-      for (const wake of [...(arrivals.get(key) ?? [])]) wake();
+      for (const wake of [...(arrivals.get(key) ?? [])]) {
+        wake();
+      }
+
       return reporterFor(entry);
     },
 
@@ -334,11 +379,15 @@ export function createOperationProgressRegistry(
       const { signal } = watchOptions;
       const key = keyOf(kind, operationId);
       await awaitArrival(key, watchOptions.waitMs ?? DEFAULT_PROGRESS_WAIT_MS, signal);
-      if (signal?.aborted) return;
+      if (signal?.aborted) {
+        return;
+      }
+
       const entry = entries.get(key);
       // An operation of a different kind is a different key: unknown, nothing is revealed.
       if (!entry) {
         yield notFound(operationId, kind);
+
         return;
       }
 
@@ -356,7 +405,10 @@ export function createOperationProgressRegistry(
         // receives it (with its own id) so the consumer handles every run uniformly.
         if (entry.status !== 'running') {
           const terminal = entry.log.at(-1);
-          if (terminal && isTerminalOperationProgressEvent(terminal.event)) yield terminal;
+          if (terminal && isTerminalOperationProgressEvent(terminal.event)) {
+            yield terminal;
+          }
+
           return;
         }
       }
@@ -364,29 +416,44 @@ export function createOperationProgressRegistry(
       while (!signal?.aborted) {
         const pending = entry.log.filter((item) => item.id! > cursor);
         for (const item of pending) {
-          if (signal?.aborted) return;
+          if (signal?.aborted) {
+            return;
+          }
+
           cursor = item.id!;
           yield item;
-          if (isTerminalOperationProgressEvent(item.event)) return;
+          if (isTerminalOperationProgressEvent(item.event)) {
+            return;
+          }
         }
-        if (entry.status !== 'running' && cursor >= entry.seq) return;
+
+        if (entry.status !== 'running' && cursor >= entry.seq) {
+          return;
+        }
+
         await new Promise<void>((resolve) => {
           const wake = () => {
             entry.listeners.delete(wake);
             signal?.removeEventListener('abort', wake);
             resolve();
           };
+
           entry.listeners.add(wake);
           signal?.addEventListener('abort', wake, { once: true });
           // An event published between the drain above and registering this listener.
-          if (entry.seq > cursor || signal?.aborted) wake();
+          if (entry.seq > cursor || signal?.aborted) {
+            wake();
+          }
         });
       }
     },
 
     peek(operationId, kind) {
       const entry = entries.get(keyOf(kind, operationId));
-      if (!entry) return undefined;
+      if (!entry) {
+        return undefined;
+      }
+
       return {
         status: entry.status,
         ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
@@ -401,9 +468,13 @@ export function createOperationProgressRegistry(
           ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
         };
       }
+
       pruneFinished();
       const item = finished.get(keyOf(kind, operationId));
-      if (!item) return undefined;
+      if (!item) {
+        return undefined;
+      }
+
       return { status: item.status, ...(item.code !== undefined ? { code: item.code } : {}) };
     },
 
@@ -412,6 +483,7 @@ export function createOperationProgressRegistry(
       const running = [...entries.values()]
         .filter((entry) => entry.status === 'running')
         .map(listingOf);
+
       return [...running, ...finished.values()];
     },
 

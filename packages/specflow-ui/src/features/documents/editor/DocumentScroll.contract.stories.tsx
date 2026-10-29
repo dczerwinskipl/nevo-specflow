@@ -111,6 +111,7 @@ const documents: Record<string, Source> = {
 
 function Header() {
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
+
   return (
     <div className="flex items-center gap-1">
       <div className="min-w-0 flex-1">
@@ -141,6 +142,7 @@ function Fixture({
   const client = useMemo(() => new QueryClient(), []);
   const services = useMemo(() => {
     const base = createSpecFlowAppServices();
+
     return {
       ...base,
       demoDocumentsApi: {
@@ -150,6 +152,7 @@ function Fixture({
     };
   }, []);
   const source = documents[active]!;
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -209,8 +212,10 @@ const previewTopLine = (root: HTMLElement, text = longMarkdown) =>
   readPreviewAnchor(previewOf(root)!, text.split('\n').length);
 const editorOf = (root: HTMLElement) => {
   const element = root.querySelector<HTMLElement>('.cm-editor');
+
   return element ? EditorView.findFromDOM(element)! : undefined;
 };
+
 const editorTopLine = (view: EditorView) =>
   view.state.doc.lineAt(
     view.lineBlockAtHeight(Math.max(0, view.scrollDOM.scrollTop - view.documentPadding.top)).from,
@@ -232,9 +237,14 @@ async function settled(read: () => number): Promise<number> {
     same = next === last ? same + 1 : 0;
     last = next;
   }
-  if (same < 3) throw new Error(`The position did not settle (last ${last})`);
+
+  if (same < 3) {
+    throw new Error(`The position did not settle (last ${last})`);
+  }
+
   return last;
 }
+
 /** Scrolls the source so that `line` is at the top, the way a user reaches it (measured, not estimated). */
 async function scrollEditorToLine(view: EditorView, line: number) {
   view.scrollDOM.dispatchEvent(new Event('wheel'));
@@ -245,6 +255,7 @@ async function scrollEditorToLine(view: EditorView, line: number) {
   view.scrollDOM.dispatchEvent(new Event('scroll'));
   await frames();
 }
+
 /** A wheel gesture followed by the scroll, as a user would do it. */
 async function userScroll(element: HTMLElement, top: number) {
   element.dispatchEvent(new Event('wheel'));
@@ -252,20 +263,26 @@ async function userScroll(element: HTMLElement, top: number) {
   element.dispatchEvent(new Event('scroll'));
   await frames();
 }
+
 async function openEditor({ canvas, canvasElement, userEvent }: Play) {
   await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
   const textbox = await canvas.findByRole('textbox', { name: /^Treść / });
   const view = EditorView.findFromDOM(textbox.closest('.cm-editor')!)!;
   await waitFor(() => {
-    if (!editorOf(canvasElement)) throw new Error('Editor pending');
+    if (!editorOf(canvasElement)) {
+      throw new Error('Editor pending');
+    }
   });
   await frames();
+
   return view;
 }
+
 async function waitForPreview(canvasElement: HTMLElement) {
   await waitFor(() => {
-    if (!previewOf(canvasElement)?.querySelector('[data-source-line]'))
+    if (!previewOf(canvasElement)?.querySelector('[data-source-line]')) {
       throw new Error('Preview pending');
+    }
   });
   await frames();
 }
@@ -381,9 +398,12 @@ export const DirtyDraftKeepsPositionAcrossToggles: Story = {
 };
 async function openEditorOnly(root: HTMLElement) {
   await waitFor(() => {
-    if (!editorOf(root)) throw new Error('Editor pending');
+    if (!editorOf(root)) {
+      throw new Error('Editor pending');
+    }
   });
   await frames();
+
   return editorOf(root)!;
 }
 
@@ -603,8 +623,11 @@ export const NarrowPanelOpensContentsAsSheet: Story = {
       const height = link.getBoundingClientRect().height;
       await expect(height).toBeGreaterThanOrEqual(32);
       // Wrapped titles may take two lines; a single line stays one compact row.
-      if (link.textContent.length < 20) await expect(height).toBeLessThanOrEqual(36);
+      if (link.textContent.length < 20) {
+        await expect(height).toBeLessThanOrEqual(36);
+      }
     }
+
     await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 3' }));
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(previewOf(canvasElement)!.scrollTop).toBeGreaterThan(200));
@@ -663,15 +686,20 @@ export const WrapLinesIsADisplayToggleOfTheSourceEditor: Story = {
     await waitForPreview(canvasElement);
     const menuItem = async () => {
       await userEvent.click(canvas.getByRole('button', { name: 'Więcej akcji' }));
+
       return within(document.body).queryByRole('menuitemcheckbox', { name: 'Zawijaj wiersze' });
     };
+
     // Preview: nothing to wrap, no toggle.
     await expect(await menuItem()).toBeNull();
     await userEvent.keyboard('{Escape}');
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
     const scroller = await waitFor(() => {
       const found = canvasElement.querySelector<HTMLElement>('.cm-scroller');
-      if (!found) throw new Error('No source editor yet');
+      if (!found) {
+        throw new Error('No source editor yet');
+      }
+
       return found;
     });
     await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);

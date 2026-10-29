@@ -35,12 +35,16 @@ export function BaseRefSetting({
   const unavailable = options.baseRefs.length === 0 && !choice.base.on;
 
   const baseRefMeta = (ref: string, checkedOutWorkspaceId?: string) => {
-    if (!checkedOutWorkspaceId || !ref) return undefined;
+    if (!checkedOutWorkspaceId || !ref) {
+      return undefined;
+    }
+
     const workspace = options.workspaces.find((w) => w.workspaceId === checkedOutWorkspaceId);
     const label =
       checkedOutWorkspaceId === primary?.workspaceId
         ? t('create.workspace.settings.refCurrent')
         : t('create.workspace.settings.refWorkspace');
+
     return workspace?.state === 'dirty'
       ? t('create.workspace.settings.refDirty', { label })
       : label;
@@ -73,7 +77,10 @@ export function BaseRefSetting({
         aria-disabled={unavailable ? true : undefined}
         description={description}
         onCheckedChange={(on) => {
-          if (unavailable && on) return;
+          if (unavailable && on) {
+            return;
+          }
+
           // On starts from the effective default (never an empty select, F-08); off restores it.
           update.set({ base: { on, ref: on ? defaultBaseValue(options) : '' } });
         }}

@@ -34,6 +34,7 @@ interface Props {
  */
 export function CreateSpecificationScreen(props: Props) {
   const view = props.specId ? 'new-session' : 'new-specification';
+
   return (
     <CreateRuntimeGate specId={props.specId} view={view}>
       {(mode) =>
@@ -66,13 +67,15 @@ function DemoCreateSpecification(props: Props) {
     queryKey: demoCreationKeys.catalogue(props.specId),
     queryFn: ({ signal }) => services.demoCreationApi.catalogue(props.specId, signal),
   });
-  if (catalogue.isPending)
+  if (catalogue.isPending) {
     return (
       <CreateFallback specId={props.specId} view={view}>
         <p role="status">{t('create.loading')}</p>
       </CreateFallback>
     );
-  if (!catalogue.data)
+  }
+
+  if (!catalogue.data) {
     return (
       <CreateFallback specId={props.specId} view={view}>
         <Alert tone="attention" title={t('create.loadError')}>
@@ -80,6 +83,8 @@ function DemoCreateSpecification(props: Props) {
         </Alert>
       </CreateFallback>
     );
+  }
+
   return (
     <CreateDemoForm
       key={props.specId ?? 'new'}
@@ -93,6 +98,7 @@ function DemoCreateSpecification(props: Props) {
         // The documents feature reads the same catalogue: it is refreshed with it.
         void cache.invalidateQueries({ queryKey: documentCatalogueKeys.all });
         const result = await catalogue.refetch();
+
         return result.isError ? undefined : result.data;
       }}
     />

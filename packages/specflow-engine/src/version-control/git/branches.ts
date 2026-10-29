@@ -16,14 +16,17 @@ export async function inspectLocalBranches(root: string): Promise<LocalBranches>
   const read = async (args: readonly string[]): Promise<string | undefined> => {
     try {
       const result = await executeGit(root, args);
+
       return result.exitCode === 0 ? result.stdout : undefined;
     } catch {
       return undefined;
     }
   };
+
   const listed = await read(['for-each-ref', '--format=%(refname:short)', 'refs/heads']);
   const head = await read(['symbolic-ref', '--quiet', '--short', 'HEAD']);
   const current = head?.trim();
+
   return {
     branches: (listed ?? '')
       .split(/\r?\n/u)

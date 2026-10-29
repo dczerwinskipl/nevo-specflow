@@ -33,12 +33,20 @@ export async function readTaskDetail(
     capability: SpecCapabilities.capabilities.View,
     scope: { specId },
   });
-  if (!deps.definitions) return { kind: 'unavailable' };
-  const definition = await deps.definitions.resolve(specId, taskId);
-  if (!definition) return { kind: 'not_found' };
-  const identity = definition.identity;
-  if (identity.specId !== specId || identity.taskId !== taskId || definition.task.id !== taskId)
+  if (!deps.definitions) {
     return { kind: 'unavailable' };
+  }
+
+  const definition = await deps.definitions.resolve(specId, taskId);
+  if (!definition) {
+    return { kind: 'not_found' };
+  }
+
+  const identity = definition.identity;
+  if (identity.specId !== specId || identity.taskId !== taskId || definition.task.id !== taskId) {
+    return { kind: 'unavailable' };
+  }
+
   const visible = taskVisibility(identity, authz, deps.sessions);
   const execution = await deps.execution?.inspect(identity, definition.version);
   const coherent =
@@ -62,20 +70,30 @@ export async function readTaskDetail(
       history: missing,
     },
   };
-  for (const dependency of definition.dependencies)
-    if ((await visible(dependency.link)) && snapshot.sections.dependencies.state === 'available')
+  for (const dependency of definition.dependencies) {
+    if ((await visible(dependency.link)) && snapshot.sections.dependencies.state === 'available') {
       snapshot.sections.dependencies.data.items.push(dependency);
+    }
+  }
+
   if (coherent) {
     const requirements = structuredClone(execution.requirements);
     for (const requirement of requirements) {
       const evidence = [];
-      for (const item of requirement.evidence) if (await visible(item.link)) evidence.push(item);
+      for (const item of requirement.evidence) {
+        if (await visible(item.link)) {
+          evidence.push(item);
+        }
+      }
+
       if (evidence.length !== requirement.evidence.length) {
         requirement.actions = [];
         requirement.inspectionProblem = 'Required material cannot be accessed.';
       }
+
       requirement.evidence = evidence;
     }
+
     snapshot.sections.humanRequirements = {
       state: 'available',
       data: { items: requirements, pendingCount: execution.pendingCount },
@@ -85,6 +103,7 @@ export async function readTaskDetail(
         ? { state: 'available', data: execution.recovery }
         : { state: 'forbidden' };
   }
+
   const context = authz.readContext();
   const resources = await deps.resources?.open(identity, visible);
   if (
@@ -103,8 +122,13 @@ export async function readTaskDetail(
       (page.next !== null) === resources.visibleTotal > page.items.length
     ) {
       let safe = true;
-      for (const item of page.items) if (!(await visible(item.link))) safe = false;
-      if (safe)
+      for (const item of page.items) {
+        if (!(await visible(item.link))) {
+          safe = false;
+        }
+      }
+
+      if (safe) {
         snapshot.sections.resources = {
           state: 'available',
           data: {
@@ -123,10 +147,12 @@ export async function readTaskDetail(
                   }),
           },
         };
+      }
     }
   }
+
   const history = coherent ? await deps.history?.open(identity) : undefined;
-  if (history && sameTask(history.identity, identity))
+  if (history && sameTask(history.identity, identity)) {
     snapshot.sections.history = {
       state: 'available',
       data: deps.leases.create({
@@ -138,6 +164,8 @@ export async function readTaskDetail(
         initialLimit: 5,
       }),
     };
+  }
+
   snapshot.revision = projectionRevision(
     identity,
     context,
@@ -149,6 +177,7 @@ export async function readTaskDetail(
     ],
     snapshot,
   );
+
   return {
     kind: 'ok',
     value: {

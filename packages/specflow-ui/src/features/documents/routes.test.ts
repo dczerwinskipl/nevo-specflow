@@ -32,6 +32,7 @@ describe('canonical Documents routes', () => {
         specificationApi: {
           getSpecificationWorkspace: () => {
             aggregateReads += 1;
+
             return Promise.reject(new Error('Workspace offline'));
           },
         },
@@ -73,9 +74,11 @@ describe('canonical Documents routes', () => {
       const router = createSpecFlowRouter(createMemoryHistory({ initialEntries: [url] }), services);
       await router.load();
       expect(router.history.location.pathname).toBe(url.split('?')[0]);
+
       return router.state.matches.find((match) => match.routeId.endsWith('/documents-layout'))
         ?.routeId;
     };
+
     const list = await layoutOf('/specs/example/documents?collection=archive');
     const detail = await layoutOf('/specs/example/documents/notes?collection=archive');
     expect(list).toBeDefined();

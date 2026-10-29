@@ -86,7 +86,10 @@ function notifyStage(
   record: CreateJournal,
   replayed = false,
 ): void {
-  if (!observer) return;
+  if (!observer) {
+    return;
+  }
+
   try {
     observer({
       stage: record.stage,
@@ -108,6 +111,7 @@ export async function inspectCreateSpecification(
   operationId: string,
 ): Promise<CreateJournal | undefined> {
   await engine.readRegistry();
+
   return readCreateJournal(engine.context, operationId);
 }
 
@@ -161,6 +165,7 @@ export async function createSpecificationWithIntent(
       addedContents,
       windowsPathBound,
     );
+
   // Not a Git operation: an existing-workspace create in a project with Git disabled
   // verifies Project Home/workspace on disk and spawns no Git process. Anything that
   // can involve Git (new worktree, Git enabled, unreadable policy) keeps full verification.
@@ -204,7 +209,10 @@ async function createWithVerifiedIntent(
     record.stage === 'reserved' &&
     record.target.kind === 'new-worktree' &&
     !options.resumeInterruptedOperation;
-  if (!replayAwaitsValidation) notifyStage(options.onStage, record, reservation.existing);
+  if (!replayAwaitsValidation) {
+    notifyStage(options.onStage, record, reservation.existing);
+  }
+
   // The journal intent is durable at this point. A test process can now be
   // terminated without any later mutation having started.
   await afterEffect?.('reservation');
@@ -220,13 +228,16 @@ async function createWithVerifiedIntent(
       await rejectInvalidReservedReplay(engine, record);
       notifyStage(options.onStage, record, true);
     }
+
     const observed = await followExistingCreateOperation(engine, operationId);
     if (observed.stage !== 'completed') {
       throw recovery(
         'Create is still active or interrupted; operator-confirmed recovery is required.',
       );
     }
+
     await verifyResult(engine, observed);
+
     return resultOf(observed);
   }
 
@@ -240,17 +251,21 @@ async function createWithVerifiedIntent(
           // Retrying a completed create must remain idempotent after legitimate
           // human edits: verify canonical identity, not the original scaffold bytes.
           await verifyResult(engine, record);
+
           return resultOf(record);
         }
+
         case 'recovery-required': {
           throw recovery('Operation needs explicit repair; inspect the durable journal.');
         }
+
         case 'git-initiated': {
           if (!options.confirmInterruptedGitSettled) {
             throw recovery(
               'Git effect may still be running; confirm process quiescence before retry.',
             );
           }
+
           const state = await inspectPlannedGitEffect(engine, record);
           if (state === 'present') {
             record = await transition(engine, record, 'git-provisioned', options.onStage);
@@ -261,6 +276,7 @@ async function createWithVerifiedIntent(
               'Git branch/worktree does not match the intent; manual recovery required.',
             );
           }
+
           continue;
         }
 
@@ -275,10 +291,12 @@ async function createWithVerifiedIntent(
             if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
               throw recovery('Created Git worktree does not match the recorded intent.');
             }
+
             record = await transition(engine, record, 'git-provisioned', options.onStage);
           } else {
             record = await transition(engine, record, 'git-provisioned', options.onStage);
           }
+
           continue;
         }
 
@@ -287,10 +305,12 @@ async function createWithVerifiedIntent(
             if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
               throw recovery('Managed Git worktree changed before identity provisioning.');
             }
+
             record = await ensureLinkedIdentity(engine, record);
           } else {
             await requireRegisteredTarget(engine, record);
           }
+
           record = await transition(engine, record, 'manifest-writing', options.onStage);
           continue;
         }
@@ -315,13 +335,17 @@ async function createWithVerifiedIntent(
             const parentHead = await openVersionControl(engine).commits.head(
               record.target.workspaceRoot,
             );
-            if (!parentHead) throw recovery('Target checkout has no commit to build on.');
+            if (!parentHead) {
+              throw recovery('Target checkout has no commit to build on.');
+            }
+
             record = await transition(engine, record, 'commit-writing', options.onStage, {
               parentHead,
             });
           } else {
             record = await transition(engine, record, 'registry-writing', options.onStage);
           }
+
           continue;
         }
 
@@ -357,12 +381,15 @@ async function createWithVerifiedIntent(
           record = await transition(engine, record, 'completed', options.onStage);
           continue;
         }
+
         default: {
           const exhaustive: never = record.stage;
+
           return exhaustive;
         }
       }
     }
+
     throw recovery('Create operation exceeded its bounded state transition count.');
   } catch (error) {
     if (error instanceof CreateOperationError && error.code === 'CREATE_CONFLICT') {
@@ -371,10 +398,13 @@ async function createWithVerifiedIntent(
       const observed = await followExistingCreateOperation(engine, record.operationId);
       if (observed.stage === 'completed') {
         await verifyResult(engine, observed);
+
         return resultOf(observed);
       }
+
       throw recovery('Concurrent create did not reach completion; inspect the journal.');
     }
+
     throw error;
   }
 }
@@ -392,7 +422,9 @@ async function rejectInvalidReservedReplay(
     await validateNewGitReservation(engine, record);
   } catch (error) {
     const current = await readCreateJournal(engine.context, record.operationId);
-    if (current?.stage === 'reserved') throw error;
+    if (current?.stage === 'reserved') {
+      throw error;
+    }
   }
 }
 
@@ -411,15 +443,18 @@ async function transition(
         'Create journal changed concurrently; restart from the latest durable state.',
       );
     }
+
     const next: CreateJournal = {
       ...current,
       stage,
       ...(commit && current.commit ? { commit: { ...current.commit, ...commit } } : {}),
     };
     await publishCreateJournal(engine.context, next);
+
     return next;
   });
   notifyStage(observer, next);
+
   return next;
 }
 
@@ -434,16 +469,20 @@ async function verifyResult(engine: SpecFlowEngine, record: CreateJournal): Prom
     const current = await withCreateJournalLock(engine.context, async () => {
       const operations = await listCreateJournals(engine.context);
       const writingSlugs = writingSlugsByWorkspace(operations);
+
       return readWorkspaceSpecification(
         record.target.workspaceRoot,
         record.specId,
         writingSlugs.get(record.target.workspaceRoot),
       );
     });
-    if (current.slug !== record.slug) throw recovery('Completed Spec identity changed.');
+    if (current.slug !== record.slug) {
+      throw recovery('Completed Spec identity changed.');
+    }
   } else {
     await verifyScaffold(engine, record);
   }
+
   const registry = await engine.readRegistry();
   if (
     !registry.specBindings.some(

@@ -86,6 +86,7 @@ export function createWorkspaceFixture(
               content: { state: 'available', kind: 'archive', href: archiveUrl },
             },
           ];
+
     return {
       id,
       from: names[from]!,
@@ -143,7 +144,7 @@ export function createWorkspaceFixture(
       attempt: event.attempt,
       status: 'idle',
     }));
-  if (active)
+  if (active) {
     sessions.unshift({
       id: `session-${step}-3`,
       title: scenario === 'review' ? 'Review zachowania sesji' : 'Poprawki zachowania sesji',
@@ -154,6 +155,8 @@ export function createWorkspaceFixture(
       attempt: 3,
       status: 'running',
     });
+  }
+
   return {
     id: 'TASK-03',
     specification: 'Admission',

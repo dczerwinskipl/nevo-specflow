@@ -73,6 +73,7 @@ function withBlockedBy(
   blockedBy: string | undefined,
 ): ClassifiedCommitFailure {
   const port = kebab(blockedBy);
+
   return { kind, reason, ...(port !== undefined && port !== reason ? { blockedBy: port } : {}) };
 }
 
@@ -81,18 +82,24 @@ function withBlockedBy(
  * the port's (a bug, or a failure of the caller's own storage), which the caller lets propagate.
  */
 export function classifyCommitError(error: unknown): ClassifiedCommitFailure | undefined {
-  if (!(error instanceof GitCapabilityError)) return undefined;
+  if (!(error instanceof GitCapabilityError)) {
+    return undefined;
+  }
+
   switch (error.code) {
     case 'COMMIT_BLOCKED': {
       const reason = error.reason ?? '';
       if (TRANSIENT_BLOCKED_REASONS.includes(reason)) {
         return withBlockedBy('transient', kebab(reason) ?? 'git-busy', reason);
       }
+
       if (PERMANENT_BLOCKED_REASONS.includes(reason)) {
         return withBlockedBy('permanent', reason, reason);
       }
+
       return withBlockedBy('permanent', 'commit-failed', reason);
     }
+
     case 'BRANCH_PROTECTED':
       return withBlockedBy(
         'permanent',

@@ -203,6 +203,7 @@ describe.skipIf(!hardLinksAvailable)('a writer that died right after the replace
         await nodeDocumentFileOps.rename(from, to);
         if (!replaced && to.endsWith(notesPath(2))) {
           replaced = true;
+
           throw new WriterInterrupted('after-replace');
         }
       },
@@ -283,6 +284,7 @@ describe('taking the write over', () => {
     readText: (path) => {
       const pid = /^\/proc\/(\d+)\/stat$/u.exec(path)?.[1];
       const start = pid === undefined ? undefined : running[Number(pid)];
+
       return Promise.resolve(start === undefined ? undefined : statOf(Number(pid), start));
     },
     readLink: () => Promise.resolve(undefined),
@@ -300,6 +302,7 @@ describe('taking the write over', () => {
     );
     const journal = (await findDocumentChangeJournal(project.engine.context, operationId))!;
     expect(journal.stage).toBe('files-writing');
+
     return { project, operationId, request, journal };
   }
 
@@ -486,25 +489,32 @@ describe('two copies of the module in one process', () => {
       ...FAST,
       hooks: {
         afterJournalWrite: async (stage) => {
-          if (stage === 'reserved') await gate;
+          if (stage === 'reserved') {
+            await gate;
+          }
         },
         onPathEffect: (event) => {
           effects.push('first:' + event.kind);
+
           return Promise.resolve();
         },
       },
     });
     // Wait until the first copy holds the reservation.
     for (let attempt = 0; attempt < 200; attempt += 1) {
-      if ((await findDocumentChangeJournal(project.engine.context, operationId)) !== undefined)
+      if ((await findDocumentChangeJournal(project.engine.context, operationId)) !== undefined) {
         break;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
+
     const second = copy.applyDocumentChange(project.engine, project.specId, operationId, request, {
       ...FAST,
       hooks: {
         onPathEffect: (event) => {
           effects.push('second:' + event.kind);
+
           return Promise.resolve();
         },
       },

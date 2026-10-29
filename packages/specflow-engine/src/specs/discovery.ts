@@ -93,7 +93,10 @@ async function discoverWithAdmission(
   // explicit binding to linked ALWAYS wins, even if that source is missing.
   for (const specification of primarySpecifications) {
     const binding = explicitlyBound.get(specification.specId);
-    if (binding && binding.workspaceId !== registry.primaryWorkspaceId) continue;
+    if (binding && binding.workspaceId !== registry.primaryWorkspaceId) {
+      continue;
+    }
+
     found.set(specification.specId, {
       status: 'available',
       specId: specification.specId,
@@ -113,11 +116,23 @@ async function discoverWithAdmission(
   // the sequential walk reaches it, so error precedence is unchanged.
   const linkedIds: string[] = [];
   for (const binding of registry.specBindings) {
-    if (!isValidSpecificationId(binding.specId)) break;
-    if (isIncluded && !isIncluded(binding.specId)) continue;
-    if (binding.workspaceId === registry.primaryWorkspaceId) continue;
-    if (!linkedIds.includes(binding.workspaceId)) linkedIds.push(binding.workspaceId);
+    if (!isValidSpecificationId(binding.specId)) {
+      break;
+    }
+
+    if (isIncluded && !isIncluded(binding.specId)) {
+      continue;
+    }
+
+    if (binding.workspaceId === registry.primaryWorkspaceId) {
+      continue;
+    }
+
+    if (!linkedIds.includes(binding.workspaceId)) {
+      linkedIds.push(binding.workspaceId);
+    }
   }
+
   const prefetched = new Map<string, LinkedOutcome>();
   const settled = await mapBounded(linkedIds, READ_GIT_CONCURRENCY, async (workspaceId) => {
     try {
@@ -129,6 +144,7 @@ async function discoverWithAdmission(
               writingSlugsByWorkspace?.get(inspection.root),
             )
           : undefined;
+
       return { inspection, listed } satisfies LinkedOutcome;
     } catch (error) {
       return { error } satisfies LinkedOutcome;
@@ -150,16 +166,24 @@ async function discoverWithAdmission(
 
     // An excluded explicit binding cannot make an authorized, unrelated spec unavailable.
     // The primary checkout is still scanned globally: unbound IDs have no separate index.
-    if (isIncluded && !isIncluded(binding.specId)) continue;
+    if (isIncluded && !isIncluded(binding.specId)) {
+      continue;
+    }
 
     let inspection = inspected.get(binding.workspaceId);
     if (!inspection) {
       const outcome = prefetched.get(binding.workspaceId)!;
-      if ('error' in outcome) throw outcome.error;
+      if ('error' in outcome) {
+        throw outcome.error;
+      }
+
       inspection = outcome.inspection;
       inspected.set(binding.workspaceId, inspection);
-      if (outcome.listed) manifests.set(binding.workspaceId, outcome.listed);
+      if (outcome.listed) {
+        manifests.set(binding.workspaceId, outcome.listed);
+      }
     }
+
     if (inspection.status === 'unavailable') {
       found.set(binding.specId, {
         status: 'workspace_unavailable',
@@ -179,6 +203,7 @@ async function discoverWithAdmission(
       );
       manifests.set(binding.workspaceId, specifications);
     }
+
     const specification = specifications.find((item) => item.specId === binding.specId);
     found.set(
       binding.specId,
@@ -203,6 +228,7 @@ async function discoverWithAdmission(
 
   assertCanonicalSlugs(found);
   await ensureBindingRevisionUnchanged(engine, registry);
+
   return [...found.values()]
     .filter((item) => !isIncluded || isIncluded(item.specId))
     .sort((left, right) => left.specId.localeCompare(right.specId));
@@ -219,6 +245,7 @@ export async function resolveSpecification(
   if (!isValidSpecificationId(specId)) {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'Invalid specification identity.');
   }
+
   // Resolve only this identity. Other linked bindings cannot block a scoped read.
   // Primary manifest corruption remains a project-level integrity error.
   const items = await discoverSpecifications(engine, (candidate) => candidate === specId);
@@ -226,6 +253,7 @@ export async function resolveSpecification(
   if (!selected) {
     throw new SpecificationError('SPEC_NOT_FOUND', 'Specification does not exist in this project.');
   }
+
   return selected;
 }
 
@@ -244,7 +272,10 @@ export function resolveSpecificationForRead(
 function assertCanonicalSlugs(found: ReadonlyMap<string, DiscoveredSpecification>): void {
   const owners = new Map<string, string>();
   for (const item of found.values()) {
-    if (item.status !== 'available') continue;
+    if (item.status !== 'available') {
+      continue;
+    }
+
     const slug = item.specification.slug.toLowerCase();
     const existingId = owners.get(slug);
     if (existingId !== undefined && existingId !== item.specId) {
@@ -253,6 +284,7 @@ function assertCanonicalSlugs(found: ReadonlyMap<string, DiscoveredSpecification
         'Different canonical specifications have the same slug in registered workspaces.',
       );
     }
+
     owners.set(slug, item.specId);
   }
 }

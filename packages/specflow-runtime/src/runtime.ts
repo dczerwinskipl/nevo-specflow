@@ -59,6 +59,7 @@ export async function startRuntime(options: RuntimeStartOptions): Promise<Runtim
     });
     // The startup pass resumes interrupted work in the background; it never delays the listener.
     void scheduler.start();
+
     return {
       address,
       // The server stops first (requests in flight finish, so their writes are queued), then the
@@ -76,6 +77,7 @@ export async function startRuntime(options: RuntimeStartOptions): Promise<Runtim
     };
   } catch (error) {
     await app.close();
+
     throw error;
   }
 }
@@ -118,9 +120,11 @@ async function configureOrClose<RawServer extends RawServerBase>(
 ): Promise<FastifyInstance<RawServer>> {
   try {
     await configureRuntimeApp(app, config, dependencies);
+
     return app;
   } catch (error) {
     await app.close();
+
     throw error;
   }
 }

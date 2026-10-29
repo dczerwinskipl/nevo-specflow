@@ -78,7 +78,9 @@ describe('operation progress contract', () => {
       },
       { type: 'recovery-required', operationId, kind: 'specification-create', at },
     ];
-    for (const event of events) expect(Value.Check(OperationProgressEventSchema, event)).toBe(true);
+    for (const event of events) {
+      expect(Value.Check(OperationProgressEventSchema, event)).toBe(true);
+    }
   });
 
   it('types the completed result per kind and rejects server text and extra fields', () => {

@@ -64,6 +64,7 @@ const FLUSH = { flush: true } as const;
 async function manualProject(): Promise<QueueProject> {
   const project = await queueProject();
   await setLocalAutoCommit(project, false);
+
   return project;
 }
 
@@ -77,6 +78,7 @@ function save(project: QueueProject, index: number, content: string, operationId
     ),
   }).then((result) => {
     project.content.set(`${project.specId}:${index}`, content);
+
     return result;
   });
 }

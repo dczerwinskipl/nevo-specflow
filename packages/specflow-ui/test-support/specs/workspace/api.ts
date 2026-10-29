@@ -51,9 +51,11 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
       startSession: { available: false, reason: 'not_implemented' },
     },
   };
+
   return {
     getSpecificationWorkspace: (specId, signal) => {
       signal?.throwIfAborted();
+
       return specId === snapshot.specification.id
         ? Promise.resolve(snapshot)
         : Promise.reject(new Error('Unconfigured test Specification'));
@@ -69,6 +71,7 @@ export function createTaskIntegrationApi(): TaskApi {
       if (specId !== 'api-integration' || taskId !== 'TASK-01') {
         return Promise.reject(new Error('Unexpected test Task'));
       }
+
       return Promise.resolve({
         task: {
           id: taskId,
@@ -89,6 +92,7 @@ export function createDocumentIntegrationApi(): DocumentApi {
       if (specId !== 'api-integration' || documentId !== 'spec') {
         return Promise.reject(new Error('Unexpected test document'));
       }
+
       return Promise.resolve(
         documentContentFixture({
           id: documentId,

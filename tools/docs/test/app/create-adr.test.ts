@@ -63,8 +63,10 @@ describe('createAdr', () => {
       if (calls >= 2) {
         return { docs: r.docs, missingFrontmatter: [...r.missingFrontmatter, 'docs/ghost.md'] };
       }
+
       return r;
     };
+
     expect(() => createAdr(repo, { title: 'Later', date: '2026-09-06' })).toThrow(
       CorpusInvalidError,
     );

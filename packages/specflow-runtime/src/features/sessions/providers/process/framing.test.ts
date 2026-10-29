@@ -4,6 +4,7 @@ import { readProviderLines } from './framing';
 function* chunks(values: Uint8Array[]) {
   yield* values;
 }
+
 describe('bounded provider protocol framing', () => {
   it('preserves UTF-8 across chunks, CRLF and the final unterminated frame', async () => {
     const bytes = Buffer.from('💬\r\nsecond\nlast');
@@ -29,6 +30,7 @@ describe('bounded provider protocol framing', () => {
       reads++;
       yield Buffer.from('second\n');
     }
+
     const reader = readProviderLines(source());
     expect((await reader.next()).value).toBe('first');
     expect(reads).toBe(1);

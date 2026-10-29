@@ -38,8 +38,10 @@ export function createCodexOperation(
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
-  if (!context || !invocation.beforeDispatch)
+  if (!context || !invocation.beforeDispatch) {
     throw new SessionError('SESSION_RECOVERY_REQUIRED', 'Durable provider context is required.');
+  }
+
   let owner: Process | undefined;
   let peer: ReturnType<typeof createCodexRpc> | undefined;
   let protocol: ReturnType<typeof createCodexProtocol> | undefined;
@@ -63,14 +65,22 @@ export function createCodexOperation(
   let interruptSent = false;
   let cancellationDeadline: ReturnType<typeof setTimeout> | undefined;
   function cancel() {
-    if (closed) return;
-    if (!dispatched) {
-      controller.abort(signal.reason);
+    if (closed) {
       return;
     }
+
+    if (!dispatched) {
+      controller.abort(signal.reason);
+
+      return;
+    }
+
     cancellationDeadline ??= setTimeout(() => controller.abort('interrupt-timeout'), 5000);
     cancellationDeadline.unref();
-    if (interruptSent || !peer || !protocol?.turnId) return;
+    if (interruptSent || !peer || !protocol?.turnId) {
+      return;
+    }
+
     interruptSent = true;
     // Never await a client RPC inside the inbound reader: its reply uses that reader.
     void peer
@@ -81,26 +91,37 @@ export function createCodexOperation(
       )
       .catch(() => controller.abort('interrupt-failed'));
   }
+
   signal.addEventListener('abort', cancel, { once: true });
-  if (signal.aborted) cancel();
+  if (signal.aborted) {
+    cancel();
+  }
+
   const publish: EmitFact = async (fact) => {
     if (fact.kind === 'outcome') {
       pendingOutcome = fact;
       terminal();
     } else {
       await emit(fact);
-      if (fact.kind === 'lost') lost = true;
+      if (fact.kind === 'lost') {
+        lost = true;
+      }
     }
   };
+
   async function expire(requestId: RpcId) {
     const group = groups.get(requestId);
-    if (!group) return;
+    if (!group) {
+      return;
+    }
+
     groups.delete(requestId);
     for (const question of group.questions) {
       pending.delete(question.key);
       await emit({ kind: 'interaction-expired', key: question.key });
     }
   }
+
   const done = (async () => {
     let deadline = setTimeout(
       () => controller.abort('launch-timeout'),
@@ -124,14 +145,23 @@ export function createCodexOperation(
             message.params.turnId !== protocol.turnId
           ) {
             await peer!.reject(message.id);
+
             throw new CodexRpcError('protocol');
           }
+
           const hash = createHash('sha256').update(JSON.stringify(message)).digest('hex');
           if (seen.has(message.id)) {
-            if (seen.get(message.id) !== hash) throw new CodexRpcError('protocol');
+            if (seen.get(message.id) !== hash) {
+              throw new CodexRpcError('protocol');
+            }
+
             return;
           }
-          if (seen.size >= 1024) throw new CodexRpcError('capacity');
+
+          if (seen.size >= 1024) {
+            throw new CodexRpcError('capacity');
+          }
+
           seen.set(message.id, hash);
           if (
             message.method === 'item/commandExecution/requestApproval' ||
@@ -145,32 +175,41 @@ export function createCodexOperation(
               channel: 'commentary',
               text: 'Codex requested permissions beyond the managed execution policy; the request was denied.',
             });
+
             return;
           }
+
           let group: Questions;
           try {
-            if (message.method === 'item/tool/requestUserInput')
+            if (message.method === 'item/tool/requestUserInput') {
               group = prepareCodexQuestions(message.params, ++sequence);
-            else if (
+            } else if (
               message.method === 'item/fileChange/requestApproval' &&
               typeof message.params.itemId === 'string'
-            )
+            ) {
               group = prepareCodexPermission(
                 protocol.patchTargets(message.params.itemId) ?? [],
                 ++sequence,
               );
-            else {
+            } else {
               await peer!.reject(message.id);
+
               throw new CodexRpcError('protocol');
             }
           } catch (error) {
             if (error instanceof SessionError && error.code === 'CAPABILITY_UNSUPPORTED') {
               await peer!.reject(message.id);
+
               return;
             }
+
             throw error;
           }
-          if (pending.size + group.questions.length > 32) throw new CodexRpcError('capacity');
+
+          if (pending.size + group.questions.length > 32) {
+            throw new CodexRpcError('capacity');
+          }
+
           groups.set(message.id, group);
           for (const [index, question] of group.questions.entries()) {
             pending.set(question.key, { requestId: message.id, group, index });
@@ -183,18 +222,26 @@ export function createCodexOperation(
             });
             await emit({ kind: 'interaction', ...question });
           }
+
           return;
         }
+
         if (message.method === 'serverRequest/resolved') {
           const requestId = message.params.requestId;
-          if (typeof requestId !== 'string' && typeof requestId !== 'number')
+          if (typeof requestId !== 'string' && typeof requestId !== 'number') {
             throw new CodexRpcError('protocol');
+          }
+
           await expire(requestId);
+
           return;
         }
+
         if (message.method === 'thread/settings/updated') {
-          if (!nativeThreadId || message.params.threadId !== nativeThreadId || !expectedModelId)
+          if (!nativeThreadId || message.params.threadId !== nativeThreadId || !expectedModelId) {
             throw new CodexRpcError('protocol');
+          }
+
           const settings = rpcObject(message.params.threadSettings);
           verifyCodexThread(
             {
@@ -214,11 +261,17 @@ export function createCodexOperation(
             collaboration.mode !== codexMode(invocation.selection).nativeMode ||
             collaborationSettings.model !== expectedModelId ||
             (invocation.selection.effort && settings.effort !== invocation.selection.effort)
-          )
+          ) {
             throw new CodexRpcError('protocol');
+          }
+
           return;
         }
-        if (codexMetadata(message)) return;
+
+        if (codexMetadata(message)) {
+          return;
+        }
+
         // thread/resume can publish the previous native Turn's usage before its
         // reply. It is a historical snapshot, not a fact for this new invocation.
         // Current-turn cumulative samples are normalized after dispatch below.
@@ -227,22 +280,34 @@ export function createCodexOperation(
           context.resume &&
           message.method === 'thread/tokenUsage/updated' &&
           message.params.threadId === context.nativeSessionId
-        )
+        ) {
           return;
-        if (!protocol) throw new CodexRpcError('protocol');
-        if (message.method === 'turn/completed' && groups.size) throw new CodexRpcError('protocol');
+        }
+
+        if (!protocol) {
+          throw new CodexRpcError('protocol');
+        }
+
+        if (message.method === 'turn/completed' && groups.size) {
+          throw new CodexRpcError('protocol');
+        }
+
         await protocol.accept(message);
-        if (signal.aborted) cancel();
+        if (signal.aborted) {
+          cancel();
+        }
       });
       await initializeCodex(peer, operationSignal, options.home());
       const account = rpcObject(
         await peer.request('account/read', { refreshToken: false }, operationSignal),
       );
-      if (rpcObject(account.account).type !== 'chatgpt')
+      if (rpcObject(account.account).type !== 'chatgpt') {
         throw new SessionError(
           'PROVIDER_AUTH_REQUIRED',
           'Codex ChatGPT authentication is required.',
         );
+      }
+
       const models = await codexModels(peer, operationSignal);
       const mode = codexMode(invocation.selection);
       const settings = codexThreadSettings(
@@ -265,17 +330,21 @@ export function createCodexOperation(
       );
       const modelId = rpcObject(response).model;
       const model = models.find((item) => item.modelId === modelId);
-      if (!model || (invocation.selection.modelId && modelId !== invocation.selection.modelId))
+      if (!model || (invocation.selection.modelId && modelId !== invocation.selection.modelId)) {
         throw new SessionError(
           'MODEL_UNSUPPORTED',
           'Codex did not select the requested available model.',
         );
+      }
+
       expectedModelId = model.modelId;
-      if (invocation.selection.effort && !model.efforts.includes(invocation.selection.effort))
+      if (invocation.selection.effort && !model.efforts.includes(invocation.selection.effort)) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',
           'Requested Codex effort is unavailable for this model.',
         );
+      }
+
       nativeThreadId = threadId;
       await emit({ kind: 'correlation', providerSessionId: threadId });
       protocol = createCodexProtocol(
@@ -318,9 +387,14 @@ export function createCodexOperation(
       );
       const turn = rpcObject(started.turn);
       protocol.bindTurn(turn.id);
-      if (signal.aborted) cancel();
-      if (!['inProgress', 'completed', 'failed', 'interrupted'].includes(String(turn.status)))
+      if (signal.aborted) {
+        cancel();
+      }
+
+      if (!['inProgress', 'completed', 'failed', 'interrupted'].includes(String(turn.status))) {
         throw new CodexRpcError('protocol');
+      }
+
       clearTimeout(deadline);
       await Promise.race([
         terminalPromise,
@@ -345,13 +419,14 @@ export function createCodexOperation(
         (failure instanceof ProviderProcessError &&
           failure.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED'));
       let result: Extract<DriverFact, { kind: 'outcome' }> | undefined;
-      if (!unknown && pendingOutcome && !lost) result = pendingOutcome;
-      else if (!unknown && signal.aborted)
+      if (!unknown && pendingOutcome && !lost) {
+        result = pendingOutcome;
+      } else if (!unknown && signal.aborted) {
         result = {
           kind: 'outcome',
           outcome: signal.reason === 'shutdown' ? 'interrupted' : 'cancelled',
         };
-      else if (!unknown && !dispatched)
+      } else if (!unknown && !dispatched) {
         result = {
           kind: 'outcome',
           outcome: 'failed',
@@ -363,6 +438,8 @@ export function createCodexOperation(
                   message: 'Codex could not initialize the requested operation.',
                 },
         };
+      }
+
       settlement.resolve({
         process: unknown ? 'unknown' : 'stopped',
         source: unknown
@@ -376,44 +453,58 @@ export function createCodexOperation(
                 : 'unverified',
         ...(result ? { result } : {}),
       });
-      for (const requestId of [...groups.keys()]) await expire(requestId);
+      for (const requestId of [...groups.keys()]) {
+        await expire(requestId);
+      }
+
       pending.clear();
       seen.clear();
-      if (unknown)
+      if (unknown) {
         await emit({ kind: 'lost', message: 'Codex process-tree settlement is unknown.' });
-      else if (result) {
-        if (result.error)
+      } else if (result) {
+        if (result.error) {
           await emit({
             kind: 'text',
             key: 'provider-error',
             channel: 'commentary',
             text: result.error.message,
           });
+        }
+
         await emit(result);
-      } else if (protocol) await protocol.end();
-      else await emit({ kind: 'lost', message: 'Codex operation outcome is unknown.' });
+      } else if (protocol) {
+        await protocol.end();
+      } else {
+        await emit({ kind: 'lost', message: 'Codex operation outcome is unknown.' });
+      }
     }
   })();
+
   return {
     done,
     settlement: settlement.promise,
     async respond(key: string, response: RespondInteraction) {
       const entry = pending.get(key);
-      if (closed || !entry || !peer)
+      if (closed || !entry || !peer) {
         throw new SessionError('INTERACTION_EXPIRED', 'The native question expired.');
+      }
+
       const answer = entry.group.respond(entry.index, response);
       pending.delete(key);
       if (answer) {
         let delivered = false;
         await peer.reply(entry.requestId, answer, () => {
           delivered = groups.has(entry.requestId);
+
           return delivered;
         });
         groups.delete(entry.requestId);
+
         return {
           deliveredKeys: delivered ? entry.group.questions.map((question) => question.key) : [],
         };
       }
+
       return { deliveredKeys: [] };
     },
   };

@@ -12,13 +12,16 @@ const state = vi.hoisted(() => ({ failNextJournalPublish: false }));
 
 vi.mock('../../src/project/fs/atomic-json', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/project/fs/atomic-json')>();
+
   return {
     ...actual,
     writeJsonAtomically: async (path: string, document: unknown, options?: never) => {
       if (state.failNextJournalPublish && path.includes('operations') && path.endsWith('.json')) {
         state.failNextJournalPublish = false;
+
         throw new Error('simulated crash before the journal was published');
       }
+
       return actual.writeJsonAtomically(path, document, options);
     },
   };
@@ -57,6 +60,7 @@ async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
   // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
   // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
   await installDefinitionsForTesting(engine).catch(() => undefined);
+
   return { root, engine };
 }
 
@@ -87,6 +91,7 @@ async function changeDefinitions(root: string): Promise<void> {
       delete template.contentFile;
       template.content = '# CHANGED {{specificationTitle}}\n';
     }
+
     await writeFile(join(directory, name), stringify(file, { lineWidth: 0 }));
   }
 }

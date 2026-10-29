@@ -49,13 +49,17 @@ const control = vi.hoisted(() => ({ armed: false, count: 0, failAt: 0 }));
 
 vi.mock('../../src/project/fs/atomic-json', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../src/project/fs/atomic-json')>();
+
   return {
     ...original,
     writeJsonAtomically: async (...args: Parameters<typeof original.writeJsonAtomically>) => {
       if (control.armed) {
         control.count += 1;
-        if (control.count === control.failAt) throw new QueueInterrupted('a journal write');
+        if (control.count === control.failAt) {
+          throw new QueueInterrupted('a journal write');
+        }
       }
+
       return original.writeJsonAtomically(...args);
     },
   };
@@ -105,20 +109,28 @@ async function runScenario<T>(scenario: Scenario<T>, failAt: number): Promise<nu
   try {
     await scenario.act(project, state);
   } catch (error) {
-    if (!(error instanceof QueueInterrupted)) throw error;
+    if (!(error instanceof QueueInterrupted)) {
+      throw error;
+    }
+
     stopped = true;
   }
+
   control.armed = false;
   // Whatever the stop left, the invariants of any instant hold before anything recovers it.
   await expectPipelineInvariants(project, undefined, 'stopped');
   await scenario.afterAct?.(project, state);
   const writes = control.count;
-  if (failAt > 0) expect(stopped).toBe(true);
+  if (failAt > 0) {
+    expect(stopped).toBe(true);
+  }
+
   await recoverQueue(project);
   await scenario.finish?.(project, state);
   await recoverQueue(project);
   await scenario.expectFinal(project, state);
   await removeTrackedRoots();
+
   return writes;
 }
 
@@ -158,6 +170,7 @@ async function failedOperation(project: QueueProject): Promise<string> {
   await editNotesByHand(project, 1, 'a human typed this\n');
   await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
   expect(await stageOf(project, id)).toBe('commit-failed');
+
   return id;
 }
 
@@ -175,6 +188,7 @@ async function recoveryOperation(project: QueueProject): Promise<string> {
         ...real,
         commit: () => {
           git(project.root, ...HUMAN, 'commit', '--allow-empty', '-qm', 'human');
+
           return Promise.reject(uncertain());
         },
       },
@@ -183,6 +197,7 @@ async function recoveryOperation(project: QueueProject): Promise<string> {
     FLUSH,
   );
   expect(await stageOf(project, id)).toBe('recovery-required');
+
   return id;
 }
 
@@ -199,6 +214,7 @@ describe('stopped before every write of a transition', () => {
           content: 'a newer save\n',
           expectedRevision: sha256Hex('a human typed this\n'),
         });
+
         return { first, later };
       },
       act: (project) => runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH),
@@ -209,6 +225,7 @@ describe('stopped before every write of a transition', () => {
             'committed',
           );
         }
+
         expect(workingTreeClean(project)).toBe(true);
         await expectNoQueueRecords(project);
       },
@@ -223,13 +240,17 @@ describe('stopped before every write of a transition', () => {
         const b = await queueSave(project, 2, 'two\n');
         const c = await queueSave(project, 3, 'three\n');
         await editNotesByHand(project, 2, 'a human typed this\n');
+
         return { a, b, c };
       },
       act: (project) =>
         drainQueue(project.engine, isolatedQueue({ clock: clockAfterBackoff() }), undefined, FLUSH),
       expectFinal: async (project, { a, b, c }) => {
         expect(engineCommits(project)).toHaveLength(1);
-        for (const id of [a, c]) expect(await stageOf(project, id)).toBe('completed');
+        for (const id of [a, c]) {
+          expect(await stageOf(project, id)).toBe('completed');
+        }
+
         expect(await stageOf(project, b)).toBe('commit-failed');
         const batches = await listDocumentBatches(project.engine.context);
         expect(batches.map((batch) => [batch.operationId, batch.state])).toEqual([[b, 'failed']]);
@@ -246,13 +267,17 @@ describe('stopped before every write of a transition', () => {
         const b = await queueSave(project, 2, 'two\n');
         const c = await queueSave(project, 3, 'three\n');
         await editNotesByHand(project, 1, 'a human typed this\n');
+
         return { a, b, c };
       },
       act: (project) =>
         drainQueue(project.engine, isolatedQueue({ clock: clockAfterBackoff() }), undefined, FLUSH),
       expectFinal: async (project, { a, b, c }) => {
         expect(engineCommits(project)).toHaveLength(1);
-        for (const id of [b, c]) expect(await stageOf(project, id)).toBe('completed');
+        for (const id of [b, c]) {
+          expect(await stageOf(project, id)).toBe('completed');
+        }
+
         expect(await stageOf(project, a)).toBe('commit-failed');
         const batches = await listDocumentBatches(project.engine.context);
         expect(batches.map((batch) => [batch.operationId, batch.state])).toEqual([[a, 'failed']]);
@@ -284,6 +309,7 @@ describe('stopped before every write of a transition', () => {
       name: 'manual save',
       setup: async (project) => {
         await setLocalAutoCommit(project, false);
+
         return { id: randomUUID() };
       },
       act: async (project, { id }) => {
@@ -294,6 +320,7 @@ describe('stopped before every write of a transition', () => {
           if (control.failAt > 0 && control.count >= control.failAt) {
             throw new QueueInterrupted('a journal write');
           }
+
           throw error;
         }
       },
@@ -327,6 +354,7 @@ describe('stopped before every write of a transition', () => {
       setup: async (project) => {
         const id = await failedOperation(project);
         await editNotesByHand(project, 1, 'mine\n');
+
         return { id };
       },
       act: (project, { id }) => retryDocumentCommit(project.engine, id),
@@ -350,6 +378,7 @@ describe('stopped before every write of a transition', () => {
         const id = await queueSave(project, 1, 'later\n');
         const lock = join(project.root, '.git', 'index.lock');
         await writeFile(lock, '');
+
         return { id, lock };
       },
       act: (project) => runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH),
@@ -370,6 +399,7 @@ describe('stopped before every write of a transition', () => {
       setup: async (project) => {
         const id = await queueSave(project, 1, 'mine\n');
         await editNotesByHand(project, 1, 'a human typed this\n');
+
         return { id };
       },
       act: (project) => runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH),
@@ -407,6 +437,7 @@ describe('stopped before every write of a transition', () => {
         const id = await recoveryOperation(project);
         git(project.root, 'add', 'specs/active/hand/notes-1.md');
         git(project.root, ...HUMAN, 'commit', '-qm', 'by hand');
+
         return { id, hand: git(project.root, 'rev-parse', 'HEAD') };
       },
       act: (project, { id }) => recoverDocumentOperation(project.engine, id, 'adopt'),

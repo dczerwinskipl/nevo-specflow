@@ -10,6 +10,7 @@ describe('SpecFlow application services composition', () => {
   it('fails without a Router context rather than falling back to production services', () => {
     function Consumer() {
       useAppServices();
+
       return null;
     }
 
@@ -42,6 +43,7 @@ describe('SpecFlow application services composition', () => {
 
     function Consumer() {
       const fromRouter = useAppServices();
+
       return <span>{fromRouter.taskApi === services.taskApi ? 'same' : 'different'}</span>;
     }
 

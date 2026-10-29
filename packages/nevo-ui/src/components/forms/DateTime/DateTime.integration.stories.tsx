@@ -178,14 +178,20 @@ async function findDocumentButton(name: string) {
     const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
       (candidate) => candidate.textContent?.trim() === name,
     );
-    if (button) return button;
+    if (button) {
+      return button;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   return undefined;
 }
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function commitImmediateDone(

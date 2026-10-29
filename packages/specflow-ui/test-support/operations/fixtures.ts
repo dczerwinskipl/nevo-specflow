@@ -31,6 +31,7 @@ export const createSteps = (done: number): NonNullable<OperationListItem['steps'
 let sequence = 0;
 const operationId = () => {
   sequence += 1;
+
   return `00000000-0000-4000-8000-${String(sequence).padStart(12, '0')}`;
 };
 
@@ -67,6 +68,7 @@ export function operationList(
     failed: count('failed'),
     completed: count('completed'),
   };
+
   return {
     items,
     counts,
@@ -82,6 +84,7 @@ export function operationsStub(
 ): OperationsApi & { readonly calls: { url: string; etag?: string }[] } {
   const calls: { url: string; etag?: string }[] = [];
   let next = 0;
+
   return {
     calls,
     // eslint-disable-next-line @typescript-eslint/require-await
@@ -89,8 +92,14 @@ export function operationsStub(
       calls.push({ url, ...(options?.etag ? { etag: options.etag } : {}) });
       const answer = answers[Math.min(next, answers.length - 1)];
       next += 1;
-      if (answer instanceof Error) throw answer;
-      if (!answer) return { kind: 'unavailable' };
+      if (answer instanceof Error) {
+        throw answer;
+      }
+
+      if (!answer) {
+        return { kind: 'unavailable' };
+      }
+
       return 'kind' in answer ? answer : { kind: 'list', list: answer };
     },
     // eslint-disable-next-line require-yield

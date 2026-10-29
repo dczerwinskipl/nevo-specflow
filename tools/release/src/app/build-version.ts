@@ -14,6 +14,7 @@ export function resolveBuildVersion(
   { withSha = false }: { withSha?: boolean } = {},
 ): string {
   const rawSha = env.GITHUB_SHA ?? '';
+
   return deriveBuildVersion({
     versionFile,
     ref: env.GITHUB_REF ?? '',

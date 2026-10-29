@@ -21,9 +21,15 @@ export function assertPlanFitsWindows(
   plan: Pick<DocumentChangePlan, 'paths'>,
   options: WindowsPathBoundOptions = {},
 ): void {
-  if ((options.platform ?? process.platform) !== 'win32') return;
+  if ((options.platform ?? process.platform) !== 'win32') {
+    return;
+  }
+
   for (const planned of plan.paths) {
-    if (planned.post === null) continue;
+    if (planned.post === null) {
+      continue;
+    }
+
     const slash = planned.path.lastIndexOf('/');
     const staged = (slash < 0 ? 0 : slash + 1) + DOCUMENT_TEMP_NAME_LENGTH;
     const actual = workspaceRoot.length + 1 + Math.max(planned.path.length, staged);

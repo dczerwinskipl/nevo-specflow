@@ -41,12 +41,14 @@ export const runtimeUnavailableRoute = createRoute({
 function LoginRouteScreen() {
   const { auth } = loginRoute.useRouteContext();
   const search = loginRoute.useSearch();
+
   return <LoginScreen auth={auth} initialError={search.error} returnTo={search.returnTo} />;
 }
 
 function RuntimeUnavailableRouteScreen() {
   const { auth } = runtimeUnavailableRoute.useRouteContext();
   const search = runtimeUnavailableRoute.useSearch();
+
   return <RuntimeUnavailableScreen auth={auth} returnTo={search.returnTo} />;
 }
 

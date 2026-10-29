@@ -61,6 +61,7 @@ interface Fixture {
 
 async function fixture(options: Partial<SchedulerOptions> = {}): Promise<Fixture> {
   const project = await queueProject();
+
   return { project, ...scheduleFor(project, options) };
 }
 
@@ -72,6 +73,7 @@ function scheduleFor(project: QueueProject, options: Partial<SchedulerOptions> =
     queue: { ledger: new SettleLedger(), clock: time },
     ...options,
   });
+
   return { time, scheduler };
 }
 
@@ -86,12 +88,14 @@ async function expectEachCommittedOnce(project: QueueProject, ids: readonly stri
     expect(journal).toMatchObject({ stage: 'completed', outcome: 'committed' });
     recorded.add(journal!.sha!);
   }
+
   expect(new Set(engineCommits(project))).toEqual(recorded);
   expect(engineCommits(project)).toHaveLength(recorded.size);
   for (const sha of recorded) {
     const batchId = trailersOf(project, sha)['Nevo-Operation']!;
     expect(ids).toContain(batchId);
   }
+
   expect(workingTreeClean(project)).toBe(true);
 }
 
@@ -151,6 +155,7 @@ describe('timers and wake-ups', () => {
     for (let tries = 0; time.dueIn().length < 2 && tries < 5000; tries += 1) {
       await new Promise((resolve) => setImmediate(resolve));
     }
+
     expect(time.dueIn().some((due) => due <= 300)).toBe(true);
     await scheduler.stop();
   });
@@ -169,6 +174,7 @@ describe('timers and wake-ups', () => {
       time.advance(150);
       await scheduler.whenIdle();
     }
+
     time.advance(1000);
     await scheduler.whenIdle();
     await scheduler.stop({ flush: true });
@@ -234,6 +240,7 @@ describe('shutdown flush', () => {
           },
           afterSettled: () => {
             finished();
+
             return Promise.resolve();
           },
         },

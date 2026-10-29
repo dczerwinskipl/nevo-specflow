@@ -85,14 +85,18 @@ export async function readTargetRecords(
   for (const owner of target.owners) {
     try {
       const record = await readLedgerRecord(rt.context, target.checkout.workspaceId, owner);
-      if (record !== undefined && record.entries.length > 0) records.push(record);
+      if (record !== undefined && record.entries.length > 0) {
+        records.push(record);
+      }
     } catch (error) {
       if (error instanceof LedgerCorruptError) {
         throw manualCommitError('journal-corrupt', 'The uncommitted-changes ledger is corrupt.');
       }
+
       throw error;
     }
   }
+
   return records;
 }
 
@@ -112,6 +116,7 @@ export async function admitManualCommit(
   } catch (error) {
     throw gitRefusal(error);
   }
+
   if (!enabled) {
     throw manualCommitError(
       'unavailable-git-disabled',
@@ -159,6 +164,7 @@ export async function admitManualCommit(
       },
     );
   }
+
   const selected = check.selected;
 
   // 6. The branch.
@@ -168,9 +174,13 @@ export async function admitManualCommit(
   } catch (error) {
     throw gitRefusal(error);
   }
+
   const owning = new Set(selected.map((entry) => entry.owner));
   for (const record of records) {
-    if (!owning.has(ledgerOwnerKey(record.owner))) continue;
+    if (!owning.has(ledgerOwnerKey(record.owner))) {
+      continue;
+    }
+
     if (record.branch !== null && record.branch !== branch) {
       throw manualCommitError(
         'branch-changed',
@@ -190,7 +200,10 @@ export async function admitManualCommit(
       subject: 'preflight',
     });
   } catch (error) {
-    if (error instanceof GitCapabilityError) throw gitRefusal(error);
+    if (error instanceof GitCapabilityError) {
+      throw gitRefusal(error);
+    }
+
     throw error;
   }
 
@@ -207,6 +220,7 @@ export async function admitManualCommit(
       { paths: edited },
     );
   }
+
   return { target, message, fingerprint, selected, branch };
 }
 
@@ -247,9 +261,13 @@ export async function reserveManualCommit(
   const { target, selected, message } = admitted;
   const snapshot = encodeSnapshot(snapshotEntriesOf(selected));
   const encodedMessage = encodeMessage(message);
+
   return withManualCommitLock(rt.context, async () => {
     const existing = await findManualCommitJournal(rt.context, operationId);
-    if (existing !== undefined) return { kind: 'existing', journal: existing };
+    if (existing !== undefined) {
+      return { kind: 'existing', journal: existing };
+    }
+
     await sweepSettledManualCommits(rt.context, {
       now: Date.parse(rt.nowIso()),
       keepOperationId: operationId,
@@ -261,6 +279,7 @@ export async function reserveManualCommit(
     if (
       !selected.every((entry) => {
         const now = byPath.get(entry.path);
+
         return now !== undefined && sameEntry(entry, now);
       })
     ) {
@@ -275,16 +294,24 @@ export async function reserveManualCommit(
         if (error.code === 'RESOURCE_JOURNAL_CORRUPT') {
           throw manualCommitError('journal-corrupt', 'A journal is corrupt; recover it.');
         }
+
         throw manualCommitError('busy-create-or-close', 'A Create or Close holds this checkout.', {
           retryAfterMs: MANUAL_COMMIT_BUSY_RETRY_AFTER_MS,
         });
       }
+
       throw error;
     }
 
     for (const other of await listManualCommitJournals(rt.context)) {
-      if (other.workspaceId !== target.checkout.workspaceId) continue;
-      if (!MANUAL_COMMIT_STAGE_FACTS[other.stage].holdsClaim) continue;
+      if (other.workspaceId !== target.checkout.workspaceId) {
+        continue;
+      }
+
+      if (!MANUAL_COMMIT_STAGE_FACTS[other.stage].holdsClaim) {
+        continue;
+      }
+
       throw other.stage === 'recovery-required'
         ? manualCommitError(
             'busy-recovery-required',
@@ -296,6 +323,7 @@ export async function reserveManualCommit(
             operationId: other.operationId,
           });
     }
+
     await ports.assertQuiet(
       target,
       selected.map((entry) => entry.path),
@@ -324,6 +352,7 @@ export async function reserveManualCommit(
       updatedAt: now,
     };
     await publishJournal(rt.context, MANUAL_COMMIT_JOURNAL_KIND, journal);
+
     return { kind: 'reserved', journal };
   });
 }

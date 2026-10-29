@@ -7,7 +7,10 @@ import {
 import { RepositorySection } from './contributions/specification-work/RepositorySection';
 
 function SpecificationRepository({ data, actions }: SpecificationWorkSectionContext) {
-  if (!data.repoContext) return null;
+  if (!data.repoContext) {
+    return null;
+  }
+
   return (
     <RepositorySection
       repoContext={data.repoContext}
@@ -33,7 +36,11 @@ export const gitUiModule: UiModule = {
         if (!source || (source.state === 'unavailable' && source.reason === 'source_unavailable')) {
           return { state: 'unavailable' };
         }
-        if (source.state !== 'available') return { state: 'excluded' };
+
+        if (source.state !== 'available') {
+          return { state: 'excluded' };
+        }
+
         return source.items.map((item) => ({
           item,
           icon: 'branch',

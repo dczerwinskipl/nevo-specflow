@@ -28,6 +28,7 @@ export async function upsertColorVariables(ir: DesignSystemIR) {
       variable = figma.variables.createVariable(definition.name, collection, 'COLOR');
       variables.push(variable);
     }
+
     variable.name = definition.name;
     variable.setPluginData(DATA_KEY, definition.stableId);
     variable.setPluginData(MANAGED_KEY, 'true');
@@ -40,6 +41,7 @@ export async function upsertColorVariables(ir: DesignSystemIR) {
     });
     result.set(definition.stableId, variable);
   }
+
   const expected = new Set(ir.resources.colors.map((definition) => definition.stableId));
   for (const variable of variables) {
     const stableId = variable.getPluginData(DATA_KEY);
@@ -48,9 +50,11 @@ export async function upsertColorVariables(ir: DesignSystemIR) {
       variable.getPluginData(MANAGED_KEY) === 'true' &&
       stableId &&
       !expected.has(stableId)
-    )
+    ) {
       variable.remove();
+    }
   }
+
   return result;
 }
 
@@ -64,6 +68,7 @@ export async function upsertTextStyles(ir: DesignSystemIR) {
       style = figma.createTextStyle();
       localStyles.push(style);
     }
+
     style.name = `${figmaProjectConfig.figma.textStylePrefix}/${definition.name}`;
     style.setPluginData(DATA_KEY, definition.stableId);
     style.setPluginData(MANAGED_KEY, 'true');
@@ -77,17 +82,21 @@ export async function upsertTextStyles(ir: DesignSystemIR) {
     style.textCase = source.textTransform === 'uppercase' ? 'UPPER' : 'ORIGINAL';
     result.set(definition.stableId, style);
   }
+
   const expected = new Set(ir.resources.textStyles.map((definition) => definition.stableId));
   for (const style of localStyles) {
     const stableId = style.getPluginData(DATA_KEY);
-    if (style.getPluginData(MANAGED_KEY) === 'true' && stableId && !expected.has(stableId))
+    if (style.getPluginData(MANAGED_KEY) === 'true' && stableId && !expected.has(stableId)) {
       style.remove();
+    }
   }
+
   return result;
 }
 
 export async function upsertDesignResources(ir: DesignSystemIR): Promise<DesignResources> {
   const [colors, textStyles] = await Promise.all([upsertColorVariables(ir), upsertTextStyles(ir)]);
+
   return { colors, textStyles, assets: new Map() };
 }
 
@@ -102,19 +111,28 @@ export async function readDesignResources(
   const textStyleResources = new Map<string, TextStyle>();
   for (const definition of ir.resources.colors) {
     const variable = variables.find((item) => item.getPluginData(DATA_KEY) === definition.stableId);
-    if (variable) colors.set(definition.stableId, variable);
+    if (variable) {
+      colors.set(definition.stableId, variable);
+    }
   }
+
   for (const definition of ir.resources.textStyles) {
     const style = textStyles.find((item) => item.getPluginData(DATA_KEY) === definition.stableId);
-    if (style) textStyleResources.set(definition.stableId, style);
+    if (style) {
+      textStyleResources.set(definition.stableId, style);
+    }
   }
+
   const assets = new Map<string, ComponentNode>();
   for (const asset of ir.resources.assets) {
     const master = figma.currentPage.findOne(
       (node) => node.type === 'COMPONENT' && node.getPluginData(DATA_KEY) === asset.stableId,
     ) as ComponentNode | undefined;
-    if (master) assets.set(asset.stableId, master);
+    if (master) {
+      assets.set(asset.stableId, master);
+    }
   }
+
   if (
     colors.size !== ir.resources.colors.length ||
     textStyleResources.size !== ir.resources.textStyles.length ||
@@ -124,6 +142,7 @@ export async function readDesignResources(
       'Missing Design System Variables, Text Styles or Assets. Run Design System sync first.',
     );
   }
+
   return { colors, textStyles: textStyleResources, assets };
 }
 
@@ -134,7 +153,11 @@ export function colorVariableFor(
   preferredStableId?: string,
 ) {
   const preferred = preferredStableId ? resources.colors.get(preferredStableId) : undefined;
-  if (preferred) return preferred;
+  if (preferred) {
+    return preferred;
+  }
+
   const direct = resolveSemanticTokenId(preferredStableId, color, ir.resources.colors);
+
   return direct ? resources.colors.get(direct) : undefined;
 }

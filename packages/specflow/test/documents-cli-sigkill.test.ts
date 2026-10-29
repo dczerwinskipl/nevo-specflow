@@ -22,7 +22,10 @@ import { onLinux } from './support/platform';
 const roots: string[] = [];
 const children: { kill: (signal: NodeJS.Signals) => boolean }[] = [];
 afterEach(async () => {
-  for (const child of children.splice(0)) child.kill('SIGKILL');
+  for (const child of children.splice(0)) {
+    child.kill('SIGKILL');
+  }
+
   await Promise.all(
     roots
       .splice(0)
@@ -72,6 +75,7 @@ async function project() {
     '--json',
   ]);
   const specId = (JSON.parse(created.out[0]!) as { specId: string }).specId;
+
   return { root, specId, dir: join(root, 'specs', 'active', 'cli-kill') };
 }
 
@@ -91,10 +95,17 @@ async function cli(cwd: string, args: string[]): Promise<Outcome> {
   });
   try {
     await program.parseAsync(['node', 'nevo-specflow', ...args]);
+
     return { out, err, exit: 0 };
   } catch (error) {
-    if (error instanceof CommanderError) return { out, err, exit: commanderExitCode(error) };
-    if (error instanceof ReportedFailure) return { out, err, exit: error.exitCode };
+    if (error instanceof CommanderError) {
+      return { out, err, exit: commanderExitCode(error) };
+    }
+
+    if (error instanceof ReportedFailure) {
+      return { out, err, exit: error.exitCode };
+    }
+
     throw error;
   }
 }
@@ -135,11 +146,13 @@ function spawnCli(cwd: string, args: string[], resultFile: string) {
       log += chunk;
     });
   }
+
   children.push(child);
   const done = new Promise<number | null>((resolveDone, reject) => {
     child.once('error', reject);
     child.once('close', resolveDone);
   });
+
   return { child, done, log: () => log };
 }
 
@@ -151,12 +164,17 @@ async function waitForFile(path: string, done: Promise<unknown>, log: () => stri
   for (let tries = 0; tries < 2000; tries += 1) {
     try {
       await access(path);
+
       return;
     } catch {
-      if (exited) throw new Error('The CLI process ended before the hang: ' + log());
+      if (exited) {
+        throw new Error('The CLI process ended before the hang: ' + log());
+      }
+
       await sleep(30);
     }
   }
+
   throw new Error('The awaited file never appeared: ' + path + '\n' + log());
 }
 
@@ -238,6 +256,7 @@ describe.skipIf(!onLinux)('the drain at exit of a CLI command killed inside git 
       await cli(root, ['specs', 'documents', 'recover', '--confirmed-stopped']);
       await cli(root, ['specs', 'documents', 'flush', '--wait-ms', '300']);
     }
+
     expect(git(root, 'rev-parse', 'HEAD')).not.toBe(head);
     expect(git(root, 'rev-list', '--count', `${head}..HEAD`)).toBe('1');
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');

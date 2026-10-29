@@ -57,11 +57,14 @@ export async function loadSpecification(
     ) {
       throw new DocumentError('DOCUMENT_NOT_FOUND', 'The Specification does not exist.');
     }
+
     throw error;
   }
+
   if (discovered.status !== 'available') {
     throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The Specification source is unavailable.');
   }
+
   const { specification, workspaceRoot, workspaceId } = discovered;
   const specDir = join(workspaceRoot, 'specs', specification.location, specification.slug);
   await assertCanonicalDirectory(fs, specDir);
@@ -73,12 +76,14 @@ export async function loadSpecification(
       'The Specification manifest is unavailable.',
     );
   }
+
   let manifestBytes: Buffer;
   try {
     manifestBytes = await readBoundedBytes(opened.handle, MANIFEST_MAX_BYTES);
   } finally {
     await opened.handle.close();
   }
+
   const manifest = parseSpecificationManifestText(
     manifestBytes.toString('utf8'),
     specification.slug,
@@ -90,6 +95,7 @@ export async function loadSpecification(
       'The Specification manifest changed while it was being read.',
     );
   }
+
   return {
     specId,
     slug: specification.slug,
@@ -121,6 +127,7 @@ export async function locateDocument(
   if (entry) {
     return { id: entry.id, path: entry.path, classification: 'registered', type: entry.type };
   }
+
   if (isDerivedDocumentId(documentId)) {
     const registeredPaths = new Set(loaded.manifest.documents.map((document) => document.path));
     const listed = await listSpecificationFiles(loaded.specDir);
@@ -138,8 +145,12 @@ export async function locateDocument(
         'Two files of the Specification derive the same document id.',
       );
     }
+
     const path = matches[0];
-    if (path !== undefined) return { id: documentId, path, classification: 'unclassified' };
+    if (path !== undefined) {
+      return { id: documentId, path, classification: 'unclassified' };
+    }
   }
+
   throw new DocumentError('DOCUMENT_NOT_FOUND', 'The document does not exist.');
 }

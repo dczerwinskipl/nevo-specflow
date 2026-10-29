@@ -29,6 +29,7 @@ export function run(command: string, args: readonly string[], opts: RunOpts = {}
 
   if (result.error || result.status !== 0) {
     const detail = (result.stderr ?? '').trim() || (result.stdout ?? '').trim();
+
     throw new StepFailedError(
       `\`${command} ${args.join(' ')}\` failed (exit ${String(result.status ?? 'null')})\n${detail}`,
       result.error ? { cause: result.error } : undefined,

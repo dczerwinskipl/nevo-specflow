@@ -49,6 +49,7 @@ function expectInvalid(source: unknown, fieldFragment: string): void {
   } catch (error) {
     caught = error;
   }
+
   expect(caught).toBeInstanceOf(SpecificationError);
   const error = caught as SpecificationError;
   expect(error.code).toBe('SPEC_SOURCE_INVALID');

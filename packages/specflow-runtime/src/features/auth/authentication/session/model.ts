@@ -62,6 +62,7 @@ export function configuredUser(
   }
 
   const sessionName = userName?.trim();
+
   return {
     id: userId,
     name: sessionName === undefined || sessionName === '' ? user.name : sessionName,

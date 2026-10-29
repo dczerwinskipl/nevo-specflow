@@ -24,16 +24,21 @@ function scripted(answers: { confirm?: boolean[]; select?: string[] }) {
     input: (_message: string, def?: string) => Promise.resolve(def ?? ''),
     select: (message: string, choices: readonly { value: string }[], initial?: string) => {
       asked.push(message);
+
       return Promise.resolve(select.shift() ?? initial ?? choices[0]!.value);
     },
     note: () => undefined,
   } as unknown as RuntimeSetupUi;
+
   return { ui, asked };
 }
 
 let root = '';
 afterEach(async () => {
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    await rm(root, { recursive: true, force: true });
+  }
+
   root = '';
 });
 

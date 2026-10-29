@@ -17,28 +17,36 @@ export async function verifyWorkspaceMembership(
       'Workspace root must be absolute.',
     );
   }
+
   let canonical: string;
   try {
     canonical = await realpath(root);
   } catch (error) {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
+
     throw new WorkspaceRegistryError(
       'REGISTRY_WORKSPACE_UNAVAILABLE',
       'Registered workspace path is unavailable; binding is retained.',
     );
   }
+
   if (canonical !== root) {
     throw new WorkspaceRegistryError(
       'REGISTRY_WORKSPACE_MISMATCH',
       'Workspace root changed identity, moved or points through a symlink.',
     );
   }
+
   if (isReadRequest()) {
     // READ path: no Git. Identity proven at open + cheap on-disk evidence.
     await memoizeVerification('project-home-on-disk', () => verifyProjectHomeOnDisk(context));
     await verifyCheckoutOnDisk(context, canonical);
+
     return canonical;
   }
+
   try {
     const verified = await resolveProjectHome({
       cwd: canonical,
@@ -55,12 +63,16 @@ export async function verifyWorkspaceMembership(
       );
     }
   } catch (error) {
-    if (error instanceof WorkspaceRegistryError) throw error;
+    if (error instanceof WorkspaceRegistryError) {
+      throw error;
+    }
+
     throw new WorkspaceRegistryError(
       'REGISTRY_WORKSPACE_MISMATCH',
       'Workspace Git/Project Home identity could not be verified.',
     );
   }
+
   return canonical;
 }
 

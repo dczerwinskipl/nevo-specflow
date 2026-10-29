@@ -15,13 +15,17 @@ function RestoreFixture({ target }: { readonly target: number }) {
   const [visible, setVisible] = useState(false);
   const [settled, setSettled] = useState(false);
   useLayoutEffect(() => {
-    if (!page.current) return;
+    if (!page.current) {
+      return;
+    }
+
     return restoreScrollPosition(
       page.current,
       () => target,
       () => setSettled(true),
     );
   }, [target]);
+
   return (
     <div>
       <button type="button" onClick={() => setVisible(true)}>
@@ -58,8 +62,10 @@ export const AppliesOnceTheSurfaceIsLaidOut: Story = {
   play: async ({ canvas, canvasElement }) => {
     const scroller = canvasElement.querySelector<HTMLElement>('[data-testid="scroller"]')!;
     // Several frames pass without layout: the position cannot be applied yet.
-    for (let frame = 0; frame < 4; frame++)
+    for (let frame = 0; frame < 4; frame++) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+
     await expect(canvas.getByTestId('settled')).toHaveTextContent('false');
     canvas.getByRole('button', { name: 'Show surface', hidden: true }).click();
     await waitFor(async () => {

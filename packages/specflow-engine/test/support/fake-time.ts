@@ -20,6 +20,7 @@ export class FakeTime implements QueueTimers, QueueClock {
   set(fn: () => void, ms: number): unknown {
     this.seq += 1;
     this.pending.set(this.seq, { at: this.now + ms, fn });
+
     return this.seq;
   }
   clear(handle: unknown): void {
@@ -32,11 +33,15 @@ export class FakeTime implements QueueTimers, QueueClock {
       const next = [...this.pending.entries()]
         .filter(([, timer]) => timer.at <= target)
         .sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
-      if (next === undefined) break;
+      if (next === undefined) {
+        break;
+      }
+
       this.pending.delete(next[0]);
       this.now = Math.max(this.now, next[1].at);
       next[1].fn();
     }
+
     this.now = target;
   }
   /** Delays (from now) of the timers that are armed, soonest first. */

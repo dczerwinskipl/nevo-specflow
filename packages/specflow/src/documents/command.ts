@@ -36,7 +36,10 @@ const DEFAULT_FLUSH_WAIT_MS = 30_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 function parseUuid(value: string): string {
-  if (!UUID_PATTERN.test(value)) throw new InvalidArgumentError('Must be a UUID.');
+  if (!UUID_PATTERN.test(value)) {
+    throw new InvalidArgumentError('Must be a UUID.');
+  }
+
   return value;
 }
 
@@ -44,6 +47,7 @@ function parseMs(value: string): number {
   if (!/^[1-9][0-9]{0,8}$/u.test(value)) {
     throw new InvalidArgumentError('Must be a whole number of milliseconds, at least 1.');
   }
+
   return Number(value);
 }
 
@@ -111,8 +115,13 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       );
 
   const emit = (options: CommonOptions, json: unknown, lines: readonly string[]): void => {
-    if (options.json) context.stdout(JSON.stringify(json));
-    else for (const line of lines) context.stdout(line);
+    if (options.json) {
+      context.stdout(JSON.stringify(json));
+    } else {
+      for (const line of lines) {
+        context.stdout(line);
+      }
+    }
   };
 
   const usage = (command: Command, message: string): never => command.error(message);
@@ -122,6 +131,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     if ((options.document === undefined) === (options.folder === undefined)) {
       return usage(command, 'Give exactly one of --document <id> and --folder <path>.');
     }
+
     return options.document !== undefined
       ? ({ kind: 'document', documentId: options.document } as const)
       : ({ kind: 'folder', path: options.folder! } as const);
@@ -159,7 +169,9 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       try {
         await body(session);
       } finally {
-        if (session.enqueued) await drainAtExit(session);
+        if (session.enqueued) {
+          await drainAtExit(session);
+        }
       }
     });
   }
@@ -172,19 +184,24 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
   ): Promise<void> {
     const operationId = options.operationId ?? randomUUID();
     const result = await api.write(session.engine, specId, operationId, request);
-    if (result.stage === 'queued') session.enqueued = true;
+    if (result.stage === 'queued') {
+      session.enqueued = true;
+    }
+
     let commit = result.commit;
     if (options.wait && commit.state === 'pending') {
       const checkout = await api.checkoutOf(session.engine, specId);
       await api.flushCheckout(session.engine, checkout, options.waitMs);
       commit = (await api.status(session.engine, operationId)).commit;
     }
+
     emit(options, writeResultJson(result, commit), writeResultLines(result, commit));
     if (options.wait && commit.state !== 'committed' && commit.state !== 'not-applicable') {
       context.stderr(
         `The commit did not settle (${commit.state}). Read it with ` +
           `"nevo-specflow specs documents status ${operationId}".`,
       );
+
       throw new ReportedFailure('The commit did not settle.', 1);
     }
   }
@@ -210,7 +227,9 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     await run(options, async ({ engine }) => {
       const verdict = validationOf(await api.readTree(engine, specId));
       emit(options, { specId, ...verdict }, validationLines(verdict));
-      if (!verdict.valid) throw new ReportedFailure('The documents are not valid.', 1);
+      if (!verdict.valid) {
+        throw new ReportedFailure('The documents are not valid.', 1);
+      }
     });
   });
 
@@ -250,12 +269,15 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       if (sources !== 1) {
         usage(command, 'Give exactly one of --template, --content-file and --stdin.');
       }
+
       if (options.template === undefined && options.path === undefined) {
         usage(command, '--path is required without --template.');
       }
+
       if (options.template === undefined && options.catalogueRevision !== undefined) {
         usage(command, '--catalogue-revision applies to --template only.');
       }
+
       await run(options, async (session) => {
         if (options.template !== undefined) {
           const tree = await api.readTree(session.engine, specId);
@@ -274,8 +296,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
             folders: [],
             catalogueRevision,
           });
+
           return;
         }
+
         const content = await readContentInput(options, context);
         await write(session, options, specId, {
           action: 'create',
@@ -321,6 +345,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       if ((options.contentFile === undefined) === (options.stdin !== true)) {
         usage(command, 'Give exactly one of --content-file and --stdin.');
       }
+
       await run(options, async (session) => {
         const content = await readContentInput(options, context);
         await write(session, options, specId, {
@@ -379,6 +404,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       if ((options.to === undefined) === (options.toRoot !== true)) {
         usage(command, 'Give exactly one of --to <folder> and --to-root.');
       }
+
       await run(options, (session) =>
         write(session, options, specId, {
           action: 'move',
@@ -465,6 +491,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
         settled = outcome.remaining === 0 && !outcome.timedOut;
         remaining = outcome.remaining;
       }
+
       emit(options, { settled, remaining }, [
         settled ? 'Flushed: settled' : 'Flushed: not settled',
       ]);
@@ -473,6 +500,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
           'Some commits are not settled. Read them with "nevo-specflow specs documents list <spec-id>" and ' +
             'resolve failed ones with retry, abandon or recover.',
         );
+
         throw new ReportedFailure('Not settled.', 1);
       }
     });
@@ -491,7 +519,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     ).action(async (operationId: string, options: CommonOptions) => {
       await run(options, async (session) => {
         await api[action](session.engine, operationId);
-        if (action === 'retry') session.enqueued = true;
+        if (action === 'retry') {
+          session.enqueued = true;
+        }
+
         const status = await api.status(session.engine, operationId);
         emit(options, status, statusLines(status));
       });
@@ -518,7 +549,9 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
           'Some paths still hold the Engine content and are not in Git. Commit them with ' +
             '"nevo-specflow commit".',
         );
-        if (result.resolved.length === 0) throw new ReportedFailure('Nothing to resolve.', 1);
+        if (result.resolved.length === 0) {
+          throw new ReportedFailure('Nothing to resolve.', 1);
+        }
       }
     });
   });
@@ -560,6 +593,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       } else if (modes.length !== 1) {
         usage(command, 'Give exactly one of --resume, --adopt and --abandon.');
       }
+
       await run(options, async (session) => {
         if (operationId === undefined) {
           const result = await api.takeOver(session.engine);
@@ -575,13 +609,19 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
           ]);
           if (result.lock.status === 'refused') {
             context.stderr(`Takeover refused: ${result.lock.reason}.`);
+
             throw new ReportedFailure('Takeover refused.', 1);
           }
+
           return;
         }
+
         const mode = modes[0]!;
         await api.recover(session.engine, operationId, mode, options.confirmedStopped === true);
-        if (mode === 'resume') session.enqueued = true;
+        if (mode === 'resume') {
+          session.enqueued = true;
+        }
+
         const status = await api.status(session.engine, operationId);
         emit(options, status, statusLines(status));
       });

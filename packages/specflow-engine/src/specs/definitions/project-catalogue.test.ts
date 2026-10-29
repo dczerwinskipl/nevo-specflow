@@ -87,9 +87,11 @@ describe('resolveProjectCatalogue', () => {
     for (let index = 0; index < 60; index += 1) {
       source.set(`document-type/w${String(index).padStart(2, '0')}.txt`, 'x');
     }
+
     for (let index = 0; index < 55; index += 1) {
       source.set(`document-type/e${String(index).padStart(2, '0')}.yaml`, 'x: [');
     }
+
     const project = await resolve(source);
     expect(project.problems).toHaveLength(DEFINITION_PROBLEMS_MAX);
     expect(project.problemsTruncated).toBe(true);

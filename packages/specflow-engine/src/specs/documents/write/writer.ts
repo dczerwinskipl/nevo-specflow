@@ -62,7 +62,9 @@ async function serialized<T>(operationId: string, run: () => Promise<T>): Promis
   try {
     return await current;
   } finally {
-    if (inFlight.get(operationId) === current) inFlight.delete(operationId);
+    if (inFlight.get(operationId) === current) {
+      inFlight.delete(operationId);
+    }
   }
 }
 
@@ -75,6 +77,7 @@ export function createWriteRuntime(
   const now = options.now ?? (() => new Date());
   // Five hexadecimal characters that make the stage files of this call its own.
   const executorTag = sha256Hex(randomUUID()).slice(0, 5);
+
   return {
     engine,
     context: engine.context,
@@ -91,6 +94,7 @@ export function createWriteRuntime(
     sleep: options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
     executor: async () => {
       captured ??= await captureExecutorIdentity(options.processTable ?? nodeProcessTable);
+
       return captured;
     },
   };
@@ -102,7 +106,10 @@ export function createWriteRuntime(
  * continues from.
  */
 function asWriteFailure(error: unknown): unknown {
-  if (error instanceof AdmissionFailure) return error.original;
+  if (error instanceof AdmissionFailure) {
+    return error.original;
+  }
+
   if (
     error instanceof DocumentError ||
     error instanceof WriterInterrupted ||
@@ -110,6 +117,7 @@ function asWriteFailure(error: unknown): unknown {
   ) {
     return error;
   }
+
   // Whatever else the write or the journal raised (an errno, a lock that stayed busy, a record that
   // could not be written) is a failure of the write, never a raw server error.
   return documentChangeError(
@@ -158,6 +166,7 @@ export async function writeDocumentChange(
       if (existing !== undefined) {
         return replayJournal(rt, existing, { specId, fingerprint });
       }
+
       return writeNew(rt, specId, operationId, request, fingerprint);
     });
   } catch (error) {
@@ -184,6 +193,7 @@ export async function replayDocumentChange(
       if (existing === undefined) {
         throw documentChangeError('operation-not-found', 'The document operation does not exist.');
       }
+
       return replayJournal(rt, existing, undefined);
     });
   } catch (error) {
@@ -215,20 +225,27 @@ async function writeNew(
             { retryAfterMs: BUSY_RETRY_AFTER_MS },
           );
         }
+
         replanned = true;
         admitted = await admit(rt, specId, request, 2);
         break;
       case 'busy':
         deadline ??= rt.now().getTime() + rt.busyWaitMs;
-        if (!outcome.waitable || rt.now().getTime() + delay > deadline) throw outcome.error;
+        if (!outcome.waitable || rt.now().getTime() + delay > deadline) {
+          throw outcome.error;
+        }
+
         await rt.sleep(delay);
         break;
       case 'reserved': {
         await rt.hooks.afterJournalWrite?.('reserved');
+
         return proceed(rt, outcome.journal, admitted.plan, false);
       }
+
       default: {
         const exhaustive: never = outcome;
+
         return exhaustive;
       }
     }
@@ -247,7 +264,9 @@ async function admit(
   } catch (error) {
     throw new AdmissionFailure(error);
   }
+
   await rt.hooks.afterAdmission?.(attempt);
+
   return admitted;
 }
 
@@ -261,12 +280,14 @@ async function proceed(
   try {
     const queued = journal.stage === 'queued' ? journal : await rollForward(rt, journal, plan);
     const settled = await finishAcknowledged(rt, queued);
+
     return resultOf(settled, plan, commitInfoOfJournal(settled, rt.now().getTime()), replayed);
   } catch (error) {
     if (error instanceof JournalMovedError) {
       // Another executor finished (or moved) the operation meanwhile: what is there now is the truth.
       return replayJournal(rt, error.current, undefined);
     }
+
     throw error;
   }
 }
@@ -281,6 +302,7 @@ async function loadPlan(
     journal.operationId,
     journal.plan,
   );
+
   return decodePlanWithEvidence(text, journal.plan);
 }
 
@@ -302,13 +324,16 @@ async function replayJournal(
       'The operationId was already used with a different request.',
     );
   }
+
   if (journal.stage === 'failed') {
     const reason = journal.reason ?? '';
     const cause = (DOCUMENT_CHANGE_CAUSES as readonly string[]).includes(reason)
       ? (reason as (typeof DOCUMENT_CHANGE_CAUSES)[number])
       : 'operation-state-invalid';
+
     throw documentChangeError(cause, 'The operation was refused; nothing was written.');
   }
+
   const plan = await loadPlan(rt, journal);
 
   const writing =
@@ -321,19 +346,25 @@ async function replayJournal(
       return await proceed(rt, await claimWrite(rt, journal), plan, true);
     } catch (error) {
       // Another executor took the write first: what is stored now decides (a live writer is busy).
-      if (error instanceof JournalMovedError) return replayJournal(rt, error.current, expected);
+      if (error instanceof JournalMovedError) {
+        return replayJournal(rt, error.current, expected);
+      }
+
       throw error;
     }
   }
+
   if (journal.stage === 'queued') {
     // Acknowledged. What may still be owed after a stop: the release of the content payload, and without
     // Git the completion.
     return proceed(rt, journal, plan, true);
   }
+
   if (journal.stage === 'completed') {
     // A completed record still in the active directory (the stop came before it moved): move it.
     await settleDocumentChangeJournal(rt.context, journal.operationId).catch(skipUnlessCut);
   }
+
   return resultOf(journal, plan, commitInfoOfJournal(journal, rt.now().getTime()), true);
 }
 
@@ -344,13 +375,19 @@ async function replayJournal(
  * knowingly. (Two replays that both pass this converge anyway: every path step is idempotent.)
  */
 async function assertWriterGone(rt: WriteRuntime, journal: DocumentChangeJournal): Promise<void> {
-  if (journal.executor === undefined) return;
+  if (journal.executor === undefined) {
+    return;
+  }
+
   const state = await proveExecutorState(
     journal.executor,
     await rt.executor(),
     rt.options.processTable ?? nodeProcessTable,
   );
-  if (state === 'dead' || state === 'self' || rt.options.confirmWriterStopped === true) return;
+  if (state === 'dead' || state === 'self' || rt.options.confirmWriterStopped === true) {
+    return;
+  }
+
   throw documentChangeError(
     'busy-write-in-progress',
     'The document operation is being written by another process.',

@@ -42,6 +42,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       for (const [name, value] of Object.entries(resolved.headers)) {
         headers.set(name, value);
       }
+
       config.headers = headers;
     }
 
@@ -66,6 +67,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           data: config.body,
           ...toAxiosConfig<TBody, TParams>(config),
         });
+
         return response.data;
       });
     },
@@ -81,6 +83,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           unknown,
           TParams
         >(url, toAxiosConfig<unknown, TParams>(config));
+
         return response.data;
       });
     },
@@ -96,6 +99,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           unknown,
           TParams
         >(url, toAxiosConfig<unknown, TParams>(config));
+
         return response.data;
       });
     },
@@ -112,6 +116,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           TBody,
           TParams
         >(url, body, toAxiosConfig<TBody, TParams>(config));
+
         return response.data;
       });
     },
@@ -128,6 +133,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           TBody,
           TParams
         >(url, body, toAxiosConfig<TBody, TParams>(config));
+
         return response.data;
       });
     },
@@ -144,6 +150,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           TBody,
           TParams
         >(url, body, toAxiosConfig<TBody, TParams>(config));
+
         return response.data;
       });
     },

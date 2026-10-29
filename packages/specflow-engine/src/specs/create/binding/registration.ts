@@ -13,6 +13,7 @@ export function registrationOf(
       'Linked worktree has no durable identity evidence.',
     );
   }
+
   return {
     kind: 'linked',
     managed: true,

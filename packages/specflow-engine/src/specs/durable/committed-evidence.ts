@@ -10,6 +10,7 @@ import type { CommitPort } from '../../version-control/commits/port';
 /** Whether `actual` lists exactly the `expected` paths (order of `expected` is irrelevant; `actual` is sorted). */
 export function isExactPathSet(actual: readonly string[], expected: readonly string[]): boolean {
   const sorted = [...expected].sort();
+
   return actual.length === sorted.length && sorted.every((path, index) => path === actual[index]);
 }
 
@@ -25,8 +26,11 @@ export async function firstBlobMismatch(
   paths: readonly string[],
 ): Promise<string | undefined> {
   for (const path of paths) {
-    if (!(await commits.blobMatchesWorkingFile(root, sha, path))) return path;
+    if (!(await commits.blobMatchesWorkingFile(root, sha, path))) {
+      return path;
+    }
   }
+
   return undefined;
 }
 
@@ -46,5 +50,6 @@ export function guardRefusalAsCommitFailed(error: unknown): unknown {
       error.code + ':' + (error.reason ?? ''),
     );
   }
+
   return error;
 }

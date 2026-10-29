@@ -6,7 +6,10 @@ export interface SessionSummary {
   taskIds: string[];
 }
 export function buildDemoSessions(record: DemoSpecification): SessionSummary[] {
-  if (!record.currentExecutions) return [];
+  if (!record.currentExecutions) {
+    return [];
+  }
+
   const sessions = new Map<string, SessionSummary>();
   for (const execution of record.currentExecutions) {
     sessions.set(execution.sessionId, {
@@ -16,8 +19,12 @@ export function buildDemoSessions(record: DemoSpecification): SessionSummary[] {
       taskIds: [...execution.taskIds],
     });
   }
+
   for (const signal of record.signals ?? []) {
-    if (signal.target.kind !== 'session') continue;
+    if (signal.target.kind !== 'session') {
+      continue;
+    }
+
     const id = signal.target.sessionId;
     if (!sessions.has(id)) {
       sessions.set(id, {
@@ -28,8 +35,10 @@ export function buildDemoSessions(record: DemoSpecification): SessionSummary[] {
       });
     }
   }
+
   return [...sessions.values()];
 }
+
 export function buildDemoSessionContribution(record: DemoSpecification) {
   const items = buildDemoSessions(record);
   const attention = (record.signals ?? []).flatMap((signal) =>
@@ -46,6 +55,7 @@ export function buildDemoSessionContribution(record: DemoSpecification) {
         ]
       : [],
   );
+
   return {
     section: { state: 'available' as const, data: { items, attention } },
     recommendedSessionId: items[0]?.id,

@@ -58,6 +58,7 @@ export async function assertProjectCanInitialize(layout: GitCheckoutLayout): Pro
   if (await fileExists(layout.projectConfigPath)) {
     throw new Error(`Nevo SpecFlow is already initialized: ${layout.projectConfigPath}`);
   }
+
   if (await fileExists(layout.localConfigPath)) {
     throw new Error(
       `Refusing to overwrite existing workstation-local SpecFlow config: ${layout.localConfigPath}`,
@@ -93,6 +94,7 @@ export async function initializeProject(
       if (installed.outcome.status === 'refused' && installed.outcome.reason === 'target-unsafe') {
         throw new Error(installed.outcome.hint);
       }
+
       // A project that already has definitions (committed by its owner) keeps them: nothing was written.
       definitionPaths = installed.written.map((path) => `.nevo/definitions/${path}`);
     }
@@ -108,13 +110,17 @@ export async function initializeProject(
     if (projectWritten) {
       await rm(layout.projectConfigPath, { force: true });
     }
+
     if (localWritten) {
       await rm(layout.localConfigPath, { force: true });
     }
+
     if (!definitionsExisted) {
       await rm(definitionsFolder, { recursive: true, force: true });
     }
+
     await restoreGitignore(gitignore);
+
     throw error;
   }
 
@@ -154,6 +160,7 @@ async function defaultWriteConfigFile(
           cause: error,
         });
       }
+
       throw error;
     }
 
@@ -162,7 +169,9 @@ async function defaultWriteConfigFile(
     if (published) {
       await rm(path, { force: true });
     }
+
     await rm(stagedPath, { force: true });
+
     throw error;
   }
 }
@@ -196,6 +205,7 @@ async function ensureLocalIgnore(
         changed: current !== original,
       };
       await restoreGitignore(snapshot);
+
       throw new Error(
         `Refusing to write workstation-local secrets because Git does not ignore ${LOCAL_CONFIG_RELATIVE_PATH}.`,
       );
@@ -213,6 +223,7 @@ async function ensureLocalIgnore(
 function appendIgnoreRule(content: string): string {
   const prefix = content.length === 0 ? '' : content.endsWith('\n') ? content : `${content}\n`;
   const separator = prefix.length === 0 || prefix.endsWith('\n\n') ? '' : '\n';
+
   return (
     `${prefix}${separator}# Nevo SpecFlow workstation-local configuration and state\n` +
     `${LOCAL_IGNORE_ENTRY}\n`
@@ -220,7 +231,9 @@ function appendIgnoreRule(content: string): string {
 }
 
 async function restoreGitignore(snapshot: GitignoreSnapshot): Promise<void> {
-  if (!snapshot.changed) return;
+  if (!snapshot.changed) {
+    return;
+  }
 
   if (snapshot.existed) {
     await writeFile(snapshot.path, snapshot.content, 'utf8');
@@ -241,6 +254,7 @@ function isAlreadyExists(error: unknown): boolean {
 async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path, constants.F_OK);
+
     return true;
   } catch (error) {
     if (
@@ -251,6 +265,7 @@ async function fileExists(path: string): Promise<boolean> {
     ) {
       return false;
     }
+
     throw error;
   }
 }

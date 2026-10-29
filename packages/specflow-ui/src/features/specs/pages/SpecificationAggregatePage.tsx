@@ -83,6 +83,7 @@ export function SpecificationAggregatePage({
     availability === 'unavailable' &&
     section !== undefined &&
     query.data?.sectionUnavailableReason?.[section] === 'not_implemented';
+
   return (
     <AppWorkspace labels={workspaceLabels} split="primary">
       <AppWorkspace.Primary

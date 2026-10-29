@@ -27,11 +27,18 @@ function storage(): Storage | undefined {
 }
 
 function parse(raw: string | null): WrapLinesPreference {
-  if (!raw) return {};
+  if (!raw) {
+    return {};
+  }
+
   try {
     const value: unknown = JSON.parse(raw);
-    if (typeof value !== 'object' || value === null) return {};
+    if (typeof value !== 'object' || value === null) {
+      return {};
+    }
+
     const { narrow, wide } = value as Record<string, unknown>;
+
     return {
       ...(typeof narrow === 'boolean' ? { narrow } : {}),
       ...(typeof wide === 'boolean' ? { wide } : {}),
@@ -48,14 +55,21 @@ let writeFailed = false;
 
 function read(): WrapLinesPreference {
   const store = storage();
-  if (!store || writeFailed) return memory;
+  if (!store || writeFailed) {
+    return memory;
+  }
+
   let raw: string | null;
   try {
     raw = store.getItem(WRAP_LINES_STORAGE_KEY);
   } catch {
     return memory;
   }
-  if (raw !== cache.raw) cache = { raw, value: parse(raw) };
+
+  if (raw !== cache.raw) {
+    cache = { raw, value: parse(raw) };
+  }
+
   return cache.value;
 }
 
@@ -70,16 +84,23 @@ export function setWrapLines(pane: PaneClass, wrap: boolean): void {
     // Persistence is best effort; `memory` keeps the choice (and wins over the stale storage).
     writeFailed = true;
   }
-  for (const listener of listeners) listener();
+
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
   // Another tab of the same browser changed it.
   const onStorage = (event: StorageEvent) => {
-    if (event.key === WRAP_LINES_STORAGE_KEY) listener();
+    if (event.key === WRAP_LINES_STORAGE_KEY) {
+      listener();
+    }
   };
+
   window.addEventListener('storage', onStorage);
+
   return () => {
     listeners.delete(listener);
     window.removeEventListener('storage', onStorage);

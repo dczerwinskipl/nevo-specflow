@@ -29,6 +29,7 @@ function request(
     },
   };
 }
+
 const answer = (optionIds: string[], text?: string) => ({
   requestId: randomUUID(),
   kind: 'question' as const,
@@ -57,7 +58,10 @@ describe('Claude control requests', () => {
   ])('denies %s without forwarding suggested permission changes', (tool) => {
     const prepared = prepareClaudeQuestion(request(tool));
     expect(prepared.kind).toBe('denied');
-    if (prepared.kind !== 'denied') throw new Error('Expected denial');
+    if (prepared.kind !== 'denied') {
+      throw new Error('Expected denial');
+    }
+
     expect(prepared.response.response.response.behavior).toBe('deny');
     expect(JSON.stringify(prepared.response)).not.toContain('updatedPermissions');
     expect(JSON.stringify(prepared.response)).not.toContain('bypassPermissions');
@@ -73,11 +77,16 @@ describe('Claude control requests', () => {
       ],
     });
     const prepared = prepareClaudeQuestion(f);
-    if (prepared.kind !== 'questions') throw new Error('Expected questions');
+    if (prepared.kind !== 'questions') {
+      throw new Error('Expected questions');
+    }
+
     expect(prepared.requestId).toBe('request_1');
     expect(prepared.toolId).toBe('tool_1');
-    for (const question of prepared.questions)
+    for (const question of prepared.questions) {
       validateDriverFact({ kind: 'interaction', ...question });
+    }
+
     expect(prepared.questions[0]!.interaction.prompt).toContain('SQLite: Local storage');
     expect(prepared.respond(1, answer(['0', '1'], 'Staging'))).toBeUndefined();
     const response = prepared.respond(0, answer(['0']));
@@ -92,7 +101,10 @@ describe('Claude control requests', () => {
   it('copies only validated question fields and rejects invalid answers before consuming a question', () => {
     const frame = request();
     const prepared = prepareClaudeQuestion(frame);
-    if (prepared.kind !== 'questions') throw new Error('Expected questions');
+    if (prepared.kind !== 'questions') {
+      throw new Error('Expected questions');
+    }
+
     frame.request.input.questions.length = 0;
     expect(() => prepared.respond(0, answer(['unknown']))).toThrow('Unknown question option');
     expect(() => prepared.respond(0, answer(['0', '1']))).toThrow('Select one question option');

@@ -16,8 +16,14 @@ export const demoCreateOperationsUrl = '/api/demo/specifications/operations';
 export function createOperationsListUrl(
   mode: 'loading' | 'project' | 'demo' | 'unavailable',
 ): string | undefined {
-  if (mode === 'project') return projectCreateOperationsUrl;
-  if (mode === 'demo') return demoCreateOperationsUrl;
+  if (mode === 'project') {
+    return projectCreateOperationsUrl;
+  }
+
+  if (mode === 'demo') {
+    return demoCreateOperationsUrl;
+  }
+
   return undefined;
 }
 

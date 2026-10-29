@@ -86,14 +86,19 @@ async function readRow(
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) {
     return unreadable(operationId, updatedAt);
   }
+
   try {
     const classified = classifyCreateJournalText(await readFile(path, 'utf8'));
-    if (classified.kind === 'unsupported') return unsupported(operationId, updatedAt);
+    if (classified.kind === 'unsupported') {
+      return unsupported(operationId, updatedAt);
+    }
+
     const journal = parseCreateJournal(engine.context, classified.value, operationId);
     const commits = Boolean(journal.commit);
     const branch =
       journal.target.kind === 'new-worktree' ? journal.target.branch : journal.commit?.branch;
     const currentStep = createStepForStage(journal.stage, journal.target.kind, commits);
+
     return {
       operationId,
       kind: 'specification-create',

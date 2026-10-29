@@ -77,9 +77,13 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
     const forget = () => inFlight.delete(finished);
     finished.then(forget, forget);
   };
+
   const closeGraceMs = options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS;
   app.addHook('onClose', async () => {
-    if (inFlight.size === 0) return;
+    if (inFlight.size === 0) {
+      return;
+    }
+
     let timer: NodeJS.Timeout | undefined;
     const expired = new Promise<void>((resolve) => {
       timer = setTimeout(resolve, closeGraceMs);
@@ -121,6 +125,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           code: 'ENGINE_UNAVAILABLE',
         });
       }
+
       try {
         const { commits, ...read } = await inspectCreateOptions(engine, {
           // An invalid Git section degrades the answer (reason `git-policy-invalid`); the problem
@@ -128,6 +133,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           onPolicyProblem: (problem) =>
             request.log.warn({ problem }, 'Invalid Git policy: create-options served without Git'),
         });
+
         return reply.code(200).send({
           ...read,
           workspaces: [...read.workspaces],
@@ -146,8 +152,12 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       } catch (error) {
         const code = createErrorCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         const details = createErrorDetails(error);
+
         return reply
           .code(statusForCreateError(code))
           .send({ error: code, code, ...(details ? { details } : {}) });
@@ -180,12 +190,14 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       if (!engine) {
         return reply.code(503).send({ error: 'ENGINE_UNAVAILABLE', code: 'ENGINE_UNAVAILABLE' });
       }
+
       const catalogue = toArchetypeCatalogue(await loadProjectCatalogue(engine));
       const etag = catalogueEtag(catalogue);
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
       if (matchesEtag(request.headers['if-none-match'], etag)) {
         return sendNotModified(reply);
       }
+
       return reply.code(200).send(catalogue);
     },
   );
@@ -215,26 +227,34 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
-      if (!engine)
+      if (!engine) {
         return reply.code(503).send({
           code: 'ENGINE_UNAVAILABLE',
           error: 'ENGINE_UNAVAILABLE',
         });
+      }
+
       try {
         const result = await inspectPublicCreateOperation(engine, request.params.operationId);
-        if (!result)
+        if (!result) {
           return reply.code(404).send({
             code: 'CREATE_NOT_FOUND',
             error: 'CREATE_NOT_FOUND',
           });
+        }
+
         // The journal has no failed state: a run that failed after reservation leaves it non-terminal.
         // The status is derived exactly like the operations list does (one shared status table):
         // the registry overlay (also a recently failed run), else the journal idle time.
         if (result.status === 'completed') {
           return reply.code(200).send(result);
         }
+
         const row = await readPublicCreateOperationRow(engine, request.params.operationId);
-        if (!row) return reply.code(200).send(result);
+        if (!row) {
+          return reply.code(200).send(result);
+        }
+
         const derived = deriveOperationStatus(
           { state: result.status, updatedAt: row.updatedAt },
           options.progress?.recall(request.params.operationId, 'specification-create'),
@@ -249,6 +269,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             code: derived.code,
           });
         }
+
         return reply.code(200).send({
           operationId: request.params.operationId,
           kind: 'specification-create',
@@ -257,8 +278,12 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       } catch (error) {
         const code = createErrorCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         const details = createErrorDetails(error);
+
         return reply
           .code(statusForCreateError(code))
           .send({ error: code, code, ...(details ? { details } : {}) });
@@ -337,11 +362,16 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
               status: 'in-progress',
             });
         }
+
         return reply.code(201).send(outcome.created);
       } catch (error) {
         const code = createErrorCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         const details = createErrorDetails(error);
+
         return reply
           .code(statusForCreateError(code))
           .send({ error: code, code, ...(details ? { details } : {}) });

@@ -19,6 +19,7 @@ export interface OperationLock {
 
 export function createOperationLock(): OperationLock {
   const flags = { busy: false, checking: false, unknown: false };
+
   return {
     get busy() {
       return flags.busy;

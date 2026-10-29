@@ -64,6 +64,7 @@ function spawnQueueWorker(project: QueueProject, cut: string) {
     60000,
   );
   workers.push(worker);
+
   return { signal, worker };
 }
 
@@ -98,6 +99,7 @@ async function expectRecovered(project: QueueProject, ids: readonly string[], co
       expect(journal).toMatchObject({ stage: 'completed', outcome: 'committed', sha });
     }
   }
+
   expect([...seen].sort()).toEqual([...ids].sort());
   expect(workingTreeClean(project)).toBe(true);
   expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
@@ -146,6 +148,7 @@ describe.skipIf(!onLinux)('a queue worker killed with SIGKILL', () => {
         // The batch was recorded as committed: the members follow the record, Git is not touched.
         expect(recovered.status).toBe('idle');
       }
+
       await expectRecovered(project, ids, 1);
       expect(commitCount(project)).toBe(before + 1);
 

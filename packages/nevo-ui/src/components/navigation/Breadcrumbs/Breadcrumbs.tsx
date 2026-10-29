@@ -35,6 +35,7 @@ export function Breadcrumbs({
     if (!isBreadcrumbItemElement(child)) {
       throw new Error('Breadcrumbs children must be BreadcrumbItem elements.');
     }
+
     return child;
   });
 

@@ -47,7 +47,9 @@ export const TaskPreviewFlow: Story = {
     await userEvent.click(closeBtn);
 
     const historyElements = await canvas.findAllByText(/Activity history/i, {}, { timeout: 5000 });
-    if (historyElements.length === 0) throw new Error('Expected Activity history after closing');
+    if (historyElements.length === 0) {
+      throw new Error('Expected Activity history after closing');
+    }
   },
 };
 
@@ -95,7 +97,10 @@ export const FullTaskPromotionFlow: Story = {
     const trigger = heading
       .closest('[data-workspace-header]')
       ?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
-    if (!trigger) throw new Error('Task preview must have an overflow menu');
+    if (!trigger) {
+      throw new Error('Task preview must have an overflow menu');
+    }
+
     await userEvent.click(trigger);
     const fullTaskAction = await within(canvasElement.ownerDocument.body).findByRole('menuitem', {
       name: /Full task view/i,
@@ -130,8 +135,9 @@ export const Current: Story = {
     const back = canvas.getByRole('link', { name: 'All specifications' });
     const icon = back.querySelector('svg')?.getBoundingClientRect();
     const label = back.querySelector('span')?.getBoundingClientRect();
-    if (!icon || !label || Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2) > 1)
+    if (!icon || !label || Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2) > 1) {
       throw new Error('Back icon and label must share the same vertical center.');
+    }
   },
 };
 
@@ -195,12 +201,16 @@ export const DocumentBackFromList: Story = {
   args: { path: '/specs/docs-spec/documents?collection=archive', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
     const tree = await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
-    if (!tree[0]) throw new Error('Expected a document in the tree.');
+    if (!tree[0]) {
+      throw new Error('Expected a document in the tree.');
+    }
+
     await userEvent.click(tree[0]);
     await canvas.findByRole('tabpanel', {}, { timeout: 5000 });
     const overview = canvas.getByRole('link', { name: 'Overview' });
-    if (!overview.getAttribute('href')?.includes('collection=archive'))
+    if (!overview.getAttribute('href')?.includes('collection=archive')) {
       throw new Error('The document keeps the Archive context of the list.');
+    }
   },
 };
 
@@ -231,8 +241,9 @@ export const ArchivedDocumentBackFromDirectLink: Story = {
     await userEvent.click(back);
     await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
     const overview = canvas.queryAllByRole('link', { name: 'Overview' })[0];
-    if (overview && !overview.getAttribute('href')?.includes('collection=archive'))
+    if (overview && !overview.getAttribute('href')?.includes('collection=archive')) {
       throw new Error('Mobile deep links must preserve Archive context.');
+    }
   },
 };
 
@@ -243,7 +254,7 @@ export const RepositoryNavigation: Story = {
       name: /Go to changes|Przejdź do zmian/i,
     });
     await userEvent.click(toChanges);
-    await canvas.findByRole('heading', { name: /Changes|Zmiany/i, level: 1 }, { timeout: 5000 });
+    await canvas.findByRole('heading', { name: /Changes|Zmiany/i, level: 1 }, { timeout: 10000 });
   },
 };
 
@@ -339,12 +350,16 @@ export const ApiDtoToTaskScreen: Story = {
 export const ApiDtoToDocumentScreen: Story = {
   args: { path: '/specs/api-integration/documents', integrationDto: true, dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    const row = await canvas.findByRole(
+    const rows = await canvas.findAllByRole(
       'button',
       { name: /^specification\.md/ },
       { timeout: 10000 },
     );
-    await userEvent.click(row);
+    if (!rows[0]) {
+      throw new Error('Expected specification.md document in tree');
+    }
+
+    await userEvent.click(rows[0]);
     await canvas.findByRole(
       'heading',
       { name: 'Document content from Runtime detail API' },

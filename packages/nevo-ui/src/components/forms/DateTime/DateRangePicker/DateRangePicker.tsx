@@ -136,8 +136,11 @@ export function DateRangePicker({
       shouldCloseOnSelect={false}
       value={picker.resolvedOpen ? picker.draftValue : picker.committedValue}
       onChange={(nextValue: CalendarDateRange | null) => {
-        if (picker.resolvedOpen) picker.setDraftValue(nextValue);
-        else picker.commitValue(nextValue);
+        if (picker.resolvedOpen) {
+          picker.setDraftValue(nextValue);
+        } else {
+          picker.commitValue(nextValue);
+        }
       }}
       onOpenChange={picker.setOpen}
     >

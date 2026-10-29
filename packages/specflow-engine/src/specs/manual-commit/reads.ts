@@ -47,11 +47,17 @@ const YES: Action = { available: true };
 
 /** The Specification id the status names: the one the request addressed, the first Specification owner, else the definitions. */
 export function subjectIdOf(journal: ManualCommitJournal): string {
-  if (journal.specId !== undefined) return journal.specId;
+  if (journal.specId !== undefined) {
+    return journal.specId;
+  }
+
   for (const key of journal.owners) {
     const owner = ledgerOwnerOfKey(key);
-    if (owner?.kind === 'specification') return owner.id;
+    if (owner?.kind === 'specification') {
+      return owner.id;
+    }
   }
+
   return 'definitions';
 }
 
@@ -95,12 +101,19 @@ export async function findManualCommitForRead(
   context: ResolvedProjectHome,
   operationId: string,
 ): Promise<ManualCommitJournal | undefined> {
-  if (!OPERATION_ID_PATTERN.test(operationId)) return undefined;
+  if (!OPERATION_ID_PATTERN.test(operationId)) {
+    return undefined;
+  }
+
   const row = await readRecordTolerant(context, MANUAL_COMMIT_JOURNAL_KIND, operationId);
-  if (row?.kind === 'record') return row.record;
+  if (row?.kind === 'record') {
+    return row.record;
+  }
+
   if (row !== undefined) {
     throw manualCommitError('journal-corrupt', 'The manual commit record is unreadable.');
   }
+
   return readSettledManualCommitJournal(context, operationId);
 }
 
@@ -108,13 +121,17 @@ async function executorHint(
   journal: ManualCommitJournal,
   options: ManualCommitReadOptions,
 ): Promise<DocumentExecutorHint | undefined> {
-  if (journal.stage !== 'committing' || journal.executor === undefined) return undefined;
+  if (journal.stage !== 'committing' || journal.executor === undefined) {
+    return undefined;
+  }
+
   const table = options.processTable ?? nodeProcessTable;
   const state = await proveExecutorState(
     journal.executor,
     await captureExecutorIdentity(table),
     table,
   );
+
   return { state: state === 'self' || state === 'alive' ? 'alive' : state };
 }
 
@@ -128,11 +145,24 @@ function needsOperator(
   hint: DocumentExecutorHint | undefined,
   options: ManualCommitReadOptions,
 ): string | undefined {
-  if (journal.stage === 'recovery-required') return MANUAL_COMMIT_RECOVERY_CODE;
-  if (journal.stage !== 'reserved' && journal.stage !== 'committing') return undefined;
-  if (hint?.state === 'dead') return MANUAL_COMMIT_INTERRUPTED_CODE;
-  if (hint?.state === 'alive') return undefined;
+  if (journal.stage === 'recovery-required') {
+    return MANUAL_COMMIT_RECOVERY_CODE;
+  }
+
+  if (journal.stage !== 'reserved' && journal.stage !== 'committing') {
+    return undefined;
+  }
+
+  if (hint?.state === 'dead') {
+    return MANUAL_COMMIT_INTERRUPTED_CODE;
+  }
+
+  if (hint?.state === 'alive') {
+    return undefined;
+  }
+
   const now = (options.nowMs ?? Date.now)();
+
   return now - Date.parse(journal.updatedAt) > MANUAL_COMMIT_STUCK_MS
     ? MANUAL_COMMIT_INTERRUPTED_CODE
     : undefined;
@@ -149,10 +179,17 @@ export async function readManualCommitStatus(
   options: ManualCommitReadOptions = {},
 ): Promise<DocumentOperationStatus | undefined> {
   const journal = await findManualCommitForRead(context, operationId);
-  if (journal === undefined) return undefined;
-  if (options.specId !== undefined && subjectIdOf(journal) !== options.specId) return undefined;
+  if (journal === undefined) {
+    return undefined;
+  }
+
+  if (options.specId !== undefined && subjectIdOf(journal) !== options.specId) {
+    return undefined;
+  }
+
   const executor = await executorHint(journal, options);
   const stage: DocumentOperationStage = journal.stage;
+
   return {
     operationId: journal.operationId,
     specId: subjectIdOf(journal),
@@ -208,7 +245,10 @@ export async function listManualCommitRows(
   const rows: ManualCommitListingRow[] = [];
   for (const journal of listing.records) {
     const code = needsOperator(journal, await executorHint(journal, options), options);
-    if (code === undefined) continue;
+    if (code === undefined) {
+      continue;
+    }
+
     rows.push({
       operationId: journal.operationId,
       kind: 'manual-commit',
@@ -223,6 +263,7 @@ export async function listManualCommitRows(
       staleExempt: true,
     });
   }
+
   for (const entry of listing.unreadable) {
     rows.push({
       operationId: entry.operationId,
@@ -236,6 +277,7 @@ export async function listManualCommitRows(
       unreadable: true,
     });
   }
+
   return rows.sort(
     (left, right) =>
       Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||

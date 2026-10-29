@@ -10,18 +10,21 @@ import {
 
 const failing = (code: string, times: number) => {
   let calls = 0;
+
   return {
     get calls() {
       return calls;
     },
     run: () => {
       calls += 1;
+
       return calls <= times
         ? Promise.reject(Object.assign(new Error(code), { code }))
         : Promise.resolve();
     },
   };
 };
+
 const noSleep = () => Promise.resolve();
 
 describe('windows-safe fs', () => {
@@ -88,6 +91,7 @@ describe('windows-safe fs', () => {
       maxDelayMs: 100,
       sleep: (ms) => {
         delays.push(ms);
+
         return Promise.resolve();
       },
     });
@@ -105,6 +109,7 @@ describe('windows-safe fs', () => {
       fs: {
         readFile: () => {
           reads += 1;
+
           return reads < 3
             ? Promise.reject(Object.assign(new Error('x'), { code: 'EBUSY' }))
             : Promise.resolve('ok');

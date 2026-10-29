@@ -172,7 +172,10 @@ export function isBarrierStage(
   stage: DocumentChangeStage,
   recoveryPhase: DocumentRecoveryPhase | undefined,
 ): boolean {
-  if (stage === 'recovery-required') return recoveryPhase === 'write';
+  if (stage === 'recovery-required') {
+    return recoveryPhase === 'write';
+  }
+
   return DOCUMENT_CHANGE_STAGE_FACTS[stage].barrier;
 }
 

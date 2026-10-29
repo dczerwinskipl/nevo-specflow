@@ -11,7 +11,10 @@ export function createSessionRequest(owner: string, storage: Storage | undefined
   try {
     const encoded = storage?.getItem(key);
     if (encoded) {
-      if (encoded.length > 4096) throw new Error('Invalid retained create');
+      if (encoded.length > 4096) {
+        throw new Error('Invalid retained create');
+      }
+
       const input = JSON.parse(encoded) as CreateSession;
       const bounded = (value: unknown, max: number) =>
         typeof value === 'string' && value.length > 0 && value.length <= max;
@@ -37,28 +40,38 @@ export function createSessionRequest(owner: string, storage: Storage | undefined
               'mode',
             ].includes(field),
         )
-      )
+      ) {
         throw new Error('Invalid retained create');
+      }
+
       const { requestId: _requestId, ...body } = input;
       holder.current = { signature: JSON.stringify(body), input };
     }
   } catch {
     readable = false;
   }
+
   return {
     pending: () => holder.current?.input,
     async send<R>(
       body: Omit<CreateSession, 'requestId'>,
       send: (input: CreateSession) => Promise<R>,
     ) {
-      if (!storage || !readable) throw new Error('Retained create storage is unavailable.');
+      if (!storage || !readable) {
+        throw new Error('Retained create storage is unavailable.');
+      }
+
       // Discovery may change while a previous acknowledgement is lost. Retry the old intent.
       const input = holder.current?.input ?? retainRequest(holder, body);
       const encoded = JSON.stringify(input);
       storage.setItem(key, encoded);
       const result = await send(input);
-      if (storage.getItem(key) === encoded) storage.removeItem(key);
+      if (storage.getItem(key) === encoded) {
+        storage.removeItem(key);
+      }
+
       holder.current = null;
+
       return result;
     },
   };

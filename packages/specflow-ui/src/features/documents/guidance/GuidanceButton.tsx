@@ -9,7 +9,10 @@ import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 export function GuidanceButton() {
   const { t } = useTranslation();
   const session = useDocumentEditor();
-  if (!session?.guidance) return null;
+  if (!session?.guidance) {
+    return null;
+  }
+
   return (
     <IconButton
       aria-label={t('documents.guidance.label')}

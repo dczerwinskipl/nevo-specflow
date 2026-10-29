@@ -19,6 +19,7 @@ export function CreateMethodChoice({ onChoose }: { onChoose: (method: 'ai' | 'ma
       text: t('create.method.manualText'),
     },
   ];
+
   return (
     <div className="grid gap-6">
       <ApplicationContextLine className="mb-0" view="new-specification" />

@@ -75,6 +75,7 @@ const TypographyWithRef = forwardRef<HTMLElement, TypographyImplementationProps>
         textStyleRef: typographyTextStyleRef(variant),
       },
     );
+
     return (
       <ResolvedComponent
         ref={ref}

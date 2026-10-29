@@ -23,6 +23,7 @@ export async function queueProject(
   options: { notes?: number; autoCommit?: 'enabled' | 'default' } = {},
 ): Promise<QueueProject> {
   const project = await writableProject({ git: true, ...options });
+
   return Object.assign(project, { content: new Map<string, string>() });
 }
 
@@ -45,6 +46,7 @@ export async function queueSave(
     expectedRevision: sha256Hex(currentNotes(project, index)),
   });
   project.content.set(`${project.specId}:${index}`, content);
+
   return operationId;
 }
 
@@ -63,6 +65,7 @@ export async function addSpecification(
   });
   git(project.root, 'add', 'specs');
   commitStaged(project.root, 'second specification');
+
   return spec;
 }
 
@@ -79,6 +82,7 @@ export async function saveIn(
     content,
     expectedRevision: sha256Hex(previous),
   });
+
   return operationId;
 }
 
@@ -92,6 +96,7 @@ export interface ManualClock extends QueueClock {
 export function manualClock(start = 1_000_000): ManualClock {
   let mono = start;
   let wall: number | undefined;
+
   return {
     monotonicMs: () => mono,
     wallMs: () => wall ?? Date.now(),
@@ -132,11 +137,13 @@ export function commitsOf(project: QueueProject, operationId: string): string[] 
     '--grep=Nevo-Operation: ' + operationId,
     '--fixed-strings',
   );
+
   return out === '' ? [] : out.split('\n');
 }
 
 export function engineCommits(project: QueueProject): string[] {
   const out = git(project.root, 'log', '--format=%H', '--grep=Nevo-Kind: document-change');
+
   return out === '' ? [] : out.split('\n');
 }
 
@@ -146,8 +153,11 @@ export function trailersOf(project: QueueProject, sha: string): Record<string, s
   const trailers: Record<string, string> = {};
   for (const line of body.split('\n')) {
     const match = /^(Nevo-[A-Za-z]+): (.*)$/u.exec(line);
-    if (match) trailers[match[1]!] = match[2]!;
+    if (match) {
+      trailers[match[1]!] = match[2]!;
+    }
   }
+
   return trailers;
 }
 
@@ -173,6 +183,7 @@ export async function queueRecords(
   } catch {
     lease = false;
   }
+
   return { batches, lease };
 }
 
@@ -193,5 +204,6 @@ export async function editNotesByHand(
 export function clockAfterBackoff(): ManualClock {
   const clock = manualClock();
   clock.wallAt(Date.now() + 120_000);
+
   return clock;
 }

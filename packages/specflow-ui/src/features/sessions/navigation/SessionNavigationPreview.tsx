@@ -18,6 +18,7 @@ export function SessionNavigationPreview({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+
   return (
     <div className="px-2 py-2" data-session-navigation-preview>
       {entries.map((session) => {
@@ -51,6 +52,7 @@ export function SessionNavigationPreview({
             </div>
           </>
         );
+
         return renderEntryLink ? (
           <div key={session.id} data-session-navigation-entry>
             {renderEntryLink(session.id, `${rowClassName} ${linkClassName}`, content)}

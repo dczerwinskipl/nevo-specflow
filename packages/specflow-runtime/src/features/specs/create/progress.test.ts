@@ -19,6 +19,7 @@ async function replay(registry: ReturnType<typeof createOperationProgressRegistr
   for await (const item of registry.watch(operationId, 'specification-create', { waitMs: 0 })) {
     events.push(item.event);
   }
+
   return events;
 }
 
@@ -38,6 +39,7 @@ describe('Create progress adapter (journal stage -> public step)', () => {
     ] as const) {
       progress.onStage({ stage, target: 'new-worktree' });
     }
+
     progress.complete(created);
     const events = await replay(registry);
     expect(events[0]).toMatchObject({
@@ -111,6 +113,7 @@ describe('Create progress with the scaffold commit (git enabled)', () => {
       ] as const) {
         progress.onStage({ stage, target });
       }
+
       progress.complete(created);
       const [snapshot] = await replay(registry);
       const ids = (snapshot as unknown as { steps: { id: string; status: string }[] }).steps.map(

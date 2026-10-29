@@ -4,6 +4,7 @@ export function reconciliationPlan(
 ) {
   const expected = new Set(expectedStableIds);
   const existing = new Set(existingManagedStableIds);
+
   return {
     create: [...expected].filter((stableId) => !existing.has(stableId)),
     retain: [...expected].filter((stableId) => existing.has(stableId)),

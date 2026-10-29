@@ -40,8 +40,10 @@ function seedCorrectReleaseBranch(): string {
   });
   git.state.refs.set(`origin/${RELEASE_BRANCH}`, sha);
   git.state.remoteBranches.add(RELEASE_BRANCH);
+
   return sha;
 }
+
 function seedCorrectBumpBranch(): string {
   const sha = git.addCommit({
     parents: [mainSha],
@@ -49,6 +51,7 @@ function seedCorrectBumpBranch(): string {
   });
   git.state.refs.set(`origin/${BUMP_BRANCH}`, sha);
   git.state.remoteBranches.add(BUMP_BRANCH);
+
   return sha;
 }
 

@@ -13,7 +13,9 @@ let app: FastifyInstance | undefined,
 afterEach(async () => {
   await app?.close();
   app = undefined;
-  if (directory) await rm(directory, { recursive: true, force: true });
+  if (directory) {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 async function setup(scope?: Record<string, string>) {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-http-'));
@@ -34,6 +36,7 @@ async function setup(scope?: Record<string, string>) {
     { sessions: { storage: { directory, projectId: 'project' } } },
   );
 }
+
 describe('managed Session HTTP', () => {
   it('creates an independent chat and exposes bounded durable conversation and Work', async () => {
     await setup();

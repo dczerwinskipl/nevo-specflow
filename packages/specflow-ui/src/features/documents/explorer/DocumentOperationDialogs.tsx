@@ -63,8 +63,11 @@ export function DocumentOperationDialogs({
     request.id !== undefined &&
     dirtyIds.includes(request.id);
   const closeUnlessLocked = (open: boolean) => {
-    if (!open && !busy && !unknown) onClose();
+    if (!open && !busy && !unknown) {
+      onClose();
+    }
   };
+
   return (
     <>
       <Dialog open={request?.action === 'move'} onOpenChange={closeUnlessLocked}>

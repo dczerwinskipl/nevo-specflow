@@ -56,7 +56,10 @@ describe('Task inspection', () => {
   it('makes available evidence keyboard actionable and keeps forbidden evidence noninteractive', () => {
     const { response } = createTaskDetailFixture();
     const section = response.snapshot!.sections.humanRequirements;
-    if (section.state !== 'available') throw new Error('Fixture requires requirements');
+    if (section.state !== 'available') {
+      throw new Error('Fixture requires requirements');
+    }
+
     section.data.items[0]!.evidence.push({
       title: 'Private evidence',
       link: { state: 'forbidden' },
@@ -113,8 +116,10 @@ describe('Task inspection', () => {
       'Requirement decisions',
       'To: build',
       'Verification instructions',
-    ])
+    ]) {
       expect(html).toContain(text);
+    }
+
     expect(html.match(/Verify session behaviour/g)).toHaveLength(1);
   });
   it('keeps independent requirements available without the work source and never borrows mismatched hints', () => {
@@ -163,8 +168,10 @@ describe('Task inspection', () => {
       work.state !== 'available' ||
       work.data.position.state !== 'not_started' ||
       !work.data.position.next
-    )
+    ) {
       throw new Error('Expected an available next step');
+    }
+
     const ref = `${'docs/next-step/'.repeat(12)}guide.md`;
     work.data.position.next.hints = [{ kind: 'doc', ref }];
     const html = render(

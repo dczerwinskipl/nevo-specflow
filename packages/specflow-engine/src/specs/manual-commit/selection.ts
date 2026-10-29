@@ -63,12 +63,14 @@ export function closureOf(entries: readonly ScopeEntry[], seed: Iterable<string>
   ) {
     return entries.map((entry) => entry.path).sort();
   }
+
   const byOperation = new Map<string, string[]>();
   for (const entry of entries) {
     for (const id of entry.operationIds) {
       byOperation.set(id, [...(byOperation.get(id) ?? []), entry.path]);
     }
   }
+
   const byPathEntries = new Map(entries.map((entry) => [entry.path, entry]));
   const queue = [...selected];
   while (queue.length > 0) {
@@ -82,6 +84,7 @@ export function closureOf(entries: readonly ScopeEntry[], seed: Iterable<string>
       }
     }
   }
+
   return [...selected].sort();
 }
 
@@ -97,14 +100,24 @@ export function selectEntries(
   entries: readonly ScopeEntry[],
   requested: readonly string[] | undefined,
 ): SubsetCheck {
-  if (requested === undefined) return { ok: true, selected: entries };
+  if (requested === undefined) {
+    return { ok: true, selected: entries };
+  }
+
   const known = new Set(entries.map((entry) => entry.path));
   const wanted = [...new Set(requested)];
   const unknown = wanted.filter((path) => !known.has(path)).sort();
-  if (unknown.length > 0) return { ok: false, kind: 'unknown-path', paths: unknown };
+  if (unknown.length > 0) {
+    return { ok: false, kind: 'unknown-path', paths: unknown };
+  }
+
   const closure = closureOf(entries, wanted);
-  if (closure.length !== wanted.length) return { ok: false, kind: 'not-closed', paths: closure };
+  if (closure.length !== wanted.length) {
+    return { ok: false, kind: 'not-closed', paths: closure };
+  }
+
   const chosen = new Set(wanted);
+
   return { ok: true, selected: entries.filter((entry) => chosen.has(entry.path)) };
 }
 
@@ -125,6 +138,7 @@ export function editedSince(
   return entries
     .filter((entry) => {
       const content = working.get(entry.path);
+
       return content === undefined || content !== entry.postSha256;
     })
     .map((entry) => entry.path)

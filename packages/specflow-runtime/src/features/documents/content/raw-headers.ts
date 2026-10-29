@@ -50,6 +50,7 @@ export function encodeDispositionFilename(filename: string): string {
   // A lone surrogate would make encodeURIComponent throw.
   const name = filename.toWellFormed();
   const base = name.length > 0 ? name : 'download';
+
   return encodeURIComponent(base).replace(
     /['()*!]/gu,
     (char) => '%' + char.charCodeAt(0).toString(16).toUpperCase(),
@@ -74,6 +75,7 @@ export function rawEtag(revision: string): string {
 export function rawResponseHeaders(input: RawHeaderInput): Record<string, string> {
   const { metadata } = input;
   const attachment = input.download || metadata.kind === 'binary';
+
   return {
     'Content-Type': safeMediaType(metadata),
     'X-Content-Type-Options': 'nosniff',

@@ -41,6 +41,7 @@ export async function upsertAssetCatalog(
       (stableId) => variantNames.get(stableId),
     );
   }
+
   const masters: ComponentNode[] = [];
   for (const item of catalog.items) {
     const cached =
@@ -49,11 +50,18 @@ export async function upsertAssetCatalog(
     const component =
       (await liveNodeById(cached, 'COMPONENT')) ??
       (await liveComponentByStableId(item.resourceRef));
-    if (!component) continue;
+    if (!component) {
+      continue;
+    }
+
     component.name = catalogVariantName(catalog, item);
-    if (set && component.parent !== set) set.appendChild(component);
+    if (set && component.parent !== set) {
+      set.appendChild(component);
+    }
+
     masters.push(component);
   }
+
   const expected = new Set(masters.map((master) => master.getPluginData(DATA_KEY)));
   if (set) {
     for (const child of [...set.children]) {
@@ -61,15 +69,21 @@ export async function upsertAssetCatalog(
         child.type === 'COMPONENT' &&
         child.getPluginData(DATA_KEY) &&
         !expected.has(child.getPluginData(DATA_KEY))
-      )
+      ) {
         section.appendChild(child);
+      }
     }
   }
+
   if (!set) {
-    if (!masters.length) throw new Error('Resource catalog contains no materialized assets');
+    if (!masters.length) {
+      throw new Error('Resource catalog contains no materialized assets');
+    }
+
     set = figma.combineAsVariants(masters, section);
     mark(set, catalog.setStableId);
   }
+
   set.description = `Columns: ${catalog.columnAxis.name}. Rows: ${catalog.rowAxis.name}.`;
   layoutSetMatrix(
     set,
@@ -80,10 +94,12 @@ export async function upsertAssetCatalog(
     [...catalog.columnAxis.values],
     (component) => {
       const item = catalogItem(catalog, component.getPluginData(DATA_KEY));
+
       return item ? { row: item.row, column: item.column } : undefined;
     },
     { width: 52, height: 42 },
   );
+
   return set;
 }
 
@@ -96,7 +112,10 @@ export function ensureComponentProperty(
   const existing = Object.entries(owner.componentPropertyDefinitions).find(
     ([name, definition]) => name.split('#')[0] === displayName && definition.type === type,
   );
-  if (existing) return owner.editComponentProperty(existing[0], { defaultValue });
+  if (existing) {
+    return owner.editComponentProperty(existing[0], { defaultValue });
+  }
+
   return owner.addComponentProperty(displayName, type, defaultValue);
 }
 
@@ -111,13 +130,19 @@ export function deleteSetProperties(
         displayNames.includes(name.split('#')[0] ?? '') && definition.type === type,
     )
     .map(([name]) => name);
-  for (const name of matches) set.deleteComponentProperty(name);
+  for (const name of matches) {
+    set.deleteComponentProperty(name);
+  }
 }
 
 async function liveNodeById<T extends SceneNode>(node: T | undefined, type: T['type']) {
-  if (!node) return undefined;
+  if (!node) {
+    return undefined;
+  }
+
   try {
     const live = await figma.getNodeByIdAsync(node.id);
+
     return live?.type === type ? (live as T) : undefined;
   } catch {
     return undefined;
@@ -126,6 +151,7 @@ async function liveNodeById<T extends SceneNode>(node: T | undefined, type: T['t
 
 async function liveComponentByStableId(stableId: string) {
   const candidate = findStable<ComponentNode>(stableId, ['COMPONENT']);
+
   return liveNodeById(candidate, 'COMPONENT');
 }
 
@@ -138,14 +164,22 @@ async function nameLiveComponent(stableId: string, component: ComponentNode, nam
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       candidate.name = name;
+
       return candidate;
     } catch (error) {
-      if (!isInvalidatedNode(error) || attempt === 2) throw error;
+      if (!isInvalidatedNode(error) || attempt === 2) {
+        throw error;
+      }
+
       const reacquired = await liveComponentByStableId(stableId);
-      if (!reacquired) throw error;
+      if (!reacquired) {
+        throw error;
+      }
+
       candidate = reacquired;
     }
   }
+
   throw new Error(`Could not name live component ${stableId}`);
 }
 
@@ -163,9 +197,13 @@ export async function repairSetIfNeeded(
       findStable<ComponentSetNode>(stableId, ['COMPONENT_SET']),
       'COMPONENT_SET',
     ));
-  if (!liveSet) return undefined;
+  if (!liveSet) {
+    return undefined;
+  }
+
   try {
     void liveSet.componentPropertyDefinitions;
+
     return liveSet;
   } catch {
     // A corrupt set proxy may reject both componentPropertyDefinitions and
@@ -173,8 +211,14 @@ export async function repairSetIfNeeded(
     const masters = (
       await Promise.all(expectedMasterStableIds.map(liveComponentByStableId))
     ).filter((master): master is ComponentNode => Boolean(master));
-    if (!masters.length) return undefined;
-    for (const master of masters) section.appendChild(master);
+    if (!masters.length) {
+      return undefined;
+    }
+
+    for (const master of masters) {
+      section.appendChild(master);
+    }
+
     // Moving the last child auto-deletes a set and can invalidate every cached
     // child proxy, so reacquire all main components again before any write.
     const liveMasters = await Promise.all(
@@ -185,10 +229,12 @@ export async function repairSetIfNeeded(
     );
     if (liveMasters.some(({ master }) => !master)) {
       const missing = liveMasters.filter(({ master }) => !master).map(({ stableId: id }) => id);
+
       throw new Error(
         `Could not reacquire components ${missing.join(', ')} while repairing ${stableId}`,
       );
     }
+
     const namedMasters: ComponentNode[] = [];
     for (const { stableId: masterStableId, master } of liveMasters) {
       const parts = masterStableId.split('/').slice(1);
@@ -207,8 +253,10 @@ export async function repairSetIfNeeded(
         name && master ? await nameLiveComponent(masterStableId, master, name) : master!,
       );
     }
+
     const repaired = figma.combineAsVariants(namedMasters, section);
     mark(repaired, stableId);
+
     return repaired;
   }
 }
@@ -244,6 +292,7 @@ export async function configureTextStyleCatalogItem(
     sample = figma.createText();
     component.appendChild(sample);
   }
+
   sample.componentPropertyReferences = {};
   sample.name = 'text';
   mark(sample, sampleId);
@@ -252,7 +301,9 @@ export async function configureTextStyleCatalogItem(
   sample.textAutoResize = 'WIDTH_AND_HEIGHT';
   await sample.setTextStyleIdAsync(textStyle.id);
   sample.fills = [];
-  if (colorVariable) bindPaintVariable(sample, 'fills', colorVariable);
+  if (colorVariable) {
+    bindPaintVariable(sample, 'fills', colorVariable);
+  }
 }
 
 export async function upsertTextStyleCatalog(
@@ -279,20 +330,28 @@ export async function upsertTextStyleCatalog(
       (stableId) => variantNames.get(stableId),
     );
   }
+
   const masters: ComponentNode[] = [];
   for (const item of catalog.items) {
     const definition = ir.resources.textStyles.find(
       (candidate) => candidate.stableId === item.resourceRef,
     );
-    if (!definition) continue;
+    if (!definition) {
+      continue;
+    }
+
     const textStyle = resources.textStyles.get(item.resourceRef);
-    if (!textStyle) throw new Error(`Missing Text Style ${item.resourceRef}`);
+    if (!textStyle) {
+      throw new Error(`Missing Text Style ${item.resourceRef}`);
+    }
+
     const catalogId = resourceCatalogStableId(item.resourceRef);
     let component = await liveComponentByStableId(catalogId);
     if (!component) {
       component = figma.createComponent();
       mark(component, catalogId);
     }
+
     await configureTextStyleCatalogItem(
       component,
       definition,
@@ -306,10 +365,14 @@ export async function upsertTextStyleCatalog(
         figmaProjectConfig.figma.resources.textStyleColorToken,
       ),
     );
-    if (set && component.parent !== set) set.appendChild(component);
+    if (set && component.parent !== set) {
+      set.appendChild(component);
+    }
+
     masters.push(component);
   }
-  if (set)
+
+  if (set) {
     removeStaleManagedChildren(
       set,
       new Set(
@@ -321,23 +384,36 @@ export async function upsertTextStyleCatalog(
       ),
       new Set(['COMPONENT']),
     );
+  }
+
   if (!set) {
-    if (!masters.length) throw new Error('IR contains no materialized text style definitions');
+    if (!masters.length) {
+      throw new Error('IR contains no materialized text style definitions');
+    }
+
     set = figma.combineAsVariants(masters, section);
     mark(set, catalog.setStableId);
   }
+
   const defaultText = catalog.items[0]?.sample ?? 'Text';
   const textProperty = ensureComponentProperty(set, 'Text', 'TEXT', defaultText);
   for (const component of set.children) {
-    if (component.type !== 'COMPONENT') continue;
+    if (component.type !== 'COMPONENT') {
+      continue;
+    }
+
     const sample = component.children.find(
       (child): child is TextNode => child.type === 'TEXT' && child.name === 'text',
     );
-    if (!sample) continue;
+    if (!sample) {
+      continue;
+    }
+
     sample.componentPropertyReferences = {};
     sample.characters = defaultText;
     sample.componentPropertyReferences = { characters: textProperty };
   }
+
   set.description = `Columns: ${catalog.columnAxis.name}. Rows: ${catalog.rowAxis.name}. Layers use shared local Text Styles.`;
   layoutSetMatrix(
     set,
@@ -351,9 +427,11 @@ export async function upsertTextStyleCatalog(
         (candidate) =>
           resourceCatalogStableId(candidate.resourceRef) === component.getPluginData(DATA_KEY),
       );
+
       return item ? { row: item.row, column: item.column } : undefined;
     },
     { width: 360, height: 64 },
   );
+
   return set;
 }

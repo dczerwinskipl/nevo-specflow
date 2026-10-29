@@ -50,12 +50,16 @@ describe('consolidation into one commit per Specification', () => {
     const project = await queueProject();
     const before = commitCount(project);
     const ids: string[] = [];
-    for (let n = 1; n <= 5; n += 1) ids.push(await queueSave(project, 1, `version ${n}\n`));
+    for (let n = 1; n <= 5; n += 1) {
+      ids.push(await queueSave(project, 1, `version ${n}\n`));
+    }
 
     const results = await drainQueue(project.engine, isolatedQueue(), undefined, FLUSH);
     expect(results.map((result) => result.status)).toEqual(['committed', 'idle']);
     const committed = results[0]!;
-    if (committed.status !== 'committed') throw new Error('expected a commit');
+    if (committed.status !== 'committed') {
+      throw new Error('expected a commit');
+    }
 
     expect(commitCount(project)).toBe(before + 1);
     expect(committed.operationIds).toEqual(ids);
@@ -96,6 +100,7 @@ describe('consolidation into one commit per Specification', () => {
         batchId: ids[0],
       });
     }
+
     expect(workingTreeClean(project)).toBe(true);
     expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
   });
@@ -114,7 +119,10 @@ describe('consolidation into one commit per Specification', () => {
     const before = commitCount(project);
     const result = await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
     expect(result).toMatchObject({ status: 'committed' });
-    if (result.status !== 'committed') return;
+    if (result.status !== 'committed') {
+      return;
+    }
+
     expect(commitCount(project)).toBe(before + 1);
     expect(committedPaths(project, result.sha)).toEqual(
       [1, 2, 3].map((index) => `specs/active/hand/${notesPath(index)}`).sort(),
@@ -138,7 +146,10 @@ describe('consolidation into one commit per Specification', () => {
     expect(commits).toHaveLength(2);
     expect(commitCount(project)).toBe(before + 2);
     const [one, two] = commits;
-    if (one?.status !== 'committed' || two?.status !== 'committed') return;
+    if (one?.status !== 'committed' || two?.status !== 'committed') {
+      return;
+    }
+
     expect([one.batchId, two.batchId].sort()).toEqual([first, other].sort());
     expect(new Set([one.sha, two.sha]).size).toBe(2);
     expect(committedPaths(project, one.sha)).toHaveLength(1);
@@ -165,6 +176,7 @@ describe('consolidation into one commit per Specification', () => {
         reason: 'nothing-to-commit',
       });
     }
+
     expect(workingTreeClean(project)).toBe(true);
     expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
   });
@@ -181,7 +193,10 @@ describe('consolidation into one commit per Specification', () => {
     // No flush and a clock that has not moved: a structural operation does not settle.
     const result = await runQueueOnce(project.engine, isolatedQueue({ clock: manualClock() }));
     expect(result).toMatchObject({ status: 'committed', operationIds: [id] });
-    if (result.status !== 'committed') return;
+    if (result.status !== 'committed') {
+      return;
+    }
+
     expect(trailersOf(project, result.sha)['Nevo-Action']).toBe('rename');
     expect(git(project.root, 'log', '-1', '--format=%s', result.sha)).toBe(
       'spec(documents): rename notes-1.md to renamed.md in hand',
@@ -222,8 +237,10 @@ describe('the settle window and the maximum hold', () => {
     const deps = isolatedQueue({ clock });
     const wait = async (settleMs: number): Promise<number | undefined> => {
       const result = await runQueueOnce(project.engine, deps, undefined, { settleMs });
+
       return result.status === 'idle' ? result.waitMs : undefined;
     };
+
     expect(await wait(500)).toBeGreaterThan(300);
     expect(await wait(1000)).toBeLessThanOrEqual(300);
   });
@@ -239,8 +256,11 @@ describe('the settle window and the maximum hold', () => {
       clock.advance(200);
       version += 1;
       await alignWall(project, clock, await queueSave(project, 1, `v${version}\n`));
-      if (version > 40) throw new Error('the maximum hold never ended the wait');
+      if (version > 40) {
+        throw new Error('the maximum hold never ended the wait');
+      }
     }
+
     expect(version).toBeGreaterThanOrEqual(23);
     expect(version).toBeLessThanOrEqual(26);
     expect(engineCommits(project)).toHaveLength(1);
@@ -457,6 +477,7 @@ describe('the guard against foreign edits and the failure record', () => {
           '-qm',
           'human',
         );
+
         return Promise.reject(new GitCapabilityError('GIT_OPERATION_UNCERTAIN', 'x', 'timeout'));
       },
     };
@@ -486,6 +507,7 @@ describe('the guard against foreign edits and the failure record', () => {
       isolatedQueue({
         onCommitFailure: (_context, classified) => {
           seen.push(classified.reason);
+
           return Promise.resolve('failed');
         },
       }),
@@ -767,6 +789,7 @@ describe('a commit that carries the trailer but is not the batch', () => {
         recoveryPhase: 'commit',
       });
     }
+
     // Nothing was committed on top of the forgery, and notes-2 stays recorded (not silently lost).
     expect(git(project.root, 'rev-parse', 'HEAD')).toBe(forged);
     expect(git(project.root, 'status', '--porcelain')).toContain(notesPath(2));
@@ -803,7 +826,9 @@ describe('the claim reads its inputs outside the lock and checks them under it',
     const hooks: QueueHooks = {
       afterSnapshot: async () => {
         snapshots += 1;
-        if (snapshots === 1) late = await queueSave(project, 2, 'queued after the snapshot\n');
+        if (snapshots === 1) {
+          late = await queueSave(project, 2, 'queued after the snapshot\n');
+        }
       },
     };
     const result = await runQueueOnce(project.engine, isolatedQueue({ hooks }), undefined, FLUSH);
@@ -824,7 +849,10 @@ describe('the claim reads its inputs outside the lock and checks them under it',
     const hooks: QueueHooks = {
       afterSnapshot: async () => {
         snapshots += 1;
-        if (snapshots !== 1) return;
+        if (snapshots !== 1) {
+          return;
+        }
+
         // A second save of the same document is mid-write when the lock is taken: a barrier.
         let reached!: () => void;
         const atBarrier = new Promise<void>((resolve) => {
@@ -877,6 +905,7 @@ describe('the claim reads its inputs outside the lock and checks them under it',
         hooks: {
           afterClaim: (batch) => {
             attempts = batch.attempts;
+
             return Promise.resolve();
           },
         },

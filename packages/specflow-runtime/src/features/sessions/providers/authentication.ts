@@ -4,6 +4,7 @@ const MAX_REJECTED_LOGINS = 64;
 export function createProviderAuthentication() {
   let verified: string | undefined;
   const rejected = new Set<string>();
+
   return {
     isRejected: (fingerprint: string) => rejected.has(fingerprint),
     verified(fingerprint: string) {
@@ -15,11 +16,15 @@ export function createProviderAuthentication() {
       rejected.add(fingerprint);
       if (rejected.size > MAX_REJECTED_LOGINS) {
         for (const candidate of rejected) {
-          if (candidate === verified) continue;
+          if (candidate === verified) {
+            continue;
+          }
+
           rejected.delete(candidate);
           break;
         }
       }
+
       return !verified || fingerprint === verified;
     },
   };

@@ -39,6 +39,7 @@ async function project(
   // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
   // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
   await installDefinitionsForTesting(engine).catch(() => undefined);
+
   return { root, engine };
 }
 
@@ -181,6 +182,7 @@ describe('Create commits the scaffold when Git is enabled', () => {
 
 async function commitOf(root: string, engine: SpecFlowEngine): Promise<{ sha: string }> {
   await createSpecification(engine, existing(engine));
+
   return { sha: git(root, 'rev-parse', 'HEAD') };
 }
 
@@ -409,6 +411,7 @@ describe('Git disabled keeps Create exactly as it was', () => {
       const listener = (message: unknown): void => {
         spawned.push(message);
       };
+
       const processChannel = channel('nevo.specflow.engine.git-process');
       processChannel.subscribe(listener);
       try {

@@ -257,20 +257,30 @@ function sourceFiles(directory) {
   const files = [];
   for (const entry of readdirSync(directory)) {
     const full = path.join(directory, entry);
-    if (statSync(full).isDirectory()) files.push(...sourceFiles(full));
-    else if (/\.ts$/u.test(entry) && !/\.(test|d)\.ts$/u.test(entry)) files.push(full);
+    if (statSync(full).isDirectory()) {
+      files.push(...sourceFiles(full));
+    } else if (/\.ts$/u.test(entry) && !/\.(test|d)\.ts$/u.test(entry)) {
+      files.push(full);
+    }
   }
+
   return files;
 }
 
 const files = new Set(sourceFiles(src));
 
 function resolveImport(from, specifier) {
-  if (!specifier.startsWith('.')) return undefined;
+  if (!specifier.startsWith('.')) {
+    return undefined;
+  }
+
   const base = path.resolve(path.dirname(from), specifier);
   for (const candidate of [base + '.ts', path.join(base, 'index.ts')]) {
-    if (files.has(candidate)) return candidate;
+    if (files.has(candidate)) {
+      return candidate;
+    }
   }
+
   return undefined;
 }
 
@@ -280,8 +290,11 @@ for (const file of files) {
   const targets = new Set();
   for (const reference of info.importedFiles) {
     const target = resolveImport(file, reference.fileName);
-    if (target && target !== file) targets.add(target);
+    if (target && target !== file) {
+      targets.add(target);
+    }
   }
+
   graph.set(file, [...targets]);
 }
 
@@ -306,6 +319,7 @@ function connect(node) {
       low.set(node, Math.min(low.get(node), index.get(next)));
     }
   }
+
   if (low.get(node) === index.get(node)) {
     const component = [];
     let member;
@@ -314,16 +328,27 @@ function connect(node) {
       onStack.delete(member);
       component.push(member);
     } while (member !== node);
-    if (component.length > 1) components.push(component);
+
+    if (component.length > 1) {
+      components.push(component);
+    }
   }
 }
-for (const node of graph.keys()) if (!index.has(node)) connect(node);
+
+for (const node of graph.keys()) {
+  if (!index.has(node)) {
+    connect(node);
+  }
+}
 
 const relative = (file) => path.relative(src, file).split(path.sep).join('/');
 let failed = false;
 for (const [file, targets] of graph) {
   for (const rule of FORBIDDEN_EDGES) {
-    if (!relative(file).startsWith(rule.from)) continue;
+    if (!relative(file).startsWith(rule.from)) {
+      continue;
+    }
+
     for (const target of targets) {
       if (rule.to.some((prefix) => relative(target).startsWith(prefix))) {
         failed = true;
@@ -334,8 +359,12 @@ for (const [file, targets] of graph) {
     }
   }
 }
+
 for (const file of files) {
-  if (!PURE_SLICES.some((prefix) => relative(file).startsWith(prefix))) continue;
+  if (!PURE_SLICES.some((prefix) => relative(file).startsWith(prefix))) {
+    continue;
+  }
+
   const info = ts.preProcessFile(readFileSync(file, 'utf8'), true, false);
   for (const reference of info.importedFiles) {
     if (IO_MODULES.test(reference.fileName)) {
@@ -346,6 +375,7 @@ for (const file of files) {
     }
   }
 }
+
 for (const component of components) {
   const members = component.map(relative).sort();
   const gated = members.some((member) => GATED.some((prefix) => member.startsWith(prefix)));
@@ -361,5 +391,9 @@ for (const component of components) {
     );
   }
 }
-if (failed) process.exit(1);
+
+if (failed) {
+  process.exit(1);
+}
+
 console.log('Engine import cycles: none new in ' + GATED.join(', ') + '.');

@@ -15,8 +15,13 @@ export function collectCorpusProblems(scan: ScanResult): string[] {
   for (const file of scan.missingFrontmatter) {
     problems.push(`${file}: missing frontmatter (every authored docs/**.md file needs it)`);
   }
-  for (const doc of scan.docs) problems.push(...validateDoc(doc));
+
+  for (const doc of scan.docs) {
+    problems.push(...validateDoc(doc));
+  }
+
   problems.push(...validateCorpus(scan.docs));
   problems.push(...validateAdrs(scan.docs));
+
   return problems;
 }

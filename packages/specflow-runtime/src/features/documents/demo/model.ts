@@ -50,6 +50,7 @@ export const sha256 = (bytes: Uint8Array | string) =>
 
 export const textFile = (text: string, revision?: string): DemoFile => {
   const bytes = new TextEncoder().encode(text);
+
   return { bytes, revision: revision ?? sha256(bytes) };
 };
 
@@ -76,6 +77,7 @@ export const joinPath = (folder: string, name: string) => (folder ? folder + '/'
 /** Every ancestor folder of a path (`a/b/c.md` gives `a`, `a/b`). */
 export function ancestors(path: string): string[] {
   const parts = path.split('/');
+
   return parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/'));
 }
 
@@ -83,12 +85,21 @@ export function ancestors(path: string): string[] {
 export function allFolders(documents: Pick<DemoSpecDocuments, 'files' | 'folders'>): string[] {
   const folders = new Map<string, string>();
   for (const folder of documents.folders) {
-    for (const ancestor of [...ancestors(folder + '/x')])
-      if (!folders.has(foldKey(ancestor))) folders.set(foldKey(ancestor), ancestor);
+    for (const ancestor of [...ancestors(folder + '/x')]) {
+      if (!folders.has(foldKey(ancestor))) {
+        folders.set(foldKey(ancestor), ancestor);
+      }
+    }
   }
-  for (const path of documents.files.keys())
-    for (const ancestor of ancestors(path))
-      if (!folders.has(foldKey(ancestor))) folders.set(foldKey(ancestor), ancestor);
+
+  for (const path of documents.files.keys()) {
+    for (const ancestor of ancestors(path)) {
+      if (!folders.has(foldKey(ancestor))) {
+        folders.set(foldKey(ancestor), ancestor);
+      }
+    }
+  }
+
   return [...folders.values()].sort((left, right) =>
     foldKey(left) < foldKey(right) ? -1 : foldKey(left) > foldKey(right) ? 1 : 0,
   );

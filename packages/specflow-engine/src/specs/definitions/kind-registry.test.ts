@@ -130,6 +130,7 @@ describe('definition kind registry', () => {
       dependsOn: [],
       check: (_entity, context) => {
         context.lookup('document-type', 'overview');
+
         return [];
       },
     });

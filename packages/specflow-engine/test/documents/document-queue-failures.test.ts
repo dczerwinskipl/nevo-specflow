@@ -95,10 +95,12 @@ function failingPort(
   before: (real: CommitPort) => Promise<void> | void = () => undefined,
 ): CommitPort {
   const real = openVersionControl(project.engine).commits;
+
   return {
     ...real,
     commit: async () => {
       await before(real);
+
       throw error();
     },
   };
@@ -137,8 +139,10 @@ describe('transient failures wait and give up', () => {
         );
         expect(early).toEqual({ status: 'idle', reason: 'backoff', waitMs: 1000 });
       }
+
       at += 120_000;
     }
+
     const clock = manualClock();
     clock.wallAt(at);
     // Far past the old limit of ten attempts the operation still waits, at the 60 s cap.
@@ -156,6 +160,7 @@ describe('transient failures wait and give up', () => {
       });
       at += 120_000;
     }
+
     expect(engineCommits(project)).toEqual([]);
 
     // The blocker goes away: the commit lands exactly once.
@@ -183,7 +188,10 @@ describe('transient failures wait and give up', () => {
     const port = new Proxy(real, {
       get(target, property, receiver) {
         const value = Reflect.get(target, property, receiver) as unknown;
-        if (typeof value !== 'function') return value;
+        if (typeof value !== 'function') {
+          return value;
+        }
+
         return (...args: unknown[]) => {
           if (missing) {
             throw new GitCapabilityError(
@@ -192,6 +200,7 @@ describe('transient failures wait and give up', () => {
               'executable-unavailable',
             );
           }
+
           return (value as (...parameters: unknown[]) => unknown).apply(target, args);
         };
       },
@@ -209,6 +218,7 @@ describe('transient failures wait and give up', () => {
       expect(await stage(project, id)).toMatchObject({ stage: 'queued' });
       at += 120_000;
     }
+
     expect(engineCommits(project)).toEqual([]);
 
     missing = false;
@@ -380,6 +390,7 @@ describe('permanent failures', () => {
         }
       });
     };
+
     await fabricate('commit-failed', 205, 1000);
     await queueSave(project, 1, 'still accepted\n');
 
@@ -412,7 +423,10 @@ describe('split-and-retry', () => {
     });
     const committed = results.find((entry) => entry.status === 'committed');
     expect(committed).toMatchObject({ operationIds: [a, c], batchId: a });
-    if (committed?.status !== 'committed') return;
+    if (committed?.status !== 'committed') {
+      return;
+    }
+
     expect(committedPaths(project, committed.sha)).toEqual([specPath(1), specPath(3)]);
     expect(trailersOf(project, committed.sha)['Nevo-Coalesced']).toBe(c);
 
@@ -444,7 +458,9 @@ describe('split-and-retry', () => {
     const batches = await listDocumentBatches(project.engine.context);
     expect(batches).toHaveLength(1);
     expect(batches[0]).toMatchObject({ operationId: a, state: 'failed', memberIds: [a, c] });
-    for (const id of [a, c]) expect((await stage(project, id))?.stage).toBe('commit-failed');
+    for (const id of [a, c]) {
+      expect((await stage(project, id))?.stage).toBe('commit-failed');
+    }
   });
 
   it('splits off a new document whose path became ignored', async () => {
@@ -484,6 +500,7 @@ describe('retry and abandon', () => {
     await editNotesByHand(project, 1, 'a human typed this\n');
     await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
     expect((await stage(project, id))?.stage).toBe('commit-failed');
+
     return id;
   }
 
@@ -620,6 +637,7 @@ describe('an uncertain outcome', () => {
       ...real,
       commit: async (request) => {
         await real.commit(request);
+
         throw uncertain();
       },
     };
@@ -663,6 +681,7 @@ describe('recover', () => {
     );
     await runQueueOnce(project.engine, isolatedQueue({ commits: port }), undefined, FLUSH);
     expect((await stage(project, id))?.stage).toBe('recovery-required');
+
     return id;
   }
 
@@ -740,6 +759,7 @@ describe('recover', () => {
         details: { cause: 'recovery-unresolved' },
       });
     }
+
     const abandoned = await recoverDocumentOperation(project.engine, a, 'abandon');
     expect(abandoned.map((journal) => [journal.stage, journal.outcome])).toEqual([
       ['completed', 'uncommitted'],
@@ -785,7 +805,10 @@ describe('rewritten history', () => {
 
     const result = await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
     expect(result).toMatchObject({ status: 'committed', resumed: true, operationIds: [id] });
-    if (result.status !== 'committed') return;
+    if (result.status !== 'committed') {
+      return;
+    }
+
     expect(git(project.root, 'rev-parse', `${result.sha}^`)).toBe(amended);
   });
 
@@ -890,6 +913,7 @@ describe('a checkout that cannot take commits', () => {
         reason: 'git-disabled',
       });
     }
+
     expect(await queueRecords(project)).toEqual({ batches: 0, lease: false });
     expect(engineCommits(project)).toEqual([]);
     expect(await ledgerOf(project)).toBeUndefined();
@@ -1030,6 +1054,7 @@ describe('a failure after the commit landed', () => {
       ...real,
       commit: async (request) => {
         await real.commit(request);
+
         throw error();
       },
     };

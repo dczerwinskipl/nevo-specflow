@@ -11,63 +11,88 @@ function unavailable(): never {
     'Codex requires a supported ChatGPT CLI file login.',
   );
 }
+
 export async function regularCodexFile(path: string, maxBytes: number) {
   const stat = await lstat(path);
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes)
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes) {
     throw new SessionError(
       'PROVIDER_UNAVAILABLE',
       'Codex native files are outside the supported configuration.',
     );
+  }
+
   return stat;
 }
+
 export async function absentCodexPath(path: string) {
   try {
     await lstat(path);
     unavailable();
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
   }
 }
+
 async function physicalDirectory(path: string) {
-  if (!isAbsolute(path)) unavailable();
+  if (!isAbsolute(path)) {
+    unavailable();
+  }
+
   const root = parse(path).root;
   let current = path;
   while (current !== root) {
     const stat = await lstat(current);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) unavailable();
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      unavailable();
+    }
+
     current = dirname(current);
   }
 }
+
 async function readAuth(path: string) {
   const stat = await regularCodexFile(path, AUTH_BYTES);
   const bytes = await readFile(path);
-  if (bytes.length > AUTH_BYTES) unavailable();
+  if (bytes.length > AUTH_BYTES) {
+    unavailable();
+  }
+
   const value = rpcObject(JSON.parse(bytes.toString('utf8')));
   if (
     value.last_refresh !== undefined &&
     (typeof value.last_refresh !== 'string' || value.last_refresh.length > 128)
-  )
+  ) {
     unavailable();
+  }
+
   if (
     value.auth_mode !== 'chatgpt' ||
     (value.OPENAI_API_KEY != null && value.OPENAI_API_KEY !== '')
-  )
+  ) {
     unavailable();
+  }
+
   const tokens = rpcObject(value.tokens);
   if (
     typeof tokens.account_id !== 'string' ||
     !tokens.account_id ||
     Buffer.byteLength(tokens.account_id) > 256
-  )
+  ) {
     unavailable();
+  }
+
   for (const name of ['access_token', 'refresh_token', 'id_token']) {
     if (
       typeof tokens[name] !== 'string' ||
       !tokens[name] ||
       Buffer.byteLength(tokens[name]) > 32768
-    )
+    ) {
       unavailable();
+    }
   }
+
   // Expiry is an availability hint only; native Codex still authenticates tokens.
   // Opaque tokens have no local expiry claim and must pass native validation.
   const accessParts = String(tokens.access_token).split('.');
@@ -80,19 +105,29 @@ async function readAuth(path: string) {
       (typeof accessClaims.exp !== 'number' ||
         !Number.isFinite(accessClaims.exp) ||
         accessClaims.exp * 1000 <= Date.now() + 60000)
-    )
+    ) {
       unavailable();
+    }
   }
+
   // This is local context binding, not JWT authentication or issuer trust.
   // Native Codex authenticates the copied login; token rotation must preserve scope.
   const parts = String(tokens.id_token).split('.');
-  if (parts.length !== 3 || parts.some((part) => !part)) unavailable();
+  if (parts.length !== 3 || parts.some((part) => !part)) {
+    unavailable();
+  }
+
   const claims = rpcObject(JSON.parse(Buffer.from(parts[1]!, 'base64url').toString('utf8')));
   const auth = rpcObject(claims['https://api.openai.com/auth']);
   const userId = auth.chatgpt_user_id ?? auth.user_id;
-  if (typeof userId !== 'string' || !userId || Buffer.byteLength(userId) > 256) unavailable();
-  if (auth.chatgpt_account_id !== undefined && auth.chatgpt_account_id !== tokens.account_id)
+  if (typeof userId !== 'string' || !userId || Buffer.byteLength(userId) > 256) {
     unavailable();
+  }
+
+  if (auth.chatgpt_account_id !== undefined && auth.chatgpt_account_id !== tokens.account_id) {
+    unavailable();
+  }
+
   return { value, tokens, stat, userId };
 }
 
@@ -105,23 +140,32 @@ export async function prepareCodexCredentials(
   homeRoot: string,
   workspace: string,
 ) {
-  if (!isAbsolute(userHome) || !isAbsolute(homeRoot)) unavailable();
+  if (!isAbsolute(userHome) || !isAbsolute(homeRoot)) {
+    unavailable();
+  }
+
   const project = await realpath(workspace);
   function outsideProject(candidate: string) {
     const offset = relative(project, candidate);
-    if (!offset || (!offset.startsWith('..' + sep) && offset !== '..' && !isAbsolute(offset)))
+    if (!offset || (!offset.startsWith('..' + sep) && offset !== '..' && !isAbsolute(offset))) {
       throw new SessionError(
         'PROVIDER_UNAVAILABLE',
         'Codex private state must remain outside the workspace.',
       );
+    }
   }
+
   outsideProject(resolve(homeRoot));
   const source = await (async () => {
     try {
       await physicalDirectory(join(userHome, '.codex'));
+
       return await readAuth(join(userHome, '.codex', 'auth.json'));
     } catch (error) {
-      if (error instanceof SessionError) throw error;
+      if (error instanceof SessionError) {
+        throw error;
+      }
+
       return unavailable();
     }
   })();
@@ -141,8 +185,11 @@ export async function prepareCodexCredentials(
   try {
     await regularCodexFile(authPath, AUTH_BYTES);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
   }
+
   {
     const path = join(home, 'auth-' + randomUUID() + '.tmp');
     // Copy credential fields only, never native config, hooks, plugins or skills.
@@ -166,9 +213,12 @@ export async function prepareCodexCredentials(
       created = true;
       await rename(path, authPath);
     } finally {
-      if (created) await rm(path, { force: true });
+      if (created) {
+        await rm(path, { force: true });
+      }
     }
   }
+
   for (const name of [
     'config.toml',
     'managed_config.toml',
@@ -176,19 +226,29 @@ export async function prepareCodexCredentials(
     'hooks.json',
     'plugins',
     '.agents',
-  ])
+  ]) {
     await absentCodexPath(join(home, name));
+  }
+
   // Native startup materializes its bundled .system cache even without a turn.
   // It is disabled by launch policy; arbitrary user-installed skills remain refused.
   const skills = join(home, 'skills');
   try {
     await physicalDirectory(skills);
     const entries = await readdir(skills);
-    if (entries.some((name) => name !== '.system')) unavailable();
-    if (entries.includes('.system')) await physicalDirectory(join(skills, '.system'));
+    if (entries.some((name) => name !== '.system')) {
+      unavailable();
+    }
+
+    if (entries.includes('.system')) {
+      await physicalDirectory(join(skills, '.system'));
+    }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
   }
+
   return {
     home,
     accountScope,

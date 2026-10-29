@@ -27,8 +27,9 @@ describe('project Session feature configuration', () => {
       { providers: { codex: { allowUnsafe: true } } },
       { providers: { codex: { enabled: 'true' } } },
       { providers: { codex: { executable: 'codex' } } },
-    ])
+    ]) {
       expect(() => parseSessionsFeatureConfig(input)).toThrow();
+    }
   });
   it('supports explicit Codex enablement without a certification override', () => {
     expect(

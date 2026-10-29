@@ -21,7 +21,10 @@ class DefaultingUi implements RuntimeSetupUi {
     initialValue?: T,
   ): Promise<T> {
     this.defaults.push(initialValue);
-    if (initialValue === undefined) throw new Error('Expected an authorization default.');
+    if (initialValue === undefined) {
+      throw new Error('Expected an authorization default.');
+    }
+
     return Promise.resolve(initialValue);
   }
 

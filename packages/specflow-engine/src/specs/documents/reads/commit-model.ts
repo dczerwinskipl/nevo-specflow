@@ -104,14 +104,21 @@ export class PathHolds {
 
   /** The strongest hold on a path or on anything below a folder ('' is the root). */
   under(folder: string): PathHold | undefined {
-    if (folder === '') return this.any();
+    if (folder === '') {
+      return this.any();
+    }
+
     const key = foldPathKey(folder);
+
     return stronger(stronger(this.#everything, this.#byFolder.get(key)), this.#byPath.get(key));
   }
 
   any(): PathHold | undefined {
     let found = this.#everything;
-    for (const hold of this.#byPath.values()) found = stronger(found, hold);
+    for (const hold of this.#byPath.values()) {
+      found = stronger(found, hold);
+    }
+
     return found;
   }
 
@@ -126,16 +133,30 @@ export class PathHolds {
 
 /** A hold that cannot be waited out beats one that can; the longer wait beats the shorter. */
 function stronger(left: PathHold | undefined, right: PathHold | undefined): PathHold | undefined {
-  if (left === undefined) return right;
-  if (right === undefined) return left;
-  if (left.retryAfterMs === undefined) return left;
-  if (right.retryAfterMs === undefined) return right;
+  if (left === undefined) {
+    return right;
+  }
+
+  if (right === undefined) {
+    return left;
+  }
+
+  if (left.retryAfterMs === undefined) {
+    return left;
+  }
+
+  if (right.retryAfterMs === undefined) {
+    return right;
+  }
+
   return right.retryAfterMs > left.retryAfterMs ? right : left;
 }
 
 function keepStronger(map: Map<string, PathHold>, key: string, hold: PathHold): void {
   const kept = stronger(map.get(key), hold);
-  if (kept !== undefined) map.set(key, kept);
+  if (kept !== undefined) {
+    map.set(key, kept);
+  }
 }
 
 export interface DocumentCommitView {
@@ -161,6 +182,7 @@ function severityOf(marker: DocumentCommitMarker): number {
   if (marker.state === 'failed') {
     return marker.recoveryRequired === true ? SEVERITY.recovery : SEVERITY.failed;
   }
+
   return SEVERITY.pending;
 }
 
@@ -170,7 +192,10 @@ export function markerOfJournal(
   now: number,
 ): DocumentCommitMarker | undefined {
   const { journal } = entry;
-  if (!DOCUMENT_CHANGE_STAGE_FACTS[journal.stage].active) return undefined;
+  if (!DOCUMENT_CHANGE_STAGE_FACTS[journal.stage].active) {
+    return undefined;
+  }
+
   const info = commitInfoOfJournal(journal, now);
   if (entry.writer === 'dead') {
     return {
@@ -180,7 +205,11 @@ export function markerOfJournal(
       reason: 'write-interrupted',
     };
   }
-  if (info.state !== 'pending' && info.state !== 'failed') return undefined;
+
+  if (info.state !== 'pending' && info.state !== 'failed') {
+    return undefined;
+  }
+
   return {
     state: info.state,
     operationId: journal.operationId,
@@ -195,6 +224,7 @@ export function markerOfJournal(
 
 function relativeTo(directory: string, path: string): string | undefined {
   const prefix = directory + '/';
+
   return path.startsWith(prefix) ? path.slice(prefix.length) : undefined;
 }
 
@@ -227,11 +257,17 @@ export function deriveCommitView(input: CommitViewInput): DocumentCommitView {
         }
       } else if (marker.state === 'failed') {
         summary.failed += 1;
-        if (marker.recoveryRequired === true) summary.recoveryRequired += 1;
+        if (marker.recoveryRequired === true) {
+          summary.recoveryRequired += 1;
+        }
       }
+
       for (const path of entry.paths ?? []) {
         const relative = relativeTo(input.directory, path);
-        if (relative === undefined) continue;
+        if (relative === undefined) {
+          continue;
+        }
+
         const kept = markers.get(relative);
         const order = severityOf(marker) * 1e9 + journal.sequence;
         if (kept === undefined || order > (rank.get(relative) ?? 0)) {
@@ -240,42 +276,65 @@ export function deriveCommitView(input: CommitViewInput): DocumentCommitView {
         }
       }
     }
+
     const blocker =
       journal.stage === 'commit-failed' &&
       journal.reason !== undefined &&
       COMMIT_BLOCKER_REASONS.includes(journal.reason);
     if (blocker) {
-      if (CHECKOUT_WIDE_BLOCKERS.includes(journal.reason)) checkoutBlocked = true;
+      if (CHECKOUT_WIDE_BLOCKERS.includes(journal.reason)) {
+        checkoutBlocked = true;
+      }
+
       for (const path of entry.paths ?? []) {
         const relative = relativeTo(input.directory, path);
-        if (relative !== undefined) blockedPaths.add(foldPathKey(relative));
+        if (relative !== undefined) {
+          blockedPaths.add(foldPathKey(relative));
+        }
       }
     }
+
     if (isBarrierStage(journal.stage, journal.recoveryPhase)) {
       const hold: PathHold =
         journal.stage === 'recovery-required'
           ? { cause: 'recovery-required' }
           : { cause: 'write-in-progress', retryAfterMs: BUSY_RETRY_AFTER_MS };
-      if (entry.paths === undefined) holds.addEverything(hold);
+      if (entry.paths === undefined) {
+        holds.addEverything(hold);
+      }
+
       for (const path of entry.paths ?? []) {
         const relative = relativeTo(input.directory, path);
-        if (relative !== undefined) holds.add(relative, hold);
+        if (relative !== undefined) {
+          holds.add(relative, hold);
+        }
       }
     }
   }
 
   for (const entry of input.batches) {
     const { batch } = entry;
-    if (batch.workspaceId !== input.workspaceId || batch.specId !== input.specId) continue;
-    if (!DOCUMENT_BATCH_REFUSES_RESERVATION[batch.state]) continue;
+    if (batch.workspaceId !== input.workspaceId || batch.specId !== input.specId) {
+      continue;
+    }
+
+    if (!DOCUMENT_BATCH_REFUSES_RESERVATION[batch.state]) {
+      continue;
+    }
+
     const hold: PathHold =
       batch.state === 'recovery-required'
         ? { cause: 'recovery-required' }
         : { cause: 'commit-in-progress', retryAfterMs: BUSY_RETRY_AFTER_MS };
-    if (entry.paths === undefined) holds.addEverything(hold);
+    if (entry.paths === undefined) {
+      holds.addEverything(hold);
+    }
+
     for (const path of entry.paths ?? []) {
       const relative = relativeTo(input.directory, path);
-      if (relative !== undefined) holds.add(relative, hold);
+      if (relative !== undefined) {
+        holds.add(relative, hold);
+      }
     }
   }
 
@@ -294,9 +353,15 @@ export function deriveCommitView(input: CommitViewInput): DocumentCommitView {
   let uncommittedPaths = 0;
   for (const entry of input.ledger ?? []) {
     const relative = relativeTo(input.directory, entry.path);
-    if (relative === undefined) continue;
+    if (relative === undefined) {
+      continue;
+    }
+
     uncommittedPaths += 1;
-    if (markers.has(relative)) continue;
+    if (markers.has(relative)) {
+      continue;
+    }
+
     markers.set(relative, {
       state: 'uncommitted',
       operationId: entry.operationId,
@@ -304,6 +369,7 @@ export function deriveCommitView(input: CommitViewInput): DocumentCommitView {
       queuedAt: entry.recordedAt,
     });
   }
+
   summary.uncommitted += uncommittedPaths;
 
   const sortedMarkers = [...markers].sort(([left], [right]) => compare(left, right));
@@ -315,6 +381,7 @@ export function deriveCommitView(input: CommitViewInput): DocumentCommitView {
     ...(oldestPendingAt !== undefined ? { oldestPendingAt } : {}),
     ...(input.policy !== undefined ? { policy: input.policy } : {}),
   };
+
   return {
     summary: commits,
     markers,

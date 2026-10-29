@@ -90,6 +90,7 @@ export async function hasQueueWork(rt: QueueRuntime): Promise<boolean> {
   ) {
     return true;
   }
+
   const batches = await listDocumentBatches(rt.context);
   if (
     batches.some(
@@ -101,6 +102,7 @@ export async function hasQueueWork(rt: QueueRuntime): Promise<boolean> {
   ) {
     return true;
   }
+
   return (await readQueueLease(rt.context, workspaceId)) !== undefined;
 }
 
@@ -120,27 +122,41 @@ async function takeSnapshot(rt: QueueRuntime): Promise<ClaimSnapshot> {
     lease !== undefined || batches.some((batch) => batch.state === 'committing');
   if (!executorKnown) {
     for (const journal of journals) {
-      if (journal.workspaceId !== workspaceId) continue;
+      if (journal.workspaceId !== workspaceId) {
+        continue;
+      }
+
       const queued = journal.stage === 'queued' && journal.commit !== undefined;
       if (queued || isBarrierStage(journal.stage, journal.recoveryPhase)) {
         try {
           plans.set(journal.operationId, await planOf(rt, journal));
         } catch (error) {
           // One operation with a missing or damaged plan must not wedge the checkout.
-          if (!(error instanceof DocumentError)) throw error;
-          if (queued) unreadable.push(journal);
-          else barrierUnreadable = true;
+          if (!(error instanceof DocumentError)) {
+            throw error;
+          }
+
+          if (queued) {
+            unreadable.push(journal);
+          } else {
+            barrierUnreadable = true;
+          }
         }
       }
     }
+
     for (const batch of batches) {
-      if (batch.state !== 'failed' && batch.state !== 'recovery-required') continue;
+      if (batch.state !== 'failed' && batch.state !== 'recovery-required') {
+        continue;
+      }
+
       heldBatches.set(
         batch.operationId,
         new Set((await readBatchPaths(context, batch)).map((entry) => foldPathKey(entry.path))),
       );
     }
   }
+
   return { journals, batches, lease, plans, unreadable, barrierUnreadable, heldBatches };
 }
 
@@ -155,11 +171,17 @@ async function snapshotIsCurrent(rt: QueueRuntime, snapshot: ClaimSnapshot): Pro
   const byId = (a: { operationId: string }, b: { operationId: string }): number =>
     a.operationId < b.operationId ? -1 : a.operationId > b.operationId ? 1 : 0;
   const journals = [...(await listDocumentChangeJournals(context))].sort(byId);
-  if (!isDeepStrictEqual(journals, [...snapshot.journals].sort(byId))) return false;
+  if (!isDeepStrictEqual(journals, [...snapshot.journals].sort(byId))) {
+    return false;
+  }
+
   const batches = (await listDocumentBatches(context))
     .filter((batch) => batch.workspaceId === workspaceId)
     .sort(byId);
-  if (!isDeepStrictEqual(batches, [...snapshot.batches].sort(byId))) return false;
+  if (!isDeepStrictEqual(batches, [...snapshot.batches].sort(byId))) {
+    return false;
+  }
+
   return isDeepStrictEqual(await readQueueLease(context, workspaceId), snapshot.lease);
 }
 
@@ -196,10 +218,14 @@ export async function claimNextBatch(
         snapshot = await takeSnapshot(rt);
       } catch (error) {
         // A plan file removed while it was read: the journal settled meanwhile. Read again.
-        if (!(error instanceof DocumentError)) throw error;
+        if (!(error instanceof DocumentError)) {
+          throw error;
+        }
       }
+
       await rt.hooks.afterSnapshot?.();
     }
+
     const taken = snapshot;
     outcome = await withJournalLock(rt.context, DOCUMENT_BATCH_KIND, async () => {
       // The last chance reads the inputs under the lock, where nothing can change them.
@@ -207,10 +233,15 @@ export async function claimNextBatch(
       if (taken !== undefined && !(await snapshotIsCurrent(rt, taken))) {
         return { kind: 'stale' } as const;
       }
+
       return claimLocked(rt, head, current);
     });
   }
-  if (outcome.kind === 'claimed') await claimQueuedMembers(rt, outcome.batch);
+
+  if (outcome.kind === 'claimed') {
+    await claimQueuedMembers(rt, outcome.batch);
+  }
+
   return outcome;
 }
 
@@ -237,19 +268,29 @@ async function claimLocked(
       confirmStopped: rt.options.confirmExecutorStopped === true,
       table: rt.table,
     });
-    if (verdict.kind === 'held') return { kind: 'busy' };
+    if (verdict.kind === 'held') {
+      return { kind: 'busy' };
+    }
   }
+
   // No executor runs now (none recorded, or the one recorded is gone). Batches that an earlier
   // executor finished or left: their members follow the record, whether or not a lease is left.
   let touched = lease !== undefined;
   for (const batch of batches) {
-    if (batch.state === 'committing') continue;
-    if ((await reconcileBatchMembers(context, batch, now)) > 0) touched = true;
+    if (batch.state === 'committing') {
+      continue;
+    }
+
+    if ((await reconcileBatchMembers(context, batch, now)) > 0) {
+      touched = true;
+    }
+
     if (batch.state === 'committed' || batch.state === 'dissolved' || batch.state === 'formed') {
       await removeDocumentBatch(context, batch.operationId);
       touched = true;
     }
   }
+
   if (running !== undefined) {
     // Resume: this executor owns the record and the lease now, and finishes the claim.
     const mine = parseDocumentBatchRecord(
@@ -265,17 +306,25 @@ async function claimLocked(
       batchId: mine.operationId,
       acquiredAt: now,
     });
+
     return { kind: 'claimed', batch: mine, resumed: true };
   }
-  if (lease !== undefined) await removeQueueLease(context, workspaceId);
+
+  if (lease !== undefined) {
+    await removeQueueLease(context, workspaceId);
+  }
+
   // What was reconciled changed the inputs: decide again on a fresh reading.
-  if (touched) return { kind: 'stale' };
+  if (touched) {
+    return { kind: 'stale' };
+  }
 
   // An operation whose plan cannot be read is failed alone (the operator abandons or retries it).
   if (snapshot.unreadable.length > 0) {
     for (const journal of snapshot.unreadable) {
       await moveMember(context, journal, 'commit-failed', { reason: 'plan-invalid' }, now);
     }
+
     return { kind: 'stale' };
   }
 
@@ -285,10 +334,18 @@ async function claimLocked(
   const queuedJournals = mine.filter(
     (journal) => journal.stage === 'queued' && journal.commit !== undefined,
   );
-  if (queuedJournals.length === 0) return { kind: 'idle', reason: 'no-queued-operations' };
-  if (head === undefined) return { kind: 'idle', reason: 'no-commits' };
+  if (queuedJournals.length === 0) {
+    return { kind: 'idle', reason: 'no-queued-operations' };
+  }
+
+  if (head === undefined) {
+    return { kind: 'idle', reason: 'no-commits' };
+  }
+
   // A barrier whose paths are unknown could overlap anything: nothing is claimed until it is resolved.
-  if (snapshot.barrierUnreadable) return { kind: 'idle', reason: 'blocked' };
+  if (snapshot.barrierUnreadable) {
+    return { kind: 'idle', reason: 'blocked' };
+  }
 
   rt.ledger.retain(
     new Set(journals.filter((journal) => journal.stage === 'queued').map((j) => j.operationId)),
@@ -311,7 +368,10 @@ async function claimLocked(
   }));
   const barrierPaths = new Set<string>();
   for (const journal of mine) {
-    if (!isBarrierStage(journal.stage, journal.recoveryPhase)) continue;
+    if (!isBarrierStage(journal.stage, journal.recoveryPhase)) {
+      continue;
+    }
+
     for (const entry of snapshot.plans.get(journal.operationId)!.paths) {
       barrierPaths.add(foldPathKey(entry.path));
     }
@@ -324,20 +384,30 @@ async function claimLocked(
   let dissolvedAny = false;
   for (const batch of batches) {
     const held = batch.state === 'failed' ? snapshot.heldBatches.get(batch.operationId) : undefined;
-    if (held === undefined) continue;
+    if (held === undefined) {
+      continue;
+    }
+
     const joins = queued.some(
       (operation) =>
         operation.branch === batch.branch &&
         operation.paths.some((path) => held.has(foldPathKey(path))),
     );
-    if (!joins) continue;
+    if (!joins) {
+      continue;
+    }
+
     const dissolved = transitionDocumentBatch(context, batch, 'dissolved', {}, now);
     await publishDocumentBatch(context, dissolved);
     await reconcileBatchMembers(context, dissolved, now);
     await removeDocumentBatch(context, batch.operationId);
     dissolvedAny = true;
   }
-  if (dissolvedAny) return { kind: 'stale' };
+
+  if (dissolvedAny) {
+    return { kind: 'stale' };
+  }
+
   const heldPaths = new Set([...snapshot.heldBatches.values()].flatMap((paths) => [...paths]));
 
   const decision = formNextBatch({
@@ -356,6 +426,7 @@ async function claimLocked(
       ? { kind: 'idle', reason: 'backoff', waitMs: Math.ceil(decision.retryAfterMs) }
       : { kind: 'idle', reason: 'blocked' };
   }
+
   if (decision.kind === 'wait') {
     return { kind: 'idle', reason: 'settling', waitMs: Math.ceil(decision.waitMs) };
   }
@@ -372,6 +443,7 @@ async function claimLocked(
     ) {
       return { kind: 'idle', reason: 'batch-id-collision' };
     }
+
     // A finished record that was not cleaned up: its work is done, the id is free again.
     await removeDocumentBatch(context, existing.operationId);
   }
@@ -421,6 +493,7 @@ async function claimLocked(
   );
   await publishDocumentBatch(context, record);
   await hooks.inClaimAfterRecord?.();
+
   return { kind: 'claimed', batch: record, resumed: false };
 }
 
@@ -438,7 +511,10 @@ export async function claimQueuedMembers(
   for (const id of batch.memberIds) {
     const moved = await withJournalLock(rt.context, DOCUMENT_BATCH_KIND, async () => {
       const journal = await readDocumentChangeJournal(rt.context, id);
-      if (journal?.stage !== 'queued') return false;
+      if (journal?.stage !== 'queued') {
+        return false;
+      }
+
       await moveMember(
         rt.context,
         journal,
@@ -446,6 +522,7 @@ export async function claimQueuedMembers(
         { batchId: batch.operationId },
         rt.nowIso(),
       );
+
       return true;
     });
     if (moved) {

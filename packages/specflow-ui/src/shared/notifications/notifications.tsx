@@ -24,14 +24,18 @@ export function createNotificationStore(): NotificationStore {
     current = next;
     listeners.forEach((listener) => listener());
   };
+
   return {
     get: () => current,
     notify: (message) => write({ id: newId(), message }),
     dismiss: () => {
-      if (current) write(undefined);
+      if (current) {
+        write(undefined);
+      }
     },
     subscribe: (listener) => {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
   };
@@ -42,6 +46,7 @@ const Context = createContext<NotificationStore | null>(null);
 function NotificationHost({ store }: { store: NotificationStore }) {
   const { t } = useTranslation();
   const notification = useSyncExternalStore(store.subscribe, store.get, store.get);
+
   return (
     <>
       {notification && (
@@ -51,7 +56,9 @@ function NotificationHost({ store }: { store: NotificationStore }) {
           type="background"
           open
           onOpenChange={(open) => {
-            if (!open) store.dismiss();
+            if (!open) {
+              store.dismiss();
+            }
           }}
         >
           {/*
@@ -71,6 +78,7 @@ function NotificationHost({ store }: { store: NotificationStore }) {
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [store] = useState(createNotificationStore);
+
   return (
     <Context.Provider value={store}>
       {/* The label prefixes every announcement ("Powiadomienie …"), so it is translated. */}
@@ -85,6 +93,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 /** Stable function that shows a notification. */
 export function useNotify(): (message: string) => void {
   const store = useContext(Context);
-  if (!store) throw new Error('NotificationProvider missing');
+  if (!store) {
+    throw new Error('NotificationProvider missing');
+  }
+
   return store.notify;
 }

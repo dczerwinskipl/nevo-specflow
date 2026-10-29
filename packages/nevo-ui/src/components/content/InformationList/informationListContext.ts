@@ -15,5 +15,6 @@ export function useInformationListContext(part: string): InformationListContextV
   if (!context) {
     throw new Error(`${part} must be rendered inside InformationList.`);
   }
+
   return context;
 }

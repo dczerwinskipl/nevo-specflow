@@ -83,14 +83,18 @@ export class DefinitionKindRegistry {
     if (!KIND_PATTERN.test(kind.kind)) {
       throw new Error(`Definition kind "${kind.kind}" is not a valid directory name.`);
     }
+
     if (this.kinds.has(kind.kind)) {
       throw new Error(`Definition kind "${kind.kind}" is registered twice.`);
     }
+
     if (kind.schemaVersions.length === 0) {
       throw new Error(`Definition kind "${kind.kind}" supports no schema version.`);
     }
+
     this.kinds.set(kind.kind, kind);
     this.ordered = undefined;
+
     return this;
   }
 
@@ -104,24 +108,42 @@ export class DefinitionKindRegistry {
 
   /** Kinds in load order: dependencies first, then by name. Throws on an unknown dependency or a cycle. */
   loadOrder(): readonly DefinitionKind[] {
-    if (this.ordered) return this.ordered;
+    if (this.ordered) {
+      return this.ordered;
+    }
+
     const result: DefinitionKind[] = [];
     const state = new Map<string, 'visiting' | 'done'>();
     const visit = (name: string, via: string): void => {
       const kind = this.kinds.get(name);
-      if (!kind)
+      if (!kind) {
         throw new Error(`Definition kind "${via}" depends on unregistered kind "${name}".`);
+      }
+
       const seen = state.get(name);
-      if (seen === 'done') return;
-      if (seen === 'visiting')
+      if (seen === 'done') {
+        return;
+      }
+
+      if (seen === 'visiting') {
         throw new Error(`Definition kinds depend on each other at "${name}".`);
+      }
+
       state.set(name, 'visiting');
-      for (const dependency of [...kind.dependsOn].sort()) visit(dependency, name);
+      for (const dependency of [...kind.dependsOn].sort()) {
+        visit(dependency, name);
+      }
+
       state.set(name, 'done');
       result.push(kind);
     };
-    for (const name of [...this.kinds.keys()].sort()) visit(name, name);
+
+    for (const name of [...this.kinds.keys()].sort()) {
+      visit(name, name);
+    }
+
     this.ordered = result;
+
     return result;
   }
 }

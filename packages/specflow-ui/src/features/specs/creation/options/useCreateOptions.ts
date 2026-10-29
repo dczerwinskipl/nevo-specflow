@@ -48,6 +48,7 @@ export function useCreateOptions(source: CreateOptionsSource): CreateOptionsMode
     : query.isError
       ? { status: forbidden ? 'forbidden' : 'error' }
       : { status: 'loading' };
+
   return {
     options,
     state,
@@ -55,8 +56,12 @@ export function useCreateOptions(source: CreateOptionsSource): CreateOptionsMode
     fetching: query.isFetching,
     refreshFailed: query.isRefetchError,
     async refresh() {
-      if (query.isFetching) return undefined;
+      if (query.isFetching) {
+        return undefined;
+      }
+
       const result = await query.refetch();
+
       // A failed refetch still resolves with the previous data: branch on the status, not on data.
       return result.isError || !result.data
         ? { kind: 'failed' }

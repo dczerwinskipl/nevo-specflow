@@ -83,14 +83,20 @@ export async function listDocumentOperationRows(
   const own = writing ? await captureExecutorIdentity(table) : undefined;
   const rows: DocumentChangeListingRow[] = [];
   for (const journal of active.journals) {
-    if (!DOCUMENT_CHANGE_STAGE_FACTS[journal.stage].active) continue;
+    if (!DOCUMENT_CHANGE_STAGE_FACTS[journal.stage].active) {
+      continue;
+    }
+
     const row = await rowOf(journal, now, async () =>
       own === undefined || journal.executor === undefined
         ? 'unknown'
         : writerHint(await proveExecutorState(journal.executor, own, table)),
     );
-    if (row !== undefined) rows.push(row);
+    if (row !== undefined) {
+      rows.push(row);
+    }
   }
+
   for (const entry of active.unreadableJournals) {
     rows.push({
       operationId: entry.operationId,
@@ -103,6 +109,7 @@ export async function listDocumentOperationRows(
       staleExempt: true,
     });
   }
+
   return rows.sort(
     (left, right) =>
       Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
@@ -151,11 +158,16 @@ async function rowOf(
       if (queuedAt === undefined || now - queuedAt < DOCUMENT_ROW_PENDING_AFTER_MS) {
         return undefined;
       }
+
       return { ...base, status: 'queued', state: 'queued' };
     }
+
     case 'reserved':
     case 'files-writing':
-      if ((await writer()) !== 'dead') return undefined;
+      if ((await writer()) !== 'dead') {
+        return undefined;
+      }
+
       return {
         ...base,
         status: 'recovery-required',

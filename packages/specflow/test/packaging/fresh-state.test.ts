@@ -35,12 +35,16 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
       remove(join(packageDir, 'dist'));
       remove(join(packageDir, '.tsbuild'));
     }
+
     mkdirSync(artifacts, { recursive: true });
-    for (const artifact of readdirSync(artifacts)) remove(join(artifacts, artifact));
+    for (const artifact of readdirSync(artifacts)) {
+      remove(join(artifacts, artifact));
+    }
 
     for (const packageDir of productDependencies) {
       expect(existsSync(join(packageDir, 'dist'))).toBe(false);
     }
+
     expect(readdirSync(artifacts)).toEqual([]);
 
     run('pnpm', ['product:pack'], { cwd: repoRoot, timeout: 180_000 });
@@ -48,6 +52,7 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
     for (const packageDir of productDependencies) {
       expect(existsSync(join(packageDir, 'dist'))).toBe(true);
     }
+
     expect(readdirSync(artifacts).filter((file) => file.endsWith('.tgz')).length).toBeGreaterThan(
       0,
     );

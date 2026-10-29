@@ -17,8 +17,14 @@ export type DemoTaskGroup = (typeof demoTaskGroups)[number];
 
 export function demoTaskGroupFor(task: DemoTask): DemoTaskGroup {
   const lifecycle = task.status.lifecycle;
-  if (lifecycle === 'completed') return demoTaskGroups[2];
-  if (lifecycle === 'pending') return demoTaskGroups[0];
+  if (lifecycle === 'completed') {
+    return demoTaskGroups[2];
+  }
+
+  if (lifecycle === 'pending') {
+    return demoTaskGroups[0];
+  }
+
   return demoTaskGroups[1];
 }
 
@@ -26,6 +32,7 @@ export function demoTaskGroupFor(task: DemoTask): DemoTaskGroup {
 export function groupDemoTasks(tasks: readonly DemoTask[]) {
   return demoTaskGroups.flatMap((group) => {
     const members = tasks.filter((task) => demoTaskGroupFor(task).id === group.id);
+
     return members.length ? [{ id: group.id, name: group.name, tasks: members }] : [];
   });
 }

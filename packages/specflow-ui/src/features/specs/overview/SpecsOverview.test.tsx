@@ -52,11 +52,13 @@ function renderOverview(state: SpecsOverviewState, props: Partial<SpecsOverviewP
     </QueryClientProvider>
   );
   const view = render(tree(state));
+
   return { ...handlers, rerender: (next: SpecsOverviewState) => view.rerender(tree(next)) };
 }
 
 const manyCurrent = (count: number): SpecsOverviewState => {
   const base = createSpecsFixture();
+
   return {
     ...loaded(),
     projection: {

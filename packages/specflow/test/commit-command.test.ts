@@ -54,6 +54,7 @@ function stubApi(overrides: Partial<CommitEngineApi> = {}): { api: CommitEngineA
     openEngine: (cwd, projectRoot) => {
       calls.names.push('openEngine');
       calls.opened.push({ cwd, projectRoot });
+
       return Promise.resolve(ENGINE);
     },
     resolveSpecification: (_engine, reference) => {
@@ -61,20 +62,24 @@ function stubApi(overrides: Partial<CommitEngineApi> = {}): { api: CommitEngineA
       if (reference === 'missing') {
         return Promise.reject(new DocumentError('DOCUMENT_NOT_FOUND', 'No Specification.'));
       }
+
       return Promise.resolve({ specId: SPEC, slug: 'hand' });
     },
     commit: (_engine, command) => {
       calls.names.push('commit');
       calls.commits.push(command);
+
       return Promise.resolve(COMMITTED);
     },
     uncommitted: (_engine, command) => {
       calls.names.push('uncommitted');
       calls.views.push(command);
+
       return Promise.resolve(VIEW);
     },
     ...overrides,
   };
+
   return { api, calls };
 }
 
@@ -95,10 +100,17 @@ async function run(api: CommitEngineApi, args: string[], cwd = '.'): Promise<Run
   });
   try {
     await program.parseAsync(['node', 'nevo-specflow', 'commit', ...args]);
+
     return { out, err, exit: 0 };
   } catch (error) {
-    if (error instanceof CommanderError) return { out, err, exit: commanderExitCode(error) };
-    if (error instanceof ReportedFailure) return { out, err, exit: error.exitCode };
+    if (error instanceof CommanderError) {
+      return { out, err, exit: commanderExitCode(error) };
+    }
+
+    if (error instanceof ReportedFailure) {
+      return { out, err, exit: error.exitCode };
+    }
+
     throw error;
   }
 }

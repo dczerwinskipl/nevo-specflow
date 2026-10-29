@@ -153,6 +153,7 @@ function AsyncExample() {
   const [query, setQuery] = useState('');
   const [value, setValue] = useState<string | null>(null);
   const results = workspaces.filter((name) => name.toLowerCase().includes(query.toLowerCase()));
+
   return (
     <div className="w-80">
       <Combobox

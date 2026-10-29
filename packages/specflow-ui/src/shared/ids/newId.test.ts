@@ -20,6 +20,8 @@ describe('newId', () => {
       ),
     );
     expect(ids.size).toBe(50);
-    for (const id of ids) expect(id).toMatch(uuidV4);
+    for (const id of ids) {
+      expect(id).toMatch(uuidV4);
+    }
   });
 });

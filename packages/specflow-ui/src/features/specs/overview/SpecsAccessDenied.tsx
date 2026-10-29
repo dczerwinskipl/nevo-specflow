@@ -6,6 +6,7 @@ import {
 
 export function SpecsAccessDenied() {
   const { t } = useTranslation();
+
   return (
     <SpecFlowStandaloneShell>
       <div role="alert" className="grid w-full gap-8">

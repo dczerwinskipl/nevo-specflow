@@ -64,6 +64,7 @@ const FLUSH = { flush: true } as const;
 function signalFile(): string {
   const signal = join(tmpdir(), 'uncommitted-cut-' + randomUUID() + '.checkpoint');
   scratch.push(signal);
+
   return signal;
 }
 

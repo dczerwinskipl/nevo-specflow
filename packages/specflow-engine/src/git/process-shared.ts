@@ -17,6 +17,7 @@ function currentGitExecutable(): string {
     resolvedExecutable = resolveGitExecutable(process.platform, path);
     resolvedPath = path;
   }
+
   return resolvedExecutable;
 }
 
@@ -24,8 +25,11 @@ function currentGitExecutable(): string {
 export function spawnLocalGit(cwd: string, args: readonly string[]) {
   const env = { ...process.env };
   for (const name of Object.keys(env)) {
-    if (name.toUpperCase().startsWith('GIT_')) delete env[name];
+    if (name.toUpperCase().startsWith('GIT_')) {
+      delete env[name];
+    }
   }
+
   const child = spawn(currentGitExecutable(), [...args], {
     cwd,
     env,
@@ -43,6 +47,7 @@ export function spawnLocalGit(cwd: string, args: readonly string[]) {
       // Profiling subscribers must never change Git process execution.
     }
   }
+
   return child;
 }
 
@@ -58,8 +63,12 @@ export class BoundedGitOutput {
 
   write(channel: 'stdout' | 'stderr', data: Buffer): boolean {
     this.bytes += data.byteLength;
-    if (this.bytes > this.maxBytes) return false;
+    if (this.bytes > this.maxBytes) {
+      return false;
+    }
+
     this.decoder.write(channel, data);
+
     return true;
   }
 
@@ -115,21 +124,29 @@ export function terminateGitProcessTree(
   seams: TerminationSeams = {},
 ): void {
   const platform = seams.platform ?? process.platform;
-  if (leaderExited(child) && seams.sweep !== true) return;
+  if (leaderExited(child) && seams.sweep !== true) {
+    return;
+  }
+
   const pid = child.pid;
   if (pid === undefined) {
     child.kill(signal);
+
     return;
   }
+
   if (platform === 'win32') {
     try {
       (seams.taskkill ?? runTaskkill)(pid);
     } catch {
       // Fall through to the plain kill below.
     }
+
     child.kill(signal);
+
     return;
   }
+
   try {
     (seams.signalGroup ?? ((target, sig) => process.kill(-target, sig)))(pid, signal);
   } catch {
@@ -165,13 +182,23 @@ export function onGitProcessEnd(
   let finished = false;
   let timer: NodeJS.Timeout | undefined;
   const finish = (code: number | null): void => {
-    if (finished) return;
+    if (finished) {
+      return;
+    }
+
     finished = true;
-    if (timer) clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+    }
+
     done(code);
   };
+
   child.on('exit', (code: number | null) => {
-    if (finished) return;
+    if (finished) {
+      return;
+    }
+
     timer = setTimeout(() => {
       child.stdout?.destroy();
       child.stderr?.destroy();

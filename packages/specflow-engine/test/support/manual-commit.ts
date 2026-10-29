@@ -40,6 +40,7 @@ export async function saveUncommitted(
     expectedRevision: sha256Hex(notesNow(project, index)),
   });
   project.content.set(`${project.specId}:${index}`, content);
+
   return operationId;
 }
 
@@ -57,8 +58,10 @@ export async function saveAllUncommitted(
       expectedRevision: sha256Hex(notesNow(project, index)),
     })),
   });
-  for (const [index, content] of contents)
+  for (const [index, content] of contents) {
     project.content.set(`${project.specId}:${index}`, content);
+  }
+
   return operationId;
 }
 
@@ -66,6 +69,7 @@ export async function saveAllUncommitted(
 export async function manualModeProject(): Promise<QueueProject> {
   const project = await queueProject();
   await setLocalAutoCommit(project, false);
+
   return project;
 }
 
@@ -87,6 +91,7 @@ export function commitUncommitted(
   options: ManualCommitCommandOptions = {},
 ): Promise<ManualCommitCommandResult> {
   const { operationId, ...rest } = overrides;
+
   return manualCommit(
     project.engine,
     {
@@ -127,6 +132,7 @@ export function messageOf(project: QueueProject, sha: string): string {
 /** Commits made by the manual commit kind. */
 export function manualCommits(project: QueueProject): string[] {
   const out = git(project.root, 'log', '--format=%H', '--grep=Nevo-Kind: manual-commit');
+
   return out === '' ? [] : out.split('\n');
 }
 

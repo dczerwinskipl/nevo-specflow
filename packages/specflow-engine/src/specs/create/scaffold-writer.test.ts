@@ -28,6 +28,7 @@ async function engineFixture() {
   const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'specflow-scaffold-')));
   roots.push(stateRoot);
   await mkdir(join(stateRoot, CREATE_JOURNAL_RELATIVE_DIR), { recursive: true });
+
   return {
     context: { project: { stateRoot, projectId: randomUUID() } } as unknown as ResolvedProjectHome,
   };
@@ -38,9 +39,12 @@ function changedCatalogue() {
   const archetypes = structuredClone([...seeds.archetypes]);
   for (const archetype of archetypes) {
     for (const template of archetype.templates) {
-      if (template.id === 'overview') template.content = '# Changed {{specificationTitle}}\n';
+      if (template.id === 'overview') {
+        template.content = '# Changed {{specificationTitle}}\n';
+      }
     }
   }
+
   return resolveCatalogue({ documentTypes: seeds.documentTypes, archetypes });
 }
 
@@ -50,6 +54,7 @@ function journalFor(scaffold: ReturnType<typeof createSpecificationScaffold>): C
     archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing', workspaceId: randomUUID() },
   });
+
   return {
     version: 2,
     projectId: randomUUID(),

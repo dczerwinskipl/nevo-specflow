@@ -43,10 +43,14 @@ export async function loadProductWebApp(root = resolveProductWebRoot()): Promise
 export function resolveProductWebRoot(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   const bundled = join(here, 'ui');
-  if (existsSync(join(bundled, 'index.html'))) return bundled;
+  if (existsSync(join(bundled, 'index.html'))) {
+    return bundled;
+  }
 
   const workspace = resolve(here, '..', '..', '..', 'specflow-ui', 'dist');
-  if (existsSync(join(workspace, 'index.html'))) return workspace;
+  if (existsSync(join(workspace, 'index.html'))) {
+    return workspace;
+  }
 
   return bundled;
 }
@@ -67,6 +71,7 @@ async function listFiles(root: string): Promise<string[]> {
   }
 
   await visit(root);
+
   return result;
 }
 

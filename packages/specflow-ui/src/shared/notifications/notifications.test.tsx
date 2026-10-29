@@ -6,6 +6,7 @@ import { NotificationProvider, useNotify } from './notifications';
 
 function Trigger() {
   const notify = useNotify();
+
   return (
     <button type="button" onClick={() => notify('Saved')}>
       notify

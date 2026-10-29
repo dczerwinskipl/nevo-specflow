@@ -65,8 +65,10 @@ export function validateDocuments(input: DocumentValidationInput): DocumentValid
       counts.set(document.type, (counts.get(document.type) ?? 0) + 1);
     }
   }
+
   const requirements = input.archetype.requirements.map((requirement): RequirementResult => {
     const count = counts.get(requirement.documentType) ?? 0;
+
     return {
       documentType: requirement.documentType,
       minCount: requirement.minCount,
@@ -89,6 +91,7 @@ export function validateDocuments(input: DocumentValidationInput): DocumentValid
         documentType: result.documentType,
       })),
   ];
+
   return {
     requirements,
     complete: requirements.every((result) => result.satisfied),

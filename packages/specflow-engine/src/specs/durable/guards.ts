@@ -11,6 +11,7 @@ export function exactKeys(
   optional: readonly string[] = [],
 ): boolean {
   const names = Object.keys(value);
+
   return (
     names.every((name) => keys.includes(name)) &&
     keys.every((key) => optional.includes(key) || names.includes(key))

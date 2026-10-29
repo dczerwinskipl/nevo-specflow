@@ -15,6 +15,7 @@ export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(function Skele
   ref,
 ) {
   const capture = useDesignMetadata('Skeleton');
+
   return (
     <div
       ref={ref}

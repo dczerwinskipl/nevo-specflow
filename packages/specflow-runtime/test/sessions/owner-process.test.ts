@@ -70,14 +70,18 @@ it.each(['mock', 'undispatched', 'confirmed', 'uncertain'] as const)(
           diagnostic = '';
         child.stdout.on('data', (chunk) => {
           output += String(chunk);
-          if (output.includes('\n')) resolve(JSON.parse(output.trim()) as ChildAdmission);
+          if (output.includes('\n')) {
+            resolve(JSON.parse(output.trim()) as ChildAdmission);
+          }
         });
         child.stderr.on('data', (chunk) => {
           diagnostic = (diagnostic + String(chunk)).slice(-8192);
         });
         child.on('error', reject);
         child.on('exit', (code) => {
-          if (code) reject(new Error('Child failed: ' + code + ' ' + diagnostic));
+          if (code) {
+            reject(new Error('Child failed: ' + code + ' ' + diagnostic));
+          }
         });
       });
       await expect(openSessionStore({ directory, projectId: 'project' })).rejects.toMatchObject({
@@ -124,6 +128,7 @@ it.each(['mock', 'undispatched', 'confirmed', 'uncertain'] as const)(
         child.kill();
         await exited;
       }
+
       await store?.close();
       await rm(directory, { recursive: true, force: true });
     }

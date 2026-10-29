@@ -34,6 +34,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
 ) {
   const resolvedTone = tone ?? 'neutral';
   const capture = useDesignMetadata('Badge', { tone: resolvedTone });
+
   return (
     <span
       ref={ref}

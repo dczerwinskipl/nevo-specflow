@@ -24,6 +24,7 @@ export function createImportProgress(total: number, report: ImportProgress) {
       const result = await action();
       completed = Math.min(completed + 1, boundedTotal);
       publish(message);
+
       return result;
     },
   };

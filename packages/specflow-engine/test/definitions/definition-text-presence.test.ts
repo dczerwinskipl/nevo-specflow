@@ -37,12 +37,14 @@ async function sourceFiles(directory: string): Promise<string[]> {
   const out: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      if (!SKIPPED_DIRECTORIES.has(entry.name))
+      if (!SKIPPED_DIRECTORIES.has(entry.name)) {
         out.push(...(await sourceFiles(join(directory, entry.name))));
+      }
     } else if (SOURCE_FILE.test(entry.name) && !TEST_FILE.test(entry.name)) {
       out.push(join(directory, entry.name));
     }
   }
+
   return out;
 }
 
@@ -58,19 +60,29 @@ beforeAll(async () => {
   expect(loaded.problems).toEqual([]);
   const collected = new Set<string>();
   const add = (text: string | undefined): void => {
-    if (text === undefined) return;
-    if (text.length >= MIN_LENGTH) collected.add(text);
+    if (text === undefined) {
+      return;
+    }
+
+    if (text.length >= MIN_LENGTH) {
+      collected.add(text);
+    }
+
     // A long text split over lines is also found one line at a time.
     for (const line of text.split('\n')) {
-      if (line.trim().length >= MIN_LENGTH) collected.add(line.trim());
+      if (line.trim().length >= MIN_LENGTH) {
+        collected.add(line.trim());
+      }
     }
   };
+
   for (const types of loaded.definitions.get('document-type')?.values() ?? []) {
     const type = types.entity as { description: string; useWhen: string; instructions: string };
     add(type.description);
     add(type.useWhen);
     add(type.instructions);
   }
+
   for (const archetypes of loaded.definitions.get('specification-archetype')?.values() ?? []) {
     const archetype = archetypes.entity as {
       description: string;
@@ -84,9 +96,12 @@ beforeAll(async () => {
     for (const template of archetype.templates) {
       add(template.instructions);
       // The overview template is long free text; the skeletons are generated headings.
-      if (template.content.length > 200) add(template.content);
+      if (template.content.length > 200) {
+        add(template.content);
+      }
     }
   }
+
   strings = [...collected];
   // The same strings as they appear inside a JSON or JavaScript string literal (escaped quotes and
   // line breaks), which a plain substring search over the source would miss.
@@ -97,7 +112,10 @@ beforeAll(async () => {
   const packages = await readdir(join(repositoryRoot, 'packages'), { withFileTypes: true });
   files = [];
   for (const entry of packages) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
     const source = join(repositoryRoot, 'packages', entry.name, 'src');
     try {
       files.push(...(await sourceFiles(source)));
@@ -117,11 +135,17 @@ describe('no definition text is compiled into the product', () => {
     const offenders: string[] = [];
     for (const file of files) {
       const path = relative(repositoryRoot, file).split(sep).join('/');
-      if (EXEMPT.has(path)) continue;
+      if (EXEMPT.has(path)) {
+        continue;
+      }
+
       const text = (await readFile(file, 'utf8')).replace(/\r\n/gu, '\n');
       const hit = [...strings, ...escaped].find((candidate) => text.includes(candidate));
-      if (hit !== undefined) offenders.push(`${path}: "${hit.slice(0, 50)}..."`);
+      if (hit !== undefined) {
+        offenders.push(`${path}: "${hit.slice(0, 50)}..."`);
+      }
     }
+
     expect(offenders).toEqual([]);
   });
 
@@ -129,11 +153,17 @@ describe('no definition text is compiled into the product', () => {
     const offenders: string[] = [];
     for (const file of files) {
       const path = relative(repositoryRoot, file).split(sep).join('/');
-      if (EXEMPT.has(path)) continue;
+      if (EXEMPT.has(path)) {
+        continue;
+      }
+
       const text = await readFile(file, 'utf8');
       const quoted = (id: string): boolean => new RegExp(`['"\`]${id}['"\`]`, 'u').test(text);
-      if (quoted('architecture') && quoted('feature') && quoted('minimal')) offenders.push(path);
+      if (quoted('architecture') && quoted('feature') && quoted('minimal')) {
+        offenders.push(path);
+      }
     }
+
     expect(offenders).toEqual([]);
   });
 

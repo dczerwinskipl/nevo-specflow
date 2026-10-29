@@ -8,6 +8,7 @@ import { archetypeSelectionFixture } from '../workspace/model/createRequest.test
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
+
   return {
     values,
     getItem: (key: string) => values.get(key) ?? null,

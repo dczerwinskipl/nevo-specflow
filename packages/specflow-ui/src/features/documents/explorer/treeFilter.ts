@@ -34,6 +34,7 @@ export interface FilteredTreeRows {
 
 const ancestors = (path: string) => {
   const parts = path.split('/');
+
   return parts.slice(1).map((_, index) =>
     parts
       .slice(0, index + 1)
@@ -49,8 +50,10 @@ const ancestors = (path: string) => {
  */
 export function filterTreeRows(rows: TreeRows, filter: TreeFilter): FilteredTreeRows {
   const term = filter.term.trim().toLowerCase();
-  if (!term && filter.types.length === 0)
+  if (!term && filter.types.length === 0) {
     return { rows, hiddenMissing: 0, matches: rows.documents.length };
+  }
+
   const matchesRow = (row: TreeRowDocument) =>
     (!term || row.path.toLowerCase().includes(term)) &&
     (filter.types.length === 0 || filter.types.includes(typeOf(row)));
@@ -62,6 +65,7 @@ export function filterTreeRows(rows: TreeRows, filter: TreeFilter): FilteredTree
   const folders = rows.folders.filter(
     (folder) => folder.path === '' || kept.has(folder.path.toLowerCase()),
   );
+
   return {
     rows: { folders, documents },
     hiddenMissing: rows.documents.filter((row) => row.dangling && !matchesRow(row)).length,

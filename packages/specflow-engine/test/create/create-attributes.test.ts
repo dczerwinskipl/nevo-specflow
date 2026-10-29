@@ -45,10 +45,12 @@ async function project(
     git(root, 'add', '.gitattributes');
     git(root, '-c', 'user.name=T', '-c', 'user.email=t@e.invalid', 'commit', '-qm', 'attributes');
   }
+
   const engine = await bootstrapProjectHome(root);
   // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
   // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
   await installDefinitionsForTesting(engine).catch(() => undefined);
+
   return { root, engine };
 }
 

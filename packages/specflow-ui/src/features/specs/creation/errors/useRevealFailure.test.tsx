@@ -35,6 +35,7 @@ function layout({
   submitter.getBoundingClientRect = () => (buttonInView ? box(300, 340) : box(900, 940));
   scroller.append(region, submitter);
   document.body.append(scroller);
+
   return { scroller, region, submitter };
 }
 
@@ -49,6 +50,7 @@ function setup(parts: ReturnType<typeof layout>) {
     initialProps: { failed: false, seq: 0 },
   });
   view.result.current.actionRegion.current = parts.region;
+
   return view;
 }
 

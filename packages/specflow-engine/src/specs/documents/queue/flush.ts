@@ -58,28 +58,45 @@ export async function readDocumentCommitHold(
 ): Promise<DocumentCommitHold | undefined> {
   const byCause = new Map<DocumentCommitHoldCause, string[]>();
   for (const journal of await listDocumentChangeJournals(engine.context)) {
-    if (journal.workspaceId !== workspaceId) continue;
+    if (journal.workspaceId !== workspaceId) {
+      continue;
+    }
+
     const cause = HOLD_OF_STAGE[journal.stage];
-    if (cause === undefined) continue;
+    if (cause === undefined) {
+      continue;
+    }
+
     byCause.set(cause, [...(byCause.get(cause) ?? []), journal.operationId]);
   }
+
   // A manual commit that has not ended holds the checkout as well: it is running (pending) or it
   // needs the operator (failed).
   for (const journal of await listManualCommitJournals(engine.context)) {
-    if (journal.workspaceId !== workspaceId) continue;
+    if (journal.workspaceId !== workspaceId) {
+      continue;
+    }
+
     const cause: DocumentCommitHoldCause | undefined =
       journal.stage === 'recovery-required'
         ? 'commit-failed'
         : journal.stage === 'reserved' || journal.stage === 'committing'
           ? 'commit-pending'
           : undefined;
-    if (cause === undefined) continue;
+    if (cause === undefined) {
+      continue;
+    }
+
     byCause.set(cause, [...(byCause.get(cause) ?? []), journal.operationId]);
   }
+
   for (const cause of CAUSE_ORDER) {
     const operationIds = byCause.get(cause);
-    if (operationIds !== undefined) return { workspaceId, cause, operationIds };
+    if (operationIds !== undefined) {
+      return { workspaceId, cause, operationIds };
+    }
   }
+
   return undefined;
 }
 
@@ -92,9 +109,13 @@ export async function readCloseHold(
   workspaceId: string,
 ): Promise<DocumentCommitHold | undefined> {
   const journals = await readDocumentCommitHold(engine, workspaceId);
-  if (journals !== undefined) return journals;
+  if (journals !== undefined) {
+    return journals;
+  }
+
   await pruneUncommitted(engine, { workspaceId }).catch(() => undefined);
   const ledger = await readUncommittedHold(engine, workspaceId);
+
   return ledger !== undefined
     ? { workspaceId, cause: 'commit-uncommitted', operationIds: ledger.operationIds }
     : undefined;
@@ -108,6 +129,7 @@ export function documentCommitsPendingError(hold: DocumentCommitHold): Error {
       : hold.cause === 'commit-failed'
         ? 'close-commit-failed'
         : 'close-commit-uncommitted';
+
   return documentChangeError(
     cause,
     'Document commits of this checkout are not finished; flush them, retry or resolve the failed ones.',
@@ -160,6 +182,7 @@ export async function flushDocumentCommits(
     workspaceId: checkout.workspaceId,
     ...(options.queue?.commits !== undefined ? { commits: options.queue.commits } : {}),
   }).catch(() => undefined);
+
   return outcome;
 }
 
@@ -179,6 +202,7 @@ async function flushUntilSettled(
         timedOut: false,
       };
     }
+
     let results;
     try {
       results = await drainQueue(engine, options.queue ?? {}, checkout, {
@@ -186,13 +210,17 @@ async function flushUntilSettled(
         flush: true,
       });
     } catch (error) {
-      if (error instanceof QueueInterrupted) throw error;
+      if (error instanceof QueueInterrupted) {
+        throw error;
+      }
+
       // The pass gave its claim back; what remains is read from the journals.
       return {
         remaining: await readDocumentCommitHold(engine, checkout.workspaceId),
         timedOut: false,
       };
     }
+
     const last = results.at(-1);
     // Nothing more can progress: the rest waits behind a failed batch, or the checkout cannot commit.
     if (last?.status === 'unavailable' || (last?.status === 'idle' && last.reason === 'blocked')) {
@@ -201,6 +229,7 @@ async function flushUntilSettled(
         timedOut: false,
       };
     }
+
     const elapsed = clock.monotonicMs() - started;
     if (elapsed >= cap) {
       return {
@@ -208,6 +237,7 @@ async function flushUntilSettled(
         timedOut: true,
       };
     }
+
     const wait =
       last?.status === 'idle' && last.waitMs !== undefined
         ? Math.min(Math.max(last.waitMs, 1), FLUSH_POLL_MS)
@@ -242,12 +272,20 @@ export async function flushCheckoutsForClose(
   options: FlushOptions = {},
 ): Promise<void> {
   const distinct = new Map<string, FlushCheckoutEvidence>();
-  for (const checkout of checkouts) distinct.set(checkout.workspaceId, checkout);
+  for (const checkout of checkouts) {
+    distinct.set(checkout.workspaceId, checkout);
+  }
+
   for (const checkout of distinct.values()) {
     const outcome = await flushDocumentCommits(engine, checkout, options);
-    if (outcome.remaining !== undefined) throw documentCommitsPendingError(outcome.remaining);
+    if (outcome.remaining !== undefined) {
+      throw documentCommitsPendingError(outcome.remaining);
+    }
+
     const uncommitted = await readCloseHold(engine, checkout.workspaceId);
-    if (uncommitted !== undefined) throw documentCommitsPendingError(uncommitted);
+    if (uncommitted !== undefined) {
+      throw documentCommitsPendingError(uncommitted);
+    }
   }
 }
 
@@ -266,7 +304,10 @@ export function checkoutsOfJournals(
 ): QueueCheckout[] {
   const found = new Map<string, QueueCheckout>();
   for (const journal of journals) {
-    if (journal.stage !== 'queued' && journal.stage !== 'committing') continue;
+    if (journal.stage !== 'queued' && journal.stage !== 'committing') {
+      continue;
+    }
+
     if (!found.has(journal.workspaceId)) {
       found.set(journal.workspaceId, {
         workspaceId: journal.workspaceId,
@@ -274,6 +315,7 @@ export function checkoutsOfJournals(
       });
     }
   }
+
   return [...found.values()];
 }
 
@@ -307,7 +349,10 @@ export async function flushAllDocumentCommits(
   const work = (async (): Promise<void> => {
     for (const checkout of checkouts) {
       const left = options.deadlineMs - (clock.monotonicMs() - started);
-      if (left <= 0) return;
+      if (left <= 0) {
+        return;
+      }
+
       await flushDocumentCommits(engine, checkout, { ...options, waitCapMs: left });
     }
   })();
@@ -315,6 +360,7 @@ export async function flushAllDocumentCommits(
   const remaining = (await listDocumentChangeJournals(engine.context)).filter(
     (journal) => journal.stage === 'queued' || journal.stage === 'committing',
   ).length;
+
   return { checkouts: checkouts.length, remaining, timedOut: outcome.kind === 'deadline' };
 }
 
@@ -325,7 +371,9 @@ export async function assertNoDocumentCommitsHold(
 ): Promise<void> {
   for (const workspaceId of new Set(workspaceIds)) {
     const hold = await readCloseHold(engine, workspaceId);
-    if (hold !== undefined) throw documentCommitsPendingError(hold);
+    if (hold !== undefined) {
+      throw documentCommitsPendingError(hold);
+    }
   }
 }
 

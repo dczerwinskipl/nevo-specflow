@@ -51,5 +51,6 @@ export function projectCreateReadiness(input: {
           : !input.archetype
             ? message('create.prerequisite.archetype')
             : workspaceProblem;
+
   return { prerequisite, canSubmit: !prerequisite && !tooLong };
 }

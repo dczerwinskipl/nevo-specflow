@@ -9,6 +9,7 @@ import type { LedgerHeadProbe } from '../durable';
 export function headProbeOf(commits: CommitPort): LedgerHeadProbe {
   return async (workspaceRoot, paths) => {
     const { dropped } = await commits.effectivePaths(workspaceRoot, paths);
+
     return new Set(dropped);
   };
 }

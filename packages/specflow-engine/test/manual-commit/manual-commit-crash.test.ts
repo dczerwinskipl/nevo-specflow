@@ -75,6 +75,7 @@ function spawnManualWorker(project: QueueProject, cut: string, operationId: stri
     60000,
   );
   workers.push(worker);
+
   return { signal, worker };
 }
 
@@ -84,6 +85,7 @@ async function killAt(project: QueueProject, cut: string, operationId: string) {
   await awaitProcessMarker(signal, worker, 45000, 30);
   const checkpoint = await readProcessCheckpoint(signal, cut);
   await terminateCheckpointPid(checkpoint.pid, worker);
+
   return checkpoint;
 }
 
@@ -249,6 +251,7 @@ describe.skipIf(!onLinux)('a manual commit killed inside git with a hung filter'
       '-qm',
       'filter',
     );
+
     return { flag, groupFile };
   }
 

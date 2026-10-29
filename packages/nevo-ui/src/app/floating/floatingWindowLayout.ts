@@ -32,16 +32,26 @@ export function resolveFloatingWindowLayout({
 
   const ranked = [...entries].sort((a, b) => {
     const rank = (entry: FloatingWindowLayoutEntry) => {
-      if (entry.id === expandedId) return 3;
-      if (entry.id === activeId) return 2;
+      if (entry.id === expandedId) {
+        return 3;
+      }
+
+      if (entry.id === activeId) {
+        return 2;
+      }
+
       return 1;
     };
 
     const rankDiff = rank(b) - rank(a);
-    if (rankDiff !== 0) return rankDiff;
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
 
     const activityDiff = b.lastActivatedAt - a.lastActivatedAt;
-    if (activityDiff !== 0) return activityDiff;
+    if (activityDiff !== 0) {
+      return activityDiff;
+    }
 
     return a.sequence - b.sequence;
   });

@@ -14,6 +14,7 @@ import { createDemoStacks, type DemoStacks } from './createDemoStacks';
 function EntityLists({ store, stacks }: { store: DemoStore; stacks: DemoStacks }) {
   const navigation = useSecondaryNavigation();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+
   return (
     <div className="grid gap-5 p-5">
       <div className="flex flex-wrap gap-2">
@@ -108,6 +109,7 @@ export function SecondaryStackExample({
 }) {
   const [store] = useState(createDemoStore);
   const [stacks] = useState(() => createDemoStacks(store));
+
   return (
     <div style={{ width, maxWidth: '100%', height: 700 }}>
       <AppWorkspaceProvider scopeKey={scopeKey}>

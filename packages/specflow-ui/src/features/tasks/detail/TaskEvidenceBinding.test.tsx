@@ -13,7 +13,10 @@ describe('Pinned evidence inspector', () => {
     const { response } = createTaskDetailFixture();
     const snapshot = response.snapshot!,
       requirements = snapshot.sections.humanRequirements;
-    if (requirements.state !== 'available') throw Error('Expected requirements');
+    if (requirements.state !== 'available') {
+      throw Error('Expected requirements');
+    }
+
     const report = (documentId: string) => ({
       title: documentId,
       link: {

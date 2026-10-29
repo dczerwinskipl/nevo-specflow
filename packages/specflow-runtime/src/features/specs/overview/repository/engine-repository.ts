@@ -72,6 +72,8 @@ function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
   const common: SpecOverviewRecord = {
     id: item.specId,
     title: spec.title,
+    // The key Create gave it; a Specification created before keys has none (shown as absent).
+    ...(spec.key !== undefined ? { key: spec.key } : {}),
     updatedAt: item.sourceUpdatedAt,
     progress: facts.progress,
   };

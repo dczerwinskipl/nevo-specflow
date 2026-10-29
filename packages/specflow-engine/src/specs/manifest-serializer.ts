@@ -20,6 +20,7 @@ import {
 
 const KNOWN_TOP_LEVEL_KEYS = new Set([
   'id',
+  'key',
   'title',
   'status',
   'priority',
@@ -41,6 +42,7 @@ export function serializeSpecificationManifest(
 ): string {
   const text = stringify({
     id: manifest.slug,
+    ...(manifest.key !== undefined ? { key: manifest.key } : {}),
     title: manifest.title,
     status: manifest.status,
     ...(manifest.priority !== undefined ? { priority: manifest.priority } : {}),

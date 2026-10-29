@@ -71,10 +71,11 @@ export function effectiveAutoCommit(
   return { auto: false, source: 'default' };
 }
 
-export const DEFAULT_BRANCH_PATTERN = 'feature/{slug}';
+/** The Specification key is part of the branch name (`feature/nevo-12-login`). */
+export const DEFAULT_BRANCH_PATTERN = 'feature/{key}-{slug}';
 export const DEFAULT_BASE_REF = 'HEAD';
 
-const SUPPORTED_TEMPLATE_FIELDS = ['slug', 'shortId'] as const;
+const SUPPORTED_TEMPLATE_FIELDS = ['slug', 'shortId', 'key'] as const;
 
 /** Pure parser. Call with Project Home config, never the linked checkout config. */
 export function parseGitWorktreePolicy(
@@ -289,7 +290,10 @@ function isInsideOrSame(parent: string, child: string): boolean {
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
-/** Two placeholders are supported; {shortId} is optional, but at least one token is required. */
+/**
+ * Placeholders: {slug}, {shortId} and {key} (the Specification key, `nevo-12`), each at most once; at
+ * least one token is required.
+ */
 export function validateBranchPattern(pattern: string): void {
   if (!pattern || pattern.length > 200) throw invalid('Invalid Git worktree branch pattern.');
   const tokens = [...pattern.matchAll(/\{([^{}]*)\}/gu)].map((match) => match[1]);
@@ -297,16 +301,30 @@ export function validateBranchPattern(pattern: string): void {
     tokens.some((token) => !SUPPORTED_TEMPLATE_FIELDS.some((field) => field === token)) ||
     tokens.length === 0 ||
     tokens.filter((token) => token === 'shortId').length > 1 ||
-    tokens.filter((token) => token === 'slug').length > 1
+    tokens.filter((token) => token === 'slug').length > 1 ||
+    tokens.filter((token) => token === 'key').length > 1
   ) {
     throw invalid(
-      'Branch pattern supports at most one {slug} and one optional {shortId}, and needs at least one.',
+      'Branch pattern supports at most one {slug}, one {shortId} and one {key}, and needs at least one.',
     );
   }
   // Detect unmatched braces and hidden template expressions.
-  const withoutTokens = pattern.replace(/\{(?:slug|shortId)\}/gu, '');
+  const withoutTokens = pattern.replace(/\{(?:slug|shortId|key)\}/gu, '');
   if (/[{}]/u.test(withoutTokens)) throw invalid('Malformed Git branch template.');
-  validateBranchName(pattern.replaceAll('{slug}', 'example').replaceAll('{shortId}', '12345678'));
+  validateBranchName(expandBranchPattern(pattern, 'example', '12345678', 'nevo-1'));
+}
+
+/** The pattern with its placeholders replaced. */
+export function expandBranchPattern(
+  pattern: string,
+  slug: string,
+  shortId: string,
+  key: string,
+): string {
+  return pattern
+    .replaceAll('{slug}', slug)
+    .replaceAll('{shortId}', shortId)
+    .replaceAll('{key}', key);
 }
 
 export function resolveWorktreeBranch(
@@ -314,12 +332,19 @@ export function resolveWorktreeBranch(
   slug: string,
   shortId: string,
   override?: string,
+  key?: string,
 ): string {
-  if (!/^[a-z0-9][a-z0-9-]*$/u.test(slug) || !/^[a-f0-9]{8}$/iu.test(shortId)) {
+  if (
+    !/^[a-z0-9][a-z0-9-]*$/u.test(slug) ||
+    !/^[a-f0-9]{8}$/iu.test(shortId) ||
+    (key !== undefined && !/^[a-z][a-z0-9]*-[1-9][0-9]*$/u.test(key))
+  ) {
     throw invalid('Invalid worktree naming token.');
   }
-  const branch =
-    override ?? policy.branchPattern.replaceAll('{slug}', slug).replaceAll('{shortId}', shortId);
+  if (override === undefined && key === undefined && policy.branchPattern.includes('{key}')) {
+    throw invalid('The branch pattern names {key}, but the Specification has none.');
+  }
+  const branch = override ?? expandBranchPattern(policy.branchPattern, slug, shortId, key ?? '');
   validateBranchName(branch);
   return branch;
 }

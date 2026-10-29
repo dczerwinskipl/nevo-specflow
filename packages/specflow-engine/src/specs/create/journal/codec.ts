@@ -11,6 +11,7 @@ import { OPERATION_ID_PATTERN } from '../../durable';
 
 import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';
+import { isSpecKey } from '../../spec-key';
 import { CREATE_SCAFFOLD_FILES_MAX } from '../limits';
 import {
   CREATE_JOURNAL_VERSION,
@@ -78,6 +79,7 @@ function isValidJournalIdentity(
     typeof value.specId === 'string' &&
     UUID.test(value.specId) &&
     typeof value.slug === 'string' &&
+    (value.key === undefined || isSpecKey(value.key)) &&
     typeof value.title === 'string' &&
     typeof value.created === 'string' &&
     typeof value.catalogueRevision === 'string' &&

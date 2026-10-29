@@ -17,10 +17,25 @@ import {
 } from '../src/version-control/worktrees/policy';
 
 describe('Version Control worktree policy (VC01)', () => {
-  it('defaults to the git-flavoured feature/{slug} pattern', () => {
-    expect(DEFAULT_BRANCH_PATTERN).toBe('feature/{slug}');
+  it('defaults to feature/{key}-{slug}: the Specification key is part of the branch', () => {
+    expect(DEFAULT_BRANCH_PATTERN).toBe('feature/{key}-{slug}');
     const policy = parseGitWorktreePolicy({ git: { enabled: true } });
-    expect(resolveWorktreeBranch(policy, 'my-spec', '12345678')).toBe('feature/my-spec');
+    expect(resolveWorktreeBranch(policy, 'my-spec', '12345678', undefined, 'nevo-12')).toBe(
+      'feature/nevo-12-my-spec',
+    );
+    // A pattern that names {key} needs one; a pattern without it ignores the key.
+    expect(() => resolveWorktreeBranch(policy, 'my-spec', '12345678')).toThrow();
+    const plain = parseGitWorktreePolicy({
+      git: { enabled: true, worktrees: { branchPattern: 'feature/{slug}' } },
+    });
+    expect(resolveWorktreeBranch(plain, 'my-spec', '12345678', undefined, 'nevo-12')).toBe(
+      'feature/my-spec',
+    );
+  });
+
+  it('accepts at most one {key}', () => {
+    expect(() => validateBranchPattern('{key}')).not.toThrow();
+    expect(() => validateBranchPattern('{key}/{key}-{slug}')).toThrow();
   });
 
   it.each(['feature/{slug}', 'feature/{slug}-{shortId}', 'spec/{shortId}', '{slug}'])(

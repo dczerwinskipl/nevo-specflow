@@ -35,6 +35,7 @@ import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
+import { nextSpecKey } from '../../spec-key';
 import {
   ScaffoldValidationError,
   createSpecificationScaffold,
@@ -104,9 +105,18 @@ export async function reserveCreateOperation(
       throw recovery('Cannot reserve new Spec while an existing canonical source is unavailable.');
     }
     const specId = randomUUID();
+    // The key is allocated here, under the lock that serializes reservations: one more than every key
+    // a Specification (active or archived, any checkout) or a reserved Create already holds.
+    const key = nextSpecKey([
+      ...canonical.map((item) =>
+        item.status === 'available' ? item.specification.key : undefined,
+      ),
+      ...operations.map((item) => item.key),
+    ]);
     const { catalogue } = loadedProject;
     const scaffold = scaffoldOf({
       specId,
+      key,
       catalogue,
       title: intent.title,
       created,
@@ -221,6 +231,7 @@ export async function reserveCreateOperation(
       const plan = await openVersionControl(engine).worktrees.plan({
         slug: scaffold.slug,
         shortId: specId.slice(0, 8),
+        key,
         ...(intent.target.baseRef.kind === 'explicit'
           ? { baseRefOverride: intent.target.baseRef.value }
           : {}),
@@ -279,6 +290,7 @@ export async function reserveCreateOperation(
       requestIntent: intent,
       specId,
       slug: scaffold.slug,
+      key,
       title: intent.title,
       created,
       startedAt: new Date().toISOString(),

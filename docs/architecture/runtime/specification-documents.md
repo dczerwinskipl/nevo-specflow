@@ -59,6 +59,7 @@ serves both through the Engine in project mode; demo mode keeps its own fixtures
 
 ```yaml
 id: <slug> # existing
+key: nevo-12 # optional: <prefix>-<number>, given by Create (one more than the highest key of the project)
 spec_id: <uuid> # existing
 title: <string> # existing
 status: draft # existing

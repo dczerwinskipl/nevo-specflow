@@ -200,6 +200,33 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     }
   }, 45000);
 
+  it('shows the key Create gives each Specification, the next number of the project', async () => {
+    const { root, engine } = await fixture();
+    const create = (title: string) =>
+      createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
+        operationId: randomUUID(),
+        title,
+        target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+      });
+    const first = await create('First keyed Spec');
+    const second = await create('Second keyed Spec');
+    expect(await readFile(join(root, first.relativeManifestPath), 'utf8')).toContain('key: nevo-1');
+    const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
+    try {
+      const items = (await app.inject('/api/specs/overview')).json<CurrentSpecsOverview>().items;
+      const keyOf = (specId: string) => items.find((item) => item.id === specId)?.key;
+      expect(keyOf(first.specId)).toBe('nevo-1');
+      expect(keyOf(second.specId)).toBe('nevo-2');
+      // No source for tags or pull requests: absent, never invented.
+      expect(
+        items.every((item) => item.tags === undefined && item.pullRequests === undefined),
+      ).toBe(true);
+    } finally {
+      await app.close();
+    }
+  }, 90000);
+
   it('filters ungranted unavailable sources before building a user-scoped Overview', async () => {
     const { engine } = await fixture();
     const visible = await createSpecificationFromRequest(engine, {

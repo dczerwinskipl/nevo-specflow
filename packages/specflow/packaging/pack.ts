@@ -99,6 +99,7 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
     log(`packed: ${tarball}`);
 
     const manifest = readJson<SourceManifest>(join(paths.productPackage, 'package.json'));
+
     return { name: manifest.name, version, tarball };
   } finally {
     rmSync(stage, { recursive: true, force: true });
@@ -121,12 +122,17 @@ function writeStageManifest(stage: string, paths: RepoPaths, version: string): v
 }
 
 function copyIfPresent(from: string, to: string): void {
-  if (existsSync(from)) cpSync(from, to);
+  if (existsSync(from)) {
+    cpSync(from, to);
+  }
 }
 
 function resolveTarball(destDir: string, printed: string, version: string): string {
   const expected = join(destDir, `nevo-specflow-${version}.tgz`);
-  if (existsSync(expected)) return expected;
+  if (existsSync(expected)) {
+    return expected;
+  }
+
   const named = printed
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -134,8 +140,11 @@ function resolveTarball(destDir: string, printed: string, version: string): stri
     .pop();
   if (named) {
     const candidate = join(destDir, basename(named));
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(candidate)) {
+      return candidate;
+    }
   }
+
   throw new StepFailedError(
     `pnpm pack did not produce ${basename(expected)} in ${destDir} (pnpm said: ${printed || 'nothing'})`,
   );

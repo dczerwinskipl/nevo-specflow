@@ -22,8 +22,10 @@ async function demo() {
     { dataMode: 'demo' },
   );
   apps.push(app);
+
   return app;
 }
+
 const op = (n: number) => `0b8f1c1e-0a11-4c6e-9a01-${String(n).padStart(12, '0')}`;
 
 describe('Demo Runtime serves the real document read contract', () => {
@@ -93,6 +95,7 @@ describe('Demo Runtime serves the real document read contract', () => {
         { error: code, code },
       ]);
     }
+
     expect(
       (await app.inject('/api/specs/review/documents/overview/raw?download=2')).statusCode,
     ).toBe(400);

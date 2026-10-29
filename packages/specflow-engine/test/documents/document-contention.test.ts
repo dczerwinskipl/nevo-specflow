@@ -74,6 +74,7 @@ function spawnContender(project: QueueProject, worker: number, rounds: number) {
     240000,
   );
   workers.push(child);
+
   return { child, result };
 }
 
@@ -86,15 +87,22 @@ async function collect(contenders: readonly Contender[]): Promise<Outcome[]> {
     expect(done.code, done.log).toBe(0);
     outcomes.push(JSON.parse(await readFile(result, 'utf8')) as Outcome);
   }
+
   return outcomes;
 }
 
 function modelOf(outcomes: readonly Outcome[]): SaveModel {
   const model = new SaveModel();
   for (const outcome of outcomes) {
-    for (const attempt of outcome.attempted) model.attempt(attempt.path, attempt.content);
-    for (const save of outcome.acknowledged) model.acknowledge(save.id, save.path, save.content);
+    for (const attempt of outcome.attempted) {
+      model.attempt(attempt.path, attempt.content);
+    }
+
+    for (const save of outcome.acknowledged) {
+      model.acknowledge(save.id, save.path, save.content);
+    }
   }
+
   return model;
 }
 
@@ -102,11 +110,15 @@ function modelOf(outcomes: readonly Outcome[]): SaveModel {
 async function expectSettled(project: QueueProject, outcomes: readonly Outcome[]): Promise<void> {
   for (const outcome of outcomes) {
     expect(outcome.unexpected).toEqual([]);
-    for (const code of outcome.refused) expect(WRITER_REFUSALS).toContain(code);
+    for (const code of outcome.refused) {
+      expect(WRITER_REFUSALS).toContain(code);
+    }
   }
+
   for (let pass = 0; pass < 3; pass += 1) {
     await drainQueue(project.engine, isolatedQueue(), undefined, { flush: true });
   }
+
   await expectPipelineInvariants(project, modelOf(outcomes), 'drained');
   // History is a line: no merge came from the commits of the processes.
   expect(git(project.root, 'rev-list', '--merges', '--count', 'HEAD')).toBe('0');
@@ -178,21 +190,28 @@ describe.skipIf(!onLinux)('Close racing the writers', () => {
         ]).toContain((error as { code?: string }).code);
       }
     }
+
     const outcomes = await collect(contenders);
-    for (const outcome of outcomes) expect(outcome.unexpected).toEqual([]);
+    for (const outcome of outcomes) {
+      expect(outcome.unexpected).toEqual([]);
+    }
+
     if (!admitted) {
       // The writers were done first: the Close finds nothing pending and is admitted.
       await reserveCloseOperation(project.engine, request, { flush: { queue: isolatedQueue() } });
     }
+
     for (let pass = 0; pass < 3; pass += 1) {
       await drainQueue(project.engine, isolatedQueue(), undefined, { flush: true });
     }
+
     // Whatever slipped in before the admission is committed; nothing of any save is left pending.
     for (const id of modelOf(outcomes).acknowledged) {
       expect((await findDocumentChangeJournal(project.engine.context, id))?.stage).toBe(
         'completed',
       );
     }
+
     expect(git(project.root, 'status', '--porcelain', '--', 'specs')).toBe('');
   }, 420000);
 });

@@ -7,12 +7,21 @@ const css = [
 ].join('\n');
 
 function colorToken(name: string, visited = new Set<string>()): string {
-  if (visited.has(name)) throw new Error(`Circular color token reference: ${name}`);
+  if (visited.has(name)) {
+    throw new Error(`Circular color token reference: ${name}`);
+  }
+
   visited.add(name);
   const value = new RegExp(`--color-${name}:\\s*([^;]+);`, 'i').exec(css)?.[1]?.trim();
-  if (/^#[0-9a-f]{6}$/i.test(value ?? '') || /^rgba?\(/i.test(value ?? '')) return value!;
+  if (/^#[0-9a-f]{6}$/i.test(value ?? '') || /^rgba?\(/i.test(value ?? '')) {
+    return value!;
+  }
+
   const reference = value?.match(/^var\(--color-([\w-]+)\)$/i)?.[1];
-  if (reference) return colorToken(reference, visited);
+  if (reference) {
+    return colorToken(reference, visited);
+  }
+
   throw new Error(`Missing explicit color token: ${name}`);
 }
 
@@ -32,8 +41,12 @@ function parseColor(value: string): Rgba {
       a: 1,
     };
   }
+
   const channels = value.match(/[\d.]+/g)?.map(Number);
-  if (!channels || channels.length < 3) throw new Error(`Unsupported color: ${value}`);
+  if (!channels || channels.length < 3) {
+    throw new Error(`Unsupported color: ${value}`);
+  }
+
   return { r: channels[0]!, g: channels[1]!, b: channels[2]!, a: channels[3] ?? 1 };
 }
 
@@ -51,16 +64,20 @@ function luminance(color: Rgba): number {
   const linear = channels.map((channel) =>
     channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
   );
+
   return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
 }
 
 /** Contrast of a token over a stack of translucent surface tokens painted on the canvas. */
 function contrastOver(foregroundToken: string, surfaces: string[]): number {
   let background = parseColor(colorToken('canvas'));
-  for (const surface of surfaces)
+  for (const surface of surfaces) {
     background = composite(parseColor(colorToken(surface)), background);
+  }
+
   const foreground = composite(parseColor(colorToken(foregroundToken)), background);
   const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+
   return (values[0]! + 0.05) / (values[1]! + 0.05);
 }
 
@@ -69,6 +86,7 @@ function contrast(foregroundToken: string, backgroundToken: string): number {
   const background = composite(parseColor(colorToken(backgroundToken)), canvas);
   const foreground = composite(parseColor(colorToken(foregroundToken)), background);
   const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+
   return (values[0]! + 0.05) / (values[1]! + 0.05);
 }
 

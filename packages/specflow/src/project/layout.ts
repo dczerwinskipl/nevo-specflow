@@ -20,6 +20,7 @@ export async function resolveProjectLayout(cwd: string): Promise<ProjectLayout> 
   }
 
   const root = resolve(result.stdout.trim());
+
   return {
     root,
     projectConfigPath: join(root, PROJECT_CONFIG_RELATIVE_PATH),
@@ -29,8 +30,14 @@ export async function resolveProjectLayout(cwd: string): Promise<ProjectLayout> 
 
 export async function isGitIgnored(root: string, relativePath: string): Promise<boolean> {
   const result = await runGit(root, ['check-ignore', '-q', '--', relativePath]);
-  if (result.code === 0) return true;
-  if (result.code === 1) return false;
+  if (result.code === 0) {
+    return true;
+  }
+
+  if (result.code === 1) {
+    return false;
+  }
+
   throw new Error(
     `Unable to verify Git ignore rules for ${relativePath}: ${result.stderr.trim() || `git check-ignore exited ${String(result.code)}`}`,
   );

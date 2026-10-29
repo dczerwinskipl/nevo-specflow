@@ -19,6 +19,7 @@ interface TriggerCaptureProps {
 
 function TriggerCapture({ selection, state }: TriggerCaptureProps) {
   const selectedValue = selection === 'selected' ? 'captured' : 'other';
+
   return (
     <Tabs defaultValue={selectedValue}>
       <Tabs.List aria-label={`${selection} ${state} tab`}>

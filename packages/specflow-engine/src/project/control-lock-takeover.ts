@@ -66,12 +66,19 @@ export type ControlLockTakeoverResult =
 const nodeProbe = (pid: number): ProcessProbe => {
   try {
     process.kill(pid, 0);
+
     return 'alive';
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    if (code === 'ESRCH') return 'dead';
+    if (code === 'ESRCH') {
+      return 'dead';
+    }
+
     // EPERM: the process exists and belongs to someone else.
-    if (code === 'EPERM') return 'alive';
+    if (code === 'EPERM') {
+      return 'alive';
+    }
+
     return 'unknown';
   }
 };
@@ -108,17 +115,31 @@ export async function takeOverProjectControlLock(
   context: ResolvedProjectHome,
   options: ControlLockTakeoverOptions,
 ): Promise<ControlLockTakeoverResult> {
-  if (options.confirmExecutorStopped !== true) return refuse('assertion-missing');
+  if (options.confirmExecutorStopped !== true) {
+    return refuse('assertion-missing');
+  }
+
   const path = projectControlLockPath(context);
   const inspected = await inspectProjectControlLock(context);
-  if (inspected.status === 'free') return { status: 'free' };
-  if (holdsProjectControlLock(context)) return refuse('held-by-this-process');
+  if (inspected.status === 'free') {
+    return { status: 'free' };
+  }
+
+  if (holdsProjectControlLock(context)) {
+    return refuse('held-by-this-process');
+  }
 
   if (inspected.status === 'corrupt') {
-    if (!(await isRegularFile(path))) return refuse('not-a-regular-file');
+    if (!(await isRegularFile(path))) {
+      return refuse('not-a-regular-file');
+    }
+
     const age =
       (options.nowMs ?? Date.now)() - (await (options.modifiedAtMs ?? fileModifiedAtMs)(path));
-    if (age < CONTROL_LOCK_CORRUPT_MIN_AGE_MS) return refuse('corrupt-too-recent');
+    if (age < CONTROL_LOCK_CORRUPT_MIN_AGE_MS) {
+      return refuse('corrupt-too-recent');
+    }
+
     return remove(context, path, 'unreadable');
   }
 
@@ -127,12 +148,20 @@ export async function takeOverProjectControlLock(
     const startedAt =
       options.processStartedAtMs ?? (options.nowMs ?? Date.now)() - process.uptime() * 1000;
     const writtenAt = Date.parse(inspected.createdAt);
-    if (!(writtenAt < startedAt - SELF_START_MARGIN_MS)) return refuse('holder-is-this-process');
+    if (!(writtenAt < startedAt - SELF_START_MARGIN_MS)) {
+      return refuse('holder-is-this-process');
+    }
   } else {
     const state = (options.probe ?? nodeProbe)(inspected.pid);
-    if (state === 'alive') return refuse('holder-alive');
-    if (state === 'unknown') return refuse('holder-unknown');
+    if (state === 'alive') {
+      return refuse('holder-alive');
+    }
+
+    if (state === 'unknown') {
+      return refuse('holder-unknown');
+    }
   }
+
   return remove(context, path, { pid: inspected.pid, createdAt: inspected.createdAt });
 }
 
@@ -143,6 +172,7 @@ function refuse(reason: ControlLockTakeoverRefusal): ControlLockTakeoverResult {
 async function isRegularFile(path: string): Promise<boolean> {
   try {
     const stat = await lstat(path);
+
     return stat.isFile() && !stat.isSymbolicLink();
   } catch {
     return false;
@@ -161,9 +191,15 @@ async function remove(
     holder === 'unreadable'
       ? again.status === 'corrupt'
       : again.status === 'held' && again.pid === holder.pid && again.createdAt === holder.createdAt;
-  if (!same || before === undefined || !(await isRegularFile(path))) return refuse('changed');
+  if (!same || before === undefined || !(await isRegularFile(path))) {
+    return refuse('changed');
+  }
+
   const after = await readFileWindowsSafe(path).catch(() => undefined);
-  if (after !== before) return refuse('changed');
+  if (after !== before) {
+    return refuse('changed');
+  }
+
   await unlinkWindowsSafe(path);
   if (takeoverChannel.hasSubscribers) {
     try {
@@ -172,5 +208,6 @@ async function remove(
       // Diagnostic subscribers are observers.
     }
   }
+
   return { status: 'cleared', holder };
 }

@@ -23,12 +23,16 @@ export function specKeyNumber(key: string | undefined): number | undefined {
   if (key === undefined || !key.startsWith(SPEC_KEY_PREFIX + '-') || !isSpecKey(key)) {
     return undefined;
   }
+
   return Number(key.slice(SPEC_KEY_PREFIX.length + 1));
 }
 
 /** The next key after every key given (`nevo-1` when there is none). */
 export function nextSpecKey(existing: Iterable<string | undefined>): string {
   let highest = 0;
-  for (const key of existing) highest = Math.max(highest, specKeyNumber(key) ?? 0);
+  for (const key of existing) {
+    highest = Math.max(highest, specKeyNumber(key) ?? 0);
+  }
+
   return `${SPEC_KEY_PREFIX}-${highest + 1}`;
 }

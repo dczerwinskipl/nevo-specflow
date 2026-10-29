@@ -27,6 +27,7 @@ function setup() {
   const { catalogue } = createDemoSpecsRepositories(env);
   const find = (specId: string) => catalogue.find(specId);
   const directory = (specId: string) => env.state.specifications.get(specId)!.documents;
+
   return { env, create, spec, session, find, directory };
 }
 
@@ -34,9 +35,13 @@ async function refusal(work: Promise<unknown>) {
   try {
     await work;
   } catch (error) {
-    if (error instanceof DocumentError) return error.code;
+    if (error instanceof DocumentError) {
+      return error.code;
+    }
+
     throw error;
   }
+
   return 'resolved';
 }
 

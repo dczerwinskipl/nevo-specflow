@@ -42,10 +42,16 @@ export async function planRemovesAnAliasedEntry(
   const full = (path: string): string => join(specDir, ...relative(path).split('/'));
   const stats = new Map<string, BigIntStats>();
   for (const planned of plan.paths) {
-    if (stats.has(planned.path)) continue;
+    if (stats.has(planned.path)) {
+      continue;
+    }
+
     const stat = await lstatOrAbsent(fs, full(planned.path));
-    if (stat !== undefined) stats.set(planned.path, stat);
+    if (stat !== undefined) {
+      stats.set(planned.path, stat);
+    }
   }
+
   const removed = new Set(
     plan.paths
       .filter((planned) => planned.role === 'document' && planned.post === null)
@@ -55,7 +61,10 @@ export async function planRemovesAnAliasedEntry(
 
   for (const path of removed) {
     const stat = stats.get(path);
-    if (stat === undefined) continue;
+    if (stat === undefined) {
+      continue;
+    }
+
     for (const other of kept) {
       const otherStat = stats.get(other)!;
       if (reliable(stat) && reliable(otherStat)) {
@@ -70,6 +79,7 @@ export async function planRemovesAnAliasedEntry(
       }
     }
   }
+
   return false;
 }
 
@@ -89,14 +99,22 @@ function sameIdentity(left: BigIntStats, right: BigIntStats): boolean {
 async function sameEntry(fs: AliasProbeFs, left: string, right: string): Promise<boolean> {
   const leftParent = await lstatOrAbsent(fs, dirname(left));
   const rightParent = await lstatOrAbsent(fs, dirname(right));
-  if (leftParent === undefined || rightParent === undefined) return false;
+  if (leftParent === undefined || rightParent === undefined) {
+    return false;
+  }
+
   if (reliable(leftParent) && reliable(rightParent) && !sameIdentity(leftParent, rightParent)) {
     return false;
   }
+
   const leftName = lastName(left);
   const rightName = lastName(right);
-  if (leftName === rightName) return true;
+  if (leftName === rightName) {
+    return true;
+  }
+
   const names = await fs.list(dirname(left));
+
   // Both spellings stored as entries: two hard links of one directory.
   return !(names.includes(leftName) && names.includes(rightName));
 }
@@ -109,7 +127,10 @@ async function lstatOrAbsent(fs: AliasProbeFs, path: string): Promise<BigIntStat
   try {
     return await fs.lstat(path);
   } catch (error) {
-    if (isAbsent(error)) return undefined;
+    if (isAbsent(error)) {
+      return undefined;
+    }
+
     throw error;
   }
 }
@@ -120,10 +141,14 @@ async function directoryIgnoresCase(fs: AliasProbeFs, path: string): Promise<boo
   const swapped = Array.from(name)
     .map((char) => {
       const upper = char.toUpperCase();
+
       return upper !== char ? upper : char.toLowerCase();
     })
     .join('');
-  if (swapped === name) return true;
+  if (swapped === name) {
+    return true;
+  }
+
   return (
     (await lstatOrAbsent(fs, path.slice(0, path.length - name.length) + swapped)) !== undefined
   );

@@ -80,6 +80,7 @@ function mergeRow(
 ): { value: ReactNode; note?: ReactNode; override: boolean } {
   if (choice.target.on) {
     const picked = options.workspaces.find((w) => w.workspaceId === choice.target.workspaceId);
+
     return picked
       ? {
           value: <WorkspaceRef workspace={picked} />,
@@ -92,6 +93,7 @@ function mergeRow(
           override: false,
         };
   }
+
   const status = targetStatus(options);
   switch (status.kind) {
     case 'ok':
@@ -132,14 +134,19 @@ function mergeRow(
 
 function BaseValue({ options, base }: { options: CreateOptions; base?: string }) {
   const { t } = useTranslation();
-  if (base) return <BranchRef name={base} />;
+  if (base) {
+    return <BranchRef name={base} />;
+  }
+
   const primary = primaryWorkspace(options);
-  if (options.defaultBaseRef === 'HEAD')
+  if (options.defaultBaseRef === 'HEAD') {
     return primary?.branch ? (
       <BranchRef name={primary.branch} />
     ) : (
       <>{t('create.workspace.baseHead')}</>
     );
+  }
+
   return <BranchRef name={options.defaultBaseRef} />;
 }
 
@@ -173,6 +180,7 @@ export function NewSummary({
   const slug = effectiveSlug(choice, title);
   const branch = overrides.branch ?? branchPreview(options, slug);
   const generatedProblem = generatedBranchProblem(choice, options, title);
+
   return (
     <>
       <Icon name={FolderPlus} className="text-status-info" />
@@ -250,6 +258,7 @@ export function MainSummary({ options }: { options: CreateOptions }) {
   const { t } = useTranslation();
   const text = useMessage();
   const primary = primaryWorkspace(options);
+
   return (
     <>
       <Icon name="folder" className="text-status-info" />
@@ -283,7 +292,7 @@ function InheritedTargetNote({
 }): ReactNode {
   const { t } = useTranslation();
   const target = inheritedTarget(options, workspace);
-  if (target.kind === 'pinned')
+  if (target.kind === 'pinned') {
     return (
       <>
         {note(
@@ -301,13 +310,17 @@ function InheritedTargetNote({
           )}
       </>
     );
-  if (target.kind === 'project')
+  }
+
+  if (target.kind === 'project') {
     return note(
       <Trans
         i18nKey="create.workspace.inherited.project"
         components={{ branch: <BranchRef name={target.branch} /> }}
       />,
     );
+  }
+
   return note(t('create.workspace.inherited.none'));
 }
 
@@ -328,6 +341,7 @@ export function ExistingSummary({
   const text = useMessage();
   const linked = options.workspaces.filter((w) => w.kind === 'linked');
   const selected = linked.find((w) => w.workspaceId === choice.existingWorkspaceId);
+
   return (
     <>
       <div className="col-span-2 max-w-content-narrow">
@@ -346,6 +360,7 @@ export function ExistingSummary({
                 : workspace.state === 'dirty'
                   ? text(reasonText('dirty'))
                   : undefined;
+
               return {
                 value: workspace.workspaceId,
                 textValue: workspace.branch ?? text(noBranchLabel),

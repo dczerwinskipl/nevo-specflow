@@ -30,6 +30,7 @@ function discoverEligibleReviewers(client: GitHubAdminClient, repo: string): Rev
       .listCollaborators(repo)
       .filter((c) => c.permissions?.push === true || c.permissions?.admin === true)
       .map((c) => c.login);
+
     return { ok: true, eligible };
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : String(err) };
@@ -56,6 +57,7 @@ export function configureRepository(
   if (review.kind === 'unverifiable') {
     return { repo, checkOnly, review, aborted: true, changed, problems, log };
   }
+
   const prParams = review.params;
 
   // ── merge settings ───────────────────────────────────────────────────────
@@ -70,9 +72,11 @@ export function configureRepository(
       client.patchRepo(repo, want);
       changed.push(`merge settings: ${diffs.map((d) => d.split(':')[0]).join(', ')}`);
       const still = diffPartial(want, client.getRepo(repo));
-      if (still.length)
+      if (still.length) {
         problems.push(`merge settings still wrong after PATCH:\n  ${still.join('\n  ')}`);
-      else log.push('merge settings: updated');
+      } else {
+        log.push('merge settings: updated');
+      }
     }
   }
 
@@ -100,31 +104,38 @@ export function configureRepository(
         log.push(`ruleset ${spec.name}: already correct (id ${String(match.id)})`);
         continue;
       }
+
       if (checkOnly) {
         problems.push(`ruleset ${spec.name} drift:\n  ${diffs.join('\n  ')}`);
         continue;
       }
+
       client.updateRuleset(repo, match.id, want);
       changed.push(`ruleset ${spec.name}: updated (id ${String(match.id)})`);
       const still = compare(client.getRuleset(repo, match.id));
-      if (still.length)
+      if (still.length) {
         problems.push(
           `ruleset ${String(match.id)} still wrong after write:\n  ${still.join('\n  ')}`,
         );
-      else log.push(`ruleset ${String(match.id)}: verified`);
+      } else {
+        log.push(`ruleset ${String(match.id)}: verified`);
+      }
     } else {
       if (checkOnly) {
         problems.push(`ruleset ${spec.name}: missing`);
         continue;
       }
+
       const created = client.createRuleset(repo, want);
       changed.push(`ruleset ${spec.name}: created (id ${String(created.id)})`);
       const still = compare(client.getRuleset(repo, created.id));
-      if (still.length)
+      if (still.length) {
         problems.push(
           `ruleset ${String(created.id)} still wrong after write:\n  ${still.join('\n  ')}`,
         );
-      else log.push(`ruleset ${String(created.id)}: verified`);
+      } else {
+        log.push(`ruleset ${String(created.id)}: verified`);
+      }
     }
   }
 

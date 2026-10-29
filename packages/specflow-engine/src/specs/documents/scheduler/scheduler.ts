@@ -164,7 +164,10 @@ export function createDocumentQueueScheduler(
   const record = (event: Omit<SchedulerEvent, 'at'>): void => {
     const full: SchedulerEvent = { ...event, at: new Date(clock.wallMs()).toISOString() };
     events.push(full);
-    if (events.length > RECENT_EVENTS_MAX) events.splice(0, events.length - RECENT_EVENTS_MAX);
+    if (events.length > RECENT_EVENTS_MAX) {
+      events.splice(0, events.length - RECENT_EVENTS_MAX);
+    }
+
     if (diagnostics.hasSubscribers) {
       try {
         diagnostics.publish(full);
@@ -201,15 +204,25 @@ export function createDocumentQueueScheduler(
       };
       checkouts.set(checkout.workspaceId, state);
     }
+
     return state;
   };
 
   /** Arms the checkout's timer unless one is already due at or before the requested time. */
   const arm = (state: CheckoutState, delayMs: number): void => {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
+
     const due = clock.monotonicMs() + delayMs;
-    if (state.timer !== undefined && state.dueAt !== undefined && state.dueAt <= due) return;
-    if (state.timer !== undefined) timers.clear(state.timer);
+    if (state.timer !== undefined && state.dueAt !== undefined && state.dueAt <= due) {
+      return;
+    }
+
+    if (state.timer !== undefined) {
+      timers.clear(state.timer);
+    }
+
     state.dueAt = due;
     state.timer = timers.set(
       () => {
@@ -223,11 +236,16 @@ export function createDocumentQueueScheduler(
   };
 
   const launch = (state: CheckoutState): void => {
-    if (stopped) return;
-    if (state.running !== undefined) {
-      state.again = true;
+    if (stopped) {
       return;
     }
+
+    if (state.running !== undefined) {
+      state.again = true;
+
+      return;
+    }
+
     state.running = pass(state).finally(() => {
       state.running = undefined;
     });
@@ -247,8 +265,10 @@ export function createDocumentQueueScheduler(
           detail: error instanceof Error ? error.name : 'error',
         });
         arm(state, backoffMs(state.misses));
+
         return;
       }
+
       const last = results.at(-1);
       record({
         kind: 'pass',
@@ -261,22 +281,33 @@ export function createDocumentQueueScheduler(
 
   /** What to do after a pass, from the last result the queue reported. */
   const scheduleNext = (state: CheckoutState, last: QueueRunResult | undefined): void => {
-    if (last === undefined) return;
+    if (last === undefined) {
+      return;
+    }
+
     if (last.status === 'busy') {
       // Another executor (or a second run of this process) holds the checkout.
       state.misses += 1;
       arm(state, Math.min(backoffMs(state.misses), BUSY_RETRY_MAX_MS));
+
       return;
     }
+
     state.misses = 0;
     if (last.status === 'idle') {
       // `waitMs` is the settle left or the backoff of a failed attempt; without it, the queue has
       // nothing to wait for (empty, or blocked behind a failure) and the sweep will notice a change.
-      if (last.waitMs !== undefined) arm(state, last.waitMs);
+      if (last.waitMs !== undefined) {
+        arm(state, last.waitMs);
+      }
+
       return;
     }
+
     // A re-queued attempt: the next pass reports its backoff as `idle.waitMs`.
-    if (last.status === 'failed' && last.outcome === 'requeued') arm(state, 0);
+    if (last.status === 'failed' && last.outcome === 'requeued') {
+      arm(state, 0);
+    }
   };
 
   const remainingWork = async (): Promise<number> =>
@@ -291,13 +322,17 @@ export function createDocumentQueueScheduler(
   };
 
   const sweep = async (): Promise<void> => {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
+
     try {
       await armAllWithWork(0);
       record({ kind: 'sweep' });
     } catch (error) {
       record({ kind: 'error', detail: error instanceof Error ? error.name : 'error' });
     }
+
     armSweep();
     startPrune();
   };
@@ -308,7 +343,10 @@ export function createDocumentQueueScheduler(
    */
   let pruning: Promise<void> | undefined;
   const startPrune = (): void => {
-    if (stopped || pruning !== undefined) return;
+    if (stopped || pruning !== undefined) {
+      return;
+    }
+
     pruning = prune().then(
       () => {
         pruning = undefined;
@@ -321,7 +359,10 @@ export function createDocumentQueueScheduler(
   };
 
   const armSweep = (): void => {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
+
     sweepTimer = timers.set(
       () => {
         sweepTimer = undefined;
@@ -337,8 +378,14 @@ export function createDocumentQueueScheduler(
       options.resume ?? ((operationId: string) => resumeDocumentChange(engine, operationId));
     try {
       for (const journal of await journals()) {
-        if (stopped) return;
-        if (!isWriterStage(journal.stage)) continue;
+        if (stopped) {
+          return;
+        }
+
+        if (!isWriterStage(journal.stage)) {
+          continue;
+        }
+
         // The writer judges the executor of the journal itself; a live writer is simply refused.
         try {
           await resume(journal.operationId);
@@ -350,8 +397,12 @@ export function createDocumentQueueScheduler(
           });
         }
       }
+
       // A manual commit a killed CLI left holding a checkout: resumed when its executor is provably gone.
-      if (!stopped) await resumeStoppedManualCommits(engine);
+      if (!stopped) {
+        await resumeStoppedManualCommits(engine);
+      }
+
       await armAllWithWork(0);
       record({ kind: 'startup' });
     } catch (error) {
@@ -360,7 +411,10 @@ export function createDocumentQueueScheduler(
   };
 
   const wake = async (): Promise<void> => {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
+
     try {
       await armAllWithWork(settleMs);
     } catch (error) {
@@ -375,11 +429,14 @@ export function createDocumentQueueScheduler(
     start() {
       started ??= (async () => {
         unsubscribe = onDocumentChangeApplied((notice) => {
-          if (notice.stateRoot === engine.context.project.stateRoot) void wake();
+          if (notice.stateRoot === engine.context.project.stateRoot) {
+            void wake();
+          }
         });
         armSweep();
         await startupPass();
       })();
+
       return started;
     },
     wake,
@@ -388,12 +445,19 @@ export function createDocumentQueueScheduler(
       const began = clock.monotonicMs();
       stopped = true;
       unsubscribe?.();
-      if (sweepTimer !== undefined) timers.clear(sweepTimer);
+      if (sweepTimer !== undefined) {
+        timers.clear(sweepTimer);
+      }
+
       for (const state of checkouts.values()) {
-        if (state.timer !== undefined) timers.clear(state.timer);
+        if (state.timer !== undefined) {
+          timers.clear(state.timer);
+        }
+
         state.timer = undefined;
         state.dueAt = undefined;
       }
+
       record({ kind: 'stop' });
       // A pass that runs now finishes (a Git commit cannot be cancelled); the stop waits for it,
       // but not past the deadline.
@@ -408,9 +472,11 @@ export function createDocumentQueueScheduler(
       if (settledRuns.kind === 'deadline') {
         return { complete: false, timedOut: true, remaining: await remainingWork() };
       }
+
       if (stopOptions.flush !== true) {
         return { complete: true, timedOut: false, remaining: await remainingWork() };
       }
+
       const left = deadlineMs - (clock.monotonicMs() - began);
       const flushed: FlushAllOutcome = await (options.flushAll
         ? options.flushAll(Math.max(0, left))
@@ -421,6 +487,7 @@ export function createDocumentQueueScheduler(
             timers,
             clock,
           }));
+
       return {
         complete: !flushed.timedOut && flushed.remaining === 0,
         timedOut: flushed.timedOut,
@@ -432,7 +499,10 @@ export function createDocumentQueueScheduler(
         const running = [...checkouts.values()]
           .map((state) => state.running)
           .filter((value): value is Promise<void> => value !== undefined);
-        if (running.length === 0) return;
+        if (running.length === 0) {
+          return;
+        }
+
         await Promise.allSettled(running);
       }
     },

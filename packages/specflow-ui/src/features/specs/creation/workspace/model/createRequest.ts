@@ -35,13 +35,23 @@ export function generatedBranchRefusal(
   options: CreateOptions,
   slug: string,
 ): 'branch-protected' | 'branch-not-allowed' | undefined {
-  if (!options.commits) return undefined;
-  if (options.newWorktree.branchProtected) return 'branch-protected';
-  if (!slug) return undefined;
+  if (!options.commits) {
+    return undefined;
+  }
+
+  if (options.newWorktree.branchProtected) {
+    return 'branch-protected';
+  }
+
+  if (!slug) {
+    return undefined;
+  }
+
   const generated = options.branchPattern
     .replaceAll('{slug}', slug)
     .replaceAll('{shortId}', '0000000')
     .replaceAll('{key}', 'key-0');
+
   return engineCommitRefusal(options.commits, generated);
 }
 
@@ -52,7 +62,10 @@ export function generatedBranchRefusal(
  * pattern has neither.
  */
 export function branchPrefill(options: CreateOptions, slug: string): string {
-  if (!slug) return '';
+  if (!slug) {
+    return '';
+  }
+
   return options.branchPattern
     .replace(unknownParts, '')
     .replaceAll('{slug}', slug)
@@ -87,21 +100,31 @@ export function createOverrides(
   title: string,
 ): CreateOverrides {
   const overrides: CreateOverrides = {};
-  if (choice.base.on && choice.base.ref && choice.base.ref !== defaultBaseValue(options))
+  if (choice.base.on && choice.base.ref && choice.base.ref !== defaultBaseValue(options)) {
     overrides.baseRef = choice.base.ref;
+  }
+
   if (
     choice.target.on &&
     choice.target.workspaceId &&
     choice.target.workspaceId !== defaultTargetWorkspaceId(options)
-  )
+  ) {
     overrides.integrationTargetWorkspaceId = choice.target.workspaceId;
+  }
+
   const slug = choice.slug.on && choice.slug.edited ? choice.slug.value : '';
-  if (slug && slug !== deriveSpecSlug(title)) overrides.slug = slug;
+  if (slug && slug !== deriveSpecSlug(title)) {
+    overrides.slug = slug;
+  }
+
   const branch = choice.branch.on && choice.branch.edited ? choice.branch.name.trim() : '';
   const exactDefault = /\{(?:shortId|key)\}/u.test(options.branchPattern)
     ? undefined
     : branchPrefill(options, effectiveSlug(choice, title));
-  if (branch && branch !== exactDefault) overrides.branch = branch;
+  if (branch && branch !== exactDefault) {
+    overrides.branch = branch;
+  }
+
   return overrides;
 }
 
@@ -118,10 +141,16 @@ export function buildCreateTarget(
   title = '',
 ): CreateTarget | undefined {
   const tile = activeTile(choice, options);
-  if (tile === 'existing' && choice.existingWorkspaceId)
+  if (tile === 'existing' && choice.existingWorkspaceId) {
     return { kind: 'existing', workspaceId: choice.existingWorkspaceId };
-  if (tile !== 'new') return undefined;
+  }
+
+  if (tile !== 'new') {
+    return undefined;
+  }
+
   const { baseRef, branch, integrationTargetWorkspaceId } = createOverrides(choice, options, title);
+
   return {
     kind: 'new-worktree',
     ...(baseRef ? { baseRef } : {}),

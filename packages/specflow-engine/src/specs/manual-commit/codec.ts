@@ -54,7 +54,10 @@ export function parseManualCommitJournal(
   value: unknown,
   operationId: string,
 ): ManualCommitJournal {
-  if (!isRecord(value)) throw invalidManualCommitJournal();
+  if (!isRecord(value)) {
+    throw invalidManualCommitJournal();
+  }
+
   const stageOk = isManualCommitStage(value.stage);
   if (
     !exactKeys(
@@ -137,8 +140,12 @@ export function parseManualCommitJournal(
   ) {
     throw invalidManualCommitJournal();
   }
+
   const journal = value as unknown as ManualCommitJournal;
-  if (!stateIsCoherent(journal)) throw invalidManualCommitJournal();
+  if (!stateIsCoherent(journal)) {
+    throw invalidManualCommitJournal();
+  }
+
   return journal;
 }
 

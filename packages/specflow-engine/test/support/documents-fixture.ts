@@ -36,6 +36,7 @@ export interface DocumentsFixture {
 export async function documentsProject(config = GIT_OFF): Promise<DocumentsFixture> {
   const root = await createGitTestProject('specflow-documents-', config);
   roots.push(root, root + '-worktrees');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -49,6 +50,7 @@ export async function createdFeature(fixture: DocumentsFixture) {
     optionalDocumentIds: ['behaviour', 'ux', 'backend'],
     target: { kind: 'existing', workspaceId: fixture.engine.workspace.workspaceId },
   });
+
   return { ...created, dir: join(fixture.root, 'specs', 'active', created.slug) };
 }
 
@@ -78,6 +80,7 @@ export async function handBuiltSpecification(
     await mkdir(join(dir, ...path.split('/').slice(0, -1)), { recursive: true });
     await writeFile(join(dir, ...path.split('/')), content);
   }
+
   return { specId: written.specId, dir };
 }
 
@@ -88,6 +91,7 @@ export async function failure(promise: Promise<unknown>): Promise<unknown> {
   } catch (error) {
     return error;
   }
+
   throw new Error('Expected the operation to fail.');
 }
 

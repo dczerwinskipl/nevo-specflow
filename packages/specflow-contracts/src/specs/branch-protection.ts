@@ -20,9 +20,18 @@ const SET_MEMBER = /^[A-Za-z0-9._]$/u;
 
 /** Why a pattern is not acceptable, or `undefined` when it is valid. */
 export function branchPatternProblem(pattern: string): BranchPatternProblem | undefined {
-  if (pattern.length === 0) return 'empty';
-  if (pattern.length > BRANCH_PATTERN_MAX_LENGTH) return 'too-long';
-  if (!PATTERN_CHARACTERS.test(pattern)) return 'characters';
+  if (pattern.length === 0) {
+    return 'empty';
+  }
+
+  if (pattern.length > BRANCH_PATTERN_MAX_LENGTH) {
+    return 'too-long';
+  }
+
+  if (!PATTERN_CHARACTERS.test(pattern)) {
+    return 'characters';
+  }
+
   if (
     pattern.startsWith('/') ||
     pattern.endsWith('/') ||
@@ -33,6 +42,7 @@ export function branchPatternProblem(pattern: string): BranchPatternProblem | un
   ) {
     return 'structure';
   }
+
   return compile(pattern) === undefined ? 'structure' : undefined;
 }
 
@@ -42,8 +52,12 @@ export function isValidBranchPattern(pattern: string): boolean {
 
 /** True when the branch matches the (valid) pattern; an invalid pattern never matches. */
 export function matchesBranchPattern(pattern: string, branch: string): boolean {
-  if (branchPatternProblem(pattern) !== undefined) return false;
+  if (branchPatternProblem(pattern) !== undefined) {
+    return false;
+  }
+
   const tokens = compile(pattern);
+
   return tokens !== undefined && matchesTokens(tokens, branch);
 }
 
@@ -60,10 +74,12 @@ export function engineCommitRefusal(
   if (commits.protectedBranches.some((pattern) => matchesBranchPattern(pattern, branch))) {
     return 'branch-protected';
   }
+
   const allowed = commits.allowedBranches ?? [];
   if (allowed.length > 0 && !allowed.some((pattern) => matchesBranchPattern(pattern, branch))) {
     return 'branch-not-allowed';
   }
+
   return undefined;
 }
 
@@ -87,7 +103,10 @@ function compile(pattern: string): readonly Token[] | undefined {
     const character = pattern[index]!;
     if (character === '*') {
       let end = index;
-      while (pattern[end] === '*') end++;
+      while (pattern[end] === '*') {
+        end++;
+      }
+
       tokens.push({ kind: end - index >= 2 ? 'globstar' : 'star' });
       index = end;
     } else if (character === '?') {
@@ -95,9 +114,15 @@ function compile(pattern: string): readonly Token[] | undefined {
       index++;
     } else if (character === '[') {
       const close = pattern.indexOf(']', index + 1);
-      if (close < 0) return undefined;
+      if (close < 0) {
+        return undefined;
+      }
+
       const set = compileSet(pattern.slice(index + 1, close));
-      if (set === undefined) return undefined;
+      if (set === undefined) {
+        return undefined;
+      }
+
       tokens.push(set);
       index = close + 1;
     } else if (character === ']' || character === '!' || character === '^') {
@@ -107,27 +132,37 @@ function compile(pattern: string): readonly Token[] | undefined {
       index++;
     }
   }
+
   return tokens;
 }
 
 function compileSet(body: string): Token | undefined {
   const negated = body.startsWith('!') || body.startsWith('^');
   const members = negated ? body.slice(1) : body;
-  if (members.length === 0) return undefined;
+  if (members.length === 0) {
+    return undefined;
+  }
+
   const ranges: (readonly [string, string])[] = [];
   let index = 0;
   while (index < members.length) {
     const first = members[index]!;
     if (first === '-') {
       // A literal dash is only allowed first or last.
-      if (index !== 0 && index !== members.length - 1) return undefined;
+      if (index !== 0 && index !== members.length - 1) {
+        return undefined;
+      }
+
       ranges.push(['-', '-']);
       index++;
     } else if (!SET_MEMBER.test(first)) {
       return undefined;
     } else if (members[index + 1] === '-' && index + 2 < members.length) {
       const last = members[index + 2]!;
-      if (!SET_MEMBER.test(last) || last < first) return undefined;
+      if (!SET_MEMBER.test(last) || last < first) {
+        return undefined;
+      }
+
       ranges.push([first, last]);
       index += 3;
     } else {
@@ -135,6 +170,7 @@ function compileSet(body: string): Token | undefined {
       index++;
     }
   }
+
   return { kind: 'set', negated, ranges };
 }
 
@@ -151,43 +187,70 @@ function matchesTokens(tokens: readonly Token[], branch: string): boolean {
   const skipEmptyStars = (states: boolean[]): void => {
     for (let at = 0; at < width; at++) {
       const token = tokens[at]!;
-      if (states[at] && (token.kind === 'star' || token.kind === 'globstar')) states[at + 1] = true;
+      if (states[at] && (token.kind === 'star' || token.kind === 'globstar')) {
+        states[at + 1] = true;
+      }
     }
   };
+
   skipEmptyStars(current);
   for (const character of text) {
     const next = new Array<boolean>(width + 1).fill(false);
     let alive = false;
     for (let at = 0; at < width; at++) {
-      if (!current[at]) continue;
+      if (!current[at]) {
+        continue;
+      }
+
       const token = tokens[at]!;
       switch (token.kind) {
         case 'literal':
-          if (character === token.char) next[at + 1] = true;
+          if (character === token.char) {
+            next[at + 1] = true;
+          }
+
           break;
         case 'any-char':
-          if (character !== '/') next[at + 1] = true;
+          if (character !== '/') {
+            next[at + 1] = true;
+          }
+
           break;
         case 'star':
-          if (character !== '/') next[at] = true;
+          if (character !== '/') {
+            next[at] = true;
+          }
+
           break;
         case 'globstar':
           next[at] = true;
           break;
         case 'set':
-          if (character !== '/' && inSet(token, character)) next[at + 1] = true;
+          if (character !== '/' && inSet(token, character)) {
+            next[at + 1] = true;
+          }
+
           break;
       }
     }
+
     skipEmptyStars(next);
-    for (const reachable of next) alive ||= reachable;
-    if (!alive) return false;
+    for (const reachable of next) {
+      alive ||= reachable;
+    }
+
+    if (!alive) {
+      return false;
+    }
+
     current = next;
   }
+
   return current[width] === true;
 }
 
 function inSet(token: Extract<Token, { readonly kind: 'set' }>, character: string): boolean {
   const inside = token.ranges.some(([from, to]) => character >= from && character <= to);
+
   return token.negated ? !inside : inside;
 }

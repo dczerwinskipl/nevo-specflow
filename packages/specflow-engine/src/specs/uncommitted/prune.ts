@@ -36,7 +36,10 @@ export async function pruneUncommitted(
     options.workspaceId !== undefined ? { workspaceId: options.workspaceId } : {},
   );
   const nonEmpty = records.filter((record) => record.entries.length > 0);
-  if (nonEmpty.length === 0) return { removed: 0, remaining: 0 };
+  if (nonEmpty.length === 0) {
+    return { removed: 0, remaining: 0 };
+  }
+
   try {
     if (!(await readProjectGitPolicy(engine.context)).policy.enabled) {
       return { removed: 0, remaining: count(nonEmpty) };
@@ -44,6 +47,7 @@ export async function pruneUncommitted(
   } catch {
     return { removed: 0, remaining: count(nonEmpty) };
   }
+
   const probe = headProbeOf(options.commits ?? openVersionControl(engine).commits);
   const now = options.now ?? (() => new Date().toISOString());
   let removed = 0;
@@ -63,6 +67,7 @@ export async function pruneUncommitted(
       remaining += record.entries.length;
     }
   }
+
   return { removed, remaining };
 }
 

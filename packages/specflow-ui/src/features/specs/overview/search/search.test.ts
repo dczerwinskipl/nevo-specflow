@@ -17,8 +17,9 @@ describe('one authoritative Overview search view', () => {
         },
       ],
     };
-    for (const query of ['key-909', 'hidden-tag', 'PR #789', '#789', '789'])
+    for (const query of ['key-909', 'hidden-tag', 'PR #789', '#789', '789']) {
       expect(filterSpecsOverview(source, query).items).toHaveLength(1);
+    }
   });
   it.each(['current', 'archive'] as const)(
     'filters %s titles with normalized matching and preserves the source',

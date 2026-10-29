@@ -11,7 +11,10 @@ import type { DocRepository } from '../ports.js';
 const EXEMPT_DIR_PREFIXES = ['templates/'];
 
 export function isFrontmatterExempt(fileRelToDocs: string): boolean {
-  if (fileRelToDocs.includes('.generated.')) return true;
+  if (fileRelToDocs.includes('.generated.')) {
+    return true;
+  }
+
   return EXEMPT_DIR_PREFIXES.some((p) => fileRelToDocs === p || fileRelToDocs.startsWith(p));
 }
 
@@ -23,11 +26,16 @@ function walkMarkdown(dir: string): string[] {
   } catch {
     return out;
   }
+
   for (const name of [...names].sort((a, b) => a.localeCompare(b))) {
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) out.push(...walkMarkdown(full));
-    else if (extname(name) === '.md' && !name.includes('.generated.')) out.push(full);
+    if (statSync(full).isDirectory()) {
+      out.push(...walkMarkdown(full));
+    } else if (extname(name) === '.md' && !name.includes('.generated.')) {
+      out.push(full);
+    }
   }
+
   return out;
 }
 
@@ -52,14 +60,19 @@ export function createFileSystemDocRepository({
         const relToDocs = relative(docsDir, abs).split(sep).join('/');
         const parsed = parseFrontmatter(readFileSync(abs, 'utf8'), file);
         if (parsed === null) {
-          if (!isFrontmatterExempt(relToDocs)) missingFrontmatter.push(file);
+          if (!isFrontmatterExempt(relToDocs)) {
+            missingFrontmatter.push(file);
+          }
+
           continue;
         }
+
         docs.push({ ...parsed.frontmatter, file, body: parsed.body });
       }
 
       docs.sort((a, b) => String(a.id).localeCompare(String(b.id)));
       missingFrontmatter.sort();
+
       return { docs, missingFrontmatter };
     },
 
@@ -85,6 +98,7 @@ export function createFileSystemDocRepository({
     readIndex(): OnDiskIndex {
       const jsonPath = join(docsDir, 'index.generated.json');
       const mdPath = join(docsDir, 'index.generated.md');
+
       return {
         json: existsSync(jsonPath) ? readFileSync(jsonPath, 'utf8') : null,
         md: existsSync(mdPath) ? readFileSync(mdPath, 'utf8') : null,
@@ -102,9 +116,15 @@ export function createFileSystemDocRepository({
 export function findRepoRoot(start: string): string {
   let dir = start;
   for (;;) {
-    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
+      return dir;
+    }
+
     const parent = dirname(dir);
-    if (parent === dir) return start;
+    if (parent === dir) {
+      return start;
+    }
+
     dir = parent;
   }
 }

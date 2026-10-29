@@ -36,6 +36,7 @@ export async function readSpecificationDocumentTree(
 ): Promise<DocumentTree> {
   const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
   const policyReason = await advisoryPolicyReason(engine, loaded.workspaceRoot);
+
   return buildDocumentTree(engine, loaded, policyReason, options);
 }
 
@@ -64,8 +65,11 @@ async function buildDocumentTree(
   const files: ObservedFile[] = [];
   const perFileSkipped: string[] = [];
   for (const observation of observations) {
-    if (observation.kind === 'file') files.push(observation.file);
-    else if (observation.kind === 'skipped') perFileSkipped.push(observation.path);
+    if (observation.kind === 'file') {
+      files.push(observation.file);
+    } else if (observation.kind === 'skipped') {
+      perFileSkipped.push(observation.path);
+    }
   }
 
   const archive = await countArchiveInventory(specDir);

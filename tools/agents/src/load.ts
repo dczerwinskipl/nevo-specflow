@@ -48,27 +48,37 @@ function object(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} must be an object`);
   }
+
   return value as Record<string, unknown>;
 }
 
 function string(value: unknown, label: string): string {
-  if (typeof value !== 'string' || !value.trim())
+  if (typeof value !== 'string' || !value.trim()) {
     throw new Error(`${label} must be a non-empty string`);
+  }
+
   return value.trim();
 }
 
 function boolean(value: unknown, label: string): boolean {
-  if (typeof value !== 'boolean') throw new Error(`${label} must be a boolean`);
+  if (typeof value !== 'boolean') {
+    throw new Error(`${label} must be a boolean`);
+  }
+
   return value;
 }
 
 function stringArray(value: unknown, label: string): string[] {
-  if (!Array.isArray(value)) throw new Error(`${label} must be an array of strings`);
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array of strings`);
+  }
+
   const result = value.map((item, index) => string(item, `${label}[${index}]`));
   const duplicates = result.filter((item, index) => result.indexOf(item) !== index);
   if (duplicates.length) {
     throw new Error(`${label} contains duplicate value(s): ${[...new Set(duplicates)].join(', ')}`);
   }
+
   return result;
 }
 
@@ -78,7 +88,9 @@ function assertKnownKeys(
   label: string,
 ): void {
   const unknown = Object.keys(record).filter((key) => !allowed.has(key));
-  if (unknown.length) throw new Error(`${label} has unknown field(s): ${unknown.join(', ')}`);
+  if (unknown.length) {
+    throw new Error(`${label} has unknown field(s): ${unknown.join(', ')}`);
+  }
 }
 
 function parseSelection(value: unknown, label: string): AgentSelection {
@@ -86,12 +98,15 @@ function parseSelection(value: unknown, label: string): AgentSelection {
   assertKnownKeys(record, SELECTION_KEYS, label);
 
   const rawModes = stringArray(record.modes, `${label}.modes`);
-  if (rawModes.length === 0) throw new Error(`${label}.modes must not be empty`);
+  if (rawModes.length === 0) {
+    throw new Error(`${label}.modes must not be empty`);
+  }
 
   const modes: SelectionMode[] = rawModes.map((mode) => {
     if (!SELECTION_MODES.has(mode as SelectionMode)) {
       throw new Error(`${label}.modes contains unsupported mode '${mode}'`);
     }
+
     return mode as SelectionMode;
   });
 
@@ -101,18 +116,26 @@ function parseSelection(value: unknown, label: string): AgentSelection {
 function parseKnowledge(value: unknown, label: string): AgentKnowledge {
   const record = object(value, label);
   assertKnownKeys(record, KNOWLEDGE_KEYS, label);
+
   return { required: stringArray(record.required, `${label}.required`) };
 }
 
 function parseApplies(value: unknown, label: string): Applies {
-  if (value === 'always') return 'always';
+  if (value === 'always') {
+    return 'always';
+  }
+
   const record = object(value, label);
   assertKnownKeys(record, new Set(['when']), label);
+
   return { when: string(record.when, `${label}.when`) };
 }
 
 function parseDelivery(value: unknown, label: string): Delivery {
-  if (value === 'inline' || value === 'reference' || value === 'auto') return value;
+  if (value === 'inline' || value === 'reference' || value === 'auto') {
+    return value;
+  }
+
   throw new Error(`${label} must be one of: inline, reference, auto`);
 }
 
@@ -121,8 +144,10 @@ function resolveInstructionSource(
   definitionFile: string,
   source: string,
 ): string {
-  if (isAbsolute(source))
+  if (isAbsolute(source)) {
     throw new Error(`${definitionFile}: instruction source must be repository-relative`);
+  }
+
   const absolute = resolve(dirname(definitionFile), source);
   const instructionRoot = resolve(repoRoot, '.nevo', 'agents', 'instructions');
   const rel = relative(instructionRoot, absolute);
@@ -131,6 +156,7 @@ function resolveInstructionSource(
       `${definitionFile}: instruction source must stay under .nevo/agents/instructions`,
     );
   }
+
   return absolute;
 }
 
@@ -145,7 +171,10 @@ function parseInstruction(
   assertKnownKeys(record, INSTRUCTION_KEYS, label);
 
   const id = string(record.id, `${label}.id`);
-  if (!ITEM_ID_RE.test(id)) throw new Error(`${label}.id must be kebab-case`);
+  if (!ITEM_ID_RE.test(id)) {
+    throw new Error(`${label}.id must be kebab-case`);
+  }
+
   const source = string(record.source, `${label}.source`);
   const absoluteSource = resolveInstructionSource(repoRoot, definitionFile, source);
   let content: string;
@@ -156,7 +185,11 @@ function parseInstruction(
       cause: error,
     });
   }
-  if (!content) throw new Error(`${definitionFile}: instruction source '${source}' is empty`);
+
+  if (!content) {
+    throw new Error(`${definitionFile}: instruction source '${source}' is empty`);
+  }
+
   if (FORBIDDEN_FRAGMENT_HEADING_RE.test(content)) {
     throw new Error(
       `${definitionFile}: instruction source '${source}' must be a fragment; headings must start at H3`,
@@ -191,7 +224,9 @@ function loadDocumentIndex(repoRoot: string): Map<string, IndexedDocument> {
   }
 
   const root = object(parsed, file);
-  if (!Array.isArray(root.docs)) throw new Error(`${file}: 'docs' must be an array`);
+  if (!Array.isArray(root.docs)) {
+    throw new Error(`${file}: 'docs' must be an array`);
+  }
 
   const byId = new Map<string, IndexedDocument>();
   for (const [index, value] of root.docs.entries()) {
@@ -200,6 +235,7 @@ function loadDocumentIndex(repoRoot: string): Map<string, IndexedDocument> {
     const status = string(record.status, `${file}: docs[${index}].status`);
     byId.set(id, { id, status });
   }
+
   return byId;
 }
 
@@ -211,6 +247,7 @@ function validateRequiredKnowledge(repoRoot: string, agents: readonly LoadedAgen
       if (!doc) {
         throw new Error(`${agent.file}: knowledge.required references unknown document id '${id}'`);
       }
+
       if (INACTIVE_DOC_STATUSES.has(doc.status)) {
         throw new Error(
           `${agent.file}: knowledge.required references inactive document '${id}' (${doc.status})`,
@@ -226,9 +263,15 @@ export function loadAgentDefinition(repoRoot: string, file: string): LoadedAgent
   const record = object(parsed, file);
   assertKnownKeys(record, TOP_LEVEL_KEYS, file);
 
-  if (record.version !== 1) throw new Error(`${file}: version must be 1`);
+  if (record.version !== 1) {
+    throw new Error(`${file}: version must be 1`);
+  }
+
   const id = string(record.id, `${file}.id`);
-  if (!ID_RE.test(id)) throw new Error(`${file}: id must match nevo-agents:<kebab-name>`);
+  if (!ID_RE.test(id)) {
+    throw new Error(`${file}: id must match nevo-agents:<kebab-name>`);
+  }
+
   const rawInstructions = record.instructions;
   if (!Array.isArray(rawInstructions) || rawInstructions.length === 0) {
     throw new Error(`${file}: instructions must be a non-empty array`);
@@ -239,8 +282,10 @@ export function loadAgentDefinition(repoRoot: string, file: string): LoadedAgent
   );
   const instructionIds = new Set<string>();
   for (const instruction of instructions) {
-    if (instructionIds.has(instruction.id))
+    if (instructionIds.has(instruction.id)) {
       throw new Error(`${file}: duplicate instruction id '${instruction.id}'`);
+    }
+
     instructionIds.add(instruction.id);
   }
 
@@ -261,25 +306,32 @@ export function loadAllAgents(repoRoot: string): LoadedAgent[] {
   const files = readdirSync(definitionsDir)
     .filter((file) => file.endsWith('.yaml') || file.endsWith('.yml'))
     .sort();
-  if (files.length === 0)
+  if (files.length === 0) {
     throw new Error('no agent definitions found under .nevo/agents/definitions');
+  }
 
   const agents = files.map((file) =>
     loadAgentDefinition(repoRoot, `.nevo/agents/definitions/${file}`),
   );
   const ids = new Set<string>();
   for (const agent of agents) {
-    if (ids.has(agent.id)) throw new Error(`duplicate agent id '${agent.id}'`);
+    if (ids.has(agent.id)) {
+      throw new Error(`duplicate agent id '${agent.id}'`);
+    }
+
     ids.add(agent.id);
   }
 
   validateRequiredKnowledge(repoRoot, agents);
+
   return agents;
 }
 
 export function providerSkillName(agentId: string): string {
   const name = agentId.replace(':', '-');
-  if (!ITEM_ID_RE.test(name))
+  if (!ITEM_ID_RE.test(name)) {
     throw new Error(`agent id '${agentId}' cannot be projected to a provider-safe skill name`);
+  }
+
   return name;
 }

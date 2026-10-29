@@ -21,6 +21,7 @@ async function gitRepository(): Promise<string> {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-layout-')));
   dirs.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
+
   return root;
 }
 

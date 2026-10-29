@@ -30,6 +30,7 @@ const nevoMarkCatalogItems = nevoMarkAssetResource.variants.variant.map((variant
 
 const typographyCatalogItems = typographyResource.variants.variant.map((variant) => {
   const separator = variant.lastIndexOf('-');
+
   return {
     resourceRef: textStyleRef('Typography', { variant }),
     column: variant.slice(0, separator),

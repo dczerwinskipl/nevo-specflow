@@ -17,6 +17,7 @@ function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSecti
   ) {
     return <FeatureUnavailable className="border-none" />;
   }
+
   if (
     data.sectionAvailability?.tasks === 'forbidden' ||
     data.sectionAvailability?.tasks === 'unavailable'
@@ -63,7 +64,11 @@ export const tasksUiModule: UiModule = {
         if (!source || (source.state === 'unavailable' && source.reason === 'source_unavailable')) {
           return { state: 'unavailable' };
         }
-        if (source.state !== 'available') return { state: 'excluded' };
+
+        if (source.state !== 'available') {
+          return { state: 'excluded' };
+        }
+
         return source.items.map((item) => ({
           item,
           icon: 'list-checks',

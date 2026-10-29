@@ -6,6 +6,7 @@ import { OperationalGroupHeader } from './OperationalGroupHeader';
 
 function MixedCollection({ narrowPanel = false }: { narrowPanel?: boolean }) {
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
+
   return (
     <main
       className="grid min-w-0 gap-6"
@@ -22,6 +23,7 @@ function MixedCollection({ narrowPanel = false }: { narrowPanel?: boolean }) {
           <InformationList selectable>
             {Array.from({ length: 10 }, (_, index) => {
               const id = group * 10 + index;
+
               return (
                 <OperationalRow
                   key={id}
@@ -57,8 +59,12 @@ function MixedCollection({ narrowPanel = false }: { narrowPanel?: boolean }) {
                         onCheckedChange={() =>
                           setSelected((current) => {
                             const next = new Set(current);
-                            if (next.has(id)) next.delete(id);
-                            else next.add(id);
+                            if (next.has(id)) {
+                              next.delete(id);
+                            } else {
+                              next.add(id);
+                            }
+
                             return next;
                           })
                         }
@@ -87,6 +93,7 @@ function MixedCollection({ narrowPanel = false }: { narrowPanel?: boolean }) {
     </main>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Components/Operational List',
   tags: ['visual'],
@@ -113,32 +120,43 @@ const geometryContract: NonNullable<Story['play']> = async ({
     const r = row.getBoundingClientRect();
     const a = title.getBoundingClientRect();
     const b = secondary.getBoundingClientRect();
-    if (a.width < Math.min(160, r.width / 2) || b.width < Math.min(160, r.width / 2))
+    if (a.width < Math.min(160, r.width / 2) || b.width < Math.min(160, r.width / 2)) {
       throw new Error(
         'Every row must keep usable title and supporting widths even with long metadata',
       );
+    }
+
     if (metadata) {
       const m = metadata.getBoundingClientRect();
-      if (m.left < r.left || m.right > r.right + 1)
+      if (m.left < r.left || m.right > r.right + 1) {
         throw new Error('Metadata must fit within its row');
-      if (m.left < a.right && m.top < b.bottom - 1)
+      }
+
+      if (m.left < a.right && m.top < b.bottom - 1) {
         throw new Error('Metadata must not overlap title or supporting');
+      }
     }
+
     // Selection columns stay aligned even for rows without a checkbox.
     if (
       Math.abs(a.left - rows[0]!.querySelector('[data-spec-title]')!.getBoundingClientRect().left) >
       1
-    )
+    ) {
       throw new Error('Selectable collection must preserve its leading axis');
+    }
   }
+
   await userEvent.click(canvas.getByRole('checkbox', { name: 'Select task 1' }));
   if (
     canvas.getByRole('checkbox', { name: 'Select task 1' }).getAttribute('data-state') !== 'checked'
-  )
+  ) {
     throw new Error('Selection must remain operable');
+  }
+
   await userEvent.click(canvas.getByRole('button', { name: 'Actions for task 0' }));
   await userEvent.keyboard('{Escape}');
 };
+
 export const GeometryDesktop: Story = { tags: ['contract', '!visual'], play: geometryContract };
 export const GeometryMobile: Story = {
   ...GeometryDesktop,

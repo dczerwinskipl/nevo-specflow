@@ -63,6 +63,7 @@ export async function moveJournal(
     guard,
   );
   await rt.hooks.afterJournalWrite?.(to);
+
   return next;
 }
 
@@ -74,12 +75,22 @@ export function isErrno(error: unknown): boolean {
 /** The cause of a failure of the write phase; `write-ambiguous` when nothing says more. */
 export function writeCauseOf(error: unknown): DocumentChangeCause {
   const code = errnoCode(error);
-  if (code === 'ENOSPC' || code === 'EDQUOT') return 'write-no-space';
+  if (code === 'ENOSPC' || code === 'EDQUOT') {
+    return 'write-no-space';
+  }
+
   if (error instanceof DocumentError) {
-    if (error.code === 'SPEC_SOURCE_UNAVAILABLE') return 'write-io-error';
-    if (error.details?.cause === 'payload-unprovable') return 'payload-unprovable';
+    if (error.code === 'SPEC_SOURCE_UNAVAILABLE') {
+      return 'write-io-error';
+    }
+
+    if (error.details?.cause === 'payload-unprovable') {
+      return 'payload-unprovable';
+    }
+
     return 'write-ambiguous';
   }
+
   return isErrno(error) ? 'write-io-error' : 'write-ambiguous';
 }
 
@@ -98,6 +109,7 @@ async function withRetries<T>(rt: WriteRuntime, action: () => Promise<T>): Promi
       ) {
         throw error;
       }
+
       await rt.sleep(rt.retries.delayMs);
     }
   }
@@ -114,14 +126,19 @@ async function contentOf(
   plan: DocumentChangePlan,
   planned: PlannedPath,
 ): Promise<Uint8Array> {
-  if (planned.post === null) return new Uint8Array();
+  if (planned.post === null) {
+    return new Uint8Array();
+  }
+
   if (planned.source.kind === 'payload') {
     const text = await readPayload(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, journal.operationId, {
       sha256: planned.post.sha256,
       bytes: planned.post.bytes,
     });
+
     return Buffer.from(text, 'utf8');
   }
+
   if (planned.source.kind === 'moved-from') {
     const bytes = await readFileBytes(
       rt.files,
@@ -131,8 +148,10 @@ async function contentOf(
     if (bytes === undefined) {
       throw documentChangeError('write-ambiguous', 'The origin of a moved document is gone.');
     }
+
     return bytes;
   }
+
   throw documentChangeError('plan-invalid', 'A written path has no content source.');
 }
 
@@ -152,6 +171,7 @@ export async function inspectPlanPaths(
       ),
     );
   }
+
   return states;
 }
 
@@ -172,7 +192,9 @@ async function syncPlanDirectories(
   );
   for (const directory of directories) {
     await rt.files.syncDirectory(directory).catch((error: unknown) => {
-      if (errnoCode(error) !== 'ENOENT') throw error;
+      if (errnoCode(error) !== 'ENOENT') {
+        throw error;
+      }
     });
   }
 }
@@ -187,15 +209,22 @@ async function conflictsOf(
   const specDir = specDirOf(journal, plan);
   const conflicts: { documentId: string; revision: string }[] = [];
   for (const [index, planned] of plan.paths.entries()) {
-    if (dispositions[index] !== 'foreign' || conflicts.length >= 25) continue;
+    if (dispositions[index] !== 'foreign' || conflicts.length >= 25) {
+      continue;
+    }
+
     const relative = relativeToDirectory(plan.directory, planned.path);
     const document = plan.documents.find((candidate) => candidate.path === relative);
-    if (document === undefined) continue;
+    if (document === undefined) {
+      continue;
+    }
+
     const now = await observePath(rt.files, specDir, relative).catch(() => null);
     if (now !== null && now !== 'not-regular' && now.bytes <= CONTENT_HASH_MAX_BYTES) {
       conflicts.push({ documentId: document.id, revision: now.sha256 });
     }
   }
+
   return conflicts.length > 0 ? conflicts : undefined;
 }
 
@@ -220,15 +249,19 @@ async function settleBackupFile(
   const held = await observePath(rt.files, specDir, relative(specDir, backup).split(sep).join('/'));
   if (held === null || planned === undefined || sameFileState(held, planned.pre)) {
     await rt.files.remove(backup);
+
     return;
   }
+
   const targetRelative = relativeToDirectory(plan.directory, planned.path);
   const target = join(specDir, ...targetRelative.split('/'));
   if (sameFileState(await observePath(rt.files, specDir, targetRelative), planned.post)) {
     await rt.files.rename(backup, target);
     await rt.files.syncDirectory(dirname(target));
+
     return;
   }
+
   await rt.files.rename(backup, join(directory, FOREIGN_BACKUP_PREFIX + name.slice(3)));
 }
 
@@ -250,9 +283,13 @@ export async function cleanStageFiles(
   );
   for (const directory of directories) {
     for (const name of await rt.files.list(directory).catch(() => [])) {
-      if (!name.startsWith(BACKUP_PREFIX) || !isStageFileOf(journal.operationId, name)) continue;
+      if (!name.startsWith(BACKUP_PREFIX) || !isStageFileOf(journal.operationId, name)) {
+        continue;
+      }
+
       await settleBackupFile(rt, journal, plan, directory, name).catch(skipUnlessCut);
     }
+
     await removeStageFiles(rt.files, directory, journal.operationId).catch(skipUnlessCut);
   }
 }
@@ -279,7 +316,10 @@ export async function refuseWithoutChanges(
   await removePayload(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, journal.operationId).catch(
     skipUnlessCut,
   );
-  if (refusal !== undefined) throw documentChangeError(refusal.cause, refusal.message);
+  if (refusal !== undefined) {
+    throw documentChangeError(refusal.cause, refusal.message);
+  }
+
   throw documentChangeError(
     'revision-conflict',
     'A document changed since it was read; nothing was written.',
@@ -289,7 +329,9 @@ export async function refuseWithoutChanges(
 
 /** Best effort that never swallows the cut of a simulated crash. */
 export function skipUnlessCut(error: unknown): void {
-  if (error instanceof WriterInterrupted || error instanceof JournalMovedError) throw error;
+  if (error instanceof WriterInterrupted || error instanceof JournalMovedError) {
+    throw error;
+  }
 }
 
 /**
@@ -315,9 +357,12 @@ async function stopWriting(
         reason,
       });
     } catch (error) {
-      if (error instanceof WriterInterrupted || error instanceof JournalMovedError) throw error;
+      if (error instanceof WriterInterrupted || error instanceof JournalMovedError) {
+        throw error;
+      }
     }
   }
+
   return documentChangeError(cause, message, extras);
 }
 
@@ -331,7 +376,10 @@ export async function claimWrite(
   rt: WriteRuntime,
   journal: DocumentChangeJournal,
 ): Promise<DocumentChangeJournal> {
-  if (journal.stage === 'reserved') return journal;
+  if (journal.stage === 'reserved') {
+    return journal;
+  }
+
   return moveJournal(
     rt,
     journal.operationId,
@@ -382,14 +430,17 @@ export async function rollForward(
         message: CASE_ONLY_RENAME_MESSAGE,
       });
     }
+
     const before = await inspectPlanPaths(rt, journal, plan);
     if (before.includes('foreign') && !before.includes('at-post')) {
       return refuseWithoutChanges(rt, journal, plan, before);
     }
+
     journal = await moveJournal(rt, journal.operationId, ['reserved'], 'files-writing', {
       executor: await rt.executor(),
     });
   }
+
   if (aliased) {
     throw await stopWriting(
       rt,
@@ -400,6 +451,7 @@ export async function rollForward(
       'The operation names one file twice on this file system; nothing more is written.',
     );
   }
+
   // What an earlier executor of this operation left behind is not needed any more.
   await cleanStageFiles(rt, journal, plan);
 
@@ -425,15 +477,21 @@ export async function rollForward(
         ),
       );
     } catch (error) {
-      if (error instanceof WriterInterrupted || error instanceof JournalMovedError) throw error;
+      if (error instanceof WriterInterrupted || error instanceof JournalMovedError) {
+        throw error;
+      }
+
       const cause = writeCauseOf(error);
+
       throw await stopWriting(rt, journal, plan, cause, cause, 'Writing the documents failed.');
     }
+
     if (outcome.kind === 'foreign') {
       const dispositions = await inspectPlanPaths(rt, journal, plan);
       if (!dispositions.includes('at-post')) {
         return refuseWithoutChanges(rt, journal, plan, dispositions);
       }
+
       throw await stopWriting(
         rt,
         journal,
@@ -449,10 +507,15 @@ export async function rollForward(
   try {
     await withRetries(rt, () => syncPlanDirectories(rt, journal, plan));
   } catch (error) {
-    if (error instanceof WriterInterrupted || error instanceof JournalMovedError) throw error;
+    if (error instanceof WriterInterrupted || error instanceof JournalMovedError) {
+      throw error;
+    }
+
     const cause = writeCauseOf(error);
+
     throw await stopWriting(rt, journal, plan, cause, cause, 'Writing the documents failed.');
   }
+
   const after = await inspectPlanPaths(rt, journal, plan);
   if (after.some((state) => state !== 'at-post')) {
     throw await stopWriting(
@@ -464,10 +527,17 @@ export async function rollForward(
       'The documents are not in the expected state after the write.',
     );
   }
+
   // Auto-commit off: nothing is queued; the ledger records the paths and the operation completes.
-  if (journal.commitMode === 'manual') return completeUncommittedWrite(rt, journal, plan);
+  if (journal.commitMode === 'manual') {
+    return completeUncommittedWrite(rt, journal, plan);
+  }
+
   // Git disabled: nothing is queued or recorded, but an entry the path already has must follow the content.
-  if (journal.commit === undefined) await reimageUncommittedPaths(rt, journal, plan);
+  if (journal.commit === undefined) {
+    await reimageUncommittedPaths(rt, journal, plan);
+  }
+
   return moveJournal(rt, journal.operationId, ['files-writing'], 'queued');
 }
 
@@ -488,13 +558,19 @@ export async function finishAcknowledged(
   // Manual mode already completed uncommitted (with its ledger entries); only the move is left.
   if (queued.stage === 'completed') {
     await settleDocumentChangeJournal(rt.context, queued.operationId).catch(skipUnlessCut);
+
     return queued;
   }
-  if (queued.commit !== undefined) return queued;
+
+  if (queued.commit !== undefined) {
+    return queued;
+  }
+
   const completed = await moveJournal(rt, queued.operationId, ['queued'], 'completed', {
     outcome: 'not-applicable',
     reason: 'git-disabled',
   });
   await settleDocumentChangeJournal(rt.context, queued.operationId).catch(skipUnlessCut);
+
   return completed;
 }

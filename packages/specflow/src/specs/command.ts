@@ -33,7 +33,10 @@ export interface SpecsCommandContext extends Partial<
 }
 
 function summary(item: DiscoveredSpecification): Record<string, unknown> {
-  if (item.status !== 'available') return item;
+  if (item.status !== 'available') {
+    return item;
+  }
+
   return {
     status: item.status,
     specId: item.specId,
@@ -186,10 +189,14 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
             specId,
           }),
         );
+
         return;
       }
-      if (!options.yes)
+
+      if (!options.yes) {
         throw new Error('Closing a Git worktree requires --yes. Use --preview first.');
+      }
+
       const result = await closeWorktreeOperation(engine, { operationId, specId });
       if (options.json) {
         output(context, result);
@@ -220,15 +227,20 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       const request = { workspaceId, operationId };
       if (options.preview) {
         output(context, await planPublicWorkspaceCloseOperation(engine, request));
+
         return;
       }
-      if (!options.yes)
+
+      if (!options.yes) {
         throw new Error(
           'Whole-branch Workspace Close requires --yes. Use workspace close --preview first.',
         );
+      }
+
       const result = await closeWorkspaceOperation(engine, request);
-      if (options.json) output(context, result);
-      else {
+      if (options.json) {
+        output(context, result);
+      } else {
         context.stdout('Workspace Close: ' + result.status);
         context.stdout('Affected Specifications: ' + result.occupantCount);
         context.stdout('Operation ID: ' + operationId);
@@ -243,7 +255,10 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .action(async (workspaceId: string, operationId: string, options: { projectRoot?: string }) => {
       const engine = await engineForClose(context.cwd, options.projectRoot);
       const result = await inspectPublicWorkspaceCloseOperation(engine, operationId, workspaceId);
-      if (!result) throw new Error('Workspace Close operation not found: ' + operationId);
+      if (!result) {
+        throw new Error('Workspace Close operation not found: ' + operationId);
+      }
+
       output(context, result);
     });
 
@@ -270,13 +285,18 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       };
       if (options.preview) {
         output(context, await previewPublicCloseOperation(engine, request));
+
         return;
       }
-      if (!options.yes)
+
+      if (!options.yes) {
         throw new Error('Archiving a Specification requires --yes. Use --preview first.');
+      }
+
       const result = await closeSpecificationOperation(engine, request);
-      if (options.json) output(context, result);
-      else {
+      if (options.json) {
+        output(context, result);
+      } else {
         context.stdout('Specification Close: ' + result.status);
         context.stdout('Operation ID: ' + operationId);
         context.stdout('Outcome: ' + (result.outcome ?? result.status));
@@ -321,7 +341,10 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .action(async (operationId: string, options: { projectRoot?: string }) => {
       const engine = await engineAt(context.cwd, options.projectRoot);
       const journal = await inspectCloseOperationDiagnostic(engine, operationId);
-      if (!journal) throw new Error('Close operation not found: ' + operationId);
+      if (!journal) {
+        throw new Error('Close operation not found: ' + operationId);
+      }
+
       output(context, journal);
     });
 
@@ -333,8 +356,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .action(async (options: { json?: boolean; projectRoot?: string }) => {
       const engine = await engineAt(context.cwd, options.projectRoot);
       const found = await discoverSpecifications(engine);
-      if (options.json) output(context, found.map(summary));
-      else
+      if (options.json) {
+        output(context, found.map(summary));
+      } else {
         for (const item of found) {
           context.stdout(
             item.specId +
@@ -342,6 +366,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
               (item.status === 'available' ? item.specification.slug : item.status),
           );
         }
+      }
     });
 
   specs
@@ -352,13 +377,15 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .option('--project-root <path>', 'Require this verified Project Home root')
     .action(async (id: string, options: { json?: boolean; projectRoot?: string }) => {
       const item = await resolveSpecification(await engineAt(context.cwd, options.projectRoot), id);
-      if (options.json) output(context, summary(item));
-      else {
+      if (options.json) {
+        output(context, summary(item));
+      } else {
         context.stdout('Spec: ' + item.specId);
         context.stdout('Status: ' + item.status);
         context.stdout('Workspace: ' + item.workspaceId);
-        if (item.status === 'available')
+        if (item.status === 'available') {
           context.stdout('Manifest: ' + item.specification.relativeManifestPath);
+        }
       }
     });
   specs.addCommand(
@@ -370,12 +397,14 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       ...(context.api ? { api: context.api } : {}),
     }),
   );
+
   return specs;
 }
 
 /** Closing the caller's own linked checkout must not invalidate Engine's control workspace. */
 async function engineForClose(cwd: string, projectRoot?: string): Promise<SpecFlowEngine> {
   const selected = await engineAt(cwd, projectRoot);
+
   return openSpecFlowEngine({
     cwd: selected.context.project.homeRoot,
     projectRoot: selected.context.project.homeRoot,
@@ -403,6 +432,7 @@ function collectUnique(value: string, previous: string[]): string[] {
   if (previous.includes(value)) {
     throw new InvalidArgumentError(`--with ${value} was given more than once.`);
   }
+
   return [...previous, value];
 }
 
@@ -410,6 +440,7 @@ function validateCreateOptions(options: CliCreateOptions): void {
   if (options.worktree && options.workspaceId) {
     throw new Error('Choose either --worktree or --workspace-id.');
   }
+
   if (
     !options.worktree &&
     (options.baseRef || options.branch || options.integrationTargetWorkspaceId)
@@ -434,5 +465,6 @@ function resolveCliCreateTarget(
         : {}),
     };
   }
+
   return { kind: 'existing', workspaceId: options.workspaceId ?? engine.workspace.workspaceId };
 }

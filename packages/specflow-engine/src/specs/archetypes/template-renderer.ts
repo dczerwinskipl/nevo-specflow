@@ -31,6 +31,7 @@ export interface TemplateContextInput {
 export function templateValues(input: TemplateContextInput): TemplateValues {
   const title = input.title.replace(/\s+/gu, ' ').trim();
   const goal = input.goal?.trim() ?? '';
+
   return {
     specificationTitle: title,
     specificationTitleJson: JSON.stringify(title),

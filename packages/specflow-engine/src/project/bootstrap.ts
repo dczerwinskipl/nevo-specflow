@@ -29,6 +29,7 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
 
   try {
     await resolveProjectHome({ cwd: root });
+
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',
       'Project Home is already designated; open it instead of bootstrapping again.',
@@ -67,8 +68,11 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
     try {
       await mkdir(path, { mode: 0o700 });
     } catch (error) {
-      if (!isExists(error)) throw error;
+      if (!isExists(error)) {
+        throw error;
+      }
     }
+
     const stat = await lstat(path);
     if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
       throw new ProjectHomeError(
@@ -81,12 +85,15 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
   const registryPath = join(root, '.nevo/local/state/workspaces.json');
   try {
     await lstat(registryPath);
+
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',
       'Undesignated existing registry requires explicit recovery; refusing a new identity.',
     );
   } catch (error) {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
   }
 
   // Claim the physical Git instance before publishing its Project Home marker.
@@ -105,8 +112,10 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
         'Project Home marker already exists; explicit recovery is required.',
       );
     }
+
     throw error;
   }
+
   try {
     await handle.writeFile(
       JSON.stringify({
@@ -126,6 +135,7 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
 
   const context = await resolveProjectHome({ cwd: root });
   await initializeWorkspaceRegistry(context);
+
   return openSpecFlowEngine({ cwd: root });
 }
 
@@ -142,14 +152,22 @@ export async function findOrphanedGitInstance(cwd: string): Promise<string | und
   try {
     await lstat(path);
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
     throw error;
   }
+
   try {
     await resolveProjectHome({ cwd: root });
+
     return undefined;
   } catch (error) {
-    if (error instanceof ProjectHomeError && error.code === 'PROJECT_HOME_NOT_FOUND') return path;
+    if (error instanceof ProjectHomeError && error.code === 'PROJECT_HOME_NOT_FOUND') {
+      return path;
+    }
+
     return undefined;
   }
 }
@@ -176,6 +194,7 @@ async function inspectPrimaryGitCheckout(
   ) {
     throw new ProjectHomeError('PROJECT_HOME_INVALID', 'Cannot verify primary Git checkout.');
   }
+
   const physicalGitDir = await realpath(resolve(root, gitDir.stdout.trim()));
   const physicalCommonDir = await realpath(resolve(root, commonDir.stdout.trim()));
   if (physicalGitDir !== physicalCommonDir) {
@@ -184,6 +203,7 @@ async function inspectPrimaryGitCheckout(
       'Only the primary Git checkout can become Project Home.',
     );
   }
+
   return { root, physicalCommonDir };
 }
 

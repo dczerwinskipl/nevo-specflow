@@ -35,7 +35,10 @@ export function planReleaseCut({
       errors.push(`${label} must be a plain SemVer version (got ${JSON.stringify(v)})`);
     }
   }
-  if (errors.length) return { ok: false, errors };
+
+  if (errors.length) {
+    return { ok: false, errors };
+  }
 
   const nextMinor = semver.inc(releaseVersion, 'minor');
   const nextMajor = semver.inc(releaseVersion, 'major');
@@ -79,13 +82,16 @@ export function validateCutBaseVersion(
         `main is not a development line.`,
     );
   }
+
   if (mainVersionFile.version !== releaseVersion) {
     errors.push(
       `origin/main is developing ${mainVersionFile.version}, but --release-version is ` +
         `${releaseVersion}. Cut the line for the version main is on, or bump main first.`,
     );
+
     return errors; // the next-version check below is only meaningful once these agree
   }
+
   const nextMinor = semver.inc(mainVersionFile.version, 'minor');
   const nextMajor = semver.inc(mainVersionFile.version, 'major');
   if (nextVersion !== nextMinor && nextVersion !== nextMajor) {
@@ -94,5 +100,6 @@ export function validateCutBaseVersion(
         `nor the next major (${nextMajor ?? '?'}) of main's ${mainVersionFile.version}.`,
     );
   }
+
   return errors;
 }

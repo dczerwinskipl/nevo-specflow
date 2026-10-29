@@ -86,6 +86,7 @@ function canonicalRequest(request: DocumentWriteRequest): Record<string, unknown
       };
     default: {
       const exhaustive: never = request;
+
       return exhaustive;
     }
   }

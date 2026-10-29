@@ -38,11 +38,18 @@ export function useCreateLeaveGuard(options: {
     resolveLeave.current?.(blocked);
     resolveLeave.current = null;
   };
+
   useBlocker({
     shouldBlockFn: () => {
-      if (isNavigationAllowed()) return false;
+      if (isNavigationAllowed()) {
+        return false;
+      }
+
       // The operation carries the form's content and outlives this screen: nothing to confirm.
-      if (unfinished || !dirty) return false;
+      if (unfinished || !dirty) {
+        return false;
+      }
+
       return new Promise<boolean>((resolve) => {
         // A second navigation while the dialog is open must not orphan the first one.
         resolveLeave.current?.(true);
@@ -54,6 +61,7 @@ export function useCreateLeaveGuard(options: {
     },
     enableBeforeUnload: unfinished || dirty,
   });
+
   return {
     open,
     safeLeave,

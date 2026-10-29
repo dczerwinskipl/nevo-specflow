@@ -37,13 +37,19 @@ afterEach(removeTrackedRoots);
 
 async function drain(stream: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  for await (const chunk of stream) {
+    chunks.push(chunk as Buffer);
+  }
+
   return Buffer.concat(chunks);
 }
 
 /** Resolves when the stream has closed, which is after the file handle it owned is released. */
 async function closed(stream: Readable): Promise<void> {
-  if (stream.closed) return;
+  if (stream.closed) {
+    return;
+  }
+
   // A destroyed stream may emit its abort or read error before it closes; that is not under test here.
   await new Promise<void>((resolve) => {
     stream.on('error', () => undefined);
@@ -60,6 +66,7 @@ async function outsideDirectory(): Promise<string> {
   const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
   trackRoot(outside);
   await writeFile(join(outside, 'secret.md'), '# SECRET\n');
+
   return outside;
 }
 
@@ -118,7 +125,10 @@ describe('openSpecificationDocument', () => {
   it('streams a file above the hash limit exactly and reports a stat-signature revision', async () => {
     const fixture = await documentsProject();
     const big = Buffer.alloc(3 * 1024 * 1024 + 17);
-    for (let index = 0; index < big.length; index += 1) big[index] = index % 251;
+    for (let index = 0; index < big.length; index += 1) {
+      big[index] = index % 251;
+    }
+
     const hand = await handBuiltSpecification(fixture, {
       files: { 'overview.md': '# o\n', 'big.bin': big },
     });
@@ -154,6 +164,7 @@ describe('openSpecificationDocument', () => {
       media[path] = opened.metadata.mediaType;
       opened.stream.destroy();
     }
+
     expect(media).toEqual({
       'page.html': 'text/plain; charset=utf-8',
       'data.xml': 'text/plain; charset=utf-8',
@@ -202,7 +213,9 @@ describe('openSpecificationDocument', () => {
       ),
     ).toBe('DOCUMENT_TOO_LARGE');
     const after = await countOpenFds();
-    if (before !== undefined && after !== undefined) expect(after).toBeLessThanOrEqual(before);
+    if (before !== undefined && after !== undefined) {
+      expect(after).toBeLessThanOrEqual(before);
+    }
   }, 240000);
 
   it.skipIf(!onLinux)(
@@ -220,6 +233,7 @@ describe('openSpecificationDocument', () => {
         expect((chunk as Buffer).length).toBeGreaterThan(0);
         break; // abandon the stream after the first chunk
       }
+
       await destroyed(aborted.stream);
       expect(await openDescriptors()).toBe(before);
 
@@ -286,6 +300,7 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
    */
   function racing(target: string, swap: () => Promise<void>, afterOpen = false): VerifiedFs {
     let swapped = false;
+
     return {
       ...nodeVerifiedFs,
       open: async (path, flags) => {
@@ -294,11 +309,13 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
           swapped = true;
           await swap();
         }
+
         const handle = await nodeVerifiedFs.open(path, flags);
         if (hit && afterOpen) {
           swapped = true;
           await swap();
         }
+
         return handle;
       },
     };

@@ -11,6 +11,7 @@ function Environment({ children }: { children: React.ReactNode }) {
   const [query] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
   );
+
   return (
     <StoryLocalization locale="pl">
       <QueryClientProvider client={query}>
@@ -23,6 +24,7 @@ function Environment({ children }: { children: React.ReactNode }) {
     </StoryLocalization>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Screens/Managed Session',
   component: ManagedSession,
@@ -112,7 +114,10 @@ export const CancelTurn: Story = {
 };
 
 const multiple = sessionFixture(true);
-if (multiple.interaction?.kind === 'question') multiple.interaction.maxSelections = 2;
+if (multiple.interaction?.kind === 'question') {
+  multiple.interaction.maxSelections = 2;
+}
+
 export const UnsupportedMultipleChoice: Story = {
   args: { owner: 'multi-story', api: fixtureApi(multiple) },
   play: async ({ canvasElement }) => {

@@ -16,6 +16,7 @@ export function createSpecFlowUiRegistry(modules: readonly UiModule[]): UiRegist
     [specificationWorkSections, specificationAttentionItems, specsOverviewPanels],
     modules,
   );
+
   return registry;
 }
 

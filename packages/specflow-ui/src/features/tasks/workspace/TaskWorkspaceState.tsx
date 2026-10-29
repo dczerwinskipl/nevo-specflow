@@ -20,6 +20,7 @@ function useWorkspaceState(data: TaskWorkspaceData) {
   const [message, setMessage] = useState('');
   const [reading, setReading] = useState(false);
   const scroll = useRef(new Map<string, number>());
+
   return {
     data,
     description,
@@ -43,6 +44,7 @@ function useWorkspaceState(data: TaskWorkspaceData) {
     scroll,
   };
 }
+
 const Context = createContext<ReturnType<typeof useWorkspaceState> | null>(null);
 export function TaskWorkspaceState({
   data,
@@ -52,24 +54,37 @@ export function TaskWorkspaceState({
   readonly children: ReactNode;
 }) {
   const value = useWorkspaceState(data);
+
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
+
 export function useTaskWorkspace() {
   const value = useContext(Context);
-  if (!value) throw new Error('Task workspace state is required');
+  if (!value) {
+    throw new Error('Task workspace state is required');
+  }
+
   return value;
 }
+
 /** Page-local scroll survives the host remounting a previous Secondary entry. */
 export function useWorkspaceScroll(key: string) {
   const { scroll } = useTaskWorkspace();
   const ref = useRef<HTMLDivElement>(null);
   const leaving = useRef(false);
   const captureBeforeNavigation = () => {
-    if (ref.current) scroll.current.set(key, descriptionScrollOwner(ref.current).scrollTop);
+    if (ref.current) {
+      scroll.current.set(key, descriptionScrollOwner(ref.current).scrollTop);
+    }
+
     leaving.current = true;
   };
+
   useLayoutEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current) {
+      return;
+    }
+
     let restored = false;
     // Resolve after the host has laid out the new page. A short page can acquire
     // a scroll owner when its preserved disclosures are restored, and a surface that is
@@ -82,17 +97,25 @@ export function useWorkspaceScroll(key: string) {
       },
     );
     const save = (event: Event) => {
-      if (!restored || leaving.current || !ref.current) return;
+      if (!restored || leaving.current || !ref.current) {
+        return;
+      }
+
       const owner = descriptionScrollOwner(ref.current);
-      if (event.target === owner) scroll.current.set(key, owner.scrollTop);
+      if (event.target === owner) {
+        scroll.current.set(key, owner.scrollTop);
+      }
     };
+
     // The narrow host shares a viewport across pages; the wide host has one per
     // surface. Capture observes either without depending on host DOM classes.
     document.addEventListener('scroll', save, { passive: true, capture: true });
+
     return () => {
       stopRestoring();
       document.removeEventListener('scroll', save, true);
     };
   }, [key, scroll]);
+
   return { ref, captureBeforeNavigation };
 }

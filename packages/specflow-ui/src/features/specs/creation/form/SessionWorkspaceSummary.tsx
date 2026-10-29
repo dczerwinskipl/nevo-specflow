@@ -11,6 +11,7 @@ export function SessionWorkspaceSummary({
 }) {
   const { t } = useTranslation();
   const headingId = useId();
+
   return (
     <section className="grid gap-4" aria-labelledby={headingId}>
       <div className="grid gap-1">

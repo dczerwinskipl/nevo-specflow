@@ -79,12 +79,17 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
     headers: Record<string, unknown>;
     query: unknown;
   }): DemoScenario[] | undefined => {
-    if (!state.scenarioSeam) return [];
+    if (!state.scenarioSeam) {
+      return [];
+    }
+
     const header = request.headers['x-demo-scenario'];
     const query = (request.query as { demoScenario?: unknown } | undefined)?.demoScenario;
     const raw = [header, query].find((value): value is string => typeof value === 'string');
+
     return parseScenarios(raw);
   };
+
   const invalidScenario = {
     error: 'DEMO_INVALID_SCENARIO',
     code: 'DEMO_INVALID_SCENARIO' as const,
@@ -111,10 +116,18 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         scope: { projectId: state.catalogue.project.id },
       });
       const active = scenarios(request);
-      if (!active) return reply.code(400).send(invalidScenario);
-      if (active.includes('options-forbidden')) return reply.code(403).send({ error: 'forbidden' });
-      if (active.includes('options-error'))
+      if (!active) {
+        return reply.code(400).send(invalidScenario);
+      }
+
+      if (active.includes('options-forbidden')) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+
+      if (active.includes('options-error')) {
         return reply.code(503).send({ error: 'demo_create_options_unavailable' });
+      }
+
       return specs.createOptions(active);
     },
   );
@@ -149,7 +162,10 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       });
       const active = scenarios(request);
       const query = parseOperationListQuery(request.query);
-      if (!active) return reply.code(400).send(invalidScenario);
+      if (!active) {
+        return reply.code(400).send(invalidScenario);
+      }
+
       // The same 400 body as the real list route (shared parser and code).
       if (!query) {
         return reply.code(400).send({
@@ -157,7 +173,11 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
           code: OPERATION_LIST_QUERY_INVALID_CODE,
         });
       }
-      if (active.includes('forbidden')) return reply.code(403).send({ error: 'forbidden' });
+
+      if (active.includes('forbidden')) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+
       const { authz } = request;
       const list = buildDemoOperationList({
         records: specs.operationRecords(authz.readContext().subject),
@@ -181,6 +201,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       if (matchesEtag(request.headers['if-none-match'], etag)) {
         return reply.code(304 as unknown as 200).send(undefined as never);
       }
+
       return list;
     },
   );
@@ -203,7 +224,10 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         scope: { projectId: state.catalogue.project.id },
       });
       const active = scenarios(request);
-      if (!active) return reply.code(400).send(invalidScenario);
+      if (!active) {
+        return reply.code(400).send(invalidScenario);
+      }
+
       return specs.operationStatus(
         request.authz.readContext().subject,
         request.params.operationId,
@@ -226,6 +250,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       ...(progress.stream ? { stream: progress.stream } : {}),
     });
   }
+
   typed.get(
     '/api/demo/specification-creation',
     {
@@ -247,20 +272,27 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         capability: SpecCapabilities.capabilities.Create,
         scope: { projectId: state.catalogue.project.id },
       };
-      if (!request.authz.can(create))
+      if (!request.authz.can(create)) {
         request.authz.requireCapabilityInAnyScope({
           resource: SessionCapabilities,
           capability: SessionCapabilities.capabilities.Create,
         });
+      }
+
       const specId = request.query.specId;
-      if (!specId) return state.catalogue;
+      if (!specId) {
+        return state.catalogue;
+      }
+
       request.authz.require({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.View,
         scope: { specId },
       });
-      if (!(await catalogue.find(specId)))
+      if (!(await catalogue.find(specId))) {
         return reply.code(404).send({ error: 'specification_not_found' });
+      }
+
       return {
         ...state.catalogue,
         currentLocation: state.locations.get(specId) ?? state.catalogue.currentLocation,
@@ -292,7 +324,10 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         scope: { projectId: state.catalogue.project.id },
       });
       const active = scenarios(request);
-      if (!active) return reply.code(400).send(invalidScenario);
+      if (!active) {
+        return reply.code(400).send(invalidScenario);
+      }
+
       const targetKind = request.body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing';
       // Same generic stream as the real Runtime (`GET /api/demo/specifications/operations/:id/events`).
       const reporter = progress
@@ -310,7 +345,10 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
           active,
         );
         const publish = async () => {
-          if (!reporter || !outcome.fresh) return;
+          if (!reporter || !outcome.fresh) {
+            return;
+          }
+
           // Paced only when the scenario seam is on and asks for it; otherwise the steps are
           // published at once (a late subscriber replays them from the snapshot).
           const commits = specs.createOptions(active).commits !== undefined;
@@ -322,15 +360,20 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
             'registry-writing',
           ] as const) {
             reporter.onStage({ stage, target: targetKind });
-            if (active.includes('slow-create')) await delay(DEMO_STEP_DELAY_MS);
+            if (active.includes('slow-create')) {
+              await delay(DEMO_STEP_DELAY_MS);
+            }
           }
+
           const { documentIds: _documentIds, ...created } = outcome.result;
           reporter.complete(created);
         };
+
         if (outcome.fresh && prefersRespondAsync(request.headers.prefer)) {
           // Same contract as the real Runtime: 202 now, the work (progress) continues detached.
           // The demo state is committed already, so its inspection shows the outcome at once.
           void publish().catch(() => reporter?.fail(undefined));
+
           return reply
             .code(202)
             .header('Location', `/api/demo/specifications/operations/${outcome.result.operationId}`)
@@ -341,15 +384,21 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
               status: 'in-progress',
             });
         }
+
         await publish();
         if (outcome.fresh && active.includes('network-uncertain')) {
           // Committed, but the response never arrives: the client must replay with the same operationId.
           reply.hijack();
           const socket = request.raw.socket as { destroy?: () => void } | undefined;
-          if (typeof socket?.destroy === 'function') socket.destroy();
-          else reply.raw.destroy();
+          if (typeof socket?.destroy === 'function') {
+            socket.destroy();
+          } else {
+            reply.raw.destroy();
+          }
+
           return;
         }
+
         return reply.code(201).send(outcome.result);
       } catch (error) {
         reporter?.fail(
@@ -359,20 +408,26 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
               ? error.code
               : undefined,
         );
-        if (error instanceof DemoTargetError)
+        if (error instanceof DemoTargetError) {
           return error.code === 'forbidden'
             ? reply.code(403).send({ error: 'forbidden' })
             : reply.code(error.status).send({ error: error.message, code: error.code });
+        }
+
         // Archetype admission (catalogue, templates, paths, limits): the real codes and statuses.
-        if (error instanceof DocumentError)
+        if (error instanceof DocumentError) {
           return (
             reply
               .code(statusForDocumentError(error.code))
               // Admission throws only the archetype and document codes of `DemoCreateErrorCode`.
               .send({ error: error.code, code: error.code as DemoCreateErrorCode })
           );
-        if (isDemoOperationError(error))
+        }
+
+        if (isDemoOperationError(error)) {
           return reply.code(error.status).send({ error: error.code });
+        }
+
         throw error;
       }
     },

@@ -26,5 +26,6 @@ export function encodeDocumentQueueLease(
   lease: DocumentQueueLease,
 ): string {
   parseDocumentQueueLease(context, lease, lease.workspaceId);
+
   return JSON.stringify(lease);
 }

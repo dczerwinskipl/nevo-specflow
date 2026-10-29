@@ -13,9 +13,13 @@ const code = (fn: () => unknown) => {
   try {
     fn();
   } catch (error) {
-    if (error instanceof DemoTargetError) return [error.status, error.code];
+    if (error instanceof DemoTargetError) {
+      return [error.status, error.code];
+    }
+
     throw error;
   }
+
   return undefined;
 };
 
@@ -57,10 +61,13 @@ describe('seed registry', () => {
           expect(w.kind).toBe('linked');
           expect(w.integrationDestination.workspaceId).not.toBe(w.workspaceId);
         }
-        if (w.integrationSelectable)
+
+        if (w.integrationSelectable) {
           expect(w.state === 'available' && (w.kind === 'primary' || w.managed)).toBe(true);
+        }
       }
     }
+
     // The only seeded pin: feature/payments is pinned to the primary workspace (develop).
     expect(
       seed.workspaces
@@ -102,7 +109,10 @@ describe('options scenarios', () => {
     applyOptionsScenario(options(), name);
   it('never mutates the input and keeps default identical to the seed', () => {
     const seed = options();
-    for (const name of demoOptionsScenarios) applyOptionsScenario(seed, name);
+    for (const name of demoOptionsScenarios) {
+      applyOptionsScenario(seed, name);
+    }
+
     expect(seed).toEqual(options());
     expect(apply('default')).toEqual(options());
   });
@@ -195,11 +205,12 @@ describe('resolveTarget', () => {
     const target = (workspaceId: string) => ({ kind: 'existing' as const, workspaceId });
     expect(resolveTarget(options(), target(ids.platform), 's').workspaceId).toBe(ids.platform);
     expect(resolveTarget(options(), target(ids.payments), 's').workspaceId).toBe(ids.payments);
-    for (const id of [ids.spike, ids.legacy, '0b8f1c1e-0a11-4c6e-9a01-0000000000ff'])
+    for (const id of [ids.spike, ids.legacy, '0b8f1c1e-0a11-4c6e-9a01-0000000000ff']) {
       expect(code(() => resolveTarget(options(), target(id), 's'))).toEqual([
         409,
         'DEMO_WORKSPACE_UNAVAILABLE',
       ]);
+    }
   });
   it('generates, validates and de-duplicates new worktree branches', () => {
     const fresh = { kind: 'new-worktree' as const };
@@ -237,18 +248,20 @@ describe('resolveTarget', () => {
       resolveTarget(options(), { ...fresh, integrationTargetWorkspaceId: ids.platform }, 's')
         .integrationTargetWorkspaceId,
     ).toBe(ids.platform);
-    for (const id of [ids.payments, ids.spike, '0b8f1c1e-0a11-4c6e-9a01-0000000000ff'])
+    for (const id of [ids.payments, ids.spike, '0b8f1c1e-0a11-4c6e-9a01-0000000000ff']) {
       expect(
         code(() => resolveTarget(options(), { ...fresh, integrationTargetWorkspaceId: id }, 's')),
       ).toEqual([400, 'CREATE_OPERATION_INVALID']);
+    }
   });
   it('rejects new worktrees when git is disabled or unavailable', () => {
-    for (const name of ['git-disabled', 'git-unavailable', 'membership-mismatch'] as const)
+    for (const name of ['git-disabled', 'git-unavailable', 'membership-mismatch'] as const) {
       expect(
         code(() =>
           resolveTarget(applyOptionsScenario(options(), name), { kind: 'new-worktree' }, 's'),
         ),
       ).toEqual([409, 'DEMO_WORKSPACE_UNAVAILABLE']);
+    }
   });
 });
 
@@ -276,11 +289,12 @@ describe('invalid Git policy scenario', () => {
       undefined,
       { kind: 'existing' as const, workspaceId: ids.main },
       { kind: 'new-worktree' as const },
-    ])
+    ]) {
       expect(code(() => resolveTarget(invalid(), target, 's'))).toEqual([
         503,
         'GIT_POLICY_INVALID',
       ]);
+    }
   });
 });
 

@@ -19,10 +19,16 @@ export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly a
     const expectedMutation = auth.mutationGeneration();
     try {
       await operation;
-      if (auth.mutationGeneration() !== expectedMutation) return;
+      if (auth.mutationGeneration() !== expectedMutation) {
+        return;
+      }
+
       await router.navigate({ to: '/login', search: { returnTo: '/' }, replace: true });
     } catch {
-      if (auth.mutationGeneration() !== expectedMutation) return;
+      if (auth.mutationGeneration() !== expectedMutation) {
+        return;
+      }
+
       await router.navigate({
         to: '/runtime-unavailable',
         search: { returnTo: '/' },

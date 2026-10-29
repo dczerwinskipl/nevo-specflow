@@ -18,7 +18,10 @@ export interface CommitCommandContext {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 function parseUuid(value: string): string {
-  if (!UUID_PATTERN.test(value)) throw new InvalidArgumentError('Must be a UUID.');
+  if (!UUID_PATTERN.test(value)) {
+    throw new InvalidArgumentError('Must be a UUID.');
+  }
+
   return value;
 }
 
@@ -81,12 +84,15 @@ export function createCommitCommand(context: CommitCommandContext): Command {
     if (scope === undefined) {
       return command.error('Give --spec <slug|id>, or --scope definitions or --scope all.');
     }
+
     if (scope === 'specification' && options.spec === undefined) {
       return command.error('--scope specification needs --spec <slug|id>.');
     }
+
     if (scope === 'definitions' && options.spec !== undefined) {
       return command.error('--spec does not apply to --scope definitions.');
     }
+
     return scope;
   };
 
@@ -136,7 +142,9 @@ export function createCommitCommand(context: CommitCommandContext): Command {
         if (options.json) {
           context.stdout(JSON.stringify(commitResultJson(result, target.scope, target.specId)));
         } else {
-          for (const line of commitResultLines(result)) context.stdout(line);
+          for (const line of commitResultLines(result)) {
+            context.stdout(line);
+          }
         }
       });
     });
@@ -152,8 +160,13 @@ export function createCommitCommand(context: CommitCommandContext): Command {
       const engine = await api.openEngine(context.cwd, options.projectRoot);
       const target = await targetOf(scope, options, engine);
       const view = await api.uncommitted(engine, target);
-      if (options.json) context.stdout(JSON.stringify(view));
-      else for (const line of uncommittedLines(view)) context.stdout(line);
+      if (options.json) {
+        context.stdout(JSON.stringify(view));
+      } else {
+        for (const line of uncommittedLines(view)) {
+          context.stdout(line);
+        }
+      }
     });
   });
 

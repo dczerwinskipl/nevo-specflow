@@ -41,6 +41,7 @@ function build(
     addedDocuments: options.addedDocuments,
     folders: requestIntent.folders,
   });
+
   return {
     version: 2,
     projectId,
@@ -265,6 +266,7 @@ describe('Create journal version 2 codec', () => {
         expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
       );
     }
+
     for (const slug of ['..', 'a/b', 'A', '', 'con']) {
       const files = journal.files.map((file) => ({
         ...file,

@@ -6,18 +6,29 @@ import { useNavigationTransition } from './NavigationTransition';
 /** Product bridge only. The existing Secondary stack still owns its guards. */
 export function WorkspaceRouteLeaveGuard() {
   const router = useRouter({ warn: false });
+
   return router ? <RoutedGuard /> : null;
 }
+
 function RoutedGuard() {
   const { canLeaveScope } = useSecondaryNavigation();
   const { setGuardPending } = useNavigationTransition();
   const checking = useRef(false);
   useBlocker({
     shouldBlockFn: async ({ current, next }) => {
-      if (current.pathname === next.pathname) return false;
+      if (current.pathname === next.pathname) {
+        return false;
+      }
+
       // Switching, opening or closing document tabs stays on one screen: nothing to leave.
-      if (isWithinSpecDocuments(current, next)) return false;
-      if (checking.current) return true;
+      if (isWithinSpecDocuments(current, next)) {
+        return false;
+      }
+
+      if (checking.current) {
+        return true;
+      }
+
       checking.current = true;
       setGuardPending(true);
       try {
@@ -29,5 +40,6 @@ function RoutedGuard() {
     },
     enableBeforeUnload: false,
   });
+
   return null;
 }

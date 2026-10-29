@@ -28,7 +28,9 @@ export async function listWorkspaceSpecifications(
 ): Promise<readonly WorkspaceSpecification[]> {
   await assertWorkspaceRoot(workspaceRoot);
   const specsRoot = join(workspaceRoot, 'specs');
-  if (!(await physicalDirectoryExists(specsRoot))) return [];
+  if (!(await physicalDirectoryExists(specsRoot))) {
+    return [];
+  }
 
   const specifications: WorkspaceSpecification[] = [];
   const seenIds = new Set<string>();
@@ -36,7 +38,9 @@ export async function listWorkspaceSpecifications(
 
   for (const location of ['active', 'archive'] as const) {
     const directory = join(specsRoot, location);
-    if (!(await physicalDirectoryExists(directory))) continue;
+    if (!(await physicalDirectoryExists(directory))) {
+      continue;
+    }
 
     const entries = await readdir(directory, { withFileTypes: true });
     entries.sort((a, b) => a.name.localeCompare(b.name));
@@ -48,7 +52,10 @@ export async function listWorkspaceSpecifications(
           'Specification entry must not be a symbolic link: ' + entry.name,
         );
       }
-      if (!entry.isDirectory()) continue;
+
+      if (!entry.isDirectory()) {
+        continue;
+      }
 
       let slug: string;
       try {
@@ -62,7 +69,9 @@ export async function listWorkspaceSpecifications(
 
       // Other directories still undergo strict manifest validation. The caller
       // may exclude only journal-owned incomplete Create publications.
-      if (location === 'active' && skipActiveSlugs?.has(slug)) continue;
+      if (location === 'active' && skipActiveSlugs?.has(slug)) {
+        continue;
+      }
 
       const base = join(directory, slug);
       await requirePhysicalDirectory(base);
@@ -78,6 +87,7 @@ export async function listWorkspaceSpecifications(
           'Specification directory must contain exactly one canonical manifest filename.',
         );
       }
+
       const manifestName = manifestEntry.name;
       const relativeManifestPath = 'specs/' + location + '/' + slug + '/' + manifestName;
       const relativeOverviewPath = 'specs/' + location + '/' + slug + '/overview.md';
@@ -106,11 +116,13 @@ export async function listWorkspaceSpecifications(
           'Duplicate specification ID or slug in one checkout: ' + slug,
         );
       }
+
       seenIds.add(manifest.specId);
       seenSlugs.add(slug);
       specifications.push({ ...manifest, relativeManifestPath, relativeOverviewPath });
     }
   }
+
   return specifications;
 }
 
@@ -125,6 +137,7 @@ export async function readWorkspaceSpecification(
   if (!found) {
     throw new SpecificationError('SPEC_NOT_FOUND', 'Specification was not found in this checkout.');
   }
+
   return found;
 }
 
@@ -132,6 +145,7 @@ async function assertWorkspaceRoot(root: string): Promise<void> {
   if (!isAbsolute(root)) {
     throw new SpecificationError('SPEC_SOURCE_INVALID', 'Workspace root must be absolute.');
   }
+
   await requirePhysicalDirectory(root);
   if ((await realpath(root)) !== root) {
     throw new SpecificationError(
@@ -144,9 +158,13 @@ async function assertWorkspaceRoot(root: string): Promise<void> {
 async function physicalDirectoryExists(path: string): Promise<boolean> {
   try {
     await requirePhysicalDirectory(path);
+
     return true;
   } catch (error) {
-    if (isMissing(error)) return false;
+    if (isMissing(error)) {
+      return false;
+    }
+
     throw error;
   }
 }
@@ -169,8 +187,10 @@ async function requirePhysicalFile(path: string): Promise<void> {
         'Specification directory has no manifest: ' + path,
       );
     }
+
     throw error;
   }
+
   if (!stat.isFile() || stat.isSymbolicLink()) {
     throw new SpecificationError(
       'SPEC_SOURCE_INVALID',

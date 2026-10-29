@@ -23,6 +23,7 @@ export function authSessionIdentity(session: AuthSessionResponse): string {
   const principal = session.authenticated
     ? `user:${session.user.id}`
     : `anonymous:${session.user?.id ?? 'local'}`;
+
   return `${mode}:${session.authenticated ? 'authenticated' : 'unauthenticated'}:${principal}`;
 }
 
@@ -54,7 +55,9 @@ export function createAuthStore(api: AuthApi, initialSession?: AuthSessionRespon
 
   const setState = (next: AuthStoreState) => {
     state = next;
-    for (const listener of listeners) listener();
+    for (const listener of listeners) {
+      listener();
+    }
   };
 
   const confirmSession = (session: AuthSessionResponse, mutationAlreadyAdvanced = false) => {
@@ -66,36 +69,59 @@ export function createAuthStore(api: AuthApi, initialSession?: AuthSessionRespon
     ) {
       sessionEpoch += 1;
     }
+
     confirmedIdentity = nextIdentity;
     setState({ status: 'ready', session });
   };
 
   const load = (force: boolean): Promise<AuthSessionResponse> => {
     // A route guard must never fetch an old authenticated session while logout runs.
-    if (pendingLogout && logoutMutation === explicitMutation) return pendingLogout;
-    // Do not join a stale revalidation started before login/logout.
-    if (pending && pendingMutation === explicitMutation) return pending;
-    if (!force && state.status === 'ready') return Promise.resolve(state.session);
+    if (pendingLogout && logoutMutation === explicitMutation) {
+      return pendingLogout;
+    }
 
-    if (state.status !== 'ready') setState({ status: 'loading', reason: 'bootstrap' });
+    // Do not join a stale revalidation started before login/logout.
+    if (pending && pendingMutation === explicitMutation) {
+      return pending;
+    }
+
+    if (!force && state.status === 'ready') {
+      return Promise.resolve(state.session);
+    }
+
+    if (state.status !== 'ready') {
+      setState({ status: 'loading', reason: 'bootstrap' });
+    }
+
     const generation = explicitMutation;
     const request = api
       .getSession()
       .then((session) => {
-        if (generation !== explicitMutation) throw new AuthSessionSupersededError();
+        if (generation !== explicitMutation) {
+          throw new AuthSessionSupersededError();
+        }
+
         confirmSession(session);
+
         return session;
       })
       .catch((error: unknown) => {
-        if (generation !== explicitMutation) throw new AuthSessionSupersededError();
+        if (generation !== explicitMutation) {
+          throw new AuthSessionSupersededError();
+        }
+
         setState({ status: 'error', error });
+
         throw error;
       })
       .finally(() => {
-        if (pending === request) pending = undefined;
+        if (pending === request) {
+          pending = undefined;
+        }
       });
     pending = request;
     pendingMutation = generation;
+
     return request;
   };
 
@@ -105,6 +131,7 @@ export function createAuthStore(api: AuthApi, initialSession?: AuthSessionRespon
     mutationGeneration: () => explicitMutation,
     subscribe(listener) {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
     ensureSession: () => load(false),
@@ -113,11 +140,15 @@ export function createAuthStore(api: AuthApi, initialSession?: AuthSessionRespon
       const generation = ++explicitMutation;
       sessionEpoch += 1;
       const session = await api.loginWithPassword({ username, password });
-      if (generation === explicitMutation) confirmSession(session, true);
+      if (generation === explicitMutation) {
+        confirmSession(session, true);
+      }
+
       return session;
     },
     async startOidc(providerId, returnTo) {
       const result = await api.startOidc(providerId, returnTo);
+
       return result.authorizationUrl;
     },
     async logout() {
@@ -128,15 +159,23 @@ export function createAuthStore(api: AuthApi, initialSession?: AuthSessionRespon
         .logout()
         .then(() => api.getSession())
         .then((session) => {
-          if (generation === explicitMutation) confirmSession(session, true);
+          if (generation === explicitMutation) {
+            confirmSession(session, true);
+          }
+
           return session;
         })
         .catch((error: unknown) => {
-          if (generation === explicitMutation) setState({ status: 'error', error });
+          if (generation === explicitMutation) {
+            setState({ status: 'error', error });
+          }
+
           throw error;
         })
         .finally(() => {
-          if (pendingLogout === operation) pendingLogout = undefined;
+          if (pendingLogout === operation) {
+            pendingLogout = undefined;
+          }
         });
       pendingLogout = operation;
       logoutMutation = generation;

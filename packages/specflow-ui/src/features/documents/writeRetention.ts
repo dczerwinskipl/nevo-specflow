@@ -13,7 +13,13 @@ export type WriteRetention = 'recovery' | 'unknown';
 
 export function writeRetention(error: unknown): WriteRetention | undefined {
   const code = apiErrorCode(error);
-  if (code === 'DOCUMENT_RECOVERY_REQUIRED') return 'recovery';
-  if (code === 'DOCUMENT_WRITE_FAILED') return 'unknown';
+  if (code === 'DOCUMENT_RECOVERY_REQUIRED') {
+    return 'recovery';
+  }
+
+  if (code === 'DOCUMENT_WRITE_FAILED') {
+    return 'unknown';
+  }
+
   return writeOutcomeUnknown(error) ? 'unknown' : undefined;
 }

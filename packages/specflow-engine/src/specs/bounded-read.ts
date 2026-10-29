@@ -11,9 +11,13 @@ export async function readBoundedBytes(handle: FileHandle, limit: number): Promi
   let filled = 0;
   while (filled < buffer.length) {
     const { bytesRead } = await handle.read(buffer, filled, buffer.length - filled, filled);
-    if (bytesRead === 0) break;
+    if (bytesRead === 0) {
+      break;
+    }
+
     filled += bytesRead;
   }
+
   return buffer.subarray(0, filled);
 }
 

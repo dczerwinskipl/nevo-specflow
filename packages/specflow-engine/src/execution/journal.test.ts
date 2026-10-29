@@ -9,7 +9,9 @@ import type { WorkspaceExecutionJournal } from './model';
 
 let root = '';
 afterEach(async () => {
-  if (root) await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+  if (root) {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+  }
 });
 async function fixture() {
   root = await realpath(await mkdtemp(join(tmpdir(), 'execution-journal-')));
@@ -35,8 +37,10 @@ async function fixture() {
     resources: ['project-write:' + context.project.projectId],
     phase: 'admitted',
   };
+
   return { context, record, path: join(root, 'engine', 'operations', 'external-execution') };
 }
+
 it('archives settled records outside admission while preserving exact old invocation replay', async () => {
   const { context, record, path } = await fixture();
   const history: WorkspaceExecutionJournal[] = [];
@@ -50,15 +54,21 @@ it('archives settled records outside admission while preserving exact old invoca
     await publishExecutionJournal(context, entry);
     history.push(entry);
   }
+
   expect(await readdir(path)).toEqual(['settled']);
   const pending = [];
-  for await (const entry of listExecutionJournals(context, true)) pending.push(entry);
+  for await (const entry of listExecutionJournals(context, true)) {
+    pending.push(entry);
+  }
+
   expect(pending).toEqual([]);
   expect(await readExecutionJournal(context, history[0]!.intent.operationId)).toEqual(history[0]);
   await publishExecutionJournal(context, record);
   const active = [];
-  for await (const entry of listExecutionJournals(context, true))
+  for await (const entry of listExecutionJournals(context, true)) {
     active.push(entry.intent.operationId);
+  }
+
   expect(active).toEqual([record.intent.operationId]);
 });
 it('never treats a corrupt active claim as settled or an oversized record as absent', async () => {

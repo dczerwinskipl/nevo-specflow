@@ -45,6 +45,7 @@ export async function analyzeOpenFile(
     if (bytes.length <= CONTENT_HASH_MAX_BYTES) {
       const classified = classifyContent(extension, bytes);
       const text = classified.kind === 'text' && isWholeUtf8(bytes);
+
       return {
         size: bytes.length,
         revision: sha256Hex(bytes),
@@ -55,11 +56,13 @@ export async function analyzeOpenFile(
     }
     // The file grew past the hash limit while it was being read: treat it as the larger file it is.
   }
+
   const head =
     kindForExtension(extension) === 'text'
       ? await readAt(handle, 0, CONTENT_SNIFF_BYTES)
       : Buffer.alloc(0);
   const classified = classifyContent(extension, head);
+
   return {
     size: Number(stat.size),
     revision: statSignatureRevision(stat),
@@ -71,6 +74,7 @@ export async function analyzeOpenFile(
 function isWholeUtf8(bytes: Uint8Array): boolean {
   try {
     new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+
     return true;
   } catch {
     return false;

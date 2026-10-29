@@ -12,6 +12,7 @@ for (const target of targets) {
   if (!target.startsWith('./dist/')) {
     throw new Error(`Package export must target dist: ${target}`);
   }
+
   await access(resolve(packageDirectory, target));
 }
 

@@ -61,6 +61,7 @@ async function fixture() {
     'specs/active/' + spec.slug + '/overview.md',
   );
   commitStaged(spec.workspaceRoot, 'spec source commit');
+
   return { root, engine, spec };
 }
 
@@ -210,6 +211,7 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     await expect(
       disposeReboundWorktree(engine, operationId, () => {
         git(root, 'worktree', 'lock', '--reason', 'inject T12 Git refusal', spec.workspaceRoot);
+
         return Promise.resolve();
       }),
     ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });
@@ -275,6 +277,7 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     await expect(
       disposeReboundWorktree(engine, operationId, () => {
         git(root, 'worktree', 'lock', '--reason', 'block scratch cleanup', candidate.scratch!.root);
+
         return Promise.resolve();
       }),
     ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });

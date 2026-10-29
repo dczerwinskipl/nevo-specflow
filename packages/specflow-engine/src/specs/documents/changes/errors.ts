@@ -153,6 +153,7 @@ export function documentChangeError(
     ...(extras.retryAfterMs !== undefined ? { retryAfterMs: extras.retryAfterMs } : {}),
     ...(extras.conflicts !== undefined ? { conflicts: extras.conflicts } : {}),
   };
+
   return new DocumentError(
     mapping.code,
     message,

@@ -12,10 +12,12 @@ function harness(entries: Record<string, string>, ignoreCase: boolean) {
     ignoreCase: () => Promise.resolve(ignoreCase),
     mutatePaths: (args: readonly string[], paths: readonly string[]) => {
       events.push(`mutate:${args.join(' ')}:${paths.join(',')}`);
+
       return Promise.resolve({ exitCode: 0 });
     },
     takeBack: (paths: readonly string[]) => {
       events.push(`takeBack:${paths.join(',')}`);
+
       return Promise.resolve();
     },
     owned: (paths: readonly string[]) => {
@@ -23,6 +25,7 @@ function harness(entries: Record<string, string>, ignoreCase: boolean) {
     },
     addArgs: ['add', '--intent-to-add'],
   };
+
   return { deps, events };
 }
 
@@ -72,6 +75,7 @@ describe('prepareDocumentIndex', () => {
       ...deps,
       ignoreCase: () => {
         asked = true;
+
         return Promise.resolve(false);
       },
     });

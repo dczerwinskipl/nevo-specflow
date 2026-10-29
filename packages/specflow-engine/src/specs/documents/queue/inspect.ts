@@ -21,13 +21,22 @@ const UNREADABLE: FileState = { sha256: '0'.repeat(64), bytes: -1 };
  */
 export async function readWorkingState(root: string, path: string): Promise<FileState> {
   const found = await hashWorkingFile(join(root, path), RAW_CONTENT_MAX_BYTES);
-  if (found.kind === 'absent') return null;
-  if (found.kind !== 'file') return UNREADABLE;
+  if (found.kind === 'absent') {
+    return null;
+  }
+
+  if (found.kind !== 'file') {
+    return UNREADABLE;
+  }
+
   return { sha256: found.sha256, bytes: found.bytes };
 }
 
 function sameState(left: FileState, right: FileState): boolean {
-  if (left === null || right === null) return left === right;
+  if (left === null || right === null) {
+    return left === right;
+  }
+
   return left.sha256 === right.sha256 && left.bytes === right.bytes;
 }
 
@@ -46,7 +55,10 @@ export async function observeBatchPaths(
   const observations: BatchPathObservation[] = [];
   for (const expectation of expectations) {
     const fact = byPath.get(expectation.path);
-    if (fact === undefined) throw new Error('A batch path has no Git facts.');
+    if (fact === undefined) {
+      throw new Error('A batch path has no Git facts.');
+    }
+
     const working = await readWorkingState(root, expectation.path);
     const headHoldsPost =
       expectation.post === null
@@ -54,6 +66,7 @@ export async function observeBatchPaths(
         : fact.head !== null && fact.head === fact.working && sameState(working, expectation.post);
     observations.push({ path: expectation.path, working, headHoldsPost });
   }
+
   return observations;
 }
 

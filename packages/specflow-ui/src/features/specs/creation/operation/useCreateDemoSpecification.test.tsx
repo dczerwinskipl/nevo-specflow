@@ -73,6 +73,7 @@ function setup(demoCreationApi: Partial<DemoCreationApi>) {
     { wrapper, initialProps: { snapshot: 'form-1' } },
   );
   const model = (): CreateSpecificationModel => hook.result.current;
+
   return { hook, model, onCreated, onSession, announce };
 }
 

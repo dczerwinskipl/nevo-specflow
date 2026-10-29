@@ -65,6 +65,7 @@ export function DocumentsTreePanel({
   const issues = data ? closeRefusingIssues(data) : [];
   const readOnly = data ? specificationReadOnlyReason(data) : undefined;
   const unmet = data ? unmetRequirements(data) : [];
+
   return (
     <AppContent className="h-full w-full">
       {/* The location header is a breadcrumb trail; the page still needs its level-1 heading. */}
@@ -120,11 +121,16 @@ export function DocumentsTreePanel({
               consent.begin([]);
               // Create, classify and registration removal keep the drafts of open documents.
               if (!options?.keepDrafts) {
-                if (requestRef.current && !(await requestRef.current())) return false;
+                if (requestRef.current && !(await requestRef.current())) {
+                  return false;
+                }
+
                 consent.begin(takeDiscardedRef?.current?.() ?? []);
               }
+
               const snapshot = await documentsApi.documentTree(specId);
               cache.setQueryData(documentTreeKeys.tree(specId), snapshot);
+
               return snapshot;
             }}
             onBusyChange={operations.setBusy}

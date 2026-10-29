@@ -38,6 +38,7 @@ async function project(gitEnabled = true, extraGit = ''): Promise<string> {
   git(root, 'add', '.gitignore', '.nevo/config.yaml');
   git(root, ...IDENTITY, 'commit', '-qm', 'config');
   await bootstrapProjectHome(root);
+
   return root;
 }
 
@@ -60,6 +61,7 @@ function command(cwd: string) {
     stderr: () => undefined,
   });
   const run = (args: string[]) => program.parseAsync(['node', 'nevo-specflow', ...args]);
+
   return {
     run,
     output,

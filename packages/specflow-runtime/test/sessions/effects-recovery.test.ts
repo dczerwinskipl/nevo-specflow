@@ -20,7 +20,9 @@ afterEach(async () => {
   await store?.close();
   store = undefined;
   // root is the exact directory returned by mkdtemp for this test.
-  if (root) await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+  if (root) {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+  }
 });
 it(
   'recovers the SQLite-only admission cut through a durable Engine not-dispatched record, without provider launch',

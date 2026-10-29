@@ -47,6 +47,7 @@ function fakeApi(
     inspectOperation: vi.fn(() => {
       const next = inspections[Math.min(call, inspections.length - 1)];
       call += 1;
+
       return next
         ? next()
         : Promise.resolve({
@@ -56,6 +57,7 @@ function fakeApi(
           } as const);
     }),
   };
+
   return { api: raw as unknown as ProjectCreationApi, raw };
 }
 
@@ -274,6 +276,7 @@ describe('submitCreateOperation', () => {
       const { api, raw } = fakeApi([
         () => {
           stream.set('terminal');
+
           return inProgress();
         },
         () => Promise.resolve(created),

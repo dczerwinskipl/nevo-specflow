@@ -24,6 +24,7 @@ export function effectiveSettleMs(configured: number | undefined): number {
   ) {
     return DOCUMENT_SETTLE_DEFAULT_MS;
   }
+
   return configured;
 }
 
@@ -144,7 +145,9 @@ function formForSpecification(
       reason,
       ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
     });
-    for (const path of operation.paths) skipped.add(foldPathKey(path));
+    for (const path of operation.paths) {
+      skipped.add(foldPathKey(path));
+    }
   };
 
   for (const operation of operations) {
@@ -154,26 +157,32 @@ function formForSpecification(
       deferred.push({ operationId: operation.operationId, reason: 'batch-full' });
       continue;
     }
+
     if (keys.some((key) => input.heldPaths.has(key))) {
       skip(operation, 'held-by-failed-batch');
       continue;
     }
+
     if (keys.some((key) => input.barrierPaths.has(key))) {
       skip(operation, 'barrier');
       continue;
     }
+
     if (keys.some((key) => skipped.has(key))) {
       skip(operation, 'earlier-overlap');
       continue;
     }
+
     if (operation.notBeforeWallMs !== undefined && operation.notBeforeWallMs > input.nowWallMs) {
       skip(operation, 'backoff', operation.notBeforeWallMs - input.nowWallMs);
       continue;
     }
+
     if (branch !== undefined && operation.branch !== branch) {
       skip(operation, 'other-branch');
       continue;
     }
+
     const added = keys.filter((key) => !distinct.has(key)).length;
     if (
       taken.length >= DOCUMENT_BATCH_MAX_OPERATIONS ||
@@ -181,18 +190,28 @@ function formForSpecification(
     ) {
       full = true;
       deferred.push({ operationId: operation.operationId, reason: 'batch-full' });
-      for (const key of keys) skipped.add(key);
+      for (const key of keys) {
+        skipped.add(key);
+      }
+
       continue;
     }
+
     branch ??= operation.branch;
     taken.push(operation);
     for (const path of operation.paths) {
       const key = foldPathKey(path);
-      if (!distinct.has(key)) distinct.set(key, path);
+      if (!distinct.has(key)) {
+        distinct.set(key, path);
+      }
     }
   }
+
   const first = taken[0];
-  if (first === undefined || branch === undefined) return { batch: undefined, deferred };
+  if (first === undefined || branch === undefined) {
+    return { batch: undefined, deferred };
+  }
+
   return {
     batch: {
       batchId: first.operationId,
@@ -211,10 +230,12 @@ export function settleRemainingMs(batch: FormedBatch, input: FormationInput): nu
   if (input.flush === true || batch.full || batch.members.some((member) => member.structural)) {
     return 0;
   }
+
   const last = Math.max(...batch.members.map((member) => member.queuedMonoMs));
   const first = Math.min(...batch.members.map((member) => member.queuedMonoMs));
   const untilSettled = last + input.settleMs - input.nowMonoMs;
   const untilMaxHold = first + input.maxHoldMs - input.nowMonoMs;
+
   return Math.max(0, Math.min(untilSettled, untilMaxHold));
 }
 
@@ -226,26 +247,39 @@ export function settleRemainingMs(batch: FormedBatch, input: FormationInput): nu
 export function formNextBatch(input: FormationInput): FormationDecision {
   const bySpecification = new Map<string, QueuedOperation[]>();
   for (const operation of [...input.queued].sort((a, b) => a.sequence - b.sequence)) {
-    if (input.onlySpecId !== undefined && operation.specId !== input.onlySpecId) continue;
+    if (input.onlySpecId !== undefined && operation.specId !== input.onlySpecId) {
+      continue;
+    }
+
     const list = bySpecification.get(operation.specId);
-    if (list) list.push(operation);
-    else bySpecification.set(operation.specId, [operation]);
+    if (list) {
+      list.push(operation);
+    } else {
+      bySpecification.set(operation.specId, [operation]);
+    }
   }
+
   const deferred: DeferredOperation[] = [];
   let waiting: number | undefined;
   for (const operations of bySpecification.values()) {
     const candidate = formForSpecification(operations, input);
     deferred.push(...candidate.deferred);
-    if (candidate.batch === undefined) continue;
+    if (candidate.batch === undefined) {
+      continue;
+    }
+
     const remaining = settleRemainingMs(candidate.batch, input);
     if (remaining === 0) {
       return { kind: 'batch', batch: candidate.batch, deferred: candidate.deferred };
     }
+
     waiting = waiting === undefined ? remaining : Math.min(waiting, remaining);
   }
+
   const backoffs = deferred.flatMap((entry) =>
     entry.retryAfterMs !== undefined ? [entry.retryAfterMs] : [],
   );
+
   return waiting === undefined
     ? {
         kind: 'none',

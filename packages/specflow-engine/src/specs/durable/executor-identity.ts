@@ -102,13 +102,17 @@ export const nodeProcessTable: ProcessTable = {
  */
 export function processStartTimeOf(stat: string): string | undefined {
   const end = stat.lastIndexOf(')');
-  if (end < 0) return undefined;
+  if (end < 0) {
+    return undefined;
+  }
+
   const fields = stat
     .slice(end + 1)
     .trim()
     .split(/\s+/u);
   // `fields[0]` is field 3 (the state), so field 22 is at index 19.
   const value = fields[19];
+
   return value !== undefined && /^\d+$/u.test(value) ? value : undefined;
 }
 
@@ -126,6 +130,7 @@ export async function captureExecutorIdentity(
   ]);
   const startTime = stat === undefined ? undefined : processStartTimeOf(stat);
   const boot = bootId?.trim();
+
   return {
     pid: table.pid,
     hostId: table.hostId(),
@@ -152,16 +157,24 @@ export async function proveExecutorState(
   own: ExecutorIdentity,
   table: ProcessTable = nodeProcessTable,
 ): Promise<ExecutorState> {
-  if (recorded.hostId !== own.hostId) return 'unknown';
+  if (recorded.hostId !== own.hostId) {
+    return 'unknown';
+  }
+
   // A Windows process and a WSL one can share a host name and PID numbers (the same files over /mnt/c):
   // different platforms, or one side with a PID namespace and the other without, prove nothing.
-  if (recorded.platform !== own.platform) return 'unknown';
+  if (recorded.platform !== own.platform) {
+    return 'unknown';
+  }
+
   if ((recorded.pidNamespaceId === undefined) !== (own.pidNamespaceId === undefined)) {
     return 'unknown';
   }
+
   if (recorded.bootId !== undefined && own.bootId !== undefined && recorded.bootId !== own.bootId) {
     return 'dead';
   }
+
   const sameNamespace =
     recorded.pidNamespaceId !== undefined &&
     own.pidNamespaceId !== undefined &&
@@ -170,7 +183,10 @@ export async function proveExecutorState(
     recorded.pidNamespaceId !== undefined &&
     own.pidNamespaceId !== undefined &&
     recorded.pidNamespaceId !== own.pidNamespaceId;
-  if (otherNamespace) return 'unknown';
+  if (otherNamespace) {
+    return 'unknown';
+  }
+
   if (recorded.pid === own.pid) {
     // The same PID: this very process (a write that stopped inside it), or a later process that reuses
     // the number, which only a different start time tells apart. Without procfs there is none, and the
@@ -182,14 +198,28 @@ export async function proveExecutorState(
     ) {
       return sameNamespace ? 'dead' : 'unknown';
     }
+
     // Another thread of this process shares everything but the memory: nothing proves it stopped.
-    if ((recorded.threadId ?? 0) !== (own.threadId ?? 0)) return 'unknown';
+    if ((recorded.threadId ?? 0) !== (own.threadId ?? 0)) {
+      return 'unknown';
+    }
+
     return 'self';
   }
-  if (!sameNamespace) return 'unknown';
+
+  if (!sameNamespace) {
+    return 'unknown';
+  }
+
   const stat = await table.readText(`/proc/${recorded.pid}/stat`);
-  if (stat === undefined) return 'dead';
+  if (stat === undefined) {
+    return 'dead';
+  }
+
   const startTime = processStartTimeOf(stat);
-  if (startTime === undefined || recorded.processStartTime === undefined) return 'unknown';
+  if (startTime === undefined || recorded.processStartTime === undefined) {
+    return 'unknown';
+  }
+
   return startTime === recorded.processStartTime ? 'alive' : 'dead';
 }

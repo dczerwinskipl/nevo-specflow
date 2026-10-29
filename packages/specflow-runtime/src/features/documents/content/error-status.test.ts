@@ -45,7 +45,10 @@ describe('statusForDocumentError', () => {
       MANUAL_COMMIT_MESSAGE_INVALID: 400,
       MANUAL_COMMIT_RECOVERY_REQUIRED: 503,
     };
-    for (const code of DOCUMENT_ERROR_CODES) expect(statusForDocumentError(code)).toBe(table[code]);
+    for (const code of DOCUMENT_ERROR_CODES) {
+      expect(statusForDocumentError(code)).toBe(table[code]);
+    }
+
     expect(Object.keys(table).sort()).toEqual([...DOCUMENT_ERROR_CODES].sort());
   });
 });

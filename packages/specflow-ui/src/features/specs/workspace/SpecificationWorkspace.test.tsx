@@ -12,6 +12,7 @@ function renderWorkspaceMarkup(
   props: Partial<React.ComponentProps<typeof SpecificationWorkspace>> = {},
 ) {
   const data = props.data ?? createSpecificationWorkspaceFixture('working', 'UI-1234');
+
   return renderToStaticMarkup(
     <UiModulesProvider modules={builtInUiModuleRegistry}>
       <LocalizationProvider>

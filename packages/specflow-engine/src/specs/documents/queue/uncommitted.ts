@@ -70,8 +70,10 @@ export async function completeUncommitted(
         'Too many uncommitted paths; commit the pending changes first.',
       );
     }
+
     throw error;
   }
+
   await hooks.afterLedgerWrite?.();
   const next = transitionDocumentChange(
     journal,
@@ -80,5 +82,6 @@ export async function completeUncommitted(
     now,
   );
   await publishJournal(context, DOCUMENT_CHANGE_JOURNAL_KIND, next);
+
   return next;
 }

@@ -30,6 +30,7 @@ export async function resolveCreateArchetype(
 ): Promise<ResolvedCreateArchetype> {
   const project = await getStableProjectCatalogue(engine);
   const archetype = requireArchetype(project, archetypeId);
+
   return {
     archetype: { id: archetype.id, version: archetype.version },
     catalogueRevision: project.catalogue.revision,
@@ -52,10 +53,14 @@ export function admitCreateArchetype(
 ): void {
   const { catalogue } = project;
   // A project without any usable archetype is reported first: reloading the catalogue would not help.
-  if (catalogue.archetypes.length === 0) requireArchetype(project, intent.archetype.id);
+  if (catalogue.archetypes.length === 0) {
+    requireArchetype(project, intent.archetype.id);
+  }
+
   if (intent.catalogueRevision !== undefined && intent.catalogueRevision !== catalogue.revision) {
     throw new DocumentError('CATALOGUE_STALE', 'The archetype catalogue changed; reload it.');
   }
+
   const archetype = requireArchetype(project, intent.archetype.id);
   if (archetype.version !== intent.archetype.version) {
     throw new DocumentError(
@@ -63,6 +68,7 @@ export function admitCreateArchetype(
       `Archetype "${archetype.id}" is at version ${archetype.version}, not ${intent.archetype.version}.`,
     );
   }
+
   assertContentsMatchEvidence(intent, addedContents);
   try {
     createSpecificationScaffold({
@@ -82,7 +88,10 @@ export function admitCreateArchetype(
       catalogue,
     });
   } catch (error) {
-    if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+    if (error instanceof ScaffoldValidationError) {
+      throw documentErrorOf(error);
+    }
+
     throw error;
   }
 }
@@ -95,6 +104,7 @@ function assertContentsMatchEvidence(
     addedContents.length === intent.addedDocuments.length &&
     intent.addedDocuments.every((document, index) => {
       const content = addedContents[index];
+
       return (
         content !== undefined &&
         document.bytes === Buffer.byteLength(content, 'utf8') &&

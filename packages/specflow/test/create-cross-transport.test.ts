@@ -46,10 +46,14 @@ async function freePort(): Promise<number> {
     server.listen(0, '127.0.0.1', resolve);
   });
   const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Test TCP port missing.');
+  if (!address || typeof address === 'string') {
+    throw new Error('Test TCP port missing.');
+  }
+
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve())),
   );
+
   return address.port;
 }
 
@@ -91,6 +95,7 @@ async function fixture(gitEnabled: boolean, port: number) {
   );
   const engine = await bootstrapProjectHome(root);
   await installDefinitionsForTesting(engine);
+
   return { root, engine };
 }
 
@@ -102,6 +107,7 @@ function cli(cwd: string) {
     stderr: () => undefined,
   });
   const run = (args: string[]) => program.parseAsync(['node', 'nevo-specflow', 'specs', ...args]);
+
   return { run, lines };
 }
 
@@ -156,6 +162,7 @@ async function createWithIndependentCli(root: string, title: string): Promise<Cr
       log += chunk;
     });
   }
+
   const exitCode = await new Promise<number | null>((done, reject) => {
     child.once('error', reject);
     child.once('close', done);
@@ -163,6 +170,7 @@ async function createWithIndependentCli(root: string, title: string): Promise<Cr
   if (exitCode !== 0) {
     throw new Error('Independent CLI process failed (' + exitCode + '): ' + log);
   }
+
   return JSON.parse(await readFile(resultPath, 'utf8')) as Created;
 }
 
@@ -208,6 +216,7 @@ async function closeWithIndependentCli(
       log += chunk;
     });
   }
+
   const exitCode = await new Promise<number | null>((done, reject) => {
     child.once('error', reject);
     child.once('close', done);
@@ -215,6 +224,7 @@ async function closeWithIndependentCli(
   if (exitCode !== 0) {
     throw new Error('Independent CLI close failed (' + exitCode + '): ' + log);
   }
+
   return JSON.parse(await readFile(resultPath, 'utf8')) as {
     readonly status: string;
     readonly kind: string;
@@ -304,7 +314,10 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     const registered = (await engine.readRegistry()).workspaces.find(
       (item) => item.workspaceId === created.workspaceId,
     );
-    if (!registered) throw new Error('Created workspace registration missing.');
+    if (!registered) {
+      throw new Error('Created workspace registration missing.');
+    }
+
     const workspaceRoot = registered.root;
     roots.push(dirname(workspaceRoot));
     expect(workspaceRoot).not.toBe(root);
@@ -429,6 +442,7 @@ describe('E2.T07 — live canonical refresh', () => {
         'commit canonical Specification before Close',
       );
     }
+
     const runtime = await startRuntime({
       projectRoot: root,
       projectConfigPath: configPath,

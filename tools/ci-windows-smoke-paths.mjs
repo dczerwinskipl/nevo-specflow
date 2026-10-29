@@ -12,7 +12,10 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workflow = readFileSync(join(root, '.github', 'workflows', 'windows-smoke.yml'), 'utf8');
 const block = workflow.match(/pull_request:[\s\S]*?\n {4}paths:\n((?: {6}- .*\n)+)/);
-if (!block) throw new Error('Cannot find pull_request.paths in windows-smoke.yml');
+if (!block) {
+  throw new Error('Cannot find pull_request.paths in windows-smoke.yml');
+}
+
 const globs = [...block[1].matchAll(/- "(.*)"/g)].map((m) => m[1]);
 
 const toRegex = (glob) =>
@@ -31,8 +34,10 @@ const regexes = globs.map(toRegex);
 export const triggers = (file) => regexes.some((re) => re.test(file));
 
 if (process.argv.length > 2) {
-  for (const file of process.argv.slice(2))
+  for (const file of process.argv.slice(2)) {
     console.log(`${triggers(file) ? 'RUNS ' : 'skips'} ${file}`);
+  }
+
   process.exit(0);
 }
 
@@ -60,7 +65,11 @@ const cases = [
 let bad = 0;
 for (const [file, expected] of cases) {
   const actual = triggers(file);
-  if (actual !== expected) bad += 1;
+  if (actual !== expected) {
+    bad += 1;
+  }
+
   console.log(`${actual === expected ? 'ok  ' : 'FAIL'} ${actual ? 'RUNS ' : 'skips'} ${file}`);
 }
+
 process.exit(bad ? 1 : 0);

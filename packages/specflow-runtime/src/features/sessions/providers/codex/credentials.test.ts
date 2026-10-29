@@ -20,6 +20,7 @@ async function fixture(
     await rm(root, { recursive: true, force: true });
   }
 }
+
 function login(account = 'account-one', token = 'source-token', user = 'user-one') {
   return {
     auth_mode: 'chatgpt',
@@ -40,6 +41,7 @@ function login(account = 'account-one', token = 'source-token', user = 'user-one
     untrusted_extra: 'never copied',
   };
 }
+
 it('copies only login fields into an account-isolated private native home', async () => {
   await fixture(async (_root, user, homeRoot, auth) => {
     await writeFile(auth, JSON.stringify(login()));

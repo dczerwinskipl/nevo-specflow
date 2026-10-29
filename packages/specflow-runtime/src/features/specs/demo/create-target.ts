@@ -71,50 +71,80 @@ export function resolveTarget(
         : unavailable('Wybrane środowisko pracy nie jest już dostępne.');
   if (!target) {
     const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
-    if (primary && !primary.selectable) throw refusedByBranch(primary);
-    if (!primary?.selectable) throw unavailable('Bieżący katalog nie jest teraz dostępny.');
+    if (primary && !primary.selectable) {
+      throw refusedByBranch(primary);
+    }
+
+    if (!primary?.selectable) {
+      throw unavailable('Bieżący katalog nie jest teraz dostępny.');
+    }
+
     return { kind: 'main', workspaceId: primary.workspaceId, baseRef: primary.branch ?? 'HEAD' };
   }
+
   if (target.kind === 'existing') {
     const workspace = options.workspaces.find((w) => w.workspaceId === target.workspaceId);
-    if (workspace && !workspace.selectable) throw refusedByBranch(workspace);
-    if (!workspace?.selectable)
+    if (workspace && !workspace.selectable) {
+      throw refusedByBranch(workspace);
+    }
+
+    if (!workspace?.selectable) {
       throw unavailable('Wybrane środowisko pracy nie jest już dostępne.');
+    }
+
     return {
       kind: 'existing',
       workspaceId: workspace.workspaceId,
       baseRef: workspace.branch ?? 'HEAD',
     };
   }
-  if (options.newWorktree.reason === 'git-policy-invalid')
+
+  if (options.newWorktree.reason === 'git-policy-invalid') {
     throw new DemoTargetError(503, 'GIT_POLICY_INVALID', 'GIT_POLICY_INVALID');
-  if (options.newWorktree.status !== 'available')
+  }
+
+  if (options.newWorktree.status !== 'available') {
     throw unavailable('Tworzenie nowego środowiska pracy nie jest teraz dostępne.');
+  }
+
   const baseRef = target.baseRef ?? options.defaultBaseRef;
-  if (target.baseRef !== undefined && !options.baseRefs.some((b) => b.ref === target.baseRef))
+  if (target.baseRef !== undefined && !options.baseRefs.some((b) => b.ref === target.baseRef)) {
     throw new DemoTargetError(422, 'BASE_REF_NOT_FOUND', 'BASE_REF_NOT_FOUND');
+  }
+
   if (target.integrationTargetWorkspaceId !== undefined) {
     const workspace = options.workspaces.find(
       (w) => w.workspaceId === target.integrationTargetWorkspaceId,
     );
     if (workspace?.integrationSelectable !== true)
-      // Like the Engine: an unusable explicit target is plain `CREATE_OPERATION_INVALID`.
+    // Like the Engine: an unusable explicit target is plain `CREATE_OPERATION_INVALID`.
+    {
       throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
+    }
   }
+
   let branch = target.branch?.trim();
   if (target.branch !== undefined) {
-    if (!branch || !isValidBranchName(branch))
+    if (!branch || !isValidBranchName(branch)) {
       throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
-    if (taken(options, branch))
+    }
+
+    if (taken(options, branch)) {
       throw new DemoTargetError(409, 'BRANCH_ALREADY_EXISTS', 'BRANCH_ALREADY_EXISTS');
+    }
   } else {
     const base = options.branchPattern.replace('{slug}', slug);
     branch = base;
-    for (let n = 2; taken(options, branch); n += 1) branch = `${base}-${n}`;
+    for (let n = 2; taken(options, branch); n += 1) {
+      branch = `${base}-${n}`;
+    }
   }
+
   // Never silently renamed (like the Engine): a protected branch name is refused.
-  if (options.commits && engineCommitRefusal(options.commits, branch))
+  if (options.commits && engineCommitRefusal(options.commits, branch)) {
     throw new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED');
+  }
+
   return {
     kind: 'new-worktree',
     branch,

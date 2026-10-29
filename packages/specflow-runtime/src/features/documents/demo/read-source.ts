@@ -19,7 +19,10 @@ const notFound = () => new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown document
  */
 function taskDocument(record: DemoSpecification, documentId: string): DocumentContent | undefined {
   const number = /^TASK-(\d+)$/u.exec(documentId);
-  if (!number || Number(number[1]) < 1 || Number(number[1]) > record.progress.total) return;
+  if (!number || Number(number[1]) < 1 || Number(number[1]) > record.progress.total) {
+    return;
+  }
+
   const title = documentId + ' · ' + record.title;
   const content =
     '# ' +
@@ -27,6 +30,7 @@ function taskDocument(record: DemoSpecification, documentId: string): DocumentCo
     '\n\nDemonstration Task for ' +
     record.title +
     '\n\n## Acceptance criteria\n\n- Verify navigation and session behaviour.\n- Preserve user context.';
+
   return {
     id: documentId,
     path: 'tasks/' + documentId + '.md',
@@ -52,16 +56,26 @@ export function createDemoDocumentReadSource(
   const find = (specId: string) => catalogue.find(specId);
   const directory = async (specId: string) => {
     const found = await documents.directory(specId, find);
-    if (!found) throw notFound();
+    if (!found) {
+      throw notFound();
+    }
+
     return found;
   };
+
   const file = async (specId: string, documentId: string) => {
     const located = locate(await directory(specId), documentId);
-    if (!located) throw notFound();
-    if (located.kind === 'dangling')
+    if (!located) {
+      throw notFound();
+    }
+
+    if (located.kind === 'dangling') {
       throw new DocumentError('DOCUMENT_FILE_MISSING', 'The registered document has no file.');
+    }
+
     return located;
   };
+
   return {
     readTree: async (specId) => demoTree(await directory(specId)),
     async read(specId, documentId, revision) {
@@ -72,16 +86,19 @@ export function createDemoDocumentReadSource(
           ? taskDocument(record, documentId)
           : undefined;
       const content = task ?? demoContent(spec, await file(specId, documentId));
-      if (revision !== undefined && revision !== content.revision)
+      if (revision !== undefined && revision !== content.revision) {
         throw new DocumentError(
           'DOCUMENT_REVISION_UNAVAILABLE',
           'Only the current revision can be read.',
         );
+      }
+
       return content;
     },
     async open(specId, documentId): Promise<OpenedDocument> {
       const located = await file(specId, documentId);
       const observed = observe(located.path, located.file);
+
       return {
         metadata: {
           specId,

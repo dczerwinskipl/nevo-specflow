@@ -28,6 +28,7 @@ function useCollapsibleVisualContext(part: string) {
   if (!context) {
     throw new Error(`${part} must be rendered inside Collapsible.`);
   }
+
   return context;
 }
 

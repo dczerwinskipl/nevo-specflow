@@ -15,19 +15,24 @@ export function validateWorkspaceRegistry(
   source: unknown,
   context: ResolvedProjectHome,
 ): WorkspaceRegistry {
-  if (!isObject(source)) throw corrupt('Registry root must be an object.');
+  if (!isObject(source)) {
+    throw corrupt('Registry root must be an object.');
+  }
+
   if (source.version !== WORKSPACE_REGISTRY_VERSION) {
     throw new WorkspaceRegistryError(
       'REGISTRY_UNSUPPORTED_VERSION',
       'Unsupported workspace registry version. Explicit migration is required.',
     );
   }
+
   if (typeof source.projectId !== 'string' || source.projectId !== context.project.projectId) {
     throw new WorkspaceRegistryError(
       'REGISTRY_PROJECT_MISMATCH',
       'Registry project identity differs from the verified Project Home.',
     );
   }
+
   if (
     !Number.isSafeInteger(source.revision) ||
     (source.revision as number) < 0 ||
@@ -66,10 +71,12 @@ function parseRegistrations(values: unknown[]): WorkspaceRegistration[] {
     if (workspaceIds.has(workspace.workspaceId) || paths.has(pathKey(workspace.root))) {
       throw corrupt('Duplicate workspace identity or root.');
     }
+
     workspaceIds.add(workspace.workspaceId);
     paths.add(pathKey(workspace.root));
     workspaces.push(workspace);
   }
+
   return workspaces;
 }
 
@@ -87,6 +94,7 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
   ) {
     throw corrupt('Invalid workspace registration.');
   }
+
   if (value.kind === 'linked') {
     return {
       kind: 'linked',
@@ -99,6 +107,7 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
         : {}),
     };
   }
+
   return {
     kind: 'primary',
     workspaceId: value.workspaceId,
@@ -125,6 +134,7 @@ function parseIntegrationDestination(value: unknown): WorkspaceIntegrationDestin
   ) {
     throw corrupt('Invalid workspace integration destination.');
   }
+
   return {
     workspaceId: value.workspaceId,
     branch: value.branch,
@@ -136,7 +146,10 @@ function parseIntegrationDestination(value: unknown): WorkspaceIntegrationDestin
 function assertIntegrationDestinations(workspaces: readonly WorkspaceRegistration[]): void {
   const byId = new Map(workspaces.map((workspace) => [workspace.workspaceId, workspace]));
   for (const workspace of workspaces) {
-    if (workspace.kind !== 'linked' || !workspace.integrationDestination) continue;
+    if (workspace.kind !== 'linked' || !workspace.integrationDestination) {
+      continue;
+    }
+
     const destination = workspace.integrationDestination;
     const target = byId.get(destination.workspaceId);
     if (
@@ -146,10 +159,14 @@ function assertIntegrationDestinations(workspaces: readonly WorkspaceRegistratio
     ) {
       throw corrupt('Integration destination does not match a registered checkout incarnation.');
     }
+
     const visited = new Set([workspace.workspaceId]);
     let cursor: WorkspaceRegistration | undefined = target;
     while (cursor) {
-      if (visited.has(cursor.workspaceId)) throw corrupt('Cyclic integration destinations.');
+      if (visited.has(cursor.workspaceId)) {
+        throw corrupt('Cyclic integration destinations.');
+      }
+
       visited.add(cursor.workspaceId);
       cursor =
         cursor.kind === 'linked' && cursor.integrationDestination
@@ -194,7 +211,11 @@ function parseBindings(
     ) {
       throw corrupt('Invalid specification binding or unknown workspace identity.');
     }
-    if (specIds.has(value.specId)) throw corrupt('Duplicate specification identity.');
+
+    if (specIds.has(value.specId)) {
+      throw corrupt('Duplicate specification identity.');
+    }
+
     specIds.add(value.specId);
     bindings.push({
       specId: value.specId,
@@ -202,6 +223,7 @@ function parseBindings(
       generation: value.generation as number,
     });
   }
+
   return bindings;
 }
 

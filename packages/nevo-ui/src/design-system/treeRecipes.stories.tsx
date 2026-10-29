@@ -90,6 +90,7 @@ function TreeLevel({
 }) {
   // A top level without folders is flat: its leaves have no folder icon column to align with.
   const flat = top && entries.every((entry) => entry.kind === 'file');
+
   return (
     <ul
       className={top ? treeRootClassName : treeBranchClassName}
@@ -140,8 +141,10 @@ function TreeLevel({
             </li>
           );
         }
+
         const empty = entry.children.length === 0;
         const expanded = empty ? closed.includes(`open:${path}`) : !closed.includes(path);
+
         return (
           <li className={treeNodeClassName} key={path}>
             <div className={treeRowClassName}>
@@ -218,6 +221,7 @@ function TreeExample({
     setClosed((value) =>
       value.includes(path) ? value.filter((item) => item !== path) : [...value, path],
     );
+
   return (
     <nav aria-label="Documents" className={`${width} min-w-0`}>
       {header && (
@@ -269,8 +273,10 @@ export const TrailingLabelsNarrow: Story = {
     const state = Array.from(missing.querySelectorAll('span')).find(
       (span) => span.textContent === 'File missing',
     );
-    if (!state || state.getBoundingClientRect().width === 0)
+    if (!state || state.getBoundingClientRect().width === 0) {
       throw new Error('A state label stays visible on a narrow row.');
+    }
+
     const stateRow = row('notes/meeting-2026-10-20-with-the-identity-team.md');
     const readOnly = Array.from(stateRow.querySelectorAll('span')).find(
       (span) => span.textContent === 'Read-only',
@@ -278,8 +284,9 @@ export const TrailingLabelsNarrow: Story = {
     if (
       !readOnly ||
       readOnly.getBoundingClientRect().right > stateRow.getBoundingClientRect().right
-    )
+    ) {
       throw new Error('A long name truncates so the state label stays inside the row.');
+    }
   },
 };
 
@@ -293,8 +300,9 @@ export const SelectedMissingRowKeepsItsWarning: Story = {
     const label = Array.from(row.querySelectorAll('span')).find(
       (span) => span.textContent === 'File missing',
     )!;
-    if (getComputedStyle(glyph).color !== getComputedStyle(label).color)
+    if (getComputedStyle(glyph).color !== getComputedStyle(label).color) {
       throw new Error('The warning glyph keeps the attention tone on the selected row.');
+    }
   },
 };
 /** Files only: the root section header names the tree and the files are not indented. */
@@ -333,7 +341,9 @@ export const Narrow: Story = {
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 const near = (a: number, b: number, tolerance = 0.5) => Math.abs(a - b) <= tolerance;
@@ -363,6 +373,7 @@ function verifyCompactGeometry(root: HTMLElement) {
       'No pass-through guide.',
     );
   }
+
   // Consecutive rows touch: no gaps between rows.
   const first = item(root, 'architektura').getBoundingClientRect();
   const second = item(root, 'architektura/decyzje').getBoundingClientRect();

@@ -80,20 +80,28 @@ function useMeasuredWidth() {
   const [width, setWidth] = useState<number>();
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) return undefined;
+    if (!element) {
+      return undefined;
+    }
+
     // Thresholds apply to the border-box of the shell workspace region (the parent), as in AppWorkspace.
     const region = element.parentElement ?? element;
     const update = () => setWidth(region.getBoundingClientRect().width);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(region);
+
     return () => observer.disconnect();
   }, []);
+
   return { ref, width };
 }
 
 function layoutFor(width: number | undefined): MockLayout {
-  if (width === undefined || width >= WIDE_WORKSPACE_MIN_WIDTH) return 'wide';
+  if (width === undefined || width >= WIDE_WORKSPACE_MIN_WIDTH) {
+    return 'wide';
+  }
+
   return width >= SPLIT_WORKSPACE_MIN_WIDTH ? 'compact' : 'narrow';
 }
 
@@ -135,6 +143,7 @@ function TreeHeader({
   bordered?: boolean;
 }) {
   const { t } = useTranslation();
+
   return (
     <PaneHeader leading={leading} bordered={bordered}>
       <WorkspaceHeader
@@ -216,11 +225,15 @@ function EditorWorkspace({
   const stacked = layout === 'narrow';
   useLayoutEffect(() => {
     const el = docRef.current;
-    if (!el) return undefined;
+    if (!el) {
+      return undefined;
+    }
+
     const update = () => setDocWidth(el.getBoundingClientRect().width);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
+
     return () => observer.disconnect();
   }, [stacked]);
   const splitAvailable = docWidth >= (contentRegistry.md.viewMinWidth?.split ?? Infinity);
@@ -233,7 +246,9 @@ function EditorWorkspace({
   const hamburger = persistentNav ? undefined : <NavigationButton />;
   const openFromTree = (id: string) => {
     host.openItem(id);
-    if (stacked) setPage('document');
+    if (stacked) {
+      setPage('document');
+    }
   };
 
   return (
@@ -245,7 +260,9 @@ function EditorWorkspace({
         // Ctrl/Cmd+S saves the active file (the only global shortcut the mock wires).
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
           event.preventDefault();
-          if (host.active && session.isDirty(host.active)) session.save(host.active);
+          if (host.active && session.isDirty(host.active)) {
+            session.save(host.active);
+          }
         }
       }}
       className={cn(
@@ -334,6 +351,7 @@ export function EditorModeMock(props: EditorModeMockProps) {
     props.dialog,
     props.treeWidth,
   ]);
+
   return (
     <StoryLocalization locale="en">
       <div style={{ width, height }} data-mock-frame={width}>

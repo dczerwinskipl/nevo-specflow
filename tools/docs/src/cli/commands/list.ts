@@ -13,12 +13,16 @@ export function listCommand(ctx: DocsCliContext): Command {
       const docs = findDocuments(ctx.repo, { type: opts.type, status: opts.status });
       if (opts.json) {
         ctx.stdout(JSON.stringify(docs, null, 2));
+
         return;
       }
+
       if (docs.length === 0) {
         ctx.stdout('(no documents match)');
+
         return;
       }
+
       for (const d of docs) {
         ctx.stdout(`${String(d.id).padEnd(40)} ${String(d.status).padEnd(10)} ${d.file}`);
       }

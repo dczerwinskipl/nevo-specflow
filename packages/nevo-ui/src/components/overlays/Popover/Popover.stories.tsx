@@ -57,15 +57,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -164,6 +170,7 @@ export const EdgeAnchoredNarrowContract: Story = {
  */
 function KeyboardConstrainedExample() {
   const [boundary, setBoundary] = useState<HTMLDivElement | null>(null);
+
   return (
     <div
       ref={setBoundary}

@@ -32,6 +32,7 @@ export const InlineNote = forwardRef<HTMLParagraphElement, InlineNoteProps>(func
   ref,
 ) {
   const resolvedIcon = icon === undefined ? toneIcons[tone] : icon;
+
   return (
     <p
       ref={ref}

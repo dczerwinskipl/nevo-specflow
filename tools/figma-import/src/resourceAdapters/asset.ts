@@ -45,7 +45,9 @@ function removePreviousArt(component: ComponentNode, asset: AssetResourceIR) {
     `${asset.stableId}/color`,
   ]);
   for (const child of [...component.children]) {
-    if (managedIds.has(child.getPluginData(DATA_KEY))) child.remove();
+    if (managedIds.has(child.getPluginData(DATA_KEY))) {
+      child.remove();
+    }
   }
 }
 
@@ -70,7 +72,10 @@ function materializeSvgMask(
 ) {
   removePreviousArt(component, asset);
   const imported = figma.createNodeFromSvg(asset.svg);
-  if (!imported.children.length) throw new Error(`SVG ${asset.stableId} contains no vector art`);
+  if (!imported.children.length) {
+    throw new Error(`SVG ${asset.stableId} contains no vector art`);
+  }
+
   const flattened = figma.flatten([...imported.children], imported);
   flattened.name = 'glyph';
   const targetWidth = px(asset.style.width, 16);
@@ -99,7 +104,10 @@ function materializeSvgMask(
   colorLayer.resizeWithoutConstraints(targetWidth, targetHeight);
   const defaultPaint = parseColor(asset.style.color);
   colorLayer.fills = defaultPaint ? [defaultPaint] : [];
-  if (colorVariable) bindPaintVariable(colorLayer, 'fills', colorVariable);
+  if (colorVariable) {
+    bindPaintVariable(colorLayer, 'fills', colorVariable);
+  }
+
   colorLayer.strokes = [];
   component.appendChild(colorLayer);
   component.insertChild(0, flattened);

@@ -26,7 +26,10 @@ export async function inspectCloseGitIntegration(
   operationId: string,
 ): Promise<GitIntegrationInspection> {
   const journal = await readCloseJournal(engine.context, operationId);
-  if (!journal) throw conflict('Close operation is not reserved.');
+  if (!journal) {
+    throw conflict('Close operation is not reserved.');
+  }
+
   if (
     journal.stage !== 'reserved' &&
     journal.stage !== 'integration-preparation-initiated' &&
@@ -36,6 +39,7 @@ export async function inspectCloseGitIntegration(
   ) {
     throw conflict('Integration inspection requires a mutation-free reservation stage.');
   }
+
   const plan = journal.plan;
   if (!plan.target || !plan.targetBranch) {
     throw new CloseOperationError(
@@ -43,6 +47,7 @@ export async function inspectCloseGitIntegration(
       'This Close operation does not include Git target integration.',
     );
   }
+
   if (plan.source.workspaceId === plan.target.workspaceId) {
     throw new CloseOperationError(
       'CLOSE_INVALID',
@@ -54,6 +59,7 @@ export async function inspectCloseGitIntegration(
   if (registry.revision !== plan.registryRevision) {
     throw conflict('Workspace registry changed after Close reservation.');
   }
+
   if (plan.configRevision) {
     const policy = await readProjectGitPolicy(engine.context);
     if (
@@ -81,6 +87,7 @@ export async function inspectCloseGitIntegration(
     if (registered?.root !== expected.root || registered?.instanceId !== expected.instanceId) {
       throw conflict('Pinned Git workspace registration changed.');
     }
+
     const observed = await inspectRegisteredWorkspace(
       engine.context,
       registry,
@@ -89,6 +96,7 @@ export async function inspectCloseGitIntegration(
     if (observed.status !== 'available' || observed.root !== expected.root) {
       throw conflict('Pinned Git checkout is missing or was replaced.');
     }
+
     const facts = await inspectCleanGitWorkspace(registered);
     const expectedHead =
       journal.archive && expected.workspaceId === plan.source.workspaceId
@@ -113,7 +121,10 @@ export async function inspectCloseGitIntegration(
       targetCommit: plan.target.head,
     });
   } catch (error) {
-    if (error instanceof GitCapabilityError) throw conflict(error.message);
+    if (error instanceof GitCapabilityError) {
+      throw conflict(error.message);
+    }
+
     throw error;
   }
 
@@ -134,6 +145,7 @@ export async function inspectCloseGitIntegration(
   if (sourcePaths.exitCode !== 0) {
     throw conflict('Cannot prove Specification ownership of source branch changes.');
   }
+
   const ownedSlugs = (plan.occupants ?? [{ slug: plan.slug }]).map((x) => x.slug);
   const foreignSpecPath = sourcePaths.stdout
     .split('\0')
@@ -158,6 +170,7 @@ export async function inspectCloseGitIntegration(
   // rechecked after the Git probes and before returning the evidence.
   await inspectPinned(plan.source);
   await inspectPinned(plan.target);
+
   return {
     ...gitProof,
     operationId,

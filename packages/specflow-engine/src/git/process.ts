@@ -41,7 +41,10 @@ export async function executeGit(
     const output = new BoundedGitOutput(MAX_OUTPUT_BYTES);
 
     const fail = (error: GitCapabilityError): void => {
-      if (done) return;
+      if (done) {
+        return;
+      }
+
       done = true;
       clearTimeout(timeout);
       terminateGitProcessTree(child, 'SIGTERM');
@@ -63,6 +66,7 @@ export async function executeGit(
     const collect = (channel: 'stdout' | 'stderr', data: Buffer): void => {
       if (!output.write(channel, data)) {
         fail(new GitCapabilityError('GIT_OPERATION_FAILED', 'Git output exceeds safety limit.'));
+
         return;
       }
     };
@@ -79,7 +83,10 @@ export async function executeGit(
       );
     });
     onGitProcessEnd(child, 1000, (code) => {
-      if (done) return;
+      if (done) {
+        return;
+      }
+
       done = true;
       clearTimeout(timeout);
       resolve({ exitCode: code ?? -1, ...output.finish() });
@@ -94,5 +101,6 @@ export async function executeGit(
  */
 export function spawnFailureReason(error: unknown): 'executable-unavailable' | 'spawn-failed' {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
+
   return code === 'ENOENT' || code === 'EACCES' ? 'executable-unavailable' : 'spawn-failed';
 }

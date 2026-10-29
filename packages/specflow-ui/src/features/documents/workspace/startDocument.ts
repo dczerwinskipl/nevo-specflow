@@ -13,6 +13,9 @@ export function startDocument(options: {
   /** The workspace splits (tree beside the document). */
   split: boolean;
 }): string | undefined {
-  if (options.documentId || options.openTabs > 0 || !options.split) return undefined;
+  if (options.documentId || options.openTabs > 0 || !options.split) {
+    return undefined;
+  }
+
   return options.tree.documents.find((document) => document.protected)?.id;
 }

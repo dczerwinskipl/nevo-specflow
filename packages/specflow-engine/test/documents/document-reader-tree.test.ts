@@ -320,6 +320,7 @@ describe('limits', () => {
         names.slice(start, start + 500).map((name) => mkdir(join(hand.dir, 'dirs', name))),
       );
     }
+
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
     expect(tree.issues).toContainEqual({ code: 'archive-limit' });
     // The listing shares the entries budget: it stops (truncated) instead of walking every folder.
@@ -357,6 +358,7 @@ describe('limits', () => {
     ]) {
       await work();
     }
+
     const note = await readSpecificationDocument(fixture.engine, hand.specId, 'note');
     expect(note.title).toHaveLength(200);
   }, 240000);
@@ -403,6 +405,7 @@ describe('advisory policy reasons', () => {
     const listener = (message: unknown): void => {
       spawns.push([...(message as { args: readonly string[] }).args]);
     };
+
     subscribe('nevo.specflow.engine.git-process', listener);
     let tree;
     try {
@@ -410,6 +413,7 @@ describe('advisory policy reasons', () => {
     } finally {
       unsubscribe('nevo.specflow.engine.git-process', listener);
     }
+
     expect(spawns).toEqual([]);
     expect(tree.capabilities.createFile).toEqual({ available: false, reason: 'branch-protected' });
     const overview = tree.documents[0]!;
@@ -448,6 +452,7 @@ describe('what a read does not do', () => {
     const listener = (message: unknown): void => {
       spawns.push([...(message as { args: readonly string[] }).args]);
     };
+
     // The lock is HELD while the reads run: a read that tried to take it would fail or hang.
     await withProjectControlLock(fixture.engine.context, async () => {
       subscribe('nevo.specflow.engine.git-process', listener);

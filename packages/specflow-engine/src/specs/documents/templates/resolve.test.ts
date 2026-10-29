@@ -45,6 +45,7 @@ function refusal(run: () => unknown): { code: string; details?: unknown } {
   } catch (error) {
     return error as { code: string; details?: unknown };
   }
+
   throw new Error('Expected a refusal.');
 }
 

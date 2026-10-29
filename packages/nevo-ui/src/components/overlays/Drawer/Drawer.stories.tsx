@@ -177,15 +177,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -259,6 +265,7 @@ export const BottomSheetOwnHeader: Story = {
 
 function isSettled(element: HTMLElement) {
   const { transform } = getComputedStyle(element);
+
   return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)';
 }
 
@@ -495,6 +502,7 @@ export const LongBodyContract: Story = {
       await userEvent.tab();
       assert(dialog.contains(document.activeElement), 'Tab never leaves the Drawer.');
     }
+
     await userEvent.keyboard('{Escape}');
     await waitFor(
       () => (document.activeElement === trigger ? trigger : null),

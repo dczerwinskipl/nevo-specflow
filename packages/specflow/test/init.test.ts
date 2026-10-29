@@ -22,6 +22,7 @@ async function repository(): Promise<string> {
   dirs.push(root);
   await mkdir(join(root, '.git'));
   await mkdir(join(root, '.nevo', 'agents', 'definitions'), { recursive: true });
+
   return root;
 }
 
@@ -155,7 +156,10 @@ describe('project initialization', () => {
       content: string,
       options: ConfigWriteOptions,
     ): Promise<void> => {
-      if (!options.local) throw new Error('simulated project write failure');
+      if (!options.local) {
+        throw new Error('simulated project write failure');
+      }
+
       await writeFile(path, content, 'utf8');
     };
 
@@ -215,9 +219,13 @@ describe('project initialization', () => {
         content: string,
         options: ConfigWriteOptions,
       ): Promise<void> => {
-        if (!options.local) throw new Error('simulated project write failure');
+        if (!options.local) {
+          throw new Error('simulated project write failure');
+        }
+
         await writeFile(path, content, 'utf8');
       };
+
       await expect(
         initializeProject({
           layout: layout(root),

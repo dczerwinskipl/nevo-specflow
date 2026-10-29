@@ -45,6 +45,7 @@ function planOf(
 function messageOf(...plans: DocumentChangePlan[]) {
   const members: SummarizedMember[] = plans.map((plan) => ({ action: plan.action, plan }));
   const effective = [...new Set(plans.flatMap((plan) => plan.paths.map((path) => path.path)))];
+
   return documentCommitMessage(TEST_SLUG, members, effective);
 }
 

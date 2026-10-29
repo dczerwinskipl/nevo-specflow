@@ -19,6 +19,7 @@ function runtime(refused: ReadonlySet<string>, clock = { now: 0, step: 0 }) {
     clock: {
       monotonicMs: () => {
         clock.now += clock.step;
+
         return clock.now;
       },
       wallMs: () => 0,
@@ -26,12 +27,14 @@ function runtime(refused: ReadonlySet<string>, clock = { now: 0, step: 0 }) {
     commits: {
       preflight: (request: { paths: readonly string[] }) => {
         calls.checks += 1;
+
         return request.paths.some((path) => refused.has(path))
           ? Promise.reject(new GitCapabilityError('COMMIT_BLOCKED', 'x', 'path-ignored'))
           : Promise.resolve();
       },
     },
   } as unknown as QueueRuntime;
+
   return { rt, calls };
 }
 

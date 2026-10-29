@@ -38,19 +38,24 @@ export async function initializeWorkspaceRegistry(
       'Initial registry designation must be explicitly initiated from Project Home.',
     );
   }
+
   return withProjectControlLock(
     context,
     async () => {
       const path = workspaceRegistryPath(context);
       try {
         await lstat(path);
+
         throw new WorkspaceRegistryError(
           'REGISTRY_CONFLICT',
           'Registry already exists. Load or explicitly recover it instead of resetting state.',
         );
       } catch (error) {
-        if (!isMissing(error)) throw error;
+        if (!isMissing(error)) {
+          throw error;
+        }
       }
+
       // Claim virgin bootstrap in the Project Home authority *before* first
       // registry publication. If registry is later removed, or init crashes
       // after claiming, a second bootstrap is forbidden and requires recovery.
@@ -62,6 +67,7 @@ export async function initializeWorkspaceRegistry(
           'Project Home bootstrap evidence is not a regular file.',
         );
       }
+
       let marker: unknown;
       try {
         marker = JSON.parse(await readFile(markerPath, 'utf8')) as unknown;
@@ -71,6 +77,7 @@ export async function initializeWorkspaceRegistry(
           'Project Home bootstrap evidence cannot be read.',
         );
       }
+
       if (
         !isRecord(marker) ||
         marker.version !== 1 ||
@@ -86,6 +93,7 @@ export async function initializeWorkspaceRegistry(
           'First initialization cannot be proven. Missing registry must use explicit recovery.',
         );
       }
+
       await verifyGitInstance(
         context.project.gitCommonDir,
         context.project.projectId,
@@ -103,6 +111,7 @@ export async function initializeWorkspaceRegistry(
         primaryWorkspaceId: initial.primaryWorkspaceId,
       });
       await writeJsonAtomically(path, initial);
+
       return initial;
     },
     options.lock,
@@ -130,6 +139,7 @@ export async function updateWorkspaceRegistry(
           'An unregistered worktree cannot mutate the Project Home registry.',
         );
       }
+
       await verifyWorkspaceRoot(context, caller.root, caller);
       if (options.expectedRevision !== undefined && current.revision !== options.expectedRevision) {
         throw new WorkspaceRegistryError(
@@ -137,15 +147,20 @@ export async function updateWorkspaceRegistry(
           'Registry CAS revision changed; re-read before retrying.',
         );
       }
+
       // Freeze the CAS snapshot before invoking client code; ignore harmless object key order.
       const proposed = mutate(freezeRegistry(current));
-      if (isDeepStrictEqual(proposed, current)) return current;
+      if (isDeepStrictEqual(proposed, current)) {
+        return current;
+      }
+
       if (proposed?.revision !== current.revision) {
         throw new WorkspaceRegistryError(
           'REGISTRY_CONFLICT',
           'Registry revision is exclusively advanced by the coordinated store.',
         );
       }
+
       const next = validateWorkspaceRegistry(
         { ...proposed, revision: current.revision + 1 },
         context,
@@ -156,20 +171,27 @@ export async function updateWorkspaceRegistry(
         if (current.workspaces.some((w) => w.workspaceId === registration.workspaceId)) {
           continue;
         }
+
         await verifyWorkspaceRoot(context, registration.root, registration);
       }
+
       // An old unavailable binding stays recorded, but a NEW binding must not
       // point at a disappeared, moved or substituted workspace.
       for (const binding of next.specBindings) {
-        if (current.specBindings.some((item) => item.specId === binding.specId)) continue;
+        if (current.specBindings.some((item) => item.specId === binding.specId)) {
+          continue;
+        }
+
         const target = next.workspaces.find((item) => item.workspaceId === binding.workspaceId);
         if (!target) {
           throw new WorkspaceRegistryError('REGISTRY_CORRUPT', 'Binding workspace is absent.');
         }
+
         await verifyWorkspaceRoot(context, target.root, target);
       }
 
       await writeJsonAtomically(workspaceRegistryPath(context), next);
+
       return next;
     },
     options.lock,
@@ -184,6 +206,7 @@ function assertAppendOnlyTransition(old: WorkspaceRegistry, next: WorkspaceRegis
   ) {
     throw new WorkspaceRegistryError('REGISTRY_CONFLICT', 'Registry identity or revision changed.');
   }
+
   const oldWorkspaces = new Map(old.workspaces.map((w) => [w.workspaceId, w]));
   const nextWorkspaces = new Map(next.workspaces.map((w) => [w.workspaceId, w]));
   for (const [workspaceId, before] of oldWorkspaces) {
@@ -194,6 +217,7 @@ function assertAppendOnlyTransition(old: WorkspaceRegistry, next: WorkspaceRegis
       );
     }
   }
+
   const oldBindings = new Map(old.specBindings.map((b) => [b.specId, b]));
   const nextBindings = new Map(next.specBindings.map((b) => [b.specId, b]));
   for (const [specId, before] of oldBindings) {
@@ -205,6 +229,7 @@ function assertAppendOnlyTransition(old: WorkspaceRegistry, next: WorkspaceRegis
       );
     }
   }
+
   for (const binding of next.specBindings) {
     if (!oldBindings.has(binding.specId) && binding.generation !== next.revision) {
       throw new WorkspaceRegistryError(
@@ -243,10 +268,17 @@ function isMissing(error: unknown): boolean {
 }
 
 function freezeRegistry(registry: WorkspaceRegistry): WorkspaceRegistry {
-  for (const workspace of registry.workspaces) Object.freeze(workspace);
-  for (const binding of registry.specBindings) Object.freeze(binding);
+  for (const workspace of registry.workspaces) {
+    Object.freeze(workspace);
+  }
+
+  for (const binding of registry.specBindings) {
+    Object.freeze(binding);
+  }
+
   Object.freeze(registry.workspaces);
   Object.freeze(registry.specBindings);
+
   return Object.freeze(registry);
 }
 

@@ -28,18 +28,23 @@ function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promis
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = feed.subscribeWork((changed) => {
-      if (changed !== turnId || timer) return;
+      if (changed !== turnId || timer) {
+        return;
+      }
+
       timer = setTimeout(() => {
         timer = undefined;
         void refresh();
       }, 300);
     });
+
     return () => {
       unsubscribe();
       clearTimeout(timer);
     };
   }, [feed, turnId, refresh]);
 }
+
 function Work({ data }: { data: Data }) {
   const { t } = useTranslation(),
     navigation = useSecondaryStack<Pages>();
@@ -50,6 +55,7 @@ function Work({ data }: { data: Data }) {
     queryFn: ({ signal }) => data.api.work(data.sessionId, data.turnId, before, signal),
   });
   useWorkRefresh(data.feed, data.turnId, query.refetch);
+
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area">
@@ -114,6 +120,7 @@ function Work({ data }: { data: Data }) {
     </AppContent>
   );
 }
+
 function Actions({ data, params }: { data: Data; params: { workId: string } }) {
   const { t } = useTranslation();
   const [before, setBefore] = useState<string>();
@@ -122,6 +129,7 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
     queryFn: ({ signal }) => data.api.actions(data.sessionId, params.workId, before, signal),
   });
   useWorkRefresh(data.feed, data.turnId, query.refetch);
+
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area">
@@ -164,6 +172,7 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
     </AppContent>
   );
 }
+
 export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, owner: string) {
   return defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',

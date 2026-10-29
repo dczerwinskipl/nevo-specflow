@@ -85,10 +85,12 @@ function setup(tree = emptyTree) {
         onOperate: treeOps.operate,
         onBusyChange: treeOps.setBusy,
       });
+
       return { treeOps, ops };
     },
     { wrapper },
   );
+
   return { store, view, cache };
 }
 

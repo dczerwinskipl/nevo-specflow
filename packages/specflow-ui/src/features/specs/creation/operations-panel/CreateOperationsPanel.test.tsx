@@ -78,6 +78,7 @@ function renderPanel(
       </LocalizationProvider>
     </QueryClientProvider>,
   );
+
   return client;
 }
 
@@ -140,9 +141,13 @@ describe('Create contribution to the specification list', () => {
   const contribution = (): SpecsOverviewPanelContribution => {
     const registry = createSpecFlowUiRegistry([creationUiModule]);
     const [panel] = registry.get(specsOverviewPanels);
-    if (!panel) throw new Error('The creation module contributes no overview panel.');
+    if (!panel) {
+      throw new Error('The creation module contributes no overview panel.');
+    }
+
     return panel;
   };
+
   const context = (collection: 'current' | 'archive') => ({
     collection,
     mode: 'project' as const,

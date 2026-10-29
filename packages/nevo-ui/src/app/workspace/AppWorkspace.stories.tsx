@@ -177,15 +177,21 @@ export const ContentAnatomy: Story = {
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -317,6 +323,7 @@ export const MediumSurfaceContract: Story = {
     const { layout, workspace } = await waitFor(() => {
       const candidate = shell.querySelector<HTMLElement>('main[data-design-slot="workspace"]');
       const layout = candidate?.querySelector<HTMLElement>('[data-layout="split"]');
+
       return candidate && layout ? { workspace: candidate, layout } : null;
     }, 'The drawer-navigation fixture should retain a split workspace at 960px.');
     const primary = layout.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
@@ -365,6 +372,7 @@ export const NarrowSurfaceContract: Story = {
     const { layout, workspace } = await waitFor(() => {
       const candidate = shell.querySelector<HTMLElement>('main[data-design-slot="workspace"]');
       const layout = candidate?.querySelector<HTMLElement>('[data-layout="stacked"]');
+
       return candidate && layout ? { workspace: candidate, layout } : null;
     }, 'The workspace should stack below the 840px threshold.');
     const activeSurface = layout.querySelector<HTMLElement>('[data-header-covered]:not(.hidden)');

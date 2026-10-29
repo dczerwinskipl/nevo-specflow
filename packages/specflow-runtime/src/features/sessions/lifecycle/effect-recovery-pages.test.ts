@@ -23,6 +23,7 @@ it('reaches positive evidence after a full page of unrecoverable operations', as
         command.op === 'effect-candidates'
           ? candidates.filter((item) => item.sessionId > (command.afterSession ?? '')).slice(0, 40)
           : { turnId: candidates[40]!.turnId, outcome: 'completed', reconciled: true };
+
       return Promise.resolve(result as T);
     },
     close: () => Promise.resolve(),

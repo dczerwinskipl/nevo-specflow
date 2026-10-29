@@ -47,16 +47,19 @@ function scripted(answers: { confirm?: boolean[]; input?: string[]; select?: str
   const ui = {
     confirm: (message: string, initial?: boolean) => {
       confirms.push(message);
+
       return Promise.resolve(confirm.shift() ?? initial ?? false);
     },
     input: (message: string, def?: string) => {
       inputs.push(message);
+
       return Promise.resolve(input.shift() ?? def ?? '');
     },
     select: (_message: string, choices: readonly { value: string }[], initial?: string) =>
       Promise.resolve(select.shift() ?? initial ?? choices[0]!.value),
     note: (message: string, title?: string) => notes.push({ message, title }),
   } as unknown as RuntimeSetupUi;
+
   return { ui, confirms, inputs, notes };
 }
 
@@ -70,14 +73,18 @@ async function repository(...branches: string[]): Promise<void> {
   await writeFile(join(root, 'README.md'), '# test\n');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'init');
-  for (const branch of branches.slice(1)) git(root, 'branch', branch);
+  for (const branch of branches.slice(1)) {
+    git(root, 'branch', branch);
+  }
 }
 
 beforeEach(() => {
   root = '';
 });
 afterEach(async () => {
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 describe('protectedBranchPatternProblem', () => {
@@ -339,6 +346,7 @@ describe('init command', { timeout: 120_000 }, () => {
         initialize: async (options) => {
           const result = await initializeProject(options);
           await writeFile(sentinel(), '{"version":1}\n');
+
           return result;
         },
       });

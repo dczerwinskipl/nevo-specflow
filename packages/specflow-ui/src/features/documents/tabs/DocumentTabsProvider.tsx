@@ -77,7 +77,10 @@ const TabsContext = createContext<DocumentTabs | null>(null);
 
 export function useDocumentTabs(): DocumentTabs {
   const tabs = useContext(TabsContext);
-  if (!tabs) throw new Error('DocumentTabsProvider missing');
+  if (!tabs) {
+    throw new Error('DocumentTabsProvider missing');
+  }
+
   return tabs;
 }
 
@@ -130,6 +133,7 @@ export function DocumentTabsProvider({
       }),
     [catalogue.data, archetype, classification, documentType],
   );
+
   return (
     <RecordContext.Provider value={record}>
       <DocumentEditorProvider
@@ -173,11 +177,13 @@ function TabsHost({
     tree?: DocumentTree;
     paths: Readonly<Record<string, string>>;
   }>({ paths: {} });
-  if (tree && known.tree !== tree)
+  if (tree && known.tree !== tree) {
     setKnown({
       tree,
       paths: { ...known.paths, ...Object.fromEntries(tree.documents.map((d) => [d.id, d.path])) },
     });
+  }
+
   // The tab whose unsaved-changes question is on screen, and whether its Save failed.
   const [asking, setAsking] = useState<{ id: string; saveFailed: boolean } | null>(null);
   const answer = useRef<((decision: boolean | 'discard') => void) | null>(null);
@@ -200,7 +206,9 @@ function TabsHost({
 
   // The route is the source of the active tab: a document in the URL always has its tab.
   useEffect(() => {
-    if (documentId) ensureOpen({ id: documentId });
+    if (documentId) {
+      ensureOpen({ id: documentId });
+    }
   }, [documentId, ensureOpen]);
 
   const goTo = useCallback(
@@ -230,6 +238,7 @@ function TabsHost({
     (id?: string) =>
       router.state.matches.some((match) => {
         const shown = (match.params as Record<string, unknown>).documentId;
+
         return id === undefined ? shown !== undefined : shown === id;
       }),
     [router],
@@ -238,7 +247,10 @@ function TabsHost({
   const show = useCallback(
     async (id: string, options?: { replace?: boolean }) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      if (id === shown) return;
+      if (id === shown) {
+        return;
+      }
+
       await goTo(id, options?.replace === true || openIds.includes(id));
     },
     [goTo],
@@ -248,8 +260,12 @@ function TabsHost({
   const leave = useCallback(
     async (id: string) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      if (shown !== id) return true;
+      if (shown !== id) {
+        return true;
+      }
+
       await goTo(neighbourOf(openIds, id), true);
+
       return !routeShows(id);
     },
     [goTo, routeShows],
@@ -271,29 +287,41 @@ function TabsHost({
         // One question at a time, until its tab has left: another close meanwhile is refused, and
         // the user is told.
         if (closing.current) {
-          if (mounted.current) setCloseBusy(true);
+          if (mounted.current) {
+            setCloseBusy(true);
+          }
+
           return false;
         }
+
         closing.current = true;
         try {
           const decision = await new Promise<boolean | 'discard'>((resolve) => {
             answer.current = resolve;
             setAsking({ id, saveFailed: false });
           });
-          if (!decision) return false;
+          if (!decision) {
+            return false;
+          }
+
           const left = await leave(id);
           // The draft goes only once the tab really leaves: a refused navigation keeps the edits.
-          if (left && decision === 'discard') store.remove(specId, id);
+          if (left && decision === 'discard') {
+            store.remove(specId, id);
+          }
+
           return left;
         } finally {
           closing.current = false;
         }
       }
+
       return leave(id);
     };
   });
   useEffect(() => {
     mounted.current = true;
+
     return () => {
       mounted.current = false;
       // Nobody can answer once the host is gone: the tab stays open.
@@ -310,27 +338,43 @@ function TabsHost({
         setCloseFailed(false);
         setCloseBusy(false);
       }
+
       return closed;
     } catch {
       // A guard that throws is a refusal; the tab stays open and the user is told.
-      if (mounted.current) setCloseFailed(true);
+      if (mounted.current) {
+        setCloseFailed(true);
+      }
+
       return false;
     }
   }, []);
 
   const closeAll = useCallback(async () => {
     await goTo(undefined, true);
-    if (routeShows()) return false;
+    if (routeShows()) {
+      return false;
+    }
+
     closeEvery();
+
     return true;
   }, [goTo, routeShows, closeEvery]);
 
   const removeTabs = useCallback(
     async (removed: readonly string[]) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      for (const id of removed) store.remove(specId, id);
-      if (shown && removed.includes(shown)) await goTo(survivorOf(openIds, shown, removed), true);
-      for (const id of removed) closeNow(id);
+      for (const id of removed) {
+        store.remove(specId, id);
+      }
+
+      if (shown && removed.includes(shown)) {
+        await goTo(survivorOf(openIds, shown, removed), true);
+      }
+
+      for (const id of removed) {
+        closeNow(id);
+      }
     },
     [store, specId, goTo, closeNow],
   );
@@ -338,9 +382,14 @@ function TabsHost({
   const follow = useCallback(
     async (from: string, to: string) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      if (!openIds.includes(from)) return;
+      if (!openIds.includes(from)) {
+        return;
+      }
+
       replaceItem(from, { id: to });
-      if (shown === from) await goTo(to, true);
+      if (shown === from) {
+        await goTo(to, true);
+      }
     },
     [replaceItem, goTo],
   );
@@ -391,6 +440,7 @@ function TabsHost({
   );
 
   const askedName = tabs.find((tab) => tab.id === asking?.id)?.label ?? asking?.id ?? '';
+
   return (
     <TabsContext.Provider value={value}>
       {children}
@@ -406,11 +456,17 @@ function TabsHost({
         onDiscard={() => settle('discard')}
         onSave={() => {
           const target = asking?.id;
-          if (!target) return;
+          if (!target) {
+            return;
+          }
+
           void ops.save(target).then((result) => {
             const draft = store.get(specId, target);
-            if (result?.ok && (!draft || !isDraftDirty(draft))) settle(true);
-            else if (mounted.current) setAsking({ id: target, saveFailed: true });
+            if (result?.ok && (!draft || !isDraftDirty(draft))) {
+              settle(true);
+            } else if (mounted.current) {
+              setAsking({ id: target, saveFailed: true });
+            }
           });
         }}
       />

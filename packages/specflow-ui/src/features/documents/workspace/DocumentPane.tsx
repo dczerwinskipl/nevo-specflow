@@ -63,6 +63,7 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
     onAssignType: assignTypeFor(treeActions, tree.data, documentId),
   });
   const name = tabs.tabs.find((tab) => tab.id === documentId)?.label ?? session?.document.path;
+
   return {
     status: 'ready',
     data: {
@@ -90,6 +91,7 @@ function DanglingDocument({
   const catalogue = useDocumentCatalogue();
   const actions = useDocumentsTreeActions();
   const name = entry.path.split('/').at(-1) ?? entry.path;
+
   return (
     <div className="p-4">
       <Alert
@@ -141,7 +143,7 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
     />
   );
   const query = record?.documentId === data.documentId ? record.query : undefined;
-  if (dangling)
+  if (dangling) {
     return (
       <AppContent className="h-full w-full">
         {closeFailed}
@@ -151,6 +153,8 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
         />
       </AppContent>
     );
+  }
+
   const status = isHttpClientError(query?.error) ? query.error.status : undefined;
   // Text above the JSON read limit (413): the file view with its facts from the tree and Download;
   // retrying could only fail the same way.
@@ -158,7 +162,7 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
     apiErrorCode(query?.error) === 'DOCUMENT_TOO_LARGE'
       ? tree.data?.documents.find((entry) => entry.id === data.documentId)
       : undefined;
-  if (tooLarge)
+  if (tooLarge) {
     return (
       <AppContent className="h-full w-full">
         {closeFailed}
@@ -168,17 +172,22 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
         />
       </AppContent>
     );
-  if (!query || query.isPending)
+  }
+
+  if (!query || query.isPending) {
     return (
       <p role="status" className="p-5">
         {t('documents.loadingDocument')}
       </p>
     );
+  }
+
   if (!query.data || status === 401 || status === 403 || status === 404) {
     const tab = tabs.tabs.find((candidate) => candidate.id === data.documentId);
     const missing = status === 404;
     // The tab keeps the last known name; before the tree knew it the id is not worth showing.
     const name = tab && tab.label !== tab.id ? tab.label : undefined;
+
     return (
       <div className="p-4">
         <Alert
@@ -206,9 +215,11 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
       </div>
     );
   }
+
   // A document promoted from the Specification Overview preview returns there on narrow, where
   // the stacked Back would otherwise only reveal the document tree.
   const overviewReturn = !session && !supportsSplit && returnTo === 'overview';
+
   return (
     <AppContent className="h-full w-full">
       <div className="flex h-full min-h-0 flex-col">

@@ -30,17 +30,20 @@ export async function publishCloseCheckpoint(
   ) {
     throw new CloseOperationError('CLOSE_CONFLICT', 'Close checkpoint identity changed.');
   }
+
   return withProjectControlLock(engine.context, async () => {
     const current = await readCloseJournal(engine.context, expected.plan.operationId);
     if (!current || !isDeepStrictEqual(current, expected)) {
       throw new CloseOperationError(guard.onConflictCode ?? 'CLOSE_CONFLICT', guard.onConflict);
     }
+
     await guard.verifyCurrent?.(current);
     await publishCloseJournal(engine.context, next);
     const recorded = await readCloseJournal(engine.context, expected.plan.operationId);
     if (!recorded || !isDeepStrictEqual(recorded, next)) {
       throw new CloseOperationError('CLOSE_RECOVERY_REQUIRED', guard.onReadbackFailure);
     }
+
     return recorded;
   });
 }

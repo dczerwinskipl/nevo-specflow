@@ -40,11 +40,18 @@ async function repeatOf(
   journal: ManualCommitJournal,
   mode: ManualCommitRecoverMode,
 ): Promise<ManualCommitDone | undefined> {
-  if (journal.stage === 'completed' && mode !== 'abandon') return doneOf(rt, journal, true);
+  if (journal.stage === 'completed' && mode !== 'abandon') {
+    return doneOf(rt, journal, true);
+  }
+
   if (journal.stage === 'failed' && mode === 'abandon') {
-    if (journal.reason === MANUAL_COMMIT_ABANDONED) return { journal, paths: [], replayed: true };
+    if (journal.reason === MANUAL_COMMIT_ABANDONED) {
+      return { journal, paths: [], replayed: true };
+    }
+
     throw errorOfFailedJournal(journal);
   }
+
   return undefined;
 }
 
@@ -57,8 +64,11 @@ export async function recoverManualCommit(
   if (journal === undefined) {
     throw manualCommitError('operation-not-found', 'The manual commit does not exist.');
   }
+
   const repeated = await repeatOf(rt, journal, mode);
-  if (repeated !== undefined) return repeated;
+  if (repeated !== undefined) {
+    return repeated;
+  }
 
   if (mode === 'resume') {
     if (journal.stage === 'completed' || journal.stage === 'failed') {
@@ -67,14 +77,17 @@ export async function recoverManualCommit(
         'Only a manual commit that has not ended can be resumed.',
       );
     }
+
     return executeManualCommit(rt, journal);
   }
+
   if (journal.stage !== 'recovery-required') {
     throw manualCommitError(
       'operation-state-invalid',
       'Only a manual commit that needs recovery can be adopted or abandoned.',
     );
   }
+
   const reason = journal.reason ?? 'uncertain';
   if (mode === 'abandon') {
     return runClaimed(rt, journal, async (claimed) => ({
@@ -83,20 +96,25 @@ export async function recoverManualCommit(
       replayed: false,
     }));
   }
+
   return runClaimed(rt, journal, async (claimed) => {
     const entries = await readSnapshot(rt.context, claimed);
     const paths = entries.map((entry) => entry.path);
     if (!(await headHoldsSnapshot(rt.commits, claimed.workspaceRoot, entries, paths))) {
       await finish(rt, claimed, 'recovery-required', { reason });
+
       throw unresolved();
     }
+
     const state = await rt.commits.inspectPaths(claimed.workspaceRoot, paths);
     const sha =
       state.state === 'committed' ? state.sha : await rt.commits.head(claimed.workspaceRoot);
     if (sha === undefined) {
       await finish(rt, claimed, 'recovery-required', { reason });
+
       throw unresolved();
     }
+
     return complete(rt, claimed, entries, { sha, paths });
   });
 }

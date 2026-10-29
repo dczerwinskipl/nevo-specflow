@@ -36,8 +36,13 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
   );
 
   const emit = (json: boolean | undefined, value: unknown, lines: readonly string[]): void => {
-    if (json) context.stdout(JSON.stringify(value));
-    else for (const line of lines) context.stdout(line);
+    if (json) {
+      context.stdout(JSON.stringify(value));
+    } else {
+      for (const line of lines) {
+        context.stdout(line);
+      }
+    }
   };
 
   definitions
@@ -83,8 +88,10 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
           `Project Home: ${projectHome}`,
           JSON.stringify(shown.entity, null, 2),
         ]);
+
         return;
       }
+
       emit(
         options.json,
         { projectHome, ...shown },
@@ -92,6 +99,7 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
           ? [`Project Home: ${projectHome}`, ...problemLines(shown.problems, false)]
           : [`Project Home: ${projectHome}`],
       );
+
       throw new Error(
         shown.state === 'invalid'
           ? `${target} is rejected (see the problems above).`
@@ -118,6 +126,7 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
           reports.push({ path, report: await validateDefinitionsFolder(path) });
         }
       }
+
       const lines = [
         ...(projectHome !== undefined ? [`Project Home: ${projectHome}`] : []),
         ...reports.flatMap(({ path, report }) => [
@@ -160,10 +169,14 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
           json?: boolean;
         },
       ) => {
-        for (const target of targets) assertTargetForm(target);
+        for (const target of targets) {
+          assertTargetForm(target);
+        }
+
         if (targets.length > 0 && options.addMissing) {
           throw new InvalidArgumentError('Name definitions or use --add-missing, not both.');
         }
+
         const engine = await engineAt(context.cwd, options.projectRoot);
         let result: InstallProjectResult;
         try {
@@ -181,14 +194,19 @@ export function createDefinitionsCommand(context: DefinitionsCommandContext): Co
               ...definitionsBranchRefusalLines(current, error.reason),
               'Nothing was written.',
             ];
+
             // Same code and reason (scripts read them), a message that names the way out.
             throw new GitCapabilityError('BRANCH_PROTECTED', lines.join('\n'), error.reason);
           }
+
           throw error;
         }
+
         const projectHome = engine.context.project.homeRoot;
         report(context, options, projectHome, result);
-        if (result.outcome.status === 'refused') throw new Error(result.outcome.hint);
+        if (result.outcome.status === 'refused') {
+          throw new Error(result.outcome.hint);
+        }
       },
     );
 
@@ -212,32 +230,48 @@ function report(
         ...(result.commit ? { commit: result.commit } : {}),
       }),
     );
+
     return;
   }
+
   context.stdout(`Project Home: ${projectHome}`);
   if (outcome.status === 'refused') {
     context.stdout(outcome.hint);
     if (outcome.reason === 'definitions-exist') {
-      for (const key of outcome.missing) context.stdout(`  missing: ${key}`);
+      for (const key of outcome.missing) {
+        context.stdout(`  missing: ${key}`);
+      }
     } else {
-      for (const path of outcome.paths) context.stdout(`  blocked: ${path === '' ? '.' : path}`);
+      for (const path of outcome.paths) {
+        context.stdout(`  blocked: ${path === '' ? '.' : path}`);
+      }
     }
+
     return;
   }
+
   if (options.dryRun) {
     context.stdout('Dry run: nothing was written.');
-    for (const item of outcome.plan.items) context.stdout(`  ${item.action} ${item.path}`);
+    for (const item of outcome.plan.items) {
+      context.stdout(`  ${item.action} ${item.path}`);
+    }
+
     return;
   }
+
   context.stdout(
     result.written.length === 0
       ? 'Nothing to install: the project has these definitions already.'
       : `Installed ${result.written.length} files.`,
   );
-  for (const path of result.written) context.stdout(`  ${path}`);
+  for (const path of result.written) {
+    context.stdout(`  ${path}`);
+  }
+
   for (const item of outcome.plan.items.filter((entry) => entry.action === 'skipped-edited')) {
     context.stdout(`  kept (edited): ${item.path} (use --force to overwrite)`);
   }
+
   if (result.commit) {
     context.stdout(
       `Committed ${result.commit.paths.length} files as ${result.commit.sha.slice(0, 7)}.`,

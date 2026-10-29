@@ -20,8 +20,11 @@ export function DocumentsLayout() {
   });
   const mode = useRuntimeMode();
   // Nothing renders (and fetches) before Runtime info settles: the mode picks the adapter.
-  if (mode === 'loading' || !specId) return null;
-  if (mode === 'unavailable')
+  if (mode === 'loading' || !specId) {
+    return null;
+  }
+
+  if (mode === 'unavailable') {
     return (
       <div className="p-6">
         <Alert
@@ -41,6 +44,8 @@ export function DocumentsLayout() {
         </Alert>
       </div>
     );
+  }
+
   // A spec switch is a new workspace: the key drops the previous spec's tree state.
   return <DocumentsWorkspace key={specId} specId={specId} documentId={documentId} />;
 }

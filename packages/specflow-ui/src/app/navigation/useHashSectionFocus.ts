@@ -4,9 +4,13 @@ import { useRouter } from '@tanstack/react-router';
 /** Scroll an in-page section into view and move focus to it. Returns the target, if any. */
 export function focusHashSection(hash: string) {
   const target = document.getElementById(hash);
-  if (!target) return null;
+  if (!target) {
+    return null;
+  }
+
   target.scrollIntoView({ block: 'start' });
   target.focus({ preventScroll: true });
+
   return target;
 }
 
@@ -22,7 +26,10 @@ export function useHashSectionFocus() {
     () =>
       router.subscribe('onResolved', ({ hashChanged }) => {
         const hash = router.state.location.hash;
-        if (!hashChanged || !hash) return;
+        if (!hashChanged || !hash) {
+          return;
+        }
+
         requestAnimationFrame(() => focusHashSection(hash));
       }),
     [router],

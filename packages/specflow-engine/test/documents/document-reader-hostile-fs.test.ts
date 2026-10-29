@@ -168,7 +168,10 @@ describe('paths, links and hidden entries', () => {
     const bidi = 'doc' + String.fromCodePoint(0x202e) + 'fdp.md';
     const zeroWidth = 'a' + String.fromCodePoint(0x200b) + 'b.md';
     const separator = 'c' + String.fromCodePoint(0x2028) + 'd.md';
-    for (const name of [bidi, zeroWidth, separator]) await writeFile(join(hand.dir, name), 'x');
+    for (const name of [bidi, zeroWidth, separator]) {
+      await writeFile(join(hand.dir, name), 'x');
+    }
+
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
     expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
     expect(tree.issues.filter((issue) => issue.code === 'skipped-entry')).toHaveLength(3);
@@ -209,6 +212,7 @@ describe('paths, links and hidden entries', () => {
     if ((await readdir(hand.dir)).filter((name) => name.toLowerCase() === 'a.md').length !== 2) {
       return; // case-insensitive filesystem: nothing to prove here
     }
+
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
     const upper = tree.documents.find((document) => document.path === 'A.md')!;
     const lower = tree.documents.find((document) => document.path === 'a.md')!;
@@ -272,6 +276,7 @@ describe('files that cannot be read safely', () => {
       ],
       files: { 'overview.md': '# Fine\n', 'bad.md': '# Bad\n' },
     });
+
     return { fixture, hand };
   }
 

@@ -58,11 +58,19 @@ export async function readSettledDocumentChangeJournal(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > DOCUMENT_JOURNAL_MAX_BYTES) {
       throw invalidDocumentChangeJournal();
     }
+
     const value: unknown = JSON.parse(await readFileWindowsSafe(path));
+
     return DOCUMENT_CHANGE_JOURNAL_KIND.parse(context, value, operationId);
   } catch (error) {
-    if (isMissing(error)) return undefined;
-    if (error instanceof SyntaxError) throw invalidDocumentChangeJournal();
+    if (isMissing(error)) {
+      return undefined;
+    }
+
+    if (error instanceof SyntaxError) {
+      throw invalidDocumentChangeJournal();
+    }
+
     throw error;
   }
 }
@@ -114,12 +122,15 @@ export async function transitionDocumentChangeJournal(
     if (current === undefined) {
       throw documentChangeError('operation-not-found', 'The document operation does not exist.');
     }
+
     if (!from.includes(current.stage) || guard?.(current) === false) {
       throw new JournalMovedError(current);
     }
+
     const next = transitionDocumentChange(current, to, patch, now);
     await beforePublish?.(next);
     await publishJournal(context, DOCUMENT_CHANGE_JOURNAL_KIND, next);
+
     return next;
   });
 }
@@ -134,10 +145,14 @@ export async function settleDocumentChangeJournal(
 ): Promise<void> {
   await withJournalLock(context, DOCUMENT_CHANGE_JOURNAL_KIND, async () => {
     const current = await readDocumentChangeJournal(context, operationId);
-    if (current === undefined) return;
+    if (current === undefined) {
+      return;
+    }
+
     if (current.stage !== 'completed' && current.stage !== 'failed') {
       throw documentChangeError('operation-state-invalid', 'Only a settled operation is moved.');
     }
+
     await moveJournalToSettled(context, DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
   });
 }
@@ -179,17 +194,28 @@ export async function sweepSettledDocumentChanges(
   } catch {
     settled = [];
   }
+
   let removed = 0;
   for (const name of settled) {
-    if (outOfTime()) return removed;
-    if (!name.endsWith('.json')) continue;
+    if (outOfTime()) {
+      return removed;
+    }
+
+    if (!name.endsWith('.json')) {
+      continue;
+    }
+
     const operationId = name.slice(0, -5);
     if (!OPERATION_ID_PATTERN.test(operationId) || operationId === options.keepOperationId) {
       continue;
     }
+
     try {
       const stat = await lstat(join(directory, name));
-      if (!stat.isFile() || clock - stat.mtimeMs < retention) continue;
+      if (!stat.isFile() || clock - stat.mtimeMs < retention) {
+        continue;
+      }
+
       await removePayload(context, DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
       await removeSettledJournal(context, DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
       removed += 1;
@@ -204,9 +230,13 @@ export async function sweepSettledDocumentChanges(
   } catch {
     return removed;
   }
+
   const known = new Set([...entries, ...settled].filter((name) => name.endsWith('.json')));
   for (const name of entries) {
-    if (outOfTime()) break;
+    if (outOfTime()) {
+      break;
+    }
+
     const operationId = payloadOperationIdOf(name);
     if (
       operationId === undefined ||
@@ -215,14 +245,19 @@ export async function sweepSettledDocumentChanges(
     ) {
       continue;
     }
+
     try {
       const stat = await lstat(join(base, name));
-      if (!stat.isDirectory() || clock - stat.mtimeMs < retention) continue;
+      if (!stat.isDirectory() || clock - stat.mtimeMs < retention) {
+        continue;
+      }
+
       await removePayload(context, DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
       removed += 1;
     } catch {
       // Vanished or not removable: never fatal for the reservation.
     }
   }
+
   return removed;
 }

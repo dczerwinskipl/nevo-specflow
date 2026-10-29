@@ -17,16 +17,24 @@ export type CheckoutGate = 'git-disabled' | 'workspace-missing';
 
 export async function checkoutGate(rt: QueueRuntime): Promise<CheckoutGate | undefined> {
   try {
-    if (!(await readProjectGitPolicy(rt.context)).policy.enabled) return 'git-disabled';
+    if (!(await readProjectGitPolicy(rt.context)).policy.enabled) {
+      return 'git-disabled';
+    }
   } catch (error) {
     // An unreadable policy is the commit port's refusal to report, not a reason to drop the queue.
-    if (!(error instanceof GitCapabilityError)) throw error;
+    if (!(error instanceof GitCapabilityError)) {
+      throw error;
+    }
   }
+
   try {
     return (await lstat(rt.checkout.root)).isDirectory() ? undefined : 'workspace-missing';
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    if (code === 'ENOENT' || code === 'ENOTDIR') return 'workspace-missing';
+    if (code === 'ENOENT' || code === 'ENOTDIR') {
+      return 'workspace-missing';
+    }
+
     throw error;
   }
 }
@@ -57,6 +65,7 @@ export async function applyGateToQueued(rt: QueueRuntime, gate: CheckoutGate): P
       ) {
         continue;
       }
+
       if (gate === 'git-disabled') {
         await moveMember(
           rt.context,
@@ -74,8 +83,10 @@ export async function applyGateToQueued(rt: QueueRuntime, gate: CheckoutGate): P
           rt.nowIso(),
         );
       }
+
       ids.push(journal.operationId);
     }
+
     return ids;
   });
 }

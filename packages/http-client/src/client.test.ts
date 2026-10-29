@@ -7,6 +7,7 @@ import { customCredentials } from './credentials';
 function jsonAdapter(assertConfig?: (config: Parameters<AxiosAdapter>[0]) => void): AxiosAdapter {
   return (config) => {
     assertConfig?.(config);
+
     return Promise.resolve({
       data: { ok: true },
       status: 200,

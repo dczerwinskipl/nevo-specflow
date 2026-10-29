@@ -17,7 +17,10 @@ it.each(['enforced', 'outside-write', 'not-started', 'readonly-write'] as const)
             const target = command.at(-1)!;
             const sandbox = params.sandboxPolicy as { type: string; networkAccess: boolean };
             expect(sandbox.networkAccess).toBe(false);
-            if (behavior === 'not-started') return { exitCode: 23, stdout: 'denied' };
+            if (behavior === 'not-started') {
+              return { exitCode: 23, stdout: 'denied' };
+            }
+
             const permitted =
               sandbox.type === 'workspaceWrite' && !target.endsWith('outside-write-root.txt');
             const escaped =
@@ -28,8 +31,10 @@ it.each(['enforced', 'outside-write', 'not-started', 'readonly-write'] as const)
               (behavior === 'readonly-write' && sandbox.type === 'readOnly')
             ) {
               await writeFile(target, 'specflow-probe');
+
               return { exitCode: 42, stdout: 'specflow-probe-start\nwritten' };
             }
+
             return { exitCode: 23, stdout: 'specflow-probe-start\ndenied' };
           },
         },

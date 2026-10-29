@@ -7,6 +7,7 @@ it('does not miss commits between reading an outbox and entering its wait', asyn
   const unsubscribe = vi.fn();
   const wakeup = createStreamWakeup((listener) => {
     committed = listener;
+
     return unsubscribe;
   });
   const observed = wakeup.revision();

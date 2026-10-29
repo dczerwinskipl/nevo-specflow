@@ -76,6 +76,7 @@ describe('readPreflightSignature', () => {
         localConfigPath: join(home, 'local.yaml'),
       },
     } as unknown as ResolvedProjectHome;
+
     return { root, home, context };
   }
 

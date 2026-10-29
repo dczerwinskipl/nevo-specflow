@@ -27,5 +27,6 @@ export function isProtectedDocument(document: ProtectableDocument): boolean {
 /** True when deleting the folder (and everything below it) would delete the protected document. */
 export function folderContainsProtectedDocument(folderPath: string): boolean {
   const folder = folderPath === '' ? '' : foldPathKey(folderPath) + '/';
+
   return foldPathKey(OVERVIEW_DOCUMENT_PATH).startsWith(folder);
 }

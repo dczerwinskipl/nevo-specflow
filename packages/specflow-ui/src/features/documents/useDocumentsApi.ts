@@ -25,5 +25,6 @@ export function documentsApiFor(services: SpecFlowAppServices, kind: DocumentsAp
 export function useDocumentsApi(): { api: DocumentsApi; kind: DocumentsApiKind } {
   const services = useAppServices();
   const kind = documentsApiKind(useRuntimeMode());
+
   return { api: documentsApiFor(services, kind), kind };
 }

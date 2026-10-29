@@ -22,6 +22,7 @@ function build(get = vi.fn().mockResolvedValue({ documents: [] })) {
     createApiTransport(http, { operation: 'documents.read', isOnline: () => true }),
     http,
   );
+
   return { api, get, post, put };
 }
 

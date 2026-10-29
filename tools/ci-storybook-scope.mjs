@@ -34,18 +34,26 @@ export function storybookScope(changed) {
   if (files.some((f) => FULL_PATTERNS.some((p) => p.test(f)))) {
     return { mode: 'full', filters: [] };
   }
+
   const filters = new Set();
   for (const f of files) {
-    if (/^packages\/specflow-ui\/(?!.*\.md$)/.test(f)) filters.add('packages/specflow-ui/');
+    if (/^packages\/specflow-ui\/(?!.*\.md$)/.test(f)) {
+      filters.add('packages/specflow-ui/');
+    }
+
     const example = /^examples\/([^/]+)\/(?:src|package\.json)/.exec(f);
-    if (example) filters.add(`examples/${example[1]}/`);
+    if (example) {
+      filters.add(`examples/${example[1]}/`);
+    }
   }
+
   for (const f of files) {
     // A directly changed story only needs its own filter when no directory filter covers it.
     if (STORY.test(f) && ![...filters].some((d) => d.endsWith('/') && f.startsWith(d))) {
       filters.add(f);
     }
   }
+
   return filters.size > 0
     ? { mode: 'filtered', filters: [...filters].sort() }
     : { mode: 'none', filters: [] };
@@ -91,12 +99,16 @@ if (
     } else {
       throw new Error('Usage: ci-storybook-scope.mjs <base> <head> | --stdin | --self-test');
     }
+
     process.stdout.write(`${JSON.stringify(storybookScope(list))}\n`);
   }
 }
 
 async function readStdin() {
   let data = '';
-  for await (const chunk of process.stdin) data += chunk;
+  for await (const chunk of process.stdin) {
+    data += chunk;
+  }
+
   return data;
 }

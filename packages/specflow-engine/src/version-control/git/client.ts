@@ -35,15 +35,20 @@ export function createLocalGitClient(home: string): LocalGitClient {
   const read = async (args: readonly string[]) => executeGit(home, args);
   const requireSuccess = async (args: readonly string[], message: string): Promise<string> => {
     const result = await read(args);
-    if (result.exitCode !== 0) throw new GitCapabilityError('GIT_OPERATION_FAILED', message);
+    if (result.exitCode !== 0) {
+      throw new GitCapabilityError('GIT_OPERATION_FAILED', message);
+    }
+
     return result.stdout;
   };
+
   return {
     async inspectRepository() {
       const result = await read(['rev-parse', '--git-common-dir']);
       if (result.exitCode !== 0 || !result.stdout.trim()) {
         throw new GitCapabilityError('NOT_GIT_REPOSITORY', 'Project Home is not a Git repository.');
       }
+
       try {
         return await realpath(resolve(home, result.stdout.trim()));
       } catch {
@@ -58,6 +63,7 @@ export function createLocalGitClient(home: string): LocalGitClient {
         ['worktree', 'list', '--porcelain', '-z'],
         'Unable to inspect Git worktrees.',
       );
+
       return parseWorktrees(raw);
     },
     async listLocalRefs() {
@@ -65,6 +71,7 @@ export function createLocalGitClient(home: string): LocalGitClient {
         ['for-each-ref', '--format=%(refname)', 'refs/heads'],
         'Unable to inspect Git branches.',
       );
+
       return raw.split('\n').filter(Boolean);
     },
     async validateBranch(branch) {
@@ -84,12 +91,14 @@ export function createLocalGitClient(home: string): LocalGitClient {
           'Base reference does not resolve to a commit.',
         );
       }
+
       return commit;
     },
     async verifyBaseProjectConfig(commit) {
       if (!OBJECT_ID.test(commit)) {
         throw new GitCapabilityError('BASE_REF_NOT_FOUND', 'Invalid base commit object ID.');
       }
+
       const tree = await read(['ls-tree', '-z', commit, '--', '.nevo/config.yaml']);
       if (
         tree.exitCode !== 0 ||
@@ -102,10 +111,14 @@ export function createLocalGitClient(home: string): LocalGitClient {
           'Base commit must contain a regular project configuration file.',
         );
       }
+
       const config = await read(['show', commit + ':.nevo/config.yaml']);
       let parsed: unknown;
       try {
-        if (config.exitCode !== 0) throw new Error('Missing config.');
+        if (config.exitCode !== 0) {
+          throw new Error('Missing config.');
+        }
+
         parsed = parseYaml(config.stdout) as unknown;
       } catch {
         throw new GitCapabilityError(
@@ -113,6 +126,7 @@ export function createLocalGitClient(home: string): LocalGitClient {
           'Invalid base project configuration.',
         );
       }
+
       if (!isRecord(parsed) || !isRecord(parsed.runtime)) {
         throw new GitCapabilityError(
           'GIT_BASE_CONFIG_MISSING',
@@ -145,10 +159,14 @@ function parseWorktrees(raw: string): readonly LocalWorktreeFacts[] {
   const items: LocalWorktreeFacts[] = [];
   let current: { root: string; head?: string; branch?: string; prunable: boolean } | undefined;
   const flush = (): void => {
-    if (!current) return;
+    if (!current) {
+      return;
+    }
+
     if (!OBJECT_ID.test(current.head ?? '')) {
       throw new GitCapabilityError('GIT_OPERATION_FAILED', 'Incomplete Git worktree metadata.');
     }
+
     items.push({
       root: current.root,
       head: current.head!,
@@ -157,6 +175,7 @@ function parseWorktrees(raw: string): readonly LocalWorktreeFacts[] {
     });
     current = undefined;
   };
+
   for (const item of raw.split('\0')) {
     if (!item) {
       flush();
@@ -169,6 +188,7 @@ function parseWorktrees(raw: string): readonly LocalWorktreeFacts[] {
           'Git returned a relative worktree path.',
         );
       }
+
       current = { root: resolve(value), prunable: false };
     } else if (item.startsWith('HEAD ') && current) {
       current.head = item.slice('HEAD '.length);
@@ -186,7 +206,9 @@ function parseWorktrees(raw: string): readonly LocalWorktreeFacts[] {
       throw new GitCapabilityError('GIT_OPERATION_FAILED', 'Invalid Git worktree metadata.');
     }
   }
+
   flush();
+
   return items;
 }
 

@@ -20,29 +20,40 @@ export function withSessionDemoLinks(data: TaskWorkspaceData): TaskWorkspaceData
 export function readDemoSession(search: string): DemoSession | undefined {
   try {
     const value: unknown = JSON.parse(new URLSearchParams(search).get('session') ?? 'null');
-    if (!value || typeof value !== 'object') return;
+    if (!value || typeof value !== 'object') {
+      return;
+    }
+
     const item = value as Record<string, unknown>;
     if (
       ['id', 'title', 'provider', 'step', 'taskId'].some(
         (key) => typeof item[key] !== 'string' || !item[key],
       )
-    )
+    ) {
       return;
+    }
+
     if (
       typeof item.current !== 'boolean' ||
       typeof item.attempt !== 'number' ||
       !Number.isSafeInteger(item.attempt) ||
       item.attempt < 1
-    )
+    ) {
       return;
-    if (item.status !== 'running' && item.status !== 'idle' && item.status !== 'waitingForUser')
+    }
+
+    if (item.status !== 'running' && item.status !== 'idle' && item.status !== 'waitingForUser') {
       return;
+    }
+
     if (
       ['role', 'providerId', 'question'].some(
         (key) => item[key] !== undefined && typeof item[key] !== 'string',
       )
-    )
+    ) {
       return;
+    }
+
     return {
       id: item.id as string,
       title: item.title as string,

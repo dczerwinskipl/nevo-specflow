@@ -105,9 +105,18 @@ function trailingLabel(
   doc: MockDocument,
 ): { text: string; tone?: 'attention'; state?: boolean } | undefined {
   // State labels never hide (the name truncates instead); only a type title may hide on narrow rows.
-  if (doc.state === 'dangling') return { text: 'File missing', tone: 'attention', state: true };
-  if (doc.state === 'unclassified') return { text: 'No type', state: true };
-  if (doc.type && stem(doc.path) !== doc.type) return { text: typeTitle(doc.type) };
+  if (doc.state === 'dangling') {
+    return { text: 'File missing', tone: 'attention', state: true };
+  }
+
+  if (doc.state === 'unclassified') {
+    return { text: 'No type', state: true };
+  }
+
+  if (doc.type && stem(doc.path) !== doc.type) {
+    return { text: typeTitle(doc.type) };
+  }
+
   return undefined;
 }
 
@@ -117,6 +126,7 @@ function RowMenu({ doc, open }: { doc: MockDocument; open?: boolean }) {
   const reason = doc.protected
     ? 'The overview is the main document: it can be edited, but not renamed, moved or deleted.'
     : undefined;
+
   return (
     <Menu modal={false} defaultOpen={open}>
       <MenuTrigger asChild>
@@ -167,6 +177,7 @@ function DocRow({
   const label = trailingLabel(doc);
   const missing = doc.state === 'dangling';
   const glyph = missing ? 'triangle-alert' : 'file';
+
   return (
     <li className={treeNodeClassName}>
       <div className={treeRowClassName}>
@@ -215,6 +226,7 @@ function Tree({
     const docs = treeDocuments
       .filter((doc) => (doc.path.includes('/') ? doc.path.split('/')[0] : '') === parent)
       .sort((a, b) => fileName(a.path).localeCompare(fileName(b.path)));
+
     return docs.map((doc) => (
       <DocRow
         key={doc.id}
@@ -225,6 +237,7 @@ function Tree({
       />
     ));
   };
+
   return (
     <TooltipProvider>
       <ul className={treeRootClassName} aria-label="Documents">
@@ -319,6 +332,7 @@ function TreePanel({
 }) {
   const clean = scenario === 'clean';
   const readOnly = scenario === 'read-only-tree' || scenario === 'read-only';
+
   return (
     <AppContent className="h-full w-full">
       <ScrollArea direction="both" className="min-h-0 flex-1" contentClassName="grid gap-4 p-2">
@@ -363,6 +377,7 @@ function TypeOption({ id }: { id: string }) {
   const type = documentTypes.find((item) => item.id === id)!;
   const expected = ownerFeature.requirements.find((r) => r.documentType === id);
   const count = presentCount[id] ?? 0;
+
   return (
     <RadioGroupOption
       value={id}
@@ -426,7 +441,10 @@ function TypeChoice({
 
 function Guidance({ type }: { type: string }) {
   const info = documentTypes.find((item) => item.id === type);
-  if (!info) return null;
+  if (!info) {
+    return null;
+  }
+
   return (
     <Collapsible className="-ml-control-padding-compact">
       <Collapsible.Trigger className="px-0">
@@ -443,6 +461,7 @@ function Guidance({ type }: { type: string }) {
 function NewDocumentDialog({ initialType = 'decisions' }: { initialType?: string }) {
   const [type, setType] = useState(initialType);
   const filename = documentTypes.find((item) => item.id === type)?.defaultFilename ?? 'untitled.md';
+
   return (
     <Dialog open>
       <DialogContent>
@@ -472,6 +491,7 @@ function NewDocumentDialog({ initialType = 'decisions' }: { initialType?: string
 
 function AssignTypeDialog() {
   const [type, setType] = useState('research');
+
   return (
     <Dialog open>
       <DialogContent>
@@ -536,6 +556,7 @@ interface TabSpec {
 function tabsFor(scenario: DocumentsScenario): TabSpec {
   const tab = (id: string, extra: Partial<ItemTab> = {}): ItemTab => {
     const doc = treeDocuments.find((item) => item.id === id)!;
+
     return {
       id,
       // Today's rule (documentTabs.ts): the tab label is the file name; the title is the heading.
@@ -545,6 +566,7 @@ function tabsFor(scenario: DocumentsScenario): TabSpec {
       ...extra,
     };
   };
+
   switch (scenario) {
     case 'read-only':
       return { tabs: [tab('overview'), tab('behaviour')], active: 'overview' };
@@ -639,6 +661,7 @@ function headerActions(scenario: DocumentsScenario): WorkspaceHeaderAction[] {
 
 function SourceBlock({ source }: { source: string }) {
   const lines = source.split('\n');
+
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 px-4 py-3 font-mono text-body-sm">
       {lines.map((line, index) => (
@@ -761,6 +784,7 @@ function DocumentBody({ scenario }: { scenario: DocumentsScenario }) {
 
 function EmptyDocumentArea({ onOpen }: { onOpen: (id: string) => void }) {
   const start = treeDocuments.filter((doc) => doc.state === 'registered').slice(0, 5);
+
   return (
     <div className="flex h-full min-h-0 max-w-content-narrow flex-col gap-4 p-6">
       <Typography as="p" variant="title-sm">
@@ -821,8 +845,9 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
       </span>
     ) : undefined;
   if (narrowPage === 'document')
-    // Narrow stacked document page, hand-composed: the product shows it as the Secondary stack
-    // screen (Back in the header, `name (N)` switcher, complete menu).
+  // Narrow stacked document page, hand-composed: the product shows it as the Secondary stack
+  // screen (Back in the header, `name (N)` switcher, complete menu).
+  {
     return (
       <AppWorkspaceProvider scopeKey="documents-archetypes-mock">
         <AppWorkspace scroll="content" fit="available">
@@ -865,6 +890,8 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
         </AppWorkspace>
       </AppWorkspaceProvider>
     );
+  }
+
   return (
     <AppWorkspaceProvider scopeKey="documents-archetypes-mock">
       <AppWorkspace
@@ -939,6 +966,7 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
 
 export function DocumentsMock(props: DocumentsMockProps): ReactNode {
   const { width, height = 900 } = props;
+
   return (
     <StoryLocalization locale="en">
       <div style={{ width, height }} data-mock-frame={width}>

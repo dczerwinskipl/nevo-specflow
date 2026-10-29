@@ -45,6 +45,7 @@ function useFloatingWindowsContext(part: string) {
   if (!context) {
     throw new Error(`${part} must be rendered inside FloatingWindowHost.`);
   }
+
   return context;
 }
 
@@ -174,17 +175,22 @@ export function FloatingWindowHost({
 
   useLayoutEffect(() => {
     const target = pendingFocusRef.current;
-    if (!target) return;
+    if (!target) {
+      return;
+    }
 
     const targetId = target === 'first-visible' ? layout.visibleIds[0] : target;
 
     if (!targetId) {
       pendingFocusRef.current = null;
+
       return;
     }
 
     const registration = registrations.find((item) => item.id === targetId);
-    if (!registration) return;
+    if (!registration) {
+      return;
+    }
 
     pendingFocusRef.current = null;
     registration.focusHeader();
@@ -366,7 +372,9 @@ export const FloatingWindow = forwardRef<HTMLDivElement, FloatingWindowProps>(
       register({ id, title, focusHeader, notification });
     }, [focusHeader, id, notification, register, title]);
 
-    if (!host.isVisible(id)) return null;
+    if (!host.isVisible(id)) {
+      return null;
+    }
 
     const expanded = host.expandedId === id;
     const contentId = `${id}-floating-content`;

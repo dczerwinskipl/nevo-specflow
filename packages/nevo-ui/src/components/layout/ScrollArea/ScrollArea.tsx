@@ -47,8 +47,11 @@ const hiddenEdges: ScrollAreaEdges = {
 };
 
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
-  if (typeof ref === 'function') ref(value);
-  else if (ref) ref.current = value;
+  if (typeof ref === 'function') {
+    ref(value);
+  } else if (ref) {
+    ref.current = value;
+  }
 }
 
 export function readScrollAreaEdges(
@@ -125,7 +128,9 @@ export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(function S
     const root = rootRef.current;
     const viewport = internalViewportRef.current;
     const content = contentRef.current;
-    if (!root || !viewport || !content) return;
+    if (!root || !viewport || !content) {
+      return;
+    }
 
     const measured = readScrollAreaEdges(
       viewport,
@@ -153,14 +158,19 @@ export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(function S
   }, [direction, endEdge, onEdgesChange, startEdge]);
 
   const scheduleUpdate = useCallback(() => {
-    if (frameRef.current !== null) return;
+    if (frameRef.current !== null) {
+      return;
+    }
+
     frameRef.current = requestAnimationFrame(update);
   }, [update]);
 
   useEffect(() => {
     const viewport = internalViewportRef.current;
     const content = contentRef.current;
-    if (!viewport || !content) return;
+    if (!viewport || !content) {
+      return;
+    }
 
     const resizeObserver = new ResizeObserver(scheduleUpdate);
     resizeObserver.observe(viewport);
@@ -179,7 +189,10 @@ export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(function S
     return () => {
       resizeObserver.disconnect();
       mutationObserver.disconnect();
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+
       frameRef.current = null;
     };
   }, [scheduleUpdate]);

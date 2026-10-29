@@ -65,10 +65,12 @@ function setup(documentId: string | undefined, strict = false, treeFails = false
     seen.ops = useDocumentSaveOwner();
     seen.sessionOfA = useDocumentSession('a');
     seen.sessionOfB = useDocumentSession('b');
+
     return (
       <output data-testid="probe">{`${session?.document.id ?? '-'}|${state?.documentId ?? '-'}|${state?.query.status ?? '-'}`}</output>
     );
   }
+
   const tree = (
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={services}>
@@ -83,6 +85,7 @@ function setup(documentId: string | undefined, strict = false, treeFails = false
     </QueryClientProvider>
   );
   render(strict ? <StrictMode>{tree}</StrictMode> : tree);
+
   return { getDocument, save, store, seen, docs };
 }
 

@@ -34,6 +34,7 @@ function setup(
         onAdd: () => Promise.resolve(),
         onOperate,
       });
+
       return {
         inline: useInlineEntry({
           operations: operations.actions,
@@ -54,10 +55,14 @@ function setup(
       view.result.current.inline.start(kind, '', { id, path });
       await Promise.resolve();
     });
-    if (!view.result.current.inline.entry) return;
+    if (!view.result.current.inline.entry) {
+      return;
+    }
+
     act(() => view.result.current.inline.change(name));
     await act(() => view.result.current.inline.commit('enter'));
   };
+
   return { view, onOperate, rename };
 }
 

@@ -32,6 +32,7 @@ export async function assertProjectHomeLockProof(
   if (!isDeepStrictEqual(current, before)) {
     throw new Error('Project Home identity or Git worktree authority changed before mutation.');
   }
+
   // The sentinel binds the physical Git incarnation to the designated home.
   // This function uses only lstat/readFile; it does not execute Git.
   await verifyGitInstance(
@@ -71,18 +72,25 @@ async function physicalAuthority(context: ResolvedProjectHome): Promise<Physical
       entries.push(linkedGitFile, join(dirname(linkedGitFile), PROJECT_HOME_MARKER_RELATIVE_PATH));
     }
   }
+
   const unique = [...new Set(entries)].sort();
+
   return Promise.all(unique.map(readPhysicalEntry));
 }
 
 async function childDirectoryNames(path: string): Promise<string[]> {
   try {
     const stat = await lstat(path);
-    if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path)
+    if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
       throw new Error('Git worktree admin metadata directory is redirected.');
+    }
+
     return (await readdir(path)).sort();
   } catch (error) {
-    if (isMissing(error)) return [];
+    if (isMissing(error)) {
+      return [];
+    }
+
     throw error;
   }
 }
@@ -90,11 +98,16 @@ async function childDirectoryNames(path: string): Promise<string[]> {
 async function readOptionalText(path: string): Promise<string | undefined> {
   try {
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink())
+    if (!stat.isFile() || stat.isSymbolicLink()) {
       throw new Error('Git worktree metadata is redirected.');
+    }
+
     return readFile(path, 'utf8');
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
     throw error;
   }
 }
@@ -102,13 +115,18 @@ async function readOptionalText(path: string): Promise<string | undefined> {
 async function readPhysicalEntry(path: string): Promise<PhysicalEntry> {
   try {
     const stat = await lstat(path);
-    if (stat.isSymbolicLink() || (!stat.isFile() && !stat.isDirectory()))
+    if (stat.isSymbolicLink() || (!stat.isFile() && !stat.isDirectory())) {
       throw new Error('Project Home authority is redirected or not a regular filesystem entry.');
+    }
+
     if (stat.isDirectory()) {
-      if ((await realpath(path)) !== path)
+      if ((await realpath(path)) !== path) {
         throw new Error('Project Home authority directory is redirected.');
+      }
+
       return { path, kind: 'directory', device: stat.dev, inode: stat.ino };
     }
+
     return {
       path,
       kind: 'file',
@@ -117,7 +135,10 @@ async function readPhysicalEntry(path: string): Promise<PhysicalEntry> {
       bytes: await readFile(path, 'utf8'),
     };
   } catch (error) {
-    if (isMissing(error)) return { path, kind: 'missing' };
+    if (isMissing(error)) {
+      return { path, kind: 'missing' };
+    }
+
     throw error;
   }
 }

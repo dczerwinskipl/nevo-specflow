@@ -11,7 +11,10 @@ export interface SessionsFeatureConfig {
   };
 }
 export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfig {
-  if (value === undefined) return { enabled: false, providers: { mock: { enabled: false } } };
+  if (value === undefined) {
+    return { enabled: false, providers: { mock: { enabled: false } } };
+  }
+
   const sessions = record(value, 'sessions');
   onlyKeys(sessions, new Set(['enabled', 'providers']), 'sessions');
   const providers =
@@ -21,36 +24,44 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
     providers.codex === undefined ? undefined : record(providers.codex, 'sessions.providers.codex');
   if (codex) {
     onlyKeys(codex, new Set(['enabled', 'executable']), 'sessions.providers.codex');
-    if (codex.enabled !== undefined && typeof codex.enabled !== 'boolean')
+    if (codex.enabled !== undefined && typeof codex.enabled !== 'boolean') {
       throw new RuntimeConfigError('sessions.providers.codex.enabled must be boolean.');
+    }
+
     if (
       codex.executable !== undefined &&
       (typeof codex.executable !== 'string' ||
         !isAbsolute(codex.executable) ||
         codex.executable.includes('\0'))
-    )
+    ) {
       throw new RuntimeConfigError(
         'sessions.providers.codex.executable must be an absolute native executable path.',
       );
+    }
   }
+
   const claude =
     providers.claude === undefined
       ? undefined
       : record(providers.claude, 'sessions.providers.claude');
   if (claude) {
     onlyKeys(claude, new Set(['enabled', 'executable']), 'sessions.providers.claude');
-    if (claude.enabled !== undefined && typeof claude.enabled !== 'boolean')
+    if (claude.enabled !== undefined && typeof claude.enabled !== 'boolean') {
       throw new RuntimeConfigError('sessions.providers.claude.enabled must be boolean.');
+    }
+
     if (
       claude.executable !== undefined &&
       (typeof claude.executable !== 'string' ||
         !isAbsolute(claude.executable) ||
         claude.executable.includes('\0'))
-    )
+    ) {
       throw new RuntimeConfigError(
         'sessions.providers.claude.executable must be an absolute native executable path.',
       );
+    }
   }
+
   const mock =
     providers.mock === undefined ? {} : record(providers.mock, 'sessions.providers.mock');
   onlyKeys(mock, new Set(['enabled']), 'sessions.providers.mock');
@@ -58,9 +69,11 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
     ['sessions.enabled', sessions.enabled],
     ['sessions.providers.mock.enabled', mock.enabled],
   ] as const) {
-    if (flag !== undefined && typeof flag !== 'boolean')
+    if (flag !== undefined && typeof flag !== 'boolean') {
       throw new RuntimeConfigError(name + ' must be boolean.');
+    }
   }
+
   return {
     enabled: sessions.enabled === true,
     providers: {

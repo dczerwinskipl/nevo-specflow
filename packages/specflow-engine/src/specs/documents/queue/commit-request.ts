@@ -30,6 +30,7 @@ export function batchTrailers(
     path.startsWith(prefix) ? path.slice(prefix.length) : path,
   );
   const others = members.slice(1).map((member) => member.operationId);
+
   return {
     'Nevo-Spec': batch.specId,
     'Nevo-Action': actions.size === 1 ? [...actions][0]! : 'mixed',

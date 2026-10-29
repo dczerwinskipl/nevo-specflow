@@ -33,9 +33,13 @@ function rejection(value: unknown): DocumentError {
   try {
     parse(value);
   } catch (error) {
-    if (error instanceof DocumentError) return error;
+    if (error instanceof DocumentError) {
+      return error;
+    }
+
     throw error;
   }
+
   throw new Error('expected the journal to be rejected');
 }
 
@@ -120,6 +124,7 @@ describe('journal codec', () => {
       const journal = completed({ reason });
       expect(parse(JSON.parse(JSON.stringify(journal)))).toEqual(journal);
     }
+
     for (const bad of [
       completed({ reason: undefined }),
       completed({ reason: 'git-disabled' }),
@@ -235,8 +240,14 @@ function patchFor(
     case 'committing':
       return { batchId: TEST_BATCH_ID };
     case 'completed':
-      if (from === 'queued') return { outcome: 'not-applicable', reason: 'git-disabled' };
-      if (from === 'files-writing') return { outcome: 'uncommitted', reason: 'auto-commit-off' };
+      if (from === 'queued') {
+        return { outcome: 'not-applicable', reason: 'git-disabled' };
+      }
+
+      if (from === 'files-writing') {
+        return { outcome: 'uncommitted', reason: 'auto-commit-off' };
+      }
+
       return { outcome: 'committed', sha: 'b'.repeat(40) };
     case 'failed':
     case 'commit-failed':
@@ -271,6 +282,7 @@ describe('transitionDocumentChange', () => {
         if ((DOCUMENT_CHANGE_TRANSITIONS[from] as readonly DocumentChangeStage[]).includes(to)) {
           continue;
         }
+
         const journal = buildJournal(from);
         const snapshot = JSON.stringify(journal);
         expect(() => transitionDocumentChange(journal, to, patchFor(from, to), TEST_LATER)).toThrow(

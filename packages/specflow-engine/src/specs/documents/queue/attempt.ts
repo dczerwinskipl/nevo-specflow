@@ -56,17 +56,20 @@ async function updateOwnRecord(
   change: (current: DocumentBatchRecord) => Record<string, unknown>,
 ): Promise<DocumentBatchRecord> {
   const own = await rt.executor();
+
   return withJournalLock(rt.context, DOCUMENT_BATCH_KIND, async () => {
     const current = await readDocumentBatch(rt.context, batch.operationId);
     if (current?.state !== 'committing' || !isDeepStrictEqual(current.executor, own)) {
       throw documentChangeError('operation-state-invalid', 'The document batch moved.');
     }
+
     const next = parseDocumentBatchRecord(
       rt.context,
       { ...current, ...change(current), updatedAt: rt.nowIso() },
       current.operationId,
     );
     await publishDocumentBatch(rt.context, next);
+
     return next;
   });
 }
@@ -100,15 +103,21 @@ export async function attemptCommit(
         if (batch.commitStartedAt !== undefined) {
           return result(failed({ kind: 'uncertain', reason: 'history-changed' }));
         }
+
         // No commit was started, so none can be lost: the rewritten parent is read again.
         const head = await commits.head(root);
-        if (head === undefined) return result(failed({ kind: 'permanent', reason: 'no-commits' }));
+        if (head === undefined) {
+          return result(failed({ kind: 'permanent', reason: 'no-commits' }));
+        }
+
         batch = await updateOwnRecord(rt, batch, () => ({ parentHead: head }));
         evidence = await lookUpBatchCommit(rt, batch, expectations);
       }
+
       if (evidence.kind === 'committed') {
         return result({ kind: 'committed', sha: evidence.sha, paths: evidence.paths });
       }
+
       if (evidence.kind === 'foreign-commit' || evidence.kind === 'history-changed') {
         return result(
           failed({ kind: 'uncertain', reason: 'uncertain', blockedBy: 'foreign-commit' }),
@@ -123,6 +132,7 @@ export async function attemptCommit(
     if (foreign.length > 0) {
       return result(failed({ kind: 'permanent', reason: 'content-changed', paths: foreign }));
     }
+
     // A directory where a document belongs (or the reverse) cannot be committed as a document.
     const misplaced = split.facts
       .filter(
@@ -141,10 +151,12 @@ export async function attemptCommit(
         }),
       );
     }
+
     if (decideBatchReplay(inspections) === 'done' || split.effective.length === 0) {
       // A->B->A, or already in HEAD: nothing to commit and no Git mutation.
       return result({ kind: 'nothing' });
     }
+
     const members = await Promise.all(held.map((journal) => commitMember(rt, journal)));
     await rt.hooks.beforeCommit?.(batch);
     // Recorded before Git runs: from here on a commit may exist.
@@ -159,10 +171,14 @@ export async function attemptCommit(
         failed({ kind: 'uncertain', reason: 'uncertain', blockedBy: 'commit-content-mismatch' }),
       );
     }
+
     return result({ kind: 'committed', sha: committed.sha, paths: split.effective });
   } catch (error) {
     const classified = classifyCommitError(error);
-    if (classified === undefined) throw error;
+    if (classified === undefined) {
+      throw error;
+    }
+
     return result(await refined(rt, batch, classified));
   }
 }
@@ -179,7 +195,10 @@ async function commitMember(
   try {
     return { ...member, plan: await planOfJournal(rt.context, journal) };
   } catch (error) {
-    if (error instanceof QueueInterrupted) throw error;
+    if (error instanceof QueueInterrupted) {
+      throw error;
+    }
+
     return member;
   }
 }
@@ -212,20 +231,27 @@ async function refined(
       failure.reason === 'path-ignored'
     ) {
       const ignored = await pathsRefusedWith(rt, batch, paths, 'path-ignored');
-      if (ignored === undefined) return failed({ ...failure, blockedBy: 'bisection-limit' });
+      if (ignored === undefined) {
+        return failed({ ...failure, blockedBy: 'bisection-limit' });
+      }
+
       return failed(ignored.length > 0 ? { ...failure, paths: ignored } : failure);
     }
+
     if (maybeLanded) {
       const evidence = await lookUpBatchCommit(rt, batch, expectations);
       if (evidence.kind === 'committed') {
         return { kind: 'committed', sha: evidence.sha, paths: evidence.paths };
       }
+
       if (evidence.kind === 'foreign-commit') {
         return failed({ kind: 'uncertain', reason: 'uncertain', blockedBy: 'foreign-commit' });
       }
+
       if (evidence.kind === 'history-changed') {
         return failed({ kind: 'uncertain', reason: 'history-changed' });
       }
+
       // No commit. A Git process that may still be running (`not-terminated`) makes that no proof.
       if (failure.blockedBy !== NOT_TERMINATED && (await provablyNotCommitted(rt, batch, paths))) {
         return failed(
@@ -234,6 +260,7 @@ async function refined(
             : { kind: 'transient', reason: 'git-timeout', blockedBy: 'uncertain' },
         );
       }
+
       return failed(
         failure.kind === 'transient'
           ? { kind: 'uncertain', reason: 'uncertain', blockedBy: failure.reason }
@@ -241,11 +268,15 @@ async function refined(
       );
     }
   } catch (error) {
-    if (classifyCommitError(error) === undefined) throw error;
+    if (classifyCommitError(error) === undefined) {
+      throw error;
+    }
+
     // The repository cannot be asked whether the commit landed.
     if (maybeLanded && failure.kind === 'transient') {
       return failed({ kind: 'uncertain', reason: 'uncertain', blockedBy: failure.reason });
     }
   }
+
   return failed(failure);
 }

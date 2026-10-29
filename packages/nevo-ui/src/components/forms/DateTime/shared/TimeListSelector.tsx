@@ -25,8 +25,12 @@ export interface TimeSelectorLabels {
 }
 
 function selectedNumber(selection: Selection) {
-  if (selection === 'all') return undefined;
+  if (selection === 'all') {
+    return undefined;
+  }
+
   const first = selection.values().next().value;
+
   return first === undefined ? undefined : Number(first);
 }
 
@@ -50,7 +54,9 @@ function OptionColumn({
       const list = listRef.current;
       const selectedItem = list?.querySelector<HTMLElement>('[data-selected]');
 
-      if (!list || !selectedItem) return;
+      if (!list || !selectedItem) {
+        return;
+      }
 
       list.scrollTop = selectedItem.offsetTop - (list.clientHeight - selectedItem.offsetHeight) / 2;
     });
@@ -69,7 +75,9 @@ function OptionColumn({
         selectionMode="single"
         onSelectionChange={(selection: Selection) => {
           const next = selectedNumber(selection);
-          if (next !== undefined) onSelect(next);
+          if (next !== undefined) {
+            onSelect(next);
+          }
         }}
       >
         {options.map((option) => (

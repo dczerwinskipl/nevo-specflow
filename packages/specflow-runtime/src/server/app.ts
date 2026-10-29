@@ -106,6 +106,7 @@ export async function createRuntimeApp(
 ): Promise<FastifyInstance> {
   const app = Fastify(RUNTIME_FASTIFY_OPTIONS);
   await configureRuntimeApp(app, config, dependencies);
+
   return app;
 }
 
@@ -239,6 +240,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     },
     (_request, reply) => {
       reply.header('Cache-Control', 'no-store');
+
       return {
         dataMode: mode,
       };
@@ -249,10 +251,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     await feature.register?.(app);
   }
 
-  if (demo) registerDemoRoutes(app, demo, { registry: progressRegistry, stream: progressStream });
+  if (demo) {
+    registerDemoRoutes(app, demo, { registry: progressRegistry, stream: progressStream });
+  }
 
   if (dependencies.webApp) {
     registerRuntimeWebApp(app, dependencies.webApp);
+
     return;
   }
 

@@ -65,7 +65,10 @@ async function server(
     '-qm',
     'initial',
   );
-  if (gitEnabled) git(root, 'branch', '-m', 'develop');
+  if (gitEnabled) {
+    git(root, 'branch', '-m', 'develop');
+  }
+
   const engine = await bootstrapProjectHome(root);
   await installDefinitionsForTesting(engine);
 
@@ -105,13 +108,20 @@ async function server(
         while (registry.peek(operationId, 'specification-create')?.status === 'running') {
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
+
         return body;
       }
-      if (body.status === 'recovery-required') throw new Error('recovery required');
+
+      if (body.status === 'recovery-required') {
+        throw new Error('recovery required');
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
+
     throw new Error('create did not complete');
   };
+
   return { root, engine, app, post, inspect, untilCompleted };
 }
 
@@ -166,14 +176,19 @@ describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
     // of relying on the 202 alone, then replay while the detached Create is still working.
     for (let attempt = 0; attempt < 600; attempt++) {
       const stage = (await inspectCreateSpecification(engine, operationId))?.stage;
-      if (stage !== undefined && stage !== 'reserved') break;
+      if (stage !== undefined && stage !== 'reserved') {
+        break;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
+
     const replay = await post(body, 'respond-async');
     expect([201, 202], replay.body).toContain(replay.statusCode);
     if (replay.statusCode === 202) {
       expect(replay.headers.location).toBe(`/api/specs/create/operations/${operationId}`);
     }
+
     await untilCompleted(operationId);
   }, 240000);
 

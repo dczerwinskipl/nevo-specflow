@@ -66,6 +66,7 @@ const registry = createDefaultDefinitionRegistry();
 
 function reportOf(result: LoadResult): DefinitionsReport {
   const capped = capProblems(result.problems);
+
   return {
     rootPresent: result.rootPresent,
     problems: capped.problems,
@@ -82,6 +83,7 @@ function projectSource(engine: SpecFlowEngine): DefinitionSource {
 
 function stringField(entity: unknown, name: string): string | undefined {
   const value = (entity as Record<string, unknown> | null)?.[name];
+
   return typeof value === 'string' ? value : undefined;
 }
 
@@ -93,11 +95,15 @@ export async function listProjectDefinitions(
   if (options.kind !== undefined && !registry.has(options.kind)) {
     throw new Error(`"${options.kind}" is not a definition kind.`);
   }
+
   const result = await loadDefinitions(projectSource(engine), registry);
   const definitions: ListedDefinition[] = [];
   const invalid: string[] = [];
   for (const kind of registry.loadOrder()) {
-    if (options.kind !== undefined && kind.kind !== options.kind) continue;
+    if (options.kind !== undefined && kind.kind !== options.kind) {
+      continue;
+    }
+
     for (const loaded of result.definitions.get(kind.kind)?.values() ?? []) {
       const title = stringField(loaded.entity, 'title');
       const version = (loaded.entity as { version?: unknown }).version;
@@ -109,10 +115,12 @@ export async function listProjectDefinitions(
         ...(typeof version === 'number' ? { version } : {}),
       });
     }
+
     for (const id of [...(result.invalid.get(kind.kind) ?? [])].sort()) {
       invalid.push(`${kind.kind}/${id}`);
     }
   }
+
   return { ...reportOf(result), definitions, invalid };
 }
 
@@ -125,6 +133,7 @@ export async function showProjectDefinition(
   if (!match || !registry.has(match[1] ?? '')) {
     throw new Error(`"${target}" is not of the form <kind>/<id> with a known kind.`);
   }
+
   const kind = match[1] ?? '';
   const id = match[2] ?? '';
   const result = await loadDefinitions(projectSource(engine), registry);
@@ -132,13 +141,16 @@ export async function showProjectDefinition(
   if (loaded) {
     return { state: 'valid', kind, id, source: loaded.source, entity: loaded.entity };
   }
+
   const source = `${kind}/${id}.yaml`;
   if (result.invalid.get(kind)?.has(id)) {
     const own = result.problems.filter(
       (problem) => problem.source === source || problem.source.startsWith(`${kind}/${id}.`),
     );
+
     return { state: 'invalid', kind, id, source, problems: own };
   }
+
   return { state: 'absent', kind, id };
 }
 
@@ -155,7 +167,11 @@ export async function validateProjectDefinitions(
  */
 export async function validateDefinitionsFolder(folder: string): Promise<DefinitionsReport> {
   const info = await stat(folder);
-  if (!info.isDirectory()) throw new Error('The path is not a folder of definitions.');
+  if (!info.isDirectory()) {
+    throw new Error('The path is not a folder of definitions.');
+  }
+
   const root = await realpath(folder);
+
   return reportOf(await loadDefinitions(createFilesystemDefinitionSource(root), registry));
 }

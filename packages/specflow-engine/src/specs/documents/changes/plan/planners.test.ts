@@ -32,9 +32,13 @@ function refusal(
   try {
     planDocumentChange(snapshot, request, options);
   } catch (error) {
-    if (error instanceof DocumentError) return error;
+    if (error instanceof DocumentError) {
+      return error;
+    }
+
     throw error;
   }
+
   throw new Error('expected a refusal');
 }
 
@@ -46,6 +50,7 @@ function plan(
   const result = planDocumentChange(snapshot, request, options);
   // Every plan the planners produce is one the strict decoder accepts, byte for byte.
   expect(decodePlan(encodePlan(result.plan).text)).toEqual(result.plan);
+
   return result;
 }
 
@@ -576,6 +581,7 @@ describe('rename and move of a document', () => {
         }).code,
       ).toBe('DOCUMENT_PROTECTED');
     }
+
     expect(
       refusal(snapshot, {
         action: 'delete',

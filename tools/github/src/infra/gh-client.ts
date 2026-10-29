@@ -15,6 +15,7 @@ function gh(args: readonly string[], input?: string): string {
     });
   } catch (err) {
     const e = err as { stderr?: string; stdout?: string };
+
     throw new Error(
       `gh ${args.join(' ')} failed:\n${(e.stderr ?? e.stdout ?? String(err)).trim()}`,
       {
@@ -29,8 +30,12 @@ function ghApi(
   { method = 'GET', body }: { method?: string; body?: unknown } = {},
 ): unknown {
   const args = ['api', '-H', 'Accept: application/vnd.github+json', '--method', method, path];
-  if (body !== undefined) args.push('--input', '-');
+  if (body !== undefined) {
+    args.push('--input', '-');
+  }
+
   const out = gh(args, body === undefined ? undefined : JSON.stringify(body)).trim();
+
   return out ? (JSON.parse(out) as unknown) : undefined;
 }
 
@@ -63,6 +68,7 @@ export function createGhClient(): GitHubAdminClient {
       if (!Array.isArray(result)) {
         throw new Error('collaborators API did not return a list');
       }
+
       return result as { login: string; permissions?: Record<string, boolean> }[];
     },
 

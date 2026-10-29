@@ -73,6 +73,7 @@ export function executionResources(context: ResolvedProjectHome): readonly strin
   // pretend that a cwd-only checkout claim contains those capabilities.
   return ['project-write:' + context.project.projectId];
 }
+
 export function parseExecutionJournal(
   context: ResolvedProjectHome,
   operationId: string,
@@ -88,24 +89,30 @@ export function parseExecutionJournal(
     (value.phase === 'settled') !== Boolean(value.settlement) ||
     (value.settlement?.kind === 'native-result' &&
       value.settlement.receipt.invocationId !== operationId)
-  )
+  ) {
     throw new WorkspaceExecutionError(
       'EXECUTION_CORRUPT',
       'External execution journal is inconsistent.',
     );
+  }
+
   return value;
 }
+
 export function validateExecutionIntent(value: WorkspaceExecutionIntent) {
-  if (!Value.Check(ExecutionIntentSchema, value))
+  if (!Value.Check(ExecutionIntentSchema, value)) {
     throw new WorkspaceExecutionError(
       'EXECUTION_CONFLICT',
       'A bounded execution identity is required.',
     );
+  }
 }
+
 export function validateExecutionReceipt(value: WorkspaceExecutionReceipt) {
-  if (!Value.Check(ReceiptSchema, value))
+  if (!Value.Check(ReceiptSchema, value)) {
     throw new WorkspaceExecutionError(
       'EXECUTION_RECOVERY_REQUIRED',
       'Positive native result and process settlement evidence are required.',
     );
+  }
 }

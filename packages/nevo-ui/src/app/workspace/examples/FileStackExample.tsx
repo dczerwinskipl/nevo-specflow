@@ -9,6 +9,7 @@ let mountCounter = 0;
 
 function FileDetails({ data }: SecondaryScreenProps<FileRecord, FilePages['details']>) {
   const [mountId] = useState(() => ++mountCounter);
+
   return (
     <div className="grid gap-3 p-4">
       <p>File: {data.path}</p>
@@ -22,8 +23,10 @@ function FileDetails({ data }: SecondaryScreenProps<FileRecord, FilePages['detai
 export function createFileStack(source: ExampleSource<FileRecord>) {
   function useFile({ id }: { id: string }): SecondaryData<FileRecord> {
     const file = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+
     return file.id === id ? { status: 'ready', data: file } : { status: 'unavailable' };
   }
+
   return defineSecondaryStack<{ id: string }, FileRecord, FilePages>({
     id: 'cross-feature-file',
     initial: 'details',

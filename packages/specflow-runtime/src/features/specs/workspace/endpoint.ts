@@ -60,12 +60,21 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
       } catch (error) {
         // Authorization failures and defects keep their own handling; only a failing canonical
         // source is an unavailable read.
-        if (!isSpecsSourceError(error)) throw error;
+        if (!isSpecsSourceError(error)) {
+          throw error;
+        }
+
         return reply.code(503).send({ error: 'specification_source_unavailable' });
       }
-      if (result.kind === 'ok') return result.value;
-      if (result.kind === 'not_found')
+
+      if (result.kind === 'ok') {
+        return result.value;
+      }
+
+      if (result.kind === 'not_found') {
         return reply.code(404).send({ error: 'specification_not_found' });
+      }
+
       return reply.code(503).send({ error: 'specification_source_unavailable' });
     },
   );

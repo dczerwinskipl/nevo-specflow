@@ -90,6 +90,7 @@ export interface CommitPortSeams {
 
 async function readIgnoreCase(root: string, run: GitReader): Promise<boolean> {
   const result = await run(root, ['config', '--bool', '--get', 'core.ignorecase']);
+
   return result.exitCode === 0 && result.stdout.trim() === 'true';
 }
 
@@ -107,13 +108,17 @@ export function createGitCommitPort(
     const head = async (root: string): Promise<string | undefined> => {
       const result = await run(root, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']);
       const sha = result.stdout.trim();
+
       return result.exitCode === 0 && OBJECT_ID.test(sha) ? sha : undefined;
     };
 
     /** HEAD is attached to exactly the expected branch and the committed policy allows committing there. */
     const assertAttachedToExpected = async (request: EngineCommitRequest): Promise<void> => {
       const attached = await run(request.root, ['symbolic-ref', '--quiet', 'HEAD']);
-      if (attached.exitCode !== 0) throw blocked('detached');
+      if (attached.exitCode !== 0) {
+        throw blocked('detached');
+      }
+
       if (attached.stdout.trim() !== 'refs/heads/' + request.expectedBranch) {
         throw blocked('branch-changed');
       }
@@ -138,21 +143,39 @@ export function createGitCommitPort(
 
       const gitPaths = await resolveGitPaths(root, [...BUSY_STATE, 'index.lock'], run);
       for (const name of BUSY_STATE) {
-        if (await exists(gitPaths.get(name)!)) throw blocked('git-busy');
+        if (await exists(gitPaths.get(name)!)) {
+          throw blocked('git-busy');
+        }
       }
+
       const unmerged = await run(root, ['ls-files', '--unmerged', '-z']);
-      if (unmerged.exitCode !== 0) throw blocked('index-unreadable');
-      if (unmerged.stdout.length > 0) throw blocked('unmerged-paths');
-      if (!(await head(root))) throw blocked('no-commits');
+      if (unmerged.exitCode !== 0) {
+        throw blocked('index-unreadable');
+      }
+
+      if (unmerged.stdout.length > 0) {
+        throw blocked('unmerged-paths');
+      }
+
+      if (!(await head(root))) {
+        throw blocked('no-commits');
+      }
 
       // One process per chunk of paths; it lists the ignored ones (exit 0) or nothing (exit 1).
       for (const chunk of chunkPaths(request.paths)) {
         const ignored = await run(root, ['check-ignore', '--no-index', '--', ...chunk]);
-        if (ignored.exitCode === 0 && ignored.stdout.trim().length > 0)
+        if (ignored.exitCode === 0 && ignored.stdout.trim().length > 0) {
           throw blocked('path-ignored');
-        if (ignored.exitCode !== 0 && ignored.exitCode !== 1) throw blocked('ignore-check-failed');
+        }
+
+        if (ignored.exitCode !== 0 && ignored.exitCode !== 1) {
+          throw blocked('ignore-check-failed');
+        }
       }
-      if (!(await indexUnlocked(gitPaths.get('index.lock')!))) throw blocked('index-locked');
+
+      if (!(await indexUnlocked(gitPaths.get('index.lock')!))) {
+        throw blocked('index-locked');
+      }
     };
 
     const findByOperation = async (
@@ -163,9 +186,16 @@ export function createGitCommitPort(
       if (!OPERATION_ID.test(operationId) || !OBJECT_ID.test(sinceHead)) {
         throw new GitCapabilityError('COMMIT_BLOCKED', 'Invalid commit search request.', 'invalid');
       }
+
       const ancestor = await run(root, ['merge-base', '--is-ancestor', sinceHead, 'HEAD']);
-      if (ancestor.exitCode === 1) return { status: 'history-changed' };
-      if (ancestor.exitCode !== 0) throw inspectionFailed('merge-base');
+      if (ancestor.exitCode === 1) {
+        return { status: 'history-changed' };
+      }
+
+      if (ancestor.exitCode !== 0) {
+        throw inspectionFailed('merge-base');
+      }
+
       // The operation is read from the REAL trailer block (`%(trailers)` parses only the last
       // paragraph, like `git interpret-trailers`) and only on a commit the Engine itself committed
       // (Engine committer identity). A title or body line that looks like a trailer, or a user commit
@@ -175,7 +205,10 @@ export function createGitCommitPort(
         '--format=%x1e%H%x1f%ce%x1f%(trailers:key=Nevo-Operation,valueonly=true,unfold=true,separator=%x1d)%x1f%(trailers:key=Nevo-Coalesced,valueonly=true,unfold=true,separator=%x1d)',
         sinceHead + '..HEAD',
       ]);
-      if (log.exitCode !== 0) throw inspectionFailed('log');
+      if (log.exitCode !== 0) {
+        throw inspectionFailed('log');
+      }
+
       const shas = log.stdout
         .split('\x1e')
         .map((record) => record.split('\x1f'))
@@ -192,7 +225,10 @@ export function createGitCommitPort(
                 .some((value) => value.toLowerCase() === operationId.toLowerCase())),
         )
         .map(([sha]) => sha!.trim());
-      if (shas.length === 0) return { status: 'absent' };
+      if (shas.length === 0) {
+        return { status: 'absent' };
+      }
+
       if (shas.length > 1) {
         throw new GitCapabilityError(
           'GIT_OPERATION_UNCERTAIN',
@@ -200,6 +236,7 @@ export function createGitCommitPort(
           'duplicate-operation-commit',
         );
       }
+
       const sha = shas[0]!;
       const changed = await run(root, [
         'diff-tree',
@@ -211,14 +248,20 @@ export function createGitCommitPort(
         '--root',
         sha,
       ]);
-      if (changed.exitCode !== 0) throw inspectionFailed('diff-tree');
+      if (changed.exitCode !== 0) {
+        throw inspectionFailed('diff-tree');
+      }
+
       return { status: 'found', sha, paths: changed.stdout.split('\0').filter(Boolean).sort() };
     };
 
     const currentBranch = async (root: string): Promise<string> => {
       const attached = await run(root, ['symbolic-ref', '--quiet', 'HEAD']);
       const ref = attached.stdout.trim();
-      if (attached.exitCode !== 0 || !ref.startsWith('refs/heads/')) throw blocked('detached');
+      if (attached.exitCode !== 0 || !ref.startsWith('refs/heads/')) {
+        throw blocked('detached');
+      }
+
       return ref.slice('refs/heads/'.length);
     };
 
@@ -233,10 +276,19 @@ export function createGitCommitPort(
         '--',
         ...literals,
       ]);
-      if (tree.exitCode !== 0) throw inspectionFailed('ls-tree');
+      if (tree.exitCode !== 0) {
+        throw inspectionFailed('ls-tree');
+      }
+
       const tracked = tree.stdout.split('\0').filter(Boolean);
-      if (tracked.length === 0) return { state: 'uncommitted' };
-      if (!sameSet(tracked, paths)) return { state: 'mixed' };
+      if (tracked.length === 0) {
+        return { state: 'uncommitted' };
+      }
+
+      if (!sameSet(tracked, paths)) {
+        return { state: 'mixed' };
+      }
+
       const status = await run(root, [
         ...EXACT_BYTES,
         '-c',
@@ -248,11 +300,20 @@ export function createGitCommitPort(
         '--',
         ...literals,
       ]);
-      if (status.exitCode !== 0) throw inspectionFailed('status');
-      if (status.stdout.length > 0) return { state: 'mixed' };
+      if (status.exitCode !== 0) {
+        throw inspectionFailed('status');
+      }
+
+      if (status.stdout.length > 0) {
+        return { state: 'mixed' };
+      }
+
       const last = await run(root, ['log', '-1', '--format=%H', 'HEAD', '--', ...literals]);
       const sha = last.stdout.trim();
-      if (last.exitCode !== 0 || !OBJECT_ID.test(sha)) throw inspectionFailed('log');
+      if (last.exitCode !== 0 || !OBJECT_ID.test(sha)) {
+        throw inspectionFailed('log');
+      }
+
       return { state: 'committed', sha };
     };
 
@@ -261,7 +322,10 @@ export function createGitCommitPort(
       commitSha: string,
       path: string,
     ): Promise<boolean> => {
-      if (!OBJECT_ID.test(commitSha)) throw inspectionFailed('object-id');
+      if (!OBJECT_ID.test(commitSha)) {
+        throw inspectionFailed('object-id');
+      }
+
       // `hash-object <file>` runs the file through the clean filters of its path (attributes), exactly
       // like `git add`; `--no-filters` would hide an eol rule.
       const stored = await run(root, [...EXACT_BYTES, 'hash-object', '--', path]);
@@ -271,7 +335,10 @@ export function createGitCommitPort(
         '--quiet',
         commitSha + ':' + path,
       ]);
-      if (stored.exitCode !== 0 || committed.exitCode !== 0) return false;
+      if (stored.exitCode !== 0 || committed.exitCode !== 0) {
+        return false;
+      }
+
       return stored.stdout.trim() === committed.stdout.trim();
     };
 
@@ -280,11 +347,19 @@ export function createGitCommitPort(
       ancestor: string,
       descendant: string,
     ): Promise<boolean> => {
-      if (!OBJECT_ID.test(ancestor) || !OBJECT_ID.test(descendant))
+      if (!OBJECT_ID.test(ancestor) || !OBJECT_ID.test(descendant)) {
         throw inspectionFailed('object-id');
+      }
+
       const result = await run(root, ['merge-base', '--is-ancestor', ancestor, descendant]);
-      if (result.exitCode === 0) return true;
-      if (result.exitCode === 1) return false;
+      if (result.exitCode === 0) {
+        return true;
+      }
+
+      if (result.exitCode === 1) {
+        return false;
+      }
+
       throw inspectionFailed('merge-base');
     };
 
@@ -294,11 +369,17 @@ export function createGitCommitPort(
       paths: readonly string[],
       at = 'HEAD',
     ): Promise<DocumentPathFacts[]> => {
-      if (at !== 'HEAD' && !OBJECT_ID.test(at)) throw inspectionFailed('object-id');
+      if (at !== 'HEAD' && !OBJECT_ID.test(at)) {
+        throw inspectionFailed('object-id');
+      }
+
       try {
         return await readPathFacts(factsDeps, root, paths, at);
       } catch (error) {
-        if (error instanceof PathFactsError) throw inspectionFailed(error.reason);
+        if (error instanceof PathFactsError) {
+          throw inspectionFailed(error.reason);
+        }
+
         throw error;
       }
     };
@@ -308,6 +389,7 @@ export function createGitCommitPort(
       paths: readonly string[],
     ): Promise<EffectivePaths> => {
       const facts = await pathFacts(root, paths);
+
       return { ...splitEffectivePaths(facts), facts };
     };
 
@@ -321,6 +403,7 @@ export function createGitCommitPort(
         expectations.map((expectation) => expectation.path),
         at,
       );
+
       return facts.map((fact, index) => ({
         ...fact,
         state: classifyDocumentPath(fact, expectations[index]!),
@@ -341,13 +424,19 @@ export function createGitCommitPort(
           '--',
           ...chunk.map((path) => ':(literal)' + path),
         ]);
-        if (staged.exitCode !== 0) throw inspectionFailed('ls-files');
+        if (staged.exitCode !== 0) {
+          throw inspectionFailed('ls-files');
+        }
+
         for (const record of staged.stdout.split('\0').filter(Boolean)) {
           const tab = record.indexOf('\t');
           const [, id, stage] = record.slice(0, tab).split(' ');
-          if (id !== undefined && stage === '0') entries.set(record.slice(tab + 1), id);
+          if (id !== undefined && stage === '0') {
+            entries.set(record.slice(tab + 1), id);
+          }
         }
       }
+
       return entries;
     };
 
@@ -367,6 +456,7 @@ export function createGitCommitPort(
       indexEntries,
     };
   };
+
   const ops = operations(plainRead);
 
   type Mutate = (
@@ -385,26 +475,41 @@ export function createGitCommitPort(
     let enforcing = true;
     const budgeted: GitReader = async (cwd, args) => {
       const remaining = deadline - Date.now();
-      if (enforcing && remaining < MIN_STEP_BUDGET_MS) throw blocked('deadline-exceeded');
+      if (enforcing && remaining < MIN_STEP_BUDGET_MS) {
+        throw blocked('deadline-exceeded');
+      }
+
       const bounded = Math.min(remaining, READ_TIMEOUT_MS);
+
       return baseRead(cwd, args, {
         timeoutMs: enforcing ? bounded : Math.max(bounded, EVIDENCE_READ_MS),
       });
     };
+
     const reads = isDocument ? operations(budgeted) : ops;
 
     await reads.preflight(request);
     const parentHead = await reads.head(root);
-    if (!parentHead) throw blocked('no-commits');
+    if (!parentHead) {
+      throw blocked('no-commits');
+    }
+
     const hooks = await disabledIntegrationHooksDirectory(engine);
     const literals = request.paths.map((path) => ':(literal)' + path);
 
     const mutate: Mutate = (args) =>
       withLockRetry(() => {
-        if (!isDocument) return runMutation(root, args);
+        if (!isDocument) {
+          return runMutation(root, args);
+        }
+
         const remaining = deadline - Date.now();
-        if (remaining < MIN_STEP_BUDGET_MS) throw blocked('deadline-exceeded');
+        if (remaining < MIN_STEP_BUDGET_MS) {
+          throw blocked('deadline-exceeded');
+        }
+
         enforcing = false;
+
         return runMutation(root, args, { timeoutMs: remaining });
       });
     /** A mutation naming paths: they go in a pathspec file and stay plain paths. */
@@ -417,14 +522,22 @@ export function createGitCommitPort(
     let interrupted = false;
     // The mutation was interrupted but git is provably gone: the checkout tells whether anything happened.
     const nothingHappened = async (): Promise<boolean> => {
-      if (!isDocument) return false;
+      if (!isDocument) {
+        return false;
+      }
+
       const found = await reads.findByOperation(root, request.operationId, parentHead);
-      if (found.status !== 'absent') return false;
+      if (found.status !== 'absent') {
+        return false;
+      }
+
       const gitPaths = await resolveGitPaths(root, ['index.lock'], reads.run);
+
       return (
         (await reads.head(root)) === parentHead && !(await exists(gitPaths.get('index.lock')!))
       );
     };
+
     const isTerminatedInterruption = (error: unknown): boolean =>
       isDocument &&
       error instanceof GitCapabilityError &&
@@ -454,10 +567,12 @@ export function createGitCommitPort(
       ) {
         throw blocked('path-kind-conflict');
       }
+
       // The effective set is decided at execution: a path that now equals HEAD cannot be committed.
       if (facts.some((fact) => request.paths.includes(fact.path) && fact.working === fact.head)) {
         throw blocked('effective-set-changed');
       }
+
       try {
         await prepareDocumentIndex(facts, {
           indexEntries: (paths) => reads.indexEntries(root, paths),
@@ -473,17 +588,25 @@ export function createGitCommitPort(
       } catch (error) {
         if (isDeadlineExceeded(error)) {
           await takeBack();
+
           throw error;
         }
-        if (!isTerminatedInterruption(error) || !(await nothingHappened())) throw error;
+
+        if (!isTerminatedInterruption(error) || !(await nothingHappened())) {
+          throw error;
+        }
+
         await takeBack();
+
         throw blocked('commit-timed-out');
       }
     } else {
       // Makes untracked scaffold files "known" to Git (so `--only` accepts them) without staging
       // their content; nothing else in the index is touched.
       const added = await mutate([...EXACT_BYTES, 'add', '--intent-to-add', '--', ...literals]);
-      if (added.exitCode !== 0) throw failed('intent-to-add');
+      if (added.exitCode !== 0) {
+        throw failed('intent-to-add');
+      }
     }
 
     const author = await userAuthor(root, reads.run);
@@ -494,9 +617,13 @@ export function createGitCommitPort(
       await reads.assertAttachedToExpected(request);
       await testHooks?.afterRecheck?.();
     } catch (error) {
-      if (isDocument) await takeBack();
+      if (isDocument) {
+        await takeBack();
+      }
+
       throw error;
     }
+
     let committed: { readonly exitCode: number; readonly stderr: string };
     try {
       const commitArguments = [
@@ -522,12 +649,17 @@ export function createGitCommitPort(
     } catch (error) {
       if (!isTerminatedInterruption(error)) {
         // The budget ran out before the commit started: nothing happened, take the entries back.
-        if (isDeadlineExceeded(error)) await takeBack();
+        if (isDeadlineExceeded(error)) {
+          await takeBack();
+        }
+
         throw error;
       }
+
       interrupted = true;
       committed = { exitCode: -1, stderr: '' };
     }
+
     // A non-zero exit does not prove "nothing happened": look for our commit by its trailer.
     const found = await reads.findByOperation(root, request.operationId, parentHead);
     if (found.status === 'found') {
@@ -538,6 +670,7 @@ export function createGitCommitPort(
           'unexpected-commit-content',
         );
       }
+
       const landed = await reads.run(root, [
         'merge-base',
         '--is-ancestor',
@@ -551,8 +684,10 @@ export function createGitCommitPort(
           'commit-on-unexpected-branch',
         );
       }
+
       return { sha: found.sha, parentHead };
     }
+
     if (found.status === 'history-changed') {
       throw new GitCapabilityError(
         'GIT_OPERATION_UNCERTAIN',
@@ -560,21 +695,28 @@ export function createGitCommitPort(
         'history-changed',
       );
     }
+
     if (interrupted) {
       // Decisive evidence (no trailer commit, HEAD still the parent, no index lock) makes a hung or
       // killed commit an ordinary retryable failure; anything else needs a human.
       if (await nothingHappened()) {
         await takeBack();
+
         throw blocked('commit-timed-out');
       }
+
       throw new GitCapabilityError(
         'GIT_OPERATION_UNCERTAIN',
         'The Engine commit was interrupted and its effect is not provable.',
         'commit-interrupted',
       );
     }
+
     await takeBack();
-    if (committed.exitCode !== 0) throw failed('commit-exit-' + String(committed.exitCode));
+    if (committed.exitCode !== 0) {
+      throw failed('commit-exit-' + String(committed.exitCode));
+    }
+
     throw new GitCapabilityError(
       'GIT_OPERATION_UNCERTAIN',
       'The Engine commit reported success but cannot be found.',
@@ -605,7 +747,10 @@ async function resetPaths(
   paths: readonly string[],
   runMutation: typeof executeGitMutation,
 ): Promise<void> {
-  if (paths.length === 0) return;
+  if (paths.length === 0) {
+    return;
+  }
+
   await withPathspecFile(paths, (fileArguments) =>
     runMutation(root, [LITERAL_PATHSPECS, 'reset', '-q', ...fileArguments]),
   ).catch(() => undefined);
@@ -623,6 +768,7 @@ async function withPathspecFile<T>(
   try {
     const file = join(directory, 'paths');
     await writeFile(file, paths.map((path) => path + '\0').join(''));
+
     return await run(['--pathspec-from-file=' + file, '--pathspec-file-nul']);
   } finally {
     await rm(directory, { recursive: true, force: true }).catch(() => undefined);
@@ -651,10 +797,16 @@ async function dropIntentToAdd(
     '--',
     ...literals,
   ]);
-  if (tracked.exitCode !== 0) return;
+  if (tracked.exitCode !== 0) {
+    return;
+  }
+
   const known = new Set(tracked.stdout.split('\0').filter(Boolean));
   const untracked = paths.filter((path) => !known.has(path)).map((path) => ':(literal)' + path);
-  if (untracked.length === 0) return;
+  if (untracked.length === 0) {
+    return;
+  }
+
   await executeGitMutation(root, ['reset', '-q', '--', ...untracked]).catch(() => undefined);
 }
 
@@ -688,17 +840,22 @@ function messageArguments(request: EngineCommitRequest): string[] {
   // real trailer block is ever parsed).
   const text = (value: string, max: number): string => {
     const clean = line(value, max);
+
     return /^Nevo-[A-Za-z]+\s*:/iu.test(clean) ? '> ' + clean : clean;
   };
+
   if (request.kind === 'manual-commit') {
     // The person's text: a subject and a multi-line body, cleaned and neutralised line by line.
     const subject = commitSubjectForGit(request.subject, COMMIT_SUBJECT_MAX);
     const multiline = request.body ? commitBodyForGit(request.body) : '';
+
     return ['-m', subject, ...(multiline ? ['-m', multiline] : []), '-m', trailers];
   }
+
   if (request.kind === 'document-change') {
     // The Engine's own list of the changes (document names are user input): cleaned the same way.
     const multiline = request.body ? commitBodyForGit(request.body) : '';
+
     return [
       '-m',
       text(request.subject, 200),
@@ -707,7 +864,9 @@ function messageArguments(request: EngineCommitRequest): string[] {
       trailers,
     ];
   }
+
   const body = request.body ? text(request.body, 100) : '';
+
   return ['-m', text(request.subject, 200), ...(body ? ['-m', body] : []), '-m', trailers];
 }
 
@@ -715,12 +874,15 @@ function messageArguments(request: EngineCommitRequest): string[] {
 async function userAuthor(root: string, run: GitReader): Promise<string | undefined> {
   const read = async (key: string): Promise<string> => {
     const result = await run(root, ['config', '--get', key]);
+
     return result.exitCode === 0
       ? result.stdout.replace(CONTROL, ' ').replace(/[<>]/gu, '').trim()
       : '';
   };
+
   const name = await read('user.name');
   const email = await read('user.email');
+
   return name && email ? name + ' <' + email + '>' : undefined;
 }
 
@@ -732,7 +894,10 @@ async function resolveGitPaths(
 ): Promise<ReadonlyMap<string, string>> {
   const result = await run(root, ['rev-parse', ...names.flatMap((name) => ['--git-path', name])]);
   const lines = result.stdout.split('\n').filter(Boolean);
-  if (result.exitCode !== 0 || lines.length !== names.length) throw blocked('git-path-unreadable');
+  if (result.exitCode !== 0 || lines.length !== names.length) {
+    throw blocked('git-path-unreadable');
+  }
+
   return new Map(
     names.map((name, index) => [
       name,
@@ -744,18 +909,28 @@ async function resolveGitPaths(
 async function exists(path: string): Promise<boolean> {
   try {
     await lstat(path);
+
     return true;
   } catch (error) {
-    if (isMissing(error)) return false;
+    if (isMissing(error)) {
+      return false;
+    }
+
     throw error;
   }
 }
 
 async function indexUnlocked(lockPath: string): Promise<boolean> {
   for (let attempt = 0; attempt <= LOCK_RETRIES; attempt++) {
-    if (!(await exists(lockPath))) return true;
-    if (attempt < LOCK_RETRIES) await delay(LOCK_RETRY_MS);
+    if (!(await exists(lockPath))) {
+      return true;
+    }
+
+    if (attempt < LOCK_RETRIES) {
+      await delay(LOCK_RETRY_MS);
+    }
   }
+
   return false;
 }
 
@@ -782,6 +957,7 @@ async function withLockRetry(
     await delay(LOCK_RETRY_MS);
     result = await run();
   }
+
   return result;
 }
 
@@ -794,8 +970,11 @@ function serializePerCheckout<T>(root: string, task: () => Promise<T>): Promise<
   const tail = run.catch(() => undefined);
   checkoutQueues.set(root, tail);
   void tail.then(() => {
-    if (checkoutQueues.get(root) === tail) checkoutQueues.delete(root);
+    if (checkoutQueues.get(root) === tail) {
+      checkoutQueues.delete(root);
+    }
   });
+
   return run;
 }
 
@@ -804,6 +983,7 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 function sameSet(actual: readonly string[], expected: readonly string[]): boolean {
   const left = [...actual].sort();
   const right = [...expected].sort();
+
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 

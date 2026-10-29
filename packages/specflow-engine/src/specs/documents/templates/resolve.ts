@@ -25,13 +25,18 @@ export function resolveTemplateEntries(
   request: UnresolvedCreateRequest,
   project: ProjectCatalogue,
 ): CreateRequest {
-  if (project.catalogue.archetypes.length === 0) requireArchetype(project, manifest.archetype.id);
+  if (project.catalogue.archetypes.length === 0) {
+    requireArchetype(project, manifest.archetype.id);
+  }
+
   if (request.catalogueRevision === undefined) {
     throw documentChangeError('operation-invalid', 'A template create needs a catalogue revision.');
   }
+
   if (request.catalogueRevision !== project.catalogue.revision) {
     throw documentChangeError('catalogue-stale', 'The catalogue changed since it was read.');
   }
+
   const archetype = requireArchetype(project, manifest.archetype.id);
   const values = templateValues({
     title: manifest.title,
@@ -39,7 +44,10 @@ export function resolveTemplateEntries(
     created: manifest.created ?? '',
   });
   const documents: CreateEntry[] = request.documents.map((entry) => {
-    if (entry.templateId === undefined) return entry as CreateEntry;
+    if (entry.templateId === undefined) {
+      return entry as CreateEntry;
+    }
+
     const template = archetype.templates.find((candidate) => candidate.id === entry.templateId);
     if (template === undefined) {
       throw documentChangeError(
@@ -47,16 +55,19 @@ export function resolveTemplateEntries(
         `Archetype "${archetype.id}" has no template "${entry.templateId}".`,
       );
     }
+
     if (entry.type !== undefined && entry.type !== template.documentType) {
       throw documentChangeError(
         'operation-invalid',
         'The type of a template document is the type of the template.',
       );
     }
+
     const content = renderTemplate(template.content, values);
     if (Buffer.byteLength(content, 'utf8') > TEMPLATE_TEXT_MAX_BYTES) {
       throw documentChangeError('too-large', 'A rendered template exceeds the content limit.');
     }
+
     return {
       path: entry.path ?? template.filename,
       type: template.documentType,
@@ -64,6 +75,7 @@ export function resolveTemplateEntries(
       content,
     };
   });
+
   return { ...request, documents, folders: request.folders };
 }
 
@@ -74,6 +86,7 @@ export function resolveTemplateEntries(
  */
 export const catalogueTemplateResolver: TemplateResolver = async (engine, manifest, request) => {
   const project = await getStableProjectCatalogue(engine);
+
   return {
     request: resolveTemplateEntries(manifest, request, project),
     catalogueRevision: project.catalogue.revision,

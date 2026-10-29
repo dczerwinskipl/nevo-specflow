@@ -29,6 +29,7 @@ export function planSave(snapshot: PlanningSnapshot, request: SaveRequest): Plan
   if (target.file.revision !== request.expectedRevision) {
     throw documentChangeError('revision-conflict', 'The document changed since it was read.');
   }
+
   return planSaves(snapshot, 'save', [{ target, content: request.content }]);
 }
 
@@ -45,13 +46,16 @@ export function planSaveAll(snapshot: PlanningSnapshot, request: SaveAllRequest)
       `A batch save names 1 to ${BATCH_SAVE_MAX_DOCUMENTS} documents.`,
     );
   }
+
   if (new Set(entries.map((entry) => entry.documentId)).size !== entries.length) {
     throw documentChangeError('operation-invalid', 'A document appears twice in the batch.');
   }
+
   const total = entries.reduce((sum, entry) => sum + Buffer.byteLength(entry.content, 'utf8'), 0);
   if (total > BATCH_SAVE_MAX_TOTAL_BYTES) {
     throw documentChangeError('too-large', 'The batch exceeds the total content limit.');
   }
+
   const resolved = entries.map((entry) => ({ entry, target: saveTarget(snapshot, entry) }));
   const conflicts = resolved
     .filter(({ entry, target }) => target.file.revision !== entry.expectedRevision)
@@ -61,6 +65,7 @@ export function planSaveAll(snapshot: PlanningSnapshot, request: SaveAllRequest)
       conflicts,
     });
   }
+
   return planSaves(
     snapshot,
     'save-all',
@@ -76,19 +81,24 @@ function saveTarget(
   if (document === undefined) {
     throw documentChangeError('document-not-found', 'No such document.');
   }
+
   if (document.file === undefined) {
     throw documentChangeError('file-missing', 'The registered document has no file.');
   }
+
   const path = document.kind === 'registered' ? document.entry.path : document.file.path;
   if (!isEditableExtension(extensionOf(path))) {
     throw documentChangeError('not-editable', 'This kind of file is not editable.');
   }
+
   if (Buffer.byteLength(entry.content, 'utf8') > TEXT_CONTENT_MAX_BYTES) {
     throw documentChangeError('too-large', 'The content exceeds the save limit.');
   }
+
   if (!entry.content.isWellFormed()) {
     throw documentChangeError('operation-invalid', 'The content is not well-formed text.');
   }
+
   return {
     id: document.kind === 'registered' ? document.entry.id : document.id,
     ...(document.kind === 'registered' ? { type: document.entry.type } : {}),
@@ -112,5 +122,6 @@ function planSaves(
       ...post,
     });
   }
+
   return finishPlan(snapshot, action, draft);
 }

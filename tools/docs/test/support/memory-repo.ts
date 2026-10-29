@@ -29,23 +29,36 @@ export function createMemoryRepo(files: Record<string, string> = {}): MemoryRepo
       const docs: DocRecord[] = [];
       const missingFrontmatter: string[] = [];
       for (const [file, content] of [...map.entries()].sort()) {
-        if (!file.startsWith('docs/') || !file.endsWith('.md')) continue;
-        if (file.includes('.generated.')) continue;
+        if (!file.startsWith('docs/') || !file.endsWith('.md')) {
+          continue;
+        }
+
+        if (file.includes('.generated.')) {
+          continue;
+        }
+
         const parsed = parseFrontmatter(content, file);
         if (parsed === null) {
           const relToDocs = file.slice('docs/'.length);
-          if (!isFrontmatterExempt(relToDocs)) missingFrontmatter.push(file);
+          if (!isFrontmatterExempt(relToDocs)) {
+            missingFrontmatter.push(file);
+          }
+
           continue;
         }
+
         docs.push({ ...parsed.frontmatter, file, body: parsed.body });
       }
+
       docs.sort((a, b) => String(a.id).localeCompare(String(b.id)));
       missingFrontmatter.sort();
+
       return { docs, missingFrontmatter };
     },
 
     adrFilenames(): string[] {
       const prefix = 'docs/architecture/decisions/';
+
       return [...map.keys()]
         .filter((f) => f.startsWith(prefix) && f.endsWith('.md'))
         .map((f) => f.slice(prefix.length));

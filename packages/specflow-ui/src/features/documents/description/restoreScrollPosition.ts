@@ -26,28 +26,49 @@ export function restoreScrollPosition(
     done = true;
     cancelAnimationFrame(frame);
     observer.disconnect();
-    for (const type of userInputEvents) node.ownerDocument.removeEventListener(type, settle, true);
+    for (const type of userInputEvents) {
+      node.ownerDocument.removeEventListener(type, settle, true);
+    }
   };
+
   const settle = () => {
-    if (done) return;
+    if (done) {
+      return;
+    }
+
     finish();
     onSettled?.();
   };
+
   const attempt = () => {
-    if (done) return;
+    if (done) {
+      return;
+    }
+
     const target = readTarget();
     const owner = descriptionScrollOwner(node);
     // Without a scrollable ancestor the page is not laid out yet; wait for the next layout change.
-    if (owner === scrollingElement && target > 0) return;
+    if (owner === scrollingElement && target > 0) {
+      return;
+    }
+
     owner.scrollTop = target;
-    if (Math.abs(owner.scrollTop - target) > 1) return;
+    if (Math.abs(owner.scrollTop - target) > 1) {
+      return;
+    }
+
     settle();
   };
 
-  for (const type of userInputEvents)
+  for (const type of userInputEvents) {
     node.ownerDocument.addEventListener(type, settle, { capture: true, passive: true });
-  for (let element: HTMLElement | null = node; element; element = element.parentElement)
+  }
+
+  for (let element: HTMLElement | null = node; element; element = element.parentElement) {
     observer.observe(element);
+  }
+
   frame = requestAnimationFrame(attempt);
+
   return finish;
 }

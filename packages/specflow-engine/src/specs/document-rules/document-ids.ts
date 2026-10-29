@@ -47,9 +47,14 @@ export function base32Lower(bytes: Uint8Array): string {
       out += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
       bits -= 5;
     }
+
     value &= (1 << bits) - 1;
   }
-  if (bits > 0) out += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+
+  if (bits > 0) {
+    out += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  }
+
   return out;
 }
 
@@ -77,7 +82,11 @@ export function allocateDocumentId(input: AllocateDocumentIdInput): string {
       `Document type "${input.type}" cannot produce a registered document id.`,
     );
   }
-  if (isRegisteredDocumentId(input.type) && !taken.has(input.type)) return input.type;
+
+  if (isRegisteredDocumentId(input.type) && !taken.has(input.type)) {
+    return input.type;
+  }
+
   const digest = createHash('sha256').update(`${input.specId}:${input.position}`, 'utf8').digest();
   const encoded = base32Lower(digest);
   for (let length = SUFFIX_START_LENGTH; length <= encoded.length; length += 1) {
@@ -87,7 +96,11 @@ export function allocateDocumentId(input: AllocateDocumentIdInput): string {
         `Document type "${input.type}" cannot produce a registered document id.`,
       );
     }
-    if (!taken.has(candidate)) return candidate;
+
+    if (!taken.has(candidate)) {
+      return candidate;
+    }
   }
+
   throw new DocumentIdError('Document id suffix space is exhausted.');
 }

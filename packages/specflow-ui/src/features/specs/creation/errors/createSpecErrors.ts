@@ -80,14 +80,31 @@ export const protectedBranchFailure = (sent: SentCreate): CreateFailure => ({
  */
 export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateFailure {
   const code = error.code ?? 'unknown';
-  if (code === 'CATALOGUE_STALE' || code === 'ARCHETYPE_UNKNOWN')
+  if (code === 'CATALOGUE_STALE' || code === 'ARCHETYPE_UNKNOWN') {
     return { kind: 'catalogue-stale', code };
+  }
+
   // No definitions installed: refreshing the archetypes shows the empty state with its command.
-  if (code === 'DEFINITIONS_MISSING') return { kind: 'catalogue-stale', code: 'ARCHETYPE_UNKNOWN' };
-  if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
-  if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
-  if (code === 'DOCUMENT_PATH_INVALID') return { kind: 'name-invalid' };
-  if (code === 'DOCUMENT_PATH_CONFLICT') return { kind: 'name-conflict' };
+  if (code === 'DEFINITIONS_MISSING') {
+    return { kind: 'catalogue-stale', code: 'ARCHETYPE_UNKNOWN' };
+  }
+
+  if (code === 'BRANCH_PROTECTED') {
+    return protectedBranchFailure(sent);
+  }
+
+  if (code === 'COMMIT_BLOCKED') {
+    return { kind: 'commit-blocked' };
+  }
+
+  if (code === 'DOCUMENT_PATH_INVALID') {
+    return { kind: 'name-invalid' };
+  }
+
+  if (code === 'DOCUMENT_PATH_CONFLICT') {
+    return { kind: 'name-conflict' };
+  }
+
   // The server cannot rule out that the operation was reserved: never claim a definite refusal.
   if (
     error.outcome === 'unknown' &&
@@ -95,20 +112,30 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
     error.kind !== 'network' &&
     error.kind !== 'unauthenticated' &&
     error.kind !== 'forbidden'
-  )
+  ) {
     return { kind: 'uncertain' };
+  }
+
   switch (error.kind) {
     case 'recovery-required':
       return code === 'COMMIT_FAILED'
         ? { kind: 'recovery-required', committed: true }
         : { kind: 'recovery-required' };
     case 'conflict':
-      if (code === 'CREATE_CONFLICT') return { kind: 'name-conflict' };
-      if (branchConflictCodes.has(code))
+      if (code === 'CREATE_CONFLICT') {
+        return { kind: 'name-conflict' };
+      }
+
+      if (branchConflictCodes.has(code)) {
         return { kind: 'branch-exists', automatic: !sent.customBranch };
+      }
+
       return { kind: 'stale', code };
     case 'validation':
-      if (code === 'BRANCH_NAME_INVALID') return { kind: 'branch-invalid' };
+      if (code === 'BRANCH_NAME_INVALID') {
+        return { kind: 'branch-invalid' };
+      }
+
       return malformedCodes.has(code) ? { kind: 'failed' } : { kind: 'stale', code };
     case 'precondition':
       return { kind: 'stale', code };
@@ -132,6 +159,7 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
  */
 export function toOperationFailure(code: string, sent: SentCreate = {}): CreateFailure {
   const rule = Object.hasOwn(createSpecErrorCodes, code) ? createSpecErrorCodes[code] : undefined;
+
   return toCreateFailure(
     new ApiError({
       kind: rule?.kind ?? 'server',

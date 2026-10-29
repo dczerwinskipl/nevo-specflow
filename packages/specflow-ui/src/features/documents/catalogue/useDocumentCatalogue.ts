@@ -10,6 +10,7 @@ import { documentCatalogueKeys } from '../read-model/queries';
  */
 export function useDocumentCatalogue() {
   const { api, kind } = useDocumentsApi();
+
   return useQuery<ArchetypeCatalogue>({
     queryKey: documentCatalogueKeys.catalogue(kind),
     queryFn: ({ signal }) => api.catalogue(signal),

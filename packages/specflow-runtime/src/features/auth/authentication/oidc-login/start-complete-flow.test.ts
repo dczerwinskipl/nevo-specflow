@@ -37,6 +37,7 @@ describe('OIDC login operation', () => {
         }),
       complete: (_callbackUrl, stored) => {
         expect(stored).toMatchObject(transaction);
+
         return Promise.resolve({ email: ' Demo@Example.com ', name: 'Dominik Example' });
       },
     };
@@ -53,7 +54,9 @@ describe('OIDC login operation', () => {
     expect(store.consumeOidcTransaction(previousTransaction, 'old')).toEqual({
       status: 'missing',
     });
-    if (!started.ok) throw new Error('Expected OIDC login to start.');
+    if (!started.ok) {
+      throw new Error('Expected OIDC login to start.');
+    }
 
     const completed = await completeOidcLogin(
       'company',
@@ -111,6 +114,7 @@ describe('OIDC login operation', () => {
       start: () => Promise.reject(new Error('not used')),
       complete: () => {
         completeCalls += 1;
+
         return Promise.resolve({ email: 'demo@example.com', name: 'Demo User' });
       },
     };

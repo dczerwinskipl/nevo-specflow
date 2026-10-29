@@ -64,23 +64,36 @@ export function availabilityOf(
   target: ActionTarget,
   subject: SubjectRefusal = SUBJECT_FREE,
 ): Action {
-  if (context.archived) return { available: false, reason: 'archived' };
+  if (context.archived) {
+    return { available: false, reason: 'archived' };
+  }
+
   if (subject.kind === 'refused') {
     return subject.reason === undefined
       ? { available: false }
       : { available: false, reason: subject.reason };
   }
-  if (context.policyReason !== undefined) return { available: false, reason: context.policyReason };
+
+  if (context.policyReason !== undefined) {
+    return { available: false, reason: context.policyReason };
+  }
+
   const { commits } = context;
   if (commits.checkoutBlocked || isBlockedPath(commits.blockedPaths, target)) {
     return { available: false, reason: 'commit-blocked' };
   }
+
   // A full queue refuses every write; one that only holds decisions refuses without a retry.
   if (commits.capacity === 'queue-full') {
     return busyAction({ cause: 'write-in-progress', retryAfterMs: BUSY_RETRY_AFTER_MS });
   }
-  if (commits.capacity === 'held-limit') return busyAction({ cause: 'recovery-required' });
+
+  if (commits.capacity === 'held-limit') {
+    return busyAction({ cause: 'recovery-required' });
+  }
+
   const hold = holdOf(commits.holds, target);
+
   return hold === undefined ? { available: true } : busyAction(hold);
 }
 
@@ -96,10 +109,24 @@ function holdOf(holds: DocumentCommitView['holds'], target: ActionTarget): PathH
 }
 
 function isBlockedPath(blocked: ReadonlySet<string>, target: ActionTarget): boolean {
-  if (target.kind === 'capability' || blocked.size === 0) return false;
+  if (target.kind === 'capability' || blocked.size === 0) {
+    return false;
+  }
+
   const key = foldPathKey(target.path);
-  if (target.kind === 'file') return blocked.has(key);
-  if (key === '') return true;
-  for (const path of blocked) if (path === key || path.startsWith(key + '/')) return true;
+  if (target.kind === 'file') {
+    return blocked.has(key);
+  }
+
+  if (key === '') {
+    return true;
+  }
+
+  for (const path of blocked) {
+    if (path === key || path.startsWith(key + '/')) {
+      return true;
+    }
+  }
+
   return false;
 }

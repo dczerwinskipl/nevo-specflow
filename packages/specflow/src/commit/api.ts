@@ -38,11 +38,15 @@ export const engineCommitApi: CommitEngineApi = {
   async resolveSpecification(engine, reference) {
     const lowered = reference.toLowerCase();
     for (const found of await discoverSpecifications(engine)) {
-      if (found.status !== 'available') continue;
+      if (found.status !== 'available') {
+        continue;
+      }
+
       if (found.specId.toLowerCase() === lowered || found.specification.slug === reference) {
         return { specId: found.specId, slug: found.specification.slug };
       }
     }
+
     throw new DocumentError('DOCUMENT_NOT_FOUND', `No Specification "${reference}".`);
   },
   commit: (engine, command) => manualCommit(engine, command, { allowDefinitions: true }),

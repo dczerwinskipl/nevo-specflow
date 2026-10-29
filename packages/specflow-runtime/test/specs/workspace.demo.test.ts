@@ -6,18 +6,26 @@ describe('Demo Workspace lifecycle', () => {
     const repositories = createDemoSpecsRepositories();
     const overview = await repositories.overviewRepository.readCurrent();
     for (const item of overview.items) {
-      if (!item.progress || !item.currentExecutions)
+      if (!item.progress || !item.currentExecutions) {
         throw new Error('Demo current Specifications must project progress and executions.');
+      }
+
       const workspace = await readWorkspace(
         repositories.workspaceRepository,
         repositories.contributions,
         item.id,
       );
       expect(workspace).not.toBeNull();
-      if (!workspace) continue;
+      if (!workspace) {
+        continue;
+      }
+
       const tasks = workspace.sections.tasks;
       expect(tasks.state).toBe('available');
-      if (tasks.state !== 'available') continue;
+      if (tasks.state !== 'available') {
+        continue;
+      }
+
       const all = tasks.data.groups.flatMap((group) => group.tasks);
       expect(all.filter((task) => task.status.lifecycle === 'completed')).toHaveLength(
         item.progress.completed,

@@ -70,21 +70,23 @@ function Connected({
     });
     for (const collection of ['current', 'archive'] as const) {
       const data = createSpecsFixture(collection);
-      if (data.collection === 'current')
+      if (data.collection === 'current') {
         query.setQueryData(specsOverviewKeys.collection(collection), {
           ...data,
           items: data.items.map((item, index) =>
             index === 0 ? { ...item, id: 'api-integration', title: 'Logowanie SSO' } : item,
           ),
         });
-      else
+      } else {
         query.setQueryData(specsOverviewKeys.collection(collection), {
           ...data,
           items: data.items.map((item, index) =>
             index === 0 ? { ...item, id: 'api-integration', title: 'Logowanie SSO' } : item,
           ),
         });
+      }
     }
+
     const defaults = createSpecFlowAppServices();
     const auth = createAuthStore(defaults.authApi, {
       authenticationRequired: false,
@@ -185,13 +187,15 @@ function Connected({
       specsOverviewApi: {
         getOverview: async (collection, signal) => {
           const data = await overview.getOverview(collection, signal);
-          if (data.collection === 'current')
+          if (data.collection === 'current') {
             return {
               ...data,
               items: data.items.map((item, index) =>
                 index === 0 ? { ...item, id: 'api-integration', title: 'Logowanie SSO' } : item,
               ),
             };
+          }
+
           return {
             ...data,
             items: data.items.map((item, index) =>
@@ -203,6 +207,7 @@ function Connected({
       specificationApi: {
         getSpecificationWorkspace: async () => {
           const dto = await source.getSpecificationWorkspace('api-integration');
+
           return {
             ...dto,
             specification: { ...dto.specification, title: 'Logowanie SSO' },
@@ -260,6 +265,7 @@ function Connected({
         save: (_spec, id, input) => {
           const doc = records[id]!;
           Object.assign(doc, { content: input.content, revision: '2' });
+
           return Promise.resolve(saveResultFixture('2'));
         },
       },
@@ -316,15 +322,18 @@ function Connected({
       history = createBrowserHistory({ window: browserWindow });
       history.push(path);
       history.flush();
-    } else
+    } else {
       history = createMemoryHistory({
         initialEntries: historyFromOverview ? ['/?collection=archive', path] : [path],
       });
+    }
+
     const router = createSpecFlowRouter(history, services);
     tabsControl.removeExternally = (id) => {
       hidden.add(id);
       void query.invalidateQueries({ queryKey: ['specifications', 'api-integration'] });
     };
+
     return { query, router };
   }, [
     path,
@@ -338,15 +347,21 @@ function Connected({
     createOutcome,
   ]);
   useEffect(() => {
-    if (historyFromOverview) historyControl.back = () => setup.router.history.back();
+    if (historyFromOverview) {
+      historyControl.back = () => setup.router.history.back();
+    }
+
     return () => {
-      if (historyFromOverview) historyControl.back = () => undefined;
+      if (historyFromOverview) {
+        historyControl.back = () => undefined;
+      }
     };
   }, [setup, historyFromOverview]);
   const href = useSyncExternalStore(
     (listener) => setup.router.subscribe('onResolved', listener),
     () => setup.router.state.location.href,
   );
+
   return (
     <QueryClientProvider client={setup.query}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
@@ -360,6 +375,7 @@ function Connected({
     </QueryClientProvider>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Contracts/Connected creation consistency',
   component: Connected,
@@ -373,8 +389,10 @@ async function viewport(width: number, height = 844) {
   await (await browserPage()).viewport(width, height);
   await waitFor(() => {
     const layout = document.querySelector('[data-layout]')?.getAttribute('data-layout');
-    if (layout !== (width >= 840 ? 'split' : 'stacked'))
+    if (layout !== (width >= 840 ? 'split' : 'stacked')) {
       throw new Error('Responsive layout has not settled');
+    }
+
     const surface = document.querySelector<HTMLElement>(
       '[data-workspace-active="true"][data-workspace-instance^="runtime-"]',
     );
@@ -384,11 +402,13 @@ async function viewport(width: number, height = 844) {
         surface.dataset.workspaceMotion !== 'idle' ||
         Math.abs(bounds.left) > 1 ||
         Math.abs(bounds.right - width) > 1
-      )
+      ) {
         throw new Error('Responsive surface has not settled');
+      }
     }
   });
 }
+
 export const ResponsiveDirtyDocument: Story = {
   play: async ({ canvas, userEvent, canvasElement }) => {
     await viewport(1440, 900);
@@ -456,7 +476,10 @@ export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
     for (const width of [1440, 390]) {
       await viewport(width, 900);
       const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
-      if (back) await userEvent.click(back);
+      if (back) {
+        await userEvent.click(back);
+      }
+
       const row = await canvas.findByRole('button', { name: /^specification.md/ });
       row.focus();
       await userEvent.keyboard('{Enter}');
@@ -464,7 +487,10 @@ export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
         const active = document.activeElement;
         // Wide and narrow: the document heading (focus on a tab would open its tooltip).
         const target = active?.matches('[data-workspace-header-title="true"]');
-        if (!target) throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
+        if (!target) {
+          throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
+        }
+
         void expect(active).toHaveTextContent('specification.md');
       });
     }
@@ -543,8 +569,10 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     // Keep editing: the pane and the draft stay.
     await close();
     let choice = await dialog();
-    for (const name of ['Kontynuuj edycję', 'Odrzuć wszystkie', 'Zapisz wszystkie'])
+    for (const name of ['Kontynuuj edycję', 'Odrzuć wszystkie', 'Zapisz wszystkie']) {
       await expect(within(choice).getByRole('button', { name })).toBeVisible();
+    }
+
     await expect(within(choice).getAllByRole('listitem')).toHaveLength(1);
     await userEvent.click(within(choice).getByRole('button', { name: 'Kontynuuj edycję' }));
     await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
@@ -576,7 +604,10 @@ const openFromTree = async (
 ) => {
   // A visit that started wide opened the main file by itself; stacked, the tree is behind it.
   const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
-  if (back) await userEvent.click(back);
+  if (back) {
+    await userEvent.click(back);
+  }
+
   await userEvent.click(await canvas.findByRole('button', { name }));
 };
 
@@ -703,10 +734,15 @@ export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
       // The main file opened by itself when the visit started, then plan.md: the icon follows the
       // whole strip.
       const tabs = canvas.getAllByRole('tab');
-      if (tabs.length < 1) throw new Error('Expected the tab strip');
+      if (tabs.length < 1) {
+        throw new Error('Expected the tab strip');
+      }
+
       const icon = canvas.getByRole('button', { name: 'Otwórz spis treści' });
       const gap = icon.getBoundingClientRect().left - tabs.at(-1)!.getBoundingClientRect().right;
-      if (gap <= 0) throw new Error(`The contents icon is not after the strip (gap ${gap})`);
+      if (gap <= 0) {
+        throw new Error(`The contents icon is not after the strip (gap ${gap})`);
+      }
     });
     await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
   },
@@ -719,7 +755,10 @@ export const ContentsSheetKeepsALongTitleInsideTheScreen: Story = {
     for (const width of [390, 320]) {
       await viewport(width, 800);
       const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
-      if (back) await userEvent.click(back);
+      if (back) {
+        await userEvent.click(back);
+      }
+
       await openFromTree(canvas, userEvent, /^adr-001.md/);
       await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
       const sheet = await within(document.body).findByRole('dialog');
@@ -732,6 +771,7 @@ export const ContentsSheetKeepsALongTitleInsideTheScreen: Story = {
         await expect(box.right).toBeLessThanOrEqual(sheetRight + 1);
         await expect(box.right).toBeLessThanOrEqual(window.innerWidth + 1);
       }
+
       await userEvent.keyboard('{Escape}');
       await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     }
@@ -796,11 +836,17 @@ export const ShortCreateAndBranch: Story = {
 function scrollerOf(element: HTMLElement) {
   for (let node = element.parentElement; node; node = node.parentElement) {
     const overflow = getComputedStyle(node).overflowY;
-    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight + 1)
+    if (
+      (overflow === 'auto' || overflow === 'scroll') &&
+      node.scrollHeight > node.clientHeight + 1
+    ) {
       return node;
+    }
   }
+
   return undefined;
 }
+
 /**
  * Owner 7A (P1): a failed create at the bottom of the form on a phone. The error and the retry
  * button must be on screen without searching. Regression test: it could not be reproduced as a
@@ -818,7 +864,10 @@ export const FailedCreateAtTheBottomStaysVisible: Story = {
     const submit = await canvas.findByRole('button', { name: 'Utwórz specyfikację' });
     // The primary button is pinned under the form; the form itself scrolls.
     const scroller = scrollerOf(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }));
-    if (!scroller) throw new Error('The create form has no scroller at 390x844');
+    if (!scroller) {
+      throw new Error('The create form has no scroller at 390x844');
+    }
+
     await expect(scroller.contains(submit)).toBe(false);
     // The user is at the very bottom of the form.
     scroller.scrollTop = scroller.scrollHeight;
@@ -838,10 +887,13 @@ export const FailedCreateAtTheBottomStaysVisible: Story = {
         const view = scroller.getBoundingClientRect(),
           box = alert.getBoundingClientRect(),
           button = retry.getBoundingClientRect();
-        if (box.top < view.top - 1 || box.bottom > view.bottom + 1)
+        if (box.top < view.top - 1 || box.bottom > view.bottom + 1) {
           throw new Error('Alert not revealed ' + JSON.stringify({ box, view }));
-        if (button.top < view.bottom - 1 || button.bottom > window.innerHeight + 1)
+        }
+
+        if (button.top < view.bottom - 1 || button.bottom > window.innerHeight + 1) {
           throw new Error('Retry not visible ' + JSON.stringify({ button, view }));
+        }
       },
       { timeout: 5000 },
     );
@@ -861,7 +913,10 @@ export const CreateCtaWrapsAt320: Story = {
     await expect(submit.getBoundingClientRect().right).toBeLessThanOrEqual(320);
     // A long translation: same width, more lines, nothing clipped or overflowing.
     const label = [...submit.querySelectorAll('span')].find((node) => node.children.length === 0);
-    if (!label) throw new Error('Button label span missing');
+    if (!label) {
+      throw new Error('Button label span missing');
+    }
+
     label.textContent =
       'Utwórz specyfikację i od razu otwórz pierwszą sesję z agentem Spec Writer w nowym środowisku pracy';
     await waitFor(() =>
@@ -885,7 +940,10 @@ export const HashAnchorClearsTheFloatingRow: Story = {
     const heading = await waitFor(
       () => {
         const element = document.getElementById('tasks-heading');
-        if (!element) throw new Error('Tasks section missing');
+        if (!element) {
+          throw new Error('Tasks section missing');
+        }
+
         return element;
       },
       { timeout: 5000 },
@@ -894,10 +952,13 @@ export const HashAnchorClearsTheFloatingRow: Story = {
       () => {
         const floating = document.querySelector('.mobile-floating-navigation');
         const bottom = floating ? floating.getBoundingClientRect().bottom : 0;
-        if (heading.getBoundingClientRect().top < bottom - 1)
+        if (heading.getBoundingClientRect().top < bottom - 1) {
           throw new Error('Tasks heading is under the floating row');
-        if (document.activeElement !== heading)
+        }
+
+        if (document.activeElement !== heading) {
           throw new Error('Focus has not reached the section');
+        }
       },
       { timeout: 5000 },
     );
@@ -1009,8 +1070,9 @@ export const LongDocumentPosition: Story = {
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       );
-      if (width !== view.scrollDOM.clientWidth || width < 800)
+      if (width !== view.scrollDOM.clientWidth || width < 800) {
         throw new Error('Initial wide editor geometry pending');
+      }
     });
     view.dispatch({ selection: { anchor: 1200 } });
     // A wheel gesture marks the scroll as the user's even right after the viewport resize.
@@ -1018,7 +1080,9 @@ export const LongDocumentPosition: Story = {
     view.scrollDOM.scrollTop = 500;
     view.scrollDOM.dispatchEvent(new Event('scroll'));
     await waitFor(() => {
-      if (view.scrollDOM.scrollTop < 100) throw new Error('Expected a scrolled source document');
+      if (view.scrollDOM.scrollTop < 100) {
+        throw new Error('Expected a scrolled source document');
+      }
     });
     // Capture the semantic scroll anchor after CodeMirror's own layout measure,
     // not between a scroll event and its deferred line-wrap measurement.
@@ -1042,16 +1106,18 @@ export const LongDocumentPosition: Story = {
       )!,
     )!;
     await waitFor(() => {
-      if (Math.abs(topLine(next) - scroll) > 1 || next.state.selection.main.anchor !== 1200)
+      if (Math.abs(topLine(next) - scroll) > 1 || next.state.selection.main.anchor !== 1200) {
         throw new Error(
           `Caret or scroll changed on handoff: line ${topLine(next)} vs ${scroll}, caret ${next.state.selection.main.anchor}`,
         );
+      }
     });
   },
 };
 
 function BrowserPopFixture() {
   const [target, setTarget] = useState<Window>();
+
   return (
     <>
       <iframe
@@ -1060,7 +1126,9 @@ function BrowserPopFixture() {
         src="/__vitest__/favicon.svg"
         onLoad={(event) => {
           const win = event.currentTarget.contentWindow;
-          if (win) setTarget(win);
+          if (win) {
+            setTarget(win);
+          }
         }}
       />
       {target && (
@@ -1073,6 +1141,7 @@ function BrowserPopFixture() {
     </>
   );
 }
+
 export const HistoryPopPreservesConfiguration: Story = {
   render: () => <BrowserPopFixture />,
   args: { path: '/specs/new?collection=archive', historyFromOverview: true },
@@ -1147,17 +1216,23 @@ export const DocumentsIdleSecondary: Story = {
       if (
         !canvas.queryByRole('tab') &&
         !canvas.queryByText('Wybierz dokument z drzewa albo utwórz nowy.')
-      )
+      ) {
         throw new Error('The visit has not decided what to show yet');
+      }
     });
     const closeTab = canvas.queryByRole('button', { name: 'Zamknij specification.md' });
-    if (closeTab) await userEvent.click(closeTab);
+    if (closeTab) {
+      await userEvent.click(closeTab);
+    }
+
     const idle = await canvas.findByText('Wybierz dokument z drzewa albo utwórz nowy.', undefined, {
       timeout: 3000,
     });
     // Several renders later (the tree read settles) still nothing reopened.
-    for (let frame = 0; frame < 20; frame++)
+    for (let frame = 0; frame < 20; frame++) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+
     await expect(canvas.queryByRole('tab')).toBeNull();
     await expect(idle).toBeVisible();
     // The shared empty screen (title, sentence, start actions with New document as the one

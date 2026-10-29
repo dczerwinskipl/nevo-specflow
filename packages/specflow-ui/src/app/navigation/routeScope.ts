@@ -20,7 +20,13 @@ export function isWithinSpecDocuments(
   next: RouteLocationLike,
   specId?: string,
 ): boolean {
-  if (!isDocumentsLocation(current) || !isDocumentsLocation(next)) return false;
-  if (current.params.specId !== next.params.specId) return false;
+  if (!isDocumentsLocation(current) || !isDocumentsLocation(next)) {
+    return false;
+  }
+
+  if (current.params.specId !== next.params.specId) {
+    return false;
+  }
+
   return specId === undefined || next.params.specId === specId;
 }

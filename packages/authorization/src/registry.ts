@@ -38,6 +38,7 @@ export function createAuthorizationRegistry(
           `Capability '${capability}' is defined by both '${existingOwner}' and '${resource.name}'.`,
         );
       }
+
       capabilityOwners.set(capability, resource.name);
     }
 
@@ -87,6 +88,7 @@ export function createAuthorizationRegistry(
           `Unknown authorization resource '${resourceName}'.`,
         );
       }
+
       return capabilities;
     },
 
@@ -95,6 +97,7 @@ export function createAuthorizationRegistry(
       if (!capabilities) {
         throw new AuthorizationConfigurationError(`Unknown authorization role '${role}'.`);
       }
+
       return capabilities;
     },
   };
@@ -134,6 +137,7 @@ function validateResourceDefinition(resource: ResourceDefinition): readonly Capa
         `Capability '${capability}' must equal '${expected}' for resource '${resource.name}'.`,
       );
     }
+
     if (seen.has(capability)) {
       throw new AuthorizationConfigurationError(
         `Resource '${resource.name}' defines duplicate capability '${capability}'.`,

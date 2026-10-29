@@ -66,31 +66,43 @@ function harness(): Harness {
     lstat(path) {
       events.push('lstat ' + path.slice(SPEC.length + 1).replaceAll(sep, '/'));
       const found = world.get(path);
+
       return found ? Promise.resolve(found) : Promise.reject(errno('ENOENT'));
     },
     realpath(path) {
       events.push('realpath');
+
       return Promise.resolve(hooks.realpath ? hooks.realpath(path) : (real.get(path) ?? path));
     },
     open(path) {
       events.push('open');
-      if (hooks.open) return hooks.open();
+      if (hooks.open) {
+        return hooks.open();
+      }
+
       hooks.beforeOpen?.();
-      if (!world.get(path)) return Promise.reject(errno('ENOENT'));
+      if (!world.get(path)) {
+        return Promise.reject(errno('ENOENT'));
+      }
+
       const handle = {
         stat() {
           events.push('fstat');
+
           return Promise.resolve(hooks.handleStat ? hooks.handleStat() : world.get(path)!);
         },
         close() {
           closed.value = true;
+
           return Promise.resolve();
         },
       } as unknown as FileHandle;
       hooks.afterOpen?.();
+
       return Promise.resolve(handle);
     },
   };
+
   return { fs, events, closed, world, real, hooks };
 }
 
@@ -132,6 +144,7 @@ describe('assertContainedRelativePath', () => {
     } catch (error) {
       thrown = error;
     }
+
     expect(thrown).toBeInstanceOf(DocumentError);
     expect((thrown as DocumentError).code).toBe('SPEC_SOURCE_UNAVAILABLE');
     expect((thrown as DocumentError).message).not.toContain('ws');
@@ -240,8 +253,10 @@ describe('openVerifiedFile', () => {
     let calls = 0;
     h.hooks.realpath = (path) => {
       calls += 1;
+
       return calls === 1 ? path : join('/', 'elsewhere', 'doc.md');
     };
+
     await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toMatchObject({
       code: 'SPEC_SOURCE_UNAVAILABLE',
     });
@@ -291,6 +306,7 @@ describe('filesystem failures the layer cannot act on', () => {
         code: 'SPEC_SOURCE_UNAVAILABLE',
       });
     }
+
     const h = harness();
     h.fs.lstat = () => Promise.reject(new TypeError('defect'));
     await expect(inspectEntry(h.fs, SPEC, 'a/doc.md')).rejects.toBeInstanceOf(TypeError);

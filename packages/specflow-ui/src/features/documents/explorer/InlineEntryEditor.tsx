@@ -35,6 +35,7 @@ export function InlineEntryEditor({
 }) {
   const { t } = useTranslation();
   const errorId = useId();
+
   return (
     <div
       className={
@@ -66,7 +67,10 @@ export function InlineEntryEditor({
               value={entry.name}
               disabled={busy || unknown}
               onFocus={(event) => {
-                if (!entry.rename) return;
+                if (!entry.rename) {
+                  return;
+                }
+
                 // Rename shows the full value; the stem is selected so the extension survives typing.
                 const input = event.currentTarget;
                 const dot = entry.kind === 'document' ? input.value.lastIndexOf('.') : -1;
@@ -76,7 +80,10 @@ export function InlineEntryEditor({
               onBlur={() => {
                 // Switching window or tab blurs the input too; the half-typed name stays until the
                 // user returns, and only Enter or a click elsewhere in the page commits it.
-                if (!document.hasFocus()) return;
+                if (!document.hasFocus()) {
+                  return;
+                }
+
                 onBlur();
               }}
               onKeyDown={(event) => {
@@ -84,6 +91,7 @@ export function InlineEntryEditor({
                   event.preventDefault();
                   onEscape();
                 }
+
                 if (event.key === 'Enter') {
                   event.preventDefault();
                   onEnter();

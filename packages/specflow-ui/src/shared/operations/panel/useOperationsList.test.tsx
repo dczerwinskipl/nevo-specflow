@@ -42,6 +42,7 @@ function mount(
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
+
   return renderHook(() => useOperationsList({ api, listUrl: url, onCompleted }), { wrapper });
 }
 

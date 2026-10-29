@@ -11,12 +11,16 @@ export function TaskWorkspaceSessions() {
   const { t } = useTranslation();
   const listId = useId();
   const { data, allSessions, setAllSessions } = useTaskWorkspace();
-  if (!data.sessions.length) return null;
+  if (!data.sessions.length) {
+    return null;
+  }
+
   // Stable grouping preserves the explicit newest-first ordering within each association.
   const sessions = [
     ...data.sessions.filter((s) => s.current),
     ...data.sessions.filter((s) => !s.current),
   ];
+
   return (
     <WorkspaceSection aria-label={t('taskWorkspace.sessions')}>
       <WorkspaceSection.Header
@@ -32,6 +36,7 @@ export function TaskWorkspaceSessions() {
             step: session.step,
             attempt: session.attempt,
           });
+
           return (
             <OperationalRow
               key={session.id}

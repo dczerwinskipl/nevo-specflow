@@ -26,19 +26,26 @@ function client(events: readonly { type: string; data: string; id?: string }[]) 
     ): SseStream<unknown> => ({
       close,
       async *[Symbol.asyncIterator]() {
-        for (const event of events) yield config?.decode ? config.decode(event) : event;
+        for (const event of events) {
+          yield config?.decode ? config.decode(event) : event;
+        }
+
         // A live stream would stay open; the API must stop on its own after a terminal event.
         await new Promise((resolve) => setTimeout(resolve, 50));
         yield config?.decode?.(wire({ type: 'step', step: 'late', status: 'done' }));
       },
     }),
   );
+
   return { http: { sse } as unknown as HttpRequestClient, sse, close };
 }
 
 async function collect(iterable: AsyncIterable<OperationProgressEvent>) {
   const seen: OperationProgressEvent[] = [];
-  for await (const event of iterable) seen.push(event);
+  for await (const event of iterable) {
+    seen.push(event);
+  }
+
   return seen;
 }
 
@@ -81,6 +88,7 @@ describe('operations API (SSE)', () => {
       seen.push(event);
       controller.abort();
     }
+
     expect(seen).toHaveLength(1);
     expect(sse.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
   });

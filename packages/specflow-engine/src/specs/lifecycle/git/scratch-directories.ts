@@ -23,9 +23,11 @@ export async function createRealDirectory(path: string): Promise<void> {
       error === null ||
       !('code' in error) ||
       error.code !== 'EEXIST'
-    )
+    ) {
       throw error;
+    }
   }
+
   await requireDirectory(path);
 }
 
@@ -49,9 +51,11 @@ export async function scratchDirectories(engine: SpecFlowEngine): Promise<{
   for (const path of [engineRoot, root, hooks]) {
     await createRealDirectory(path);
   }
+
   if ((await readdir(hooks)).length !== 0) {
     throw recovery('Disabled-hook directory contains unexpected files.');
   }
+
   return { root, hooks };
 }
 

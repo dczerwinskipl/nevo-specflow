@@ -20,17 +20,22 @@ function serving(
   >,
 ): Served {
   const streams: Readable[] = [];
+
   return {
     streams,
     source: {
       read: () => Promise.reject(new DocumentError('DOCUMENT_NOT_FOUND', 'unused')),
       open: (specId, documentId) => {
         const file = files[documentId];
-        if (!file) return Promise.reject(new DocumentError('DOCUMENT_NOT_FOUND', 'unknown'));
+        if (!file) {
+          return Promise.reject(new DocumentError('DOCUMENT_NOT_FOUND', 'unknown'));
+        }
+
         const size = typeof file.bytes === 'function' ? 1024 * 1024 : file.bytes.length;
         const stream =
           typeof file.bytes === 'function' ? file.bytes() : Readable.from([file.bytes]);
         streams.push(stream);
+
         return Promise.resolve({
           metadata: {
             specId,
@@ -53,6 +58,7 @@ function serving(
 
 async function app(source: DocumentReadSource) {
   const config = passwordConfig();
+
   return createRuntimeApp(
     { ...config, authentication: { ...config.authentication, mode: 'none' } },
     { documents: { readSource: source } },
@@ -138,6 +144,7 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
         const response = await server.inject(URL(id, '?download=1'));
         expect(response.headers['content-disposition']).toBe(`attachment; filename*=UTF-8''${id}`);
       }
+
       const inline = await server.inject(URL('notes.md', '?download=0'));
       expect(inline.headers['content-disposition']).toBe('inline');
       expect((await server.inject(URL('notes.md', '?download=yes'))).statusCode).toBe(400);
@@ -245,7 +252,10 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
     const server = await app(served.source);
     await server.listen({ port: 0, host: '127.0.0.1' });
     const address = server.server.address();
-    if (typeof address !== 'object' || address === null) throw new Error('No address');
+    if (typeof address !== 'object' || address === null) {
+      throw new Error('No address');
+    }
+
     try {
       await new Promise<void>((resolve, reject) => {
         const req = httpRequest(
@@ -287,7 +297,10 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
     const server = await app(served.source);
     await server.listen({ port: 0, host: '127.0.0.1' });
     const address = server.server.address();
-    if (typeof address !== 'object' || address === null) throw new Error('No address');
+    if (typeof address !== 'object' || address === null) {
+      throw new Error('No address');
+    }
+
     try {
       const headers: Record<string, string | string[] | undefined> = {};
       const body = await new Promise<string>((resolve, reject) => {

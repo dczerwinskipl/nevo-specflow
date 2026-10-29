@@ -51,6 +51,7 @@ afterEach(async () => {
 async function fixture(): Promise<ResolvedProjectHome> {
   const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'specflow-ledger-')));
   roots.push(stateRoot);
+
   return { project: { stateRoot, projectId: PROJECT_ID } } as unknown as ResolvedProjectHome;
 }
 
@@ -143,6 +144,7 @@ describe('applyLedgerUpsert', () => {
       ids.push(change.operationId);
       record = applyLedgerUpsert(record, SUBJECT, change);
     }
+
     const [entry] = record!.entries;
     expect(entry!.operationIds).toEqual(ids.slice(-LEDGER_MAX_OPERATION_IDS));
     expect(entry!.operationCount).toBe(LEDGER_MAX_OPERATION_IDS + 5);
@@ -202,6 +204,7 @@ describe('owners', () => {
     for (const owner of [OWNER, { kind: 'definitions' } as const]) {
       expect(ledgerOwnerOfKey(ledgerOwnerKey(owner))).toEqual(owner);
     }
+
     expect(ledgerOwnerOfKey('specification-nope')).toBeUndefined();
     expect(ledgerOwnerOfKey('../etc')).toBeUndefined();
   });

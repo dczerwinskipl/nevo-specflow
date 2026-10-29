@@ -49,12 +49,18 @@ export interface StreamHints {
 export function createStreamHints(): StreamHints {
   let hint: StreamHint = 'live';
   const waiting = new Set<() => void>();
+
   return {
     current: () => hint,
     set(next) {
-      if (next === hint) return;
+      if (next === hint) {
+        return;
+      }
+
       hint = next;
-      for (const wake of [...waiting]) wake();
+      for (const wake of [...waiting]) {
+        wake();
+      }
     },
     changed: (signal) =>
       new Promise<void>((resolve) => {
@@ -63,7 +69,11 @@ export function createStreamHints(): StreamHints {
           signal?.removeEventListener('abort', done);
           resolve();
         };
-        if (signal?.aborted) return resolve();
+
+        if (signal?.aborted) {
+          return resolve();
+        }
+
         waiting.add(done);
         signal?.addEventListener('abort', done, { once: true });
       }),
@@ -118,11 +128,20 @@ export async function readOperation(
 ): Promise<OperationReading> {
   try {
     const inspection = await api.inspectOperation(operationId, signal);
-    if ('specId' in inspection) return { kind: 'completed', created: inspection };
-    if (inspection.status === 'failed') return { kind: 'failed', code: inspection.code };
+    if ('specId' in inspection) {
+      return { kind: 'completed', created: inspection };
+    }
+
+    if (inspection.status === 'failed') {
+      return { kind: 'failed', code: inspection.code };
+    }
+
     return { kind: inspection.status };
   } catch (error) {
-    if (isApiError(error) && error.kind === 'not-found') return { kind: 'not-started' };
+    if (isApiError(error) && error.kind === 'not-found') {
+      return { kind: 'not-started' };
+    }
+
     return { kind: 'unreadable', error };
   }
 }
@@ -170,9 +189,17 @@ export async function submitCreateOperation(
   } catch (error) {
     return interpretRejection(error);
   }
-  if ('specId' in answer) return { kind: 'completed', created: answer };
-  if (hooks.signal?.aborted) return { kind: 'unresolved' };
+
+  if ('specId' in answer) {
+    return { kind: 'completed', created: answer };
+  }
+
+  if (hooks.signal?.aborted) {
+    return { kind: 'unresolved' };
+  }
+
   hooks.onAccepted?.();
+
   return watchOperation(api, input.operationId, { startedAt, hooks, timing });
 }
 
@@ -183,6 +210,7 @@ export function resumeCreateOperation(
   options: { startedAt?: number; hooks?: WatchHooks; timing?: WatchTiming } = {},
 ): Promise<CreateWatchResult> {
   const timing = options.timing ?? defaultWatchTiming;
+
   return watchOperation(api, operationId, {
     startedAt: options.startedAt ?? timing.now(),
     hooks: options.hooks ?? {},
@@ -198,22 +226,45 @@ async function watchOperation(
   const { startedAt, hooks, timing } = context;
   const watchStartedAt = timing.now();
   for (;;) {
-    if (hooks.signal?.aborted) return { kind: 'unresolved' };
+    if (hooks.signal?.aborted) {
+      return { kind: 'unresolved' };
+    }
+
     const hintBefore = hooks.stream?.current();
     const reading = await readOperation(api, operationId, hooks.signal);
-    if (reading.kind === 'completed') return reading;
-    if (reading.kind === 'recovery-required') return reading;
-    if (reading.kind === 'failed') return { kind: 'operation-failed', code: reading.code };
+    if (reading.kind === 'completed') {
+      return reading;
+    }
+
+    if (reading.kind === 'recovery-required') {
+      return reading;
+    }
+
+    if (reading.kind === 'failed') {
+      return { kind: 'operation-failed', code: reading.code };
+    }
+
     // The session or the Create capability is gone: polling cannot succeed, so the owner is told
     // (the operation itself is unaffected and stays stored for a check after signing in again).
-    if (reading.kind === 'unreadable' && isAuthFailure(reading.error))
+    if (reading.kind === 'unreadable' && isAuthFailure(reading.error)) {
       return { kind: 'unresolved', error: reading.error };
+    }
+
     // The operation was accepted (or found stored), so a missing record is final.
-    if (reading.kind === 'not-started') return reading;
+    if (reading.kind === 'not-started') {
+      return reading;
+    }
+
     // The limit bounds how long this page waits; one reading is always made, even after a reload.
-    if (timing.now() - startedAt >= timing.hardLimitMs) return { kind: 'unresolved' };
+    if (timing.now() - startedAt >= timing.hardLimitMs) {
+      return { kind: 'unresolved' };
+    }
+
     // The stream spoke while this reading was in flight: read again at once, do not sleep.
-    if (hooks.stream && hooks.stream.current() !== hintBefore) continue;
+    if (hooks.stream && hooks.stream.current() !== hintBefore) {
+      continue;
+    }
+
     const interval = timing.pollIntervalMs(
       timing.now() - watchStartedAt,
       hooks.stream?.current() ?? 'lost',

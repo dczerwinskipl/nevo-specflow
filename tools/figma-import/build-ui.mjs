@@ -27,7 +27,10 @@ export async function buildImporterUi({
     .replace('/*__FIGMA_UI_SCRIPT__*/', script.replaceAll('</script', '<\\/script'));
 
   const outputDirectory = new URL('.', output);
-  if (clean) await rm(outputDirectory, { force: true, recursive: true });
+  if (clean) {
+    await rm(outputDirectory, { force: true, recursive: true });
+  }
+
   await mkdir(outputDirectory, { recursive: true });
   await writeFile(
     output,
@@ -37,4 +40,6 @@ export async function buildImporterUi({
 
 const invokedDirectly =
   process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
-if (invokedDirectly) await buildImporterUi({ clean: true });
+if (invokedDirectly) {
+  await buildImporterUi({ clean: true });
+}

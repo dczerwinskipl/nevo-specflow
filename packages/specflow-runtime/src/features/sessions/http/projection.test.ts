@@ -53,6 +53,7 @@ function fixture(
       effortOverride: false,
     },
   };
+
   return {
     snapshot,
     request,
@@ -113,7 +114,10 @@ it('applies the same effective Start rule to streamed Turn projections', () => {
     },
   };
   const projected = effectiveEvent(event, f.request, () => f.provider);
-  if (projected.kind !== 'interaction') throw new Error('Wrong fixture event');
+  if (projected.kind !== 'interaction') {
+    throw new Error('Wrong fixture event');
+  }
+
   expect(projected.changes.projection.session.capabilities.start).toBe(false);
 });
 it('requires the pinned native mode to be available even when another mode keeps the provider ready', () => {

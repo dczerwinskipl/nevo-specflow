@@ -11,7 +11,10 @@ export function useFocusRequest<T>(onRequest: (request: T) => void): (request: T
   const [pending, setPending] = useState<{ readonly request: T } | null>(null);
   const run = useEffectEvent(onRequest);
   useEffect(() => {
-    if (pending) run(pending.request);
+    if (pending) {
+      run(pending.request);
+    }
   }, [pending]);
+
   return (request) => setPending({ request });
 }

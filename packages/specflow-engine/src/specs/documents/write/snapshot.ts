@@ -46,6 +46,7 @@ export async function readSpecificationSnapshot(
       'The Specification holds too many files to be changed here.',
     );
   }
+
   const registered = loaded.manifest.documents.map((document) => document.path);
   const candidates = [...new Set([...listed.paths, ...registered])].filter(
     (path) => !(!path.includes('/') && isReservedRootName(path)),
@@ -55,10 +56,14 @@ export async function readSpecificationSnapshot(
   );
   const files: PlanObservedFile[] = [];
   for (const observation of observations) {
-    if (observation.kind !== 'file') continue;
+    if (observation.kind !== 'file') {
+      continue;
+    }
+
     const { path, revision, size } = observation.file;
     files.push({ path, revision, bytes: size, sha256: revision });
   }
+
   const snapshot: PlanningSnapshot = {
     manifest: loaded.manifest,
     manifestText: loaded.manifestBytes.toString('utf8'),
@@ -66,7 +71,10 @@ export async function readSpecificationSnapshot(
   };
   const wanted = new Set(hashPaths?.(snapshot) ?? []);
   const needed = files.filter((file) => file.revision.startsWith('stat:') && wanted.has(file.path));
-  if (needed.length === 0) return { loaded, snapshot };
+  if (needed.length === 0) {
+    return { loaded, snapshot };
+  }
+
   const hashes = new Map<string, string>();
   for (const file of needed) {
     const outcome = await withOpenFile(resolved.fs, loaded.specDir, file.path, async (open) => {
@@ -74,17 +82,23 @@ export async function readSpecificationSnapshot(
       let position = 0;
       for (;;) {
         const chunk = await readAt(open.handle, position, HASH_CHUNK_BYTES);
-        if (chunk.length === 0) break;
+        if (chunk.length === 0) {
+          break;
+        }
+
         hash.update(chunk);
         position += chunk.length;
       }
+
       return hash.digest('hex');
     });
     if (outcome.state !== 'opened') {
       throw documentChangeError('file-missing', 'A document file is unavailable.');
     }
+
     hashes.set(file.path, outcome.value);
   }
+
   return {
     loaded,
     snapshot: {

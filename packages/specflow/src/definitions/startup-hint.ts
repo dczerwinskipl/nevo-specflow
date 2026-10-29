@@ -11,6 +11,7 @@ export const DEFINITIONS_MISSING_HINT =
 /** The hint when the project has no usable archetype (no folder, an empty one, or every file invalid). */
 export async function definitionsMissingHint(engine: SpecFlowEngine): Promise<string | undefined> {
   const { catalogue } = await loadProjectCatalogue(engine);
+
   return catalogue.archetypes.length === 0 ? DEFINITIONS_MISSING_HINT : undefined;
 }
 
@@ -21,7 +22,9 @@ export async function printDefinitionsMissingHint(
 ): Promise<void> {
   try {
     const hint = await definitionsMissingHint(await openSpecFlowEngine({ cwd }));
-    if (hint !== undefined) stdout(hint);
+    if (hint !== undefined) {
+      stdout(hint);
+    }
   } catch {
     // The runtime reports its own startup problems.
   }

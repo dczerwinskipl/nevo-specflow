@@ -10,9 +10,13 @@ const fileNameOf = (path: string) => path.split('/').at(-1) ?? path;
 /** A byte count for people: bytes, kB or MB in the reader's language. */
 export function formatFileSize(bytes: number, locale?: string): string {
   // `Intl` spells the byte unit out ("27 byte"); the symbol reads the same in both languages.
-  if (bytes < 1000) return `${new Intl.NumberFormat(locale).format(bytes)} B`;
+  if (bytes < 1000) {
+    return `${new Intl.NumberFormat(locale).format(bytes)} B`;
+  }
+
   const [value, unit] =
     bytes < 1000 * 1000 ? [bytes / 1000, 'kilobyte'] : [bytes / (1000 * 1000), 'megabyte'];
+
   return new Intl.NumberFormat(locale, {
     style: 'unit',
     unit,
@@ -41,6 +45,7 @@ export function DocumentImageView({
       className={cn(actualSize ? 'max-w-none' : 'max-h-full max-w-full object-contain')}
     />
   );
+
   // A large image is fitted to the area; a small one keeps its size at the top left, on the same
   // reading edge as a file's information (no lone image in the middle of an empty panel).
   return actualSize ? (
@@ -102,6 +107,7 @@ export function DocumentFileSummary({
     [t('documents.binary.size'), formatFileSize(document.size, i18n.resolvedLanguage)],
     [t('documents.binary.format'), document.mediaType],
   ];
+
   return (
     <div className="grid gap-4">
       <Typography as="p" variant="body-md" className="text-content-secondary">
@@ -138,7 +144,7 @@ export function DocumentNonTextPreview({
   specId: string;
   document: Pick<DocumentContent, 'id' | 'path' | 'type' | 'kind' | 'size' | 'mediaType'>;
 }) {
-  if (document.kind === 'image')
+  if (document.kind === 'image') {
     return (
       <img
         src={documentRawUrl(specId, document.id)}
@@ -146,6 +152,8 @@ export function DocumentNonTextPreview({
         className="max-w-full"
       />
     );
+  }
+
   return (
     <DocumentFileSummary
       document={document}

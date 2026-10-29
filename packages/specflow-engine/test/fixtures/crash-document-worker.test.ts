@@ -12,6 +12,7 @@ const enabled = process.env.NEVO_DOCUMENT_CRASH_WORKER === '1';
 /** Announce the cut point and never return: the test kills this process there. */
 async function hang(signal: string, stage: string): Promise<never> {
   await writeFile(signal, JSON.stringify({ stage, pid: process.pid }));
+
   return new Promise<never>(() => undefined);
 }
 
@@ -19,31 +20,47 @@ async function hang(signal: string, stage: string): Promise<never> {
 function hooksFor(cut: string, last: number, signal: string): DocumentWriteHooks {
   return {
     beforeReservationPublish: async () => {
-      if (cut === 'before-reservation-publish') await hang(signal, cut);
+      if (cut === 'before-reservation-publish') {
+        await hang(signal, cut);
+      }
     },
     afterLedgerWrite: async () => {
-      if (cut === 'after-ledger-write') await hang(signal, cut);
+      if (cut === 'after-ledger-write') {
+        await hang(signal, cut);
+      }
     },
     afterPayloadReleased: async () => {
-      if (cut === 'after-payload-released') await hang(signal, cut);
+      if (cut === 'after-payload-released') {
+        await hang(signal, cut);
+      }
     },
     afterJournalWrite: async (stage) => {
-      if (cut === 'after-reserved' && stage === 'reserved') await hang(signal, cut);
-      if (cut === 'after-queued' && stage === 'queued') await hang(signal, cut);
+      if (cut === 'after-reserved' && stage === 'reserved') {
+        await hang(signal, cut);
+      }
+
+      if (cut === 'after-queued' && stage === 'queued') {
+        await hang(signal, cut);
+      }
     },
     beforeJournalWrite: async (stage) => {
-      if (cut === 'before-queued' && stage === 'queued') await hang(signal, cut);
+      if (cut === 'before-queued' && stage === 'queued') {
+        await hang(signal, cut);
+      }
     },
     onPathEffect: async (event) => {
       if (cut === 'staged' && event.kind === 'staged' && event.index === 0) {
         await hang(signal, cut);
       }
+
       if (cut === 'mid-files' && event.kind === 'replaced' && event.index === 0) {
         await hang(signal, cut);
       }
+
       if (cut === 'before-manifest' && event.kind === 'before-replace' && event.index === last) {
         await hang(signal, cut);
       }
+
       if (cut === 'after-manifest' && event.kind === 'replaced' && event.index === last) {
         await hang(signal, cut);
       }
@@ -65,8 +82,10 @@ it.skipIf(!enabled)(
       await resumeDocumentChange(engine, process.env.NEVO_DOCUMENT_CRASH_OPERATION!, {
         hooks: hooksFor(cut, last, signal),
       });
+
       throw new Error('The document crash barrier unexpectedly returned.');
     }
+
     await applyDocumentChange(
       engine,
       process.env.NEVO_DOCUMENT_CRASH_SPEC!,
@@ -74,6 +93,7 @@ it.skipIf(!enabled)(
       request,
       { hooks: hooksFor(cut, last, signal) },
     );
+
     throw new Error('The document crash barrier unexpectedly returned.');
   },
   60000,

@@ -42,11 +42,13 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
     } catch {
       /* Dispatch remains blocked without retention. */
     }
+
     return createSessionRequest(owner, storage);
   }, [owner]);
   const alive = useRef(false);
   useEffect(() => {
     alive.current = true;
+
     return () => {
       alive.current = false;
     };
@@ -82,7 +84,10 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
     provider && (!provider.providerModes || availableModes.some((mode) => mode.modeId === modeId)),
   );
   async function create() {
-    if (busy || (!canCreate && !pending)) return;
+    if (busy || (!canCreate && !pending)) {
+      return;
+    }
+
     const input = pending ?? {
       providerId: provider!.providerId,
       mode: nativeMode?.mode ?? ('read-only' as const),
@@ -92,14 +97,22 @@ export function CreateSession({ owner, api }: { owner: string; api: ManagedSessi
     setFailed(false);
     try {
       const result = await retained.send(input, (request) => api.create(request));
-      if (!alive.current) return;
+      if (!alive.current) {
+        return;
+      }
+
       await navigate({ to: '/sessions/$sessionId', params: { sessionId: result.sessionId } });
     } catch {
-      if (alive.current) setFailed(true);
+      if (alive.current) {
+        setFailed(true);
+      }
     } finally {
-      if (alive.current) setBusy(false);
+      if (alive.current) {
+        setBusy(false);
+      }
     }
   }
+
   return (
     <AppWorkspaceProvider>
       <AppWorkspace scroll="content" fit="available">

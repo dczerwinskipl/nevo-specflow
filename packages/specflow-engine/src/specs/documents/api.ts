@@ -51,6 +51,7 @@ export async function applyDocumentChange(
     withBatchViews(options),
   );
   wake(engine, result);
+
   return result;
 }
 
@@ -67,6 +68,7 @@ export async function resumeDocumentChange(
     withBatchViews(options),
   );
   wake(engine, result);
+
   return result;
 }
 

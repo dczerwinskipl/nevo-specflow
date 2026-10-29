@@ -13,13 +13,17 @@ export function useNavigationFocus() {
   useEffect(
     () =>
       router.subscribe('onResolved', ({ pathChanged, hashChanged }) => {
-        if (!navigationOpen) return;
+        if (!navigationOpen) {
+          return;
+        }
+
         const hash = router.state.location.hash;
         closeNavigation(
           hash && (pathChanged || hashChanged)
             ? () => {
                 const section = document.getElementById(hash);
                 section?.scrollIntoView({ block: 'start' });
+
                 return (
                   section ??
                   document.querySelector<HTMLElement>('[data-workspace-active="true"] h1')

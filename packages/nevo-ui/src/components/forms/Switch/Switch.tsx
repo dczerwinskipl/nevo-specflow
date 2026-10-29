@@ -31,6 +31,7 @@ export const Switch = forwardRef<
   const capture = useDesignMetadata('Switch', {
     state: disabled ? 'disabled' : (checked ?? defaultChecked) ? 'checked' : 'default',
   });
+
   return (
     <SwitchPrimitive.Root
       ref={ref}

@@ -30,6 +30,7 @@ export function TaskWorkspace({
     </AppWorkspaceProvider>
   );
 }
+
 function Workspace({ onBack }: { readonly onBack?: () => void }) {
   const { t } = useTranslation();
   const { data, reading } = useTaskWorkspace();
@@ -38,6 +39,7 @@ function Workspace({ onBack }: { readonly onBack?: () => void }) {
   const openMaterial = (id: string) => {
     void navigation.open(taskWorkspaceMaterialStack, { taskId: data.id, id });
   };
+
   return (
     <AppWorkspace
       split={reading ? 'secondary' : 'primary'}

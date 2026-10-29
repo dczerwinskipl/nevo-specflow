@@ -26,6 +26,7 @@ export function useCloseFocus(
     fromMenu.current = viaMenu;
     closeItem(id);
   };
+
   /** Close from a tab, its x or the keyboard on the strip. */
   const onClose = (id: string) => request(id, false);
   /**
@@ -36,19 +37,28 @@ export function useCloseFocus(
 
   useLayoutEffect(() => {
     const closing = pending.current;
-    if (!closing || !root || items.some((item) => item.id === closing.id)) return;
+    if (!closing || !root || items.some((item) => item.id === closing.id)) {
+      return;
+    }
+
     pending.current = null;
     const viaMenu = fromMenu.current;
     const owner = document.activeElement;
     const inOpenMenu = viaMenu && Boolean(owner?.closest('[role="menu"]')?.isConnected);
-    if (owner && owner !== document.body && !root.contains(owner) && !viaMenu) return;
+    if (owner && owner !== document.body && !root.contains(owner) && !viaMenu) {
+      return;
+    }
+
     const tabs = [...root.querySelectorAll<HTMLElement>('[role="tab"]')];
     const target =
       tabs.find((tab) => tab.dataset.itemId === closing.neighbourId) ??
       tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
     // A menu that is still showing keeps focus until it closes; its close handler then lands on
     // `settled` instead of the trigger (which may no longer exist).
-    if (!inOpenMenu) target?.focus();
+    if (!inOpenMenu) {
+      target?.focus();
+    }
+
     settled.current = viaMenu ? (target ?? null) : null;
   }, [items, root]);
 

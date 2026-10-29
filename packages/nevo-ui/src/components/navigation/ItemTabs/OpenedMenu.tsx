@@ -41,7 +41,9 @@ export function OpenedMenuBody({
           <MenuItem
             onSelect={() => onActivate(item.id)}
             onKeyDown={(event) => {
-              if (event.key === 'Delete') onClose(item.id);
+              if (event.key === 'Delete') {
+                onClose(item.id);
+              }
             }}
             aria-current={item.id === activeId ? 'true' : undefined}
             leadingIcon={item.state === 'missing' ? 'triangle-alert' : item.icon}

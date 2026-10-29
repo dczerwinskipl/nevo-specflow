@@ -45,7 +45,10 @@ describe('batch formation', () => {
   it('takes the queued operations of one Specification in sequence order; the first member names the batch', () => {
     const decision = formNextBatch(input([op(3), op(1), op(2)]));
     expect(decision.kind).toBe('batch');
-    if (decision.kind !== 'batch') return;
+    if (decision.kind !== 'batch') {
+      return;
+    }
+
     expect(decision.batch.members.map((member) => member.operationId)).toEqual([
       id(1),
       id(2),
@@ -77,7 +80,10 @@ describe('batch formation', () => {
     ];
     const decision = formNextBatch(input(queued, { barrierPaths: new Set([shared]) }));
     expect(decision.kind).toBe('batch');
-    if (decision.kind !== 'batch') return;
+    if (decision.kind !== 'batch') {
+      return;
+    }
+
     // 1 is blocked by the barrier; 2 too; 3 overlaps 2 (it must not overtake); 4 is free.
     expect(decision.batch.members.map((member) => member.operationId)).toEqual([id(4)]);
     expect(decision.deferred).toEqual([

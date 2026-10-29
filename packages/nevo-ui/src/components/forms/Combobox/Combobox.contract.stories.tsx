@@ -13,7 +13,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 /** The list renders in a portal outside the canvas, so it is queried from the document. */
@@ -23,15 +25,20 @@ const listbox = () => document.querySelector<HTMLElement>('[role=listbox]');
 async function until<T>(read: () => T | null | undefined | false): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
+
   throw new Error('Timed out waiting for the Combobox list.');
 }
 
 async function waitForOptions(): Promise<HTMLElement[]> {
   return until(() => {
     const found = listed();
+
     return found.length > 0 ? found : null;
   });
 }
@@ -52,6 +59,7 @@ const cities = [
 
 function Picker({ unavailable = false }: { unavailable?: boolean }) {
   const [value, setValue] = useState<string | null>(null);
+
   return (
     <div className="w-80" data-testid="picker" data-value={value ?? ''}>
       <Field>
@@ -223,6 +231,7 @@ export const SimilarLongValuesStayDistinguishable: Story = {
     for (const label of labels) {
       assert(label.scrollWidth <= label.clientWidth + 1, 'No option label is ellipsised.');
     }
+
     const list = listbox()!.parentElement!.getBoundingClientRect();
     assert(list.right <= window.innerWidth, 'The list stays inside the viewport.');
   },
@@ -243,6 +252,7 @@ export const InputRefReachesTheInput: Story = {
   render: () => {
     function WithRef() {
       const ref = useRef<HTMLInputElement>(null);
+
       return (
         <div className="w-80">
           <button onClick={() => ref.current?.focus()} type="button">
@@ -254,6 +264,7 @@ export const InputRefReachesTheInput: Story = {
         </div>
       );
     }
+
     return <WithRef />;
   },
   play: async ({ canvas, userEvent }) => {

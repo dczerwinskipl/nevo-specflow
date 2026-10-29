@@ -121,14 +121,19 @@ export function normalizeDocumentOperationInput(input: DocumentOperationInput): 
   const target = targetOf(input);
   const unexpected = (...fields: ('name' | 'targetFolder' | 'type')[]): void => {
     for (const field of fields) {
-      if (input[field] !== undefined)
+      if (input[field] !== undefined) {
         throw invalid(`"${field}" does not apply to ${input.action}.`);
+      }
     }
   };
+
   switch (input.action) {
     case 'rename':
       unexpected('targetFolder', 'type');
-      if (input.name === undefined) throw invalid('"name" is required to rename.');
+      if (input.name === undefined) {
+        throw invalid('"name" is required to rename.');
+      }
+
       return {
         action: 'rename',
         target,
@@ -137,7 +142,10 @@ export function normalizeDocumentOperationInput(input: DocumentOperationInput): 
       };
     case 'move':
       unexpected('name', 'type');
-      if (input.targetFolder === undefined) throw invalid('"targetFolder" is required to move.');
+      if (input.targetFolder === undefined) {
+        throw invalid('"targetFolder" is required to move.');
+      }
+
       return {
         action: 'move',
         target,
@@ -146,11 +154,18 @@ export function normalizeDocumentOperationInput(input: DocumentOperationInput): 
       };
     case 'delete':
       unexpected('name', 'targetFolder', 'type');
+
       return { action: 'delete', target, expectedRevision: input.expectedRevision };
     case 'classify':
       unexpected('name', 'targetFolder');
-      if (target.kind !== 'document') throw invalid('Only a document can be classified.');
-      if (input.type === undefined) throw invalid('"type" is required to classify.');
+      if (target.kind !== 'document') {
+        throw invalid('Only a document can be classified.');
+      }
+
+      if (input.type === undefined) {
+        throw invalid('"type" is required to classify.');
+      }
+
       return {
         action: 'classify',
         documentId: target.documentId,
@@ -159,6 +174,7 @@ export function normalizeDocumentOperationInput(input: DocumentOperationInput): 
       };
     default: {
       const exhaustive: never = input.action;
+
       return exhaustive;
     }
   }
@@ -170,14 +186,17 @@ function targetOf(input: DocumentOperationInput): StructuralTarget {
       if (input.documentId === undefined || input.path !== undefined) {
         throw invalid('A document target is named by "documentId" only.');
       }
+
       return { kind: 'document', documentId: input.documentId };
     case 'folder':
       if (input.path === undefined || input.documentId !== undefined) {
         throw invalid('A folder target is named by "path" only.');
       }
+
       return { kind: 'folder', path: input.path };
     default: {
       const exhaustive: never = input.kind;
+
       return exhaustive;
     }
   }

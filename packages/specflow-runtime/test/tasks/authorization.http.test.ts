@@ -89,7 +89,10 @@ describe('Task read authorization through the real HTTP adapter', () => {
       expect(detail.statusCode).toBe(200);
       expect(detail.body).toContain('Protected session description');
       const section = detail.json<SpecificationTaskResponse>().snapshot!.sections.resources;
-      if (section.state !== 'available') throw Error('Expected resources');
+      if (section.state !== 'available') {
+        throw Error('Expected resources');
+      }
+
       const pageUrl = url + '/resources?token=' + encodeURIComponent(section.data.page!.token);
       expect((await app.inject(pageUrl)).json<TaskResourcePage>().items.length).toBeGreaterThan(0);
       authorization = policy(false);

@@ -159,8 +159,11 @@ export function DateTimePicker({
       shouldCloseOnSelect={false}
       value={picker.resolvedOpen ? picker.draftValue : picker.committedValue}
       onChange={(nextValue: ZonedDateTime | null) => {
-        if (picker.resolvedOpen) picker.setDraftValue(nextValue);
-        else picker.commitValue(nextValue);
+        if (picker.resolvedOpen) {
+          picker.setDraftValue(nextValue);
+        } else {
+          picker.commitValue(nextValue);
+        }
       }}
       onOpenChange={picker.setOpen}
     >

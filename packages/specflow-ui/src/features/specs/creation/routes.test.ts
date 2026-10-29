@@ -26,6 +26,7 @@ async function searchOf(url: string) {
   );
   await router.load();
   const matches: { routeId: string; search: unknown }[] = router.matchRoutes(router.latestLocation);
+
   return matches.find((match) => match.routeId.endsWith('/specs/new'))?.search as
     Record<string, unknown> | undefined;
 }

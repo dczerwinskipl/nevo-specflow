@@ -30,17 +30,21 @@ export function TaskDetailDisclosure({
       aria-expanded={expanded}
       aria-controls={id}
       onClick={(event) => {
-        if (taskId && stateKey)
+        if (taskId && stateKey) {
           update((previous) => ({
             inspectionDisclosures: { ...previous.inspectionDisclosures, [stateKey]: !expanded },
           }));
-        else setLocalExpanded(!expanded);
+        } else {
+          setLocalExpanded(!expanded);
+        }
+
         event.currentTarget.focus({ preventScroll: true });
       }}
     >
       {expanded ? hideLabel : label}
     </Button>
   );
+
   return (
     <div className="pointer-events-auto grid min-w-0 justify-items-start gap-1">
       {headingLevel ? (
@@ -73,21 +77,28 @@ export function TaskCopyValue({
   const { state, update } = useTaskViewState(taskId ?? '');
   const status = taskId && stateKey ? state.inspectionCopyStatus?.[stateKey] : localStatus;
   const setStatus = (next: 'copied' | 'failed') => {
-    if (taskId && stateKey)
+    if (taskId && stateKey) {
       update((previous) => ({
         inspectionCopyStatus: { ...previous.inspectionCopyStatus, [stateKey]: next },
       }));
-    else setLocalStatus(next);
+    } else {
+      setLocalStatus(next);
+    }
   };
+
   const copyValue = async () => {
     try {
-      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard unavailable');
+      }
+
       await navigator.clipboard.writeText(value);
       setStatus('copied');
     } catch {
       setStatus('failed');
     }
   };
+
   return (
     <div className="pointer-events-auto grid min-w-0 gap-1 justify-items-start">
       <Typography

@@ -27,9 +27,13 @@ export function validateBaseRef(baseRef: string): void {
     COMMIT.test(baseRef) ||
     /^refs\/(?:heads|tags)\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/u.test(baseRef)
   ) {
-    if (baseRef.startsWith('refs/')) validateBranchName(baseRef.slice(baseRef.indexOf('/', 5) + 1));
+    if (baseRef.startsWith('refs/')) {
+      validateBranchName(baseRef.slice(baseRef.indexOf('/', 5) + 1));
+    }
+
     return;
   }
+
   if (!LOCAL_BRANCH.test(baseRef) || baseRef.includes('..') || baseRef.endsWith('.lock')) {
     throw invalid('Unsupported Git worktree base ref.');
   }
@@ -37,6 +41,7 @@ export function validateBaseRef(baseRef: string): void {
 
 export function normalizeBaseRef(baseRef: string): string {
   validateBaseRef(baseRef);
+
   return baseRef === 'HEAD' || COMMIT.test(baseRef) || baseRef.startsWith('refs/')
     ? baseRef
     : 'refs/heads/' + baseRef;

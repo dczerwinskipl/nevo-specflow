@@ -19,11 +19,20 @@ export async function readTaskPage(
     capability: SpecCapabilities.capabilities.View,
     scope: { specId },
   });
-  if (!deps.definitions || !deps[kind]) return { kind: 'unavailable' };
+  if (!deps.definitions || !deps[kind]) {
+    return { kind: 'unavailable' };
+  }
+
   const definition = await deps.definitions.resolve(specId, taskId);
-  if (!definition) return { kind: 'not_found' };
+  if (!definition) {
+    return { kind: 'not_found' };
+  }
+
   const identity = definition.identity;
-  if (identity.specId !== specId || identity.taskId !== taskId) return { kind: 'unavailable' };
+  if (identity.specId !== specId || identity.taskId !== taskId) {
+    return { kind: 'unavailable' };
+  }
+
   const resolved = deps.leases.resolve(
     query.token,
     kind,
@@ -32,7 +41,10 @@ export async function readTaskPage(
     query.cursor,
     query.limit === undefined ? undefined : Number(query.limit),
   );
-  if (!resolved) return { kind: 'expired' };
+  if (!resolved) {
+    return { kind: 'expired' };
+  }
+
   const visible = taskVisibility(identity, authz, deps.sessions);
   const { lease, continuation, limit } = resolved;
   const page =
@@ -44,22 +56,35 @@ export async function readTaskPage(
     !sameTask(page.identity, identity) ||
     page.version !== lease.source.version ||
     page.items.length > limit
-  )
+  ) {
     return { kind: 'expired' };
+  }
+
   const items = [];
   // One bounded source page per request. An underfilled visible page retains its continuation.
   if (kind === 'history') {
     for (const entry of page.items as TaskHistoryPage['items']) {
-      if (entry.key.specId !== specId || entry.key.taskId !== taskId)
+      if (entry.key.specId !== specId || entry.key.taskId !== taskId) {
         return { kind: 'unavailable' };
+      }
+
       const resources = [];
-      for (const item of entry.resources) if (await visible(item.link)) resources.push(item);
+      for (const item of entry.resources) {
+        if (await visible(item.link)) {
+          resources.push(item);
+        }
+      }
+
       items.push({ ...entry, resources });
     }
   } else {
-    for (const item of page.items as TaskResourcePage['items'])
-      if (await visible(item.link)) items.push(item);
+    for (const item of page.items as TaskResourcePage['items']) {
+      if (await visible(item.link)) {
+        items.push(item);
+      }
+    }
   }
+
   if (
     !deps.leases.resolve(
       query.token,
@@ -69,8 +94,10 @@ export async function readTaskPage(
       query.cursor,
       query.limit === undefined ? undefined : Number(query.limit),
     )
-  )
+  ) {
     return { kind: 'expired' };
+  }
+
   return {
     kind: 'ok',
     value: {

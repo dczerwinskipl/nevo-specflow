@@ -155,9 +155,14 @@ export function findDefinitionTextLimitViolations(
 ): DefinitionTextLimitViolation[] {
   const violations: DefinitionTextLimitViolation[] = [];
   const check = (path: string, text: string | undefined, limitBytes: number): void => {
-    if (text === undefined) return;
+    if (text === undefined) {
+      return;
+    }
+
     const actualBytes = utf8ByteLength(text);
-    if (actualBytes > limitBytes) violations.push({ path, limitBytes, actualBytes });
+    if (actualBytes > limitBytes) {
+      violations.push({ path, limitBytes, actualBytes });
+    }
   };
 
   (file.documentTypes ?? []).forEach((type, index) => {
@@ -177,6 +182,7 @@ export function findDefinitionTextLimitViolations(
       check(`${path}/content`, template.content, DEFINITION_TEMPLATE_MAX_BYTES);
     });
   });
+
   return violations;
 }
 

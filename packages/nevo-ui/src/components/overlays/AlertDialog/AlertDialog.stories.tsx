@@ -48,7 +48,9 @@ export const Destructive: Story = {
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 export const InteractionContract: Story = {
@@ -137,6 +139,7 @@ async function verifyFooter(width: number) {
       `"${button.textContent}" label must fit its button.`,
     );
   }
+
   const cancel = buttons[0]!;
   const action = buttons.at(-1)!;
   if (width < 640) {
@@ -146,6 +149,7 @@ async function verifyFooter(width: number) {
         'Narrow footers stack full-width actions.',
       );
     }
+
     assert(
       action.getBoundingClientRect().top < cancel.getBoundingClientRect().top,
       'The primary/destructive action is stacked on top.',
@@ -161,6 +165,7 @@ async function verifyFooter(width: number) {
       'Cancel precedes the action in reading order.',
     );
   }
+
   cancel.focus();
   assert(
     buttons.indexOf(document.activeElement as HTMLButtonElement) === 0,

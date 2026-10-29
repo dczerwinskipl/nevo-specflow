@@ -62,6 +62,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
       if (!returnTo) {
         reply.code(400);
         const response: OidcStartErrorResponse = { error: 'invalid_return_to' };
+
         return response;
       }
 
@@ -87,6 +88,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
 
         reply.code(503);
         const response: OidcStartErrorResponse = { error: result.error };
+
         return response;
       }
 
@@ -98,6 +100,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
       const response: OidcStartSuccessResponse = {
         authorizationUrl: result.authorizationUrl.toString(),
       };
+
       return response;
     },
   );
@@ -137,6 +140,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
       ...options.cookieOptions,
       maxAge: ttlSeconds(options.store.policy.sessionTtlMs),
     });
+
     return reply.redirect(new URL(result.returnTo, options.publicOrigin).toString());
   });
 
@@ -144,8 +148,13 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
 };
 
 export function normalizeReturnTo(value: string | undefined): string | null {
-  if (value === undefined) return DEFAULT_RETURN_TO;
-  if (!value.startsWith('/') || value.startsWith('//')) return null;
+  if (value === undefined) {
+    return DEFAULT_RETURN_TO;
+  }
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return null;
+  }
 
   let url: URL;
   try {
@@ -154,7 +163,10 @@ export function normalizeReturnTo(value: string | undefined): string | null {
     return null;
   }
 
-  if (url.origin !== 'http://specflow.local') return null;
+  if (url.origin !== 'http://specflow.local') {
+    return null;
+  }
+
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
@@ -164,5 +176,6 @@ function loginRedirect(publicOrigin: string, error: OidcCallbackErrorCode, retur
   if (returnTo && returnTo !== DEFAULT_RETURN_TO) {
     url.searchParams.set('returnTo', returnTo);
   }
+
   return url;
 }

@@ -11,5 +11,6 @@ export function useVisitFreshOptions<T>(query: {
   dataUpdatedAt: number;
 }): T | undefined {
   const [enteredAt] = useState(() => Date.now());
+
   return query.data !== undefined && query.dataUpdatedAt >= enteredAt ? query.data : undefined;
 }

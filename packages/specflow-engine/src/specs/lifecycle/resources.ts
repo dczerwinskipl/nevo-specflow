@@ -25,6 +25,7 @@ export async function assertResourcesAvailable(
         error.message,
       );
     }
+
     throw error;
   }
 }

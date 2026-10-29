@@ -31,8 +31,10 @@ export function mergeTaskResources(
 ) {
   return [...new Map([...recommended, ...pages.flat()].map((ref) => [ref.id, ref])).values()];
 }
+
 export function pendingRequirements(snapshot: TaskSnapshot): TaskHumanRequirement[] {
   const section = snapshot.sections.humanRequirements;
+
   return section.state === 'available'
     ? section.data.items
         .filter((item) => item.state === 'pending')
@@ -41,6 +43,7 @@ export function pendingRequirements(snapshot: TaskSnapshot): TaskHumanRequiremen
         )
     : [];
 }
+
 export interface TaskDetailsProps {
   readonly task: FullTaskData;
   readonly specKey: string;
@@ -55,6 +58,7 @@ export interface TaskDetailsProps {
 }
 export function TaskSourceState({ state }: { readonly state: 'unavailable' | 'forbidden' }) {
   const { t } = useTranslation();
+
   return (
     <Typography as="div" variant="body-sm" className="text-content-muted">
       {t(
@@ -377,9 +381,14 @@ export function TaskDetails({
                     onClick={() => {
                       if (!resourcesExpanded) {
                         setResourcesExpanded(true);
-                        if (allResources.length < total) onLoadResources?.();
-                      } else if (allResources.length < total && onLoadResources) onLoadResources();
-                      else setResourcesExpanded(false);
+                        if (allResources.length < total) {
+                          onLoadResources?.();
+                        }
+                      } else if (allResources.length < total && onLoadResources) {
+                        onLoadResources();
+                      } else {
+                        setResourcesExpanded(false);
+                      }
                     }}
                   >
                     {resourcesLoading

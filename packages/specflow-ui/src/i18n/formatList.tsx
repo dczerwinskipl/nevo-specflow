@@ -17,6 +17,7 @@ export function FormattedList({ items }: { readonly items: readonly ReactNode[] 
     style: 'long',
     type: 'conjunction',
   }).formatToParts(placeholders);
+
   return (
     <>
       {parts.map((part, index) => (

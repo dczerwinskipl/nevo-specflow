@@ -61,6 +61,7 @@ function unreadable(error: unknown): never {
   if (errnoCode(error)?.startsWith('E')) {
     throw unavailable('The Specification files cannot be read.');
   }
+
   throw error;
 }
 
@@ -74,10 +75,12 @@ export function assertContainedRelativePath(relativePath: string): readonly stri
   ) {
     throw unavailable('A document path leaves the Specification directory.');
   }
+
   const segments = relativePath.split('/');
   if (segments.some(isNavigationSegment)) {
     throw unavailable('A document path leaves the Specification directory.');
   }
+
   return segments;
 }
 
@@ -101,9 +104,13 @@ export function aliasedPhysicalPath(paths: readonly string[]): string | undefine
   const seen = new Set<string>();
   for (const path of paths) {
     const key = physicalPathKey(path);
-    if (seen.has(key)) return path;
+    if (seen.has(key)) {
+      return path;
+    }
+
     seen.add(key);
   }
+
   return undefined;
 }
 
@@ -121,24 +128,37 @@ export async function inspectEntry(
     try {
       stat = await fs.lstat(current);
     } catch (error) {
-      if (isAbsent(error)) return { state: 'absent' };
+      if (isAbsent(error)) {
+        return { state: 'absent' };
+      }
+
       return unreadable(error);
     }
+
     if (index < segments.length - 1) {
-      if (stat.isSymbolicLink()) return { state: 'redirected' };
-      if (!stat.isDirectory()) return { state: 'absent' };
+      if (stat.isSymbolicLink()) {
+        return { state: 'redirected' };
+      }
+
+      if (!stat.isDirectory()) {
+        return { state: 'absent' };
+      }
     } else {
       return stat.isFile() && !stat.isSymbolicLink()
         ? { state: 'file', stat }
         : { state: 'not-regular' };
     }
   }
+
   return { state: 'absent' };
 }
 
 function sameIdentity(left: BigIntStats, right: BigIntStats): boolean {
   // Some Windows filesystems report inode 0: the identity then rests on the device alone (best effort).
-  if (left.ino === 0n && right.ino === 0n) return left.dev === right.dev;
+  if (left.ino === 0n && right.ino === 0n) {
+    return left.dev === right.dev;
+  }
+
   return left.dev === right.dev && left.ino === right.ino;
 }
 
@@ -164,14 +184,21 @@ export async function openVerifiedFile(
   if (before.state === 'redirected') {
     throw unavailable('A document path leaves the Specification directory.');
   }
-  if (before.state !== 'file') return { state: before.state };
+
+  if (before.state !== 'file') {
+    return { state: before.state };
+  }
+
   await assertPhysicalPath(fs, full, specDir, segments);
 
   let handle: FileHandle;
   try {
     handle = await fs.open(full, READ_OPEN_FLAGS);
   } catch (error) {
-    if (isAbsent(error)) return { state: 'absent' };
+    if (isAbsent(error)) {
+      return { state: 'absent' };
+    }
+
     // ELOOP: the final component became a symlink after the check (O_NOFOLLOW). ENXIO/EISDIR and
     // friends: it became something that is not a regular file.
     if (
@@ -181,21 +208,27 @@ export async function openVerifiedFile(
     ) {
       throw unavailable('A document changed while it was being opened.');
     }
+
     return unreadable(error);
   }
+
   try {
     const opened = await handle.stat({ bigint: true });
     if (!opened.isFile() || !sameIdentity(before.stat, opened)) {
       throw unavailable('A document changed while it was being opened.');
     }
+
     const after = await inspectEntry(fs, specDir, relativePath);
     if (after.state !== 'file' || !sameIdentity(opened, after.stat)) {
       throw unavailable('A document changed while it was being opened.');
     }
+
     await assertPhysicalPath(fs, full, specDir, segments);
+
     return { state: 'opened', handle, stat: opened };
   } catch (error) {
     await handle.close().catch(() => undefined);
+
     throw error;
   }
 }
@@ -221,15 +254,21 @@ export async function withOpenFile<T>(
   use: (file: OpenFile, adopt: () => void) => Promise<T>,
 ): Promise<WithOpenFileResult<T>> {
   const opened = await openVerifiedFile(fs, specDir, relativePath);
-  if (opened.state !== 'opened') return { state: opened.state };
+  if (opened.state !== 'opened') {
+    return { state: opened.state };
+  }
+
   let adopted = false;
   try {
     const value = await use({ handle: opened.handle, stat: opened.stat }, () => {
       adopted = true;
     });
+
     return { state: 'opened', value };
   } finally {
-    if (!adopted) await opened.handle.close().catch(() => undefined);
+    if (!adopted) {
+      await opened.handle.close().catch(() => undefined);
+    }
   }
 }
 
@@ -243,9 +282,13 @@ async function assertPhysicalPath(
   try {
     real = await fs.realpath(full);
   } catch (error) {
-    if (isAbsent(error)) throw unavailable('A document changed while it was being opened.');
+    if (isAbsent(error)) {
+      throw unavailable('A document changed while it was being opened.');
+    }
+
     return unreadable(error);
   }
+
   if (!samePhysicalPath(real, join(specDir, ...segments))) {
     throw unavailable('A document path leaves the Specification directory.');
   }
@@ -262,9 +305,13 @@ export async function assertCanonicalDirectory(fs: VerifiedFs, directory: string
     stat = await fs.lstat(directory);
     real = await fs.realpath(directory);
   } catch (error) {
-    if (isAbsent(error)) throw unavailable('The Specification directory is unavailable.');
+    if (isAbsent(error)) {
+      throw unavailable('The Specification directory is unavailable.');
+    }
+
     return unreadable(error);
   }
+
   if (!stat.isDirectory() || stat.isSymbolicLink() || !samePhysicalPath(real, directory)) {
     throw unavailable('The Specification directory is unavailable.');
   }
@@ -280,8 +327,12 @@ export async function readAt(
   let filled = 0;
   while (filled < length) {
     const { bytesRead } = await handle.read(buffer, filled, length - filled, position + filled);
-    if (bytesRead === 0) break;
+    if (bytesRead === 0) {
+      break;
+    }
+
     filled += bytesRead;
   }
+
   return buffer.subarray(0, filled);
 }

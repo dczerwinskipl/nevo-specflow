@@ -17,9 +17,11 @@ export function requireArchetype(project: ProjectCatalogue, archetypeId: string)
       { cause: 'definitions-missing' },
     );
   }
+
   const archetype = catalogue.findArchetype(archetypeId);
   if (!archetype) {
     const invalid = project.invalidArchetypeIds.has(archetypeId);
+
     throw new DocumentError(
       'ARCHETYPE_UNKNOWN',
       invalid
@@ -28,5 +30,6 @@ export function requireArchetype(project: ProjectCatalogue, archetypeId: string)
       { cause: invalid ? 'archetype-invalid' : 'archetype-not-defined' },
     );
   }
+
   return archetype;
 }

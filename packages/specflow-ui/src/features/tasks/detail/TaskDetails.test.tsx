@@ -9,7 +9,10 @@ describe('Task presentation policy', () => {
   it.each([true, false])('only offers document readers in preview=%s', (preview) => {
     const { response, resources } = createTaskDetailFixture();
     const section = response.snapshot!.sections.resources;
-    if (section.state !== 'available') throw new Error('Expected resources');
+    if (section.state !== 'available') {
+      throw new Error('Expected resources');
+    }
+
     const document = { ...resources[0]!, title: 'Readable document' };
     const unsupported = {
       ...resources[1]!,
@@ -43,7 +46,9 @@ describe('Task presentation policy', () => {
     expect(html).not.toMatch(/<button[^>]*>Protected session<\/button>/);
     expect(html).not.toMatch(/<button[^>]*>Missing material<\/button>/);
     expect(html).toContain('No reader is available for this material.');
-    if (!preview) expect(html).toContain('Content unavailable');
+    if (!preview) {
+      expect(html).toContain('Content unavailable');
+    }
   });
   it('keeps the third recommendation ahead of overlapping pages, without duplicate IDs', () => {
     const { resources } = createTaskDetailFixture();
@@ -56,7 +61,10 @@ describe('Task presentation policy', () => {
   it('counts one human step plus independent pending gates, preserving definition order', () => {
     const { response } = createTaskDetailFixture();
     const requirements = response.snapshot!.sections.humanRequirements;
-    if (requirements.state !== 'available') throw new Error('Fixture must have requirements');
+    if (requirements.state !== 'available') {
+      throw new Error('Fixture must have requirements');
+    }
+
     requirements.data.items[3]!.state = 'passed';
     const pending = pendingRequirements(response.snapshot!);
     expect(pending).toHaveLength(20);

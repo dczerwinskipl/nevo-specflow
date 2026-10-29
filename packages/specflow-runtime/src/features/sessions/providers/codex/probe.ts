@@ -18,8 +18,9 @@ import { probeCodexBoundary } from './boundary';
 import { codexModes } from './modes';
 
 async function closeProbe(peer: CodexPeer) {
-  if ((await peer.close()).process.state !== 'stopped')
+  if ((await peer.close()).process.state !== 'stopped') {
     throw new SessionError('PROVIDER_UNAVAILABLE', 'Codex probe process settlement is unknown.');
+  }
 }
 
 async function executionBoundary(
@@ -37,11 +38,15 @@ async function executionBoundary(
     args: codexArguments(workspace, false, { providerId: 'codex', mode: 'workspace-write' }),
   });
   const peer = createCodexRpc(owner, (message) => {
-    if (!codexMetadata(message)) throw new CodexRpcError('protocol');
+    if (!codexMetadata(message)) {
+      throw new CodexRpcError('protocol');
+    }
+
     return Promise.resolve();
   });
   try {
     await initializeCodex(peer, options.signal, options.home);
+
     // The positive and readonly-negative targets are inside this process's SAME
     // implicit workspace. Ignoring a readonly override would make that test fail.
     // The writer-negative sibling is outside both the implicit and explicit roots.
@@ -68,7 +73,10 @@ export async function probeCodex(
     args: codexArguments(options.workspace),
   });
   const peer = createCodexRpc(owner, (message) => {
-    if (!codexMetadata(message)) throw new CodexRpcError('protocol');
+    if (!codexMetadata(message)) {
+      throw new CodexRpcError('protocol');
+    }
+
     return Promise.resolve();
   });
   try {
@@ -76,26 +84,37 @@ export async function probeCodex(
     const account = rpcObject(
       await peer.request('account/read', { refreshToken: false }, options.signal),
     );
-    if (account.account == null || rpcObject(account.account).type !== 'chatgpt')
+    if (account.account == null || rpcObject(account.account).type !== 'chatgpt') {
       throw new SessionError(
         'PROVIDER_AUTH_REQUIRED',
         'Codex requires an active ChatGPT CLI login.',
       );
+    }
+
     const models = await codexModels(peer, options.signal);
     const catalogue = rpcObject(await peer.request('collaborationMode/list', {}, options.signal));
-    if (!Array.isArray(catalogue.data) || catalogue.data.length > 16)
+    if (!Array.isArray(catalogue.data) || catalogue.data.length > 16) {
       throw new CodexRpcError('protocol');
+    }
+
     const advertisedModes = catalogue.data.map((raw) => {
       const mode = rpcObject(raw);
-      if (typeof mode.mode !== 'string' || mode.mode.length > 128)
+      if (typeof mode.mode !== 'string' || mode.mode.length > 128) {
         throw new CodexRpcError('protocol');
+      }
+
       return mode.mode;
     });
-    if (new Set(advertisedModes).size !== advertisedModes.length)
+    if (new Set(advertisedModes).size !== advertisedModes.length) {
       throw new CodexRpcError('protocol');
+    }
+
     const modes: string[] = [];
     for (const mode of codexModes) {
-      if (!advertisedModes.includes(mode.nativeMode)) continue;
+      if (!advertisedModes.includes(mode.nativeMode)) {
+        continue;
+      }
+
       const selection = { providerId: 'codex', providerModeId: mode.modeId, mode: mode.mode };
       try {
         const response = await peer.request(
@@ -114,13 +133,17 @@ export async function probeCodex(
         /* A failed mode does not certify it or silently substitute another. */
       }
     }
+
     const limits = rpcObject(await peer.request('account/rateLimits/read', {}, options.signal));
-    if (limits.ordinaryUsageAllowed === false)
+    if (limits.ordinaryUsageAllowed === false) {
       throw new SessionError(
         'PROVIDER_UNAVAILABLE',
         'Codex account usage is currently unavailable.',
       );
+    }
+
     const boundary = await executionBoundary(options);
+
     return { models, modes, boundary };
   } finally {
     await closeProbe(peer);

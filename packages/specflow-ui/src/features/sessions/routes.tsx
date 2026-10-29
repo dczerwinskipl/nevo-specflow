@@ -24,6 +24,7 @@ function SessionsRouteScreen() {
   const { t } = useTranslation();
   const navigate = sessionsRoute.useNavigate();
   const demo = useRuntimeMode() === 'demo';
+
   return (
     <SpecificationAggregatePage
       specId={specId}
@@ -70,6 +71,7 @@ function Session() {
   const { specId, sessionId } = sessionDetailRoute.useParams();
   const navigate = sessionDetailRoute.useNavigate();
   const { collection } = sessionDetailRoute.useSearch();
+
   return (
     <AppWorkspaceProvider>
       <SessionScreen

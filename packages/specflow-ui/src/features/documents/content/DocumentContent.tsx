@@ -47,7 +47,7 @@ export function DocumentContent({
     query.isPending && query.fetchStatus === 'fetching',
     usable,
   );
-  if (query.isPending)
+  if (query.isPending) {
     return (
       <div ref={appearance}>
         <LoadingPresentation
@@ -57,6 +57,8 @@ export function DocumentContent({
         />
       </div>
     );
+  }
+
   if (query.isError && !usable) {
     const forbidden = isHttpClientError(query.error) && query.error.status === 403;
     const title = t(
@@ -65,6 +67,7 @@ export function DocumentContent({
     const description = forbidden
       ? t('specification.resourceAccessDeniedDescription')
       : t('specification.unavailableDescription', { id: documentId });
+
     return (
       <div className="grid gap-3">
         <Alert tone="attention" role="alert" title={title}>
@@ -76,6 +79,7 @@ export function DocumentContent({
       </div>
     );
   }
+
   return (
     <div ref={appearance} className="grid min-w-0 gap-3">
       {usable && query.isError ? (

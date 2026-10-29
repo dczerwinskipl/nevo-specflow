@@ -24,7 +24,11 @@ export async function prepareCloseGitIntegration(
   if (!previous) {
     throw new CloseOperationError('CLOSE_CONFLICT', 'Close operation is not reserved.');
   }
-  if (previous.stage === 'integration-preparation-initiated') return previous;
+
+  if (previous.stage === 'integration-preparation-initiated') {
+    return previous;
+  }
+
   if (!(
     (previous.stage === 'reserved' &&
       (previous.plan.kind === 'worktree-close' || previous.plan.kind === 'workspace-close')) ||
@@ -52,20 +56,24 @@ export async function prepareCloseGitIntegration(
       relationship: proof.relationship,
     },
   };
+
   return publishCloseCheckpoint(engine, previous, next, {
     onConflict: 'Close reservation changed during Git integration preparation.',
     onReadbackFailure: 'Git integration preparation journal was not durably verified.',
     verifyCurrent: async (current) => {
       const registry = await readWorkspaceRegistry(engine.context);
-      if (registry.revision !== current.plan.registryRevision)
+      if (registry.revision !== current.plan.registryRevision) {
         throw new CloseOperationError('CLOSE_CONFLICT', 'Workspace registry changed.');
+      }
+
       if (current.plan.configRevision) {
         const policy = await readProjectGitPolicy(engine.context);
         if (
           policy.revision !== current.plan.configRevision ||
           policy.policy.integrationTargetBranch !== current.plan.targetBranch
-        )
+        ) {
           throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git target policy changed.');
+        }
       } else {
         const source = registry.workspaces.find(
           (item) => item.workspaceId === current.plan.source.workspaceId,

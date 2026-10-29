@@ -64,6 +64,7 @@ const KIND: JournalKind<SampleJournal> = {
     if (record.operationId !== operationId || !['open', 'done'].includes(record.state)) {
       throw new SampleError('invalid');
     }
+
     return record;
   },
   isSettled: (record) => record.state === 'done',
@@ -86,6 +87,7 @@ async function fixture(): Promise<ResolvedProjectHome> {
   const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'specflow-durable-')));
   roots.push(stateRoot);
   await mkdir(join(stateRoot, KIND.relativeDir), { recursive: true });
+
   return { project: { stateRoot } } as unknown as ResolvedProjectHome;
 }
 
@@ -161,11 +163,13 @@ describe('journal store', () => {
     for (const id of ids) {
       await publishJournal(context, KIND, { version: 7, operationId: id, state: 'open' });
     }
+
     await writeFile(journalPath(context, KIND, randomUUID()), '{broken');
     let reads = 0;
     const reader = {
       readRow: (_path: string, operationId: string) => {
         reads += 1;
+
         return Promise.resolve({ operationId, readable: true });
       },
       unreadable: (operationId: string) => ({ operationId, readable: false }),
@@ -266,7 +270,10 @@ describe('retention', () => {
     const done = record('done');
     const open = record('open');
     const fresh = record('done');
-    for (const item of [done, open, fresh]) await publishJournal(context, KIND, item);
+    for (const item of [done, open, fresh]) {
+      await publishJournal(context, KIND, item);
+    }
+
     const unsupported = randomUUID();
     await writeFile(journalPath(context, KIND, unsupported), '{not json');
     await writePayload(context, KIND, done.operationId, [{ sha256: sha256Hex('p'), content: 'p' }]);
@@ -291,6 +298,7 @@ describe('retention', () => {
       await writePayload(context, KIND, id, [{ sha256: sha256Hex('p'), content: 'p' }]);
       await age(payloadDirectory(context, KIND, id), 8 * DAY);
     }
+
     await removeExpiredSettledJournals(context, KIND, { keepOperationId: kept });
     await expect(stat(payloadDirectory(context, KIND, orphan))).rejects.toThrow();
     expect((await stat(payloadDirectory(context, KIND, kept))).isDirectory()).toBe(true);
@@ -306,6 +314,7 @@ describe('retention', () => {
       await publishJournal(context, KIND, item);
       await age(journalPath(context, KIND, item.operationId), 8 * DAY);
     }
+
     expect(await removeExpiredSettledJournals(context, KIND, { limit: 2 })).toBe(2);
     expect(await removeExpiredSettledJournals(context, KIND, { limit: 2 })).toBe(1);
   });
@@ -335,6 +344,7 @@ describe('claims', () => {
       claimCheckOf<string>({
         list: () => {
           order.push('list:' + name);
+
           return Promise.resolve(records);
         },
         assertAvailable: (found, requested, self) => {
@@ -348,7 +358,9 @@ describe('claims', () => {
               ':' +
               self?.operationId,
           );
-          if (conflict) throw new SharedResourceError('RESOURCE_CONFLICT', name);
+          if (conflict) {
+            throw new SharedResourceError('RESOURCE_CONFLICT', name);
+          }
         },
       });
     await expect(

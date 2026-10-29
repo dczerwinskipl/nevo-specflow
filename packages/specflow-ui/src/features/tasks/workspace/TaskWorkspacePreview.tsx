@@ -10,6 +10,7 @@ export function TaskWorkspacePreview({
   readonly onOpenTask: () => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <div className="grid min-w-0 gap-3 p-4">
       <Typography as="h2" variant="title-md" className="[overflow-wrap:anywhere]">

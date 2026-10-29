@@ -37,10 +37,12 @@ export function transitionManualCommit(
       `A manual commit cannot move from ${journal.stage} to ${to}.`,
     );
   }
+
   const settles = to === 'completed' || to === 'failed';
   const parentHead = patch.parentHead ?? journal.parentHead;
   const commitStartedAt = patch.commitStartedAt ?? journal.commitStartedAt;
   const executor = to === 'committing' ? (patch.executor ?? journal.executor) : undefined;
+
   return {
     version: journal.version,
     projectId: journal.projectId,

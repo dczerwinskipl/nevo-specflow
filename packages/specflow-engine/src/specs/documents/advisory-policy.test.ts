@@ -17,6 +17,7 @@ afterEach(async () => {
 async function temp(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'advisory-policy-'));
   dirs.push(dir);
+
   return dir;
 }
 

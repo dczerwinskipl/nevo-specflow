@@ -55,7 +55,10 @@ async function readSourcesInRequest(
   const discovered = await discoverSpecifications(engine, isIncluded);
   const sources = await Promise.all(
     discovered.map(async (item): Promise<CanonicalSpecSource> => {
-      if (item.status !== 'available') return item;
+      if (item.status !== 'available') {
+        return item;
+      }
+
       const source = await readPhysicalDocument(item, 'manifest');
       if (!source) {
         throw new SpecificationError(
@@ -63,6 +66,7 @@ async function readSourcesInRequest(
           'Canonical manifest disappeared during read.',
         );
       }
+
       let latest;
       try {
         latest = parseSpecificationManifestText(
@@ -76,12 +80,14 @@ async function readSourcesInRequest(
           'Canonical manifest changed or became invalid during read.',
         );
       }
+
       if (latest.specId !== item.specId) {
         throw new SpecificationError(
           'SPEC_SOURCE_INVALID',
           'Canonical manifest identity changed during read.',
         );
       }
+
       return {
         ...item,
         specification: {
@@ -95,6 +101,7 @@ async function readSourcesInRequest(
     }),
   );
   await assertRegistryRevision(engine, revision);
+
   return sources;
 }
 
@@ -117,6 +124,7 @@ async function readDocumentInRequest(
   if (kind !== 'manifest' && kind !== 'overview') {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'Invalid canonical document kind.');
   }
+
   const revision = (await engine.readRegistry()).revision;
   const found = await resolveSpecification(engine, specId);
   let result: CanonicalDocumentRead;
@@ -144,6 +152,7 @@ async function readDocumentInRequest(
             'Canonical manifest became invalid during document read.',
           );
         }
+
         if (current.specId !== specId) {
           throw new SpecificationError(
             'SPEC_SOURCE_INVALID',
@@ -151,6 +160,7 @@ async function readDocumentInRequest(
           );
         }
       }
+
       result = {
         status: 'available',
         relativePath: source.relativePath,
@@ -159,7 +169,9 @@ async function readDocumentInRequest(
       };
     }
   }
+
   await assertRegistryRevision(engine, revision);
+
   return result;
 }
 
@@ -193,6 +205,7 @@ async function readPhysicalDocument(
     if (!stat.isFile() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
       throw new SpecificationError('SPEC_SOURCE_INVALID', 'Canonical document is redirected.');
     }
+
     // Metadata and bytes must come from the same opened file, not two paths
     // that could refer to different files during a concurrent atomic replace.
     const handle = await open(path, 'r');
@@ -201,8 +214,10 @@ async function readPhysicalDocument(
       if (!openedStat.isFile()) {
         throw new SpecificationError('SPEC_SOURCE_INVALID', 'Canonical document is not a file.');
       }
+
       const content =
         kind === 'manifest' ? await readManifestTextBounded(handle) : await handle.readFile('utf8');
+
       return {
         relativePath,
         content,
@@ -213,8 +228,14 @@ async function readPhysicalDocument(
       await handle.close();
     }
   } catch (error) {
-    if (isMissing(error)) return undefined;
-    if (error instanceof SpecificationError) throw error;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
+    if (error instanceof SpecificationError) {
+      throw error;
+    }
+
     throw new SpecificationError(
       'SPEC_SOURCE_INVALID',
       'Canonical document source is unavailable.',

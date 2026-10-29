@@ -29,11 +29,14 @@ async function runtime(
     { dataMode, demoEnvironment: state },
   );
   apps.push(app);
+
   return app;
 }
+
 const op = (n: number) => `7f3a91c2-4b6e-4d1a-9c0e-${String(n).padStart(12, '0')}`;
 async function body(app: FastifyInstance, n: number, extra: Partial<DemoCreateRequest> = {}) {
   const cat = (await app.inject('/api/demo/specification-creation')).json<DemoCatalogue>();
+
   return {
     operationId: op(n),
     title: 'Nowa obsługa płatności',
@@ -44,6 +47,7 @@ async function body(app: FastifyInstance, n: number, extra: Partial<DemoCreateRe
     ...extra,
   } satisfies DemoCreateRequest;
 }
+
 const post = (app: FastifyInstance, payload: unknown, scenario?: string) =>
   app.inject({
     method: 'POST',
@@ -143,8 +147,10 @@ describe('create-options endpoint', () => {
         { dataMode: 'demo', ...(demoScenarios ? { demoScenarios } : {}) },
       );
       apps.push(app);
+
       return app;
     };
+
     expect((await options(await make(), 'options-error')).statusCode).toBe(200);
     expect((await options(await make(true), 'options-error')).statusCode).toBe(503);
   });
@@ -246,6 +252,7 @@ describe('create with target', () => {
       const response = await post(app, await body(app, 1, { target } as never));
       expect(response.statusCode).toBe(400);
     }
+
     expect(await specCount(app, ids.platform)).toBe(2);
   });
 });
@@ -261,9 +268,11 @@ describe('create error codes', () => {
     const response = await post(app, input, scenario);
     expect([response.statusCode, codeOf(response) ?? 'forbidden']).toEqual([status, code]);
     // The Engine repeats the code in `error`; only the demo-only code carries a message.
-    if (code !== 'DEMO_WORKSPACE_UNAVAILABLE' && code !== 'forbidden')
+    if (code !== 'DEMO_WORKSPACE_UNAVAILABLE' && code !== 'forbidden') {
       expect(response.json<{ error: string }>().error).toBe(code);
+    }
   };
+
   it('maps real validation to the Engine codes (BRANCH_ALREADY_EXISTS, BASE_REF_NOT_FOUND, CREATE_OPERATION_INVALID) and the demo-only DEMO_WORKSPACE_UNAVAILABLE', async () => {
     const app = await runtime();
     await expectError(

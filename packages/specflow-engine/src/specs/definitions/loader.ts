@@ -78,6 +78,7 @@ function truncate(message: string): string {
 /** Errors first, then by source, code and location (a total order, so the result is deterministic). */
 export function compareProblems(left: DefinitionProblem, right: DefinitionProblem): number {
   const rank = (problem: DefinitionProblem) => (problem.severity === 'error' ? 0 : 1);
+
   return (
     rank(left) - rank(right) ||
     compareText(left.source, right.source) ||
@@ -102,6 +103,7 @@ function decodeText(bytes: Uint8Array): DecodeResult {
   } catch {
     return { ok: false, reason: 'utf8' };
   }
+
   return text.includes('\u0000') ? { ok: false, reason: 'nul' } : { ok: true, text };
 }
 
@@ -136,7 +138,12 @@ export async function loadDefinitions(
   const depend = (kind: string, id: string, ...paths: string[]): void => {
     const key = `${kind}/${id}`;
     const known = dependencies.get(key) ?? [];
-    for (const path of paths) if (!known.includes(path)) known.push(path);
+    for (const path of paths) {
+      if (!known.includes(path)) {
+        known.push(path);
+      }
+    }
+
     dependencies.set(key, known);
   };
 
@@ -167,6 +174,7 @@ export async function loadDefinitions(
   if (root.state === 'absent') {
     return { definitions, invalid, dependencies, problems: [], rootPresent: false, bytesRead: 0 };
   }
+
   if (root.state !== 'ok') {
     report(
       '',
@@ -178,11 +186,15 @@ export async function loadDefinitions(
           ? 'The definitions folder cannot be read.'
           : 'The definitions folder is not a plain directory inside the project.',
     );
+
     return { definitions, invalid, dependencies, problems, rootPresent: true, bytesRead: 0 };
   }
 
   for (const entry of [...root.entries].sort((a, b) => compareText(a.name, b.name))) {
-    if (registry.has(entry.name)) continue;
+    if (registry.has(entry.name)) {
+      continue;
+    }
+
     if (entry.type === 'directory') {
       report(
         entry.name,
@@ -207,8 +219,12 @@ export async function loadDefinitions(
       if (!kind.dependsOn.includes(otherKind)) {
         throw new Error(`Kind "${kind.kind}" does not declare a dependency on "${otherKind}".`);
       }
+
       const found = definitions.get(otherKind)?.get(id);
-      if (found) return { state: 'valid', entity: found.entity };
+      if (found) {
+        return { state: 'valid', entity: found.entity };
+      }
+
       return invalid.get(otherKind)?.has(id) ? { state: 'invalid' } : { state: 'missing' };
     },
   });
@@ -230,8 +246,10 @@ export async function loadDefinitions(
         for (const issue of issues) {
           report(item.source, kind.kind, issue.code, issue.message, issue.location);
         }
+
         continue;
       }
+
       definitions.get(kind.kind)?.set(item.id, {
         kind: kind.kind,
         id: item.id,
@@ -243,6 +261,7 @@ export async function loadDefinitions(
   }
 
   problems.sort(compareProblems);
+
   return {
     definitions,
     invalid,
@@ -266,15 +285,25 @@ export async function loadDefinitions(
       listing = await source.list(directory, DEFINITION_DIRECTORY_OVERFLOW);
       listings.set(directory, listing);
     }
-    if (listing.state === 'absent') return 'absent';
-    if (listing.state !== 'ok') return 'unknown';
+
+    if (listing.state === 'absent') {
+      return 'absent';
+    }
+
+    if (listing.state !== 'ok') {
+      return 'unknown';
+    }
+
     return listing.entries.some((entry) => entry.name === name) ? 'present' : 'absent';
   }
 
   /** Everything up to the cross-reference checks: listing, reading, YAML, schema, template files. */
   async function readKindFiles(kind: DefinitionKind): Promise<PendingEntity[]> {
     const listing = await source.list(kind.kind, DEFINITION_DIRECTORY_OVERFLOW);
-    if (listing.state === 'absent') return [];
+    if (listing.state === 'absent') {
+      return [];
+    }
+
     if (listing.state !== 'ok') {
       report(
         kind.kind,
@@ -286,6 +315,7 @@ export async function loadDefinitions(
             ? `The "${kind.kind}" folder cannot be read.`
             : `The "${kind.kind}" folder is not a plain directory inside the project.`,
       );
+
       return [];
     }
 
@@ -305,8 +335,10 @@ export async function loadDefinitions(
             `"${entry.name}" is not a definition and is ignored.`,
           );
         }
+
         continue;
       }
+
       const match = FILE_NAME.exec(entry.name);
       const id = match?.[1];
       if (entry.type !== 'file') {
@@ -316,6 +348,7 @@ export async function loadDefinitions(
           invalid.get(kind.kind)?.add(id);
           depend(kind.kind, id, path);
         }
+
         report(
           path,
           kind.kind,
@@ -324,6 +357,7 @@ export async function loadDefinitions(
         );
         continue;
       }
+
       if (id === undefined || WINDOWS_DEVICE_NAME.test(id)) {
         report(
           path,
@@ -333,6 +367,7 @@ export async function loadDefinitions(
         );
         continue;
       }
+
       depend(kind.kind, id, path);
       if (index >= DEFINITION_DIRECTORY_ENTRIES_MAX) {
         invalid.get(kind.kind)?.add(id);
@@ -344,11 +379,13 @@ export async function loadDefinitions(
         );
         continue;
       }
+
       if (seenIds.has(id)) {
         duplicated.add(id);
         report(path, kind.kind, 'id-duplicate', `The id "${id}" is defined more than once.`);
         continue;
       }
+
       seenIds.add(id);
       candidates += 1;
       if (candidates > kind.maxEntities) {
@@ -361,11 +398,19 @@ export async function loadDefinitions(
         );
         continue;
       }
+
       const loaded = await readOne(kind, id, entry, path);
-      if (loaded) pending.push(loaded);
-      else invalid.get(kind.kind)?.add(id);
+      if (loaded) {
+        pending.push(loaded);
+      } else {
+        invalid.get(kind.kind)?.add(id);
+      }
     }
-    for (const id of duplicated) invalid.get(kind.kind)?.add(id);
+
+    for (const id of duplicated) {
+      invalid.get(kind.kind)?.add(id);
+    }
+
     return pending.filter((item) => !duplicated.has(item.id));
   }
 
@@ -377,19 +422,23 @@ export async function loadDefinitions(
   ): Promise<PendingEntity | undefined> {
     const fail = (code: DefinitionProblemCode, message: string, location?: string): undefined => {
       report(path, kind.kind, code, message, location);
+
       return undefined;
     };
 
     if (entry.size > DEFINITION_FILE_MAX_BYTES) {
       return fail('file-too-large', `The file is larger than ${DEFINITION_FILE_MAX_BYTES} bytes.`);
     }
+
     if (budget.used + entry.size > DEFINITION_LOAD_MAX_BYTES) {
       return fail('limit-exceeded', 'The definitions exceed the total size read in one load.');
     }
+
     const read = await source.read(path, DEFINITION_FILE_MAX_BYTES);
     if (read.state === 'too-large') {
       return fail('file-too-large', `The file is larger than ${DEFINITION_FILE_MAX_BYTES} bytes.`);
     }
+
     if (read.state !== 'ok') {
       return fail(
         'file-unreadable',
@@ -400,6 +449,7 @@ export async function loadDefinitions(
             : 'The file cannot be read.',
       );
     }
+
     budget.used += read.bytes.length;
 
     const decoded = decodeText(read.bytes);
@@ -411,11 +461,16 @@ export async function loadDefinitions(
           : 'The file contains a NUL character.',
       );
     }
+
     const parsed = parseDefinitionYaml(decoded.text);
-    if (!parsed.ok) return fail('yaml-invalid', parsed.message);
+    if (!parsed.ok) {
+      return fail('yaml-invalid', parsed.message);
+    }
+
     const value = parsed.value;
-    if (!isPlainObject(value))
+    if (!isPlainObject(value)) {
       return fail('schema-invalid', 'The file must contain one mapping.', '');
+    }
 
     if (typeof value.kind === 'string' && value.kind !== kind.kind) {
       return fail(
@@ -424,6 +479,7 @@ export async function loadDefinitions(
         '/kind',
       );
     }
+
     const version = value.schemaVersion;
     if (
       typeof version === 'number' &&
@@ -436,6 +492,7 @@ export async function loadDefinitions(
         '/schemaVersion',
       );
     }
+
     const schema = kind.schema(
       typeof version === 'number' && kind.schemaVersions.includes(version)
         ? version
@@ -445,12 +502,14 @@ export async function loadDefinitions(
       const errors = [...Value.Errors(schema, value)];
       const first = errors[0];
       const more = errors.length > 1 ? ` (and ${errors.length - 1} more)` : '';
+
       return fail(
         'schema-invalid',
         `${first?.message ?? 'The file does not match its schema.'}${more}`,
         first?.instancePath ?? '',
       );
     }
+
     if (value.id !== id) {
       return fail(
         'id-filename-mismatch',
@@ -469,10 +528,15 @@ export async function loadDefinitions(
         violation.path,
       );
     }
-    if (violations.length > 0) return undefined;
+
+    if (violations.length > 0) {
+      return undefined;
+    }
 
     const auxiliary = await readAuxiliary(kind, value, path);
-    if (!auxiliary) return undefined;
+    if (!auxiliary) {
+      return undefined;
+    }
 
     try {
       return {
@@ -500,25 +564,33 @@ export async function loadDefinitions(
         'limit-exceeded',
         `The file refers to more than ${DEFINITION_AUXILIARY_FILES_MAX} template files.`,
       );
+
       return undefined;
     }
+
     let failed = false;
     for (const reference of references) {
-      if (texts.has(reference.path)) continue;
+      if (texts.has(reference.path)) {
+        continue;
+      }
+
       const fail = (message: string): void => {
         failed = true;
         report(path, kind.kind, 'template-file-invalid', message, reference.location);
       };
+
       const first = reference.path.split('/', 1)[0] ?? '';
       if (!kind.auxiliaryDirectories.includes(first)) {
         fail(`The path "${reference.path}" is not below a template folder of this kind.`);
         continue;
       }
+
       const exact = await exactEntry(`${kind.kind}/${reference.path}`);
       if (exact === 'absent') {
         fail(`The template file "${reference.path}" does not exist (names are case-sensitive).`);
         continue;
       }
+
       if (budget.used + 1 > DEFINITION_LOAD_MAX_BYTES) {
         failed = true;
         report(
@@ -530,6 +602,7 @@ export async function loadDefinitions(
         );
         continue;
       }
+
       const read = await source.read(
         `${kind.kind}/${reference.path}`,
         DEFINITION_TEMPLATE_FILE_MAX_BYTES,
@@ -537,8 +610,9 @@ export async function loadDefinitions(
       if (read.state === 'ok') {
         budget.used += read.bytes.length;
         const decoded = decodeText(read.bytes);
-        if (decoded.ok) texts.set(reference.path, normalizeLineEndings(decoded.text));
-        else {
+        if (decoded.ok) {
+          texts.set(reference.path, normalizeLineEndings(decoded.text));
+        } else {
           fail(
             decoded.reason === 'utf8'
               ? `The template file "${reference.path}" is not valid UTF-8.`
@@ -559,6 +633,7 @@ export async function loadDefinitions(
         );
       }
     }
+
     return failed ? undefined : texts;
   }
 }

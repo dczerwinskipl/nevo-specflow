@@ -68,7 +68,9 @@ export function isStrayJournalTempName(name: string): boolean {
 }
 
 export function validateJournalOperationId(kind: JournalKindBase, id: string): void {
-  if (!OPERATION_ID_PATTERN.test(id)) throw kind.errors.invalidOperationId();
+  if (!OPERATION_ID_PATTERN.test(id)) {
+    throw kind.errors.invalidOperationId();
+  }
 }
 
 export function journalDirectory(context: ResolvedProjectHome, kind: JournalKindBase): string {
@@ -81,6 +83,7 @@ export function journalPath(
   operationId: string,
 ): string {
   validateJournalOperationId(kind, operationId);
+
   return join(journalDirectory(context, kind), operationId + '.json');
 }
 
@@ -93,6 +96,7 @@ export function settledJournalPath(
   operationId: string,
 ): string {
   validateJournalOperationId(kind, operationId);
+
   return join(journalDirectory(context, kind), SETTLED_DIRECTORY_NAME, operationId + '.json');
 }
 
@@ -113,11 +117,18 @@ async function readJournalFile<T>(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > kind.maxBytes) {
       throw kind.errors.invalid();
     }
+
     const classified = classifyJournalText(await readFileWindowsSafe(path));
-    if (classified.kind === 'unsupported') return { kind: 'unsupported', mtimeMs: stat.mtimeMs };
+    if (classified.kind === 'unsupported') {
+      return { kind: 'unsupported', mtimeMs: stat.mtimeMs };
+    }
+
     return { kind: 'journal', journal: kind.parse(context, classified.value, operationId) };
   } catch (error) {
-    if (isMissing(error)) return { kind: 'missing' };
+    if (isMissing(error)) {
+      return { kind: 'missing' };
+    }
+
     throw error;
   }
 }
@@ -132,7 +143,10 @@ export async function readJournal<T>(
   operationId: string,
 ): Promise<T | undefined> {
   const read = await readJournalFile(context, kind, operationId);
-  if (read.kind === 'unsupported') throw kind.errors.unsupported();
+  if (read.kind === 'unsupported') {
+    throw kind.errors.unsupported();
+  }
+
   return read.kind === 'journal' ? read.journal : undefined;
 }
 
@@ -158,25 +172,40 @@ export async function listJournalsDetailed<T>(
       throw kind.errors.invalid();
     }
   } catch (error) {
-    if (isMissing(error)) return { journals: [], unsupported: [] };
+    if (isMissing(error)) {
+      return { journals: [], unsupported: [] };
+    }
+
     throw error;
   }
+
   const files = await readdir(path, { withFileTypes: true });
   const records: T[] = [];
   const unsupported: UnsupportedJournal[] = [];
   for (const file of files) {
     // Leftover stage files and editor/OS droppings are not journals; only a `*.json` entry is judged.
-    if (isStrayJournalTempName(file.name) || !file.name.endsWith('.json')) continue;
+    if (isStrayJournalTempName(file.name) || !file.name.endsWith('.json')) {
+      continue;
+    }
+
     if (!file.isFile() || file.isSymbolicLink()) {
       throw kind.errors.invalid();
     }
+
     const operationId = file.name.slice(0, -5);
     validateJournalOperationId(kind, operationId);
     const read = await readJournalFile(context, kind, operationId);
-    if (read.kind === 'missing') throw kind.errors.invalid();
-    if (read.kind === 'unsupported') unsupported.push({ operationId, mtimeMs: read.mtimeMs });
-    else records.push(read.journal);
+    if (read.kind === 'missing') {
+      throw kind.errors.invalid();
+    }
+
+    if (read.kind === 'unsupported') {
+      unsupported.push({ operationId, mtimeMs: read.mtimeMs });
+    } else {
+      records.push(read.journal);
+    }
   }
+
   return { journals: records, unsupported };
 }
 
@@ -206,18 +235,23 @@ export async function withJournalLock<T>(
       if (!state.isDirectory() || state.isSymbolicLink() || (await realpath(root)) !== root) {
         throw kind.errors.invalid();
       }
+
       for (const segment of kind.relativeDir.split('/')) {
         root = join(root, segment);
         try {
           await mkdir(root, { mode: 0o700 });
         } catch (error) {
-          if (!isExists(error)) throw error;
+          if (!isExists(error)) {
+            throw error;
+          }
         }
+
         const stat = await lstat(root);
         if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(root)) !== root) {
           throw kind.errors.invalid();
         }
       }
+
       return action();
     },
     { waitMs: 25000 },
@@ -261,7 +295,9 @@ export async function removeSettledJournal(
 ): Promise<void> {
   await removeFileWindowsSafe(settledJournalPath(context, kind, operationId)).catch(
     (error: unknown) => {
-      if (!isMissing(error)) throw error;
+      if (!isMissing(error)) {
+        throw error;
+      }
     },
   );
 }
@@ -320,14 +356,24 @@ export async function listJournalRowsTolerant<TRow>(
   let names: string[];
   try {
     const stat = await lstat(dir);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) return [];
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      return [];
+    }
+
     names = (await readdir(dir)).filter((name) => name.endsWith('.json'));
   } catch (error) {
-    if (isMissing(error)) return [];
+    if (isMissing(error)) {
+      return [];
+    }
+
     throw error;
   }
+
   names.sort();
-  if (names.length > kind.listingMaxFiles) options.onTruncated?.();
+  if (names.length > kind.listingMaxFiles) {
+    options.onTruncated?.();
+  }
+
   names = names.slice(0, kind.listingMaxFiles);
 
   const previous = (memos.get(dir) ?? new Map()) as Map<string, Memo<TRow>>;
@@ -336,16 +382,23 @@ export async function listJournalRowsTolerant<TRow>(
   for (const name of names) {
     const operationId = name.slice(0, -5);
     // A name that is not an operation id cannot be addressed by anything: not a journal.
-    if (!OPERATION_ID_PATTERN.test(operationId)) continue;
+    if (!OPERATION_ID_PATTERN.test(operationId)) {
+      continue;
+    }
+
     const path = join(dir, name);
     let stat;
     try {
       stat = await lstat(path);
     } catch (error) {
-      if (isMissing(error)) continue;
+      if (isMissing(error)) {
+        continue;
+      }
+
       rows.push(reader.unreadable(operationId, new Date(0)));
       continue;
     }
+
     const updatedAt = new Date(stat.mtimeMs);
     const known = previous.get(name);
     if (
@@ -358,6 +411,7 @@ export async function listJournalRowsTolerant<TRow>(
       rows.push(known.row);
       continue;
     }
+
     const row = await reader.readRow(path, operationId, stat, updatedAt);
     next.set(name, {
       mtimeMs: stat.mtimeMs,
@@ -368,7 +422,9 @@ export async function listJournalRowsTolerant<TRow>(
     });
     rows.push(row);
   }
+
   memos.set(dir, next);
+
   return rows;
 }
 
@@ -382,14 +438,21 @@ export async function readJournalRowTolerant<TRow>(
   operationId: string,
   reader: TolerantJournalReader<TRow>,
 ): Promise<TRow | undefined> {
-  if (!OPERATION_ID_PATTERN.test(operationId)) return undefined;
+  if (!OPERATION_ID_PATTERN.test(operationId)) {
+    return undefined;
+  }
+
   const path = join(journalDirectory(context, kind), operationId + '.json');
   let stat;
   try {
     stat = await lstat(path);
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
     return reader.unreadable(operationId, new Date(0));
   }
+
   return reader.readRow(path, operationId, stat, new Date(stat.mtimeMs));
 }

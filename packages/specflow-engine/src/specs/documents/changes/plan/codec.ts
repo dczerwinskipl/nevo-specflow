@@ -45,20 +45,28 @@ export interface EncodedPlan extends PlanEvidence {
 export function encodePlan(plan: DocumentChangePlan): EncodedPlan {
   const text = JSON.stringify(canonicalPlan(plan));
   const bytes = Buffer.byteLength(text, 'utf8');
-  if (bytes > DOCUMENT_PLAN_MAX_BYTES) throw documentChangeError('plan-invalid', 'Plan too large.');
+  if (bytes > DOCUMENT_PLAN_MAX_BYTES) {
+    throw documentChangeError('plan-invalid', 'Plan too large.');
+  }
+
   decodePlan(text);
+
   return { text, sha256: sha256Hex(text), bytes };
 }
 
 /** Strict decode of a plan file's text. Any violation is `plan-invalid`. */
 export function decodePlan(text: string): DocumentChangePlan {
-  if (Buffer.byteLength(text, 'utf8') > DOCUMENT_PLAN_MAX_BYTES) throw invalid();
+  if (Buffer.byteLength(text, 'utf8') > DOCUMENT_PLAN_MAX_BYTES) {
+    throw invalid();
+  }
+
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
     throw invalid();
   }
+
   return validatePlan(value);
 }
 
@@ -67,6 +75,7 @@ export function decodePlanWithEvidence(text: string, evidence: PlanEvidence): Do
   if (Buffer.byteLength(text, 'utf8') !== evidence.bytes || sha256Hex(text) !== evidence.sha256) {
     throw invalid();
   }
+
   return decodePlan(text);
 }
 
@@ -146,8 +155,10 @@ const PLAN_KEYS = [
 ] as const;
 
 function validatePlan(value: unknown): DocumentChangePlan {
-  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['registry', 'removedFolder']))
+  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['registry', 'removedFolder'])) {
     throw invalid();
+  }
+
   if (
     value.version !== DOCUMENT_CHANGE_PLAN_VERSION ||
     !isAction(value.action) ||
@@ -158,6 +169,7 @@ function validatePlan(value: unknown): DocumentChangePlan {
   ) {
     throw invalid();
   }
+
   const directory = value.directory;
   const paths = validatePaths(value.paths, directory);
   const documents = validateDocuments(value.documents);
@@ -169,7 +181,10 @@ function validatePlan(value: unknown): DocumentChangePlan {
   const removedFolder =
     value.removedFolder === undefined ? undefined : validateFolders([value.removedFolder])[0];
   const hasManifest = paths.some((path) => path.role === 'manifest');
-  if (hasManifest !== (registry !== undefined)) throw invalid();
+  if (hasManifest !== (registry !== undefined)) {
+    throw invalid();
+  }
+
   const plan: DocumentChangePlan = {
     version: DOCUMENT_CHANGE_PLAN_VERSION,
     action: value.action,
@@ -186,7 +201,10 @@ function validatePlan(value: unknown): DocumentChangePlan {
     ...(removedFolder !== undefined ? { removedFolder } : {}),
   };
   // The canonical form is the only accepted form: a hand-edited plan that reorders keys is refused.
-  if (JSON.stringify(canonicalPlan(plan)) !== JSON.stringify(value)) throw invalid();
+  if (JSON.stringify(canonicalPlan(plan)) !== JSON.stringify(value)) {
+    throw invalid();
+  }
+
   return plan;
 }
 
@@ -197,13 +215,17 @@ function isAction(value: unknown): value is DocumentChangeAction {
 }
 
 function validatePaths(value: unknown, directory: string): PlannedPath[] {
-  if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) throw invalid();
+  if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) {
+    throw invalid();
+  }
+
   const seen = new Set<string>();
   const manifest = manifestPathOf({ directory });
   const result = (value as unknown[]).map((entry, index): PlannedPath => {
     if (!isRecord(entry) || !exactKeys(entry, ['path', 'role', 'pre', 'post', 'source'])) {
       throw invalid();
     }
+
     const role = entry.role;
     if (
       typeof entry.path !== 'string' ||
@@ -212,23 +234,34 @@ function validatePaths(value: unknown, directory: string): PlannedPath[] {
     ) {
       throw invalid();
     }
+
     if (role === 'manifest') {
-      if (entry.path !== manifest || index !== value.length - 1) throw invalid();
+      if (entry.path !== manifest || index !== value.length - 1) {
+        throw invalid();
+      }
     } else if (
       !entry.path.startsWith(directory + '/') ||
       !validateDocumentPath(entry.path.slice(directory.length + 1)).ok
     ) {
       throw invalid();
     }
-    if (seen.has(entry.path)) throw invalid();
+
+    if (seen.has(entry.path)) {
+      throw invalid();
+    }
+
     seen.add(entry.path);
     const pre = validateState(entry.pre);
     const post = validateState(entry.post);
     const source = validateSource(entry.source, post, directory);
+
     return { path: entry.path, role: role as PlannedPath['role'], pre, post, source };
   });
   for (const path of result) {
-    if (path.source.kind !== 'moved-from') continue;
+    if (path.source.kind !== 'moved-from') {
+      continue;
+    }
+
     const originPath = path.source.path;
     const origin = result.find((candidate) => candidate.path === originPath);
     // The origin is removed by the same plan and holds exactly the bytes that move.
@@ -241,6 +274,7 @@ function validatePaths(value: unknown, directory: string): PlannedPath[] {
       throw invalid();
     }
   }
+
   return result;
 }
 
@@ -249,7 +283,10 @@ function sameState(left: NonNullable<FileState>, right: NonNullable<FileState>):
 }
 
 function validateState(value: unknown): FileState {
-  if (value === null) return null;
+  if (value === null) {
+    return null;
+  }
+
   if (
     !isRecord(value) ||
     !exactKeys(value, ['sha256', 'bytes']) ||
@@ -261,17 +298,27 @@ function validateState(value: unknown): FileState {
   ) {
     throw invalid();
   }
+
   return { sha256: value.sha256, bytes: value.bytes };
 }
 
 function validateSource(value: unknown, post: FileState, directory: string): PathSource {
-  if (!isRecord(value) || typeof value.kind !== 'string') throw invalid();
+  if (!isRecord(value) || typeof value.kind !== 'string') {
+    throw invalid();
+  }
+
   switch (value.kind) {
     case 'payload':
-      if (!exactKeys(value, ['kind']) || post === null) throw invalid();
+      if (!exactKeys(value, ['kind']) || post === null) {
+        throw invalid();
+      }
+
       return { kind: 'payload' };
     case 'none':
-      if (!exactKeys(value, ['kind']) || post !== null) throw invalid();
+      if (!exactKeys(value, ['kind']) || post !== null) {
+        throw invalid();
+      }
+
       return { kind: 'none' };
     case 'moved-from':
       if (
@@ -282,6 +329,7 @@ function validateSource(value: unknown, post: FileState, directory: string): Pat
       ) {
         throw invalid();
       }
+
       return { kind: 'moved-from', path: value.path };
     default:
       throw invalid();
@@ -289,7 +337,10 @@ function validateSource(value: unknown, post: FileState, directory: string): Pat
 }
 
 function validateDocuments(value: unknown): PlannedDocument[] {
-  if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) throw invalid();
+  if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) {
+    throw invalid();
+  }
+
   return (value as unknown[]).map((entry): PlannedDocument => {
     if (
       !isRecord(entry) ||
@@ -297,6 +348,7 @@ function validateDocuments(value: unknown): PlannedDocument[] {
     ) {
       throw invalid();
     }
+
     const state = validateState({ sha256: entry.sha256, bytes: entry.bytes });
     if (
       typeof entry.id !== 'string' ||
@@ -309,6 +361,7 @@ function validateDocuments(value: unknown): PlannedDocument[] {
     ) {
       throw invalid();
     }
+
     return {
       id: entry.id,
       path: entry.path,
@@ -329,6 +382,7 @@ function validateIds(value: unknown): string[] {
   ) {
     throw invalid();
   }
+
   return [...(value as string[])];
 }
 
@@ -340,11 +394,15 @@ function validateFolders(value: unknown): string[] {
   ) {
     throw invalid();
   }
+
   return [...(value as string[])];
 }
 
 function validateTemplates(value: unknown): PlannedTemplate[] {
-  if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) throw invalid();
+  if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) {
+    throw invalid();
+  }
+
   return (value as unknown[]).map((entry): PlannedTemplate => {
     if (
       !isRecord(entry) ||
@@ -358,13 +416,20 @@ function validateTemplates(value: unknown): PlannedTemplate[] {
     ) {
       throw invalid();
     }
+
     return { path: entry.path, templateId: entry.templateId, sha256: entry.sha256 };
   });
 }
 
 function validateRegistry(value: unknown): PlannedRegistry {
-  if (!isRecord(value) || !exactKeys(value, ['documents', 'folders'])) throw invalid();
-  if (!Array.isArray(value.documents)) throw invalid();
+  if (!isRecord(value) || !exactKeys(value, ['documents', 'folders'])) {
+    throw invalid();
+  }
+
+  if (!Array.isArray(value.documents)) {
+    throw invalid();
+  }
+
   const documents = (value.documents as unknown[]).map((entry) => {
     if (
       !isRecord(entry) ||
@@ -378,7 +443,9 @@ function validateRegistry(value: unknown): PlannedRegistry {
     ) {
       throw invalid();
     }
+
     return { id: entry.id, path: entry.path, type: entry.type };
   });
+
   return { documents, folders: validateFolders(value.folders) };
 }

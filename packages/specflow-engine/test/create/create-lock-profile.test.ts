@@ -37,6 +37,7 @@ describe('Create reservation lock profile (opt-in)', () => {
               target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
             });
           }
+
           if (size) {
             git(root, 'add', 'specs');
             commitStaged(root, 'profile fixtures');
@@ -73,9 +74,11 @@ describe('Create reservation lock profile (opt-in)', () => {
           const onLock = (value: unknown): void => {
             locks.push(value);
           };
+
           const onGit = (): void => {
             gitCalls++;
           };
+
           lockChannel.subscribe(onLock);
           gitChannel.subscribe(onGit);
           try {
@@ -98,6 +101,7 @@ describe('Create reservation lock profile (opt-in)', () => {
             lockChannel.unsubscribe(onLock);
             gitChannel.unsubscribe(onGit);
           }
+
           expect(locks).toHaveLength(1);
           expect(locks[0]).toMatchObject({
             projectId: engine.context.project.projectId,
@@ -120,8 +124,10 @@ describe('Create reservation lock profile (opt-in)', () => {
             } catch {
               // The disposable fixture directory is removed below either way.
             }
+
             await rm(linked, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
           }
+
           await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
         }
       }

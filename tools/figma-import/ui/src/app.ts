@@ -55,7 +55,10 @@ function resizeToContent() {
 }
 
 function requestInspection() {
-  if (!state.ir) return;
+  if (!state.ir) {
+    return;
+  }
+
   post({ type: 'INSPECT_IR', requestId: ++state.requestId, ir: state.ir });
 }
 
@@ -77,13 +80,17 @@ function parseRaw(raw: string, fileName = state.fileName) {
       state.error = error instanceof Error ? error.message : String(error);
     }
   }
+
   render();
   requestInspection();
 }
 
 function renderSummary() {
   ui.summaryList.replaceChildren();
-  if (!state.ir) return;
+  if (!state.ir) {
+    return;
+  }
+
   const groups =
     state.ir.kind === 'design-system'
       ? Object.keys(state.ir.components).length + 3
@@ -116,12 +123,17 @@ function renderStatus(
   preflightFailed: boolean,
 ) {
   ui.status.className = state.outcome || (state.error ? 'error' : '');
-  if (state.message) ui.status.textContent = state.message;
-  else if (state.error) ui.status.textContent = 'Fix the JSON before importing.';
-  else if (!state.ir) ui.status.textContent = 'Choose a file or paste JSON to continue.';
-  else if (waitingForPreflight) ui.status.textContent = 'Checking Design System dependencies…';
-  else if (preflightFailed) ui.status.textContent = 'Could not verify Design System dependencies.';
-  else if (missingDependencies > 0) {
+  if (state.message) {
+    ui.status.textContent = state.message;
+  } else if (state.error) {
+    ui.status.textContent = 'Fix the JSON before importing.';
+  } else if (!state.ir) {
+    ui.status.textContent = 'Choose a file or paste JSON to continue.';
+  } else if (waitingForPreflight) {
+    ui.status.textContent = 'Checking Design System dependencies…';
+  } else if (preflightFailed) {
+    ui.status.textContent = 'Could not verify Design System dependencies.';
+  } else if (missingDependencies > 0) {
     ui.status.textContent = `${missingDependencies} required Design System ${missingDependencies === 1 ? 'dependency is' : 'dependencies are'} missing.`;
   } else {
     ui.status.textContent = `${state.ir.kind === 'design-system' ? 'Design System' : 'Screens'} ready to import.`;
@@ -140,7 +152,10 @@ function render() {
   ui.jsonError.hidden = !state.error;
   ui.fileError.textContent = state.error;
   ui.jsonError.textContent = state.error;
-  if (ui.json.value !== state.raw) ui.json.value = state.raw;
+  if (ui.json.value !== state.raw) {
+    ui.json.value = state.raw;
+  }
+
   renderSummary();
   ui.progress.hidden = !state.importing;
   const progressTotal = Math.max(state.progressTotal, 1);
@@ -165,7 +180,10 @@ function render() {
   ui.importButton.disabled =
     state.importing || waitingForPreflight || preflightFailed || missingDependencies > 0;
   ui.importButton.textContent = state.importing ? 'Importing…' : 'Import';
-  if (!state.importing) renderStatus(missingDependencies, waitingForPreflight, preflightFailed);
+  if (!state.importing) {
+    renderStatus(missingDependencies, waitingForPreflight, preflightFailed);
+  }
+
   resizeToContent();
 }
 
@@ -188,7 +206,10 @@ ui.changeFile.addEventListener('click', () => {
 });
 ui.json.addEventListener('input', () => parseRaw(ui.json.value, ''));
 ui.importButton.addEventListener('click', () => {
-  if (!state.ir || state.importing || ui.importButton.disabled) return;
+  if (!state.ir || state.importing || ui.importButton.disabled) {
+    return;
+  }
+
   state.importing = true;
   state.progressCompleted = 0;
   state.progressTotal = 0;
@@ -200,15 +221,26 @@ ui.importButton.addEventListener('click', () => {
 
 window.onmessage = (event: MessageEvent<{ pluginMessage?: ImporterResponse }>) => {
   const message = event.data.pluginMessage;
-  if (!message) return;
+  if (!message) {
+    return;
+  }
+
   if (message.type === 'INSPECTION' || message.type === 'INSPECTION_ERROR') {
-    if (message.requestId !== state.requestId) return;
+    if (message.requestId !== state.requestId) {
+      return;
+    }
+
     state.inspection = message.type === 'INSPECTION' ? message.inspection : null;
     state.inspectionError = message.type === 'INSPECTION_ERROR' ? message.message : '';
     render();
+
     return;
   }
-  if (!['PROGRESS', 'DONE', 'ERROR'].includes(message.type)) return;
+
+  if (!['PROGRESS', 'DONE', 'ERROR'].includes(message.type)) {
+    return;
+  }
+
   if (message.type === 'PROGRESS') {
     state.importing = true;
     state.message = message.message;
@@ -218,8 +250,11 @@ window.onmessage = (event: MessageEvent<{ pluginMessage?: ImporterResponse }>) =
     state.importing = false;
     state.outcome = message.type === 'DONE' ? 'success' : 'error';
     state.message = message.message;
-    if (message.type === 'DONE') requestInspection();
+    if (message.type === 'DONE') {
+      requestInspection();
+    }
   }
+
   render();
 };
 

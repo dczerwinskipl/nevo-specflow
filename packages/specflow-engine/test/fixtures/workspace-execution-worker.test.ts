@@ -15,13 +15,18 @@ it.skipIf(process.env.NEVO_EXECUTION_WORKER !== '1')(
     const stage = process.env.NEVO_EXECUTION_STAGE!;
     const engine = await openSpecFlowEngine({ cwd: process.env.NEVO_EXECUTION_ROOT! });
     await admitWorkspaceExecution(engine, intent);
-    if (stage !== 'admitted') await markWorkspaceExecutionDispatched(engine, intent);
-    if (stage === 'settled')
+    if (stage !== 'admitted') {
+      await markWorkspaceExecutionDispatched(engine, intent);
+    }
+
+    if (stage === 'settled') {
       await settleWorkspaceExecution(engine, intent, {
         invocationId: intent.operationId,
         process: 'stopped',
         outcome: 'completed',
       });
+    }
+
     await writeFile(
       process.env.NEVO_EXECUTION_MARKER!,
       JSON.stringify({ pid: process.pid, stage, operationId: intent.operationId }),

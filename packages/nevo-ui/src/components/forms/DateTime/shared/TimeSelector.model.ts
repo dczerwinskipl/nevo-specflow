@@ -24,9 +24,11 @@ export function clampTime(value: Time, minValue?: Time | null, maxValue?: Time |
   if (minValue && timeToMinutes(value) < timeToMinutes(minValue)) {
     return minValue;
   }
+
   if (maxValue && timeToMinutes(value) > timeToMinutes(maxValue)) {
     return maxValue;
   }
+
   return value;
 }
 
@@ -41,7 +43,9 @@ function legalTimeCandidates(
   const candidates: Time[] = [];
 
   for (let minuteOfDay = 0; minuteOfDay < minutesPerDay; minuteOfDay += step) {
-    if (minuteOfDay < minMinutes || minuteOfDay > maxMinutes) continue;
+    if (minuteOfDay < minMinutes || minuteOfDay > maxMinutes) {
+      continue;
+    }
 
     candidates.push(new Time(Math.floor(minuteOfDay / 60), minuteOfDay % 60));
   }
@@ -120,7 +124,9 @@ export function nearestMinuteOption(
 ) {
   const options = createMinuteOptions(value, minuteStep, minValue, maxValue);
 
-  if (options.length === 0) return value.minute;
+  if (options.length === 0) {
+    return value.minute;
+  }
 
   return options.reduce((nearest, candidate) =>
     Math.abs(candidate - value.minute) < Math.abs(nearest - value.minute) ? candidate : nearest,

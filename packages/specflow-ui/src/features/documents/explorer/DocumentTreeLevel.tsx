@@ -67,7 +67,10 @@ export function DocumentTreeLevel({
     Boolean(entry && !entry.rename && entry.parent.toLowerCase() === path.toLowerCase());
   const { folders, documents } = index.level(parent);
   const showEntry = creatingIn(parent);
-  if (!folders.length && !documents.length && !showEntry) return null;
+  if (!folders.length && !documents.length && !showEntry) {
+    return null;
+  }
+
   // A top level without folders is a flat list: its files have no folder icon column to line up
   // with, so they start at the row edge instead of looking nested.
   const flat =
@@ -95,6 +98,7 @@ export function DocumentTreeLevel({
       onOpen={() => context.onOpen(doc.id)}
     />
   );
+
   return (
     <ul className={top ? treeRootClassName : treeBranchClassName} aria-labelledby={labelledBy}>
       {main.map(documentRow)}
@@ -111,6 +115,7 @@ export function DocumentTreeLevel({
           ? context.openedEmpty.includes(folder.path)
           : context.expandAll === true || !context.closed.includes(folder.path);
         const renaming = entry?.kind === 'folder' && entry.rename?.path === folder.path;
+
         return (
           <FolderNode
             key={folder.path}

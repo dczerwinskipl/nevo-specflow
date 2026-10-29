@@ -23,6 +23,7 @@ export function useEditorSession(initial: { dirty: string[]; views?: Record<stri
 
   const savedOf = (id: string) => saved[id] ?? sourceOf(id);
   const draftOf = (id: string) => drafts[id] ?? savedOf(id);
+
   return {
     views,
     zooms,
@@ -40,6 +41,7 @@ export function useEditorSession(initial: { dirty: string[]; views?: Record<stri
     discard: (id: string) =>
       setDrafts((current) => {
         const { [id]: _removed, ...rest } = current;
+
         return rest;
       }),
     edit: (id: string, value: string) => setDrafts((current) => ({ ...current, [id]: value })),
@@ -48,6 +50,7 @@ export function useEditorSession(initial: { dirty: string[]; views?: Record<stri
     zoomTo: (id: string, value: number | null) =>
       setZooms((current) => {
         const { [id]: _removed, ...rest } = current;
+
         return value === null ? rest : { ...rest, [id]: value };
       }),
     zoom: (id: string, delta: number) =>

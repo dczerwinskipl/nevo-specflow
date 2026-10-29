@@ -72,21 +72,28 @@ export function markdownOutline(source: string): OutlineHeading[] {
     const opened = fenceOpen.exec(line);
     if (fence) {
       const marker = opened?.[1];
-      if (marker?.startsWith(fence.char) && marker.length >= fence.size && line.trim() === marker)
+      if (marker?.startsWith(fence.char) && marker.length >= fence.size && line.trim() === marker) {
         fence = undefined;
+      }
+
       continue;
     }
+
     if (opened) {
       fence = { char: opened[1]![0]!, size: opened[1]!.length };
       continue;
     }
+
     const heading = atx.exec(line);
     if (heading) {
       const text = plain(heading[2]!);
-      if (text)
+      if (text) {
         headings.push({ line: index + 1, level: heading[1]!.length as 1 | 2 | 3 | 4, text });
+      }
+
       continue;
     }
+
     // Setext: a paragraph line directly above an underline. A blank, list or quote line above is not.
     const underline = setext.exec(lines[index + 1] ?? '');
     if (
@@ -97,10 +104,13 @@ export function markdownOutline(source: string): OutlineHeading[] {
       !setext.test(line)
     ) {
       const text = plain(line);
-      if (text)
+      if (text) {
         headings.push({ line: index + 1, level: underline[1]!.startsWith('=') ? 1 : 2, text });
+      }
+
       index += 1;
     }
   }
+
   return headings;
 }

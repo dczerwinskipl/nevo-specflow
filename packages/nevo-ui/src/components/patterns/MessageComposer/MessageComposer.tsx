@@ -79,7 +79,10 @@ const MessageComposerContext = createContext<MessageComposerContextValue | null>
 
 function useMessageComposerContext(part: string) {
   const context = useContext(MessageComposerContext);
-  if (!context) throw new Error(`${part} must be rendered inside MessageComposer.`);
+  if (!context) {
+    throw new Error(`${part} must be rendered inside MessageComposer.`);
+  }
+
   return context;
 }
 
@@ -94,8 +97,14 @@ export function resolveMessageComposerKeyAction({
   key: string;
   shiftKey: boolean;
 }): 'none' | 'submit' | 'newline' {
-  if (key !== 'Enter') return 'none';
-  if (isComposing || shiftKey || enterKeyBehavior === 'newline') return 'newline';
+  if (key !== 'Enter') {
+    return 'none';
+  }
+
+  if (isComposing || shiftKey || enterKeyBehavior === 'newline') {
+    return 'newline';
+  }
+
   return 'submit';
 }
 
@@ -126,7 +135,10 @@ const MessageComposerRoot = forwardRef<HTMLFormElement, MessageComposerProps>(
       editorRef.current = node;
     }, []);
     const requestSubmit = useCallback(() => {
-      if (disabled || readOnly) return;
+      if (disabled || readOnly) {
+        return;
+      }
+
       formRef.current?.requestSubmit();
     }, [disabled, readOnly]);
     const context = useMemo(
@@ -142,7 +154,10 @@ const MessageComposerRoot = forwardRef<HTMLFormElement, MessageComposerProps>(
 
     const handleSubmit: NonNullable<FormHTMLAttributes<HTMLFormElement>['onSubmit']> = (event) => {
       event.preventDefault();
-      if (disabled || readOnly) return;
+      if (disabled || readOnly) {
+        return;
+      }
+
       void onSubmit(editorRef.current?.value ?? '', event);
     };
 
@@ -184,15 +199,20 @@ export const MessageComposerEditor = forwardRef<HTMLTextAreaElement, MessageComp
     const setEditorRef = useCallback(
       (node: HTMLTextAreaElement | null) => {
         composer.registerEditor(node);
-        if (typeof ref === 'function') ref(node);
-        else if (ref) ref.current = node;
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
       },
       [composer, ref],
     );
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
       onKeyDown?.(event);
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) {
+        return;
+      }
 
       const nativeEvent = event.nativeEvent;
       const action = resolveMessageComposerKeyAction({
@@ -201,7 +221,10 @@ export const MessageComposerEditor = forwardRef<HTMLTextAreaElement, MessageComp
         key: event.key,
         shiftKey: event.shiftKey,
       });
-      if (action !== 'submit') return;
+      if (action !== 'submit') {
+        return;
+      }
+
       event.preventDefault();
       composer.requestSubmit();
     };

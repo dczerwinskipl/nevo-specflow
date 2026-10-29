@@ -45,6 +45,7 @@ export function pendingSaveOf(
   pendingOf: (id: string) => PendingSave | undefined,
 ): PendingSave | undefined {
   const states = operationScope(operation, tree).map(pendingOf);
+
   return (['recovery', 'unconfirmed', 'saving'] as const).find((state) => states.includes(state));
 }
 
@@ -53,8 +54,12 @@ export function operationScope(
   operation: DocumentOperation,
   tree: DocumentTree | undefined,
 ): string[] {
-  if (operation.kind === 'document') return operation.documentId ? [operation.documentId] : [];
+  if (operation.kind === 'document') {
+    return operation.documentId ? [operation.documentId] : [];
+  }
+
   const prefix = (operation.path ?? '').toLowerCase() + '/';
+
   return (tree?.documents ?? [])
     .filter((document) => document.path.toLowerCase().startsWith(prefix))
     .map((document) => document.id);
@@ -74,8 +79,11 @@ const pendingSaveCode = {
 function focusTabPanel(id: string, attempts = 30) {
   const panel = globalThis.document.getElementById(getItemTabPanelId(documentTabsScope, id));
   const target = panel?.querySelector<HTMLElement>('[contenteditable="true"], [tabindex="0"]');
-  if (target) target.focus();
-  else if (attempts > 0) requestAnimationFrame(() => focusTabPanel(id, attempts - 1));
+  if (target) {
+    target.focus();
+  } else if (attempts > 0) {
+    requestAnimationFrame(() => focusTabPanel(id, attempts - 1));
+  }
 }
 
 /** Follow-up work after a confirmed mutation; its failure never reaches the mutation's caller. */
@@ -141,13 +149,21 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
   });
 
   useEffect(() => {
-    if (!followUp || busy) return;
+    if (!followUp || busy) {
+      return;
+    }
+
     setFollowUp(undefined);
     void (async () => {
-      if (followUp.removed) await tabs.removeTabs(followUp.removed);
+      if (followUp.removed) {
+        await tabs.removeTabs(followUp.removed);
+      }
+
       if (followUp.show) {
         await tabs.show(followUp.show);
-        if (followUp.focus) focusTabPanel(followUp.show);
+        if (followUp.focus) {
+          focusTabPanel(followUp.show);
+        }
       }
     })();
   }, [followUp, busy, tabs]);
@@ -187,6 +203,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       setFollowUp({ show: id, focus: blank });
     }
   };
+
   /**
    * Moves what belongs to a document to its new id: the draft (unsaved changes survive), the
    * reading position, the cached record and tree entry (so nothing flashes as missing), then the
@@ -205,14 +222,18 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
         });
         drafts.remove(specId, move.from);
       }
+
       // A refused or unfinished save (conflict, recovery) belongs to the document, not to its id.
       saves.follow(move.from, move.to);
       const anchor = drafts.getAnchor(specId, move.from);
-      if (anchor) drafts.setAnchor(specId, move.to, anchor);
+      if (anchor) {
+        drafts.setAnchor(specId, move.to, anchor);
+      }
+
       // Nothing stays under the old id: a file created later at the old path starts clean.
       drafts.removeAnchor(specId, move.from);
       const record = cache.getQueryData<DocumentContent>(documentKeys.detail(specId, move.from));
-      if (record)
+      if (record) {
         cache.setQueryData<DocumentContent>(documentKeys.detail(specId, move.to), {
           ...record,
           id: move.to,
@@ -220,14 +241,20 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
           revision: move.revision,
           ...(move.type ? { type: move.type, classification: 'registered' as const } : {}),
         });
+      }
     }
+
     cache.setQueryData<DocumentTree>(documentTreeKeys.tree(specId), (tree) =>
       tree ? treeWithFollowed(tree, moves) : tree,
     );
-    for (const move of moves) await tabs.follow(move.from, move.to);
+    for (const move of moves) {
+      await tabs.follow(move.from, move.to);
+    }
+
     // Once the route has moved on, the old id's cached record goes (any revision).
-    for (const move of moves)
+    for (const move of moves) {
       cache.removeQueries({ queryKey: documentKeys.detail(specId, move.from).slice(0, 4) });
+    }
   };
 
   const operate: DocumentTreeOperations['operate'] = async (operation, operateOptions) => {
@@ -236,7 +263,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
     // settle under the old id, a retained one (to resume, or unconfirmed) must be replayed exactly
     // as it was sent, for the document it was sent for.
     const pending = pendingSaveOf(operation, before, saves.pendingOf);
-    if (pending)
+    if (pending) {
       throw new ApiError({
         kind: 'conflict',
         operation: 'documents.operate',
@@ -244,6 +271,8 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
         retryable: true,
         code: pendingSaveCode[pending],
       });
+    }
+
     // While the operation is in flight a save of its documents is refused (it would settle under
     // an id the operation may change); released once the drafts have followed.
     const release = saves.holdSaves(operationScope(operation, before));
@@ -253,6 +282,7 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
       release();
     }
   };
+
   const finishOperation = async (
     operation: DocumentOperation,
     before: DocumentTree | undefined,
@@ -272,14 +302,17 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
     // followed to its new id (draft, tab, route), never dropped. Only the others really went.
     const followedFrom = new Set(moves.map((move) => move.from));
     const removedIds = result.removedDocumentIds.filter((id) => !followedFrom.has(id));
-    for (const removed of removedIds) drafts.remove(specId, removed);
+    for (const removed of removedIds) {
+      drafts.remove(specId, removed);
+    }
+
     // The revision each document had when the operation started: the one it names for a document
     // target, the tree's for the documents of a folder.
     const revisionBefore = (id: string) =>
       operation.kind === 'document' && operation.documentId === id
         ? operation.expectedRevision
         : before?.documents.find((item) => item.id === id)?.revision;
-    for (const record of result.documents)
+    for (const record of result.documents) {
       drafts.update(specId, record.id, (draft) =>
         draft
           ? {
@@ -292,10 +325,19 @@ export function useDocumentTreeOperations(options: { specId: string }): Document
             }
           : undefined,
       );
-    if (moves.length > 0) await settleFollowUp(follow(moves, revisionBefore));
+    }
+
+    if (moves.length > 0) {
+      await settleFollowUp(follow(moves, revisionBefore));
+    }
+
     await settleFollowUp(refresh());
-    if (removedIds.length > 0) setFollowUp({ removed: removedIds });
+    if (removedIds.length > 0) {
+      setFollowUp({ removed: removedIds });
+    }
+
     return result;
   };
+
   return { busy, setBusy, add, operate, refresh };
 }

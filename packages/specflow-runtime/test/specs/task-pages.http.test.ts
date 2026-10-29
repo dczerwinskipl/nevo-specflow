@@ -19,7 +19,10 @@ describe('Task snapshot and page HTTP boundary', () => {
       const snapshot = response.json<SpecificationTaskResponse>().snapshot!;
       expect(snapshot.specification.id).toBe('admission');
       const resources = snapshot.sections.resources;
-      if (resources.state !== 'available') throw new Error('Demo resources required');
+      if (resources.state !== 'available') {
+        throw new Error('Demo resources required');
+      }
+
       const token = resources.data.page!.token;
       const page = await app.inject(
         `/api/specs/admission/tasks/TASK-03/resources?token=${encodeURIComponent(token)}&limit=5`,
@@ -72,10 +75,11 @@ describe('Task snapshot and page HTTP boundary', () => {
       { dataMode: 'demo' },
     );
     try {
-      for (const suffix of ['', '/resources?token=any', '/history?token=any'])
+      for (const suffix of ['', '/resources?token=any', '/history?token=any']) {
         expect((await app.inject(`/api/specs/admission/tasks/TASK-03${suffix}`)).statusCode).toBe(
           403,
         );
+      }
     } finally {
       await app.close();
     }

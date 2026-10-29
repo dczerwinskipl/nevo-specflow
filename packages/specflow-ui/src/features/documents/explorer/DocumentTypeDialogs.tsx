@@ -58,13 +58,18 @@ interface CommonProps {
 /** Loading and failure of the catalogue inside a chooser dialog (the rest stays usable). */
 function CatalogueStatus({ catalogue }: { catalogue: CatalogueState }) {
   const { t } = useTranslation();
-  if (catalogue.data) return null;
-  if (catalogue.isPending)
+  if (catalogue.data) {
+    return null;
+  }
+
+  if (catalogue.isPending) {
     return (
       <p role="status" className="text-body-sm text-content-muted">
         {t('documents.newDocument.loadingTypes')}
       </p>
     );
+  }
+
   return (
     <Alert tone="attention" title={t('documents.newDocument.typesFailed')}>
       <Button size="sm" variant="secondary" onClick={catalogue.retry}>
@@ -84,7 +89,10 @@ function OperationError({
   onResume: () => void;
 }) {
   const { t } = useTranslation();
-  if (!error) return null;
+  if (!error) {
+    return null;
+  }
+
   return (
     <Alert
       role="alert"
@@ -125,11 +133,14 @@ function TypeDialogFrame({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next && !busy && !unknown) onClose();
+        if (!next && !busy && !unknown) {
+          onClose();
+        }
       }}
     >
       <DialogContent>
@@ -204,15 +215,19 @@ export function NewDocumentDialog({
     setSubmitted(true);
     if (busy || nameError || name.trim() === '') {
       nameRef.current?.focus();
+
       return;
     }
+
     const outcome = await onSubmit({
       path,
       ...(choice ? { type: choice.type.id } : {}),
       ...(choice?.template ? { templateId: choice.template.id } : {}),
       title: choice?.type.title,
     });
-    if (!outcome.ok && outcome.focusName) nameRef.current?.focus();
+    if (!outcome.ok && outcome.focusName) {
+      nameRef.current?.focus();
+    }
   };
 
   return (
@@ -285,8 +300,11 @@ export function AssignTypeDialog({
   const type = picked ?? initialTypeChoice(choices) ?? '';
   const choice = choiceOf(all, type);
   const submit = () => {
-    if (!busy && choice) void onSubmit(choice.type.id, choice.type.title);
+    if (!busy && choice) {
+      void onSubmit(choice.type.id, choice.type.title);
+    }
   };
+
   return (
     <TypeDialogFrame
       open

@@ -33,6 +33,7 @@ const PATH_MAX = 1024;
 
 function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const names = Object.keys(value);
+
   return names.length === keys.length && keys.every((key) => names.includes(key));
 }
 
@@ -42,14 +43,24 @@ function isInstant(value: unknown): value is string {
 
 /** A checkout-relative path: `/` separators, no empty, `.` or `..` segment, no control character. */
 export function isLedgerPath(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > PATH_MAX) return false;
-  if (value.startsWith('/') || value.includes('\\') || /\p{Cc}/u.test(value)) return false;
+  if (typeof value !== 'string' || value.length === 0 || value.length > PATH_MAX) {
+    return false;
+  }
+
+  if (value.startsWith('/') || value.includes('\\') || /\p{Cc}/u.test(value)) {
+    return false;
+  }
+
   return value.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
 }
 
 function isValidEntry(value: unknown): value is LedgerEntry {
-  if (!isRecord(value) || !hasExactKeys(value, ENTRY_KEYS)) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ENTRY_KEYS)) {
+    return false;
+  }
+
   const ids = value.operationIds;
+
   return (
     isLedgerPath(value.path) &&
     (value.postSha256 === null ||
@@ -99,6 +110,7 @@ export function parseLedgerRecord(
   ) {
     throw new LedgerCorruptError();
   }
+
   return value as unknown as LedgerRecord;
 }
 
@@ -108,7 +120,10 @@ function isShortText(value: string): boolean {
 
 function isValidOwner(owner: Record<string, unknown>, ownerKey: string): boolean {
   const named = ledgerOwnerOfKey(ownerKey);
-  if (named === undefined) return false;
+  if (named === undefined) {
+    return false;
+  }
+
   return (
     ledgerOwnerKey(named) === ledgerOwnerKey(owner as unknown as typeof named) &&
     (owner.kind === 'definitions'
@@ -124,6 +139,9 @@ export function encodeLedgerRecord(
 ): string {
   parseLedgerRecord(context, record, record.workspaceId, ledgerOwnerKey(record.owner));
   const text = JSON.stringify(record, null, 2) + '\n';
-  if (Buffer.byteLength(text, 'utf8') > LEDGER_MAX_BYTES) throw new LedgerCorruptError();
+  if (Buffer.byteLength(text, 'utf8') > LEDGER_MAX_BYTES) {
+    throw new LedgerCorruptError();
+  }
+
   return text;
 }

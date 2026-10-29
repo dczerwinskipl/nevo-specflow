@@ -110,15 +110,23 @@ function operationsFor(behavior: Stream): OperationsApi {
         { ...event, type: 'step', step: 'reserving', status: 'done' },
         { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
       ];
+
   return {
     list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(_streamUrl, signal) {
-      if (behavior === 'unavailable') throw new Error('Stream unavailable');
+      if (behavior === 'unavailable') {
+        throw new Error('Stream unavailable');
+      }
+
       for (const next of events) {
         await new Promise((resolve) => setTimeout(resolve, 60));
-        if (signal?.aborted) return;
+        if (signal?.aborted) {
+          return;
+        }
+
         yield next;
       }
+
       await new Promise<void>((resolve) =>
         signal?.addEventListener('abort', () => resolve(), { once: true }),
       );
@@ -178,11 +186,13 @@ function Fixture({
   useMemo(() => {
     sessionStorage.clear();
     const storage = createSessionOperationStorage('unknown', sessionStorage);
-    if (request)
+    if (request) {
       storage.save({
         request: { ...archetypeSelectionFixture, ...request, operationId },
         startedAt: Date.now(),
       });
+    }
+
     storage.saveDraft({
       operationId,
       title: request?.title ?? '',
@@ -258,6 +268,7 @@ function Fixture({
       }),
     [server, stream],
   );
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -446,8 +457,9 @@ export const LongTitleAt320: Story = {
     await expect(
       within(canvas.getByLabelText('Ustawienia tworzenia')).getByText(/dostawcami rozliczeń$/),
     ).toBeInTheDocument();
-    for (const row of steps(canvasElement).getAllByRole('listitem'))
+    for (const row of steps(canvasElement).getAllByRole('listitem')) {
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
+    }
   },
 };
 
@@ -473,8 +485,10 @@ export const Success: Story = {
       }),
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
-    for (const row of steps(canvasElement).getAllByRole('listitem'))
+    for (const row of steps(canvasElement).getAllByRole('listitem')) {
       await expect(row).toHaveTextContent(/gotowe/);
+    }
+
     await waitFor(() => expect(args.onOpen).toHaveBeenCalledWith(createdSpec), { timeout: 4000 });
   },
 };
@@ -525,8 +539,10 @@ async function expectFormWidth() {
     await expect(Math.abs(box.width - Math.min(standard, host.width))).toBeLessThan(2);
     await expect(Math.abs(box.left - host.left - (host.right - box.right))).toBeLessThan(2);
   }
+
   await settleViewport();
 }
+
 export const SharesTheFormWidth: Story = {
   args: { request: newWorkspace, facts: newWorkspaceFacts },
   play: () => expectFormWidth(),

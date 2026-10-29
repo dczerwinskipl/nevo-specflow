@@ -47,11 +47,14 @@ export function withLedgerLock<T>(
 }
 
 function assertWorkspaceId(workspaceId: string): void {
-  if (!WORKSPACE_ID.test(workspaceId)) throw new LedgerCorruptError();
+  if (!WORKSPACE_ID.test(workspaceId)) {
+    throw new LedgerCorruptError();
+  }
 }
 
 export function ledgerDirectory(context: ResolvedProjectHome, workspaceId: string): string {
   assertWorkspaceId(workspaceId);
+
   return join(context.project.stateRoot, LEDGER_RELATIVE_DIR, workspaceId);
 }
 
@@ -74,16 +77,24 @@ async function readRecordFile(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > LEDGER_MAX_BYTES) {
       throw new LedgerCorruptError();
     }
+
     let value: unknown;
     try {
       value = JSON.parse(await readFileWindowsSafe(path));
     } catch (error) {
-      if (error instanceof SyntaxError) throw new LedgerCorruptError();
+      if (error instanceof SyntaxError) {
+        throw new LedgerCorruptError();
+      }
+
       throw error;
     }
+
     return parseLedgerRecord(context, value, workspaceId, ownerKey);
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
     throw error;
   }
 }
@@ -129,14 +140,21 @@ export async function listLedgerRecords(
         ? [options.workspaceId]
         : (await readdir(base)).filter((name) => WORKSPACE_ID.test(name));
   } catch (error) {
-    if (isMissing(error)) return { records: [], unreadable: 0, truncated: false };
+    if (isMissing(error)) {
+      return { records: [], unreadable: 0, truncated: false };
+    }
+
     throw error;
   }
+
   const records: LedgerRecord[] = [];
   let unreadable = 0;
   let truncated = workspaces.length > LEDGER_LISTING_MAX_WORKSPACES;
   for (const workspaceId of workspaces.sort().slice(0, LEDGER_LISTING_MAX_WORKSPACES)) {
-    if (!WORKSPACE_ID.test(workspaceId)) continue;
+    if (!WORKSPACE_ID.test(workspaceId)) {
+      continue;
+    }
+
     const directory = join(base, workspaceId);
     let names: string[];
     try {
@@ -145,24 +163,38 @@ export async function listLedgerRecords(
         unreadable += 1;
         continue;
       }
+
       names = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort();
     } catch (error) {
-      if (isMissing(error)) continue;
+      if (isMissing(error)) {
+        continue;
+      }
+
       unreadable += 1;
       continue;
     }
-    if (names.length > LEDGER_LISTING_MAX_RECORDS) truncated = true;
+
+    if (names.length > LEDGER_LISTING_MAX_RECORDS) {
+      truncated = true;
+    }
+
     for (const name of names.slice(0, LEDGER_LISTING_MAX_RECORDS)) {
       const key = name.slice(0, -5);
-      if (ledgerOwnerOfKey(key) === undefined) continue;
+      if (ledgerOwnerOfKey(key) === undefined) {
+        continue;
+      }
+
       try {
         const record = await readRecordFile(context, join(directory, name), workspaceId, key);
-        if (record !== undefined) records.push(record);
+        if (record !== undefined) {
+          records.push(record);
+        }
       } catch {
         unreadable += 1;
       }
     }
   }
+
   return { records, unreadable, truncated };
 }
 
@@ -177,14 +209,21 @@ export async function writeLedgerRecord(
   const path = ledgerPath(context, record.workspaceId, record.owner);
   if (record.entries.length === 0) {
     await removeFileWindowsSafe(path).catch((error: unknown) => {
-      if (!isMissing(error)) throw error;
+      if (!isMissing(error)) {
+        throw error;
+      }
     });
+
     return;
   }
+
   encodeLedgerRecord(context, record);
   await mkdir(ledgerDirectory(context, record.workspaceId), { recursive: true, mode: 0o700 });
   const directory = ledgerDirectory(context, record.workspaceId);
-  if ((await realpath(directory)) !== directory) throw new LedgerCorruptError();
+  if ((await realpath(directory)) !== directory) {
+    throw new LedgerCorruptError();
+  }
+
   await writeJsonAtomically(path, record);
 }
 
@@ -200,6 +239,9 @@ export async function recordLedgerEntries(
 ): Promise<LedgerRecord> {
   const current = await readLedgerRecord(context, subject.workspaceId, subject.owner);
   const next = applyLedgerUpsert(current, subject, upsert);
-  if (next !== current) await writeLedgerRecord(context, next);
+  if (next !== current) {
+    await writeLedgerRecord(context, next);
+  }
+
   return next;
 }

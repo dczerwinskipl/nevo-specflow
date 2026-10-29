@@ -90,6 +90,7 @@ export const specificationRoute = createRoute({
           replace: true,
         });
       }
+
       return redirect({
         to: '/specs/$specId',
         params: { specId: params.specId },
@@ -97,6 +98,7 @@ export const specificationRoute = createRoute({
         replace: true,
       });
     }
+
     if (search.view === 'work') {
       return redirect({
         to: '/specs/$specId',
@@ -105,6 +107,7 @@ export const specificationRoute = createRoute({
         replace: true,
       });
     }
+
     if (search.view === 'documents') {
       return redirect({
         to: '/specs/$specId/documents',
@@ -113,6 +116,7 @@ export const specificationRoute = createRoute({
         replace: true,
       });
     }
+
     if (search.view === 'sessions') {
       return redirect({
         to: '/specs/$specId/sessions',
@@ -121,6 +125,7 @@ export const specificationRoute = createRoute({
         replace: true,
       });
     }
+
     if (search.view === 'changes') {
       return redirect({
         to: '/specs/$specId/changes',
@@ -129,6 +134,7 @@ export const specificationRoute = createRoute({
         replace: true,
       });
     }
+
     if (search.view === 'repository') {
       return redirect({
         to: '/specs/$specId/repository',
@@ -149,6 +155,7 @@ export const specificationRoute = createRoute({
 function SpecificationRouteLayout() {
   const { specId } = specificationRoute.useParams();
   useSpecificationWorkspace(specId);
+
   return <Outlet />;
 }
 
@@ -169,10 +176,14 @@ function SpecsRouteScreen() {
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
     // a forbidden individual Task or Document resource.
-    if (state.accessDenied) void navigate({ to: '/access-denied', replace: true });
+    if (state.accessDenied) {
+      void navigate({ to: '/access-denied', replace: true });
+    }
   }, [state.accessDenied, navigate]);
 
-  if (state.accessDenied) return null;
+  if (state.accessDenied) {
+    return null;
+  }
 
   return (
     <SpecsOverview

@@ -13,7 +13,10 @@ function fail(status: number, code?: string, method = 'POST'): ApiError {
     }),
     { operation: 'specs.create', method, codes: createSpecErrorCodes },
   );
-  if (!(classified instanceof ApiError)) throw new Error('expected ApiError');
+  if (!(classified instanceof ApiError)) {
+    throw new Error('expected ApiError');
+  }
+
   return classified;
 }
 
@@ -96,12 +99,13 @@ describe('Create error codes', () => {
       'GIT_POLICY_INVALID',
       'WORKTREE_PATH_CONFLICT',
     ];
-    for (const [code, rule] of Object.entries(createSpecErrorCodes))
+    for (const [code, rule] of Object.entries(createSpecErrorCodes)) {
       expect(rule.outcome, code).toBe(
         rule.kind === 'recovery-required' || mayFollowReservation.includes(code)
           ? 'unknown'
           : 'not-applied',
       );
+    }
   });
 
   it('an unknown 4xx code is classified by its status, never treated as an unknown outcome', () => {

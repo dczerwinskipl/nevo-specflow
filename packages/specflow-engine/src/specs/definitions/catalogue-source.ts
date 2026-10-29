@@ -87,11 +87,18 @@ function archetypeDependenciesOf(
   const prefix = `${SPECIFICATION_ARCHETYPE_KIND}/`;
   const result = new Map<string, Map<string, string>>();
   for (const [key, paths] of loaded.dependencies) {
-    if (!key.startsWith(prefix)) continue;
+    if (!key.startsWith(prefix)) {
+      continue;
+    }
+
     const keys = new Map<string, string>();
-    for (const path of paths) keys.set(path, signature.fileKeys.get(path) ?? ABSENT_KEY);
+    for (const path of paths) {
+      keys.set(path, signature.fileKeys.get(path) ?? ABSENT_KEY);
+    }
+
     result.set(key.slice(prefix.length), keys);
   }
+
   return result;
 }
 
@@ -110,7 +117,10 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
     memo.set(homeRoot, entry);
     while (memo.size > CATALOGUE_MEMO_MAX_HOMES) {
       const oldest = memo.keys().next();
-      if (oldest.done) break;
+      if (oldest.done) {
+        break;
+      }
+
       memo.delete(oldest.value);
     }
   };
@@ -126,14 +136,19 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
         const cached = memo.get(homeRoot);
         if (cached?.trusted && cached.signature === before.value && before.complete) {
           remember(homeRoot, cached);
+
           return { ...cached.result, unstableRead: false };
         }
       }
+
       const loaded = await loadDefinitions(source, registry);
       const result = resolveProjectCatalogue(loaded);
       const after = await computeStatSignature(source);
       lastLoad = result;
-      if (after.value !== before.value) continue;
+      if (after.value !== before.value) {
+        continue;
+      }
+
       remember(homeRoot, {
         signature: after.value,
         trusted:
@@ -141,19 +156,29 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
         result,
         archetypeDependencies: archetypeDependenciesOf(loaded, after),
       });
+
       return { ...result, unstableRead: false };
     }
 
     const lastGood = memo.get(homeRoot);
-    if (lastGood) return { ...lastGood.result, unstableRead: true };
-    if (!lastLoad) throw new Error('The catalogue could not be loaded.');
+    if (lastGood) {
+      return { ...lastGood.result, unstableRead: true };
+    }
+
+    if (!lastLoad) {
+      throw new Error('The catalogue could not be loaded.');
+    }
+
     return { ...lastLoad, unstableRead: true };
   }
 
   /** The current stat key of one file, in the vocabulary of the memo. */
   async function currentKey(source: DefinitionSource, path: string): Promise<string> {
     const stat = await source.stat(path);
-    if (stat.state === 'ok') return statKey(stat.entry);
+    if (stat.state === 'ok') {
+      return statKey(stat.entry);
+    }
+
     return stat.state === 'absent' ? ABSENT_KEY : stat.state;
   }
 
@@ -163,8 +188,11 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
     recorded: ReadonlyMap<string, string>,
   ): Promise<boolean> {
     for (const [path, key] of recorded) {
-      if ((await currentKey(source, path)) !== key) return false;
+      if ((await currentKey(source, path)) !== key) {
+        return false;
+      }
     }
+
     return true;
   }
 
@@ -172,8 +200,14 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
     const source = sourceFor(homeRoot);
     const path = `${SPECIFICATION_ARCHETYPE_KIND}/${id}.yaml`;
     const stat = await source.stat(path);
-    if (stat.state === 'absent') return { state: 'absent' };
-    if (stat.state !== 'ok') return { state: 'invalid' };
+    if (stat.state === 'absent') {
+      return { state: 'absent' };
+    }
+
+    if (stat.state !== 'ok') {
+      return { state: 'invalid' };
+    }
+
     // The memo answers only while the archetype file AND every file its validity depends on (its
     // templates, the document types it refers to) are exactly as they were loaded; a broken or repaired
     // dependency therefore shows at the next lookup, not at some later full read.
@@ -185,6 +219,7 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
       (await dependenciesUnchanged(source, recorded));
     const result = known ? cached.result : await get(homeRoot);
     const archetype = result.catalogue.findArchetype(id);
+
     return archetype ? { state: 'defined', title: archetype.title } : { state: 'invalid' };
   }
 
@@ -196,6 +231,7 @@ let processCatalogueSource: CatalogueSource | undefined;
 /** The per-process catalogue source used by the Engine entry points. */
 export function defaultCatalogueSource(): CatalogueSource {
   processCatalogueSource ??= createCatalogueSource();
+
   return processCatalogueSource;
 }
 
@@ -234,7 +270,10 @@ export async function loadStableProjectCatalogue(
   const pause = options.sleep ?? ((ms: number) => sleep(ms));
   for (let attempt = 1; ; attempt += 1) {
     const result = await source.get(homeRoot);
-    if (!result.unstableRead) return result;
+    if (!result.unstableRead) {
+      return result;
+    }
+
     if (attempt >= attempts) {
       throw new DocumentError(
         'CATALOGUE_STALE',
@@ -242,6 +281,7 @@ export async function loadStableProjectCatalogue(
         { cause: 'catalogue-unstable' },
       );
     }
+
     await pause(options.delayMs ?? CATALOGUE_STABLE_READ_DELAY_MS);
   }
 }

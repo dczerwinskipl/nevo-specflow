@@ -35,6 +35,7 @@ function RepositoryRouteScreen() {
   const { collection } = repositoryRoute.useSearch();
   const navigate = repositoryRoute.useNavigate();
   const { t } = useTranslation();
+
   return (
     <SpecificationAggregatePage
       specId={specId}
@@ -64,6 +65,7 @@ function ChangesRouteScreen() {
   const { source, collection } = changesRoute.useSearch();
   const navigate = changesRoute.useNavigate();
   const { t } = useTranslation();
+
   return (
     <SpecificationAggregatePage
       specId={specId}

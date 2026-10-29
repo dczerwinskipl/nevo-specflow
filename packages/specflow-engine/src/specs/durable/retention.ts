@@ -75,6 +75,7 @@ export async function removeExpiredSettledJournals<T>(
   } catch {
     return 0;
   }
+
   await removeStrayTemps(directory, temps, now, options.tempRetentionMs, limit);
   await removeOrphanedPayloads(context, kind, directory, payloads, anyJournalNames, {
     now,
@@ -84,28 +85,45 @@ export async function removeExpiredSettledJournals<T>(
   });
   let removed = 0;
   for (const name of names) {
-    if (removed >= limit) break;
+    if (removed >= limit) {
+      break;
+    }
+
     const operationId = name.slice(0, -5);
     if (!OPERATION_ID_PATTERN.test(operationId) || operationId === options.keepOperationId) {
       continue;
     }
+
     const path = join(directory, name);
     try {
       const stat = await lstat(path);
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > kind.maxBytes) continue;
-      if (now - stat.mtimeMs < retentionMs) continue;
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > kind.maxBytes) {
+        continue;
+      }
+
+      if (now - stat.mtimeMs < retentionMs) {
+        continue;
+      }
+
       const classified = classifyJournalText(await readFileWindowsSafe(path));
       if (classified.kind === 'unsupported') {
         // An unreadable (or unparseable) journal is evidence nobody can interpret: it is deleted
         // after the retention, by age only (see unsupported.ts).
-        if (!isExpiredUnsupportedJournal(stat.mtimeMs, now, retentionMs)) continue;
+        if (!isExpiredUnsupportedJournal(stat.mtimeMs, now, retentionMs)) {
+          continue;
+        }
+
         await removeFileWindowsSafe(path);
         await removePayload(context, kind, operationId).catch(() => undefined);
         removed += 1;
         continue;
       }
+
       const parsed = kind.parse(context, classified.value, operationId);
-      if (!kind.isSettled(parsed)) continue;
+      if (!kind.isSettled(parsed)) {
+        continue;
+      }
+
       await removeFileWindowsSafe(path);
       // The payload goes with its journal. A failure leaves an orphan that the next sweep removes.
       await removePayload(context, kind, operationId).catch(() => undefined);
@@ -114,6 +132,7 @@ export async function removeExpiredSettledJournals<T>(
       // Vanished, unreadable or corrupt: never deleted here, never fatal for the reservation.
     }
   }
+
   return removed;
 }
 
@@ -139,14 +158,29 @@ async function removeOrphanedPayloads(
   const journals = new Set(journalNames.map((name) => name.slice(0, -5).toLowerCase()));
   let removed = 0;
   for (const name of payloads) {
-    if (removed >= options.limit) return;
+    if (removed >= options.limit) {
+      return;
+    }
+
     const operationId = payloadOperationIdOf(name);
-    if (!operationId || journals.has(operationId.toLowerCase())) continue;
-    if (operationId === options.keepOperationId) continue;
+    if (!operationId || journals.has(operationId.toLowerCase())) {
+      continue;
+    }
+
+    if (operationId === options.keepOperationId) {
+      continue;
+    }
+
     try {
       const stat = await lstat(join(directory, name));
-      if (!stat.isDirectory() || stat.isSymbolicLink()) continue;
-      if (options.now - stat.mtimeMs < options.retentionMs) continue;
+      if (!stat.isDirectory() || stat.isSymbolicLink()) {
+        continue;
+      }
+
+      if (options.now - stat.mtimeMs < options.retentionMs) {
+        continue;
+      }
+
       await removePayload(context, kind, operationId);
       removed += 1;
     } catch {
@@ -165,11 +199,17 @@ async function removeStrayTemps(
 ): Promise<void> {
   let removed = 0;
   for (const name of names) {
-    if (removed >= limit) return;
+    if (removed >= limit) {
+      return;
+    }
+
     const path = join(directory, name);
     try {
       const stat = await lstat(path);
-      if (!stat.isFile() || stat.isSymbolicLink() || now - stat.mtimeMs < maxAgeMs) continue;
+      if (!stat.isFile() || stat.isSymbolicLink() || now - stat.mtimeMs < maxAgeMs) {
+        continue;
+      }
+
       await removeFileWindowsSafe(path);
       removed += 1;
     } catch {

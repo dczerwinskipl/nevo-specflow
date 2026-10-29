@@ -41,7 +41,10 @@ export function ProductNavigation({
   const location = useRouterState({ select: (state) => state.location });
   const previousLocation = useRef(location);
   useEffect(() => {
-    if (previousLocation.current === location) return;
+    if (previousLocation.current === location) {
+      return;
+    }
+
     previousLocation.current = location;
     closeNavigation(() => document.querySelector<HTMLElement>('[data-workspace-active="true"] h1'));
   }, [closeNavigation, location]);
@@ -78,6 +81,7 @@ export function ProductNavigation({
     location.hash,
     navigation.status !== 'loading',
   );
+
   return (
     <div
       className="flex min-h-0 flex-1 flex-col"
@@ -112,10 +116,11 @@ export function ProductNavigation({
                   className={className}
                   activeOptions={{ exact: true }}
                   onClick={() => {
-                    if (location.pathname === '/')
+                    if (location.pathname === '/') {
                       closeNavigation(() =>
                         document.querySelector<HTMLElement>('[data-workspace-active="true"] h1'),
                       );
+                    }
                   }}
                 >
                   {children}
@@ -199,7 +204,9 @@ export function ProductNavigation({
                               ? () => {
                                   // Re-selecting the already active section does not change the
                                   // URL; still bring the section into view and focus.
-                                  if (location.hash === view.hash) focusHashSection(view.hash);
+                                  if (location.hash === view.hash) {
+                                    focusHashSection(view.hash);
+                                  }
                                 }
                               : undefined
                           }

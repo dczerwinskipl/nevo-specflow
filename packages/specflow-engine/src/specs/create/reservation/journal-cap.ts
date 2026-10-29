@@ -12,7 +12,10 @@ const size = (value: unknown): number => Buffer.byteLength(JSON.stringify(value)
  */
 export function assertJournalFitsItsCap(record: CreateJournal): void {
   const total = Buffer.byteLength(JSON.stringify(record, null, 2), 'utf8') + 1;
-  if (total <= CREATE_JOURNAL_MAX_BYTES - CREATE_JOURNAL_GROWTH_HEADROOM_BYTES) return;
+  if (total <= CREATE_JOURNAL_MAX_BYTES - CREATE_JOURNAL_GROWTH_HEADROOM_BYTES) {
+    return;
+  }
+
   const intent = record.requestIntent;
   const goal = size(record.goal) + size(intent.goal);
   const paths =
@@ -22,6 +25,7 @@ export function assertJournalFitsItsCap(record: CreateJournal): void {
   const documents = Math.max(0, total - goal - paths);
   const cause =
     goal >= paths && goal >= documents ? 'goal' : paths >= documents ? 'paths' : 'documents';
+
   throw new DocumentError(
     'DOCUMENT_OPERATION_INVALID',
     `The Create request is too large to be recorded durably (mostly its ${cause}).`,

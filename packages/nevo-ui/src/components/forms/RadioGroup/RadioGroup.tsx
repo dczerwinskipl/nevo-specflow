@@ -33,6 +33,7 @@ export const RadioGroup = forwardRef<
   const capture = useDesignMetadata('RadioGroup');
   const arrow = useRef(false);
   const { children, ...rootProps } = props;
+
   return (
     <ArrowNavigation.Provider value={arrow}>
       <RadioGroupPrimitive.Root
@@ -50,7 +51,10 @@ export const RadioGroup = forwardRef<
         }}
         onBlurCapture={(event) => {
           // Focus leaving the group ends any arrow navigation.
-          if (!event.currentTarget.contains(event.relatedTarget)) arrow.current = false;
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            arrow.current = false;
+          }
+
           onBlurCapture?.(event);
         }}
         {...rootProps}
@@ -73,6 +77,7 @@ export const RadioGroupItem = forwardRef<
   RadioGroupItemProps
 >(function RadioGroupItem({ className, onFocus, ...props }, ref) {
   const arrow = useContext(ArrowNavigation);
+
   return (
     <RadioGroupPrimitive.Item
       ref={ref}
@@ -81,8 +86,9 @@ export const RadioGroupItem = forwardRef<
         // Focus moved by an arrow key selects the radio, however short the key press was.
         if (arrow?.current) {
           arrow.current = false;
-          if (event.currentTarget.getAttribute('data-state') !== 'checked')
+          if (event.currentTarget.getAttribute('data-state') !== 'checked') {
             event.currentTarget.click();
+          }
         }
       }}
       className={cn(

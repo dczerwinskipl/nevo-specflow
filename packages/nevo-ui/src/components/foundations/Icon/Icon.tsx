@@ -187,6 +187,7 @@ export function Icon({
       ? { assetRef: iconAssetRef(name, size), assetRepresentation: 'svg-mask' }
       : undefined,
   );
+
   return (
     <Glyph
       aria-hidden={decorative || undefined}

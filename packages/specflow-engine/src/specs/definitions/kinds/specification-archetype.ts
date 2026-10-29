@@ -33,7 +33,10 @@ function referenceIssue(
   location: string,
 ): DefinitionIssue | undefined {
   const found = context.lookup(DOCUMENT_TYPE_KIND, documentType);
-  if (found.state === 'valid') return undefined;
+  if (found.state === 'valid') {
+    return undefined;
+  }
+
   return found.state === 'missing'
     ? {
         code: 'reference-missing',
@@ -71,9 +74,12 @@ function archetypeIssues(
         message: `The document type "${requirement.documentType}" is required more than once.`,
       });
     }
+
     required.add(requirement.documentType);
     const missing = referenceIssue(context, requirement.documentType, location);
-    if (missing) issues.push(missing);
+    if (missing) {
+      issues.push(missing);
+    }
   });
   if (
     !archetype.requirements.some(
@@ -99,6 +105,7 @@ function archetypeIssues(
         message: `The template id "${template.id}" is used more than once.`,
       });
     }
+
     templateIds.add(template.id);
     if (template.id.startsWith(DERIVED_ID_PREFIX)) {
       issues.push({
@@ -107,8 +114,12 @@ function archetypeIssues(
         message: `The template id "${template.id}" is in the reserved "u-" space.`,
       });
     }
+
     const missing = referenceIssue(context, template.documentType, `${at}/documentType`);
-    if (missing) issues.push(missing);
+    if (missing) {
+      issues.push(missing);
+    }
+
     const path = validateDocumentPath(template.filename);
     if (!path.ok) {
       issues.push({
@@ -117,6 +128,7 @@ function archetypeIssues(
         message: `The template filename is not a valid document path (${path.violation}).`,
       });
     }
+
     const key = foldPathKey(template.filename);
     if (filenames.has(key)) {
       issues.push({
@@ -125,6 +137,7 @@ function archetypeIssues(
         message: `Two templates have the same filename ignoring case ("${template.filename}").`,
       });
     }
+
     filenames.add(key);
   });
 
@@ -141,6 +154,7 @@ function archetypeIssues(
       message: `The archetype must have exactly one "${OVERVIEW_DOCUMENT_ID}" template of type ${OVERVIEW_DOCUMENT_TYPE}, filename ${OVERVIEW_DOCUMENT_PATH} and include always.`,
     });
   }
+
   if (context.lookup(DOCUMENT_TYPE_KIND, OVERVIEW_DOCUMENT_TYPE).state !== 'valid') {
     const already = issues.some(
       (issue) =>
@@ -155,6 +169,7 @@ function archetypeIssues(
       });
     }
   }
+
   return issues;
 }
 
@@ -190,7 +205,10 @@ export const specificationArchetypeKind = defineDefinitionKind<
     templates: file.templates.map((template): TemplateDefinition => {
       const content =
         'content' in template ? template.content : auxiliary.get(template.contentFile);
-      if (content === undefined) throw new Error('A template file was not loaded.');
+      if (content === undefined) {
+        throw new Error('A template file was not loaded.');
+      }
+
       const common = {
         id: template.id,
         documentType: template.documentType,
@@ -199,6 +217,7 @@ export const specificationArchetypeKind = defineDefinitionKind<
         ...(template.instructions !== undefined ? { instructions: template.instructions } : {}),
         content,
       };
+
       return template.include === 'always'
         ? { ...common, include: 'always' }
         : {
@@ -211,8 +230,14 @@ export const specificationArchetypeKind = defineDefinitionKind<
   check: archetypeIssues,
   references: (archetype) => {
     const types = new Set<string>();
-    for (const requirement of archetype.requirements) types.add(requirement.documentType);
-    for (const template of archetype.templates) types.add(template.documentType);
+    for (const requirement of archetype.requirements) {
+      types.add(requirement.documentType);
+    }
+
+    for (const template of archetype.templates) {
+      types.add(template.documentType);
+    }
+
     return [...types].sort().map((id) => ({ kind: DOCUMENT_TYPE_KIND, id }));
   },
 });

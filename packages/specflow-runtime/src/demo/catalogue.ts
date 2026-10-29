@@ -11,7 +11,10 @@ function seedTemplate(archetypeId: string, templateId: string): TemplateDefiniti
   const template = seedArchetypes
     .find((archetype) => archetype.id === archetypeId)
     ?.templates.find((candidate) => candidate.id === templateId);
-  if (!template) throw new Error(`Seed template ${archetypeId}/${templateId} is missing.`);
+  if (!template) {
+    throw new Error(`Seed template ${archetypeId}/${templateId} is missing.`);
+  }
+
   return template;
 }
 

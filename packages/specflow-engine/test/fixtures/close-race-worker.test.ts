@@ -33,23 +33,31 @@ it.skipIf(!enabled)(
         await access(start);
         break;
       } catch {
-        if (Date.now() > deadline) throw new Error('Close race start barrier timed out.');
+        if (Date.now() > deadline) {
+          throw new Error('Close race start barrier timed out.');
+        }
+
         await sleep(25);
       }
     }
+
     try {
       const reserved = await reserveCloseOperation(engine, request);
       if (process.env.NEVO_CLOSE_RACE_MODE === 'publish-divergent') {
-        if (request.kind !== 'worktree-close' && request.kind !== 'workspace-close')
+        if (request.kind !== 'worktree-close' && request.kind !== 'workspace-close') {
           throw new Error('Expected worktree-wide Close.');
+        }
+
         const prepared = await prepareCloseGitIntegration(engine, request.operationId);
         if (prepared.integration?.relationship !== 'divergent') {
           throw new Error('Race fixture did not create divergent Git history.');
         }
+
         const candidate = await prepareDivergentCloseCandidate(engine, request.operationId);
         if (candidate.stage !== 'integration-scratch-candidate') {
           throw new Error('Verified divergent candidate was not prepared.');
         }
+
         await writeFile(
           process.env.NEVO_CLOSE_RACE_PUBLISH_READY!,
           JSON.stringify({ pid: process.pid, stage: 'candidate-prepared' }),
@@ -60,17 +68,25 @@ it.skipIf(!enabled)(
             await access(publishRelease);
             break;
           } catch {
-            if (Date.now() > deadline) throw new Error('Publish release barrier timed out.');
+            if (Date.now() > deadline) {
+              throw new Error('Publish release barrier timed out.');
+            }
+
             await sleep(25);
           }
         }
+
         const published = await publishDivergentCloseCandidate(engine, request.operationId);
         if (published.stage !== 'integration-verified') {
           throw new Error('Divergent Git publication was not verified.');
         }
+
         await rebindVerifiedClose(engine, request.operationId);
         const final = await disposeReboundWorktree(engine, request.operationId);
-        if (final.stage !== 'completed') throw new Error('Disposal not completed.');
+        if (final.stage !== 'completed') {
+          throw new Error('Disposal not completed.');
+        }
+
         await writeFile(
           result,
           JSON.stringify({
@@ -79,8 +95,10 @@ it.skipIf(!enabled)(
             commit: published.integration?.publishedCommit,
           }),
         );
+
         return;
       }
+
       await writeFile(
         result,
         JSON.stringify({
@@ -97,8 +115,10 @@ it.skipIf(!enabled)(
         error.code === 'CLOSE_CONFLICT'
       ) {
         await writeFile(result, JSON.stringify({ result: 'conflict' }));
+
         return;
       }
+
       throw error;
     }
   },

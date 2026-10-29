@@ -27,6 +27,7 @@ async function ledgerPin(
   if (existing !== undefined && existing.entries.length > 0) {
     return { branch: existing.branch, head: existing.head };
   }
+
   const signature = await (rt.options.git?.signature ?? readPreflightSignature)(
     rt.context,
     journal.workspaceRoot,
@@ -38,6 +39,7 @@ async function ledgerPin(
   } catch {
     // An unborn branch or an unreadable repository pins no head; the entry is still recorded.
   }
+
   return { branch: signature.branchRef ?? null, head };
 }
 
@@ -94,12 +96,15 @@ export async function completeUncommittedWrite(
             'Too many uncommitted paths; commit the pending changes first.',
           );
         }
+
         throw error;
       }
+
       await rt.hooks.afterLedgerWrite?.();
     },
   );
   await rt.hooks.afterJournalWrite?.('completed');
+
   return completed;
 }
 
@@ -120,12 +125,18 @@ export async function reimageUncommittedPaths(
   const record = await readLedgerRecord(rt.context, journal.workspaceId, owner).catch(
     () => undefined,
   );
-  if (record === undefined) return;
+  if (record === undefined) {
+    return;
+  }
+
   const known = new Set(record.entries.map((entry) => entry.path));
   const paths = plan.paths
     .filter((path) => known.has(path.path))
     .map((path) => ({ path: path.path, postSha256: path.post?.sha256 ?? null }));
-  if (paths.length === 0) return;
+  if (paths.length === 0) {
+    return;
+  }
+
   await withLedgerLock(rt.context, () =>
     recordLedgerEntries(
       rt.context,

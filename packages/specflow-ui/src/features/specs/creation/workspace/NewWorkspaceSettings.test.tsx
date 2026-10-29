@@ -28,6 +28,7 @@ function Harness({
     settingsOpen,
   });
   latest = choice;
+
   return (
     <NewWorkspaceSettings
       options={harnessOptions}

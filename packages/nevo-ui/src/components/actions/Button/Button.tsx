@@ -82,6 +82,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     width,
     state: disabled ? 'disabled' : 'default',
   });
+
   return (
     <button
       ref={ref}

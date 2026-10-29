@@ -61,6 +61,7 @@ describe('branch override: UI rule equals the Engine rule', () => {
     } catch {
       engineAccepts = false;
     }
+
     expect(isValidBranchName(branch)).toBe(engineAccepts);
   });
 });

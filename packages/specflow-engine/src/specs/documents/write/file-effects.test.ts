@@ -137,7 +137,10 @@ describe('removeStageFiles', () => {
       stagedFileName(OPERATION_ID, 0, TAG, 'backup'),
     ];
     const others = [stagedFileName('00000000-5c1d-4e7a-9b62-0d4e8f1a7c35', 0, TAG), 'keep.md'];
-    for (const name of [...mine, ...others]) await writeFile(join(specDir, name), 'x');
+    for (const name of [...mine, ...others]) {
+      await writeFile(join(specDir, name), 'x');
+    }
+
     await removeStageFiles(nodeDocumentFileOps, specDir, OPERATION_ID);
     expect((await readdir(specDir)).sort()).toEqual([...others].sort());
     await removeStageFiles(nodeDocumentFileOps, join(specDir, 'missing'), OPERATION_ID);
@@ -170,6 +173,7 @@ describe('applyPlannedPath', () => {
     let asked = false;
     const outcome = await applyPlannedPath(context(), planned('a.md', 'old', 'new'), () => {
       asked = true;
+
       return Promise.resolve(Buffer.from('new'));
     });
     expect(outcome).toEqual({ kind: 'already' });
@@ -252,8 +256,10 @@ describe('applyPlannedPath', () => {
     const seen: string[] = [];
     const observe = (event: { kind: string }) => {
       seen.push(event.kind);
+
       return Promise.resolve();
     };
+
     await applyPlannedPath(context({ observe }), planned('a.md', 'old', 'new'), bytesOf('new'));
     await applyPlannedPath(context({ observe }), planned('a.md', 'new', null), bytesOf(''));
     expect(seen).toEqual(['staged', 'before-replace', 'replaced', 'before-replace', 'removed']);

@@ -44,7 +44,10 @@ export async function retryTransientFs<T>(
     try {
       return await action();
     } catch (error) {
-      if (attempt >= attempts || !hasCode(error, codes)) throw error;
+      if (attempt >= attempts || !hasCode(error, codes)) {
+        throw error;
+      }
+
       await sleep(Math.min(cap, base * 2 ** (attempt - 1)));
     }
   }
@@ -63,6 +66,7 @@ export function renameWindowsSafe(
   } = {},
 ): Promise<void> {
   const operations = options.fs ?? { rename };
+
   return retryTransientFs(() => operations.rename(from, to), {
     ...options,
     codes: options.codes ?? (options.directory ? TRANSIENT_DIRECTORY_FS_CODES : TRANSIENT_FS_CODES),
@@ -76,6 +80,7 @@ export function removeFileWindowsSafe(
   } = {},
 ): Promise<void> {
   const operations = options.fs ?? { rm };
+
   return retryTransientFs(() => operations.rm(path, { force: true }), options);
 }
 
@@ -86,6 +91,7 @@ export function unlinkWindowsSafe(
   } = {},
 ): Promise<void> {
   const operations = options.fs ?? { unlink };
+
   return retryTransientFs(() => operations.unlink(path), options);
 }
 
@@ -97,6 +103,7 @@ export function readFileWindowsSafe(
   } = {},
 ): Promise<string> {
   const operations = options.fs ?? { readFile };
+
   return retryTransientFs(() => operations.readFile(path, 'utf8'), options);
 }
 

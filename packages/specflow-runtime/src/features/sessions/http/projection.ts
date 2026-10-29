@@ -40,11 +40,14 @@ export function effective(
     (s.session.mode !== 'workspace-write' || permissions['execute-write']);
   s.session.capabilities.cancel =
     permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';
-  if (!available && !s.activeTurn)
+  if (!available && !s.activeTurn) {
     s.session.readiness =
       provider?.readiness === 'authenticationRequired' ? 'authenticationRequired' : 'unavailable';
+  }
+
   return s;
 }
+
 export function effectiveEvent(
   event: SessionChange,
   request: FastifyRequest,
@@ -74,5 +77,6 @@ export function effectiveEvent(
       available,
     );
   }
+
   return event;
 }

@@ -100,6 +100,7 @@ async function project(
         'specs/active/' + child.slug + '/overview.md',
       );
     }
+
     commitStaged(spec.workspaceRoot, 'commit two shared SIGKILL siblings');
     expect(
       (await engine.readRegistry()).specBindings.filter((x) => x.workspaceId === spec.workspaceId),
@@ -113,6 +114,7 @@ async function project(
     });
     expect(archived.status).toBe('completed');
   }
+
   if (fastForward) {
     // .gitattributes is introduced in the pinned source commit. During the
     // real fast-forward, Git executes the test-only smudge filter for this file.
@@ -125,6 +127,7 @@ async function project(
     git(root, 'add', 'target-only.txt');
     commitStaged(root, 'advance primary');
   }
+
   const operationId = randomUUID();
   if (kind === 'worktree-close' || kind === 'workspace-close') {
     if (kind === 'workspace-close') {
@@ -132,6 +135,7 @@ async function project(
     } else {
       await reserveCloseOperation(engine, { kind, operationId, specId: spec.specId });
     }
+
     await prepareCloseGitIntegration(engine, operationId);
   } else {
     await reserveCloseOperation(engine, {
@@ -141,6 +145,7 @@ async function project(
       integrateToTargetBranch: false,
     });
   }
+
   return { root, spec, siblings, engine, operationId };
 }
 
@@ -193,10 +198,12 @@ describe('E2.I03 three-owner OS-process SIGKILL regression', () => {
     await rebindVerifiedClose(reopened, operationId);
     const rebound = await reopened.readRegistry();
     expect(rebound.revision).toBe(originalRegistry.revision + 1);
-    for (const id of ids)
+    for (const id of ids) {
       expect(rebound.specBindings.find((x) => x.specId === id)?.workspaceId).toBe(
         rebound.primaryWorkspaceId,
       );
+    }
+
     const disposed = await disposeReboundWorktree(reopened, operationId);
     expect(disposed.stage).toBe('completed');
     expect(
@@ -209,8 +216,9 @@ describe('E2.I03 three-owner OS-process SIGKILL regression', () => {
     ).toBe('completed');
     expect((await reopened.readRegistry()).revision).toBe(originalRegistry.revision + 2);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(sourceCommit);
-    for (const [id, status] of ids.map((id, i) => [id, i === 1 ? 'archived' : 'draft'] as const))
+    for (const [id, status] of ids.map((id, i) => [id, i === 1 ? 'archived' : 'draft'] as const)) {
       expect((await readWorkspaceSpecification(root, id)).status).toBe(status);
+    }
   }, 180000);
 
   it('kills the actual worker after multi-binding CAS, resumes one journal', async () => {
@@ -233,6 +241,7 @@ describe('E2.I03 three-owner OS-process SIGKILL regression', () => {
         generation: rebound.revision,
       });
     }
+
     expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
     const recovered = await rebindVerifiedClose(reopened, operationId);
     expect(recovered.stage).toBe('binding-rebound');
@@ -270,10 +279,12 @@ describe('E2.I03 three-owner OS-process SIGKILL regression', () => {
     const after = await reopened.readRegistry();
     expect(after.revision).toBe(before.revision + 1);
     expect(after.workspaces.some((x) => x.workspaceId === spec.workspaceId)).toBe(false);
-    for (const id of [spec.specId, ...siblings.map((x) => x.specId)])
+    for (const id of [spec.specId, ...siblings.map((x) => x.specId)]) {
       expect(after.specBindings.find((x) => x.specId === id)?.workspaceId).toBe(
         after.primaryWorkspaceId,
       );
+    }
+
     expect(
       (
         await closeWorkspace(reopened, {
@@ -684,9 +695,11 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
           if (Date.now() >= deadline) {
             throw new Error('Active Git smudge checkpoint not reached: ' + output);
           }
+
           await sleep(40);
         }
       }
+
       const filter = JSON.parse(await readFile(filterSignal, 'utf8')) as { pid: number };
       const gitChild = JSON.parse(await readFile(gitPidSignal, 'utf8')) as { pid: number };
       filterPid = filter.pid;
@@ -700,11 +713,13 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
       } catch {
         /* already terminated */
       }
+
       filterPid = undefined;
       const code = await Promise.race([
         done,
         sleep(30000).then(() => {
           child.kill();
+
           throw new Error('Git worker did not settle.');
         }),
       ]);
@@ -737,6 +752,7 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
           ) {
             return false;
           }
+
           throw error;
         });
       const fullyPublished =
@@ -760,6 +776,7 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
           reconcileCloseGitPublication(reopened, operationId, true),
         ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });
       }
+
       expect(await reopened.readRegistry()).toEqual(registryBefore);
       // Admission remains blocked both for torn publication and for a
       // verified-but-not-yet-rebound Close journal.
@@ -773,6 +790,7 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
       } catch (error) {
         admissionFailure = error;
       }
+
       expect(admissionFailure).toBeDefined();
       const admissionCode: unknown = (admissionFailure as { code?: unknown }).code;
       expect(['CLOSE_PREFLIGHT', 'CLOSE_CONFLICT']).toContain(admissionCode);
@@ -796,6 +814,7 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
           /* already exited */
         }
       }
+
       child.kill();
       await Promise.allSettled([done]);
     }

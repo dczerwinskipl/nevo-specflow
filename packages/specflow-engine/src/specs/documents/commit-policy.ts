@@ -13,7 +13,10 @@ export async function readCommitPolicyMode(
 ): Promise<CommitPolicyMode | undefined> {
   try {
     const { policy } = await readProjectGitPolicy(context);
-    if (!policy.enabled) return undefined;
+    if (!policy.enabled) {
+      return undefined;
+    }
+
     return effectiveAutoCommit(policy, 'documents').auto ? 'auto' : 'manual';
   } catch {
     return undefined;

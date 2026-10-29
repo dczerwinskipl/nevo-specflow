@@ -109,6 +109,7 @@ export function manualCommitError(
       ? { paths: [...extras.paths].slice(0, MANUAL_COMMIT_ERROR_PATHS_MAX) }
       : {}),
   };
+
   return new DocumentError(
     mapping.code,
     message,
@@ -118,7 +119,10 @@ export function manualCommitError(
 
 /** Maps what the Git layer refuses with onto the document error vocabulary. */
 export function gitRefusal(error: unknown): unknown {
-  if (!(error instanceof GitCapabilityError)) return error;
+  if (!(error instanceof GitCapabilityError)) {
+    return error;
+  }
+
   switch (error.code) {
     case 'BRANCH_PROTECTED':
       return manualCommitError(

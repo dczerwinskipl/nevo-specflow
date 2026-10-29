@@ -29,6 +29,7 @@ export function createSyncGitReader(repoRoot: string): SyncGitReader {
       };
     } catch (err) {
       const e = err as { stderr?: string | Buffer };
+
       return { ok: false, stderr: String(e.stderr ?? '') };
     }
   };
@@ -38,12 +39,16 @@ export function createSyncGitReader(repoRoot: string): SyncGitReader {
 
     readFileAtRef: (ref, path) => {
       const r = git(['show', `${ref}:${path}`]);
-      if (r.ok) return r.out;
+      if (r.ok) {
+        return r.out;
+      }
+
       // A genuinely-absent path is the only "null" — anything else (a bad ref,
       // a broken object store) must surface, not be read as "no version.json".
       if (/does not exist in|exists on disk, but not in|Path '.*' does not exist/i.test(r.stderr)) {
         return null;
       }
+
       throw new GitReadError(
         `git show ${ref}:${path} failed: ${r.stderr.trim() || 'unknown error'}`,
       );

@@ -6,7 +6,9 @@ let queue: FrameRequestCallback[] = [];
 const frame = () => {
   const due = queue;
   queue = [];
-  for (const callback of due) callback(0);
+  for (const callback of due) {
+    callback(0);
+  }
 };
 
 beforeEach(() => {
@@ -25,7 +27,10 @@ describe('restoring a reading position', () => {
     let applied = 0;
     const apply = vi.fn(() => (applied += 1));
     restoreWhileIdle(scroller, apply, () => applied >= 4);
-    for (let i = 0; i < 20; i++) frame();
+    for (let i = 0; i < 20; i++) {
+      frame();
+    }
+
     expect(apply).toHaveBeenCalledTimes(5);
   });
 
@@ -35,7 +40,10 @@ describe('restoring a reading position', () => {
     restoreWhileIdle(scroller, apply, () => false);
     frame();
     scroller.dispatchEvent(new Event('wheel'));
-    for (let i = 0; i < 5; i++) frame();
+    for (let i = 0; i < 5; i++) {
+      frame();
+    }
+
     expect(apply).toHaveBeenCalledTimes(1);
   });
 
@@ -43,7 +51,10 @@ describe('restoring a reading position', () => {
     const scroller = document.createElement('div');
     const apply = vi.fn();
     restoreWhileIdle(scroller, apply, () => false);
-    for (let i = 0; i < RESTORE_MAX_FRAMES * 2; i++) frame();
+    for (let i = 0; i < RESTORE_MAX_FRAMES * 2; i++) {
+      frame();
+    }
+
     expect(apply).toHaveBeenCalledTimes(RESTORE_MAX_FRAMES);
   });
 

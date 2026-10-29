@@ -35,16 +35,29 @@ export function registryInspectionResult(
   error: Error | null,
   stdout: string,
 ): ClaudeRegistryPolicy {
-  if (error) return 'unavailable';
-  if (stdout === 'absent') return 'absent';
-  if (stdout === 'present') return 'present';
+  if (error) {
+    return 'unavailable';
+  }
+
+  if (stdout === 'absent') {
+    return 'absent';
+  }
+
+  if (stdout === 'present') {
+    return 'present';
+  }
+
   return 'unavailable';
 }
+
 export async function inspectClaudeRegistryPolicy(
   environment: ProviderEnvironment,
 ): Promise<ClaudeRegistryPolicy> {
   const systemRoot = environment.values.SYSTEMROOT;
-  if (!systemRoot || !isAbsolute(systemRoot)) return 'unavailable';
+  if (!systemRoot || !isAbsolute(systemRoot)) {
+    return 'unavailable';
+  }
+
   return new Promise((resolveInspection) => {
     execFile(
       join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
@@ -62,6 +75,7 @@ export async function inspectClaudeRegistryPolicy(
     );
   });
 }
+
 export async function inspectClaudeRegistry(environment: ProviderEnvironment): Promise<boolean> {
   return (await inspectClaudeRegistryPolicy(environment)) === 'absent';
 }

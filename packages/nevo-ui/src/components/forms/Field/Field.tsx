@@ -32,10 +32,20 @@ const FieldContext = createContext<FieldContextValue | null>(null);
 
 function containsFieldPart(children: ReactNode, part: unknown): boolean {
   return Children.toArray(children).some((child) => {
-    if (!isValidElement(child)) return false;
-    if (child.type === part) return true;
-    if (child.type === FieldRoot) return false;
+    if (!isValidElement(child)) {
+      return false;
+    }
+
+    if (child.type === part) {
+      return true;
+    }
+
+    if (child.type === FieldRoot) {
+      return false;
+    }
+
     const nestedChildren = (child.props as { children?: ReactNode }).children;
+
     return child.type === Fragment || nestedChildren !== undefined
       ? containsFieldPart(nestedChildren, part)
       : false;
@@ -96,6 +106,7 @@ export const FieldLabel = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLL
         textStyleRef: typographyTextStyleRef('label-sm'),
       },
     );
+
     return (
       <label
         ref={ref}
@@ -127,6 +138,7 @@ export const FieldDescription = forwardRef<
       textStyleRef: typographyTextStyleRef('body-sm'),
     },
   );
+
   return (
     <p
       ref={ref}
@@ -150,6 +162,7 @@ export const FieldError = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPa
         textStyleRef: typographyTextStyleRef('body-sm'),
       },
     );
+
     return (
       <p
         ref={ref}
@@ -165,6 +178,7 @@ export const FieldError = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPa
 
 function mergeIds(...values: (string | undefined)[]) {
   const ids = [...new Set(values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []))];
+
   return ids.length ? ids.join(' ') : undefined;
 }
 
@@ -183,6 +197,7 @@ export function useFieldControl({
 }) {
   const field = useContext(FieldContext);
   const invalid = Boolean(field?.invalid) || isAriaInvalid(ariaInvalid);
+
   return {
     ariaDescribedBy: mergeIds(
       ariaDescribedBy,

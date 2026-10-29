@@ -17,6 +17,7 @@ describe('Specification Query key scope', () => {
     for (const key of [workspace, task, document, changes]) {
       queryClient.setQueryData(key, { revision: 1 });
     }
+
     queryClient.setQueryData(specificationKeys.detail(other), { revision: 2 });
 
     await invalidateSpecificationWorkspace(queryClient, id);
@@ -43,6 +44,7 @@ describe('Specification Query key scope', () => {
         queryFn: requests[index],
         staleTime: Infinity,
       });
+
       return observer.subscribe(() => undefined);
     });
 
@@ -53,7 +55,10 @@ describe('Specification Query key scope', () => {
         expect(request).not.toHaveBeenCalled();
       }
     } finally {
-      for (const stop of unsubscribe) stop();
+      for (const stop of unsubscribe) {
+        stop();
+      }
+
       client.clear();
     }
   });
@@ -66,7 +71,9 @@ describe('Specification Query key scope', () => {
       documentKeys.detail(id, 'spec'),
       taskKeys.detail(id, 'TASK-02'),
     ];
-    for (const key of keys) queryClient.setQueryData(key, { revision: 1 });
+    for (const key of keys) {
+      queryClient.setQueryData(key, { revision: 1 });
+    }
 
     await queryClient.invalidateQueries({
       queryKey: specificationKeys.spec(id),

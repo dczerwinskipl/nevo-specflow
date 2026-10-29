@@ -31,16 +31,26 @@ export function splitBatch(
   for (let grew = true; grew;) {
     grew = false;
     for (const member of members) {
-      if (failed.has(member.operationId)) continue;
+      if (failed.has(member.operationId)) {
+        continue;
+      }
+
       if (member.paths.some((path) => failedKeys.has(foldPathKey(path)))) {
         failed.add(member.operationId);
-        for (const path of member.paths) failedKeys.add(foldPathKey(path));
+        for (const path of member.paths) {
+          failedKeys.add(foldPathKey(path));
+        }
+
         grew = true;
       }
     }
   }
+
   const ids = members.map((member) => member.operationId);
   const rest = ids.filter((id) => !failed.has(id));
-  if (failed.size === 0 || rest.length === 0) return undefined;
+  if (failed.size === 0 || rest.length === 0) {
+    return undefined;
+  }
+
   return { failed: ids.filter((id) => failed.has(id)), rest };
 }

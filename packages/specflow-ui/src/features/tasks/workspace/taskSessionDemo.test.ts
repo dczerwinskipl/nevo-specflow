@@ -23,7 +23,8 @@ describe('session demo snapshot handoff', () => {
     },
   );
   it('does not substitute a default session for invalid or absent snapshots', () => {
-    for (const search of ['', '?session=not-json', '?session=%7B%7D', '?session=null'])
+    for (const search of ['', '?session=not-json', '?session=%7B%7D', '?session=null']) {
       expect(readDemoSession(search)).toBeUndefined();
+    }
   });
 });

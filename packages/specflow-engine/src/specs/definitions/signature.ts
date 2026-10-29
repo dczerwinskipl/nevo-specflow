@@ -42,21 +42,36 @@ export async function computeStatSignature(source: DefinitionSource): Promise<St
     const listing = await source.list(directory, SIGNATURE_ENTRIES_MAX);
     if (listing.state !== 'ok') {
       hash.update(`${directory}\0${listing.state}\n`);
-      if (listing.state !== 'absent') complete = false;
+      if (listing.state !== 'absent') {
+        complete = false;
+      }
+
       return;
     }
+
     const entries = [...listing.entries].sort((a, b) => compareText(a.name, b.name));
     for (const entry of entries) {
       counted += 1;
       if (counted > SIGNATURE_ENTRIES_MAX) {
         complete = false;
+
         return;
       }
+
       const path = directory === '' ? entry.name : `${directory}/${entry.name}`;
       hash.update(`${path}\0${entry.type}\0${statKey(entry)}\n`);
-      if (entry.mtimeNs > newestNs) newestNs = entry.mtimeNs;
-      if (entry.ctimeNs > newestNs) newestNs = entry.ctimeNs;
-      if (entry.type === 'file') fileKeys.set(path, statKey(entry));
+      if (entry.mtimeNs > newestNs) {
+        newestNs = entry.mtimeNs;
+      }
+
+      if (entry.ctimeNs > newestNs) {
+        newestNs = entry.ctimeNs;
+      }
+
+      if (entry.type === 'file') {
+        fileKeys.set(path, statKey(entry));
+      }
+
       if (entry.type === 'directory') {
         if (depth + 1 > SIGNATURE_DEPTH_MAX) {
           complete = false;
@@ -66,6 +81,7 @@ export async function computeStatSignature(source: DefinitionSource): Promise<St
       }
     }
   };
+
   await walk('', 0);
 
   return {

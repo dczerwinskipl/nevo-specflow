@@ -45,8 +45,10 @@ export async function readManifestSha256(rt: WriteRuntime, specDir: string): Pro
   if (opened.state !== 'opened') {
     throw documentChangeError('source-unavailable', 'The Specification manifest is unavailable.');
   }
+
   try {
     const bytes = await readBoundedBytes(opened.handle, MANIFEST_MAX_BYTES);
+
     return sha256Hex(bytes);
   } finally {
     await opened.handle.close().catch(() => undefined);
@@ -68,9 +70,13 @@ export async function reserveOnce(
 ): Promise<ReservationOutcome> {
   const { loaded, plan } = admitted;
   const encoded = encodePlan(plan);
+
   return withJournalLock(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, async () => {
     const existing = await findDocumentChangeJournal(rt.context, operationId);
-    if (existing !== undefined) return { kind: 'existing', journal: existing };
+    if (existing !== undefined) {
+      return { kind: 'existing', journal: existing };
+    }
+
     // Bounded, Git-free and best effort: settled records past their window go with their plan files.
     await sweepSettledDocumentChanges(rt.context, {
       now: rt.now().getTime(),
@@ -80,6 +86,7 @@ export async function reserveOnce(
     if ((await readManifestSha256(rt, loaded.specDir)) !== admitted.manifestSha256) {
       return { kind: 'replan' };
     }
+
     try {
       await rt.deps.assertClaims(
         rt.context,
@@ -91,8 +98,10 @@ export async function reserveOnce(
         if (error.code === 'RESOURCE_JOURNAL_CORRUPT') {
           throw documentChangeError('journal-corrupt', 'A journal is corrupt; recover it.');
         }
+
         return busy('busy-create-or-close', 'A Create or Close holds this checkout.', false);
       }
+
       throw error;
     }
 
@@ -103,6 +112,7 @@ export async function reserveOnce(
     if (capacity === 'queue-full') {
       return busy('busy-queue-full', 'Too many document changes are waiting; retry shortly.', true);
     }
+
     // The rest wait for a person, who has to act: a wait does not help, so this refusal is not retryable.
     if (capacity === 'held-limit') {
       return busy(
@@ -114,12 +124,18 @@ export async function reserveOnce(
 
     const planned = new Set(plan.paths.map((path) => foldPathKey(path.path)));
     for (const other of journals) {
-      if (!isBarrierStage(other.stage, other.recoveryPhase)) continue;
+      if (!isBarrierStage(other.stage, other.recoveryPhase)) {
+        continue;
+      }
+
       const theirs = decodePlanWithEvidence(
         await readPayload(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, other.operationId, other.plan),
         other.plan,
       );
-      if (!theirs.paths.some((path) => planned.has(foldPathKey(path.path)))) continue;
+      if (!theirs.paths.some((path) => planned.has(foldPathKey(path.path)))) {
+        continue;
+      }
+
       return other.stage === 'recovery-required'
         ? busy(
             'busy-recovery-required',
@@ -139,6 +155,7 @@ export async function reserveOnce(
       if (error instanceof DocumentError && error.code === 'SPEC_BUSY') {
         return { kind: 'busy', error, waitable: error.details?.cause === 'commit-in-progress' };
       }
+
       throw error;
     }
 
@@ -155,6 +172,7 @@ export async function reserveOnce(
           waitable: false,
         };
       }
+
       const full = await ledgerWouldOverflow(rt, admitted, journals);
       if (full) {
         return {
@@ -205,6 +223,7 @@ export async function reserveOnce(
       attempts: 0,
     };
     await publishJournal(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, journal);
+
     return { kind: 'reserved', journal };
   });
 }
@@ -230,19 +249,33 @@ async function ledgerWouldOverflow(
     if (error instanceof LedgerCorruptError) {
       throw documentChangeError('journal-corrupt', 'The uncommitted-changes ledger is corrupt.');
     }
+
     throw error;
   }
+
   const paths = new Set((record?.entries ?? []).map((entry) => entry.path));
   for (const other of journals) {
-    if (other.specId !== loaded.specId || other.commitMode !== 'manual') continue;
-    if (!isWriterStage(other.stage) && other.stage !== 'recovery-required') continue;
+    if (other.specId !== loaded.specId || other.commitMode !== 'manual') {
+      continue;
+    }
+
+    if (!isWriterStage(other.stage) && other.stage !== 'recovery-required') {
+      continue;
+    }
+
     const theirs = decodePlanWithEvidence(
       await readPayload(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, other.operationId, other.plan),
       other.plan,
     );
-    for (const path of theirs.paths) paths.add(path.path);
+    for (const path of theirs.paths) {
+      paths.add(path.path);
+    }
   }
-  for (const path of plan.paths) paths.add(path.path);
+
+  for (const path of plan.paths) {
+    paths.add(path.path);
+  }
+
   return paths.size > LEDGER_MAX_PATHS;
 }
 

@@ -55,6 +55,7 @@ function RegisteredWorkSection({
   }
 
   const Section = contribution.Component;
+
   return (
     <div className="border-t border-border-default py-4 @min-[40rem]/work:py-5">
       <Section {...context} />
@@ -82,6 +83,7 @@ export function SpecificationWorkSectionOutlet({
   const sections = modules
     .get(specificationWorkSections)
     .filter((contribution) => contribution.slot === slot);
+
   return (
     <>
       {sections.map((contribution) => (

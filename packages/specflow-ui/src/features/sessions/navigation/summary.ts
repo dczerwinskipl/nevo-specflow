@@ -23,11 +23,23 @@ export function projectSessionNavigation(
   fetching = false,
 ): SessionNavigationSummary {
   const status = getHttpErrorStatus(error);
-  if ([401, 403, 404].includes(status ?? 0)) return { state: 'forbidden' };
-  if (!data) return { state: error ? 'unavailable' : fetching ? 'loading' : 'unknown' };
+  if ([401, 403, 404].includes(status ?? 0)) {
+    return { state: 'forbidden' };
+  }
+
+  if (!data) {
+    return { state: error ? 'unavailable' : fetching ? 'loading' : 'unknown' };
+  }
+
   const availability = data.sectionAvailability?.sessions;
-  if (availability === 'forbidden') return { state: 'forbidden' };
-  if (availability && availability !== 'available') return { state: 'unavailable' };
+  if (availability === 'forbidden') {
+    return { state: 'forbidden' };
+  }
+
+  if (availability && availability !== 'available') {
+    return { state: 'unavailable' };
+  }
+
   const entries = data.sessions
     .filter(
       (item): item is SessionNavigationEntry =>
@@ -39,6 +51,7 @@ export function projectSessionNavigation(
   const partial = data.sessions.some(
     (item) => !item.activityCode && item.navigationStatus !== 'quiet',
   );
+
   return {
     state: error ? 'stale' : partial ? 'partial' : 'available',
     entries: entries.slice(0, 3),
@@ -46,9 +59,11 @@ export function projectSessionNavigation(
     attention: entries.some((item) => item.activityCode === 'attention'),
   };
 }
+
 /** Reads the same route-owned Workspace query as the Specification navigation identity. */
 export function useSessionNavigationSummary(specId: string | null) {
   const query = useSpecificationWorkspace(specId ?? '');
+
   return {
     ...projectSessionNavigation(
       specId ? query.data : undefined,

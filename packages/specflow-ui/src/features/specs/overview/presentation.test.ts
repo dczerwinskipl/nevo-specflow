@@ -42,8 +42,9 @@ describe('Specs Overview presentation boundary', () => {
       { completed: 1.5, total: 3 },
       { completed: 0, total: Infinity },
       { completed: -1, total: 3 },
-    ])
+    ]) {
       expect(rowProgress(progress)).toBe('invalid');
+    }
   });
   it('sorts the displayed milestone using completion precedence, invalid dates last and stable identity ties', () => {
     const items = [

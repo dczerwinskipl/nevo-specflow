@@ -63,8 +63,10 @@ async function fixture() {
     execution: { inspect: () => Promise.resolve(execution) },
     leases: new PageLeases(),
   };
+
   return { demo, definition, execution, authz, deps };
 }
+
 async function appFor(
   f: Awaited<ReturnType<typeof fixture>>,
   sessions: TasksFeatureDependencies['sessions'],
@@ -79,8 +81,10 @@ async function appFor(
     contributions: contributions ?? f.demo.contributions,
     sessions,
   });
+
   return app;
 }
+
 describe('Reference identity and projection integrity HTTP', () => {
   it('never transfers a Session grant from a substituted identity to the original reference', async () => {
     const f = await fixture();
@@ -100,9 +104,15 @@ describe('Reference identity and projection integrity HTTP', () => {
     candidates[0] = { ...candidates[0]!, title: 'Protected resource', link };
     const permitted = async (visible: ReferenceVisibility) => {
       const result = [];
-      for (const item of candidates) if (await visible(item.link)) result.push(item);
+      for (const item of candidates) {
+        if (await visible(item.link)) {
+          result.push(item);
+        }
+      }
+
       return result;
     };
+
     f.deps.resources = {
       open: async (identity, visible) => ({
         identity,
@@ -152,7 +162,10 @@ describe('Reference identity and projection integrity HTTP', () => {
         resources = snapshot.sections.resources,
         history = snapshot.sections.history;
       expect(resources.state === 'available' && resources.data.visibleTotal).toBe(3);
-      if (history.state !== 'available') throw Error('Expected history');
+      if (history.state !== 'available') {
+        throw Error('Expected history');
+      }
+
       const page = await app.inject(
         '/api/specs/admission/tasks/TASK-03/history?token=' +
           encodeURIComponent(history.data.token),
@@ -172,6 +185,7 @@ describe('Reference identity and projection integrity HTTP', () => {
     );
     f.demo.workspaceRepository.readSpecification = async (specId) => {
       const data = await readSpecification(specId);
+
       return data
         ? {
             ...data,
@@ -196,6 +210,7 @@ describe('Reference identity and projection integrity HTTP', () => {
           }
         : null;
     };
+
     const app = await appFor(
       f,
       {
@@ -269,22 +284,32 @@ describe('Reference identity and projection integrity HTTP', () => {
       const read = async () => {
         const response = await app.inject('/api/specs/admission/tasks/TASK-03');
         expect(response.statusCode).toBe(200);
+
         return response.json<SpecificationTaskResponse>().snapshot!;
       };
+
       const before = await read(),
         stable = await read();
       expect(stable.revision).toBe(before.revision);
       if (
         before.sections.history.state !== 'available' ||
         stable.sections.history.state !== 'available'
-      )
+      ) {
         throw Error('Expected page handles');
+      }
+
       expect(stable.sections.history.data.token).not.toBe(before.sections.history.data.token);
-      if (before.sections.humanRequirements.state !== 'available') throw Error('Expected evidence');
+      if (before.sections.humanRequirements.state !== 'available') {
+        throw Error('Expected evidence');
+      }
+
       expect(before.sections.humanRequirements.data.items[0]!.evidence[1]!.title).toBe('report-A');
       sameWorkspace = false;
       const after = await read();
-      if (after.sections.humanRequirements.state !== 'available') throw Error('Expected evidence');
+      if (after.sections.humanRequirements.state !== 'available') {
+        throw Error('Expected evidence');
+      }
+
       expect(after.sections.humanRequirements.data.items[0]!.evidence[1]!.title).toBe('report-B');
       expect(after.revision).not.toBe(before.revision);
       sameWorkspace = true;

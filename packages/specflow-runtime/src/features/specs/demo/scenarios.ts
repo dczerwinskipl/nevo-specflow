@@ -88,11 +88,15 @@ const allScenarios: readonly string[] = [
 
 /** Parses a comma-separated scenario list. Returns `undefined` when any name is unknown. */
 export function parseScenarios(raw: string | undefined): DemoScenario[] | undefined {
-  if (!raw?.trim()) return [];
+  if (!raw?.trim()) {
+    return [];
+  }
+
   const names = raw
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean);
+
   return names.every((name) => allScenarios.includes(name)) ? (names as DemoScenario[]) : undefined;
 }
 
@@ -111,7 +115,12 @@ const notSelectable = (workspace: DemoWorkspace): DemoWorkspace => ({
 });
 function strip(workspace: DemoWorkspace): DemoWorkspace {
   const copy: Record<string, unknown> = { ...workspace };
-  for (const key of Object.keys(copy)) if (copy[key] === undefined) delete copy[key];
+  for (const key of Object.keys(copy)) {
+    if (copy[key] === undefined) {
+      delete copy[key];
+    }
+  }
+
   return copy as unknown as DemoWorkspace;
 }
 
@@ -125,6 +134,7 @@ export function applyOptionsScenario(
   const map = (fn: (w: DemoWorkspace) => DemoWorkspace, only?: (w: DemoWorkspace) => boolean) => {
     next.workspaces = next.workspaces.map((w) => strip(!only || only(w) ? fn(w) : w));
   };
+
   switch (scenario) {
     case 'default':
       break;
@@ -266,6 +276,7 @@ export function applyOptionsScenario(
         });
         next.baseRefs.push({ ref: branch, checkedOutWorkspaceId: workspaceId });
       }
+
       break;
     case 'protected-primary':
       next.workspaces = next.workspaces.map((w) =>
@@ -318,5 +329,6 @@ export function applyOptionsScenario(
       break;
     }
   }
+
   return normalize(next);
 }

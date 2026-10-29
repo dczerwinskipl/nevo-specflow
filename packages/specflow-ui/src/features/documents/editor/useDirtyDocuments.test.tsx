@@ -18,16 +18,20 @@ function setup(strict = false) {
   const store = createDocumentDraftStore();
   const wrapper = ({ children }: { children: ReactNode }) => {
     const tree = <DocumentDraftProvider store={store}>{children}</DocumentDraftProvider>;
+
     return strict ? <StrictMode>{tree}</StrictMode> : tree;
   };
+
   let renders = 0;
   const view = renderHook(
     () => {
       renders += 1;
+
       return useDirtyDocuments('s');
     },
     { wrapper },
   );
+
   return { store, view, renders: () => renders };
 }
 

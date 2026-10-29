@@ -21,12 +21,19 @@ export async function readUncommittedHold(
   const { records, unreadable } = await listLedgerRecords(engine.context, { workspaceId });
   const entries = records.flatMap((record) => record.entries);
   // A record that cannot be read is a fact nobody can judge: it holds the checkout like an entry.
-  if (entries.length === 0 && unreadable === 0) return undefined;
+  if (entries.length === 0 && unreadable === 0) {
+    return undefined;
+  }
+
   try {
-    if (!(await readProjectGitPolicy(engine.context)).policy.enabled) return undefined;
+    if (!(await readProjectGitPolicy(engine.context)).policy.enabled) {
+      return undefined;
+    }
   } catch {
     // Fail closed.
   }
+
   const ids = new Set(entries.flatMap((entry) => entry.operationIds));
+
   return { workspaceId, operationIds: [...ids].slice(-50), paths: entries.length };
 }

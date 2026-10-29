@@ -102,7 +102,8 @@ describe('Claude native launch contract', () => {
         ],
       },
       { plugins: [{ name: 'unknown', path: 'builtin', source: 'unknown@builtin' }] },
-    ])
+    ]) {
       expect(() => verifyClaudeInit({ ...frame, ...changed }, workspace)).toThrow();
+    }
   });
 });

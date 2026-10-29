@@ -9,9 +9,13 @@ import { Alert } from '@nevo/ui';
  */
 export function CloseIssues({ issues }: { issues: readonly DocumentIssue[] }) {
   const { t } = useTranslation();
-  if (issues.length === 0) return null;
+  if (issues.length === 0) {
+    return null;
+  }
+
   const archiveLimit = issues.some((issue) => issue.code === 'archive-limit');
   const collisions = issues.filter((issue) => issue.code === 'path-case-collision');
+
   return (
     <Alert tone="attention" title={t('documents.issues.title')}>
       <ul className="grid list-disc gap-1 pl-4">

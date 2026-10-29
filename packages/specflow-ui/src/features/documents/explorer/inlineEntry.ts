@@ -26,12 +26,21 @@ export type EntryDecision =
   | { type: 'submit'; finalName: string };
 
 export function resolveEntry(entry: InlineEntry): EntryDecision {
-  if (!entry.name.trim()) return { type: 'cancel' };
+  if (!entry.name.trim()) {
+    return { type: 'cancel' };
+  }
+
   const invalid = entryNameError(entry.name, entry.kind);
-  if (invalid) return { type: 'invalid', message: invalid };
+  if (invalid) {
+    return { type: 'invalid', message: invalid };
+  }
+
   const currentName = entry.rename?.path.split('/').at(-1);
   const finalName = finalEntryName(entry.name, entry.kind, currentName);
-  if (entry.rename && finalName === currentName) return { type: 'cancel' };
+  if (entry.rename && finalName === currentName) {
+    return { type: 'cancel' };
+  }
+
   return { type: 'submit', finalName };
 }
 

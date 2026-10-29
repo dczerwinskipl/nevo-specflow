@@ -14,6 +14,7 @@ const kinds = [createOperationKind];
 /** A link that navigates inside the app on a plain click and stays a real anchor otherwise. */
 function useRouterLink(): RenderOperationLink {
   const router = useRouter({ warn: false });
+
   return useCallback(
     (href: string, children: ReactNode, className: string) => (
       <a
@@ -28,8 +29,10 @@ function useRouterLink(): RenderOperationLink {
             event.ctrlKey ||
             event.shiftKey ||
             event.altKey
-          )
+          ) {
             return;
+          }
+
           event.preventDefault();
           router.history.push(href);
         }}
@@ -58,6 +61,7 @@ export function CreateOperationsPanel({
     void queryClient.invalidateQueries({ queryKey: specsOverviewKeys.all });
     void queryClient.invalidateQueries({ queryKey: projectCreationKeys.createOptions });
   }, [queryClient]);
+
   return (
     <OperationsPanelHost
       api={api}

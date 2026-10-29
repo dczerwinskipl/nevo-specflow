@@ -12,18 +12,23 @@ export function useEditorFocus() {
 
   const focusEditor = useCallback(() => {
     const element = editorRoot.current?.querySelector<HTMLElement>('.cm-editor');
-    if (element) EditorView.findFromDOM(element)?.focus();
+    if (element) {
+      EditorView.findFromDOM(element)?.focus();
+    }
   }, []);
   const focusContent = useCallback(() => {
     // The header action that changed the mode may be replaced or disabled; keep focus in the document.
     const root = editorRoot.current;
     if (root?.querySelector('.cm-editor')) {
       // Touch: focusing the editor raises the keyboard and jumps the view; the user taps the text.
-      if (window.matchMedia('(pointer: coarse)').matches)
+      if (window.matchMedia('(pointer: coarse)').matches) {
         root.querySelector<HTMLElement>('[data-document-source]')?.focus({ preventScroll: true });
-      else focusEditor();
-    } else
+      } else {
+        focusEditor();
+      }
+    } else {
       root?.querySelector<HTMLElement>('[data-document-preview]')?.focus({ preventScroll: true });
+    }
   }, [focusEditor]);
 
   /** Runs `action` after `count` animation frames, unless the view unmounts first. */
@@ -31,15 +36,20 @@ export function useEditorFocus() {
     const step = (remaining: number) => {
       const id = requestAnimationFrame(() => {
         frames.current.delete(id);
-        if (remaining > 1) step(remaining - 1);
-        else action();
+        if (remaining > 1) {
+          step(remaining - 1);
+        } else {
+          action();
+        }
       });
       frames.current.add(id);
     };
+
     step(count);
   }, []);
   useEffect(() => {
     const pending = frames.current;
+
     return () => {
       pending.forEach((id) => cancelAnimationFrame(id));
       pending.clear();

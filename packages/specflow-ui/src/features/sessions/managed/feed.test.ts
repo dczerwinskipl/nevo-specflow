@@ -35,8 +35,10 @@ function setup() {
       yield undefined;
     },
   } as unknown as ManagedSessionsApi;
+
   return { storage, api, start };
 }
+
 describe('Session feed operation lifetime', () => {
   it('rechecks external login and reloads availability without replaying a retained request', async () => {
     const { storage, api, start } = setup();
@@ -81,9 +83,13 @@ describe('Session feed operation lifetime', () => {
         ...storage,
         removeItem(key: string) {
           if (key.endsWith(':pending') && !cleanupAvailable) {
-            if (failure === 'remove-throws') throw new Error('Storage cleanup denied');
+            if (failure === 'remove-throws') {
+              throw new Error('Storage cleanup denied');
+            }
+
             return;
           }
+
           storage.removeItem(key);
         },
       };
@@ -126,14 +132,24 @@ describe('Session feed operation lifetime', () => {
           : {
               ...storage,
               setItem(key: string, value: string) {
-                if (!key.endsWith(':pending')) return storage.setItem(key, value);
-                if (failure === 'write-throws') throw new Error('Storage denied');
+                if (!key.endsWith(':pending')) {
+                  return storage.setItem(key, value);
+                }
+
+                if (failure === 'write-throws') {
+                  throw new Error('Storage denied');
+                }
+
                 written = true;
-                if (failure !== 'write-ignored') storage.setItem(key, value);
+                if (failure !== 'write-ignored') {
+                  storage.setItem(key, value);
+                }
               },
               getItem(key: string) {
-                if (written && key.endsWith(':pending') && failure === 'readback-throws')
+                if (written && key.endsWith(':pending') && failure === 'readback-throws') {
                   throw new Error('Storage read denied');
+                }
+
                 return storage.getItem(key);
               },
             };
@@ -155,6 +171,7 @@ describe('Session feed operation lifetime', () => {
     const start = vi.fn<ManagedSessionsApi['start']>((_id, request) => {
       const duplicate = executed.has(request.requestId);
       executed.add(request.requestId);
+
       return duplicate
         ? Promise.resolve({ turnId: 'completed-turn' })
         : Promise.reject(new Error('Terminal outcome committed, ACK lost'));
@@ -163,7 +180,10 @@ describe('Session feed operation lifetime', () => {
     const intermittent = {
       ...storage,
       getItem(key: string) {
-        if (unavailable) throw new Error('Storage denied');
+        if (unavailable) {
+          throw new Error('Storage denied');
+        }
+
         return storage.getItem(key);
       },
     };
@@ -227,6 +247,7 @@ describe('Session feed operation lifetime', () => {
         signal.addEventListener('abort', () => resolve(), { once: true }),
       );
     };
+
     const feed = createSessionFeed(api, 'session', 'actor', storage);
     const refresh = vi.fn();
     feed.subscribeWork(refresh);
@@ -242,6 +263,7 @@ describe('Session feed operation lifetime', () => {
     let accept: () => void = () => {
       throw new Error('Not started');
     };
+
     api.start = vi.fn(
       () =>
         new Promise<{ turnId: string }>((resolve) => {
@@ -282,6 +304,7 @@ describe('Session feed operation lifetime', () => {
     let accepted: () => void = () => {
       throw new Error('Command has not started');
     };
+
     api.start = vi.fn(
       () =>
         new Promise<{ turnId: string }>((resolve) => {
@@ -306,6 +329,7 @@ describe('Session feed operation lifetime', () => {
       );
       yield undefined;
     };
+
     const feed = createSessionFeed(api, 'session', 'actor', storage);
     feed.connect();
     await vi.waitFor(() => expect(signals).toHaveLength(1));

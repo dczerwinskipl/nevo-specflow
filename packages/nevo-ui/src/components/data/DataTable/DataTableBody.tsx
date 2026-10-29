@@ -112,6 +112,7 @@ export function DataTableBody<TData extends RowData>({
           >
             {row.getVisibleCells().map((cell) => {
               const definition = columns.get(cell.column.id);
+
               return (
                 <td
                   key={cell.id}

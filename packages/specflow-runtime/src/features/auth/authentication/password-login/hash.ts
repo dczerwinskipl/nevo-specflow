@@ -50,6 +50,7 @@ export async function verifyPassword(password: string, encodedHash: string): Pro
   }
 
   const actual = await derive(password, parsed.salt);
+
   return timingSafeEqual(actual, parsed.expected);
 }
 
@@ -112,6 +113,7 @@ function derive(password: string, salt: Uint8Array): Promise<Buffer> {
       (error, derivedKey) => {
         if (error) {
           reject(error);
+
           return;
         }
 
@@ -125,6 +127,7 @@ function assertPassword(password: string): void {
   if (password.length === 0) {
     throw new Error('Password must not be empty.');
   }
+
   if ([...password].length > PASSWORD_MAX_LENGTH) {
     throw new Error(`Password must be at most ${PASSWORD_MAX_LENGTH} characters.`);
   }

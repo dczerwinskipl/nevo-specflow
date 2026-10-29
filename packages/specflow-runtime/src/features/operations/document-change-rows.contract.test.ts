@@ -51,6 +51,7 @@ const ROWS: readonly DocumentChangeListingRow[] = [
 
 function toSummary(row: DocumentChangeListingRow) {
   const { state: _state, staleExempt: _stale, unreadable: _unreadable, ...summary } = row;
+
   return summary;
 }
 

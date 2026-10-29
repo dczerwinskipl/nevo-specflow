@@ -24,6 +24,7 @@ export function SlugSetting({
   const { t } = useTranslation();
   const text = useMessage();
   const value = choice.slug.edited ? choice.slug.value : deriveSpecSlug(title);
+
   return (
     <div className="grid grid-cols-1 gap-3 py-3">
       <SwitchField

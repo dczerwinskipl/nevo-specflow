@@ -27,7 +27,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function resolvedColorToken(variable: string) {
@@ -36,6 +38,7 @@ function resolvedColorToken(variable: string) {
   document.body.append(probe);
   const color = getComputedStyle(probe).color;
   probe.remove();
+
   return color;
 }
 
@@ -47,6 +50,7 @@ async function settleColorTransition() {
 
 function ControlledInput() {
   const [value, setValue] = useState('');
+
   return (
     <div className="w-80" data-value={value}>
       <TextInput

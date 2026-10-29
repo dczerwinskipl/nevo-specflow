@@ -10,6 +10,7 @@ const enabled = process.env.NEVO_ABANDON_WORKER === '1';
 /** Announce the cut point and never return: the test kills this process there. */
 async function hang(signal: string, stage: string): Promise<never> {
   await writeFile(signal, JSON.stringify({ stage, pid: process.pid }));
+
   return new Promise<never>(() => undefined);
 }
 
@@ -21,6 +22,7 @@ it.skipIf(!enabled)(
     await abandonDocumentCommit(engine, process.env.NEVO_ABANDON_WORKER_OPERATION!, {
       hooks: { afterLedgerWrite: () => hang(signal, 'after-ledger-write') },
     });
+
     throw new Error('The abandon worker unexpectedly returned.');
   },
   60000,

@@ -42,6 +42,7 @@ export function DocumentOutlineSheet({
   const { t } = useTranslation();
   const chosen = useRef<{ line: number; pointer: boolean } | undefined>(undefined);
   const entry = useRef<HTMLAnchorElement | null>(null);
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent
@@ -66,8 +67,10 @@ export function DocumentOutlineSheet({
               event.preventDefault();
               opener.focus();
             }
+
             return;
           }
+
           // Not back to the opener: the document heading is where the reader goes.
           event.preventDefault();
           onSelected(choice.line, choice.pointer);

@@ -5,5 +5,6 @@ export function cookieValue(setCookie: string | string[] | undefined, name: stri
   if (!match?.[1]) {
     throw new Error(`Missing ${name} cookie in ${JSON.stringify(setCookie)}`);
   }
+
   return match[1];
 }

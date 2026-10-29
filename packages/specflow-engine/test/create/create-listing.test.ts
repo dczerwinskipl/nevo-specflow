@@ -44,6 +44,7 @@ async function fixture() {
     { cwd: root },
   );
   const engine = await bootstrapProjectHome(root);
+
   return { root, engine, context: engine.context };
 }
 
@@ -58,6 +59,7 @@ function journal(
     title: 'Listing proof',
     target: { kind: 'existing', workspaceId: fx.engine.workspace.workspaceId },
   });
+
   return {
     version: 2,
     projectId: fx.context.project.projectId,
@@ -109,7 +111,9 @@ describe('listPublicCreateOperations', () => {
     });
     const done = journal(fx, { stage: 'completed' });
     const stuck = journal(fx, { stage: 'recovery-required', reason: 'secret reason' });
-    for (const record of [plain, committing, done, stuck]) await publish(fx, record);
+    for (const record of [plain, committing, done, stuck]) {
+      await publish(fx, record);
+    }
 
     const rows = new Map(
       (await listPublicCreateOperations(fx.engine)).map((row) => [row.operationId, row]),
@@ -214,6 +218,7 @@ describe('listPublicCreateOperations', () => {
         updatedAt: expect.any(String) as string,
       });
     }
+
     // Text that is not JSON is an unsupported journal: the same row, plus the stable code.
     expect(byId.get(corrupt)).toEqual({
       operationId: corrupt,
@@ -266,6 +271,7 @@ describe('listPublicCreateOperations', () => {
       const record = journal(fx, { stage: stages[index % 2]! });
       await writeFile(join(dir, record.operationId + '.json'), JSON.stringify(record));
     }
+
     expect(await listPublicCreateOperations(fx.engine)).toHaveLength(1000);
     const started = performance.now();
     expect(await listPublicCreateOperations(fx.engine)).toHaveLength(1000);

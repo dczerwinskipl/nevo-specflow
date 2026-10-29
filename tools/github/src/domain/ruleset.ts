@@ -59,7 +59,9 @@ export function desiredRuleset(
  * array positions.
  */
 export function normalizeRules(rules: unknown): unknown[] {
-  if (!Array.isArray(rules)) return [];
+  if (!Array.isArray(rules)) {
+    return [];
+  }
 
   return rules
     .map((r) => {
@@ -67,6 +69,7 @@ export function normalizeRules(rules: unknown): unknown[] {
         type?: unknown;
         parameters?: unknown;
       };
+
       return rule.parameters
         ? { type: rule.type, parameters: rule.parameters }
         : { type: rule.type };

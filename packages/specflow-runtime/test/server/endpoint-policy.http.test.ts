@@ -48,7 +48,7 @@ describe('Runtime endpoint policy HTTP', () => {
       await app.inject('/api/runtime/info');
       await app.inject('/api/runtime/info');
       expect((await app.inject('/api/runtime/info')).statusCode).toBe(429);
-      for (let i = 0; i < 10; i++)
+      for (let i = 0; i < 10; i++) {
         expect(
           (
             await app.inject({
@@ -58,6 +58,8 @@ describe('Runtime endpoint policy HTTP', () => {
             })
           ).statusCode,
         ).toBe(401);
+      }
+
       const denied = await app.inject({
         method: 'POST',
         url: '/api/auth/password/login',

@@ -63,6 +63,7 @@ async function fixture(clock: { now: Date }) {
     );
     const at = new Date(clock.now.getTime() - ageMs);
     await utimes(path, at, at);
+
     return operationId;
   }
 
@@ -101,6 +102,7 @@ async function fixture(clock: { now: Date }) {
     (
       await app.inject({ method: 'GET', url: '/api/specs/operations', headers })
     ).json<OperationListResponse>();
+
   return { registry, stuckJournal, inspect, list };
 }
 

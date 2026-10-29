@@ -13,6 +13,8 @@ export class DocumentError extends Error {
     super(message);
     this.name = 'DocumentError';
     this.code = code;
-    if (details) this.details = details;
+    if (details) {
+      this.details = details;
+    }
   }
 }

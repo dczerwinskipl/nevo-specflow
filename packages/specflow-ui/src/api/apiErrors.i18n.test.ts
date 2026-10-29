@@ -15,6 +15,7 @@ describe('apiErrors catalogue', () => {
       expect(entry?.title, `${kind}.title`).toBeTruthy();
       expect(entry?.description, `${kind}.description`).toBeTruthy();
     }
+
     expect(Object.keys(catalogue.apiErrors.kind).sort()).toEqual([...apiErrorKinds].sort());
   });
 });

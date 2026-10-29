@@ -11,7 +11,10 @@ const SEED_CREATED = '2026-10-01';
 /** Snapshot of an archetype as a manifest records it at Create. */
 export function archetypeSnapshot(catalogue: ResolvedCatalogue, archetypeId: string) {
   const archetype = catalogue.findArchetype(archetypeId);
-  if (!archetype) throw new Error(`Demo archetype "${archetypeId}" is missing.`);
+  if (!archetype) {
+    throw new Error(`Demo archetype "${archetypeId}" is missing.`);
+  }
+
   return {
     archetype: {
       id: archetype.id,
@@ -65,9 +68,15 @@ export function seedDocuments(
         ? binaryFile(file.bytes)
         : textFile(file.text ?? '', file === overview ? SEED_OVERVIEW_REVISION : undefined),
     );
-    if (file.type) register(file.path, file.type);
+    if (file.type) {
+      register(file.path, file.type);
+    }
   }
-  for (const entry of seed.dangling ?? []) register(entry.path, entry.type);
+
+  for (const entry of seed.dangling ?? []) {
+    register(entry.path, entry.type);
+  }
+
   return {
     ...archetypeSnapshot(catalogue, seed.archetypeId),
     registry,

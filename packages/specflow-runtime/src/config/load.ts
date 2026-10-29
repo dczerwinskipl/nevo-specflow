@@ -51,10 +51,12 @@ export async function loadRuntimeConfig(
     localExists = await fileExists(localPath);
     if (localExists) {
       const localDocument = await readRequiredConfig(localPath);
-      if (isRecord(localDocument) && localDocument.sessions !== undefined)
+      if (isRecord(localDocument) && localDocument.sessions !== undefined) {
         throw new RuntimeConfigError(
           'Session configuration is project-owned and cannot be set locally.',
         );
+      }
+
       if (isRecord(localDocument) && localDocument.specs !== undefined) {
         throw new RuntimeConfigError(
           'Specs Overview configuration is project-owned and cannot be set locally.',
@@ -94,6 +96,7 @@ async function readRequiredConfig(path: string): Promise<unknown> {
     if (isMissingFile(error)) {
       throw new RuntimeConfigError(`Required SpecFlow config file not found: ${path}`);
     }
+
     throw error;
   }
 
@@ -120,7 +123,10 @@ function runtimeSection(
   }
 
   const runtime = value.runtime;
-  if (runtime === undefined && !required) return undefined;
+  if (runtime === undefined && !required) {
+    return undefined;
+  }
+
   if (!isRecord(runtime)) {
     throw new RuntimeConfigError(`SpecFlow config must define an object at 'runtime': ${path}`);
   }
@@ -131,11 +137,13 @@ function runtimeSection(
 async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path, constants.F_OK);
+
     return true;
   } catch (error) {
     if (isMissingFile(error)) {
       return false;
     }
+
     throw error;
   }
 }

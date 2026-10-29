@@ -6,6 +6,7 @@ import { StoryLocalization } from '../../../i18n/StoryLocalization';
 
 function StandaloneTask({ href = true }: { href?: boolean }) {
   const [backs, setBacks] = useState(0);
+
   return (
     <StoryLocalization locale="en">
       <FullTaskView
@@ -20,6 +21,7 @@ function StandaloneTask({ href = true }: { href?: boolean }) {
     </StoryLocalization>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Contracts/Standalone full task navigation',
   component: StandaloneTask,
@@ -38,6 +40,7 @@ export const HrefAndCallback: Story = {
         intercepted = event.defaultPrevented;
         event.preventDefault();
       };
+
       doc.addEventListener('click', listener, { once: true });
       back.dispatchEvent(
         new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, [modifier]: true }),
@@ -45,6 +48,7 @@ export const HrefAndCallback: Story = {
       await expect(intercepted).toBe(false);
       await expect(canvas.getByLabelText('Back callbacks')).toHaveTextContent('0');
     }
+
     await userEvent.click(back);
     await expect(canvas.getByLabelText('Back callbacks')).toHaveTextContent('1');
   },

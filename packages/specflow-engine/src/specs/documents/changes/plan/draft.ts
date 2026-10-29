@@ -105,12 +105,14 @@ export function resolveDocument(
       file: snapshot.files.find((file) => file.path === entry.path),
     };
   }
+
   const registered = new Set(snapshot.manifest.documents.map((item) => item.path));
   for (const file of snapshot.files) {
     if (!registered.has(file.path) && deriveUnclassifiedDocumentId(file.path) === documentId) {
       return { kind: 'unclassified', id: documentId, file };
     }
   }
+
   return undefined;
 }
 
@@ -128,11 +130,20 @@ export function occupancyAfter(
   vacatedFolder: (folder: string) => boolean = () => false,
 ): Occupancy {
   const filePaths = new Set<string>();
-  for (const file of snapshot.files) if (!vacated(file.path)) filePaths.add(file.path);
-  for (const entry of snapshot.manifest.documents) {
-    if (!vacated(entry.path)) filePaths.add(entry.path);
+  for (const file of snapshot.files) {
+    if (!vacated(file.path)) {
+      filePaths.add(file.path);
+    }
   }
+
+  for (const entry of snapshot.manifest.documents) {
+    if (!vacated(entry.path)) {
+      filePaths.add(entry.path);
+    }
+  }
+
   const explicit = snapshot.manifest.folders.filter((folder) => !vacatedFolder(folder));
+
   return {
     files: new Set([...filePaths].map(foldPathKey)),
     folders: new Set(deriveFolders([...filePaths], explicit).map(foldPathKey)),
@@ -145,7 +156,10 @@ export function occupancyAfter(
  */
 export function collides(occupancy: Occupancy, path: string): boolean {
   const key = foldPathKey(path);
-  if (occupancy.files.has(key) || occupancy.folders.has(key)) return true;
+  if (occupancy.files.has(key) || occupancy.folders.has(key)) {
+    return true;
+  }
+
   return ancestorFolders(path + '/x').some((ancestor) =>
     occupancy.files.has(foldPathKey(ancestor)),
   );
@@ -154,7 +168,10 @@ export function collides(occupancy: Occupancy, path: string): boolean {
 export function compareFolded(left: string, right: string): number {
   const a = foldPathKey(left);
   const b = foldPathKey(right);
-  if (a !== b) return a < b ? -1 : 1;
+  if (a !== b) {
+    return a < b ? -1 : 1;
+  }
+
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
@@ -196,6 +213,7 @@ export function finishPlan(
       }
     }
   }
+
   for (const removal of draft.removals) {
     paths.push({
       path: full(removal.path),
@@ -229,12 +247,14 @@ export function finishPlan(
   if (aliasedPhysicalPath(paths.map((planned) => planned.path)) !== undefined) {
     throw documentChangeError('operation-invalid', 'The operation names one file twice.');
   }
+
   if (paths.length > DOCUMENT_BATCH_MAX_PATHS) {
     throw documentChangeError(
       'folder-expansion-limit',
       `The operation changes more than ${DOCUMENT_BATCH_MAX_PATHS} paths.`,
     );
   }
+
   const plan: DocumentChangePlan = {
     version: DOCUMENT_CHANGE_PLAN_VERSION,
     action,
@@ -250,6 +270,7 @@ export function finishPlan(
     ...(registry !== undefined ? { registry } : {}),
     ...(draft.removedFolder !== undefined ? { removedFolder: draft.removedFolder } : {}),
   };
+
   return { plan, payloads: [...payloads.values()] };
 }
 
@@ -270,6 +291,7 @@ function renderManifest(
     if (error instanceof SpecificationError) {
       throw documentChangeError('operation-invalid', 'The registry cannot hold this change.');
     }
+
     throw error;
   }
 }

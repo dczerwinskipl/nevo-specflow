@@ -55,7 +55,10 @@ function written(result: DocumentChangeResult): WrittenDocument[] {
 function savedDocument(result: DocumentChangeResult): WrittenDocument {
   const [document] = written(result);
   // A save that wrote no document is a defect of the Engine, never a client error.
-  if (!document) throw new Error('The save reported no document.');
+  if (!document) {
+    throw new Error('The save reported no document.');
+  }
+
   return document;
 }
 
@@ -95,6 +98,7 @@ export function createEngineDocumentWriteSource(
         },
         options.write,
       );
+
       return {
         operationId: result.operationId,
         document: savedDocument(result),
@@ -110,6 +114,7 @@ export function createEngineDocumentWriteSource(
         { action: 'save-all', documents: input.documents },
         options.write,
       );
+
       return {
         operationId: result.operationId,
         documents: written(result),
@@ -132,6 +137,7 @@ export function createEngineDocumentWriteSource(
               ...(entry.type !== undefined ? { type: entry.type } : {}),
             },
       );
+
       return operationResult(
         specId,
         await applyDocumentChange(
@@ -195,6 +201,7 @@ export function createEngineDocumentWriteSource(
         },
         { ...options.manualCommit, allowDefinitions: false, canManageSpecification },
       );
+
       return {
         operationId: result.operationId,
         commit: result.commit,
@@ -206,12 +213,14 @@ export function createEngineDocumentWriteSource(
     async retry(specId, operationId): Promise<DocumentOperationStatus> {
       await inSpecification(specId, operationId);
       await retryDocumentCommit(engine, operationId, options.queue);
+
       return inSpecification(specId, operationId);
     },
 
     async abandon(specId, operationId): Promise<DocumentOperationStatus> {
       await inSpecification(specId, operationId);
       await abandonDocumentCommit(engine, operationId, options.queue);
+
       return inSpecification(specId, operationId);
     },
 
@@ -220,6 +229,7 @@ export function createEngineDocumentWriteSource(
       if (specification.status !== 'available') {
         throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The Specification is not available.');
       }
+
       const before = await unsettledOf(engine, specId);
       await flushDocumentCommits(
         engine,
@@ -230,6 +240,7 @@ export function createEngineDocumentWriteSource(
         },
       );
       const after = await unsettledOf(engine, specId);
+
       return {
         settled: after.pending === 0,
         pending: after.pending,
@@ -247,5 +258,6 @@ async function unsettledOf(
   specId: string,
 ): Promise<{ pending: number; failed: number }> {
   const commits = (await readSpecificationDocumentTree(engine, specId)).commits;
+
   return { pending: commits?.pending ?? 0, failed: commits?.failed ?? 0 };
 }

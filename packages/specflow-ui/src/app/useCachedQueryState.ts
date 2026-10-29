@@ -10,11 +10,13 @@ export function useCachedQueryState<T>(queryKey: QueryKey) {
         if (
           event.query.queryHash === hash &&
           (event.type === 'updated' || event.type === 'added' || event.type === 'removed')
-        )
+        ) {
           queueMicrotask(notify);
+        }
       }),
     [client, hash],
   );
   const snapshot = () => client.getQueryState<T>(queryKey);
+
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }

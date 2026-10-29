@@ -37,10 +37,12 @@ export async function run(
       maxBuffer: 32 * 1024 * 1024,
       ...(env ? { env: { ...process.env, ...env } } : {}),
     });
+
     return stdout;
   } catch (err) {
     const e = err as { stderr?: string; stdout?: string; code?: number | string };
     const exitCode = typeof e.code === 'number' ? e.code : null;
+
     throw new CommandFailedError(
       command,
       args,
@@ -69,8 +71,11 @@ export async function runWithInput(
     child.stderr.on('data', (d: string) => (stderr += d));
     child.on('error', reject);
     child.on('close', (code) => {
-      if (code === 0) resolve(stdout);
-      else reject(new CommandFailedError(command, args, stderr || stdout, stdout, code));
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        reject(new CommandFailedError(command, args, stderr || stdout, stdout, code));
+      }
     });
     child.stdin.end(input);
   });

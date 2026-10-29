@@ -33,6 +33,7 @@ export function resourcesForCreate(record: CreateJournal): readonly MutationReso
   if (record.target.kind === 'existing') {
     return sortedResources([...identity, 'checkout-scoped:' + record.target.workspaceId]);
   }
+
   return sortedResources([
     ...identity,
     'ref:refs/heads/' + record.target.branch.toLowerCase(),
@@ -56,8 +57,14 @@ const createClaims: ClaimSource<CreateJournal> = {
   list: (context) => listCreateJournals(context),
   assertAvailable(records, requested, self) {
     for (const record of records) {
-      if (self?.kind === 'create' && self.operationId === record.operationId) continue;
-      if (record.stage === 'completed') continue;
+      if (self?.kind === 'create' && self.operationId === record.operationId) {
+        continue;
+      }
+
+      if (record.stage === 'completed') {
+        continue;
+      }
+
       if (overlaps(requested, resourcesForCreate(record))) {
         throw new SharedResourceError(
           'RESOURCE_CONFLICT',
@@ -81,11 +88,18 @@ const closeClaims: ClaimSource<CloseJournal> = {
           'Close journal resource inventory is inconsistent.',
         );
       }
-      if (self?.kind === 'close' && self.operationId === record.plan.operationId) continue;
+
+      if (self?.kind === 'close' && self.operationId === record.plan.operationId) {
+        continue;
+      }
+
       if (record.stage === 'archived-linked-awaiting-integration') {
         // A separate operator-reconciled checkpoint proves the scratch checkout
         // was removed from the filesystem AND Git metadata before releasing admin.
-        if (record.scratchRetired === true) continue;
+        if (record.scratchRetired === true) {
+          continue;
+        }
+
         // Original source/target claims settle after a positively proven known
         // conflict; retained scratch still owns Git worktree metadata. A NEW
         // Worktree Close cannot race removal or reuse this scratch checkout.
@@ -99,9 +113,14 @@ const closeClaims: ClaimSource<CloseJournal> = {
             'Retained conflicting scratch must be reconciled before another Git worktree lifecycle.',
           );
         }
+
         continue;
       }
-      if (settledClose(record.stage)) continue;
+
+      if (settledClose(record.stage)) {
+        continue;
+      }
+
       if (overlaps(requested, record.plan.resources)) {
         throw new SharedResourceError(
           'RESOURCE_CONFLICT',
@@ -127,8 +146,10 @@ export async function assertSharedResourcesAvailable(
     if (
       execution.phase === 'settled' ||
       (self?.kind === 'external' && self.operationId === execution.intent.operationId)
-    )
+    ) {
       continue;
+    }
+
     throw new SharedResourceError(
       'RESOURCE_CONFLICT',
       'An external execution reserves this project; inspect or reconcile it.',

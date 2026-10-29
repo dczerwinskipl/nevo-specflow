@@ -16,8 +16,10 @@ export function SpecificationStandaloneBack({
   if (
     router?.state.matches.some((match) => match.routeId.startsWith('/_app/')) ||
     !(overviewHref || renderBackLink || onBack)
-  )
+  ) {
     return null;
+  }
+
   const content = (
     <>
       <Icon name="arrow-right" size="sm" className="rotate-180" />
@@ -26,6 +28,7 @@ export function SpecificationStandaloneBack({
   );
   const className =
     'inline-flex items-center gap-1.5 text-content-secondary outline-none focus-visible:outline-2 focus-visible:outline-focus-ring';
+
   return (
     <Typography as="div" variant="body-sm" className="mb-6">
       {renderBackLink ? (

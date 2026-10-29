@@ -40,9 +40,13 @@ async function readSmall(path: string): Promise<string | undefined> {
   const handle = await open(path, 'r');
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.size > SMALL_FILE_MAX_BYTES) return undefined;
+    if (!stat.isFile() || stat.size > SMALL_FILE_MAX_BYTES) {
+      return undefined;
+    }
+
     const buffer = Buffer.alloc(stat.size);
     const { bytesRead } = await handle.read(buffer, 0, stat.size, 0);
+
     return buffer.toString('utf8', 0, bytesRead);
   } finally {
     await handle.close();
@@ -52,6 +56,7 @@ async function readSmall(path: string): Promise<string | undefined> {
 async function statToken(path: string): Promise<string> {
   try {
     const stat = await lstat(path, { bigint: true });
+
     return `${stat.ino}:${stat.size}:${stat.mtimeNs}`;
   } catch {
     return 'absent';
@@ -61,10 +66,17 @@ async function statToken(path: string): Promise<string> {
 async function gitDirectoryOf(root: string): Promise<string | undefined> {
   const dotGit = join(root, '.git');
   const stat = await lstat(dotGit);
-  if (stat.isDirectory()) return dotGit;
-  if (!stat.isFile()) return undefined;
+  if (stat.isDirectory()) {
+    return dotGit;
+  }
+
+  if (!stat.isFile()) {
+    return undefined;
+  }
+
   const text = await readSmall(dotGit);
   const target = text === undefined ? undefined : /^gitdir:\s*(.+?)\s*$/mu.exec(text)?.[1];
+
   return target === undefined ? undefined : isAbsolute(target) ? target : resolve(root, target);
 }
 
@@ -77,7 +89,10 @@ async function gitDirectoryOf(root: string): Promise<string | undefined> {
 async function commonDirectoryOf(gitDirectory: string): Promise<string> {
   const text = await readSmall(join(gitDirectory, 'commondir')).catch(() => undefined);
   const target = text?.trim();
-  if (target === undefined || target === '') return gitDirectory;
+  if (target === undefined || target === '') {
+    return gitDirectory;
+  }
+
   return isAbsolute(target) ? target : resolve(gitDirectory, target);
 }
 
@@ -89,7 +104,10 @@ async function commonDirectoryOf(gitDirectory: string): Promise<string> {
 export const readPreflightSignature: PreflightSignatureReader = async (context, root) => {
   try {
     const gitDirectory = await gitDirectoryOf(root);
-    if (gitDirectory === undefined) throw new Error('no git directory');
+    if (gitDirectory === undefined) {
+      throw new Error('no git directory');
+    }
+
     const commonDirectory = await commonDirectoryOf(gitDirectory);
     const head = await readSmall(join(gitDirectory, 'HEAD'));
     const branch = head === undefined ? null : /^ref:\s*refs\/heads\/(.+?)\s*$/mu.exec(head);
@@ -107,6 +125,7 @@ export const readPreflightSignature: PreflightSignatureReader = async (context, 
         ].map(statToken),
       ),
     ]);
+
     return {
       branchRef: branch?.[1],
       indexLocked: lockToken !== 'absent',
@@ -124,7 +143,10 @@ export const readPreflightSignature: PreflightSignatureReader = async (context, 
 /** The key of a cached preflight: the checkout, the branch ref and the set of paths. */
 export function preflightKey(root: string, branchRef: string, paths: readonly string[]): string {
   const hash = createHash('sha256');
-  for (const path of [...paths].sort()) hash.update(path + '\0');
+  for (const path of [...paths].sort()) {
+    hash.update(path + '\0');
+  }
+
   return root + '\0' + branchRef + '\0' + hash.digest('hex');
 }
 
@@ -157,11 +179,16 @@ export class GitPreflightCache {
 
   has(key: string, token: string): boolean {
     const entry = this.entries.get(key);
-    if (entry === undefined) return false;
-    if (entry.token !== token || this.now() - entry.at >= this.ttlMs) {
-      this.entries.delete(key);
+    if (entry === undefined) {
       return false;
     }
+
+    if (entry.token !== token || this.now() - entry.at >= this.ttlMs) {
+      this.entries.delete(key);
+
+      return false;
+    }
+
     return true;
   }
 
@@ -170,7 +197,10 @@ export class GitPreflightCache {
     this.entries.set(key, { token, at: this.now() });
     while (this.entries.size > this.maxEntries) {
       const oldest = this.entries.keys().next();
-      if (oldest.done) break;
+      if (oldest.done) {
+        break;
+      }
+
       this.entries.delete(oldest.value);
     }
   }

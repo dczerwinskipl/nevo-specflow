@@ -13,14 +13,21 @@ import { CommandFailedError, run } from './exec.js';
 export function resolveGhEnv(
   env: Readonly<Record<string, string | undefined>>,
 ): Record<string, string> | undefined {
-  if (env.GH_TOKEN || env.GITHUB_TOKEN) return undefined;
-  if (env.CI_GITHUB_RELEASE_TOKEN) return { GH_TOKEN: env.CI_GITHUB_RELEASE_TOKEN };
+  if (env.GH_TOKEN || env.GITHUB_TOKEN) {
+    return undefined;
+  }
+
+  if (env.CI_GITHUB_RELEASE_TOKEN) {
+    return { GH_TOKEN: env.CI_GITHUB_RELEASE_TOKEN };
+  }
+
   return undefined;
 }
 
 /** First `HTTP/x.y NNN` status line in a `gh api --include` response, or `null`. */
 export function httpStatus(raw: string): number | null {
   const m = /^HTTP\/[\d.]+\s+(\d{3})\b/im.exec(raw);
+
   return m?.[1] ? Number(m[1]) : null;
 }
 
@@ -41,8 +48,14 @@ export function classifyReleaseLookup(res: {
   readonly exitCode: number | null;
 }): ReleaseLookup {
   const status = httpStatus(res.stdout);
-  if (status === 200) return { outcome: 'exists' };
-  if (status === 404) return { outcome: 'absent' };
+  if (status === 200) {
+    return { outcome: 'exists' };
+  }
+
+  if (status === 404) {
+    return { outcome: 'absent' };
+  }
+
   return {
     outcome: 'indeterminate',
     reason:
@@ -62,6 +75,7 @@ export function parseReleaseAssetNames(raw: string, tag: string): string[] {
       { cause: err },
     );
   }
+
   if (!Array.isArray(parsed)) {
     throw new Error(`unexpected release-asset response shape for ${tag}`);
   }
@@ -71,8 +85,10 @@ export function parseReleaseAssetNames(raw: string, tag: string): string[] {
     if (typeof value !== 'string') {
       throw new Error(`unexpected release-asset response shape for ${tag}`);
     }
+
     names.push(value);
   }
+
   return names;
 }
 
@@ -107,12 +123,15 @@ export function createGitHubClient(
           { cause: err },
         );
       }
+
       if (!Array.isArray(parsed)) {
         throw new Error(`unexpected check-run response shape for ${sha.slice(0, 12)}`);
       }
+
       return parsed.map((r): NormalizedCheckRun => {
         const o: Record<string, unknown> =
           typeof r === 'object' && r !== null ? (r as Record<string, unknown>) : {};
+
         return {
           name: typeof o.name === 'string' ? o.name : '',
           status: typeof o.status === 'string' ? o.status : '',
@@ -141,9 +160,16 @@ export function createGitHubClient(
           throw err instanceof Error ? err : new Error(String(err));
         }
       }
+
       const lookup = classifyReleaseLookup(res);
-      if (lookup.outcome === 'exists') return true;
-      if (lookup.outcome === 'absent') return false;
+      if (lookup.outcome === 'exists') {
+        return true;
+      }
+
+      if (lookup.outcome === 'absent') {
+        return false;
+      }
+
       throw new Error(
         `could not determine whether the GitHub Release '${tag}' exists: ${lookup.reason}. ` +
           `Refusing to treat this as "the Release is absent".`,
@@ -160,12 +186,16 @@ export function createGitHubClient(
         '--jq',
         '[.assets[].name]',
       ]);
+
       return parseReleaseAssetNames(raw, tag);
     },
 
     async createRelease({ tag, prerelease }): Promise<{ url: string }> {
       const args = ['release', 'create', tag, '--verify-tag', '--title', tag, '--generate-notes'];
-      if (prerelease) args.push('--prerelease');
+      if (prerelease) {
+        args.push('--prerelease');
+      }
+
       return { url: (await gh(args)).trim() };
     },
 
@@ -186,6 +216,7 @@ export function createGitHubClient(
           '.[0].url // ""',
         ])
       ).trim();
+
       return url ? { url } : null;
     },
 
@@ -193,12 +224,14 @@ export function createGitHubClient(
       const url = (
         await gh(['pr', 'create', '--base', base, '--head', head, '--title', title, '--body', body])
       ).trim();
+
       return { url };
     },
 
     async enableAutoMerge(prUrl): Promise<AutoMergeResult> {
       try {
         await gh(['pr', 'merge', '--auto', '--squash', prUrl]);
+
         return { outcome: 'enabled' };
       } catch (err) {
         // The one expected non-fatal case: the repository does not allow
@@ -214,6 +247,7 @@ export function createGitHubClient(
             reason: 'the repository does not have auto-merge enabled',
           };
         }
+
         // auth / permission / network / anything else: fail closed.
         throw new Error(
           `could not request auto-merge for ${prUrl}: ${

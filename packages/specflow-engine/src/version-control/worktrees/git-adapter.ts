@@ -55,6 +55,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         'Persisted worktree plan belongs to another project or Git instance.',
       );
     }
+
     const path = plan.targetPath;
     if (
       !isAbsolute(path) ||
@@ -64,6 +65,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
     ) {
       throw new GitCapabilityError('WORKTREE_PATH_CONFLICT', 'Unsafe managed worktree target.');
     }
+
     // The parent folder is whatever was reserved (it may predate a later git.worktreesRoot
     // change); it only has to stay outside the repository working tree and Git directory.
     try {
@@ -71,6 +73,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
     } catch {
       throw new GitCapabilityError('WORKTREE_PATH_CONFLICT', 'Unsafe managed worktree target.');
     }
+
     validateBranchName(plan.branch);
   };
 
@@ -79,7 +82,10 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
     assertPlanIdentity(plan);
     const worktrees = await git.listWorktrees();
     const matching = worktrees.filter((item) => sameFilesystemPath(item.root, plan.targetPath));
-    if (matching.length > 1) return 'conflict';
+    if (matching.length > 1) {
+      return 'conflict';
+    }
+
     const present = matching[0];
     if (present) {
       return !present.prunable &&
@@ -88,18 +94,28 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         ? 'present'
         : 'conflict';
     }
+
     const refs = await git.listLocalRefs();
-    if (refs.some((item) => refsConflict(item, 'refs/heads/' + plan.branch))) return 'conflict';
+    if (refs.some((item) => refsConflict(item, 'refs/heads/' + plan.branch))) {
+      return 'conflict';
+    }
+
     if (
       worktrees.some(
         (item) => item.branch?.toLowerCase() === ('refs/heads/' + plan.branch).toLowerCase(),
       )
-    )
+    ) {
       return 'conflict';
+    }
+
     const stat = await lstat(plan.targetPath).catch((error: unknown) => {
-      if (isMissing(error)) return undefined;
+      if (isMissing(error)) {
+        return undefined;
+      }
+
       throw error;
     });
+
     return stat ? 'conflict' : 'absent';
   };
 
@@ -125,9 +141,12 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         ) {
           return { status: 'unavailable', reason: error.code };
         }
+
         throw error;
       }
+
       const policy = await loadGitWorktreePolicy(engine.context);
+
       return policy.enabled ? { status: 'available' } : { status: 'disabled' };
     },
     async plan(request) {
@@ -136,6 +155,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
       if (!policy.enabled) {
         throw new GitCapabilityError('GIT_DISABLED', 'Managed worktree creation is disabled.');
       }
+
       const branch = resolveWorktreeBranch(
         policy,
         request.slug,
@@ -163,6 +183,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
           'Branch or worktree target is occupied.',
         );
       }
+
       return result;
     },
     validateReservedPlan,
@@ -172,6 +193,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
       if (!policy.enabled) {
         throw new GitCapabilityError('GIT_DISABLED', 'Managed worktree creation is disabled.');
       }
+
       await validateReservedPlan(plan);
       if ((await inspect(plan)) !== 'absent') {
         throw new GitCapabilityError(
@@ -179,6 +201,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
           'Git state changed after preflight.',
         );
       }
+
       const parent = dirname(plan.targetPath);
       await mkdir(parent, { recursive: true });
       const stat = await lstat(parent);
@@ -189,12 +212,14 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
       ) {
         throw new GitCapabilityError('WORKTREE_PATH_CONFLICT', 'Managed worktree parent changed.');
       }
+
       if ((await inspect(plan)) !== 'absent') {
         throw new GitCapabilityError(
           'GIT_OPERATION_UNCERTAIN',
           'Git state changed before mutation.',
         );
       }
+
       await git.addWorktree(plan);
     },
     async inspectCreated(plan) {
@@ -223,10 +248,16 @@ async function assertSafeTargetParents(target: string): Promise<void> {
   for (const part of relative(path, target).split(sep).filter(Boolean)) {
     path = join(path, part);
     const stat = await lstat(path).catch((error: unknown) => {
-      if (isMissing(error)) return undefined;
+      if (isMissing(error)) {
+        return undefined;
+      }
+
       throw error;
     });
-    if (!stat) continue;
+    if (!stat) {
+      continue;
+    }
+
     if (path === target || !stat.isDirectory() || stat.isSymbolicLink()) {
       throw new GitCapabilityError(
         'WORKTREE_PATH_CONFLICT',
@@ -239,6 +270,7 @@ async function assertSafeTargetParents(target: string): Promise<void> {
 function refsConflict(actual: string, candidate: string): boolean {
   const existing = actual.toLowerCase();
   const proposed = candidate.toLowerCase();
+
   return (
     existing === proposed ||
     existing.startsWith(proposed + '/') ||
@@ -250,6 +282,7 @@ function refsConflict(actual: string, candidate: string): boolean {
 function sameFilesystemPath(a: string, b: string): boolean {
   const left = resolve(a);
   const right = resolve(b);
+
   return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right;
 }
 

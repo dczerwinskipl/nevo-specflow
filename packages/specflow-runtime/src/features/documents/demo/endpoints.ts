@@ -100,6 +100,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
         const { specId, documentId } = request.params;
         requireManage(request.authz, specId);
         const subject = request.authz.readContext().subject;
+
         return documents.save(subject, specId, documentId, request.body, find);
       }),
   );
@@ -117,6 +118,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
       answer(reply, async () => {
         const { specId } = request.params;
         requireManage(request.authz, specId);
+
         return documents.create(request.authz.readContext().subject, specId, request.body, find);
       }),
   );
@@ -134,6 +136,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
         const { specId } = request.params;
         requireManage(request.authz, specId);
         const subject = request.authz.readContext().subject;
+
         return documents.createFolder(subject, specId, request.body, find);
       }),
   );
@@ -150,6 +153,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
       answer(reply, async () => {
         const { specId } = request.params;
         requireManage(request.authz, specId);
+
         return documents.operate(request.authz.readContext().subject, specId, request.body, find);
       }),
   );

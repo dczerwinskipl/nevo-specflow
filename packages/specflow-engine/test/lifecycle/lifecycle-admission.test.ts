@@ -47,6 +47,7 @@ async function fixture(target: 'current' | 'different' | 'none' = 'current') {
   if (git(root, 'status', '--porcelain', '--', '.nevo/config.yaml')) {
     commitStaged(root, 'project branch policy');
   }
+
   return { root, engine: await bootstrapProjectHome(root), branch };
 }
 
@@ -60,7 +61,10 @@ async function specification(engine: SpecFlowEngine, title: string, linked = fal
       ? { kind: 'new-worktree', baseRef: 'HEAD' }
       : { kind: 'existing', workspaceId: engine.workspace.workspaceId },
   });
-  if (linked) roots.push(dirname(created.workspaceRoot));
+  if (linked) {
+    roots.push(dirname(created.workspaceRoot));
+  }
+
   git(
     created.workspaceRoot,
     'add',
@@ -69,6 +73,7 @@ async function specification(engine: SpecFlowEngine, title: string, linked = fal
     'specs/active/' + created.slug + '/overview.md',
   );
   commitStaged(created.workspaceRoot, 'commit authored source');
+
   return created;
 }
 
@@ -90,8 +95,11 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
       } else {
         const name = dirty === 'staged' ? 'staged-source.txt' : 'untracked-source.txt';
         await writeFile(join(spec.workspaceRoot, name), 'uncommitted content\n');
-        if (dirty === 'staged') git(spec.workspaceRoot, 'add', '--', name);
+        if (dirty === 'staged') {
+          git(spec.workspaceRoot, 'add', '--', name);
+        }
       }
+
       expect(git(spec.workspaceRoot, 'status', '--porcelain')).not.toBe('');
       const operationId = randomUUID();
       await expect(
@@ -123,8 +131,11 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
       } else {
         const name = dirty === 'staged' ? 'staged-primary.txt' : 'untracked-primary.txt';
         await writeFile(join(root, name), 'uncommitted primary content\n');
-        if (dirty === 'staged') git(root, 'add', '--', name);
+        if (dirty === 'staged') {
+          git(root, 'add', '--', name);
+        }
       }
+
       expect(git(root, 'status', '--porcelain')).not.toBe('');
       const beforePhysical = git(root, 'status', '--porcelain');
       const operationId = randomUUID();
@@ -165,6 +176,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         await rm(manifest);
         await symlink(redirect, manifest, 'file');
       }
+
       git(spec.workspaceRoot, 'add', '-A', '--', 'specs/');
       commitStaged(spec.workspaceRoot, 'commit invalid canonical source variant');
       const primaryHead = git(root, 'rev-parse', 'HEAD');

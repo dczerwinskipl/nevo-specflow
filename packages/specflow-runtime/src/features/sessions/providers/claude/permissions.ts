@@ -21,17 +21,25 @@ const schemas: Record<string, Record<string, 'string' | 'boolean' | 'number'>> =
  * are never forwarded. Unknown tool shapes remain denied until explicitly supported. */
 export function prepareClaudeRequest(frame: unknown, writable: boolean) {
   const fallback = prepareClaudeQuestion(frame);
-  if (fallback.kind !== 'denied' || !writable) return fallback;
+  if (fallback.kind !== 'denied' || !writable) {
+    return fallback;
+  }
+
   const envelope = object(frame);
   const request = object(envelope.request);
   const schema = typeof request.tool_name === 'string' ? schemas[request.tool_name] : undefined;
-  if (!schema) return fallback;
+  if (!schema) {
+    return fallback;
+  }
+
   const input = structuredClone(object(request.input));
   if (
     Buffer.byteLength(JSON.stringify(input)) > MAX_INPUT_BYTES ||
     Object.entries(input).some(([key, value]) => !schema[key] || typeof value !== schema[key])
-  )
+  ) {
     return fallback;
+  }
+
   let summary: string;
   if (request.tool_name === 'Bash') {
     if (
@@ -45,8 +53,10 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
           !Number.isSafeInteger(input.timeout) ||
           input.timeout < 1 ||
           input.timeout > 600000))
-    )
+    ) {
       return fallback;
+    }
+
     summary = 'Run command:\n' + input.command;
   } else {
     if (
@@ -56,8 +66,10 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
       (request.tool_name === 'Write' && typeof input.content !== 'string') ||
       (request.tool_name === 'Edit' &&
         (typeof input.old_string !== 'string' || typeof input.new_string !== 'string'))
-    )
+    ) {
       return fallback;
+    }
+
     summary =
       String(request.tool_name) +
       ' file: ' +
@@ -70,6 +82,7 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
           Buffer.byteLength(input.new_string as string) +
           ' bytes');
   }
+
   const requestId = identifier(envelope.request_id);
   const toolId = identifier(request.tool_use_id);
   const question = {
@@ -82,23 +95,29 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
   };
   validateDriverFact({ kind: 'interaction', ...question });
   let answered = false;
+
   return {
     kind: 'questions' as const,
     requestId,
     toolId,
     questions: [question],
     respond(index: number, response: RespondInteraction) {
-      if (index !== 0 || answered)
+      if (index !== 0 || answered) {
         throw new SessionError(
           'INTERACTION_EXPIRED',
           'The native permission is no longer pending.',
         );
-      if (response.kind !== 'permission')
+      }
+
+      if (response.kind !== 'permission') {
         throw new SessionError(
           'INTERACTION_RESPONSE_INVALID',
           'A permission decision is required.',
         );
+      }
+
       answered = true;
+
       return {
         type: 'control_response',
         response: {

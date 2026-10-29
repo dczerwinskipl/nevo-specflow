@@ -47,30 +47,47 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
     const scenario = scenarios.find((name): name is DemoOptionsScenario =>
       (demoOptionsScenarios as readonly string[]).includes(name),
     );
+
     return applyOptionsScenario(liveOptions, scenario ?? 'default');
   };
+
   const forcedFailure = (
     scenarios: readonly DemoScenario[],
     target: DemoCreateRequest['target'],
   ) => {
-    if (scenarios.includes('forbidden')) throw new DemoTargetError(403, 'forbidden', 'forbidden');
-    if (scenarios.includes('stale-workspace'))
+    if (scenarios.includes('forbidden')) {
+      throw new DemoTargetError(403, 'forbidden', 'forbidden');
+    }
+
+    if (scenarios.includes('stale-workspace')) {
       throw new DemoTargetError(
         409,
         'DEMO_WORKSPACE_UNAVAILABLE',
         'Wybrane środowisko pracy nie jest już dostępne.',
       );
-    if (scenarios.includes('integration-target-unavailable'))
+    }
+
+    if (scenarios.includes('integration-target-unavailable')) {
       throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
-    if (scenarios.includes('base-ref-unavailable'))
+    }
+
+    if (scenarios.includes('base-ref-unavailable')) {
       throw new DemoTargetError(422, 'BASE_REF_NOT_FOUND', 'BASE_REF_NOT_FOUND');
-    if (scenarios.includes('branch-protected'))
+    }
+
+    if (scenarios.includes('branch-protected')) {
       throw new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED');
-    if (scenarios.includes('commit-blocked'))
+    }
+
+    if (scenarios.includes('commit-blocked')) {
       throw new DemoTargetError(409, 'COMMIT_BLOCKED', 'COMMIT_BLOCKED');
-    if (scenarios.includes('branch-taken') && target?.kind === 'new-worktree')
+    }
+
+    if (scenarios.includes('branch-taken') && target?.kind === 'new-worktree') {
       throw new DemoTargetError(409, 'BRANCH_ALREADY_EXISTS', 'BRANCH_ALREADY_EXISTS');
+    }
   };
+
   const createWithOutcome = (
     subject: string,
     input: DemoCreateRequest,
@@ -82,39 +99,63 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
     const operationId = input.operationId;
     const operationKey = JSON.stringify([subject, operationId]);
     const previous = operations.get(operationKey);
-    if (previous && previous.fingerprint !== fingerprintInput(input))
+    if (previous && previous.fingerprint !== fingerprintInput(input)) {
       throw new DemoTargetError(409, 'CREATE_CONFLICT', 'CREATE_CONFLICT');
-    if (previous?.status === 'completed') return { result: previous.result!, fresh: false };
+    }
+
+    if (previous?.status === 'completed') {
+      return { result: previous.result!, fresh: false };
+    }
+
     if (previous?.status === 'recovery-required') {
-      if (scenarios.includes('recovery-resolved'))
+      if (scenarios.includes('recovery-resolved')) {
         return { result: previous.commit!(), fresh: false };
+      }
+
       throw new DemoTargetError(503, 'CREATE_RECOVERY_REQUIRED', 'CREATE_RECOVERY_REQUIRED');
     }
+
     // Archetype admission, in the Engine's order: a stale catalogue first, then the archetype and
     // its version; the templates, paths and limits are checked by the scaffold below.
-    if (input.catalogueRevision !== catalogue.revision)
+    if (input.catalogueRevision !== catalogue.revision) {
       throw new DocumentError('CATALOGUE_STALE', 'The archetype catalogue changed; reload it.');
+    }
+
     const archetype = catalogue.archetypes.find((a) => a.id === input.archetypeId);
-    if (!archetype) throw new DocumentError('ARCHETYPE_UNKNOWN', 'Unknown archetype.');
-    if (archetype.version !== input.archetypeVersion)
+    if (!archetype) {
+      throw new DocumentError('ARCHETYPE_UNKNOWN', 'Unknown archetype.');
+    }
+
+    if (archetype.version !== input.archetypeVersion) {
       throw new DocumentError('CATALOGUE_STALE', 'The archetype is at another version.');
-    if (!input.title.trim())
+    }
+
+    if (!input.title.trim()) {
       throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
+    }
+
     forcedFailure(scenarios, input.target);
     const usedSlugs = new Set([...specifications.values()].map((spec) => spec.slug));
     let slug: string;
     if (input.slug !== undefined) {
       // An explicit slug is never silently renamed (like the Engine): a taken one conflicts.
-      if (!isValidSpecSlug(input.slug))
+      if (!isValidSpecSlug(input.slug)) {
         throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
-      if (usedSlugs.has(input.slug))
+      }
+
+      if (usedSlugs.has(input.slug)) {
         throw new DemoTargetError(409, 'CREATE_CONFLICT', 'CREATE_CONFLICT');
+      }
+
       slug = input.slug;
     } else {
       const baseSlug = demoSlugFor(input.title);
       slug = baseSlug;
-      for (let n = 2; usedSlugs.has(slug); n += 1) slug = baseSlug + '-' + n;
+      for (let n = 2; usedSlugs.has(slug); n += 1) {
+        slug = baseSlug + '-' + n;
+      }
     }
+
     const resolved: ResolvedTarget = resolveTarget(optionsFor(scenarios), input.target, slug);
     const now = state.now();
     const created = /^\d{4}-\d{2}-\d{2}/u.test(now)
@@ -134,11 +175,15 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
           ...(input.folders ? { folders: input.folders } : {}),
         });
       } catch (error) {
-        if (error instanceof DocumentError) throw error;
+        if (error instanceof DocumentError) {
+          throw error;
+        }
+
         // An invalid title or slug is the Engine's SPEC_VALIDATION_ERROR: bad Create input.
         throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
       }
     };
+
     // Validate before anything is created (the Engine admits the scaffold the same way).
     scaffold('demo-admission');
     fail('create', 'demo_specification_creation_failed');
@@ -178,6 +223,7 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
         workspace.specCount += 1;
         branch = workspace.branch;
       }
+
       const location: DemoLocation =
         workspaceId !== liveOptions.primaryWorkspaceId
           ? {
@@ -228,8 +274,10 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
         updatedAt: new Date().toISOString(),
         result,
       });
+
       return result;
     };
+
     if (scenarios.includes('commit-failed')) {
       // The files exist but the commit failed: the journal stays at commit-writing, so a re-submit
       // with the same operationId answers CREATE_RECOVERY_REQUIRED (like the Engine).
@@ -242,8 +290,10 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
         updatedAt: new Date().toISOString(),
         commit,
       });
+
       throw new DemoTargetError(503, 'COMMIT_FAILED', 'COMMIT_FAILED');
     }
+
     if (scenarios.includes('recovery-required')) {
       operations.set(operationKey, {
         fingerprint: fingerprintInput(input),
@@ -254,10 +304,13 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
         updatedAt: new Date().toISOString(),
         commit,
       });
+
       throw new DemoTargetError(503, 'CREATE_RECOVERY_REQUIRED', 'CREATE_RECOVERY_REQUIRED');
     }
+
     return { result: commit(), fresh: true };
   };
+
   return {
     /** Plain create. Throws on failure; see `createWithOutcome` for the HTTP seam. */
     create(
@@ -277,7 +330,10 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
       const records: DemoOperationRecord[] = [];
       for (const [key, operation] of operations) {
         const [owner, operationId] = JSON.parse(key) as [string, string];
-        if (owner !== subject) continue;
+        if (owner !== subject) {
+          continue;
+        }
+
         const spec = operation.result ? specifications.get(operation.result.specId) : undefined;
         records.push({
           operationId,
@@ -292,6 +348,7 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
           commits: liveOptions.commits !== undefined,
         });
       }
+
       return records;
     },
     /** Demo-proposed operation status read (IMPLEMENTATION-SPEC 10.5). */
@@ -302,10 +359,15 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
     ): DemoOperationStatus {
       const key = JSON.stringify([subject, operationId]);
       const pending = operations.get(key);
-      if (pending?.status === 'recovery-required' && scenarios.includes('recovery-resolved'))
+      if (pending?.status === 'recovery-required' && scenarios.includes('recovery-resolved')) {
         pending.commit!();
+      }
+
       const operation = operations.get(key);
-      if (!operation) return { operationId, status: 'not-started' };
+      if (!operation) {
+        return { operationId, status: 'not-started' };
+      }
+
       return {
         operationId,
         status: operation.status,
@@ -318,4 +380,5 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
     },
   };
 }
+
 export type DemoSpecs = ReturnType<typeof createDemoSpecs>;

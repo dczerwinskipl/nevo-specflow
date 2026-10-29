@@ -58,7 +58,10 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
         scope: { specId },
       });
       const record = await catalogue.find(specId);
-      if (!record) return reply.code(404).send({ error: 'specification_not_found' });
+      if (!record) {
+        return reply.code(404).send({ error: 'specification_not_found' });
+      }
+
       const created = state.specifications.get(specId);
       try {
         return sessions.allocate(
@@ -72,8 +75,10 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
           request.body,
         );
       } catch (error) {
-        if (isDemoOperationError(error))
+        if (isDemoOperationError(error)) {
           return reply.code(error.status).send({ error: error.code });
+        }
+
         throw error;
       }
     },
@@ -95,7 +100,10 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
         scope: { specId },
       });
       const owner = await references.resolve(sessionId);
-      if (owner?.specId !== specId) return reply.code(404).send({ error: 'session_not_found' });
+      if (owner?.specId !== specId) {
+        return reply.code(404).send({ error: 'session_not_found' });
+      }
+
       request.authz.require({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
@@ -107,7 +115,10 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
         (id) => catalogue.find(id),
         (record) => documentPaths(specId, record),
       );
-      if (!detail) return reply.code(404).send({ error: 'demo_session_detail_unavailable' });
+      if (!detail) {
+        return reply.code(404).send({ error: 'demo_session_detail_unavailable' });
+      }
+
       return detail;
     },
   );

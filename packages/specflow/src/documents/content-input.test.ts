@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT_INPUT_MAX_BYTES, readBoundedUtf8 } from './content-input';
 
 async function* chunks(...parts: Uint8Array[]): AsyncGenerator<Uint8Array> {
-  for (const part of parts) yield await Promise.resolve(part);
+  for (const part of parts) {
+    yield await Promise.resolve(part);
+  }
 }
 
 describe('readBoundedUtf8', () => {
@@ -30,6 +32,7 @@ describe('readBoundedUtf8', () => {
         yield await Promise.resolve(Buffer.alloc(1024 * 1024, 0x61));
       }
     }
+
     await expect(readBoundedUtf8(endless(), 'Standard input')).rejects.toMatchObject({
       code: 'DOCUMENT_TOO_LARGE',
     });

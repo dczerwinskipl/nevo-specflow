@@ -11,6 +11,7 @@ export function createTasksFeature(dependencies: TasksFeatureDependencies = {}):
     ...dependencies,
     leases: new PageLeases(dependencies.leaseOptions),
   };
+
   return {
     authorizationResources: [],
     register(app) {

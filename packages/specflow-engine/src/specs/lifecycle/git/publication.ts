@@ -22,6 +22,7 @@ import { inspectCleanGitWorkspace } from '../preflight';
 function conflict(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_CONFLICT', message);
 }
+
 function recovery(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
 }
@@ -33,7 +34,10 @@ async function verifyCloseSpecificationTrees(
   targetCommit: string,
 ): Promise<void> {
   const destination = record.plan.target;
-  if (!destination) throw recovery('Missing verified integration destination.');
+  if (!destination) {
+    throw recovery('Missing verified integration destination.');
+  }
+
   const specs = record.plan.occupants ?? [
     {
       slug: record.plan.slug,
@@ -58,6 +62,7 @@ async function requireCurrentAdmission(
   if (registry.revision !== record.plan.registryRevision) {
     throw conflict('Workspace registry changed after Close reservation.');
   }
+
   if (record.plan.configRevision) {
     const policy = await readProjectGitPolicy(engine.context);
     if (
@@ -110,6 +115,7 @@ export async function publishCloseGitFastForward(
   if (record?.stage !== 'integration-preparation-initiated') {
     throw conflict('A fresh durable integration preparation is required.');
   }
+
   if (
     (record.plan.kind !== 'worktree-close' &&
       record.plan.kind !== 'workspace-close' &&
@@ -119,6 +125,7 @@ export async function publishCloseGitFastForward(
   ) {
     throw conflict('Only Worktree Close may publish the pinned source HEAD before archive.');
   }
+
   if (record.integration.relationship !== 'fast-forward') {
     throw conflict('This Git publication requires a verified fast-forward history.');
   }
@@ -133,6 +140,7 @@ export async function publishCloseGitFastForward(
   ) {
     throw conflict('Git input evidence changed after durable preparation.');
   }
+
   // Project-wide Git integration authority is a separate T16 permission.
   // Until present, never silently install changed Project Home policy.
   if (proof.changedPaths.includes('.nevo/config.yaml')) {
@@ -141,6 +149,7 @@ export async function publishCloseGitFastForward(
       'Project Git configuration changed; separate integration authority is required.',
     );
   }
+
   const target = record.plan.target;
   const integration = record.integration;
   const disabledHooksDirectory = await disabledIntegrationHooksDirectory(engine);
@@ -162,9 +171,11 @@ export async function publishCloseGitFastForward(
     // A failure or lost child process is NOT evidence of no side effects.
     throw recovery('Git publication may have changed HEAD/index/files; inspect before recovery.');
   }
+
   // Test-only crash point: Git has exited successfully but reconciliation
   // has NOT yet promoted the persisted publication intent.
   await afterGitPublication?.();
+
   // The mutating Git child exited and was observed by the Engine in this call.
   return reconcileCloseGitPublication(engine, operationId, true);
 }
@@ -183,9 +194,11 @@ export async function reconcileCloseGitPublication(
   if (journal?.stage !== 'integration-publish-initiated') {
     throw conflict('No incomplete Git publication intent exists.');
   }
+
   if (!confirmedNoActiveGitProcess) {
     throw recovery('Git process quiescence must be positively established before reconciliation.');
   }
+
   const integration = journal.integration;
   const target = journal.plan.target;
   if (
@@ -195,6 +208,7 @@ export async function reconcileCloseGitPublication(
   ) {
     throw recovery('Git publication evidence is absent or unsupported.');
   }
+
   const divergent = integration.relationship === 'divergent';
   const candidate = divergent ? journal.scratch?.candidateCommit : integration.sourceCommit;
   const candidateTree = divergent ? journal.scratch?.candidateTree : integration.sourceTree;
@@ -213,6 +227,7 @@ export async function reconcileCloseGitPublication(
     if (!sourceWorkspace || !targetWorkspace) {
       throw conflict('Pinned workspace registration disappeared during publication.');
     }
+
     if (
       sourceWorkspace.root !== journal.plan.source.root ||
       sourceWorkspace.instanceId !== journal.plan.source.instanceId ||
@@ -221,6 +236,7 @@ export async function reconcileCloseGitPublication(
     ) {
       throw conflict('Pinned workspace registration changed during Git publication.');
     }
+
     const source = await inspectRegisteredWorkspace(
       engine.context,
       registry,
@@ -234,6 +250,7 @@ export async function reconcileCloseGitPublication(
     if (source.status !== 'available' || destination.status !== 'available') {
       throw conflict('Pinned Git checkout became unavailable after publication.');
     }
+
     const sourceFacts = await inspectCleanGitWorkspace(sourceWorkspace);
     if (
       sourceFacts.head !== integration.sourceCommit ||
@@ -241,7 +258,11 @@ export async function reconcileCloseGitPublication(
     ) {
       throw conflict('Source commit or checkout identity changed during publication.');
     }
-    if (divergent) await requireRecordedDivergentCandidate(engine, journal);
+
+    if (divergent) {
+      await requireRecordedDivergentCandidate(engine, journal);
+    }
+
     await verifyPublishedGitCheckout({
       root: target.root,
       expectedBranch: target.branch,
@@ -252,6 +273,7 @@ export async function reconcileCloseGitPublication(
   } catch {
     throw recovery('Destination Git HEAD, index, physical tree or source identity is unproven.');
   }
+
   return persistStage(engine, journal, {
     ...journal,
     stage: 'integration-verified',
@@ -279,6 +301,7 @@ export async function proveAlreadyIntegratedClose(
   ) {
     throw conflict('A prepared, already-integrated Worktree Close is required.');
   }
+
   const proof = await inspectCloseGitIntegration(engine, operationId);
   const integration = record.integration;
   const target = record.plan.target;
@@ -290,6 +313,7 @@ export async function proveAlreadyIntegratedClose(
   ) {
     throw conflict('Already-integrated ancestry changed after preparation.');
   }
+
   try {
     await verifyPublishedGitCheckout({
       root: target.root,
@@ -299,9 +323,13 @@ export async function proveAlreadyIntegratedClose(
     });
     await verifyCloseSpecificationTrees(record, integration.sourceCommit, integration.targetCommit);
   } catch (error) {
-    if (error instanceof GitCapabilityError) throw conflict(error.message);
+    if (error instanceof GitCapabilityError) {
+      throw conflict(error.message);
+    }
+
     throw error;
   }
+
   return persistStage(engine, record, {
     ...record,
     stage: 'integration-verified',
@@ -332,12 +360,14 @@ export async function requireVerifiedCloseIntegration(
   ) {
     throw recovery('A verified Close integration is required before rebind or disposal.');
   }
+
   try {
     await requireCurrentAdmission(engine, record);
     const registry = await engine.readRegistry();
     if (registry.revision !== record.plan.registryRevision) {
       throw conflict('Workspace registry revision changed after Git integration.');
     }
+
     const targetPlan = record.plan.target;
     const integration = record.integration;
     const sourceRegistration = registry.workspaces.find(
@@ -356,6 +386,7 @@ export async function requireVerifiedCloseIntegration(
     ) {
       throw conflict('Physical workspace registration changed after Git integration.');
     }
+
     const [source, target] = await Promise.all([
       inspectRegisteredWorkspace(engine.context, registry, sourceRegistration.workspaceId),
       inspectRegisteredWorkspace(engine.context, registry, targetRegistration.workspaceId),
@@ -363,6 +394,7 @@ export async function requireVerifiedCloseIntegration(
     if (source.status !== 'available' || target.status !== 'available') {
       throw conflict('Physical source or target checkout is unavailable.');
     }
+
     const sourceFacts = await inspectCleanGitWorkspace(sourceRegistration);
     const targetFacts = await inspectCleanGitWorkspace(targetRegistration);
     if (
@@ -373,15 +405,22 @@ export async function requireVerifiedCloseIntegration(
     ) {
       throw conflict('Pinned Git source or published target checkout has changed.');
     }
+
     const expectedCommit = integration.publishedCommit;
-    if (!expectedCommit) throw conflict('Published commit evidence is missing.');
+    if (!expectedCommit) {
+      throw conflict('Published commit evidence is missing.');
+    }
+
     const expectedTree =
       integration.relationship === 'fast-forward'
         ? integration.sourceTree
         : integration.relationship === 'divergent'
           ? record.scratch?.candidateTree
           : integration.targetTree;
-    if (!expectedTree) throw conflict('Merge candidate tree is not recorded.');
+    if (!expectedTree) {
+      throw conflict('Merge candidate tree is not recorded.');
+    }
+
     await verifyPublishedGitCheckout({
       root: targetPlan.root,
       expectedBranch: targetPlan.branch,
@@ -408,17 +447,21 @@ export async function requireVerifiedCloseIntegration(
             spec.slug !== occupant.slug ||
             spec.location !== occupant.location ||
             spec.status !== occupant.status
-          )
+          ) {
             throw conflict('Canonical workspace occupant manifest changed before binding CAS.');
+          }
         }
       }
     }
+
     if (integration.relationship === 'divergent') {
       if (record.scratch?.candidateCommit !== expectedCommit) {
         throw conflict('Published commit does not match the scratch candidate.');
       }
+
       await requireRecordedDivergentCandidate(engine, record);
     }
+
     // Journal fields can be structurally valid yet forged. Reconstruct the
     // complete pinned Git relationship independently: matching Spec bytes
     // alone do not prove source commits (including code changes) reached main.
@@ -440,6 +483,7 @@ export async function requireVerifiedCloseIntegration(
   } catch {
     throw recovery('Close integration journal is not backed by a verified physical checkout.');
   }
+
   return record;
 }
 
@@ -463,8 +507,9 @@ export async function publishDivergentCloseCandidate(
     !record.scratch?.candidateCommit ||
     !record.scratch.candidateTree ||
     !record.plan.target
-  )
+  ) {
     throw conflict('Complete divergent candidate required before Git publication.');
+  }
 
   await requireRecordedDivergentCandidate(engine, record);
   const proof = await inspectCloseGitIntegration(engine, operationId);
@@ -476,8 +521,10 @@ export async function publishDivergentCloseCandidate(
     proof.mergeBaseCommit !== original.mergeBaseCommit ||
     proof.sourceTree !== original.sourceTree ||
     proof.targetTree !== original.targetTree
-  )
+  ) {
     throw conflict('Git source or target changed after isolated candidate preparation.');
+  }
+
   if (proof.projectConfigChanged) {
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
@@ -506,5 +553,6 @@ export async function publishDivergentCloseCandidate(
   } catch {
     throw recovery('Divergent Git publication outcome is uncertain; reconcile without replay.');
   }
+
   return reconcileCloseGitPublication(engine, operationId, true);
 }

@@ -64,6 +64,7 @@ export function createProgressSteps(
     .map((step) => {
       const copy =
         (stepCopy as Readonly<Record<string, StepCopy | undefined>>)[step.id] ?? unknownStepCopy;
+
       return {
         id: step.id,
         label: copy.title,
@@ -111,5 +112,6 @@ export function createStepTitle(stepId: string): Message {
 /** The title of the step that is running now, or undefined while none is (the page then says it generically). */
 export function createRunningStepTitle(steps: readonly OperationStepView[]): Message | undefined {
   const running = steps.find((step) => step.status === 'running');
+
   return running ? createStepTitle(running.id) : undefined;
 }

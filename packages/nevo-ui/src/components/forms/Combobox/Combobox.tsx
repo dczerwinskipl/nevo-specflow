@@ -209,13 +209,16 @@ function ComboboxInput({
   placeholder: string | undefined;
 }) {
   const state = useContext(ComboBoxStateContext);
+
   return (
     <AriaInput
       autoFocus={autoFocus}
       className={cn(textInputControlClassName, 'pr-9 text-ellipsis placeholder:text-ellipsis')}
       id={id}
       onClick={() => {
-        if (state && !state.isOpen) state.open(null, 'manual');
+        if (state && !state.isOpen) {
+          state.open(null, 'manual');
+        }
       }}
       placeholder={placeholder}
       ref={inputRef}

@@ -83,6 +83,7 @@ export const engineDocumentsApi: DocumentsEngineApi = {
     if (found.status !== 'available') {
       throw new Error(`Specification ${specId} is not available (${found.status}).`);
     }
+
     return { workspaceId: found.workspaceId, root: found.workspaceRoot };
   },
   async catalogueRevisionFor(engine, archetypeId) {

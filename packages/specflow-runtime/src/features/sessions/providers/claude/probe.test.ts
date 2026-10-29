@@ -7,7 +7,9 @@ import type { launchOwnedProcess } from '../process';
 
 let root = '';
 afterEach(async () => {
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 it.each(['compatible', 'malformed', 'uncertain-settlement'] as const)(
@@ -30,6 +32,7 @@ it.each(['compatible', 'malformed', 'uncertain-settlement'] as const)(
         dispose,
         write(line) {
           writes.push(JSON.parse(line) as Record<string, unknown>);
+
           return Promise.resolve();
         },
         async *lines() {
@@ -62,12 +65,15 @@ it.each(['compatible', 'malformed', 'uncertain-settlement'] as const)(
       },
       launch,
     );
-    if (scenario === 'compatible') expect(await request).toMatchObject({ version: '9.0.0' });
-    else
+    if (scenario === 'compatible') {
+      expect(await request).toMatchObject({ version: '9.0.0' });
+    } else {
       await expect(request).rejects.toMatchObject({
         reasonCode:
           scenario === 'malformed' ? 'PROTOCOL_UNSUPPORTED' : 'PROCESS_SETTLEMENT_UNVERIFIED',
       });
+    }
+
     expect(writes).toHaveLength(1);
     expect(writes[0]).toMatchObject({
       type: 'control_request',

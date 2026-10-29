@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 /** Mirrors the workspace header: title, unsaved marker and the actions the workspace places. */
 function DocumentHeader() {
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
+
   return (
     <WorkspaceHeader
       title="specification.md"
@@ -38,6 +39,7 @@ function DocumentHeader() {
     />
   );
 }
+
 const record = documentContentFixture({
   id: 'specification',
   title: 'Specification',
@@ -62,6 +64,7 @@ function EditorFixture({
   const client = useMemo(() => new QueryClient(), []);
   const services = useMemo(() => {
     const services = createSpecFlowAppServices();
+
     return {
       ...services,
       demoDocumentsApi: {
@@ -79,6 +82,7 @@ function EditorFixture({
     };
   }, [deferred]);
   const [visible, setVisible] = useState(true);
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -122,6 +126,7 @@ function EditorFixture({
     </QueryClientProvider>
   );
 }
+
 const meta = {
   decorators: [withLocale('pl')],
   title: 'SpecFlow/Contracts/Demo Markdown editor V4',
@@ -190,11 +195,17 @@ export const DarkMarkdownHighlight: Story = {
     const heading = spans.find((span) => span.textContent?.includes('Feature: Logowanie SSO'));
     const list = spans.find((span) => span.textContent?.includes('Powrót do projektu'));
     const code = spans.find((span) => span.textContent === 'identity_token');
-    if (!heading || !list || !code) throw new Error('Markdown syntax spans are missing');
+    if (!heading || !list || !code) {
+      throw new Error('Markdown syntax spans are missing');
+    }
+
     const source = canvasElement.querySelector<HTMLElement>('.cm-content')!;
     const ordinary = getComputedStyle(source).color;
     const colors = [heading, list, code].map((span) => getComputedStyle(span).color);
-    for (const color of colors) await expect(color).not.toBe(ordinary);
+    for (const color of colors) {
+      await expect(color).not.toBe(ordinary);
+    }
+
     await expect(new Set(colors).size).toBe(3);
   },
 };
@@ -277,6 +288,7 @@ function tokenColor(className: string) {
   document.body.append(probe);
   const color = getComputedStyle(probe).borderTopColor;
   probe.remove();
+
   return color;
 }
 
@@ -287,6 +299,7 @@ function fieldFill() {
   document.body.append(probe);
   const color = getComputedStyle(probe).backgroundColor;
   probe.remove();
+
   return color;
 }
 
@@ -295,7 +308,10 @@ export const EditSurfaceDiffersFromPage: Story = {
     // Preview stays on the page surface: no fill, no field border.
     const preview = await waitFor(() => {
       const node = canvasElement.querySelector('[data-document-preview]');
-      if (!node) throw new Error('Preview pending');
+      if (!node) {
+        throw new Error('Preview pending');
+      }
+
       return node;
     });
     const previewStyle = getComputedStyle(preview.closest('.scroll-area') ?? preview);

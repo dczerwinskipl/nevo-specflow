@@ -35,11 +35,15 @@ export async function writableProject(
 ): Promise<WritableProject> {
   const count = options.notes ?? 6;
   const fixture = await documentsProject(options.git === true ? GIT_ON : GIT_OFF);
-  if (options.git === true) git(fixture.root, 'checkout', '-q', '-b', 'feature/work');
+  if (options.git === true) {
+    git(fixture.root, 'checkout', '-q', '-b', 'feature/work');
+  }
+
   // The queue is what most tests exercise: they run with auto-commit enabled unless they ask for the default.
   if (options.git === true && options.autoCommit !== 'default') {
     await enableAutoCommitForTesting(fixture.root);
   }
+
   const indexes = Array.from({ length: count }, (_, index) => index + 1);
   const spec = await handBuiltSpecification(fixture, {
     documents: [
@@ -57,6 +61,7 @@ export async function writableProject(
   });
   git(fixture.root, 'add', 'specs');
   commitStaged(fixture.root, 'specification');
+
   return { ...fixture, ...spec, workspaceId: fixture.engine.workspace.workspaceId };
 }
 
@@ -84,8 +89,10 @@ async function writeLocalAutoCommit(root: string, documents: boolean | undefined
   const path = join(root, '.nevo', 'local', 'config.yaml');
   if (documents === undefined) {
     await rm(path, { force: true });
+
     return;
   }
+
   await mkdir(join(root, '.nevo', 'local'), { recursive: true });
   await writeFile(
     path,
@@ -127,6 +134,7 @@ export async function checkoutClaimFree(project: WritableProject): Promise<boole
     await assertSharedResourcesAvailable(project.engine.context, [
       'checkout:' + project.workspaceId,
     ]);
+
     return true;
   } catch {
     return false;
@@ -136,6 +144,7 @@ export async function checkoutClaimFree(project: WritableProject): Promise<boole
 /** Stage files (`.nv...`) left in the Specification directory tree. */
 export async function strayStageFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { recursive: true });
+
   return entries.filter((entry) => /(^|[\\/])\.n[vb][0-9a-f]{13}$/u.test(entry)).sort();
 }
 

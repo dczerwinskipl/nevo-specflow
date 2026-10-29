@@ -75,8 +75,9 @@ describe('error map', () => {
       const mapping: { code: DocumentErrorCode; reason?: string } =
         DOCUMENT_CHANGE_ERROR_MAP[cause];
       expect(DOCUMENT_ERROR_CODES).toContain(mapping.code);
-      if (mapping.reason !== undefined)
+      if (mapping.reason !== undefined) {
         expect(ACTION_REASONS as readonly string[]).toContain(mapping.reason);
+      }
     }
   });
 
@@ -225,7 +226,10 @@ describe('fingerprint', () => {
       { action: 'rename', target: base.target, name: 'b', expectedRevision: 'r' },
     ];
     const seen = new Set([fingerprintDocumentChange(base)]);
-    for (const variant of variants) seen.add(fingerprintDocumentChange(variant));
+    for (const variant of variants) {
+      seen.add(fingerprintDocumentChange(variant));
+    }
+
     expect(seen.size).toBe(variants.length + 1);
   });
 
@@ -289,9 +293,13 @@ describe('claims', () => {
     for (const stage of DOCUMENT_CHANGE_STAGES) {
       const record = buildJournal(stage);
       const run = () => assertDocumentChangeClaimsAvailable([record], close, undefined);
-      if (documentChangeHoldsClaim(record)) expect(run, stage).toThrow(SharedResourceError);
-      else expect(run, stage).not.toThrow();
+      if (documentChangeHoldsClaim(record)) {
+        expect(run, stage).toThrow(SharedResourceError);
+      } else {
+        expect(run, stage).not.toThrow();
+      }
     }
+
     expect(
       DOCUMENT_CHANGE_STAGES.filter((stage) => documentChangeHoldsClaim({ stage })).sort(),
     ).toEqual([

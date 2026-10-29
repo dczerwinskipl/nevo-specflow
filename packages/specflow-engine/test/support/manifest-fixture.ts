@@ -54,6 +54,7 @@ export async function writeSpecificationManifestFixture(
     },
     input.extra,
   );
+
   return await writeRaw(root, input.slug, location, specId, content);
 }
 
@@ -74,6 +75,7 @@ export async function writeOldShapeManifestFixture(
     tasks: [],
     spec_id: specId,
   });
+
   return await writeRaw(root, slug, location, specId, content);
 }
 
@@ -88,5 +90,6 @@ async function writeRaw(
   const absolute = join(root, relativeManifestPath);
   await mkdir(dirname(absolute), { recursive: true });
   await writeFile(absolute, content, 'utf8');
+
   return { specId, relativeManifestPath };
 }

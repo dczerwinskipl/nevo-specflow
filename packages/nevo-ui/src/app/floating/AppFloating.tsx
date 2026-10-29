@@ -22,6 +22,7 @@ function useAppFloatingContext(part: string) {
   if (!context) {
     throw new Error(`${part} must be rendered inside AppFloatingProvider.`);
   }
+
   return context;
 }
 
@@ -42,7 +43,9 @@ export type AppFloatingOutletProps = HTMLAttributes<HTMLDivElement>;
 export function AppFloatingOutlet({ className, ...props }: AppFloatingOutletProps) {
   const { setContainer, supported } = useAppFloatingContext('AppFloatingOutlet');
 
-  if (!supported) return null;
+  if (!supported) {
+    return null;
+  }
 
   return (
     <div
@@ -61,6 +64,9 @@ export interface AppFloatingRegionProps {
 export function AppFloatingRegion({ children }: AppFloatingRegionProps) {
   const { container, supported } = useAppFloatingContext('AppFloatingRegion');
 
-  if (!supported || !container) return null;
+  if (!supported || !container) {
+    return null;
+  }
+
   return createPortal(children, container);
 }

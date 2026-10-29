@@ -26,6 +26,7 @@ export const Toast = forwardRef<
   ComponentPropsWithoutRef<typeof ToastPrimitive.Root>
 >(function Toast({ className, ...props }, ref) {
   const capture = useDesignMetadata('Toast');
+
   return (
     <ToastPrimitive.Root
       ref={ref}

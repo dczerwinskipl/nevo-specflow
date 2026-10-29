@@ -40,10 +40,15 @@ const record = (id: string): DocumentContent =>
 
 function setup(failIds: string[] = []) {
   const queryClient = createSpecFlowQueryClient();
-  for (const id of ['a', 'b', 'c'])
+  for (const id of ['a', 'b', 'c']) {
     queryClient.setQueryData(documentKeys.detail(SPEC, id), record(id));
+  }
+
   const save = vi.fn((_spec: string, id: string) => {
-    if (failIds.includes(id)) return Promise.reject(new Error(`fail ${id}`));
+    if (failIds.includes(id)) {
+      return Promise.reject(new Error(`fail ${id}`));
+    }
+
     return Promise.resolve({ document: { revision: `${id}2` } });
   });
   const services = createSpecFlowAppServices({
@@ -65,6 +70,7 @@ function setup(failIds: string[] = []) {
     () => useDocumentSave({ specId: SPEC, document: record('a'), draft: store.get(SPEC, 'a') }),
     { wrapper },
   );
+
   return { save, store, view, queryClient };
 }
 
@@ -128,6 +134,7 @@ describe('useDocumentSave for any document', () => {
     const { save, store, view } = setup();
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, 'c');
+
       return Promise.resolve({ document: { revision: `${id}2` } });
     });
     let result: Awaited<ReturnType<typeof view.result.current.saveAll>> | undefined;
@@ -176,6 +183,7 @@ describe('useDocumentSave for any document', () => {
     const { save, store, view } = setup();
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, id);
+
       return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
@@ -190,6 +198,7 @@ describe('useDocumentSave for any document', () => {
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, id);
       store.set(SPEC, id, reopened);
+
       return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
@@ -204,6 +213,7 @@ describe('useDocumentSave for any document', () => {
     save.mockImplementationOnce((_spec: string, id: string) => {
       // No React commit is required to make the store's new content authoritative.
       store.patch(SPEC, 'a', { content: 'A2' }, () => draft('A2', 'a0', 'a1'));
+
       return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {

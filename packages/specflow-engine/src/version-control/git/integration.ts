@@ -35,14 +35,23 @@ async function requiredGitValue(
 ): Promise<string> {
   const result = await executeGit(root, args);
   const value = result.stdout.trim();
-  if (result.exitCode !== 0 || !OBJECT_ID.test(value)) throw conflict(explanation);
+  if (result.exitCode !== 0 || !OBJECT_ID.test(value)) {
+    throw conflict(explanation);
+  }
+
   return value;
 }
 
 async function isAncestor(root: string, ancestor: string, descendant: string): Promise<boolean> {
   const result = await executeGit(root, ['merge-base', '--is-ancestor', ancestor, descendant]);
-  if (result.exitCode === 0) return true;
-  if (result.exitCode === 1) return false;
+  if (result.exitCode === 0) {
+    return true;
+  }
+
+  if (result.exitCode === 1) {
+    return false;
+  }
+
   throw conflict('Git ancestry inspection was inconclusive.');
 }
 
@@ -57,6 +66,7 @@ export async function inspectGitIntegrationEvidence(
   if (!OBJECT_ID.test(sourceCommit) || !OBJECT_ID.test(targetCommit)) {
     throw conflict('Invalid pinned Git commit SHA.');
   }
+
   const [sourceTree, targetTree, mergeBaseResult, changedResult] = await Promise.all([
     requiredGitValue(
       root,
@@ -83,9 +93,11 @@ export async function inspectGitIntegrationEvidence(
   if (mergeBaseResult.exitCode !== 0 || bases.length !== 1 || !OBJECT_ID.test(bases[0]!)) {
     throw conflict('Cannot prove a unique source/target merge base.');
   }
+
   if (changedResult.exitCode !== 0) {
     throw conflict('Cannot inspect the complete source-vs-target branch diff.');
   }
+
   const changedPaths = changedResult.stdout.split('\0').filter(Boolean);
   const relationship: GitRelationship =
     sourceCommit === targetCommit || (await isAncestor(root, sourceCommit, targetCommit))
@@ -126,6 +138,7 @@ export async function publishGitFastForward(input: {
   if (!OBJECT_ID.test(expectedTargetCommit) || !OBJECT_ID.test(sourceCommit)) {
     throw conflict('Invalid pinned Git commit for publication.');
   }
+
   // Checking HEAD SHA alone is insufficient: an unrelated local branch can
   // point at the same commit. Reject before executing any mutating Git command.
   const checkedOutBranch = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
@@ -135,10 +148,12 @@ export async function publishGitFastForward(input: {
   ) {
     throw conflict('Target changed its checked-out integration branch before publication.');
   }
+
   const observed = await requiredGitValue(root, ['rev-parse', '--verify', 'HEAD'], 'Missing HEAD.');
   if (observed !== expectedTargetCommit) {
     throw conflict('Target HEAD changed before Git fast-forward publication.');
   }
+
   const status = await executeGit(root, [
     '-c',
     'core.optionalLocks=false',
@@ -150,6 +165,7 @@ export async function publishGitFastForward(input: {
   if (status.exitCode !== 0 || status.stdout) {
     throw conflict('Target checkout is not clean immediately before publication.');
   }
+
   const result = await executeGitMutation(root, [
     '-c',
     'core.hooksPath=' + disabledHooksDirectory,
@@ -158,7 +174,10 @@ export async function publishGitFastForward(input: {
     '--no-edit',
     sourceCommit,
   ]).catch((error: unknown) => {
-    if (error instanceof GitCapabilityError) throw error;
+    if (error instanceof GitCapabilityError) {
+      throw error;
+    }
+
     throw new GitCapabilityError(
       'GIT_OPERATION_UNCERTAIN',
       'Git publication outcome cannot be established without reconciliation.',
@@ -183,23 +202,31 @@ export async function verifyPublishedGitCheckout(input: {
   if (!OBJECT_ID.test(expectedCommit) || !OBJECT_ID.test(expectedTree)) {
     throw conflict('Invalid expected Git publication proof.');
   }
+
   const branch = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
   if (branch.exitCode !== 0 || branch.stdout.trim() !== 'refs/heads/' + expectedBranch) {
     throw conflict('Checked-out target is no longer on its pinned branch.');
   }
+
   const head = await requiredGitValue(root, ['rev-parse', '--verify', 'HEAD'], 'Missing HEAD.');
-  if (head !== expectedCommit) throw conflict('Target HEAD does not match publication commit.');
+  if (head !== expectedCommit) {
+    throw conflict('Target HEAD does not match publication commit.');
+  }
+
   const tree = await requiredGitValue(
     root,
     ['rev-parse', '--verify', expectedCommit + '^{tree}'],
     'Missing publication tree.',
   );
-  if (tree !== expectedTree) throw conflict('Published commit tree differs from pinned proof.');
+  if (tree !== expectedTree) {
+    throw conflict('Published commit tree differs from pinned proof.');
+  }
 
   const indexTree = await executeGit(root, ['write-tree']);
   if (indexTree.exitCode !== 0 || indexTree.stdout.trim() !== expectedTree) {
     throw conflict('Target index does not match published commit tree.');
   }
+
   const status = await executeGit(root, [
     '-c',
     'core.optionalLocks=false',
@@ -227,9 +254,11 @@ export async function verifyGitTreePathEquivalent(
   if (!OBJECT_ID.test(sourceCommit) || !OBJECT_ID.test(destinationCommit)) {
     throw conflict('Invalid source or destination commit identity.');
   }
+
   if (!/^specs\/(?:active|archive)\/[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(path)) {
     throw conflict('Invalid canonical Specification subtree path.');
   }
+
   const [source, destination] = await Promise.all([
     requiredGitValue(
       root,
@@ -242,5 +271,7 @@ export async function verifyGitTreePathEquivalent(
       'Missing destination Spec subtree.',
     ),
   ]);
-  if (source !== destination) throw conflict('Canonical Specification subtree differs in target.');
+  if (source !== destination) {
+    throw conflict('Canonical Specification subtree differs in target.');
+  }
 }

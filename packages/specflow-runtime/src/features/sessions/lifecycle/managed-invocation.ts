@@ -35,30 +35,41 @@ export function createManagedInvocation(options: {
           observed.error?.message !== fact.error?.message)
       ) {
         contradictory = true;
+
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
           'Provider outcomes contradict each other.',
         );
       }
+
       observed = fact;
+
       return;
     }
-    if (fact.kind === 'lost') options.stop();
+
+    if (fact.kind === 'lost') {
+      options.stop();
+    }
+
     await options.persist(fact);
   };
+
   async function unknown(message: string) {
     options.stop();
     await claim?.unknown().catch(() => undefined);
     await options.persist({ kind: 'lost', message });
   }
+
   const done = (async () => {
     try {
       const context = options.invocation.executionContext;
-      if (context.kind !== 'read-only' || !context.workspaceIdentity)
+      if (context.kind !== 'read-only' || !context.workspaceIdentity) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',
           'Verified workspace execution context is required.',
         );
+      }
+
       claim = await options.effects.admit({
         invocationId: options.invocation.invocationId,
         sessionId: options.invocation.sessionId,
@@ -75,15 +86,19 @@ export function createManagedInvocation(options: {
           },
           'not-dispatched',
         );
+
         return;
       }
+
       await claim.dispatch();
       if (options.signal.aborted) {
         const outcome = options.signal.reason === 'shutdown' ? 'interrupted' : 'cancelled';
         await claim.settle({ process: 'stopped', outcome });
         await options.finalize({ kind: 'outcome', outcome }, 'native-result');
+
         return;
       }
+
       driverInvoked = true;
       native = options.driver.start(
         {
@@ -113,8 +128,10 @@ export function createManagedInvocation(options: {
         evidence.source === 'unverified'
       ) {
         await unknown('Agent process or execution outcome cannot be verified.');
+
         return;
       }
+
       const result = evidence.result;
       validateDriverFact(result);
       if (
@@ -124,8 +141,10 @@ export function createManagedInvocation(options: {
           observed.error?.message !== result.error?.message)
       ) {
         await unknown('Agent settlement evidence contradicts its reported outcome.');
+
         return;
       }
+
       await claim.settle({ process: 'stopped', outcome: result.outcome });
       await options.finalize(result, 'native-result', outputUncertain);
     } catch (error) {
@@ -143,8 +162,10 @@ export function createManagedInvocation(options: {
           },
           'not-dispatched',
         );
+
         return;
       }
+
       if (!driverInvoked && claim) {
         const result: Outcome = {
           kind: 'outcome',
@@ -159,21 +180,27 @@ export function createManagedInvocation(options: {
           } catch {
             await claim.settle({ process: 'stopped', outcome: result.outcome });
           }
+
           await options.finalize(result, 'not-dispatched');
+
           return;
         } catch {
           /* Preserve ambiguous publication; recovery reads the same claim. */
         }
       }
+
       await unknown('Agent lifecycle or Engine settlement could not be persisted.');
     }
   })();
+
   return {
     done,
     emit,
     respond(key, response) {
-      if (!native)
+      if (!native) {
         throw new SessionError('INTERACTION_EXPIRED', 'Agent operation has not started.');
+      }
+
       return native.respond(key, response);
     },
   };

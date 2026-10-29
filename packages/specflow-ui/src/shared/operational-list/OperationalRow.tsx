@@ -8,6 +8,7 @@ function isSemanticSupporting(value: unknown): value is SemanticSupporting {
     typeof (value as SemanticSupporting).text === 'string'
   );
 }
+
 export const operationalPrimaryLinkClassName =
   'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] @min-[40rem]/info-row:truncate outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-accent-primary';
 export function OperationalRow({
@@ -88,6 +89,7 @@ export function OperationalRow({
       );
     }
   }
+
   const facts = compactFacts;
   const populatedFacts = facts.filter(
     (fact) => (typeof fact === 'string' ? fact : fact.text).length > 0,
@@ -99,10 +101,14 @@ export function OperationalRow({
         ? 'grid min-w-0 grid-cols-1 gap-y-0.5 @min-[40rem]/info-row:grid-cols-[calc(var(--spacing)*18)_calc(var(--spacing)*24)_minmax(0,1fr)] @min-[40rem]/info-row:items-baseline @min-[40rem]/info-row:gap-x-2'
         : 'grid min-w-0 grid-cols-1 gap-y-0.5 @min-[40rem]/info-row:grid-cols-[calc(var(--spacing)*18)_minmax(0,1fr)] @min-[40rem]/info-row:items-baseline @min-[40rem]/info-row:gap-x-2';
   const renderFact = (fact: (typeof compactFacts)[number] | undefined) => {
-    if (fact === undefined) return null;
+    if (fact === undefined) {
+      return null;
+    }
+
     const text = typeof fact === 'string' ? fact : fact.text;
     const isMono = typeof fact === 'object' && fact.mono;
     const attrs = typeof fact === 'object' ? fact.dataAttributes : undefined;
+
     return (
       <span
         className={cn('min-w-0 text-content-muted [overflow-wrap:anywhere]', isMono && 'font-mono')}
@@ -112,10 +118,12 @@ export function OperationalRow({
       </span>
     );
   };
+
   const leadingSlot =
     (leading != null && leading !== false) || list?.selectable ? (
       <InformationList.Leading>{leading}</InformationList.Leading>
     ) : null;
+
   return (
     <InformationList.Item
       interactive={isRowInteractive}

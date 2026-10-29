@@ -67,6 +67,7 @@ export function TabsExample({
 
 export function ControlledTabs() {
   const [value, setValue] = useState('overview');
+
   return (
     <div data-selected-tab={value}>
       <TabsExample onValueChange={setValue} value={value} />

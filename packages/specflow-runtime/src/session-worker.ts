@@ -21,4 +21,5 @@ if (!isMainThread && (workerData as { kind?: string })?.kind === 'session-store'
     hooks?.deregister();
   }
 }
+
 export {};

@@ -44,6 +44,9 @@ export function createRuntimeTaskApi(client: HttpRequestClient): TaskApi {
 
 function taskPageUrl(specId: string, taskId: string, kind: string, token: string, cursor?: string) {
   const query = new URLSearchParams({ token });
-  if (cursor) query.set('cursor', cursor);
+  if (cursor) {
+    query.set('cursor', cursor);
+  }
+
   return `/api/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}/${kind}?${query}`;
 }

@@ -25,8 +25,9 @@ let currentApi: ReturnType<typeof operationsStub> | undefined;
 /** Resolves once the panel has read the list and React has rendered that answer. */
 async function afterFirstRead() {
   await waitFor(() => expect(currentApi?.calls.length ?? 0).toBeGreaterThan(0));
-  for (let frame = 0; frame < 2; frame += 1)
+  for (let frame = 0; frame < 2; frame += 1) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
 }
 
 /**
@@ -43,6 +44,7 @@ function PanelFixture({
 }) {
   const { client, api } = useMemo(() => {
     resetOperationsSession();
+
     return {
       client: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
       api: operationsStub(...answers),
@@ -51,6 +53,7 @@ function PanelFixture({
   useEffect(() => {
     currentApi = api;
   }, [api]);
+
   return (
     <QueryClientProvider client={client}>
       <StoryLocalization locale={locale}>

@@ -26,6 +26,7 @@ async function project(gitEnabled: boolean) {
     'runtime: {}\ngit:\n  enabled: ' + String(gitEnabled) + '\n',
   );
   roots.push(root);
+
   return bootstrapProjectHome(root);
 }
 
@@ -72,6 +73,7 @@ describe('create stage observer', () => {
       {
         onStage: (observation) => {
           seen.push(observation);
+
           throw new Error('observer failure must not break the create');
         },
       },
@@ -116,7 +118,10 @@ describe('create stage observer: replay of a reserved operation', () => {
       }),
     ).rejects.toThrow('Stop after reservation');
     const journal = await inspectCreateSpecification(engine, input.operationId);
-    if (journal?.target.kind !== 'new-worktree') throw new Error('Expected a linked reservation.');
+    if (journal?.target.kind !== 'new-worktree') {
+      throw new Error('Expected a linked reservation.');
+    }
+
     git(engine.context.project.homeRoot, 'branch', journal.target.branch);
 
     const seen: CreateStageObservation[] = [];

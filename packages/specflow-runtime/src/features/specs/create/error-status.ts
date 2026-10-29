@@ -103,6 +103,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
       return 503;
     default: {
       const exhaustive: never = code;
+
       return exhaustive;
     }
   }
@@ -129,6 +130,10 @@ export function createErrorCode(error: unknown): CreateErrorCode | undefined {
   ) {
     return error.code;
   }
-  if (error instanceof DocumentError && isCreateDocumentErrorCode(error.code)) return error.code;
+
+  if (error instanceof DocumentError && isCreateDocumentErrorCode(error.code)) {
+    return error.code;
+  }
+
   return undefined;
 }

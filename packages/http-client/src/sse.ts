@@ -54,6 +54,7 @@ export function createSseStream<TEvent, TParams>(
       }
 
       consumed = true;
+
       return iterate()[Symbol.asyncIterator]();
     },
   };
@@ -105,6 +106,7 @@ export function createSseStream<TEvent, TParams>(
           if (!(await waitBeforeReconnect(error))) {
             return;
           }
+
           continue;
         }
 
@@ -241,6 +243,7 @@ function applyHeaders(target: Headers, source: Readonly<Record<string, string>> 
 async function readResponseBody(response: Response): Promise<string | undefined> {
   try {
     const body = await response.text();
+
     return body || undefined;
   } catch {
     return undefined;

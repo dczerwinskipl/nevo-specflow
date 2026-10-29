@@ -8,6 +8,7 @@ export interface SpinnerProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'chi
 }
 export function Spinner({ className, label, size = 'md', ...props }: SpinnerProps) {
   const capture = useDesignMetadata('Spinner', { size });
+
   return (
     <span
       className={cn('inline-flex items-center justify-center text-content-muted', className)}

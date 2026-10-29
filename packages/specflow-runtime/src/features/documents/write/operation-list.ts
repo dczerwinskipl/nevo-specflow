@@ -43,6 +43,7 @@ export function createDocumentOperationSource(engine: SpecFlowEngine): Operation
           updatedAt: row.updatedAt,
         });
       }
+
       return rows;
     },
   };
@@ -71,6 +72,7 @@ export function createManualCommitOperationSource(engine: SpecFlowEngine): Opera
           updatedAt: row.updatedAt,
         });
       }
+
       return rows;
     },
   };

@@ -88,15 +88,19 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
         {
           onStage: (observation) => {
             progress?.onStage(observation);
-            if (respondAsync && isAcceptedObservation(observation)) accept();
+            if (respondAsync && isAcceptedObservation(observation)) {
+              accept();
+            }
           },
         },
       );
       const created = projectCreatedSpecification(result);
       progress?.complete(created);
+
       return created;
     } catch (error) {
       progress?.fail(createErrorCode(error));
+
       throw error;
     }
   })();
@@ -105,13 +109,17 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
   if (respondAsync && operationId) {
     // A failure after acceptance is reported by progress/inspection, never lost unhandled.
     finished.catch((error: unknown) => {
-      if (!createErrorCode(error)) input.onDetachedFailure(error);
+      if (!createErrorCode(error)) {
+        input.onDetachedFailure(error);
+      }
     });
     const first = await Promise.race([finished, accepted]);
+
     return first === 'accepted'
       ? { kind: 'accepted', operationId }
       : { kind: 'created', created: first };
   }
+
   return { kind: 'created', created: await finished };
 }
 
@@ -122,7 +130,10 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
  * answered with its real outcome instead.
  */
 function isAcceptedObservation(observation: CreateStageObservation): boolean {
-  if (observation.stage === 'completed' || observation.stage === 'recovery-required') return false;
+  if (observation.stage === 'completed' || observation.stage === 'recovery-required') {
+    return false;
+  }
+
   return observation.replayed === true || observation.stage !== 'reserved';
 }
 
@@ -136,5 +147,6 @@ async function resolveCreateTarget(
       workspaceId: (await readRegistrySnapshot(engine)).primaryWorkspaceId,
     };
   }
+
   return target;
 }

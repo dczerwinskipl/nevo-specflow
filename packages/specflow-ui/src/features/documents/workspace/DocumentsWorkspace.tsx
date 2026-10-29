@@ -90,7 +90,10 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   const { show } = tabs;
   const openTabCount = tabs.tabs.length;
   useEffect(() => {
-    if (startDecided.current || !tree.data || !measured) return;
+    if (startDecided.current || !tree.data || !measured) {
+      return;
+    }
+
     startDecided.current = true;
     const start = startDocument({
       tree: tree.data,
@@ -99,7 +102,9 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       split: supportsSplit,
     });
     // Replaces the entry: Back leaves the screen instead of returning to an empty document area.
-    if (start) void show(start, { replace: true });
+    if (start) {
+      void show(start, { replace: true });
+    }
   }, [tree.data, measured, supportsSplit, documentId, openTabCount, show]);
   const rootActions = documentRootActions(
     treeController,
@@ -121,12 +126,19 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       // The start actions the Specification allows; a running operation only disables them.
       actions={rootActions.filter((action) => {
         const capabilities = tree.data?.capabilities;
-        if (action.id === 'documents-new-file') return capabilities?.createFile.available === true;
-        if (action.id === 'documents-upload') return capabilities?.import.available === true;
+        if (action.id === 'documents-new-file') {
+          return capabilities?.createFile.available === true;
+        }
+
+        if (action.id === 'documents-upload') {
+          return capabilities?.import.available === true;
+        }
+
         return false;
       })}
     />
   );
+
   return (
     <DocumentsTreeActionsContext.Provider value={treeActions}>
       <DocumentRouteGuard
@@ -185,7 +197,9 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             open
             // The region's close closes every tab, asking once about the unsaved documents.
             onOpenChange={(next) => {
-              if (!next) opening.closeAll();
+              if (!next) {
+                opening.closeAll();
+              }
             }}
             header={
               <WorkspaceHeader

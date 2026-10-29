@@ -21,6 +21,7 @@ async function analyse(name: string, content: Uint8Array | string) {
   const handle = await open(file, 'r');
   try {
     const stat = await handle.stat({ bigint: true });
+
     return { analysis: await analyzeOpenFile(handle, stat, name), stat };
   } finally {
     await handle.close();

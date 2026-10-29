@@ -19,9 +19,13 @@ import {
 
 async function liveComponent(stableId: string) {
   const candidate = findStable<ComponentNode>(stableId, ['COMPONENT']);
-  if (!candidate) return undefined;
+  if (!candidate) {
+    return undefined;
+  }
+
   try {
     const live = await figma.getNodeByIdAsync(candidate.id);
+
     return live?.type === 'COMPONENT' ? live : undefined;
   } catch {
     return undefined;
@@ -44,14 +48,22 @@ async function configureLiveComponent(
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await configureComponent(candidate, capture, spec, ir, resources, definitions);
+
       return candidate;
     } catch (error) {
-      if (!isInvalidatedNode(error) || attempt === 2) throw error;
+      if (!isInvalidatedNode(error) || attempt === 2) {
+        throw error;
+      }
+
       const reacquired = await liveComponent(capture.stableId);
-      if (!reacquired) throw error;
+      if (!reacquired) {
+        throw error;
+      }
+
       candidate = reacquired;
     }
   }
+
   throw new Error(`Could not configure live component ${capture.stableId}`);
 }
 
@@ -69,6 +81,7 @@ export function bindComponentProperties(
   if (assetSwapNames.length && owner.type === 'COMPONENT_SET') {
     deleteSetProperties(owner, assetSwapNames, 'INSTANCE_SWAP');
   }
+
   const textProperties = new Map<string, string>();
   const visibleProperties = new Map<string, string>();
   for (const [slotName, slot] of Object.entries(spec.slots)) {
@@ -102,7 +115,10 @@ export function bindComponentProperties(
       : [owner];
   for (const component of components) {
     const capture = captures.get(component.getPluginData(DATA_KEY));
-    if (!capture) continue;
+    if (!capture) {
+      continue;
+    }
+
     for (const [slotName, slotSpec] of Object.entries(spec.slots)) {
       const stableId = `${capture?.stableId}/slot/${slotName}`;
       const child = component.children.find(
@@ -117,7 +133,9 @@ export function bindComponentProperties(
         child.visible = Boolean(capture.slots[slotName]) || Boolean(slotSpec.required);
         child.isExposedInstance = true;
         const visibleProperty = visibleProperties.get(slotName);
-        if (visibleProperty) child.componentPropertyReferences = { visible: visibleProperty };
+        if (visibleProperty) {
+          child.componentPropertyReferences = { visible: visibleProperty };
+        }
       } else if (
         slotSpec.kind === 'container' &&
         child?.type === 'FRAME' &&
@@ -127,7 +145,9 @@ export function bindComponentProperties(
         child.componentPropertyReferences = {};
         child.visible = Boolean(capture.slots[slotName]);
         const visibleProperty = visibleProperties.get(slotName);
-        if (visibleProperty) child.componentPropertyReferences = { visible: visibleProperty };
+        if (visibleProperty) {
+          child.componentPropertyReferences = { visible: visibleProperty };
+        }
       }
     }
   }
@@ -136,9 +156,13 @@ export function bindComponentProperties(
 export function matrixKeys(spec: FigmaComponentDefinition, component: ComponentNode) {
   void spec;
   const captureValues = component.getPluginData(DATA_KEY).split('/').slice(1);
-  if (!captureValues.length) return undefined;
+  if (!captureValues.length) {
+    return undefined;
+  }
+
   const column = captureValues[0];
   const row = captureValues.slice(1).join('/') || 'default';
+
   return column ? { column, row } : undefined;
 }
 
@@ -153,6 +177,7 @@ export function expectedMatrix(spec: FigmaComponentDefinition, captures: Compone
       values.map((value) => (prefix === 'default' ? value : `${prefix}/${value}`)),
     );
   }
+
   return { columns, rows, plan };
 }
 
@@ -165,16 +190,23 @@ export async function upsertComponentSet(
   y: number,
 ) {
   const source = canonicalCaptures(spec, ir.components[spec.component] ?? []);
-  if (!source.size) throw new Error(`IR contains no ${spec.component} captures`);
+  if (!source.size) {
+    throw new Error(`IR contains no ${spec.component} captures`);
+  }
+
   if (!spec.variantProperties.length) {
     const capture = source.values().next().value;
-    if (!capture) throw new Error(`IR contains no ${spec.component} capture`);
+    if (!capture) {
+      throw new Error(`IR contains no ${spec.component} capture`);
+    }
+
     let component = await liveComponent(capture.stableId);
     if (!component) {
       component = figma.createComponent();
       mark(component, capture.stableId);
       section.appendChild(component);
     }
+
     component = await configureLiveComponent(component, capture, spec, ir, resources, definitions);
     bindComponentProperties(component, spec, source);
     await reconcileNestedSlotOverrides(
@@ -190,11 +222,16 @@ export async function upsertComponentSet(
     component.y = y;
     component.description =
       'Standalone component. Styling and slots are reconciled from canonical IR.';
+
     return component;
   }
+
   const setId = `${spec.component}/set`;
   let set = findStable<ComponentSetNode>(setId, ['COMPONENT_SET']);
-  if (set) set = await repairSetIfNeeded(set, section, setId, [...source.keys()], spec);
+  if (set) {
+    set = await repairSetIfNeeded(set, section, setId, [...source.keys()], spec);
+  }
+
   if (set) {
     const nativeSlotNames = Object.values(spec.slots)
       .filter(
@@ -204,8 +241,11 @@ export async function upsertComponentSet(
     // Remove the old TEXT property before creating a SLOT with the same public
     // name. Doing this afterwards can temporarily put the ComponentSet into an
     // invalid duplicate-property state that blocks componentPropertyDefinitions.
-    if (nativeSlotNames.length) deleteSetProperties(set, nativeSlotNames, 'TEXT');
+    if (nativeSlotNames.length) {
+      deleteSetProperties(set, nativeSlotNames, 'TEXT');
+    }
   }
+
   const masters: ComponentNode[] = [];
   for (const [stableId, capture] of source) {
     let component = await liveComponent(stableId);
@@ -213,18 +253,28 @@ export async function upsertComponentSet(
       component = figma.createComponent();
       mark(component, stableId);
     }
+
     component = await configureLiveComponent(component, capture, spec, ir, resources, definitions);
-    if (set && component.parent !== set) set.appendChild(component);
+    if (set && component.parent !== set) {
+      set.appendChild(component);
+    }
+
     masters.push(component);
   }
+
   if (set) {
     removeStaleManagedChildren(set, new Set(source.keys()), new Set(['COMPONENT']));
   }
+
   if (!set) {
-    if (!masters.length) throw new Error(`Could not materialize ${spec.component} variants`);
+    if (!masters.length) {
+      throw new Error(`Could not materialize ${spec.component} variants`);
+    }
+
     set = figma.combineAsVariants(masters, section);
     mark(set, setId);
   }
+
   // combineAsVariants and parent moves can invalidate the ComponentNode
   // proxies configured above. Resolve every master through the resulting set
   // before further mutations; a delay would only leave this timing-dependent.
@@ -235,7 +285,10 @@ export async function upsertComponentSet(
   // Figma's transient combine/move result.
   for (const [index, component] of masters.entries()) {
     const capture = source.get(component.getPluginData(DATA_KEY));
-    if (!capture) continue;
+    if (!capture) {
+      continue;
+    }
+
     masters[index] = await configureLiveComponent(
       component,
       capture,
@@ -245,10 +298,14 @@ export async function upsertComponentSet(
       definitions,
     );
   }
+
   bindComponentProperties(set, spec, source);
   for (const component of masters) {
     const capture = source.get(component.getPluginData(DATA_KEY));
-    if (!capture) continue;
+    if (!capture) {
+      continue;
+    }
+
     await reconcileNestedSlotOverrides(
       component,
       capture,
@@ -259,6 +316,7 @@ export async function upsertComponentSet(
       configureComponent,
     );
   }
+
   const matrix = expectedMatrix(spec, [...source.values()]);
   set.description = `Columns: ${matrix.plan.axes[0]?.name}. Rows: ${
     matrix.plan.axes
@@ -276,6 +334,7 @@ export async function upsertComponentSet(
     (component) => matrixKeys(spec, component),
     { width: 104, height: 48 },
   );
+
   return set;
 }
 
@@ -286,8 +345,10 @@ async function liveVariantMasters(set: ComponentSetNode, stableIds: Iterable<str
     if (!component) {
       throw new Error(`Could not reacquire ${stableId} after component-set reconciliation`);
     }
+
     masters.push(component);
   }
+
   return masters;
 }
 
@@ -310,15 +371,25 @@ export async function reconcileComponentNestedSlots(
   const masters: ComponentNode[] = [];
   for (const [stableId, capture] of source) {
     let component = await liveComponent(stableId);
-    if (!component) continue;
+    if (!component) {
+      continue;
+    }
+
     component = await configureLiveComponent(component, capture, spec, ir, resources, definitions);
     masters.push(component);
   }
+
   const owner = masters[0]?.parent?.type === 'COMPONENT_SET' ? masters[0].parent : masters[0];
-  if (owner) bindComponentProperties(owner, spec, source);
+  if (owner) {
+    bindComponentProperties(owner, spec, source);
+  }
+
   for (const component of masters) {
     const capture = source.get(component.getPluginData(DATA_KEY));
-    if (!capture) continue;
+    if (!capture) {
+      continue;
+    }
+
     await reconcileNestedSlotOverrides(
       component,
       capture,

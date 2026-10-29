@@ -77,6 +77,7 @@ export async function resumeInterruptedCreateOperation(
   if (!journal) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'No Create operation with this id.');
   }
+
   return createSpecificationWithIntent(
     engine,
     operationId,

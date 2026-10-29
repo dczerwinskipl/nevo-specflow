@@ -22,9 +22,13 @@ const installing = new Map<string, Promise<void>>();
 export function installDefinitionsForTesting(engine: SpecFlowEngine): Promise<void> {
   const homeRoot = engine.context.project.homeRoot;
   const running = installing.get(homeRoot);
-  if (running) return running;
+  if (running) {
+    return running;
+  }
+
   const started = installWhenAbsent(engine).finally(() => installing.delete(homeRoot));
   installing.set(homeRoot, started);
+
   return started;
 }
 
@@ -32,10 +36,12 @@ async function installWhenAbsent(engine: SpecFlowEngine): Promise<void> {
   const target = join(engine.context.project.homeRoot, ...DEFINITIONS_RELATIVE_PATH.split('/'));
   try {
     await stat(target);
+
     return;
   } catch {
     // No definitions folder yet.
   }
+
   await installProjectDefinitions(engine);
 }
 
@@ -50,7 +56,9 @@ export function seedCatalogueForTesting(): Promise<ResolvedCatalogue> {
   seedCatalogue ??= (async () => {
     const seeds = await openSeedSource();
     const loaded = await loadDefinitions(seeds.source, createDefaultDefinitionRegistry());
+
     return resolveProjectCatalogue(loaded).catalogue;
   })();
+
   return seedCatalogue;
 }

@@ -95,6 +95,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
         const read = await app.inject(url);
         expect(read.statusCode, `${url}: ${read.body}`).toBe(200);
       }
+
       const document = await readCanonicalSpecDocument(engine, created.specId, 'overview');
       expect(document).toBeDefined();
 

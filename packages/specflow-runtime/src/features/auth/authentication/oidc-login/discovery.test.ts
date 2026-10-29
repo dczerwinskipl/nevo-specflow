@@ -12,6 +12,7 @@ describe('OIDC discovery lifecycle', () => {
         if (attempts === 1) {
           return Promise.reject(new Error('temporary discovery failure'));
         }
+
         return Promise.resolve({ issuer: 'https://issuer.example.test' });
       },
       {

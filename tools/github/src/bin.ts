@@ -16,15 +16,26 @@ async function main(argv: string[]): Promise<number> {
 
   try {
     await program.parseAsync(argv);
+
     return 0;
   } catch (err) {
     if (err instanceof CommanderError) {
-      if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') return 0;
+      if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') {
+        return 0;
+      }
+
       return 2;
     }
+
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
-    if (err instanceof UsageError) return 2;
-    if (err instanceof GithubToolError) return 1;
+    if (err instanceof UsageError) {
+      return 2;
+    }
+
+    if (err instanceof GithubToolError) {
+      return 1;
+    }
+
     return 1;
   }
 }

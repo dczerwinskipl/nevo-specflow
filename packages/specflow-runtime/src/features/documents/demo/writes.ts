@@ -58,37 +58,54 @@ export interface PlannedWrite {
 
 /** Refuses any write the Specification cannot take now, with the reason the tree advertises. */
 export function assertWritable(documents: DemoSpecDocuments): void {
-  if (documents.location === 'archive')
+  if (documents.location === 'archive') {
     throw refuse('SPEC_ARCHIVED', 'The Specification is archived.', { reason: 'archived' });
-  if (documents.policyReason === 'git-policy-invalid')
+  }
+
+  if (documents.policyReason === 'git-policy-invalid') {
     throw refuse('GIT_POLICY_INVALID', 'The project Git policy is invalid.', {
       reason: 'git-policy-invalid',
     });
-  if (documents.policyReason)
+  }
+
+  if (documents.policyReason) {
     throw refuse('BRANCH_PROTECTED', 'The Engine does not commit on this branch.', {
       reason: documents.policyReason,
     });
-  if (documents.busy)
+  }
+
+  if (documents.busy) {
     throw refuse('SPEC_BUSY', 'Another write is in progress.', { reason: 'busy' });
+  }
 }
 
 function checkedFilePath(path: string): string {
-  if (!validateDocumentPath(path).ok)
+  if (!validateDocumentPath(path).ok) {
     throw refuse('DOCUMENT_PATH_INVALID', 'The path is not a valid document path.');
+  }
+
   return path;
 }
 
 function checkedFolderPath(path: string): string {
-  if (!validateFolderPath(path).ok)
+  if (!validateFolderPath(path).ok) {
     throw refuse('DOCUMENT_PATH_INVALID', 'The path is not a valid folder path.');
+  }
+
   return path;
 }
 
 /** Every path of the directory a new entry must not reuse, ignoring case (files and folders). */
 function takenPaths(files: Iterable<string>, folders: Iterable<string>) {
   const taken = new Set<string>();
-  for (const path of files) taken.add(foldKey(path));
-  for (const path of folders) taken.add(foldKey(path));
+  for (const path of files) {
+    taken.add(foldKey(path));
+  }
+
+  for (const path of folders) {
+    taken.add(foldKey(path));
+  }
+
   return taken;
 }
 
@@ -104,14 +121,17 @@ function danglingPaths(documents: Pick<DemoSpecDocuments, 'files' | 'registry'>)
 
 /** A file path conflicts with a taken path, or with a file used as one of its folders. */
 function assertFree(path: string, taken: ReadonlySet<string>, files: ReadonlySet<string>) {
-  if (taken.has(foldKey(path)) || ancestors(path).some((folder) => files.has(foldKey(folder))))
+  if (taken.has(foldKey(path)) || ancestors(path).some((folder) => files.has(foldKey(folder)))) {
     throw refuse('DOCUMENT_PATH_CONFLICT', 'The path conflicts with another entry.');
+  }
 }
 
 function documentType(catalogue: ResolvedCatalogue, type: string): string {
   // `overview` is the framework's own document; any other type must be in the catalogue.
-  if (type === OVERVIEW_DOCUMENT_TYPE || !catalogue.findDocumentType(type))
+  if (type === OVERVIEW_DOCUMENT_TYPE || !catalogue.findDocumentType(type)) {
     throw refuse('DOCUMENT_OPERATION_INVALID', 'The document type cannot be registered.');
+  }
+
   return type;
 }
 
@@ -140,21 +160,33 @@ export function planSave(
   input: { content: string; expectedRevision: string },
 ): PlannedWrite {
   const located = locate(documents, documentId);
-  if (!located) throw refuse('DOCUMENT_NOT_FOUND', 'Unknown document.');
-  if (located.kind === 'dangling')
+  if (!located) {
+    throw refuse('DOCUMENT_NOT_FOUND', 'Unknown document.');
+  }
+
+  if (located.kind === 'dangling') {
     throw refuse('DOCUMENT_FILE_MISSING', 'The registered document has no file.', {
       reason: 'dangling',
     });
-  if (!isEditable(observe(located.path, located.file)))
+  }
+
+  if (!isEditable(observe(located.path, located.file))) {
     throw refuse('DOCUMENT_NOT_EDITABLE', 'The document is not editable.', {
       reason: 'not-editable',
     });
-  if (Buffer.byteLength(input.content, 'utf8') > TEXT_CONTENT_MAX_BYTES)
+  }
+
+  if (Buffer.byteLength(input.content, 'utf8') > TEXT_CONTENT_MAX_BYTES) {
     throw refuse('DOCUMENT_TOO_LARGE', 'The content is above the save limit.');
-  if (located.file.revision !== input.expectedRevision)
+  }
+
+  if (located.file.revision !== input.expectedRevision) {
     throw refuse('DOCUMENT_REVISION_CONFLICT', 'The document changed since it was read.');
+  }
+
   const files = new Map(documents.files);
   files.set(located.path, textFile(input.content));
+
   return {
     registry: documents.registry,
     files,
@@ -180,8 +212,10 @@ export function planCreate(
     input.documents.length > MAX_CREATED_FILES ||
     folders.length > MAX_CREATED_FOLDERS ||
     (input.documents.length === 0 && folders.length === 0)
-  )
+  ) {
     throw refuse('DOCUMENT_OPERATION_INVALID', 'The batch is empty or above the limits.');
+  }
+
   const fileKeys = new Set([...documents.files.keys()].map(foldKey));
   const taken = takenPaths(
     [...documents.files.keys(), ...danglingPaths(documents)],
@@ -199,32 +233,53 @@ export function planCreate(
     checkedFolderPath(folder);
     assertFree(folder, taken, fileKeys);
     taken.add(foldKey(folder));
-    for (const ancestor of ancestors(folder + '/x')) taken.add(foldKey(ancestor));
+    for (const ancestor of ancestors(folder + '/x')) {
+      taken.add(foldKey(ancestor));
+    }
+
     nextFolders.push(folder);
   }
+
   const affectedPaths: string[] = [];
   for (const entry of input.documents) {
     const path = checkedFilePath(entry.path);
-    if (!CREATABLE.test(path))
+    if (!CREATABLE.test(path)) {
       throw refuse('DOCUMENT_PATH_INVALID', 'Only md and txt documents can be created.');
+    }
+
     let content: string;
     let type = entry.type;
     if ('templateId' in entry) {
       const template = catalogue.findTemplate(documents.archetype.id, entry.templateId);
-      if (!template) throw refuse('ARCHETYPE_UNKNOWN', 'Unknown template of the archetype.');
+      if (!template) {
+        throw refuse('ARCHETYPE_UNKNOWN', 'Unknown template of the archetype.');
+      }
+
       content = renderTemplate(template.content, values);
       type ??= template.documentType;
-    } else content = entry.content;
-    if (Buffer.byteLength(content, 'utf8') > TEXT_CONTENT_MAX_BYTES)
+    } else {
+      content = entry.content;
+    }
+
+    if (Buffer.byteLength(content, 'utf8') > TEXT_CONTENT_MAX_BYTES) {
       throw refuse('DOCUMENT_TOO_LARGE', 'The content is above the save limit.');
+    }
+
     assertFree(path, taken, fileKeys);
     taken.add(foldKey(path));
     fileKeys.add(foldKey(path));
-    for (const ancestor of ancestors(path)) taken.add(foldKey(ancestor));
+    for (const ancestor of ancestors(path)) {
+      taken.add(foldKey(ancestor));
+    }
+
     files.set(path, textFile(content));
-    if (type !== undefined) register(documents, registry, path, documentType(catalogue, type));
+    if (type !== undefined) {
+      register(documents, registry, path, documentType(catalogue, type));
+    }
+
     affectedPaths.push(path);
   }
+
   return { registry, files, folders: nextFolders, affectedPaths, removedDocumentIds: [] };
 }
 
@@ -239,7 +294,9 @@ function assertOperationShape(input: DocumentOperationInput) {
       (input.name !== undefined || input.targetFolder !== undefined)) ||
     (input.action === 'classify') !== (input.type !== undefined) ||
     (input.action === 'classify' && input.kind !== 'document');
-  if (invalid) throw refuse('DOCUMENT_OPERATION_INVALID', 'Malformed operation.');
+  if (invalid) {
+    throw refuse('DOCUMENT_OPERATION_INVALID', 'Malformed operation.');
+  }
 }
 
 /**
@@ -255,6 +312,7 @@ export function planOperation(
   input: DocumentOperationInput,
 ): PlannedWrite {
   assertOperationShape(input);
+
   return input.kind === 'document'
     ? planDocumentOperation(documents, catalogue, input, input.documentId!)
     : planFolderOperation(documents, input, input.path!);
@@ -267,19 +325,28 @@ function planDocumentOperation(
   documentId: string,
 ): PlannedWrite {
   const located = locate(documents, documentId);
-  if (!located) throw refuse('DOCUMENT_NOT_FOUND', 'Unknown document.');
+  if (!located) {
+    throw refuse('DOCUMENT_NOT_FOUND', 'Unknown document.');
+  }
+
   const isProtected = located.entry?.type === OVERVIEW_DOCUMENT_TYPE;
   if (located.kind === 'dangling') {
-    if (input.action !== 'delete')
+    if (input.action !== 'delete') {
       throw refuse('DOCUMENT_FILE_MISSING', 'The registered document has no file.', {
         reason: 'dangling',
       });
-    if (isProtected)
+    }
+
+    if (isProtected) {
       throw refuse('DOCUMENT_PROTECTED', 'The overview cannot be removed.', {
         reason: 'protected',
       });
-    if (demoTree(documents).revision !== input.expectedRevision)
+    }
+
+    if (demoTree(documents).revision !== input.expectedRevision) {
       throw refuse('DOCUMENT_REVISION_CONFLICT', 'The tree changed since it was read.');
+    }
+
     return {
       registry: documents.registry.filter((candidate) => candidate !== located.entry),
       files: documents.files,
@@ -288,18 +355,25 @@ function planDocumentOperation(
       removedDocumentIds: [located.entry.id],
     };
   }
+
   if (input.action === 'classify') {
-    if (located.entry)
+    if (located.entry) {
       throw refuse('DOCUMENT_ALREADY_CLASSIFIED', 'The document is already registered.');
-  } else if (isProtected)
+    }
+  } else if (isProtected) {
     throw refuse('DOCUMENT_PROTECTED', 'The overview cannot be deleted, renamed or moved.', {
       reason: 'protected',
     });
-  if (located.file.revision !== input.expectedRevision)
+  }
+
+  if (located.file.revision !== input.expectedRevision) {
     throw refuse('DOCUMENT_REVISION_CONFLICT', 'The document changed since it was read.');
+  }
+
   if (input.action === 'classify') {
     const registry = [...documents.registry];
     register(documents, registry, located.path, documentType(catalogue, input.type!));
+
     return {
       registry,
       files: documents.files,
@@ -308,9 +382,11 @@ function planDocumentOperation(
       removedDocumentIds: [],
     };
   }
+
   if (input.action === 'delete') {
     const files = new Map(documents.files);
     files.delete(located.path);
+
     return {
       registry: documents.registry.filter((candidate) => candidate.path !== located.path),
       files,
@@ -319,17 +395,21 @@ function planDocumentOperation(
       removedDocumentIds: [located.id],
     };
   }
+
   const destination = checkedFilePath(
     input.action === 'rename'
       ? joinPath(parentOf(located.path), input.name!)
       : joinPath(targetFolder(documents, input.targetFolder!), baseName(located.path)),
   );
+
   return relocate(documents, (path) => (path === located.path ? destination : path), []);
 }
 
 function targetFolder(documents: DemoSpecDocuments, folder: string): string {
-  if (folder !== '' && !allFolders(documents).includes(folder))
+  if (folder !== '' && !allFolders(documents).includes(folder)) {
     throw refuse('DOCUMENT_PATH_INVALID', 'The target folder does not exist.');
+  }
+
   return folder;
 }
 
@@ -338,22 +418,31 @@ function planFolderOperation(
   input: DocumentOperationInput,
   path: string,
 ): PlannedWrite {
-  if (path === '')
+  if (path === '') {
     throw refuse('DOCUMENT_OPERATION_INVALID', 'The root folder cannot be changed.', {
       reason: 'root',
     });
-  if (!allFolders(documents).includes(path)) throw refuse('DOCUMENT_NOT_FOUND', 'Unknown folder.');
+  }
+
+  if (!allFolders(documents).includes(path)) {
+    throw refuse('DOCUMENT_NOT_FOUND', 'Unknown folder.');
+  }
+
   // Like the Engine: the FOLDER revision the tree reports for this folder (commit state excluded),
   // never the tree revision.
   const folder = demoTree(documents).folders.find((candidate) => candidate.path === path);
-  if (folder?.revision !== input.expectedRevision)
+  if (folder?.revision !== input.expectedRevision) {
     throw refuse('DOCUMENT_REVISION_CONFLICT', 'The folder changed since it was read.');
+  }
+
   if (
     documents.registry.some(
       (entry) => entry.type === OVERVIEW_DOCUMENT_TYPE && within(entry.path, path),
     )
-  )
+  ) {
     throw refuse('DOCUMENT_PROTECTED', 'The folder holds the overview.', { reason: 'protected' });
+  }
+
   if (input.action === 'delete') {
     const files = new Map([...documents.files].filter(([file]) => !within(file, path)));
     const removed = [...documents.files.keys()].filter((file) => within(file, path));
@@ -361,6 +450,7 @@ function planFolderOperation(
     const dangling = documents.registry.filter(
       (entry) => !documents.files.has(entry.path) && within(entry.path, path),
     );
+
     return {
       registry: documents.registry.filter(
         (entry) => !removed.includes(entry.path) && !dangling.includes(entry),
@@ -374,15 +464,19 @@ function planFolderOperation(
       ],
     };
   }
+
   const destination = checkedFolderPath(
     input.action === 'rename'
       ? joinPath(parentOf(path), input.name!)
       : joinPath(targetFolder(documents, input.targetFolder!), baseName(path)),
   );
-  if (within(destination, path) && foldKey(destination) !== foldKey(path))
+  if (within(destination, path) && foldKey(destination) !== foldKey(path)) {
     throw refuse('DOCUMENT_PATH_INVALID', 'A folder cannot move into itself.');
+  }
+
   const remap = (candidate: string) =>
     within(candidate, path) ? destination + candidate.slice(path.length) : candidate;
+
   return relocate(documents, remap, [path]);
 }
 
@@ -399,29 +493,42 @@ function relocate(
   const affectedPaths: string[] = [];
   for (const [path, file] of documents.files) {
     const next = remap(path);
-    if (next !== path) affectedPaths.push(next);
+    if (next !== path) {
+      affectedPaths.push(next);
+    }
+
     files.set(next, file);
   }
+
   const folders = documents.folders.map(remap);
   const keys = [...files.keys()].map(foldKey);
-  if (new Set(keys).size !== keys.length || files.size !== documents.files.size)
+  if (new Set(keys).size !== keys.length || files.size !== documents.files.size) {
     throw refuse('DOCUMENT_PATH_CONFLICT', 'The new path conflicts with another entry.');
+  }
+
   const folderKeys = new Set(allFolders({ files, folders }).map(foldKey));
-  if (keys.some((key) => folderKeys.has(key)))
+  if (keys.some((key) => folderKeys.has(key))) {
     throw refuse('DOCUMENT_PATH_CONFLICT', 'The new path conflicts with a folder.');
+  }
+
   // A dangling registration keeps its path: no file may land on it (it would be registered twice).
   const dangling = new Set(danglingPaths(documents).map((path) => foldKey(remap(path))));
-  if (keys.some((key) => dangling.has(key)))
+  if (keys.some((key) => dangling.has(key))) {
     throw refuse('DOCUMENT_PATH_CONFLICT', 'The new path is registered to a missing file.');
+  }
+
   for (const folder of movedFolders) {
     const next = remap(folder);
     const others = allFolders(documents).filter((candidate) => !within(candidate, folder));
-    if (next !== folder && others.some((other) => foldKey(other) === foldKey(next)))
+    if (next !== folder && others.some((other) => foldKey(other) === foldKey(next))) {
       throw refuse('DOCUMENT_PATH_CONFLICT', 'The new folder path is taken.');
+    }
   }
+
   return {
     registry: documents.registry.map((entry) => {
       const next = remap(entry.path);
+
       return next === entry.path ? entry : { ...entry, path: next };
     }),
     files,

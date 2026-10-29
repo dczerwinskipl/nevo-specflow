@@ -46,6 +46,7 @@ export async function admitExistingCreateCommit(
   const commits = openVersionControl(engine).commits;
   const branch = await commits.currentBranch(input.root);
   await commits.preflight(requestOf({ ...input, branch }));
+
   return branch;
 }
 
@@ -79,7 +80,10 @@ export async function ensureScaffoldCommitted(
   record: CreateJournal,
 ): Promise<string> {
   const evidence = record.commit;
-  if (!evidence?.parentHead) throw recovery('Create journal has no commit intent.');
+  if (!evidence?.parentHead) {
+    throw recovery('Create journal has no commit intent.');
+  }
+
   const commits = openVersionControl(engine).commits;
   const root = record.target.workspaceRoot;
   const paths = scaffoldPaths(record);
@@ -88,15 +92,22 @@ export async function ensureScaffoldCommitted(
     if (found.status === 'history-changed') {
       throw recovery('Git history no longer contains the commit parent; manual recovery required.');
     }
+
     if (found.status === 'found') {
       await verifyCommittedScaffold(commits, root, found, record);
+
       return found.sha;
     }
+
     const state = await commits.inspectPaths(root, paths);
-    if (state.state === 'committed') return state.sha;
+    if (state.state === 'committed') {
+      return state.sha;
+    }
+
     if (state.state === 'mixed') {
       throw recovery('Scaffold files are partly committed or modified; manual recovery required.');
     }
+
     return (
       await commits.commit(
         requestOf({
@@ -125,6 +136,7 @@ async function verifyCommittedScaffold(
   if (!isExactPathSet(found.paths, scaffoldPaths(record))) {
     throw recovery('The scaffold commit does not contain exactly the scaffold files.');
   }
+
   // The working file was just verified against the pinned hash; the blob must be what Git stores
   // for those bytes under the repository's attributes.
   if (
@@ -146,7 +158,10 @@ export async function requireCommitLineage(
 ): Promise<void> {
   const target = record.target;
   const evidence = record.commit;
-  if (target.kind !== 'new-worktree' || !evidence) return;
+  if (target.kind !== 'new-worktree' || !evidence) {
+    return;
+  }
+
   const commits = openVersionControl(engine).commits;
   const head = await commits.head(target.workspaceRoot);
   // Before the commit is proven, HEAD is the base or one descendant; afterwards it contains the commit.

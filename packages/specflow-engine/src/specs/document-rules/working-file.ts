@@ -28,27 +28,46 @@ export async function hashWorkingFile(
   maxBytes: number,
 ): Promise<WorkingFileHash> {
   try {
-    if (!(await lstat(absolutePath)).isFile()) return { kind: 'not-regular' };
+    if (!(await lstat(absolutePath)).isFile()) {
+      return { kind: 'not-regular' };
+    }
+
     const handle = await open(absolutePath, READ_OPEN_FLAGS);
     try {
       const stat = await handle.stat();
-      if (!stat.isFile()) return { kind: 'not-regular' };
-      if (stat.size > maxBytes) return { kind: 'too-large' };
+      if (!stat.isFile()) {
+        return { kind: 'not-regular' };
+      }
+
+      if (stat.size > maxBytes) {
+        return { kind: 'too-large' };
+      }
+
       const hash = createHash('sha256');
       let position = 0;
       for (;;) {
         const chunk = await readAt(handle, position, CHUNK_BYTES);
-        if (chunk.length === 0) break;
+        if (chunk.length === 0) {
+          break;
+        }
+
         position += chunk.length;
-        if (position > maxBytes) return { kind: 'too-large' };
+        if (position > maxBytes) {
+          return { kind: 'too-large' };
+        }
+
         hash.update(chunk);
       }
+
       return { kind: 'file', sha256: hash.digest('hex'), bytes: position };
     } finally {
       await handle.close().catch(() => undefined);
     }
   } catch (error) {
-    if (isAbsent(error)) return { kind: 'absent' };
+    if (isAbsent(error)) {
+      return { kind: 'absent' };
+    }
+
     return { kind: 'not-regular' };
   }
 }

@@ -64,8 +64,10 @@ function setup(guidance: DocumentGuidance | null = research) {
       id: action.id,
       checked: action.checked,
     }));
+
     return <GuidanceButton />;
   }
+
   const store = createDocumentDraftStore();
   const tree = (shown: DocumentContent, shownGuidance = guidance ?? undefined) => (
     <QueryClientProvider client={queryClient}>
@@ -81,10 +83,12 @@ function setup(guidance: DocumentGuidance | null = research) {
     </QueryClientProvider>
   );
   const view = render(tree(record()));
+
   return Object.assign(seen, {
     show: (next: DocumentContent) => view.rerender(tree(next)),
   });
 }
+
 const toggle = () => screen.queryByRole('button', { name: 'Wskazówki' });
 
 describe('the writing guidance of a document', () => {

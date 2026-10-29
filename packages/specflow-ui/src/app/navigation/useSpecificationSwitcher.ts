@@ -41,11 +41,16 @@ export function useSpecificationSwitcher({
     term,
   );
   const choose = async (id: string) => {
-    if (pending) return;
-    if (id === specId) {
-      setOpen(false);
+    if (pending) {
       return;
     }
+
+    if (id === specId) {
+      setOpen(false);
+
+      return;
+    }
+
     setFailure(false);
     try {
       await router.navigate({
@@ -61,6 +66,7 @@ export function useSpecificationSwitcher({
       setFailure(true);
     }
   };
+
   return {
     open,
     term,
@@ -77,6 +83,7 @@ export function useSpecificationSwitcher({
         committed.current = false;
         setTerm('');
       }
+
       setOpen(value);
     },
   };

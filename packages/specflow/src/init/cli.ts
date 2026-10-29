@@ -101,8 +101,10 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         if (protectedBranches.length > 0) {
           gitConfig = { ...gitConfig, commits: { protectedBranches } };
         }
+
         autoCommit = await chooseAutoCommit(ui);
       }
+
       // The definitions are written only where Nevo may commit them, so they are never left untracked
       // in the worktree. On a protected (or not allowed) branch init offers a new branch for them;
       // otherwise it says so and goes on without them.
@@ -119,6 +121,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
           }
         }
       }
+
       const protectedNote =
         gitConfig.integrationTargetBranch !== undefined
           ? integrationTargetProtectedNote(gitConfig.integrationTargetBranch, protectedBranches)
@@ -179,6 +182,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
 
       if (!(await ui.confirm('Write configuration?', true))) {
         ui.note('No files were written.', 'Setup cancelled');
+
         return;
       }
 
@@ -199,7 +203,10 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
           installDefinitions,
         });
       } catch (error) {
-        if (definitionsBranch === undefined || previousBranch === undefined) throw error;
+        if (definitionsBranch === undefined || previousBranch === undefined) {
+          throw error;
+        }
+
         // Nothing was written (initialization undoes its files), but the checkout moved.
         throw new Error(
           (error instanceof Error ? error.message : String(error)) +
@@ -228,7 +235,10 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         );
         try {
           const commit = await commitInstalledDefinitions(engine, result.definitionPaths);
-          if (commit) context.stdout(`Committed the definitions as ${commit.sha.slice(0, 7)}.`);
+          if (commit) {
+            context.stdout(`Committed the definitions as ${commit.sha.slice(0, 7)}.`);
+          }
+
           if (definitionsBranch !== undefined) {
             const target =
               previousBranch !== undefined ? `'${previousBranch}'` : 'your main branch';
@@ -267,11 +277,16 @@ async function definitionsRefusalForInit(
 ): Promise<DefinitionsRefusal | undefined> {
   try {
     await assertInitialDefinitionsCommittable(root, git);
+
     return undefined;
   } catch (error) {
-    if (!(error instanceof GitCapabilityError)) throw error;
+    if (!(error instanceof GitCapabilityError)) {
+      throw error;
+    }
+
     if (error.code === 'BRANCH_PROTECTED') {
       const { current } = await inspectLocalBranches(root);
+
       return {
         note: [
           'not installed. Create needs them: until they are installed the archetype catalogue is empty.',
@@ -280,6 +295,7 @@ async function definitionsRefusalForInit(
         ...(error.reason !== undefined ? { reason: error.reason } : {}),
       };
     }
+
     return {
       note:
         'not installed: Nevo cannot commit them on the current branch' +
@@ -304,8 +320,12 @@ async function chooseDefinitionsBranch(
   if (refusal.reason !== 'branch-protected' && refusal.reason !== 'branch-not-allowed') {
     return undefined;
   }
+
   const offer = await initialDefinitionsBranchOffer(root, git);
-  if (offer === undefined) return undefined;
+  if (offer === undefined) {
+    return undefined;
+  }
+
   const { current } = await inspectLocalBranches(root);
   ui.note(refusal.note.replace(/^not installed\. /u, ''), 'Default definitions');
   const choice = await ui.select<'branch' | 'skip'>(
@@ -324,6 +344,7 @@ async function chooseDefinitionsBranch(
     ],
     'branch',
   );
+
   return choice === 'branch' ? offer : undefined;
 }
 
@@ -352,5 +373,6 @@ async function bootstrapFailure(
       ? ['Then commit the definitions with: nevo-specflow definitions install --add-missing']
       : []),
   ];
+
   return new Error(lines.join('\n'), { cause: error });
 }

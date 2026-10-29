@@ -18,6 +18,7 @@ export function FeatureUnavailable({
   readonly className?: string;
 }) {
   const { t } = useTranslation();
+
   return (
     <EmptyState
       role="status"

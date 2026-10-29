@@ -13,6 +13,7 @@ export interface SpecificationApi {
 
 export function createRuntimeSpecificationApi(api: ApiTransport): SpecificationApi {
   const base = (specId: string) => '/api/specs/' + encodeURIComponent(specId);
+
   return {
     getSpecificationWorkspace: (specId, signal) =>
       api.get<SpecificationWorkspaceResponse>(base(specId) + '/workspace', {

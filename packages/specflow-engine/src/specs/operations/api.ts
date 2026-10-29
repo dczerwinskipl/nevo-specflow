@@ -30,7 +30,10 @@ export async function inspectPublicCloseOperation(
   operationId: string,
 ): Promise<PublicCloseInspection | undefined> {
   const journal = await inspectCloseOperation(engine, operationId);
-  if (!journal || journal.plan.kind === 'workspace-close') return undefined;
+  if (!journal || journal.plan.kind === 'workspace-close') {
+    return undefined;
+  }
+
   return {
     ...projectCloseOperation(journal),
     integrationRequired:
@@ -65,7 +68,10 @@ export async function planPublicCloseOperation(
     options.flushDocumentCommits === true
       ? projectClosePreview(await previewWithDocumentFlush(engine, request, {}))
       : previewPublicCloseOperation(engine, request);
-  if (!request.operationId) return preview();
+  if (!request.operationId) {
+    return preview();
+  }
+
   const existing = await inspectCloseOperation(engine, request.operationId);
   if (existing) {
     if (
@@ -76,8 +82,10 @@ export async function planPublicCloseOperation(
     ) {
       throw new CloseOperationError('CLOSE_CONFLICT', 'Operation identity does not match intent.');
     }
+
     return projectClosePreview(existing.plan);
   }
+
   return preview();
 }
 
@@ -86,10 +94,15 @@ export async function closeWorktreeOperation(
   request: { readonly operationId: string; readonly specId: string },
 ): Promise<PublicCloseOperation> {
   const result = await closeWorktree(engine, request);
-  if ('journal' in result) return projectCloseOperation(result.journal);
+  if ('journal' in result) {
+    return projectCloseOperation(result.journal);
+  }
+
   const journal = await inspectCloseOperation(engine, request.operationId);
-  if (!journal)
+  if (!journal) {
     throw new CloseOperationError('CLOSE_RECOVERY_REQUIRED', 'Close outcome journal is missing.');
+  }
+
   return projectCloseOperation(journal);
 }
 
@@ -126,14 +139,18 @@ export async function planPublicWorkspaceCloseOperation(
     if (
       existing.plan.kind !== 'workspace-close' ||
       existing.plan.workspaceId !== request.workspaceId
-    )
+    ) {
       throw new CloseOperationError(
         'CLOSE_CONFLICT',
         'Operation identity does not match workspace.',
       );
+    }
+
     return projectWorkspaceClosePreview(existing.plan);
   }
+
   const intent = { ...request, kind: 'workspace-close' } as const;
+
   return projectWorkspaceClosePreview(
     options.flushDocumentCommits === true
       ? await previewWithDocumentFlush(engine, intent, {})
@@ -146,10 +163,15 @@ export async function closeWorkspaceOperation(
   request: { readonly operationId: string; readonly workspaceId: string },
 ): Promise<PublicWorkspaceCloseOperation> {
   const result = await closeWorkspace(engine, request);
-  if ('journal' in result) return projectWorkspaceCloseOperation(result.journal);
+  if ('journal' in result) {
+    return projectWorkspaceCloseOperation(result.journal);
+  }
+
   const journal = await inspectCloseOperation(engine, request.operationId);
-  if (!journal)
+  if (!journal) {
     throw new CloseOperationError('CLOSE_RECOVERY_REQUIRED', 'Workspace Close journal is missing.');
+  }
+
   return projectWorkspaceCloseOperation(journal);
 }
 
@@ -159,7 +181,9 @@ export async function inspectPublicWorkspaceCloseOperation(
   workspaceId: string,
 ): Promise<PublicWorkspaceCloseOperation | undefined> {
   const journal = await inspectCloseOperation(engine, operationId);
-  if (journal?.plan.kind !== 'workspace-close' || journal.plan.workspaceId !== workspaceId)
+  if (journal?.plan.kind !== 'workspace-close' || journal.plan.workspaceId !== workspaceId) {
     return undefined;
+  }
+
   return projectWorkspaceCloseOperation(journal);
 }

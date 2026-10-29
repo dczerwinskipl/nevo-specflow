@@ -10,11 +10,14 @@ export function collectEnabledItemValues(children: ReactNode): string[] {
   const values: string[] = [];
 
   Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
+    if (!isValidElement(child)) {
+      return;
+    }
 
     const childProps = child.props as SelectableChildProps;
     if (child.type === Fragment) {
       values.push(...collectEnabledItemValues(childProps.children));
+
       return;
     }
 
@@ -36,7 +39,9 @@ export function findEnabledItems(
   itemSelector: string,
 ) {
   const container = currentItem.closest<HTMLElement>(containerSelector);
-  if (!container) return [];
+  if (!container) {
+    return [];
+  }
 
   return Array.from(container.querySelectorAll<HTMLButtonElement>(itemSelector)).filter(
     (candidate) => !candidate.disabled && candidate.closest(containerSelector) === container,
@@ -49,9 +54,17 @@ export function resolveRovingIndex(
   itemCount: number,
   includeVerticalArrows = false,
 ) {
-  if (itemCount <= 0 || currentIndex < 0) return null;
-  if (key === 'Home') return 0;
-  if (key === 'End') return itemCount - 1;
+  if (itemCount <= 0 || currentIndex < 0) {
+    return null;
+  }
+
+  if (key === 'Home') {
+    return 0;
+  }
+
+  if (key === 'End') {
+    return itemCount - 1;
+  }
 
   const direction =
     key === 'ArrowRight' || (includeVerticalArrows && key === 'ArrowDown')
@@ -78,8 +91,14 @@ export function useControllableSelection({
 
   const select = useCallback(
     (nextValue: string) => {
-      if (nextValue === selectedValue) return;
-      if (!controlled) setUncontrolledValue(nextValue);
+      if (nextValue === selectedValue) {
+        return;
+      }
+
+      if (!controlled) {
+        setUncontrolledValue(nextValue);
+      }
+
       onValueChange?.(nextValue);
     },
     [controlled, onValueChange, selectedValue],

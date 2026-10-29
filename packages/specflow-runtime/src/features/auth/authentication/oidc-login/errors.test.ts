@@ -36,5 +36,6 @@ describe('OIDC provider error classification', () => {
 function clientError(code: string): ClientError {
   const error = new ClientError(`openid-client error: ${code}`);
   error.code = code;
+
   return error;
 }

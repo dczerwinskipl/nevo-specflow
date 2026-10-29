@@ -31,6 +31,7 @@ export interface LifecycleRegistryCAS {
 function conflict(message: string): WorkspaceRegistryError {
   return new WorkspaceRegistryError('REGISTRY_CONFLICT', message);
 }
+
 function assertOwnership(
   current: WorkspaceRegistry,
   claim: LifecycleRegistryCAS,
@@ -47,16 +48,21 @@ function assertOwnership(
     !source.managed ||
     source.instanceId !== claim.sourceInstanceId ||
     source.root !== claim.sourceRoot
-  )
+  ) {
     throw conflict('Lifecycle source is not an exclusively managed, pinned checkout.');
+  }
+
   const bound = current.specBindings
     .filter((x) => x.workspaceId === claim.sourceWorkspaceId)
     .sort((a, b) => a.specId.localeCompare(b.specId));
   if (afterRebind) {
-    if (bound.length !== 0) throw conflict('Source still owns canonical Specifications.');
+    if (bound.length !== 0) {
+      throw conflict('Source still owns canonical Specifications.');
+    }
   } else if (!claim.occupants) {
-    if (bound.length !== 1 || bound[0]?.specId !== claim.specId)
+    if (bound.length !== 1 || bound[0]?.specId !== claim.specId) {
       throw conflict('Lifecycle source is not an exclusively bound checkout.');
+    }
   } else {
     if (
       bound.length !== claim.occupants.length ||
@@ -65,8 +71,9 @@ function assertOwnership(
           entry.specId !== claim.occupants![i]!.specId ||
           entry.generation !== claim.occupants![i]!.bindingGeneration,
       )
-    )
+    ) {
       throw conflict('Workspace occupant set or generations changed.');
+    }
   }
 }
 
@@ -77,15 +84,19 @@ export async function rebindLifecycleSpec(
 ): Promise<WorkspaceRegistry> {
   return withProjectControlLock(context, async () => {
     const current = await readWorkspaceRegistry(context);
-    if (current.revision !== claim.expectedRegistryRevision)
+    if (current.revision !== claim.expectedRegistryRevision) {
       throw conflict('Lifecycle registry snapshot changed.');
+    }
+
     assertOwnership(current, claim);
     const old = current.specBindings.find((x) => x.specId === claim.specId);
     if (
       old?.workspaceId !== claim.sourceWorkspaceId ||
       old.generation !== claim.expectedBindingGeneration
-    )
+    ) {
       throw conflict('Lifecycle binding generation changed.');
+    }
+
     const affected = new Set(claim.occupants?.map((x) => x.specId) ?? [claim.specId]);
     await assertSharedResourcesAvailable(context, claim.resources, {
       kind: 'close',
@@ -103,8 +114,12 @@ export async function rebindLifecycleSpec(
       },
       context,
     );
-    if (isDeepStrictEqual(next, current)) throw conflict('Lifecycle binding CAS was a no-op.');
+    if (isDeepStrictEqual(next, current)) {
+      throw conflict('Lifecycle binding CAS was a no-op.');
+    }
+
     await writeJsonAtomically(workspaceRegistryPath(context), next);
+
     return readWorkspaceRegistry(context);
   });
 }
@@ -117,19 +132,25 @@ export async function retireLifecycleWorkspace(
 ): Promise<WorkspaceRegistry> {
   return withProjectControlLock(context, async () => {
     const current = await readWorkspaceRegistry(context);
-    if (current.revision !== reboundRevision) throw conflict('Post-rebind registry changed.');
+    if (current.revision !== reboundRevision) {
+      throw conflict('Post-rebind registry changed.');
+    }
+
     assertOwnership(current, claim, true);
     const ids = claim.occupants?.map((x) => x.specId) ?? [claim.specId];
     if (
       ids.some((specId) => {
         const bound = current.specBindings.find((x) => x.specId === specId);
+
         return (
           bound?.workspaceId !== claim.targetWorkspaceId || bound.generation !== reboundRevision
         );
       }) ||
       current.specBindings.some((x) => x.workspaceId === claim.sourceWorkspaceId)
-    )
+    ) {
       throw conflict('Source workspace still owns a binding.');
+    }
+
     await assertSharedResourcesAvailable(context, claim.resources, {
       kind: 'close',
       operationId: claim.operationId,
@@ -143,6 +164,7 @@ export async function retireLifecycleWorkspace(
       context,
     );
     await writeJsonAtomically(workspaceRegistryPath(context), next);
+
     return readWorkspaceRegistry(context);
   });
 }

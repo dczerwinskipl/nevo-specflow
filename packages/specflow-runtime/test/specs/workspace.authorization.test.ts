@@ -9,7 +9,10 @@ describe('Workspace Session authorization projection', () => {
   it('filters all Session references, independently of visibility of the Sessions section', async () => {
     const demo = createDemoSpecsRepositories();
     const source = await readWorkspace(demo.workspaceRepository, demo.contributions, 'admission');
-    if (!source) throw new Error('Missing demonstration Specification');
+    if (!source) {
+      throw new Error('Missing demonstration Specification');
+    }
+
     const snapshot = presentWorkspace({
       ...source,
       recommendedSessionId: 'sample-session-23',
@@ -120,8 +123,10 @@ describe('Workspace Session authorization projection', () => {
       expect(serialized).not.toContain('Generic secret');
       expect(serialized).toContain('Visible session activity');
       expect(filtered.recommendedSessionId).toBeUndefined();
+
       return filtered;
     };
+
     const crossSectionFiltered = check(withCrossSectionItems);
     expect(crossSectionFiltered.specification.attention).not.toContainEqual(hiddenCrossSection);
     if (crossSectionFiltered.sections.tasks.state === 'available') {
@@ -129,6 +134,7 @@ describe('Workspace Session authorization projection', () => {
         hiddenCrossSection,
       );
     }
+
     if (crossSectionFiltered.sections.repository.state === 'available') {
       expect(crossSectionFiltered.sections.repository.data.attention).toEqual([]);
     }
@@ -156,7 +162,10 @@ describe('Workspace Session authorization projection', () => {
   it('never returns an unauthorized Session detail when none are permitted', async () => {
     const demo = createDemoSpecsRepositories();
     const source = await readWorkspace(demo.workspaceRepository, demo.contributions, 'admission');
-    if (!source) throw new Error('Missing demonstration Specification');
+    if (!source) {
+      throw new Error('Missing demonstration Specification');
+    }
+
     const filtered = authorizeSessionReferences(presentWorkspace(source), () => false);
     expect(filtered.sections.sessions).toEqual({ state: 'forbidden' });
     expect(filtered.recommendedSessionId).toBeUndefined();

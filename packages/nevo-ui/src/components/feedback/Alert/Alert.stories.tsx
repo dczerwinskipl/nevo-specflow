@@ -37,7 +37,9 @@ export const Tones: Story = {
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 const twoActions = (
@@ -92,11 +94,12 @@ export const ActionsOnNarrowAndWide: Story = {
           'On a narrow Alert the actions sit below the text.',
         );
         assert(title.getBoundingClientRect().width > 200, 'The title keeps the width.');
-      } else
+      } else {
         assert(
           actions.getBoundingClientRect().left > title.getBoundingClientRect().right,
           'On a wide Alert the actions sit beside the text.',
         );
+      }
     }
   },
 };

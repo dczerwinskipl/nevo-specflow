@@ -47,20 +47,32 @@ export class PageLeases {
       !(this.ttl > 0) ||
       !Number.isSafeInteger(this.capacity) ||
       this.capacity < 1
-    )
+    ) {
       throw Error('Invalid read lease limits');
+    }
   }
   private prune() {
-    for (const [key, lease] of this.leases)
-      if (lease.expires <= this.now()) this.leases.delete(key);
-    for (const [key, cursor] of this.cursors)
-      if (cursor.expires <= this.now() || !this.leases.has(cursor.token)) this.cursors.delete(key);
+    for (const [key, lease] of this.leases) {
+      if (lease.expires <= this.now()) {
+        this.leases.delete(key);
+      }
+    }
+
+    for (const [key, cursor] of this.cursors) {
+      if (cursor.expires <= this.now() || !this.leases.has(cursor.token)) {
+        this.cursors.delete(key);
+      }
+    }
   }
   create(input: Omit<PageLease, 'expires'>) {
     this.prune();
-    while (this.leases.size >= this.capacity) this.leases.delete(this.leases.keys().next().value!);
+    while (this.leases.size >= this.capacity) {
+      this.leases.delete(this.leases.keys().next().value!);
+    }
+
     const token = this.randomId();
     this.leases.set(token, { ...input, expires: this.now() + this.ttl });
+
     return { token, initialLimit: input.initialLimit };
   }
   resolve(
@@ -78,35 +90,56 @@ export class PageLeases {
       !sameTask(lease.identity, identity) ||
       lease.context.subject !== context.subject ||
       lease.context.policy !== context.policy
-    )
+    ) {
       return null;
+    }
+
     if (cursor !== undefined) {
       const record = this.cursors.get(cursor);
       if (
         record?.token !== token ||
         (requestedLimit !== undefined && requestedLimit !== record.limit)
-      )
+      ) {
         return null;
+      }
+
       return { lease, continuation: record.position, limit: record.limit };
     }
+
     const limit = requestedLimit ?? lease.firstLimit ?? lease.initialLimit;
-    if (lease.firstLimit !== undefined && limit !== lease.firstLimit) return null;
+    if (lease.firstLimit !== undefined && limit !== lease.firstLimit) {
+      return null;
+    }
+
     lease.firstLimit = limit;
+
     return { lease, continuation: lease.start, limit };
   }
   continue(token: string, position: string | null, limit: number) {
-    if (position === null) return null;
+    if (position === null) {
+      return null;
+    }
+
     this.prune();
     const lease = this.leases.get(token);
-    if (!lease) return null;
+    if (!lease) {
+      return null;
+    }
+
     // Replaying a page does not consume capacity or change its continuation handle.
-    for (const [key, cursor] of this.cursors)
-      if (cursor.token === token && cursor.position === position && cursor.limit === limit)
+    for (const [key, cursor] of this.cursors) {
+      if (cursor.token === token && cursor.position === position && cursor.limit === limit) {
         return key;
-    while (this.cursors.size >= this.capacity)
+      }
+    }
+
+    while (this.cursors.size >= this.capacity) {
       this.cursors.delete(this.cursors.keys().next().value!);
+    }
+
     const cursor = this.randomId();
     this.cursors.set(cursor, { token, position, limit, expires: lease.expires });
+
     return cursor;
   }
 }

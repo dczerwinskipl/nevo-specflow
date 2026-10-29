@@ -140,6 +140,7 @@ async function loadSeeds(input: InstallInput): Promise<Map<string, SeedDefinitio
       `The shipped definitions are invalid (${failure.source}: ${failure.message}).`,
     );
   }
+
   const seeds = new Map<string, SeedDefinition>();
   for (const kind of input.registry.loadOrder()) {
     for (const loaded of result.definitions.get(kind.kind)?.values() ?? []) {
@@ -150,6 +151,7 @@ async function loadSeeds(input: InstallInput): Promise<Map<string, SeedDefinitio
       });
     }
   }
+
   return seeds;
 }
 
@@ -164,16 +166,29 @@ async function inspectTarget(
   registry: DefinitionKindRegistry,
 ): Promise<TargetState> {
   const root = await target.list('', DEFINITION_DIRECTORY_OVERFLOW);
-  if (root.state !== 'ok' && root.state !== 'absent') return { state: 'unsafe', paths: [''] };
+  if (root.state !== 'ok' && root.state !== 'absent') {
+    return { state: 'unsafe', paths: [''] };
+  }
+
   const unsafe: string[] = [];
   let present = false;
   for (const kind of registry.loadOrder()) {
     const listing = await target.list(kind.kind, DEFINITION_DIRECTORY_OVERFLOW);
-    if (listing.state === 'absent') continue;
-    if (listing.state !== 'ok') unsafe.push(kind.kind);
-    else if (listing.entries.length > 0) present = true;
+    if (listing.state === 'absent') {
+      continue;
+    }
+
+    if (listing.state !== 'ok') {
+      unsafe.push(kind.kind);
+    } else if (listing.entries.length > 0) {
+      present = true;
+    }
   }
-  if (unsafe.length > 0) return { state: 'unsafe', paths: unsafe };
+
+  if (unsafe.length > 0) {
+    return { state: 'unsafe', paths: unsafe };
+  }
+
   return present ? { state: 'present' } : { state: 'empty' };
 }
 
@@ -191,6 +206,7 @@ async function bytesOf(source: DefinitionSource, path: string, limit: number): P
   if (read.state !== 'ok') {
     throw new DefinitionInstallError('SEEDS_INVALID', `The shipped file ${path} cannot be read.`);
   }
+
   return read.bytes;
 }
 
@@ -208,7 +224,10 @@ async function actionFor(
     case 'absent':
       return 'create';
     case 'ok':
-      if (existing.bytes.equals(shipped)) return 'unchanged';
+      if (existing.bytes.equals(shipped)) {
+        return 'unchanged';
+      }
+
       return force ? 'overwrite' : 'skipped-edited';
     case 'too-large':
       return force ? 'overwrite' : 'skipped-edited';
@@ -240,18 +259,21 @@ export async function planInstall(input: InstallInput): Promise<InstallPlanOutco
           `"${target}" is not of the form <kind>/<id>.`,
         );
       }
+
       if (!input.registry.has(match[1] ?? '')) {
         throw new DefinitionInstallError(
           'TARGET_INVALID',
           `"${match[1]}" is not a definition kind.`,
         );
       }
+
       if (!seeds.has(target)) {
         throw new DefinitionInstallError(
           'SEED_NOT_FOUND',
           `"${target}" is not among the shipped definitions (${[...seeds.keys()].join(', ')}).`,
         );
       }
+
       roots.push(target);
     }
   } else if (options.addMissing === true) {
@@ -261,12 +283,18 @@ export async function planInstall(input: InstallInput): Promise<InstallPlanOutco
     mode = 'bootstrap';
     roots = [...seeds.keys()];
     const state = await inspectTarget(input.target, input.registry);
-    if (state.state === 'unsafe') return unsafeRefusal(state.paths);
+    if (state.state === 'unsafe') {
+      return unsafeRefusal(state.paths);
+    }
+
     if (state.state === 'present') {
       const missing: string[] = [];
       for (const [key, seed] of seeds) {
-        if ((await input.target.stat(seed.loaded.source)).state === 'absent') missing.push(key);
+        if ((await input.target.stat(seed.loaded.source)).state === 'absent') {
+          missing.push(key);
+        }
       }
+
       return {
         status: 'refused',
         reason: 'definitions-exist',
@@ -295,6 +323,7 @@ export async function planInstall(input: InstallInput): Promise<InstallPlanOutco
   const ordered = [...selected].sort((left, right) => {
     const a = seeds.get(left)!;
     const b = seeds.get(right)!;
+
     return (
       (order.get(a.loaded.kind) ?? 0) - (order.get(b.loaded.kind) ?? 0) ||
       (left < right ? -1 : left > right ? 1 : 0)
@@ -312,7 +341,10 @@ export async function planInstall(input: InstallInput): Promise<InstallPlanOutco
       { path: seed.loaded.source, role: 'definition' as const },
     ];
     for (const file of files) {
-      if (seen.has(file.path)) continue;
+      if (seen.has(file.path)) {
+        continue;
+      }
+
       seen.add(file.path);
       const shipped = await bytesOf(
         input.seed,
@@ -329,8 +361,12 @@ export async function planInstall(input: InstallInput): Promise<InstallPlanOutco
       });
     }
   }
+
   const blocked = items.filter((item) => item.action === 'blocked').map((item) => item.path);
-  if (blocked.length > 0) return unsafeRefusal(blocked);
+  if (blocked.length > 0) {
+    return unsafeRefusal(blocked);
+  }
+
   return { status: 'planned', plan: { mode, items } };
 }
 
@@ -341,7 +377,10 @@ export async function applyInstall(
 ): Promise<string[]> {
   const written: string[] = [];
   for (const item of plan.items) {
-    if (item.action !== 'create' && item.action !== 'overwrite') continue;
+    if (item.action !== 'create' && item.action !== 'overwrite') {
+      continue;
+    }
+
     const bytes = await bytesOf(
       input.seed,
       item.path,
@@ -357,8 +396,10 @@ export async function applyInstall(
         written,
       );
     }
+
     written.push(item.path);
   }
+
   return written;
 }
 
@@ -368,5 +409,6 @@ export async function installDefinitions(input: InstallInput): Promise<InstallRe
   if (outcome.status === 'refused' || input.options?.dryRun === true) {
     return { outcome, written: [] };
   }
+
   return { outcome, written: await applyInstall(input, outcome.plan) };
 }

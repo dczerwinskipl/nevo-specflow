@@ -18,7 +18,10 @@ export async function headHoldsWholeBatch(
     root,
     expectations.map((entry) => entry.path),
   );
-  if (split.effective.length > 0) return false;
+  if (split.effective.length > 0) {
+    return false;
+  }
+
   return decideBatchReplay(await inspectBatch(root, expectations, split.facts)) === 'done';
 }
 
@@ -42,5 +45,6 @@ export async function commitHoldsPaths(
     subset.map((entry) => entry.path),
     sha,
   );
+
   return decideBatchReplay(await inspectBatch(root, subset, facts)) === 'done';
 }

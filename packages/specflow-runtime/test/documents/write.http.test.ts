@@ -116,6 +116,7 @@ async function project(config = GIT_ON): Promise<Fixture> {
     '-qm',
     'specification',
   );
+
   return { root, engine: await bootstrapProjectHome(root), ...spec };
 }
 
@@ -154,6 +155,7 @@ async function handBuilt(root: string, slug: string, location: 'active' | 'archi
   await writeFile(join(dir, 'notes-1.md'), notes(1));
   await writeFile(join(dir, 'notes-2.md'), notes(2));
   await writeFile(join(dir, 'data.bin'), Buffer.from([0, 1, 2, 3]));
+
   return { specId, dir };
 }
 
@@ -197,6 +199,7 @@ async function listen(
     await scheduler.start();
     stops.push(() => scheduler.stop());
   }
+
   return {
     app,
     headers: { cookie: authCookieNames(passwordConfig().server.port).session + '=' + session },
@@ -399,8 +402,11 @@ describe('save', () => {
     let state = '';
     for (let attempt = 0; attempt < 200 && state !== 'committed'; attempt += 1) {
       state = (await status(l, fx, operationId)).json<DocumentOperationStatus>().commit.state;
-      if (state !== 'committed') await new Promise((resolve) => setTimeout(resolve, 50));
+      if (state !== 'committed') {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
     }
+
     expect(state).toBe('committed');
     expect(commitCount(fx)).toBe(before + 1);
   });
@@ -618,6 +624,7 @@ describe('create, folders and structural operations', () => {
     } finally {
       Object.defineProperty(process, 'platform', original);
     }
+
     expect(response.statusCode, response.body).toBe(400);
     const body: unknown = response.json();
     expect(Value.Check(DocumentErrorSchema, body)).toBe(true);
@@ -691,6 +698,7 @@ describe('the commit queue as a person sees it', () => {
     git(fx.root, 'checkout', '-q', '--detach');
     const flushed = await flush(l, fx, { waitMs: 5000 });
     expect(flushed.statusCode, flushed.body).toBe(200);
+
     return { operationId, flushed };
   }
 
@@ -812,6 +820,7 @@ describe('the commit queue as a person sees it', () => {
       expect(foreign.statusCode, suffix).toBe(404);
       expect(code(foreign)).toBe('DOCUMENT_OPERATION_NOT_FOUND');
     }
+
     const malformed = await status(l, fx, 'not-an-operation');
     expect(malformed.statusCode).toBe(404);
     // A pending operation cannot be retried or abandoned: nothing failed.
@@ -1299,6 +1308,7 @@ describe('manual commit (ADR 0018)', () => {
       const response = await commitCall(l, fx, { operationId: randomUUID(), ...extra });
       expect(response.statusCode, response.body).toBe(400);
     }
+
     expect((await commitCall(l, fx, { operationId: randomUUID(), scope: 'all' })).statusCode).toBe(
       200,
     );

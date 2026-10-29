@@ -16,6 +16,7 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
   if (existingBinding && existingBinding.workspaceId !== record.target.workspaceId) {
     throw recovery('Specification is bound to another workspace.');
   }
+
   if (record.target.kind === 'new-worktree' && existingWorkspace) {
     const expected = registrationOf(record);
     if (
@@ -27,7 +28,10 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
       throw recovery('Workspace registry identity differs from durable intent.');
     }
   }
-  if (existingBinding && (record.target.kind === 'existing' || existingWorkspace)) return;
+
+  if (existingBinding && (record.target.kind === 'existing' || existingWorkspace)) {
+    return;
+  }
 
   await updateWorkspaceRegistry(engine.context, (current) => {
     let updated = current;
@@ -35,8 +39,9 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
       const workspace = current.workspaces.find(
         (item) => item.workspaceId === record.target.workspaceId,
       );
-      if (!workspace) updated = addWorkspace(updated, registrationOf(record));
-      else if (
+      if (!workspace) {
+        updated = addWorkspace(updated, registrationOf(record));
+      } else if (
         workspace.root !== record.target.workspaceRoot ||
         workspace.instanceId !== record.target.instanceId ||
         !isDeepStrictEqual(
@@ -47,11 +52,14 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
         throw recovery('Concurrent workspace registration disagrees with creation intent.');
       }
     }
+
     const binding = updated.specBindings.find((item) => item.specId === record.specId);
-    if (!binding) updated = bindSpecToWorkspace(updated, record.specId, record.target.workspaceId);
-    else if (binding.workspaceId !== record.target.workspaceId) {
+    if (!binding) {
+      updated = bindSpecToWorkspace(updated, record.specId, record.target.workspaceId);
+    } else if (binding.workspaceId !== record.target.workspaceId) {
       throw recovery('Concurrent Spec binding differs from creation intent.');
     }
+
     return updated;
   });
 }

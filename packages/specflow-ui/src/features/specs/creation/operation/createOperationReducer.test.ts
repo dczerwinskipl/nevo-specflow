@@ -42,7 +42,9 @@ const states: Record<CreatePhase, CreateOperationState> = {
 
 describe('createOperationReducer legal transitions', () => {
   it('starts every state in the expected phase', () => {
-    for (const [phase, state] of Object.entries(states)) expect(state.phase).toBe(phase);
+    for (const [phase, state] of Object.entries(states)) {
+      expect(state.phase).toBe(phase);
+    }
   });
 
   it('idle -> submitting clears the previous attempt', () => {

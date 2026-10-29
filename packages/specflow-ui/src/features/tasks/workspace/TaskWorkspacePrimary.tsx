@@ -24,6 +24,7 @@ export function TaskWorkspacePrimary({
   const instructionId = useId();
   const { ref } = useWorkspaceScroll('primary');
   const last = data.handoffs[0];
+
   return (
     <div ref={ref} className="grid min-w-0 gap-6 p-4 sm:p-6" data-task-workspace="primary">
       {onBack ? (

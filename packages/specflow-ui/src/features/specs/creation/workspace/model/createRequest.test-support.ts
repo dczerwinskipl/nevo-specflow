@@ -11,6 +11,7 @@ export function buildCreateRequest(
 ): CreateTargetFields & { operationId: string } {
   const target = buildCreateTarget(choice, options, title);
   const slug = buildCreateSlug(choice, options, title);
+
   return {
     title: title.trim(),
     operationId,

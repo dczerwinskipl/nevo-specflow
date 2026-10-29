@@ -24,11 +24,17 @@ export function useRevealFailure(
   const actionRegion = useRef<HTMLDivElement>(null);
   const submitted = useRef<{ scroller: HTMLElement; top: number; atEnd: boolean } | null>(null);
   useEffect(() => {
-    if (!failed || !submitted.current) return;
+    if (!failed || !submitted.current) {
+      return;
+    }
+
     const initial = submitted.current;
     const frame = requestAnimationFrame(() => {
       const region = actionRegion.current;
-      if (!region) return;
+      if (!region) {
+        return;
+      }
+
       const scroller = initial.scroller;
       // Still at the end of the form without the new alert: the browser may have clamped the
       // position while the form locked, which is not the owner scrolling away.
@@ -36,7 +42,10 @@ export function useRevealFailure(
         initial.atEnd &&
         scroller.scrollTop + scroller.clientHeight >=
           scroller.scrollHeight - region.offsetHeight - endSlackPx;
-      if (Math.abs(scroller.scrollTop - initial.top) > 1 && !stillAtEnd) return;
+      if (Math.abs(scroller.scrollTop - initial.top) > 1 && !stillAtEnd) {
+        return;
+      }
+
       // The form's own scroller is moved directly (an element scrollIntoView can be dropped by a
       // concurrent scroll elsewhere in the workspace): the whole alert ends at the bottom of the
       // view, or one taller than the view starts at its top so it is read from the beginning.
@@ -47,8 +56,10 @@ export function useRevealFailure(
           ? Math.max(0, box.bottom - view.bottom)
           : box.top - view.top;
     });
+
     return () => cancelAnimationFrame(frame);
   }, [failed, errorSeq, failure]);
+
   return {
     actionRegion,
     captureSubmit(event) {

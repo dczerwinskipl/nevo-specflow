@@ -24,7 +24,9 @@ export function createProgram(ctx: CliContext): Command {
 
   // Route every exit (help, parse error, our thrown errors) through bin.ts.
   program.exitOverride();
-  for (const cmd of program.commands) cmd.exitOverride();
+  for (const cmd of program.commands) {
+    cmd.exitOverride();
+  }
 
   return program;
 }

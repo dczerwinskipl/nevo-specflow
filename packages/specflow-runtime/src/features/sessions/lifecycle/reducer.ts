@@ -8,7 +8,10 @@ export function terminalizeTurn(
   cancelRequested: boolean,
   error?: { code: string; message: string },
 ): TurnSummary {
-  if (turn.state === 'terminal') return turn;
+  if (turn.state === 'terminal') {
+    return turn;
+  }
+
   return {
     ...turn,
     state: 'terminal',
@@ -19,11 +22,15 @@ export function terminalizeTurn(
     ...(error ? { error } : {}),
   };
 }
+
 export function transitionWork(
   work: WorkSummary,
   state: WorkSummary['state'],
   at: string,
 ): WorkSummary {
-  if (!['queued', 'active', 'waiting'].includes(work.state)) return work;
+  if (!['queued', 'active', 'waiting'].includes(work.state)) {
+    return work;
+  }
+
   return { ...work, state, revision: work.revision + 1, updatedAt: at };
 }

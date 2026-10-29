@@ -65,6 +65,7 @@ describe('AuthStore', () => {
     const api = fakeApi({
       getSession: () => {
         calls += 1;
+
         return Promise.resolve(anonymous);
       },
     });
@@ -109,10 +110,12 @@ describe('AuthStore', () => {
       fakeApi({
         logout: () => {
           calls.push('logout');
+
           return Promise.resolve();
         },
         getSession: () => {
           calls.push('getSession');
+
           return Promise.resolve(anonymous);
         },
       }),
@@ -143,6 +146,7 @@ describe('AuthStore', () => {
         logout: () => logoutGate,
         getSession: () => {
           reads += 1;
+
           return Promise.resolve(anonymous);
         },
       }),
@@ -176,6 +180,7 @@ describe('AuthStore', () => {
       fakeApi({
         getSession: () => {
           refreshCount += 1;
+
           return refreshCount === 1
             ? Promise.reject(new Error('network unavailable'))
             : Promise.resolve(userB);

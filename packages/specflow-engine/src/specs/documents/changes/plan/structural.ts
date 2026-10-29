@@ -55,6 +55,7 @@ export function planStructural(
         : planFolderOperation(snapshot, request, request.target.path, options);
     default: {
       const exhaustive: never = request;
+
       return exhaustive;
     }
   }
@@ -76,6 +77,7 @@ function destinationOf(request: PathOperation, current: string): string | undefi
       );
     default: {
       const exhaustive: never = request;
+
       return exhaustive;
     }
   }
@@ -105,6 +107,7 @@ function planDocumentOperation(
   if (document.kind === 'registered' && isProtectedDocument(document.entry)) {
     throw documentChangeError('protected', 'The overview document cannot be changed this way.');
   }
+
   const draft = newDraft();
   const registry = [...snapshot.manifest.documents];
   const id = document.kind === 'registered' ? document.entry.id : document.id;
@@ -116,6 +119,7 @@ function planDocumentOperation(
       assertRevision(document.file, request.expectedRevision);
       draft.removals.push({ path, pre: stateOfFile(document.file) });
     }
+
     draft.removedDocumentIds.push(id);
     if (document.kind === 'registered') {
       draft.registry = {
@@ -123,24 +127,29 @@ function planDocumentOperation(
         folders: [...snapshot.manifest.folders],
       };
     }
+
     return finishPlan(snapshot, 'delete', draft);
   }
 
   if (document.file === undefined) {
     throw documentChangeError('file-missing', 'The registered document has no file.');
   }
+
   assertRevision(document.file, request.expectedRevision);
   if (destination === path) {
     throw documentChangeError('operation-invalid', 'The document is already there.');
   }
+
   assertNotCaseOnlyRename(path, destination);
   if (!validateDocumentPath(destination).ok) {
     throw documentChangeError('path-invalid', 'The target path is not allowed.');
   }
+
   const occupancy = occupancyAfter(snapshot, (candidate) => candidate === path);
   if (collides(occupancy, destination)) {
     throw documentChangeError('path-conflict', 'The target path already exists or collides.');
   }
+
   const post = stateOfFile(document.file) as { sha256: string; bytes: number };
   draft.writes.push({ path: destination, pre: null, post, movedFrom: path });
   draft.removals.push({ path, pre: stateOfFile(document.file) });
@@ -166,6 +175,7 @@ function planDocumentOperation(
     });
     draft.removedDocumentIds.push(id);
   }
+
   return finishPlan(snapshot, request.action, draft);
 }
 
@@ -174,12 +184,15 @@ function planClassify(snapshot: PlanningSnapshot, request: ClassifyRequest): Pla
   if (document.kind === 'registered') {
     throw documentChangeError('already-classified', 'The document is already classified.');
   }
+
   if (!CATALOGUE_ID.test(request.type)) {
     throw documentChangeError('type-invalid', 'The document type id is not valid.');
   }
+
   if (request.type === OVERVIEW_DOCUMENT_TYPE) {
     throw documentChangeError('operation-invalid', 'The overview type cannot be assigned.');
   }
+
   assertRevision(document.file, request.expectedRevision);
   const registry = [...snapshot.manifest.documents];
   let id: string;
@@ -194,8 +207,10 @@ function planClassify(snapshot: PlanningSnapshot, request: ClassifyRequest): Pla
     if (error instanceof DocumentIdError) {
       throw documentChangeError('operation-invalid', 'The document type cannot be registered.');
     }
+
     throw error;
   }
+
   const draft = newDraft();
   draft.allocatedIds.push(id);
   draft.removedDocumentIds.push(document.id);
@@ -210,6 +225,7 @@ function planClassify(snapshot: PlanningSnapshot, request: ClassifyRequest): Pla
     documents: [...registry, { id, path: document.file.path, type: request.type }],
     folders: [...snapshot.manifest.folders],
   };
+
   return finishPlan(snapshot, 'classify', draft);
 }
 
@@ -222,6 +238,7 @@ function planFolderOperation(
   if (!validateFolderPath(folder).ok) {
     throw documentChangeError('path-invalid', 'The folder path is not allowed.');
   }
+
   const allPaths = [
     ...snapshot.files.map((file) => file.path),
     ...snapshot.manifest.documents.map((entry) => entry.path),
@@ -230,12 +247,15 @@ function planFolderOperation(
   if (!known.has(folder)) {
     throw documentChangeError('document-not-found', 'No such folder.');
   }
+
   if (options.folderRevision === undefined) {
     throw documentChangeError('operation-invalid', 'A folder revision is required.');
   }
+
   if (options.folderRevision(folder) !== request.expectedRevision) {
     throw documentChangeError('revision-conflict', 'The folder changed since it was read.');
   }
+
   const prefix = folder + '/';
   const under = (path: string): boolean => path.startsWith(prefix);
   if (
@@ -258,13 +278,16 @@ function planFolderOperation(
     if (!validateFolderPath(destination).ok) {
       throw documentChangeError('path-invalid', 'The target folder is not allowed.');
     }
+
     if (destination === folder) {
       throw documentChangeError('operation-invalid', 'The folder is already there.');
     }
+
     assertNotCaseOnlyRename(folder, destination);
     if (foldPathKey(destination).startsWith(foldPathKey(folder) + '/')) {
       throw documentChangeError('operation-invalid', 'A folder cannot move into itself.');
     }
+
     const occupancy = occupancyAfter(
       snapshot,
       under,
@@ -276,13 +299,19 @@ function planFolderOperation(
   }
 
   const draft = newDraft();
-  if (destination === undefined) draft.removedFolder = folder;
+  if (destination === undefined) {
+    draft.removedFolder = folder;
+  }
+
   const rewrite = (path: string): string => (destination ?? '') + path.slice(folder.length);
   const registry: ManifestDocument[] = [];
   const registered = new Map(snapshot.manifest.documents.map((entry) => [entry.path, entry]));
   const moved: { from: string; to: string; file: ObservedFile }[] = [];
   for (const file of [...snapshot.files].sort((a, b) => compareFolded(a.path, b.path))) {
-    if (!under(file.path)) continue;
+    if (!under(file.path)) {
+      continue;
+    }
+
     const entry = registered.get(file.path);
     if (destination === undefined) {
       draft.removals.push({ path: file.path, pre: stateOfFile(file) });
@@ -292,9 +321,11 @@ function planFolderOperation(
       if (!validateDocumentPath(to).ok) {
         throw documentChangeError('path-invalid', 'A moved path is not allowed.');
       }
+
       moved.push({ from: file.path, to, file });
     }
   }
+
   for (const { from, to, file } of moved) {
     const post = stateOfFile(file) as { sha256: string; bytes: number };
     draft.writes.push({ path: to, pre: null, post, movedFrom: from });
@@ -305,39 +336,57 @@ function planFolderOperation(
       ...(entry !== undefined ? { type: entry.type } : {}),
       ...post,
     });
-    if (entry === undefined) draft.removedDocumentIds.push(deriveUnclassifiedDocumentId(from));
+    if (entry === undefined) {
+      draft.removedDocumentIds.push(deriveUnclassifiedDocumentId(from));
+    }
   }
-  for (const { from, file } of moved) draft.removals.push({ path: from, pre: stateOfFile(file) });
+
+  for (const { from, file } of moved) {
+    draft.removals.push({ path: from, pre: stateOfFile(file) });
+  }
 
   // Registry: entries below the folder follow it (or leave with a delete), including dangling ones.
   for (const entry of snapshot.manifest.documents) {
-    if (!under(entry.path)) registry.push(entry);
-    else if (destination !== undefined) {
+    if (!under(entry.path)) {
+      registry.push(entry);
+    } else if (destination !== undefined) {
       const to = rewrite(entry.path);
       if (!validateDocumentPath(to).ok) {
         throw documentChangeError('path-invalid', 'A moved path is not allowed.');
       }
+
       registry.push({ id: entry.id, path: to, type: entry.type });
     } else if (!draft.removedDocumentIds.includes(entry.id)) {
       draft.removedDocumentIds.push(entry.id);
     }
   }
+
   const explicit = snapshot.manifest.folders.flatMap((candidate): string[] => {
-    if (candidate !== folder && !under(candidate)) return [candidate];
+    if (candidate !== folder && !under(candidate)) {
+      return [candidate];
+    }
+
     return destination === undefined ? [] : [rewrite(candidate)];
   });
   if (destination !== undefined) {
     draft.folders.push(destination);
     // The destination stays a folder even when it holds no file (an empty folder that was moved).
-    if (!moved.some((item) => item.to.startsWith(destination + '/'))) explicit.push(destination);
+    if (!moved.some((item) => item.to.startsWith(destination + '/'))) {
+      explicit.push(destination);
+    }
   }
+
   draft.registry = { documents: registry, folders: [...new Set(explicit)].sort(compareFolded) };
+
   return finishPlan(snapshot, request.action, draft);
 }
 
 function requireDocument(snapshot: PlanningSnapshot, documentId: string): ResolvedDocument {
   const document = resolveDocument(snapshot, documentId);
-  if (document === undefined) throw documentChangeError('document-not-found', 'No such document.');
+  if (document === undefined) {
+    throw documentChangeError('document-not-found', 'No such document.');
+  }
+
   return document;
 }
 
@@ -355,6 +404,7 @@ function singleSegment(name: string): string {
   if (name.length === 0 || name.includes('/')) {
     throw documentChangeError('path-invalid', 'A name is a single path segment.');
   }
+
   return name;
 }
 
@@ -362,6 +412,7 @@ function validFolder(folder: string): string {
   if (!validateFolderPath(folder).ok) {
     throw documentChangeError('path-invalid', 'The target folder is not allowed.');
   }
+
   return folder;
 }
 

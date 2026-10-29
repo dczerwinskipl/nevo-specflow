@@ -195,6 +195,7 @@ export function NevoMark({
   ...props
 }: NevoMarkProps) {
   const capture = useDesignMetadata('NevoMark', { size, variant });
+
   return (
     <svg
       aria-hidden={decorative || undefined}

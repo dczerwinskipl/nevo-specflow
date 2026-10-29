@@ -20,7 +20,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function approximately(actual: number, expected: number, tolerance = 1) {

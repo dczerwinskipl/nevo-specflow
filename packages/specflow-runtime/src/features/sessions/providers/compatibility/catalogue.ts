@@ -90,11 +90,13 @@ export function classifyProviderInstallation(
       : installation.providerId === 'codex'
         ? 'codex-app-server-v2'
         : undefined;
-  if (!profile || installation.platform !== 'win32' || installation.architecture !== 'x64')
+  if (!profile || installation.platform !== 'win32' || installation.architecture !== 'x64') {
     return {
       classification: 'unsupported',
       reason: 'Provider platform/profile is not implemented.',
     };
+  }
+
   const matching = trustedRecords.filter(
     (record) =>
       record.providerId === installation.providerId &&
@@ -102,21 +104,33 @@ export function classifyProviderInstallation(
       record.architecture === installation.architecture &&
       record.sha256 === installation.sha256,
   );
-  if (matching.length > 1 || matching.some((record) => !validCompatibilityRecord(record)))
+  if (matching.length > 1 || matching.some((record) => !validCompatibilityRecord(record))) {
     return { classification: 'unsupported', reason: 'Compatibility evidence is invalid.' };
+  }
+
   const record = matching[0];
   if (record) {
-    if (record.revoked || record.classification !== 'tested' || record.protocolProfile !== profile)
+    if (
+      record.revoked ||
+      record.classification !== 'tested' ||
+      record.protocolProfile !== profile
+    ) {
       return {
         classification: 'unsupported',
         reason: 'Provider build is revoked or incompatible.',
       };
-    if (installation.version === record.version) return { classification: 'tested', record };
+    }
+
+    if (installation.version === record.version) {
+      return { classification: 'tested', record };
+    }
+
     return {
       classification: 'provisional',
       reason: 'Provider version was not established by the handshake.',
     };
   }
+
   return {
     classification: 'provisional',
     reason: 'Local protocol and execution checks are required.',

@@ -9,6 +9,7 @@ const onViewStateChange = fn();
 
 function Fixture() {
   const [open, setOpen] = useState(true);
+
   return (
     <div className="flex h-[400px] flex-col">
       <Button onClick={() => setOpen(false)}>Zamknij edytor</Button>
@@ -24,6 +25,7 @@ function Fixture() {
     </div>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Contracts/Markdown source editor',
   component: Fixture,
@@ -39,7 +41,10 @@ export const ScrollingDoesNotUpdateOwnerState: Story = {
     onViewStateChange.mockClear();
     const scroller = await waitFor(() => {
       const found = canvasElement.querySelector<HTMLElement>('.cm-scroller');
-      if (!found) throw new Error('editor not mounted');
+      if (!found) {
+        throw new Error('editor not mounted');
+      }
+
       return found;
     });
     for (let step = 1; step <= 30; step++) {
@@ -47,6 +52,7 @@ export const ScrollingDoesNotUpdateOwnerState: Story = {
       scroller.dispatchEvent(new Event('scroll'));
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
+
     await expect(scroller.scrollTop).toBeGreaterThan(0);
     await expect(onViewStateChange).not.toHaveBeenCalled();
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij edytor' }));

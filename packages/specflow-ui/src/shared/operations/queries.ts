@@ -30,9 +30,14 @@ export function nextPollInterval(
   data: OperationsListData | undefined,
   consecutiveFailures: number,
 ): number | false {
-  if (data?.unavailable) return false;
-  if (consecutiveFailures > 0)
+  if (data?.unavailable) {
+    return false;
+  }
+
+  if (consecutiveFailures > 0) {
     return Math.min(maxBackoffPollMs, runningPollMs * 2 ** consecutiveFailures);
+  }
+
   return data?.list?.items.some(isRunningOperation) ? runningPollMs : idlePollMs;
 }
 
@@ -55,12 +60,21 @@ export function operationsListQueryOptions(
           ...(previous?.etag ? { etag: previous.etag } : {}),
         });
         failures.current = 0;
-        if (result.kind === 'unavailable') return { unavailable: true };
-        if (result.kind === 'not-modified') return previous ?? {};
+        if (result.kind === 'unavailable') {
+          return { unavailable: true };
+        }
+
+        if (result.kind === 'not-modified') {
+          return previous ?? {};
+        }
+
         return { list: result.list, ...(result.etag ? { etag: result.etag } : {}) };
       } catch (error) {
         // A cancelled read is not a failure of the Runtime.
-        if (!signal.aborted) failures.current += 1;
+        if (!signal.aborted) {
+          failures.current += 1;
+        }
+
         throw error;
       }
     },

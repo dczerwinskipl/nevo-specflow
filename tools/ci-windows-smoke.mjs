@@ -23,20 +23,29 @@ for (const entry of config.entries) {
     problems.push(`${entry.dir}/${entry.file}: file not found`);
     continue;
   }
+
   const source = readFileSync(path, 'utf8');
   for (const name of entry.tests) {
     const found = ["'", '"', '`'].some((q) => source.includes(`it(${q}${name}${q}`));
-    if (!found) problems.push(`${entry.dir}/${entry.file}: no it(...) titled "${name}"`);
+    if (!found) {
+      problems.push(`${entry.dir}/${entry.file}: no it(...) titled "${name}"`);
+    }
   }
 }
+
 if (problems.length) {
   console.error('Windows smoke list is stale, update tools/ci-windows-smoke-tests.json:');
-  for (const problem of problems) console.error('  - ' + problem);
+  for (const problem of problems) {
+    console.error('  - ' + problem);
+  }
+
   process.exit(2);
 }
 
 console.log(JSON.stringify(config, null, 2));
-if (listOnly) process.exit(0);
+if (listOnly) {
+  process.exit(0);
+}
 
 const failed = [];
 let executed = 0;
@@ -63,23 +72,31 @@ try {
       ],
       { cwd, env: process.env, stdio: 'inherit', windowsHide: true },
     );
-    if (result.error) throw result.error;
+    if (result.error) {
+      throw result.error;
+    }
+
     let passedHere = 0;
     if (existsSync(reportFile)) {
       const report = JSON.parse(readFileSync(reportFile, 'utf8'));
       for (const file of report.testResults ?? []) {
         for (const test of file.assertionResults ?? []) {
-          if (test.status === 'passed') passedHere += 1;
-          else if (test.status === 'failed') failed.push(`${entry.file} > ${test.fullName}`);
+          if (test.status === 'passed') {
+            passedHere += 1;
+          } else if (test.status === 'failed') {
+            failed.push(`${entry.file} > ${test.fullName}`);
+          }
         }
       }
     }
+
     executed += passedHere;
     if (result.status !== 0 && !failed.some((name) => name.startsWith(entry.file + ' >'))) {
       failed.push(
         `${entry.file} > (vitest exited ${result.status ?? result.signal} without a test result)`,
       );
     }
+
     if (
       passedHere + failed.filter((n) => n.startsWith(entry.file + ' >')).length <
       entry.tests.length
@@ -99,4 +116,5 @@ console.log('\n' + lines.join('\n'));
 if (process.env.GITHUB_STEP_SUMMARY) {
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
 }
+
 process.exit(failed.length ? 1 : 0);

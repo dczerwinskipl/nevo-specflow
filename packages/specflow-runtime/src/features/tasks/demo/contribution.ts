@@ -17,6 +17,7 @@ export function buildDemoTaskContribution(record: DemoSpecification) {
         ]
       : [],
   );
+
   return {
     state: 'available' as const,
     data: {

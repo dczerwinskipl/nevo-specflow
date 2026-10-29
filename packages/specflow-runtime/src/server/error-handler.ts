@@ -21,11 +21,13 @@ export function registerRuntimeErrorHandler<RawServer extends RawServerBase>(
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AuthenticationRequiredError) {
       reply.header('Cache-Control', 'no-store');
+
       return reply.code(401).send({ error: 'authentication_required' });
     }
 
     if (error instanceof AuthorizationForbiddenError) {
       reply.header('Cache-Control', 'no-store');
+
       return reply.code(403).send({ error: 'forbidden' });
     }
 
@@ -39,6 +41,7 @@ export function registerRuntimeErrorHandler<RawServer extends RawServerBase>(
     ) {
       const code = request.routeOptions.config.oversizedBodyCode;
       reply.header('Cache-Control', 'no-store');
+
       return reply.code(413).send({ error: code, code });
     }
 
@@ -51,6 +54,7 @@ export function registerRuntimeErrorHandler<RawServer extends RawServerBase>(
       request.routeOptions.url === '/api/specs'
     ) {
       reply.header('Cache-Control', 'no-store');
+
       return reply.code(413).send({ error: 'DOCUMENT_TOO_LARGE', code: 'DOCUMENT_TOO_LARGE' });
     }
 
@@ -63,6 +67,7 @@ export function registerRuntimeErrorHandler<RawServer extends RawServerBase>(
     // server and answer a generic body. Never send the message, paths or stack to the client.
     request.log.error({ err: error }, 'Unhandled Runtime error');
     reply.header('Cache-Control', 'no-store');
+
     return reply.code(500).send({ error: INTERNAL_ERROR_CODE, code: INTERNAL_ERROR_CODE });
   });
 }

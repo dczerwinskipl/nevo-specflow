@@ -11,7 +11,9 @@ export async function verifyPasswordCredentials(
   username: string,
   password: string,
 ): Promise<AuthUser | null> {
-  if (!authentication.providers.password.enabled) return null;
+  if (!authentication.providers.password.enabled) {
+    return null;
+  }
 
   const normalizedUsername = normalizePasswordUsername(username);
   const accounts = authentication.providers.password.accounts;
@@ -20,7 +22,9 @@ export async function verifyPasswordCredentials(
     : undefined;
   const valid = await verifyPassword(password, account?.passwordHash ?? DUMMY_PASSWORD_HASH);
 
-  if (!account || !valid) return null;
+  if (!account || !valid) {
+    return null;
+  }
 
   return configuredUser(authentication, account.userId);
 }

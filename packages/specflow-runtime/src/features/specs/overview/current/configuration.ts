@@ -14,7 +14,9 @@ export function parseCurrentOverviewSections(
   value: unknown,
   path = 'specs.overview.current.sections',
 ): CurrentSpecSectionId[] {
-  if (value === undefined) return [...DEFAULT_CURRENT_SECTIONS];
+  if (value === undefined) {
+    return [...DEFAULT_CURRENT_SECTIONS];
+  }
 
   if (!Array.isArray(value)) {
     throw new RuntimeConfigError(`${path} must be an array.`);

@@ -49,10 +49,17 @@ async function cli(
   });
   try {
     await program.parseAsync(['node', 'nevo-specflow', ...args]);
+
     return { out, err, exit: 0 };
   } catch (error) {
-    if (error instanceof CommanderError) return { out, err, exit: commanderExitCode(error) };
-    if (error instanceof ReportedFailure) return { out, err, exit: error.exitCode };
+    if (error instanceof CommanderError) {
+      return { out, err, exit: commanderExitCode(error) };
+    }
+
+    if (error instanceof ReportedFailure) {
+      return { out, err, exit: error.exitCode };
+    }
+
     throw error;
   }
 }
@@ -95,6 +102,7 @@ async function project() {
     join(root, '.nevo', 'local', 'config.yaml'),
     'git:\n  commits:\n    auto:\n      documents: false\n',
   );
+
   return { root, specId, dir: join(root, 'specs', 'active', 'cli-commit') };
 }
 

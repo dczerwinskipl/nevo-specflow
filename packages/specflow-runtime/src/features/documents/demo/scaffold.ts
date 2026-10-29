@@ -25,6 +25,7 @@ export interface DemoScaffoldInput {
 /** A stable UUID (version 4 layout) for a demo id: the Engine allocates later ids from it. */
 function canonicalId(specId: string): string {
   const hex = sha256('demo-spec:' + specId);
+
   return [
     hex.slice(0, 8),
     hex.slice(8, 12),
@@ -61,9 +62,13 @@ export function scaffoldDocuments(
       catalogue,
     });
   } catch (error) {
-    if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+    if (error instanceof ScaffoldValidationError) {
+      throw documentErrorOf(error);
+    }
+
     throw error;
   }
+
   const base = 'specs/active/' + scaffold.slug + '/';
   const files = new Map<string, DemoFile>(
     // The first scaffold file is the manifest, which is not a document.
@@ -82,8 +87,10 @@ export function scaffoldDocuments(
       document.type !== undefined ? [{ path: document.path, type: document.type }] : [],
     ),
   ];
-  if (registered.length !== scaffold.documentIds.length)
+  if (registered.length !== scaffold.documentIds.length) {
     throw new Error('The demo registry does not match the Engine scaffold.');
+  }
+
   return {
     documents: {
       ...archetypeSnapshot(catalogue, input.archetypeId),

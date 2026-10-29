@@ -38,21 +38,31 @@ export function followedDocuments(
   });
   if (operation.kind === 'document') {
     const record = result.documents[0];
+
     return operation.documentId && record && record.id !== operation.documentId
       ? [followed(operation.documentId, record)]
       : [];
   }
-  if (!operation.path || (operation.action !== 'rename' && operation.action !== 'move')) return [];
+
+  if (!operation.path || (operation.action !== 'rename' && operation.action !== 'move')) {
+    return [];
+  }
+
   const oldFolder = operation.path;
   const newFolder =
     operation.action === 'rename'
       ? join(parentOf(oldFolder), operation.name ?? baseOf(oldFolder))
       : join(operation.targetFolder ?? '', baseOf(oldFolder));
   const prefix = newFolder.toLowerCase() + '/';
+
   return result.documents.flatMap((record) => {
-    if (!record.path.toLowerCase().startsWith(prefix)) return [];
+    if (!record.path.toLowerCase().startsWith(prefix)) {
+      return [];
+    }
+
     const oldPath = oldFolder + record.path.slice(newFolder.length);
     const previous = before?.documents.find((document) => document.path === oldPath);
+
     return previous && previous.id !== record.id ? [followed(previous.id, record)] : [];
   });
 }
@@ -62,12 +72,18 @@ export function treeWithFollowed(
   tree: DocumentTree,
   moves: readonly FollowedDocument[],
 ): DocumentTree {
-  if (moves.length === 0) return tree;
+  if (moves.length === 0) {
+    return tree;
+  }
+
   return {
     ...tree,
     documents: tree.documents.map((document) => {
       const move = moves.find((candidate) => candidate.from === document.id);
-      if (!move) return document;
+      if (!move) {
+        return document;
+      }
+
       return {
         ...document,
         id: move.to,

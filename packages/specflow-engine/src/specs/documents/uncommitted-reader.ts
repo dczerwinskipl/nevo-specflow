@@ -32,8 +32,10 @@ export async function readSpecificationUncommitted(
     if (error instanceof LedgerCorruptError) {
       throw new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'The uncommitted changes are unreadable.');
     }
+
     throw error;
   }
+
   const entries = record?.entries ?? [];
   const prefix = 'specs/active/' + loaded.slug + '/';
   const idOfPath = new Map(
@@ -46,6 +48,7 @@ export async function readSpecificationUncommitted(
     policy: undefined,
   }));
   const effective = policy !== undefined ? effectiveAutoCommit(policy, 'documents') : undefined;
+
   return {
     ledgerRevision: ledgerRevisionOf(entries),
     policy: {
@@ -54,6 +57,7 @@ export async function readSpecificationUncommitted(
     },
     entries: entries.map((entry) => {
       const documentId = idOfPath.get(entry.path);
+
       return {
         path: entry.path,
         ...(documentId !== undefined ? { documentId } : {}),

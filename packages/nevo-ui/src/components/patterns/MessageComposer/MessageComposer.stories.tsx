@@ -7,7 +7,9 @@ import { MessageComposer, type MessageComposerProps } from './MessageComposer';
 import { Typography } from '../../foundations/Typography';
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function ComposerExample({
@@ -143,7 +145,10 @@ export const MaxHeightReached: Story = {
   render: () => <ComposerExample maxRows={4} />,
   play: async ({ canvas, userEvent }) => {
     const editor = canvas.getByRole('textbox', { name: 'Reply to customer' });
-    if (!(editor instanceof HTMLTextAreaElement)) throw new Error('Expected a textarea.');
+    if (!(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected a textarea.');
+    }
+
     Object.defineProperty(editor, 'scrollHeight', {
       configurable: true,
       get: () => Math.max(48, editor.value.split('\n').length * 20 + 28),
@@ -219,6 +224,7 @@ export const Integrated: Story = {
 
 function InteractionExample() {
   const [submissions, setSubmissions] = useState<string[]>([]);
+
   return (
     <div data-submissions={JSON.stringify(submissions)}>
       <MessageComposer onSubmit={(value) => setSubmissions((current) => [...current, value])}>
@@ -239,7 +245,10 @@ export const InteractionContract: Story = {
   tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const editor = canvas.getByRole('textbox', { name: 'Contract editor' });
-    if (!(editor instanceof HTMLTextAreaElement)) throw new Error('Expected a textarea.');
+    if (!(editor instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected a textarea.');
+    }
+
     const host = editor.closest<HTMLElement>('[data-submissions]');
     assert(host, 'The interaction fixture should expose its submission state.');
 

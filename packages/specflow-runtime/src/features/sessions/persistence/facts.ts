@@ -62,7 +62,10 @@ export function createProviderFacts({
   function applyFact(c: Extract<StoreCommand, { op: 'fact' }>, effectVerified = false): boolean {
     const s = session(c.sessionId),
       t = turn(c.turnId, c.sessionId);
-    if (t.summary.state === 'terminal' || t.invocationId !== c.invocationId) return false;
+    if (t.summary.state === 'terminal' || t.invocationId !== c.invocationId) {
+      return false;
+    }
+
     const hash = createHash('sha256').update(stable(c.fact)).digest('hex');
     const old = get(
       'SELECT hash FROM facts WHERE invocation=? AND seq=?',
@@ -70,26 +73,36 @@ export function createProviderFacts({
       c.driverSeq,
     );
     if (old) {
-      if (old.hash !== hash) fail('SESSION_INPUT_INVALID', 'Driver sequence changed its payload.');
+      if (old.hash !== hash) {
+        fail('SESSION_INPUT_INVALID', 'Driver sequence changed its payload.');
+      }
+
       return false;
     }
+
     const latest = get(
       'SELECT seq FROM facts WHERE invocation=? ORDER BY seq DESC LIMIT 1',
       c.invocationId,
     );
-    if (c.driverSeq !== Number(latest?.seq ?? 0) + 1)
+    if (c.driverSeq !== Number(latest?.seq ?? 0) + 1) {
       fail('SESSION_INPUT_INVALID', 'Driver sequence is out of order.');
+    }
+
     run('INSERT INTO facts VALUES(?,?,?)', c.invocationId, c.driverSeq, hash);
     const f: DriverFact = c.fact;
     if (f.kind === 'outcome') {
-      if (t.effectBinding && !effectVerified)
+      if (t.effectBinding && !effectVerified) {
         fail(
           'SESSION_RECOVERY_REQUIRED',
           'Writable execution requires verified Engine settlement.',
         );
+      }
+
       settle(s, t, f.outcome, f.error);
+
       return true;
     }
+
     if (f.kind === 'lost') {
       t.summary.state = 'unknown';
       t.summary.error = { code: 'OPERATION_UNKNOWN', message: f.message };
@@ -98,6 +111,7 @@ export function createProviderFacts({
         c.turnId,
       );
     }
+
     if (f.kind === 'correlation') {
       const context = get(
         'SELECT native,confirmed,dispatched FROM provider_contexts WHERE session=?',
@@ -107,31 +121,42 @@ export function createProviderFacts({
         context &&
         t.nativeContextMode !== 'provider-assigned' &&
         context.native !== f.providerSessionId
-      )
+      ) {
         fail('SESSION_RECOVERY_REQUIRED', 'Provider context differs from its durable admission.');
+      }
+
       if (
         context &&
         t.nativeContextMode === 'provider-assigned' &&
         !context.confirmed &&
         context.dispatched
-      )
+      ) {
         fail(
           'SESSION_RECOVERY_REQUIRED',
           'Provider-assigned context must be bound before dispatch.',
         );
+      }
+
       const native = s.snapshot.session.providerId + '\u0000' + f.providerSessionId;
       const existing = get('SELECT native FROM sessions WHERE id=?', c.sessionId)?.native;
-      if (existing && existing !== native)
+      if (existing && existing !== native) {
         fail('SESSION_RECOVERY_REQUIRED', 'Provider context cannot be rebound.');
+      }
+
       run('UPDATE sessions SET native=? WHERE id=?', native, c.sessionId);
-      if (context) run('UPDATE provider_contexts SET confirmed=1 WHERE session=?', c.sessionId);
+      if (context) {
+        run('UPDATE provider_contexts SET confirmed=1 WHERE session=?', c.sessionId);
+      }
     }
+
     if (f.kind === 'interaction-expired') {
       const row = get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.key);
       if (row) {
         const work = decode<WorkSummary>(row);
-        if (work.kind !== 'interaction')
+        if (work.kind !== 'interaction') {
           fail('SESSION_INPUT_INVALID', 'Expected interaction Work.');
+        }
+
         run(
           "UPDATE interactions SET state='expired' WHERE turn=? AND state IN ('pending','admitted') AND json_extract(data,'$.workId')=?",
           c.turnId,
@@ -142,9 +167,12 @@ export function createProviderFacts({
         emit(s, 'work', { turnId: c.turnId, items: [next] });
       }
     }
+
     if (f.kind === 'work-open') {
-      if (get('SELECT id FROM work WHERE turn=? AND native=?', c.turnId, f.key))
+      if (get('SELECT id FROM work WHERE turn=? AND native=?', c.turnId, f.key)) {
         fail('SESSION_INPUT_INVALID', 'Work key already exists.');
+      }
+
       const ordinal =
         Number(
           get('SELECT ordinal FROM work WHERE turn=? ORDER BY ordinal DESC LIMIT 1', c.turnId)
@@ -176,8 +204,11 @@ export function createProviderFacts({
         label: prefix(Buffer.from(f.title, 'utf8'), 1024),
       };
       emit(s, 'work', { turnId: c.turnId, items: [w] });
-      if (f.workKind === 'tool') entry(s, c.turnId, 'work-summary', w.title, w.workId);
+      if (f.workKind === 'tool') {
+        entry(s, c.turnId, 'work-summary', w.title, w.workId);
+      }
     }
+
     if (f.kind === 'work-update') {
       const oldWork = decode<WorkSummary>(
         get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.key),
@@ -186,17 +217,22 @@ export function createProviderFacts({
       if (
         s.snapshot.currentActivity?.workId === w.workId &&
         !['queued', 'active', 'waiting'].includes(w.state)
-      )
+      ) {
         delete s.snapshot.currentActivity;
+      }
+
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
       emit(s, 'work', { turnId: c.turnId, items: [w] });
     }
+
     if (f.kind === 'action-open') {
       const w = decode<WorkSummary>(
         get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.parentKey),
       );
-      if (w.kind !== 'tool' || !['queued', 'active', 'waiting'].includes(w.state))
+      if (w.kind !== 'tool' || !['queued', 'active', 'waiting'].includes(w.state)) {
         fail('SESSION_INPUT_INVALID', 'ToolAction requires live tool Work.');
+      }
+
       const ordinal =
         Number(
           get('SELECT ordinal FROM actions WHERE work=? ORDER BY ordinal DESC LIMIT 1', w.workId)
@@ -227,6 +263,7 @@ export function createProviderFacts({
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
       emit(s, 'work', { turnId: c.turnId, items: [w] });
     }
+
     if (f.kind === 'action-update') {
       const row = get('SELECT * FROM actions WHERE turn=? AND native=?', c.turnId, f.key),
         action = decode<ToolActionSummary>(row);
@@ -236,14 +273,18 @@ export function createProviderFacts({
         action.updatedAt = now();
         run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
       }
+
       const w = decode<WorkSummary>(get('SELECT data FROM work WHERE id=?', String(row!.work)));
       w.revision++;
       w.updatedAt = now();
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
       emit(s, 'work', { turnId: c.turnId, items: [w] });
     }
-    if (f.kind === 'progress')
+
+    if (f.kind === 'progress') {
       s.snapshot.currentActivity = { turnId: c.turnId, kind: f.activity, label: f.label };
+    }
+
     if (f.kind === 'usage') {
       const hash = createHash('sha256')
         .update(stable({ basis: f.basis, counters: f.counters }))
@@ -253,8 +294,10 @@ export function createProviderFacts({
         c.invocationId,
         f.sampleId,
       );
-      if (existing && existing.hash !== hash)
+      if (existing && existing.hash !== hash) {
         fail('SESSION_INPUT_INVALID', 'Usage sample changed its meaning.');
+      }
+
       if (!existing) {
         run('INSERT INTO usage_samples VALUES(?,?,?)', c.invocationId, f.sampleId, hash);
         const aggregate = JSON.parse(
@@ -270,30 +313,41 @@ export function createProviderFacts({
           String(get('SELECT data FROM usage_session WHERE session=?', c.sessionId)?.data ?? '{}'),
         ) as Record<string, number>;
         for (const [key, value] of Object.entries(f.counters)) {
-          if (value === undefined || !Number.isSafeInteger(value) || value < 0)
+          if (value === undefined || !Number.isSafeInteger(value) || value < 0) {
             fail('SESSION_INPUT_INVALID', 'Invalid usage counter.');
-          if (f.basis === 'turn-total') aggregate[key] = value;
-          else if (f.basis === 'delta') aggregate[key] = (aggregate[key] ?? 0) + value;
-          else {
-            if (previous[key] !== undefined && value >= previous[key])
+          }
+
+          if (f.basis === 'turn-total') {
+            aggregate[key] = value;
+          } else if (f.basis === 'delta') {
+            aggregate[key] = (aggregate[key] ?? 0) + value;
+          } else {
+            if (previous[key] !== undefined && value >= previous[key]) {
               aggregate[key] = (aggregate[key] ?? 0) + value - previous[key];
+            }
+
             previous[key] = value;
           }
-          if (aggregate[key] !== undefined && !Number.isSafeInteger(aggregate[key]))
+
+          if (aggregate[key] !== undefined && !Number.isSafeInteger(aggregate[key])) {
             fail('SESSION_INPUT_INVALID', 'Usage counter overflow.');
+          }
         }
+
         run(
           'INSERT OR REPLACE INTO usage_basis VALUES(?,?,?)',
           c.invocationId,
           f.basis,
           JSON.stringify(aggregate),
         );
-        if (f.basis === 'session-cumulative')
+        if (f.basis === 'session-cumulative') {
           run(
             'INSERT OR REPLACE INTO usage_session VALUES(?,?)',
             c.sessionId,
             JSON.stringify(previous),
           );
+        }
+
         const basis = (name: string) =>
           JSON.parse(
             String(
@@ -311,6 +365,7 @@ export function createProviderFacts({
         };
       }
     }
+
     if (f.kind === 'text') {
       const existing = get(
         'SELECT * FROM text_keys WHERE turn=? AND native=? AND channel=?',
@@ -323,14 +378,17 @@ export function createProviderFacts({
       const wrow = get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.key);
       if (wrow) {
         const w = decode<WorkSummary>(wrow);
-        if (!['queued', 'active', 'waiting'].includes(w.state))
+        if (!['queued', 'active', 'waiting'].includes(w.state)) {
           fail('SESSION_INPUT_INVALID', 'Cannot append text to settled Work.');
+        }
+
         w.content = ref;
         w.revision++;
         w.updatedAt = now();
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
         emit(s, 'work', { turnId: c.turnId, items: [w] });
       }
+
       if (f.channel === 'answer' || f.channel === 'commentary') {
         entryId = entry(
           s,
@@ -340,16 +398,25 @@ export function createProviderFacts({
           undefined,
           entryId,
         ).id;
-        if (f.channel === 'answer') t.summary.finalAnswer = preview(ref);
+        if (f.channel === 'answer') {
+          t.summary.finalAnswer = preview(ref);
+        }
       }
+
       if (f.channel === 'tool-input' || f.channel === 'tool-output') {
         const row = get('SELECT * FROM actions WHERE turn=? AND native=?', c.turnId, f.key);
         if (row) {
           const action = decode<ToolActionSummary>(row);
-          if (!['queued', 'active', 'waiting'].includes(action.state))
+          if (!['queued', 'active', 'waiting'].includes(action.state)) {
             fail('SESSION_INPUT_INVALID', 'Cannot append output to settled ToolAction.');
-          if (f.channel === 'tool-input') action.input = ref;
-          else action.output = ref;
+          }
+
+          if (f.channel === 'tool-input') {
+            action.input = ref;
+          } else {
+            action.output = ref;
+          }
+
           action.revision++;
           action.updatedAt = now();
           run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
@@ -361,6 +428,7 @@ export function createProviderFacts({
           emit(s, 'work', { turnId: c.turnId, items: [parent] });
         }
       }
+
       run(
         'INSERT OR REPLACE INTO text_keys VALUES(?,?,?,?,?)',
         c.turnId,
@@ -370,6 +438,7 @@ export function createProviderFacts({
         entryId ?? null,
       );
     }
+
     if (f.kind === 'interaction') {
       const count = Number(
         get(
@@ -377,7 +446,10 @@ export function createProviderFacts({
           c.sessionId,
         )?.n ?? 0,
       );
-      if (count >= 32) fail('SESSION_PAYLOAD_TOO_LARGE', 'Too many pending interactions.');
+      if (count >= 32) {
+        fail('SESSION_PAYLOAD_TOO_LARGE', 'Too many pending interactions.');
+      }
+
       const w = decode<WorkSummary>(
         get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.key),
       );
@@ -398,12 +470,15 @@ export function createProviderFacts({
         JSON.stringify(i),
       );
     }
+
     t.summary.revision++;
     t.summary.updatedAt = now();
     refreshAttention(s, t);
     saveTurn(c.sessionId, t);
     emit(s, 'turn', { turn: t.summary, projection: projection(s) });
+
     return true;
   }
+
   return { applyFact };
 }

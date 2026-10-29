@@ -15,11 +15,14 @@ import type { CreateLeaveGuard } from './useCreateLeaveGuard';
 /** Confirmation shown when the user leaves a Create form that has unsaved edits. */
 export function CreateLeaveDialog({ guard }: { guard: CreateLeaveGuard }) {
   const { t } = useTranslation();
+
   return (
     <AlertDialog
       open={guard.open}
       onOpenChange={(open) => {
-        if (!open) guard.stay();
+        if (!open) {
+          guard.stay();
+        }
       }}
     >
       <AlertDialogContent

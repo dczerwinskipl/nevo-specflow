@@ -12,6 +12,7 @@ export function CreateBasicsSection({
   onTitleChange: (title: string) => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <div className="grid gap-4">
       <Field>

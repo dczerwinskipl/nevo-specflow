@@ -22,14 +22,24 @@ export function conflictsOfFailure(
   failure: CreateFailure,
   sent: { readonly slug?: string; readonly branch: string },
 ): Partial<WorkspaceConflicts> | undefined {
-  if (failure.kind === 'name-conflict')
+  if (failure.kind === 'name-conflict') {
     return sent.slug ? { slug: { value: sent.slug } } : undefined;
-  if (failure.kind === 'branch-exists' && failure.automatic) return { branch: undefined };
-  if (failure.kind === 'branch-protected')
+  }
+
+  if (failure.kind === 'branch-exists' && failure.automatic) {
+    return { branch: undefined };
+  }
+
+  if (failure.kind === 'branch-protected') {
     return failure.cause === 'typed-branch'
       ? { branch: { value: sent.branch, reason: 'protected' } }
       : undefined;
-  if (failure.kind !== 'branch-exists' && failure.kind !== 'branch-invalid') return undefined;
+  }
+
+  if (failure.kind !== 'branch-exists' && failure.kind !== 'branch-invalid') {
+    return undefined;
+  }
+
   return {
     branch: {
       value: sent.branch,

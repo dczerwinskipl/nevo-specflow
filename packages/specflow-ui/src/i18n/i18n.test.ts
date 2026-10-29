@@ -61,7 +61,9 @@ describe('SpecFlow localization', () => {
 });
 
 function messageKeys(value: unknown, prefix = ''): string[] {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return [prefix];
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return [prefix];
+  }
 
   return Object.entries(value)
     .flatMap(([key, nested]) => messageKeys(nested, prefix ? `${prefix}.${key}` : key))
@@ -69,8 +71,13 @@ function messageKeys(value: unknown, prefix = ''): string[] {
 }
 
 function messageEntries(value: unknown, prefix = ''): Record<string, string> {
-  if (typeof value === 'string') return { [prefix]: value };
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+  if (typeof value === 'string') {
+    return { [prefix]: value };
+  }
+
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {};
+  }
 
   return Object.fromEntries(
     Object.entries(value).flatMap(([key, nested]) =>

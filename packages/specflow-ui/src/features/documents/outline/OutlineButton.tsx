@@ -14,7 +14,7 @@ export function OutlineButton() {
   const { t } = useTranslation();
   const session = useDocumentEditor();
   const toggle = session?.contentsToggle;
-  if (toggle)
+  if (toggle) {
     return (
       <IconButton
         aria-label={t('documents.outline.label')}
@@ -30,7 +30,12 @@ export function OutlineButton() {
         onClick={toggle.toggle}
       />
     );
-  if (!session?.outlineAvailable) return null;
+  }
+
+  if (!session?.outlineAvailable) {
+    return null;
+  }
+
   return (
     <IconButton
       aria-label={t('documents.outline.open')}

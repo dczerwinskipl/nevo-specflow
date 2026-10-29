@@ -14,13 +14,16 @@ import type { ResolvedProjectHome } from './home/home';
 
 const roots: string[] = [];
 afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function fakeHome(): ResolvedProjectHome {
   const stateRoot = mkdtempSync(join(tmpdir(), 'control-lock-takeover-'));
   roots.push(stateRoot);
   mkdirSync(join(stateRoot, 'engine'));
+
   return { project: { stateRoot, projectId: 'project-1' } } as unknown as ResolvedProjectHome;
 }
 
@@ -153,6 +156,7 @@ describe('operator takeover of the Project Home control lock', () => {
       probe: () => {
         // The holder released the lock and another process took it.
         writeLock(home, 300, new Date(NOW).toISOString());
+
         return 'dead';
       },
     });

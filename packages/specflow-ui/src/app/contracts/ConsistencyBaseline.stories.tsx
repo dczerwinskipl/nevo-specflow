@@ -6,14 +6,19 @@ import scrollMeta from '../../../../nevo-ui/src/app/workspace/AppWorkspaceScroll
 import { withLocale } from '../../i18n/StoryLocalization';
 
 function Baseline({ screen = 'task' }: { screen?: 'task' | 'specification' | 'scroll' }) {
-  if (screen === 'specification')
+  if (screen === 'specification') {
     return <RoutedApplication path="/specs/admission?collection=current" />;
+  }
+
   if (screen === 'scroll') {
     const Scroll = scrollMeta.component;
+
     return <Scroll />;
   }
+
   return <TaskWorkbenchFixture scenario="human-gates" />;
 }
+
 const meta = {
   decorators: [withLocale('pl')],
   title: 'SpecFlow/Contracts/Creation consistency baseline',
@@ -27,6 +32,7 @@ async function capture(_name: string) {
     await (await browserPage()).viewport(width, 900);
   }
 }
+
 export const Task: Story = {
   play: async ({ canvas }) => {
     await canvas.findByRole('heading', {

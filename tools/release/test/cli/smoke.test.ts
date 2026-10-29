@@ -34,16 +34,21 @@ async function cli(
 ): Promise<RunResult> {
   const childEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries({ ...process.env, ...env })) {
-    if (v !== undefined) childEnv[k] = v;
+    if (v !== undefined) {
+      childEnv[k] = v;
+    }
   }
+
   try {
     const { stdout, stderr } = await execFileAsync('node', [bin, ...args], {
       cwd: pkgRoot,
       env: childEnv,
     });
+
     return { code: 0, stdout, stderr };
   } catch (err) {
     const e = err as { code?: number; stdout?: string; stderr?: string };
+
     return { code: e.code ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
   }
 }
@@ -128,6 +133,7 @@ function isolatedBranches(): { local: string[]; remote: string[] } {
     .split('\n')
     .map((l) => l.split('\t')[1] ?? '')
     .filter(Boolean);
+
   return { local, remote };
 }
 

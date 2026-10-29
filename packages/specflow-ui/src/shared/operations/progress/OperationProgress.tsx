@@ -53,6 +53,7 @@ function StepText({
   children?: ReactNode;
 }) {
   const pending = status === 'pending';
+
   return (
     <div className="grid min-w-0 gap-0.5">
       <Typography
@@ -98,7 +99,9 @@ export function OperationProgress({
 }: OperationProgressProps) {
   const { t } = useTranslation();
   const text = useMessage();
-  if (steps.length === 0 && !neutral && placeholderRows === 0) return null;
+  if (steps.length === 0 && !neutral && placeholderRows === 0) {
+    return null;
+  }
 
   return (
     <div role="group" aria-label={text(label)} className={cn('grid min-w-0 gap-3', className)}>

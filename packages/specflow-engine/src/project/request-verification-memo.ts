@@ -27,7 +27,10 @@ interface VerificationScope {
 const scope = new AsyncLocalStorage<VerificationScope>();
 
 export function runReadRequest<T>(work: () => Promise<T>): Promise<T> {
-  if (scope.getStore()) return work();
+  if (scope.getStore()) {
+    return work();
+  }
+
   return scope.run({ memo: new Map() }, work);
 }
 
@@ -37,7 +40,10 @@ export function runReadRequest<T>(work: () => Promise<T>): Promise<T> {
  * memoised: each admission step re-checks the disk.
  */
 export function runGitFreeMutation<T>(work: () => Promise<T>): Promise<T> {
-  if (scope.getStore()) return work();
+  if (scope.getStore()) {
+    return work();
+  }
+
   return scope.run({}, work);
 }
 
@@ -48,10 +54,17 @@ export function isReadRequest(): boolean {
 
 export function memoizeVerification<T>(key: string, compute: () => Promise<T>): Promise<T> {
   const memo = scope.getStore()?.memo;
-  if (!memo) return compute();
+  if (!memo) {
+    return compute();
+  }
+
   const existing = memo.get(key);
-  if (existing) return existing as Promise<T>;
+  if (existing) {
+    return existing as Promise<T>;
+  }
+
   const pending = compute();
   memo.set(key, pending);
+
   return pending;
 }

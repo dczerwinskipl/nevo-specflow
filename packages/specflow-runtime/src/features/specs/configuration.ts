@@ -15,7 +15,9 @@ export interface SpecsFeatureConfig {
 }
 
 export function parseSpecsFeatureConfig(value: unknown): SpecsFeatureConfig {
-  if (value === undefined) return defaultSpecsFeatureConfig();
+  if (value === undefined) {
+    return defaultSpecsFeatureConfig();
+  }
 
   const specs = record(value, 'specs');
   onlyKeys(specs, new Set(['overview']), 'specs');

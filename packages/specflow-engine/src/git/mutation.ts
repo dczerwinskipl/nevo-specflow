@@ -47,6 +47,7 @@ export async function executeGitMutation(
 ): Promise<GitCommandResult> {
   const timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
   const graceMs = options.terminationGraceMs ?? TERMINATION_GRACE_MS;
+
   return new Promise((resolve, reject) => {
     const child = spawnLocalGit(cwd, args);
     const output = new BoundedGitOutput(MAX_OUTPUT_BYTES);
@@ -56,17 +57,32 @@ export async function executeGitMutation(
     let escalationTimer: NodeJS.Timeout | undefined;
 
     const settle = (outcome: GitCommandResult | GitCapabilityError): void => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
+
       settled = true;
       clearTimeout(timeout);
-      if (terminationTimer) clearTimeout(terminationTimer);
-      if (escalationTimer) clearTimeout(escalationTimer);
-      if (outcome instanceof GitCapabilityError) reject(outcome);
-      else resolve(outcome);
+      if (terminationTimer) {
+        clearTimeout(terminationTimer);
+      }
+
+      if (escalationTimer) {
+        clearTimeout(escalationTimer);
+      }
+
+      if (outcome instanceof GitCapabilityError) {
+        reject(outcome);
+      } else {
+        resolve(outcome);
+      }
     };
 
     const terminate = (): void => {
-      if (uncertain || settled) return;
+      if (uncertain || settled) {
+        return;
+      }
+
       uncertain = true;
       terminateGitProcessTree(child, 'SIGTERM');
       escalationTimer = setTimeout(
@@ -86,15 +102,18 @@ export async function executeGitMutation(
       }, graceMs);
       terminationTimer.unref();
     };
+
     const timeout = setTimeout(terminate, timeoutMs);
     timeout.unref();
 
     const collect = (channel: 'stdout' | 'stderr', data: Buffer): void => {
       if (!output.write(channel, data)) {
         terminate();
+
         return;
       }
     };
+
     child.stdout.on('data', (data: Buffer) => collect('stdout', data));
     child.stderr.on('data', (data: Buffer) => collect('stderr', data));
     child.on('error', (error) => {
@@ -107,7 +126,10 @@ export async function executeGitMutation(
       );
     });
     child.on('exit', () => {
-      if (!uncertain) return;
+      if (!uncertain) {
+        return;
+      }
+
       // Git is gone; sweep what it left behind (a filter that ignored SIGTERM) and settle at once.
       terminateGitProcessTree(child, 'SIGKILL', { sweep: true });
       settle(

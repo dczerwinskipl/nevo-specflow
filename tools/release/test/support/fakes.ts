@@ -54,11 +54,16 @@ export function createFakeGit(overrides: Partial<FakeGitState> = {}): FakeGit {
   const fetched = { count: 0 };
 
   const shaOf = (ref: string): string | null => {
-    if (state.commits.has(ref)) return ref;
+    if (state.commits.has(ref)) {
+      return ref;
+    }
+
     return state.refs.get(ref) ?? state.tags.get(ref) ?? null;
   };
+
   const commitOf = (ref: string): FakeCommit | null => {
     const sha = shaOf(ref);
+
     return sha ? (state.commits.get(sha) ?? null) : null;
   };
 
@@ -71,6 +76,7 @@ export function createFakeGit(overrides: Partial<FakeGitState> = {}): FakeGit {
   }): string => {
     const sha = pad(state.nextSha++);
     state.commits.set(sha, { sha, parents, files: { ...files } });
+
     return sha;
   };
 
@@ -92,6 +98,7 @@ export function createFakeGit(overrides: Partial<FakeGitState> = {}): FakeGit {
       const a = commitOf(fromRef)?.files ?? {};
       const b = commitOf(toRef)?.files ?? {};
       const paths = new Set([...Object.keys(a), ...Object.keys(b)]);
+
       return [...paths].filter((p) => a[p] !== b[p]).sort();
     },
     showFileAtRef: async (ref, path) => commitOf(ref)?.files[path] ?? null,
@@ -106,16 +113,28 @@ export function createFakeGit(overrides: Partial<FakeGitState> = {}): FakeGit {
     isAncestor: async (candidate, ref) => {
       const target = shaOf(candidate);
       const start = shaOf(ref);
-      if (!target || !start) return false;
+      if (!target || !start) {
+        return false;
+      }
+
       const seen = new Set<string>();
       const queue = [start];
       while (queue.length) {
         const sha = queue.shift();
-        if (sha === undefined || seen.has(sha)) continue;
+        if (sha === undefined || seen.has(sha)) {
+          continue;
+        }
+
         seen.add(sha);
-        if (sha === target) return true;
-        for (const p of state.commits.get(sha)?.parents ?? []) queue.push(p);
+        if (sha === target) {
+          return true;
+        }
+
+        for (const p of state.commits.get(sha)?.parents ?? []) {
+          queue.push(p);
+        }
       }
+
       return false;
     },
     commitSingleFileOnto: async ({ baseRef, path, content, message }) => {
@@ -125,6 +144,7 @@ export function createFakeGit(overrides: Partial<FakeGitState> = {}): FakeGit {
         files: { ...(base?.files ?? {}), [path]: content },
       });
       void message;
+
       return sha;
     },
     pushCommitToBranch: async ({ sha, branch }) => {
@@ -144,6 +164,7 @@ export function seedBranch(
 ): string {
   const sha = git.addCommit({ parents, files });
   git.state.refs.set(ref, sha);
+
   return sha;
 }
 
@@ -188,37 +209,59 @@ export function createFakeGitHub(overrides: Partial<FakeGitHubState> = {}): Fake
     createdPrs,
     autoMerged,
     checkRunsForCommit: async () => {
-      if (state.failCheckRuns) throw state.failCheckRuns;
+      if (state.failCheckRuns) {
+        throw state.failCheckRuns;
+      }
+
       return state.checkRuns;
     },
     releaseExists: async (tag) => {
-      if (state.failReleaseView) throw state.failReleaseView;
+      if (state.failReleaseView) {
+        throw state.failReleaseView;
+      }
+
       return state.releases.has(tag);
     },
     releaseAssetNames: async (tag) => {
-      if (state.failReleaseAssets) throw state.failReleaseAssets;
-      if (!state.releases.has(tag)) throw new Error(`Release ${tag} does not exist`);
+      if (state.failReleaseAssets) {
+        throw state.failReleaseAssets;
+      }
+
+      if (!state.releases.has(tag)) {
+        throw new Error(`Release ${tag} does not exist`);
+      }
+
       return [...(state.releaseAssets.get(tag) ?? [])];
     },
     createRelease: async ({ tag }) => {
       state.releases.add(tag);
       createdReleases.push(tag);
+
       return { url: `https://example.test/releases/${tag}` };
     },
     findOpenPullRequest: async ({ head, base }): Promise<PullRequestRef | null> => {
-      if (state.failPrList) throw state.failPrList;
+      if (state.failPrList) {
+        throw state.failPrList;
+      }
+
       const pr = state.openPrs.find((p) => p.head === head && p.base === base);
+
       return pr ? { url: pr.url } : null;
     },
     createPullRequest: async ({ head, base }): Promise<PullRequestRef> => {
       const url = `https://example.test/pull/${String(prCounter++)}`;
       state.openPrs.push({ head, base, url });
       createdPrs.push({ head, base, url });
+
       return { url };
     },
     enableAutoMerge: async (prUrl) => {
-      if (state.autoMerge instanceof Error) throw state.autoMerge;
+      if (state.autoMerge instanceof Error) {
+        throw state.autoMerge;
+      }
+
       autoMerged.push(prUrl);
+
       return state.autoMerge === 'unavailable'
         ? { outcome: 'unavailable', reason: 'the repository does not have auto-merge enabled' }
         : { outcome: 'enabled' };
@@ -241,6 +284,7 @@ export function createFakeSyncGit(
   refs: string[] = [],
 ): SyncGitReader {
   const known = new Set(refs);
+
   return {
     refExists: (ref) => known.has(ref),
     readFileAtRef: (ref, path) => files[`${ref}:${path}`] ?? null,

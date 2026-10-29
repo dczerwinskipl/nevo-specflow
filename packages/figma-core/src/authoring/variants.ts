@@ -8,8 +8,14 @@ export type VariantRecipe = ((props?: Record<string, unknown>) => unknown) & {
 };
 
 function variantValue(value: string): DesignValue {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+  if (value === 'true') {
+    return true;
+  }
+
+  if (value === 'false') {
+    return false;
+  }
+
   return value;
 }
 
@@ -27,7 +33,10 @@ export function getVariantValues<
   Key extends keyof Recipe['variants'] & string,
 >(recipe: Recipe, key: Key) {
   const variants = recipe.variants[key];
-  if (!variants) return [];
+  if (!variants) {
+    return [];
+  }
+
   return objectKeys(variants).map(variantValue) as StringToBoolean<
     keyof Recipe['variants'][Key] & string
   >[];
@@ -35,6 +44,7 @@ export function getVariantValues<
 
 export function getVariantContract(recipe: VariantRecipe) {
   const properties = (recipe.variantKeys ?? []).map(String);
+
   return {
     properties,
     values: Object.fromEntries(
@@ -43,6 +53,7 @@ export function getVariantContract(recipe: VariantRecipe) {
     defaults: Object.fromEntries(
       properties.flatMap((property) => {
         const value = recipe.defaultVariants[property];
+
         return value === undefined ? [] : [[property, value as DesignValue]];
       }),
     ),
@@ -51,6 +62,7 @@ export function getVariantContract(recipe: VariantRecipe) {
 
 export function variantCombinations<Recipe extends VariantRecipe>(recipe: Recipe) {
   const contract = getVariantContract(recipe);
+
   return contract.properties.reduce<Record<string, DesignValue>[]>(
     (combinations, property) =>
       combinations.flatMap((combination) =>

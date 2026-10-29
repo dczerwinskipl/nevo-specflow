@@ -48,7 +48,10 @@ async function fixture(options: { definitions?: boolean } = {}) {
     'initial',
   );
   const engine = await bootstrapProjectHome(root);
-  if (options.definitions !== false) await installDefinitionsForTesting(engine);
+  if (options.definitions !== false) {
+    await installDefinitionsForTesting(engine);
+  }
+
   return { root, engine };
 }
 
@@ -70,6 +73,7 @@ async function server(
     },
     { auth: { store }, specs: { engine } },
   );
+
   return { root, engine, app, headers };
 }
 

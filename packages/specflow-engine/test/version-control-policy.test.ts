@@ -147,6 +147,7 @@ describe('Version Control worktree policy (VC01)', () => {
     ]) {
       expect(() => parseGitWorktreePolicy(project)).toThrow();
     }
+
     expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, { git: {} })).not.toThrow();
     for (const local of [
       { git: { enabled: true } },

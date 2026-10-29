@@ -46,6 +46,7 @@ export function DesignMetadataBoundary({
   excludeComponents,
 }: PropsWithChildren<{ excludeComponents: readonly CaptureComponent[] }>) {
   const parent = useContext(DesignMetadataContext);
+
   return (
     <DesignMetadataContext.Provider
       value={{
@@ -86,6 +87,7 @@ export function designSlot<Component extends SlotComponent, Slot extends Capture
   slot: Slot,
 ) {
   void component;
+
   return { 'data-design-slot': slot } as const;
 }
 
@@ -96,7 +98,10 @@ export function useDesignMetadata<Component extends CaptureComponent>(
   metadata?: CaptureMetadata<Component>,
 ) {
   const { enabled, captureComponents, excludedComponents } = useContext(DesignMetadataContext);
-  if (!enabled || excludedComponents.has(component)) return {};
+  if (!enabled || excludedComponents.has(component)) {
+    return {};
+  }
+
   return {
     'data-design-component': component,
     ...(captureComponents.has(component) ? { 'data-design-capture': 'true' } : {}),

@@ -37,6 +37,7 @@ async function workspace(): Promise<string> {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-specs-Ż ')));
   roots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
+
   return root;
 }
 
@@ -93,6 +94,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     for (const file of first.files) {
       expect(file.sha256).toMatch(/^[a-f0-9]{64}$/u);
     }
+
     expect(first.files[0]?.content).toContain('spec_id: ' + specId);
     expect(first.files[0]?.content).not.toContain('workflow:');
     expect(first.files[0]?.content).not.toContain('mode: deterministic');
@@ -328,6 +330,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     for (const slug of invalid) {
       expect(() => validateSpecificationSlug(slug), slug).toThrow(SpecificationError);
     }
+
     for (const safe of ['content', 'con-text', 'auxiliary', 'com10', 'trailing.txt', 'spec-1']) {
       expect(validateSpecificationSlug(safe)).toBe(safe);
     }

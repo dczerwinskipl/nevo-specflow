@@ -25,6 +25,7 @@ export async function moveMember(
 ): Promise<DocumentChangeJournal> {
   const next = transitionDocumentChange(journal, to, patch, now);
   await publishJournal(context, DOCUMENT_CHANGE_JOURNAL_KIND, next);
+
   return next;
 }
 
@@ -75,7 +76,10 @@ export async function reconcileBatchMember(
   const id = batch.operationId;
   {
     const journal = await readDocumentChangeJournal(context, memberId);
-    if (journal === undefined) return false;
+    if (journal === undefined) {
+      return false;
+    }
+
     let moved = false;
     switch (batch.state) {
       case 'committing':
@@ -83,6 +87,7 @@ export async function reconcileBatchMember(
           await moveMember(context, journal, 'committing', { batchId: id }, now);
           moved = true;
         }
+
         break;
       case 'committed':
         if (owns(journal, id, ['committing', 'recovery-required'])) {
@@ -99,6 +104,7 @@ export async function reconcileBatchMember(
           );
           moved = true;
         }
+
         break;
       case 'dissolved':
         moved = await reconcileDissolved(context, batch, journal, now, hooks);
@@ -117,6 +123,7 @@ export async function reconcileBatchMember(
           );
           moved = true;
         }
+
         break;
       case 'recovery-required':
         if (owns(journal, id, ['committing'])) {
@@ -133,14 +140,17 @@ export async function reconcileBatchMember(
           );
           moved = true;
         }
+
         break;
       case 'formed':
         break;
       default: {
         const exhaustive: never = batch.state;
+
         return exhaustive;
       }
     }
+
     return moved;
   }
 }
@@ -159,6 +169,7 @@ export async function reconcileBatchMembers(
       await afterEach?.(changed);
     }
   }
+
   return changed;
 }
 
@@ -171,18 +182,31 @@ async function reconcileDissolved(
 ): Promise<boolean> {
   const id = batch.operationId;
   if (batch.reason === DISSOLVED_BY_ABANDON) {
-    if (!owns(journal, id, ['commit-failed', 'recovery-required'])) return false;
+    if (!owns(journal, id, ['commit-failed', 'recovery-required'])) {
+      return false;
+    }
+
     await completeUncommitted(context, journal, batch.parentHead, now, hooks);
+
     return true;
   }
+
   if (batch.reason === DISSOLVED_BY_SPLIT) {
-    if (!owns(journal, id, ['committing'])) return false;
+    if (!owns(journal, id, ['committing'])) {
+      return false;
+    }
+
     await moveMember(context, journal, 'queued', {}, now);
+
     return true;
   }
+
   if (batch.reason !== undefined) {
     // A failed attempt: counted, visible, and the next one waits for the backoff.
-    if (!owns(journal, id, ['committing'])) return false;
+    if (!owns(journal, id, ['committing'])) {
+      return false;
+    }
+
     await moveMember(
       context,
       journal,
@@ -195,10 +219,16 @@ async function reconcileDissolved(
       },
       now,
     );
+
     return true;
   }
-  if (!owns(journal, id, ['committing', 'commit-failed', 'recovery-required'])) return false;
+
+  if (!owns(journal, id, ['committing', 'commit-failed', 'recovery-required'])) {
+    return false;
+  }
+
   await moveMember(context, journal, 'queued', { attempts: 0 }, now);
+
   return true;
 }
 
@@ -215,7 +245,10 @@ export async function completeHeldMembersWithoutCommit(
   let changed = 0;
   for (const id of batch.memberIds) {
     const journal = await readDocumentChangeJournal(context, id);
-    if (journal === undefined || !holdsMember(journal, batch.operationId)) continue;
+    if (journal === undefined || !holdsMember(journal, batch.operationId)) {
+      continue;
+    }
+
     await moveMember(
       context,
       journal,
@@ -225,5 +258,6 @@ export async function completeHeldMembersWithoutCommit(
     );
     changed += 1;
   }
+
   return changed;
 }

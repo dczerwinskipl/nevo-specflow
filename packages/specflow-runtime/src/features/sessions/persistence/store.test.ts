@@ -21,18 +21,23 @@ let directory = '';
 afterEach(async () => {
   await store?.close();
   store = undefined;
-  if (directory) await rm(directory, { recursive: true, force: true });
+  if (directory) {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 async function create(providerId = 'mock') {
   directory = await mkdtemp(join(tmpdir(), 'nevo-sessions-'));
   store = await openSessionStore({ directory, projectId: 'project' });
   const input = { requestId: randomUUID(), providerId, mode: 'read-only' as const };
   const session = await store.call<{ sessionId: string }>({ op: 'create', actor: 'user', input });
+
   return { ...session, input };
 }
+
 async function snap(sessionId: string): Promise<SessionSnapshot> {
   return (await store!.call<SnapshotSource>({ op: 'snapshot', sessionId, actor: 'user' })).snapshot;
 }
+
 describe('durable Session store', () => {
   it.each(['before-input', 'after-result'] as const)(
     'binds provider-assigned identity before dispatch and preserves it across restart: %s',
@@ -78,6 +83,7 @@ describe('durable Session store', () => {
           fact: { kind: 'outcome', outcome: 'completed' },
         });
       }
+
       await store!.close();
       store = await openSessionStore({ directory, projectId: 'project' });
       const resumed = await store.call<StartAdmission>({
@@ -319,7 +325,7 @@ describe('durable Session store', () => {
     for (const change of [
       { nativeWorkspace: join(directory, 'other'), nativeScope: 'account-a' },
       { nativeWorkspace, nativeScope: 'account-b' },
-    ])
+    ]) {
       await expect(
         store.call({
           op: 'start',
@@ -329,6 +335,7 @@ describe('durable Session store', () => {
           input: { requestId: randomUUID(), message: 'Unsafe resume' },
         }),
       ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    }
   });
   it('does not replay an unconfirmed native dispatch and never silently rebinds correlation', async () => {
     const { sessionId } = await create('claude');
@@ -471,7 +478,7 @@ describe('durable Session store', () => {
       sessionId,
       input: { requestId: randomUUID(), message: 'Inspect' },
     });
-    for (let driverSeq = 1; driverSeq <= 85; driverSeq++)
+    for (let driverSeq = 1; driverSeq <= 85; driverSeq++) {
       await store!.call({
         op: 'fact',
         sessionId,
@@ -484,6 +491,8 @@ describe('durable Session store', () => {
           text: '\0'.repeat(2048),
         },
       });
+    }
+
     const snapshot = await snap(sessionId);
     expect(Buffer.byteLength(JSON.stringify(snapshot))).toBeLessThanOrEqual(
       SessionLimits.pageBytes,
@@ -506,6 +515,7 @@ describe('durable Session store', () => {
       entries.unshift(...page.entries);
       history = page.history;
     }
+
     expect(entries).toHaveLength(86);
     expect(new Set(entries.map((e) => e.id)).size).toBe(86);
     expect(entries.map((e) => e.ordinal)).toEqual(Array.from({ length: 86 }, (_, n) => n + 1));
@@ -521,8 +531,10 @@ describe('durable Session store', () => {
     let driverSeq = 0;
     const emit = (fact: DriverFact) =>
       store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
-    for (let n = 0; n < 45; n++)
+    for (let n = 0; n < 45; n++) {
       await emit({ kind: 'work-open', key: 'w' + n, workKind: 'tool', title: '\0'.repeat(2048) });
+    }
+
     let work = await store!.call<WorkPage>({
       op: 'work',
       sessionId,
@@ -535,7 +547,10 @@ describe('durable Session store', () => {
     for (;;) {
       expect(Buffer.byteLength(JSON.stringify(work))).toBeLessThanOrEqual(SessionLimits.pageBytes);
       workIds.push(...work.items.map((item) => item.workId));
-      if (!work.history.before) break;
+      if (!work.history.before) {
+        break;
+      }
+
       work = await store!.call<WorkPage>({
         op: 'work',
         sessionId,
@@ -545,10 +560,13 @@ describe('durable Session store', () => {
         limit: 40,
       });
     }
+
     expect(new Set(workIds).size).toBe(45);
     expect(workIds).toHaveLength(45);
-    for (let n = 0; n < 45; n++)
+    for (let n = 0; n < 45; n++) {
       await emit({ kind: 'action-open', key: 'a' + n, parentKey: 'w44', title: '\0'.repeat(2048) });
+    }
+
     let actions = await store!.call<ActionPage>({
       op: 'actions',
       sessionId,
@@ -562,7 +580,10 @@ describe('durable Session store', () => {
         SessionLimits.pageBytes,
       );
       actionIds.push(...actions.items.map((item) => item.actionId));
-      if (!actions.history.before) break;
+      if (!actions.history.before) {
+        break;
+      }
+
       actions = await store!.call<ActionPage>({
         op: 'actions',
         sessionId,
@@ -572,6 +593,7 @@ describe('durable Session store', () => {
         limit: 40,
       });
     }
+
     expect(new Set(actionIds).size).toBe(45);
     expect(actionIds).toHaveLength(45);
   });
@@ -822,6 +844,7 @@ describe('durable Session store', () => {
         fact: { kind: 'outcome', outcome: 'completed' },
       });
     }
+
     const snapshot = await snap(sessionId);
     expect(snapshot.entries).toHaveLength(40);
     const before = snapshot.history.before!;

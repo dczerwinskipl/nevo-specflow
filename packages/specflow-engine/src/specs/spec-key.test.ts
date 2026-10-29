@@ -16,7 +16,10 @@ describe('Specification keys', () => {
   });
 
   it('accepts only <prefix>-<number> without a leading zero', () => {
-    for (const key of ['nevo-1', 'nevo-1234', 'ab1-7']) expect(isSpecKey(key)).toBe(true);
+    for (const key of ['nevo-1', 'nevo-1234', 'ab1-7']) {
+      expect(isSpecKey(key)).toBe(true);
+    }
+
     for (const key of ['nevo-0', 'nevo-01', 'Nevo-1', 'nevo', '-1', 'nevo-1a', 'nevo 1', 7]) {
       expect(isSpecKey(key)).toBe(false);
     }

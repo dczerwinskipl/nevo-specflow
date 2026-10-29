@@ -53,6 +53,7 @@ async function project(config = GIT_CONFIG): Promise<{ root: string; engine: Spe
   // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
   // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
   await installDefinitionsForTesting(engine).catch(() => undefined);
+
   return { root, engine };
 }
 
@@ -76,6 +77,7 @@ const committedPaths = (root: string, sha: string): string[] =>
 
 async function manifestOf(root: string, relativeManifestPath: string) {
   const slug = relativeManifestPath.split('/')[2]!;
+
   return parseSpecificationManifestText(
     await readFile(join(root, relativeManifestPath), 'utf8'),
     slug,
@@ -193,6 +195,7 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
         code: 'CREATE_CONFLICT',
       });
     }
+
     expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
   }, 240000);
 
@@ -228,6 +231,7 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
         createSpecification(engine, request(engine, 'Refused ' + index, patch)),
       ).rejects.toMatchObject({ code: codes[index] });
     }
+
     expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
     await expect(stat(join(root, 'specs'))).rejects.toMatchObject({ code: 'ENOENT' });
@@ -262,6 +266,7 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
       longFolder = 'f'.repeat(Math.floor(room / 2));
       longName = 'n'.repeat(room - longFolder.length - 3) + '.md';
     }
+
     const created = await createSpecification(
       engine,
       request(engine, 'Long names', {
@@ -314,6 +319,7 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     for (const name of ['specification.yaml', 'overview.md', 'ux.md', 'backend.md', 'extra/n.md']) {
       expect((await stat(join(root, base + name))).isFile()).toBe(true);
     }
+
     expect((await inspectCreateSpecification(engine, created.operationId))?.commit).toBeUndefined();
   }, 240000);
 
@@ -331,8 +337,12 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
       await expect(
         createSpecification(engine, input, {
           afterEffect: async (effect) => {
-            if (effect !== 'reservation') return;
+            if (effect !== 'reservation') {
+              return;
+            }
+
             slug = (await inspectCreateSpecification(engine, input.operationId))!.slug;
+
             throw new Stop();
           },
         }),
@@ -441,7 +451,10 @@ describe('Create with an archetype: recovery uses the full recorded list', () =>
       await expect(
         createSpecification(engine, input, {
           afterEffect: (effect) => {
-            if (effect === 'file' && ++seen === count) return Promise.reject(new Crash('file'));
+            if (effect === 'file' && ++seen === count) {
+              return Promise.reject(new Crash('file'));
+            }
+
             return Promise.resolve();
           },
         }),

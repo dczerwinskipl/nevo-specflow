@@ -26,7 +26,10 @@ export function hintFor(error: DocumentError): string | undefined {
   const details = error.details;
   switch (error.code) {
     case 'SPEC_BUSY':
-      if (details?.cause === 'recovery-required') return RECOVER_HINT;
+      if (details?.cause === 'recovery-required') {
+        return RECOVER_HINT;
+      }
+
       if (details?.cause === 'commit-in-progress' && details.operationId !== undefined) {
         return (
           `Manual commit ${details.operationId} holds this checkout. Retry shortly; when it never ends ` +
@@ -34,6 +37,7 @@ export function hintFor(error: DocumentError): string | undefined {
           '(add --confirmed-stopped when no process of this project is running).'
         );
       }
+
       return details?.retryAfterMs !== undefined
         ? `Retry in ${details.retryAfterMs} ms (same --operation-id is safe).`
         : 'Retry shortly (the same --operation-id is safe).';
@@ -46,6 +50,7 @@ export function hintFor(error: DocumentError): string | undefined {
           'drops them from its list on the next flush.'
         );
       }
+
       return (
         'Run "nevo-specflow specs documents flush"; retry or abandon failed commits with ' +
         '"specs documents retry|abandon <operationId>".'
@@ -63,13 +68,17 @@ export function hintFor(error: DocumentError): string | undefined {
           '("specs documents retry|abandon <operationId>"), then repeat.'
         );
       }
-      if (details?.cause === 'git-disabled')
+
+      if (details?.cause === 'git-disabled') {
         return 'Git is disabled for this project: nothing can be committed.';
+      }
+
       return 'Nothing is uncommitted in this scope. See "nevo-specflow commit status".';
     case 'MANUAL_COMMIT_CONFLICT':
       if (details?.cause === 'branch-changed') {
         return 'Switch back to the branch the changes were made on (see "commit status"), then repeat.';
       }
+
       return (
         'Some listed files were edited after the Engine wrote them. Review them: commit them with Git, ' +
         'or restore the Engine content or HEAD; then repeat. "nevo-specflow specs documents resolve ' +
@@ -112,6 +121,7 @@ export function hintFor(error: DocumentError): string | undefined {
 
 export function reportOf(error: DocumentError): FailureReport {
   const hint = hintFor(error);
+
   return {
     code: error.code,
     message: error.message,
@@ -134,12 +144,21 @@ export async function reportingRefusals<T>(
   try {
     return await body();
   } catch (error) {
-    if (!(error instanceof DocumentError)) throw error;
+    if (!(error instanceof DocumentError)) {
+      throw error;
+    }
+
     const report = reportOf(error);
     const cause = error.details?.cause;
     output.stderr(`${report.code}: ${report.message}${cause !== undefined ? ` (${cause})` : ''}`);
-    if (report.hint !== undefined) output.stderr(`Hint: ${report.hint}`);
-    if (json) output.stdout(JSON.stringify({ error: report }));
+    if (report.hint !== undefined) {
+      output.stderr(`Hint: ${report.hint}`);
+    }
+
+    if (json) {
+      output.stdout(JSON.stringify({ error: report }));
+    }
+
     throw new ReportedFailure(report.message, 1);
   }
 }

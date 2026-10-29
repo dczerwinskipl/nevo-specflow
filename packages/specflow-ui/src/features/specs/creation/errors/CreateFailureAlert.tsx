@@ -150,6 +150,7 @@ export function CreateFailureAlert({
   const danger =
     (failure.kind === 'recovery-required' && !failure.committed) || failure.kind === 'forbidden';
   const unknown = failure.kind === 'uncertain' || failure.kind === 'recovery-required';
+
   return (
     <Alert
       role="alert"

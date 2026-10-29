@@ -38,6 +38,7 @@ export function createSessionReads({
       .slice(0, limit)
       .map((r) => decode<ConversationEntry>(r))
       .reverse();
+
     return boundedPage(items, hasOlder, (entries, older) => ({
       ...envelope,
       entries,
@@ -47,15 +48,19 @@ export function createSessionReads({
       },
     }));
   }
+
   function execute(c: StoreCommand): unknown {
     if (c.op === 'snapshot') {
       const s = session(c.sessionId);
+
       return {
         snapshot: history(c.sessionId, c.actor, Number.MAX_SAFE_INTEGER, 40, s.snapshot),
       };
     }
+
     if (c.op === 'history') {
       const s = session(c.sessionId);
+
       return history(
         c.sessionId,
         c.actor,
@@ -64,6 +69,7 @@ export function createSessionReads({
         { sessionId: c.sessionId, eventSeq: s.snapshot.eventSeq },
       );
     }
+
     if (c.op === 'work' || c.op === 'actions') {
       const s = session(c.sessionId),
         isWork = c.op === 'work',
@@ -71,9 +77,12 @@ export function createSessionReads({
       const upper = c.before
         ? boundary(c.before, c.sessionId, c.actor, c.op, parent)
         : Number.MAX_SAFE_INTEGER;
-      if (isWork) turn(parent, c.sessionId);
-      else if (!get('SELECT id FROM work WHERE id=? AND session=?', parent, c.sessionId))
+      if (isWork) {
+        turn(parent, c.sessionId);
+      } else if (!get('SELECT id FROM work WHERE id=? AND session=?', parent, c.sessionId)) {
         fail('SESSION_RESOURCE_NOT_FOUND', 'Work not found.');
+      }
+
       const rows = isWork
         ? all(
             'SELECT data FROM work WHERE session=? AND turn=? AND ordinal<? ORDER BY ordinal DESC LIMIT ?',
@@ -99,6 +108,7 @@ export function createSessionReads({
         eventSeq: s.snapshot.eventSeq,
         ...(isWork ? { turn: turn(parent, c.sessionId).summary } : { workId: parent }),
       };
+
       return boundedPage(items, hasOlder, (pageItems, older) => ({
         ...envelope,
         items: pageItems,
@@ -110,10 +120,13 @@ export function createSessionReads({
         },
       }));
     }
+
     if (c.op === 'content') {
       session(c.sessionId);
+
       return content.read(c);
     }
+
     if (c.op === 'events') {
       const cutoff = Date.now() - 86400000;
       const s = session(c.sessionId),
@@ -124,6 +137,7 @@ export function createSessionReads({
             cutoff,
           )?.seq ?? s.snapshot.eventSeq + 1,
         );
+
       return {
         latest: s.snapshot.eventSeq,
         oldest,
@@ -135,7 +149,9 @@ export function createSessionReads({
         ).map((r) => decode<SessionChange>(r)),
       };
     }
+
     return fail('SESSION_INPUT_INVALID', 'Unknown store command.');
   }
+
   return { execute };
 }

@@ -13,11 +13,14 @@ let running: Awaited<ReturnType<typeof launchOwnedProcess>> | undefined;
 afterEach(async () => {
   await running?.dispose();
   running = undefined;
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 async function setup() {
   root = await mkdtemp(join(tmpdir(), 'provider-process-'));
   const invocationId = randomUUID();
+
   return {
     invocationId,
     scope: await createInvocationScope(root, invocationId),
@@ -30,6 +33,7 @@ async function setup() {
     signal: new AbortController().signal,
   };
 }
+
 describe('owned provider process', () => {
   it.runIf(process.platform === 'win32')(
     'does not run provider Node preloads outside the owned job',
@@ -124,7 +128,10 @@ describe('owned provider process', () => {
   it('rolls back resources if diagnostic acquisition fails before spawn', async () => {
     const input = await setup();
     const diagnostics = createDiagnosticStore({ enabled: true });
-    for (let n = 0; n < 1024; n++) diagnostics.open(String(n));
+    for (let n = 0; n < 1024; n++) {
+      diagnostics.open(String(n));
+    }
+
     const close = vi.fn(() => Promise.resolve());
     input.scope.defer('mcp', close);
     await expect(launchOwnedProcess({ ...input, diagnostics, args: [] })).rejects.toMatchObject({
@@ -156,9 +163,13 @@ describe('owned provider process', () => {
         try {
           state = await readFile('/proc/' + pid + '/stat', 'utf8');
         } catch (error) {
-          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return;
+          }
+
           throw error;
         }
+
         // Container PID1 may not reap an orphan immediately. A zombie cannot execute further work.
         expect(state.slice(state.lastIndexOf(')') + 2, state.lastIndexOf(')') + 3)).toBe('Z');
       });

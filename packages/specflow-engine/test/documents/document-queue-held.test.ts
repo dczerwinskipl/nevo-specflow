@@ -67,6 +67,7 @@ describe('attempts are counted per member', () => {
       await runQueueOnce(project.engine, isolatedQueue({ clock }), undefined, FLUSH);
       at += 120_000;
     }
+
     expect((await stage(project, tired))?.attempts).toBe(9);
 
     // A save is admitted only while Git can take a commit; the blocker is back for the next attempt.
@@ -83,6 +84,7 @@ describe('attempts are counted per member', () => {
         hooks: {
           afterClaim: (batch) => {
             batchAttempts = batch.attempts;
+
             return Promise.resolve();
           },
         },
@@ -117,6 +119,7 @@ describe('an operation whose plan cannot be read', () => {
         }),
       ),
     );
+
     return id;
   }
 
@@ -164,6 +167,7 @@ describe('what waits for a person', () => {
         }
       });
     };
+
     await fabricate('commit-failed', 999, 5000);
     // 999 operations wait for a decision: still room for one more.
     await queueSave(project, 1, 'accepted\n');
@@ -187,6 +191,7 @@ describe('repeating an action', () => {
     const id = await queueSave(project, 1, 'mine\n');
     await editNotesByHand(project, 1, 'a human typed this\n');
     await runQueueOnce(project.engine, isolatedQueue(), undefined, FLUSH);
+
     return id;
   }
 
@@ -233,6 +238,7 @@ describe('a failure recorded by an executor that no longer holds the batch', () 
         hooks: {
           afterClaim: (batch) => {
             claimed = batch;
+
             return Promise.resolve();
           },
         },
@@ -259,18 +265,24 @@ describe('a failure recorded by an executor that no longer holds the batch', () 
 describe('the locks of recording a commit', () => {
   it('takes one short section per member, not one long one for the whole batch', async () => {
     const project = await queueProject();
-    for (let index = 1; index <= 6; index += 1) await queueSave(project, index, `doc ${index}\n`);
+    for (let index = 1; index <= 6; index += 1) {
+      await queueSave(project, index, `doc ${index}\n`);
+    }
+
     let sections = 0;
     const listener = (): void => {
       sections += 1;
     };
+
     const hooks: QueueHooks = {
       afterBatchRecorded: () => {
         subscribe('nevo.specflow.engine.control-lock', listener);
+
         return Promise.resolve();
       },
       afterMembersCompleted: () => {
         unsubscribe('nevo.specflow.engine.control-lock', listener);
+
         return Promise.resolve();
       },
     };

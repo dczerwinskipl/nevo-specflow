@@ -90,6 +90,7 @@ function setup({
     const session = useDocumentEditor();
     seen.tabs = tabs;
     seen.session = session;
+
     return (
       <div>
         <output data-testid="active">{tabs.activeId ?? 'none'}</output>
@@ -121,8 +122,10 @@ function setup({
       </div>
     );
   }
+
   function Screen() {
     const { documentId } = useParams({ strict: false });
+
     return (
       <DocumentTabsProvider specId={SPEC} documentId={documentId}>
         <DocumentRouteGuard specId={SPEC} requestRef={leave} commitRef={commit} />
@@ -130,6 +133,7 @@ function setup({
       </DocumentTabsProvider>
     );
   }
+
   const root = createRootRoute();
   const specification = createRoute({ getParentRoute: () => root, path: 'specs/$specId' });
   const layout = createRoute({
@@ -145,7 +149,10 @@ function setup({
     component: () => <p>elsewhere</p>,
   });
   const history = createMemoryHistory({ initialEntries: [initial] });
-  if (state) history.replace(initial, state);
+  if (state) {
+    history.replace(initial, state);
+  }
+
   const router = createRouter({
     routeTree: root.addChildren([
       specification.addChildren([layout.addChildren([list, detail])]),
@@ -171,6 +178,7 @@ function setup({
       await Promise.resolve();
     });
   const text = (id: string) => screen.getByTestId(id).textContent;
+
   return {
     router,
     history,

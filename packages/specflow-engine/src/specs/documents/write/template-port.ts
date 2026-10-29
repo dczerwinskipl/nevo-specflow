@@ -26,7 +26,10 @@ export function namesTemplates(request: DocumentWriteRequest): request is Unreso
 
 /** The planner request of a write request that names no template. */
 export function asPlannerRequest(request: DocumentWriteRequest): DocumentChangeRequest {
-  if (request.action !== 'create') return request;
+  if (request.action !== 'create') {
+    return request;
+  }
+
   return { ...request, documents: request.documents as CreateRequest['documents'] };
 }
 

@@ -36,6 +36,7 @@ export async function probeCodexBoundary(
       ),
     );
   }
+
   let readOnly = false,
     write = false;
   try {
@@ -46,10 +47,12 @@ export async function probeCodexBoundary(
     } catch (error) {
       absent = (error as NodeJS.ErrnoException).code === 'ENOENT';
     }
+
     readOnly = result.exitCode === 23 && result.stdout === 'specflow-probe-start\ndenied' && absent;
   } catch {
     /* Missing enforcement is unavailable, never a permission fallback. */
   }
+
   try {
     const result = await run(codexModes[0], writable);
     const permitted =
@@ -63,6 +66,7 @@ export async function probeCodexBoundary(
     } catch (error) {
       absent = (error as NodeJS.ErrnoException).code === 'ENOENT';
     }
+
     write =
       permitted &&
       refused.exitCode === 23 &&
@@ -71,5 +75,6 @@ export async function probeCodexBoundary(
   } catch {
     /* A native sandbox/setup failure must not enable writable mode. */
   }
+
   return { readOnly, write };
 }

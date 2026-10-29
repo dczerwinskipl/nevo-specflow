@@ -80,6 +80,7 @@ export function commitInfoOfJournal(journal: DocumentChangeJournal, now: number)
   const reason =
     journal.reason ?? (isWriterStage(journal.stage) ? COMMIT_WRITING_REASON : undefined);
   const queuedAt = journal.queuedAt;
+
   return {
     state,
     ...(journal.sha !== undefined ? { sha: journal.sha } : {}),

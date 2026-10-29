@@ -34,6 +34,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     },
     (request, reply) => {
       reply.header('Cache-Control', 'no-store');
+
       return getAuthSession(
         options.authentication,
         options.store,
@@ -50,6 +51,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     );
     reply.clearCookie(options.cookieNames.session, options.cookieOptions);
     reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+
     return reply.code(204).send();
   });
 

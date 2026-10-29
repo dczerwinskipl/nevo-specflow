@@ -202,6 +202,7 @@ describe('Q00 Close journal current-format acceptance baseline', () => {
           : {}),
         resources: [],
       };
+
       return {
         ...proposed,
         resources: resourcesForClosePlan(proposed, context.project.projectId),
@@ -242,6 +243,7 @@ describe('Q00 Close journal current-format acceptance baseline', () => {
     function integration(selectedPlan: ClosePlan, divergent: boolean, published: boolean) {
       const sourceCommit =
         selectedPlan.kind === 'worktree-close' ? selectedPlan.source.head : 'e'.repeat(40);
+
       return {
         sourceCommit,
         targetCommit: selectedPlan.target!.head,

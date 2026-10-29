@@ -74,10 +74,12 @@ interface StackData {
 function useRecord({ id }: { id: string }): SecondaryData<StackData> {
   const records = useContext(Records);
   const { actions } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
+
   return records[id]
     ? { status: 'ready', data: { record: records[id], actions } }
     : { status: 'unavailable' };
 }
+
 function EditorScreen() {
   return (
     <AppContent className="h-full w-full">
@@ -85,9 +87,11 @@ function EditorScreen() {
     </AppContent>
   );
 }
+
 function EditorHeader({ data }: { data: StackData }) {
   return <WorkspaceHeaderIdentity headingLevel={2} title={data.record.path} />;
 }
+
 const stack = defineSecondaryStack<{ id: string }, StackData, { editor: Record<string, never> }>({
   id: 'owner-v4-story-documents',
   initial: 'editor',
@@ -140,7 +144,10 @@ function Workspace({
   const add = (documents: NewDocumentEntry[], folders: string[] = []) => {
     setCalls((value) => value + 1);
     setPayloads((current) => [...current, JSON.stringify(documents)]);
-    if (loseAck && attempts.current++ === 0) return Promise.reject(new Error('Lost ACK'));
+    if (loseAck && attempts.current++ === 0) {
+      return Promise.reject(new Error('Lost ACK'));
+    }
+
     if (
       folders.some((folder) => folder.includes('bad')) ||
       documents.some(
@@ -148,7 +155,7 @@ function Workspace({
           doc.path.includes('bad') ||
           tree.documents.some((existing) => existing.path.toLowerCase() === doc.path.toLowerCase()),
       )
-    )
+    ) {
       return Promise.reject(
         new HttpClientError('Conflict', {
           kind: 'http',
@@ -156,6 +163,8 @@ function Workspace({
           data: { error: 'DOCUMENT_PATH_CONFLICT', code: 'DOCUMENT_PATH_CONFLICT' },
         }),
       );
+    }
+
     const added = documentTreeFixture({
       folders,
       documents: documents.map((doc) => ({ id: doc.path, path: doc.path })),
@@ -180,8 +189,10 @@ function Workspace({
         ]),
       ),
     }));
+
     return Promise.resolve();
   };
+
   const operate = (operation: DocumentOperation) => {
     setCalls((value) => value + 1);
     setSubmittedRevision(operation.expectedRevision);
@@ -195,7 +206,7 @@ function Workspace({
         : concurrent &&
           operation.expectedRevision !==
             tree.documents.find((doc) => doc.id === operation.documentId)?.revision;
-    if (stale)
+    if (stale) {
       return Promise.reject(
         new HttpClientError('Conflict', {
           kind: 'http',
@@ -203,7 +214,12 @@ function Workspace({
           data: { error: 'DOCUMENT_REVISION_CONFLICT', code: 'DOCUMENT_REVISION_CONFLICT' },
         }),
       );
-    if (slowMs > 0) return new Promise<void>((resolve) => setTimeout(resolve, slowMs));
+    }
+
+    if (slowMs > 0) {
+      return new Promise<void>((resolve) => setTimeout(resolve, slowMs));
+    }
+
     // As the Runtime on a file system that ignores letter case (Windows).
     const renamed = tree.documents.find((doc) => doc.id === operation.documentId);
     const current = renamed?.path.split('/').at(-1);
@@ -212,7 +228,7 @@ function Workspace({
       current !== undefined &&
       operation.name !== current &&
       operation.name?.toLowerCase() === current.toLowerCase()
-    )
+    ) {
       return Promise.reject(
         new HttpClientError('Bad Request', {
           kind: 'http',
@@ -224,7 +240,9 @@ function Workspace({
           },
         }),
       );
-    if (operation.action === 'rename')
+    }
+
+    if (operation.action === 'rename') {
       setTree((current) => ({
         ...current,
         documents: current.documents.map((doc) =>
@@ -238,12 +256,18 @@ function Workspace({
             : doc,
         ),
       }));
+    }
+
     return Promise.resolve();
   };
+
   const select = (id: string) => {
     setActive(id);
-    if (!supportsSplit) void navigation.open(stack, { id });
+    if (!supportsSplit) {
+      void navigation.open(stack, { id });
+    }
   };
+
   return (
     <Records.Provider value={records}>
       <output aria-label="Folder wysłanej operacji" className="sr-only">
@@ -287,6 +311,7 @@ function Workspace({
                             ),
                           })),
                         );
+
                         return Promise.resolve(snapshot);
                       }
                     : undefined
@@ -319,6 +344,7 @@ function Workspace({
     </Records.Provider>
   );
 }
+
 function Fixture(props: FixtureProps) {
   const [active, setActive] = useState('specification'),
     [records, setRecords] = useState<StoryRecords>({
@@ -334,6 +360,7 @@ function Fixture(props: FixtureProps) {
   const client = useMemo(() => new QueryClient(), []);
   const services = useMemo(() => {
     const base = createSpecFlowAppServices();
+
     return {
       ...base,
       demoDocumentsApi: {
@@ -342,6 +369,7 @@ function Fixture(props: FixtureProps) {
       },
     };
   }, []);
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -364,6 +392,7 @@ function Fixture(props: FixtureProps) {
     </QueryClientProvider>
   );
 }
+
 const meta = {
   decorators: [withLocale('pl')],
   title: 'SpecFlow/Contracts/Documents owner V4',
@@ -382,6 +411,7 @@ async function chooseRootAction(
   await userEvent.click((await canvas.findAllByRole('button', { name: 'Więcej akcji' }))[0]!);
   await userEvent.click(await within(document.body).findByRole('menuitem', { name }));
 }
+
 export const DocumentsAndInline: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('button', { name: 'Akcje: notes' });
@@ -656,6 +686,7 @@ async function verifyNestedExplorer(
     await expect(getComputedStyle(rowOf(name), '::before').content).toBe('none');
     await expect(getComputedStyle(rowOf(name), '::after').content).toBe('none');
   }
+
   // The main file (protected) leads, then folders A-Z, then files.
   const top = [...canvas.getAllByRole('list')[0]!.children].map(
     (li) => li.querySelector('button .truncate')!.textContent,
@@ -687,6 +718,7 @@ async function verifyNestedExplorer(
   await userEvent.click(empty);
   await expect(canvas.queryByText(/Folder jest pusty/)).not.toBeInTheDocument();
 }
+
 export const NestedExplorerDesktop: Story = {
   render: renderNested(1440),
   play: async ({ canvas, userEvent }) => {

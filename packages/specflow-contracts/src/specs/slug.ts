@@ -17,10 +17,22 @@ export type SpecSlugProblem = 'empty' | 'format' | 'too-long' | 'reserved';
 
 /** Why a user-typed slug is not acceptable, or `undefined` when it is valid. */
 export function specSlugProblem(value: string): SpecSlugProblem | undefined {
-  if (value.length === 0) return 'empty';
-  if (value.length > SPEC_SLUG_MAX_LENGTH) return 'too-long';
-  if (!SLUG_REGEX.test(value)) return 'format';
-  if (WINDOWS_DEVICE.test(value)) return 'reserved';
+  if (value.length === 0) {
+    return 'empty';
+  }
+
+  if (value.length > SPEC_SLUG_MAX_LENGTH) {
+    return 'too-long';
+  }
+
+  if (!SLUG_REGEX.test(value)) {
+    return 'format';
+  }
+
+  if (WINDOWS_DEVICE.test(value)) {
+    return 'reserved';
+  }
+
   return undefined;
 }
 

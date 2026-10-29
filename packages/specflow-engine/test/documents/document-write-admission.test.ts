@@ -50,6 +50,7 @@ async function workProject(config = GIT_ON) {
   });
   git(fixture.root, 'add', 'specs');
   commitStaged(fixture.root, 'specification');
+
   return { ...fixture, ...spec };
 }
 
@@ -67,6 +68,7 @@ async function gitProcessesDuring<T>(run: () => Promise<T>): Promise<{ result: T
   const listener = (): void => {
     count += 1;
   };
+
   subscribe('nevo.specflow.engine.git-process', listener);
   try {
     return { result: await run(), count };
@@ -77,6 +79,7 @@ async function gitProcessesDuring<T>(run: () => Promise<T>): Promise<{ result: T
 
 async function tree(path: string): Promise<string[]> {
   const entries = await readdir(path, { recursive: true });
+
   return entries.sort();
 }
 
@@ -134,6 +137,7 @@ async function bigRevision(
   specId: string,
 ): Promise<string | undefined> {
   const result = await readSpecificationDocumentTree(engine, specId);
+
   return result.documents.find((document) => document.path === 'big.bin')?.revision;
 }
 
@@ -144,6 +148,7 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
     const error = await failure(run());
     expect(await tree(fixture.root)).toEqual(before);
     expect(git(fixture.root, 'status', '--porcelain=v1', '--untracked-files=all')).toBe(status);
+
     return error;
   }
 
@@ -372,6 +377,7 @@ describe('SPEC_MANIFEST_DIRTY', () => {
     if (applyManifest && manifest) {
       await writeFile(join(fixture.dir, 'specification.yaml'), manifest.content);
     }
+
     return operationId;
   }
 

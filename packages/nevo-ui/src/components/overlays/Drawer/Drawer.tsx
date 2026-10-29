@@ -126,6 +126,7 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
 export const DrawerHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function DrawerHeader({ className, ...props }, ref) {
     const hasCloseAction = useContext(DrawerCloseContext);
+
     return (
       <div
         ref={ref}
@@ -149,6 +150,7 @@ export const DrawerTitle = forwardRef<
       textStyleRef: typographyTextStyleRef('title-sm'),
     },
   );
+
   return (
     <Dialog.Title
       ref={ref}
@@ -172,6 +174,7 @@ export const DrawerDescription = forwardRef<
       textStyleRef: typographyTextStyleRef('body-sm'),
     },
   );
+
   return (
     <Dialog.Description
       ref={ref}

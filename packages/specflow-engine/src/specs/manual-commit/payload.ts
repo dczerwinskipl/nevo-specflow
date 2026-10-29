@@ -50,6 +50,7 @@ export function encodeSnapshot(entries: readonly SnapshotEntry[]): EncodedPayloa
       })),
     }),
   );
+
   return { ...payload, pathCount: sorted.length };
 }
 
@@ -65,6 +66,7 @@ export function decodeSnapshot(text: string): SnapshotEntry[] {
   } catch {
     throw unprovable();
   }
+
   if (
     !isRecord(value) ||
     !exactKeys(value, ['version', 'entries']) ||
@@ -75,7 +77,9 @@ export function decodeSnapshot(text: string): SnapshotEntry[] {
   ) {
     throw unprovable();
   }
+
   const seen = new Set<string>();
+
   return value.entries.map((entry: unknown) => {
     if (
       !isRecord(entry) ||
@@ -94,7 +98,9 @@ export function decodeSnapshot(text: string): SnapshotEntry[] {
     ) {
       throw unprovable();
     }
+
     seen.add(entry.path);
+
     return {
       owner: entry.owner,
       path: entry.path,
@@ -120,6 +126,7 @@ export function decodeMessage(text: string): StoredMessage {
   } catch {
     throw unprovable();
   }
+
   if (
     !isRecord(value) ||
     !exactKeys(value, ['subject', 'body']) ||
@@ -129,5 +136,6 @@ export function decodeMessage(text: string): StoredMessage {
   ) {
     throw unprovable();
   }
+
   return { subject: value.subject, body: value.body };
 }

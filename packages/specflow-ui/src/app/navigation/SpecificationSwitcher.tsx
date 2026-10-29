@@ -45,11 +45,15 @@ export function SpecificationSwitcher({
   const [layer, setLayer] = useState<HTMLElement | null>(null);
   const focusOption = (index: number) =>
     panel.current?.querySelectorAll<HTMLButtonElement>('[role="option"]')[index]?.focus();
+
   return (
     <Popover
       open={open}
       onOpenChange={(value) => {
-        if (value) setLayer(trigger.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
+        if (value) {
+          setLayer(trigger.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
+        }
+
         onOpenChange(value);
       }}
     >
@@ -115,9 +119,11 @@ export function SpecificationSwitcher({
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          if (committed.current)
+          if (committed.current) {
             document.querySelector<HTMLElement>('[data-workspace-active="true"] h1')?.focus();
-          else trigger.current?.focus({ preventScroll: true });
+          } else {
+            trigger.current?.focus({ preventScroll: true });
+          }
         }}
       >
         <TextInput
@@ -172,10 +178,22 @@ export function SpecificationSwitcher({
                 onClick={() => void choose(item.id)}
                 onKeyDown={(event) => {
                   let next: number | undefined;
-                  if (event.key === 'ArrowDown') next = (index + 1) % entries.length;
-                  if (event.key === 'ArrowUp') next = (index - 1 + entries.length) % entries.length;
-                  if (event.key === 'Home') next = 0;
-                  if (event.key === 'End') next = entries.length - 1;
+                  if (event.key === 'ArrowDown') {
+                    next = (index + 1) % entries.length;
+                  }
+
+                  if (event.key === 'ArrowUp') {
+                    next = (index - 1 + entries.length) % entries.length;
+                  }
+
+                  if (event.key === 'Home') {
+                    next = 0;
+                  }
+
+                  if (event.key === 'End') {
+                    next = entries.length - 1;
+                  }
+
                   if (next !== undefined) {
                     event.preventDefault();
                     focusOption(next);

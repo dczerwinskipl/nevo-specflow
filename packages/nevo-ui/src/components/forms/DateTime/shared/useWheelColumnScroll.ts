@@ -4,8 +4,12 @@ import type { Selection } from 'react-aria-components';
 type WheelScrollMode = 'aligning' | 'idle';
 
 function selectedNumber(selection: Selection) {
-  if (selection === 'all') return undefined;
+  if (selection === 'all') {
+    return undefined;
+  }
+
   const first = selection.values().next().value;
+
   return first === undefined ? undefined : Number(first);
 }
 
@@ -30,13 +34,17 @@ export function useWheelColumnScroll({
   const alignToSelected = useCallback(() => {
     const element = listRef.current;
     const index = options.indexOf(selected);
-    if (!element || index < 0) return;
+    if (!element || index < 0) {
+      return;
+    }
+
     element.scrollTop = index * itemHeight;
   }, [itemHeight, options, selected]);
 
   useEffect(() => {
     if (skipNextAlignmentRef.current) {
       skipNextAlignmentRef.current = false;
+
       return;
     }
 
@@ -51,13 +59,17 @@ export function useWheelColumnScroll({
 
     return () => {
       cancelAnimationFrame(alignmentFrame);
-      if (releaseFrame) cancelAnimationFrame(releaseFrame);
+      if (releaseFrame) {
+        cancelAnimationFrame(releaseFrame);
+      }
     };
   }, [alignToSelected]);
 
   useEffect(
     () => () => {
-      if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+      if (settleTimerRef.current !== null) {
+        window.clearTimeout(settleTimerRef.current);
+      }
     },
     [],
   );
@@ -79,8 +91,14 @@ export function useWheelColumnScroll({
 
   const onScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
-      if (scrollModeRef.current === 'aligning') return;
-      if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+      if (scrollModeRef.current === 'aligning') {
+        return;
+      }
+
+      if (settleTimerRef.current !== null) {
+        window.clearTimeout(settleTimerRef.current);
+      }
+
       const element = event.currentTarget;
       settleTimerRef.current = window.setTimeout(() => settleNaturalScroll(element), settleDelayMs);
     },
@@ -90,7 +108,9 @@ export function useWheelColumnScroll({
   const onSelectionChange = useCallback(
     (selection: Selection) => {
       const next = selectedNumber(selection);
-      if (next !== undefined && next !== selected) onSelect(next);
+      if (next !== undefined && next !== selected) {
+        onSelect(next);
+      }
     },
     [onSelect, selected],
   );

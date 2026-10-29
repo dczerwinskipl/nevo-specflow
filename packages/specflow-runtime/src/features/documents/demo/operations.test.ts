@@ -17,6 +17,7 @@ function setup(options: { showcase?: boolean; latency?: number } = {}) {
   const { catalogue } = createDemoSpecsRepositories(env);
   const find = (specId: string) => catalogue.find(specId);
   const source = createDemoDocumentReadSource(env.documents, catalogue);
+
   return { env, find, source, tree: (specId: string) => source.readTree!(specId) };
 }
 
@@ -25,22 +26,32 @@ async function code(work: Promise<unknown>) {
   try {
     await work;
   } catch (error) {
-    if (error instanceof DocumentError) return [error.code, error.details?.reason];
+    if (error instanceof DocumentError) {
+      return [error.code, error.details?.reason];
+    }
+
     throw error;
   }
+
   return ['resolved'];
 }
 
 /** The FOLDER revision a folder operation sends (`DocumentTree.folders[].revision`). */
 const folderRevision = (tree: DocumentTree, path: string) => {
   const found = tree.folders.find((folder) => folder.path === path)?.revision;
-  if (!found) throw new Error('No folder revision for ' + path);
+  if (!found) {
+    throw new Error('No folder revision for ' + path);
+  }
+
   return found;
 };
 
 const node = (tree: DocumentTree, path: string) => {
   const found = tree.documents.find((document) => document.path === path);
-  if (!found) throw new Error('No document ' + path);
+  if (!found) {
+    throw new Error('No document ' + path);
+  }
+
   return found;
 };
 
@@ -354,7 +365,7 @@ describe('demo document writes (D4 shapes)', () => {
   it('refuses creating, renaming or moving a file onto the path of a dangling registration', async () => {
     const { env, find, tree } = setup();
     // `ux.md` is registered but missing: creating it again (any letter case) is a conflict.
-    for (const [index, path] of ['ux.md', 'UX.md'].entries())
+    for (const [index, path] of ['ux.md', 'UX.md'].entries()) {
       expect(
         await code(
           env.documents.create(
@@ -365,6 +376,8 @@ describe('demo document writes (D4 shapes)', () => {
           ),
         ),
       ).toEqual(['DOCUMENT_PATH_CONFLICT', undefined]);
+    }
+
     // Renaming an unclassified file onto it, or a registered one, is refused the same way.
     await env.documents.create(
       'alice',
@@ -375,7 +388,7 @@ describe('demo document writes (D4 shapes)', () => {
     const current = await tree('review');
     const scratch = node(current, 'scratch.md');
     const behaviour = node(current, 'behaviour.md');
-    for (const [index, document] of [scratch, behaviour].entries())
+    for (const [index, document] of [scratch, behaviour].entries()) {
       expect(
         await code(
           env.documents.operate(
@@ -393,6 +406,8 @@ describe('demo document writes (D4 shapes)', () => {
           ),
         ),
       ).toEqual(['DOCUMENT_PATH_CONFLICT', undefined]);
+    }
+
     // Moving a file named like the dangling entry into its folder is refused too.
     await env.documents.create(
       'alice',

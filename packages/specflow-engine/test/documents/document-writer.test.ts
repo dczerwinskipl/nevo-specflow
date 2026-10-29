@@ -161,6 +161,7 @@ describe('the order of the file effects', () => {
         hooks: {
           onPathEffect: (event) => {
             events.push(event);
+
             return Promise.resolve();
           },
         },
@@ -216,10 +217,12 @@ describe('idempotent replay', () => {
       hooks: {
         onPathEffect: (event) => {
           effects.push(event.kind);
+
           return Promise.resolve();
         },
         beforeJournalWrite: (stage) => {
           effects.push('journal:' + stage);
+
           return Promise.resolve();
         },
       },
@@ -418,7 +421,9 @@ describe('the manifest changing between planning and reservation', () => {
       hooks: {
         afterAdmission: async (attempt) => {
           attempts.push(attempt);
-          if (attempt === 1) await touchManifest(project.dir);
+          if (attempt === 1) {
+            await touchManifest(project.dir);
+          }
         },
       },
     });
@@ -497,6 +502,7 @@ describe('the reservation refuses what it must', () => {
         }),
       );
     });
+
     return operationId;
   }
 
@@ -509,6 +515,7 @@ describe('the reservation refuses what it must', () => {
         busyWaitMs: 300,
         sleep: (ms) => {
           slept.push(ms);
+
           return new Promise((resolve) => setTimeout(resolve, ms));
         },
       }),
@@ -540,6 +547,7 @@ describe('the reservation refuses what it must', () => {
       applyDocumentChange(project.engine, project.specId, randomUUID(), saveNotes(2, 'x\n'), {
         sleep: (ms) => {
           slept.push(ms);
+
           return Promise.resolve();
         },
       }),
@@ -643,6 +651,7 @@ describe('taking over a writer that stopped', () => {
     hostId: () => 'host-1',
     readText: (path) => {
       const pid = /^\/proc\/(\d+)\/stat$/u.exec(path)?.[1];
+
       return Promise.resolve(
         pid !== undefined && running[Number(pid)] !== undefined
           ? statOf(Number(pid), running[Number(pid)]!)
@@ -666,6 +675,7 @@ describe('taking over a writer that stopped', () => {
     expect(error).toBeInstanceOf(WriterInterrupted);
     const journal = await readDocumentChangeJournal(project.engine.context, operationId);
     expect(journal).toMatchObject({ stage: 'files-writing', executor: writer });
+
     return { project, operationId };
   }
 
@@ -763,8 +773,10 @@ const TMP_IGNORES_CASE = existsSync(tmpdir().toUpperCase()) && existsSync(tmpdir
 function ignoringCase(fs: VerifiedFs): VerifiedFs {
   const lower = (path: string): string => {
     const cut = path.lastIndexOf(sep);
+
     return path.slice(0, cut + 1) + path.slice(cut + 1).toLowerCase();
   };
+
   return { ...fs, lstat: (path) => fs.lstat(lower(path)) };
 }
 

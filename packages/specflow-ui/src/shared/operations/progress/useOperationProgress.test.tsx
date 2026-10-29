@@ -19,22 +19,36 @@ function controlledApi() {
     list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(streamUrl, signal) {
       opened(streamUrl);
-      if (signal) signals.push(signal);
+      if (signal) {
+        signals.push(signal);
+      }
+
       for (;;) {
         while (queue.length === 0) {
-          if (signal?.aborted) return;
+          if (signal?.aborted) {
+            return;
+          }
+
           await new Promise<void>((resolve) => {
             wake = resolve;
             signal?.addEventListener('abort', () => resolve(), { once: true });
           });
         }
+
         const next = queue.shift()!;
-        if (next === 'end') return;
-        if (next instanceof Error) throw next;
+        if (next === 'end') {
+          return;
+        }
+
+        if (next instanceof Error) {
+          throw next;
+        }
+
         yield next;
       }
     },
   };
+
   return {
     api,
     opened,

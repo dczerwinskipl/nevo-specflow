@@ -49,7 +49,8 @@ export const StaticPaused: Story = {
   args: { fetching: false },
   tags: ['contract'],
   play: async ({ canvasElement }) => {
-    for (const skeleton of canvasElement.querySelectorAll('.animate-pulse'))
+    for (const skeleton of canvasElement.querySelectorAll('.animate-pulse')) {
       await expect(getComputedStyle(skeleton).animationName).toBe('none');
+    }
   },
 };

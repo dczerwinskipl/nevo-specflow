@@ -44,6 +44,7 @@ export function transitionDocumentChange(
       `A document operation cannot move from ${journal.stage} to ${to}.`,
     );
   }
+
   const keepsExecutor = isWriterStage(to);
   const acknowledged = to === 'queued' || to === 'committing' || to === 'commit-failed';
   const keepsBatch = to !== 'queued' && !isWriterStage(to) && to !== 'failed';
@@ -84,6 +85,7 @@ export function transitionDocumentChange(
       : {}),
     ...(completed ? { settledAt: now } : {}),
   };
+
   return parseDocumentChangeJournal(
     { project: { projectId: journal.projectId } },
     next,
@@ -96,6 +98,7 @@ function executorOf(
   patch: DocumentChangeTransitionPatch,
 ): { executor?: ExecutorIdentity } {
   const executor = patch.executor ?? journal.executor;
+
   return executor !== undefined ? { executor } : {};
 }
 
@@ -104,5 +107,6 @@ function batchOf(
   patch: DocumentChangeTransitionPatch,
 ): { batchId?: string } {
   const batchId = patch.batchId ?? journal.batchId;
+
   return batchId !== undefined ? { batchId } : {};
 }

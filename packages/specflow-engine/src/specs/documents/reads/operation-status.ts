@@ -46,7 +46,10 @@ export async function readDocumentOperationStatus(
   operationId: string,
   options: OperationStatusOptions = {},
 ): Promise<DocumentOperationStatus> {
-  if (!OPERATION_ID_PATTERN.test(operationId)) throw notFound();
+  if (!OPERATION_ID_PATTERN.test(operationId)) {
+    throw notFound();
+  }
+
   const journal = await findJournal(engine, operationId);
   if (journal === undefined) {
     // A manual commit (ADR 0018) is a document operation of the Specification it addressed.
@@ -54,10 +57,16 @@ export async function readDocumentOperationStatus(
       ...(options.specId !== undefined ? { specId: options.specId } : {}),
       ...(options.processTable !== undefined ? { processTable: options.processTable } : {}),
     });
-    if (manual !== undefined) return manual;
+    if (manual !== undefined) {
+      return manual;
+    }
+
     throw notFound();
   }
-  if (options.specId !== undefined && journal.specId !== options.specId) throw notFound();
+
+  if (options.specId !== undefined && journal.specId !== options.specId) {
+    throw notFound();
+  }
 
   const now = (options.now ?? Date.now)();
   const batch =
@@ -79,6 +88,7 @@ export async function readDocumentOperationStatus(
   }
 
   const documentIds = await documentIdsOf(engine, journal);
+
   return {
     operationId: journal.operationId,
     specId: journal.specId,
@@ -114,16 +124,21 @@ async function findJournal(
   operationId: string,
 ): Promise<DocumentChangeJournal | undefined> {
   const row = await readRecordTolerant(engine.context, DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
-  if (row?.kind === 'record') return row.record;
+  if (row?.kind === 'record') {
+    return row.record;
+  }
+
   if (row !== undefined) {
     throw documentChangeError('journal-corrupt', 'The document operation record is unreadable.');
   }
+
   try {
     return await readSettledDocumentChangeJournal(engine.context, operationId);
   } catch (error) {
     if (error instanceof DocumentError) {
       throw documentChangeError('journal-corrupt', 'The document operation record is unreadable.');
     }
+
     throw error;
   }
 }
@@ -133,12 +148,16 @@ async function readBatch(
   batchId: string,
 ): Promise<DocumentBatchRecord | undefined> {
   const row = await readRecordTolerant(engine.context, DOCUMENT_BATCH_KIND, batchId);
+
   return row?.kind === 'record' ? row.record : undefined;
 }
 
 /** The members that share the commit: the batch's, else the count the journal kept. */
 function withSharedCount(commit: CommitInfo, batch: DocumentBatchRecord | undefined): CommitInfo {
-  if (commit.coalescedWith !== undefined || batch === undefined) return commit;
+  if (commit.coalescedWith !== undefined || batch === undefined) {
+    return commit;
+  }
+
   return { ...commit, coalescedWith: Math.max(0, batch.memberIds.length - 1) };
 }
 
@@ -152,11 +171,15 @@ async function executorHint(
     : journal.stage === 'committing' || journal.stage === 'recovery-required'
       ? batch?.executor
       : undefined;
-  if (recorded === undefined) return undefined;
+  if (recorded === undefined) {
+    return undefined;
+  }
+
   const table = options.processTable ?? nodeProcessTable;
   const state = writerHint(
     await proveExecutorState(recorded, await captureExecutorIdentity(table), table),
   );
+
   return { state };
 }
 
@@ -166,6 +189,7 @@ function actionsOf(
   executor: DocumentExecutorHint | undefined,
 ): DocumentOperationAvailableActions {
   const failed = journal.stage === 'commit-failed';
+
   return {
     retry: failed ? YES : NO,
     abandon: failed ? YES : NO,
@@ -191,10 +215,14 @@ async function documentIdsOf(
       ),
       journal.plan,
     );
+
     return [...new Set([...plan.documents.map((entry) => entry.id), ...plan.removedDocumentIds])];
   } catch (error) {
     // The plan file is gone (retention) or damaged: the status still answers, without the ids.
-    if (error instanceof DocumentError) return [];
+    if (error instanceof DocumentError) {
+      return [];
+    }
+
     throw error;
   }
 }

@@ -18,22 +18,31 @@ async function handleImporterMessage(
 ) {
   if (message.type === 'RESIZE_UI') {
     const height = Number((message as { height?: unknown }).height);
-    if (Number.isFinite(height)) figma.ui.resize(UI_WIDTH, Math.min(720, Math.max(340, height)));
+    if (Number.isFinite(height)) {
+      figma.ui.resize(UI_WIDTH, Math.min(720, Math.max(340, height)));
+    }
+
     return;
   }
+
   try {
     if (message.type === 'INSPECT_IR') {
       const inspection = await inspectIR(message.ir, resourceCatalogs);
       figma.ui.postMessage({ type: 'INSPECTION', requestId: message.requestId, inspection });
+
       return;
     }
+
     const result =
       message.type === 'IMPORT_IR'
         ? await importIR(message.ir, resourceCatalogs, (progress) =>
             figma.ui.postMessage({ type: 'PROGRESS', ...progress }),
           )
         : undefined;
-    if (!result) return;
+    if (!result) {
+      return;
+    }
+
     figma.ui.postMessage({ type: 'DONE', message: result });
     figma.notify(result);
   } catch (error) {
@@ -44,6 +53,8 @@ async function handleImporterMessage(
       requestId: message.type === 'INSPECT_IR' ? message.requestId : undefined,
       message: detail,
     });
-    if (!inspection) figma.notify(`Import failed: ${detail}`, { error: true });
+    if (!inspection) {
+      figma.notify(`Import failed: ${detail}`, { error: true });
+    }
   }
 }

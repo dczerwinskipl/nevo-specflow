@@ -135,10 +135,12 @@ describe('demo documents contract equals the real documents contract', () => {
   });
 
   it('keeps every catalogue property schema and adds only the demo-only part', () => {
-    for (const [key, schema] of Object.entries(ArchetypeCatalogueSchema.properties))
+    for (const [key, schema] of Object.entries(ArchetypeCatalogueSchema.properties)) {
       expect(
         DemoCatalogueSchema.properties[key as keyof typeof DemoCatalogueSchema.properties],
       ).toBe(schema);
+    }
+
     const demoOnly = Object.keys(DemoCatalogueSchema.properties).filter(
       (key) => !(key in ArchetypeCatalogueSchema.properties),
     );
@@ -168,11 +170,14 @@ describe('demo documents contract equals the real documents contract', () => {
   });
 
   it('accepts the real Create request (operationId required) and answers the real result fields', () => {
-    for (const [key, schema] of Object.entries(CreateSpecRequestSchema.properties))
-      if (key !== 'operationId')
+    for (const [key, schema] of Object.entries(CreateSpecRequestSchema.properties)) {
+      if (key !== 'operationId') {
         expect(
           DemoCreateInputSchema.properties[key as keyof typeof DemoCreateInputSchema.properties],
         ).toBe(schema);
+      }
+    }
+
     const request = {
       operationId: ID,
       title: 'T',

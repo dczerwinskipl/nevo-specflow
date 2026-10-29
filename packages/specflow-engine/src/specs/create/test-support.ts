@@ -35,6 +35,7 @@ export async function createSpecificationForTesting(
   if (options.installDefinitions !== false) {
     await installDefinitionsForTesting(engine);
   }
+
   return createSpecificationWithIntent(
     engine,
     input.operationId,
@@ -60,5 +61,6 @@ export async function createSpecificationFromRequestForTesting(
   if (installDefinitions !== false) {
     await installDefinitionsForTesting(engine);
   }
+
   return createSpecificationFromRequest(engine, request, requestOptions);
 }

@@ -13,6 +13,7 @@ describe('mapBounded', () => {
       peak = Math.max(peak, running);
       await new Promise<void>((resolve) => setTimeout(resolve, value * 3));
       running -= 1;
+
       return value * 2;
     });
     expect(result).toEqual([10, 8, 6, 4, 2, 0]);
@@ -23,13 +24,19 @@ describe('mapBounded', () => {
     const finished: number[] = [];
     await expect(
       mapBounded([0, 1, 2, 3], 4, async (value) => {
-        if (value === 2) throw new Error('late-index-fast');
+        if (value === 2) {
+          throw new Error('late-index-fast');
+        }
+
         if (value === 1) {
           await tick();
+
           throw new Error('early-index-slow');
         }
+
         await tick();
         finished.push(value);
+
         return value;
       }),
     ).rejects.toThrow('early-index-slow');

@@ -69,6 +69,9 @@ function requireServices(router: ReturnType<typeof useRouter> | undefined): Spec
   const services = (
     router?.options.context as { readonly services?: SpecFlowAppServices } | undefined
   )?.services;
-  if (!services) throw new Error('useSpecificationWorkspace requires the SpecFlow Router context');
+  if (!services) {
+    throw new Error('useSpecificationWorkspace requires the SpecFlow Router context');
+  }
+
   return services;
 }

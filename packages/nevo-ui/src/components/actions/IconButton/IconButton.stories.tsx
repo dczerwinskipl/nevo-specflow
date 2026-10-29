@@ -34,11 +34,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function IconButtonContractExample() {
   const [activations, setActivations] = useState(0);
+
   return (
     <div data-activation-count={activations}>
       <IconButton

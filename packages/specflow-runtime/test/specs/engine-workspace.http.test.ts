@@ -26,6 +26,7 @@ import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 function trustedLocalConfig() {
   const config = passwordConfig();
+
   return { ...config, authentication: { ...config.authentication, mode: 'none' as const } };
 }
 
@@ -64,9 +65,13 @@ async function fixture(gitEnabled = false) {
     '-qm',
     'initial',
   );
-  if (gitEnabled) git(root, 'branch', '-m', 'develop');
+  if (gitEnabled) {
+    git(root, 'branch', '-m', 'develop');
+  }
+
   const engine = await bootstrapProjectHome(root);
   await installDefinitionsForTesting(engine);
+
   return { root, engine };
 }
 
@@ -128,6 +133,7 @@ describe('Engine-backed specification workspace read', () => {
           });
           expect(overview?.revision).toMatch(/^[0-9a-f]{64}$/u);
         }
+
         expect(body.actions).toEqual({
           executeTasks: { available: false, reason: 'not_implemented' },
           startSession: { available: false, reason: 'not_implemented' },

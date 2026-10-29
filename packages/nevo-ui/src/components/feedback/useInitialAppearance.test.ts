@@ -10,6 +10,7 @@ const harness = vi.hoisted(() => {
   let refIndex = 0;
   let effectDeps: unknown[] | undefined;
   let cleanup: void | (() => void);
+
   return {
     reset() {
       refs = [];
@@ -21,12 +22,19 @@ const harness = vi.hoisted(() => {
     },
     useRef<T>(initial: T) {
       refs[refIndex] ??= { current: initial };
+
       return refs[refIndex++] as { current: T };
     },
     useLayoutEffect(effect: () => void | (() => void), deps: unknown[]) {
-      if (effectDeps && deps.every((value, index) => Object.is(value, effectDeps![index]))) return;
+      if (effectDeps && deps.every((value, index) => Object.is(value, effectDeps![index]))) {
+        return;
+      }
+
       effectDeps = deps;
-      if (typeof cleanup === 'function') cleanup();
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+
       cleanup = effect();
     },
   };
@@ -38,6 +46,7 @@ const { useInitialAppearance } = await import('./useInitialAppearance');
 
 function fakeRegion(workspaceMotion?: string) {
   const classes = new Set<string>();
+
   return {
     classes,
     node: {
@@ -63,6 +72,7 @@ describe('useInitialAppearance', () => {
       const ref = useInitialAppearance(identity, loading, ready);
       ref.current = region.node as unknown as HTMLDivElement;
     };
+
     return { render, has: () => region.classes.has(appearance) };
   }
 

@@ -57,8 +57,11 @@ export interface DemoStateOptions {
 
 /** Stable recursive keys retain nested document fields in idempotency fingerprints. */
 export function fingerprintInput(value: unknown): string {
-  if (Array.isArray(value)) return '[' + value.map(fingerprintInput).join(',') + ']';
-  if (value !== null && typeof value === 'object')
+  if (Array.isArray(value)) {
+    return '[' + value.map(fingerprintInput).join(',') + ']';
+  }
+
+  if (value !== null && typeof value === 'object') {
     return (
       '{' +
       Object.entries(value)
@@ -68,6 +71,8 @@ export function fingerprintInput(value: unknown): string {
         .join(',') +
       '}'
     );
+  }
+
   return JSON.stringify(value);
 }
 
@@ -77,6 +82,7 @@ export function createDemoState(options: DemoStateOptions = {}) {
   const sessions = new Map<string, DemoSessionDetail>();
   const locations = new Map<string, DemoLocation>();
   const requests = new Map<string, { fingerprint: string; result?: unknown }>();
+
   return {
     scenarioSeam: options.scenarios ?? false,
     catalogue,
@@ -91,13 +97,16 @@ export function createDemoState(options: DemoStateOptions = {}) {
     uuid: options.uuid ?? randomUUID,
     now: () => options.now?.() ?? new Date().toISOString(),
     fail: (stage: DemoFailureStage, code: DemoError['error']) => {
-      if (options.fail?.(stage)) throw new DemoOperationError(503, code);
+      if (options.fail?.(stage)) {
+        throw new DemoOperationError(503, code);
+      }
     },
     /** Failure injection for a module that answers its own error (for example documents). */
     failing: (stage: DemoFailureStage) => options.fail?.(stage) === true,
     stale: (revision: string) => {
-      if (revision !== catalogue.revision)
+      if (revision !== catalogue.revision) {
         throw new DemoOperationError(409, 'demo_catalogue_stale');
+      }
     },
     /**
      * Idempotent request entry: same key + same input replays, same key + other input conflicts
@@ -113,12 +122,20 @@ export function createDemoState(options: DemoStateOptions = {}) {
       const key = JSON.stringify([subject, operation, id]);
       const fingerprint = fingerprintInput(input);
       const previous = requests.get(key);
-      if (previous && previous.fingerprint !== fingerprint) throw conflict();
-      if (previous) return previous;
+      if (previous && previous.fingerprint !== fingerprint) {
+        throw conflict();
+      }
+
+      if (previous) {
+        return previous;
+      }
+
       const entry: { fingerprint: string; result?: unknown } = { fingerprint };
       requests.set(key, entry);
+
       return entry;
     },
   };
 }
+
 export type DemoState = ReturnType<typeof createDemoState>;

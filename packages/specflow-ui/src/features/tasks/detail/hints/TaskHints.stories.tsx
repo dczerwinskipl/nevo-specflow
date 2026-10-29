@@ -44,30 +44,41 @@ export const ReferenceAndCopy: Story = {
         openers[index]!.focus();
         await userEvent.keyboard('{Enter}');
         const text = await canvas.findByText(hint.ref, { selector: 'pre', exact: true });
-        if (getComputedStyle(text).whiteSpace !== 'pre-wrap')
+        if (getComputedStyle(text).whiteSpace !== 'pre-wrap') {
           throw Error('Full reference must wrap and stay selectable');
+        }
+
         const copy = canvas.getByRole('button', { name: 'Copy reference' });
         await userEvent.click(copy);
         await canvas.findByText('Copied', { exact: true });
-        if (writeText.mock.lastCall?.[0] !== hint.ref)
+        if (writeText.mock.lastCall?.[0] !== hint.ref) {
           throw Error('Copy must preserve the exact original reference');
-        if (canvasElement.ownerDocument.activeElement !== copy)
+        }
+
+        if (canvasElement.ownerDocument.activeElement !== copy) {
           throw Error('Copy must not move focus');
+        }
+
         const hide = canvas.getByRole('button', { name: 'Hide reference' });
         await userEvent.click(hide);
         await waitFor(() => {
-          if (canvasElement.ownerDocument.activeElement !== openers[index])
+          if (canvasElement.ownerDocument.activeElement !== openers[index]) {
             throw Error('Collapse must restore its opener');
+          }
         });
       }
+
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
       await userEvent.click(openers[0]!);
       await userEvent.click(canvas.getByRole('button', { name: 'Copy reference' }));
       await canvas.findByText('Could not copy. Select and copy the full text manually.');
       await canvas.findByText(hints[0]!.ref, { selector: 'pre', exact: true });
     } finally {
-      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor);
-      else Reflect.deleteProperty(navigator, 'clipboard');
+      if (descriptor) {
+        Object.defineProperty(navigator, 'clipboard', descriptor);
+      } else {
+        Reflect.deleteProperty(navigator, 'clipboard');
+      }
     }
   },
 };

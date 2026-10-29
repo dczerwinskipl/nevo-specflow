@@ -28,6 +28,7 @@ export function createEngineSpecsOverviewRepository(
           'A canonical specification workspace is unavailable.',
         );
       }
+
       if (item.status === 'manifest_missing') {
         throw new SpecsReadError(
           'SPEC_MANIFEST_MISSING',
@@ -35,18 +36,21 @@ export function createEngineSpecsOverviewRepository(
         );
       }
     }
+
     const available = discovered.filter(
       (item): item is Extract<CanonicalSpecSource, { status: 'available' }> =>
         item.status === 'available',
     );
     const projected = available.map(project);
     const revision = createHash('sha256').update(JSON.stringify(projected)).digest('hex');
+
     return { revision, items: projected };
   }
 
   return {
     async readCurrent(isVisibleSpec) {
       const snapshot = await read(isVisibleSpec);
+
       return {
         revision: snapshot.revision,
         items: snapshot.items
@@ -56,6 +60,7 @@ export function createEngineSpecsOverviewRepository(
     },
     async readArchive(isVisibleSpec) {
       const snapshot = await read(isVisibleSpec);
+
       return {
         revision: snapshot.revision,
         items: snapshot.items
@@ -89,6 +94,7 @@ function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
     currentExecutions: [],
   };
   const archive: ArchivedSpecRecord = common;
+
   return {
     location: spec.location,
     current,

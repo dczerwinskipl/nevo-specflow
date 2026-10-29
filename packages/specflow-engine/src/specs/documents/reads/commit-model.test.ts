@@ -64,6 +64,7 @@ function batch(
     updatedAt: TEST_NOW,
     attempts: 0,
   } as unknown as DocumentBatchRecord;
+
   return { batch: record, paths };
 }
 
@@ -441,6 +442,7 @@ describe('deriveCommitView', () => {
       ]) {
         expect(fingerprint(changed)).not.toBe(reference);
       }
+
       expect(fingerprint(base, [batch('committing', [doc('a.md')])])).not.toBe(reference);
     });
 

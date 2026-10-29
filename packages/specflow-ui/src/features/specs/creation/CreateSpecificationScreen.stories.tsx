@@ -135,25 +135,36 @@ function Fixture({
           ...createSpecFlowAppServices().demoCreationApi,
           catalogue: () => {
             setReads((value) => ({ ...value, catalogue: value.catalogue + 1 }));
+
             return failedCatalogue.current
               ? Promise.reject(new Error('Catalogue unavailable'))
               : Promise.resolve({ ...served, revision: revision.current });
           },
           createOptions: () => {
-            if (optionsBehavior === 'loading') return new Promise(() => undefined);
-            if (optionsBehavior === 'forbidden')
+            if (optionsBehavior === 'loading') {
+              return new Promise(() => undefined);
+            }
+
+            if (optionsBehavior === 'forbidden') {
               return Promise.reject(failure(403, 'forbidden', 'Brak uprawnień.'));
-            if (brokenOptions.current)
+            }
+
+            if (brokenOptions.current) {
               return Promise.reject(new Error('Create options unavailable'));
+            }
+
             if (optionsFailAfter !== undefined && optionReads.current >= optionsFailAfter) {
               optionReads.current += 1;
               setReads((value) => ({ ...value, options: value.options + 1 }));
+
               return Promise.reject(new Error('Create options unavailable'));
             }
+
             const variant =
               optionsVariants[Math.min(optionReads.current, optionsVariants.length - 1)]!;
             optionReads.current += 1;
             setReads((value) => ({ ...value, options: value.options + 1 }));
+
             return Promise.resolve(createOptionsFixture(variant));
           },
           create: (input) => {
@@ -162,20 +173,27 @@ function Fixture({
             setCalls((value) => value + 1);
             const attempt = inputs.current.length;
             const answer = () => {
-              if (createBehavior === 'ok')
+              if (createBehavior === 'ok') {
                 return Promise.resolve(createdSpecFixture(input.operationId));
-              if (attempt <= failuresBeforeSuccess)
+              }
+
+              if (attempt <= failuresBeforeSuccess) {
                 return Promise.reject(
                   createBehavior === 'lost-ack'
                     ? new Error('Lost create ACK')
                     : createFailures[createBehavior]!,
                 );
+              }
+
               return Promise.resolve(createdSpecFixture(input.operationId));
             };
+
             const answered = () => {
               createAnswers.count += 1;
             };
+
             const settle = () => answer().finally(answered);
+
             return createDelayMs
               ? new Promise((resolve, reject) =>
                   setTimeout(() => void settle().then(resolve, reject), createDelayMs),
@@ -184,6 +202,7 @@ function Fixture({
           },
           operationStatus: (operationId) => {
             statusReads.current += 1;
+
             return Promise.resolve(
               statusReads.current < 2
                 ? {
@@ -212,6 +231,7 @@ function Fixture({
       }),
     [createBehavior, failuresBeforeSuccess, optionsBehavior, optionsVariants, served],
   );
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -270,6 +290,7 @@ function Fixture({
     </QueryClientProvider>
   );
 }
+
 const meta = {
   decorators: [withLocale('pl')],
   title: 'SpecFlow/Contracts/Creation Demo',
@@ -290,8 +311,10 @@ export const ChoiceAndConfiguration: Story = {
     await expect(
       Math.abs(cards[0]!.getBoundingClientRect().width - cards[1]!.getBoundingClientRect().width),
     ).toBeLessThan(1);
-    for (const card of cards)
+    for (const card of cards) {
       await expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight);
+    }
+
     await settleViewport(390, 844);
     await userEvent.click(canvas.getByRole('button', { name: /Samodzielnie/ }));
     await userEvent.type(
@@ -429,15 +452,18 @@ async function openAgentForm(canvas: Canvas, userEvent: UserEvent) {
   await userEvent.click(await canvas.findByRole('button', { name: /Z agentem/ }));
   await canvas.findByRole('heading', { name: 'Co chcesz opisać?' });
 }
+
 async function settle(width: number) {
   await (await browserPage()).viewport(width, 900);
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
+
 async function expectNoOverflow(width: number) {
   await settle(width);
   const scroller = document.querySelector<HTMLElement>('.scroll-area-viewport');
   await expect(scroller ? scroller.scrollWidth <= scroller.clientWidth + 1 : true).toBe(true);
 }
+
 const providerCards = (canvas: Canvas) =>
   canvas
     .queryAllByRole('radio')
@@ -449,8 +475,10 @@ async function expectEqualRows(canvas: Canvas) {
     const rect = card.getBoundingClientRect();
     rows.set(Math.round(rect.top), [...(rows.get(Math.round(rect.top)) ?? []), rect.height]);
   }
-  for (const heights of rows.values())
+
+  for (const heights of rows.values()) {
     await expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+  }
 }
 
 export const ZeroProviders: Story = {
@@ -459,7 +487,9 @@ export const ZeroProviders: Story = {
     await openAgentForm(canvas, userEvent);
     await expect(canvas.getByText('Brak dostępnych wykonawców.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toBeDisabled();
-    for (const width of [390, 1440]) await expectNoOverflow(width);
+    for (const width of [390, 1440]) {
+      await expectNoOverflow(width);
+    }
   },
 };
 export const SingleProviderPreselected: Story = {
@@ -467,7 +497,9 @@ export const SingleProviderPreselected: Story = {
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
     await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeChecked();
-    for (const width of [390, 1440]) await expectNoOverflow(width);
+    for (const width of [390, 1440]) {
+      await expectNoOverflow(width);
+    }
   },
 };
 export const TwoProviders: Story = {
@@ -510,6 +542,7 @@ export const FiveProvidersLongNames: Story = {
       await expectNoOverflow(width);
       await expectEqualRows(canvas);
     }
+
     await userEvent.click(canvas.getByRole('radio', { name: /Zewnętrzny wykonawca/ }));
     await expect(canvas.getByRole('radio', { name: /Zewnętrzny wykonawca/ })).toBeChecked();
     await expect(canvas.getByRole('radio', { name: /Local adapter/ })).toBeDisabled();
@@ -554,6 +587,7 @@ export const ArchetypeChoiceAndDocuments: Story = {
       await waitFor(() => expect(within(group).getByRole('radio', { name })).toBeChecked());
       await expect(within(group).getByRole('radio', { name })).toHaveFocus();
     }
+
     const documents = canvas.getByRole('group', { name: 'Dokumenty do utworzenia' });
     await expect(
       within(documents).getByText('Overview (overview.md) jest tworzony zawsze.'),
@@ -575,7 +609,9 @@ export const ArchetypeChoiceAndDocuments: Story = {
     await expect(body.archetypeId).toBe('feature');
     await expect(body.catalogueRevision).toBe(catalogue.revision);
     await expect(body.optionalDocumentIds).toEqual(['research']);
-    for (const width of [390, 1440]) await expectNoOverflow(width);
+    for (const width of [390, 1440]) {
+      await expectNoOverflow(width);
+    }
   },
 };
 export const UnavailableNewWorkspaceWithReason: Story = {
@@ -587,7 +623,9 @@ export const UnavailableNewWorkspaceWithReason: Story = {
     await expect(tile).not.toBeChecked();
     await expect(canvas.getByText('Wyłączone w konfiguracji projektu.')).toBeVisible();
     await expect(canvas.getByRole('radio', { name: 'Bieżący katalog' })).toBeChecked();
-    for (const width of [390, 1440]) await expectNoOverflow(width);
+    for (const width of [390, 1440]) {
+      await expectNoOverflow(width);
+    }
   },
 };
 export const SingleModeModel: Story = {
@@ -631,6 +669,7 @@ async function openManualForm(
   await userEvent.type(await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' }), name);
   await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
 }
+
 const lastRequest = () => createRequests.at(-1)!;
 const submit = (canvas: Canvas) => canvas.getByRole('button', { name: 'Utwórz specyfikację' });
 
@@ -726,7 +765,9 @@ export const OptionsLoadingBlocksCreateButNotTheName: Story = {
     await expect(canvas.getByText('Wczytujemy opcje środowiska pracy…')).toBeVisible();
     await expect(submit(canvas)).toBeDisabled();
     await expect(canvas.queryByRole('radio', { name: 'Nowe środowisko pracy' })).toBeNull();
-    for (const width of [320, 390, 1440]) await expectNoOverflow(width);
+    for (const width of [320, 390, 1440]) {
+      await expectNoOverflow(width);
+    }
   },
 };
 
@@ -871,8 +912,10 @@ export const RecoveryRequiredLocksTheFormAndNeverCreatesAgain: Story = {
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
       canvas.getByRole('radio', { name: 'Nowe środowisko pracy' }),
-    ])
+    ]) {
       await expect(control).toBeDisabled();
+    }
+
     await expect(canvas.queryByRole('button', { name: /Spróbuj ponownie/ })).toBeNull();
     await expect(canvas.queryByRole('button', { name: 'Utwórz specyfikację' })).toBeNull();
     // The diagnostics only list what the client knows, plus the server stage once read.
@@ -986,7 +1029,10 @@ export const WorkspaceSectionGeometryInTheForm: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    for (const width of [320, 390, 768, 1440, 2560]) await expectNoOverflow(width);
+    for (const width of [320, 390, 768, 1440, 2560]) {
+      await expectNoOverflow(width);
+    }
+
     const [a, b, c] = [
       'Nowe środowisko pracy',
       'Bieżący katalog',
@@ -1034,15 +1080,20 @@ export const CreateActionStaysVisibleWhileTheFormScrolls: Story = {
       );
       scroller.scrollTop = 0;
     }
+
     await settleViewport();
   },
 };
 
 /* Review fixes (REVIEW-UX F-01/F-02/F-12, REVIEW-QUALITY Q1-Q5). */
 const setOnline = (online: boolean) => {
-  if (online) Reflect.deleteProperty(navigator, 'onLine');
-  else Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+  if (online) {
+    Reflect.deleteProperty(navigator, 'onLine');
+  } else {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+  }
 };
+
 const settings = (canvas: Canvas) => canvas.getByRole('button', { name: /Zmień ustawienia/ });
 
 export const AutomaticBranchNameCollisionOffersACustomName: Story = {
@@ -1235,6 +1286,7 @@ export const OfflineCreateIsNeverSentAndOffersAClearRetry: Story = {
     } finally {
       setOnline(true);
     }
+
     await userEvent.click(submit(canvas));
     await waitFor(() => expect(createRequests).toHaveLength(1));
   },
@@ -1257,6 +1309,7 @@ export const OfflineCheckKeepsTheUncertainOutcome: Story = {
     } finally {
       setOnline(true);
     }
+
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź wynik' }));
     await waitFor(() => expect(createRequests).toHaveLength(2));
     await expect(createRequests[1]).toEqual(createRequests[0]);

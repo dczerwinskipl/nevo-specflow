@@ -72,7 +72,10 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
   let waiting = 0;
 
   app.addHook('preClose', (closed) => {
-    for (const controller of open) controller.abort();
+    for (const controller of open) {
+      controller.abort();
+    }
+
     closed();
   });
 
@@ -114,6 +117,7 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
           .header('Cache-Control', 'no-store')
           .send({ error: OPERATION_STREAMS_LIMIT_CODE, code: OPERATION_STREAMS_LIMIT_CODE });
       }
+
       let holdsWaitingSlot = !known;
       const releaseWaiting = () => {
         if (holdsWaitingSlot) {
@@ -121,7 +125,11 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
           waiting -= 1;
         }
       };
-      if (holdsWaitingSlot) waiting += 1;
+
+      if (holdsWaitingSlot) {
+        waiting += 1;
+      }
+
       perPrincipal.set(principal, (perPrincipal.get(principal) ?? 0) + 1);
 
       const controller = new AbortController();
@@ -137,7 +145,9 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
       });
       raw.write('retry: 3000\n\n');
       const heartbeat = setInterval(() => {
-        if (!raw.writableEnded) raw.write(': heartbeat\n\n');
+        if (!raw.writableEnded) {
+          raw.write(': heartbeat\n\n');
+        }
       }, heartbeatMs);
 
       try {
@@ -147,7 +157,10 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
           signal: controller.signal,
         })) {
           releaseWaiting();
-          if (raw.writableEnded || raw.destroyed) break;
+          if (raw.writableEnded || raw.destroyed) {
+            break;
+          }
+
           raw.write(frame(item));
         }
       } finally {
@@ -155,9 +168,15 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
         open.delete(controller);
         releaseWaiting();
         const left = (perPrincipal.get(principal) ?? 1) - 1;
-        if (left <= 0) perPrincipal.delete(principal);
-        else perPrincipal.set(principal, left);
-        if (!raw.writableEnded) raw.end();
+        if (left <= 0) {
+          perPrincipal.delete(principal);
+        } else {
+          perPrincipal.set(principal, left);
+        }
+
+        if (!raw.writableEnded) {
+          raw.end();
+        }
       }
     },
   );
@@ -182,6 +201,9 @@ function frame(item: StoredProgressEvent): string {
 
 function parseLastEventId(header: string | string[] | undefined): number | undefined {
   const value = Array.isArray(header) ? header[0] : header;
-  if (value === undefined || !/^\d{1,12}$/.test(value)) return undefined;
+  if (value === undefined || !/^\d{1,12}$/.test(value)) {
+    return undefined;
+  }
+
   return Number(value);
 }

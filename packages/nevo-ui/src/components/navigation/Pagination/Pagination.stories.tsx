@@ -25,6 +25,7 @@ type Story = StoryObj<typeof meta>;
 
 function NumberedPagesExample() {
   const [page, setPage] = useState(2);
+
   return (
     <Pagination
       mode="known"
@@ -41,6 +42,7 @@ function NumberedPagesExample() {
 
 function SimpleKnownTotalExample() {
   const [page, setPage] = useState(2);
+
   return (
     <Pagination
       mode="known"

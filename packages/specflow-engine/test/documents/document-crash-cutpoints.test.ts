@@ -71,6 +71,7 @@ function spawnQueueWorker(project: QueueProject, cut: string) {
     60000,
   );
   workers.push(worker);
+
   return { signal, worker };
 }
 
@@ -87,6 +88,7 @@ async function queueThree(project: QueueProject, model: SaveModel): Promise<stri
     model.acknowledge(id, notesPath(index), content);
     ids.push(id);
   }
+
   return ids;
 }
 
@@ -120,8 +122,10 @@ async function processGone(pid: number): Promise<void> {
     } catch {
       return;
     }
+
     await sleep(10);
   }
+
   throw new Error('The killed process still exists: ' + pid);
 }
 
@@ -289,6 +293,7 @@ describe.skipIf(!onLinux)('a commit killed inside git with a hung filter', () =>
       '-qm',
       'filter',
     );
+
     return { flag, groupFile };
   }
 

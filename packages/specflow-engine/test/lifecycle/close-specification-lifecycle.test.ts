@@ -24,8 +24,9 @@ import { createGitTestProject, git, commitStaged } from '../support/git-project'
 
 const cleanup: string[] = [];
 afterEach(async () => {
-  for (const root of cleanup.splice(0).reverse())
+  for (const root of cleanup.splice(0).reverse()) {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
+  }
 });
 
 async function fixture(linked: boolean) {
@@ -52,7 +53,10 @@ async function fixture(linked: boolean) {
       ? { kind: 'new-worktree' as const, baseRef: 'HEAD' }
       : { kind: 'existing' as const, workspaceId: registry.primaryWorkspaceId },
   });
-  if (linked) cleanup.push(dirname(spec.workspaceRoot));
+  if (linked) {
+    cleanup.push(dirname(spec.workspaceRoot));
+  }
+
   git(
     spec.workspaceRoot,
     'add',
@@ -61,6 +65,7 @@ async function fixture(linked: boolean) {
     'specs/active/' + spec.slug + '/overview.md',
   );
   commitStaged(spec.workspaceRoot, 'commit authored specification');
+
   return { root, engine, spec };
 }
 
@@ -201,7 +206,10 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     }).catch((error: unknown) => error);
     expect(blocked).toMatchObject({ code: 'CLOSE_SHARED_WORKTREE' });
     expect(blocked).toBeInstanceOf(Error);
-    if (blocked instanceof Error) expect(blocked.message).toContain('workspace-scoped Close');
+    if (blocked instanceof Error) {
+      expect(blocked.message).toContain('workspace-scoped Close');
+    }
+
     expect(await inspectCloseOperation(engine, refusedOp)).toBeUndefined();
     expect(git(a.workspaceRoot, 'rev-parse', 'HEAD')).toBe(archivedHead);
     expect((await engine.readRegistry()).specBindings).toEqual(before.specBindings);
@@ -302,6 +310,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       expect(binding?.generation).toBe(revision + 1);
       expect((await readWorkspaceSpecification(root, specId)).status).toBe(status);
     }
+
     expect(git(root, 'rev-parse', 'HEAD')).not.toBe(primaryHead);
     expect(git(root, 'status', '--porcelain')).toBe('');
     expect((await closeWorkspace(engine, { operationId, workspaceId })).status).toBe('completed');
@@ -346,6 +355,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
         generation: revision + 1,
       });
     }
+
     expect((await inspectCloseOperation(engine, operationId))?.stage).toBe('integration-verified');
     const resumed = await rebindVerifiedClose(engine, operationId);
     expect(resumed.stage).toBe('binding-rebound');
@@ -416,6 +426,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       );
       siblings.push(item);
     }
+
     commitStaged(a.workspaceRoot, 'committed shared siblings');
     await closeSpecification(engine, {
       operationId: randomUUID(),
@@ -447,6 +458,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       );
       expect((await readWorkspaceSpecification(root, specId)).status).toBe(status);
     }
+
     expect(git(root, 'status', '--porcelain')).toBe('');
   }, 180000);
 

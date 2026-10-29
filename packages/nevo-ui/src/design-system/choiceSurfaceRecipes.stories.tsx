@@ -30,6 +30,7 @@ const options = [
 
 function ChoiceSurfaceExample() {
   const id = useId();
+
   return (
     <div className="grid w-full max-w-content-narrow gap-6">
       <button className={choiceSurfaceClassName} type="button">
@@ -106,7 +107,9 @@ export const Default: Story = {};
 export const Narrow: Story = { globals: { viewport: { value: 'mobile1', isRotated: false } } };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 export const InteractionContract: Story = {

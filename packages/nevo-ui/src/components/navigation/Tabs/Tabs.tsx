@@ -60,7 +60,10 @@ const tabsTriggerVariants = tv({
 
 function useTabsContext(part: string) {
   const context = useContext(TabsContext);
-  if (!context) throw new Error(`${part} must be rendered inside Tabs.`);
+  if (!context) {
+    throw new Error(`${part} must be rendered inside Tabs.`);
+  }
+
   return context;
 }
 
@@ -169,22 +172,33 @@ export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(funct
 
   const handleClick: TabsTriggerProps['onClick'] = (event) => {
     onClick?.(event);
-    if (!event.defaultPrevented && !disabled) tabs.select(value);
+    if (!event.defaultPrevented && !disabled) {
+      tabs.select(value);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     onKeyDown?.(event);
-    if (event.defaultPrevented) return;
+    if (event.defaultPrevented) {
+      return;
+    }
 
     const enabledTabs = findEnabledItems(event.currentTarget, '[role="tablist"]', '[role="tab"]');
     const currentIndex = enabledTabs.indexOf(event.currentTarget);
     const nextIndex = resolveRovingIndex(event.key, currentIndex, enabledTabs.length);
-    if (nextIndex === null) return;
+    if (nextIndex === null) {
+      return;
+    }
 
     const nextTab = enabledTabs[nextIndex];
-    if (!nextTab) return;
+    if (!nextTab) {
+      return;
+    }
+
     const nextValue = nextTab.dataset.tabsValue;
-    if (!nextValue) return;
+    if (!nextValue) {
+      return;
+    }
 
     event.preventDefault();
     nextTab.focus();
@@ -230,6 +244,7 @@ export const TabsContent = forwardRef<HTMLDivElement, TabsContentProps>(function
 ) {
   const tabs = useTabsContext('Tabs.Content');
   const selected = tabs.selectedValue === value;
+
   return (
     <div
       {...props}

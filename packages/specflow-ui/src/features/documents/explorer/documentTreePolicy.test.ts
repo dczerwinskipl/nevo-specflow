@@ -23,8 +23,10 @@ const entryNameError = (...args: Parameters<typeof rawEntryNameError>) =>
 
 describe('creation document policy', () => {
   it('rejects paths and absent basenames at the entry boundary', () => {
-    for (const value of ['.md', '.txt', '../spec.md', 'dir/file.md', 'bad\\name.md', 'foo.md '])
+    for (const value of ['.md', '.txt', '../spec.md', 'dir/file.md', 'bad\\name.md', 'foo.md ']) {
       expect(validEntryName(value, true), value).toBe(false);
+    }
+
     expect(validEntryName('client-notes.txt', true)).toBe(true);
   });
   it('prevents file/folder collision including parent and descendants, case-insensitively', () => {
@@ -107,10 +109,13 @@ describe('inline entry names', () => {
 
 describe('upload name policy', () => {
   it('rejects the names the Runtime rejects, so one bad file never fails the batch', () => {
-    for (const name of ['.hidden.md', 'CON.md', 'nul.txt', 'notes.md ', 'notes.', 'a:b.md'])
+    for (const name of ['.hidden.md', 'CON.md', 'nul.txt', 'notes.md ', 'notes.', 'a:b.md']) {
       expect(uploadNameReason(name), name).toBeTruthy();
-    for (const name of ['interview.md', 'konsola.md', 'a.b.txt'])
+    }
+
+    for (const name of ['interview.md', 'konsola.md', 'a.b.txt']) {
       expect(uploadNameReason(name), name).toBeUndefined();
+    }
   });
 });
 
@@ -199,12 +204,17 @@ describe('createTreeIndex', () => {
     const reads = { count: 0 };
     const proxy = new Proxy(items, {
       get(target, key, receiver) {
-        if (typeof key === 'string' && /^\d+$/.test(key)) reads.count++;
+        if (typeof key === 'string' && /^\d+$/.test(key)) {
+          reads.count++;
+        }
+
         return Reflect.get(target, key, receiver) as unknown;
       },
     });
+
     return { proxy, reads };
   }
+
   /** 40 top folders x 4 nested folders x 10 documents plus root files: over 2000 nodes. */
   function largeTree() {
     const folders: { path: string }[] = [];
@@ -213,14 +223,20 @@ describe('createTreeIndex', () => {
       folders.push({ path: `f${top}` });
       for (let sub = 0; sub < 4; sub++) {
         folders.push({ path: `f${top}/s${sub}` });
-        for (let doc = 0; doc < 10; doc++)
+        for (let doc = 0; doc < 10; doc++) {
           documents.push({ id: `${top}-${sub}-${doc}`, path: `f${top}/s${sub}/d${doc}.md` });
+        }
       }
-      for (let doc = 0; doc < 10; doc++)
+
+      for (let doc = 0; doc < 10; doc++) {
         documents.push({ id: `${top}-${doc}`, path: `f${top}/d${doc}.md` });
+      }
     }
-    for (let doc = 0; doc < 100; doc++)
+
+    for (let doc = 0; doc < 100; doc++) {
       documents.push({ id: `root-${doc}`, path: `root${doc}.md` });
+    }
+
     return { folders, documents };
   }
 
@@ -241,6 +257,7 @@ describe('createTreeIndex', () => {
       index.level(folder.path);
       index.level(folder.path);
     }
+
     index.level('');
     expect(folders.reads.count + documents.reads.count).toBe(afterBuild);
   });
@@ -252,6 +269,7 @@ describe('createTreeIndex', () => {
       const expected = treeLevel(source, parent);
       expect(index.level(parent)).toEqual(expected);
     }
+
     expect(index.level('f3')).toBe(index.level('F3'));
   });
 });

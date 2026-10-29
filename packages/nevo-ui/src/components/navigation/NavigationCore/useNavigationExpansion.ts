@@ -20,9 +20,13 @@ export function useNavigationExpansion<TTarget>({
   const activeAncestorSignature = [...tree.ancestorKeys].join('\u0000');
 
   useEffect(() => {
-    if (controlled) return;
+    if (controlled) {
+      return;
+    }
+
     setUncontrolledExpandedKeys((current) => {
       const next = resolveInitialExpandedKeys(tree, current);
+
       return next.length === current.length && next.every((key, index) => key === current[index])
         ? current
         : next;
@@ -44,18 +48,29 @@ export function useNavigationExpansion<TTarget>({
 
   const setExpanded = useCallback(
     (key: string, expanded: boolean) => {
-      if (!tree.orderedExpandableKeys.includes(key)) return;
+      if (!tree.orderedExpandableKeys.includes(key)) {
+        return;
+      }
+
       const current = new Set(normalizedExpandedKeys);
-      if (expanded) current.add(key);
-      else current.delete(key);
+      if (expanded) {
+        current.add(key);
+      } else {
+        current.delete(key);
+      }
+
       const next = normalizeExpandedKeys(tree, current);
       if (
         next.length === normalizedExpandedKeys.length &&
         next.every((value, index) => value === normalizedExpandedKeys[index])
-      )
+      ) {
         return;
+      }
 
-      if (!controlled) setUncontrolledExpandedKeys(next);
+      if (!controlled) {
+        setUncontrolledExpandedKeys(next);
+      }
+
       onExpandedKeysChange?.(next);
     },
     [controlled, normalizedExpandedKeys, onExpandedKeysChange, tree],

@@ -36,6 +36,7 @@ export function planFromCreateJournal(engine: SpecFlowEngine, record: CreateJour
   ) {
     throw recovery('Create journal has no valid pinned Git worktree plan.');
   }
+
   // The target is the absolute path pinned at reservation: it may live under a worktree
   // folder that was configured at that time. It must still be the reserved slug's folder,
   // and outside the repository; a different child is NOT equivalent.
@@ -47,6 +48,7 @@ export function planFromCreateJournal(engine: SpecFlowEngine, record: CreateJour
   } catch {
     outside = false;
   }
+
   if (
     !isAbsolute(actualTarget) ||
     resolve(actualTarget) !== actualTarget ||
@@ -55,6 +57,7 @@ export function planFromCreateJournal(engine: SpecFlowEngine, record: CreateJour
   ) {
     throw recovery('Journal worktree target does not match the originally reserved slug.');
   }
+
   return {
     projectId: record.projectId,
     gitInstanceId: engine.context.project.gitInstanceId,
@@ -74,7 +77,10 @@ export async function verifyPinnedIntegrationDestination(
   engine: SpecFlowEngine,
   record: CreateJournal,
 ): Promise<void> {
-  if (record.target.kind !== 'new-worktree' || !record.target.integrationDestination) return;
+  if (record.target.kind !== 'new-worktree' || !record.target.integrationDestination) {
+    return;
+  }
+
   const pinned = record.target.integrationDestination;
   const registry = await engine.readRegistry();
   const stored = registry.workspaces.find(
@@ -83,10 +89,12 @@ export async function verifyPinnedIntegrationDestination(
   if (!stored || stored.instanceId !== pinned.instanceId) {
     throw recovery('Pinned integration destination registration changed.');
   }
+
   const inspected = await inspectRegisteredWorkspace(engine.context, registry, pinned.workspaceId);
   if (inspected.status !== 'available') {
     throw recovery('Pinned integration destination is unavailable.');
   }
+
   const attached = await executeGit(inspected.root, ['symbolic-ref', '--quiet', 'HEAD']);
   if (attached.exitCode !== 0 || attached.stdout.trim() !== 'refs/heads/' + pinned.branch) {
     throw recovery('Pinned integration destination branch or checkout changed.');
@@ -102,9 +110,11 @@ export async function validateNewGitReservation(
   if (availability.status === 'disabled') {
     throw new GitCapabilityError('GIT_DISABLED', 'Managed worktree creation is disabled.');
   }
+
   if (availability.status === 'unavailable') {
     throw new GitCapabilityError('GIT_UNAVAILABLE', 'Git worktree automation is unavailable.');
   }
+
   await worktrees.validateReservedPlan(planFromCreateJournal(engine, record));
   await verifyPinnedIntegrationDestination(engine, record);
   // A newly reserved plan must have no evidence of a previous effect.
@@ -137,11 +147,15 @@ export async function ensureLinkedIdentity(
   if (record.target.kind !== 'new-worktree' || !record.target.instanceId) {
     throw recovery('Managed checkout has no reserved physical identity.');
   }
+
   const path = join(record.target.workspaceRoot, WORKSPACE_IDENTITY_RELATIVE_PATH);
   let registration: WorkspaceRegistration;
   try {
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw recovery('Identity marker redirected.');
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw recovery('Identity marker redirected.');
+    }
+
     const parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
     if (
       !isRecord(parsed) ||
@@ -153,6 +167,7 @@ export async function ensureLinkedIdentity(
     ) {
       throw recovery('Identity marker belongs to a different worktree; manual repair required.');
     }
+
     registration = {
       kind: 'linked',
       managed: true,
@@ -162,9 +177,13 @@ export async function ensureLinkedIdentity(
     };
   } catch (error) {
     if (!isMissing(error)) {
-      if (error instanceof SyntaxError) throw recovery('Identity marker is corrupt.');
+      if (error instanceof SyntaxError) {
+        throw recovery('Identity marker is corrupt.');
+      }
+
       throw error;
     }
+
     registration = await provisionLinkedWorkspaceIdentity(
       engine.context,
       record.target.workspaceRoot,
@@ -173,7 +192,9 @@ export async function ensureLinkedIdentity(
       record.target.instanceId,
     );
   }
+
   await verifyLinkedWorkspaceIdentity(engine.context, registration);
+
   return record;
 }
 
@@ -207,12 +228,15 @@ export async function requireTargetIdentity(
         planFromCreateJournal(engine, record),
       );
       // From the commit stage on HEAD is the base or advanced by the Engine's scaffold commit.
-      if (record.stage !== 'completed') await requireCommitLineage(engine, record);
+      if (record.stage !== 'completed') {
+        await requireCommitLineage(engine, record);
+      }
     } else if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
       // Before terminal completion, exact base HEAD is still critical evidence
       // that this is the worktree produced by the planned Git mutation.
       throw recovery('Git worktree or branch changed since creation.');
     }
+
     const registration = registrationOf(record);
     await verifyWorkspaceRoot(engine.context, registration.root, registration);
     // A completed Create remains idempotent even if a user later changes

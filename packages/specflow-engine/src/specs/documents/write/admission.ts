@@ -78,15 +78,20 @@ export async function admitDocumentChange(
   if (loaded.location !== 'active') {
     throw documentChangeError('archived', 'The Specification is archived and read-only.');
   }
+
   // A template entry is rendered from the project catalogue of the Project Home before planning.
   let planned = request;
   let catalogueRevision = options.currentCatalogueRevision;
   if (namesTemplates(written)) {
-    if (options.templates === undefined) throw templatesUnavailable();
+    if (options.templates === undefined) {
+      throw templatesUnavailable();
+    }
+
     const resolved = await options.templates(engine, snapshot.manifest, written);
     planned = resolved.request;
     catalogueRevision = resolved.catalogueRevision;
   }
+
   const result = planDocumentChange(snapshot, planned, {
     folderRevision: (folder) => folderRevisionOf(folder, snapshot.files, snapshot.manifest),
     ...(catalogueRevision !== undefined ? { currentCatalogueRevision: catalogueRevision } : {}),
@@ -124,15 +129,19 @@ export async function admitDocumentChange(
       } catch (error) {
         // Without preflight (auto-commit off) the repository may be unreadable (an unborn branch):
         // then HEAD cannot vouch for the manifest and the ledger baseline stands on its own.
-        if (git.mode === 'auto') throw error;
+        if (git.mode === 'auto') {
+          throw error;
+        }
       }
     }
+
     assertManifestNotDirty({
       diskSha256: sha256Hex(loaded.manifestBytes),
       baseline,
       ...(cleanInGit !== undefined ? { cleanInGit } : {}),
     });
   }
+
   return { ...observed, ...result, manifestSha256: sha256Hex(loaded.manifestBytes), git };
 }
 
@@ -146,9 +155,13 @@ function pathsNeedingContentHash(
 ): readonly string[] {
   const document = (documentId: string): string[] => {
     const resolved = resolveDocument(snapshot, documentId);
-    if (resolved === undefined) return [];
+    if (resolved === undefined) {
+      return [];
+    }
+
     return [resolved.kind === 'registered' ? resolved.entry.path : resolved.file.path];
   };
+
   const under = (folder: string): string[] =>
     snapshot.files.filter((file) => file.path.startsWith(folder + '/')).map((file) => file.path);
   switch (request.action) {
@@ -168,6 +181,7 @@ function pathsNeedingContentHash(
         : under(request.target.path);
     default: {
       const exhaustive: never = request;
+
       return exhaustive;
     }
   }

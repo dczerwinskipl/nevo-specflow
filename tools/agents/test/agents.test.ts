@@ -60,6 +60,7 @@ function fixture(): string {
       '',
     ].join('\n'),
   );
+
   return root;
 }
 

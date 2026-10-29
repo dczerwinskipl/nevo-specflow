@@ -19,14 +19,22 @@ function splitCssLayers(value: string): string[] {
   let depth = 0;
   let start = 0;
   for (let index = 0; index < value.length; index += 1) {
-    if (value[index] === '(') depth += 1;
-    if (value[index] === ')') depth -= 1;
+    if (value[index] === '(') {
+      depth += 1;
+    }
+
+    if (value[index] === ')') {
+      depth -= 1;
+    }
+
     if (value[index] === ',' && depth === 0) {
       layers.push(value.slice(start, index).trim());
       start = index + 1;
     }
   }
+
   layers.push(value.slice(start).trim());
+
   return layers;
 }
 
@@ -40,41 +48,68 @@ function isSupportedGradient(layer: string): boolean {
   if (layer.startsWith('linear-gradient(') && layer.endsWith(')')) {
     const parts = splitCssLayers(layer.slice('linear-gradient('.length, -1));
     const hasAngle = /^-?[\d.]+deg$/.test(parts[0] ?? '');
+
     return hasSupportedStops(hasAngle ? parts.slice(1) : parts);
   }
+
   if (layer.startsWith('radial-gradient(') && layer.endsWith(')')) {
     const parts = splitCssLayers(layer.slice('radial-gradient('.length, -1));
     const hasSupportedGeometry =
       /^(?:ellipse\s+)?-?[\d.]+%\s+-?[\d.]+%\s+at\s+-?[\d.]+%\s+-?[\d.]+%$/.test(parts[0] ?? '');
+
     return hasSupportedGeometry && hasSupportedStops(parts.slice(1));
   }
+
   return false;
 }
 
 export function isSupportedBackgroundImage(value: string | undefined): boolean {
-  if (!value || value === 'none') return true;
+  if (!value || value === 'none') {
+    return true;
+  }
+
   const layers = splitCssLayers(value);
+
   return layers.length > 0 && layers.every(isSupportedGradient);
 }
 
 function numeric(value: string | undefined): number {
   const parsed = Number.parseFloat(value ?? '');
+
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function isTransparent(value: string | undefined): boolean {
-  if (!value || value === 'transparent') return true;
+  if (!value || value === 'transparent') {
+    return true;
+  }
+
   const rgba = /^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/i.exec(value);
-  if (rgba) return Number.parseFloat(rgba[1] ?? '0') <= 0;
+  if (rgba) {
+    return Number.parseFloat(rgba[1] ?? '0') <= 0;
+  }
+
   const modernAlpha = /\/\s*([\d.]+)%?\s*\)$/.exec(value);
-  if (!modernAlpha) return false;
+  if (!modernAlpha) {
+    return false;
+  }
+
   return Number.parseFloat(modernAlpha[1] ?? '0') <= 0;
 }
 
 function isMaterial(style: ComputedStyleRecord): boolean {
-  if (style.display === 'none') return false;
-  if (style.visibility === 'hidden' || style.visibility === 'collapse') return false;
-  if (style.opacity !== '' && numeric(style.opacity) === 0) return false;
+  if (style.display === 'none') {
+    return false;
+  }
+
+  if (style.visibility === 'hidden' || style.visibility === 'collapse') {
+    return false;
+  }
+
+  if (style.opacity !== '' && numeric(style.opacity) === 0) {
+    return false;
+  }
+
   return !(
     numeric(style.width) === 0 &&
     numeric(style.height) === 0 &&
@@ -84,10 +119,22 @@ function isMaterial(style: ComputedStyleRecord): boolean {
 }
 
 function layerName(layer: NestedLayerIR, fallback: string): string {
-  if ('identity' in layer && layer.identity?.layer) return layer.identity.layer;
-  if ('componentRef' in layer) return layer.componentRef;
-  if (layer.kind === 'slot-ref') return `slot:${layer.name}`;
-  if (layer.kind === 'element') return layer.name;
+  if ('identity' in layer && layer.identity?.layer) {
+    return layer.identity.layer;
+  }
+
+  if ('componentRef' in layer) {
+    return layer.componentRef;
+  }
+
+  if (layer.kind === 'slot-ref') {
+    return `slot:${layer.name}`;
+  }
+
+  if (layer.kind === 'element') {
+    return layer.name;
+  }
+
   return fallback;
 }
 
@@ -97,7 +144,9 @@ function collectNestedSlot(
   layer: string,
   result: StyledLayer[],
 ) {
-  for (const child of slot.children) collectNested(child, component, layer, result);
+  for (const child of slot.children) {
+    collectNested(child, component, layer, result);
+  }
 }
 
 function collectNested(
@@ -106,18 +155,29 @@ function collectNested(
   fallbackLayer: string,
   result: StyledLayer[],
 ) {
-  if ('kind' in node && node.kind === 'slot-ref') return;
-  const layer = layerName(node, fallbackLayer);
-  if ('style' in node && node.style) result.push({ component, layer, style: node.style });
-  if ('componentRef' in node) {
-    for (const [slotName, slot] of Object.entries(node.slots)) {
-      if (typeof slot !== 'string')
-        collectNestedSlot(slot, component, `${layer}.${slotName}`, result);
-    }
+  if ('kind' in node && node.kind === 'slot-ref') {
     return;
   }
+
+  const layer = layerName(node, fallbackLayer);
+  if ('style' in node && node.style) {
+    result.push({ component, layer, style: node.style });
+  }
+
+  if ('componentRef' in node) {
+    for (const [slotName, slot] of Object.entries(node.slots)) {
+      if (typeof slot !== 'string') {
+        collectNestedSlot(slot, component, `${layer}.${slotName}`, result);
+      }
+    }
+
+    return;
+  }
+
   if (node.kind === 'element') {
-    for (const child of node.children) collectNested(child, component, layer, result);
+    for (const child of node.children) {
+      collectNested(child, component, layer, result);
+    }
   }
 }
 
@@ -127,10 +187,15 @@ function collectSlot(
   layer: string,
   result: StyledLayer[],
 ) {
-  if (!slot) return;
+  if (!slot) {
+    return;
+  }
+
   result.push({ component, layer, style: slot.style });
   if (slot.kind === 'container' || slot.kind === 'slot') {
-    for (const child of slot.children) collectNested(child, component, layer, result);
+    for (const child of slot.children) {
+      collectNested(child, component, layer, result);
+    }
   }
 }
 
@@ -145,11 +210,15 @@ function styledLayers(
       for (const [slotName, slot] of Object.entries(capture.slots)) {
         collectSlot(slot, component, `slot:${slotName}`, result);
       }
-      for (const layer of capture.structure ?? [])
+
+      for (const layer of capture.structure ?? []) {
         collectNested(layer, component, 'structure', result);
+      }
     }
   }
+
   void resources;
+
   return result;
 }
 
@@ -170,7 +239,9 @@ export function stripDiagnosticOnlyStyleProperties(
   resources?: DesignSystemIR['resources'],
 ): void {
   for (const { style } of styledLayers(components, resources)) {
-    for (const property of diagnosticOnlyStyleProperties) delete style[property];
+    for (const property of diagnosticOnlyStyleProperties) {
+      delete style[property];
+    }
   }
 }
 
@@ -183,7 +254,10 @@ export function collectCssProjectionDiagnostics(
   const keys = new Set<string>();
   const report = (layer: StyledLayer, code: ProjectionDiagnosticIR['code'], message: string) => {
     const key = `${code}/${layer.component}/${layer.layer}/${message}`;
-    if (keys.has(key)) return;
+    if (keys.has(key)) {
+      return;
+    }
+
     keys.add(key);
     diagnostics.push({
       code,
@@ -196,7 +270,9 @@ export function collectCssProjectionDiagnostics(
 
   for (const layer of styledLayers(components, resources)) {
     const { style } = layer;
-    if (!isMaterial(style)) continue;
+    if (!isMaterial(style)) {
+      continue;
+    }
 
     if (style.position === 'sticky') {
       report(
@@ -205,6 +281,7 @@ export function collectCssProjectionDiagnostics(
         'Sticky positioning is not projected; the static flow position is retained.',
       );
     }
+
     if (!isSupportedBackgroundImage(style.backgroundImage)) {
       report(
         layer,
@@ -216,6 +293,7 @@ export function collectCssProjectionDiagnostics(
     const borderSides = ['Top', 'Right', 'Bottom', 'Left'] as const;
     const hasUnsupportedVisibleBorder = borderSides.some((side) => {
       const borderStyle = style[`border${side}Style`];
+
       return (
         numeric(style[`border${side}Width`]) > 0 &&
         !isTransparent(style[`border${side}Color`]) &&

@@ -67,8 +67,10 @@ function countingOps(fault?: {
       ) {
         return Promise.reject(errnoError(fault.code));
       }
+
       return run(...args);
     };
+
   const ops: DocumentFileOps = {
     verified: nodeDocumentFileOps.verified,
     mkdir: wrap((path: string) => nodeDocumentFileOps.mkdir(path)),
@@ -86,6 +88,7 @@ function countingOps(fault?: {
     chmod: (path: string, mode: number) => nodeDocumentFileOps.chmod(path, mode),
     list: (path: string) => nodeDocumentFileOps.list(path),
   };
+
   return { ops, state };
 }
 
@@ -158,12 +161,16 @@ async function assertWriteInvariant(
   for (const [path, [pre, post]] of Object.entries(files)) {
     const now = await fileText(p, path);
     expect([pre, post], `${path} is at neither its pre nor its post state`).toContain(now);
-    if (now !== pre) changed = true;
+    if (now !== pre) {
+      changed = true;
+    }
   }
+
   const journal = await findDocumentChangeJournal(p.engine.context, operationId);
   if (changed) {
     expect(journal, 'a change is on disk without a journal').toBeDefined();
   }
+
   if (journal !== undefined) {
     const active = (await activeJournals(p.engine)).some(
       (item) => item.operationId === operationId,
@@ -171,12 +178,17 @@ async function assertWriteInvariant(
     if (journal.stage === 'reserved' || journal.stage === 'files-writing') {
       expect(await checkoutClaimFree(p), 'the claim is not held while writing').toBe(false);
     }
+
     if (journal.stage === 'recovery-required') {
       expect(journal.recoveryPhase).toBe('write');
       expect(await checkoutClaimFree(p)).toBe(false);
     }
-    if (!active) expect(['completed', 'failed']).toContain(journal.stage);
+
+    if (!active) {
+      expect(['completed', 'failed']).toContain(journal.stage);
+    }
   }
+
   return journal?.stage;
 }
 
@@ -189,6 +201,7 @@ async function assertFinished(
   for (const [path, [, post]] of Object.entries(files)) {
     expect(await fileText(p, path), path).toBe(post);
   }
+
   expect(await strayStageFiles(p.dir)).toEqual([]);
   const journal = await findDocumentChangeJournal(p.engine.context, operationId);
   expect(journal?.stage).toBe(git ? 'queued' : 'completed');
@@ -215,7 +228,10 @@ describe.each([false, true])('a fault at every journal write (Git enabled: %s)',
         const request = fixture.request(slot);
         const files = fixture.files(slot);
         const inject = (at: DocumentChangeStage): Promise<void> => {
-          if (at !== stage) return Promise.resolve();
+          if (at !== stage) {
+            return Promise.resolve();
+          }
+
           return Promise.reject(
             fault.throws === 'enospc' ? errnoError('ENOSPC') : new WriterInterrupted(stage),
           );
@@ -235,6 +251,7 @@ describe.each([false, true])('a fault at every journal write (Git enabled: %s)',
         } else {
           expect(error).toBeInstanceOf(WriterInterrupted);
         }
+
         await assertWriteInvariant(p, operationId, files);
 
         const result = await applyDocumentChange(p.engine, p.specId, operationId, request, FAST);
@@ -341,6 +358,7 @@ describe.each([false, true])('a crash at every effect of the write (Git enabled:
         hooks: {
           onPathEffect: (event) => {
             seen.push(event);
+
             return Promise.resolve();
           },
         },
@@ -362,6 +380,7 @@ describe.each([false, true])('a crash at every effect of the write (Git enabled:
                 if (count++ === cut) {
                   return Promise.reject(new WriterInterrupted(`${event.kind}:${event.index}`));
                 }
+
                 return Promise.resolve();
               },
             },

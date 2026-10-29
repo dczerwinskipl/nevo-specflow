@@ -56,6 +56,7 @@ export function DocumentGuidanceColumn({
 }) {
   const { t } = useTranslation();
   const titleId = useId();
+
   return (
     <aside
       aria-labelledby={titleId}
@@ -91,6 +92,7 @@ export function DocumentGuidanceSheet({
   restoreFocusTo?: () => HTMLElement | null | undefined;
 }) {
   const { t } = useTranslation();
+
   return (
     <Drawer open={open && guidance !== undefined} onOpenChange={onOpenChange}>
       <DrawerContent

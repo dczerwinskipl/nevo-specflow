@@ -28,7 +28,9 @@ export function createProgram(ctx: DocsCliContext): Command {
   program.exitOverride();
   for (const cmd of program.commands) {
     cmd.exitOverride();
-    for (const sub of cmd.commands) sub.exitOverride();
+    for (const sub of cmd.commands) {
+      sub.exitOverride();
+    }
   }
 
   return program;

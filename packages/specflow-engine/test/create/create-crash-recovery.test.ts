@@ -54,11 +54,15 @@ async function project(gitEnabled = false): Promise<{ root: string; engine: Spec
     'runtime: {}\ngit:\n  enabled: ' + String(gitEnabled) + '\n',
   );
   roots.push(root);
-  if (gitEnabled) roots.push(root + '-worktrees');
+  if (gitEnabled) {
+    roots.push(root + '-worktrees');
+  }
+
   const engine = await bootstrapProjectHome(root);
   // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
   // Create sees the commit of the Create alone. A refusal (protected branch) surfaces from the Create.
   await installDefinitionsForTesting(engine).catch(() => undefined);
+
   return { root, engine };
 }
 
@@ -104,6 +108,7 @@ function worker(
     60000,
   );
   activeProcesses.push(child);
+
   return {
     signal,
     process: child,
@@ -128,6 +133,7 @@ async function killAtCheckpoint(
     // A real OS signal targets the nested mutation PID, not merely its runner.
     const outcome = await terminateCheckpointPid(checkpoint.pid, child.process);
     expect(outcome.code, outcome.log).not.toBe(0);
+
     return checkpoint.stage;
   } finally {
     await reapVitestWorker(child.process);
@@ -142,6 +148,7 @@ async function replay(
   const child = worker(root, input, 'resume', options);
   const outcome = await child.done;
   expect(outcome.code, outcome.output).toBe(0);
+
   return readFile(child.signal, 'utf8');
 }
 
@@ -316,6 +323,7 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
       await mkdir(dirname(absolute), { recursive: true });
       await writeFile(absolute, file.content);
     }
+
     await updateWorkspaceRegistry(engine.context, (registry) =>
       bindSpecToWorkspace(addWorkspace(registry, linked), existingId, linked.workspaceId),
     );

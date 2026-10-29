@@ -27,7 +27,7 @@ function renderDocument({
   const client = createSpecFlowQueryClient();
   const key = documentKeys.detail('spec', 'doc', expectedRevision);
   client.setQueryData(key, { id, revision, title: 'Document', content: 'Protected document body' });
-  if (status || network || timeout)
+  if (status || network || timeout) {
     client
       .getQueryCache()
       .find({ queryKey: key, exact: true })!
@@ -39,6 +39,8 @@ function renderDocument({
         }),
         fetchStatus: 'idle',
       });
+  }
+
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={createSpecFlowAppServices()}>

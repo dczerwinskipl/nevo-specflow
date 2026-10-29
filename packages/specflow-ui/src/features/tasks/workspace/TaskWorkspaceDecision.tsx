@@ -7,8 +7,12 @@ export function TaskWorkspaceDecision() {
   const { t } = useTranslation();
   const { data, decision, setDecision, feedback, setFeedback, error, setError, setMessage } =
     useTaskWorkspace();
-  if (data.phase !== 'human' || !data.decisions.length) return null;
+  if (data.phase !== 'human' || !data.decisions.length) {
+    return null;
+  }
+
   const selected = data.decisions.find((item) => item.id === decision);
+
   return (
     <WorkspaceSection aria-label={t('taskWorkspace.decision')}>
       <WorkspaceSection.Header
@@ -39,8 +43,10 @@ export function TaskWorkspaceDecision() {
             event.preventDefault();
             if (selected.feedbackRequired && !feedback.trim()) {
               setError(true);
+
               return;
             }
+
             setError(false);
             setMessage(t('taskWorkspace.decisionDemo'));
           }}

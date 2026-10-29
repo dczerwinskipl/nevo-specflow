@@ -41,8 +41,10 @@ it.each([1, 64])(
       db.exec('BEGIN');
       db.prepare('DELETE FROM chunks WHERE content=?').run(contentId);
       const insert = db.prepare('INSERT INTO chunks VALUES(?,?,?)');
-      for (let offset = 0; offset < bytes; offset += chunk.length)
+      for (let offset = 0; offset < bytes; offset += chunk.length) {
         insert.run(contentId, offset, chunk);
+      }
+
       db.prepare('UPDATE contents SET bytes=?,preview=? WHERE id=?').run(
         bytes,
         'x'.repeat(2048),
@@ -67,6 +69,7 @@ it.each([1, 64])(
         };
         insertEntry.run(row.id, sessionId, ordinal, row.turnId, JSON.stringify(row));
       }
+
       const stored = JSON.parse(
         (db.prepare('SELECT data FROM sessions WHERE id=?').get(sessionId) as { data: string })
           .data,
@@ -102,6 +105,7 @@ it.each([1, 64])(
         expect(store.readMetrics().contentBytes).toBe(0);
         peakRss = Math.max(peakRss, process.memoryUsage().rss);
       }
+
       timings.sort((a, b) => a - b);
       console.info(
         'Session tail benchmark',

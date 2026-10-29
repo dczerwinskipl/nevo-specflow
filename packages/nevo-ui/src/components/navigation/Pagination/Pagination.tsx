@@ -30,7 +30,9 @@ function PageSizeControl({
   onChange?: (value: number) => void;
   labels: PaginationLabels;
 }) {
-  if (!options?.length || !onChange) return null;
+  if (!options?.length || !onChange) {
+    return null;
+  }
 
   return (
     <div className="flex items-center gap-2 text-body-sm text-content-muted">
@@ -154,6 +156,7 @@ export function Pagination(props: PaginationProps) {
             {items.map((item) => {
               if (item === 'ellipsis') {
                 ellipsisIndex += 1;
+
                 return (
                   <span
                     key={`ellipsis-${ellipsisIndex}`}
@@ -166,6 +169,7 @@ export function Pagination(props: PaginationProps) {
               }
 
               const selected = item === props.pageIndex;
+
               return (
                 <Button
                   key={item}

@@ -42,13 +42,17 @@ export async function prepareDocumentIndex(
   deps: DocumentIndexDeps,
 ): Promise<void> {
   const untracked = facts.filter((fact) => fact.head === null);
-  if (untracked.length === 0) return;
+  if (untracked.length === 0) {
+    return;
+  }
+
   const ignoreCase = await deps.ignoreCase();
   const key = (path: string): string => (ignoreCase ? path.toLowerCase() : path);
   const entries = new Map<string, string>();
   for (const [path, id] of await deps.indexEntries(untracked.map((fact) => fact.path))) {
     entries.set(key(path), id);
   }
+
   const stale = untracked.filter(
     (fact) =>
       fact.working === null && EMPTY_BLOBS.has(entries.get(key(fact.path))?.toLowerCase() ?? ''),
@@ -58,16 +62,23 @@ export async function prepareDocumentIndex(
       ['reset', '-q'],
       stale.map((fact) => fact.path),
     );
-    if (reset.exitCode !== 0) throw failed('stale-intent-to-add');
+    if (reset.exitCode !== 0) {
+      throw failed('stale-intent-to-add');
+    }
   }
+
   const fresh = untracked
     .filter((fact) => fact.working !== null && !entries.has(key(fact.path)))
     .map((fact) => fact.path);
-  if (fresh.length === 0) return;
+  if (fresh.length === 0) {
+    return;
+  }
+
   deps.owned(fresh);
   const added = await deps.mutatePaths(deps.addArgs, fresh);
   if (added.exitCode !== 0) {
     await deps.takeBack(fresh);
+
     throw failed('intent-to-add');
   }
 }

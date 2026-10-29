@@ -15,21 +15,27 @@ export function diffPartial(expected: unknown, actual: unknown, path = ''): stri
           actual,
         )}`,
       );
+
       return diffs;
     }
+
     expected.forEach((v, i) => diffs.push(...diffPartial(v, actual[i], `${path}[${String(i)}]`)));
+
     return diffs;
   }
 
   if (expected && typeof expected === 'object') {
     if (!actual || typeof actual !== 'object') {
       diffs.push(`${path || '(root)'}: expected object, got ${JSON.stringify(actual)}`);
+
       return diffs;
     }
+
     const actualObj = actual as Record<string, unknown>;
     for (const [k, v] of Object.entries(expected)) {
       diffs.push(...diffPartial(v, actualObj[k], path ? `${path}.${k}` : k));
     }
+
     return diffs;
   }
 
@@ -38,5 +44,6 @@ export function diffPartial(expected: unknown, actual: unknown, path = ''): stri
       `${path || '(root)'}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
     );
   }
+
   return diffs;
 }

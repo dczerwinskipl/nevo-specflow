@@ -44,13 +44,15 @@ export function CreateRuntimeGate({
   const { t } = useTranslation();
   const mode = useRuntimeMode();
   const queryClient = useQueryClient();
-  if (mode === 'loading')
+  if (mode === 'loading') {
     return (
       <CreateFallback specId={specId} view={view}>
         <p role="status">{t('create.loading')}</p>
       </CreateFallback>
     );
-  if (mode === 'unavailable')
+  }
+
+  if (mode === 'unavailable') {
     return (
       <CreateFallback specId={specId} view={view}>
         <Alert tone="attention" title={t('create.loadError')}>
@@ -62,5 +64,7 @@ export function CreateRuntimeGate({
         </Alert>
       </CreateFallback>
     );
+  }
+
   return <>{children(mode)}</>;
 }

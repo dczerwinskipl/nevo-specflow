@@ -24,8 +24,10 @@ it('admits the trusted bundled fingerprint only with independent security/authen
     'authenticated',
     'securityVerified',
     'protocolVerified',
-  ] as const)
+  ] as const) {
     expect(admitProvider(compatibility, { ...prerequisites, [gate]: false }).allowed).toBe(false);
+  }
+
   expect(
     admitProvider(compatibility, { ...prerequisites, executionMode: 'writable' }).allowed,
   ).toBe(false);

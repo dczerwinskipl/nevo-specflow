@@ -19,21 +19,29 @@ function layerContainsMissing(
 ): boolean {
   if ('componentRef' in layer) {
     const stableId = mainComponentRequirement(layer, definitions);
-    if (stableId && inspectionItem(stableId, inspection)?.exists === false) return true;
+    if (stableId && inspectionItem(stableId, inspection)?.exists === false) {
+      return true;
+    }
+
     return Object.values(layer.slots).some((slot) =>
       slotContainsMissing(slot, definitions, inspection),
     );
   }
-  if (layer.kind === 'asset')
+
+  if (layer.kind === 'asset') {
     return inspectionItem(layer.assetRef, inspection, 'asset')?.exists === false;
+  }
+
   if (layer.kind === 'text') {
     const refs = [
       layer.textStyleRef,
       layer.colorRef,
       ...(layer.runs ?? []).flatMap((run) => [run.textStyleRef, run.colorRef]),
     ].filter((value): value is string => Boolean(value));
+
     return refs.some((stableId) => inspectionItem(stableId, inspection)?.exists === false);
   }
+
   return (
     layer.kind === 'element' &&
     layer.children.some((child) => layerContainsMissing(child, definitions, inspection))
@@ -45,14 +53,19 @@ function slotContainsMissing(
   definitions: Definitions,
   inspection: IRInspection | null,
 ) {
-  if (!value || typeof value === 'string' || value.kind === 'text') return false;
+  if (!value || typeof value === 'string' || value.kind === 'text') {
+    return false;
+  }
+
   if (value.kind === 'asset-swap') {
     const asset =
       'asset' in value
         ? value.asset
         : value.children.find((child) => 'kind' in child && child.kind === 'asset');
+
     return asset ? inspectionItem(asset.assetRef, inspection, 'asset')?.exists === false : false;
   }
+
   return (
     'children' in value &&
     value.children.some((child) => layerContainsMissing(child, definitions, inspection))
@@ -60,10 +73,20 @@ function slotContainsMissing(
 }
 
 function slotSummary(value: string | SlotIR | NestedSlotIR | undefined) {
-  if (!value) return 'Empty';
-  if (typeof value === 'string' || value.kind === 'text') return 'Text content';
-  if (value.kind === 'asset-swap') return 'Asset swap';
+  if (!value) {
+    return 'Empty';
+  }
+
+  if (typeof value === 'string' || value.kind === 'text') {
+    return 'Text content';
+  }
+
+  if (value.kind === 'asset-swap') {
+    return 'Asset swap';
+  }
+
   const count = value.children.length;
+
   return `${count} ${count === 1 ? 'layer' : 'layers'}`;
 }
 
@@ -75,14 +98,22 @@ function appendLazyGroup(
 ) {
   let populated = false;
   const populateOnce = () => {
-    if (populated) return;
+    if (populated) {
+      return;
+    }
+
     populated = true;
     const children = element('div', undefined, 'children');
     populate(children);
-    if (children.childElementCount) group.append(children);
+    if (children.childElementCount) {
+      group.append(children);
+    }
   };
+
   group.addEventListener('toggle', () => {
-    if (group.open) populateOnce();
+    if (group.open) {
+      populateOnce();
+    }
   });
   parent.append(group);
   if (initiallyOpen) {
@@ -111,7 +142,9 @@ function appendSlot(
         'asset' in value
           ? value.asset
           : value.children.find((child) => 'kind' in child && child.kind === 'asset');
-      if (asset) appendTreeLayer(children, asset, definitions, inspection, depth + 1);
+      if (asset) {
+        appendTreeLayer(children, asset, definitions, inspection, depth + 1);
+      }
     } else if (value && 'children' in value) {
       for (const child of value.children) {
         appendTreeLayer(children, child, definitions, inspection, depth + 1);
@@ -143,8 +176,11 @@ function appendTreeLayer(
     if (reusable) {
       const item = inspectionItem(mainComponentRequirement(layer, definitions), inspection);
       missing = item?.exists === false;
-      if (missing) heading?.append(actionBadge('missing'));
+      if (missing) {
+        heading?.append(actionBadge('missing'));
+      }
     }
+
     const containsMissing =
       missing ||
       Object.values(layer.slots).some((slot) => slotContainsMissing(slot, definitions, inspection));
@@ -153,6 +189,7 @@ function appendTreeLayer(
         appendSlot(children, name, value, definitions, inspection, depth);
       }
     });
+
     return;
   }
 
@@ -168,6 +205,7 @@ function appendTreeLayer(
         }
       },
     );
+
     return;
   }
 
@@ -177,9 +215,12 @@ function appendTreeLayer(
       element('span', layer.assetRef, 'node-name'),
       element('span', 'Asset', 'node-badge design-system'),
     );
-    if (inspectionItem(layer.assetRef, inspection, 'asset')?.exists === false)
+    if (inspectionItem(layer.assetRef, inspection, 'asset')?.exists === false) {
       row.append(actionBadge('missing'));
+    }
+
     parent.append(row);
+
     return;
   }
 
@@ -187,9 +228,12 @@ function appendTreeLayer(
   const label = isSlot ? `Slot: ${layer.name}` : layer.text || layer.kind;
   const row = element('div', undefined, 'leaf');
   row.append(element('span', label, 'node-name'));
-  if (isSlot) row.append(element('span', 'Component slot', 'node-badge component-slot'));
-  else if (layer.kind === 'text')
+  if (isSlot) {
+    row.append(element('span', 'Component slot', 'node-badge component-slot'));
+  } else if (layer.kind === 'text') {
     row.append(element('span', layer.runs?.length ? 'Rich text' : 'Text', 'node-badge'));
+  }
+
   parent.append(row);
 }
 
@@ -216,11 +260,16 @@ export function renderScreensPreview(
       );
       children.append(row);
     }
+
     missingGroup.append(children);
     parent.append(missingGroup);
   }
+
   for (const definition of ir.definitions) {
-    if (definition.target !== 'screen') continue;
+    if (definition.target !== 'screen') {
+      continue;
+    }
+
     for (const capture of uniqueCaptures(ir.screens[definition.component])) {
       const group = detailsRow(
         definition.component,
@@ -232,6 +281,7 @@ export function renderScreensPreview(
       for (const [name, value] of Object.entries(capture.slots)) {
         appendSlot(children, name, value, definitions, inspection, 0);
       }
+
       group.append(children);
       parent.append(group);
     }

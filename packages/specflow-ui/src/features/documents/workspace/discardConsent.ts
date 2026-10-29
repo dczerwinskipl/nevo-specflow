@@ -16,8 +16,11 @@ export interface DiscardConsent {
 export function createDiscardConsent(remove: (id: string) => void): DiscardConsent {
   let agreed: string[] = [];
   const confirm = () => {
-    for (const id of agreed.splice(0)) remove(id);
+    for (const id of agreed.splice(0)) {
+      remove(id);
+    }
   };
+
   return {
     begin: (ids) => {
       agreed = [...ids];
@@ -26,6 +29,7 @@ export function createDiscardConsent(remove: (id: string) => void): DiscardConse
     after: async (work) => {
       const result = await work();
       confirm();
+
       return result;
     },
   };

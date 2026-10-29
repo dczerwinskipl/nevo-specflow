@@ -10,6 +10,7 @@ function fixture() {
   const dispose = vi.fn(() => {
     ended = true;
     wake?.();
+
     return Promise.resolve({
       process: { state: 'stopped' as const, reason: 'tree-killed' as const },
       cleanup: [],
@@ -19,23 +20,29 @@ function fixture() {
     {
       write(line) {
         sent.push(JSON.parse(line) as Record<string, unknown>);
+
         return Promise.resolve();
       },
       async *lines() {
         while (!ended) {
-          if (!incoming.length)
+          if (!incoming.length) {
             await new Promise<void>((resolve) => {
               wake = resolve;
             });
+          }
+
           wake = undefined;
           const line = incoming.shift();
-          if (line !== undefined) yield line;
+          if (line !== undefined) {
+            yield line;
+          }
         }
       },
       dispose,
     },
     (message) => {
       messages.push(message);
+
       return Promise.resolve();
     },
   );
@@ -43,8 +50,10 @@ function fixture() {
     incoming.push(JSON.stringify(value));
     wake?.();
   };
+
   return { peer, push, sent, messages, dispose };
 }
+
 describe('bounded Codex JSON RPC peer', () => {
   it('correlates out-of-order responses and routes notifications/server requests independently', async () => {
     const f = fixture();

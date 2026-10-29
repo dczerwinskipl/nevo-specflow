@@ -81,6 +81,7 @@ describe('the manual commit state machine', () => {
         settled: true,
       });
     }
+
     for (const stage of ['reserved', 'committing', 'recovery-required'] as const) {
       expect(MANUAL_COMMIT_STAGE_FACTS[stage]).toMatchObject({
         holdsClaim: true,
@@ -186,7 +187,10 @@ describe('transitionManualCommit', () => {
   it('refuses every illegal edge with operation-state-invalid', () => {
     for (const from of MANUAL_COMMIT_STAGES) {
       for (const to of MANUAL_COMMIT_STAGES) {
-        if (canTransitionManualCommit(from, to)) continue;
+        if (canTransitionManualCommit(from, to)) {
+          continue;
+        }
+
         const source = { ...reserved, stage: from };
         expect(() => transitionManualCommit(source, to, {}, LATER)).toThrow(
           expect.objectContaining({ code: 'DOCUMENT_OPERATION_STATE_INVALID' }),
@@ -287,6 +291,7 @@ describe('the error vocabulary', () => {
     for (const cause of MANUAL_COMMIT_CAUSES) {
       expect(DOCUMENT_ERROR_CODES).toContain(MANUAL_COMMIT_ERROR_MAP[cause].code);
     }
+
     expect(Object.keys(MANUAL_COMMIT_ERROR_MAP).sort()).toEqual([...MANUAL_COMMIT_CAUSES].sort());
   });
 

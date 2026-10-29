@@ -21,6 +21,7 @@ export function documentContentFixture(
 ): DocumentContent {
   const path = fields.path ?? fields.id + '.md';
   const content = 'content' in fields ? fields.content : '# ' + stem(path);
+
   return {
     path,
     title: stem(path),
@@ -86,6 +87,7 @@ export function documentTreeFixture(
 ): DocumentTree {
   const { folders = [], documents = [], ...rest } = fields;
   const root = { available: false, reason: 'root' } as const;
+
   return {
     revision: '1',
     archetype: { id: 'minimal', version: 1, title: 'Minimal' },

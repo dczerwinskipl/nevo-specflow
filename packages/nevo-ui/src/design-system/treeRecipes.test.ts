@@ -108,8 +108,10 @@ describe('tree row actions and labels', () => {
       'pointer-fine:group-has-[[aria-current]:not([aria-current=false])]/tree-row:opacity-100',
       'pointer-fine:data-[state=open]:opacity-100',
       'pointer-fine:focus-visible:opacity-100',
-    ])
+    ]) {
       expect(treeRowActionClassName).toContain(reveal);
+    }
+
     expect(treeRowActionClassName).not.toMatch(/(^|\s)(opacity-0|hidden|invisible|sr-only)/);
     expect(treeRowActionClassName).not.toMatch(/(^|\s)pointer-fine:(hidden|invisible)/);
     // The action is a control-height IconButton: no row-pitch margin hack.
@@ -134,6 +136,7 @@ describe('tree row actions and labels', () => {
       expect(label).toContain('whitespace-nowrap');
       expect(label).not.toMatch(/sr-only|hidden|rounded|bg-/);
     }
+
     expect(treeStateLabelClassName).toContain('text-content-muted');
     expect(treeAttentionStateLabelClassName).toContain('text-status-attention');
     // Important: the selected row recolours its first icon; the warning glyph keeps its tone.

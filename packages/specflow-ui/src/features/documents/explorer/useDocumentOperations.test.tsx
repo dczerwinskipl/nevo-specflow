@@ -53,6 +53,7 @@ function setup(onOperate: () => Promise<never>) {
       ),
     },
   );
+
   return { view, onBusyChange };
 }
 

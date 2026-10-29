@@ -5,7 +5,9 @@ export function paginationPageItems(
   pageCount: number,
   siblingCount: number,
 ): PaginationPageItem[] {
-  if (pageCount <= 1) return [0];
+  if (pageCount <= 1) {
+    return [0];
+  }
 
   const visible = new Set<number>([0, pageCount - 1, pageIndex]);
   for (let offset = 1; offset <= siblingCount; offset += 1) {
@@ -21,6 +23,7 @@ export function paginationPageItems(
     if (index > 0 && previous !== undefined && page - previous > 1) {
       result.push('ellipsis');
     }
+
     result.push(page);
   });
 

@@ -19,25 +19,32 @@ function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
     dispatch: vi.fn(() => {
       order.push('engine-dispatch');
       phase = 'dispatched';
+
       return Promise.resolve();
     }),
     abandon: vi.fn(() => {
       phase = 'settled';
+
       return Promise.resolve();
     }),
     unknown: vi.fn(() => {
-      if (phase !== 'settled') phase = 'unknown';
+      if (phase !== 'settled') {
+        phase = 'unknown';
+      }
+
       return Promise.resolve();
     }),
     settle: vi.fn(() => {
       order.push('engine-settle');
       phase = 'settled';
+
       return Promise.resolve();
     }),
   } satisfies SessionEffectClaim;
   const effects: SessionEffects = {
     admit: vi.fn(() => {
       order.push('engine-admit');
+
       return Promise.resolve(claim);
     }),
     reconcile: () => Promise.resolve(undefined),
@@ -45,6 +52,7 @@ function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
   const start = vi.fn(
     (_invocation: Invocation, emit: (fact: DriverFact) => Promise<void>): ProviderOperation => {
       order.push('driver-start');
+
       return {
         done: emit(result),
         settlement: Promise.resolve({ process: 'stopped', source, result }),
@@ -69,6 +77,7 @@ function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
   const persist = vi.fn(() => Promise.resolve());
   const finalize = vi.fn(() => {
     order.push('canonical-outcome');
+
     return Promise.resolve();
   });
   const stop = vi.fn();
@@ -82,8 +91,10 @@ function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
     finalize,
     stop,
   };
+
   return { options, order, result, claim, start, persist, finalize, phase: () => phase };
 }
+
 it('admits before launching and proves settlement before canonical terminal publication', async () => {
   const f = fixture();
   await createManagedInvocation(f.options).done;

@@ -15,24 +15,31 @@ export function adrCommand(ctx: DocsCliContext): Command {
     .option('--json', 'emit JSON on stdout', false)
     .action((titleParts: string[], opts: { dryRun: boolean; json: boolean }) => {
       const title = titleParts.join(' ').trim();
-      if (!title) throw new UsageError('adr new: a title is required');
+      if (!title) {
+        throw new UsageError('adr new: a title is required');
+      }
 
       const result = createAdr(ctx.repo, { title, dryRun: opts.dryRun });
 
       if (opts.dryRun) {
         if (opts.json) {
           ctx.stdout(JSON.stringify(result.plan, null, 2));
+
           return;
         }
+
         ctx.stdout(`# would create ${result.plan.file}\n`);
         ctx.stdout(result.plan.content);
+
         return;
       }
 
       if (opts.json) {
         ctx.stdout(JSON.stringify({ ...result.plan, indexRegenerated: true }, null, 2));
+
         return;
       }
+
       ctx.stdout(`Created ${result.plan.file} (status: draft)`);
       ctx.stdout('Regenerated docs/index.generated.{md,json}');
       ctx.stdout(

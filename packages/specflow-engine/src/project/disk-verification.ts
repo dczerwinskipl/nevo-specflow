@@ -20,11 +20,15 @@ export async function verifyProjectHomeOnDisk(context: ResolvedProjectHome): Pro
   let marker: unknown;
   try {
     const stat = await lstat(markerPath);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('not a regular file');
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw new Error('not a regular file');
+    }
+
     marker = JSON.parse(await readFile(markerPath, 'utf8')) as unknown;
   } catch {
     throw mismatch('Project Home marker is missing, corrupt or redirected.');
   }
+
   if (
     !isRecord(marker) ||
     marker.version !== 1 ||
@@ -35,6 +39,7 @@ export async function verifyProjectHomeOnDisk(context: ResolvedProjectHome): Pro
   ) {
     throw mismatch('Project Home designation differs from the identity verified at open.');
   }
+
   await verifyGitInstance(
     context.project.gitCommonDir,
     context.project.projectId,
@@ -62,38 +67,53 @@ export async function verifyCheckoutOnDisk(
   } catch {
     throw mismatch('Workspace has no Git checkout link.');
   }
-  if (stat.isSymbolicLink()) throw mismatch('Workspace Git link is redirected.');
+
+  if (stat.isSymbolicLink()) {
+    throw mismatch('Workspace Git link is redirected.');
+  }
+
   if (stat.isDirectory()) {
     if (!same(await realpath(link), commonDir)) {
       throw mismatch('Workspace belongs to a different Git repository.');
     }
+
     return;
   }
-  if (!stat.isFile()) throw mismatch('Workspace Git link is not a file or directory.');
+
+  if (!stat.isFile()) {
+    throw mismatch('Workspace Git link is not a file or directory.');
+  }
 
   const pointer = /^gitdir:\s*(.+?)\s*$/mu.exec(await readFile(link, 'utf8'))?.[1];
-  if (!pointer) throw mismatch('Workspace Git link is corrupt.');
+  if (!pointer) {
+    throw mismatch('Workspace Git link is corrupt.');
+  }
+
   let adminDir: string;
   try {
     adminDir = await realpath(isAbsolute(pointer) ? pointer : resolve(root, pointer));
   } catch {
     throw mismatch('Workspace Git administrative directory is missing.');
   }
+
   if (!same(dirname(adminDir), join(commonDir, 'worktrees'))) {
     throw mismatch('Workspace belongs to a different Git repository.');
   }
+
   let back: string;
   try {
     back = (await readFile(join(adminDir, 'gitdir'), 'utf8')).trim();
   } catch {
     throw mismatch('Workspace Git administrative directory has no back-link.');
   }
+
   let backTarget: string;
   try {
     backTarget = await realpath(isAbsolute(back) ? back : resolve(adminDir, back));
   } catch {
     throw mismatch('Workspace Git back-link target is missing.');
   }
+
   if (!same(backTarget, await realpath(link))) {
     throw mismatch('Workspace Git back-link points to a different checkout.');
   }

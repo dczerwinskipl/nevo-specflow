@@ -131,9 +131,11 @@ export function parseDocumentBatchRecord(
   ) {
     throw invalidBatchRecord();
   }
+
   if (Buffer.byteLength(JSON.stringify(value), 'utf8') > DOCUMENT_BATCH_RECORD_MAX_BYTES) {
     throw invalidBatchRecord();
   }
+
   return value as unknown as DocumentBatchRecord;
 }
 
@@ -142,6 +144,7 @@ export function encodeDocumentBatchRecord(
   record: DocumentBatchRecord,
 ): string {
   parseDocumentBatchRecord(context, record, record.operationId);
+
   return JSON.stringify(record);
 }
 
@@ -173,12 +176,31 @@ function isValidStateFields(value: Record<string, unknown>, state: DocumentBatch
   if (state === 'formed') {
     return !has('parentHead') && !has('executor') && !has('sha') && !has('commitStartedAt');
   }
-  if (typeof value.parentHead !== 'string' || !OBJECT_ID.test(value.parentHead)) return false;
-  if (has('executor') !== (state === 'committing')) return false;
-  if (has('executor') && !isExecutorIdentity(value.executor)) return false;
-  if (has('sha') !== (state === 'committed')) return false;
-  if (has('sha') && (typeof value.sha !== 'string' || !OBJECT_ID.test(value.sha))) return false;
-  if ((state === 'failed' || state === 'recovery-required') && !has('reason')) return false;
+
+  if (typeof value.parentHead !== 'string' || !OBJECT_ID.test(value.parentHead)) {
+    return false;
+  }
+
+  if (has('executor') !== (state === 'committing')) {
+    return false;
+  }
+
+  if (has('executor') && !isExecutorIdentity(value.executor)) {
+    return false;
+  }
+
+  if (has('sha') !== (state === 'committed')) {
+    return false;
+  }
+
+  if (has('sha') && (typeof value.sha !== 'string' || !OBJECT_ID.test(value.sha))) {
+    return false;
+  }
+
+  if ((state === 'failed' || state === 'recovery-required') && !has('reason')) {
+    return false;
+  }
+
   return true;
 }
 
@@ -210,10 +232,12 @@ export function mergeBatchPaths(
       });
     }
   }
+
   const result = [...merged.values()];
   if (result.length > DOCUMENT_BATCH_MAX_PATHS) {
     throw documentChangeError('limit-exceeded', 'A batch holds too many paths.');
   }
+
   return result;
 }
 
@@ -226,6 +250,7 @@ export interface EncodedBatchPaths extends PlanEvidence {
 export function encodeBatchPaths(paths: readonly BatchPathExpectation[]): EncodedBatchPaths {
   const text = JSON.stringify(canonical(paths));
   decodeBatchPaths(text);
+
   return {
     text,
     sha256: sha256Hex(text),
@@ -237,13 +262,17 @@ export function encodeBatchPaths(paths: readonly BatchPathExpectation[]): Encode
 export function decodeBatchPaths(text: string): readonly BatchPathExpectation[] {
   const fail = (): Error =>
     documentChangeError('plan-invalid', 'The batch path list is unreadable.');
-  if (Buffer.byteLength(text, 'utf8') > DOCUMENT_PLAN_MAX_BYTES) throw fail();
+  if (Buffer.byteLength(text, 'utf8') > DOCUMENT_PLAN_MAX_BYTES) {
+    throw fail();
+  }
+
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
     throw fail();
   }
+
   if (
     !isRecord(value) ||
     !exactKeys(value, ['version', 'paths']) ||
@@ -254,6 +283,7 @@ export function decodeBatchPaths(text: string): readonly BatchPathExpectation[] 
   ) {
     throw fail();
   }
+
   const seen = new Set<string>();
   const result = (value.paths as unknown[]).map((entry): BatchPathExpectation => {
     if (
@@ -265,16 +295,22 @@ export function decodeBatchPaths(text: string): readonly BatchPathExpectation[] 
     ) {
       throw fail();
     }
+
     seen.add(entry.path);
+
     return { path: entry.path, pre: stateOf(entry.pre, fail), post: stateOf(entry.post, fail) };
   });
-  if (JSON.stringify(canonical(result)) !== JSON.stringify(value)) throw fail();
+  if (JSON.stringify(canonical(result)) !== JSON.stringify(value)) {
+    throw fail();
+  }
+
   return result;
 }
 
 function canonical(paths: readonly BatchPathExpectation[]): unknown {
   const state = (value: FileState): unknown =>
     value === null ? null : { sha256: value.sha256, bytes: value.bytes };
+
   return {
     version: DOCUMENT_BATCH_PATHS_VERSION,
     paths: paths.map((entry) => ({
@@ -288,8 +324,12 @@ function canonical(paths: readonly BatchPathExpectation[]): unknown {
 /** `specs/active/<slug>/<document path>` or its manifest. */
 function isBatchPath(path: string): boolean {
   const match = /^specs\/active\/([^/]+)\/(.+)$/u.exec(path);
-  if (!match) return false;
+  if (!match) {
+    return false;
+  }
+
   const [, slug, rest] = match;
+
   return (
     isExplicitSpecificationSlug(slug) &&
     rest !== undefined &&
@@ -298,7 +338,10 @@ function isBatchPath(path: string): boolean {
 }
 
 function stateOf(value: unknown, fail: () => Error): FileState {
-  if (value === null) return null;
+  if (value === null) {
+    return null;
+  }
+
   if (
     !isRecord(value) ||
     !exactKeys(value, ['sha256', 'bytes']) ||
@@ -308,5 +351,6 @@ function stateOf(value: unknown, fail: () => Error): FileState {
   ) {
     throw fail();
   }
+
   return { sha256: value.sha256, bytes: value.bytes };
 }

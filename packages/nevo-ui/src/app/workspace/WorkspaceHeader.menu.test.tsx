@@ -71,6 +71,7 @@ function openMenu(name = 'More actions') {
   const trigger = screen.getByRole('button', { name });
   trigger.focus();
   fireEvent.keyDown(trigger, { key: 'Enter' });
+
   return screen.getByRole('menu');
 }
 

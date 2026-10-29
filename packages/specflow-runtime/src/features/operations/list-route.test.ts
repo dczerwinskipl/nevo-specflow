@@ -37,6 +37,7 @@ async function fakeFeature(options: { allowed: boolean }) {
     canView: () => options.allowed,
   });
   await app.ready();
+
   return app;
 }
 

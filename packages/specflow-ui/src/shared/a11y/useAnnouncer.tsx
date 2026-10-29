@@ -11,6 +11,7 @@ export function useAnnouncer(): {
 } {
   const [message, setMessage] = useState('');
   const announce = useCallback((next: string) => setMessage(next), []);
+
   return {
     announce,
     region: (

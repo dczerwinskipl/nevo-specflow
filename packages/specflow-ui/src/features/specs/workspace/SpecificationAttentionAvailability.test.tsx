@@ -11,6 +11,7 @@ import { createFakeWorkspaceRuntime, WorkspaceProvider } from './WorkspaceContex
 
 function renderAttention(dto: SpecificationWorkspaceResponse) {
   const data = mapWorkspaceResponse(dto);
+
   return {
     data,
     markup: renderToStaticMarkup(

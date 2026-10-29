@@ -77,6 +77,7 @@ export function RoutedApplication({
       query.setQueryData(specsOverviewKeys.collection('current'), createSpecsFixture());
       query.setQueryDefaults(specsOverviewKeys.all, { staleTime: Infinity });
     }
+
     const listedSpecifications = [
       ...createSpecsFixture().items,
       ...createSpecsFixture('archive').items,
@@ -144,19 +145,23 @@ export function RoutedApplication({
               }
             : {}),
         };
-        if (navigationScenario === 'partial')
+        if (navigationScenario === 'partial') {
           fixture = {
             ...fixture,
             sessions: [...fixture.sessions, { id: 'unknown', title: 'Unknown activity' }],
           };
+        }
       }
+
       query.setQueryData(specificationKeys.detail(id), fixture);
-      if (navigationScenario === 'stale')
+      if (navigationScenario === 'stale') {
         query
           .getQueryCache()
           .find({ queryKey: specificationKeys.detail(id), exact: true })
           ?.setState({ status: 'error', error: new Error('Refresh unavailable') });
-      if (navigationScenario === 'revoked')
+      }
+
+      if (navigationScenario === 'revoked') {
         query
           .getQueryCache()
           .find({ queryKey: specificationKeys.detail(id), exact: true })
@@ -164,6 +169,8 @@ export function RoutedApplication({
             status: 'error',
             error: new HttpClientError('Access revoked', { kind: 'http', status: 403 }),
           });
+      }
+
       for (const group of fixture.taskGroups) {
         for (const task of group.tasks) {
           query.setQueryData(taskKeys.detail(id, task.id), {
@@ -182,6 +189,7 @@ export function RoutedApplication({
           });
         }
       }
+
       for (const doc of fixture.documents) {
         query.setQueryData(
           documentKeys.detail(id, doc.id),
@@ -205,6 +213,7 @@ export function RoutedApplication({
         );
       }
     }
+
     return query;
   }, [integrationDto, navigationScenario]);
   const auth = useMemo(() => storyAuthStore(authMode), [authMode]);
@@ -222,6 +231,7 @@ export function RoutedApplication({
             getOverview: () => {
               catalogueRequests.current++;
               const data = createSpecsFixture();
+
               return Promise.resolve(
                 catalogueFailure === 'wrong-collection'
                   ? { ...data, collection: 'archive' as const }
@@ -246,9 +256,11 @@ export function RoutedApplication({
         if (url === '/api/specs/overview') {
           return Promise.reject(new HttpClientError('Unauthorized', { kind: 'http', status: 401 }));
         }
+
         return Promise.reject(new Error(`Unconfigured Storybook HTTP GET: ${url}`));
       };
     }
+
     const wait = () => new Promise<void>((resolve) => setTimeout(resolve, loadingDelayMs));
     const workspaceSource = createWorkspaceIntegrationApi();
     const taskSource = createTaskIntegrationApi();
@@ -262,6 +274,7 @@ export function RoutedApplication({
         const fixture = queryClient.getQueryData<SpecificationWorkspaceData>(
           specificationKeys.detail(specId),
         );
+
         return documentTreeFixture({
           documents: integrationDto
             ? [{ id: 'spec', path: 'specification.md', type: 'overview', protected: true }]
@@ -274,6 +287,7 @@ export function RoutedApplication({
       addFolder: () => Promise.reject(new Error('No writes in this story')),
       save: () => Promise.reject(new Error('No writes in this story')),
     };
+
     return createSpecFlowAppServices({
       demoDocumentsApi: documentsApi,
       projectDocumentsApi: documentsApi,
@@ -286,18 +300,21 @@ export function RoutedApplication({
             specificationApi: {
               getSpecificationWorkspace: async (...args) => {
                 await wait();
+
                 return workspaceSource.getSpecificationWorkspace(...args);
               },
             },
             taskApi: {
               getTask: async (...args) => {
                 await wait();
+
                 return taskSource.getTask(...args);
               },
             },
             documentApi: {
               getDocument: async (...args) => {
                 await wait();
+
                 return documentSource.getDocument(...args);
               },
             },
@@ -308,9 +325,15 @@ export function RoutedApplication({
 
   const router = useMemo(() => {
     const history = createMemoryHistory({ initialEntries: [path] });
-    if (cancelNavigation) history.block({ blockerFn: () => true, enableBeforeUnload: false });
+    if (cancelNavigation) {
+      history.block({ blockerFn: () => true, enableBeforeUnload: false });
+    }
+
     const result = createSpecFlowRouter(history, services);
-    if (navigationFailure) result.navigate = () => Promise.reject(new Error('Navigation failed'));
+    if (navigationFailure) {
+      result.navigate = () => Promise.reject(new Error('Navigation failed'));
+    }
+
     return result;
   }, [path, services, cancelNavigation, navigationFailure]);
 
@@ -330,6 +353,7 @@ export function RoutedApplication({
 
 function CatalogueCacheProbe({ requestCount }: { requestCount: () => number }) {
   const state = useCachedQueryState<Catalogue>(specsOverviewKeys.collection('current'));
+
   return (
     <output
       className="sr-only"
@@ -364,25 +388,34 @@ const pickerFirstFailurePlay: NonNullable<Story['play']> = async ({
         ?.textContent?.includes('Specification catalogue unavailable') ?? false,
     'Picker must reject malformed catalogue',
   );
-  if (doc.querySelectorAll('[role="option"]').length !== 1)
+  if (doc.querySelectorAll('[role="option"]').length !== 1) {
     throw new Error('Only independently permitted current identity may remain in failed picker');
+  }
+
   const probe = canvas.getByLabelText('Catalogue fetch attempts');
   if (
     probe.getAttribute('data-catalogue-present') !== 'false' ||
     probe.getAttribute('data-catalogue-status') !== 'error'
-  )
+  ) {
     throw new Error('Malformed response must never be successful cache data');
+  }
+
   const browse = doc.querySelector<HTMLAnchorElement>(
     '.popover-content[data-state="open"] a[href="/?collection=current"]',
   );
-  if (!browse) throw new Error('Browse all destination missing');
+  if (!browse) {
+    throw new Error('Browse all destination missing');
+  }
+
   await userEvent.click(browse);
   await canvas.findByRole('alert');
-  if (probe.textContent !== '1' || canvasElement.querySelector('[data-spec-id]'))
+  if (probe.textContent !== '1' || canvasElement.querySelector('[data-spec-id]')) {
     throw new Error(
       'List must preserve protection when entering shared failed cache without refetch',
     );
+  }
 };
+
 export const PickerFirstWrongCollection: Story = {
   args: { path: '/specs/admission?collection=current', catalogueFailure: 'wrong-collection' },
   tags: ['integration'],
@@ -408,20 +441,29 @@ export const SpecsSessionExpired: Story = {
   args: { authMode: 'authenticated', specsStatus: 401 },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Welcome back' });
-    if (canvas.queryByText('Specifications are unavailable'))
+    if (canvas.queryByText('Specifications are unavailable')) {
       throw new Error('401 must enter authentication, not generic unavailability.');
-    if (canvasElement.querySelector('[data-product-navigation-header]'))
+    }
+
+    if (canvasElement.querySelector('[data-product-navigation-header]')) {
       throw new Error('Authentication must be outside AppShell.');
+    }
   },
 };
 export const SpecsForbidden: Story = {
   args: { authMode: 'authenticated', specsStatus: 403 },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Access denied' });
-    if (canvas.queryByText('Welcome back') || canvas.queryByText('Specifications are unavailable'))
+    if (
+      canvas.queryByText('Welcome back') ||
+      canvas.queryByText('Specifications are unavailable')
+    ) {
       throw new Error('403 must be a distinct forbidden state.');
-    if (canvasElement.querySelector('[data-product-navigation-header]'))
+    }
+
+    if (canvasElement.querySelector('[data-product-navigation-header]')) {
       throw new Error('Forbidden state must be outside AppShell.');
+    }
   },
 };
 export const Polish: Story = { args: { locale: 'pl' } };
@@ -436,6 +478,7 @@ export const LocalAccount: Story = {
     if (accountMenu.textContent?.includes('Sign out')) {
       throw new Error('Trusted local mode must not expose a meaningless sign-out action.');
     }
+
     await userEvent.keyboard('{Escape}');
   },
 };
@@ -451,9 +494,11 @@ export const AuthenticatedAccount: Story = {
     if (!accountMenu.textContent?.includes('Sign out')) {
       throw new Error('Authenticated account menu should expose sign out.');
     }
+
     if (accountMenu.querySelectorAll('[role="menuitemradio"]').length !== 2) {
       throw new Error('Account menu should expose both language choices as radio items.');
     }
+
     await userEvent.keyboard('{Escape}');
   },
 };
@@ -495,16 +540,22 @@ export const Navigation: Story = {
     const rowLink = await canvas.findByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
     });
-    if (rowLink.getAttribute('href') !== '/specs/admission?collection=current')
+    if (rowLink.getAttribute('href') !== '/specs/admission?collection=current') {
       throw new Error('Production row must expose a stable owning Specification href.');
+    }
+
     const nav = canvasElement.querySelector('nav[aria-label="Product navigation"]');
-    if (nav?.textContent?.includes('UI Playground'))
+    if (nav?.textContent?.includes('UI Playground')) {
       throw new Error('Development surfaces must not be in product navigation.');
+    }
+
     const pr = canvas.getByRole('link', {
       name: /PR #27: Open pull request/,
     });
-    if (rowLink.contains(pr) || pr.getAttribute('href') !== 'https://example.test/pull/27')
+    if (rowLink.contains(pr) || pr.getAttribute('href') !== 'https://example.test/pull/27') {
       throw new Error('PR must remain a separate sibling destination.');
+    }
+
     await userEvent.click(rowLink);
     await canvas.findByRole('heading', {
       name: 'Deterministic admission and execution boundaries',
@@ -515,18 +566,24 @@ export const Navigation: Story = {
       level: 1,
     });
     const back = canvas.getByRole('link', { name: 'All specifications' });
-    if (back.getAttribute('href') !== '/?collection=current')
+    if (back.getAttribute('href') !== '/?collection=current') {
       throw new Error('Specification Back must preserve Current collection.');
+    }
+
     await userEvent.click(back);
     // A row has no actions menu: it is one target, the whole row opens the specification.
-    if (canvas.queryByRole('button', { name: /^Specification actions: / }))
+    if (canvas.queryByRole('button', { name: /^Specification actions: / })) {
       throw new Error('A row without contextual actions must not offer an actions menu.');
+    }
+
     await userEvent.click(await canvas.findByRole('radio', { name: 'Archive' }));
     const archive = await canvas.findByRole('link', {
       name: 'Open specification: Canonical Session, Turn and Work model',
     });
-    if (archive.getAttribute('href') !== '/specs/archive-0?collection=archive')
+    if (archive.getAttribute('href') !== '/specs/archive-0?collection=archive') {
       throw new Error('Archive must navigate to its own Specification with return context.');
+    }
+
     await userEvent.click(archive);
     await canvas.findByRole('heading', {
       name: 'Canonical Session, Turn and Work model',
@@ -534,8 +591,9 @@ export const Navigation: Story = {
     });
     await userEvent.click(canvas.getByRole('link', { name: 'All specifications' }));
     const selected = await canvas.findByRole('radio', { name: 'Archive' });
-    if (selected.getAttribute('aria-checked') !== 'true')
+    if (selected.getAttribute('aria-checked') !== 'true') {
       throw new Error('Returning from Archive Specification must restore Archive.');
+    }
   },
 };
 
@@ -553,19 +611,27 @@ function assertSpecificationNavigation(
     `/specs/${specId}/repository`,
   ];
   const links = [...navigation.querySelectorAll<HTMLAnchorElement>('a[href]')];
-  if (navigation.querySelector('[data-navigation-depth="2"]'))
+  if (navigation.querySelector('[data-navigation-depth="2"]')) {
     throw new Error('Context views must be flat.');
+  }
+
   const viewLinks = links.filter((link) =>
     new URL(link.href).pathname.startsWith(`/specs/${specId}`),
   );
-  if (new URL(viewLinks[0]!.href).pathname !== destinations[0])
+  if (new URL(viewLinks[0]!.href).pathname !== destinations[0]) {
     throw new Error('Overview must lead the context.');
+  }
+
   for (const route of destinations) {
     const link = links.find((item) => new URL(item.href).pathname === route);
-    if (!link) throw new Error(`Missing specification destination ${route}`);
+    if (!link) {
+      throw new Error(`Missing specification destination ${route}`);
+    }
+
     if (new URL(link.href).searchParams.get('collection') !== collection) {
       throw new Error(`Navigation did not preserve collection for ${route}`);
     }
+
     const state = link.closest('[data-navigation-state]')?.getAttribute('data-navigation-state');
     if (state !== (route === activeDestination ? 'active' : 'none')) {
       throw new Error(`Unexpected navigation state ${state} for ${route}`);
@@ -595,10 +661,11 @@ export const NavigationDocumentDetailActive: Story = {
     const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
     assertSpecificationNavigation(nav, 'admission', '/specs/admission/documents');
     const title = await canvas.findByRole('heading', { name: 'Documents', level: 1 });
-    if (title.closest('[data-workspace-active="true"]')?.querySelectorAll('h1').length !== 1)
+    if (title.closest('[data-workspace-active="true"]')?.querySelectorAll('h1').length !== 1) {
       throw new Error(
         'Documents workspace must have one view-owned H1; the open document and embedded Markdown headings are subordinate.',
       );
+    }
   },
 };
 
@@ -625,8 +692,10 @@ export const NavigationAttention: Story = {
   play: async ({ canvas, userEvent }) => {
     const disclosure = await canvas.findByRole('button', { name: 'Collapse active sessions' });
     const panel = document.getElementById(disclosure.getAttribute('aria-controls')!);
-    if (panel?.querySelectorAll('[data-session-navigation-entry]').length !== 3)
+    if (panel?.querySelectorAll('[data-session-navigation-entry]').length !== 3) {
       throw new Error('Preview must bound references at three.');
+    }
+
     await userEvent.click(disclosure);
     await userEvent.click(canvas.getByRole('link', { name: 'Documents' }));
     await canvas.findByRole('heading', { name: 'Documents', level: 1 });
@@ -634,8 +703,9 @@ export const NavigationAttention: Story = {
       canvas
         .getByRole('button', { name: 'Expand active sessions' })
         .getAttribute('aria-expanded') !== 'false'
-    )
+    ) {
       throw new Error('Manual choice must survive a route change.');
+    }
   },
 };
 export const NavigationPartial: Story = {
@@ -647,8 +717,9 @@ export const NavigationPartial: Story = {
       canvas
         .getByRole('button', { name: 'Expand active sessions' })
         .getAttribute('aria-expanded') !== 'false'
-    )
+    ) {
       throw new Error('Partial data must not auto-expand.');
+    }
   },
 };
 export const NavigationStale: Story = {
@@ -680,7 +751,10 @@ export const NavigationSwitcherInteractions: Story = {
       name: /Current specification Deterministic admission/,
     });
     const name = trigger.querySelector('.text-title-sm');
-    if (!name) throw new Error('Identity title missing');
+    if (!name) {
+      throw new Error('Identity title missing');
+    }
+
     await userEvent.click(name);
     const current = await waitFor(
       () => doc.querySelector<HTMLButtonElement>('[role="option"][aria-selected="true"]'),
@@ -691,10 +765,15 @@ export const NavigationSwitcherInteractions: Story = {
       () => !doc.querySelector('.popover-content[data-state="open"]') || null,
       'Current choice must close picker',
     );
-    if (!canvas.queryByRole('heading', { name: 'Documents', level: 1 }))
+    if (!canvas.queryByRole('heading', { name: 'Documents', level: 1 })) {
       throw new Error('Current choice must not reset the detail route');
+    }
+
     const icon = trigger.querySelector('[data-specification-switcher-icon]');
-    if (!icon) throw new Error('Switcher glyph missing');
+    if (!icon) {
+      throw new Error('Switcher glyph missing');
+    }
+
     await userEvent.click(icon);
     const search = await waitFor(
       () => doc.querySelector<HTMLInputElement>('input[aria-label="Search title or ID"]'),
@@ -743,8 +822,9 @@ export const NavigationRevoked: Story = {
     if (
       nav.querySelector('[data-session-navigation-entry]') ||
       nav.textContent?.includes('Review · TASK-03')
-    )
+    ) {
       throw new Error('Revocation must suppress retained identity/activity');
+    }
   },
 };
 export const NavigationCancelled: Story = {
@@ -766,8 +846,10 @@ export const NavigationCancelled: Story = {
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
-    if (!doc.querySelector('.drawer-panel[data-state="open"]'))
+    if (!doc.querySelector('.drawer-panel[data-state="open"]')) {
       throw new Error('Cancelled route must retain Drawer');
+    }
+
     const trigger = [...nav.querySelectorAll<HTMLButtonElement>('button')].find(
       (button) => button.getAttribute('aria-description') === 'Change specification',
     )!;
@@ -779,13 +861,18 @@ export const NavigationCancelled: Story = {
         ),
       'Picker should load alternatives',
     );
-    if (!option) throw new Error('Picker must expose an alternative');
+    if (!option) {
+      throw new Error('Picker must expose an alternative');
+    }
+
     await userEvent.click(option);
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
-    if (!doc.querySelector('.popover-content[data-state="open"]'))
+    if (!doc.querySelector('.popover-content[data-state="open"]')) {
       throw new Error('Cancelled switch must retain picker');
+    }
+
     await userEvent.keyboard('{Escape}');
     await waitFor(
       () => !doc.querySelector('.popover-content[data-state="open"]') || null,
@@ -820,8 +907,9 @@ export const QueryNavigationPreservesFocus: Story = {
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
-    if (canvasElement.ownerDocument.activeElement !== archive)
+    if (canvasElement.ownerDocument.activeElement !== archive) {
       throw new Error('Query-only navigation must preserve the collection control focus');
+    }
   },
 };
 
@@ -845,8 +933,9 @@ export const CurrentPickerKeepsView: Story = {
       'Selecting current identity dismisses and restores trigger',
     );
     await canvas.findByRole('heading', { name: 'Documents', level: 1 });
-    if (!canvas.queryByRole('link', { name: 'Specifications' }))
+    if (!canvas.queryByRole('link', { name: 'Specifications' })) {
       throw new Error('Routed breadcrumb must remain available');
+    }
   },
 };
 
@@ -873,8 +962,10 @@ export const PickerFailureResetsOnOpen: Story = {
       () => (doc.querySelector('.popover-content[data-state="open"]') ? true : null),
       'Picker reopens',
     );
-    if (doc.querySelector('.popover-content[data-state="open"] [role="alert"]'))
+    if (doc.querySelector('.popover-content[data-state="open"] [role="alert"]')) {
       throw new Error('Previous navigation failure must reset on open');
+    }
+
     await userEvent.keyboard('{Escape}');
   },
 };
@@ -949,6 +1040,7 @@ export const MobileNavigation: Story = {
     ) {
       throw new Error('Compact product navigation should expose only implemented product areas.');
     }
+
     const accountTrigger = await waitFor(
       () =>
         [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -956,12 +1048,17 @@ export const MobileNavigation: Story = {
         ) ?? null,
       'Compact navigation should keep the account footer mounted.',
     );
-    if (!accountTrigger) throw new Error('Compact navigation account footer is missing.');
+    if (!accountTrigger) {
+      throw new Error('Compact navigation account footer is missing.');
+    }
 
     const specsLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find((link) =>
       link.textContent?.includes('Specifications'),
     );
-    if (!specsLink) throw new Error('Compact navigation should expose Specifications.');
+    if (!specsLink) {
+      throw new Error('Compact navigation should expose Specifications.');
+    }
+
     await userEvent.click(specsLink);
     await waitFor(
       () =>
@@ -987,9 +1084,13 @@ export const MobileNavigation: Story = {
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -1085,7 +1186,10 @@ export const FigmaCaptureContract: Story = {
     const header = canvasElement.querySelector<HTMLElement>(
       '[data-product-navigation-header="true"]',
     );
-    if (!header) throw new Error('Desktop product navigation header must be present.');
+    if (!header) {
+      throw new Error('Desktop product navigation header must be present.');
+    }
+
     if (Number.parseFloat(getComputedStyle(header).paddingTop) < 20) {
       throw new Error('Desktop product navigation header should retain the CRM-standard top gap.');
     }
@@ -1093,7 +1197,10 @@ export const FigmaCaptureContract: Story = {
     const footer = canvasElement.querySelector<HTMLElement>(
       '[data-product-navigation-footer="true"]',
     );
-    if (!footer) throw new Error('Desktop account footer must be present.');
+    if (!footer) {
+      throw new Error('Desktop account footer must be present.');
+    }
+
     if (!footer.contains(accountTrigger)) {
       throw new Error('Account trigger must remain inside the fixed navigation footer.');
     }
@@ -1101,7 +1208,10 @@ export const FigmaCaptureContract: Story = {
     const navigation = canvasElement.querySelector<HTMLElement>(
       '[data-app-shell-region="navigation"]',
     );
-    if (!navigation) throw new Error('Desktop application shell navigation must be present.');
+    if (!navigation) {
+      throw new Error('Desktop application shell navigation must be present.');
+    }
+
     const visibleBottomGap =
       navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
     // The shell footer's own padding (one token for every bottom bar of the shell, 10px).

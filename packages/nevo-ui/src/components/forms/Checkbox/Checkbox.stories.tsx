@@ -47,20 +47,29 @@ export const DisabledWithReasonContract: Story = {
     const disabledLabel = canvas.getByText('Push the branch after creation');
     const enabledLabel = canvas.getByText('Create a worktree');
     for (let node: HTMLElement | null = reason; node; node = node.parentElement) {
-      if (getComputedStyle(node).opacity !== '1')
+      if (getComputedStyle(node).opacity !== '1') {
         throw new Error('The disabled reason must not fade.');
+      }
     }
-    if (getComputedStyle(reason).color !== getComputedStyle(enabledReason).color)
+
+    if (getComputedStyle(reason).color !== getComputedStyle(enabledReason).color) {
       throw new Error('The disabled reason keeps the normal description role.');
-    if (getComputedStyle(disabledLabel).color === getComputedStyle(enabledLabel).color)
+    }
+
+    if (getComputedStyle(disabledLabel).color === getComputedStyle(enabledLabel).color) {
       throw new Error('The disabled label shows the disabled role.');
-    if (getComputedStyle(disabledLabel).cursor !== 'not-allowed')
+    }
+
+    if (getComputedStyle(disabledLabel).cursor !== 'not-allowed') {
       throw new Error('The disabled label is not interactive.');
+    }
+
     const checkbox = canvas.getByRole('checkbox', { name: 'Push the branch after creation' });
     if (
       !checkbox.hasAttribute('disabled') ||
       checkbox.getAttribute('aria-describedby') !== reason.id
-    )
+    ) {
       throw new Error('The control stays disabled and described by its reason.');
+    }
   },
 };

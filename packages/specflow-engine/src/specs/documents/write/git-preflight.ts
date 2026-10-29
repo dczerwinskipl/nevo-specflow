@@ -53,17 +53,23 @@ export async function admitGitCommit(
   } catch (error) {
     throw gitRefusal(error);
   }
-  if (!policy.enabled) return { enabled: false };
+
+  if (!policy.enabled) {
+    return { enabled: false };
+  }
+
   const signature = await (options.signature ?? readPreflightSignature)(engine.context, root);
   if (!effectiveAutoCommit(policy, 'documents').auto) {
     return { enabled: true, mode: 'manual', branch: signature.branchRef ?? null };
   }
+
   if (signature.branchRef !== undefined && !signature.indexLocked) {
     const key = preflightKey(root, signature.branchRef, paths);
     if (cache.has(key, signature.token)) {
       return { enabled: true, mode: 'auto', branch: signature.branchRef };
     }
   }
+
   try {
     const branch = signature.branchRef ?? (await commits.currentBranch(root));
     await commits.preflight({
@@ -77,6 +83,7 @@ export async function admitGitCommit(
     if (signature.branchRef === branch && !signature.indexLocked) {
       cache.remember(preflightKey(root, branch, paths), signature.token);
     }
+
     return { enabled: true, mode: 'auto', branch };
   } catch (error) {
     throw gitRefusal(error);
@@ -85,7 +92,10 @@ export async function admitGitCommit(
 
 /** Maps what the Git layer refuses with onto the document error vocabulary. */
 export function gitRefusal(error: unknown): unknown {
-  if (!(error instanceof GitCapabilityError)) return error;
+  if (!(error instanceof GitCapabilityError)) {
+    return error;
+  }
+
   switch (error.code) {
     case 'BRANCH_PROTECTED':
       return documentChangeError(

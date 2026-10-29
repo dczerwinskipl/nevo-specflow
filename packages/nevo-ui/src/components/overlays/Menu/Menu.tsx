@@ -67,6 +67,7 @@ export const MenuContent = forwardRef<ComponentRef<typeof DropdownMenu.Content>,
     ref,
   ) {
     const capture = useDesignMetadata('Menu');
+
     return (
       <DropdownMenu.Portal container={container}>
         <DropdownMenu.Content
@@ -140,6 +141,7 @@ export const MenuItem = forwardRef<ComponentRef<typeof DropdownMenu.Item>, MenuI
       state: disabled ? 'disabled' : autoFocus ? 'highlighted' : 'default',
       tone,
     });
+
     return (
       <DropdownMenu.Item
         ref={ref}

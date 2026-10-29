@@ -65,28 +65,44 @@ export function useDocumentOpening(options: {
         stackLayout.current = '';
         void navigation.close();
       }
+
       return;
     }
+
     const key = `${specId}:${documentId}:${supportsSplit}`;
-    if (stackFor.current === key) return;
+    if (stackFor.current === key) {
+      return;
+    }
+
     const layout = `${specId}:${supportsSplit}`;
     const sameLayout = stackLayout.current === layout;
     stackFor.current = key;
     stackLayout.current = layout;
     // The stacked screen follows the active tab by itself: a tab switch changes nothing there, and
     // closing then reopening it would remount the editor. Only a new layout or specification does.
-    if (sameLayout && navigation.isOpen) return;
+    if (sameLayout && navigation.isOpen) {
+      return;
+    }
+
     stackRequest.current += 1;
     const request = stackRequest.current;
     void (async () => {
       await navigation.close();
-      if (request !== stackRequest.current) return;
-      if (!supportsSplit) await navigation.open(documentStack, { specId, documentId });
+      if (request !== stackRequest.current) {
+        return;
+      }
+
+      if (!supportsSplit) {
+        await navigation.open(documentStack, { specId, documentId });
+      }
     })();
   }, [documentId, specId, supportsSplit, navigation]);
 
   useEffect(() => {
-    if (!supportsSplit || !documentId || focusFor !== documentId) return;
+    if (!supportsSplit || !documentId || focusFor !== documentId) {
+      return;
+    }
+
     let attempts = 0;
     let frame = 0;
     const tryFocus = () => {
@@ -96,12 +112,18 @@ export function useDocumentOpening(options: {
       if (target) {
         target.focus({ preventScroll: true });
         setFocusFor(undefined);
+
         return;
       }
+
       attempts += 1;
-      if (attempts < focusAttempts) frame = requestAnimationFrame(tryFocus);
+      if (attempts < focusAttempts) {
+        frame = requestAnimationFrame(tryFocus);
+      }
     };
+
     frame = requestAnimationFrame(tryFocus);
+
     return () => cancelAnimationFrame(frame);
   }, [documentId, supportsSplit, focusFor]);
 
@@ -109,18 +131,33 @@ export function useDocumentOpening(options: {
     if (id === documentId) {
       // Choosing the shown document again (for example the main file opened by itself) still
       // takes the reader to it.
-      if (!supportsSplit) void navigation.open(documentStack, { specId, documentId: id });
-      else setFocusFor(id);
+      if (!supportsSplit) {
+        void navigation.open(documentStack, { specId, documentId: id });
+      } else {
+        setFocusFor(id);
+      }
+
       return;
     }
-    if (supportsSplit) setFocusFor(id);
+
+    if (supportsSplit) {
+      setFocusFor(id);
+    }
+
     void tabs.show(id);
   };
+
   const closeAll = () => {
     void (async () => {
-      if (requestRef.current && !(await requestRef.current())) return;
-      if (await tabs.closeAll()) commitRef?.current?.();
+      if (requestRef.current && !(await requestRef.current())) {
+        return;
+      }
+
+      if (await tabs.closeAll()) {
+        commitRef?.current?.();
+      }
     })();
   };
+
   return { select, closeAll };
 }

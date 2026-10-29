@@ -5,7 +5,9 @@ import './capture.css';
 import { Gallery } from './Gallery';
 
 const root = document.getElementById('root');
-if (!root) throw new Error('Missing #root capture mount');
+if (!root) {
+  throw new Error('Missing #root capture mount');
+}
 
 createRoot(root).render(
   <StrictMode>

@@ -28,10 +28,13 @@ export function createEffectReconciliation(db: Dependencies) {
       c.turnId ?? null,
       c.afterSession ?? '',
     );
+
     return rows.map((row) => {
       const turn = decode<StoredTurn>(row);
-      if (!turn.effectBinding || !/^[0-9a-f]{64}$/.test(turn.effectBinding))
+      if (!turn.effectBinding || !/^[0-9a-f]{64}$/.test(turn.effectBinding)) {
         return fail('SESSION_RECOVERY_REQUIRED', 'Execution binding evidence is invalid.');
+      }
+
       const context = db.get(
         'SELECT dispatched,workspace FROM provider_contexts WHERE session=?',
         String(row.session),
@@ -39,6 +42,7 @@ export function createEffectReconciliation(db: Dependencies) {
       const session = decode<{ nativeWorkspaceIdentity?: string }>(
         db.get('SELECT data FROM sessions WHERE id=?', String(row.session)),
       );
+
       return {
         sessionId: String(row.session),
         turnId: String(row.id),
@@ -52,17 +56,23 @@ export function createEffectReconciliation(db: Dependencies) {
       };
     });
   }
+
   function reconcile(c: Reconcile) {
     const scope = c.sessionId + ':' + c.turnId,
       input = { requestId: c.requestId };
     const previous = db.request(c.actor, 'reconcile', scope, c.requestId, input);
-    if (previous) return previous;
+    if (previous) {
+      return previous;
+    }
+
     const turn = db.turn(c.turnId, c.sessionId);
-    if (turn.invocationId !== c.invocationId || turn.effectBinding !== c.binding)
+    if (turn.invocationId !== c.invocationId || turn.effectBinding !== c.binding) {
       fail(
         'SESSION_RECOVERY_REQUIRED',
         'Execution receipt belongs to another invocation or binding.',
       );
+    }
+
     const context = db.get(
       'SELECT confirmed,dispatched FROM provider_contexts WHERE session=?',
       c.sessionId,
@@ -72,16 +82,21 @@ export function createEffectReconciliation(db: Dependencies) {
       (c.source === 'not-dispatched' && Number(context.dispatched) !== 0) ||
       (c.outcome === 'completed' &&
         (Number(context.confirmed) !== 1 || Number(context.dispatched) !== 1))
-    )
+    ) {
       fail(
         'SESSION_RECOVERY_REQUIRED',
         'Native dispatch/correlation evidence contradicts recovery.',
       );
+    }
+
     if (turn.summary.state === 'terminal') {
-      if (turn.summary.outcome !== c.outcome)
+      if (turn.summary.outcome !== c.outcome) {
         fail('SESSION_RECOVERY_REQUIRED', 'Canonical outcome contradicts the execution receipt.');
+      }
+
       return { turnId: c.turnId, outcome: turn.summary.outcome, reconciled: false };
     }
+
     const outcome = {
       kind: 'outcome' as const,
       outcome: c.outcome,
@@ -97,7 +112,7 @@ export function createEffectReconciliation(db: Dependencies) {
       turnId: c.turnId,
       invocationId: c.invocationId,
     };
-    if (c.recovered)
+    if (c.recovered) {
       db.applyFact({
         ...base,
         driverSeq: ++seq,
@@ -111,13 +126,19 @@ export function createEffectReconciliation(db: Dependencies) {
               : 'Runtime recovered a verified execution outcome. Output not persisted before interruption is unavailable.',
         },
       });
+    }
+
     db.applyFact({ ...base, driverSeq: seq + 1, fact: outcome }, true);
     const settled = db.turn(c.turnId, c.sessionId).summary;
-    if (settled.state !== 'terminal')
+    if (settled.state !== 'terminal') {
       fail('SESSION_RECOVERY_REQUIRED', 'Verified outcome was not committed.');
+    }
+
     const result = { turnId: c.turnId, outcome: settled.outcome, reconciled: true };
     db.remember(c.actor, 'reconcile', scope, c.requestId, input, result);
+
     return result;
   }
+
   return { candidates, reconcile };
 }

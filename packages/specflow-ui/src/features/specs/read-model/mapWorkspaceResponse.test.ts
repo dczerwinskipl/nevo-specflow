@@ -9,7 +9,10 @@ describe('Workspace response mapping', () => {
     const dto = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
     const mapped = mapWorkspaceResponse(dto);
     const task = mapped.taskGroups[0]?.tasks[0];
-    if (!task) throw new Error('Expected integration task');
+    if (!task) {
+      throw new Error('Expected integration task');
+    }
+
     expect(task.statusCode).toBe('in_progress');
 
     await appI18n.changeLanguage('en');

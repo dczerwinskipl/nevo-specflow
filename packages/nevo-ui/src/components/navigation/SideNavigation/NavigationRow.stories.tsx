@@ -19,6 +19,7 @@ type Story = StoryObj<typeof meta>;
 function Fixture() {
   const [expanded, setExpanded] = useState(true);
   const [links, setLinks] = useState(0);
+
   return (
     <div className="w-64">
       <ul className="m-0 p-0">
@@ -56,6 +57,7 @@ function Fixture() {
     </div>
   );
 }
+
 export const Playground: Story = {
   render: (args) => (
     <ul className="w-64 p-0">
@@ -68,23 +70,30 @@ export const DisclosureContract: Story = {
   render: () => <Fixture />,
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('link', { name: 'Sessions' }));
-    if (canvas.getByLabelText('List opens').textContent !== '1')
+    if (canvas.getByLabelText('List opens').textContent !== '1') {
       throw new Error('The list link must operate independently.');
+    }
+
     const preview = canvas.getByRole('link', { name: 'Readable Session preview' });
     preview.focus();
     canvas.getByRole('button', { name: 'External collapse' }).click();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const trigger = canvas.getByRole('button', { name: 'Expand sessions' });
-    if (document.activeElement !== trigger)
+    if (document.activeElement !== trigger) {
       throw new Error('Collapsing focused preview must restore disclosure focus.');
+    }
+
     const panel = document.getElementById(trigger.getAttribute('aria-controls')!);
-    if (!panel?.inert || panel.getAttribute('aria-hidden') !== 'true')
+    if (!panel?.inert || panel.getAttribute('aria-hidden') !== 'true') {
       throw new Error('Collapsed preview must immediately stop interaction.');
+    }
+
     await userEvent.click(trigger);
     await userEvent.click(canvas.getByRole('button', { name: 'Collapse sessions' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Expand sessions' }));
-    if (canvas.getByLabelText('List opens').textContent !== '1')
+    if (canvas.getByLabelText('List opens').textContent !== '1') {
       throw new Error('Disclosure must never invoke list navigation.');
+    }
   },
 };
 export const CanonicalCapture: Story = {

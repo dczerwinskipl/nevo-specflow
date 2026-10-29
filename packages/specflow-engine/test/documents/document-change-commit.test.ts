@@ -28,6 +28,7 @@ afterEach(async () => {
 /** Runs Git without throwing so a refusal can be asserted. */
 function gitResult(root: string, ...args: string[]): { status: number | null; stderr: string } {
   const result = spawnSync(resolveGitExecutable(), args, { cwd: root, encoding: 'utf8' });
+
   return { status: result.status, stderr: result.stderr };
 }
 
@@ -45,9 +46,13 @@ async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
   );
   roots.push(root);
   git(root, 'checkout', '-q', '-b', 'feature/work');
-  for (const name of ['a', 'b', 'c']) await write(root, `docs/${name}.md`, `${name}\n`);
+  for (const name of ['a', 'b', 'c']) {
+    await write(root, `docs/${name}.md`, `${name}\n`);
+  }
+
   git(root, 'add', 'docs');
   commitStaged(root, 'base documents');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -391,14 +396,17 @@ describe.skipIf(!onPosix)('hung clean filter (real Git, POSIX)', () => {
     await write(root, '.gitattributes', '*.slow filter=slow\n');
     git(root, 'add', '.gitattributes');
     commitStaged(root, 'filter attributes');
+
     return { root, engine, flag, pidFile, hang: () => writeFile(flag, '') };
   }
 
   /** Alive and not a zombie (a container without an init process never reaps its orphans). */
   const alive = (pid: number): boolean => {
     const state = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' });
+
     return state.status === 0 && state.stdout.trim() !== '' && !state.stdout.trim().startsWith('Z');
   };
+
   const pidsOf = async (file: string): Promise<number[]> =>
     (await readFile(file, 'utf8')).trim().split(' ').map(Number);
 
@@ -412,7 +420,10 @@ describe.skipIf(!onPosix)('hung clean filter (real Git, POSIX)', () => {
     ).rejects.toMatchObject({ code: 'GIT_OPERATION_UNCERTAIN', reason: 'terminated' });
 
     expect(existsSync(flag)).toBe(true);
-    for (const pid of await pidsOf(pidFile)) expect(alive(pid)).toBe(false);
+    for (const pid of await pidsOf(pidFile)) {
+      expect(alive(pid)).toBe(false);
+    }
+
     expect(existsSync(join(root, '.git/index.lock'))).toBe(false);
   }, 60000);
 
@@ -436,8 +447,12 @@ describe.skipIf(!onPosix)('hung clean filter (real Git, POSIX)', () => {
       (error as { reason?: string }).reason,
     );
 
-    if (existsSync(pidFile))
-      for (const pid of await pidsOf(pidFile)) expect(alive(pid)).toBe(false);
+    if (existsSync(pidFile)) {
+      for (const pid of await pidsOf(pidFile)) {
+        expect(alive(pid)).toBe(false);
+      }
+    }
+
     expect(existsSync(join(root, '.git/index.lock'))).toBe(false);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(parent);
     expect(git(root, 'ls-files', '--stage', '--', 'docs/x.slow')).toBe('');

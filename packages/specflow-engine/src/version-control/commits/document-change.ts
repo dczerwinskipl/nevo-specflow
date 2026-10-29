@@ -14,11 +14,17 @@ export const TRAILER_VALUE_LIMIT = 200;
  */
 export function cutIdsAtBoundaries(ids: readonly string[], limit = TRAILER_VALUE_LIMIT): string {
   const all = ids.join(',');
-  if (all.length <= limit) return all;
+  if (all.length <= limit) {
+    return all;
+  }
+
   for (let kept = ids.length - 1; kept > 0; kept--) {
     const value = ids.slice(0, kept).join(',') + ',+' + String(ids.length - kept);
-    if (value.length <= limit) return value;
+    if (value.length <= limit) {
+      return value;
+    }
   }
+
   return '+' + String(ids.length);
 }
 
@@ -75,9 +81,18 @@ export function classifyDocumentPath(
   facts: DocumentPathFacts,
   expectation: DocumentPathExpectation,
 ): DocumentPathState {
-  if (facts.head === expectation.post) return 'committed';
-  if (facts.working === expectation.post) return 'at-post';
-  if (facts.working === expectation.pre) return 'at-pre';
+  if (facts.head === expectation.post) {
+    return 'committed';
+  }
+
+  if (facts.working === expectation.post) {
+    return 'at-post';
+  }
+
+  if (facts.working === expectation.pre) {
+    return 'at-pre';
+  }
+
   return 'foreign';
 }
 
@@ -88,7 +103,10 @@ export function splitEffectivePaths(facts: readonly DocumentPathFacts[]): {
 } {
   const effective: string[] = [];
   const dropped: string[] = [];
-  for (const fact of facts) (fact.working === fact.head ? dropped : effective).push(fact.path);
+  for (const fact of facts) {
+    (fact.working === fact.head ? dropped : effective).push(fact.path);
+  }
+
   return { effective, dropped };
 }
 
@@ -100,7 +118,13 @@ export function splitEffectivePaths(facts: readonly DocumentPathFacts[]): {
 export function decideReplay(
   states: readonly DocumentPathState[],
 ): 'done' | 'pending' | 'recovery-required' {
-  if (states.every((state) => state === 'committed')) return 'done';
-  if (states.every((state) => state === 'at-pre' || state === 'at-post')) return 'pending';
+  if (states.every((state) => state === 'committed')) {
+    return 'done';
+  }
+
+  if (states.every((state) => state === 'at-pre' || state === 'at-post')) {
+    return 'pending';
+  }
+
   return 'recovery-required';
 }

@@ -21,9 +21,18 @@ const staleCodes = new Set([
  * been committed by the server, so it is uncertain and only the same operation may be checked.
  */
 export function classifyDemoCreateFailure(error: unknown, sent: SentCreate = {}): CreateFailure {
-  if (error instanceof RequestNotSentError) return { kind: 'offline' };
-  if (!isHttpClientError(error) || error.kind === 'cancelled') return { kind: 'uncertain' };
-  if (error.kind !== 'http') return { kind: 'uncertain' };
+  if (error instanceof RequestNotSentError) {
+    return { kind: 'offline' };
+  }
+
+  if (!isHttpClientError(error) || error.kind === 'cancelled') {
+    return { kind: 'uncertain' };
+  }
+
+  if (error.kind !== 'http') {
+    return { kind: 'uncertain' };
+  }
+
   const data = error.data;
   const code =
     typeof data === 'object' && data && 'code' in data && typeof data.code === 'string'
@@ -33,22 +42,53 @@ export function classifyDemoCreateFailure(error: unknown, sent: SentCreate = {})
     typeof data === 'object' && data && 'error' in data && typeof data.error === 'string'
       ? data.error
       : undefined;
-  if (code === 'CATALOGUE_STALE' || code === 'ARCHETYPE_UNKNOWN')
+  if (code === 'CATALOGUE_STALE' || code === 'ARCHETYPE_UNKNOWN') {
     return { kind: 'catalogue-stale', code };
-  if (code === 'BRANCH_ALREADY_EXISTS')
+  }
+
+  if (code === 'BRANCH_ALREADY_EXISTS') {
     return { kind: 'branch-exists', automatic: !sent.customBranch };
-  if (code && staleCodes.has(code)) return { kind: 'stale', code };
-  if (code === 'CREATE_CONFLICT') return { kind: 'operation-conflict' };
-  if (code === 'CREATE_RECOVERY_REQUIRED') return { kind: 'recovery-required' };
+  }
+
+  if (code && staleCodes.has(code)) {
+    return { kind: 'stale', code };
+  }
+
+  if (code === 'CREATE_CONFLICT') {
+    return { kind: 'operation-conflict' };
+  }
+
+  if (code === 'CREATE_RECOVERY_REQUIRED') {
+    return { kind: 'recovery-required' };
+  }
+
   // The files were written but could not be committed (503): recovery, never a blind retry.
-  if (code === 'COMMIT_FAILED') return { kind: 'recovery-required', committed: true };
+  if (code === 'COMMIT_FAILED') {
+    return { kind: 'recovery-required', committed: true };
+  }
+
   // Nothing was created: the branch is protected (422) / the checkout cannot commit now (409).
-  if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
-  if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
+  if (code === 'BRANCH_PROTECTED') {
+    return protectedBranchFailure(sent);
+  }
+
+  if (code === 'COMMIT_BLOCKED') {
+    return { kind: 'commit-blocked' };
+  }
+
   // Authorization answers carry no `code`: `{ error: 'forbidden' }` (403) / `authentication_required` (401).
-  if (error.status === 403) return { kind: 'forbidden' };
-  if (error.status === 401) return { kind: 'unauthenticated' };
+  if (error.status === 403) {
+    return { kind: 'forbidden' };
+  }
+
+  if (error.status === 401) {
+    return { kind: 'unauthenticated' };
+  }
+
   // A definitive answer carries a body; an answer without one proves nothing about the commit.
-  if (code === undefined && raw === undefined) return { kind: 'uncertain' };
+  if (code === undefined && raw === undefined) {
+    return { kind: 'uncertain' };
+  }
+
   return { kind: 'failed' };
 }

@@ -59,12 +59,15 @@ export function applicationLocationHeader({
     />
   );
 }
+
 function LocalizedWorkspaceHeader({ labels, ...props }: WorkspaceHeaderProps) {
   const { t } = useTranslation();
+
   return (
     <WorkspaceHeader {...props} labels={{ moreActions: t('common.moreActions'), ...labels }} />
   );
 }
+
 export function ApplicationLocationIdentity(props: {
   title: string;
   view: ApplicationView;
@@ -72,12 +75,14 @@ export function ApplicationLocationIdentity(props: {
   detailLabel?: string;
 }) {
   const router = useRouter({ warn: false });
+
   return router?.state.matches.some((match) => match.routeId.startsWith('/_app/')) ? (
     <RoutedIdentity {...props} />
   ) : (
     <span className="text-title-sm text-content-primary">{props.title}</span>
   );
 }
+
 function RoutedIdentity({
   title,
   view,
@@ -92,13 +97,15 @@ function RoutedIdentity({
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
   const { collection, identity, contextNotice, parent } = useApplicationLocationModel(specId, view);
-  if (!supportsSplit)
+  if (!supportsSplit) {
     return (
       <span className="text-title-sm text-content-primary" title={contextNotice}>
         {title}
         {contextNotice ? <span className="sr-only"> · {contextNotice}</span> : null}
       </span>
     );
+  }
+
   return (
     <RegionalLocation title={title}>
       <Breadcrumbs label={t('applicationNavigation.location')} className="min-w-0">
@@ -157,6 +164,7 @@ function RoutedIdentity({
     </RegionalLocation>
   );
 }
+
 function useApplicationLocationModel(specId: string | undefined, view: ApplicationView) {
   const { t } = useTranslation();
   const collection = useRouterState({
@@ -194,6 +202,7 @@ function useApplicationLocationModel(specId: string | undefined, view: Applicati
               label: t('applicationNavigation.specificationOverview'),
               to: '/specs/$specId' as const,
             };
+
   return {
     collection,
     metadata,
@@ -203,6 +212,7 @@ function useApplicationLocationModel(specId: string | undefined, view: Applicati
     mobileBack,
   };
 }
+
 export function ApplicationContextLine({
   specId,
   view,
@@ -218,10 +228,13 @@ export function ApplicationContextLine({
     !router?.state.matches.some((match) => match.routeId.startsWith('/_app/')) ||
     supportsSplit ||
     (!specId && view !== 'new-specification')
-  )
+  ) {
     return null;
+  }
+
   return <MobileContext specId={specId} view={view} className={className} />;
 }
+
 function MobileContext({
   specId,
   view,
@@ -236,6 +249,7 @@ function MobileContext({
     view,
   );
   const content = <ApplicationBackContent>{mobileBack.label}</ApplicationBackContent>;
+
   return (
     <Typography
       as="div"
@@ -261,6 +275,7 @@ function MobileContext({
     </Typography>
   );
 }
+
 export function ViewPageTitle({
   children,
   className = 'mb-6',
@@ -296,6 +311,7 @@ export function ApplicationBackContent({ children }: { children: ReactNode }) {
     </span>
   );
 }
+
 export function ApplicationFlowBack({
   label,
   onBack,
@@ -318,6 +334,7 @@ export function ApplicationFlowBack({
     </Typography>
   );
 }
+
 export function useApplicationCollection() {
   return useRouterState({
     select: (s) =>
@@ -335,6 +352,7 @@ export function ApplicationSessionBack({
   collection: 'current' | 'archive';
 }) {
   const { t } = useTranslation();
+
   return (
     <Typography as="div" variant="body-sm">
       <BackLink
@@ -359,14 +377,22 @@ function RegionalLocation({ title, children }: { title: string; children: ReactN
   const [compact, setCompact] = useState(false);
   useLayoutEffect(() => {
     const element = host.current;
-    if (!element) return;
+    if (!element) {
+      return;
+    }
+
     const update = () => setCompact((measure.current?.scrollWidth ?? 0) > element.clientWidth);
     const observer = new ResizeObserver(update);
     observer.observe(element);
-    if (measure.current) observer.observe(measure.current);
+    if (measure.current) {
+      observer.observe(measure.current);
+    }
+
     update();
+
     return () => observer.disconnect();
   }, [title, children]);
+
   return (
     <div
       ref={host}

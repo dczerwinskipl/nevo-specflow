@@ -32,6 +32,7 @@ export function tileAvailability(options: CreateOptions): Record<Tile, TileAvail
   // without a branch are unusable anyway and are not candidates).
   const branched = linked.filter((w) => w.branch);
   const allProtected = branched.length > 0 && branched.every((w) => isProtectedReason(w.reason));
+
   return {
     new:
       created.status === 'available'
@@ -89,8 +90,10 @@ export function tileAvailability(options: CreateOptions): Record<Tile, TileAvail
 /** Initial tile only; after the user picks one it never jumps silently. */
 export function defaultTile(options: CreateOptions): Tile | null {
   const availability = tileAvailability(options);
+
   return (['new', 'main', 'existing'] as const).find((tile) => availability[tile].ok) ?? null;
 }
+
 export const activeTile = (choice: WorkspaceChoice, options: CreateOptions): Tile | null =>
   choice.tile ?? defaultTile(options);
 
@@ -111,9 +114,15 @@ export type TargetStatus =
  */
 export function targetStatus(options: CreateOptions): TargetStatus {
   const branch = options.integrationTargetBranch;
-  if (!branch) return { kind: 'none' };
+  if (!branch) {
+    return { kind: 'none' };
+  }
+
   const primary = primaryWorkspace(options);
-  if (primary?.branch !== branch) return { kind: 'other-branch', branch, primary };
+  if (primary?.branch !== branch) {
+    return { kind: 'other-branch', branch, primary };
+  }
+
   return primary.integrationSelectable === true
     ? { kind: 'ok', branch, workspace: primary }
     : { kind: 'unavailable', branch, workspace: primary };
@@ -135,10 +144,15 @@ export function inheritedTarget(options: CreateOptions, workspace: Workspace): I
   if (pin) {
     const target = options.workspaces.find((w) => w.workspaceId === pin.workspaceId);
     let drift: 'branch-changed' | 'unavailable' | undefined;
-    if (target && target.branch !== pin.branch) drift = 'branch-changed';
-    else if (target?.integrationSelectable !== true) drift = 'unavailable';
+    if (target && target.branch !== pin.branch) {
+      drift = 'branch-changed';
+    } else if (target?.integrationSelectable !== true) {
+      drift = 'unavailable';
+    }
+
     return { kind: 'pinned', branch: pin.branch, ...(drift ? { drift } : {}) };
   }
+
   return options.integrationTargetBranch
     ? { kind: 'project', branch: options.integrationTargetBranch }
     : { kind: 'none' };
@@ -152,6 +166,7 @@ export function inheritedTarget(options: CreateOptions, workspace: Workspace): I
 export function defaultBaseValue(options: CreateOptions): string {
   const listed = (ref?: string) =>
     ref && options.baseRefs.some((item) => item.ref === ref) ? ref : '';
+
   return options.defaultBaseRef === 'HEAD'
     ? listed(primaryWorkspace(options)?.branch)
     : listed(options.defaultBaseRef);
@@ -165,5 +180,6 @@ export function defaultBaseValue(options: CreateOptions): string {
  */
 export function defaultTargetWorkspaceId(options: CreateOptions): string {
   const status = targetStatus(options);
+
   return status.kind === 'ok' ? status.workspace.workspaceId : '';
 }

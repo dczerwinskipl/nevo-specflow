@@ -13,13 +13,17 @@ export function TaskWorkspaceMaterials({
   readonly onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  if (!materials.length) return null;
+  if (!materials.length) {
+    return null;
+  }
+
   return (
     <InformationList aria-label={t('taskWorkspace.materials')}>
       {materials.map((material) => {
         const content = material.content;
         const forbidden = content.state === 'forbidden';
         const available = content.state === 'available';
+
         return (
           <OperationalRow
             key={material.id}

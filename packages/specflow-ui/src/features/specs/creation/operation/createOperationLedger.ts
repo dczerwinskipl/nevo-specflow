@@ -27,13 +27,18 @@ export function createOperationLedger<TInput>(
   startedAt?: number,
 ): CreateOperationLedger<TInput> {
   let inFlight = false;
+
   return {
     attempt: { current: attempt },
     startedAt,
     navigationAllowed: false,
     begin() {
-      if (inFlight) return false;
+      if (inFlight) {
+        return false;
+      }
+
       inFlight = true;
+
       return true;
     },
     end() {

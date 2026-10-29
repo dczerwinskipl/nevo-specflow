@@ -97,11 +97,14 @@ export function archiveRow(item: ArchivedSpecOverviewItem): ArchiveSpecRowModel 
 export function sortArchiveItems(items: readonly ArchivedSpecOverviewItem[]) {
   const milestone = (item: ArchivedSpecOverviewItem) => {
     const value = Date.parse(item.completedAt ?? item.archivedAt ?? '');
+
     return Number.isFinite(value) ? value : -Infinity;
   };
+
   return [...items].sort((a, b) => {
     const left = milestone(a);
     const right = milestone(b);
+
     return left === right ? a.id.localeCompare(b.id) : right > left ? 1 : -1;
   });
 }
@@ -132,7 +135,10 @@ function currentSummary(item: CurrentSpecOverviewItem): CurrentSummary {
 export function rowProgress(
   progress: RowIdentity['progress'],
 ): 'invalid' | 'empty' | 'ready' | 'unknown' {
-  if (progress === null) return 'unknown';
+  if (progress === null) {
+    return 'unknown';
+  }
+
   return !Number.isSafeInteger(progress.total) ||
     progress.total < 0 ||
     !Number.isSafeInteger(progress.completed) ||
@@ -143,6 +149,7 @@ export function rowProgress(
       ? 'empty'
       : 'ready';
 }
+
 type RowMetadataFact =
   { id: string; kind: 'key' | 'tag' | 'omitted'; value: string } | { id: 'pr'; kind: 'pr' };
 export function rowMetadata(item: SpecRowModel): readonly RowMetadataFact[] {
@@ -172,8 +179,10 @@ export interface OverviewCapabilities {
 }
 
 export function overviewCapabilities(projection: SpecsOverview): OverviewCapabilities {
-  if (projection.collection === 'archive' || projection.items.length === 0)
+  if (projection.collection === 'archive' || projection.items.length === 0) {
     return { status: true, progress: true };
+  }
+
   return {
     status: projection.items.some((item) => item.classification.section !== 'unknown'),
     progress: projection.items.some((item) => item.progress !== null),

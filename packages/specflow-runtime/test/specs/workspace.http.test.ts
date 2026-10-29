@@ -41,6 +41,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
           definitions: {
             async resolve() {
               const def = (await sources.definitions!.resolve('admission', 'TASK-01'))!;
+
               return { ...def, task: { ...def.task, id: 'WRONG' } };
             },
           },
@@ -73,9 +74,13 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       const overview = overviewResponse.json<CurrentSpecsOverview>();
       const admission = overview.items.find((item) => item.id === 'admission');
       expect(admission).toBeDefined();
-      if (!admission) throw new Error('Demo admission Specification is required.');
-      if (!admission.progress)
+      if (!admission) {
+        throw new Error('Demo admission Specification is required.');
+      }
+
+      if (!admission.progress) {
         throw new Error('Demo admission Specification must have known progress.');
+      }
 
       const response = await app.inject('/api/specs/admission/workspace');
       expect(response.statusCode).toBe(200);
@@ -86,7 +91,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       expect(workspace.specification.key).toBe(admission?.key);
       const taskSection = workspace.sections.tasks;
       expect(taskSection.state).toBe('available');
-      if (taskSection.state !== 'available') throw new Error('Expected demo Tasks');
+      if (taskSection.state !== 'available') {
+        throw new Error('Expected demo Tasks');
+      }
+
       const ids = taskSection.data.groups.flatMap((group) => group.tasks.map((task) => task.id));
       expect(ids).toContain('TASK-02');
       const currentExecutions = admission?.currentExecutions ?? [];
@@ -98,6 +106,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
           expect(item?.status.lifecycle).toBe('in_progress');
         }
       }
+
       expect(
         taskSection.data.groups
           .flatMap((group) => group.tasks)
@@ -107,7 +116,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
 
       const sessions = workspace.sections.sessions;
       expect(sessions.state).toBe('available');
-      if (sessions.state !== 'available') throw new Error('Expected demo Sessions');
+      if (sessions.state !== 'available') {
+        throw new Error('Expected demo Sessions');
+      }
+
       expect(sessions.data.items.some((item) => item.id === 'sample-session-24')).toBe(true);
       expect(sessions.data.items.some((item) => item.id === 'sample-session-23')).toBe(true);
 

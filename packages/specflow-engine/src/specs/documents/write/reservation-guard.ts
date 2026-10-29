@@ -28,11 +28,20 @@ export function assertNoClaimedBatchOverlap(
   batches: readonly BatchPathView[],
 ): void {
   for (const batch of batches) {
-    if (batch.workspaceId !== workspaceId) continue;
-    if (!DOCUMENT_BATCH_REFUSES_RESERVATION[batch.state]) continue;
+    if (batch.workspaceId !== workspaceId) {
+      continue;
+    }
+
+    if (!DOCUMENT_BATCH_REFUSES_RESERVATION[batch.state]) {
+      continue;
+    }
+
     // Paths compare case-insensitively, like the barrier check: a checkout may be on a folding filesystem.
     const held = new Set([...batch.paths].map(foldPathKey));
-    if (!paths.some((path) => held.has(foldPathKey(path)))) continue;
+    if (!paths.some((path) => held.has(foldPathKey(path)))) {
+      continue;
+    }
+
     throw documentChangeError(
       batch.state === 'recovery-required' ? 'busy-recovery-required' : 'busy-commit-in-progress',
       batch.state === 'recovery-required'

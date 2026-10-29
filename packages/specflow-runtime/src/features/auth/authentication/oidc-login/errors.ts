@@ -39,7 +39,9 @@ export class OidcProviderError extends Error {
 export function classifyOidcDiscoveryError(error: unknown): OidcProviderError | null {
   if (error instanceof TypeError) {
     const code = stringProperty(error, 'code');
-    if (isProgrammerArgumentError(code)) return null;
+    if (isProgrammerArgumentError(code)) {
+      return null;
+    }
   }
 
   if (
@@ -82,12 +84,16 @@ export function classifyOidcGrantError(error: unknown): OidcProviderError | null
 
   if (error instanceof ClientError) {
     const kind = isAuthenticationValidationCode(error.code) ? 'authentication' : 'unavailable';
+
     return providerError(kind, 'client_validation', error, error.code);
   }
 
   if (error instanceof TypeError) {
     const code = stringProperty(error, 'code');
-    if (isProgrammerArgumentError(code)) return null;
+    if (isProgrammerArgumentError(code)) {
+      return null;
+    }
+
     return providerError('unavailable', 'network', error, code);
   }
 
@@ -138,10 +144,12 @@ function isProgrammerArgumentError(code: string | undefined): boolean {
 
 function stringProperty(value: object, key: string): string | undefined {
   const candidate: unknown = Reflect.get(value, key);
+
   return typeof candidate === 'string' ? candidate : undefined;
 }
 
 function numberProperty(value: object, key: string): number | undefined {
   const candidate: unknown = Reflect.get(value, key);
+
   return typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : undefined;
 }

@@ -74,15 +74,30 @@ export interface DocRecord {
 
 /** Coerce an untrusted frontmatter value to a string without `[object Object]`. */
 export function asString(v: unknown, fallback = ''): string {
-  if (typeof v === 'string') return v;
-  if (v == null) return fallback;
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'string') {
+    return v;
+  }
+
+  if (v == null) {
+    return fallback;
+  }
+
+  if (typeof v === 'number' || typeof v === 'boolean') {
+    return String(v);
+  }
+
   return JSON.stringify(v);
 }
 
 function stripTrailingNewlines(value: unknown): unknown {
-  if (typeof value === 'string') return value.replace(/\n+$/, '');
-  if (Array.isArray(value)) return value.map(stripTrailingNewlines);
+  if (typeof value === 'string') {
+    return value.replace(/\n+$/, '');
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(stripTrailingNewlines);
+  }
+
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([k, v]) => [
@@ -91,6 +106,7 @@ function stripTrailingNewlines(value: unknown): unknown {
       ]),
     );
   }
+
   return value;
 }
 
@@ -102,15 +118,20 @@ export interface ParsedMarkdown {
 /** Extract + parse the frontmatter block. `null` when there is no block at all. */
 export function parseFrontmatter(content: string, label = 'document'): ParsedMarkdown | null {
   const match = FRONT_MATTER_RE.exec(content);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
+
   try {
     const parsed = stripTrailingNewlines(parse(match[1] ?? '') ?? {});
     const frontmatter =
       typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
+
     // Drop the single blank line that conventionally separates the block from the body.
     return { frontmatter, body: (match[2] ?? '').replace(/^\r?\n/, '') };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
+
     throw new DocsToolError(`Invalid YAML frontmatter in ${label}: ${detail}`, { cause: err });
   }
 }
@@ -120,11 +141,14 @@ function isKnownType(v: unknown): v is DocType {
 }
 
 function validateStringArray(value: unknown, field: string, loc: string): string[] {
-  if (!Array.isArray(value) || value.length === 0)
+  if (!Array.isArray(value) || value.length === 0) {
     return [`${loc}: '${field}' must be a non-empty array of strings`];
+  }
+
   if (value.some((v) => typeof v !== 'string' || !v.trim())) {
     return [`${loc}: '${field}' entries must be non-empty strings`];
   }
+
   return [];
 }
 
@@ -133,13 +157,20 @@ export function validateDoc(doc: DocRecord): string[] {
   const problems: string[] = [];
   const loc = typeof doc.file === 'string' ? doc.file : asString(doc.id, 'document');
 
-  if (!doc.id) problems.push(`${loc}: missing 'id'`);
-  if (!doc.type) problems.push(`${loc}: missing 'type'`);
+  if (!doc.id) {
+    problems.push(`${loc}: missing 'id'`);
+  }
+
+  if (!doc.type) {
+    problems.push(`${loc}: missing 'type'`);
+  }
+
   if (doc.type !== undefined && !isKnownType(doc.type)) {
     problems.push(
       `${loc}: unknown type '${asString(doc.type)}' (expected one of: ${KNOWN_TYPES.join(', ')})`,
     );
   }
+
   if (doc.status !== undefined && !(KNOWN_STATUSES as string[]).includes(asString(doc.status))) {
     problems.push(
       `${loc}: unknown status '${asString(doc.status)}' (expected one of: ${KNOWN_STATUSES.join(', ')})`,
@@ -156,8 +187,9 @@ export function validateDoc(doc: DocRecord): string[] {
     }
   }
 
-  if (doc.read_when !== undefined)
+  if (doc.read_when !== undefined) {
     problems.push(...validateStringArray(doc.read_when, 'read_when', loc));
+  }
 
   if (doc.related !== undefined && !Array.isArray(doc.related)) {
     problems.push(`${loc}: 'related' must be an array of doc ids`);
@@ -205,10 +237,16 @@ export function validateCorpus(docs: readonly DocRecord[]): string[] {
   const byId = new Map<string, string>();
 
   for (const doc of docs) {
-    if (typeof doc.id !== 'string') continue;
+    if (typeof doc.id !== 'string') {
+      continue;
+    }
+
     const existing = byId.get(doc.id);
-    if (existing) problems.push(`${doc.file}: duplicate id '${doc.id}' (also in ${existing})`);
-    else byId.set(doc.id, doc.file);
+    if (existing) {
+      problems.push(`${doc.file}: duplicate id '${doc.id}' (also in ${existing})`);
+    } else {
+      byId.set(doc.id, doc.file);
+    }
   }
 
   for (const doc of docs) {

@@ -62,6 +62,7 @@ describe('deriveDocumentTitle: bounded work and length', () => {
   const timed = (work: () => unknown): number => {
     const started = performance.now();
     work();
+
     return performance.now() - started;
   };
 

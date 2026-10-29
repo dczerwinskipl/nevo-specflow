@@ -13,6 +13,7 @@ export function copyWindowsBindings(outputDir: string): BundledThirdPartyPackage
     const name = `@koromix/koffi-win32-${architecture}`;
     packages.push({ name, root: dirname(nativeRequire.resolve(name)) });
   }
+
   const destination = join(outputDir, 'native');
   mkdirSync(destination, { recursive: true });
   for (const pkg of packages) {
@@ -28,12 +29,15 @@ export function copyWindowsBindings(outputDir: string): BundledThirdPartyPackage
         mkdirSync(dirname(target), { recursive: true });
         cpSync(join(pkg.root, file), target);
       }
+
       continue;
     }
+
     cpSync(pkg.root, join(destination, pkg.name), {
       recursive: true,
       filter: (source) => source !== join(pkg.root, 'node_modules'),
     });
   }
+
   return packages;
 }

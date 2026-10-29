@@ -156,12 +156,15 @@ function flattenWorkspaceChildren(children: ReactNode): ReactElement[] {
   const result: ReactElement[] = [];
 
   Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
+    if (!isValidElement(child)) {
+      return;
+    }
 
     if (child.type === Fragment) {
       flattenWorkspaceChildren((child.props as { children?: ReactNode }).children).forEach(
         (nested) => result.push(nested),
       );
+
       return;
     }
 
@@ -189,12 +192,14 @@ function resolveComposedWorkspace(children: ReactNode): {
       if (primary) {
         throw new Error('AppWorkspace accepts only one AppWorkspace.Primary.');
       }
+
       const props = child.props as AppWorkspaceRegionProps;
       primary = { header: props.header, content: props.children };
     } else if (child.type === AppWorkspaceSecondary) {
       if (defaultSecondary) {
         throw new Error('AppWorkspace accepts only one AppWorkspace.Secondary.');
       }
+
       const props = child.props as AppWorkspaceSecondaryRegionProps;
       defaultSecondary = {
         surface: { header: props.header, content: props.children },
@@ -321,7 +326,9 @@ function RuntimeSurfaceRegion({
     surface.header !== undefined || leadingAction !== undefined || trailingAction !== undefined;
 
   if (stackedVisual) {
-    if (!mobileRuntime?.mounted) return null;
+    if (!mobileRuntime?.mounted) {
+      return null;
+    }
 
     return (
       <MobileRuntimeSurfaceRegion
@@ -419,8 +426,13 @@ function MobileRuntimeSurfaceRegion({
       const headerHeight = headerRef.current?.offsetHeight ?? 0;
       const covered = !showHeader || (headerHeight > 0 && scrollTop >= headerHeight - 0.5);
 
-      if (rootRef.current) rootRef.current.dataset.headerCovered = String(covered);
-      if (headerCoveredRef.current === covered) return;
+      if (rootRef.current) {
+        rootRef.current.dataset.headerCovered = String(covered);
+      }
+
+      if (headerCoveredRef.current === covered) {
+        return;
+      }
 
       headerCoveredRef.current = covered;
       setHeaderCovered(covered);
@@ -431,7 +443,9 @@ function MobileRuntimeSurfaceRegion({
   useLayoutEffect(() => {
     const root = rootRef.current;
     const viewport = viewportRef.current;
-    if (!root || !viewport) return;
+    if (!root || !viewport) {
+      return;
+    }
 
     const updateMetrics = () => {
       root.style.setProperty('--mobile-workspace-viewport-height', `${viewport.clientHeight}px`);
@@ -441,9 +455,13 @@ function MobileRuntimeSurfaceRegion({
       );
       updateHeaderCovered(viewport.scrollTop);
     };
+
     const resizeObserver = new ResizeObserver(updateMetrics);
     resizeObserver.observe(viewport);
-    if (headerRef.current) resizeObserver.observe(headerRef.current);
+    if (headerRef.current) {
+      resizeObserver.observe(headerRef.current);
+    }
+
     updateMetrics();
 
     return () => resizeObserver.disconnect();
@@ -451,7 +469,10 @@ function MobileRuntimeSurfaceRegion({
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport) return;
+    if (!viewport) {
+      return;
+    }
+
     viewport.scrollTop = 0;
     updateHeaderCovered(0);
   }, [instanceKey, updateHeaderCovered]);
@@ -459,8 +480,11 @@ function MobileRuntimeSurfaceRegion({
   const setSurfaceRef = useCallback(
     (node: HTMLDivElement | null) => {
       rootRef.current = node;
-      if (typeof surfaceRef === 'function') surfaceRef(node);
-      else if (surfaceRef) surfaceRef.current = node;
+      if (typeof surfaceRef === 'function') {
+        surfaceRef(node);
+      } else if (surfaceRef) {
+        surfaceRef.current = node;
+      }
     },
     [surfaceRef],
   );
@@ -676,7 +700,10 @@ function AppWorkspaceRoot({
     ) : undefined;
 
   useLayoutEffect(() => {
-    if (!secondaryPresentation?.canStack) return;
+    if (!secondaryPresentation?.canStack) {
+      return;
+    }
+
     if (
       secondaryPresentation.transition?.action !== 'push' &&
       secondaryPresentation.transition?.action !== 'replace'
@@ -692,6 +719,7 @@ function AppWorkspaceRoot({
       // the overflow-hidden workspace container against the running transform.
       (target ?? secondaryRegionRef.current)?.focus({ preventScroll: true });
     });
+
     return () => cancelAnimationFrame(frame);
   }, [
     secondaryPresentation?.canStack,

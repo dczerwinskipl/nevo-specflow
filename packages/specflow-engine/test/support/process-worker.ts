@@ -25,10 +25,12 @@ export function observeChildProcess(child: ChildProcess): IndependentVitestWorke
       output += chunk;
     });
   }
+
   const done = new Promise<ProcessOutcome>((resolveDone, reject) => {
     child.once('error', reject);
     child.once('close', (code) => resolveDone({ code, log: output }));
   });
+
   return {
     pid: child.pid,
     done,
@@ -54,6 +56,7 @@ export function spawnVitestWorker(
     '..',
     'vitest.mjs',
   );
+
   return observeChildProcess(
     spawn(
       process.execPath,
@@ -87,18 +90,25 @@ export async function awaitProcessMarker(
     while (true) {
       try {
         await access(marker);
+
         return;
       } catch (error) {
-        if (Date.now() >= deadline)
+        if (Date.now() >= deadline) {
           throw new Error('Process checkpoint missing: ' + marker + '\\n' + (worker?.log() ?? ''), {
             cause: error,
           });
+        }
+
         await sleep(retryMs, undefined, { signal: abort.signal });
       }
     }
   };
+
   try {
-    if (!worker) return await poll();
+    if (!worker) {
+      return await poll();
+    }
+
     return await Promise.race([
       poll(),
       worker.done.then(async (outcome) => {
@@ -108,8 +118,10 @@ export async function awaitProcessMarker(
             () => true,
             () => false,
           )
-        )
+        ) {
           return;
+        }
+
         throw new Error(
           'Worker exited before checkpoint ' +
             marker +
@@ -138,16 +150,21 @@ export async function readProcessCheckpoint(
   expectedOperationId?: string,
 ): Promise<ProcessCheckpoint> {
   const stat = await lstat(marker);
-  if (!stat.isFile() || stat.isSymbolicLink())
+  if (!stat.isFile() || stat.isSymbolicLink()) {
     throw new Error('Process checkpoint must be a regular file: ' + marker);
+  }
+
   let content: unknown;
   try {
     content = JSON.parse(await readFile(marker, 'utf8')) as unknown;
   } catch {
     throw new Error('Invalid process checkpoint JSON: ' + marker);
   }
-  if (typeof content !== 'object' || !content || Array.isArray(content))
+
+  if (typeof content !== 'object' || !content || Array.isArray(content)) {
     throw new Error('Invalid process checkpoint: ' + marker);
+  }
+
   const record = content as Record<string, unknown>;
   if (
     typeof record.pid !== 'number' ||
@@ -158,8 +175,10 @@ export async function readProcessCheckpoint(
     record.stage.length === 0 ||
     (expectedStage !== undefined && record.stage !== expectedStage) ||
     (expectedOperationId !== undefined && record.operationId !== expectedOperationId)
-  )
+  ) {
     throw new Error('Invalid or unexpected process checkpoint identity: ' + marker);
+  }
+
   return {
     pid: record.pid,
     stage: record.stage,
@@ -179,6 +198,7 @@ export async function reapVitestWorker(
       worker.done,
       sleep(timeoutMs, undefined, { signal: abort.signal }).then(() => {
         worker.kill('SIGKILL');
+
         throw new Error('Worker did not terminate and cannot be reaped: ' + worker.log());
       }),
     ]);
@@ -193,8 +213,10 @@ export async function terminateCheckpointPid(
   worker: IndependentVitestWorker,
   timeoutMs = 15000,
 ): Promise<ProcessOutcome> {
-  if (!Number.isSafeInteger(pid) || pid <= 0 || pid === process.pid)
+  if (!Number.isSafeInteger(pid) || pid <= 0 || pid === process.pid) {
     throw new Error('Invalid or in-process checkpoint PID: ' + pid);
+  }
+
   process.kill(pid, 'SIGKILL');
   const abort = new AbortController();
   try {
@@ -204,11 +226,14 @@ export async function terminateCheckpointPid(
         throw new Error('Killed checkpoint process did not terminate: ' + worker.log());
       }),
     ]);
-    if (outcome.code === 0)
+    if (outcome.code === 0) {
       throw new Error('Killed checkpoint worker exited with success: ' + outcome.log);
+    }
+
     return outcome;
   } catch (error) {
     await reapVitestWorker(worker);
+
     throw error;
   } finally {
     abort.abort();

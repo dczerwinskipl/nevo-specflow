@@ -17,6 +17,7 @@ export interface WorkViewProps {
 export function WorkView({ specId, data }: WorkViewProps) {
   const modules = useUiModules();
   const runtime = useWorkspaceRuntime();
+
   return (
     <div className="@container/work min-w-0 max-w-content-standard">
       <div className="pb-3">

@@ -40,6 +40,7 @@ function fixture(managedWrites = false) {
     },
     { inspect, probe },
   );
+
   return {
     driver,
     inspect,
@@ -49,6 +50,7 @@ function fixture(managedWrites = false) {
     },
   };
 }
+
 it('discovers native writable modes independently and uses the native default model without inventing an alias', async () => {
   const f = fixture(true);
   f.probe.mockImplementation((options) =>
@@ -137,6 +139,7 @@ it('discards a successful probe if the installation changes during it', async ()
   const f = fixture();
   f.probe.mockImplementationOnce(() => {
     f.change({ fingerprint: 'updated-mid-probe', sha256: 'c'.repeat(64) });
+
     return Promise.resolve({
       models: [{ modelId: 'stale', title: 'Stale', efforts: [] }],
       version: '2.1.296',
@@ -181,6 +184,7 @@ it.each(['model', 'effort'] as const)(
       },
       (fact) => {
         facts.push(fact);
+
         return Promise.resolve();
       },
       new AbortController().signal,

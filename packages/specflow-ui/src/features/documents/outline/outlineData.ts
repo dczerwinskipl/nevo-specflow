@@ -12,10 +12,14 @@ export interface DocumentOutlineData {
 }
 
 export function documentOutline(content: string, markdown: boolean): DocumentOutlineData {
-  if (!markdown) return { headings: [], body: content };
+  if (!markdown) {
+    return { headings: [], body: content };
+  }
+
   const frontmatter = parseFrontmatter(content);
   const body = frontmatter ? frontmatter.body : content;
   const found = markdownOutline(body);
+
   return {
     // One heading is not a list worth showing.
     headings: found.length >= 2 ? found : [],

@@ -15,6 +15,7 @@ function request(tool_name: string, input: Record<string, unknown>) {
     },
   };
 }
+
 it.each([
   ['Bash', { command: 'git diff --stat' }],
   ['Write', { file_path: 'src/example.ts', content: 'export const answer = 42;' }],
@@ -25,7 +26,10 @@ it.each([
     const frame = request(tool, input);
     expect(prepareClaudeRequest(frame, false).kind).toBe('denied');
     const prepared = prepareClaudeRequest(frame, true);
-    if (prepared.kind !== 'questions') throw new Error('Expected permission');
+    if (prepared.kind !== 'questions') {
+      throw new Error('Expected permission');
+    }
+
     expect(prepared.questions[0]?.interaction.kind).toBe('permission');
     frame.request.input.extra = 'changed after admission';
     const answer = prepared.respond(0, {
@@ -50,12 +54,16 @@ it('denies unknown fields, background execution, unbounded commands and policy b
     ['Bash', { command: 'echo ok', timeout: Infinity }],
     ['Write', { file_path: 'a', content: 'x', unexpected: true }],
     ['Agent', { prompt: 'Run arbitrary background tasks' }],
-  ] as const)
+  ] as const) {
     expect(prepareClaudeRequest(request(tool, input), true).kind).toBe('denied');
+  }
 });
 it('denies without forwarding tool input or persistent grant suggestions', () => {
   const prepared = prepareClaudeRequest(request('Bash', { command: 'secret command' }), true);
-  if (prepared.kind !== 'questions') throw new Error('Expected permission');
+  if (prepared.kind !== 'questions') {
+    throw new Error('Expected permission');
+  }
+
   const answer = prepared.respond(0, {
     requestId: randomUUID(),
     kind: 'permission',

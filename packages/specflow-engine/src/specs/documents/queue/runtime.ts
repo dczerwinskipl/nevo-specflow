@@ -44,6 +44,7 @@ export function createQueueRuntime(
   const clock = deps.clock ?? systemQueueClock;
   const table = deps.processTable ?? nodeProcessTable;
   let captured = deps.executor;
+
   return {
     engine,
     context: engine.context,
@@ -60,6 +61,7 @@ export function createQueueRuntime(
     nowIso: () => new Date(clock.wallMs()).toISOString(),
     executor: async () => {
       captured ??= await captureExecutorIdentity(table);
+
       return captured;
     },
   };

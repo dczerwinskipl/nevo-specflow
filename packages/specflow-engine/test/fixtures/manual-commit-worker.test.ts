@@ -12,6 +12,7 @@ const enabled = process.env.NEVO_MANUAL_COMMIT_WORKER === '1';
 /** Announce the cut point and never return: the test kills this process there. */
 async function hang(signal: string, stage: string): Promise<never> {
   await writeFile(signal, JSON.stringify({ stage, pid: process.pid, threadId }));
+
   return new Promise<never>(() => undefined);
 }
 
@@ -23,15 +24,21 @@ async function announce(signal: string): Promise<void> {
 /** The hooks that stop the manual commit at one named point. */
 function hooksFor(cut: string, signal: string): ManualCommitHooks {
   const at = (name: string) => async () => {
-    if (cut === name) await hang(signal, cut);
+    if (cut === name) {
+      await hang(signal, cut);
+    }
   };
+
   return {
     afterReserved: at('after-reserved'),
     inClaimAfterLease: at('in-claim-after-lease'),
     afterClaim: at('after-claim'),
     beforeCommit: async () => {
-      if (cut === 'announce-before-commit') await announce(signal);
-      else if (cut === 'before-commit') await hang(signal, cut);
+      if (cut === 'announce-before-commit') {
+        await announce(signal);
+      } else if (cut === 'before-commit') {
+        await hang(signal, cut);
+      }
     },
     afterCommit: at('after-commit'),
     afterVerify: at('after-verify'),
@@ -61,7 +68,10 @@ it.skipIf(!enabled)(
       },
       { deps: { hooks: hooksFor(cut, signal) } },
     );
-    if (cut !== '') throw new Error('The manual commit worker unexpectedly returned: ' + cut);
+    if (cut !== '') {
+      throw new Error('The manual commit worker unexpectedly returned: ' + cut);
+    }
+
     await writeFile(signal, JSON.stringify({ stage: 'result', pid: process.pid, result }));
   },
   60000,

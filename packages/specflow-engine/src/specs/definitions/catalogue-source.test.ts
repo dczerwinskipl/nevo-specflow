@@ -25,6 +25,7 @@ function setup(options: { nowMs?: number } = {}) {
     sourceFor: () => source,
     nowMs: () => clock.nowMs,
   });
+
   return { source, clock, catalogues };
 }
 
@@ -96,6 +97,7 @@ describe('catalogue source stat memo', () => {
           found = sampleProject();
           sources.set(home, found);
         }
+
         return found;
       },
       nowMs: () => LONG_AFTER_MS,
@@ -103,6 +105,7 @@ describe('catalogue source stat memo', () => {
     for (let index = 0; index <= CATALOGUE_MEMO_MAX_HOMES; index += 1) {
       await catalogues.get(`/home-${index}`);
     }
+
     const oldest = sources.get('/home-0')!;
     const newest = sources.get(`/home-${CATALOGUE_MEMO_MAX_HOMES}`)!;
     const oldestReads = oldest.calls.read;
@@ -130,7 +133,10 @@ describe('catalogue source stat memo', () => {
         stat: (path) => source.stat(path),
         read: async (path, max) => {
           const outcome = await source.read(path, max);
-          if (enabled.on) source.touch('document-type/note.yaml');
+          if (enabled.on) {
+            source.touch('document-type/note.yaml');
+          }
+
           return outcome;
         },
       };
@@ -313,6 +319,7 @@ describe('stat signature', () => {
     for (let index = 0; index <= SIGNATURE_ENTRIES_MAX; index += 1) {
       big.set(`document-type/f${index}.yaml`, 'x');
     }
+
     expect((await computeStatSignature(big)).complete).toBe(false);
   });
 
@@ -329,7 +336,10 @@ describe('stable read for a mutation', () => {
       stat: (path) => source.stat(path),
       read: async (path, max) => {
         const outcome = await source.read(path, max);
-        if (enabled.on) source.touch('document-type/note.yaml');
+        if (enabled.on) {
+          source.touch('document-type/note.yaml');
+        }
+
         return outcome;
       },
     };
@@ -341,6 +351,7 @@ describe('stable read for a mutation', () => {
     const result = await loadStableProjectCatalogue(catalogues, '/home', {
       sleep: (ms) => {
         waits.push(ms);
+
         return Promise.resolve();
       },
     });
@@ -362,6 +373,7 @@ describe('stable read for a mutation', () => {
       sleep: (ms) => {
         waits.push(ms);
         enabled.on = false; // the writer finished during the pause
+
         return Promise.resolve();
       },
     });
@@ -382,6 +394,7 @@ describe('stable read for a mutation', () => {
         delayMs: 5,
         sleep: (ms) => {
           waits.push(ms);
+
           return Promise.resolve();
         },
       }),

@@ -15,10 +15,12 @@ describe('Disposable page leases', () => {
     const leases = new PageLeases(),
       ref = leases.create(input);
     expect(leases.resolve(ref.token, 'history', identity, context)).not.toBeNull();
-    for (const key of ['projectId', 'workspaceId', 'specId', 'taskId'] as const)
+    for (const key of ['projectId', 'workspaceId', 'specId', 'taskId'] as const) {
       expect(
         leases.resolve(ref.token, 'history', { ...identity, [key]: 'other' }, context),
       ).toBeNull();
+    }
+
     expect(leases.resolve(ref.token, 'resources', identity, context)).toBeNull();
     expect(
       leases.resolve(ref.token, 'history', identity, { ...context, subject: 'bob' }),
@@ -38,8 +40,10 @@ describe('Disposable page leases', () => {
     });
     expect(leases.resolve(ref.token, 'history', identity, context, cursor, 3)).toBeNull();
     expect(leases.resolve(ref.token, 'history', identity, context, undefined, 3)).toBeNull();
-    for (const malformed of ['0', '-1', 'undefined', '', 'unknown'])
+    for (const malformed of ['0', '-1', 'undefined', '', 'unknown']) {
       expect(leases.resolve(ref.token, 'history', identity, context, malformed)).toBeNull();
+    }
+
     const other = leases.create(input);
     expect(leases.resolve(other.token, 'history', identity, context, cursor)).toBeNull();
   });

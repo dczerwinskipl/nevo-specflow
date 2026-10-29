@@ -70,8 +70,9 @@ describe('seed files', () => {
     const walk = async (directory: string): Promise<void> => {
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         const path = join(directory, entry.name);
-        if (entry.isDirectory()) await walk(path);
-        else {
+        if (entry.isDirectory()) {
+          await walk(path);
+        } else {
           seen.push(path);
           const text = await readFile(path, 'utf8');
           expect(text, path).not.toContain('\r');
@@ -79,6 +80,7 @@ describe('seed files', () => {
         }
       }
     };
+
     await walk(seedDirectory);
     expect(seen.length).toBe(9 + 3 + 1);
   });
@@ -111,12 +113,19 @@ describe('seed files against the product document matrix', () => {
   function section(heading: string): string[] {
     const lines = doc.split('\n');
     const start = lines.findIndex((line) => line.startsWith(heading));
-    if (start < 0) throw new Error(`The product document has no section "${heading}".`);
+    if (start < 0) {
+      throw new Error(`The product document has no section "${heading}".`);
+    }
+
     const out: string[] = [];
     for (const line of lines.slice(start + 1)) {
-      if (/^#+ /u.test(line)) break;
+      if (/^#+ /u.test(line)) {
+        break;
+      }
+
       out.push(line);
     }
+
     return out;
   }
 
@@ -203,7 +212,10 @@ describe('seed files against the product document matrix', () => {
       for (const archetype of using) {
         const template = project.catalogue.findTemplate(archetype.id, id);
         expect(template?.instructions, `${archetype.id}/${id}`).toBe(instructions);
-        if (id === 'overview') continue;
+        if (id === 'overview') {
+          continue;
+        }
+
         const headings = headingsCell!.startsWith('(')
           ? []
           : headingsCell!.split('; ').map((heading) => heading.trim());
@@ -237,7 +249,9 @@ describe('the overview template of the seeds', () => {
       archetype.templates.find((template) => template.id === 'overview'),
     );
     expect(first?.content).toContain('{{goalOrPrompt}}');
-    for (const other of rest) expect(other).toEqual(first);
+    for (const other of rest) {
+      expect(other).toEqual(first);
+    }
   });
 
   it.each(goldenFixtures)('renders the pre-change scaffold: $name', (fixture) => {

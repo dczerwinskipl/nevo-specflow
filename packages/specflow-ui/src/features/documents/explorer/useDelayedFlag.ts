@@ -10,12 +10,17 @@ export const BUSY_INDICATOR_DELAY_MS = 400;
 export function useDelayedFlag(value: boolean, delayMs = BUSY_INDICATOR_DELAY_MS): boolean {
   const [shown, setShown] = useState(false);
   useEffect(() => {
-    if (!value) return;
+    if (!value) {
+      return;
+    }
+
     const timer = setTimeout(() => setShown(true), delayMs);
+
     return () => {
       clearTimeout(timer);
       setShown(false);
     };
   }, [value, delayMs]);
+
   return value && shown;
 }

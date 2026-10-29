@@ -55,10 +55,15 @@ export function chunkPaths(
       current = [];
       chars = 0;
     }
+
     current.push(path);
     chars += path.length + 1;
   }
-  if (current.length > 0) chunks.push(current);
+
+  if (current.length > 0) {
+    chunks.push(current);
+  }
+
   return chunks;
 }
 
@@ -81,7 +86,9 @@ export async function readPathFacts(
 ): Promise<DocumentPathFacts[]> {
   const entry = deps.entry ?? defaultEntry(deps.exists);
   const kinds = new Map<string, WorkingEntry>();
-  for (const path of paths) kinds.set(path, await entry(join(root, ...path.split('/'))));
+  for (const path of paths) {
+    kinds.set(path, await entry(join(root, ...path.split('/'))));
+  }
 
   const working = new Map<string, string>();
   const existing = paths.filter((path) => kinds.get(path) === 'file');
@@ -91,9 +98,13 @@ export async function readPathFacts(
     if (hashed.exitCode !== 0 || lines.length !== chunk.length) {
       throw new PathFactsError('hash-object');
     }
+
     chunk.forEach((path, index) => {
       const id = lines[index]!.trim();
-      if (!OBJECT_ID.test(id)) throw new PathFactsError('hash-object');
+      if (!OBJECT_ID.test(id)) {
+        throw new PathFactsError('hash-object');
+      }
+
       working.set(path, id);
     });
   }
@@ -113,18 +124,29 @@ export async function readPathFacts(
     if (listed.exitCode !== 0) {
       // An unborn branch has no tree: every path is absent there.
       const commit = await deps.run(root, ['rev-parse', '--verify', '--quiet', at + '^{commit}']);
-      if (commit.exitCode === 1) break;
+      if (commit.exitCode === 1) {
+        break;
+      }
+
       throw new PathFactsError('ls-tree');
     }
+
     for (const record of listed.stdout.split('\0').filter(Boolean)) {
       const tab = record.indexOf('\t');
       const [mode, type, id] = record.slice(0, tab).split(' ');
       const name = record.slice(tab + 1);
-      if (!head.has(name)) continue;
+      if (!head.has(name)) {
+        continue;
+      }
+
       // A committed symbolic link (mode 120000) is a blob but never a document: its mode is checked, not only its id.
-      if (mode === '120000') head.set(name, nonBlobState('committed-symlink'));
-      else if (type === 'blob' && id !== undefined && OBJECT_ID.test(id)) head.set(name, id);
-      else head.set(name, nonBlobState('tree'));
+      if (mode === '120000') {
+        head.set(name, nonBlobState('committed-symlink'));
+      } else if (type === 'blob' && id !== undefined && OBJECT_ID.test(id)) {
+        head.set(name, id);
+      } else {
+        head.set(name, nonBlobState('tree'));
+      }
     }
   }
 
@@ -136,18 +158,28 @@ export async function readPathFacts(
 }
 
 function workingState(kind: WorkingEntry | undefined, id: string | undefined): string | null {
-  if (kind === 'other') return nonBlobState('directory');
-  if (kind === 'symlink') return nonBlobState('symlink');
+  if (kind === 'other') {
+    return nonBlobState('directory');
+  }
+
+  if (kind === 'symlink') {
+    return nonBlobState('symlink');
+  }
+
   return id ?? null;
 }
 
 function defaultEntry(
   exists: ((absolutePath: string) => Promise<boolean>) | undefined,
 ): (absolutePath: string) => Promise<WorkingEntry> {
-  if (exists) return async (path) => ((await exists(path)) ? 'file' : 'absent');
+  if (exists) {
+    return async (path) => ((await exists(path)) ? 'file' : 'absent');
+  }
+
   return async (absolutePath) => {
     try {
       const stats = await lstat(absolutePath);
+
       return stats.isSymbolicLink() ? 'symlink' : stats.isFile() ? 'file' : 'other';
     } catch (error) {
       if (
@@ -158,6 +190,7 @@ function defaultEntry(
       ) {
         return 'absent';
       }
+
       throw error;
     }
   };

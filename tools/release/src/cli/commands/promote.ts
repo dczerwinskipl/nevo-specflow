@@ -27,7 +27,12 @@ export function promoteCommand(ctx: CliContext): Command {
         { git: ctx.git, github: ctx.github, hasToken: hasCiGithubReleaseToken(ctx.env) },
         { mutate },
       );
-      for (const e of events) (e.level === 'warn' ? ctx.stderr : ctx.stdout)(e.message);
-      if (!mutate) ctx.stdout('\nvalidate-only: every check passed; nothing was changed.');
+      for (const e of events) {
+        (e.level === 'warn' ? ctx.stderr : ctx.stdout)(e.message);
+      }
+
+      if (!mutate) {
+        ctx.stdout('\nvalidate-only: every check passed; nothing was changed.');
+      }
     });
 }

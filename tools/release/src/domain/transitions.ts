@@ -40,6 +40,7 @@ export function validateVersionTransition({
     if (to.version === bumpMinor || to.version === bumpMajor) {
       return { ok: true, kind: 'main-bump' };
     }
+
     return {
       ok: false,
       error: `main-line bump must go to ${bumpMinor ?? '?'} or ${bumpMajor ?? '?'}, got ${to.version}`,
@@ -48,7 +49,10 @@ export function validateVersionTransition({
 
   // Cutting a line: the first commit on release/vX.Y takes main's version to beta.
   if (from.channel === 'alpha' && to.channel === 'beta' && from.version === to.version) {
-    if (line && versionInLine(to.version, line)) return { ok: true, kind: 'line-cut' };
+    if (line && versionInLine(to.version, line)) {
+      return { ok: true, kind: 'line-cut' };
+    }
+
     return {
       ok: false,
       error: `release branch ${targetBranch} does not match version ${to.version}`,
@@ -59,6 +63,7 @@ export function validateVersionTransition({
   if (!line) {
     return { ok: false, error: `unexpected version.json change on '${targetBranch}'` };
   }
+
   try {
     const expected = planPromotion({ current: from, toChannel: to.channel });
     if (expected.channel === to.channel && expected.version === to.version) {
@@ -68,8 +73,10 @@ export function validateVersionTransition({
           error: `${to.version} is not on line ${line} (branch ${targetBranch})`,
         };
       }
+
       return { ok: true, kind: 'promotion' };
     }
+
     return {
       ok: false,
       error:
@@ -121,9 +128,11 @@ export function resolveTransitionTarget({
       source: `pull_request base ${base}`,
     };
   }
+
   const ref = env.GITHUB_REF;
   if (ref?.startsWith('refs/heads/')) {
     const pushed = env.GITHUB_REF_NAME ?? ref.slice('refs/heads/'.length);
+
     return { targetBranch: pushed, baseRef: 'HEAD~1', source: `push to ${pushed}` };
   }
 
@@ -146,6 +155,7 @@ export function resolveTransitionTarget({
       source: `local: alpha ${vf.version} -> main`,
     };
   }
+
   const releaseBranch = `release/v${line}`;
   if (refExists(`origin/${releaseBranch}`)) {
     return {
@@ -154,6 +164,7 @@ export function resolveTransitionTarget({
       source: `local: ${vf.channel} ${vf.version} -> ${releaseBranch}`,
     };
   }
+
   return {
     error:
       `version.json is on channel '${vf.channel}' (${vf.version}), which belongs to ` +

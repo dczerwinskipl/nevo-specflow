@@ -30,6 +30,7 @@ export function MockNavigation({ current = 'documents' }: { current?: string }) 
       </a>
     ),
   };
+
   return (
     <div className="px-3 py-4">
       <SideNavigation

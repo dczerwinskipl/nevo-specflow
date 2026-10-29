@@ -37,8 +37,14 @@ export function assertDocumentChangeClaimsAvailable(
   self: ClaimSelf | undefined,
 ): void {
   for (const record of records) {
-    if (self?.kind === 'document-change' && self.operationId === record.operationId) continue;
-    if (!documentChangeHoldsClaim(record)) continue;
+    if (self?.kind === 'document-change' && self.operationId === record.operationId) {
+      continue;
+    }
+
+    if (!documentChangeHoldsClaim(record)) {
+      continue;
+    }
+
     if (overlaps(requested, resourcesForDocumentChange(record))) {
       throw new SharedResourceError(
         'RESOURCE_CONFLICT',

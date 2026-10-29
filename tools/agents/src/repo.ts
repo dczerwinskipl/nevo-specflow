@@ -10,8 +10,12 @@ export function findRepoRoot(start: string): string {
     ) {
       return current;
     }
+
     const parent = dirname(current);
-    if (parent === current) throw new Error(`cannot find repository root from ${start}`);
+    if (parent === current) {
+      throw new Error(`cannot find repository root from ${start}`);
+    }
+
     current = parent;
   }
 }

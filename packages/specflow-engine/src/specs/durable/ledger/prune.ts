@@ -36,19 +36,28 @@ export async function pruneLedgerRecord(
   if (snapshot === undefined || snapshot.entries.length === 0) {
     return { removed: [], remaining: 0 };
   }
+
   const equal = await probe(
     snapshot.workspaceRoot,
     snapshot.entries.map((entry) => entry.path),
   );
-  if (equal.size === 0) return { removed: [], remaining: snapshot.entries.length };
+  if (equal.size === 0) {
+    return { removed: [], remaining: snapshot.entries.length };
+  }
+
   const judged = new Map(snapshot.entries.map((entry) => [entry.path, entry]));
+
   return withLedgerLock(context, async () => {
     const current = await readLedgerRecord(context, workspaceId, owner);
-    if (current === undefined) return { removed: [], remaining: 0 };
+    if (current === undefined) {
+      return { removed: [], remaining: 0 };
+    }
+
     const prune = new Set(
       current.entries
         .filter((entry) => {
           const before = judged.get(entry.path);
+
           return (
             equal.has(entry.path) &&
             before?.postSha256 === entry.postSha256 &&
@@ -58,7 +67,10 @@ export async function pruneLedgerRecord(
         .map((entry) => entry.path),
     );
     const next: LedgerRecord = removeLedgerPaths(current, prune, now());
-    if (next !== current) await writeLedgerRecord(context, next);
+    if (next !== current) {
+      await writeLedgerRecord(context, next);
+    }
+
     return { removed: [...prune], remaining: next.entries.length };
   });
 }
@@ -84,13 +96,18 @@ export async function removeLedgerEntriesJudged(
   now: () => string,
 ): Promise<LedgerPruneResult> {
   const before = new Map(judged.map((entry) => [entry.path, entry]));
+
   return withLedgerLock(context, async () => {
     const current = await readLedgerRecord(context, workspaceId, owner);
-    if (current === undefined) return { removed: [], remaining: 0 };
+    if (current === undefined) {
+      return { removed: [], remaining: 0 };
+    }
+
     const prune = new Set(
       current.entries
         .filter((entry) => {
           const seen = before.get(entry.path);
+
           return (
             seen?.postSha256 === entry.postSha256 && seen.operationCount === entry.operationCount
           );
@@ -98,7 +115,10 @@ export async function removeLedgerEntriesJudged(
         .map((entry) => entry.path),
     );
     const next: LedgerRecord = removeLedgerPaths(current, prune, now());
-    if (next !== current) await writeLedgerRecord(context, next);
+    if (next !== current) {
+      await writeLedgerRecord(context, next);
+    }
+
     return { removed: [...prune], remaining: next.entries.length };
   });
 }

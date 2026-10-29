@@ -102,6 +102,7 @@ export async function readBatchPaths(
   if (paths.length !== record.paths.pathCount) {
     throw documentChangeError('plan-invalid', 'The batch path list does not match its record.');
   }
+
   return paths;
 }
 
@@ -113,7 +114,9 @@ export async function removeDocumentBatch(
   validateJournalOperationId(DOCUMENT_BATCH_KIND, batchId);
   const path = join(journalDirectory(context, DOCUMENT_BATCH_KIND), batchId + '.json');
   await removeFileWindowsSafe(path).catch((error: unknown) => {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
   });
   await removePayload(context, DOCUMENT_BATCH_KIND, batchId);
 }
@@ -146,6 +149,7 @@ export function transitionDocumentBatch(
       `A document batch cannot move from ${record.state} to ${to}.`,
     );
   }
+
   const executor = to === 'committing' ? (patch.executor ?? record.executor) : undefined;
   const next: DocumentBatchRecord = {
     version: record.version,
@@ -173,6 +177,7 @@ export function transitionDocumentBatch(
     ...(to === 'committed' && patch.sha !== undefined ? { sha: patch.sha } : {}),
     ...(executor !== undefined ? { executor } : {}),
   };
+
   return parseDocumentBatchRecord(context, next, record.operationId);
 }
 
@@ -194,7 +199,10 @@ export const documentBatchViews: BatchViewProvider = {
   async list(context, workspaceId): Promise<readonly BatchPathView[]> {
     const views: BatchPathView[] = [];
     for (const record of await listDocumentBatches(context)) {
-      if (record.workspaceId !== workspaceId || !VISIBLE_STATES.includes(record.state)) continue;
+      if (record.workspaceId !== workspaceId || !VISIBLE_STATES.includes(record.state)) {
+        continue;
+      }
+
       const paths = await readBatchPaths(context, record);
       views.push({
         batchId: record.operationId,
@@ -203,6 +211,7 @@ export const documentBatchViews: BatchViewProvider = {
         paths: new Set(paths.map((entry) => entry.path)),
       });
     }
+
     return views;
   },
 };

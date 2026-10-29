@@ -33,6 +33,7 @@ export async function createGitTestProject(prefix: string, configYaml: string): 
     '-qm',
     'initial',
   );
+
   return root;
 }
 
@@ -43,7 +44,10 @@ export async function createGitTestProject(prefix: string, configYaml: string): 
  * Returns true when a commit was made.
  */
 export function commitStaged(root: string, message: string): boolean {
-  if (git(root, 'diff', '--cached', '--name-only') === '') return false;
+  if (git(root, 'diff', '--cached', '--name-only') === '') {
+    return false;
+  }
+
   git(
     root,
     '-c',
@@ -54,5 +58,6 @@ export function commitStaged(root: string, message: string): boolean {
     '-qm',
     message,
   );
+
   return true;
 }

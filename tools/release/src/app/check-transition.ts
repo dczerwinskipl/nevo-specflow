@@ -64,6 +64,7 @@ export function checkVersionTransition(deps: CheckTransitionDeps): TransitionChe
       transition: verdict.kind,
     };
   }
+
   return {
     kind: 'illegal',
     from,

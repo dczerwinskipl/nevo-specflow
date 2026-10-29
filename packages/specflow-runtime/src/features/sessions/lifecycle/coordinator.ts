@@ -46,9 +46,13 @@ export function createSessionCoordinator(
   );
   function driverFor(providerId: string) {
     const driver = available ? registry.get(providerId) : undefined;
-    if (!driver) throw new SessionError('PROVIDER_UNAVAILABLE', 'Session provider is not enabled.');
+    if (!driver) {
+      throw new SessionError('PROVIDER_UNAVAILABLE', 'Session provider is not enabled.');
+    }
+
     return driver;
   }
+
   async function bounded<T>(run: (signal: AbortSignal) => Promise<T> | T): Promise<T> {
     const controller = new AbortController();
     let timer: NodeJS.Timeout | undefined;
@@ -67,6 +71,7 @@ export function createSessionCoordinator(
       clearTimeout(timer);
     }
   }
+
   async function validate(driver: SessionDriver, selection: Invocation['selection']) {
     if (
       selection.mode === 'workspace-write' &&
@@ -74,13 +79,16 @@ export function createSessionCoordinator(
         executionContext.kind !== 'read-only' ||
         !executionContext.workspaceIdentity ||
         driver.supportsManagedWrites !== true)
-    )
+    ) {
       throw new SessionError(
         'CAPABILITY_UNSUPPORTED',
         'Managed agent execution is not available in this Runtime.',
       );
+    }
+
     await bounded((signal) => driver.validate(selection, signal));
   }
+
   const active = new Map<string, ActiveInvocation>();
   let closed = false;
   const call = store.call;
@@ -99,31 +107,44 @@ export function createSessionCoordinator(
           closed ||
           attempt >= backoff.length ||
           performance.now() >= deadline
-        )
+        ) {
           throw error;
+        }
+
         await delay(backoff[attempt]);
-        if (closed || performance.now() >= deadline) throw error;
+        if (closed || performance.now() >= deadline) {
+          throw error;
+        }
       }
     }
   }
+
   async function snapshot(sessionId: string, actor: string): Promise<SessionSnapshot> {
     return (await call<SnapshotSource>({ op: 'snapshot', sessionId, actor })).snapshot;
   }
+
   function accepting() {
-    if (closed) throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Runtime is stopping.');
+    if (closed) {
+      throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Runtime is stopping.');
+    }
   }
+
   async function recover(candidate: EffectRecoveryCandidate, actor: string, requestId: string) {
-    if (!effects || active.has(candidate.turnId))
+    if (!effects || active.has(candidate.turnId)) {
       throw new SessionError(
         'SESSION_RECOVERY_REQUIRED',
         'Execution is still attached or has no recovery evidence service.',
       );
+    }
+
     const receipt = await effects.reconcile(candidate);
-    if (!receipt)
+    if (!receipt) {
       throw new SessionError(
         'SESSION_RECOVERY_REQUIRED',
         'No positive Engine settlement evidence is available.',
       );
+    }
+
     return call<{ turnId: string; outcome: string; reconciled: boolean }>({
       op: 'reconcile-effect',
       ...candidate,
@@ -134,6 +155,7 @@ export function createSessionCoordinator(
       recovered: true,
     });
   }
+
   return {
     store,
     snapshot,
@@ -143,20 +165,28 @@ export function createSessionCoordinator(
     available: (providerId: string) =>
       available && registry.get(providerId)?.describe().readiness === 'ready',
     async recoverEffects() {
-      if (!effects) return;
+      if (!effects) {
+        return;
+      }
+
       let afterSession: string | undefined;
       while (!closed) {
         const candidates = await call<EffectRecoveryCandidate[]>({
           op: 'effect-candidates',
           afterSession,
         });
-        if (!candidates.length) break;
+        if (!candidates.length) {
+          break;
+        }
+
         for (const candidate of candidates) {
-          if (afterSession !== undefined && candidate.sessionId <= afterSession)
+          if (afterSession !== undefined && candidate.sessionId <= afterSession) {
             throw new SessionError(
               'SESSION_STORE_UNAVAILABLE',
               'Execution recovery cursor did not advance.',
             );
+          }
+
           afterSession = candidate.sessionId;
           try {
             await recover(candidate, 'runtime-recovery', candidate.invocationId);
@@ -178,25 +208,36 @@ export function createSessionCoordinator(
         requestId,
         input: { requestId },
       });
-      if (previous) return previous;
+      if (previous) {
+        return previous;
+      }
+
       const [candidate] = await call<EffectRecoveryCandidate[]>({
         op: 'effect-candidates',
         sessionId,
         turnId,
       });
-      if (!candidate)
+      if (!candidate) {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
           'This Turn has no pending verifiable execution.',
         );
+      }
+
       return recover(candidate, actor, requestId);
     },
     async providers() {
-      if (!available) return [];
+      if (!available) {
+        return [];
+      }
+
       return Promise.all(
         [...registry.values()].map(async (driver) => {
           try {
-            if (driver.refresh) await bounded((signal) => driver.refresh!(signal));
+            if (driver.refresh) {
+              await bounded((signal) => driver.refresh!(signal));
+            }
+
             return driver.describe();
           } catch {
             return {
@@ -219,11 +260,17 @@ export function createSessionCoordinator(
         requestId: input.requestId,
         input,
       });
-      if (cached) return cached;
-      if (!available)
+      if (cached) {
+        return cached;
+      }
+
+      if (!available) {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'No Session provider is enabled.');
+      }
+
       const driver = driverFor(input.providerId);
       await validate(driver, input);
+
       return call({ op: 'create', actor, input });
     },
     async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
@@ -237,11 +284,18 @@ export function createSessionCoordinator(
         requestId: input.requestId,
         input,
       });
-      if (cached) return { turnId: cached.turnId };
-      if (!available)
+      if (cached) {
+        return { turnId: cached.turnId };
+      }
+
+      if (!available) {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'No Session provider is enabled.');
-      if (!input.message.trim() || utf8Bytes(input.message) > SessionLimits.messageBytes)
+      }
+
+      if (!input.message.trim() || utf8Bytes(input.message) > SessionLimits.messageBytes) {
         throw new SessionError('SESSION_INPUT_INVALID', 'A nonempty bounded message is required.');
+      }
+
       const before = await snapshot(sessionId, actor);
       const selection = {
         providerId: before.session.providerId,
@@ -284,18 +338,28 @@ export function createSessionCoordinator(
           : {}),
         ...(binding ? { effectBinding: binding } : {}),
       });
-      if (!admitted.fresh) return { turnId: admitted.turnId };
-      if (closed) return { turnId: admitted.turnId };
+      if (!admitted.fresh) {
+        return { turnId: admitted.turnId };
+      }
+
+      if (closed) {
+        return { turnId: admitted.turnId };
+      }
+
       const controller = new AbortController();
       let seq = 0,
         tail = Promise.resolve();
       let uncertain = false;
       const emit = async (fact: DriverFact) => {
         validateDriverFact(fact);
-        if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes)
+        if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes) {
           throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver text chunk exceeds budget.');
-        if (utf8Bytes(JSON.stringify(fact)) > SessionLimits.eventBytes)
+        }
+
+        if (utf8Bytes(JSON.stringify(fact)) > SessionLimits.eventBytes) {
           throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver fact exceeds budget.');
+        }
+
         const operation = tail.then(async () => {
           const next = seq + 1;
           const accepted = await persistFact({
@@ -307,13 +371,20 @@ export function createSessionCoordinator(
             fact,
           });
           // A replayed lost fact may already be committed despite a lost acknowledgement.
-          if (fact.kind === 'lost') uncertain = true;
-          if (accepted && fact.kind === 'outcome') uncertain = false;
+          if (fact.kind === 'lost') {
+            uncertain = true;
+          }
+
+          if (accepted && fact.kind === 'outcome') {
+            uncertain = false;
+          }
+
           seq = next;
         });
         tail = operation.catch(() => undefined);
         await operation;
       };
+
       const live: ActiveInvocation = {
         invocationId: admitted.invocationId,
         controller,
@@ -373,12 +444,17 @@ export function createSessionCoordinator(
             live.operation = managed;
             live.emit = managed.emit;
             await managed.done;
+
             return;
           }
+
           live.operation = driver.start(invocation, emit, controller.signal);
           await live.operation.done;
           // A transport ending is not evidence that a previously lost operation settled.
-          if (uncertain) return;
+          if (uncertain) {
+            return;
+          }
+
           // A settled read-only operation without protocol outcome is interrupted, never invented success.
           await emit({
             kind: 'outcome',
@@ -394,9 +470,14 @@ export function createSessionCoordinator(
               kind: 'lost',
               message: 'Agent lifecycle persistence requires recovery.',
             }).catch(() => undefined);
+
             return;
           }
-          if (uncertain) return;
+
+          if (uncertain) {
+            return;
+          }
+
           if (
             error instanceof SessionError &&
             ['SESSION_STORE_BUSY', 'SESSION_STORE_UNAVAILABLE'].includes(error.code)
@@ -408,8 +489,10 @@ export function createSessionCoordinator(
               kind: 'lost',
               message: 'Provider lifecycle persistence could not be confirmed.',
             });
+
             return;
           }
+
           await emit({
             kind: 'outcome',
             outcome: controller.signal.aborted
@@ -428,17 +511,21 @@ export function createSessionCoordinator(
                 }),
           });
         } finally {
-          if (active.get(admitted.turnId) === live) active.delete(admitted.turnId);
+          if (active.get(admitted.turnId) === live) {
+            active.delete(admitted.turnId);
+          }
         }
       })();
       // Store errors must not become unhandled rejection; lifecycle remains recoverable on disk.
       void live.done.catch(() => undefined);
+
       return { turnId: admitted.turnId };
     },
     async cancel(actor: string, sessionId: string, turnId: string, requestId: string) {
       accepting();
       await call({ op: 'cancel', actor, sessionId, turnId, requestId });
       active.get(turnId)?.controller.abort();
+
       return { turnId };
     },
     async respond(
@@ -448,8 +535,10 @@ export function createSessionCoordinator(
       input: RespondInteraction,
     ) {
       accepting();
-      if (input.kind === 'question' && utf8Bytes(input.answer.text ?? '') > 16384)
+      if (input.kind === 'question' && utf8Bytes(input.answer.text ?? '') > 16384) {
         throw new SessionError('INTERACTION_RESPONSE_INVALID', 'Answer exceeds byte budget.');
+      }
+
       const result = await call<{
         turnId: string;
         interactionId: string;
@@ -462,9 +551,10 @@ export function createSessionCoordinator(
           // Admission is durable, but no transport acknowledged delivery. Never resend it.
           throw new SessionError('INTERACTION_EXPIRED', 'Live operation has ended.');
         }
+
         try {
           const delivery = await live.operation.respond(result.nativeKey, input);
-          if (delivery.deliveredKeys.length)
+          if (delivery.deliveredKeys.length) {
             await call({
               op: 'response-delivered',
               sessionId,
@@ -472,6 +562,7 @@ export function createSessionCoordinator(
               invocationId: live.invocationId,
               nativeKeys: delivery.deliveredKeys,
             });
+          }
         } catch {
           await live.emit({
             kind: 'lost',
@@ -479,12 +570,19 @@ export function createSessionCoordinator(
           });
         }
       }
+
       return { turnId: result.turnId, interactionId };
     },
     async close() {
-      if (closed) return;
+      if (closed) {
+        return;
+      }
+
       closed = true;
-      for (const live of active.values()) live.controller.abort('shutdown');
+      for (const live of active.values()) {
+        live.controller.abort('shutdown');
+      }
+
       const timeout = new AbortController();
       try {
         await Promise.race([
@@ -499,6 +597,7 @@ export function createSessionCoordinator(
         await store.close();
       } catch (error) {
         await store.abandon();
+
         throw error;
       } finally {
         timeout.abort();
@@ -506,4 +605,5 @@ export function createSessionCoordinator(
     },
   };
 }
+
 export type SessionCoordinator = ReturnType<typeof createSessionCoordinator>;

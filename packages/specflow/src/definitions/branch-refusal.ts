@@ -11,6 +11,7 @@ export function definitionsBranchRefusalLines(
 ): string[] {
   const name = branch !== undefined ? `'${branch}'` : 'the current branch';
   const notAllowed = reason === 'branch-not-allowed';
+
   return [
     `Nevo does not commit the definitions on ${name}: ` +
       (notAllowed

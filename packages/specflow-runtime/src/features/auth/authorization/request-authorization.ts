@@ -122,6 +122,7 @@ export function createRequestAuthorization(
           }).capabilities;
 
     cache.set(key, capabilities);
+
     return capabilities;
   };
 
@@ -138,6 +139,7 @@ export function createRequestAuthorization(
     refresh: refresh ?? (() => createRequestAuthorization(access, authorization)),
     readContext: () => {
       requireAccess();
+
       return {
         subject: access.mode === 'subject' ? JSON.stringify(access.subject) : 'trusted-local',
         policy: authorization,
@@ -148,6 +150,7 @@ export function createRequestAuthorization(
     can(input) {
       const scope = input.scope ?? {};
       assertCapability(input.resource, input.capability);
+
       return resolveEffective(input.resource, scope).includes(input.capability);
     },
 
@@ -183,11 +186,13 @@ export function createRequestAuthorization(
 
     resolveCapabilities(target) {
       const scope = target.scope ?? {};
+
       return projectCapabilities(target.resource, resolveEffective(target.resource, scope));
     },
 
     filterByCapability(items, input) {
       requireAccess();
+
       return items.filter((item) =>
         api.can({
           resource: input.resource,

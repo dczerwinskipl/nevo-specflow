@@ -97,8 +97,10 @@ describe('effective path set over a fake Git reader', () => {
       if (args.includes('hash-object')) {
         const paths = args.slice(args.indexOf('--') + 1);
         const stdout = paths.map((p) => blobs[p]).join('\n') + '\n';
+
         return Promise.resolve({ exitCode: 0, stdout, stderr: '' });
       }
+
       if (args[0] === 'ls-tree') {
         const asked = args
           .slice(args.indexOf('--') + 1)
@@ -111,10 +113,13 @@ describe('effective path set over a fake Git reader', () => {
               : [],
         );
         const stdout = records.map((record) => record + '\0').join('');
+
         return Promise.resolve({ exitCode: 0, stdout, stderr: '' });
       }
+
       return Promise.resolve({ exitCode: 1, stdout: '', stderr: '' });
     };
+
     return { run, calls };
   }
 
@@ -186,6 +191,7 @@ describe('effective path set over a fake Git reader', () => {
         READ_CHUNK_CHARS + READ_CHUNK_PATHS * 10 + 200,
       );
     }
+
     expect(chunkPaths(paths).flat()).toEqual(paths);
   });
 

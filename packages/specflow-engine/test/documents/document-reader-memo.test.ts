@@ -27,12 +27,14 @@ const handBuilt = handBuiltSpecification;
 describe('revision memo', () => {
   function counting(): { fs: VerifiedFs; opens: string[] } {
     const opens: string[] = [];
+
     return {
       opens,
       fs: {
         ...nodeVerifiedFs,
         open: (path, flags) => {
           opens.push(path);
+
           return nodeVerifiedFs.open(path, flags);
         },
       },

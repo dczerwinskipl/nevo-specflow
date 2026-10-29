@@ -45,6 +45,7 @@ export function FolderNode({
   children?: ReactNode;
 }) {
   const name = lastSegment(path);
+
   return (
     <li className={treeNodeClassName}>
       <div className={treeRowClassName}>
@@ -129,6 +130,7 @@ export function DocumentNode({
   // Beside folders the main file starts like a folder: its glyph in the chevron column, its name
   // right after it. In a flat main folder every file starts at the row edge anyway.
   const alignedWithFolders = main && !flat && !missing;
+
   return (
     <li className={cn(treeNodeClassName, main && 'mb-2')}>
       <div className={treeRowClassName}>
@@ -199,6 +201,7 @@ function TruncatedTooltip({
   const label = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [clipped, setClipped] = useState(false);
+
   return (
     <Tooltip
       open={open}

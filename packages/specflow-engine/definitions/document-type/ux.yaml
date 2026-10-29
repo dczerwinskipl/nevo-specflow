@@ -2,6 +2,7 @@ kind: document-type
 schemaVersion: 1
 id: ux
 title: UX
+icon: eye
 description: "The user-experience contract: flows, screens, states, copy, responsive behaviour and accessibility."
 useWhen: The change has a user-facing interface or alters an existing one.
 instructions: "Describe the user journey: flows, each screen and its states (empty, loading, error, success), the exact copy, responsive behaviour and accessibility. Reference existing patterns and name what is new. Do not restate behaviour rules; link to the behaviour document."

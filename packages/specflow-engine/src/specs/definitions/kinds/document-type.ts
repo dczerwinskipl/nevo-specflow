@@ -31,6 +31,7 @@ export const documentTypeKind = defineDefinitionKind<
     useWhen: file.useWhen,
     instructions: file.instructions,
     ...(file.defaultFilename !== undefined ? { defaultFilename: file.defaultFilename } : {}),
+    ...(file.icon !== undefined ? { icon: file.icon } : {}),
   }),
   check: (type) => {
     const issues: DefinitionIssue[] = [];

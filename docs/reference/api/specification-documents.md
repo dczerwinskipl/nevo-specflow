@@ -93,7 +93,7 @@ Action        = { available: boolean; reason?: ActionReason; retryAfterMs?: inte
 ## Archetype catalogue and Create request
 
 ```ts
-DocumentTypeInfo = { id; title; description; useWhen; instructions: string; defaultFilename?: string }   // all text mandatory except defaultFilename
+DocumentTypeInfo = { id; title; description; useWhen; instructions: string; defaultFilename?: string; icon?: string }   // all text mandatory except defaultFilename and icon; icon: a Design System icon name for documents of this type in the tree (an unknown name falls back to the default icon in the UI)
 ArchetypeCatalogue = {
   revision: string                     // sha256 of the VALID catalogue content (problems excluded); changes when it changes
   defaultArchetypeId?: string          // absent in the real backend (the UI chooses); optional in demo
@@ -152,7 +152,14 @@ description: Operational steps for running or recovering a system.
 useWhen: The change adds something that operators must run or recover.
 instructions: List preconditions, numbered steps and the expected result of each step.
 defaultFilename: runbook.md
+icon: list-checks # optional
 ```
+
+`icon` (optional) names an icon of the Design System registry (`nevo-ui`), which the UI owns. The
+Engine checks only its shape: kebab-case (`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`), at most 64 characters. A
+name the registry does not know is not an error; the UI shows its default icon. The shipped types use
+`overview` `info`, `architecture` `workflow`, `backend` `database`, `behaviour` `list-checks`,
+`decisions` `circle-check`, `research` `file-search`, `user-story` `users`, `ux` `eye`; `note` has none.
 
 ```yaml
 # .nevo/definitions/specification-archetype/operations-change.yaml

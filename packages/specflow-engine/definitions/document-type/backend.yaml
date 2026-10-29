@@ -2,6 +2,7 @@ kind: document-type
 schemaVersion: 1
 id: backend
 title: Backend
+icon: database
 description: "Server-side design: contracts, data and ownership, invariants, error cases, recovery and verification."
 useWhen: The change needs new or changed APIs, persistence, Engine or Runtime behaviour.
 instructions: "Describe the server-side contract: the owning module, data and persistence, API and event shapes (by reference to the authoritative contract), invariants, error codes and recovery, and how each is verified (unit versus integration). Do not describe screens."

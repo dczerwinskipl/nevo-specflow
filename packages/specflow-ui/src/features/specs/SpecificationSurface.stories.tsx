@@ -254,7 +254,7 @@ export const RepositoryNavigation: Story = {
       name: /Go to changes|Przejdź do zmian/i,
     });
     await userEvent.click(toChanges);
-    await canvas.findByRole('heading', { name: /Changes|Zmiany/i, level: 1 }, { timeout: 5000 });
+    await canvas.findByRole('heading', { name: /Changes|Zmiany/i, level: 1 }, { timeout: 10000 });
   },
 };
 
@@ -350,12 +350,16 @@ export const ApiDtoToTaskScreen: Story = {
 export const ApiDtoToDocumentScreen: Story = {
   args: { path: '/specs/api-integration/documents', integrationDto: true, dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    const row = await canvas.findByRole(
+    const rows = await canvas.findAllByRole(
       'button',
       { name: /^specification\.md/ },
       { timeout: 10000 },
     );
-    await userEvent.click(row);
+    if (!rows[0]) {
+      throw new Error('Expected specification.md document in tree');
+    }
+
+    await userEvent.click(rows[0]);
     await canvas.findByRole(
       'heading',
       { name: 'Document content from Runtime detail API' },

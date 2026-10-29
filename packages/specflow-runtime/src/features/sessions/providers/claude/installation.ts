@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { lstat, readFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, scryptSync } from 'node:crypto';
 import { join, resolve, isAbsolute } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
@@ -233,11 +233,11 @@ export async function inspectClaudeInstallation(
     }
 
     options.signal.throwIfAborted();
-    // Fingerprint for token change-detection only; not stored as a password credential.
-    // CodeQL [js/insufficient-password-hash] False positive: OAuth access token fingerprinting, not password storage.
-    const authenticationFingerprint = createHash('sha256')
-      .update(JSON.stringify([credentials.accessToken]))
-      .digest('hex');
+    const authenticationFingerprint = scryptSync(
+      credentials.accessToken,
+      'nevo:claude:auth-fingerprint',
+      32,
+    ).toString('hex');
 
     return {
       executable,

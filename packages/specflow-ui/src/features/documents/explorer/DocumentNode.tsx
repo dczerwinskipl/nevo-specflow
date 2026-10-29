@@ -2,6 +2,7 @@ import { useRef, useState, type ReactElement, type ReactNode, type RefObject } f
 import { useTranslation } from 'react-i18next';
 import {
   Icon,
+  type IconName,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -14,7 +15,6 @@ import {
   treeLeafItemClassName,
   treeNodeClassName,
   treeRowClassName,
-  treeTrailingLabelClassName,
 } from '@nevo/ui';
 import type { TrailingLabel } from '../catalogue/documentTypePolicy';
 
@@ -80,13 +80,17 @@ export function FolderNode({
 }
 
 /**
- * One document row: icon, name, the quiet trailing label and its actions. A dangling entry (the
- * registry lists a file that is not on disk) keeps its place with the warning glyph and
- * `File missing`. The label is part of the row button's text, so it is in its accessible name.
+ * One document row: one glyph slot, the name and its actions. The glyph is the file's format
+ * (`documentRowGlyph`); the type is in the row's tooltip (hover and keyboard focus) and in its
+ * accessible name, and on touch in the row menu and the document header. The main file (the
+ * protected overview) has a slightly stronger name. A dangling entry (the registry lists a file
+ * that is not on disk) keeps its place with the warning glyph and `File missing`.
  */
 export function DocumentNode({
   path,
   flat = false,
+  glyph = 'file',
+  main = false,
   label,
   selected,
   disabled,
@@ -98,6 +102,10 @@ export function DocumentNode({
   path: string;
   /** In a level without folders: no offset to a folder icon column. */
   flat?: boolean;
+  /** The glyph slot (a registry icon); a missing file always shows the warning glyph. */
+  glyph?: IconName;
+  /** The specification's main file: a slightly stronger name, no badge. */
+  main?: boolean;
   label?: TrailingLabel;
   /** The document that is open, nothing else. */
   selected: boolean;
@@ -110,12 +118,13 @@ export function DocumentNode({
   const { t } = useTranslation();
   const name = lastSegment(path);
   const missing = label?.kind === 'missing';
+  const type = label?.kind === 'type' ? label.text : undefined;
   return (
     <li className={treeNodeClassName}>
       <div className={treeRowClassName}>
         {editor ?? (
           <>
-            <TruncatedTooltip name={name}>
+            <TruncatedTooltip name={name} detail={type}>
               {(labelRef) => (
                 <button
                   type="button"
@@ -128,17 +137,20 @@ export function DocumentNode({
                   {missing ? (
                     <Icon name="triangle-alert" className={treeAttentionGlyphClassName} />
                   ) : (
-                    <Icon name="file" />
+                    <Icon name={glyph} />
                   )}
                   <span
                     ref={labelRef}
-                    className={cn(treeItemLabelTruncateClassName, missing && 'text-content-muted')}
+                    className={cn(
+                      treeItemLabelTruncateClassName,
+                      missing && 'text-content-muted',
+                      main && 'font-medium',
+                    )}
                   >
                     {name}
                   </span>
-                  {label?.kind === 'type' && (
-                    <span className={treeTrailingLabelClassName}>{label.text}</span>
-                  )}
+                  {/* The type is read with the name; sighted users get it from the tooltip. */}
+                  {type && <span className="sr-only">{type}</span>}
                   {missing && (
                     <span className={treeAttentionStateLabelClassName}>
                       {t('documents.tree.fileMissing')}
@@ -155,27 +167,38 @@ export function DocumentNode({
   );
 }
 
-/** Shows the full name in a tooltip only when the single-line label is actually clipped. */
+/**
+ * The row's tooltip, on hover and on keyboard focus: the full name when the single-line label is
+ * clipped, and the `detail` (the document's type) whenever there is one.
+ */
 function TruncatedTooltip({
   name,
+  detail,
   children,
 }: {
   name: string;
+  detail?: string;
   children: (label: RefObject<HTMLSpanElement | null>) => ReactElement;
 }) {
   const label = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
+  const [clipped, setClipped] = useState(false);
   return (
     <Tooltip
       open={open}
-      onOpenChange={(next) =>
-        setOpen(
-          next && label.current !== null && label.current.scrollWidth > label.current.clientWidth,
-        )
-      }
+      onOpenChange={(next) => {
+        const isClipped =
+          label.current !== null && label.current.scrollWidth > label.current.clientWidth;
+        setClipped(isClipped);
+        setOpen(next && (isClipped || detail !== undefined));
+      }}
     >
       <TooltipTrigger asChild>{children(label)}</TooltipTrigger>
-      <TooltipContent className="break-all">{name}</TooltipContent>
+      <TooltipContent className="break-all">
+        {clipped && <span className="block">{name}</span>}
+        {detail && <span className={clipped ? 'block text-content-muted' : 'block'}>{detail}</span>}
+        {!clipped && !detail && name}
+      </TooltipContent>
     </Tooltip>
   );
 }

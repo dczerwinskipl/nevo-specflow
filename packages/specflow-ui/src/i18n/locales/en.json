@@ -1193,7 +1193,29 @@
       "skipped_few": "{{count}} entries in the folder could not be read.",
       "skipped_many": "{{count}} entries in the folder could not be read.",
       "skipped_other": "{{count}} entries in the folder could not be read.",
-      "editingUnavailable": "Editing is unavailable: {{reason}}"
+      "editingUnavailable": "Editing is unavailable: {{reason}}",
+      "typeOf": "Type: {{type}}",
+      "filter": {
+        "search": "Search files",
+        "clearSearch": "Clear search",
+        "types": "Filter by type",
+        "typesActive_one": "Filter by type: {{count}} chosen",
+        "typesActive_few": "Filter by type: {{count}} chosen",
+        "typesActive_many": "Filter by type: {{count}} chosen",
+        "typesActive_other": "Filter by type: {{count}} chosen",
+        "noType": "No type",
+        "reset_one": "Clear filters ({{count}})",
+        "reset_few": "Clear filters ({{count}})",
+        "reset_many": "Clear filters ({{count}})",
+        "reset_other": "Clear filters ({{count}})",
+        "clear": "Clear filters",
+        "noResults": "No matching files",
+        "noResultsDescription": "Change the search or the chosen types.",
+        "hiddenMissing_one": "The filters hide {{count}} missing file.",
+        "hiddenMissing_few": "The filters hide {{count}} missing files.",
+        "hiddenMissing_many": "The filters hide {{count}} missing files.",
+        "hiddenMissing_other": "The filters hide {{count}} missing files."
+      }
     },
     "tabs": {
       "tablist": "Opened documents",
@@ -1213,7 +1235,8 @@
       "noItem": "No document",
       "closeFailed": "Could not close the document. Try again.",
       "missingHint": "This document is no longer in the tree. Your draft is kept until you close the tab.",
-      "closeBusy": "Finish the open question about unsaved changes first, then close this document."
+      "closeBusy": "Finish the open question about unsaved changes first, then close this document.",
+      "typeAndPath": "{{type}} · {{path}}"
     },
     "empty": {
       "heading": "No document open",

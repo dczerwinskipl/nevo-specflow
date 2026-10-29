@@ -3,11 +3,13 @@ import type {
   ArchetypeCatalogue,
   ArchetypeInfo,
   ArchetypeTemplateInfo,
+  ContentKind,
   DocumentIssue,
   DocumentTree,
   DocumentTypeInfo,
   RequirementResult,
 } from '@nevo/specflow-contracts/documents';
+import type { IconName } from '@nevo/ui';
 import { message, type Message } from '../../../i18n/message';
 
 /*
@@ -24,15 +26,31 @@ export function typeTitle(catalogue: ArchetypeCatalogue | undefined, typeId: str
   return catalogue?.documentTypes.find((type) => type.id === typeId)?.title ?? typeId;
 }
 
-/** The quiet trailing label of a tree row. */
+/** What a tree row says besides its name: its type (tooltip, accessible name) or that its file is missing. */
 export type TrailingLabel = { kind: 'type'; text: string } | { kind: 'missing' };
+
+/** The glyph slot of a document row: the content format of its file. */
+const formatGlyph = {
+  text: 'file',
+  image: 'image',
+  binary: 'file-binary',
+} as const satisfies Record<ContentKind, IconName>;
+
+/**
+ * The leading glyph of a document row (one slot). The single extension point for a type's own
+ * icon: once a document type can declare a registry icon, resolve it here first and fall back to
+ * the format. Today the content format decides (text, image, any other file).
+ */
+export function documentRowGlyph(document: { kind?: ContentKind }): IconName {
+  return formatGlyph[document.kind ?? 'text'];
+}
 
 type TreeDocument = DocumentTree['documents'][number];
 
 /**
- * The type title of every registered document, also when the file name repeats it (`ux.md · UX`):
- * one rule the reader can rely on. An unclassified file carries no label: its row menu offers
- * `Assign type…` and Expected documents name what is still missing.
+ * The type title of every registered document (the row's tooltip, menu and accessible name). An
+ * unclassified file has none: its row menu offers `Assign type…` and Expected documents name what
+ * is still missing.
  */
 export function documentTrailingLabel(
   document: Pick<TreeDocument, 'path' | 'classification' | 'type'>,

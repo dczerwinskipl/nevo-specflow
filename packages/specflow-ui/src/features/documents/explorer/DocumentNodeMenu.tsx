@@ -5,6 +5,7 @@ import {
   Menu,
   MenuContent,
   MenuItem,
+  MenuLabel,
   MenuNote,
   MenuSeparator,
   MenuTrigger,
@@ -42,6 +43,7 @@ export function DocumentNodeMenu({
   id,
   locked,
   noteId,
+  typeTitle,
   actions,
 }: {
   tree: Tree;
@@ -52,6 +54,8 @@ export function DocumentNodeMenu({
   locked: boolean;
   /** DOM id of this menu's note (reasons) so the menu can describe itself. */
   noteId: string;
+  /** The document's type title: the row's tooltip says it, the menu says it on touch too. */
+  typeTitle?: string;
   actions: DocumentNodeActions;
 }) {
   const { t } = useTranslation();
@@ -95,6 +99,7 @@ export function DocumentNodeMenu({
     if (!tree.capabilities.import.available) addReason(tree.capabilities.import.reason);
   }
   const describedBy = reasons.length ? noteId : undefined;
+  const typeLine = typeTitle ? t('documents.tree.typeOf', { type: typeTitle }) : undefined;
   const note = describedBy && <MenuNote id={describedBy}>{reasons.slice(0, 2).join(' ')}</MenuNote>;
   const trigger = (
     <IconButton
@@ -117,6 +122,7 @@ export function DocumentNodeMenu({
           // Narrower than the tree pane, so it stays inside it; padded like a menu note.
           className="w-60 px-3 py-2 text-body-sm text-content-muted"
         >
+          {typeLine && <p className="mb-1 text-content-secondary">{typeLine}</p>}
           {reasons[0]}
         </PopoverContent>
       </Popover>
@@ -131,6 +137,7 @@ export function DocumentNodeMenu({
           if (actions.restoreEntryFocus()) event.preventDefault();
         }}
       >
+        {typeLine && <MenuLabel>{typeLine}</MenuLabel>}
         {folder && (
           <>
             <MenuItem

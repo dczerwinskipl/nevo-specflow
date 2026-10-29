@@ -16,6 +16,8 @@ import {
 import {
   Alert,
   Button,
+  EmptyState,
+  InlineNote,
   Spinner,
   TooltipProvider,
   Typography,
@@ -30,6 +32,15 @@ import { DocumentOperationDialogs } from './DocumentOperationDialogs';
 import { DocumentTreeLevel } from './DocumentTreeLevel';
 import { InlineEntryEditor } from './InlineEntryEditor';
 import { createTreeIndex, folderOperationRevision, treeRows } from './documentTreePolicy';
+import { TreeFilterBar } from './TreeFilterBar';
+import {
+  activeFilterCount,
+  filterTreeRows,
+  noTreeFilter,
+  treeTypes,
+  type TreeFilter,
+} from './treeFilter';
+import { typeTitle } from '../catalogue/documentTypePolicy';
 import {
   useDocumentOperations,
   type DocumentDialogRequest,
@@ -169,7 +180,23 @@ export function DocumentsExplorer({
   const { busy, unknown, error, retry, resumable } = operations.state;
   // A running operation shows a small spinner in the root header, only once it takes a while.
   const working = useDelayedFlag(busy);
-  const index = useMemo(() => createTreeIndex(treeRows(tree)), [tree]);
+  // The search and the type filter narrow the rows the tree draws (never the data it acts on).
+  const [filter, setFilter] = useState<TreeFilter>(noTreeFilter);
+  const allRows = useMemo(() => treeRows(tree), [tree]);
+  const filtered = useMemo(() => filterTreeRows(allRows, filter), [allRows, filter]);
+  const filtering = activeFilterCount(filter) > 0;
+  const index = useMemo(() => createTreeIndex(filtered.rows), [filtered.rows]);
+  const typeName = (typeId: string) => typeTitle(catalogue.data, typeId);
+  /** The type title of a row (its tooltip, menu and accessible name); none for unclassified. */
+  const rowTypeTitle = (id?: string) => {
+    const row = allRows.documents.find((document) => document.id === id);
+    const type = row?.dangling
+      ? row.type
+      : row?.classification === 'registered'
+        ? row.type
+        : undefined;
+    return type ? typeName(type) : undefined;
+  };
   const focus = useTreeFocus(index);
   const inline = useInlineEntry({
     operations: operations.actions,
@@ -311,6 +338,33 @@ export function DocumentsExplorer({
           </Typography>
           {working && <Spinner size="sm" data-testid="documents-tree-busy" />}
         </div>
+        {(tree.documents.length > 0 || tree.dangling.length > 0) && (
+          <TreeFilterBar
+            filter={filter}
+            types={treeTypes(allRows)}
+            typeTitle={typeName}
+            showReset={!(filtering && filtered.matches === 0)}
+            onChange={setFilter}
+          />
+        )}
+        {filtering && filtered.hiddenMissing > 0 && (
+          // A filter never hides a missing file without saying so.
+          <InlineNote className="px-2">
+            {t('documents.tree.filter.hiddenMissing', { count: filtered.hiddenMissing })}
+          </InlineNote>
+        )}
+        {filtering && filtered.matches === 0 ? (
+          <EmptyState
+            icon="search"
+            title={t('documents.tree.filter.noResults')}
+            description={t('documents.tree.filter.noResultsDescription')}
+            actions={
+              <Button variant="secondary" onClick={() => setFilter(noTreeFilter)}>
+                {t('documents.tree.filter.clear')}
+              </Button>
+            }
+          />
+        ) : null}
         <DocumentTreeLevel
           parent=""
           top
@@ -320,6 +374,7 @@ export function DocumentsExplorer({
             catalogue: catalogue.data,
             active,
             locked: busy || unknown,
+            expandAll: filtering,
             closed,
             openedEmpty,
             entry: inline.entry,
@@ -344,6 +399,7 @@ export function DocumentsExplorer({
                 kind={kind}
                 path={path}
                 id={id}
+                typeTitle={rowTypeTitle(id)}
                 locked={busy || unknown}
                 noteId={noteId(kind, path)}
                 actions={nodeActions}

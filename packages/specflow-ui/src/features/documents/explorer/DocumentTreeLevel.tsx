@@ -9,7 +9,7 @@ import {
   treeRowClassName,
 } from '@nevo/ui';
 import { DocumentNode, FolderNode } from './DocumentNode';
-import { documentTrailingLabel } from '../catalogue/documentTypePolicy';
+import { documentRowGlyph, documentTrailingLabel } from '../catalogue/documentTypePolicy';
 import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
 
@@ -25,6 +25,8 @@ export interface DocumentTreeLevelContext {
   locked: boolean;
   /** Folders with content that the user collapsed. */
   closed: readonly string[];
+  /** A filter is active: every folder that holds a match is shown open. */
+  expandAll?: boolean;
   /** Empty folders the user opened. */
   openedEmpty: readonly string[];
   entry?: InlineEntry;
@@ -60,8 +62,28 @@ export function DocumentTreeLevel({
   // A top level without folders is a flat list: its files have no folder icon column to line up
   // with, so they start at the row edge instead of looking nested.
   const flat = top && !folders.length && !(showEntry && entry?.kind === 'folder');
+  // The specification's main file (the protected overview) leads its level, before the folders.
+  const main = documents.filter((doc) => !doc.dangling && doc.protected);
+  const rest = main.length ? documents.filter((doc) => !main.includes(doc)) : documents;
+  const documentRow = (doc: (typeof documents)[number]) => (
+    <DocumentNode
+      key={doc.id}
+      path={doc.path}
+      flat={flat}
+      glyph={doc.dangling ? undefined : documentRowGlyph(doc)}
+      main={!doc.dangling && doc.protected}
+      label={doc.dangling ? { kind: 'missing' } : documentTrailingLabel(doc, context.catalogue)}
+      selected={context.active !== undefined && context.active === doc.id}
+      disabled={context.locked}
+      buttonRef={context.register('doc:' + doc.id)}
+      editor={entry?.rename?.id === doc.id ? context.renderEntry(entry, flat) : undefined}
+      menu={context.renderMenu('document', doc.path, doc.id)}
+      onOpen={() => context.onOpen(doc.id)}
+    />
+  );
   return (
     <ul className={top ? treeRootClassName : treeBranchClassName} aria-labelledby={labelledBy}>
+      {main.map(documentRow)}
       {showEntry && entry && (
         <li key={entry.key} className={treeNodeClassName}>
           <div className={treeRowClassName}>{context.renderEntry(entry, flat)}</div>
@@ -73,7 +95,7 @@ export function DocumentTreeLevel({
         const empty = !level.folders.length && !level.documents.length && !creatingIn(folder.path);
         const expanded = empty
           ? context.openedEmpty.includes(folder.path)
-          : !context.closed.includes(folder.path);
+          : context.expandAll === true || !context.closed.includes(folder.path);
         const renaming = entry?.kind === 'folder' && entry.rename?.path === folder.path;
         return (
           <FolderNode
@@ -97,20 +119,7 @@ export function DocumentTreeLevel({
           </FolderNode>
         );
       })}
-      {documents.map((doc) => (
-        <DocumentNode
-          key={doc.id}
-          path={doc.path}
-          flat={flat}
-          label={doc.dangling ? { kind: 'missing' } : documentTrailingLabel(doc, context.catalogue)}
-          selected={context.active !== undefined && context.active === doc.id}
-          disabled={context.locked}
-          buttonRef={context.register('doc:' + doc.id)}
-          editor={entry?.rename?.id === doc.id ? context.renderEntry(entry, flat) : undefined}
-          menu={context.renderMenu('document', doc.path, doc.id)}
-          onOpen={() => context.onOpen(doc.id)}
-        />
-      ))}
+      {rest.map(documentRow)}
     </ul>
   );
 }

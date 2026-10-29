@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { typeTitle } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { ItemTabs, type ItemTab, type ItemTabsLabels } from '@nevo/ui';
 import { OutlineButton } from '../outline/OutlineButton';
 import { GuidanceButton } from '../guidance/GuidanceButton';
@@ -42,17 +44,24 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
   const { t } = useTranslation();
   const tabs = useDocumentTabs();
   const labels = useDocumentTabLabels();
+  const catalogue = useDocumentCatalogue();
   const items = useMemo<ItemTab[]>(
     () =>
       tabs.tabs.map((tab) => ({
         id: tab.id,
         label: tab.label,
-        description: tab.path,
+        // The type is in the tab's tooltip and in the Opened list (the switcher on touch).
+        description: tab.type
+          ? t('documents.tabs.typeAndPath', {
+              type: typeTitle(catalogue.data, tab.type),
+              path: tab.path,
+            })
+          : tab.path,
         icon: 'file',
         dirty: tab.dirty,
         state: tab.state,
       })),
-    [tabs.tabs],
+    [tabs.tabs, catalogue.data, t],
   );
   const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
   return (

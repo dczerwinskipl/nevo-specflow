@@ -64,17 +64,17 @@ files arrive unclassified), split view, history of a document.
 
 ## 2. Decisions (one design per screen)
 
-| #   | Decision                                                                                                                                                                                                                                                                                     | Rejected alternatives (one line each)                                                                                                                                                                                                             |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | A registered tree row **always shows its type as a quiet trailing label** (`login-flow.md · UX`, also `ux.md · UX` and `overview.md · Overview`); only a narrow row hides it as a whole.                                                                                                     | Type only when the name does not say it: read as inconsistent in use (the type appeared only after a rename). Type only in a tooltip: hover-only, unreachable on touch.                                                                           |
-| D2  | **Unclassified** rows carry no label (their menu offers **Assign type…** first; Expected documents names what is missing); **dangling** rows keep their place in the tree with the warning glyph and `File missing`. Neither is grouped separately.                                          | A separate "Unclassified" / "Missing" group: moves files away from their folder, the user no longer finds them where they are on disk.                                                                                                            |
-| D3  | The tree pane starts with what needs the user, and only that: Close-refusing **issues** (attention Alert), then **Expected documents** listing **unmet requirements only**, each with **Add**. When nothing is unmet and nothing blocks Close, the region does not exist.                    | A permanent completeness summary ("3 of 3", a progress bar, a green check): reads as approval or "done", which the product explicitly forbids. Showing met requirements too: noise for every built-in archetype (only `overview: 1`, always met). |
-| D4  | **New document** is a type chooser (radio list: title + "use when", grouped "Suggested by <archetype>" / "Other types" / "No type"), a pre-filled editable **File name**, and the type instructions behind a disclosure. One `Dialog` at every width (see the scroll gap in section 11).     | Inline file-name entry in the tree (today): cannot carry a type, which is what satisfies a requirement. A type select: hides "use when", the criterion for choosing. A wizard: two steps for one decision.                                        |
-| D5  | **Assign type** reuses the same chooser without "No type" and without a file name.                                                                                                                                                                                                           | Inline type select in the row: no room for "use when" in a 280-360 px tree.                                                                                                                                                                       |
-| D6  | **Create** shows archetypes as a **radio list** (title + `useWhen`), then for the selected one its instructions behind a disclosure and **Documents to create** as checkboxes (preselected ticked). The archetype `description` is not repeated: the checklist already says what it creates. | Keep the select (today): hides `useWhen`. Choice tiles (as the workspace place): need an icon per archetype the catalogue does not have, and three tall tiles of long text. Keep the workflow phases: the real backend has none.                  |
-| D7  | A tab shows **why it is read-only as one quiet line at the top of the document, on open**; the Edit action is not offered. The tree repeats the Specification-wide reason once above the tree.                                                                                               | A disabled Edit with a tooltip: hover-only, discovered late. Failing on Save: explicitly forbidden by the contract (UI impact 10).                                                                                                                |
-| D8  | **Save** stays the promoted primary action; while the save runs it reads `Saving…` and is disabled, the editor stays editable, the dirty mark clears only on the response. A refusal is an Alert at the top of the document that keeps the draft.                                            | A toast for the conflict: transient, while the draft is at risk. A modal: blocks copying the user's own text.                                                                                                                                     |
-| D9  | Image and binary files open as tabs like any document: image fit-to-area from `raw`, binary as a short file information list with **Download**. No Edit, no Save, never dirty.                                                                                                               | Opening binary files as a direct download: the user loses the tab context and the path.                                                                                                                                                           |
+| #   | Decision                                                                                                                                                                                                                                                                                                                               | Rejected alternatives (one line each)                                                                                                                                                                                                             |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | A tree row has **one glyph slot** (the file's format: document, image, other file; the single place where a type's own icon would go) and its **type in the row tooltip** (hover and keyboard focus), in its accessible name, in the row menu and in the open document's tab tooltip and Opened list (touch). No type text on the row. | A trailing type label: costs the name's room in a 260-360 px tree and hid itself on narrow rows anyway. Type only when the name does not say it: read as inconsistent in use.                                                                     |
+| D2  | **Unclassified** rows carry no label (their menu offers **Assign type…** first; Expected documents names what is missing); **dangling** rows keep their place in the tree with the warning glyph and `File missing`. Neither is grouped separately.                                                                                    | A separate "Unclassified" / "Missing" group: moves files away from their folder, the user no longer finds them where they are on disk.                                                                                                            |
+| D3  | The tree pane starts with what needs the user, and only that: Close-refusing **issues** (attention Alert), then **Expected documents** listing **unmet requirements only**, each with **Add**. When nothing is unmet and nothing blocks Close, the region does not exist.                                                              | A permanent completeness summary ("3 of 3", a progress bar, a green check): reads as approval or "done", which the product explicitly forbids. Showing met requirements too: noise for every built-in archetype (only `overview: 1`, always met). |
+| D4  | **New document** is a type chooser (radio list: title + "use when", grouped "Suggested by <archetype>" / "Other types" / "No type"), a pre-filled editable **File name**, and the type instructions behind a disclosure. One `Dialog` at every width (see the scroll gap in section 11).                                               | Inline file-name entry in the tree (today): cannot carry a type, which is what satisfies a requirement. A type select: hides "use when", the criterion for choosing. A wizard: two steps for one decision.                                        |
+| D5  | **Assign type** reuses the same chooser without "No type" and without a file name.                                                                                                                                                                                                                                                     | Inline type select in the row: no room for "use when" in a 280-360 px tree.                                                                                                                                                                       |
+| D6  | **Create** shows archetypes as a **radio list** (title + `useWhen`), then for the selected one its instructions behind a disclosure and **Documents to create** as checkboxes (preselected ticked). The archetype `description` is not repeated: the checklist already says what it creates.                                           | Keep the select (today): hides `useWhen`. Choice tiles (as the workspace place): need an icon per archetype the catalogue does not have, and three tall tiles of long text. Keep the workflow phases: the real backend has none.                  |
+| D7  | A tab shows **why it is read-only as one quiet line at the top of the document, on open**; the Edit action is not offered. The tree repeats the Specification-wide reason once above the tree.                                                                                                                                         | A disabled Edit with a tooltip: hover-only, discovered late. Failing on Save: explicitly forbidden by the contract (UI impact 10).                                                                                                                |
+| D8  | **Save** stays the promoted primary action; while the save runs it reads `Saving…` and is disabled, the editor stays editable, the dirty mark clears only on the response. A refusal is an Alert at the top of the document that keeps the draft.                                                                                      | A toast for the conflict: transient, while the draft is at risk. A modal: blocks copying the user's own text.                                                                                                                                     |
+| D9  | Image and binary files open as tabs like any document: image fit-to-area from `raw`, binary as a short file information list with **Download**. No Edit, no Save, never dirty.                                                                                                                                                         | Opening binary files as a direct download: the user loses the tab context and the path.                                                                                                                                                           |
 
 Tab labels keep today's rule (`documentTabs.ts`): the **file name**. The derived title
 (`DocumentContent.title`) is the document's heading and part of the tab tooltip; it never renames a tab.
@@ -116,38 +116,47 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
  Decisions   0 of 1               [+ Add]   Add only while capabilities.createFile is available
  ──────────────────────────────────        divider (only when the region above exists)
  SPECIFICATION DOCUMENTS            (o)   root section header (no chevron); small spinner while an operation runs long
+ [Search files                ] [filter]   search by name or path; type filter (multiple choice), only with 2+ types
+   overview.md                             main file first, slightly stronger name (no badge, no colour)
  v architecture
-     login-flow.md                    UX
-     sequence.png                   Note
+     login-flow.md                         tooltip: UX
+     sequence.png                          image glyph; tooltip: Note
  v notes
      meeting-2026-10-20.md
-     token-sample.bin
+     token-sample.bin                      other-file glyph
  ! backend.md               File missing   (warning glyph and label in attention tone)
-   behaviour.md                Behaviour
-   overview.md                  Overview
-   ux.md                              UX
+   behaviour.md                            tooltip: Behaviour
+   ux.md                                   tooltip: UX
  1 entry in the folder could not be read.  muted line (skipped-entry; not shown as a Close refusal)
 ```
 
-- **Wide (≥ 1080) and Compact (840-1079):** as above; Compact keeps the tree at 1/3. The trailing label
-  uses the existing trailing-label track of the row (today's "Required" slot). **The state label (File
-  missing) never hides: the file name truncates instead** (full name in the tooltip and Show path).
-  Only a type-title label (UX, Note) may hide below the row's `@3xs` width.
+- **Wide (≥ 1080) and Compact (840-1079):** as above; Compact keeps the tree at 1/3. **The state label
+  (File missing) never hides: the file name truncates instead** (full name in the tooltip and Show path).
 - **Narrow (< 840):** the tree page is the same column at full width; nothing moves into a drawer.
   Verified at 390 px: no horizontal overflow, labels visible.
 - **Ultra-wide:** unchanged; the tree stops at 360 px, the document gets the rest.
 
-Order is unchanged (folders A-Z, then files A-Z); state never reorders. Dangling entries are placed at
-their registered path.
+Order: the specification's main file (the protected `overview`) first, then folders A-Z, then files A-Z;
+state never reorders. Dangling entries are placed at their registered path.
+
+**Search and type filter.** Above the tree: a search by file name or path and, when the tree has at least
+two types, a multiple choice of types (with **No type** for unclassified files) behind one small filter
+button that shows how many are chosen. While a filter is on, the folders holding a match are open, a
+**Clear filters (n)** action is shown, and a missing file the filters hide is announced ("The filters hide
+1 missing file.") so a problem is never hidden silently. Nothing matching: the shared empty state with
+Clear filters. Expected documents and the Close issues above the tree are never filtered.
+
+**Rename refusal.** A refused name is shown at the field, over the rows below (the list does not shift),
+with the full text; the field keeps focus and the typed name.
 
 ### 3.3 Row grammar
 
-| Entry                     | Glyph                        | Name             | Trailing label (muted unless noted) | Row press                      | Row menu                                                           |
-| ------------------------- | ---------------------------- | ---------------- | ----------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
-| Registered                | `file` (images too)          | file name        | type title (`UX`)                   | open tab                       | Rename, Move, Delete                                               |
-| `overview.md` (protected) | `file`                       | file name        | type title (`Overview`)             | open tab                       | only the note with the `protected` reason (no dead disabled items) |
-| Unclassified              | as above                     | file name        | none                                | open tab                       | **Assign type…**, separator, Rename, Move, Delete                  |
-| Dangling                  | `triangle-alert` (attention) | file name, muted | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                                   |
+| Entry                     | Glyph                                  | Name                                | Trailing label (muted unless noted) | Row press                      | Row menu                                               |
+| ------------------------- | -------------------------------------- | ----------------------------------- | ----------------------------------- | ------------------------------ | ------------------------------------------------------ |
+| Registered                | format: `file`, `image`, `file-binary` | file name (type in the tooltip)     | none                                | open tab                       | **Type: UX** label, Rename, Move, Delete               |
+| `overview.md` (protected) | `file`                                 | file name, slightly stronger, first | none                                | open tab                       | only the note with the type and the `protected` reason |
+| Unclassified              | as above                               | file name                           | none                                | open tab                       | **Assign type…**, separator, Rename, Move, Delete      |
+| Dangling                  | `triangle-alert` (attention)           | file name, muted                    | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                       |
 
 Every item of a row menu has its icon (New document, New folder, Upload files, Assign type, Rename, Move,
 Delete, Remove registration). Other disabled items keep today's pattern: the menu note carries at most two
@@ -425,12 +434,12 @@ You can add, remove or classify documents later.             body-md secondary
 | Close-refusing issue                     | attention Alert at top                                 | -                                    | none (fix on disk)                                      |
 | Unclassified file                        | none (Assign type… in the row menu)                    | opens normally (edit if `editable`)  | Assign type… first in menu                              |
 | Dangling entry                           | warning glyph, `File missing`                          | missing tab with Remove registration | only Remove registration                                |
-| Overview                                 | no label                                               | normal                               | menu holds only the `protected` note                    |
+| Overview                                 | first row, slightly stronger name                      | normal                               | menu holds only the type and the `protected` note       |
 | Specification read-only                  | read-only line above tree; New/Upload disabled; no Add | read-only line in every text tab     | no Edit, no Save                                        |
 | Not editable file                        | -                                                      | read-only line `not-editable`        | no Edit                                                 |
 | Saving                                   | -                                                      | Save `Saving…` disabled              | Discard disabled                                        |
 | Save refused                             | -                                                      | Alert per 5.2, draft kept            | per 5.2                                                 |
-| Image / binary                           | `file` glyph                                           | viewer / info + Download             | Download promoted; no Edit/Save                         |
+| Image / binary                           | `image` / `file-binary` glyph                          | viewer / info + Download             | Download promoted; no Edit/Save                         |
 | Tree truncated                           | muted line after the last row                          | -                                    | -                                                       |
 | Skipped entries                          | neutral muted line after the last row                  | -                                    | -                                                       |
 | Revision conflict on save                | -                                                      | Alert, draft kept                    | Save unavailable until Copy my version / Load from disk |
@@ -442,8 +451,9 @@ the Create form order.
 
 ## 8. Interaction and accessibility
 
-- **Tree rows:** the trailing label is part of the row button's text, so the accessible name reads
-  "login-flow.md UX" / "backend.md File missing". The warning glyph is decorative.
+- **Tree rows:** the type (visually hidden) and the state label are part of the row button's text, so the
+  accessible name reads "login-flow.md UX" / "backend.md File missing". The row tooltip opens on hover and
+  on keyboard focus. The glyphs are decorative.
 - **Expected documents:** a `section` labelled by its heading; each Add has its own accessible name.
   Not a live region (the tree refetch announces through the operation's own message).
 - **Close issues Alert:** static (no `role="alert"`): it is present on load, not caused by an action.

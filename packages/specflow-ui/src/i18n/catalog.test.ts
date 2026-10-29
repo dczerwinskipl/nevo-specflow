@@ -65,6 +65,7 @@ describe('message catalogues', () => {
     const sameInBoth = new Set([
       'create.workspace.settings.unavailableReason',
       'documents.tree.skippedItem',
+      'documents.tabs.typeAndPath',
       'common.pullRequestNumber',
       'playground.title',
       'sessions.demo.writer',

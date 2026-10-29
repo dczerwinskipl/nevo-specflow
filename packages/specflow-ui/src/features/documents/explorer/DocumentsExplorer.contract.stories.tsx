@@ -119,12 +119,12 @@ export const NoRootRowAndNaturalOrder: Story = {
       // The name of each row (its type label follows it in the button).
       (li) => li.querySelector('button .truncate')!.textContent,
     );
-    // Folders A-Z, then files A-Z; the required file stays among its siblings by name.
+    // The main file (the protected one) leads, then folders A-Z, then files A-Z.
     await expect(topLevel).toEqual([
+      'specification.md',
       'architektura',
       'notatki',
       'alfa.txt',
-      'specification.md',
       'zeta.md',
     ]);
     // Top-level rows start at the container edge, and no row draws a guide line.
@@ -166,13 +166,20 @@ export const SingleLineRowsWithoutAProtectedMarker: Story = {
   },
 };
 
-export const TooltipOnlyForClippedNames: Story = {
+/**
+ * The row's tooltip (hover and keyboard focus) says the document's type; a clipped name is in it
+ * too. The type is not repeated as text on the row.
+ */
+export const TooltipShowsTheTypeAndAClippedName: Story = {
   play: async ({ canvas, userEvent }) => {
     const longName = adr.split('/').at(-1)!;
-    await userEvent.hover(await canvas.findByRole('button', { name: /^zeta\.md/ }));
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    await expect(within(document.body).queryByRole('tooltip')).not.toBeInTheDocument();
-    await userEvent.unhover(canvas.getByRole('button', { name: /^zeta\.md/ }));
+    const zeta = await canvas.findByRole('button', { name: /^zeta\.md/ });
+    zeta.focus();
+    const short = await within(document.body).findByRole('tooltip', {}, { timeout: 3000 });
+    await expect(short).toHaveTextContent('zeta');
+    await expect(short).not.toHaveTextContent('zeta.md');
+    zeta.blur();
+    await waitFor(() => expect(within(document.body).queryByRole('tooltip')).toBeNull());
     await userEvent.hover(
       canvas.getByRole('button', { name: (name) => name.startsWith(longName) }),
     );
@@ -383,12 +390,14 @@ export const InlineCreateValidation: Story = {
     // Invalid characters: Polish message, value and focus kept, the Engine is not called.
     const input = await startFile(canvas, userEvent);
     await userEvent.type(input, 'a/b{Enter}');
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+    await expect(await within(document.body).findByRole('alert')).toHaveTextContent(
       'Nazwa nie może zawierać znaków \\ / : * ? " < > |',
     );
     await expect(input).toHaveAttribute('aria-invalid', 'true');
     await expect(input).toHaveValue('a/b');
-    await expect(input.getAttribute('aria-describedby')).toBe(canvas.getByRole('alert').id);
+    await expect(input.getAttribute('aria-describedby')).toBe(
+      within(document.body).getByRole('alert').id,
+    );
     await expect(args.onAdd).not.toHaveBeenCalled();
     // Enter commits a valid name.
     await userEvent.clear(input);
@@ -455,7 +464,9 @@ export const FailedCreateKeepsTheTypedName: Story = {
   play: async ({ canvas, userEvent }) => {
     const input = await startFile(canvas, userEvent);
     await userEvent.type(input, 'duplicate{Enter}');
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Ta ścieżka już istnieje');
+    await expect(await within(document.body).findByRole('alert')).toHaveTextContent(
+      'Ta ścieżka już istnieje',
+    );
     await expect(input).toHaveValue('duplicate');
     await expect(input).toBeEnabled();
     await expect(input).toHaveFocus();

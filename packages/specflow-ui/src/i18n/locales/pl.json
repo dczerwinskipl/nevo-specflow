@@ -1193,7 +1193,29 @@
       "skipped_few": "Nie udało się odczytać {{count}} pozycji w folderze.",
       "skipped_many": "Nie udało się odczytać {{count}} pozycji w folderze.",
       "skipped_other": "Nie udało się odczytać {{count}} pozycji w folderze.",
-      "editingUnavailable": "Edycja jest niedostępna: {{reason}}"
+      "editingUnavailable": "Edycja jest niedostępna: {{reason}}",
+      "typeOf": "Typ: {{type}}",
+      "filter": {
+        "search": "Szukaj plików",
+        "clearSearch": "Wyczyść wyszukiwanie",
+        "types": "Filtruj według typu",
+        "typesActive_one": "Filtruj według typu: wybrano {{count}}",
+        "typesActive_few": "Filtruj według typu: wybrano {{count}}",
+        "typesActive_many": "Filtruj według typu: wybrano {{count}}",
+        "typesActive_other": "Filtruj według typu: wybrano {{count}}",
+        "noType": "Bez typu",
+        "reset_one": "Wyczyść filtry ({{count}})",
+        "reset_few": "Wyczyść filtry ({{count}})",
+        "reset_many": "Wyczyść filtry ({{count}})",
+        "reset_other": "Wyczyść filtry ({{count}})",
+        "clear": "Wyczyść filtry",
+        "noResults": "Brak pasujących plików",
+        "noResultsDescription": "Zmień wyszukiwanie lub wybrane typy.",
+        "hiddenMissing_one": "Filtry ukrywają {{count}} brakujący plik.",
+        "hiddenMissing_few": "Filtry ukrywają {{count}} brakujące pliki.",
+        "hiddenMissing_many": "Filtry ukrywają {{count}} brakujących plików.",
+        "hiddenMissing_other": "Filtry ukrywają {{count}} brakującego pliku."
+      }
     },
     "tabs": {
       "tablist": "Otwarte dokumenty",
@@ -1213,7 +1235,8 @@
       "noItem": "Brak dokumentu",
       "closeFailed": "Nie udało się zamknąć dokumentu. Spróbuj ponownie.",
       "missingHint": "Tego dokumentu nie ma już w drzewie. Szkic zostaje do zamknięcia karty.",
-      "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
+      "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument.",
+      "typeAndPath": "{{type}} · {{path}}"
     },
     "empty": {
       "heading": "Brak otwartego dokumentu",

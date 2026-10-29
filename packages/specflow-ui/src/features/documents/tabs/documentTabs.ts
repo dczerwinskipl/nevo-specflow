@@ -4,6 +4,8 @@ export interface DocumentTab {
   label: string;
   /** The full path: tooltip and the Opened menu. */
   path: string;
+  /** The document's type id (registered documents and missing ones), for the tooltip and the Opened menu. */
+  type?: string;
   dirty: boolean;
   state: 'ready' | 'loading' | 'missing';
 }
@@ -32,9 +34,9 @@ export function documentTabs(options: {
   ids: readonly string[];
   tree:
     | {
-        documents: readonly { id: string; path: string }[];
+        documents: readonly { id: string; path: string; type?: string }[];
         /** Registry entries whose file is missing: their tab is missing but keeps the name. */
-        dangling?: readonly { id: string; path: string }[];
+        dangling?: readonly { id: string; path: string; type?: string }[];
       }
     | undefined;
   dirty: readonly string[];
@@ -49,10 +51,12 @@ export function documentTabs(options: {
     const dangling = tree?.dangling?.find((document) => document.id === id);
     const missing = unavailable.includes(id) || (tree !== undefined && !entry);
     const path = entry?.path ?? dangling?.path ?? knownPaths[id] ?? id;
+    const type = entry?.type ?? dangling?.type;
     return {
       id,
       label: fileNameOf(path),
       path,
+      ...(type ? { type } : {}),
       dirty: dirty.includes(id),
       state: missing ? 'missing' : tree ? 'ready' : 'loading',
     };

@@ -426,7 +426,10 @@ export const InlineErrorsAndCancellation: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Nazwa nowego folderu' })).toHaveValue(
       'bad-name',
     );
-    await expect(canvas.getByRole('alert')).toBeVisible();
+    // The refusal is said at the field (over the rows below), once the Runtime answered.
+    await waitFor(() => expect(within(document.body).getByRole('alert')).toHaveTextContent(/\S/));
+    // It fades in: wait for the shown state, not a single read.
+    await waitFor(() => expect(within(document.body).getByRole('alert')).toBeVisible());
     await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('button', { name: 'Akcje: specification.md' }));
     // The protected overview offers no dead items: its "..." is the note that says why.
@@ -571,7 +574,7 @@ export const CaseOnlyRenameIsExplainedInTheField: Story = {
     await userEvent.clear(name);
     await userEvent.type(name, 'Decisions.md');
     await userEvent.keyboard('{Enter}');
-    const alert = await canvas.findByRole('alert');
+    const alert = await within(document.body).findByRole('alert');
     await expect(alert).toHaveTextContent(
       'Zmiana samej wielkości liter nie jest obsługiwana na tym systemie plików.',
     );
@@ -653,11 +656,11 @@ async function verifyNestedExplorer(
     await expect(getComputedStyle(rowOf(name), '::before').content).toBe('none');
     await expect(getComputedStyle(rowOf(name), '::after').content).toBe('none');
   }
-  // Natural order: folders A-Z first, then files; the required file is not pinned.
+  // The main file (protected) leads, then folders A-Z, then files.
   const top = [...canvas.getAllByRole('list')[0]!.children].map(
     (li) => li.querySelector('button .truncate')!.textContent,
   );
-  await expect(top).toEqual(['empty-folder', 'guides', 'specification.md']);
+  await expect(top).toEqual(['specification.md', 'empty-folder', 'guides']);
   // Chevron + folder icon + name columns align across levels.
   await expect(Math.abs(iconLeft(/^specification\.md/) - iconLeft(/^guides$/, 1))).toBeLessThan(1);
   await expect(Math.abs(iconLeft(/^overview\.md/) - iconLeft(/^onboarding$/, 1))).toBeLessThan(1);

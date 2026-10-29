@@ -18,7 +18,6 @@ import {
   treeAttentionGlyphClassName,
   treeAttentionStateLabelClassName,
   treeStateLabelClassName,
-  treeTrailingLabelClassName,
 } from './treeRecipes';
 
 describe('compact tree geometry', () => {
@@ -129,13 +128,7 @@ describe('tree row actions and labels', () => {
     expect(treeItemLabelClassName).not.toContain('truncate');
   });
 
-  it('hides a trailing label on narrow rows but never a state label', () => {
-    expect(treeTrailingLabelClassName).toContain('text-content-muted');
-    // Shown in full or visually hidden (never an ellipsis), by the row's own width.
-    expect(treeTrailingLabelClassName).toContain('shrink-0');
-    expect(treeTrailingLabelClassName).toContain('whitespace-nowrap');
-    expect(treeTrailingLabelClassName).toContain('@max-3xs/tree-row:sr-only');
-    expect(treeTrailingLabelClassName).not.toMatch(/truncate|text-ellipsis/);
+  it('never hides a state label', () => {
     for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
       expect(label).toContain('shrink-0');
       expect(label).toContain('whitespace-nowrap');

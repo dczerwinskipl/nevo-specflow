@@ -49,6 +49,9 @@ import {
   ZoomIn,
   Link,
   Undo2,
+  Image,
+  FileDigit,
+  ListFilter,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -111,6 +114,11 @@ export const iconRegistry = {
   'actual-size': ZoomIn,
   'show-path': Link,
   undo: Undo2,
+  // Content formats of a file (an image, a file that is not text).
+  image: Image,
+  'file-binary': FileDigit,
+  // Narrows a list to chosen values.
+  filter: ListFilter,
 } satisfies Record<IconName, LucideIcon>;
 
 export const iconSizeClasses = {

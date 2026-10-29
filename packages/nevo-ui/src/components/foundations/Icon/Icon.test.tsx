@@ -44,6 +44,9 @@ describe('Icon', () => {
       'actual-size',
       'show-path',
       'undo',
+      'image',
+      'file-binary',
+      'filter',
     ] as const;
     for (const name of actions) {
       expect(renderToStaticMarkup(<Icon name={name} />)).toContain('<svg');

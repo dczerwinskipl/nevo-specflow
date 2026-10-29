@@ -18,7 +18,6 @@ import {
   treeRowClassName,
   treeSectionHeaderClassName,
   treeStateLabelClassName,
-  treeTrailingLabelClassName,
 } from './treeRecipes';
 
 type TreeEntry =
@@ -28,8 +27,8 @@ type TreeEntry =
       name: string;
       required?: boolean;
       disabled?: boolean;
-      /** Trailing label: a hideable quiet label, a state label or an attention state label. */
-      trailing?: { text: string; kind: 'label' | 'state' | 'attention' };
+      /** Trailing label: a state label or an attention state label (they never hide). */
+      trailing?: { text: string; kind: 'state' | 'attention' };
     };
 
 const longName = 'adr-001-deterministyczna-admisja-zadan-i-granice-wykonania-agentow.md';
@@ -119,11 +118,9 @@ function TreeLevel({
                   {entry.trailing && (
                     <span
                       className={
-                        entry.trailing.kind === 'label'
-                          ? treeTrailingLabelClassName
-                          : entry.trailing.kind === 'state'
-                            ? treeStateLabelClassName
-                            : treeAttentionStateLabelClassName
+                        entry.trailing.kind === 'state'
+                          ? treeStateLabelClassName
+                          : treeAttentionStateLabelClassName
                       }
                     >
                       {entry.trailing.text}
@@ -184,13 +181,13 @@ function TreeLevel({
   );
 }
 
-/** Trailing labels: a type label that may hide on narrow rows, and state labels that never hide. */
+/** Trailing state labels: they never hide, the name truncates instead. */
 const labelledFixture: TreeEntry[] = [
   {
     kind: 'folder',
     name: 'notes',
     children: [
-      { kind: 'file', name: 'login-flow.md', trailing: { text: 'UX', kind: 'label' } },
+      { kind: 'file', name: 'login-flow.md' },
       {
         kind: 'file',
         name: 'meeting-2026-10-20-with-the-identity-team.md',
@@ -260,7 +257,7 @@ export const SelectedNestedFile: Story = {
 export const SelectedRequiredFile: Story = { args: { selected: ['specification.md'] } };
 /** An opened empty folder shows the quiet hint, not a tree item. */
 export const EmptyFolderOpened: Story = { args: { opened: ['open:notatki'] } };
-/** Trailing labels: the type label hides on a narrow row, the state labels never do. */
+/** State labels never hide: the name truncates instead. */
 export const TrailingLabels: Story = { args: { entries: labelledFixture } };
 export const TrailingLabelsNarrow: Story = {
   args: { entries: labelledFixture, width: 'w-[15rem]' },
@@ -283,35 +280,9 @@ export const TrailingLabelsNarrow: Story = {
       readOnly.getBoundingClientRect().right > stateRow.getBoundingClientRect().right
     )
       throw new Error('A long name truncates so the state label stays inside the row.');
-    // The type label is never shortened: on this narrow row it is visually hidden but named.
-    const typed = row('notes/login-flow.md');
-    const ux = Array.from(typed.querySelectorAll('span')).find(
-      (span) => span.textContent === 'UX',
-    )!;
-    // Visually hidden (`sr-only`: absolutely positioned and clipped), never an ellipsis.
-    if (
-      getComputedStyle(ux).position !== 'absolute' ||
-      getComputedStyle(ux).textOverflow === 'ellipsis'
-    )
-      throw new Error('A narrow row hides the type label instead of shortening it.');
   },
 };
 
-/** On a wide row the type label is shown in full, never with an ellipsis. */
-export const TrailingLabelsWideShowsTheFullType: Story = {
-  args: { entries: labelledFixture, width: 'w-[28rem]' },
-  tags: ['contract'],
-  play: async ({ canvasElement }) => {
-    const typed = canvasElement.querySelector<HTMLElement>(
-      '[data-tree-item="notes/login-flow.md"]',
-    )!;
-    const ux = Array.from(typed.querySelectorAll('span')).find(
-      (span) => span.textContent === 'UX',
-    )!;
-    if (getComputedStyle(ux).position === 'absolute' || ux.scrollWidth > ux.clientWidth + 1)
-      throw new Error('A wide row shows the whole type label.');
-  },
-};
 /** The open (selected) missing row keeps the attention tone on its warning glyph. */
 export const SelectedMissingRowKeepsItsWarning: Story = {
   args: { entries: labelledFixture, selected: ['backend.md'] },
@@ -328,9 +299,9 @@ export const SelectedMissingRowKeepsItsWarning: Story = {
 };
 /** Files only: the root section header names the tree and the files are not indented. */
 const flatFixture: TreeEntry[] = [
-  { kind: 'file', name: 'behaviour.md', trailing: { text: 'Behaviour', kind: 'label' } },
-  { kind: 'file', name: 'overview.md', trailing: { text: 'Overview', kind: 'label' } },
-  { kind: 'file', name: 'ux.md', trailing: { text: 'UX', kind: 'label' } },
+  { kind: 'file', name: 'behaviour.md' },
+  { kind: 'file', name: 'overview.md' },
+  { kind: 'file', name: 'ux.md' },
 ];
 export const FlatWithSectionHeader: Story = {
   args: { entries: flatFixture, header: 'Project files' },

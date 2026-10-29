@@ -140,17 +140,6 @@ export const treeRequiredMarkerClassName =
   'inline-flex shrink-0 self-center text-content-muted @3xs/tree-row:hidden';
 
 /**
- * Quiet trailing label of a row item (for example the item's type), on the right before the row
- * action. It is shown in full or not at all: on a row narrower than `@3xs` (16rem, the same
- * threshold as the required marker: room for the glyph, about 16 characters of name and a short
- * label) it is visually hidden, so the name keeps its room. A Primary pane of a wide window keeps
- * it visible on its top two levels. It is never shortened and always stays in the item's accessible
- * name. One rule at every pane width, decided by the row's own width (`@container/tree-row`).
- */
-export const treeTrailingLabelClassName =
-  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-3xs/tree-row:sr-only';
-
-/**
  * Trailing label of a row STATE the reader must always see (for example "Read-only"): it never
  * hides, the name truncates instead. Quiet muted text, no pill.
  */

@@ -33,7 +33,6 @@ export {
   treeRequiredMarkerClassName,
   treeRowActionClassName,
   treeRowClassName,
-  treeTrailingLabelClassName,
   treeStateLabelClassName,
   treeAttentionStateLabelClassName,
   treeAttentionGlyphClassName,

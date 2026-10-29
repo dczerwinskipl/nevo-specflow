@@ -48,6 +48,9 @@ export const iconNames = [
   'actual-size',
   'show-path',
   'undo',
+  'image',
+  'file-binary',
+  'filter',
 ] as const;
 
 /** `lg` and `xl` are illustration sizes (empty screens), drawn with a lighter stroke. */

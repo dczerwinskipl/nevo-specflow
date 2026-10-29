@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DATA_KEY } from '../core/model';
-import type { DesignSystemIR, DesignResources } from '../core/model';
+import { DATA_KEY, type DesignSystemIR, type DesignResources } from '../core/model';
 import type { ResourceCatalogDefinition } from '@nevo/figma-core/authoring';
 import { repairSetIfNeeded, upsertTextStyleCatalog } from './resourceComponents';
 

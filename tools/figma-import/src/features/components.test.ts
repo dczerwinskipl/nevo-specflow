@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type {
-  ComponentCaptureIR,
-  FigmaComponentDefinition,
-  DesignSystemIR,
-  DesignResources,
+import {
+  DATA_KEY,
+  type ComponentCaptureIR,
+  type FigmaComponentDefinition,
+  type DesignSystemIR,
+  type DesignResources,
 } from '../core/model';
-import { DATA_KEY } from '../core/model';
 import { configureComponent, reconcileNestedSlotOverrides } from './componentSlots';
 import { reconcileComponentNestedSlots, upsertComponentSet } from './components';
 

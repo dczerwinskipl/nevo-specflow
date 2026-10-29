@@ -117,6 +117,7 @@ export function packageConfig({
       languageOptions: { ecmaVersion: 2024, sourceType: 'module' },
       rules: {
         'no-console': 'off',
+        eqeqeq: ['error', 'always', { null: 'ignore' }],
         '@typescript-eslint/no-empty-object-type': [
           'error',
           { allowInterfaces: 'with-single-extends' },

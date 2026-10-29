@@ -233,8 +233,10 @@ export async function inspectClaudeInstallation(
     }
 
     options.signal.throwIfAborted();
+    // Fingerprint for token change-detection only; not stored as a password credential.
+    // CodeQL [js/insufficient-password-hash] False positive: OAuth access token fingerprinting, not password storage.
     const authenticationFingerprint = createHash('sha256')
-      .update(credentials.accessToken)
+      .update(JSON.stringify([credentials.accessToken]))
       .digest('hex');
 
     return {

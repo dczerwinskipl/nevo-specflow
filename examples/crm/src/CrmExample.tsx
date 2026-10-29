@@ -15,17 +15,6 @@ import {
   AppWorkspaceBody,
   AppWorkspaceProvider,
   APP_NAVIGATION_INLINE_PADDING,
-  WorkspaceHeader,
-  WorkspaceHeaderIdentity,
-  useAppNavigation,
-  useSecondaryNavigation,
-  useSecondaryStack,
-  useSecondaryLeaveGuard,
-  defineSecondaryStack,
-  type SecondaryData,
-  type SecondaryScreenProps,
-} from '@nevo/ui';
-import {
   Badge,
   Button,
   DataTable,
@@ -40,13 +29,22 @@ import {
   TextArea,
   TextInput,
   Typography,
+  WorkspaceHeader,
+  WorkspaceHeaderIdentity,
+  cn,
+  defineSecondaryStack,
+  useAppNavigation,
+  useSecondaryLeaveGuard,
+  useSecondaryNavigation,
+  useSecondaryStack,
   type DataTableColumn,
   type NavigationAdapter,
   type NavigationNode,
+  type SecondaryData,
+  type SecondaryScreenProps,
   type StatusTone,
 } from '@nevo/ui';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
-import { cn } from '@nevo/ui';
 
 type CustomerStatus = 'Active' | 'Lead' | 'At risk';
 type CustomerSegment = 'Enterprise' | 'Growth' | 'Startup';

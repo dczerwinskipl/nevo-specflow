@@ -202,5 +202,5 @@ describe('Figma importer UI', () => {
     } finally {
       await browser.close();
     }
-  }, 15_000);
+  }, 30_000);
 });

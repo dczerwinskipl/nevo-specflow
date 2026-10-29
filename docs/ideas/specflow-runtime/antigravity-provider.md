@@ -223,6 +223,21 @@ The owner confirmed on 2026-10-29 that `agy` is already authenticated in the
 terminal. Missing metadata from the earlier inspection must not be interpreted
 as a need to sign in again. Resolve the actual CLI account source without exporting
 credentials, paid inference or an independent token refresh authority.
+
+Manual discovery on that installation used the documented CLI-local `/usage`
+report in a private configuration, outside test runners and CI. Both bounded
+invocations reported zero Turns and zero tokens, exited naturally and had positive
+stopped-tree evidence. No model prompt, reusable credential export or raw report
+persistence occurred. The report exposes quotas, not stable account/profile
+identity. It does not resolve the account-binding gate and must not be treated
+as proof of native model execution, semantic continuation or permissions.
+
+The exact missing account contract is a read-only authenticated principal/profile
+identifier available before dispatch, stable across token rotation, changed by
+account switching, and tied to the same native invocation. Quota bucket IDs and
+installation UUID do not satisfy it. The credential source may differ from the
+metadata-visible source in the Runtime process; do not conclude the user is logged
+out or silently reuse an old account scope.
 The existing Session driver, process boundary, Engine admission and SQLite
 lifecycle remain the owners; this feature does not introduce competing owners.
 

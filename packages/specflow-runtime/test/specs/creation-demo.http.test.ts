@@ -3,6 +3,7 @@ import type {
   DocumentErrorBody,
   DocumentOperationResult,
   DocumentTree,
+  SaveResult,
 } from '@nevo/specflow-contracts/documents';
 import type { CurrentSpecsOverview } from '@nevo/specflow-contracts/specs/overview';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
@@ -128,7 +129,7 @@ describe('Temporary Specification creation HTTP boundary', () => {
       const accepted = responses.find((response) => response.statusCode === 200)!;
       const saved = await read(app, target.specId, target.documentId);
       expect(saved.revision).not.toBe(revision);
-      expect(saved.revision).toBe(accepted.json<{ revision: string }>().revision);
+      expect(saved.revision).toBe(accepted.json<SaveResult>().document.revision);
       expect(saved.content).toBe(responses[0]?.statusCode === 200 ? '# First' : '# Second');
     }
   });
@@ -432,7 +433,7 @@ describe('Nested document collection HTTP boundary', () => {
     expect(folder.statusCode).toBe(200);
     expect(folder.json<DocumentOperationResult>()).toMatchObject({
       operationId: op(60),
-      committed: true,
+      commit: { state: 'committed' },
       documents: [],
     });
     expect(folder.json<DocumentOperationResult>().folders).toContain('architecture/decisions');

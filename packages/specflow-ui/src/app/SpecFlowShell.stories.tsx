@@ -1104,9 +1104,16 @@ export const FigmaCaptureContract: Story = {
     if (!navigation) throw new Error('Desktop application shell navigation must be present.');
     const visibleBottomGap =
       navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
-    if (visibleBottomGap < 14 || visibleBottomGap > 18) {
+    // The shell footer's own padding (one token for every bottom bar of the shell, 10px).
+    const footerPadding =
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          '--spacing-shell-footer-padding',
+        ),
+      ) * Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    if (Math.abs(visibleBottomGap - footerPadding) > 2) {
       throw new Error(
-        `Desktop account trigger should retain the compact 16px bottom gap; received ${visibleBottomGap}px.`,
+        `Desktop account trigger should keep the shell footer padding (${footerPadding}px) below it; received ${visibleBottomGap}px.`,
       );
     }
 

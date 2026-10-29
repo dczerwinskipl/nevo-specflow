@@ -419,7 +419,8 @@ export const DeferredFailureKeepsReadingPosition: Story = {
 export const OversizeFeedbackInShortViewport: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
-    await settle(390, 210);
+    // Short enough that the feedback is taller than the form's view above the 56px pinned footer.
+    await settle(390, 180);
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
@@ -440,10 +441,10 @@ export const OversizeFeedbackInShortViewport: Story = {
         scroller.getBoundingClientRect().top,
       ),
     );
-    await shot('oversize-feedback-start', 390, 210);
+    await shot('oversize-feedback-start', 390, 180);
     submit.scrollIntoView({ block: 'end' });
     await frame();
-    await expect(submit.getBoundingClientRect().bottom).toBeLessThanOrEqual(210);
-    await shot('oversize-feedback-retry', 390, 210);
+    await expect(submit.getBoundingClientRect().bottom).toBeLessThanOrEqual(180);
+    await shot('oversize-feedback-retry', 390, 180);
   },
 };

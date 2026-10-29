@@ -152,14 +152,15 @@ description: Operational steps for running or recovering a system.
 useWhen: The change adds something that operators must run or recover.
 instructions: List preconditions, numbered steps and the expected result of each step.
 defaultFilename: runbook.md
-icon: list-checks # optional
+icon: list-ordered # optional
 ```
 
 `icon` (optional) names an icon of the Design System registry (`nevo-ui`), which the UI owns. The
 Engine checks only its shape: kebab-case (`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`), at most 64 characters. A
 name the registry does not know is not an error; the UI shows its default icon. The shipped types use
-`overview` `info`, `architecture` `workflow`, `backend` `database`, `behaviour` `list-checks`,
-`decisions` `circle-check`, `research` `file-search`, `user-story` `users`, `ux` `eye`; `note` has none.
+`overview` `book-open`, `architecture` `network`, `backend` `server`, `behaviour` `list-ordered`,
+`decisions` `file-check`, `research` `file-search`, `user-story` `book-user`, `ux` `panels-top-left`; `note` has
+none.
 
 ```yaml
 # .nevo/definitions/specification-archetype/operations-change.yaml

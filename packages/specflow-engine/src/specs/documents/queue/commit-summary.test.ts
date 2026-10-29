@@ -257,11 +257,45 @@ describe('the message of a document commit', () => {
         many,
       ),
     );
-    expect(subject).toBe(`spec(documents): delete 30 documents from ${TEST_SLUG}`);
+    // A folder delete names the folder; its files are listed in the body.
+    expect(subject).toBe(`spec(documents): delete folder bulk from ${TEST_SLUG}`);
     const lines = body.split(String.fromCharCode(10));
     expect(lines).toHaveLength(DOCUMENT_COMMIT_BODY_LINES_MAX + 1);
-    expect(lines[0]).toBe('delete bulk/n00.md');
-    expect(lines.at(-1)).toBe('… and 10 more');
+    expect(lines[0]).toBe('delete folder bulk');
+    expect(lines[1]).toBe('delete bulk/n00.md');
+    expect(lines.at(-1)).toBe('… and 11 more');
+  });
+
+  it('names an empty folder it deletes (only the registry changes)', () => {
+    const withEmpty = buildSnapshot({ folders: ['drafts/later'] });
+    const plan = planOf(
+      {
+        action: 'delete',
+        target: { kind: 'folder', path: 'drafts/later' },
+        expectedRevision: 'rev:drafts/later',
+      },
+      withEmpty,
+    );
+    expect(plan.removedFolder).toBe('drafts/later');
+    expect(messageOf(plan)).toEqual({
+      subject: `spec(documents): delete folder drafts/later from ${TEST_SLUG}`,
+      body: 'delete folder drafts/later',
+    });
+    // A long folder name is shortened within the subject bound.
+    const long = 'a-very-long-folder-name-that-would-not-fit-into-one-commit-subject-line';
+    const withLong = buildSnapshot({ folders: [long] });
+    const { subject } = messageOf(
+      planOf(
+        {
+          action: 'delete',
+          target: { kind: 'folder', path: long },
+          expectedRevision: 'rev:' + long,
+        },
+        withLong,
+      ),
+    );
+    expect(Array.from(subject).length).toBeLessThanOrEqual(DOCUMENT_COMMIT_SUBJECT_MAX);
+    expect(subject.startsWith('spec(documents): delete folder a-very-long')).toBe(true);
   });
 });
 

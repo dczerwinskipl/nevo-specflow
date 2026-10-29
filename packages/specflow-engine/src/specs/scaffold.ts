@@ -49,6 +49,8 @@ export interface SpecificationScaffoldInput {
   readonly goal?: string;
   /** Explicit, already validated slug; omitted: derived from the title. */
   readonly slug?: string;
+  /** The human key the Create allocated (`spec-key.ts`); omitted: the manifest has none. */
+  readonly key?: string;
   /** Catalogue archetype id. There is no default: every caller names the archetype. */
   readonly archetypeId: string;
   /** Template ids of the optional (suggested) documents to scaffold. */
@@ -372,6 +374,7 @@ function buildManifest(
   return {
     specId: input.specId,
     slug: parts.slug,
+    ...(input.key !== undefined ? { key: input.key } : {}),
     title: parts.title,
     archetype: {
       id: archetype.id,

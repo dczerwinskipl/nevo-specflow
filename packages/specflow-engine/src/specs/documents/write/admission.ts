@@ -15,6 +15,7 @@ import type { DocumentReadOptions } from '../read-options';
 import { folderRevisionOf } from './folder-revision';
 import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
 import { findManifestBaseline, assertManifestNotDirty } from './manifest-dirty';
+import { nodeDocumentFileOps } from './file-effects';
 import { assertPlanFitsWindows, type WindowsPathBoundOptions } from './path-bound';
 import { planRemovesAnAliasedEntry } from './physical-aliases';
 import { readSpecificationSnapshot, type SpecificationSnapshot } from './snapshot';
@@ -94,7 +95,12 @@ export async function admitDocumentChange(
   // The file system, not the platform, decides whether a removed path is another planned path (a
   // case-only rename on a volume that ignores case): refused before any journal or file exists.
   const specDir = join(loaded.workspaceRoot, ...result.plan.directory.split('/'));
-  if (await planRemovesAnAliasedEntry(options.read?.fs ?? nodeVerifiedFs, specDir, result.plan)) {
+  const verified = options.read?.fs ?? nodeVerifiedFs;
+  const probe = {
+    lstat: (path: string) => verified.lstat(path),
+    list: (path: string) => nodeDocumentFileOps.list(path),
+  };
+  if (await planRemovesAnAliasedEntry(probe, specDir, result.plan)) {
     throw documentChangeError('case-only-rename', CASE_ONLY_RENAME_MESSAGE);
   }
 

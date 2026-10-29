@@ -141,6 +141,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         request.slug,
         request.shortId,
         request.branchOverride,
+        request.key,
       );
       const targetPath =
         request.targetPath ?? join(effectiveWorktreesRoot(engine.context, policy), request.slug);

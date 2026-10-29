@@ -61,6 +61,8 @@ export interface Draft {
   readonly templates: PlannedTemplate[];
   /** The registry after the operation; `undefined` leaves the manifest as it is. */
   registry?: { documents: ManifestDocument[]; folders: string[] };
+  /** A folder delete: the folder it removes. */
+  removedFolder?: string;
 }
 
 export function newDraft(): Draft {
@@ -246,6 +248,7 @@ export function finishPlan(
     allocatedIds: draft.allocatedIds,
     templates: draft.templates,
     ...(registry !== undefined ? { registry } : {}),
+    ...(draft.removedFolder !== undefined ? { removedFolder: draft.removedFolder } : {}),
   };
   return { plan, payloads: [...payloads.values()] };
 }

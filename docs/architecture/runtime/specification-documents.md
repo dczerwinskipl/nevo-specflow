@@ -59,6 +59,7 @@ serves both through the Engine in project mode; demo mode keeps its own fixtures
 
 ```yaml
 id: <slug> # existing
+key: nevo-12 # optional: <prefix>-<number>, given by Create (one more than the highest key of the project)
 spec_id: <uuid> # existing
 title: <string> # existing
 status: draft # existing
@@ -293,10 +294,12 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   case (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`, nothing reserved or written) and accepts
   it on case-sensitive volumes. The file system decides, not the platform: before the reservation (and again before
   a journaled operation touches a file) every planned path that exists is `lstat`ed, and a removed path with the
-  device and inode of another planned path is one entry under two names (this also covers the default APFS volume
-  of macOS, a Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs). On a volume
-  that reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with
-  its letter case swapped, is found. A path pair that is the same file only by a hard link is refused the same way.
+  device and inode of a path the plan keeps (writes, or the manifest) is one entry under two names when both sit in
+  one directory and that directory does not list both names (this also covers the default APFS volume of macOS, a
+  Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs). Two hard links are two
+  listed entries of one inode and are not refused (moving a folder that holds them is accepted). On a volume that
+  reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with its
+  letter case swapped, is found.
   On Windows the planner also refuses it at once without I/O. A journaled operation refused this way after its
   reservation is `DOCUMENT_RECOVERY_REQUIRED` (`plan-invalid`), its files untouched.
 - **Paths**: POSIX `/`, relative to the Specification directory, at most 500 characters, every segment at most 200 UTF-8 bytes, no leading `/`, no
@@ -485,7 +488,7 @@ finished; a split after a failure forms two new batches with disjoint members, n
 
 **Message of a batch commit.** The subject says what the batch did, worded from the plans of its members and
 restricted to what the commit holds: `spec(documents): update notes.md in <slug>`, `update 3 documents in <slug>`,
-`add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>`, `classify <path> as <type> in <slug>`,
+`add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>` (`delete folder <name> from <slug>` for a folder, also an empty one), `classify <path> as <type> in <slug>`,
 and `change N documents in <slug>` when the members did different things. It is at most 72 characters: the longest
 name (document, folder, type or slug) is shortened first, with an ellipsis, never inside a character. The body lists
 one line per change (at most 20 lines and 1500 characters, then `… and N more`) and, for a coalesced batch, the number

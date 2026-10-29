@@ -115,6 +115,7 @@ function canonicalPlan(plan: DocumentChangePlan): Record<string, unknown> {
           },
         }
       : {}),
+    ...(plan.removedFolder !== undefined ? { removedFolder: plan.removedFolder } : {}),
   };
 }
 
@@ -141,10 +142,12 @@ const PLAN_KEYS = [
   'allocatedIds',
   'templates',
   'registry',
+  'removedFolder',
 ] as const;
 
 function validatePlan(value: unknown): DocumentChangePlan {
-  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['registry'])) throw invalid();
+  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['registry', 'removedFolder']))
+    throw invalid();
   if (
     value.version !== DOCUMENT_CHANGE_PLAN_VERSION ||
     !isAction(value.action) ||
@@ -163,6 +166,8 @@ function validatePlan(value: unknown): DocumentChangePlan {
   const folders = validateFolders(value.folders);
   const templates = validateTemplates(value.templates);
   const registry = value.registry === undefined ? undefined : validateRegistry(value.registry);
+  const removedFolder =
+    value.removedFolder === undefined ? undefined : validateFolders([value.removedFolder])[0];
   const hasManifest = paths.some((path) => path.role === 'manifest');
   if (hasManifest !== (registry !== undefined)) throw invalid();
   const plan: DocumentChangePlan = {
@@ -178,6 +183,7 @@ function validatePlan(value: unknown): DocumentChangePlan {
     allocatedIds: allocated,
     templates,
     ...(registry !== undefined ? { registry } : {}),
+    ...(removedFolder !== undefined ? { removedFolder } : {}),
   };
   // The canonical form is the only accepted form: a hand-edited plan that reorders keys is refused.
   if (JSON.stringify(canonicalPlan(plan)) !== JSON.stringify(value)) throw invalid();

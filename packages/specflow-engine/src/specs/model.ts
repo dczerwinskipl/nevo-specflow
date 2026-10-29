@@ -13,6 +13,7 @@ import {
   validateDocumentPath,
   validateFolderPath,
 } from './documents';
+import { isSpecKey } from './spec-key';
 
 export type SpecificationLocation = 'active' | 'archive';
 
@@ -56,6 +57,8 @@ export interface ManifestDocument {
 export interface SpecificationManifest {
   readonly specId: string;
   readonly slug: string;
+  /** The human key (`nevo-1234`, `spec-key.ts`); absent for a Specification created before keys. */
+  readonly key?: string;
   readonly title: string;
   readonly archetype: ManifestArchetype;
   readonly documents: readonly ManifestDocument[];
@@ -181,6 +184,9 @@ export function parseSpecificationManifest(
   if (source.created !== undefined && typeof source.created !== 'string') {
     throw sourceInvalid(slug, 'created', 'must be a string');
   }
+  if (source.key !== undefined && !isSpecKey(source.key)) {
+    throw sourceInvalid(slug, 'key', 'must be <prefix>-<number>, for example nevo-12');
+  }
 
   const archetype = parseArchetype(source.archetype, slug);
   const documents = parseDocuments(source.documents, slug);
@@ -188,6 +194,7 @@ export function parseSpecificationManifest(
   return {
     specId: source.spec_id,
     slug,
+    ...(source.key !== undefined ? { key: source.key } : {}),
     title: source.title,
     archetype,
     documents,

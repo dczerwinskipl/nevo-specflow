@@ -132,6 +132,23 @@ falls back silently to sample data. The response schema does not expose a
 `sample` property; the separate `GET /api/runtime/info` reports
 `dataMode: 'project' | 'demo'` for environment-level presentation.
 
+## Project mode: what a row is made of
+
+In project mode the Current facts come from the Engine-verified canonical manifest only
+(`features/specs/overview/repository/manifest-facts.ts`):
+
+| Field                          | Source and rule                                                                                                                                                                                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `status`                       | `draft` for every Specification until a workflow defines other values (the read-model constant `OVERVIEW_SPEC_STATUS`); the manifest's free `status` string is not interpreted. Optional in the contract (additive)                                |
+| `classification`               | **Draft** (follows from `status`)                                                                                                                                                                                                                  |
+| `progress`                     | `tasks: []` is `{ completed: 0, total: 0 }` ("No tasks"); a non-empty task list is `null` (task entries have no verified schema, so no count is guessed)                                                                                           |
+| `signals`, `currentExecutions` | `[]`: a managed Session is created without any Specification or Task association and project mode composes no Session reference owner, so no execution or attention can belong to a Specification. They become evidence once Sessions can be bound |
+| `key`                          | the manifest `key` Create gives every new Specification (`nevo-<number>`, one more than the highest of the project); absent for a Specification created before keys (no value is back-filled)                                                      |
+| `tags`, `pullRequests`         | absent: the manifest and the project configuration hold no source for them                                                                                                                                                                         |
+| `updatedAt`                    | the canonical source time                                                                                                                                                                                                                          |
+
+Requires attention, Active and Ready are therefore not reachable in project mode until such sources exist.
+
 ## Access
 
 When authentication is required, a request without a valid browser session returns `401`:

@@ -134,6 +134,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
   {
     id: 'localization',
     readyForWork: false,
+    status: 'draft',
     key: 'UI-1238',
     title: 'Localization and account preferences',
     updatedAt: '2026-10-01T12:00:00Z',

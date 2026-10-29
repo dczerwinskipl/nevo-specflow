@@ -82,11 +82,11 @@ describe('chooseBranchPattern', () => {
     return { ui, notes, choices };
   }
 
-  it('preselects feature/{slug} and offers the presets', async () => {
+  it('preselects feature/{key}-{slug} and offers the presets', async () => {
     const { ui, choices } = scripted([]);
-    expect(await chooseBranchPattern(ui)).toBe('feature/{slug}');
+    expect(await chooseBranchPattern(ui)).toBe('feature/{key}-{slug}');
     expect(choices).toEqual([
-      'feature/{slug}',
+      'feature/{key}-{slug}',
       'feature/{slug}-{shortId}',
       'spec/{slug}-{shortId}',
       '__custom__',

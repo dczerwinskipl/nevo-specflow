@@ -1,8 +1,8 @@
 import { useRef, useState, type RefObject } from 'react';
 import { newId } from '../../../shared/ids/newId';
-import { useMessage } from '../../../i18n/message';
+import { message, useMessage } from '../../../i18n/message';
 import { entryOriginKey, entryResultKey, resolveEntry, type InlineEntry } from './inlineEntry';
-import type { EntryKind } from './documentTreePolicy';
+import { folderOperationRevision, type EntryKind } from './documentTreePolicy';
 import type { DocumentOperationsActions } from './useDocumentOperations';
 import type { TreeFocus } from './useTreeFocus';
 
@@ -60,6 +60,13 @@ export function useInlineEntry(options: {
         ? snapshot.documents.find((doc) => doc.id === rename.id)
         : undefined;
       if (rename && kind === 'document' && !document) throw new Error('Missing document');
+      // A folder rename sends the FOLDER revision; a folder without one cannot be renamed.
+      const folderRevision =
+        rename && kind === 'folder' ? folderOperationRevision(snapshot, rename.path) : undefined;
+      if (rename && kind === 'folder' && !folderRevision) {
+        operations.refuse(text(message('documents.tree.error.folderRevisionMissing')));
+        return;
+      }
       onOpenFolder(parent);
       put({
         key: newId(),
@@ -67,7 +74,7 @@ export function useInlineEntry(options: {
         parent,
         name: rename?.path.split('/').at(-1) ?? '',
         rename: rename ? { ...rename, path: document?.path ?? rename.path } : undefined,
-        expectedRevision: kind === 'document' ? document?.revision : snapshot.revision,
+        expectedRevision: kind === 'document' ? document?.revision : folderRevision,
       });
     });
 

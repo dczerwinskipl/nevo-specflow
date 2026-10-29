@@ -2,7 +2,11 @@
 // package surfaces (index, testing, diagnostics) use. Sub-folders: close/ (use cases),
 // git/ (integration evidence and publication), journal/ (durable close journal).
 export { previewCloseOperation, inspectCleanGitWorkspace, type CloseRequest } from './preflight';
-export { reserveCloseOperation, inspectCloseOperation } from './reservation';
+export {
+  reserveCloseOperation,
+  inspectCloseOperation,
+  previewWithDocumentFlush,
+} from './reservation';
 export {
   CloseOperationError,
   resourcesForClosePlan,

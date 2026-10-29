@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, Separator, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
@@ -111,11 +111,17 @@ export function CreateOperationPage({
   }, []);
 
   // The finished checklist is seen for a moment, then the specification opens (the button is faster).
+  // The timer starts once, when the result arrives: the host passes a new `onOpen` on every render
+  // and the page keeps re-rendering (progress, announcements), which must not restart it.
+  const openLatest = useRef(onOpen);
+  useLayoutEffect(() => {
+    openLatest.current = onOpen;
+  });
   useEffect(() => {
     if (!created) return;
-    const timer = setTimeout(() => onOpen(created), openAfterCreatedMs);
+    const timer = setTimeout(() => openLatest.current(created), openAfterCreatedMs);
     return () => clearTimeout(timer);
-  }, [created, onOpen]);
+  }, [created]);
 
   const sent = state.sent ?? stored?.request;
   const title = [sent?.title, ownDraft?.title].map((value) => value?.trim()).find(Boolean);
@@ -125,6 +131,7 @@ export function CreateOperationPage({
     ownDraft?.goal,
     ownDraft?.facts,
     ownDraft?.title,
+    { title: ownDraft?.archetypeTitle, documents: ownDraft?.documentFiles },
   );
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
@@ -170,7 +177,7 @@ export function CreateOperationPage({
       : t('create.submit.checkResult');
 
   return (
-    <CreateShell width="narrow" title={t('create.page.location')}>
+    <CreateShell title={t('create.page.location')}>
       <div className="grid gap-8">
         <ApplicationContextLine className="mb-0" view="new-specification" />
         <header className="flex min-w-0 items-start gap-4">

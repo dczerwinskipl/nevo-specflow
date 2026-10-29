@@ -26,7 +26,7 @@ function content(overrides: Partial<DocumentContent> = {}): DocumentContent {
 }
 
 function tree(revision = 'tree-1'): DocumentTree {
-  const not = { available: false, reason: 'not-implemented' } as const;
+  const not = { available: false, reason: 'archived' } as const;
   return {
     revision,
     archetype: { id: 'minimal', version: 1 },

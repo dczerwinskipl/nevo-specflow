@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
+import { lstat, open, readFile, readdir } from 'node:fs/promises';
 
 import { executeGit } from '../../../git/process';
 import { executeGitMutation } from '../../../git/mutation';
@@ -20,6 +20,8 @@ import {
 } from '../../../version-control/git/integration-scratch';
 import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
 import { inspectCloseGitIntegration } from './integration';
+export { disabledIntegrationHooksDirectory } from './scratch-directories';
+import { createRealDirectory, requireDirectory, scratchDirectories } from './scratch-directories';
 import { readCloseJournal } from '../journal/store';
 import { CloseOperationError, type CloseJournal, type CloseIntegrationScratch } from '../model';
 
@@ -33,52 +35,6 @@ function recovery(message: string): CloseOperationError {
 }
 function isMissing(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
-}
-
-async function createRealDirectory(path: string): Promise<void> {
-  try {
-    await mkdir(path, { mode: 0o700 });
-  } catch (error) {
-    if (
-      typeof error !== 'object' ||
-      error === null ||
-      !('code' in error) ||
-      error.code !== 'EEXIST'
-    )
-      throw error;
-  }
-  await requireDirectory(path);
-}
-
-async function requireDirectory(path: string): Promise<void> {
-  const stat = await lstat(path);
-  if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
-    throw recovery('Engine scratch directory has been redirected or replaced.');
-  }
-}
-
-async function scratchDirectories(engine: SpecFlowEngine): Promise<{
-  readonly root: string;
-  readonly hooks: string;
-}> {
-  const state = engine.context.project.stateRoot;
-  const engineRoot = join(state, 'engine');
-  const root = join(engineRoot, 'integration-scratch');
-  const hooks = join(engineRoot, 'integration-hooks-disabled');
-  // Do not recursively traverse an unverified symlinked parent.
-  await requireDirectory(state);
-  for (const path of [engineRoot, root, hooks]) {
-    await createRealDirectory(path);
-  }
-  if ((await readdir(hooks)).length !== 0) {
-    throw recovery('Disabled-hook directory contains unexpected files.');
-  }
-  return { root, hooks };
-}
-
-/** Verified, empty Engine-owned hooks directory for all mutating integration Git operations. */
-export async function disabledIntegrationHooksDirectory(engine: SpecFlowEngine): Promise<string> {
-  return (await scratchDirectories(engine)).hooks;
 }
 
 async function requireAbsentScratch(path: string): Promise<void> {

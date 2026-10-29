@@ -167,8 +167,9 @@ export const Documents: Story = {
 };
 
 /**
- * Routed interaction coverage: Full Document promoted from Work returns to Work;
- * direct and list-origin Full Documents fall back to Documents List.
+ * Routed interaction coverage in a project Runtime: the Documents workspace serves every document
+ * route (the same workspace as the demo). A Full Document promoted from the Overview opens as a tab
+ * and the way back is the Overview; the Documents list and direct links keep the collection.
  */
 export const DocumentReturnNavigation: Story = {
   args: { path: '/specs/docs-spec?collection=current', dataMode: 'project' },
@@ -179,11 +180,9 @@ export const DocumentReturnNavigation: Story = {
     });
     await userEvent.click(await canvas.findByRole('button', { name: 'Obszar: uwierzytelnianie' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Open full document' }));
-    await userEvent.click(
-      await canvas.findByRole('link', {
-        name: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
-      }),
-    );
+    // The document opens in the Documents workspace (a tab, or the switcher on a narrow strip).
+    await canvas.findByRole('tabpanel', {}, { timeout: 5000 });
+    await userEvent.click(canvas.getByRole('link', { name: 'Overview' }));
     await canvas.findByRole('heading', {
       name: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
       level: 1,
@@ -191,37 +190,32 @@ export const DocumentReturnNavigation: Story = {
   },
 };
 
-/** Clicking a document in Primary Documents must return to the owning list. */
+/** Opening a document from the tree keeps the Archive context of the list. */
 export const DocumentBackFromList: Story = {
   args: { path: '/specs/docs-spec/documents?collection=archive', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('heading', { name: 'Documents', level: 1 });
-    const read = await canvas.findAllByRole('button', { name: 'Read' });
-    if (!read[0]) throw new Error('Expected an actionable document in the list.');
-    await userEvent.click(read[0]);
-    const back = within(canvas.getByRole('navigation', { name: 'Application location' })).getByRole(
-      'link',
-      {
-        name: 'Documents',
-      },
-    );
-    if (back.getAttribute('href') !== '/specs/docs-spec/documents?collection=archive')
-      throw new Error('Document list return must retain Archive context.');
-    await userEvent.click(back);
-    await canvas.findByRole('heading', { name: 'Documents', level: 1 });
+    const tree = await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
+    if (!tree[0]) throw new Error('Expected a document in the tree.');
+    await userEvent.click(tree[0]);
+    await canvas.findByRole('tabpanel', {}, { timeout: 5000 });
+    const overview = canvas.getByRole('link', { name: 'Overview' });
+    if (!overview.getAttribute('href')?.includes('collection=archive'))
+      throw new Error('The document keeps the Archive context of the list.');
   },
 };
 
-/** Direct links have no ephemeral origin and must fall back to the Documents List. */
+/** A direct link on a phone: the document with the way back to the document list. */
 export const DocumentBackFromDirectLink: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   args: { path: '/specs/docs-spec/documents/spec?collection=current', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    const back = await canvas.findByRole('link', { name: 'Documents' });
-    if (back.getAttribute('href') !== '/specs/docs-spec/documents?collection=current')
-      throw new Error('Direct document link must have a stable list fallback.');
+    const back = await canvas.findByRole(
+      'button',
+      { name: 'Back to the document list' },
+      { timeout: 5000 },
+    );
     await userEvent.click(back);
-    await canvas.findByRole('heading', { name: 'Documents', level: 1 });
+    await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
   },
 };
 
@@ -229,11 +223,16 @@ export const ArchivedDocumentBackFromDirectLink: Story = {
   ...DocumentBackFromDirectLink,
   args: { path: '/specs/docs-spec/documents/spec?collection=archive', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    const back = await canvas.findByRole('link', { name: 'Documents' });
-    if (back.getAttribute('href') !== '/specs/docs-spec/documents?collection=archive')
-      throw new Error('Mobile deep links must preserve Archive context.');
+    const back = await canvas.findByRole(
+      'button',
+      { name: 'Back to the document list' },
+      { timeout: 5000 },
+    );
     await userEvent.click(back);
-    await canvas.findByRole('heading', { name: 'Documents', level: 1 });
+    await canvas.findAllByRole('button', { name: /\.md/ }, { timeout: 5000 });
+    const overview = canvas.queryAllByRole('link', { name: 'Overview' })[0];
+    if (overview && !overview.getAttribute('href')?.includes('collection=archive'))
+      throw new Error('Mobile deep links must preserve Archive context.');
   },
 };
 
@@ -336,17 +335,19 @@ export const ApiDtoToTaskScreen: Story = {
   },
 };
 
+/** The Runtime DTOs through the project documents port: tree, then the document's content. */
 export const ApiDtoToDocumentScreen: Story = {
   args: { path: '/specs/api-integration/documents', integrationDto: true, dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('heading', { name: 'Documents', level: 1 }, { timeout: 10000 });
-    const button = await canvas.findByRole('button', { name: 'Read' }, { timeout: 10000 });
-    await userEvent.click(button);
+    const row = await canvas.findByRole(
+      'button',
+      { name: /^specification\.md/ },
+      { timeout: 10000 },
+    );
+    await userEvent.click(row);
     await canvas.findByRole(
       'heading',
-      {
-        name: 'Document content from Runtime detail API',
-      },
+      { name: 'Document content from Runtime detail API' },
       { timeout: 10000 },
     );
   },

@@ -5,21 +5,21 @@ import {
   DrawerBody,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   IconButton,
   cn,
   hitAreaClassName,
 } from '@nevo/ui';
+import { OutlineEntries } from './DocumentOutline';
 import type { OutlineHeading } from './markdownOutline';
 
-const indent = { 1: 'pl-0', 2: 'pl-3', 3: 'pl-6', 4: 'pl-9' } as const;
-
 /**
- * The contents of the previewed document as a bottom sheet: a list of links with at least 44 px
- * rows, long titles wrapped to two lines. Choosing a heading closes the sheet and hands the heading
- * to `onSelected` once the sheet has gone, so focus can land on the heading and is not pulled back.
+ * The contents of the previewed document as a bottom sheet (titled "Contents"; the tab already names
+ * the document). The list is the column's renderer (`OutlineEntries`): the same compact tree rows,
+ * indentation per real level and current-section mark, long titles wrapped to two lines and a 44 px
+ * hit area on touch. Choosing a heading closes the sheet and hands the heading to `onSelected` once the
+ * sheet has gone, so focus can land on the heading and is not pulled back.
  */
 export function DocumentOutlineSheet({
   open,
@@ -42,7 +42,6 @@ export function DocumentOutlineSheet({
   const { t } = useTranslation();
   const chosen = useRef<{ line: number; pointer: boolean } | undefined>(undefined);
   const entry = useRef<HTMLAnchorElement | null>(null);
-  const title = t('documents.outline.title', { n: headings.length });
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent
@@ -50,6 +49,7 @@ export function DocumentOutlineSheet({
         // Ten headings must not take most of a phone: the compact sheet caps its height.
         size="compact"
         showClose={false}
+        aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           // Focus the heading the reader is at (it scrolls into view with it), else the first one.
           event.preventDefault();
@@ -74,53 +74,30 @@ export function DocumentOutlineSheet({
         }}
       >
         <DrawerHeader className="flex items-center justify-between gap-3 pr-3">
-          <DrawerTitle>{title}</DrawerTitle>
+          {/* The tab and the header already name the document: the title is enough. */}
+          <DrawerTitle className="min-w-0 truncate">{t('documents.outline.label')}</DrawerTitle>
           <DrawerClose asChild>
             <IconButton
               aria-label={t('documents.outline.close')}
-              className={cn(hitAreaClassName)}
+              className={cn('shrink-0', hitAreaClassName)}
               icon="close"
               size="sm"
               variant="ghost"
             />
           </DrawerClose>
-          <DrawerDescription className="sr-only">
-            {t('documents.outline.description')}
-          </DrawerDescription>
         </DrawerHeader>
         <DrawerBody className="px-2 py-2">
           <nav aria-label={t('documents.outline.label')}>
-            <ol className="grid grid-cols-1 gap-0.5">
-              {headings.map((heading, index) => {
-                const active = heading.line === activeLine;
-                return (
-                  <li key={heading.line} className={cn('min-w-0', indent[heading.level])}>
-                    <a
-                      ref={active || (activeLine === undefined && index === 0) ? entry : undefined}
-                      href={`#line-${heading.line}`}
-                      aria-current={active ? 'location' : undefined}
-                      className={cn(
-                        'flex min-h-11 min-w-0 items-center break-words rounded-control px-3 py-2 text-body-md text-content-secondary no-underline hover:bg-surface-hover hover:text-content-primary',
-                        active && 'bg-surface-selected text-content-primary',
-                      )}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        // A click with no pointer detail comes from the keyboard or an assistive technology.
-                        chosen.current = { line: heading.line, pointer: event.detail > 0 };
-                        onOpenChange(false);
-                      }}
-                    >
-                      <span
-                        className={cn('min-w-0', heading.level === 1 ? 'truncate' : 'line-clamp-2')}
-                        title={heading.text}
-                      >
-                        {heading.text}
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ol>
+            <OutlineEntries
+              headings={headings}
+              activeLine={activeLine}
+              variant="sheet"
+              focusRef={entry}
+              onSelect={(line, pointer) => {
+                chosen.current = { line, pointer };
+                onOpenChange(false);
+              }}
+            />
           </nav>
         </DrawerBody>
       </DrawerContent>

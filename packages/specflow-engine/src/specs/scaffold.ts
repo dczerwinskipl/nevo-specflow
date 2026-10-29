@@ -1,6 +1,6 @@
 import { CATALOGUE_ID_PATTERN, type DocumentErrorCode } from '@nevo/specflow-contracts/documents';
 
-import { getBuiltInCatalogue, type ResolvedCatalogue } from './archetypes/catalogue';
+import type { ResolvedCatalogue } from './definitions/resolved-catalogue';
 import { renderTemplate, templateValues } from './archetypes/template-renderer';
 import {
   DocumentError,
@@ -49,6 +49,8 @@ export interface SpecificationScaffoldInput {
   readonly goal?: string;
   /** Explicit, already validated slug; omitted: derived from the title. */
   readonly slug?: string;
+  /** The human key the Create allocated (`spec-key.ts`); omitted: the manifest has none. */
+  readonly key?: string;
   /** Catalogue archetype id. There is no default: every caller names the archetype. */
   readonly archetypeId: string;
   /** Template ids of the optional (suggested) documents to scaffold. */
@@ -56,8 +58,8 @@ export interface SpecificationScaffoldInput {
   readonly addedDocuments?: readonly AddedDocumentInput[];
   /** Explicit folders that may stay empty (registered only in the manifest). */
   readonly folders?: readonly string[];
-  /** Resolved catalogue; omitted: the built-in catalogue. */
-  readonly catalogue?: ResolvedCatalogue;
+  /** The catalogue of the project's definitions. There is no default: every caller passes one. */
+  readonly catalogue: ResolvedCatalogue;
 }
 
 export interface SpecificationScaffoldFile {
@@ -207,7 +209,7 @@ export function createSpecificationScaffold(
   }
   const slug = input.slug ?? specificationSlugFromTitle(title, input.specId);
 
-  const archetype = (input.catalogue ?? getBuiltInCatalogue()).findArchetype(input.archetypeId);
+  const archetype = input.catalogue.findArchetype(input.archetypeId);
   if (!archetype) {
     throw new ScaffoldValidationError(`Unknown archetype "${input.archetypeId}".`, {
       kind: 'archetype-unknown',
@@ -372,6 +374,7 @@ function buildManifest(
   return {
     specId: input.specId,
     slug: parts.slug,
+    ...(input.key !== undefined ? { key: input.key } : {}),
     title: parts.title,
     archetype: {
       id: archetype.id,

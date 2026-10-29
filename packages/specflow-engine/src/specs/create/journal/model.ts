@@ -76,6 +76,8 @@ export interface CreateJournal {
   readonly inputFingerprint: string;
   readonly specId: string;
   readonly slug: string;
+  /** The human key allocated at the reservation. Optional: journals reserved before keys have none. */
+  readonly key?: string;
   readonly title: string;
   readonly created: string;
   /** ISO instant of the reservation. Optional: journals reserved before it existed have none. */

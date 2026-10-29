@@ -26,7 +26,7 @@ interface RowIdentity {
   readonly tags: Tags;
   readonly omittedTags: number;
   readonly pullRequests?: PullRequests;
-  /** When the specification last changed; shown as a fact when the list has no work status. */
+  /** When the specification last changed; shown in its own column when the list has no work status. */
   readonly updatedAt?: string;
 }
 
@@ -144,12 +144,8 @@ export function rowProgress(
       : 'ready';
 }
 type RowMetadataFact =
-  | { id: string; kind: 'key' | 'tag' | 'omitted' | 'updated'; value: string }
-  | { id: 'pr'; kind: 'pr' };
-export function rowMetadata(
-  item: SpecRowModel,
-  options: { readonly updated?: boolean } = {},
-): readonly RowMetadataFact[] {
+  { id: string; kind: 'key' | 'tag' | 'omitted'; value: string } | { id: 'pr'; kind: 'pr' };
+export function rowMetadata(item: SpecRowModel): readonly RowMetadataFact[] {
   return [
     ...(item.key ? [{ id: 'key', kind: 'key' as const, value: item.key }] : []),
     ...item.tags.map((tag, index) => ({ id: `tag-${index}`, kind: 'tag' as const, value: tag })),
@@ -158,9 +154,6 @@ export function rowMetadata(
       : []),
     ...(item.collection === 'current' && item.pullRequests
       ? [{ id: 'pr' as const, kind: 'pr' as const }]
-      : []),
-    ...(options.updated && item.updatedAt && Number.isFinite(Date.parse(item.updatedAt))
-      ? [{ id: 'updated', kind: 'updated' as const, value: item.updatedAt }]
       : []),
   ];
 }

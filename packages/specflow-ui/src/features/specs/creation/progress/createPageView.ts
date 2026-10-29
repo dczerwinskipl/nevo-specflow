@@ -62,11 +62,13 @@ const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
   'branch-invalid',
   'stale',
   'name-conflict',
+  'name-invalid',
   'offline',
   'forbidden',
   'unauthenticated',
   'branch-protected',
   'commit-blocked',
+  'catalogue-stale',
 ]);
 
 /** What the page needs to say what is going on now. */
@@ -145,6 +147,10 @@ export interface CreateSettingsModel {
   readonly mergeInto?: FactWorkspace;
   readonly slug?: string;
   readonly goal?: string;
+  /** The chosen archetype's title (as the form showed it). */
+  readonly archetype?: string;
+  /** The files Create makes, in order. */
+  readonly documents?: readonly string[];
   /** Git is enabled: the specification files are committed (the branch is `branch` or the workspace's). */
   readonly commit?: true;
 }
@@ -154,6 +160,7 @@ export function createSettingsModel(
   draftGoal: string | undefined,
   facts: CreateSettingsFacts | undefined,
   draftTitle?: string,
+  archetype?: { title?: string; documents?: readonly string[] },
 ): CreateSettingsModel | undefined {
   if (!request && !facts) return undefined;
   const target = request?.target;
@@ -166,6 +173,8 @@ export function createSettingsModel(
   const branch = facts?.branch ?? (target?.kind === 'new-worktree' ? target.branch : undefined);
   return {
     ...(name ? { name } : {}),
+    ...(archetype?.title ? { archetype: archetype.title } : {}),
+    ...(archetype?.documents?.length ? { documents: archetype.documents } : {}),
     place,
     ...(facts?.workspace ? { workspace: facts.workspace } : {}),
     ...(place === 'new' && facts?.base ? { base: facts.base } : {}),

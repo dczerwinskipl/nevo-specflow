@@ -7,12 +7,17 @@ import {
   treeItemLabelClassName,
   treeItemLabelTruncateClassName,
   treeLeafItemClassName,
+  treeLinkItemClassName,
   treeNodeClassName,
   treeRequiredLabelClassName,
   treeRequiredMarkerClassName,
   treeRootClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeSectionHeaderClassName,
+  treeAttentionGlyphClassName,
+  treeAttentionStateLabelClassName,
+  treeStateLabelClassName,
 } from './treeRecipes';
 
 describe('compact tree geometry', () => {
@@ -49,6 +54,27 @@ describe('compact tree geometry', () => {
     expect(treeItemClassName).toContain('gap-tree-gap');
     expect(treeLeafItemClassName).toContain('ml-tree-leaf-offset');
     expect(treeHintClassName).toContain('pl-tree-name-offset');
+  });
+
+  it('marks the current place of a link tree with a tint and an accent bar, not a block', () => {
+    expect(treeLinkItemClassName).toContain('min-h-tree-row-height');
+    expect(treeLinkItemClassName).toContain('after:h-[max(100%,var(--target-size))]');
+    expect(treeLinkItemClassName).not.toMatch(/font-(semibold|medium|bold)/);
+    expect(treeLinkItemClassName).not.toContain('bg-surface-selected');
+    expect(treeLinkItemClassName).toContain(
+      '[&[aria-current]:not([aria-current=false])]:before:bg-content-link',
+    );
+    expect(treeLinkItemClassName).toContain('before:w-0.5');
+  });
+
+  it('puts the root section header text on the items content edge, one row high', () => {
+    expect(treeSectionHeaderClassName).not.toMatch(/\d(?:\.\d+)?(?:px|rem)/);
+    expect(treeSectionHeaderClassName).toContain('min-h-tree-row-height');
+    // Same border box and inline padding as an item, so the title starts where item content does.
+    expect(treeSectionHeaderClassName).toContain('border border-solid border-transparent');
+    expect(treeSectionHeaderClassName).toContain('px-control-padding-inline');
+    expect(treeItemClassName).toContain('border border-solid border-transparent');
+    expect(treeItemClassName).toContain('px-control-padding-inline');
   });
 
   it('keeps the DS hit area on the item instead of tall padding', () => {
@@ -100,6 +126,18 @@ describe('tree row actions and labels', () => {
     expect(treeItemLabelTruncateClassName).toContain('truncate');
     expect(treeItemLabelTruncateClassName).toContain('min-w-0');
     expect(treeItemLabelClassName).not.toContain('truncate');
+  });
+
+  it('never hides a state label', () => {
+    for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
+      expect(label).toContain('shrink-0');
+      expect(label).toContain('whitespace-nowrap');
+      expect(label).not.toMatch(/sr-only|hidden|rounded|bg-/);
+    }
+    expect(treeStateLabelClassName).toContain('text-content-muted');
+    expect(treeAttentionStateLabelClassName).toContain('text-status-attention');
+    // Important: the selected row recolours its first icon; the warning glyph keeps its tone.
+    expect(treeAttentionGlyphClassName).toContain('text-status-attention!');
   });
 
   it('renders the required marker as quiet muted text that swaps with an icon on narrow rows', () => {

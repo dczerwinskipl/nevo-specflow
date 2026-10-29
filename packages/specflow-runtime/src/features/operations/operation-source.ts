@@ -7,8 +7,12 @@ import type { OperationStepStatus } from '@nevo/specflow-contracts/operations';
  */
 export interface OperationSourceRow {
   readonly operationId: string;
-  /** Persisted progress, not liveness. */
-  readonly state: 'in-progress' | 'recovery-required' | 'completed';
+  /**
+   * Persisted progress, not liveness. `queued` and `failed` are produced by document changes (a
+   * queued commit can wait legitimately; the idle-interrupted rule never applies to it). An
+   * uncommitted or abandoned change is not a failure and is never listed.
+   */
+  readonly state: 'in-progress' | 'recovery-required' | 'completed' | 'queued' | 'failed';
   /** Stable code of a recovery-required row whose cause is known (e.g. an unreadable journal). */
   readonly code?: string;
   readonly title?: string;
@@ -18,6 +22,9 @@ export interface OperationSourceRow {
     readonly workspaceId?: string;
     readonly branch?: string;
   };
+  /** `document-change` rows: the kind of change and how many documents it covers. */
+  readonly action?: string;
+  readonly documentCount?: number;
   /** Public step vocabulary of the kind, derived from the persisted stage. */
   readonly currentStep?: string;
   readonly steps?: readonly { readonly id: string; readonly status: OperationStepStatus }[];

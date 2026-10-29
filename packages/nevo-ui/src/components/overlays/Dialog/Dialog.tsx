@@ -1,6 +1,9 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   forwardRef,
+  useCallback,
+  useEffect,
+  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type HTMLAttributes,
@@ -39,7 +42,7 @@ export const DialogContent = forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100vh-2rem)] w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-hidden rounded-surface border border-border-default bg-surface-raised p-5 text-content-primary shadow-2xl outline-none',
+          'fixed left-1/2 top-1/2 z-50 flex flex-col max-h-[calc(100vh-2rem)] w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-hidden rounded-surface border border-border-default bg-surface-raised p-5 text-content-primary shadow-2xl outline-none',
           className,
         )}
         {...props}
@@ -97,12 +100,60 @@ export const DialogDescription = forwardRef<
   );
 });
 
+/**
+ * The scrolling body between the fixed header and footer. While more content is below the visible
+ * part, its bottom edge shows a quiet separator (`data-more`), so a cut-off list reads as
+ * scrollable; the edge is always laid out, so the cue never moves the footer.
+ */
 export const DialogBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function DialogBody({ className, ...props }, ref) {
+    const [node, setNode] = useState<HTMLDivElement | null>(null);
+    const [more, setMore] = useState(false);
+    const setRefs = useCallback(
+      (element: HTMLDivElement | null) => {
+        setNode(element);
+        if (typeof ref === 'function') ref(element);
+        else if (ref) ref.current = element;
+      },
+      [ref],
+    );
+    useEffect(() => {
+      if (!node) return;
+      const measure = () => setMore(node.scrollTop + node.clientHeight < node.scrollHeight - 1);
+      measure();
+      node.addEventListener('scroll', measure, { passive: true });
+      // Size changes of the body and of its children (re-observed when the content is replaced);
+      // without ResizeObserver the scroll position and content changes still update the edge.
+      const sizes = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure);
+      const observeAll = () => {
+        if (!sizes) return;
+        sizes.disconnect();
+        sizes.observe(node);
+        for (const child of Array.from(node.children)) sizes.observe(child);
+      };
+      observeAll();
+      const content =
+        typeof MutationObserver === 'undefined'
+          ? undefined
+          : new MutationObserver(() => {
+              observeAll();
+              measure();
+            });
+      content?.observe(node, { childList: true, subtree: true });
+      return () => {
+        node.removeEventListener('scroll', measure);
+        sizes?.disconnect();
+        content?.disconnect();
+      };
+    }, [node]);
     return (
       <div
-        ref={ref}
-        className={cn('min-h-0 overflow-y-auto', className)}
+        ref={setRefs}
+        data-more={more || undefined}
+        className={cn(
+          'min-h-0 overflow-y-auto border-b border-b-transparent data-[more=true]:border-b-border-subtle',
+          className,
+        )}
         {...designSlot('Dialog', 'body')}
         {...props}
       />

@@ -176,4 +176,74 @@ describe('project initialization', () => {
     });
     expect(await readFile(join(root, '.gitignore'), 'utf8')).toBe('node_modules/\n');
   });
+
+  describe('default definitions', () => {
+    it('writes the shipped definitions before the configuration marker and reports their paths', async () => {
+      const root = await repository();
+      const result = await initializeProject({
+        layout: layout(root),
+        contribution,
+        isIgnored: () => Promise.resolve(true),
+      });
+      expect(result.definitionPaths).toHaveLength(13);
+      expect(result.definitionPaths?.every((path) => path.startsWith('.nevo/definitions/'))).toBe(
+        true,
+      );
+      await expect(
+        readFile(join(root, '.nevo', 'definitions', 'document-type', 'overview.yaml'), 'utf8'),
+      ).resolves.toContain('overview');
+    });
+
+    it('writes none with installDefinitions false', async () => {
+      const root = await repository();
+      const result = await initializeProject({
+        layout: layout(root),
+        contribution,
+        installDefinitions: false,
+        isIgnored: () => Promise.resolve(true),
+      });
+      expect(result.definitionPaths).toBeUndefined();
+      await expect(readdir(join(root, '.nevo', 'definitions'))).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+    });
+
+    it('removes the definitions it wrote when the configuration write fails', async () => {
+      const root = await repository();
+      const writeConfigFile = async (
+        path: string,
+        content: string,
+        options: ConfigWriteOptions,
+      ): Promise<void> => {
+        if (!options.local) throw new Error('simulated project write failure');
+        await writeFile(path, content, 'utf8');
+      };
+      await expect(
+        initializeProject({
+          layout: layout(root),
+          contribution,
+          isIgnored: () => Promise.resolve(true),
+          writeConfigFile,
+        }),
+      ).rejects.toThrowError(/simulated project write failure/);
+      await expect(readdir(join(root, '.nevo', 'definitions'))).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+    });
+
+    it('leaves definitions the owner already has untouched and reports none written', async () => {
+      const root = await repository();
+      const mine = join(root, '.nevo', 'definitions', 'document-type');
+      await mkdir(mine, { recursive: true });
+      await writeFile(join(mine, 'mine.yaml'), 'owner file');
+      const result = await initializeProject({
+        layout: layout(root),
+        contribution,
+        isIgnored: () => Promise.resolve(true),
+      });
+      expect(result.definitionPaths).toBeUndefined();
+      expect(await readdir(mine)).toEqual(['mine.yaml']);
+      // A failure afterwards must not remove the owner's folder.
+    });
+  });
 });

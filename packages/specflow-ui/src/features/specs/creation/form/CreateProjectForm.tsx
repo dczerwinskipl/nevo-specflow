@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { Alert, Field, Separator, TextArea, TextInput } from '@nevo/ui';
 import { isApiError } from '../../../../api';
 import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
@@ -8,6 +9,7 @@ import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import type { RequestAttempt } from '../../../../shared/operations/retainedRequest';
 import { projectCreationKeys } from '../api/api.project';
+import { documentCatalogueKeys } from '../../../documents/read-model';
 import { CreateFooter } from './CreateFooter';
 import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
@@ -24,6 +26,15 @@ import {
 import { startCreate } from '../operation/startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
+import { ArchetypeSection, type ArchetypeCatalogueState } from '../options/ArchetypeSection';
+import {
+  archetypeSelection,
+  documentsToCreate,
+  initialArchetypeChoice,
+  refreshedArchetypeChoice,
+  selectedArchetype,
+  type ArchetypeChoice,
+} from '../options/archetypeChoice';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateFacts } from '../workspace/model/createFacts';
 import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
@@ -66,6 +77,30 @@ export function CreateProjectForm({
   const [draft] = useState(() => (restoreDraftOf ? storage.loadDraft(restoreDraftOf) : undefined));
   const [title, setTitle] = useState(draft?.title ?? '');
   const [goal, setGoal] = useState(draft?.goal ?? '');
+  // Back to form after the archetypes changed: the choice is kept (if it still exists) with the
+  // new default ticks; after an unknown archetype the default archetype is selected.
+  const [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(() => {
+    const restored = draft?.archetype ?? initialArchetypeChoice;
+    return draft?.failure?.kind === 'catalogue-stale'
+      ? refreshedArchetypeChoice(restored, draft.failure.code)
+      : restored;
+  });
+  // The catalogue is read on every visit: Create checks its revision.
+  const archetypes = useQuery({
+    // One cache entry with the documents feature (same route): a refresh here refreshes both.
+    queryKey: documentCatalogueKeys.catalogue('project'),
+    queryFn: ({ signal }) => projectCreationApi.archetypes(signal),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+  const catalogue = archetypes.data;
+  const archetype = selectedArchetype(catalogue, archetypeChoice);
+  const archetypeState: ArchetypeCatalogueState = catalogue
+    ? { status: 'ready', catalogue }
+    : archetypes.isError
+      ? { status: 'error', retry: () => void archetypes.refetch() }
+      : { status: 'loading' };
 
   const createOptions = useCreateOptions({
     queryKey: projectCreationKeys.createOptions,
@@ -83,6 +118,7 @@ export function CreateProjectForm({
   const configurationSnapshot = JSON.stringify({
     title,
     goal,
+    archetype: archetypeChoice,
     choice: requestChoiceSnapshot(place.choice),
   });
   const [initialConfiguration] = useState(configurationSnapshot);
@@ -106,10 +142,19 @@ export function CreateProjectForm({
     workspaceState: createOptions.state,
     choice: place.choice,
     forbidden: createOptions.forbidden,
+    archetypesLoading: archetypes.isPending,
+    archetype,
+    noArchetypes: catalogue?.archetypes.length === 0,
   });
 
+  // Back from a name the Engine refused (invalid or too long path): the name says so until edited.
+  const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
+  const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    headingRef.current?.focus();
+    if (nameRefused) nameRef.current?.focus();
+    else headingRef.current?.focus();
+    // Once, on arrival: the refusal decides where focus starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshOptions = () =>
@@ -126,14 +171,23 @@ export function CreateProjectForm({
   };
 
   const submit = () => {
-    if (!canSubmit || started.current) return;
+    if (!canSubmit || started.current || !catalogue || !archetype) return;
     const slug = workspaceOptions
       ? buildCreateSlug(place.choice, workspaceOptions, title)
       : undefined;
     const request = startCreate({
       attempt,
       storage,
-      draft: { title, goal, choice: place.choice, ...factsOf(place.choice) },
+      draft: {
+        title,
+        goal,
+        choice: place.choice,
+        archetype: archetypeChoice,
+        archetypeTitle: archetype.title,
+        documentFiles: documentsToCreate(archetype, archetypeChoice),
+        ...factsOf(place.choice),
+      },
+      selection: archetypeSelection(catalogue, archetype, archetypeChoice),
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
@@ -149,34 +203,47 @@ export function CreateProjectForm({
   };
 
   return (
-    <CreateShell>
-      <form
-        className="grid gap-8"
-        onSubmit={(event) => {
+    <CreateShell
+      form={{
+        onSubmit: (event) => {
           event.preventDefault();
           submit();
-        }}
-      >
+        },
+      }}
+      footer={
+        <CreateFooter
+          submitRef={submitRef}
+          prerequisite={prerequisite ? text(prerequisite) : undefined}
+          note={t('create.project.footNote')}
+          submitLabel={t('create.submit.create')}
+          submitDisabled={locked || !canSubmit}
+        />
+      }
+    >
+      <div className="grid gap-8">
         <CreateFormHeader
           headingRef={headingRef}
           lead={<ApplicationContextLine className="mb-0" view="new-specification" />}
           heading={t('create.heading.specification')}
-          subheading={t('create.project.subheading')}
+          subheading={t('create.subheading.withArchetype')}
         />
         <Separator />
         <div className="grid gap-4">
-          <Field>
+          <Field invalid={nameRefused}>
             <Field.Label>{t('create.nameLabel')}</Field.Label>
             <TextInput
+              ref={nameRef}
               value={title}
               maxLength={createTitleMaxLength}
               disabled={locked}
               onChange={(event) => {
                 setUnprepared(false);
+                setNameRefused(false);
                 setTitle(event.target.value);
               }}
               placeholder={t('create.namePlaceholder')}
             />
+            {nameRefused && <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>}
           </Field>
           <Field>
             <Field.Label>{t('create.project.goalLabel')}</Field.Label>
@@ -191,6 +258,13 @@ export function CreateProjectForm({
           </Field>
         </div>
         <Separator />
+        <ArchetypeSection
+          state={archetypeState}
+          choice={archetypeChoice}
+          locked={locked}
+          onChange={setArchetypeChoice}
+        />
+        <Separator />
         <CreateWorkspaceSection
           headingId={gitHeadingId}
           createOptions={createOptions}
@@ -200,23 +274,13 @@ export function CreateProjectForm({
           onRefresh={refreshOptions}
           onAnnounce={announce}
         />
-        <Separator />
-        <CreateFooter
-          submitRef={submitRef}
-          failureAlert={
-            unprepared && (
-              <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
-                <p>{t('create.errors.failed.body')}</p>
-              </Alert>
-            )
-          }
-          prerequisite={prerequisite ? text(prerequisite) : undefined}
-          note={t('create.project.footNote')}
-          submitLabel={t('create.submit.create')}
-          submitDisabled={locked || !canSubmit}
-        />
+        {unprepared && (
+          <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
+            <p>{t('create.errors.failed.body')}</p>
+          </Alert>
+        )}
         {region}
-      </form>
+      </div>
       <CreateLeaveDialog guard={leaveGuard} />
     </CreateShell>
   );

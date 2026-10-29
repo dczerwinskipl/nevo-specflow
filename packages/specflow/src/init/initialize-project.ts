@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { stringify } from 'yaml';
 
 import {
+  installProjectDefinitionFiles,
   isGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,
   LOCAL_IGNORE_ENTRY,
@@ -23,6 +24,12 @@ export interface ConfigWriteOptions {
 
 export interface InitializeProjectOptions {
   readonly layout: GitCheckoutLayout;
+  /**
+   * Write the shipped default definitions into `.nevo/definitions` (default true). They are written
+   * before the configuration marker and removed again when initialization fails; committing them is the
+   * caller's step, once the configuration exists.
+   */
+  readonly installDefinitions?: boolean;
   readonly contribution: ProjectConfigContribution;
   readonly isIgnored?: (root: string, relativePath: string) => Promise<boolean>;
   readonly writeConfigFile?: (
@@ -34,6 +41,8 @@ export interface InitializeProjectOptions {
 
 export interface InitializeProjectResult {
   readonly root: string;
+  /** Repository-relative paths of the definition files this initialization wrote (not yet committed). */
+  readonly definitionPaths?: readonly string[];
   readonly projectConfigPath: string;
   readonly localConfigPath: string;
 }
@@ -70,10 +79,23 @@ export async function initializeProject(
   const gitignore = await ensureLocalIgnore(layout.root, checkIgnored);
   let localWritten = false;
   let projectWritten = false;
+  const definitionsFolder = join(layout.root, '.nevo', 'definitions');
+  // Only a folder this run creates is removed again on failure.
+  const definitionsExisted = await fileExists(definitionsFolder);
+  let definitionPaths: string[] = [];
 
   try {
     await mkdir(dirname(layout.localConfigPath), { recursive: true });
     await mkdir(dirname(layout.projectConfigPath), { recursive: true });
+
+    if (options.installDefinitions !== false) {
+      const installed = await installProjectDefinitionFiles(layout.root);
+      if (installed.outcome.status === 'refused' && installed.outcome.reason === 'target-unsafe') {
+        throw new Error(installed.outcome.hint);
+      }
+      // A project that already has definitions (committed by its owner) keeps them: nothing was written.
+      definitionPaths = installed.written.map((path) => `.nevo/definitions/${path}`);
+    }
 
     // Local config may contain secrets, so write it only after Git ignore has been
     // proven effective. The committed config is written last and is the success marker.
@@ -89,6 +111,9 @@ export async function initializeProject(
     if (localWritten) {
       await rm(layout.localConfigPath, { force: true });
     }
+    if (!definitionsExisted) {
+      await rm(definitionsFolder, { recursive: true, force: true });
+    }
     await restoreGitignore(gitignore);
     throw error;
   }
@@ -97,6 +122,7 @@ export async function initializeProject(
     root: layout.root,
     projectConfigPath: layout.projectConfigPath,
     localConfigPath: layout.localConfigPath,
+    ...(definitionPaths.length > 0 ? { definitionPaths } : {}),
   };
 }
 

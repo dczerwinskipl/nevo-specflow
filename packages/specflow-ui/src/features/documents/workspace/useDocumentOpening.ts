@@ -107,7 +107,10 @@ export function useDocumentOpening(options: {
 
   const select = (id: string) => {
     if (id === documentId) {
+      // Choosing the shown document again (for example the main file opened by itself) still
+      // takes the reader to it.
       if (!supportsSplit) void navigation.open(documentStack, { specId, documentId: id });
+      else setFocusFor(id);
       return;
     }
     if (supportsSplit) setFocusFor(id);

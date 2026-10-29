@@ -177,7 +177,7 @@ describe('document tree and content of a created Specification', () => {
       ]);
       expect(body.completeness.complete).toBe(true);
       expect(body.issues).toEqual([]);
-      expect(body.capabilities.createFile).toEqual({ available: false, reason: 'not-implemented' });
+      expect(body.capabilities.createFile).toEqual({ available: true });
 
       const again = await app.inject({
         url: tree(created.specId),

@@ -22,6 +22,7 @@ import { createSessionOperationStorage } from '../operation/createOperationStora
 import { createSpecErrorCodes } from '../errors/createSpecErrors';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { openAfterCreatedMs } from './CreateOperationPage';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operationId = '00000000-0000-4000-8000-000000000001';
 const created: CreatedSpec = {
@@ -43,7 +44,7 @@ const httpError = (status: number, code: string) =>
 const storage = () => createSessionOperationStorage('unknown', sessionStorage);
 const store = (request: Record<string, unknown> = {}) =>
   storage().save({
-    request: { title: 'Payment limits', operationId, ...request },
+    request: { title: 'Payment limits', operationId, ...archetypeSelectionFixture, ...request },
     startedAt: Date.now(),
   });
 
@@ -107,7 +108,7 @@ function renderPage(
     operationsApi,
   });
   const queryClient = createSpecFlowQueryClient();
-  const tree = (
+  const treeWith = (open: (created: unknown) => void) => (
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={services}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
@@ -116,7 +117,7 @@ function renderPage(
               <AppShell navigation={<div>Nav</div>}>
                 <CreateOperationScreen
                   operationId={operationId}
-                  onOpen={onOpen}
+                  onOpen={open}
                   onBackToForm={onBackToForm}
                   onBackToSpecifications={onBackToSpecifications}
                 />
@@ -127,12 +128,15 @@ function renderPage(
       </TestServicesRouterContext>
     </QueryClientProvider>
   );
+  const tree = treeWith(onOpen);
   const view = render(tree);
   return {
     onOpen,
     onBackToForm,
     onBackToSpecifications,
     rerender: () => view.rerender(tree),
+    /** As a route does: a new `onOpen` function on every render. */
+    rerenderWithNewOnOpen: () => view.rerender(treeWith((value) => void onOpen(value))),
     unmount: view.unmount,
   };
 }
@@ -439,6 +443,26 @@ describe('CreateOperationPage', () => {
     expect(storage().load(operationId)).toBeUndefined();
   });
 
+  it('success: opens by itself on time even while the page keeps re-rendering', async () => {
+    store({ target: { kind: 'new-worktree' } });
+    const { onOpen, rerenderWithNewOnOpen } = renderPage({
+      post: vi.fn().mockResolvedValue(created),
+      get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
+    });
+    expect(await heading('Specification created')).toBeTruthy();
+    const started = Date.now();
+    // Before the fix every render with a new callback restarted the timer.
+    const ticker = setInterval(rerenderWithNewOnOpen, 200);
+    try {
+      await waitFor(() => expect(onOpen).toHaveBeenCalledWith(created), {
+        timeout: openAfterCreatedMs + 1500,
+      });
+    } finally {
+      clearInterval(ticker);
+    }
+    expect(Date.now() - started).toBeLessThan(openAfterCreatedMs + 1000);
+  });
+
   it('success: the button opens the specification at once', async () => {
     store();
     const { onOpen } = renderPage({
@@ -474,6 +498,36 @@ describe('CreateOperationPage', () => {
       failure: { kind: 'branch-exists', automatic: false },
     });
   });
+
+  it.each(['CATALOGUE_STALE', 'ARCHETYPE_UNKNOWN'])(
+    '%s: nothing was created; Refresh archetypes goes back to the form with the choice kept',
+    async (code) => {
+      store();
+      storage().saveDraft({
+        operationId,
+        title: 'Payment limits',
+        goal: '',
+        choice: initialWorkspaceChoice,
+        archetype: { archetypeId: 'feature', ticks: { feature: ['ux'] } },
+      });
+      const post = vi
+        .fn()
+        .mockRejectedValue(httpError(code === 'CATALOGUE_STALE' ? 409 : 422, code));
+      const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
+      const { onBackToForm } = renderPage({ post, get });
+      expect(await heading('Specification was not created')).toBeTruthy();
+      expect(
+        screen.getByText('The archetypes changed while you were filling the form'),
+      ).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh archetypes' }));
+      expect(onBackToForm).toHaveBeenCalledWith(operationId);
+      // The form restores the archetype and learns why (it resets the ticks to the new defaults).
+      expect(storage().loadDraft(operationId)).toMatchObject({
+        archetype: { archetypeId: 'feature' },
+        failure: { kind: 'catalogue-stale', code },
+      });
+    },
+  );
 
   it('an unknown outcome offers only a check of the same operation, never a second create', async () => {
     store();

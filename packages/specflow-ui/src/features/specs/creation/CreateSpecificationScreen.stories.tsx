@@ -329,7 +329,8 @@ export const ExplicitModelCapabilities: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Z agentem/ }));
     canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }).focus();
-    // Name -> Workflow -> document details disclosure -> first provider.
+    // Name -> archetype radio group -> the two suggested documents -> first provider.
+    await userEvent.tab();
     await userEvent.tab();
     await userEvent.tab();
     await userEvent.tab();
@@ -529,51 +530,52 @@ export const UnavailableProviderIsReadable: Story = {
     await expect(canvas.queryByText('Sposób dostępu nieustalony')).toBeNull();
   },
 };
-export const MissingWorkflowMetadata: Story = {
-  render: () => (
-    <Fixture
-      catalogue={{
-        ...catalogue,
-        archetypes: [{ ...catalogue.archetypes[0]!, description: '', workflow: undefined }],
-      }}
-    />
-  ),
+/**
+ * The Archetype section: the archetypes as a radio list, the default selected, its documents with
+ * the preselected suggestions ticked; ticks are kept per archetype and sent with Create.
+ */
+export const ArchetypeChoiceAndDocuments: Story = {
+  render: () => <Fixture />,
   play: async ({ canvas, userEvent }) => {
-    await openAgentForm(canvas, userEvent);
-    await expect(canvas.getByText('Opis workflow niedostępny.')).toBeVisible();
-    await expect(canvas.getByText('Przebieg nie jest opisany w katalogu.')).toBeVisible();
+    await openManualForm(canvas, userEvent);
+    const group = canvas.getByRole('radiogroup', { name: 'Archetyp' });
+    await expect(within(group).getByRole('radio', { name: /Feature/ })).toBeChecked();
+    // Arrow keys select each archetype they move to (all transitions, both directions).
+    within(group)
+      .getByRole('radio', { name: /Feature/ })
+      .focus();
+    for (const [key, name] of [
+      ['{ArrowDown}', /Minimal/],
+      ['{ArrowDown}', /Feature/],
+      ['{ArrowUp}', /Minimal/],
+      ['{ArrowUp}', /Feature/],
+    ] as const) {
+      await userEvent.keyboard(key);
+      await waitFor(() => expect(within(group).getByRole('radio', { name })).toBeChecked());
+      await expect(within(group).getByRole('radio', { name })).toHaveFocus();
+    }
+    const documents = canvas.getByRole('group', { name: 'Dokumenty do utworzenia' });
+    await expect(
+      within(documents).getByText('Overview (overview.md) jest tworzony zawsze.'),
+    ).toBeVisible();
+    const decisions = within(documents).getByRole('checkbox', { name: /Decisions/ });
+    await expect(decisions).toBeChecked();
+    await expect(within(documents).getByRole('checkbox', { name: /Research/ })).not.toBeChecked();
+    await userEvent.click(decisions);
+    await userEvent.click(within(group).getByRole('radio', { name: /Minimal/ }));
+    await expect(within(documents).queryByRole('checkbox')).toBeNull();
+    await userEvent.click(within(group).getByRole('radio', { name: /Feature/ }));
+    // Switching back restores the user's own ticks for that archetype.
+    await expect(within(documents).getByRole('checkbox', { name: /Decisions/ })).not.toBeChecked();
+    await userEvent.click(within(documents).getByRole('checkbox', { name: /Research/ }));
+    await expect(canvas.queryByText(/[Ww]orkflow/)).toBeNull();
+    await userEvent.click(submit(canvas));
+    await waitFor(() => expect(createRequests).toHaveLength(1));
+    const body = lastRequest();
+    await expect(body.archetypeId).toBe('feature');
+    await expect(body.catalogueRevision).toBe(catalogue.revision);
+    await expect(body.optionalDocumentIds).toEqual(['research']);
     for (const width of [390, 1440]) await expectNoOverflow(width);
-  },
-};
-export const LongWorkflowPhases: Story = {
-  render: () => (
-    <Fixture
-      catalogue={{
-        ...catalogue,
-        archetypes: [
-          {
-            ...catalogue.archetypes[0]!,
-            workflow: {
-              phases: [
-                'Rozpoznanie zależności między obszarami',
-                'Opracowanie i porównanie wariantów rozwiązania',
-                'Weryfikacja scenariuszy i kryteriów akceptacji',
-                'Uzgodnienie zakresu z interesariuszami',
-                'Przygotowanie planu wdrożenia',
-                'Retrospektywa',
-              ],
-              requiredDocuments: ['specification.md'],
-              suggestedDocuments: [],
-            },
-          },
-        ],
-      }}
-    />
-  ),
-  play: async ({ canvas, userEvent }) => {
-    await openAgentForm(canvas, userEvent);
-    await expect(canvas.getByRole('list', { name: 'Przebieg workflow' })).toBeVisible();
-    for (const width of [320, 390, 1440]) await expectNoOverflow(width);
   },
 };
 export const UnavailableNewWorkspaceWithReason: Story = {
@@ -610,11 +612,12 @@ export const SingleModeModel: Story = {
 export const SeparatorsOnlyBetweenRenderedSections: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
-    // Manual mode has no agent section: basics | git | footer.
-    await expect(canvas.getAllByRole('separator')).toHaveLength(2);
+    // Manual mode has no agent section: basics | archetype | git, then the divider above the pinned
+    // footer.
+    await expect(canvas.getAllByRole('separator')).toHaveLength(3);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień sposób pracy/ }));
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
-    await expect(canvas.getAllByRole('separator')).toHaveLength(3);
+    await expect(canvas.getAllByRole('separator')).toHaveLength(4);
   },
 };
 
@@ -997,6 +1000,41 @@ export const WorkspaceSectionGeometryInTheForm: Story = {
     await settle(390);
     const stacked = canvas.getByRole('radio', { name: 'Bieżący katalog' }).closest('label')!;
     await expect(stacked.getBoundingClientRect().top).toBeGreaterThan(a.bottom - 1);
+  },
+};
+
+/**
+ * The Create action and its hint are pinned under the scrolling form: scrolling the form never moves
+ * them, at 1440, at 900 and at 390 with the height left by an open on-screen keyboard.
+ */
+export const CreateActionStaysVisibleWhileTheFormScrolls: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    for (const [width, height] of [
+      [1440, 900],
+      [900, 800],
+      [390, 500],
+    ] as const) {
+      await settleViewport(width, height);
+      const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
+      const footer = canvas.getByRole('group', { name: 'Utworzenie specyfikacji' });
+      const scroller = canvas
+        .getByRole('textbox', { name: 'Nazwa specyfikacji' })
+        .closest<HTMLElement>('.scroll-area-viewport')!;
+      await expect(scroller.contains(footer)).toBe(false);
+      await expect(footer.closest('form')).toBe(scroller.closest('form'));
+      const before = submit.getBoundingClientRect();
+      scroller.scrollTop = scroller.scrollHeight;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const after = submit.getBoundingClientRect();
+      await expect(Math.abs(after.top - before.top)).toBeLessThan(1);
+      await expect(after.bottom).toBeLessThanOrEqual(height + 1);
+      await expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        scroller.getBoundingClientRect().bottom - 1,
+      );
+      scroller.scrollTop = 0;
+    }
+    await settleViewport();
   },
 };
 

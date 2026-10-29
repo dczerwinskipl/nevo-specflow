@@ -127,6 +127,8 @@ function merge(
     ...(row.title !== undefined ? { title: row.title } : {}),
     ...(row.subject ? { subject: { ...row.subject } } : {}),
     ...(row.target ? { target: { ...row.target } } : {}),
+    ...(row.action !== undefined ? { action: row.action } : {}),
+    ...(row.documentCount !== undefined ? { documentCount: row.documentCount } : {}),
   };
   const startedAt = row.startedAt ?? reg?.startedAt;
   const withStart = startedAt ? { startedAt } : {};
@@ -149,6 +151,16 @@ function merge(
         finishedAt,
       };
     }
+    case 'journal-queued':
+      return { ...base, status: 'queued', ...withStart, updatedAt: row.updatedAt };
+    case 'journal-failed':
+      return {
+        ...base,
+        status: 'failed',
+        ...withStart,
+        ...(derived.code ? { code: derived.code } : {}),
+        updatedAt: row.updatedAt,
+      };
     case 'journal-recovery':
     case 'idle':
       return {
@@ -210,11 +222,17 @@ function merge(
 
 /** What the status table decided and which rule decided it. */
 export interface DerivedOperationStatus {
-  readonly status: 'in-progress' | 'failed' | 'recovery-required' | 'completed';
+  readonly status: 'in-progress' | 'failed' | 'recovery-required' | 'completed' | 'queued';
   /** Stable code of a failed or recovery-required result when known. */
   readonly code?: string;
   readonly source:
-    'journal-completed' | 'journal-recovery' | 'registry' | 'idle' | 'journal-in-progress';
+    | 'journal-completed'
+    | 'journal-recovery'
+    | 'journal-queued'
+    | 'journal-failed'
+    | 'registry'
+    | 'idle'
+    | 'journal-in-progress';
 }
 
 /**
@@ -230,6 +248,16 @@ export function deriveOperationStatus(
   staleAfterMs: number = DEFAULT_OPERATION_LIST_CONFIG.staleAfterMs,
 ): DerivedOperationStatus {
   if (row.state === 'completed') return { status: 'completed', source: 'journal-completed' };
+  // A document change waits for its commit or for a decision legitimately: neither the live registry
+  // nor the idle-interrupted rule ever applies to it (what is interrupted is known from the writer).
+  if (row.state === 'queued') return { status: 'queued', source: 'journal-queued' };
+  if (row.state === 'failed') {
+    return {
+      status: 'failed',
+      ...(row.code ? { code: row.code } : {}),
+      source: 'journal-failed',
+    };
+  }
   if (row.state === 'recovery-required') {
     return {
       status: 'recovery-required',
@@ -296,7 +324,8 @@ function capCompleted(
 function countOf(rows: readonly OperationSummary[]): OperationListCounts {
   const counts = { inProgress: 0, recoveryRequired: 0, failed: 0, completed: 0 };
   for (const row of rows) {
-    if (row.status === 'in-progress') counts.inProgress += 1;
+    // A queued document change is work in progress: the counts have no separate bucket for it.
+    if (row.status === 'in-progress' || row.status === 'queued') counts.inProgress += 1;
     else if (row.status === 'recovery-required') counts.recoveryRequired += 1;
     else if (row.status === 'failed') counts.failed += 1;
     else if (row.status === 'completed') counts.completed += 1;
@@ -308,6 +337,7 @@ const RANK: Readonly<Record<string, number>> = {
   'recovery-required': 0,
   failed: 1,
   'in-progress': 2,
+  queued: 2,
   completed: 3,
 };
 

@@ -12,6 +12,7 @@ import {
   resumeCreateOperation,
   submitCreateOperation,
 } from './watchCreateOperation';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operationId = '11111111-1111-4111-8111-111111111111';
 const created: CreatedSpec = {
@@ -24,7 +25,7 @@ const created: CreatedSpec = {
   relativeManifestPath: 'specs/active/title/specification.yaml',
   documentIds: ['overview'],
 };
-const input = { title: 'Title', operationId };
+const input = { title: 'Title', operationId, ...archetypeSelectionFixture };
 
 function apiError(kind: ApiError['kind'], outcome: ApiError['outcome'], code?: string): ApiError {
   return new ApiError({ kind, operation: 'specs.create', outcome, retryable: false, code });

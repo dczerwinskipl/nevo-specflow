@@ -1,3 +1,7 @@
+import {
+  documentContentFixture,
+  saveResultFixture,
+} from '../../../../test-support/documents/fixtures';
 import { useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -139,7 +143,10 @@ function Fixture({
     const base = createSpecFlowAppServices();
     return {
       ...base,
-      documentsApi: { ...base.documentsApi, save: () => Promise.resolve({ revision: '2' }) },
+      demoDocumentsApi: {
+        ...base.demoDocumentsApi,
+        save: () => Promise.resolve(saveResultFixture('2')),
+      },
     };
   }, []);
   const source = documents[active]!;
@@ -163,13 +170,13 @@ function Fixture({
             {visible && (
               <DocumentEditorProvider
                 specId="scroll"
-                document={{
+                document={documentContentFixture({
                   id: source.id,
                   title: source.filename,
-                  filename: source.filename,
+                  path: source.filename,
                   content: source.content,
                   revision: '1',
-                }}
+                })}
               >
                 <div className="shrink-0 border-b border-border-subtle p-2">
                   <Header />
@@ -212,6 +219,22 @@ const frames = () =>
   new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   );
+/**
+ * A measured value once the layout holds it: the same on three frames in a row. Right after a
+ * scroll the editor may still be measuring lines it had estimated, so a single read is a race.
+ */
+async function settled(read: () => number): Promise<number> {
+  let last = read();
+  let same = 0;
+  for (let frame = 0; frame < 120 && same < 3; frame++) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const next = read();
+    same = next === last ? same + 1 : 0;
+    last = next;
+  }
+  if (same < 3) throw new Error(`The position did not settle (last ${last})`);
+  return last;
+}
 /** Scrolls the source so that `line` is at the top, the way a user reaches it (measured, not estimated). */
 async function scrollEditorToLine(view: EditorView, line: number) {
   view.scrollDOM.dispatchEvent(new Event('wheel'));
@@ -343,7 +366,7 @@ export const DirtyDraftKeepsPositionAcrossToggles: Story = {
     const entered = editorTopLine(view);
     view.focus();
     await userEvent.keyboard('ZMIANA');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await invokeDocumentAction(canvas, userEvent, 'Pokaż podgląd');
     await waitForPreview(canvasElement);
     await waitFor(() =>
@@ -353,7 +376,7 @@ export const DirtyDraftKeepsPositionAcrossToggles: Story = {
     const again = await openEditorOnly(canvasElement);
     await waitFor(() => expect(Math.abs(editorTopLine(again) - entered)).toBeLessThanOrEqual(1));
     await expect(again.state.doc.toString()).toContain('ZMIANA');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
   },
 };
 async function openEditorOnly(root: HTMLElement) {
@@ -390,7 +413,7 @@ export const CloseAndReopenRestoresModeAndPosition: Story = {
     const { canvas, canvasElement, userEvent } = context;
     const view = await openEditor(context);
     await scrollEditorToLine(view, 120);
-    const entered = editorTopLine(view);
+    const entered = await settled(() => editorTopLine(view));
     // Put the caret on the visible line so typing does not scroll the view.
     view.dispatch({ selection: { anchor: view.state.doc.line(entered + 2).from } });
     view.focus();
@@ -432,7 +455,7 @@ export const MobileKeyboardDoesNotMoveTheAnchor: Story = {
     const { canvas, canvasElement, userEvent } = context;
     const view = await openEditor(context);
     await scrollEditorToLine(view, 200);
-    const entered = editorTopLine(view);
+    const entered = await settled(() => editorTopLine(view));
     view.focus();
     // The keyboard takes the lower half of the screen.
     const panel = canvas.getByTestId('panel');
@@ -557,13 +580,31 @@ export const NarrowPanelOpensContentsAsSheet: Story = {
     );
     const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
     await userEvent.click(icon);
-    const sheet = await within(document.body).findByRole('dialog', { name: /Spis treści \(\d+\)/ });
+    const sheet = await within(document.body).findByRole('dialog', { name: 'Spis treści' });
     await expect(sheet).toBeVisible();
+    // A compact tree of headings, like the file tree: the title alone (no file name under it),
+    // the deeper level indented, normal weight everywhere, rows 32-36 px.
+    await expect(within(sheet).queryByText('with-props.md')).toBeNull();
+    const top = within(sheet).getByRole('link', { name: 'Długi dokument' });
+    const section = within(sheet).getByRole('link', { name: 'Sekcja 1' });
+    await expect(section.getBoundingClientRect().left).toBeGreaterThan(
+      top.getBoundingClientRect().left + 8,
+    );
+    await expect(Number(getComputedStyle(top).fontWeight)).toBe(400);
+    await expect(Number(getComputedStyle(section).fontWeight)).toBe(400);
     // The current section (the first at the top) is marked and holds focus.
     const current = within(sheet).getByRole('link', { current: 'location' });
     await waitFor(() => expect(current).toHaveFocus());
-    for (const link of within(sheet).getAllByRole('link'))
-      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    // A quiet tint and a 2 px accent bar, not the selected-item block.
+    const bar = getComputedStyle(current, '::before');
+    await expect(bar.width).toBe('2px');
+    await expect(bar.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    for (const link of within(sheet).getAllByRole('link')) {
+      const height = link.getBoundingClientRect().height;
+      await expect(height).toBeGreaterThanOrEqual(32);
+      // Wrapped titles may take two lines; a single line stays one compact row.
+      if (link.textContent.length < 20) await expect(height).toBeLessThanOrEqual(36);
+    }
     await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 3' }));
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(previewOf(canvasElement)!.scrollTop).toBeGreaterThan(200));
@@ -607,6 +648,45 @@ export const EditingHidesTheContentsIcon: Story = {
     await waitFor(() =>
       expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull(),
     );
+  },
+};
+
+/**
+ * Wrap lines (Display group of the `...` menu) exists only with the source editor shown: on by
+ * default on a narrow pane, a checked toggle that changes the editor in place and is kept in this
+ * browser for that pane class.
+ */
+export const WrapLinesIsADisplayToggleOfTheSourceEditor: Story = {
+  args: { width: 390, height: 700, initial: 'a' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    localStorage.removeItem('nevo-specflow.documents.wrapLines');
+    await waitForPreview(canvasElement);
+    const menuItem = async () => {
+      await userEvent.click(canvas.getByRole('button', { name: 'Więcej akcji' }));
+      return within(document.body).queryByRole('menuitemcheckbox', { name: 'Zawijaj wiersze' });
+    };
+    // Preview: nothing to wrap, no toggle.
+    await expect(await menuItem()).toBeNull();
+    await userEvent.keyboard('{Escape}');
+    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
+    const scroller = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>('.cm-scroller');
+      if (!found) throw new Error('No source editor yet');
+      return found;
+    });
+    await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);
+    const item = (await menuItem())!;
+    await expect(item).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(item);
+    // Long lines now run on: the editor scrolls sideways instead of wrapping.
+    await waitFor(() => expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth + 40));
+    await expect(item.isConnected ? item : null).toBeNull();
+    await expect(
+      JSON.parse(localStorage.getItem('nevo-specflow.documents.wrapLines') ?? '{}'),
+    ).toEqual({ narrow: false });
+    await expect(await menuItem()).toHaveAttribute('aria-checked', 'false');
+    await userEvent.keyboard('{Escape}');
+    localStorage.removeItem('nevo-specflow.documents.wrapLines');
   },
 };
 
@@ -656,8 +736,11 @@ export const SheetMarksTheLastSectionAtTheEnd: Story = {
     await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 16' }));
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     const panel = previewOf(canvasElement)!;
-    await waitFor(() =>
-      expect(panel.scrollTop + panel.clientHeight).toBeGreaterThanOrEqual(panel.scrollHeight - 2),
+    // The chosen heading is reached with a smooth scroll: wait for where it ends.
+    await waitFor(
+      () =>
+        expect(panel.scrollTop + panel.clientHeight).toBeGreaterThanOrEqual(panel.scrollHeight - 2),
+      { timeout: 4000 },
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Otwórz spis treści' }));
     sheet = await within(document.body).findByRole('dialog');
@@ -714,8 +797,11 @@ export const ChosenSectionStaysCurrentUntilTheNextManualScroll: Story = {
     await userEvent.click(within(sheet).getByRole('link', { name: 'Przedostatnia' }));
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     // The short tail cannot scroll the chosen heading to the top: the page is at its end.
-    await waitFor(() =>
-      expect(panel.scrollTop + panel.clientHeight).toBeGreaterThanOrEqual(panel.scrollHeight - 2),
+    // The chosen heading is reached with a smooth scroll: wait for where it ends.
+    await waitFor(
+      () =>
+        expect(panel.scrollTop + panel.clientHeight).toBeGreaterThanOrEqual(panel.scrollHeight - 2),
+      { timeout: 4000 },
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Otwórz spis treści' }));
     sheet = await within(document.body).findByRole('dialog');

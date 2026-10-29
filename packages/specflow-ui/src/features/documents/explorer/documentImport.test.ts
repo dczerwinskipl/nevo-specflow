@@ -1,5 +1,5 @@
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
 import { importLimits, planImport } from './documentImport';
 
 const available = { available: true };
@@ -12,18 +12,18 @@ const tree = {
     import: available,
     formats: ['md', 'txt'],
   },
-} as unknown as Pick<DemoDocumentTree, 'documents' | 'folders' | 'capabilities'>;
+} as unknown as Pick<DocumentTree, 'documents' | 'folders' | 'capabilities'>;
 
 const file = (name: string, content = 'text') => new File([content], name);
 const reasons = (plan: Awaited<ReturnType<typeof planImport>>) =>
   plan.skipped.map((entry) => [entry.name, entry.reason.key]);
 
 describe('planImport', () => {
-  it('accepts supported text files and derives the title from the name', async () => {
+  it('accepts supported text files', async () => {
     const plan = await planImport([file('Notes.md', '# A'), file('b.txt')], 'docs', tree);
     expect(plan.accepted).toEqual([
-      { path: 'docs/Notes.md', title: 'Notes', content: '# A' },
-      { path: 'docs/b.txt', title: 'b', content: 'text' },
+      { path: 'docs/Notes.md', content: '# A' },
+      { path: 'docs/b.txt', content: 'text' },
     ]);
     expect(plan.skipped).toEqual([]);
   });

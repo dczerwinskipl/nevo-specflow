@@ -1,7 +1,11 @@
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
 import {
+  createContext,
   forwardRef,
+  useContext,
   useId,
+  useRef,
+  type MutableRefObject,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type ReactNode,
@@ -10,23 +14,53 @@ import { cn } from '../../../lib';
 import { hitAreaBlockClassName, hitAreaClassName } from '../../../design-system/interactionRecipes';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 
+const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+/**
+ * Arrow navigation of the group in progress. Radix selects a radio that receives focus only while
+ * the arrow key is still held, and moves focus a task later: a short press (key up before the
+ * focus arrives) moved focus without selecting. The group remembers the arrow until that focus.
+ */
+const ArrowNavigation = createContext<MutableRefObject<boolean> | null>(null);
+
 export const RadioGroup = forwardRef<
   ComponentRef<typeof RadioGroupPrimitive.Root>,
   ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(function RadioGroup({ className, ...props }, ref) {
+>(function RadioGroup(
+  { className, onKeyDownCapture, onPointerDownCapture, onBlurCapture, ...props },
+  ref,
+) {
   const capture = useDesignMetadata('RadioGroup');
+  const arrow = useRef(false);
   const { children, ...rootProps } = props;
   return (
-    <RadioGroupPrimitive.Root
-      ref={ref}
-      className={cn('min-w-0', className)}
-      {...rootProps}
-      {...capture}
-    >
-      <div className="grid gap-2" {...designSlot('RadioGroup', 'options')}>
-        {children}
-      </div>
-    </RadioGroupPrimitive.Root>
+    <ArrowNavigation.Provider value={arrow}>
+      <RadioGroupPrimitive.Root
+        ref={ref}
+        className={cn('min-w-0', className)}
+        onKeyDownCapture={(event) => {
+          // Remembered until the focus arrives (however late), or until the group is left, a pointer
+          // is used or another key is pressed. No timer: a slow machine moves focus later.
+          arrow.current = ARROW_KEYS.includes(event.key);
+          onKeyDownCapture?.(event);
+        }}
+        onPointerDownCapture={(event) => {
+          arrow.current = false;
+          onPointerDownCapture?.(event);
+        }}
+        onBlurCapture={(event) => {
+          // Focus leaving the group ends any arrow navigation.
+          if (!event.currentTarget.contains(event.relatedTarget)) arrow.current = false;
+          onBlurCapture?.(event);
+        }}
+        {...rootProps}
+        {...capture}
+      >
+        <div className="grid gap-2" {...designSlot('RadioGroup', 'options')}>
+          {children}
+        </div>
+      </RadioGroupPrimitive.Root>
+    </ArrowNavigation.Provider>
   );
 });
 
@@ -37,10 +71,20 @@ export interface RadioGroupItemProps extends ComponentPropsWithoutRef<
 export const RadioGroupItem = forwardRef<
   ComponentRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupItemProps
->(function RadioGroupItem({ className, ...props }, ref) {
+>(function RadioGroupItem({ className, onFocus, ...props }, ref) {
+  const arrow = useContext(ArrowNavigation);
   return (
     <RadioGroupPrimitive.Item
       ref={ref}
+      onFocus={(event) => {
+        onFocus?.(event);
+        // Focus moved by an arrow key selects the radio, however short the key press was.
+        if (arrow?.current) {
+          arrow.current = false;
+          if (event.currentTarget.getAttribute('data-state') !== 'checked')
+            event.currentTarget.click();
+        }
+      }}
       className={cn(
         hitAreaClassName,
         'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border-control bg-surface-control outline-none',

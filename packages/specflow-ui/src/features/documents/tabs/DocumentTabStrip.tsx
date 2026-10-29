@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { typeTitle } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { ItemTabs, type ItemTab, type ItemTabsLabels } from '@nevo/ui';
 import { OutlineButton } from '../outline/OutlineButton';
+import { GuidanceButton } from '../guidance/GuidanceButton';
 import { useDocumentTabs } from './DocumentTabsProvider';
 
 /** Ties the strip's tabs to the tab panel the workspace renders. */
@@ -19,6 +22,7 @@ export function useDocumentTabLabels(): Partial<ItemTabsLabels> {
       closeHint: t('documents.tabs.closeHint'),
       menuHint: t('documents.tabs.menuHint'),
       menuClose: t('documents.tabs.menuClose'),
+      rootLocation: t('documents.tabs.rootLocation'),
       status: {
         loading: t('documents.tabs.statusLoading'),
         missing: t('documents.tabs.statusMissing'),
@@ -40,17 +44,24 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
   const { t } = useTranslation();
   const tabs = useDocumentTabs();
   const labels = useDocumentTabLabels();
+  const catalogue = useDocumentCatalogue();
   const items = useMemo<ItemTab[]>(
     () =>
       tabs.tabs.map((tab) => ({
         id: tab.id,
         label: tab.label,
-        description: tab.path,
+        // The type is in the tab's tooltip and in the Opened list (the switcher on touch).
+        description: tab.type
+          ? t('documents.tabs.typeAndPath', {
+              type: typeTitle(catalogue.data, tab.type),
+              path: tab.path,
+            })
+          : tab.path,
         icon: 'file',
         dirty: tab.dirty,
         state: tab.state,
       })),
-    [tabs.tabs],
+    [tabs.tabs, catalogue.data, t],
   );
   const active = tabs.tabs.find((tab) => tab.id === tabs.activeId);
   return (
@@ -59,7 +70,7 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
       <h2 tabIndex={-1} data-workspace-header-title="true" className="sr-only outline-none">
         {active?.label ?? t('documents.title')}
       </h2>
-      {/* The contents icon follows the strip (or the switcher) as region navigation. */}
+      {/* The contents and guidance icons follow the strip (or the switcher) as region navigation. */}
       <div className="flex min-w-0 items-center gap-1">
         <div className={variant === 'switcher' ? 'min-w-0' : 'min-w-0 flex-1'}>
           <ItemTabs
@@ -73,6 +84,7 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
           />
         </div>
         <OutlineButton />
+        <GuidanceButton />
       </div>
     </>
   );

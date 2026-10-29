@@ -16,6 +16,11 @@ export type CreateFailure =
   | { kind: 'operation-conflict' }
   /** The project Runtime CREATE_CONFLICT: the name (slug) may be taken or the state changed. */
   | { kind: 'name-conflict' }
+  /**
+   * The name gives the Specification a path the Engine refuses (`DOCUMENT_PATH_INVALID`: invalid or
+   * too long). Field-level: the form focuses the name; refreshing the options cannot help.
+   */
+  | { kind: 'name-invalid' }
   | { kind: 'forbidden' }
   /** 401: the session is not authenticated (the form is kept). */
   | { kind: 'unauthenticated' }
@@ -37,6 +42,12 @@ export type CreateFailure =
    * branch checked out, a locked index): nothing was created, trying again after it is resolved works.
    */
   | { kind: 'commit-blocked' }
+  /**
+   * The archetype catalogue changed while the form was filled in (`CATALOGUE_STALE`), or the chosen
+   * archetype no longer exists (`ARCHETYPE_UNKNOWN`): nothing was created; refreshing the archetypes
+   * keeps the form.
+   */
+  | { kind: 'catalogue-stale'; code: 'CATALOGUE_STALE' | 'ARCHETYPE_UNKNOWN' }
   | { kind: 'uncertain' }
   /** The request was provably never sent (no connection at dispatch): nothing was created. */
   | { kind: 'offline' }

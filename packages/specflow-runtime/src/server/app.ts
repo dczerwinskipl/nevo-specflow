@@ -127,10 +127,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
               showcase: true,
               scenarios: dependencies.demoScenarios === true,
             }),
-          {
-            references: dependencies.sessions?.references,
-            documentSource: dependencies.documents?.source,
-          },
+          { references: dependencies.sessions?.references },
         )
       : undefined;
   const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
@@ -153,7 +150,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   };
   const sessionReferences: SessionReferenceOwner | undefined =
     demo?.sessionReferences ?? dependencies.sessions?.references;
-  const documentSource = demo?.documentSource ?? dependencies.documents?.source;
+  // Demo mode serves the real document read routes from the demo directories.
+  const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
   // Project mode: the Engine is the source of the workspace `documents` section, unless a
   // contribution was injected (tests, demo).
   const engine = dependencies.specs?.engine;
@@ -192,12 +190,17 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
     }),
     createDocumentsFeature({
-      source: documentSource,
-      legacyDemoRead: documentSource !== undefined,
-      ...(dependencies.documents?.readSource
-        ? { readSource: dependencies.documents.readSource }
-        : {}),
+      ...(documentReadSource ? { readSource: documentReadSource } : {}),
       ...(engine ? { engine } : {}),
+      // The demo emulates the writes under `/api/demo/...`; the real write routes are project-only.
+      ...(demo ? { writeRoutes: false } : {}),
+      operations: {
+        registry: progressRegistry,
+        ...(dependencies.operations?.now ? { now: dependencies.operations.now } : {}),
+      },
+      ...(dependencies.documents?.writeSource
+        ? { writeSource: dependencies.documents.writeSource }
+        : {}),
     }),
     createSessionsFeature({
       ...(engine ? { engine } : {}),

@@ -1,5 +1,5 @@
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import type { EditorView } from '@codemirror/view';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { createKeyedStore, type KeyedStore } from '../../../shared/state/keyedStore';
 import type { ScrollAnchor } from './documentScrollAnchor';
 
@@ -40,11 +40,16 @@ export function parseDocumentDraftKey(key: string): { specId: string; documentId
 export const isDraftDirty = (draft: Pick<DocumentDraft, 'content' | 'baseline'>): boolean =>
   draft.content !== draft.baseline;
 
-/** An opened editable document defaults to Preview, not Edit; see DocumentEditor. */
-export function draftFor(record: SpecificationDocumentResponse): DocumentDraft {
+/**
+ * An opened editable document defaults to Preview, not Edit; see DocumentEditor. Images and files
+ * that cannot be shown carry no `content`: the editor uses this only as a view-only value and never
+ * stores it (no draft, never dirty; see `hasTextDraft`).
+ */
+export function draftFor(record: DocumentContent): DocumentDraft {
+  const content = record.content ?? '';
   return {
-    content: record.content,
-    baseline: record.content,
+    content,
+    baseline: content,
     revision: record.revision,
     editing: false,
   };
@@ -90,6 +95,8 @@ export interface DocumentDraftStore {
   subscribeSpec(specId: string, listener: () => void): () => void;
   getAnchor(specId: string, documentId: string): ScrollAnchor | undefined;
   setAnchor(specId: string, documentId: string, anchor: ScrollAnchor): void;
+  /** Forgets a reading position (the document moved to another id). */
+  removeAnchor(specId: string, documentId: string): void;
 }
 
 export function createDocumentDraftStore(): DocumentDraftStore {
@@ -128,5 +135,6 @@ export function createDocumentDraftStore(): DocumentDraftStore {
       }),
     getAnchor: (s, d) => anchors.get(documentDraftKey(s, d)),
     setAnchor: (s, d, anchor) => void anchors.set(documentDraftKey(s, d), anchor),
+    removeAnchor: (s, d) => void anchors.delete(documentDraftKey(s, d)),
   };
 }

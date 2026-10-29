@@ -14,6 +14,28 @@ export { validateBaseRef, validateBranchName, normalizeBaseRef } from '../git/re
 export interface GitCommitsPolicy {
   readonly protectedBranches: readonly string[];
   readonly allowedBranches?: readonly string[];
+  /** `git.commits.auto` exactly as configured; a capability that is absent here is not configured. */
+  readonly auto?: AutoCommitSettings;
+}
+
+/**
+ * Engine capabilities that have a manual commit over their ledger scope and an automatic-commit
+ * setting of their own (ADR 0018). Extensible: a capability (later tasks, definitions, ...) is added by
+ * the change that introduces it. The automatic setting is configuration only (never a per-request
+ * option) and defaults to off.
+ */
+export const COMMIT_CAPABILITIES = ['documents'] as const;
+export type CommitCapability = (typeof COMMIT_CAPABILITIES)[number];
+
+/** `git.commits.auto.<capability>` values; a missing key means "not configured here" (the default is `false`: nothing is committed automatically unless the configuration enables it). */
+export type AutoCommitSettings = Readonly<Partial<Record<CommitCapability, boolean>>>;
+
+/** Where the effective value of `git.commits.auto.<capability>` comes from. */
+export type AutoCommitSource = 'project' | 'local' | 'default';
+
+export interface EffectiveAutoCommit {
+  readonly auto: boolean;
+  readonly source: AutoCommitSource;
 }
 
 /** Project Home is the only authority for operational Git policy. */
@@ -30,12 +52,30 @@ export interface GitWorktreePolicy {
    * against the repository). Absent = the `<repo>-worktrees` default. Never committed.
    */
   readonly worktreesRoot?: string;
+  /**
+   * Workstation-local `git.commits.auto` exactly as configured. It wins over the committed value; it is
+   * the only local `git.commits` key and never loosens a safety control.
+   */
+  readonly localAutoCommit?: AutoCommitSettings;
 }
 
-export const DEFAULT_BRANCH_PATTERN = 'feature/{slug}';
+/** The effective `git.commits.auto.<capability>`: local, else committed, else `false` (ADR 0018 decisions 1 and 2, default off). */
+export function effectiveAutoCommit(
+  policy: GitWorktreePolicy,
+  capability: CommitCapability,
+): EffectiveAutoCommit {
+  const local = policy.localAutoCommit?.[capability];
+  if (local !== undefined) return { auto: local, source: 'local' };
+  const project = policy.commits.auto?.[capability];
+  if (project !== undefined) return { auto: project, source: 'project' };
+  return { auto: false, source: 'default' };
+}
+
+/** The Specification key is part of the branch name (`feature/nevo-12-login`). */
+export const DEFAULT_BRANCH_PATTERN = 'feature/{key}-{slug}';
 export const DEFAULT_BASE_REF = 'HEAD';
 
-const SUPPORTED_TEMPLATE_FIELDS = ['slug', 'shortId'] as const;
+const SUPPORTED_TEMPLATE_FIELDS = ['slug', 'shortId', 'key'] as const;
 
 /** Pure parser. Call with Project Home config, never the linked checkout config. */
 export function parseGitWorktreePolicy(
@@ -43,7 +83,7 @@ export function parseGitWorktreePolicy(
   localConfig?: unknown,
 ): GitWorktreePolicy {
   if (!isRecord(projectConfig)) throw invalid('Project configuration must be an object.');
-  const worktreesRoot = parseLocalWorktreesRoot(localConfig);
+  const { worktreesRoot, auto: localAutoCommit } = parseLocalGit(localConfig);
 
   const value = projectConfig.git;
   if (value === undefined) {
@@ -53,6 +93,7 @@ export function parseGitWorktreePolicy(
       baseRef: DEFAULT_BASE_REF,
       commits: { protectedBranches: [] },
       ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
+      ...(localAutoCommit !== undefined ? { localAutoCommit } : {}),
     };
   }
   if (!isRecord(value) || typeof value.enabled !== 'boolean') {
@@ -100,6 +141,7 @@ export function parseGitWorktreePolicy(
     ...(target !== undefined ? { integrationTargetBranch: target } : {}),
     commits: parseCommitsPolicy(value.commits),
     ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
+    ...(localAutoCommit !== undefined ? { localAutoCommit } : {}),
   };
 }
 
@@ -111,9 +153,14 @@ export function parseGitWorktreePolicy(
 export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
   if (value === undefined) return { protectedBranches: [] };
   if (!isRecord(value)) throw invalid('git.commits must be an object.');
-  if (Object.keys(value).some((key) => key !== 'protectedBranches' && key !== 'allowedBranches')) {
+  if (
+    Object.keys(value).some(
+      (key) => key !== 'protectedBranches' && key !== 'allowedBranches' && key !== 'auto',
+    )
+  ) {
     throw invalid('Unsupported git.commits policy key.');
   }
+  const auto = parseAutoCommit('git.commits.auto', value.auto);
   const protectedBranches = parsePatternList(
     'git.commits.protectedBranches',
     value.protectedBranches,
@@ -128,7 +175,23 @@ export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
   return {
     protectedBranches,
     ...(allowed !== undefined && allowed.length > 0 ? { allowedBranches: allowed } : {}),
+    ...(auto !== undefined ? { auto } : {}),
   };
+}
+
+/** `git.commits.auto`: a closed set of capability keys with boolean values (committed and local alike). */
+function parseAutoCommit(label: string, value: unknown): AutoCommitSettings | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw invalid(label + ' must be an object.');
+  const settings: Partial<Record<CommitCapability, boolean>> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (!(COMMIT_CAPABILITIES as readonly string[]).includes(key)) {
+      throw invalid(label + ' has an unknown capability.');
+    }
+    if (typeof entry !== 'boolean') throw invalid(label + '.' + key + ' must be a boolean.');
+    settings[key as CommitCapability] = entry;
+  }
+  return settings;
 }
 
 function parsePatternList(label: string, value: unknown): readonly string[] {
@@ -152,15 +215,33 @@ function parsePatternList(label: string, value: unknown): readonly string[] {
   return patterns;
 }
 
-/** Only `git.worktreesRoot` may live in the workstation-local config; all other Git policy is committed. */
-function parseLocalWorktreesRoot(localConfig: unknown): string | undefined {
-  if (!isRecord(localConfig) || localConfig.git === undefined) return undefined;
+/**
+ * The workstation-local Git settings: `git.worktreesRoot` and `git.commits.auto` (ADR 0018 decision 2).
+ * All other Git policy, protection included, is committed only.
+ */
+function parseLocalGit(localConfig: unknown): {
+  readonly worktreesRoot?: string;
+  readonly auto?: AutoCommitSettings;
+} {
+  if (!isRecord(localConfig) || localConfig.git === undefined) return {};
   const local = localConfig.git;
-  if (!isRecord(local) || Object.keys(local).some((key) => key !== 'worktreesRoot')) {
-    throw invalid('Only git.worktreesRoot can be set in workstation-local configuration.');
+  if (
+    !isRecord(local) ||
+    Object.keys(local).some((key) => key !== 'worktreesRoot' && key !== 'commits')
+  ) {
+    throw invalid(
+      'Only git.worktreesRoot and git.commits.auto can be set in workstation-local configuration.',
+    );
+  }
+  let auto: AutoCommitSettings | undefined;
+  if (local.commits !== undefined) {
+    if (!isRecord(local.commits) || Object.keys(local.commits).some((key) => key !== 'auto')) {
+      throw invalid('Only git.commits.auto can be set in workstation-local configuration.');
+    }
+    auto = parseAutoCommit('git.commits.auto', local.commits.auto);
   }
   const value = local.worktreesRoot;
-  if (value === undefined) return undefined;
+  if (value === undefined) return auto !== undefined ? { auto } : {};
   if (
     typeof value !== 'string' ||
     !value.trim() ||
@@ -169,7 +250,7 @@ function parseLocalWorktreesRoot(localConfig: unknown): string | undefined {
   ) {
     throw invalid('git.worktreesRoot must be a non-empty path.');
   }
-  return value;
+  return { worktreesRoot: value, ...(auto !== undefined ? { auto } : {}) };
 }
 
 /**
@@ -209,7 +290,10 @@ function isInsideOrSame(parent: string, child: string): boolean {
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
-/** Two placeholders are supported; {shortId} is optional, but at least one token is required. */
+/**
+ * Placeholders: {slug}, {shortId} and {key} (the Specification key, `nevo-12`), each at most once; at
+ * least one token is required.
+ */
 export function validateBranchPattern(pattern: string): void {
   if (!pattern || pattern.length > 200) throw invalid('Invalid Git worktree branch pattern.');
   const tokens = [...pattern.matchAll(/\{([^{}]*)\}/gu)].map((match) => match[1]);
@@ -217,16 +301,30 @@ export function validateBranchPattern(pattern: string): void {
     tokens.some((token) => !SUPPORTED_TEMPLATE_FIELDS.some((field) => field === token)) ||
     tokens.length === 0 ||
     tokens.filter((token) => token === 'shortId').length > 1 ||
-    tokens.filter((token) => token === 'slug').length > 1
+    tokens.filter((token) => token === 'slug').length > 1 ||
+    tokens.filter((token) => token === 'key').length > 1
   ) {
     throw invalid(
-      'Branch pattern supports at most one {slug} and one optional {shortId}, and needs at least one.',
+      'Branch pattern supports at most one {slug}, one {shortId} and one {key}, and needs at least one.',
     );
   }
   // Detect unmatched braces and hidden template expressions.
-  const withoutTokens = pattern.replace(/\{(?:slug|shortId)\}/gu, '');
+  const withoutTokens = pattern.replace(/\{(?:slug|shortId|key)\}/gu, '');
   if (/[{}]/u.test(withoutTokens)) throw invalid('Malformed Git branch template.');
-  validateBranchName(pattern.replaceAll('{slug}', 'example').replaceAll('{shortId}', '12345678'));
+  validateBranchName(expandBranchPattern(pattern, 'example', '12345678', 'nevo-1'));
+}
+
+/** The pattern with its placeholders replaced. */
+export function expandBranchPattern(
+  pattern: string,
+  slug: string,
+  shortId: string,
+  key: string,
+): string {
+  return pattern
+    .replaceAll('{slug}', slug)
+    .replaceAll('{shortId}', shortId)
+    .replaceAll('{key}', key);
 }
 
 export function resolveWorktreeBranch(
@@ -234,12 +332,19 @@ export function resolveWorktreeBranch(
   slug: string,
   shortId: string,
   override?: string,
+  key?: string,
 ): string {
-  if (!/^[a-z0-9][a-z0-9-]*$/u.test(slug) || !/^[a-f0-9]{8}$/iu.test(shortId)) {
+  if (
+    !/^[a-z0-9][a-z0-9-]*$/u.test(slug) ||
+    !/^[a-f0-9]{8}$/iu.test(shortId) ||
+    (key !== undefined && !/^[a-z][a-z0-9]*-[1-9][0-9]*$/u.test(key))
+  ) {
     throw invalid('Invalid worktree naming token.');
   }
-  const branch =
-    override ?? policy.branchPattern.replaceAll('{slug}', slug).replaceAll('{shortId}', shortId);
+  if (override === undefined && key === undefined && policy.branchPattern.includes('{key}')) {
+    throw invalid('The branch pattern names {key}, but the Specification has none.');
+  }
+  const branch = override ?? expandBranchPattern(policy.branchPattern, slug, shortId, key ?? '');
   validateBranchName(branch);
   return branch;
 }

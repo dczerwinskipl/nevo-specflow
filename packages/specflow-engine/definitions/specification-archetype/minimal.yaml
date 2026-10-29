@@ -1,0 +1,53 @@
+kind: specification-archetype
+schemaVersion: 1
+id: minimal
+version: 1
+title: Minimal
+description: A single overview document.
+useWhen: The work is small, well understood, or exploratory, and you do not yet know which further documents it needs.
+instructions: Write the overview first. If the work grows beyond one document, add documents from the suggestions or classify existing files; do not duplicate content across documents.
+requirements:
+  - documentType: overview
+    minCount: 1
+templates:
+  - id: overview
+    documentType: overview
+    filename: overview.md
+    include: always
+    instructions: Fill Context and Goal first; leave a section empty rather than inventing content.
+    contentFile: templates/overview.md
+  - id: decisions
+    documentType: decisions
+    filename: decisions.md
+    include: optional
+    instructions: Add one section block per decision; do not rewrite earlier decisions, supersede them.
+    content: |
+      # {{specificationTitle}} - Decisions
+
+      ## Context
+
+      ## Options
+
+      ## Decision
+
+      ## Consequences
+  - id: research
+    documentType: research
+    filename: research.md
+    include: optional
+    instructions: List the questions first; every finding cites a source.
+    content: |
+      # {{specificationTitle}} - Research
+
+      ## Questions
+
+      ## Sources
+
+      ## Findings
+  - id: note
+    documentType: note
+    filename: note.md
+    include: optional
+    instructions: State why this note belongs here.
+    content: |
+      # {{specificationTitle}} - Note

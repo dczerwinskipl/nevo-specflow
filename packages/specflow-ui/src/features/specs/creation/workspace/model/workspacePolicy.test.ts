@@ -686,6 +686,10 @@ describe('slug and branch defaults', () => {
     expect(branchPrefill(withId, 'a-b')).toBe('spec/a-b');
     expect(branchPrefill(o, 'a-b')).toBe('feature/a-b');
     expect(branchPrefill(o, '')).toBe('');
+    // The key is numbered at reservation: a named placeholder, never the raw pattern braces.
+    const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
+    expect(branchPreview(withKey, 'a-b')).toBe('feature/<key>-a-b');
+    expect(branchPrefill(withKey, 'a-b')).toBe('feature/a-b');
   });
   it('the effective slug follows the title until the owner edits it', () => {
     const on = choice({ slug: { on: true, value: '', edited: false } });

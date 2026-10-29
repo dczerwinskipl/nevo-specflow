@@ -292,7 +292,7 @@ An application-level `QueryClient` is initialized at the composition root (`App.
 ### Separation of screen composition and presentation
 
 Production screens (`SpecificationSurfaceConnected`) own data fetching, loading spinners, and honest error/unavailable states.
-Presentational components (`SpecificationWorkspace`, `WorkView`, `TaskRow`, `DocumentsView`, `SessionsView`, `RepositoryView`, `ChangesView`, `FullTaskView`) receive structured data and callbacks via typed props:
+Presentational components (`SpecificationWorkspace`, `WorkView`, `TaskRow`, `SessionsView`, `RepositoryView`, `ChangesView`, `FullTaskView`) receive structured data and callbacks via typed props:
 
 - **No fixture fallback in production**: Production screens never fall back silently to fixture domain data (`dataProp ?? createFixture(...)`). When backend endpoints are unavailable, an honest unavailable state is displayed.
 - **No fixture scenarios in route search**: Query parameters like `?scenario=...` are forbidden in production routes. Scenario-driven fixtures are restricted to Storybook and tests, including test-owned typed API adapters and network interception.

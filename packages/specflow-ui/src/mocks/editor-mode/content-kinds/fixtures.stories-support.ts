@@ -67,7 +67,7 @@ export const mockDocuments: readonly MockDocument[] = [
 export const documentById = (id: string) => mockDocuments.find((doc) => doc.id === id)!;
 export const fileName = (path: string) => path.split('/').at(-1) ?? path;
 
-/** Tree data in the shape the product explorer takes (see DemoDocumentTree). */
+/** Tree data in the shape the product explorer takes (see DocumentTree). */
 export const treeFolders = ['notes', 'architecture', 'src'] as const;
 
 const lines = (...rows: string[]) => rows.join('\n');

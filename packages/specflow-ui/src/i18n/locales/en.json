@@ -6,6 +6,8 @@
     "polish": "Polski",
     "retry": "Retry",
     "moreActions": "More actions",
+    "notification": "Notification",
+    "notificationsRegion": "Notifications ({{hotkey}})",
     "dismissNotification": "Dismiss notification",
     "retrying": "Retrying…",
     "cancel": "Cancel",
@@ -148,10 +150,6 @@
     "tasksPreparingNotice": "Tasks are still being prepared. Open them to inspect scope; execution requires review completion.",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
-    "searchDocumentPlaceholder": "Search document",
-    "documentsConfiguredNotice": "Configured collection · titles and order from backend",
-    "noDocumentsNotice": "No documents yet. They will be created during specification preparation.",
-    "readDocumentAction": "Read",
     "openFullDocument": "Open full document",
     "sessionsOfThisSpec": "Sessions of this specification",
     "sessionsFutureNotice": "In the future this collection may include sessions executing the specification workflow.",
@@ -268,12 +266,13 @@
       "description": "You do not have permission to view these specifications."
     },
     "progressUnknown": "Progress unavailable",
-    "noTasks": "No tasks",
+    "noTasks": "No tasks yet",
     "invalidProgress": "Progress unavailable",
     "progressLabel": "Task completion for {{title}}",
     "specificationColumn": "Specification",
     "situationColumn": "Situation",
     "progressColumn": "Progress",
+    "updatedColumn": "Updated",
     "milestoneColumn": "Milestone",
     "pullRequestColumn": "PR",
     "newestMilestoneFirst": "Newest milestone first",
@@ -525,7 +524,6 @@
     "manual": "On my own",
     "nameLabel": "Specification name",
     "namePlaceholder": "E.g. SSO sign-in",
-    "workflowLabel": "Workflow",
     "model": "Model",
     "chooseModel": "Choose a model",
     "effort": "Effort",
@@ -538,9 +536,9 @@
     "simulatedSuffix": "simulated, no Git operations",
     "method": {
       "title": "How do you want to create the specification?",
-      "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the workflow.",
+      "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype.",
       "aiText": "Start a Spec Writer session. Later stages can use other agents.",
-      "manualText": "Create the documents required by the workflow and edit them yourself."
+      "manualText": "Create the documents of an archetype and edit them yourself."
     },
     "heading": {
       "session": "Who do you want to work with?",
@@ -548,7 +546,7 @@
     },
     "subheading": {
       "session": "Configure another Spec Writer session.",
-      "specification": "Choose the workflow that matches the kind of work."
+      "withArchetype": "Name the work, choose the archetype that matches it and where it lives."
     },
     "agent": {
       "sessionTitle": "Session configuration",
@@ -570,10 +568,11 @@
       "forbidden": "You do not have permission to create specifications.",
       "refreshConfiguration": "Refresh the configuration before creating.",
       "title": "Enter a specification name.",
-      "workflow": "Choose an available workflow.",
       "provider": "Choose an available executor.",
       "model": "Choose a model.",
-      "mode": "Choose a supported working mode."
+      "mode": "Choose a supported working mode.",
+      "archetype": "Choose an archetype.",
+      "noArchetypes": "No archetypes are installed."
     },
     "announce": {
       "refreshFailed": "Unable to refresh the options. The form is kept.",
@@ -630,23 +629,18 @@
       "retry": "Retry opening the session"
     },
     "archetype": {
-      "unavailable": "The selected workflow is unavailable. Choose another one.",
-      "info": "Workflow information",
-      "phases": "Workflow phases",
-      "noDescription": "The workflow description is unavailable.",
-      "noPhases": "The catalogue does not describe the phases.",
-      "requiredDocuments": "Required documents",
-      "suggestedLater": "Suggested later",
-      "details": "Document details",
-      "requiredNone": "No required documents",
-      "requiredCount_one": "{{count}} required document",
-      "requiredCount_few": "{{count}} required documents",
-      "requiredCount_many": "{{count}} required documents",
-      "requiredCount_other": "{{count}} required documents",
-      "suggestedCount_one": "{{count}} suggested later",
-      "suggestedCount_few": "{{count}} suggested later",
-      "suggestedCount_many": "{{count}} suggested later",
-      "suggestedCount_other": "{{count}} suggested later"
+      "title": "Archetype",
+      "intro": "The shape of the work: which documents the specification starts with and which are expected. You can add, remove or classify documents later.",
+      "guidance": "How to work with a {{archetype}} specification",
+      "documents": "Documents to create",
+      "choosePrompt": "Choose an archetype to see the documents Create makes.",
+      "none": "No archetypes are installed in this project. To install the defaults, run",
+      "installCommand": "nevo-specflow definitions install",
+      "always": "{{type}} ({{file}}) is always created.",
+      "expectedUnticked": "{{archetype}} expects a {{type}} document. Without it the specification lists it as missing until you add one.",
+      "loading": "Archetypes are loading",
+      "loadFailed": "The archetypes could not be loaded",
+      "refreshed": "The archetypes were refreshed."
     },
     "errors": {
       "forbiddenTitle": "You do not have permission to create specifications",
@@ -707,6 +701,11 @@
         "title": "A specification with this name may already exist",
         "body": "The specification was not created: the name is already taken or the state of the workspaces changed. Change the name or refresh the options. The next attempt uses a new operation identifier."
       },
+      "nameInvalid": {
+        "title": "The name gives the specification an invalid or too long path",
+        "body": "The specification was not created: its folder and branch are made from the name, and the result is not a valid path or is too long. Shorten the name or use simpler characters, then create it again.",
+        "field": "Shorten the name: the path made from it is invalid or too long."
+      },
       "branchInvalid": {
         "title": "The branch name is not valid",
         "body": "The specification was not created. The branch name you typed is not accepted by Git. Enter a different branch name or let Nevo generate one automatically."
@@ -724,7 +723,12 @@
       "commitFailed": {
         "title": "The specification files were created but could not be committed",
         "body": "Nevo wrote the specification files but could not save them in Git history, so the specification is not registered yet. Do not create it again. Ask the project operator to resume this operation, or to commit the new files, and then check the operation again."
-      }
+      },
+      "catalogueStale": {
+        "title": "The archetypes changed while you were filling the form",
+        "body": "The specification was not created. Your entries are kept: refresh the archetypes and check your choice."
+      },
+      "refreshArchetypes": "Refresh archetypes"
     },
     "workspace": {
       "heading": "Where do you want to work?",
@@ -937,7 +941,6 @@
       }
     },
     "project": {
-      "subheading": "Name it, add the goal if you have one, and choose where its files will live.",
       "goalLabel": "Goal (optional)",
       "goalPlaceholder": "What should this specification achieve?",
       "footNote": "After creation we will open the specification.",
@@ -1010,7 +1013,9 @@
         "name": "Specification name",
         "slug": "Name (slug)",
         "goal": "Goal",
-        "committedTo": "The specification files are committed to <branch/>"
+        "committedTo": "The specification files are committed to <branch/>",
+        "archetype": "Archetype",
+        "documents": "Documents"
       },
       "status": {
         "sending": "Sending the request…",
@@ -1058,20 +1063,20 @@
       "body": "Documents and empty folders are kept until the demo environment restarts."
     },
     "editor": {
-      "conflict": "The document changed. Your draft is kept.",
-      "saveFailed": "Unable to save. Your draft is kept.",
       "sourceLabel": "Content of {{name}}"
     },
     "properties": {
       "label": "Properties"
     },
     "actions": {
+      "wrapLines": "Wrap lines",
       "showPath": "Show path",
       "edit": "Edit document",
       "preview": "Show preview",
       "save": "Save",
       "discard": "Discard changes",
-      "closeTab": "Close tab"
+      "closeTab": "Close tab",
+      "download": "Download"
     },
     "dialogs": {
       "path": {
@@ -1097,39 +1102,34 @@
       "saveAllFailed": "Not all documents could be saved. The drafts are kept."
     },
     "tree": {
-      "newFile": "New file",
       "newFolder": "New folder",
       "upload": "Upload files",
       "rename": "Rename",
       "move": "Move",
       "delete": "Delete",
-      "required": "Required",
-      "requiredReason": "Required by the workflow: it cannot be changed or deleted.",
       "rowActions": "Actions: {{name}}",
       "checkFailed": "Unable to check the current documents. Try again.",
-      "renamed": "Name changed.",
-      "folderAdded": "Folder added.",
-      "fileAdded": "File added.",
-      "deleted": "Deleted.",
-      "moved": "Moved.",
+      "renamed": "Renamed to {{name}}",
+      "folderAdded": "Folder {{name}} created",
+      "fileAdded": "{{name}} added",
+      "deleted": "{{name}} deleted",
+      "moved": "{{name}} moved",
       "unconfirmedRename": "No confirmation. Check the same operation before renaming again.",
       "unconfirmed": "No confirmation. Check the result of the same operation.",
       "inputRename": "New name",
       "inputFolder": "New folder name",
       "inputFile": "New file name",
-      "saving": "Saving…",
       "checkResult": "Check the result of this operation",
       "emptyFolder": "This folder is empty. Add a file or folder from the menu.",
-      "readOnly": "This specification is read-only.",
       "addFirst": "Add the first file from the actions menu.",
-      "processing": "Processing…",
-      "importDone": "Import finished.",
+      "rootTitle": "Specification documents",
+      "importDone": "Upload finished",
       "importStillUnconfirmed": "The import is still unconfirmed. The files are kept.",
       "importUnconfirmed": "The import was not confirmed. The files are kept so the same operation can be retried.",
       "importRejected": "Import rejected. {{reason}}",
       "retryImport": "Retry import",
-      "uploadDone": "Added: {{count}}.",
-      "uploadSkipped": "Added: {{count}}. Skipped: {{skipped}}.",
+      "uploadDone": "Files uploaded: {{count}}",
+      "uploadSkipped": "Files uploaded: {{count}}. Skipped: {{skipped}}",
       "skippedItem": "{{name}}: {{reason}}",
       "skip": {
         "limit": "at most 10 files per import",
@@ -1146,36 +1146,81 @@
       "topLevel": "Top level",
       "deleteFileTitle": "Delete file",
       "deleteFolderTitle": "Delete folder",
-      "deleteFileWarning": "Deleting this file cannot be undone in this demo session.",
-      "deleteFolderWarning": "Deleting this folder and its documents cannot be undone in this demo session.",
+      "deleteFileWarning": "Deleting this file cannot be undone here.",
+      "deleteFolderWarning": "Deleting this folder and its documents cannot be undone here.",
       "error": {
         "pathConflict": "This path already exists. Choose a different name or folder.",
-        "revisionConflict": "The document or tree changed. Close the action and open it again to see the current state.",
-        "required": "This path is required by the workflow — the change cannot be made.",
-        "requestConflict": "The request has a different recorded result. Refresh the documents before the next operation.",
-        "default": "Unable to make the change. Check the name and path; the draft is kept."
-      },
-      "reason": {
-        "required": "A path required by the workflow — it cannot be changed or deleted.",
-        "operationsUnavailable": "Operations on this sample specification are unavailable.",
-        "rootProtected": "The root folder cannot be changed or deleted.",
-        "unavailable": "This operation is unavailable."
+        "revisionConflict": "The document or folder changed meanwhile. Close the action and start it again: the documents were refreshed.",
+        "requestConflict": "This request was already recorded with a different result. Try the action again.",
+        "default": "Unable to make the change. Check the name and path; the draft is kept.",
+        "caseOnlyRename": "Renaming only the letter case is not supported on this file system. Rename it to a different name first, then to the one you want.",
+        "pathInvalid": "This name or path cannot be used. Choose another name.",
+        "alreadyClassified": "This file already has a type. The documents were refreshed.",
+        "manifestDirty": "specification.yaml has uncommitted changes. Commit or discard them, then try again.",
+        "busy": "Another change to this specification is in progress. Try again in a moment.",
+        "catalogueStale": "The document types changed meanwhile. Close the dialog and choose the type again.",
+        "refused": "Not changed: {{reason}}",
+        "recovery": "The files were changed but not committed. Finish the operation before the next change.",
+        "resume": "Resume",
+        "saveRunning": "A save of this document is still running. Try again when it has finished.",
+        "saveToResume": "Resume or discard the pending save first.",
+        "saveUnconfirmed": "The result of the last save is not confirmed yet. Save again to confirm it first.",
+        "folderRevisionMissing": "This folder cannot be renamed, moved or deleted here: the Runtime did not report its revision."
       },
       "nameError": {
         "characters": "The name cannot contain the characters \\ / : * ? \" < > |",
         "control": "The name cannot contain control characters.",
         "tooLong": "The name can be at most 200 characters long.",
-        "other": "Enter a different name.",
+        "dotsOnly": "A name cannot be only dots.",
         "dot": "The name cannot start with a dot.",
         "reserved": "The name is reserved by the system.",
         "trailing": "The name cannot end with a dot or a space.",
-        "format": "Supported formats are .md and .txt."
+        "format": "Supported formats are {{formats}}."
       },
       "nameReason": {
         "dot": "the name cannot start with a dot",
         "reserved": "the name is reserved by the system",
         "invalid": "the name contains characters that are not allowed or ends with a dot/space"
-      }
+      },
+      "noType": "No type",
+      "fileMissing": "File missing",
+      "newDocument": "New document…",
+      "assignType": "Assign type…",
+      "removeRegistration": "Remove registration",
+      "registrationRemoved": "Registration of {{name}} removed",
+      "truncated": "Only the first entries are listed.",
+      "skipped_one": "{{count}} entry in the folder could not be read.",
+      "skipped_few": "{{count}} entries in the folder could not be read.",
+      "skipped_many": "{{count}} entries in the folder could not be read.",
+      "skipped_other": "{{count}} entries in the folder could not be read.",
+      "editingUnavailable": "Editing is unavailable: {{reason}}",
+      "typeOf": "Type: {{type}}",
+      "filter": {
+        "search": "Search files",
+        "clearSearch": "Clear search",
+        "types": "Filter by type",
+        "typesActive_one": "Filter by type: {{count}} chosen",
+        "typesActive_few": "Filter by type: {{count}} chosen",
+        "typesActive_many": "Filter by type: {{count}} chosen",
+        "typesActive_other": "Filter by type: {{count}} chosen",
+        "noType": "No type",
+        "reset_one": "Clear filters ({{count}})",
+        "reset_few": "Clear filters ({{count}})",
+        "reset_many": "Clear filters ({{count}})",
+        "reset_other": "Clear filters ({{count}})",
+        "clear": "Clear filters",
+        "noResults": "No matching files",
+        "noResultsDescription": "Change the search or the chosen types.",
+        "hiddenMissing_one": "The filters hide {{count}} missing file.",
+        "hiddenMissing_few": "The filters hide {{count}} missing files.",
+        "hiddenMissing_many": "The filters hide {{count}} missing files.",
+        "hiddenMissing_other": "The filters hide {{count}} missing files.",
+        "shown_one": "Showing {{count}} of {{total}} files",
+        "shown_few": "Showing {{count}} of {{total}} files",
+        "shown_many": "Showing {{count}} of {{total}} files",
+        "shown_other": "Showing {{count}} of {{total}} files"
+      },
+      "mainNote": "The specification's main document: always first, it cannot be deleted."
     },
     "tabs": {
       "tablist": "Opened documents",
@@ -1185,6 +1230,7 @@
       "closeHint": "Close: Delete or middle-click",
       "menuHint": "Delete closes the highlighted document.",
       "menuClose": "Close",
+      "rootLocation": "Root folder",
       "statusLoading": "loading",
       "statusMissing": "not found",
       "statusDirty": "unsaved changes",
@@ -1194,12 +1240,13 @@
       "noItem": "No document",
       "closeFailed": "Could not close the document. Try again.",
       "missingHint": "This document is no longer in the tree. Your draft is kept until you close the tab.",
-      "closeBusy": "Finish the open question about unsaved changes first, then close this document."
+      "closeBusy": "Finish the open question about unsaved changes first, then close this document.",
+      "typeAndPath": "{{type}} · {{path}}"
     },
     "empty": {
-      "title": "Choose a document from the tree",
-      "suggested": "Start with",
-      "open": "Open {{name}}"
+      "heading": "No document open",
+      "title": "Choose a document from the tree or create a new one.",
+      "choose": "Choose a document from the tree."
     },
     "notFound": {
       "title": "Document not found",
@@ -1209,12 +1256,123 @@
     "outline": {
       "label": "Contents",
       "open": "Open contents",
-      "title": "Contents ({{n}})",
-      "description": "Go to a section of the document",
       "close": "Close contents",
       "columnLabel": "Document contents and properties"
     },
-    "menuDisplay": "Display"
+    "guidance": {
+      "label": "Guidance",
+      "heading": "How to write: {{type}}",
+      "close": "Close guidance"
+    },
+    "menuDisplay": "Display",
+    "issues": {
+      "title": "Closing this specification will be refused",
+      "caseCollision": "Two files differ only in letter case: {{path}}",
+      "archiveLimit": "The folder is larger than the archive allows.",
+      "remedy": "Fix this in the folder (for example with Git), then refresh."
+    },
+    "requirements": {
+      "title": "Expected documents",
+      "help": "{{archetype}} expects these types. Only file presence is checked.",
+      "count": "{{count}} of {{min}}",
+      "add": "Add",
+      "addLabel": "Add a {{type}} document"
+    },
+    "newDocument": {
+      "title": "New document",
+      "inFolder": "In {{folder}}",
+      "inRoot": "In the main folder of {{specification}}.",
+      "typeLabel": "Document type",
+      "suggestedBy": "Suggested by {{archetype}}",
+      "otherTypes": "Other types",
+      "expected": "Expected · {{count}} of {{min}}",
+      "present": "{{count}} in this specification",
+      "noType": "No type",
+      "noTypeHelp": "Counts as no type. You can assign one later.",
+      "fileName": "File name",
+      "fileNameHelp": "The type decides what the document counts as; the name is free.",
+      "nameRequired": "Enter a file name.",
+      "guidance": "How to write a {{type}} document",
+      "create": "Create",
+      "created": "{{name}} added ({{type}})",
+      "loadingTypes": "Loading document types…",
+      "typesFailed": "The document types could not be loaded"
+    },
+    "classify": {
+      "title": "Assign a type",
+      "description": "{{path}} stays where it is. Its type decides what it counts as in this specification.",
+      "confirm": "Assign type",
+      "done": "{{name}} is now {{type}}"
+    },
+    "dangling": {
+      "title": "{{name}} is missing",
+      "body": "The specification lists {{name}} as a {{type}} document, but the file is not in the folder. It may have been moved or deleted outside SpecFlow.",
+      "restore": "To keep it, restore the file (for example with Git) and refresh.",
+      "confirmTitle": "Remove the registration of {{name}}?",
+      "confirmBody": "The specification will no longer list it. No file is deleted.",
+      "confirmLoss": "Your unsaved changes to {{name}} will be lost.",
+      "confirmDiscard": "Remove and discard changes"
+    },
+    "readOnly": {
+      "line": "Read-only: {{reason}}"
+    },
+    "reason": {
+      "note": "Unavailable: {{reason}}",
+      "protected": "The overview is the main document: it can be edited, but not renamed, moved or deleted.",
+      "root": "The main folder cannot be renamed, moved or deleted.",
+      "archived": "this specification is archived.",
+      "branchProtected": "this branch is protected from SpecFlow commits.",
+      "branchNotAllowed": "SpecFlow may not commit on this branch.",
+      "commitBlocked": "Git cannot take a commit right now.",
+      "gitPolicyInvalid": "the project's Git settings are invalid.",
+      "busy": "another change to this specification is in progress.",
+      "notEditable": "this file type can be viewed but not edited here.",
+      "dangling": "The file is missing; only its registration can be removed."
+    },
+    "remedy": {
+      "branch": "To edit, open the specification in a workspace on an allowed branch.",
+      "commitBlocked": "Finish or abort the merge or rebase in this workspace, then try again.",
+      "gitPolicy": "Fix the Git settings in the project configuration.",
+      "notEditable": "Download the file to edit it elsewhere."
+    },
+    "save": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "refused": "Not saved: {{reason}}",
+      "busy": "Not saved: another change is in progress",
+      "operationRunning": "A change to this document in the tree is still running. Save again when it has finished.",
+      "commitBlocked": "Not saved: Git cannot take a commit right now",
+      "missing": "Not saved: the file is missing",
+      "failed": "Not saved. Your changes are still here.",
+      "tryAgain": "Try again",
+      "recoveryTitle": "The save did not finish",
+      "recoveryBody": "Finish the save before editing further.",
+      "resume": "Resume"
+    },
+    "conflict": {
+      "title": "Not saved: {{name}} changed on disk",
+      "body": "The file was changed outside this editor after you opened it. Nothing was overwritten and your changes are still here.",
+      "copyMine": "Copy my version",
+      "loadDisk": "Load the version on disk…",
+      "copied": "Your version is on the clipboard. The editor shows the version on disk: merge your changes into it, then save.",
+      "copyFailed": "Unable to copy. Select your text and copy it by hand.",
+      "loadTitle": "Load the version on disk?",
+      "loadBody": "Your changes in {{name}} are discarded and the editor shows the file as it is on disk.",
+      "loadConfirm": "Discard and load",
+      "loadFailed": "Unable to load the version on disk. Your changes are kept."
+    },
+    "binary": {
+      "cannotShow": "This file cannot be shown here. Download it to open it in another program.",
+      "tooLarge": "This file is too large to show here.",
+      "label": "File information",
+      "path": "Path",
+      "type": "Type",
+      "size": "Size",
+      "format": "Format"
+    },
+    "image": {
+      "actualSize": "Actual size"
+    }
   },
   "sessions": {
     "demo": {
@@ -1248,7 +1406,8 @@
       "writer": "Spec Writer",
       "instructionsBody": "Project and role instructions are passed by SpecFlow regardless of the user message. This placeholder does not show the full system prompt.",
       "loadingContext": "Loading the context…",
-      "contextUnavailable": "The context is unavailable."
+      "contextUnavailable": "The context is unavailable.",
+      "cannotShow": "This file cannot be shown here. Open it in Documents."
     }
   },
   "apiErrors": {

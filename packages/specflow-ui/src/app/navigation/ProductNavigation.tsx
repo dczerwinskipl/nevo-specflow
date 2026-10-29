@@ -24,6 +24,7 @@ import { NevoBrandLogo, defaultNevoBrand } from '../../brand';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
 import { useSessionNavigationSummary } from '../../features/sessions/navigation/summary';
 import { SpecificationSwitcher } from './SpecificationSwitcher';
+import { useNoSpecifications } from './useNoSpecifications';
 import { SessionNavigationPreview } from '../../features/sessions/navigation/SessionNavigationPreview';
 
 export function ProductNavigation({
@@ -62,6 +63,7 @@ export function ProductNavigation({
     sessionDisclosure.setExpanded,
   );
   const demo = useRuntimeMode() === 'demo';
+  const noSpecifications = useNoSpecifications();
   useNavigationFocus();
   useHashSectionFocus();
   const state = useSyncExternalStore(
@@ -279,7 +281,7 @@ export function ProductNavigation({
                 </div>
               ) : null}
             </section>
-          ) : showsNoSpecificationHint(location.pathname) ? (
+          ) : showsNoSpecificationHint(location.pathname) && !noSpecifications ? (
             <Typography
               as="p"
               variant="body-sm"
@@ -298,9 +300,10 @@ export function ProductNavigation({
       </nav>
       <Separator />
       <div
-        className="shrink-0 pt-4"
+        // The shared shell footer height (also the pinned Create footer): one line across the shell.
+        className="box-content flex h-shell-footer shrink-0 items-center"
         data-product-navigation-footer
-        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

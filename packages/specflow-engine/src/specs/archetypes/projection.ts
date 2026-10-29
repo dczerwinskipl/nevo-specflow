@@ -1,18 +1,27 @@
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 
-import { getBuiltInCatalogue, type ResolvedCatalogue } from './catalogue';
+import type { ProjectCatalogue } from '../definitions/project-catalogue';
 
 /**
  * The catalogue in its public (contract) shape: the resolved definitions plus `revision`. A template
  * `title` defaults to the title of its document type, and the catalogue `documents[].id` is the
  * template id. No default archetype is named (the client chooses) and `workflow` is demo-only.
+ * `problems` is reported only when the caller passes the problems of the project catalogue.
  */
-export function projectCatalogue(
-  catalogue: ResolvedCatalogue = getBuiltInCatalogue(),
+export function toArchetypeCatalogue(
+  source: Pick<ProjectCatalogue, 'catalogue'> &
+    Partial<Pick<ProjectCatalogue, 'problems' | 'problemsTruncated'>> & {
+      readonly unstableRead?: boolean;
+    },
 ): ArchetypeCatalogue {
+  const { catalogue } = source;
   const titleOfType = (id: string): string => catalogue.findDocumentType(id)?.title ?? id;
   return {
     revision: catalogue.revision,
+    ...(source.problems !== undefined && source.problems.length > 0
+      ? { problems: [...source.problems], problemsTruncated: source.problemsTruncated === true }
+      : {}),
+    ...(source.unstableRead === true ? { unstableRead: true } : {}),
     documentTypes: catalogue.documentTypes.map((type) => ({
       id: type.id,
       title: type.title,
@@ -20,6 +29,7 @@ export function projectCatalogue(
       useWhen: type.useWhen,
       instructions: type.instructions,
       ...(type.defaultFilename !== undefined ? { defaultFilename: type.defaultFilename } : {}),
+      ...(type.icon !== undefined ? { icon: type.icon } : {}),
     })),
     archetypes: catalogue.archetypes.map((archetype) => ({
       id: archetype.id,

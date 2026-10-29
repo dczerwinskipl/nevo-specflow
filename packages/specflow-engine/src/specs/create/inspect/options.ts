@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_BASE_REF,
   DEFAULT_BRANCH_PATTERN,
+  expandBranchPattern,
   type GitWorktreePolicy,
 } from '../../../version-control/worktrees/policy';
 import { runReadRequest } from '../../../project/request-verification-memo';
@@ -339,7 +340,7 @@ async function inspectCreateOptionsInRequest(
 function branchPatternIsProtected(
   policy: Awaited<ReturnType<typeof readProjectGitPolicy>>['policy'],
 ): boolean {
-  const branch = policy.branchPattern.replaceAll('{slug}', 'a0').replaceAll('{shortId}', '0000000');
+  const branch = expandBranchPattern(policy.branchPattern, 'a0', '0000000', 'nevo-1');
   return engineCommitRefusal(policy.commits, branch) !== undefined;
 }
 

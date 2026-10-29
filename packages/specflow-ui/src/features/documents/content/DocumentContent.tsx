@@ -5,6 +5,8 @@ import { Alert, Button, MarkdownDocument, useInitialAppearance } from '@nevo/ui'
 import { useTranslation } from 'react-i18next';
 import { useAppServices } from '../../../app/useAppServices';
 import { markdownIntro } from '../description/markdownIntro';
+import { hasTextDraft } from '../content-kinds/kindId';
+import { DocumentNonTextPreview } from './DocumentFileViews';
 import { useMarkdownLabels } from '../useMarkdownLabels';
 import { documentKeys } from '../read-model/queries';
 
@@ -89,12 +91,17 @@ export function DocumentContent({
           </Button>
         </Alert>
       ) : null}
-      {usable && query.data ? (
+      {usable && query.data && !hasTextDraft(query.data) ? (
+        // Images and files without text to render have their own previews.
+        <DocumentNonTextPreview specId={specId} document={query.data} />
+      ) : usable && query.data ? (
         <MarkdownDocument
           labels={markdownLabels}
           headingOffset={headingOffset}
           source={
-            omitTitle ? markdownIntro(query.data.content, omitTitle).source : query.data.content
+            omitTitle
+              ? markdownIntro(query.data.content ?? '', omitTitle).source
+              : (query.data.content ?? '')
           }
         />
       ) : (

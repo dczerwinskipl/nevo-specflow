@@ -103,6 +103,19 @@ describe('Create request with an archetype', () => {
     expect(Value.Check(CreatedSpecSchema, without)).toBe(false);
   });
 
+  it('carries the cause of a document error in the details of the Create error body', () => {
+    expect(
+      Value.Check(CreateSpecErrorSchema, {
+        error: 'DEFINITIONS_MISSING',
+        code: 'DEFINITIONS_MISSING',
+        details: { cause: 'definitions-missing' },
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(CreateSpecErrorSchema, { error: 'x', code: 'y', details: { cause: 1 } }),
+    ).toBe(false);
+  });
+
   it('carries every document error code in the Create error body', () => {
     for (const code of DOCUMENT_ERROR_CODES) {
       expect(Value.Check(CreateSpecErrorSchema, { error: 'x', code })).toBe(true);

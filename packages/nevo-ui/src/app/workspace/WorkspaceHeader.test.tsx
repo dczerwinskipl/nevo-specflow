@@ -73,6 +73,18 @@ describe('WorkspaceHeader actions', () => {
     expect(resolved.overflow.at(-1)).toMatchObject({ tone: 'danger' });
   });
 
+  it('keeps a busy direct action focusable: aria-disabled, not disabled', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceHeader
+        title="Document"
+        actions={[{ id: 'save', label: 'Saving…', primary: true, busy: true, onPress: vi.fn() }]}
+      />,
+    );
+    const button = /<button[^>]*>(?:(?!<\/button>).)*Saving…/.exec(markup)?.[0] ?? '';
+    expect(button).toContain('aria-disabled="true"');
+    expect(button).not.toMatch(/\sdisabled=""/);
+  });
+
   it('moves every page action into overflow in compact presentation', () => {
     const resolved = resolveWorkspaceHeaderActions(actions, true);
 

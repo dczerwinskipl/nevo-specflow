@@ -1,3 +1,4 @@
+import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../i18n/message';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
@@ -21,6 +22,12 @@ export function projectCreateReadiness(input: {
   workspaceState: WorkspaceOptionsState;
   choice: WorkspaceChoice;
   forbidden: boolean;
+  /** The archetype catalogue is still loading. */
+  archetypesLoading: boolean;
+  /** The selected archetype (undefined while loading, after a failure or with an empty catalogue). */
+  archetype: ArchetypeInfo | undefined;
+  /** The catalogue was read and the project has no archetype installed. */
+  noArchetypes?: boolean;
 }): ProjectCreateReadiness {
   const { title, goal, workspaceState, choice } = input;
   const workspaceProblem: Message | undefined =
@@ -37,6 +44,12 @@ export function projectCreateReadiness(input: {
     ? message('create.prerequisite.forbidden')
     : !title.trim()
       ? message('create.prerequisite.title')
-      : workspaceProblem;
+      : input.archetypesLoading
+        ? message('create.archetype.loading')
+        : input.noArchetypes
+          ? message('create.prerequisite.noArchetypes')
+          : !input.archetype
+            ? message('create.prerequisite.archetype')
+            : workspaceProblem;
   return { prerequisite, canSubmit: !prerequisite && !tooLong };
 }

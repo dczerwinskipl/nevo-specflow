@@ -16,6 +16,11 @@ export const DocumentTypeInfoSchema = Type.Object(
     useWhen: Type.String({ minLength: 1 }),
     instructions: Type.String({ minLength: 1 }),
     defaultFilename: Type.Optional(Type.String({ minLength: 1 })),
+    /**
+     * Optional icon of the type (a Design System icon name, kebab-case) from its definition. The UI
+     * shows it for documents of this type; an unknown name falls back to the default icon.
+     */
+    icon: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
@@ -68,20 +73,69 @@ export const ArchetypeInfoSchema = Type.Object(
 );
 export type ArchetypeInfo = Static<typeof ArchetypeInfoSchema>;
 
-export const CatalogueProblemSchema = Type.Object(
-  { source: Type.String(), code: Type.String(), message: Type.String() },
+/** Codes of a definition problem (`ArchetypeCatalogue.problems[]`). */
+export const DEFINITION_PROBLEM_CODES = [
+  'file-unreadable',
+  'file-too-large',
+  'yaml-invalid',
+  'schema-invalid',
+  'kind-mismatch',
+  'id-filename-mismatch',
+  'id-duplicate',
+  'reference-missing',
+  'reference-invalid',
+  'template-file-invalid',
+  'limit-exceeded',
+  'requirement-overview-missing',
+  'overview-template-invalid',
+  'directory-unsafe',
+  'unexpected-entry',
+  'unknown-kind-directory',
+  'unsupported-schema-version',
+] as const;
+export const DefinitionProblemCodeSchema = closedUnion(DEFINITION_PROBLEM_CODES);
+export type DefinitionProblemCode = (typeof DEFINITION_PROBLEM_CODES)[number];
+
+export const DEFINITION_PROBLEM_SEVERITIES = ['error', 'warning'] as const;
+export const DefinitionProblemSeveritySchema = closedUnion(DEFINITION_PROBLEM_SEVERITIES);
+
+/** At most this many problems are returned; `problemsTruncated` marks more. */
+export const DEFINITION_PROBLEMS_MAX = 50;
+export const DEFINITION_PROBLEM_MESSAGE_MAX_LENGTH = 300;
+
+/** One invalid or ignored definition file. The message is plain text and never an absolute path. */
+export const DefinitionProblemSchema = Type.Object(
+  {
+    /** Path relative to `.nevo/definitions`, for example `specification-archetype/feature.yaml`; `''` for a directory-level problem. */
+    source: Type.String(),
+    /** The definition kind when known. */
+    kind: Type.Optional(Type.String({ minLength: 1 })),
+    code: DefinitionProblemCodeSchema,
+    /** `warning`: the file is ignored but nothing depends on it. */
+    severity: DefinitionProblemSeveritySchema,
+    message: Type.String({ maxLength: DEFINITION_PROBLEM_MESSAGE_MAX_LENGTH }),
+    /** JSON pointer inside the file, for example `/templates/1/documentType`. */
+    location: Type.Optional(Type.String()),
+  },
   { additionalProperties: false },
 );
+export type DefinitionProblem = Static<typeof DefinitionProblemSchema>;
 
 export const ArchetypeCatalogueSchema = Type.Object(
   {
-    /** sha256 of the canonical catalogue content; changes on any edit. */
+    /** sha256 of the VALID catalogue content (problems excluded); changes when it changes. */
     revision: Type.String({ minLength: 1 }),
     /** Absent in the real backend (the UI chooses); optional in the demo. */
     defaultArchetypeId: Type.Optional(CatalogueIdSchema),
     documentTypes: Type.Array(DocumentTypeInfoSchema),
-    /** Reserved for user-defined archetype files (not implemented); absent or empty for built-ins. */
-    problems: Type.Optional(Type.Array(CatalogueProblemSchema)),
+    /** Invalid definition files (real backend only); absent when there are none. */
+    problems: Type.Optional(
+      Type.Array(DefinitionProblemSchema, { maxItems: DEFINITION_PROBLEMS_MAX }),
+    ),
+    /** True when more problems exist than the {@link DEFINITION_PROBLEMS_MAX} returned. */
+    problemsTruncated: Type.Optional(Type.Boolean()),
+    /** True when the definition files kept changing while they were read: the catalogue may be out of date. */
+    unstableRead: Type.Optional(Type.Boolean()),
     archetypes: Type.Array(ArchetypeInfoSchema),
   },
   { additionalProperties: false },

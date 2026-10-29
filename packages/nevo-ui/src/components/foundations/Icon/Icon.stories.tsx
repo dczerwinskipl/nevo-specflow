@@ -73,7 +73,7 @@ export const DesignCapture: Story = {
     designCapture: {
       component: 'Icon',
       title: 'Icon',
-      description: 'Shared semantic glyph registry × 2 sizes',
+      description: 'Shared semantic glyph registry × 4 sizes (lg and xl are illustration sizes)',
       kind: 'primitive',
       order: 0,
     },

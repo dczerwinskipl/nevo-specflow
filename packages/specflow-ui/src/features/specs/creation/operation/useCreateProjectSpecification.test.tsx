@@ -22,6 +22,7 @@ import {
   type ProjectCreateModel,
   type ProjectSubmission,
 } from './useCreateProjectSpecification';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const created: CreatedSpec = {
   operationId: '00000000-0000-4000-8000-000000000001',
@@ -48,6 +49,7 @@ const submission = (overrides: Partial<ProjectSubmission> = {}): ProjectSubmissi
   title: ' Title ',
   goal: ' ',
   buildTarget: () => undefined,
+  selection: archetypeSelectionFixture,
   snapshot: 'form-1',
   ...overrides,
 });
@@ -131,7 +133,9 @@ describe('useCreateProjectSpecification', () => {
     });
     const [url, body] = post.mock.calls[0] as [string, Record<string, unknown>];
     expect(url).toBe('/api/specs');
-    expect(Object.keys(body).sort()).toEqual(['goal', 'operationId', 'target', 'title']);
+    expect(Object.keys(body).sort()).toEqual(
+      [...Object.keys(archetypeSelectionFixture), 'goal', 'operationId', 'target', 'title'].sort(),
+    );
     expect(body).toMatchObject({
       title: 'Title',
       goal: 'Make it work',
@@ -151,7 +155,9 @@ describe('useCreateProjectSpecification', () => {
     await act(async () => {
       await model().actions.submit(submission());
     });
-    expect(Object.keys(post.mock.calls[0]![1] as object).sort()).toEqual(['operationId', 'title']);
+    expect(Object.keys(post.mock.calls[0]![1] as object).sort()).toEqual(
+      [...Object.keys(archetypeSelectionFixture), 'operationId', 'title'].sort(),
+    );
   });
 
   it('keeps the operation stored while it is unconfirmed and releases it on success', async () => {
@@ -388,7 +394,7 @@ describe('useCreateProjectSpecification', () => {
 
   it('resumes an operation stored by a previous page: it checks, never sends again, and opens the result', async () => {
     const stored: StoredCreateOperation = {
-      request: { title: 'Title', operationId: created.operationId },
+      request: { title: 'Title', operationId: created.operationId, ...archetypeSelectionFixture },
       startedAt: Date.now(),
     };
     storageKey().save(stored);
@@ -407,11 +413,15 @@ describe('useCreateProjectSpecification', () => {
 
   it('concluding one operation clears only its own ledger entry, never that of another operation', async () => {
     const other: StoredCreateOperation = {
-      request: { title: 'Other', operationId: '22222222-2222-4222-8222-222222222222' },
+      request: {
+        title: 'Other',
+        operationId: '22222222-2222-4222-8222-222222222222',
+        ...archetypeSelectionFixture,
+      },
       startedAt: Date.now(),
     };
     const own: StoredCreateOperation = {
-      request: { title: 'Title', operationId: created.operationId },
+      request: { title: 'Title', operationId: created.operationId, ...archetypeSelectionFixture },
       startedAt: Date.now(),
     };
     storageKey().save(other);
@@ -432,7 +442,7 @@ describe('useCreateProjectSpecification', () => {
 
   it('re-sends, with the same id, a resumed operation the server never saw', async () => {
     const stored: StoredCreateOperation = {
-      request: { title: 'Title', operationId: created.operationId },
+      request: { title: 'Title', operationId: created.operationId, ...archetypeSelectionFixture },
       startedAt: Date.now(),
     };
     storageKey().save(stored);
@@ -516,7 +526,7 @@ describe('useCreateProjectSpecification', () => {
 
   it('retries an operation a lost session left failed: the server is asked first and the stored operation is kept meanwhile', async () => {
     const stored: StoredCreateOperation = {
-      request: { title: 'Title', operationId: created.operationId },
+      request: { title: 'Title', operationId: created.operationId, ...archetypeSelectionFixture },
       startedAt: Date.now(),
     };
     storageKey().save(stored);

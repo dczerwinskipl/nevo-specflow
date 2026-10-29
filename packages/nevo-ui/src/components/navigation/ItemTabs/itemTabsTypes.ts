@@ -29,6 +29,11 @@ export interface ItemTabsLabels {
   menuHint: string;
   /** Pointer-only close affordance title inside Opened menu rows. */
   menuClose: string;
+  /**
+   * Second line of an Opened menu row whose description is just its label (an item at the root,
+   * for example `overview.md`), instead of repeating the name.
+   */
+  rootLocation: string;
   /** Visually hidden suffixes announced after the item name. */
   status: { loading: string; missing: string; dirty: string; current: string };
   /** Accessible name of the switcher button. */
@@ -45,6 +50,7 @@ export const defaultItemTabsLabels: ItemTabsLabels = {
   closeHint: 'Close: Delete or middle-click',
   menuHint: 'Delete closes the highlighted item.',
   menuClose: 'Close',
+  rootLocation: 'Root folder',
   status: {
     loading: 'loading',
     missing: 'not found',

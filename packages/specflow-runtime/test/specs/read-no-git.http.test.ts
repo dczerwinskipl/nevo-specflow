@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 import {
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
 } from '@nevo/specflow-engine/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 

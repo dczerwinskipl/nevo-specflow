@@ -43,6 +43,11 @@ export interface ProjectSubmission {
   slug?: string;
   /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
   buildTarget: () => CreateSpecRequest['target'] | undefined;
+  /** The archetype part of the request (absent for a status check, which never starts one). */
+  selection?: Pick<
+    CreateSpecRequest,
+    'archetypeId' | 'archetypeVersion' | 'catalogueRevision' | 'optionalDocumentIds'
+  >;
   /** Fingerprint of the form, so editing it retires the alert of a definite failure. */
   snapshot: string;
   /** Called synchronously with a definite failure, just before it is published. */
@@ -307,6 +312,8 @@ export function useCreateProjectSpecification(
       try {
         const target = submission.buildTarget();
         const goal = submission.goal.trim();
+        // Without an archetype there is no request to send: a definite failure, nothing was sent.
+        if (!submission.selection) throw new Error('The archetype selection is missing.');
         input = retainRequest<SentCreateRequest, 'operationId'>(
           ledger.attempt,
           {
@@ -314,6 +321,7 @@ export function useCreateProjectSpecification(
             ...(goal ? { goal } : {}),
             ...(submission.slug ? { slug: submission.slug } : {}),
             ...(target ? { target } : {}),
+            ...submission.selection,
           },
           undefined,
           'operationId',

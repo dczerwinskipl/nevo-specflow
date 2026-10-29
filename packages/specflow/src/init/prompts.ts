@@ -79,7 +79,7 @@ export async function chooseBranchPattern(ui: RuntimeSetupUi): Promise<string> {
   for (let attempt = 1; attempt <= MAX_PATTERN_ATTEMPTS; attempt += 1) {
     const text = (
       await ui.input(
-        'Custom branch pattern ({slug} and optional {shortId})',
+        'Custom branch pattern ({slug}, {key} and optional {shortId})',
         DEFAULT_BRANCH_PATTERN,
       )
     ).trim();
@@ -207,4 +207,25 @@ export function integrationTargetProtectedNote(
   return protectedBranches.some((pattern) => matchesBranchPattern(pattern, integrationTargetBranch))
     ? `The integration branch '${integrationTargetBranch}' is protected: Nevo cannot commit specifications directly on it, so specifications are created in a new or existing worktree. Merging worktrees into it is not affected.`
     : undefined;
+}
+
+/**
+ * Whether the Engine commits document edits by itself (`git.commits.auto.documents`). The answer
+ * defaults to "no": automatic commit is off unless the configuration enables it, so declining, an
+ * unanswered prompt and a non-interactive run all write nothing.
+ */
+export async function chooseAutoCommit(ui: RuntimeSetupUi): Promise<boolean> {
+  const answer = await ui.select<'no' | 'yes'>(
+    'Commit documents automatically?',
+    [
+      {
+        value: 'no',
+        label: 'No (default)',
+        hint: 'Edits stay uncommitted until "nevo-specflow commit"',
+      },
+      { value: 'yes', label: 'Yes', hint: 'The Engine commits document edits by itself' },
+    ],
+    'no',
+  );
+  return answer === 'yes';
 }

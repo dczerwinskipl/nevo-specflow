@@ -108,8 +108,19 @@ type Context = Parameters<Play>[0];
 const request = (canvas: Context['canvas']) => canvas.getByLabelText('Żądanie').textContent;
 const summary = (canvas: Context['canvas']) =>
   canvas.getByRole('group', { name: 'Podsumowanie środowiska pracy' });
+/**
+ * Sizes the story viewport and waits until the window really has that size: the resize reaches the
+ * story's window asynchronously, and a Radix Select closes its list on any window resize, so a late
+ * resize (also one left over from the previous story) would close a list the story just opened.
+ */
 async function settle(width: number, height = 900) {
   await (await browserPage()).viewport(width, height);
+  await waitFor(() => {
+    if (window.innerWidth !== width || window.innerHeight !== height)
+      throw new Error(
+        `Viewport ${window.innerWidth}x${window.innerHeight}, not ${width}x${height}`,
+      );
+  });
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 /** Close an open Combobox list and wait for it to unmount, so no overlay state leaks into the next story. */
@@ -363,12 +374,13 @@ export const ExistingOutsideNevo: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Środowisko pracy' }));
-    const option = await within(document.body).findByRole(
-      'option',
-      { name: /architecture/ },
-      { timeout: 5000 },
-    );
+    // Own the viewport first (a pending resize closes the list), then open the list and wait until
+    // it is open: the option is read from an open list, not from a click that may not have landed.
+    await settle(1440);
+    const trigger = canvas.getByRole('combobox', { name: 'Środowisko pracy' });
+    await userEvent.click(trigger);
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+    const option = await within(document.body).findByRole('option', { name: /architecture/ });
     await expect(option).toHaveTextContent('Poza Nevo');
     await closeList(userEvent);
   },

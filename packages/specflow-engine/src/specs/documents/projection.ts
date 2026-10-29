@@ -1,25 +1,33 @@
 import { createHash } from 'node:crypto';
 
 import type {
-  Action,
-  ActionReason,
+  ArchetypeDefined,
   ContentKind,
   DocumentIssue,
   DocumentTree,
 } from '@nevo/specflow-contracts/documents';
 
 import type { ManifestArchetype, ManifestDocument, SpecificationLocation } from '../model';
-import { deriveUnclassifiedDocumentId } from './document-ids';
-import { DocumentError } from './errors';
+import { deriveUnclassifiedDocumentId } from '../document-rules/document-ids';
+import { DocumentError } from '../document-rules/errors';
 import {
   deriveFolders,
   findCaseCollisions,
   foldPathKey,
   isReservedRootName,
-} from './document-paths';
+} from '../document-rules/document-paths';
+import { folderRevisionOf } from './write/folder-revision';
 import { validateDocuments } from './document-validation';
 import { EDITABLE_EXTENSIONS, isEditable } from './content-kinds';
-import { folderContainsProtectedDocument, isProtectedDocument } from './protection';
+import { folderContainsProtectedDocument, isProtectedDocument } from '../document-rules/protection';
+import {
+  SUBJECT_FREE,
+  availabilityOf,
+  type AvailabilityContext,
+  type PolicyReason,
+  type SubjectRefusal,
+} from './reads/action-availability';
+import { emptyCommitView, type DocumentCommitView } from './reads/commit-model';
 
 /**
  * Pure tree projection (`docs/architecture/runtime/specification-documents.md`: validation results, content kinds,
@@ -38,11 +46,7 @@ export interface ObservedFile {
   readonly mediaType: string;
 }
 
-/** Why a write is advisory-unavailable because of the project Git policy (read-only evaluation). */
-export type PolicyReason = Extract<
-  ActionReason,
-  'branch-protected' | 'branch-not-allowed' | 'git-policy-invalid'
->;
+export type { PolicyReason };
 
 export interface ArchiveLimitFact {
   readonly exceeded: boolean;
@@ -58,6 +62,8 @@ export interface TreeProjectionInput {
   };
   /** Display title of the archetype from the catalogue; absent when the archetype is not in it. */
   readonly archetypeTitle?: string;
+  /** Whether the definition file of the archetype is in the catalogue (`absent`: no file, `invalid`: rejected). */
+  readonly archetypeDefined?: ArchetypeDefined;
   /** The exact bytes of `specification.yaml` that `manifest` was parsed from. */
   readonly manifestBytes: Uint8Array;
   readonly location: SpecificationLocation;
@@ -76,6 +82,8 @@ export interface TreeProjectionInput {
   readonly archiveLimit: ArchiveLimitFact;
   /** Absent when Git is disabled, the branch is allowed, or the branch is not cheaply known. */
   readonly policyReason?: PolicyReason;
+  /** The open commits of the Specification (journals and batches); absent means none. */
+  readonly commits?: DocumentCommitView;
 }
 
 const TEXT_FORMATS: readonly string[] = [...EDITABLE_EXTENSIONS];
@@ -90,13 +98,17 @@ export type TreeRevisionContext = Pick<
   | 'archiveLimit'
   | 'policyReason'
   | 'archetypeTitle'
+  | 'archetypeDefined'
+  | 'commits'
 >;
 
 /**
  * Tree revision (the tree `ETag`): sha256 over the manifest bytes, the sorted list of (path, revision)
  * pairs and every other input that changes the response: the location, truncation, the skipped entries
  * (count and reported paths), the archive limit fact, the advisory policy reason and the archetype
- * title. A conditional GET therefore never answers `304` for a response whose issues, advisory action
+ * title and the open commits (their markers, the paths a write or a claimed batch holds, the queue
+ * capacity and the blockers; the age of a pending commit is not part of it). A conditional GET
+ * therefore never answers `304` for a response whose issues, advisory action
  * reasons or counts differ from the one the client holds.
  */
 export function computeTreeRevision(
@@ -127,23 +139,12 @@ function contextFields(context: TreeRevisionContext): unknown[] {
     context.archiveLimit.path ?? null,
     context.policyReason ?? null,
     context.archetypeTitle ?? null,
+    context.archetypeDefined ?? null,
+    context.commits?.fingerprint ?? null,
   ];
 }
 
-type WriteAction = (own?: ActionReason) => Action;
-
-/**
- * Write actions have no route yet: `not-implemented` unless a stronger reason applies. An archived
- * Specification is read-only.
- */
-// TODO(document write operations): drop the `not-implemented` reason when the write routes exist.
-function writeActionFor(input: TreeProjectionInput): WriteAction {
-  const archived = input.location === 'archive';
-  return (own) => ({
-    available: false,
-    reason: archived ? 'archived' : (own ?? input.policyReason ?? 'not-implemented'),
-  });
-}
+const CAPABILITY = { kind: 'capability' } as const;
 
 export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
   const { manifest } = input;
@@ -151,11 +152,20 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
     (file) => !(!file.path.includes('/') && isReservedRootName(file.path)),
   );
   const filePaths = files.map((file) => file.path);
-  const write = writeActionFor(input);
+  const context: AvailabilityContext = {
+    archived: input.location === 'archive',
+    ...(input.policyReason !== undefined ? { policyReason: input.policyReason } : {}),
+    commits: input.commits ?? emptyCommitView(),
+  };
   const requirements = evaluateRequirements(manifest, filePaths, input.unreadableRegisteredPaths);
 
-  const documents = projectDocumentNodes(input, files, write, requirements.minCountByType);
-  const folders = projectFolders(deriveFolders(filePaths, manifest.folders), write);
+  const documents = projectDocumentNodes(input, files, context, requirements.minCountByType);
+  const folders = projectFolders(
+    deriveFolders(filePaths, manifest.folders),
+    files,
+    manifest,
+    context,
+  );
 
   const dangling = requirements.validation.dangling.map(
     (entry): DocumentTree['dangling'][number] => ({
@@ -163,19 +173,27 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
       path: entry.path,
       type: entry.type,
       actions: {
-        delete: write(
-          isProtectedDocument({ id: entry.id, path: entry.path }) ? 'protected' : undefined,
+        delete: availabilityOf(
+          context,
+          { kind: 'file', path: entry.path },
+          isProtectedDocument({ id: entry.id, path: entry.path })
+            ? { kind: 'refused', reason: 'protected' }
+            : SUBJECT_FREE,
         ),
       },
     }),
   );
 
   return {
-    revision: computeTreeRevision(input.manifestBytes, files, input),
+    revision: computeTreeRevision(input.manifestBytes, files, {
+      ...input,
+      commits: context.commits,
+    }),
     archetype: {
       id: manifest.archetype.id,
       version: manifest.archetype.version,
       ...(input.archetypeTitle !== undefined ? { title: input.archetypeTitle } : {}),
+      ...(input.archetypeDefined !== undefined ? { defined: input.archetypeDefined } : {}),
     },
     folders,
     documents,
@@ -185,13 +203,14 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
       requirements: [...requirements.validation.requirements],
     },
     capabilities: {
-      createFile: write(),
-      createFolder: write(),
-      import: write(),
-      classify: write(),
+      createFile: availabilityOf(context, CAPABILITY),
+      createFolder: availabilityOf(context, CAPABILITY),
+      import: availabilityOf(context, CAPABILITY),
+      classify: availabilityOf(context, CAPABILITY),
       formats: [...TEXT_FORMATS],
     },
     issues: collectIssues(input, requirements.validation.issues, filePaths),
+    commits: { ...context.commits.summary },
     truncated: input.truncated,
     skippedEntries: input.skippedEntries,
   };
@@ -224,7 +243,7 @@ function evaluateRequirements(
 function projectDocumentNodes(
   input: TreeProjectionInput,
   files: readonly ObservedFile[],
-  write: WriteAction,
+  context: AvailabilityContext,
   minCountByType: ReadonlyMap<string, number>,
 ): DocumentTree['documents'] {
   const registeredByPath = new Map(
@@ -239,7 +258,12 @@ function projectDocumentNodes(
       const entry = registeredByPath.get(file.path);
       const isProtected =
         entry !== undefined && isProtectedDocument({ id: entry.id, path: entry.path });
-      const protectedReason = isProtected ? ('protected' as const) : undefined;
+      const moveRefusal: SubjectRefusal = isProtected
+        ? { kind: 'refused', reason: 'protected' }
+        : SUBJECT_FREE;
+      const editable = !archived && isEditable(file);
+      const target = { kind: 'file', path: file.path } as const;
+      const marker = context.commits.markers.get(file.path);
       const minCount = entry ? (minCountByType.get(entry.type) ?? 0) : 0;
       return {
         id: entry ? entry.id : deriveUnclassifiedDocumentId(file.path),
@@ -251,15 +275,25 @@ function projectDocumentNodes(
         size: file.size,
         revision: file.revision,
         protected: isProtected,
-        editable: !archived && isEditable(file),
+        editable,
         satisfiesRequirement: entry !== undefined && minCount > 0,
+        ...(marker !== undefined ? { commit: marker } : {}),
         actions: {
-          rename: write(protectedReason),
-          move: write(protectedReason),
-          delete: write(protectedReason),
+          save: availabilityOf(
+            context,
+            target,
+            editable ? SUBJECT_FREE : { kind: 'refused', reason: 'not-editable' },
+          ),
+          rename: availabilityOf(context, target, moveRefusal),
+          move: availabilityOf(context, target, moveRefusal),
+          delete: availabilityOf(context, target, moveRefusal),
           // A registered document is already classified: nothing to do, not a missing feature, so
           // no reason; an archived Specification is read-only like everything else.
-          classify: entry ? (archived ? write() : { available: false }) : write(),
+          classify: availabilityOf(
+            context,
+            target,
+            entry !== undefined ? { kind: 'refused' } : SUBJECT_FREE,
+          ),
         },
       };
     });
@@ -291,21 +325,39 @@ function assertDistinctDerivedIds(
 /** The root folder (rename, move and delete refused as `root`) followed by every derived folder. */
 function projectFolders(
   folderPaths: readonly string[],
-  write: WriteAction,
+  files: readonly Pick<ObservedFile, 'path' | 'revision'>[],
+  manifest: TreeProjectionInput['manifest'],
+  context: AvailabilityContext,
 ): DocumentTree['folders'] {
+  const root: SubjectRefusal = { kind: 'refused', reason: 'root' };
+  const rootTarget = { kind: 'folder', path: '' } as const;
   return [
     {
       path: '',
-      actions: { rename: write('root'), move: write('root'), delete: write('root') },
-    },
-    ...folderPaths.map((path) => ({
-      path,
       actions: {
-        rename: write(),
-        move: write(),
-        delete: write(folderContainsProtectedDocument(path) ? 'protected' : undefined),
+        rename: availabilityOf(context, rootTarget, root),
+        move: availabilityOf(context, rootTarget, root),
+        delete: availabilityOf(context, rootTarget, root),
       },
-    })),
+    },
+    ...folderPaths.map((path) => {
+      const target = { kind: 'folder', path } as const;
+      return {
+        path,
+        revision: folderRevisionOf(path, files, manifest),
+        actions: {
+          rename: availabilityOf(context, target),
+          move: availabilityOf(context, target),
+          delete: availabilityOf(
+            context,
+            target,
+            folderContainsProtectedDocument(path)
+              ? { kind: 'refused', reason: 'protected' }
+              : SUBJECT_FREE,
+          ),
+        },
+      };
+    }),
   ];
 }
 

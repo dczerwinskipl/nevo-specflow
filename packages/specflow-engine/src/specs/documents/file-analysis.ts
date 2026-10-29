@@ -6,7 +6,7 @@ import type { ContentKind } from '@nevo/specflow-contracts/documents';
 import { readBoundedBytes } from '../bounded-read';
 import { BINARY_MEDIA_TYPE, classifyContent, extensionOf, kindForExtension } from './content-kinds';
 import { CONTENT_HASH_MAX_BYTES, CONTENT_SNIFF_BYTES } from './limits';
-import { readAt } from './verified-file';
+import { readAt } from '../document-rules/verified-file';
 import { sha256Hex } from '../../hash';
 
 /** What the Engine knows about one opened regular file: size, revision, kind and media type. */

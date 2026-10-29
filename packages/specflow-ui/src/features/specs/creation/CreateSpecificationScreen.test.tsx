@@ -16,6 +16,8 @@ import { initialWorkspaceChoice } from './workspace/model/workspaceChoice';
 import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import { createOptionsFixture } from './options/creationOptions.stories-support';
+import { catalogue } from './options/creationCatalogue.stories-support';
+import { archetypeSelectionFixture } from './workspace/model/createRequest.test-support';
 
 const created: CreatedSpec = {
   operationId: '00000000-0000-4000-8000-000000000001',
@@ -49,6 +51,7 @@ function renderScreen(
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode }) },
     projectCreationApi: {
       operationEventsUrl: createOperationEventsUrl,
+      archetypes: () => Promise.resolve(catalogue),
       ...projectCreationApi,
     } as ProjectCreationApi,
     operationsApi,
@@ -115,6 +118,13 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     expect(await screen.findByLabelText('Specification name')).toBeTruthy();
     expect(screen.getByLabelText('Goal (optional)')).toBeTruthy();
     expect(screen.queryByText('Workflow')).toBeNull();
+    // The archetypes as a radio list, the default selected, with the documents Create makes.
+    expect(await screen.findByRole('radiogroup', { name: 'Archetype' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Feature/ }).getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('group', { name: 'Documents to create' })).toBeTruthy();
+    expect(screen.getByText('Overview (overview.md) is always created.')).toBeTruthy();
     expect(screen.queryByText(/Creation is available in demo mode only/)).toBeNull();
   });
 
@@ -143,8 +153,18 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       title: 'Payment limits',
       goal: 'Limit refunds',
     });
-    expect(Object.keys(stored?.request ?? {}).sort()).not.toContain('archetypeId');
-    expect(storage().loadDraft(operationId)).toMatchObject({ title: 'Payment limits' });
+    // The archetype of the catalogue's default with its preselected suggestion, from this revision.
+    expect(stored?.request).toMatchObject({
+      archetypeId: 'feature',
+      archetypeVersion: 1,
+      catalogueRevision: catalogue.revision,
+      optionalDocumentIds: ['decisions'],
+    });
+    expect(storage().loadDraft(operationId)).toMatchObject({
+      title: 'Payment limits',
+      archetypeTitle: 'Feature',
+      documentFiles: ['overview.md', 'decisions.md'],
+    });
   });
 
   it('stores the new-worktree target of the chosen workspace in the request', async () => {
@@ -165,7 +185,11 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
 
   it('a plain entry shows an empty form even when an unfinished operation and its draft are stored', async () => {
     storage().save({
-      request: { title: 'Payment limits', operationId: created.operationId },
+      request: {
+        title: 'Payment limits',
+        operationId: created.operationId,
+        ...archetypeSelectionFixture,
+      },
       startedAt: Date.now(),
     });
     storage().saveDraft({
@@ -188,7 +212,11 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
   });
 
   it('a new operation next to a running one gets its own id and leaves the first one resumable', async () => {
-    const first = { title: 'First', operationId: created.operationId };
+    const first = {
+      title: 'First',
+      operationId: created.operationId,
+      ...archetypeSelectionFixture,
+    };
     storage().save({ request: first, startedAt: Date.now() });
     const { onProjectStarted } = renderScreen('project', {
       createOptions: () => Promise.resolve(createOptionsFixture('default')),

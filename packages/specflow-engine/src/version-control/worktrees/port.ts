@@ -11,6 +11,8 @@ export type WorktreeAvailability =
 export interface WorktreeRequest {
   readonly slug: string;
   readonly shortId: string;
+  /** The Specification key, for a `{key}` branch pattern. */
+  readonly key?: string;
   readonly baseRefOverride?: string;
   readonly branchOverride?: string;
   readonly targetPath?: string;

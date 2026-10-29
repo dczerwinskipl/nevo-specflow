@@ -1,7 +1,7 @@
 import type { SpecFlowEngine } from '../../application';
 import { closeSpecification } from '../lifecycle';
 import { closeWorktree, closeWorkspace } from '../lifecycle';
-import { previewCloseOperation, type CloseRequest } from '../lifecycle';
+import { previewCloseOperation, previewWithDocumentFlush, type CloseRequest } from '../lifecycle';
 import { inspectCloseOperation } from '../lifecycle';
 import { reconcileArchivedConflictScratch } from '../lifecycle';
 import { CloseOperationError } from '../lifecycle';
@@ -46,11 +46,26 @@ export async function previewPublicCloseOperation(
 }
 
 /** Resolve immutable retry authorization from the journal, never mutable query options. */
+export interface PlanPublicCloseOptions {
+  /**
+   * Commit the queued document changes of the checkouts the request names before the plan is made, as
+   * the admission of the Close does (a checkout that is dirty only because of Nevo is not a Close
+   * problem). Without it the plan is the pure preview. A commit that stays pending, failed or
+   * abandoned is `DOCUMENT_COMMITS_PENDING`.
+   */
+  readonly flushDocumentCommits?: boolean;
+}
+
 export async function planPublicCloseOperation(
   engine: SpecFlowEngine,
   request: CloseRequest,
+  options: PlanPublicCloseOptions = {},
 ): Promise<PublicClosePreview> {
-  if (!request.operationId) return previewPublicCloseOperation(engine, request);
+  const preview = async (): Promise<PublicClosePreview> =>
+    options.flushDocumentCommits === true
+      ? projectClosePreview(await previewWithDocumentFlush(engine, request, {}))
+      : previewPublicCloseOperation(engine, request);
+  if (!request.operationId) return preview();
   const existing = await inspectCloseOperation(engine, request.operationId);
   if (existing) {
     if (
@@ -63,7 +78,7 @@ export async function planPublicCloseOperation(
     }
     return projectClosePreview(existing.plan);
   }
-  return previewPublicCloseOperation(engine, request);
+  return preview();
 }
 
 export async function closeWorktreeOperation(
@@ -103,6 +118,7 @@ export async function reconcileArchivedConflictScratchOperation(
 export async function planPublicWorkspaceCloseOperation(
   engine: SpecFlowEngine,
   request: { readonly operationId: string; readonly workspaceId: string },
+  options: PlanPublicCloseOptions = {},
 ): Promise<PublicWorkspaceClosePreview> {
   // Rehydrate only an immutable matching plan. Caller supplies no occupant list.
   const existing = await inspectCloseOperation(engine, request.operationId);
@@ -117,8 +133,11 @@ export async function planPublicWorkspaceCloseOperation(
       );
     return projectWorkspaceClosePreview(existing.plan);
   }
+  const intent = { ...request, kind: 'workspace-close' } as const;
   return projectWorkspaceClosePreview(
-    await previewCloseOperation(engine, { ...request, kind: 'workspace-close' }),
+    options.flushDocumentCommits === true
+      ? await previewWithDocumentFlush(engine, intent, {})
+      : await previewCloseOperation(engine, intent),
   );
 }
 

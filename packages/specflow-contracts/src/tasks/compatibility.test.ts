@@ -7,9 +7,7 @@ describe('Read contract ownership compatibility', () => {
     expect(legacy.TaskSnapshotSchema).toBe(tasks.TaskSnapshotSchema);
     expect(legacy.SpecificationTaskResponseSchema).toBe(tasks.SpecificationTaskResponseSchema);
     expect(legacy.SpecificationTaskParamsSchema).toBe(tasks.SpecificationTaskParamsSchema);
-    expect(legacy.SpecificationDocumentResponseSchema).toBe(
-      documents.SpecificationDocumentResponseSchema,
-    );
+    expect(legacy.DocumentContentSchema).toBe(documents.DocumentContentSchema);
     expect(legacy.SpecificationDocumentParamsSchema).toBe(
       documents.SpecificationDocumentParamsSchema,
     );

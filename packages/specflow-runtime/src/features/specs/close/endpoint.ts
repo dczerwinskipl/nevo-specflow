@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   CloseOperationError,
+  DocumentError,
   GitCapabilityError,
   ProjectControlLockError,
   ProjectHomeError,
@@ -15,6 +16,7 @@ import {
   inspectPublicCloseOperation,
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  type PlanPublicCloseOptions,
   type PublicClosePreview,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
@@ -39,10 +41,12 @@ import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
+import type { DocumentErrorDetails } from '@nevo/specflow-contracts/documents';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify';
 
 import { requireCapability } from '../../auth';
+import { documentFailure } from '../../documents';
 
 export interface SpecsCloseEndpointOptions {
   readonly engine?: SpecFlowEngine;
@@ -74,6 +78,7 @@ async function authorizedPlan(
   specId: string,
   operationId: string,
   integrateToTargetBranch?: boolean,
+  options: PlanPublicCloseOptions = {},
 ): Promise<PublicClosePreview> {
   // Spec-scoped authentication precedes every operation-id/immutable-journal read.
   // Integration authority follows the Engine's immutable retry plan, not a
@@ -88,9 +93,25 @@ async function authorizedPlan(
           specId,
           ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
         },
+    options,
   );
   if (plan.integrationRequired) projectIntegrationAllowed(request, engine);
   return plan;
+}
+
+/**
+ * A Close admission that the document commit queue refuses (`DOCUMENT_COMMITS_PENDING` with its
+ * `details.cause`): the stable `{error, code, details}` body of the documents contract, 409.
+ */
+function documentRefusal(error: unknown) {
+  if (!(error instanceof DocumentError)) return undefined;
+  const failure = documentFailure(error);
+  if (!failure) return undefined;
+  // Statuses outside the declared Close responses are served as the schemaless JSON they are.
+  return failure as unknown as {
+    status: 409;
+    body: { error: string; code: string; details?: DocumentErrorDetails };
+  };
 }
 
 type SafeCode =
@@ -230,6 +251,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             specId,
             body.operationId,
             body.integrateToTargetBranch,
+            // The admission commits the queued document changes first; the authorization plan must too.
+            { flushDocumentCommits: true },
           );
           const result =
             kind === 'worktree-close'
@@ -243,6 +266,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
                 });
           return reply.code(result.status === 'completed' ? 200 : 202).send(result);
         } catch (error) {
+          const refusal = documentRefusal(error);
+          if (refusal) return reply.code(refusal.status).send(refusal.body);
           const code = safeCode(error);
           if (!code) throw error;
           return reply.code(statusForCloseError(code)).send({
@@ -359,10 +384,12 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           operationId: request.body.operationId,
         };
         // A retry uses the stored immutable plan, not a client supplied list.
-        await planPublicWorkspaceCloseOperation(engine, params);
+        await planPublicWorkspaceCloseOperation(engine, params, { flushDocumentCommits: true });
         const result = await closeWorkspaceOperation(engine, params);
         return reply.code(result.status === 'completed' ? 200 : 202).send(result);
       } catch (error) {
+        const refusal = documentRefusal(error);
+        if (refusal) return reply.code(refusal.status).send(refusal.body);
         const code = safeCode(error);
         if (!code) throw error;
         return reply.code(statusForCloseError(code)).send({ code, error: code });

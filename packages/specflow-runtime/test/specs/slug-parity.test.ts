@@ -4,8 +4,11 @@ import { deriveSpecSlug, isValidBranchName } from '@nevo/specflow-contracts/spec
 import {
   createSpecificationScaffold,
   normalizeCreateClientIntent,
+  seedCatalogueForTesting,
 } from '@nevo/specflow-engine/testing';
 import { describe, expect, it } from 'vitest';
+
+const catalogue = await seedCatalogueForTesting();
 
 describe('title-derived slug: UI preview rule equals the Engine rule', () => {
   it.each([
@@ -17,6 +20,7 @@ describe('title-derived slug: UI preview rule equals the Engine rule', () => {
     'Ünïcödé Café',
   ])('%j', (title) => {
     const engine = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: randomUUID(),
       title,

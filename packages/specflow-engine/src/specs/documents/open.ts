@@ -5,7 +5,7 @@ import type { Classification, ContentKind } from '@nevo/specflow-contracts/docum
 
 import type { SpecFlowEngine } from '../../application';
 import { analyzeOpenFile } from './file-analysis';
-import { DocumentError } from './errors';
+import { DocumentError } from '../document-rules/errors';
 import { RAW_CONTENT_MAX_BYTES } from './limits';
 import {
   loadSpecification,
@@ -13,7 +13,7 @@ import {
   type LoadedSpecification,
 } from './loaded-specification';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
-import { withOpenFile } from './verified-file';
+import { withOpenFile } from '../document-rules/verified-file';
 
 /** Everything the raw endpoint needs to describe the bytes it is about to stream. */
 export interface OpenedDocumentMetadata {

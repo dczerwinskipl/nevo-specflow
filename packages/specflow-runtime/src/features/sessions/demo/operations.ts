@@ -41,7 +41,7 @@ export function createDemoSessions(state: DemoState) {
         (input.effort !== undefined && !model.efforts.includes(input.effort))
       )
         throw new DemoOperationError(400, 'demo_invalid_selection');
-      const entry = state.request(subject, 'session:' + specId, input);
+      const entry = state.request(subject, 'session:' + specId, input.requestId, input);
       if (entry.result) return entry.result as DemoSessionResult;
       const location = state.locations.get(specId) ?? state.catalogue.currentLocation;
       state.fail('session', 'demo_session_allocation_failed');

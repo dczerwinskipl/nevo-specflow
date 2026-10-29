@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -30,15 +31,10 @@ beforeAll(() => {
 afterEach(cleanup);
 
 const markdown = ['# One', '', 'text', '', '## Two', '', '### Three', '', 'end'].join('\n');
-const record = (content: string, filename = 'a.md'): SpecificationDocumentResponse => ({
-  id: 'a',
-  title: 'a',
-  filename,
-  content,
-  revision: '1',
-});
+const record = (content: string, path = 'a.md'): DocumentContent =>
+  documentContentFixture({ id: 'a', title: 'a', path, content, revision: '1' });
 
-function setup(document: SpecificationDocumentResponse) {
+function setup(document: DocumentContent) {
   const services = createSpecFlowAppServices();
   const queryClient = createSpecFlowQueryClient();
   const seen: { session: DocumentEditorSession | null; actions: string[]; groups: string[] } = {
@@ -56,7 +52,7 @@ function setup(document: SpecificationDocumentResponse) {
     return <OutlineButton />;
   }
   const store = createDocumentDraftStore();
-  const tree = (shown: SpecificationDocumentResponse) => (
+  const tree = (shown: DocumentContent) => (
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={services}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
@@ -71,7 +67,7 @@ function setup(document: SpecificationDocumentResponse) {
   );
   const view = render(tree(document));
   return Object.assign(seen, {
-    show: (next: SpecificationDocumentResponse) => view.rerender(tree(next)),
+    show: (next: DocumentContent) => view.rerender(tree(next)),
   });
 }
 const icon = () => screen.queryByRole('button', { name: 'Open contents' });
@@ -127,7 +123,9 @@ describe('the contents of a previewed document', () => {
     act(() => seen.session!.reportColumnShown(false));
     fireEvent.click(icon()!);
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText('Contents (3)')).toBeTruthy();
+    // Titled "Contents" with the document's name under it.
+    expect(sheet.getAttribute('aria-labelledby')).toBeTruthy();
+    expect(within(sheet).getByRole('heading', { name: 'Contents' })).toBeTruthy();
     const nav = within(sheet).getByRole('navigation', { name: 'Contents' });
     const links = within(nav).getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual(['One', 'Two', 'Three']);
@@ -188,7 +186,7 @@ describe('the contents of a previewed document', () => {
     act(() => seen.session!.reportColumnShown(false));
     fireEvent.click(icon()!);
     await screen.findByRole('dialog');
-    seen.show({ ...record(markdown), id: 'b', title: 'b', filename: 'b.md' });
+    seen.show({ ...record(markdown), id: 'b', title: 'b', path: 'b.md' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     act(() => seen.session!.reportColumnShown(false));
     expect(screen.queryByRole('dialog')).toBeNull();

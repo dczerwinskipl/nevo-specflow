@@ -105,11 +105,14 @@ describe('classifyHttpError', () => {
       ],
       [
         'B 409 revision',
-        http(409, { error: 'document_revision_unavailable' }),
+        http(409, {
+          error: 'DOCUMENT_REVISION_UNAVAILABLE',
+          code: 'DOCUMENT_REVISION_UNAVAILABLE',
+        }),
         'conflict',
         'not-applied',
         false,
-        'document_revision_unavailable',
+        'DOCUMENT_REVISION_UNAVAILABLE',
       ],
       [
         'C 409 context rule',

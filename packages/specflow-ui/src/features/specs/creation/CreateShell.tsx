@@ -54,7 +54,7 @@ export function CreateShell({
               the two bars line up across the shell; taller only when the hint and the button stack
               on a narrow screen. */}
           <Separator />
-          <div className="flex min-h-shell-footer shrink-0 items-center px-4 py-3 sm:px-6">
+          <div className="flex min-h-shell-footer shrink-0 items-center px-4 py-shell-footer-padding sm:px-6">
             <AppContentContainer>{footer}</AppContentContainer>
           </div>
         </>

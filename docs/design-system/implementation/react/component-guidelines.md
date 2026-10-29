@@ -209,6 +209,15 @@ action is unavailable. `tone` is `info` (muted icon) or `attention` (status colo
 decorative. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
+## Shell footer
+
+Every bar pinned to the bottom of the shell (the navigation's account row, a page's sticky footer
+such as Create's) is one default control high plus `--spacing-shell-footer-padding` (10 px) above and
+below: `--spacing-shell-footer` (56 px), under one `Separator`, so the bars of the navigation and the
+workspace meet on one line. Use `h-shell-footer` / `min-h-shell-footer` with `py-shell-footer-padding`;
+do not add local paddings. Keep the content on one line (a short hint, then the action); it may grow
+only when a long hint wraps. The safe area is added below it, never inside.
+
 ## Empty state
 
 `EmptyState` is the one empty screen of the system: whenever an area has nothing to show yet, use it
@@ -265,7 +274,6 @@ hierarchy is carried by one small indent step and the chevron + folder icon + na
 | `treeItemLabelTruncateClassName`                   | the name on one line with an ellipsis (keep the full name reachable elsewhere, for example a tooltip shown only when clipped)                                                                                                                          |
 | `treeRowActionClassName`                           | the trailing action trigger of a row (`IconButton size="sm"`, sibling of the item): revealed on hover, focus-within, open menu and the selected row on fine pointers, always visible on touch; its slot is always laid out, so the label never reflows |
 | `treeRequiredLabelClassName`, `...MarkerClassName` | a quiet muted "Required" text inside the item before the row action; below `@3xs` row width the text is visually hidden and the workflow icon stands in. It never reorders rows and never selects one                                                  |
-| `treeTrailingLabelClassName`                       | a quiet trailing label of the item (for example its type) before the row action, shown in full or not at all: below `@xs` row width (20rem) it is visually hidden, never shortened, and it stays in the accessible name                                |
 | `treeStateLabelClassName`, `treeAttention...`      | a trailing state label that never hides (the name truncates instead); the attention forms tone the label and the leading glyph (`treeAttentionGlyphClassName`), never colour alone                                                                     |
 | `treeHintClassName`                                | a quiet inline hint under an opened empty folder (muted, aligned to the folder name column by `--spacing-tree-name-offset`, no icon, not focusable, not a tree item); the product removes it when the folder gets content                              |
 

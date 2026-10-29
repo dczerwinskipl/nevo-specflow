@@ -28,18 +28,21 @@ export function CreateFooter({
     <footer
       role="group"
       aria-label={t('create.formRegion')}
-      className="flex flex-col gap-2 @lg:flex-row @lg:items-center @lg:justify-between @lg:gap-4"
+      // One line at every width: the hint takes the free space (and wraps only when long), the
+      // button keeps its size at the end.
+      className="flex items-center justify-between gap-3 @lg:gap-4"
     >
-      {prerequisite ? (
-        <InlineNote id={prerequisiteId}>{prerequisite}</InlineNote>
-      ) : (
-        <InlineNote icon={null}>{note}</InlineNote>
-      )}
-      <div className="w-full @lg:w-auto @lg:shrink-0">
+      <div className="min-w-0 flex-1">
+        {prerequisite ? (
+          <InlineNote id={prerequisiteId}>{prerequisite}</InlineNote>
+        ) : (
+          <InlineNote icon={null}>{note}</InlineNote>
+        )}
+      </div>
+      <div className="shrink-0">
         <Button
           ref={submitRef}
           type="submit"
-          width="full"
           aria-describedby={prerequisite ? prerequisiteId : undefined}
           disabled={submitDisabled}
         >

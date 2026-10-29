@@ -95,11 +95,15 @@
   --spacing-control-height-compact: 2rem;
   --spacing-control-height-default: 2.25rem;
   /*
-   * The bottom bar of the shell (navigation account row, a pinned page footer): one default
-   * control with the standard 1rem padding above and below, so the bars of the navigation and the
-   * workspace line up on one horizontal line. Excludes the top divider and any safe area.
+   * The bottom bar of the shell (navigation account row, a pinned page footer, any future sticky
+   * footer): one default control with `shell-footer-padding` above and below, so the bars of the
+   * navigation and the workspace line up on one horizontal line. Excludes the top divider and any
+   * safe area.
    */
-  --spacing-shell-footer: calc(var(--spacing-control-height-default) + 2rem);
+  --spacing-shell-footer-padding: 0.625rem;
+  --spacing-shell-footer: calc(
+    var(--spacing-control-height-default) + 2 * var(--spacing-shell-footer-padding)
+  );
   /* Minimum interactive target: 24px on every pointer, 44px on coarse pointers (see hitAreaClassName). */
   --spacing-target-min: 1.5rem;
   --spacing-target-touch: 2.75rem;

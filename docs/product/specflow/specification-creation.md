@@ -27,7 +27,8 @@ choices are: **Current project checkout** (primary), **Existing workspace**, or 
 a corresponding visible control in UI.
 
 The **Create** action and the one reason it is unavailable (or the note about what Create does)
-stay visible at the bottom of the screen at every width; only the form above them scrolls. What
+stay visible at the bottom of the screen at every width, on one line (the hint first, the action at
+the end), in a bar as high as the navigation's account row; only the form above them scrolls. What
 went wrong after a submit is explained at the end of the form, above that action.
 
 Display branch, Spec count and availability from `create-options`. Disabled, detached and

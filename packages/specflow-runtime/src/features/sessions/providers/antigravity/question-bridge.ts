@@ -25,6 +25,7 @@ export const AntigravityBridgeLimits = {
   requestBytes: 64 * 1024,
   receiveMs: 5000,
   deliveryMs: 5000,
+  cleanupMs: 5000,
   setupMs: 10000,
 } as const;
 const serverName = 'specflow-interactions';
@@ -344,37 +345,41 @@ export async function createAntigravityQuestionBridge(options: {
       closed = true;
       active = false;
       options.signal.removeEventListener('abort', onAbort);
-      let failure: unknown;
-      for (const entry of pending.values()) {
-        try {
-          await expire(entry);
-        } catch (error) {
-          failure ??= error;
-        }
-      }
-
-      try {
-        await rpc.close();
-      } catch (error) {
-        failure ??= error;
-      }
-
+      // Revoke the listener and native transports independently of persistence.
+      // A stalled store must not keep an authenticated question endpoint alive.
+      const expiration = [...pending.values()].map(expire);
+      const transportClosing = rpc.close();
       server.closeAllConnections();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-      pending.clear();
-      wireRequests.clear();
-      seenRequests.clear();
-      if (failure) {
-        done.reject(failure);
-
-        if (failure instanceof Error) {
-          throw failure;
+      const listenerClosing = new Promise<void>((resolve) => server.close(() => resolve()));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const settled = await Promise.race([
+          Promise.allSettled([...expiration, transportClosing, listenerClosing]),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error('Antigravity question transport cleanup timed out.')),
+              AntigravityBridgeLimits.cleanupMs,
+            );
+          }),
+        ]);
+        const failure = settled.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') {
+          throw failure.reason instanceof Error
+            ? failure.reason
+            : new Error('Antigravity question transport cleanup failed.');
         }
 
-        throw new Error('Antigravity question transport cleanup failed.');
-      }
+        done.resolve();
+      } catch (error) {
+        done.reject(error);
 
-      done.resolve();
+        throw error;
+      } finally {
+        clearTimeout(timer);
+        pending.clear();
+        wireRequests.clear();
+        seenRequests.clear();
+      }
     })();
 
     return closing;
@@ -387,6 +392,11 @@ export async function createAntigravityQuestionBridge(options: {
   options.signal.addEventListener('abort', onAbort, { once: true });
   try {
     await rpc.connect(transport);
+    options.signal.throwIfAborted();
+    if (closed) {
+      throw expired();
+    }
+
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error('Interaction listener startup timed out.')),

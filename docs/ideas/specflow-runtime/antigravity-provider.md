@@ -158,20 +158,42 @@ not supported configuration contracts.
   a streaming conversation is cumulative; adapt it using the existing usage
   basis instead of summing every result as a fresh per-Turn total.
 
-### Owner decision pending: interaction scope
+### Owner decision: target interactive delivery
 
 The documented stream rejects Claude-style control requests/responses and does
 not specify an answer/approval channel. Headless tools requiring unobtainable
 approval are soft-denied, and exit zero alone does not mean those tools ran.
 
-Recommendation: first deliver the bounded `accept-edits` profile with explicit
-unsupported interactive capabilities and honest tool denials. Do not install the
-legacy persistent MCP bridge. An alternative is to include a separately designed
-invocation-scoped interaction bridge in this feature, with authenticated request
-correlation, bounded lifetime and controlled-process tests. That adds an actual
-transport contract and expands acceptance; it cannot be inferred from the current
-stream. The owner has been asked which scope to deliver. Until answered, this is
-a proposal and dependent interaction work does not begin.
+The owner chose target interactive delivery in this feature. Implement an
+invocation-scoped MCP question bridge using the existing canonical interaction
+admission, response and delivery receipts. Do not install a persistent global
+bridge, add another interaction journal or copy the old skip-permissions mapping.
+
+The bridge owns a loopback Streamable HTTP endpoint, per-invocation credential,
+bounded requests and waiters, and private MCP configuration. Permit only the exact
+`mcp(specflow-interactions/ask_user)` tool. Initialize/discover before dispatch,
+but admit questions only after durable native correlation and dispatch activation.
+Set native `timeoutSeconds=-1`; Runtime bounds setup and cleanup separately from
+the human answer wait. Disconnect/cancel/restart expire live questions; a lost
+response acknowledgement never triggers automatic replay. A transport flush
+receipt is delivery evidence, not proof that the model consumed the answer.
+
+Legacy MCP supported questions only; its provider explicitly rejected interactive
+permissions. The permission integration candidate is a private Runtime-owned
+`PreToolUse` hook, binding immutable tool arguments, step and native conversation
+to the canonical permission. Native `allow` delegates to default policy;
+`auto_approve` represents an affirmative operation approval while honoring explicit
+denies. Use a fixed trusted launcher and bounded stdin, never shell interpolation
+of tool arguments or broad permission overrides. Prove native failure/timeout
+behavior is fail-closed before enabling this path. MCP question answers alone
+grant no execution authority. Full interactive permission acceptance remains open.
+
+Metadata-only discovery previously found no enumerable native Windows credential
+profile for the process and no stable account subject in the inspected CLI state.
+No credential blobs were read or copied. This does not prove every login source
+absent. Stable native account identity, private configuration including workspace
+sidecars/project policy, effective tool isolation and hook enforcement remain
+technical evidence gates; do not substitute installation UUID or token hashes.
 
 Stable native account identity and effective tool isolation are technical evidence
 questions owned by the adapter implementer, not unspecified product decisions for
@@ -184,13 +206,36 @@ PR #98 is merged. Continue on `feature/antigravity-provider`, based on merged
 `origin/main` revision `12a6e3b5`. This is one follow-up feature with one eventual
 implementation PR, not another expansion of #98.
 
-Preparation is **partially ready**: the discovery task below can start, but the
-executable adapter is dependent on evidence that the existing discovery does not
-provide. No production code or independent review is claimed by this handoff.
+On 2026-10-29, the checkout was recovered from `fec58cf0` after its Git metadata
+was removed. Surviving bridge source was preserved. Main `9b581856` readability
+configuration was applied to that code before merging main. The merge completed
+without textual conflicts; its dependency lockfile was regenerated against main's
+security overrides and verified with a frozen install.
+
+Preparation is **partially ready**: interactive scope is decided and the bounded
+question transport is implemented independently of account discovery. Its two
+focused test files pass 12 cases, runtime typecheck and scoped readability checks
+pass, and independent component review approved after fixing startup-abort and
+shutdown-persistence races. These results do not establish native acceptance.
+The executable adapter is dependent on the native evidence gates above.
+
+The owner confirmed on 2026-10-29 that `agy` is already authenticated in the
+terminal. Missing metadata from the earlier inspection must not be interpreted
+as a need to sign in again. Resolve the actual CLI account source without exporting
+credentials, paid inference or an independent token refresh authority.
 The existing Session driver, process boundary, Engine admission and SQLite
 lifecycle remain the owners; this feature does not introduce competing owners.
 
 ### Task sequence
+
+AG.T05 is the independently implementable question transport component under
+Runtime Sessions `providers/antigravity/`. It depends on the existing canonical
+driver/interaction contracts, not on a real login. Controlled transport tests cover
+activation, authenticated invocation binding, question/answer delivery, duplicates,
+lost acknowledgements, disconnects, abort and cleanup. AG.T03 consumes both T02
+and T05; native registration/readiness remains dependent on T02 and actual native
+acceptance. All stages remain in the same feature PR. This is not a declaration
+that Antigravity execution or native permissions are already available.
 
 | Task                                            | Dependencies / readiness    | Delivery and acceptance                                                                                                                                                                                                                                                                                                                         |
 | ----------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

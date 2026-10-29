@@ -38,21 +38,23 @@ import { settleViewport } from '../../../test-support/viewportSettle.stories-sup
  */
 
 const SPEC = 'sso';
-const type = (id: string, title: string, defaultFilename?: string) => ({
+const type = (id: string, title: string, defaultFilename?: string, icon?: string) => ({
   id,
   title,
   description: `${title}.`,
   useWhen: `Use ${title} when the work needs it.`,
   instructions: `How to write ${title}.`,
   ...(defaultFilename ? { defaultFilename } : {}),
+  // The shipped types name a registry icon; `note` has none (its rows keep the format icon).
+  ...(icon ? { icon } : {}),
 });
 const catalogue: ArchetypeCatalogue = {
   revision: 'catalogue-1',
   documentTypes: [
-    type('overview', 'Overview', 'overview.md'),
-    type('ux', 'UX', 'ux.md'),
-    type('decisions', 'Decisions', 'decisions.md'),
-    type('backend', 'Backend', 'backend.md'),
+    type('overview', 'Overview', 'overview.md', 'info'),
+    type('ux', 'UX', 'ux.md', 'eye'),
+    type('decisions', 'Decisions', 'decisions.md', 'circle-check'),
+    type('backend', 'Backend', 'backend.md', 'database'),
     type('note', 'Note'),
   ],
   archetypes: [

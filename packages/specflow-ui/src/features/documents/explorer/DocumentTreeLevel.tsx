@@ -9,7 +9,11 @@ import {
   treeRowClassName,
 } from '@nevo/ui';
 import { DocumentNode, FolderNode } from './DocumentNode';
-import { documentRowGlyph, documentTrailingLabel } from '../catalogue/documentTypePolicy';
+import {
+  declaredTypeIcon,
+  documentRowGlyph,
+  documentTrailingLabel,
+} from '../catalogue/documentTypePolicy';
 import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 import type { InlineEntry } from './inlineEntry';
 
@@ -76,7 +80,11 @@ export function DocumentTreeLevel({
       key={doc.id}
       path={doc.path}
       flat={flat}
-      glyph={doc.dangling ? undefined : documentRowGlyph(doc)}
+      glyph={
+        doc.dangling
+          ? undefined
+          : documentRowGlyph(doc, declaredTypeIcon(context.catalogue, doc.type))
+      }
       main={!doc.dangling && doc.protected}
       label={doc.dangling ? { kind: 'missing' } : documentTrailingLabel(doc, context.catalogue)}
       selected={context.active !== undefined && context.active === doc.id}

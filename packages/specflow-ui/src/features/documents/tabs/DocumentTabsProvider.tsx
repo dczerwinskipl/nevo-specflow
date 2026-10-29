@@ -51,7 +51,8 @@ export interface DocumentTabs {
   activeId: string | null;
   isOpen: (id: string) => boolean;
   /** Opens a new tab (history push) or switches to the open one (history replace). */
-  show: (id: string) => Promise<void>;
+  /** Activates the document's tab (opening it); `replace` keeps the history entry (an automatic open). */
+  show: (id: string, options?: { replace?: boolean }) => Promise<void>;
   /**
    * Closes one tab after asking about its unsaved changes. Resolves true only when it closed;
    * a failure of the question is a refusal and `closeFailed` tells the user.
@@ -235,10 +236,10 @@ function TabsHost({
   );
 
   const show = useCallback(
-    async (id: string) => {
+    async (id: string, options?: { replace?: boolean }) => {
       const { ids: openIds, documentId: shown } = latest.current;
       if (id === shown) return;
-      await goTo(id, openIds.includes(id));
+      await goTo(id, options?.replace === true || openIds.includes(id));
     },
     [goTo],
   );

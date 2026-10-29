@@ -6,6 +6,8 @@ import {
   defaultFileName,
   documentGuidance,
   documentReadOnlyReason,
+  declaredTypeIcon,
+  documentRowGlyph,
   documentTrailingLabel,
   initialTypeChoice,
   menuReasonNote,
@@ -229,5 +231,32 @@ describe('writing guidance', () => {
     ).toBeUndefined();
     expect(documentGuidance(catalogue, tree, { type: 'unknown' })).toBeUndefined();
     expect(documentGuidance(undefined, tree, { type: 'ux' })).toBeUndefined();
+  });
+});
+
+describe('the glyph of a document row', () => {
+  const withIcons = {
+    ...catalogue,
+    documentTypes: catalogue.documentTypes.map((type) =>
+      type.id === 'ux'
+        ? { ...type, icon: 'eye' }
+        : type.id === 'decisions'
+          ? { ...type, icon: 'no-such-glyph' }
+          : type,
+    ),
+  };
+
+  it("is the type's registry icon, else the content format", () => {
+    expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'ux'))).toBe('eye');
+    // An unknown name and a type without an icon fall back to the format.
+    expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'decisions'))).toBe(
+      'file',
+    );
+    expect(documentRowGlyph({ kind: 'image' }, declaredTypeIcon(withIcons, 'overview'))).toBe(
+      'image',
+    );
+    expect(documentRowGlyph({ kind: 'binary' }, declaredTypeIcon(withIcons, undefined))).toBe(
+      'file-binary',
+    );
   });
 });

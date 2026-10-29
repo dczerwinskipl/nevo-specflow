@@ -1219,7 +1219,8 @@
         "shown_few": "Showing {{count}} of {{total}} files",
         "shown_many": "Showing {{count}} of {{total}} files",
         "shown_other": "Showing {{count}} of {{total}} files"
-      }
+      },
+      "mainNote": "The specification's main document: always first, it cannot be deleted."
     },
     "tabs": {
       "tablist": "Opened documents",

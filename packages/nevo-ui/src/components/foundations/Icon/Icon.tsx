@@ -121,6 +121,14 @@ export const iconRegistry = {
   filter: ListFilter,
 } satisfies Record<IconName, LucideIcon>;
 
+/**
+ * Whether `value` names a registered glyph: for icon names that come from data (for example a
+ * definition file), so an unknown name falls back instead of failing.
+ */
+export function isIconName(value: unknown): value is IconName {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(iconRegistry, value);
+}
+
 export const iconSizeClasses = {
   sm: 'size-icon-sm',
   md: 'size-icon-md',

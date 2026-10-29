@@ -20,6 +20,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Describe the structure: the problem, the boundaries and owners involved, the options considered with their trade-offs, the chosen structure and the constraints it imposes. Make dependencies and the direction of change explicit.',
     defaultFilename: 'architecture.md',
+    icon: 'workflow',
   },
   {
     id: 'backend',
@@ -30,6 +31,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Describe the server-side contract: the owning module, data and persistence, API and event shapes (by reference to the authoritative contract), invariants, error codes and recovery, and how each is verified (unit versus integration). Do not describe screens.',
     defaultFilename: 'backend.md',
+    icon: 'database',
   },
   {
     id: 'behaviour',
@@ -40,6 +42,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Describe what the product does as observable scenarios (given/when/then or short numbered steps), the rules behind them and the edge and failure cases, in the terms of the user or caller. Do not describe screens, layout or implementation. Every acceptance scenario must be verifiable by someone who has not read the code.',
     defaultFilename: 'behaviour.md',
+    icon: 'list-checks',
   },
   {
     id: 'decisions',
@@ -49,6 +52,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Record each decision as context, the options considered, the decision and its consequences, one decision per section, with who decided and when if known. Record decisions that are costly to rediscover, not routine choices.',
     defaultFilename: 'decisions.md',
+    icon: 'circle-check',
   },
   {
     id: 'note',
@@ -68,6 +72,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Write this first and keep it current. State the context and the goal in plain terms, list explicit non-goals and constraints, name the affected areas, and write acceptance criteria that can be checked. Link to the other documents instead of repeating their content. Do not put detailed design here.',
     defaultFilename: 'overview.md',
+    icon: 'info',
   },
   {
     id: 'research',
@@ -78,6 +83,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Record the questions asked, the sources consulted (with locations) and the findings, separating fact from interpretation. State what remains unknown.',
     defaultFilename: 'research.md',
+    icon: 'file-search',
   },
   {
     id: 'user-story',
@@ -88,6 +94,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       "Write stories as 'As a <role> I want <capability> so that <benefit>', each with acceptance criteria. Keep stories small and independent and link them to the behaviour they imply.",
     defaultFilename: 'user-story.md',
+    icon: 'users',
   },
   {
     id: 'ux',
@@ -98,6 +105,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Describe the user journey: flows, each screen and its states (empty, loading, error, success), the exact copy, responsive behaviour and accessibility. Reference existing patterns and name what is new. Do not restate behaviour rules; link to the behaviour document.',
     defaultFilename: 'ux.md',
+    icon: 'eye',
   },
 ];
 

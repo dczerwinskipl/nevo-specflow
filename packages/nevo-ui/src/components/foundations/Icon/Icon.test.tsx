@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { AlarmClock } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 import { iconAssetRef } from '../../../design-system/resources';
-import { Icon } from './Icon';
+import { Icon, isIconName } from './Icon';
 import { IconButton } from '../../actions/IconButton';
 
 describe('Icon', () => {
@@ -52,6 +52,13 @@ describe('Icon', () => {
       expect(renderToStaticMarkup(<Icon name={name} />)).toContain('<svg');
       expect(iconAssetRef(name, 'sm')).toBe(`Icon/${name}/sm`);
     }
+  });
+
+  it('tells a registered glyph name from data apart from an unknown one', () => {
+    expect(isIconName('tag')).toBe(false);
+    expect(isIconName('classify')).toBe(true);
+    expect(isIconName('toString')).toBe(false);
+    expect(isIconName(undefined)).toBe(false);
   });
 
   it('separates decorative and semantic icon accessibility', () => {

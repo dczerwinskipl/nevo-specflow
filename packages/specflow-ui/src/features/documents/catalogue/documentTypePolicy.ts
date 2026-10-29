@@ -9,7 +9,7 @@ import type {
   DocumentTypeInfo,
   RequirementResult,
 } from '@nevo/specflow-contracts/documents';
-import type { IconName } from '@nevo/ui';
+import { isIconName, type IconName } from '@nevo/ui';
 import { message, type Message } from '../../../i18n/message';
 
 /*
@@ -37,12 +37,21 @@ const formatGlyph = {
 } as const satisfies Record<ContentKind, IconName>;
 
 /**
- * The leading glyph of a document row (one slot). The single extension point for a type's own
- * icon: once a document type can declare a registry icon, resolve it here first and fall back to
- * the format. Today the content format decides (text, image, any other file).
+ * The leading glyph of a document row (one slot, never two icons): the icon its type declares, when
+ * that names a registry glyph, replaces the content format (text, image, any other file). An
+ * unknown or missing name never fails, it falls back to the format; an untyped file keeps it.
  */
-export function documentRowGlyph(document: { kind?: ContentKind }): IconName {
-  return formatGlyph[document.kind ?? 'text'];
+export function documentRowGlyph(document: { kind?: ContentKind }, typeIcon?: string): IconName {
+  return isIconName(typeIcon) ? typeIcon : formatGlyph[document.kind ?? 'text'];
+}
+
+/** The icon a document type declares in the catalogue (`documentTypes[].icon`), if any. */
+export function declaredTypeIcon(
+  catalogue: ArchetypeCatalogue | undefined,
+  typeId: string | undefined,
+): string | undefined {
+  if (!typeId) return undefined;
+  return catalogue?.documentTypes.find((type) => type.id === typeId)?.icon;
 }
 
 type TreeDocument = DocumentTree['documents'][number];

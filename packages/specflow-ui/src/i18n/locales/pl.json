@@ -1219,7 +1219,8 @@
         "shown_few": "Pokazano {{count}} z {{total}} plików",
         "shown_many": "Pokazano {{count}} z {{total}} plików",
         "shown_other": "Pokazano {{count}} z {{total}} plików"
-      }
+      },
+      "mainNote": "Główny dokument specyfikacji — zawsze pierwszy, nie można go usunąć."
     },
     "tabs": {
       "tablist": "Otwarte dokumenty",

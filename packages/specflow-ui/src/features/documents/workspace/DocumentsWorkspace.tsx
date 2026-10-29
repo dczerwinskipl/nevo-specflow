@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -32,6 +32,7 @@ import {
   type DocumentsTreeActions,
 } from './DocumentsTreeActions';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
+import { startDocument } from './startDocument';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
 
@@ -60,7 +61,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
   const { api: documentsApi } = useDocumentsApi();
-  const { supportsSplit } = useWorkspaceCapabilities();
+  const { supportsSplit, measured } = useWorkspaceCapabilities();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
@@ -83,6 +84,23 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   const takeDiscardedRef = useRef<(() => string[]) | null>(null);
   const operations = useDocumentTreeOperations({ specId });
   const opening = useDocumentOpening({ specId, documentId, requestRef, commitRef });
+  // Once per visit (this screen's mount), as soon as the tree and the layout are known: the main
+  // file opens when nothing is chosen. Decided once, so closing it never reopens it in this visit.
+  const startDecided = useRef(false);
+  const { show } = tabs;
+  const openTabCount = tabs.tabs.length;
+  useEffect(() => {
+    if (startDecided.current || !tree.data || !measured) return;
+    startDecided.current = true;
+    const start = startDocument({
+      tree: tree.data,
+      documentId,
+      openTabs: openTabCount,
+      split: supportsSplit,
+    });
+    // Replaces the entry: Back leaves the screen instead of returning to an empty document area.
+    if (start) void show(start, { replace: true });
+  }, [tree.data, measured, supportsSplit, documentId, openTabCount, show]);
   const rootActions = documentRootActions(
     treeController,
     tree.data?.capabilities,

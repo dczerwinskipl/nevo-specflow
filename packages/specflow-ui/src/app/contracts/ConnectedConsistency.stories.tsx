@@ -573,7 +573,12 @@ const openFromTree = async (
   canvas: StoryContext['canvas'],
   userEvent: StoryContext['userEvent'],
   name: RegExp,
-) => userEvent.click(await canvas.findByRole('button', { name }));
+) => {
+  // A visit that started wide opened the main file by itself; stacked, the tree is behind it.
+  const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
+  if (back) await userEvent.click(back);
+  await userEvent.click(await canvas.findByRole('button', { name }));
+};
 
 /**
  * Several documents open at once, wide: one tab per document, a dirty badge that survives tab
@@ -695,10 +700,12 @@ export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
     // The strip measures itself again once the contents icon has appeared: compare the tab and the
     // icon of one settled layout (waiting on the measured values), not a single early read.
     await waitFor(() => {
+      // The main file opened by itself when the visit started, then plan.md: the icon follows the
+      // whole strip.
       const tabs = canvas.getAllByRole('tab');
-      if (tabs.length !== 1) throw new Error(`Expected one tab, got ${tabs.length}`);
+      if (tabs.length < 1) throw new Error('Expected the tab strip');
       const icon = canvas.getByRole('button', { name: 'Otwórz spis treści' });
-      const gap = icon.getBoundingClientRect().left - tabs[0]!.getBoundingClientRect().right;
+      const gap = icon.getBoundingClientRect().left - tabs.at(-1)!.getBoundingClientRect().right;
       if (gap <= 0) throw new Error(`The contents icon is not after the strip (gap ${gap})`);
     });
     await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
@@ -1126,17 +1133,35 @@ export const LongFilenameHeader: Story = {
 
 export const DocumentsIdleSecondary: Story = {
   args: { path: '/specs/api-integration/documents?collection=archive' },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     // Split-capable wide viewport: Secondary is visible with a truthful idle placeholder
     // instead of letting the Primary tree expand to a full-width standalone list.
     await viewport(1440, 900);
     await expect(
       (await canvas.findAllByRole('button', { name: /^Akcje: / })).length,
     ).toBeGreaterThan(0);
-    const idle = canvas.getByText('Wybierz dokument z drzewa albo utwórz nowy.');
+    // The visit opened the main file by itself; closing it leaves the idle state, and it does not
+    // open again in this visit.
+    // (A visit that started on a narrow layout opened nothing: there is no tab to close.)
+    await waitFor(() => {
+      if (
+        !canvas.queryByRole('tab') &&
+        !canvas.queryByText('Wybierz dokument z drzewa albo utwórz nowy.')
+      )
+        throw new Error('The visit has not decided what to show yet');
+    });
+    const closeTab = canvas.queryByRole('button', { name: 'Zamknij specification.md' });
+    if (closeTab) await userEvent.click(closeTab);
+    const idle = await canvas.findByText('Wybierz dokument z drzewa albo utwórz nowy.', undefined, {
+      timeout: 3000,
+    });
+    // Several renders later (the tree read settles) still nothing reopened.
+    for (let frame = 0; frame < 20; frame++)
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await expect(canvas.queryByRole('tab')).toBeNull();
     await expect(idle).toBeVisible();
     // The shared empty screen (title, sentence, start actions with New document as the one
-    // primary); the tree beside it is not repeated as a list, and nothing opens by itself.
+    // primary); the tree beside it is not repeated as a list.
     const empty = idle.closest<HTMLElement>('[data-empty-state="pane"]')!;
     await expect(empty).not.toBeNull();
     const area = within(empty);

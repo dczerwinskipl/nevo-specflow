@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import {
   CREATE_JOURNAL_RELATIVE_DIR,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
 } from '@nevo/specflow-engine/testing';
 import type { OperationListResponse } from '@nevo/specflow-contracts/operations';
 import type { FastifyInstance } from 'fastify';
@@ -63,6 +63,7 @@ async function fixture(clock: { now: Date }) {
     );
     const at = new Date(clock.now.getTime() - ageMs);
     await utimes(path, at, at);
+
     return operationId;
   }
 
@@ -101,6 +102,7 @@ async function fixture(clock: { now: Date }) {
     (
       await app.inject({ method: 'GET', url: '/api/specs/operations', headers })
     ).json<OperationListResponse>();
+
   return { registry, stuckJournal, inspect, list };
 }
 

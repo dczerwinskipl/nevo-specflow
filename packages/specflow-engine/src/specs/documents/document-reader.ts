@@ -3,7 +3,7 @@ import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import type { SpecFlowEngine } from '../../application';
 import { isEditable } from './content-kinds';
 import { deriveDocumentTitle } from './document-title';
-import { DocumentError } from './errors';
+import { DocumentError } from '../document-rules/errors';
 import { analyzeOpenFile, decodeText } from './file-analysis';
 import { TEXT_CONTENT_MAX_BYTES } from './limits';
 import {
@@ -12,7 +12,7 @@ import {
   type LoadedSpecification,
 } from './loaded-specification';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
-import { withOpenFile } from './verified-file';
+import { withOpenFile } from '../document-rules/verified-file';
 
 export interface ReadDocumentOptions extends DocumentReadOptions {
   /** `?revision=`: anything but the current revision is `DOCUMENT_REVISION_UNAVAILABLE`. */
@@ -27,6 +27,7 @@ export async function readSpecificationDocument(
   options: ReadDocumentOptions = {},
 ): Promise<DocumentContent> {
   const loaded = await loadSpecification(engine, specId, resolveReadOptions(options).fs);
+
   return readDocumentOfLoaded(loaded, documentId, options);
 }
 
@@ -46,14 +47,17 @@ async function readDocumentOfLoaded(
         'The requested revision is not the current one.',
       );
     }
+
     if (analysis.kind === 'text' && analysis.size > TEXT_CONTENT_MAX_BYTES) {
       throw new DocumentError(
         'DOCUMENT_TOO_LARGE',
         'The document is too large to read as JSON; use the raw endpoint.',
       );
     }
+
     const content =
       analysis.kind === 'text' && analysis.bytes ? decodeText(analysis.bytes) : undefined;
+
     return {
       id: located.id,
       path: located.path,
@@ -73,5 +77,6 @@ async function readDocumentOfLoaded(
   if (outcome.state !== 'opened') {
     throw new DocumentError('DOCUMENT_FILE_MISSING', 'The document has no file.');
   }
+
   return outcome.value;
 }

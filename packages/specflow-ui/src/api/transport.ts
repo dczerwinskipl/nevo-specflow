@@ -70,24 +70,32 @@ export function createApiTransport(
   ): Promise<T> {
     const operation = options?.operation ?? context.operation;
     const isRead = method === 'GET' || method === 'HEAD';
-    if (!isRead && !isOnline())
+    if (!isRead && !isOnline()) {
       throw new ApiError({ kind: 'network', operation, outcome: 'not-applied', retryable: true });
+    }
+
     // `operation` and `isValid` are transport-level and must not reach the HTTP client.
     const { operation: _operation, isValid: _isValid, ...forwarded } = options ?? {};
     let data: T;
     try {
       data = await send(forwarded);
     } catch (error) {
-      if (!isHttpClientError(error)) throw error;
+      if (!isHttpClientError(error)) {
+        throw error;
+      }
+
       throw classifyHttpError(error, { operation, method, codes: context.codes });
     }
-    if (options?.isValid && !options.isValid(data))
+
+    if (options?.isValid && !options.isValid(data)) {
       throw new ApiError({
         kind: 'protocol',
         operation,
         outcome: isRead ? 'not-applied' : 'unknown',
         retryable: false,
       });
+    }
+
     return data;
   }
 

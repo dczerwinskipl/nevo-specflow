@@ -78,6 +78,7 @@ function StatusSelect({
 
 function ControlledSelect() {
   const [value, setValue] = useState('active');
+
   return (
     <div data-value={value}>
       <Field className="w-80">
@@ -187,6 +188,7 @@ function BranchSelect({
   open?: boolean;
 }) {
   const [value, setValue] = useState(defaultValue);
+
   return (
     <div data-value={value}>
       <Field className="w-80">
@@ -263,15 +265,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -408,6 +416,7 @@ function optionByText(text: string) {
     (node) => node.textContent?.includes(text),
   );
   assert(option, `Option "${text}" should exist.`);
+
   return option;
 }
 
@@ -428,6 +437,7 @@ export const DescribedItems: Story = {
     for (const id of describedBy) {
       assert(document.getElementById(id), 'aria-describedby should reference rendered nodes.');
     }
+
     const meta = develop.querySelector<HTMLElement>('[data-select-item-part="meta"]');
     const label = develop.querySelector<HTMLElement>('[data-design-slot="label"]');
     assert(meta && label, 'Meta and label should render.');

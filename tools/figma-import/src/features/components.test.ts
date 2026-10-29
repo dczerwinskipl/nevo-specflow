@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type {
-  ComponentCaptureIR,
-  FigmaComponentDefinition,
-  DesignSystemIR,
-  DesignResources,
+import {
+  DATA_KEY,
+  type ComponentCaptureIR,
+  type FigmaComponentDefinition,
+  type DesignSystemIR,
+  type DesignResources,
 } from '../core/model';
-import { DATA_KEY } from '../core/model';
 import { configureComponent, reconcileNestedSlotOverrides } from './componentSlots';
 import { reconcileComponentNestedSlots, upsertComponentSet } from './components';
 
@@ -17,6 +17,7 @@ vi.mock('./overviews', () => ({ layoutSetMatrix: vi.fn() }));
 
 function component(id: string, stableId = '') {
   const pluginData = new Map<string, string>([[DATA_KEY, stableId]]);
+
   return {
     id,
     type: 'COMPONENT',
@@ -58,6 +59,7 @@ function importFixture(stableIds: readonly string[]) {
     textStyles: new Map(),
     assets: new Map(),
   } satisfies DesignResources;
+
   return { spec, ir, resources };
 }
 
@@ -75,12 +77,17 @@ function figmaWithMasters(initialMasters: ComponentNode[], createdMasters: Compo
   } as unknown as ComponentSetNode;
   const createComponent = vi.fn(() => {
     const next = createdMasters.shift();
-    if (!next) throw new Error('Unexpected component creation');
+    if (!next) {
+      throw new Error('Unexpected component creation');
+    }
+
     nodes.push(next);
+
     return next;
   });
   const combineAsVariants = vi.fn((masters: ComponentNode[]) => {
     combinedChildren.splice(0, combinedChildren.length, ...masters);
+
     return combined;
   });
   vi.stubGlobal('figma', {
@@ -92,6 +99,7 @@ function figmaWithMasters(initialMasters: ComponentNode[], createdMasters: Compo
     createComponent,
     combineAsVariants,
   });
+
   return { createComponent, combineAsVariants, combined };
 }
 
@@ -333,7 +341,9 @@ describe('component-set reconstruction', () => {
       combineAsVariants: vi.fn(() => combined),
     });
     vi.mocked(configureComponent).mockImplementation(async (candidate) => {
-      if (candidate === stale) throw new Error('in set_name: Internal Figma Error: Node not found');
+      if (candidate === stale) {
+        throw new Error('in set_name: Internal Figma Error: Node not found');
+      }
     });
     const { spec, ir, resources } = importFixture([stableId]);
 
@@ -392,7 +402,9 @@ describe('component-set reconstruction', () => {
       combineAsVariants: vi.fn(() => combined),
     });
     vi.mocked(configureComponent).mockImplementation(async (candidate) => {
-      if (candidate !== live) throw new Error('in set_name: Internal Figma Error: Node not found');
+      if (candidate !== live) {
+        throw new Error('in set_name: Internal Figma Error: Node not found');
+      }
     });
     const { spec, ir, resources } = importFixture([stableId]);
 

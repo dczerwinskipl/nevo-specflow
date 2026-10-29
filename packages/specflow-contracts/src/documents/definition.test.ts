@@ -64,6 +64,7 @@ type Case = readonly [name: string, build: () => unknown];
 function omit(value: object, key: string): Json {
   const copy: Json = { ...value };
   delete copy[key];
+
   return copy;
 }
 
@@ -74,12 +75,15 @@ const [overviewTemplate, runbookTemplate] = archetype.templates as unknown as [J
 function withDocumentType(replacement: Json): Json {
   return { ...example, documentTypes: [{ ...example.documentTypes![0], ...replacement }] };
 }
+
 function withoutDocumentTypeKey(key: string): Json {
   return { ...example, documentTypes: [omit(example.documentTypes![0]!, key)] };
 }
+
 function withArchetype(replacement: Json): Json {
   return { ...example, archetypes: [{ ...archetype, ...replacement }] };
 }
+
 function withoutArchetypeKey(key: string): Json {
   return { ...example, archetypes: [omit(archetype, key)] };
 }

@@ -44,10 +44,17 @@ function useData(params: Params): SecondaryData<Data> {
     queryKey: sessionKeys.detail(params.specId, params.sessionId),
     queryFn: ({ signal }) => sessionsApi.session(params.specId, params.sessionId, signal),
   });
-  if (query.isPending) return { status: 'loading' };
-  if (!query.data) return { status: 'error', retry: () => void query.refetch() };
+  if (query.isPending) {
+    return { status: 'loading' };
+  }
+
+  if (!query.data) {
+    return { status: 'error', retry: () => void query.refetch() };
+  }
+
   return { status: 'ready', data: { ...params, session: query.data } };
 }
+
 function ContextLinks({
   data,
   onSelect,
@@ -56,6 +63,7 @@ function ContextLinks({
   onSelect: (page: 'documents' | 'project' | 'instructions') => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area">
@@ -99,14 +107,18 @@ function ContextLinks({
     </AppContent>
   );
 }
+
 function SessionContextView({ data }: { data: Data }) {
   const stack = useSecondaryStack<Pages>();
+
   return <ContextLinks data={data} onSelect={(page) => void stack.navTo(page, {})} />;
 }
+
 function Documents({ data }: { data: Data }) {
   const { t } = useTranslation();
   const workspace = useSpecificationWorkspace(data.specId);
   const stack = useSecondaryStack<Pages>();
+
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area">
@@ -144,6 +156,7 @@ function Documents({ data }: { data: Data }) {
     </AppContent>
   );
 }
+
 function Preview({ data, params }: { data: Data; params: { documentId: string } }) {
   const { t } = useTranslation();
   const { documentApi } = useAppServices();
@@ -154,6 +167,7 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
     queryKey: documentKeys.detail(data.specId, params.documentId),
     queryFn: ({ signal }) => documentApi.getDocument(data.specId, params.documentId, signal),
   });
+
   return (
     <AppContent className="h-full w-full">
       <div className="flex h-full min-h-0 flex-col">
@@ -168,7 +182,7 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
             <div className="shrink-0 border-b border-border-subtle p-4">
               <strong className="block text-title-sm">{query.data.title}</strong>
               <p className="break-all text-body-sm text-content-muted">
-                {t('sessions.demo.previewLine', { filename: query.data.filename })}
+                {t('sessions.demo.previewLine', { filename: query.data.path })}
               </p>
               <Button
                 size="sm"
@@ -187,12 +201,17 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
               </Button>
             </div>
             <ScrollArea className="min-h-0 flex-1" contentClassName="p-5">
-              {query.data.filename?.toLowerCase().endsWith('.txt') ? (
+              {query.data.content === undefined ? (
+                // An image or a file without text to render: it opens in Documents (above).
+                <p className="text-body-sm text-content-secondary">
+                  {t('sessions.demo.cannotShow')}
+                </p>
+              ) : query.data.path.toLowerCase().endsWith('.txt') ? (
                 <pre className="whitespace-pre-wrap break-words text-body-sm">
                   {query.data.content}
                 </pre>
               ) : (
-                <MarkdownDocument source={query.data.content} />
+                <MarkdownDocument source={query.data.content ?? ''} />
               )}
             </ScrollArea>
           </>
@@ -201,8 +220,10 @@ function Preview({ data, params }: { data: Data; params: { documentId: string } 
     </AppContent>
   );
 }
+
 function Project({ data }: { data: Data }) {
   const { t } = useTranslation();
+
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area">
@@ -216,8 +237,10 @@ function Project({ data }: { data: Data }) {
     </AppContent>
   );
 }
+
 function Instructions() {
   const { t } = useTranslation();
+
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area">
@@ -229,6 +252,7 @@ function Instructions() {
     </AppContent>
   );
 }
+
 export const sessionContextStack = defineSecondaryStack<Params, Data, Pages>({
   id: 'demo-session-context',
   initial: 'context',
@@ -288,7 +312,7 @@ export function SessionContextPanel(params: Params) {
   const { t } = useTranslation();
   const state = useData(params);
   const navigation = useSecondaryNavigation();
-  if (state.status !== 'ready')
+  if (state.status !== 'ready') {
     return (
       <p className="p-4 text-body-sm text-content-muted">
         {state.status === 'loading'
@@ -296,6 +320,8 @@ export function SessionContextPanel(params: Params) {
           : t('sessions.demo.contextUnavailable')}
       </p>
     );
+  }
+
   return (
     <ContextLinks
       data={state.data}

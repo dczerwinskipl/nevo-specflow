@@ -23,6 +23,7 @@ export function FullTaskView({ task, specKey, children, onBack, backHref }: Full
   );
   const className =
     'inline-flex items-center gap-1.5 text-content-secondary outline-none focus-visible:outline-2 focus-visible:outline-focus-ring';
+
   return (
     <div className="grid min-w-0 max-w-content-standard gap-4">
       {!router?.state.matches.some((match) => match.routeId.startsWith('/_app/')) ? (

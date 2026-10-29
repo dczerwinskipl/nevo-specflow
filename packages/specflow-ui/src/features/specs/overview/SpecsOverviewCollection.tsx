@@ -39,14 +39,17 @@ export function SpecsOverviewCollection({
   const id = useId();
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
 
+  // No rows: the empty state stands alone, without column headers that describe no row.
+  if (!projection.items.length) {
+    return null;
+  }
+
   if (projection.collection === 'archive') {
     return (
       <div className="@container/collection min-w-0">
-        {projection.items.length ? (
-          <Typography variant="body-sm" className="mb-3 text-content-secondary">
-            {t('specifications.newestMilestoneFirst')}
-          </Typography>
-        ) : null}
+        <Typography variant="body-sm" className="mb-3 text-content-secondary">
+          {t('specifications.newestMilestoneFirst')}
+        </Typography>
         <OverviewColumns archive />
         <InformationList>
           {sortArchiveItems(projection.items).map((item) => (
@@ -65,11 +68,10 @@ export function SpecsOverviewCollection({
 
   const provided = capabilities ?? overviewCapabilities(projection);
   if (!provided.status) {
-    if (!projection.items.length) return null;
     // No work status: one flat list of specifications, not one group of "unavailable" with empty columns.
     return (
       <div className="@container/collection grid min-w-0 gap-2" data-spec-layout="flat">
-        {provided.progress ? <OverviewColumns flat /> : null}
+        <OverviewColumns flat progress={provided.progress} />
         <InformationList aria-label={t('specifications.title')}>
           {projection.items.map((item) => (
             <SpecListRow
@@ -95,7 +97,9 @@ export function SpecsOverviewCollection({
       <OverviewColumns />
       {projection.sections.map((section) => {
         const rows = projection.items.filter((item) => item.classification.section === section);
-        if (!rows.length) return null;
+        if (!rows.length) {
+          return null;
+        }
 
         const expanded = searching || !collapsed.has(section);
         const controls = id + '-' + section;
@@ -116,8 +120,12 @@ export function SpecsOverviewCollection({
               onToggle={() =>
                 setCollapsed((current) => {
                   const next = new Set(current);
-                  if (next.has(section)) next.delete(section);
-                  else next.add(section);
+                  if (next.has(section)) {
+                    next.delete(section);
+                  } else {
+                    next.add(section);
+                  }
+
                   return next;
                 })
               }
@@ -142,8 +150,18 @@ export function SpecsOverviewCollection({
   );
 }
 
-function OverviewColumns({ archive = false, flat = false }: { archive?: boolean; flat?: boolean }) {
+function OverviewColumns({
+  archive = false,
+  flat = false,
+  progress = true,
+}: {
+  archive?: boolean;
+  flat?: boolean;
+  /** Flat list only: whether the progress column exists. */
+  progress?: boolean;
+}) {
   const { t } = useTranslation();
+
   return (
     <Typography
       as="div"
@@ -152,18 +170,26 @@ function OverviewColumns({ archive = false, flat = false }: { archive?: boolean;
       data-spec-columns
       className={cn(
         'hidden min-w-0 gap-x-6 px-2 text-content-secondary',
-        specRowColumns[archive ? 'archive' : flat ? 'flatWithProgress' : 'current'].header,
+        specRowColumns[
+          archive ? 'archive' : flat ? (progress ? 'flatWithProgress' : 'flat') : 'current'
+        ].header,
       )}
     >
       <span>{t('specifications.specificationColumn')}</span>
-      {flat ? null : (
-        <span>
-          {t(archive ? 'specifications.milestoneColumn' : 'specifications.situationColumn')}
-        </span>
-      )}
       <span>
-        {t(archive ? 'specifications.pullRequestColumn' : 'specifications.progressColumn')}
+        {t(
+          archive
+            ? 'specifications.milestoneColumn'
+            : flat
+              ? 'specifications.updatedColumn'
+              : 'specifications.situationColumn',
+        )}
       </span>
+      {progress ? (
+        <span>
+          {t(archive ? 'specifications.pullRequestColumn' : 'specifications.progressColumn')}
+        </span>
+      ) : null}
     </Typography>
   );
 }

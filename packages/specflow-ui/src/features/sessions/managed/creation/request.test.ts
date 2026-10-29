@@ -4,6 +4,7 @@ import type { CreateSession } from '@nevo/specflow-contracts/sessions';
 
 function storageFixture() {
   const records = new Map<string, string>();
+
   return {
     getItem: (key: string) => records.get(key) ?? null,
     setItem: (key: string, value: string) => {
@@ -14,6 +15,7 @@ function storageFixture() {
     },
   };
 }
+
 const body = { providerId: 'claude', modelId: 'default', mode: 'read-only' as const };
 it('retains the exact writable native mode across an uncertain acknowledgement and remount', async () => {
   const storage = storageFixture();

@@ -4,6 +4,7 @@ export function humanizeDisplayName(value: string) {
     .replace(/[_:-]+/g, ' ')
     .trim()
     .toLowerCase();
+
   return words ? `${words[0]!.toUpperCase()}${words.slice(1)}` : 'Layer';
 }
 

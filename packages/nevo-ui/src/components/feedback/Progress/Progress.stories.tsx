@@ -85,16 +85,22 @@ async function waitForGeometry(assert: () => void) {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
       assert();
+
       return;
     } catch (error) {
-      if (attempt === 59) throw error;
+      if (attempt === 59) {
+        throw error;
+      }
     }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
 }
+
 function GeometryFixture() {
   const [index, setIndex] = useState(0);
   const scenario = geometryCases[index]!;
+
   return (
     <div className="grid gap-4">
       <div style={{ width: scenario.width }}>
@@ -118,6 +124,7 @@ function GeometryFixture() {
     </div>
   );
 }
+
 export const GeometryContract: Story = {
   tags: ['contract', '!autodocs'],
   render: () => <GeometryFixture />,
@@ -134,34 +141,44 @@ export const GeometryContract: Story = {
         if (
           bar.getAttribute('data-progress-representation') !==
           (scenario.segments ? 'segmented' : 'continuous')
-        )
+        ) {
           throw new Error('Representation must follow actual width.');
+        }
+
         if (
           bar.querySelectorAll('[data-progress-segment]').length !==
           (scenario.segments ? scenario.total : 0)
-        )
+        ) {
           throw new Error('Segments must represent exactly the aggregate total.');
+        }
       });
       if (
         bar.getAttribute('aria-valuemax') !== String(scenario.total) ||
         bar.getAttribute('aria-valuenow') !== String(scenario.completed)
-      )
+      ) {
         throw new Error('Resize must preserve aggregate accessibility.');
+      }
+
       if (
         Math.abs(bar.getBoundingClientRect().width - scenario.width) > 0.02 ||
         bar.getBoundingClientRect().height !== 4
-      )
+      ) {
         throw new Error('Fallback must preserve track geometry.');
+      }
+
       const completed = bar.querySelectorAll('[data-completed="true"]');
-      if (scenario.segments && completed.length !== scenario.completed)
+      if (scenario.segments && completed.length !== scenario.completed) {
         throw new Error('Completed segment count is exact.');
+      }
+
       const segment = bar.querySelector<HTMLElement>('[data-progress-segment]');
       if (
         segment &&
         (window.getComputedStyle(segment).borderRadius !== '2px' ||
           segment.getBoundingClientRect().width < 4)
-      )
+      ) {
         throw new Error('Segments need rounded, legible ends.');
+      }
     }
   },
 };

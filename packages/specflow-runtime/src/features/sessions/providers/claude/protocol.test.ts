@@ -10,6 +10,7 @@ function fixture(allowedTools?: readonly string[]) {
     (fact) => {
       validateDriverFact(fact);
       facts.push(fact);
+
       return Promise.resolve();
     },
     sessionId,
@@ -31,8 +32,10 @@ function fixture(allowedTools?: readonly string[]) {
       is_error: false,
       ...extra,
     });
+
   return { facts, protocol, accept, assistant, result };
 }
+
 describe('Claude full-message protocol', () => {
   it('accepts foreground tool progress with internal IDs without changing tool state or usage', async () => {
     const f = fixture(['Bash']);
@@ -40,7 +43,7 @@ describe('Claude full-message protocol', () => {
       { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: 'echo test' } },
     ]);
     const before = f.facts.length;
-    for (let at = 0; at < 4100; at++)
+    for (let at = 0; at < 4100; at++) {
       await f.accept({
         type: 'tool_progress',
         uuid: 'progress-' + at,
@@ -52,6 +55,8 @@ describe('Claude full-message protocol', () => {
         task_id: 'task-1',
         heartbeat: true,
       });
+    }
+
     expect(f.facts).toHaveLength(before); // No canonical progress writes.
     expect(f.protocol.terminal).toBe(false);
     await f.accept({
@@ -123,7 +128,7 @@ describe('Claude full-message protocol', () => {
   });
   it('does not consume lifecycle deduplication capacity for ignored thinking progress', async () => {
     const f = fixture();
-    for (let at = 0; at < 4100; at++)
+    for (let at = 0; at < 4100; at++) {
       await f.accept({
         type: 'system',
         subtype: 'thinking_tokens',
@@ -132,6 +137,8 @@ describe('Claude full-message protocol', () => {
         estimated_tokens: at,
         estimated_tokens_delta: at === 4099 ? -1 : 1,
       });
+    }
+
     await f.assistant('answer', [{ type: 'text', text: 'Done' }]);
     await f.result({ result: 'Done' });
     expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
@@ -330,15 +337,17 @@ describe('Claude full-message protocol', () => {
       'supported protocol',
     );
     const f = fixture();
-    for (let i = 0; i < 4096; i++)
+    for (let i = 0; i < 4096; i++) {
       await f.accept({ type: 'system', subtype: 'status', uuid: 'event_' + i });
+    }
+
     await expect(f.accept({ type: 'system', subtype: 'status', uuid: 'overflow' })).rejects.toThrow(
       'supported protocol',
     );
   });
   it('accepts distinct tool envelopes sharing one API message and rejects unsupported background work', async () => {
     const f = fixture();
-    for (const id of ['a', 'b'])
+    for (const id of ['a', 'b']) {
       await f.accept({
         type: 'assistant',
         uuid: 'event_' + id,
@@ -348,6 +357,8 @@ describe('Claude full-message protocol', () => {
           content: [{ type: 'tool_use', id: 'tool_' + id, name: 'Read', input: {} }],
         },
       });
+    }
+
     expect(f.facts.filter((fact) => fact.kind === 'action-open')).toHaveLength(2);
     await f.accept({
       type: 'user',
@@ -384,12 +395,14 @@ describe('Claude full-message protocol', () => {
     for (const [uuid, text] of [
       ['a', 'First '],
       ['b', 'second'],
-    ])
+    ]) {
       await f.accept({
         type: 'assistant',
         uuid,
         message: { id: 'msg_shared', content: [{ type: 'text', text }] },
       });
+    }
+
     await f.result({ terminal_reason: 'completed', stop_reason: null });
     expect(f.facts.filter((fact) => fact.kind === 'text')).toEqual([
       { kind: 'text', key: 'answer', channel: 'answer', text: 'First second' },

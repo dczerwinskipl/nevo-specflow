@@ -32,12 +32,14 @@ export async function chooseIntegrationTargetBranch(
   const { branches, current } = await inspectLocalBranches(root);
   if (branches.length === 0) {
     const unborn = current;
+
     throw new Error(
       'This repository has no local branches yet' +
         (unborn ? ` (HEAD points at the unborn branch '${unborn}')` : '') +
         '. Create the first commit (git add -A && git commit -m "Initial commit"), then run init again.',
     );
   }
+
   const selected = await ui.select(
     'Branch receiving integrated worktrees',
     branches.map((name) => ({
@@ -47,12 +49,16 @@ export async function chooseIntegrationTargetBranch(
     })),
     current !== undefined && branches.includes(current) ? current : branches[0],
   );
+
   return selected;
 }
 
 /** `~` and `~/x` mean the home folder in what a person types; the config stores the real path. */
 export function expandHomeFolder(text: string, home: string = homedir()): string {
-  if (text === '~') return home;
+  if (text === '~') {
+    return home;
+  }
+
   return text.startsWith('~/') || text.startsWith('~\\') ? join(home, text.slice(2)) : text;
 }
 
@@ -75,16 +81,20 @@ export async function chooseBranchPattern(ui: RuntimeSetupUi): Promise<string> {
     ],
     DEFAULT_BRANCH_PATTERN,
   );
-  if (selected !== CUSTOM_PATTERN) return selected;
+  if (selected !== CUSTOM_PATTERN) {
+    return selected;
+  }
+
   for (let attempt = 1; attempt <= MAX_PATTERN_ATTEMPTS; attempt += 1) {
     const text = (
       await ui.input(
-        'Custom branch pattern ({slug} and optional {shortId})',
+        'Custom branch pattern ({slug}, {key} and optional {shortId})',
         DEFAULT_BRANCH_PATTERN,
       )
     ).trim();
     try {
       validateBranchPattern(text);
+
       return text;
     } catch (error) {
       ui.note(
@@ -93,6 +103,7 @@ export async function chooseBranchPattern(ui: RuntimeSetupUi): Promise<string> {
       );
     }
   }
+
   throw new Error('No valid branch pattern was provided.');
 }
 
@@ -111,14 +122,19 @@ export async function chooseWorktreesRoot(
     const text = expandHomeFolder(
       (await ui.input('Folder for new worktrees (this machine only)', defaultRoot)).trim(),
     );
-    if (!text || text === defaultRoot) return undefined;
+    if (!text || text === defaultRoot) {
+      return undefined;
+    }
+
     try {
       resolveWorktreesRoot(root, join(root, '.git'), text);
+
       return text;
     } catch (error) {
       ui.note(error instanceof Error ? error.message : 'Invalid folder.', 'Invalid folder');
     }
   }
+
   throw new Error('No valid worktree folder was provided.');
 }
 
@@ -137,11 +153,15 @@ const PATTERN_PROBLEMS: Record<BranchPatternProblem, string> = {
 /** Why a protected-branch pattern is not accepted, or `undefined` when it is (Engine rule). */
 export function protectedBranchPatternProblem(pattern: string): string | undefined {
   const problem = branchPatternProblem(pattern);
-  if (problem) return PATTERN_PROBLEMS[problem];
+  if (problem) {
+    return PATTERN_PROBLEMS[problem];
+  }
+
   // The Engine's own `git.commits` validator is the single source of truth (it also applies the
   // branch-name rule to wildcard-free entries, which the pattern grammar alone does not).
   try {
     parseCommitsPolicy({ protectedBranches: [pattern] });
+
     return undefined;
   } catch {
     return 'A wildcard-free entry must be a valid branch name: start with a letter or digit, no leading "-", no segment starting with ".", no trailing ".".';
@@ -158,8 +178,12 @@ export function protectedBranchPatternProblem(pattern: string): string | undefin
 export async function chooseProtectedBranches(ui: RuntimeSetupUi, root: string): Promise<string[]> {
   const protectedBranches: string[] = [];
   const add = (pattern: string): boolean => {
-    if (protectedBranches.includes(pattern)) return false;
+    if (protectedBranches.includes(pattern)) {
+      return false;
+    }
+
     protectedBranches.push(pattern);
+
     return true;
   };
 
@@ -196,6 +220,7 @@ export async function chooseProtectedBranches(ui: RuntimeSetupUi, root: string):
       ui.note(`'${pattern}' is already protected.`, 'Already listed');
     }
   }
+
   return protectedBranches;
 }
 
@@ -207,4 +232,26 @@ export function integrationTargetProtectedNote(
   return protectedBranches.some((pattern) => matchesBranchPattern(pattern, integrationTargetBranch))
     ? `The integration branch '${integrationTargetBranch}' is protected: Nevo cannot commit specifications directly on it, so specifications are created in a new or existing worktree. Merging worktrees into it is not affected.`
     : undefined;
+}
+
+/**
+ * Whether the Engine commits document edits by itself (`git.commits.auto.documents`). The answer
+ * defaults to "no": automatic commit is off unless the configuration enables it, so declining, an
+ * unanswered prompt and a non-interactive run all write nothing.
+ */
+export async function chooseAutoCommit(ui: RuntimeSetupUi): Promise<boolean> {
+  const answer = await ui.select<'no' | 'yes'>(
+    'Commit documents automatically?',
+    [
+      {
+        value: 'no',
+        label: 'No (default)',
+        hint: 'Edits stay uncommitted until "nevo-specflow commit"',
+      },
+      { value: 'yes', label: 'Yes', hint: 'The Engine commits document edits by itself' },
+    ],
+    'no',
+  );
+
+  return answer === 'yes';
 }

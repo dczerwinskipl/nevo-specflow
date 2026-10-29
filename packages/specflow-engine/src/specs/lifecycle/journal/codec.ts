@@ -15,20 +15,30 @@ export function isCloseJournal(
   value: unknown,
   operationId: string,
 ): value is CloseJournal {
-  if (!isRecord(value) || !isRecord(value.plan)) return false;
+  if (!isRecord(value) || !isRecord(value.plan)) {
+    return false;
+  }
+
   const plan = value.plan;
   // Only durable shape and stage/evidence coherence are checked here.
   // Physical Git, registry and checkout proofs belong to lifecycle operations.
-  if (value.reason !== undefined) return false;
-  const retainedConflict = value.stage === 'archived-linked-awaiting-integration';
-  if (value.scratchRetired !== undefined && (!retainedConflict || value.scratchRetired !== true))
+  if (value.reason !== undefined) {
     return false;
+  }
+
+  const retainedConflict = value.stage === 'archived-linked-awaiting-integration';
+  if (value.scratchRetired !== undefined && (!retainedConflict || value.scratchRetired !== true)) {
+    return false;
+  }
+
   if (
     retainedConflict &&
     (value.outcome !== 'archived-linked-awaiting-integration' ||
       plan.kind !== 'specification-close')
-  )
+  ) {
     return false;
+  }
+
   const archiveOnlyCompleted =
     value.stage === 'completed' &&
     plan.kind === 'specification-close' &&
@@ -54,42 +64,51 @@ export function isCloseJournal(
         ? value.outcome !==
           (linkedSpecification ? 'integrated-and-removed' : 'worktree-integrated-and-removed')
         : value.outcome !== undefined)
-    )
+    ) {
       return false;
+    }
   } else if (archiveOnlyCompleted) {
     const expected =
       isRecord(plan.source) && plan.source.instanceId !== undefined
         ? 'archive-only-closed'
         : 'archived-in-primary';
-    if (value.outcome !== expected || value.reboundRevision !== undefined) return false;
+    if (value.outcome !== expected || value.reboundRevision !== undefined) {
+      return false;
+    }
   } else if (
     !retainedConflict &&
     (value.outcome !== undefined || value.reboundRevision !== undefined)
   ) {
     return false;
   }
+
   if (value.stage === 'reserved') {
     if (
       value.integration !== undefined ||
       value.scratch !== undefined ||
       value.archive !== undefined
-    )
+    ) {
       return false;
+    }
   } else if (
     value.stage === 'archive-initiated' ||
     value.stage === 'archive-commit-initiated' ||
     value.stage === 'archive-committed' ||
     archiveOnlyCompleted
   ) {
-    if (value.integration !== undefined || value.scratch !== undefined) return false;
+    if (value.integration !== undefined || value.scratch !== undefined) {
+      return false;
+    }
+
     if (
       !isArchiveEvidence(
         value.archive,
         plan,
         archiveOnlyCompleted ? 'archive-committed' : String(value.stage),
       )
-    )
+    ) {
       return false;
+    }
   } else if (
     value.stage === 'integration-preparation-initiated' ||
     value.stage === 'integration-scratch-initiated' ||
@@ -100,34 +119,52 @@ export function isCloseJournal(
     retainedConflict ||
     afterRebind
   ) {
-    if (plan.kind === 'specification-close' && value.archive === undefined) return false;
-    if (value.archive !== undefined && !isArchiveEvidence(value.archive, plan, 'archive-committed'))
+    if (plan.kind === 'specification-close' && value.archive === undefined) {
       return false;
-    if (retainedConflict && (value.archive === undefined || value.reboundRevision !== undefined))
+    }
+
+    if (
+      value.archive !== undefined &&
+      !isArchiveEvidence(value.archive, plan, 'archive-committed')
+    ) {
       return false;
-    if (!isIntegrationPreparation(value.integration, plan, String(value.stage), value.archive))
+    }
+
+    if (retainedConflict && (value.archive === undefined || value.reboundRevision !== undefined)) {
       return false;
-    if (!isIntegrationScratch(context, operationId, value.scratch, String(value.stage)))
+    }
+
+    if (!isIntegrationPreparation(value.integration, plan, String(value.stage), value.archive)) {
       return false;
+    }
+
+    if (!isIntegrationScratch(context, operationId, value.scratch, String(value.stage))) {
+      return false;
+    }
+
     if (
       (value.stage === 'integration-publish-initiated' ||
         value.stage === 'integration-verified' ||
         afterRebind) &&
       isRecord(value.integration) &&
       (value.integration.relationship === 'divergent') !== isRecord(value.scratch)
-    )
+    ) {
       return false;
+    }
+
     if (
       (value.stage === 'integration-verified' || afterRebind) &&
       isRecord(value.integration) &&
       value.integration.relationship === 'divergent' &&
       isRecord(value.scratch) &&
       value.integration.publishedCommit !== value.scratch.candidateCommit
-    )
+    ) {
       return false;
+    }
   } else {
     return false;
   }
+
   if (
     value.version !== 1 ||
     value.projectId !== context.project.projectId ||
@@ -161,7 +198,9 @@ export function isCloseJournal(
     return false;
   }
 
-  if (!isCoherentCloseScope(plan)) return false;
+  if (!isCoherentCloseScope(plan)) {
+    return false;
+  }
 
   const resources: readonly unknown[] = plan.resources;
   if (
@@ -172,6 +211,7 @@ export function isCloseJournal(
   ) {
     return false;
   }
+
   const resourceNames: readonly string[] = resources;
   if (
     new Set(resourceNames).size !== resourceNames.length ||
@@ -191,10 +231,14 @@ export function isCloseJournal(
             specId: plan.specId,
             integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
           };
-  if (plan.fingerprint !== fingerprintCloseIntent(intent)) return false;
+  if (plan.fingerprint !== fingerprintCloseIntent(intent)) {
+    return false;
+  }
+
   // Reconstitute only the fields needed for derived ownership: the complete
   // journal is not trusted until all pinned identities/resources agree.
   const verifiedPlan = plan as unknown as CloseJournal['plan'];
+
   return (
     resourceNames.join('\0') ===
     resourcesForClosePlan(verifiedPlan, context.project.projectId).join('\0')
@@ -207,14 +251,25 @@ export function isCloseJournal(
  * For archive-only linked Specs, the destination must not be pinned at all.
  */
 function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
-  if (!isRecord(plan.source)) return false;
+  if (!isRecord(plan.source)) {
+    return false;
+  }
+
   const linked = plan.source.instanceId !== undefined;
   if (plan.kind === 'worktree-close' || plan.kind === 'workspace-close') {
-    if (!linked || plan.integrateToTargetBranch !== undefined) return false;
+    if (!linked || plan.integrateToTargetBranch !== undefined) {
+      return false;
+    }
   } else if (plan.kind === 'specification-close') {
-    if ((typeof plan.integrateToTargetBranch === 'boolean') !== linked) return false;
-    if (plan.location !== 'active') return false;
+    if ((typeof plan.integrateToTargetBranch === 'boolean') !== linked) {
+      return false;
+    }
+
+    if (plan.location !== 'active') {
+      return false;
+    }
   }
+
   const integrate =
     plan.kind === 'worktree-close' ||
     plan.kind === 'workspace-close' ||
@@ -227,7 +282,11 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
       plan.configRevision === undefined
     );
   }
-  if (!isRecord(plan.target) || !isWorkspace(plan.target)) return false;
+
+  if (!isRecord(plan.target) || !isWorkspace(plan.target)) {
+    return false;
+  }
+
   return (
     typeof plan.targetBranch === 'string' &&
     plan.targetBranch === plan.target.branch &&
@@ -257,8 +316,10 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
     !Array.isArray(value.files) ||
     value.files.length === 0 ||
     value.files.length > ARCHIVE_FILES_MAX
-  )
+  ) {
     return false;
+  }
+
   const files: readonly unknown[] = value.files;
   const sourcePath = String(value.sourcePath);
   const manifestPath = sourcePath + '/specification.yaml';
@@ -271,9 +332,12 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
       file.relativePath.split('/').some((part) => !part || part === '.' || part === '..') ||
       typeof file.sha256 !== 'string' ||
       !SHA.test(file.sha256)
-    )
+    ) {
       return false;
+    }
+
     const previous = index === 0 ? undefined : files[index - 1];
+
     return (
       index === 0 ||
       (isRecord(previous) &&
@@ -281,18 +345,24 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
         previous.relativePath < file.relativePath)
     );
   });
-  if (!valid) return false;
+  if (!valid) {
+    return false;
+  }
+
   if (!files.some((file) => isRecord(file) && file.relativePath === manifestPath)) {
     return false;
   }
+
   const id = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
-  if (stage === 'archive-committed')
+  if (stage === 'archive-committed') {
     return (
       typeof value.committedHead === 'string' &&
       id.test(value.committedHead) &&
       typeof value.committedTree === 'string' &&
       id.test(value.committedTree)
     );
+  }
+
   return value.committedHead === undefined && value.committedTree === undefined;
 }
 
@@ -311,31 +381,49 @@ function isIntegrationPreparation(
       plan.kind !== 'specification-close') ||
     !isRecord(plan.source) ||
     !isRecord(plan.target)
-  )
+  ) {
     return false;
+  }
+
   if (
     plan.kind === 'specification-close' &&
     (!isRecord(archive) ||
       typeof archive.committedHead !== 'string' ||
       archive.sourceCommit !== plan.source.head)
-  )
+  ) {
     return false;
-  if ((plan.kind === 'worktree-close' || plan.kind === 'workspace-close') && archive !== undefined)
+  }
+
+  if (
+    (plan.kind === 'worktree-close' || plan.kind === 'workspace-close') &&
+    archive !== undefined
+  ) {
     return false;
-  if (!isRecord(value)) return false;
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
   const sha = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
   const published = value.publishedCommit;
   if (stage === 'integration-preparation-initiated') {
-    if (published !== undefined) return false;
+    if (published !== undefined) {
+      return false;
+    }
   } else if (
     stage === 'integration-scratch-initiated' ||
     stage === 'integration-scratch-candidate' ||
     stage === 'integration-scratch-conflict' ||
     stage === 'archived-linked-awaiting-integration'
   ) {
-    if (value.relationship !== 'divergent' || published !== undefined) return false;
+    if (value.relationship !== 'divergent' || published !== undefined) {
+      return false;
+    }
   } else if (stage === 'integration-publish-initiated') {
-    if (value.relationship === 'already-integrated' || published !== undefined) return false;
+    if (value.relationship === 'already-integrated' || published !== undefined) {
+      return false;
+    }
   } else if (
     stage === 'integration-verified' ||
     stage === 'binding-rebound' ||
@@ -346,8 +434,10 @@ function isIntegrationPreparation(
       value.relationship !== 'divergent' &&
       published !==
         (value.relationship === 'fast-forward' ? value.sourceCommit : value.targetCommit)
-    )
+    ) {
       return false;
+    }
+
     if (
       value.relationship === 'divergent' &&
       (typeof published !== 'string' || !sha.test(published))
@@ -357,6 +447,7 @@ function isIntegrationPreparation(
   } else {
     return false;
   }
+
   return (
     typeof value.sourceCommit === 'string' &&
     sha.test(value.sourceCommit) &&
@@ -398,8 +489,14 @@ function isIntegrationScratch(
       stage === 'disposal-initiated' ||
       stage === 'completed') &&
       isRecord(value));
-  if (!scratchStage) return value === undefined;
-  if (!isRecord(value)) return false;
+  if (!scratchStage) {
+    return value === undefined;
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
   if (
     value.root !== join(context.project.stateRoot, 'engine', 'integration-scratch', operationId) ||
     typeof value.instanceId !== 'string' ||
@@ -407,6 +504,7 @@ function isIntegrationScratch(
   ) {
     return false;
   }
+
   const objectId = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
   if (stage === 'integration-scratch-initiated') {
     return (
@@ -416,6 +514,7 @@ function isIntegrationScratch(
       value.conflictIndexHash === undefined
     );
   }
+
   if (
     stage === 'integration-scratch-candidate' ||
     stage === 'integration-publish-initiated' ||
@@ -433,8 +532,14 @@ function isIntegrationScratch(
       value.conflictIndexHash === undefined
     );
   }
-  if (stage !== 'integration-scratch-conflict' && stage !== 'archived-linked-awaiting-integration')
+
+  if (
+    stage !== 'integration-scratch-conflict' &&
+    stage !== 'archived-linked-awaiting-integration'
+  ) {
     return false;
+  }
+
   if (
     value.candidateCommit !== undefined ||
     value.candidateTree !== undefined ||
@@ -445,7 +550,9 @@ function isIntegrationScratch(
   ) {
     return false;
   }
+
   const paths: readonly unknown[] = value.conflictPaths;
+
   return paths.every(
     (path, index) =>
       typeof path === 'string' &&
@@ -472,8 +579,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Old one-Spec journals stay unchanged; only workspace-level journals pin sets. */
 function isCoherentOccupants(plan: Record<string, unknown>): boolean {
-  if (plan.kind !== 'workspace-close')
+  if (plan.kind !== 'workspace-close') {
     return plan.workspaceId === undefined && plan.occupants === undefined;
+  }
+
   if (
     !isRecord(plan.source) ||
     plan.workspaceId !== plan.source.workspaceId ||
@@ -481,8 +590,10 @@ function isCoherentOccupants(plan: Record<string, unknown>): boolean {
     !Array.isArray(plan.occupants) ||
     plan.occupants.length === 0 ||
     plan.occupants.length > MAX_MANAGED_WORKSPACE_SPECIFICATIONS
-  )
+  ) {
     return false;
+  }
+
   const occupants: readonly unknown[] = plan.occupants;
   if (
     !occupants.every((entry, index) => {
@@ -498,14 +609,20 @@ function isCoherentOccupants(plan: Record<string, unknown>): boolean {
         (entry.location === 'archive' && entry.status !== 'archived') ||
         typeof entry.bindingGeneration !== 'number' ||
         !Number.isSafeInteger(entry.bindingGeneration)
-      )
+      ) {
         return false;
+      }
+
       const previous = index > 0 ? occupants[index - 1] : undefined;
+
       return !isRecord(previous) || String(previous.specId) < String(entry.specId);
     })
-  )
+  ) {
     return false;
+  }
+
   const first = occupants[0];
+
   return (
     isRecord(first) &&
     plan.specId === first.specId &&

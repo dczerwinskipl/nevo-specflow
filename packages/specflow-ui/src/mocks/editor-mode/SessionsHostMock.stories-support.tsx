@@ -30,6 +30,7 @@ const noop = () => undefined;
 
 const readOnlyProvider: TabContentProvider = (id) => {
   const doc = documentById(id);
+
   return {
     label: fileName(doc.path),
     path: doc.path,
@@ -80,6 +81,7 @@ function SessionsWorkspace({ empty }: { empty: boolean }) {
       {fileName(documentById(fileId).path)}
     </button>
   );
+
   return (
     <div data-workspace-fit="available" className="flex h-full w-full min-w-0">
       <section aria-label="Session" className="flex min-w-0 basis-1/2 flex-col">

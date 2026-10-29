@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HttpClientError } from '@nevo/http-client';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
@@ -15,6 +17,9 @@ import { documentKeys } from '../read-model/queries';
 import { useDocumentSave } from './useDocumentSave';
 import { DocumentEditorProvider, useDocumentSaveOwner } from './DocumentEditorProvider';
 
+/** Every save carries a fresh `operationId` (idempotency key). */
+const anyOperationId: unknown = expect.any(String);
+
 afterEach(cleanup);
 
 const SPEC = 'spec';
@@ -24,24 +29,30 @@ const draft = (content: string, baseline: string, revision: string): DocumentDra
   revision,
   editing: false,
 });
-const record = (id: string): SpecificationDocumentResponse => ({
-  id,
-  title: id,
-  filename: `${id}.md`,
-  content: `${id}0`,
-  revision: `${id}1`,
-});
+const record = (id: string): DocumentContent =>
+  documentContentFixture({
+    id,
+    title: id,
+    path: `${id}.md`,
+    content: `${id}0`,
+    revision: `${id}1`,
+  });
 
 function setup(failIds: string[] = []) {
   const queryClient = createSpecFlowQueryClient();
-  for (const id of ['a', 'b', 'c'])
+  for (const id of ['a', 'b', 'c']) {
     queryClient.setQueryData(documentKeys.detail(SPEC, id), record(id));
+  }
+
   const save = vi.fn((_spec: string, id: string) => {
-    if (failIds.includes(id)) return Promise.reject(new Error(`fail ${id}`));
-    return Promise.resolve({ revision: `${id}2` });
+    if (failIds.includes(id)) {
+      return Promise.reject(new Error(`fail ${id}`));
+    }
+
+    return Promise.resolve({ document: { revision: `${id}2` } });
   });
   const services = createSpecFlowAppServices({
-    documentsApi: { save } as unknown as DocumentsApi,
+    demoDocumentsApi: { save } as unknown as DocumentsApi,
   });
   const store = createDocumentDraftStore();
   store.set(SPEC, 'a', draft('A1', 'a0', 'a1'));
@@ -59,6 +70,7 @@ function setup(failIds: string[] = []) {
     () => useDocumentSave({ specId: SPEC, document: record('a'), draft: store.get(SPEC, 'a') }),
     { wrapper },
   );
+
   return { save, store, view, queryClient };
 }
 
@@ -68,7 +80,11 @@ describe('useDocumentSave for any document', () => {
     await act(async () => {
       expect(await view.result.current.save('b')).toMatchObject({ ok: true, documentId: 'b' });
     });
-    expect(save).toHaveBeenCalledWith(SPEC, 'b', { content: 'B1', expectedRevision: 'b1' });
+    expect(save).toHaveBeenCalledWith(SPEC, 'b', {
+      operationId: anyOperationId,
+      content: 'B1',
+      expectedRevision: 'b1',
+    });
     expect(store.get(SPEC, 'b')).toMatchObject({ baseline: 'B1', revision: 'b2' });
     expect(store.get(SPEC, 'a')).toMatchObject({ baseline: 'a0' });
   });
@@ -76,7 +92,11 @@ describe('useDocumentSave for any document', () => {
   it('defaults to the shown document', async () => {
     const { save, view } = setup();
     await act(async () => void (await view.result.current.save()));
-    expect(save).toHaveBeenCalledWith(SPEC, 'a', { content: 'A1', expectedRevision: 'a1' });
+    expect(save).toHaveBeenCalledWith(SPEC, 'a', {
+      operationId: anyOperationId,
+      content: 'A1',
+      expectedRevision: 'a1',
+    });
   });
 
   it('reports saving and error per document', async () => {
@@ -114,7 +134,8 @@ describe('useDocumentSave for any document', () => {
     const { save, store, view } = setup();
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, 'c');
-      return Promise.resolve({ revision: `${id}2` });
+
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     let result: Awaited<ReturnType<typeof view.result.current.saveAll>> | undefined;
     await act(async () => {
@@ -162,7 +183,8 @@ describe('useDocumentSave for any document', () => {
     const { save, store, view } = setup();
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, id);
-      return Promise.resolve({ revision: `${id}2` });
+
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
       await view.result.current.save('b');
@@ -176,7 +198,8 @@ describe('useDocumentSave for any document', () => {
     save.mockImplementationOnce((_spec: string, id: string) => {
       store.remove(SPEC, id);
       store.set(SPEC, id, reopened);
-      return Promise.resolve({ revision: `${id}2` });
+
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
       await view.result.current.save('b');
@@ -190,12 +213,14 @@ describe('useDocumentSave for any document', () => {
     save.mockImplementationOnce((_spec: string, id: string) => {
       // No React commit is required to make the store's new content authoritative.
       store.patch(SPEC, 'a', { content: 'A2' }, () => draft('A2', 'a0', 'a1'));
-      return Promise.resolve({ revision: `${id}2` });
+
+      return Promise.resolve({ document: { revision: `${id}2` } });
     });
     await act(async () => {
       await view.result.current.saveAll(['b', 'a']);
     });
     expect(save).toHaveBeenNthCalledWith(2, SPEC, 'a', {
+      operationId: anyOperationId,
       content: 'A2',
       expectedRevision: 'a1',
     });
@@ -215,9 +240,9 @@ describe('useDocumentSave for any document', () => {
 
   it('exposes the same save owner without an active editor session', async () => {
     const queryClient = createSpecFlowQueryClient();
-    const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
+    const save = vi.fn(() => Promise.resolve({ document: { revision: 'b2' } }));
     const services = createSpecFlowAppServices({
-      documentsApi: { save } as unknown as DocumentsApi,
+      demoDocumentsApi: { save } as unknown as DocumentsApi,
     });
     const store = createDocumentDraftStore();
     store.set(SPEC, 'b', draft('B1', 'b0', 'b1'));
@@ -241,8 +266,180 @@ describe('useDocumentSave for any document', () => {
       });
     });
     expect(save).toHaveBeenCalledWith(SPEC, 'b', {
+      operationId: anyOperationId,
       content: 'B1',
       expectedRevision: 'b1',
     });
+  });
+});
+
+const coded = (code: string) =>
+  new HttpClientError(code, { kind: 'http', status: 503, data: { error: code, code } });
+
+describe('a save that must be resumed or follows a new id', () => {
+  it('resumes a written but uncommitted save with the same operation id and content', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.errorOf('b')).toBeDefined();
+    // An operation that would change the document's id is refused meanwhile (see the tree ops).
+    expect(view.result.current.pendingOf('b')).toBe('recovery');
+    // Resume replays exactly what was written.
+    await act(async () => void (await view.result.current.save('b', { resume: true })));
+    const [first, second] = save.mock.calls.map(
+      (call) => (call as unknown[])[2] as { operationId: string; content: string },
+    );
+    expect(second).toEqual(first);
+    expect(second?.content).toBe('B1');
+    expect(view.result.current.errorOf('b')).toBeUndefined();
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
+  });
+
+  it('replays a save whose answer was lost with the same operation id and revision', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) =>
+        (call as unknown[])[2] as {
+          operationId: string;
+          content: string;
+          expectedRevision: string;
+        },
+    );
+    // The server may have committed the first one: the retry is the same operation.
+    expect(second).toEqual(first);
+    expect(view.result.current.errorOf('b')).toBeUndefined();
+    // Settled: a later edit is a new operation.
+    await act(async () => void (await view.result.current.save('b')));
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts a new save after an unknown outcome once the text changed', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    store.update(SPEC, 'b', (current) => (current ? { ...current, content: 'B2' } : current));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) => (call as unknown[])[2] as { operationId: string; content: string },
+    );
+    expect(second?.content).toBe('B2');
+    expect(second?.operationId).not.toBe(first?.operationId);
+  });
+
+  it('forgets a save to resume once the draft was discarded (no request for a clean draft)', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.pendingOf('b')).toBe('recovery');
+    // Discard: the draft is back at its baseline.
+    store.update(SPEC, 'b', (current) =>
+      current ? { ...current, content: current.baseline } : current,
+    );
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
+    await act(async () => {
+      expect(await view.result.current.save('b')).toMatchObject({ ok: true });
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves a new edit made after a save to resume as a new operation, not the old text', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_RECOVERY_REQUIRED')));
+    await act(async () => void (await view.result.current.save('b')));
+    // The draft was reloaded and edited again (for example after the tab was closed and reopened).
+    store.remove(SPEC, 'b');
+    store.set(SPEC, 'b', draft('B3', 'b0', 'b5'));
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map(
+      (call) =>
+        (call as unknown[])[2] as {
+          operationId: string;
+          content: string;
+          expectedRevision: string;
+        },
+    );
+    expect(second).toMatchObject({ content: 'B3', expectedRevision: 'b5' });
+    expect(second?.operationId).not.toBe(first?.operationId);
+  });
+
+  it("moves a refused save (the conflict) to the document's new id", async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() => Promise.reject(coded('DOCUMENT_REVISION_CONFLICT')));
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.errorOf('b')).toBeDefined();
+    act(() => view.result.current.follow('b', 'research'));
+    expect(view.result.current.errorOf('b')).toBeUndefined();
+    expect(view.result.current.errorOf('research')).toBeDefined();
+  });
+
+  it('reports a save without an answer as unconfirmed until Save replays it to a definite result', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    // Operations that would change or remove the document are refused meanwhile (tree ops).
+    expect(view.result.current.pendingOf('b')).toBe('unconfirmed');
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map((call) => (call as unknown[])[2]);
+    expect(second).toEqual(first);
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
+  });
+
+  it('never moves a retained save to a new id (its replay stays the request that was sent)', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(new HttpClientError('reset', { kind: 'network' })),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    act(() => view.result.current.follow('b', 'research'));
+    expect(view.result.current.pendingOf('research')).toBeUndefined();
+  });
+
+  it('refuses a save while a tree operation on the document is in flight, sending nothing', async () => {
+    const { save, view } = setup();
+    let release!: () => void;
+    act(() => {
+      release = view.result.current.holdSaves(['b']);
+    });
+    let result: unknown;
+    await act(async () => {
+      result = await view.result.current.save('b');
+    });
+    expect(result).toMatchObject({ ok: false, error: { code: 'document-operation-running' } });
+    expect(save).not.toHaveBeenCalled();
+    act(() => release());
+    await act(async () => void (await view.result.current.save('b')));
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a save the Engine could not write (503 DOCUMENT_WRITE_FAILED) for an exact replay', async () => {
+    const { save, view } = setup();
+    save.mockImplementationOnce(() =>
+      Promise.reject(
+        new HttpClientError('Service Unavailable', {
+          kind: 'http',
+          status: 503,
+          data: {
+            error: 'DOCUMENT_WRITE_FAILED',
+            code: 'DOCUMENT_WRITE_FAILED',
+            details: { cause: 'no-space' },
+          },
+        }),
+      ),
+    );
+    await act(async () => void (await view.result.current.save('b')));
+    expect(view.result.current.pendingOf('b')).toBe('unconfirmed');
+    await act(async () => void (await view.result.current.save('b')));
+    const [first, second] = save.mock.calls.map((call) => (call as unknown[])[2]);
+    expect(second).toEqual(first);
+    expect(view.result.current.pendingOf('b')).toBeUndefined();
   });
 });

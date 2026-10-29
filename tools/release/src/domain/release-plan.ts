@@ -55,16 +55,24 @@ export function planRelease({
 }: PlanReleaseInput): ReleasePlan {
   const errors: string[] = [];
   const line = lineOfBranch(branch);
-  if (!line) errors.push(`Releases must be cut from a release/vX.Y branch, not '${branch}'.`);
+  if (!line) {
+    errors.push(`Releases must be cut from a release/vX.Y branch, not '${branch}'.`);
+  }
+
   if (channel !== 'beta' && channel !== 'rc' && channel !== 'stable') {
     errors.push(`--channel must be one of beta, rc, stable (got ${JSON.stringify(channel)}).`);
   }
-  if (errors.length || !line) return { ok: false, errors };
+
+  if (errors.length || !line) {
+    return { ok: false, errors };
+  }
+
   const releaseChannel = channel as ReleaseChannel;
 
   if (!versionInLine(versionFile.version, line)) {
     errors.push(`version.json version ${versionFile.version} does not belong to line ${line}.`);
   }
+
   if (versionFile.channel !== releaseChannel) {
     errors.push(
       `Branch is in channel '${versionFile.channel}', not '${releaseChannel}'. Promote the ` +
@@ -72,7 +80,10 @@ export function planRelease({
         `(see docs/engineering/repository/releasing.md).`,
     );
   }
-  if (errors.length) return { ok: false, errors };
+
+  if (errors.length) {
+    return { ok: false, errors };
+  }
 
   const version = versionFile.version;
 
@@ -100,6 +111,7 @@ export function planRelease({
   if (!isReleaseTagVersion(tag.replace(/^v/, ''))) {
     return { ok: false, errors: [`Computed tag ${tag} is not a valid release tag.`] };
   }
+
   return {
     ok: true,
     errors: [],
@@ -137,6 +149,7 @@ export function pickReleaseCandidate({
   if (prerelease && highestTag && highestTagState?.state === 'ok' && !highestTagState.release) {
     return { tag: highestTag, recovering: true };
   }
+
   return { tag: plannedTag, recovering: false };
 }
 
@@ -145,7 +158,10 @@ export function highestPrereleaseTagFor(
   channel: ReleaseChannel,
   existingTags: readonly string[],
 ): string | null {
-  if (!isPrereleaseChannel(channel)) return null;
+  if (!isPrereleaseChannel(channel)) {
+    return null;
+  }
+
   return highestPrereleaseTag({ version, channel, existingTags });
 }
 
@@ -165,18 +181,21 @@ export function decideReleaseAction(
         `(${headShort}). Refusing to move or reuse it — investigate.`,
     };
   }
+
   if (existing.state === 'ok' && existing.release) {
     return {
       action: 'noop',
       message: `${tag} and its GitHub Release already exist and match HEAD — nothing to do.`,
     };
   }
+
   if (existing.state === 'ok') {
     return {
       action: 'create-release',
       message: `${tag} already exists and matches HEAD; creating the missing GitHub Release.`,
     };
   }
+
   return { action: 'tag-and-release', message: `Tagging ${tag} at ${headShort}` };
 }
 
@@ -200,7 +219,10 @@ export interface NormalizedCheckRun {
 export function latestCheckRunsByName(runs: readonly CheckRun[]): Map<string, NormalizedCheckRun> {
   const byName = new Map<string, NormalizedCheckRun>();
   for (const r of runs) {
-    if (typeof r.name !== 'string') continue;
+    if (typeof r.name !== 'string') {
+      continue;
+    }
+
     const run: NormalizedCheckRun = {
       name: r.name,
       status: typeof r.status === 'string' ? r.status : '',
@@ -208,8 +230,11 @@ export function latestCheckRunsByName(runs: readonly CheckRun[]): Map<string, No
       id: typeof r.id === 'number' ? r.id : 0,
     };
     const prev = byName.get(run.name);
-    if (!prev || run.id >= prev.id) byName.set(run.name, run);
+    if (!prev || run.id >= prev.id) {
+      byName.set(run.name, run);
+    }
   }
+
   return byName;
 }
 
@@ -222,10 +247,12 @@ export function evaluateRequiredChecks(
   const notPassing: string[] = [];
   for (const name of required) {
     const run = byName.get(name);
-    if (!run) missing.push(name);
-    else if (run.status !== 'completed' || run.conclusion !== 'success') {
+    if (!run) {
+      missing.push(name);
+    } else if (run.status !== 'completed' || run.conclusion !== 'success') {
       notPassing.push(`${name} (${run.status || 'unknown'}/${run.conclusion ?? 'pending'})`);
     }
   }
+
   return { missing, notPassing };
 }

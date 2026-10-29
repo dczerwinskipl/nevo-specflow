@@ -24,12 +24,16 @@ describe('private provider diagnostics', () => {
         ' TOKEN=' +
         JSON.stringify('five six'),
     );
-    for (const fragment of ['one', 'two', 'three', 'four', 'five', 'six'])
+    for (const fragment of ['one', 'two', 'three', 'four', 'five', 'six']) {
       expect(text).not.toContain(fragment);
+    }
   });
   it('evicts settled empty records at the metadata cap', () => {
     const store = createDiagnosticStore({ enabled: true });
-    for (let n = 0; n < 1100; n++) store.open(String(n)).finish();
+    for (let n = 0; n < 1100; n++) {
+      store.open(String(n)).finish();
+    }
+
     expect(store.statistics()).toEqual({ captures: 1024, bytes: 0 });
   });
   it('redacts resolved secret variants before truncation and strips terminal escapes', () => {

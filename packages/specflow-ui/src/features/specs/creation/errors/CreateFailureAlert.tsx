@@ -27,6 +27,8 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
       return 'create.errors.branchProtected.title';
     case 'commit-blocked':
       return 'create.errors.commitBlocked.title';
+    case 'catalogue-stale':
+      return 'create.errors.catalogueStale.title';
     case 'branch-exists':
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.title'
@@ -39,6 +41,8 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
       return 'create.errors.conflict.title';
     case 'name-conflict':
       return 'create.errors.nameConflict.title';
+    case 'name-invalid':
+      return 'create.errors.nameInvalid.title';
     case 'forbidden':
       return 'create.errors.forbiddenTitle';
     case 'unauthenticated':
@@ -64,6 +68,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
           : 'create.errors.branchProtected.bodyWorkspace';
     case 'commit-blocked':
       return 'create.errors.commitBlocked.body';
+    case 'catalogue-stale':
+      return 'create.errors.catalogueStale.body';
     case 'branch-exists':
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.body'
@@ -76,6 +82,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
       return 'create.errors.conflict.body';
     case 'name-conflict':
       return 'create.errors.nameConflict.body';
+    case 'name-invalid':
+      return 'create.errors.nameInvalid.body';
     case 'forbidden':
       return 'create.errors.readOnlyForm';
     case 'unauthenticated':
@@ -112,6 +120,7 @@ export function CreateFailureAlert({
   refreshing,
   onCopy,
   onRefresh,
+  onRefreshArchetypes,
   onUseAutomaticName,
   onUseCustomName,
   showDiagnostics = true,
@@ -131,6 +140,8 @@ export function CreateFailureAlert({
   refreshing: boolean;
   onCopy: (kind: CopyKind) => void;
   onRefresh: () => void;
+  /** Reads the archetypes again and keeps the form (after `catalogue-stale`). */
+  onRefreshArchetypes: () => void;
   onUseAutomaticName: () => void;
   onUseCustomName: () => void;
 }) {
@@ -139,6 +150,7 @@ export function CreateFailureAlert({
   const danger =
     (failure.kind === 'recovery-required' && !failure.committed) || failure.kind === 'forbidden';
   const unknown = failure.kind === 'uncertain' || failure.kind === 'recovery-required';
+
   return (
     <Alert
       role="alert"
@@ -210,6 +222,18 @@ export function CreateFailureAlert({
           onClick={onRefresh}
         >
           {t('create.workspace.refreshOptionsAction')}
+        </Button>
+      )}
+      {failure.kind === 'catalogue-stale' && (
+        <Button
+          className="mt-3"
+          size="sm"
+          variant="secondary"
+          leadingIcon="refresh"
+          disabled={refreshing}
+          onClick={onRefreshArchetypes}
+        >
+          {t('create.errors.refreshArchetypes')}
         </Button>
       )}
       {failure.kind === 'branch-protected' && failure.cause === 'workspace' && (

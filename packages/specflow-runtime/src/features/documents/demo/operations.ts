@@ -1,315 +1,267 @@
 import type {
-  DemoDocumentOperationInput,
-  DemoDocumentOperationResult,
-  DemoDocumentsInput,
-  DemoDocumentsResult,
-  DemoDocumentTree,
-  DemoFolderInput,
-  DemoSaveInput,
-} from '@nevo/specflow-contracts/demo';
+  CommitInfo,
+  CreateDocumentsInput,
+  DocumentOperationInput,
+  DocumentOperationResult,
+  SaveInput,
+  SaveResult,
+} from '@nevo/specflow-contracts/documents';
+import type { DemoFolderInput } from '@nevo/specflow-contracts/demo';
+import { DocumentError, deriveDocumentTitle } from '@nevo/specflow-engine';
 import type { DemoSpecification } from '../../demo-catalogue';
-import { DemoOperationError, type DemoDocument, type DemoState } from '../../../demo/state';
-import type { DocumentContentSource } from '../content/read-document';
-import { DocumentPathConflict, InvalidDocumentPath, planDocumentAddition } from './addition';
-import { buildDemoDocumentManifest } from './contribution';
-import { demoShowcaseCollection, demoShowcaseSeedDocuments, demoShowcaseSpecId } from './showcase';
-import { documentTree, planDocumentOperation } from './tree-operations';
-
-interface DocumentCollection {
-  documents: Map<string, DemoDocument>;
-  folders: string[];
-}
-
-/** Path of a seeded (catalogue) document inside the demo document tree. */
-const seedPath = (document: { id: string }) =>
-  document.id === 'spec' ? 'specification.md' : document.id + '.md';
+import type { DemoState } from '../../../demo/state';
+import { allFolders, decodeText, sha256, type DemoSpecDocuments } from './model';
+import { demoTree, documentIdOf } from './projection';
+import { scaffoldDocuments, type DemoScaffoldInput } from './scaffold';
+import { seedDocuments } from './seed';
+import { assertWritable, planCreate, planOperation, planSave, type PlannedWrite } from './writes';
 
 type Find = (specId: string) => Promise<DemoSpecification | undefined>;
 
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /**
- * Documents-owned demo operations over the shared demo state: tree, add/import, rename/move/delete,
- * read and save with revisions, and the seeded showcase content. Created specifications keep their
- * documents inside the shared `state.specifications`; seeded specifications keep added documents in
- * this module's own collections.
+ * Documents-owned demo operations over the shared demo state. Every Specification has one in-memory
+ * document directory: a created one lives in `state.specifications`, a seeded (catalogue) one is
+ * built from its seed on first use and kept here. Reads project it with the Engine's rules; writes
+ * emulate the D4 operations (idempotent by `operationId`, refused with the real error codes).
  */
 export function createDemoDocuments(
   state: DemoState,
   options: {
     showcase?: boolean;
+    /** Simulated commit latency of every write, in ms (default 0). Other writes meanwhile: `SPEC_BUSY`. */
+    commitLatencyMs?: number;
     /** Told after a specification's document paths changed; wired by the demo composition root. */
     onPathsChanged?: (specId: string, paths: readonly string[]) => void;
   } = {},
 ) {
-  const addedCollections = new Map<string, DocumentCollection>();
-  if (options.showcase) addedCollections.set(demoShowcaseSpecId, demoShowcaseCollection());
-  const requiredSeedDocuments = new Set(
-    options.showcase ? [JSON.stringify([demoShowcaseSpecId, 'spec'])] : [],
-  );
-  const savedSeedDocuments = options.showcase
-    ? demoShowcaseSeedDocuments()
-    : new Map<string, DemoDocument>();
+  const seeded = new Map<string, DemoSpecDocuments>();
+  const latency = options.commitLatencyMs ?? 0;
 
-  const isRequiredSeed = (specId: string, documentId: string) =>
-    requiredSeedDocuments.has(JSON.stringify([specId, documentId]));
-  const plan = (
-    files: string[],
-    folders: string[],
-    input: { documents: DemoDocumentsInput['documents']; folders?: string[] },
-  ) => {
-    try {
-      return planDocumentAddition(files, folders, input.documents, input.folders ?? []);
-    } catch (error) {
-      if (error instanceof InvalidDocumentPath)
-        throw new DemoOperationError(400, 'demo_invalid_selection');
-      if (error instanceof DocumentPathConflict)
-        throw new DemoOperationError(409, 'demo_document_path_conflict');
-      throw error;
+  /** The directory of a Specification whose record is known (created, or seeded on first use). */
+  const directoryOf = (specId: string, record?: DemoSpecification) => {
+    const created = state.specifications.get(specId)?.documents;
+    if (created) {
+      return created;
     }
+
+    let documents = seeded.get(specId);
+    if (!documents && record) {
+      documents = seedDocuments(record, state.archetypes, { showcase: options.showcase });
+      seeded.set(specId, documents);
+    }
+
+    return documents;
   };
-  const append = (documents: Map<string, DemoDocument>, added: DemoDocumentsInput['documents']) =>
-    added.map((item) => {
-      const documentId = 'document-' + state.id();
-      documents.set(documentId, {
-        id: documentId,
-        title: item.title?.trim() ?? item.path.split('/').at(-1)!,
-        filename: item.path,
-        content: item.content,
-        revision: '1',
-      });
-      return documentId;
-    });
-  const readDocument = (specId: string, documentId: string) =>
-    state.specifications.get(specId)?.documents.get(documentId) ??
-    addedCollections.get(specId)?.documents.get(documentId) ??
-    savedSeedDocuments.get(JSON.stringify([specId, documentId]));
-  const add = (
+
+  const directory = async (specId: string, find: Find) =>
+    directoryOf(specId, state.specifications.has(specId) ? undefined : await find(specId));
+
+  const pathsOf = (documents: DemoSpecDocuments) => [...documents.files.keys()].sort();
+
+  async function write<R>(
     subject: string,
     specId: string,
-    input: DemoDocumentsInput,
-    reservedPaths: string[] = [],
-    operation = 'documents',
-  ): DemoDocumentsResult => {
-    const entry = state.request(subject, operation + ':' + specId, input);
-    if (entry.result) return entry.result as DemoDocumentsResult;
-    const collection: DocumentCollection = state.specifications.get(specId) ??
-      addedCollections.get(specId) ?? { documents: new Map<string, DemoDocument>(), folders: [] };
-    const next = plan(
-      [
-        ...reservedPaths,
-        ...[...collection.documents.values()].map((document) => document.filename!),
-      ],
-      collection.folders,
-      input,
-    );
-    const documentIds = append(collection.documents, next.documents);
-    collection.folders = next.folders;
-    if ('treeRevision' in collection && typeof collection.treeRevision === 'string')
-      collection.treeRevision += '-next';
-    if (!state.specifications.has(specId)) addedCollections.set(specId, collection);
-    options.onPathsChanged?.(specId, [
-      ...reservedPaths,
-      ...[...collection.documents.values()].map((document) => document.filename!),
-    ]);
-    const result = { documentIds, folders: [...next.folders] };
-    entry.result = result;
-    return result;
-  };
-  const addFolder = (
-    subject: string,
-    specId: string,
-    input: DemoFolderInput,
-    reservedPaths: string[] = [],
-  ) =>
-    add(
+    find: Find,
+    operation: { name: string; operationId: string; input: unknown },
+    plan: (documents: DemoSpecDocuments) => PlannedWrite,
+    answer: (documents: DemoSpecDocuments, planned: PlannedWrite) => R,
+  ): Promise<R> {
+    const documents = await directory(specId, find);
+    if (!documents) {
+      throw new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown Specification.');
+    }
+
+    const entry = state.request(
       subject,
-      specId,
-      { requestId: input.requestId, documents: [], folders: [input.path] },
-      reservedPaths,
-      'folders',
+      operation.name + ':' + specId,
+      operation.operationId,
+      operation.input,
+      () =>
+        new DocumentError(
+          'DOCUMENT_OPERATION_CONFLICT',
+          'The operation id was used with another body.',
+        ),
     );
-  const manifestPaths = (record: DemoSpecification) =>
-    buildDemoDocumentManifest(record).map(seedPath);
-  const reserved = (specId: string, record: DemoSpecification) =>
-    state.specifications.has(specId) ? [] : manifestPaths(record);
-  const documentListItem = (document: DemoDocument) => ({
-    id: document.id,
-    title: document.title,
-    filename: document.filename,
-    required: document.required,
-    revision: document.revision,
-    kind: 'markdown',
+    if (entry.result) {
+      return entry.result as R;
+    }
+
+    assertWritable(documents);
+    const planned = plan(documents);
+    if (state.failing('save')) {
+      throw new DocumentError('COMMIT_BLOCKED', 'The checkout cannot take a commit now.', {
+        reason: 'commit-blocked',
+        blockedBy: 'git-busy',
+      });
+    }
+
+    if (latency > 0) {
+      documents.busy = true;
+      try {
+        await delay(latency);
+      } finally {
+        documents.busy = false;
+      }
+    }
+
+    const pathsBefore = pathsOf(documents).join('\n');
+    documents.registry = planned.registry;
+    documents.files = planned.files;
+    documents.folders = planned.folders;
+    const paths = pathsOf(documents);
+    if (paths.join('\n') !== pathsBefore) {
+      options.onPathsChanged?.(specId, paths);
+    }
+
+    const result = answer(documents, planned);
+    entry.result = result;
+
+    return result;
+  }
+
+  // The demo commits at once (like auto-commit on): a committed state with a stable fake sha.
+  const commitOf = (operationId: string, revision: string): CommitInfo => ({
+    state: 'committed',
+    sha: sha256(operationId + ':' + revision).slice(0, 40),
   });
-  const createdTree = (specId: string): DemoDocumentTree => {
-    const spec = state.specifications.get(specId);
-    if (!spec) throw new DemoOperationError(409, 'demo_document_operations_unavailable');
-    return documentTree(spec);
-  };
-  const seedTree = (specId: string, record: DemoSpecification): DemoDocumentTree => {
-    const extra = addedCollections.get(specId);
-    const blocked = { available: false, reason: 'demo_document_operations_unavailable' };
-    const actions = { rename: blocked, move: blocked, delete: blocked };
-    return {
-      revision: 'seed',
-      folders: ['', ...(extra?.folders ?? [])].map((path) => ({ path, actions })),
-      documents: [
-        ...buildDemoDocumentManifest(record).map((document) => ({
-          id: document.id,
-          path: seedPath(document),
-          ...(isRequiredSeed(specId, document.id) ? { required: true } : {}),
-          revision: readDocument(specId, document.id)?.revision ?? 'demo-document-1',
-          actions,
-        })),
-        ...[...(extra?.documents.values() ?? [])].map((document) => ({
-          id: document.id,
-          path: document.filename!,
-          required: false,
-          revision: document.revision,
-          actions,
-        })),
-      ],
-      capabilities: {
-        createFile: { available: true },
-        createFolder: { available: true },
-        import: { available: true },
-        formats: ['md', 'txt'],
-      },
+  const operationResult =
+    (operationId: string) =>
+    (documents: DemoSpecDocuments, planned: PlannedWrite): DocumentOperationResult => {
+      const revision = demoTree(documents).revision;
+
+      return {
+        operationId,
+        revision,
+        documents: planned.affectedPaths.map((path) => {
+          const type = documents.registry.find((entry) => entry.path === path)?.type;
+
+          return {
+            id: documentIdOf(documents, path),
+            path,
+            revision: documents.files.get(path)!.revision,
+            ...(type !== undefined ? { type } : {}),
+          };
+        }),
+        removedDocumentIds: planned.removedDocumentIds,
+        folders: allFolders(documents),
+        commit: commitOf(operationId, revision),
+      };
     };
-  };
 
   return {
-    /** Validates a batch against existing paths; throws demo errors. Narrow API for spec create. */
-    plan,
-    /** Appends validated documents to a collection (ids from the shared id factory). */
-    append,
-    /** All document paths of a specification as seen by a session context snapshot. */
+    directoryOf,
+    directory,
+    /**
+     * Validates a Create's documents and builds the directory it produces (Engine scaffold). Pure;
+     * the specs module calls it to validate before committing and again to commit.
+     */
+    scaffold: (input: DemoScaffoldInput) => scaffoldDocuments(state.archetypes, input),
+    /** All file paths of a specification as seen by a session context snapshot. */
     pathsFor: (specId: string, record: DemoSpecification) => {
-      const created = state.specifications.get(specId);
-      return created
-        ? [...created.documents.values()].map((document) => document.filename!)
-        : [
-            ...manifestPaths(record),
-            ...[...(addedCollections.get(specId)?.documents.values() ?? [])].map(
-              (document) => document.filename!,
-            ),
-          ];
+      const documents = directoryOf(specId, record);
+
+      return documents ? pathsOf(documents) : [];
     },
-    add,
-    /** Imports or creates files for a specification (seeded ones reserve their manifest paths). */
-    addTo(subject: string, specId: string, input: DemoDocumentsInput, record: DemoSpecification) {
-      return add(subject, specId, input, reserved(specId, record));
-    },
-    addFolder,
-    addFolderTo(
+    save(
       subject: string,
       specId: string,
-      input: DemoFolderInput,
-      record: DemoSpecification,
-    ) {
-      return addFolder(subject, specId, input, reserved(specId, record));
-    },
-    documentTree: createdTree,
-    /** Tree of a created specification, or the read-only seed tree of a catalogue one. */
-    tree(specId: string, record: DemoSpecification): DemoDocumentTree {
-      return state.specifications.has(specId) ? createdTree(specId) : seedTree(specId, record);
-    },
-    operate(
-      subject: string,
-      specId: string,
-      input: DemoDocumentOperationInput,
-    ): DemoDocumentOperationResult {
-      const entry = state.request(subject, 'document-operations:' + specId, input);
-      if (entry.result) return entry.result as DemoDocumentOperationResult;
-      const spec = state.specifications.get(specId);
-      if (!spec) throw new DemoOperationError(409, 'demo_document_operations_unavailable');
-      const next = planDocumentOperation(spec, input);
-      spec.documents = next.documents;
-      spec.folders = next.folders;
-      spec.treeRevision += '-next';
-      options.onPathsChanged?.(
+      documentId: string,
+      input: SaveInput,
+      find: Find,
+    ): Promise<SaveResult> {
+      return write(
+        subject,
         specId,
-        [...spec.documents.values()].map((document) => document.filename!),
+        find,
+        { name: 'save:' + documentId, operationId: input.operationId, input },
+        (documents) => planSave(documents, documentId, input),
+        (documents, planned) => {
+          const path = planned.affectedPaths[0]!;
+          const revision = documents.files.get(path)!.revision;
+          const type = documents.registry.find((entry) => entry.path === path)?.type;
+
+          return {
+            operationId: input.operationId,
+            document: {
+              id: documentIdOf(documents, path),
+              path,
+              revision,
+              ...(type !== undefined ? { type } : {}),
+            },
+            commit: commitOf(input.operationId, revision),
+          };
+        },
       );
-      const result = {
-        revision: spec.treeRevision,
-        documents: [...spec.documents.values()].map((document) => ({
-          id: document.id,
-          path: document.filename!,
-          revision: document.revision,
-        })),
-        removedDocumentIds: next.removedDocumentIds,
-        folders: [...spec.folders],
-      };
-      entry.result = result;
-      return result;
     },
-    readDocument,
-    save(specId: string, document: DemoDocument, input: DemoSaveInput) {
-      // The source read can overlap delete/rename/save; validate at the synchronous commit boundary.
-      const existingSpec = state.specifications.get(specId);
-      if (existingSpec && !existingSpec.documents.has(document.id))
-        throw new DemoOperationError(404, 'specification_document_not_found');
-      const current =
-        state.specifications.get(specId)?.documents.get(document.id) ??
-        addedCollections.get(specId)?.documents.get(document.id) ??
-        savedSeedDocuments.get(JSON.stringify([specId, document.id])) ??
-        document;
-      if (current.revision !== input.expectedRevision)
-        throw new DemoOperationError(409, 'demo_document_revision_conflict');
-      state.fail('save', 'demo_document_save_failed');
-      const next = { ...current, content: input.content, revision: current.revision + '-next' };
-      const spec =
-        state.specifications.get(specId) ??
-        (addedCollections.get(specId)?.documents.has(document.id)
-          ? addedCollections.get(specId)
-          : undefined);
-      if (spec) {
-        spec.documents.set(document.id, next);
-        if ('treeRevision' in spec && typeof spec.treeRevision === 'string')
-          spec.treeRevision += '-next';
-      } else savedSeedDocuments.set(JSON.stringify([specId, document.id]), next);
-      return { revision: next.revision };
+    create(subject: string, specId: string, input: CreateDocumentsInput, find: Find) {
+      return write(
+        subject,
+        specId,
+        find,
+        { name: 'documents', operationId: input.operationId, input },
+        (documents) => planCreate(documents, state.archetypes, input),
+        operationResult(input.operationId),
+      );
     },
-    /** Workspace documents section of a specification (created, or seeded plus added). */
+    createFolder(subject: string, specId: string, input: DemoFolderInput, find: Find) {
+      return write(
+        subject,
+        specId,
+        find,
+        { name: 'folders', operationId: input.operationId, input },
+        (documents) =>
+          planCreate(documents, state.archetypes, { documents: [], folders: [input.path] }),
+        operationResult(input.operationId),
+      );
+    },
+    operate(subject: string, specId: string, input: DocumentOperationInput, find: Find) {
+      return write(
+        subject,
+        specId,
+        find,
+        { name: 'document-operations', operationId: input.operationId, input },
+        (documents) => planOperation(documents, state.archetypes, input),
+        operationResult(input.operationId),
+      );
+    },
+    /**
+     * The workspace `documents` section, like the project Runtime's: the registered documents whose
+     * file exists (unclassified files and dangling entries are shown by the document tree only).
+     */
     async contribution(specId: string, find: Find) {
-      const created = state.specifications.get(specId);
-      if (created)
-        return {
-          state: 'available' as const,
-          data: {
-            folders: created.folders,
-            items: [...created.documents.values()].map(documentListItem),
-          },
-        };
-      const record = await find(specId);
-      if (!record) return { state: 'unavailable' as const, reason: 'source_unavailable' as const };
+      const documents = await directory(specId, find);
+      if (!documents) {
+        return { state: 'unavailable' as const, reason: 'source_unavailable' as const };
+      }
+
       return {
         state: 'available' as const,
         data: {
-          folders: addedCollections.get(specId)?.folders ?? [],
-          items: [
-            ...buildDemoDocumentManifest(record).map((document) =>
-              isRequiredSeed(specId, document.id) ? { ...document, required: true } : document,
-            ),
-            ...[...(addedCollections.get(specId)?.documents.values() ?? [])].map(documentListItem),
-          ],
-        },
-      };
-    },
-    /** Reads through saved/added/created documents first, then the seeded catalogue source. */
-    overlaySource(seeded: DocumentContentSource): DocumentContentSource {
-      return {
-        async read(specId, documentId, revision) {
-          const document = readDocument(specId, documentId);
-          if (document) {
-            if (revision !== undefined && revision !== document.revision)
-              return { kind: 'revision_unavailable' as const };
-            return { kind: 'ok' as const, document: { ...document, specId } };
-          }
-          if (state.specifications.has(specId)) return { kind: 'not_found' as const };
-          return seeded.read(specId, documentId, revision);
+          folders: allFolders(documents),
+          items: documents.registry.flatMap((entry) => {
+            const file = documents.files.get(entry.path);
+            if (!file) {
+              return [];
+            }
+
+            const text = /\.(md|markdown)$/iu.test(entry.path) ? decodeText(file.bytes) : undefined;
+
+            return [
+              {
+                id: entry.id,
+                title: deriveDocumentTitle(entry.path, text),
+                filename: entry.path,
+                revision: file.revision,
+                kind: entry.type,
+              },
+            ];
+          }),
         },
       };
     },
   };
 }
+
 export type DemoDocuments = ReturnType<typeof createDemoDocuments>;

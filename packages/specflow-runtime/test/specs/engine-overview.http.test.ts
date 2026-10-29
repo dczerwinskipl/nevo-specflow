@@ -8,7 +8,7 @@ import {
   addWorkspace,
   bindSpecToWorkspace,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   provisionLinkedWorkspaceIdentity,
   updateWorkspaceRegistry,
 } from '@nevo/specflow-engine/testing';
@@ -26,6 +26,7 @@ import { passwordConfig } from '../auth/support/config';
 
 function trustedLocalConfig() {
   const config = passwordConfig();
+
   return { ...config, authentication: { ...config.authentication, mode: 'none' as const } };
 }
 
@@ -58,6 +59,7 @@ async function fixture() {
     '-qm',
     'initial',
   );
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -102,10 +104,13 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(value.items[0]).toMatchObject({
           id: created.specId,
           title: 'Actual canonical Spec',
-          progress: null,
-          classification: { section: 'unknown' },
-          signals: null,
-          currentExecutions: null,
+          // Every Specification is `draft` until a workflow exists; `tasks: []` is "No tasks".
+          status: 'draft',
+          progress: { completed: 0, total: 0 },
+          classification: { section: 'draft' },
+          // Sessions cannot be bound to a Specification: no execution or attention belongs to it.
+          signals: [],
+          currentExecutions: [],
         });
         expect(value.revision).not.toBe(empty.json<CurrentSpecsOverview>().revision);
 
@@ -116,7 +121,10 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         });
         const manifest = await reads.readDocument(created.specId, 'manifest');
         expect(manifest.status).toBe('available');
-        if (manifest.status !== 'available') throw new Error('Manifest must exist.');
+        if (manifest.status !== 'available') {
+          throw new Error('Manifest must exist.');
+        }
+
         expect(manifest.value.content).toContain(created.specId);
 
         const manifestPath = join(root, created.relativeManifestPath);
@@ -132,7 +140,8 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(updated.json<CurrentSpecsOverview>().items[0]?.title).toBe('Updated canonical Spec');
         expect(updated.json<CurrentSpecsOverview>().revision).not.toBe(value.revision);
 
-        // A populated non-draft manifest is NOT evidence of verified execution progress.
+        // A populated non-draft manifest is NOT evidence of verified execution progress, and its
+        // free status string does not change the read-model status.
         await writeFile(
           manifestPath,
           (await readFile(manifestPath, 'utf8'))
@@ -142,10 +151,11 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         const populated = await app.inject('/api/specs/overview');
         expect(populated.statusCode, populated.body).toBe(200);
         expect(populated.json<CurrentSpecsOverview>().items[0]).toMatchObject({
+          status: 'draft',
           progress: null,
-          classification: { section: 'unknown' },
-          signals: null,
-          currentExecutions: null,
+          classification: { section: 'draft' },
+          signals: [],
+          currentExecutions: [],
         });
 
         await mkdir(join(root, 'specs/archive'), { recursive: true });
@@ -166,7 +176,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     completeOverviewTimeoutMs,
   );
 
-  it('does not hide unknown canonical Specs when project settings list legacy sections', async () => {
+  it('lists a created Specification under a project that configures legacy sections', async () => {
     const { engine } = await fixture();
     const created = await createSpecificationFromRequest(engine, {
       archetype: { id: 'minimal', version: 1 },
@@ -185,7 +195,8 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     try {
       const response = await app.inject('/api/specs/overview');
       expect(response.statusCode, response.body).toBe(200);
-      expect(response.json<CurrentSpecsOverview>().sections).toEqual(['draft', 'ready', 'unknown']);
+      // Every project-mode Specification is Draft, so no `unknown` section is added.
+      expect(response.json<CurrentSpecsOverview>().sections).toEqual(['draft', 'ready']);
       expect(response.json<CurrentSpecsOverview>().items.map((item) => item.id)).toEqual([
         created.specId,
       ]);
@@ -193,6 +204,33 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
       await app.close();
     }
   }, 45000);
+
+  it('shows the key Create gives each Specification, the next number of the project', async () => {
+    const { root, engine } = await fixture();
+    const create = (title: string) =>
+      createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
+        operationId: randomUUID(),
+        title,
+        target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+      });
+    const first = await create('First keyed Spec');
+    const second = await create('Second keyed Spec');
+    expect(await readFile(join(root, first.relativeManifestPath), 'utf8')).toContain('key: nevo-1');
+    const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
+    try {
+      const items = (await app.inject('/api/specs/overview')).json<CurrentSpecsOverview>().items;
+      const keyOf = (specId: string) => items.find((item) => item.id === specId)?.key;
+      expect(keyOf(first.specId)).toBe('nevo-1');
+      expect(keyOf(second.specId)).toBe('nevo-2');
+      // No source for tags or pull requests: absent, never invented.
+      expect(
+        items.every((item) => item.tags === undefined && item.pullRequests === undefined),
+      ).toBe(true);
+    } finally {
+      await app.close();
+    }
+  }, 90000);
 
   it('filters ungranted unavailable sources before building a user-scoped Overview', async () => {
     const { engine } = await fixture();
@@ -293,6 +331,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     } finally {
       await app.close();
     }
+
     const unrestricted = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
     try {
       const result = await unrestricted.inject('/api/specs/overview');

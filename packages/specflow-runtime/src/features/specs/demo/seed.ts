@@ -45,16 +45,20 @@ export function normalize(options: DemoCreateOptions): DemoCreateOptions {
         workspace.integrationSelectable === true && isIntegrationSelectable(workspace),
     };
     const pin = workspace.integrationDestination;
-    if (workspace.kind !== 'linked' || pin?.workspaceId === workspace.workspaceId)
+    if (workspace.kind !== 'linked' || pin?.workspaceId === workspace.workspaceId) {
       delete next.integrationDestination;
+    }
+
     return next;
   });
+
   return options;
 }
 
 /** Default seed: the realistic happy path (IMPLEMENTATION-SPEC section 2). */
 export function seedCreateOptions(): DemoCreateOptions {
   const ids = demoWorkspaceIds;
+
   return {
     primaryWorkspaceId: ids.main,
     workspaces: [

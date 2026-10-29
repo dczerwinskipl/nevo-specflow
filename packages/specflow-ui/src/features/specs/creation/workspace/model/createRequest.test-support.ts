@@ -11,6 +11,7 @@ export function buildCreateRequest(
 ): CreateTargetFields & { operationId: string } {
   const target = buildCreateTarget(choice, options, title);
   const slug = buildCreateSlug(choice, options, title);
+
   return {
     title: title.trim(),
     operationId,
@@ -18,3 +19,11 @@ export function buildCreateRequest(
     ...(target ? { target } : {}),
   };
 }
+
+/** The archetype part every Create request carries (tests and stories). */
+export const archetypeSelectionFixture = {
+  archetypeId: 'feature',
+  archetypeVersion: 1,
+  catalogueRevision: 'catalogue-revision-1',
+  optionalDocumentIds: ['behaviour', 'ux'],
+};

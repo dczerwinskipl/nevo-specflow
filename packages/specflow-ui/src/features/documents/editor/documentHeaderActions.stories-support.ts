@@ -11,8 +11,9 @@ export async function waitForDocumentActions(canvas: Canvas) {
       if (
         !canvas.queryByRole('button', { name: 'Edytuj dokument' }) &&
         !canvas.queryByRole('button', { name: 'Więcej akcji' })
-      )
+      ) {
         throw new Error('Document header actions are not available');
+      }
     },
     { timeout: 5000 },
   );
@@ -27,8 +28,10 @@ export async function invokeDocumentAction(canvas: Canvas, userEvent: UserEvent,
   const direct = canvas.queryByRole('button', { name });
   if (direct) {
     await userEvent.click(direct);
+
     return;
   }
+
   await userEvent.click(canvas.getByRole('button', { name: 'Więcej akcji' }));
   await userEvent.click(await within(document.body).findByRole('menuitem', { name }));
 }

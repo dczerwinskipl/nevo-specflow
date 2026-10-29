@@ -14,14 +14,22 @@ function splitLayers(value: string): string[] {
   let depth = 0;
   let start = 0;
   for (let index = 0; index < value.length; index += 1) {
-    if (value[index] === '(') depth += 1;
-    if (value[index] === ')') depth -= 1;
+    if (value[index] === '(') {
+      depth += 1;
+    }
+
+    if (value[index] === ')') {
+      depth -= 1;
+    }
+
     if (value[index] === ',' && depth === 0) {
       layers.push(value.slice(start, index).trim());
       start = index + 1;
     }
   }
+
   layers.push(value.slice(start).trim());
+
   return layers;
 }
 

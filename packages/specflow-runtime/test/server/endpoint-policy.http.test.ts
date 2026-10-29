@@ -11,13 +11,13 @@ describe('Runtime endpoint policy HTTP', () => {
         server: { ...config.server, rateLimit: { max: 2, timeWindowMs: 60_000 } },
         authentication: { ...config.authentication, mode: 'none' },
       },
-      { dataMode: 'demo', documents: { source: { read } } },
+      { dataMode: 'demo', documents: { readSource: { read } } },
     );
     app.get('/api/future-feature', () => ({ ok: true }));
     try {
       expect((await app.inject('/api/specs/admission/tasks/TASK-03')).statusCode).toBe(200);
       expect((await app.inject('/api/future-feature')).statusCode).toBe(200);
-      const denied = await app.inject('/api/specs/admission/documents/spec');
+      const denied = await app.inject('/api/specs/admission/documents/overview');
       expect(denied.statusCode).toBe(429);
       expect(denied.json()).toMatchObject({ error: 'rate_limited' });
       expect(denied.headers['retry-after']).toBeDefined();
@@ -48,7 +48,7 @@ describe('Runtime endpoint policy HTTP', () => {
       await app.inject('/api/runtime/info');
       await app.inject('/api/runtime/info');
       expect((await app.inject('/api/runtime/info')).statusCode).toBe(429);
-      for (let i = 0; i < 10; i++)
+      for (let i = 0; i < 10; i++) {
         expect(
           (
             await app.inject({
@@ -58,6 +58,8 @@ describe('Runtime endpoint policy HTTP', () => {
             })
           ).statusCode,
         ).toBe(401);
+      }
+
       const denied = await app.inject({
         method: 'POST',
         url: '/api/auth/password/login',

@@ -35,6 +35,7 @@ export function autoGrowMetrics(
   const safeMaximumRows = Math.max(safeMinimumRows, maxRows);
   const minimum = lineHeight * safeMinimumRows + verticalChrome;
   const maximum = lineHeight * safeMaximumRows + verticalChrome;
+
   return {
     height: Math.min(Math.max(scrollHeight, minimum), maximum),
     overflowing: scrollHeight > maximum,
@@ -73,12 +74,17 @@ function createTextArea(presentation: 'control' | 'embedded') {
 
     const resizeToContent = () => {
       const node = localRef.current;
-      if (!node) return;
+      if (!node) {
+        return;
+      }
+
       if (!autoGrow) {
         node.style.height = '';
         node.style.overflowY = '';
+
         return;
       }
+
       node.style.height = 'auto';
       const computed = window.getComputedStyle(node);
       const lineHeight = Number.parseFloat(computed.lineHeight) || 20;

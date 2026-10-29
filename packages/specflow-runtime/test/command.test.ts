@@ -31,6 +31,7 @@ describe('Runtime CLI adapters', () => {
       stdout: () => undefined,
       start: (options) => {
         received.push(options.demo);
+
         return Promise.resolve({
           address: 'http://127.0.0.1:4318',
           close: () => Promise.resolve(),

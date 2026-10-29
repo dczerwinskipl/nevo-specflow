@@ -82,6 +82,7 @@ describe('untyped Engine failures on the Create routes', () => {
     );
     apps.push(app);
     await app.ready();
+
     return { app, headers };
   }
 

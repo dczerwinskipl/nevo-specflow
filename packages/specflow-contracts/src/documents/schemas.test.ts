@@ -29,6 +29,22 @@ import {
   DocumentTypeInfoSchema,
   SaveInputSchema,
   SaveResultSchema,
+  BATCH_SAVE_MAX_DOCUMENTS,
+  BatchSaveInputSchema,
+  BatchSaveResultSchema,
+  COMMIT_FAILURE_REASONS,
+  COMMIT_PENDING_REASONS,
+  COMMIT_STATES,
+  CommitInfoSchema,
+  DEFINITION_PROBLEMS_MAX,
+  DEFINITION_PROBLEM_CODES,
+  DEFINITION_PROBLEM_MESSAGE_MAX_LENGTH,
+  DocumentOperationStatusSchema,
+  FLUSH_MAX_WAIT_MS,
+  FlushInputSchema,
+  FlushResultSchema,
+  FolderInputSchema,
+  REVISION_CONFLICTS_MAX,
 } from './index';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
@@ -286,6 +302,7 @@ describe('documents contract schemas', () => {
     ]) {
       expect(Value.Check(DocumentOperationInputSchema, input)).toBe(true);
     }
+
     expect(Value.Check(DocumentOperationInputSchema, { ...base, action: 'copy' })).toBe(false);
     expect(
       Value.Check(DocumentOperationInputSchema, { ...base, action: 'delete', requestId: 'x' }),
@@ -312,40 +329,294 @@ describe('documents contract schemas', () => {
     ).toBe(false);
   });
 
-  it('accepts save and operation results with and without a commit', () => {
+  it('accepts save, batch save and operation results with a commit state', () => {
+    const document = { id: 'behaviour', path: 'behaviour.md', revision: 'h2' };
     expect(
       Value.Check(SaveInputSchema, { operationId, content: 'x', expectedRevision: 'h1' }),
     ).toBe(true);
-    expect(Value.Check(SaveResultSchema, { operationId, revision: 'h2', committed: false })).toBe(
-      true,
-    );
     expect(
       Value.Check(SaveResultSchema, {
         operationId,
-        revision: 'h2',
-        committed: true,
-        commit: { sha: 'abc123' },
+        document,
+        commit: { state: 'pending', reason: 'settling', queuedAt: '2026-01-01T00:00:00.000Z' },
       }),
     ).toBe(true);
+    expect(
+      Value.Check(SaveResultSchema, {
+        operationId,
+        document,
+        commit: { state: 'committed', sha: 'abc123', coalescedWith: 4, batchId: 'b1' },
+      }),
+    ).toBe(true);
+    // The retired result shape (a boolean and a bare sha) is rejected.
+    expect(Value.Check(SaveResultSchema, { operationId, revision: 'h2', committed: false })).toBe(
+      false,
+    );
     expect(
       Value.Check(DocumentOperationResultSchema, {
         operationId,
         revision: 'r2',
-        documents: [
-          { id: 'behaviour', path: 'research/behaviour.md', revision: 'h1', type: 'behaviour' },
-        ],
+        documents: [{ ...document, path: 'research/behaviour.md', type: 'behaviour' }],
         removedDocumentIds: [],
         folders: ['research'],
-        committed: true,
-        commit: { sha: 'abc123' },
+        commit: { state: 'not-applicable', reason: 'git-disabled' },
       }),
     ).toBe(true);
+    expect(
+      Value.Check(BatchSaveResultSchema, {
+        operationId,
+        documents: [document],
+        commit: { state: 'failed', reason: 'history-changed', recoveryRequired: true },
+      }),
+    ).toBe(true);
+  });
+
+  it('keeps the commit state vocabulary closed and its reasons kebab-case', () => {
+    for (const state of COMMIT_STATES) {
+      expect(Value.Check(CommitInfoSchema, { state })).toBe(true);
+    }
+
+    expect([...COMMIT_STATES]).toEqual([
+      'pending',
+      'committed',
+      'failed',
+      'uncommitted',
+      'not-applicable',
+    ]);
+    expect(Value.Check(CommitInfoSchema, { state: 'queued' })).toBe(false);
+    expect(Value.Check(CommitInfoSchema, { state: 'failed', reason: 'Not Kebab' })).toBe(false);
+    expect(Value.Check(CommitInfoSchema, { state: 'pending', coalescedWith: -1 })).toBe(false);
+    expect(Value.Check(CommitInfoSchema, { state: 'pending', extra: 1 })).toBe(false);
+    for (const reason of [...COMMIT_PENDING_REASONS, ...COMMIT_FAILURE_REASONS]) {
+      expect(Value.Check(CommitInfoSchema, { state: 'failed', reason })).toBe(true);
+    }
+  });
+
+  it('accepts the write inputs and statuses and rejects malformed ones', () => {
+    const batch = {
+      operationId,
+      documents: [{ documentId: 'behaviour', content: 'x', expectedRevision: 'h1' }],
+    };
+    expect(Value.Check(BatchSaveInputSchema, batch)).toBe(true);
+    expect(Value.Check(BatchSaveInputSchema, { operationId, documents: [] })).toBe(false);
+    expect(
+      Value.Check(BatchSaveInputSchema, {
+        operationId,
+        documents: Array.from({ length: BATCH_SAVE_MAX_DOCUMENTS + 1 }, () => batch.documents[0]),
+      }),
+    ).toBe(false);
+    expect(Value.Check(FolderInputSchema, { operationId, path: 'research' })).toBe(true);
+    expect(Value.Check(FolderInputSchema, { operationId, path: '' })).toBe(false);
+    expect(Value.Check(FlushInputSchema, {})).toBe(true);
+    expect(Value.Check(FlushInputSchema, { waitMs: FLUSH_MAX_WAIT_MS })).toBe(true);
+    expect(Value.Check(FlushInputSchema, { waitMs: FLUSH_MAX_WAIT_MS + 1 })).toBe(false);
+    expect(
+      Value.Check(FlushResultSchema, { settled: true, pending: 0, failed: 0, committed: 2 }),
+    ).toBe(true);
+    const status = {
+      operationId,
+      specId: 'billing',
+      action: 'save-all',
+      documentIds: ['behaviour'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      commit: { state: 'pending' },
+    };
+    expect(Value.Check(DocumentOperationStatusSchema, status)).toBe(true);
+    expect(Value.Check(DocumentOperationStatusSchema, { ...status, action: 'copy' })).toBe(false);
+    const detailed = {
+      ...status,
+      stage: 'commit-failed',
+      updatedAt: '2026-01-01T00:00:01.000Z',
+      batchMembers: [operationId],
+      executor: { state: 'unknown' },
+      actions: {
+        retry: { available: true },
+        abandon: { available: true },
+        recover: { available: false },
+      },
+    };
+    expect(Value.Check(DocumentOperationStatusSchema, detailed)).toBe(true);
+    expect(Value.Check(DocumentOperationStatusSchema, { ...detailed, stage: 'stuck' })).toBe(false);
+    expect(
+      Value.Check(DocumentOperationStatusSchema, { ...detailed, executor: { state: 'self' } }),
+    ).toBe(false);
+    expect(
+      Value.Check(CreateDocumentsInputSchema, {
+        operationId,
+        documents: [{ path: 'a.md', templateId: 'runbook' }],
+        catalogueRevision: 'r1',
+      }),
+    ).toBe(true);
+  });
+
+  it('accepts the commit marker, archetype state and commit counters of the tree', () => {
+    const [first, ...rest] = tree.documents;
+    const withCommit = {
+      ...tree,
+      archetype: { ...tree.archetype, defined: 'absent' },
+      commits: {
+        pending: 1,
+        failed: 0,
+        recoveryRequired: 0,
+        oldestPendingAt: '2026-01-01T00:00:00Z',
+      },
+      documents: [{ ...first, commit: { state: 'uncommitted', operationId } }, ...rest],
+    };
+    expect(Value.Check(DocumentTreeSchema, withCommit)).toBe(true);
+    const detailedMarker = {
+      state: 'pending',
+      operationId,
+      reason: 'index-locked',
+      blockedBy: 'index-locked',
+      attempts: 2,
+      nextAttemptAt: '2026-01-01T00:00:05.000Z',
+      queuedAt: '2026-01-01T00:00:00.000Z',
+    };
+    expect(
+      Value.Check(DocumentTreeSchema, {
+        ...withCommit,
+        commits: { ...withCommit.commits, uncommitted: 1 },
+        documents: [
+          {
+            ...first,
+            commit: detailedMarker,
+            actions: { ...first!.actions, save: { available: true } },
+          },
+          ...rest,
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(DocumentTreeSchema, {
+        ...withCommit,
+        documents: [{ ...first, commit: { ...detailedMarker, reason: 'Not Kebab' } }, ...rest],
+      }),
+    ).toBe(false);
+    expect(
+      Value.Check(DocumentTreeSchema, {
+        ...withCommit,
+        archetype: { ...tree.archetype, defined: 'gone' },
+      }),
+    ).toBe(false);
+    expect(
+      Value.Check(DocumentTreeSchema, {
+        ...withCommit,
+        documents: [{ ...first, commit: { state: 'committed', operationId } }, ...rest],
+      }),
+    ).toBe(false);
+    expect(
+      Value.Check(DocumentTreeSchema, { ...withCommit, commits: { pending: 1, failed: 0 } }),
+    ).toBe(false);
+  });
+
+  it('accepts the folder revision of a folder node and rejects an empty one', () => {
+    const [root, ...folders] = tree.folders;
+    const withRevision = {
+      ...tree,
+      folders: [root, ...folders.map((folder) => ({ ...folder, revision: 'abc' }))],
+    };
+    expect(Value.Check(DocumentTreeSchema, withRevision)).toBe(true);
+    if (folders.length > 0) {
+      const empty = {
+        ...tree,
+        folders: [root, { ...folders[0], revision: '' }, ...folders.slice(1)],
+      };
+      expect(Value.Check(DocumentTreeSchema, empty)).toBe(false);
+    }
+  });
+
+  it('accepts catalogue problems and rejects unknown codes, long messages and too many', () => {
+    const problem = {
+      source: 'specification-archetype/feature.yaml',
+      kind: 'specification-archetype',
+      code: 'reference-missing',
+      severity: 'error',
+      message: 'Template "runbook" uses the unknown document type "runbook".',
+      location: '/templates/1/documentType',
+    };
+    const withProblems = (problems: unknown[]) => ({
+      ...catalogue,
+      problems,
+      problemsTruncated: true,
+    });
+    expect(Value.Check(ArchetypeCatalogueSchema, withProblems([problem]))).toBe(true);
+    expect(
+      Value.Check(ArchetypeCatalogueSchema, withProblems([{ ...problem, code: 'nope' }])),
+    ).toBe(false);
+    expect(
+      Value.Check(
+        ArchetypeCatalogueSchema,
+        withProblems([
+          { ...problem, message: 'x'.repeat(DEFINITION_PROBLEM_MESSAGE_MAX_LENGTH + 1) },
+        ]),
+      ),
+    ).toBe(false);
+    expect(
+      Value.Check(
+        ArchetypeCatalogueSchema,
+        withProblems(Array.from({ length: DEFINITION_PROBLEMS_MAX + 1 }, () => problem)),
+      ),
+    ).toBe(false);
+    expect(
+      Value.Check(ArchetypeCatalogueSchema, withProblems([{ ...problem, severity: 'info' }])),
+    ).toBe(false);
+    expect([...DEFINITION_PROBLEM_CODES]).toHaveLength(17);
+  });
+
+  it('accepts the new error details and rejects loose ones', () => {
+    const body = (code: string, details: unknown) => ({ error: code, code, details });
+    expect(
+      Value.Check(
+        DocumentErrorSchema,
+        body('SPEC_BUSY', { reason: 'busy', cause: 'queue-full', retryAfterMs: 500 }),
+      ),
+    ).toBe(true);
+    expect(
+      Value.Check(
+        DocumentErrorSchema,
+        body('DOCUMENT_REVISION_CONFLICT', {
+          conflicts: [{ documentId: 'behaviour', revision: 'h9' }],
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      Value.Check(
+        DocumentErrorSchema,
+        body('DOCUMENT_COMMITS_PENDING', { cause: 'commit-failed' }),
+      ),
+    ).toBe(true);
+    expect(
+      Value.Check(DocumentErrorSchema, body('DOCUMENT_WRITE_FAILED', { cause: 'no-space' })),
+    ).toBe(true);
+    expect(
+      Value.Check(DocumentErrorSchema, body('SPEC_BUSY', { conflicts: [{ documentId: 'b' }] })),
+    ).toBe(false);
+    expect(Value.Check(DocumentErrorSchema, body('SPEC_BUSY', { retryAfterMs: -1 }))).toBe(false);
+    expect(
+      Value.Check(
+        DocumentErrorSchema,
+        body('DOCUMENT_REVISION_CONFLICT', {
+          conflicts: Array.from({ length: REVISION_CONFLICTS_MAX + 1 }, () => ({
+            documentId: 'a',
+            revision: 'h',
+          })),
+        }),
+      ),
+    ).toBe(false);
+    // `reason` stays the ActionReason vocabulary only.
+    expect(
+      Value.Check(
+        DocumentErrorSchema,
+        body('DOCUMENT_COMMITS_PENDING', { reason: 'commit-pending' }),
+      ),
+    ).toBe(false);
   });
 
   it('accepts error bodies for every code and rejects unknown codes or extra keys', () => {
     for (const code of DOCUMENT_ERROR_CODES) {
       expect(Value.Check(DocumentErrorSchema, { error: code, code })).toBe(true);
     }
+
     expect(
       Value.Check(DocumentErrorSchema, {
         error: 'BRANCH_PROTECTED',
@@ -400,6 +671,18 @@ describe('documents contract schemas', () => {
       'CREATE_JOURNAL_UNSUPPORTED',
       'CATALOGUE_STALE',
       'ARCHETYPE_UNKNOWN',
+      'DEFINITIONS_MISSING',
+      'DOCUMENT_COMMITS_PENDING',
+      'DOCUMENT_OPERATION_NOT_FOUND',
+      'DOCUMENT_OPERATION_STATE_INVALID',
+      'DOCUMENT_WRITE_FAILED',
+      'DOCUMENT_UNCOMMITTED_LIMIT',
+      'MANUAL_COMMIT_UNAVAILABLE',
+      'MANUAL_COMMIT_CONFLICT',
+      'MANUAL_COMMIT_SUBSET_INVALID',
+      'MANUAL_COMMIT_STALE',
+      'MANUAL_COMMIT_MESSAGE_INVALID',
+      'MANUAL_COMMIT_RECOVERY_REQUIRED',
     ]);
   });
 
@@ -408,14 +691,17 @@ describe('documents contract schemas', () => {
     for (const id of ['', '-a', '.a', 'a b', 'a/b', 'a'.repeat(201)]) {
       expect(Value.Check(IdSchema, id)).toBe(false);
     }
+
     for (const id of ['Overview', '1abc', 'a_b', '', 'a'.repeat(33)]) {
       expect(Value.Check(CatalogueIdSchema, id)).toBe(false);
     }
+
     expect(Value.Check(CatalogueIdSchema, 'a'.repeat(32))).toBe(true);
     expect(DOCUMENT_ID_PATTERN).toBe('^[a-z0-9][a-z0-9-]{0,63}$');
     for (const id of ['-a', 'A', 'a_b', '', 'a'.repeat(65)]) {
       expect(Value.Check(RegisteredDocumentIdSchema, id)).toBe(false);
     }
+
     expect(Value.Check(RegisteredDocumentIdSchema, '0abc-1')).toBe(true);
 
     const base = { action: 'delete', kind: 'document', documentId: 'a', expectedRevision: 'h1' };
@@ -437,7 +723,13 @@ describe('documents contract schemas', () => {
       false,
     );
     expect(new Set(ACTION_REASONS).size).toBe(ACTION_REASONS.length);
-    expect(Value.Check(ActionSchema, { available: false, reason: 'not-implemented' })).toBe(true);
+    expect(Value.Check(ActionSchema, { available: false, reason: 'not-implemented' })).toBe(false);
+    expect(
+      Value.Check(ActionSchema, { available: false, reason: 'busy', retryAfterMs: 1000 }),
+    ).toBe(true);
+    expect(Value.Check(ActionSchema, { available: false, reason: 'busy', retryAfterMs: -1 })).toBe(
+      false,
+    );
   });
 
   it('rejects a bad template include or template id in the catalogue', () => {

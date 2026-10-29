@@ -75,6 +75,7 @@ export function ChoiceTile({
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
   const unavailable = disabled || blocked;
+
   return (
     <label
       aria-disabled={blocked || undefined}
@@ -91,7 +92,9 @@ export function ChoiceTile({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         onChange={() => {
-          if (!blocked && !disabled) onSelect();
+          if (!blocked && !disabled) {
+            onSelect();
+          }
         }}
       />
       <span className={cn(unavailable ? 'text-content-muted' : iconClassName)}>{icon}</span>

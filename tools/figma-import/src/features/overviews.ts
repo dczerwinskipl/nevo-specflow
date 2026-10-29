@@ -81,7 +81,10 @@ export function layoutSetMatrix(
   for (const { component, key } of items) {
     const column = columns.indexOf(key.column);
     const row = rows.indexOf(key.row);
-    if (column < 0 || row < 0) continue;
+    if (column < 0 || row < 0) {
+      continue;
+    }
+
     component.x = xOffsets[column]! + (columnWidths[column]! - component.width) / 2;
     component.y = yOffsets[row]! + (rowHeights[row]! - component.height) / 2;
   }
@@ -138,6 +141,7 @@ export function overviewText(
   node.lineHeight = { unit: 'AUTO' };
   node.fills = [{ type: 'SOLID', color, opacity: weight === 'strong' ? 1 : 0.78 }];
   node.textAutoResize = 'WIDTH_AND_HEIGHT';
+
   return node;
 }
 
@@ -162,6 +166,7 @@ export function reflowOverviewStack(
     overview.y = nextY;
     nextY += overview.height + gap;
   }
+
   return nextY;
 }
 
@@ -178,8 +183,14 @@ export async function upsertOverview(
     mark(overview, stableId);
     section.appendChild(overview);
   }
-  if (overview.parent !== section) section.appendChild(overview);
-  for (const child of [...overview.children]) child.remove();
+
+  if (overview.parent !== section) {
+    section.appendChild(overview);
+  }
+
+  for (const child of [...overview.children]) {
+    child.remove();
+  }
 
   const regular = await loadProjectFont('400');
   const strong = await loadProjectFont('600');
@@ -229,6 +240,7 @@ export async function upsertOverview(
       .join(' · ');
     variant.component.description = details || `${model.component} standalone component`;
   }
+
   overview.appendChild(overviewText(layoutSummary, regular, 11, muted));
 
   for (const groupValues of groupCombinations) {
@@ -245,8 +257,9 @@ export async function upsertOverview(
     group.fills = [];
     group.strokes = [];
     overview.appendChild(group);
-    if (groups.length)
+    if (groups.length) {
       group.appendChild(overviewText(group.name, strong, 12, foreground, 'strong'));
+    }
 
     if (hasOverviewMatrixHeader(row, column)) {
       const header = figma.createFrame();
@@ -263,6 +276,7 @@ export async function upsertOverview(
         fixedLabelWidth(corner, rowLabelWidth);
         header.appendChild(corner);
       }
+
       for (const value of columns) {
         const columnCell = figma.createFrame();
         columnCell.name = `${column ? humanize(column.name) : 'Variant'}: ${humanize(value)}`;
@@ -295,6 +309,7 @@ export async function upsertOverview(
         fixedLabelWidth(label, rowLabelWidth);
         rowFrame.appendChild(label);
       }
+
       for (const columnValue of columns) {
         const values = {
           ...groupValues,
@@ -326,6 +341,7 @@ export async function upsertOverview(
       }
     }
   }
+
   return overview;
 }
 
@@ -342,6 +358,7 @@ export function assetOverviewModel(
     ],
     variants: catalog.items.flatMap((item) => {
       const master = resources.assets.get(item.resourceRef);
+
       return master
         ? [
             {
@@ -369,6 +386,7 @@ export function textStyleOverviewModel(catalog: ResourceCatalogDefinition): Over
       const master = findStable<ComponentNode>(resourceCatalogStableId(item.resourceRef), [
         'COMPONENT',
       ]);
+
       return master
         ? [
             {
@@ -390,12 +408,14 @@ export function componentOverviewModel(
 ): OverviewModel {
   const source = [...canonicalCaptures(spec, captures).values()];
   const plan = buildComponentImportPlan(spec, source);
+
   return {
     component: componentDisplayName(spec),
     stableId: plan.setStableId,
     axes: plan.axes.map((axis) => ({ name: axis.name, values: axis.values })),
     variants: plan.variants.flatMap((variant) => {
       const master = findStable<ComponentNode>(variant.stableId, ['COMPONENT']);
+
       return master ? [{ component: master, properties: variant.properties }] : [];
     }),
   };

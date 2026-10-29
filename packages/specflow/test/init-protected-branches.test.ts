@@ -1,13 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { parseCommitsPolicy } from '@nevo/specflow-engine';
+import { DEFAULT_BRANCH_PATTERN, parseCommitsPolicy } from '@nevo/specflow-engine';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createProjectInitCommand } from '../src/init/cli';
+import { initializeProject } from '../src/init/initialize-project';
 import {
   chooseProtectedBranches,
   integrationTargetProtectedNote,
@@ -17,6 +18,16 @@ import {
 function git(root: string, ...args: string[]): void {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
 }
+
+function gitOut(root: string, ...args: string[]): string {
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+}
+
+const exists = (path: string): Promise<boolean> =>
+  access(path).then(
+    () => true,
+    () => false,
+  );
 
 interface Scripted {
   readonly ui: RuntimeSetupUi;
@@ -36,16 +47,19 @@ function scripted(answers: { confirm?: boolean[]; input?: string[]; select?: str
   const ui = {
     confirm: (message: string, initial?: boolean) => {
       confirms.push(message);
+
       return Promise.resolve(confirm.shift() ?? initial ?? false);
     },
     input: (message: string, def?: string) => {
       inputs.push(message);
+
       return Promise.resolve(input.shift() ?? def ?? '');
     },
     select: (_message: string, choices: readonly { value: string }[], initial?: string) =>
       Promise.resolve(select.shift() ?? initial ?? choices[0]!.value),
     note: (message: string, title?: string) => notes.push({ message, title }),
   } as unknown as RuntimeSetupUi;
+
   return { ui, confirms, inputs, notes };
 }
 
@@ -59,14 +73,18 @@ async function repository(...branches: string[]): Promise<void> {
   await writeFile(join(root, 'README.md'), '# test\n');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'init');
-  for (const branch of branches.slice(1)) git(root, 'branch', branch);
+  for (const branch of branches.slice(1)) {
+    git(root, 'branch', branch);
+  }
 }
 
 beforeEach(() => {
   root = '';
 });
 afterEach(async () => {
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 describe('protectedBranchPatternProblem', () => {
@@ -237,6 +255,112 @@ describe('init command', { timeout: 120_000 }, () => {
     expect(ui.notes.find((note) => note.title === 'Review')!.message).toContain(
       "The integration branch 'main' is protected: Nevo cannot commit specifications directly on it",
     );
+  });
+
+  describe('the default definitions on a protected branch', () => {
+    // Git on; protect main; no other pattern; write configuration. Selects: the integration branch,
+    // the branch pattern, automatic commit, then where the definitions go.
+    const answers = (where: 'branch' | 'skip') =>
+      scripted({
+        confirm: [true, true, false, true],
+        select: ['main', DEFAULT_BRANCH_PATTERN, 'no', where],
+      });
+
+    it('offers a new branch, commits them there and never commits on the protected one', async () => {
+      await repository('main');
+      const head = gitOut(root, 'rev-parse', 'main');
+      const ui = answers('branch');
+      const stdout: string[] = [];
+      await runInit(ui, stdout);
+
+      expect(gitOut(root, 'symbolic-ref', '--short', 'HEAD')).toBe('nevo-specflow/definitions');
+      expect(gitOut(root, 'rev-parse', 'main')).toBe(head);
+      expect(gitOut(root, 'rev-list', '--count', 'main..HEAD')).toBe('1');
+      expect(gitOut(root, 'show', '--name-only', '--format=', 'HEAD')).toContain(
+        '.nevo/definitions/',
+      );
+      expect(ui.notes.find((note) => note.title === 'Default definitions')!.message).toContain(
+        "Nevo does not commit the definitions on 'main'",
+      );
+      expect(ui.notes.find((note) => note.title === 'Review')!.message).toContain(
+        "install and commit them on the new branch 'nevo-specflow/definitions'",
+      );
+      expect(stdout.join('\n')).toContain("Merge it into 'main'");
+    });
+
+    it('goes on without them when declined and says how to install them later', async () => {
+      await repository('main');
+      const ui = answers('skip');
+      await runInit(ui);
+
+      expect(gitOut(root, 'symbolic-ref', '--short', 'HEAD')).toBe('main');
+      expect(await exists(join(root, '.nevo', 'definitions'))).toBe(false);
+      const review = ui.notes.find((note) => note.title === 'Review')!.message;
+      expect(review).toContain('Create needs them');
+      expect(review).toContain("remove 'main' from git.commits.protectedBranches");
+      expect(review).toContain('nevo-specflow definitions install');
+    });
+
+    it('does not offer a branch the policy protects too', async () => {
+      await repository('main');
+      const ui = scripted({
+        // Git on; protect main; one more pattern (**) that also protects the offered branch; write.
+        confirm: [true, true, true, false, true],
+        select: ['main', DEFAULT_BRANCH_PATTERN, 'no'],
+        input: ['', '**'],
+      });
+      await runInit(ui);
+      expect(gitOut(root, 'symbolic-ref', '--short', 'HEAD')).toBe('main');
+      expect(ui.notes.some((note) => note.title === 'Default definitions')).toBe(false);
+      expect(await exists(join(root, '.nevo', 'definitions'))).toBe(false);
+    });
+  });
+
+  describe('a repository an earlier project claimed', () => {
+    const sentinel = () => join(root, '.git', 'nevo-specflow-instance.json');
+
+    it('is refused before anything is asked or written, naming the file and the recovery', async () => {
+      await repository('main');
+      await writeFile(sentinel(), '{"version":1}\n');
+      const ui = scripted({});
+      const error = await runInit(ui).then(
+        () => undefined,
+        (failure: unknown) => failure as Error,
+      );
+      expect(error?.message).toContain('nevo-specflow-instance.json exists');
+      expect(error?.message).toContain('then run: nevo-specflow init');
+      expect(ui.confirms).toEqual([]);
+      expect(await exists(join(root, '.nevo', 'config.yaml'))).toBe(false);
+      expect(await exists(sentinel())).toBe(true);
+    });
+
+    it('explains a designation that fails after the configuration was written', async () => {
+      await repository('trunk');
+      const command = createProjectInitCommand({
+        cwd: root,
+        stdout: () => undefined,
+        ui: scripted({ confirm: [false, true] }).ui,
+        initRuntime: () => Promise.resolve({ projectConfig: {}, localConfig: {}, summary: [] }),
+        // The evidence appears between the configuration and the designation (a crash of an
+        // earlier attempt leaves it the same way).
+        initialize: async (options) => {
+          const result = await initializeProject(options);
+          await writeFile(sentinel(), '{"version":1}\n');
+
+          return result;
+        },
+      });
+      const error = await command.parseAsync([], { from: 'user' }).then(
+        () => undefined,
+        (failure: unknown) => failure as Error,
+      );
+      expect(error?.message).toContain('could not designate this checkout as its Project Home');
+      expect(error?.message).toContain('nevo-specflow-instance.json exists');
+      expect(error?.message).toContain('finish with: nevo-specflow project bootstrap');
+      // Nothing is removed or reset: the configuration and the evidence stay for the explicit recovery.
+      expect(await exists(join(root, '.nevo', 'config.yaml'))).toBe(true);
+      expect(await exists(sentinel())).toBe(true);
+    });
   });
 
   it('asks nothing about protection when Git is not enabled', async () => {

@@ -13,7 +13,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 const longLabel = 'Utwórz specyfikację i od razu otwórz sesję agenta w nowym workspace';
@@ -111,8 +113,9 @@ export const IconTextWrap: Story = {
     const button = canvas.getByRole('button');
     const icons = button.querySelectorAll('[data-design-slot$="Icon"]');
     assert(icons.length === 2, 'Both icons render.');
-    for (const icon of icons)
+    for (const icon of icons) {
       assert(icon.getBoundingClientRect().width >= 18, 'Icons never shrink while the label wraps.');
+    }
   },
 };
 
@@ -128,13 +131,15 @@ export const FullWidthLong: Story = {
   play: async ({ canvas }) => {
     const buttons = canvas.getAllByRole('button');
     const container = buttons[0]!.parentElement!.getBoundingClientRect();
-    for (const button of buttons)
+    for (const button of buttons) {
       assert(button.getBoundingClientRect().right <= container.right + 0.5, 'Inside the footer.');
+    }
   },
 };
 
 function LoadingLabelSwapExample() {
   const [busy, setBusy] = useState(false);
+
   return (
     <Button disabled={busy} onClick={() => setBusy(true)}>
       {busy ? 'Saving' : 'Save'}

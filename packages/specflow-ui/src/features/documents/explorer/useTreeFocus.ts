@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
-import type { DocumentTreeIndex } from './documentTreePolicy';
+import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 
 export interface TreeFocus {
   /** Ref callback of a row's button: `key` is `doc:<id>` or `folder:<path>`. */
@@ -13,11 +12,14 @@ export interface TreeFocus {
 }
 
 /** Focus restoration for tree rows that are replaced or created by operations. */
-export function useTreeFocus(index: DocumentTreeIndex<Tree>): TreeFocus {
+export function useTreeFocus(index: DocumentTreeIndex<TreeRows>): TreeFocus {
   const nodes = useRef(new Map<string, HTMLButtonElement>());
   const [target, setTarget] = useState<string>();
   useEffect(() => {
-    if (!target) return;
+    if (!target) {
+      return;
+    }
+
     // Root-level creation has no source row (its action lives in the header menu): land on the list.
     const root = index.level('');
     const first = root.folders[0]
@@ -31,10 +33,14 @@ export function useTreeFocus(index: DocumentTreeIndex<Tree>): TreeFocus {
       setTarget(undefined);
     }
   }, [target, index]);
+
   return {
     register: (key) => (node) => {
-      if (node) nodes.current.set(key, node);
-      else nodes.current.delete(key);
+      if (node) {
+        nodes.current.set(key, node);
+      } else {
+        nodes.current.delete(key);
+      }
     },
     request: setTarget,
   };

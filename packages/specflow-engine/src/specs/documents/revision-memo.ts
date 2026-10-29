@@ -22,10 +22,14 @@ export class RevisionMemo<T> {
 
   get(key: string): T | undefined {
     const value = this.entries.get(key);
-    if (value === undefined) return undefined;
+    if (value === undefined) {
+      return undefined;
+    }
+
     // Re-insert: a Map iterates in insertion order, so the first key is the least recently used.
     this.entries.delete(key);
     this.entries.set(key, value);
+
     return value;
   }
 
@@ -34,7 +38,10 @@ export class RevisionMemo<T> {
     this.entries.set(key, value);
     while (this.entries.size > this.maxEntries) {
       const oldest = this.entries.keys().next();
-      if (oldest.done) break;
+      if (oldest.done) {
+        break;
+      }
+
       this.entries.delete(oldest.value);
     }
   }

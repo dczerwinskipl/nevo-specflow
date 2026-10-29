@@ -15,6 +15,7 @@ const options = (count: number): OptionPickerItem[] =>
 
 function Picker({ count }: { count: number }) {
   const [value, setValue] = useState('');
+
   return (
     <div className="w-72 max-w-full">
       <Field>

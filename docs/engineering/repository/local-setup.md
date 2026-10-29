@@ -69,7 +69,7 @@ minutes; on Linux the same file takes seconds. Run them on Linux through Docker:
 
 ```bash
 tools/dev/linux-test.sh -- 'pnpm turbo run build --filter=@nevo/specflow-engine^... \
-  && cd packages/specflow-engine && npx vitest run test/create-commit.test.ts --testTimeout=240000'
+  && cd packages/specflow-engine && npx vitest run test/create/create-commit.test.ts --testTimeout=240000'
 ```
 
 The script clones the **committed** state of the current branch inside the container (not a

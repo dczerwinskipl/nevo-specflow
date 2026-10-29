@@ -1,14 +1,14 @@
 import { join } from 'node:path';
 
-import { isAbsent } from './errno';
-import { DocumentError } from './errors';
+import { isAbsent } from '../document-rules/errno';
+import { DocumentError } from '../document-rules/errors';
 import { analyzeOpenFile, type FileAnalysis } from './file-analysis';
 import type { LoadedSpecification } from './loaded-specification';
 import type { ObservationMemoValue, ResolvedReadOptions } from './read-options';
 import type { ObservedFile } from './projection';
 import type { RevisionMemo } from './revision-memo';
 import { memoKey } from './revision-memo';
-import { inspectEntry, withOpenFile } from './verified-file';
+import { inspectEntry, withOpenFile } from '../document-rules/verified-file';
 
 /** A file modified this recently is not memoised: its mtime may not move on a further write. */
 const RECENT_WRITE_MS = 2000;
@@ -40,10 +40,18 @@ export async function probeFile<T>(
 ): Promise<Probe<T>> {
   try {
     const entry = await inspectEntry(options.fs, loaded.specDir, path);
-    if (entry.state === 'absent') return { kind: 'vanished' };
-    if (entry.state !== 'file') return { kind: 'skipped' };
+    if (entry.state === 'absent') {
+      return { kind: 'vanished' };
+    }
+
+    if (entry.state !== 'file') {
+      return { kind: 'skipped' };
+    }
+
     const cached = memo.get(memoKey(join(loaded.specDir, path), entry.stat));
-    if (cached !== undefined) return { kind: 'file', value: cached };
+    if (cached !== undefined) {
+      return { kind: 'file', value: cached };
+    }
 
     const outcome = await withOpenFile(options.fs, loaded.specDir, path, async (file) => {
       const value = project(await analyzeOpenFile(file.handle, file.stat, path));
@@ -51,13 +59,23 @@ export async function probeFile<T>(
       if (options.now() - modifiedMs >= RECENT_WRITE_MS) {
         memo.set(memoKey(join(loaded.specDir, path), file.stat), value);
       }
+
       return value;
     });
-    if (outcome.state === 'opened') return { kind: 'file', value: outcome.value };
+    if (outcome.state === 'opened') {
+      return { kind: 'file', value: outcome.value };
+    }
+
     return { kind: outcome.state === 'absent' ? 'vanished' : 'skipped' };
   } catch (error) {
-    if (error instanceof DocumentError) return { kind: 'skipped' };
-    if (isAbsent(error)) return { kind: 'vanished' };
+    if (error instanceof DocumentError) {
+      return { kind: 'skipped' };
+    }
+
+    if (isAbsent(error)) {
+      return { kind: 'vanished' };
+    }
+
     throw error;
   }
 }
@@ -85,6 +103,9 @@ export async function observe(
       mediaType: analysis.mediaType,
     }),
   );
-  if (probe.kind === 'file') return { kind: 'file', file: { path, ...probe.value } };
+  if (probe.kind === 'file') {
+    return { kind: 'file', file: { path, ...probe.value } };
+  }
+
   return probe.kind === 'skipped' ? { kind: 'skipped', path } : probe;
 }

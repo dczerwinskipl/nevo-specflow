@@ -10,6 +10,7 @@ import {
   bootstrapProjectHome,
   discoverSpecifications,
   workspaceRegistryPath,
+  installDefinitionsForTesting,
 } from '@nevo/specflow-engine/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -28,7 +29,7 @@ function git(cwd: string, ...args: string[]): void {
   execFileSync('git', args, { cwd });
 }
 
-async function fixture() {
+async function fixture(options: { definitions?: boolean } = {}) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-http-archetype-')));
   roots.push(root);
   git(root, 'init', '-q');
@@ -46,11 +47,19 @@ async function fixture() {
     '-qm',
     'initial',
   );
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  if (options.definitions !== false) {
+    await installDefinitionsForTesting(engine);
+  }
+
+  return { root, engine };
 }
 
-async function server(role: 'developer' | 'viewer' = 'developer') {
-  const { root, engine } = await fixture();
+async function server(
+  role: 'developer' | 'viewer' = 'developer',
+  options: { definitions?: boolean } = {},
+) {
+  const { root, engine } = await fixture(options);
   const store = new InMemoryAuthenticationStore();
   const session = store.createSession({
     userId: 'demo-user',
@@ -64,6 +73,7 @@ async function server(role: 'developer' | 'viewer' = 'developer') {
     },
     { auth: { store }, specs: { engine } },
   );
+
   return { root, engine, app, headers };
 }
 
@@ -82,9 +92,9 @@ describe('GET /api/specs/archetypes', () => {
       expect(response.headers.etag).toBe(`"${catalogue.revision}"`);
       expect(catalogue.defaultArchetypeId).toBeUndefined();
       expect(catalogue.archetypes.map((item) => item.id)).toEqual([
-        'minimal',
-        'feature',
         'architecture',
+        'feature',
+        'minimal',
       ]);
       expect(catalogue.documentTypes.every((type) => type.instructions.length > 0)).toBe(true);
 
@@ -131,6 +141,133 @@ describe('GET /api/specs/archetypes', () => {
       ).toBe(403);
     } finally {
       await viewer.app.close();
+    }
+  });
+});
+
+describe('a project without definitions', () => {
+  it('serves an empty catalogue and refuses Create as DEFINITIONS_MISSING', async () => {
+    const context = await server('developer', { definitions: false });
+    try {
+      const catalogue = await context.app.inject({
+        method: 'GET',
+        url: '/api/specs/archetypes',
+        headers: context.headers,
+      });
+      expect(catalogue.statusCode, catalogue.body).toBe(200);
+      expect(catalogue.json<{ archetypes: unknown[] }>().archetypes).toEqual([]);
+
+      const created = await context.app.inject({
+        method: 'POST',
+        url: '/api/specs',
+        headers: context.headers,
+        payload: { ...ARCHETYPE_REQUEST, operationId: randomUUID(), title: 'No definitions' },
+      });
+      expect(created.statusCode, created.body).toBe(422);
+      expect(created.json()).toEqual({
+        error: 'DEFINITIONS_MISSING',
+        code: 'DEFINITIONS_MISSING',
+        details: { cause: 'definitions-missing' },
+      });
+      expect(existsSync(join(context.root, 'specs'))).toBe(false);
+    } finally {
+      await context.app.close();
+    }
+  });
+});
+
+describe('definition problems on the catalogue route', () => {
+  const definition = (root: string, ...path: string[]) =>
+    join(root, '.nevo', 'definitions', ...path);
+
+  it('reports a rejected file in problems, keeps the other archetypes and changes the ETag', async () => {
+    const context = await server();
+    try {
+      const get = (extra: Record<string, string> = {}) =>
+        context.app.inject({
+          method: 'GET',
+          url: '/api/specs/archetypes',
+          headers: { ...context.headers, ...extra },
+        });
+      const clean = await get();
+      expect(clean.json<{ problems?: unknown }>().problems).toBeUndefined();
+      const cleanTag = clean.headers.etag!;
+
+      await writeFile(
+        definition(context.root, 'specification-archetype', 'feature.yaml'),
+        'kind: specification-archetype\n: [broken',
+      );
+      const broken = await get({ 'if-none-match': cleanTag });
+      expect(broken.statusCode).toBe(200);
+      const body = broken.json<{
+        archetypes: { id: string }[];
+        problems: { source: string; code: string }[];
+      }>();
+      expect(body.archetypes.map((item) => item.id)).toEqual(['architecture', 'minimal']);
+      expect(body.problems).toEqual([
+        expect.objectContaining({
+          source: 'specification-archetype/feature.yaml',
+          code: 'yaml-invalid',
+        }),
+      ]);
+      const brokenTag = broken.headers.etag!;
+      expect(brokenTag).not.toBe(cleanTag);
+      expect((await get({ 'if-none-match': brokenTag })).statusCode).toBe(304);
+
+      // Only the problem changes (another broken text): the valid catalogue and its revision do not.
+      await writeFile(
+        definition(context.root, 'specification-archetype', 'feature.yaml'),
+        'kind: specification-archetype\nid: feature\n',
+      );
+      const reworded = await get({ 'if-none-match': brokenTag });
+      const rewordedBody = reworded.json<{ revision: string }>();
+      expect(reworded.statusCode).toBe(200);
+      expect(rewordedBody.revision).toBe(broken.json<{ revision: string }>().revision);
+    } finally {
+      await context.app.close();
+    }
+  });
+
+  it('names the cause when the archetype is rejected or not defined', async () => {
+    const context = await server();
+    try {
+      await writeFile(
+        definition(context.root, 'specification-archetype', 'feature.yaml'),
+        'kind: specification-archetype\n: [broken',
+      );
+      await rm(definition(context.root, 'specification-archetype', 'architecture.yaml'));
+      const catalogue = await context.app.inject({
+        method: 'GET',
+        url: '/api/specs/archetypes',
+        headers: context.headers,
+      });
+      const { revision } = catalogue.json<{ revision: string }>();
+      const post = (archetypeId: string) =>
+        context.app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          headers: context.headers,
+          payload: {
+            ...ARCHETYPE_REQUEST,
+            archetypeId,
+            operationId: randomUUID(),
+            title: 'Cause',
+            catalogueRevision: revision,
+          },
+        });
+      const invalid = await post('feature');
+      expect(invalid.statusCode, invalid.body).toBe(422);
+      expect(invalid.json()).toMatchObject({
+        code: 'ARCHETYPE_UNKNOWN',
+        details: { cause: 'archetype-invalid' },
+      });
+      const absent = await post('architecture');
+      expect(absent.json()).toMatchObject({
+        code: 'ARCHETYPE_UNKNOWN',
+        details: { cause: 'archetype-not-defined' },
+      });
+    } finally {
+      await context.app.close();
     }
   });
 });
@@ -200,7 +337,7 @@ describe('POST /api/specs with an archetype', () => {
       try {
         const response = await post(context, { title: 'Refused', ...patch });
         expect(response.statusCode, response.body).toBe(status);
-        expect(response.json()).toEqual({ error: code, code });
+        expect(response.json()).toMatchObject({ error: code, code });
         expect(existsSync(join(context.root, 'specs'))).toBe(false);
         expect(await discoverSpecifications(context.engine)).toEqual([]);
       } finally {

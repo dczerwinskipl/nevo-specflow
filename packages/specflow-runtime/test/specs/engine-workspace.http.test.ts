@@ -8,9 +8,10 @@ import {
   addWorkspace,
   bindSpecToWorkspace,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   provisionLinkedWorkspaceIdentity,
   updateWorkspaceRegistry,
+  installDefinitionsForTesting,
 } from '@nevo/specflow-engine/testing';
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -25,6 +26,7 @@ import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 function trustedLocalConfig() {
   const config = passwordConfig();
+
   return { ...config, authentication: { ...config.authentication, mode: 'none' as const } };
 }
 
@@ -63,8 +65,14 @@ async function fixture(gitEnabled = false) {
     '-qm',
     'initial',
   );
-  if (gitEnabled) git(root, 'branch', '-m', 'develop');
-  return { root, engine: await bootstrapProjectHome(root) };
+  if (gitEnabled) {
+    git(root, 'branch', '-m', 'develop');
+  }
+
+  const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
+
+  return { root, engine };
 }
 
 describe('Engine-backed specification workspace read', () => {
@@ -125,6 +133,7 @@ describe('Engine-backed specification workspace read', () => {
           });
           expect(overview?.revision).toMatch(/^[0-9a-f]{64}$/u);
         }
+
         expect(body.actions).toEqual({
           executeTasks: { available: false, reason: 'not_implemented' },
           startSession: { available: false, reason: 'not_implemented' },

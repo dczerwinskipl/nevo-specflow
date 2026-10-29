@@ -155,6 +155,7 @@ export const NoOverflow: Story = {
 
 function DynamicOverflowFixture() {
   const [wide, setWide] = useState(false);
+
   return (
     <StoryFrame>
       <div className="mb-4 flex items-center justify-between gap-3">

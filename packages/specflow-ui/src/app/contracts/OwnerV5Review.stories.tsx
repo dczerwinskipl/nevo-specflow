@@ -27,6 +27,7 @@ async function stable(width: number, height = 900) {
     }
   });
 }
+
 async function capture(name: string, width: number, height = 900) {
   await stable(width, height);
   console.info(
@@ -64,14 +65,20 @@ export const LongIdentity360430: Story = {
         await waitFor(
           () => {
             const box = canvas.getByRole('heading', { name }).getBoundingClientRect();
-            if (box.left < 0 || box.right > width) throw new Error(`Title outside ${width}px`);
-            if (document.documentElement.scrollWidth > width) throw new Error('Page overflows');
+            if (box.left < 0 || box.right > width) {
+              throw new Error(`Title outside ${width}px`);
+            }
+
+            if (document.documentElement.scrollWidth > width) {
+              throw new Error('Page overflows');
+            }
           },
           { timeout: 5000 },
         );
         await stable(width);
         await capture('long-identity', width);
       }
+
       if (parameters.cssProbe) {
         document.body.style.zoom = '2';
         await capture('css-magnification-200-long-identity', 860, 1200);
@@ -107,10 +114,12 @@ export const GuardAt360430: Story = {
         await expect(safeBox.left).toBeGreaterThanOrEqual(0);
         await expect(dangerBox.right).toBeLessThanOrEqual(width);
       }
+
       if (parameters.cssProbe) {
         document.body.style.zoom = '2';
         await capture('css-magnification-200-guard', 860, 1200);
       }
+
       await expect(within(document.body).getByRole('button', { name: 'Kontynuuj' })).toHaveFocus();
       await userEvent.keyboard('{Escape}');
       await waitFor(() =>

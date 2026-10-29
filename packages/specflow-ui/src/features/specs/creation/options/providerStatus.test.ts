@@ -5,6 +5,7 @@ import { providerStatus as rawProviderStatus } from './providerStatus';
 // The status carries catalogue messages; these tests assert the Polish text they render to.
 function providerStatus(...args: Parameters<typeof rawProviderStatus>) {
   const status = rawProviderStatus(...args);
+
   return {
     ...status,
     access: polishText(status.access),

@@ -27,7 +27,10 @@ describe('Specification aggregate resource boundary', () => {
     const cached = createSpecificationWorkspaceFixture('working', specId);
     client.setQueryData(key, cached);
     const query = client.getQueryCache().find({ queryKey: key, exact: true });
-    if (!query) throw new Error('Expected cached Workspace query');
+    if (!query) {
+      throw new Error('Expected cached Workspace query');
+    }
+
     query.setState({
       status: 'error',
       error: new HttpClientError('Resource access changed', {
@@ -65,7 +68,9 @@ describe('Specification aggregate resource boundary', () => {
     const cached = createSpecificationWorkspaceFixture('working', specId);
     client.setQueryData(key, cached);
     const query = client.getQueryCache().find({ queryKey: key, exact: true });
-    if (!query) throw new Error('Expected cached Workspace query');
+    if (!query) {
+      throw new Error('Expected cached Workspace query');
+    }
 
     // TanStack Query keeps the previous success while a later refresh fails.
     query.setState({

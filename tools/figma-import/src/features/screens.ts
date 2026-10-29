@@ -11,7 +11,10 @@ export async function upsertScreens(
   startY: number,
 ) {
   const captures = canonicalCaptures(spec, ir.components[spec.component] ?? []);
-  if (!captures.size) throw new Error(`IR contains no ${spec.component} screen captures`);
+  if (!captures.size) {
+    throw new Error(`IR contains no ${spec.component} screen captures`);
+  }
+
   const frames: FrameNode[] = [];
   let y = startY;
   for (const [stableId, capture] of captures) {
@@ -21,12 +24,17 @@ export async function upsertScreens(
       mark(frame, stableId);
       section.appendChild(frame);
     }
+
     await configureComponent(frame, capture, spec, ir, resources, definitions);
-    if (frame.parent !== section) section.appendChild(frame);
+    if (frame.parent !== section) {
+      section.appendChild(frame);
+    }
+
     frame.x = 24;
     frame.y = y;
     frames.push(frame);
     y += frame.height + 48;
   }
+
   return { frames, nextY: y };
 }

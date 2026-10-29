@@ -5,6 +5,8 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { onPosix } from '../../../test/support/platform';
+
 import { readCheckedOutBranch } from './advisory-policy';
 
 const dirs: string[] = [];
@@ -15,6 +17,7 @@ afterEach(async () => {
 async function temp(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'advisory-policy-'));
   dirs.push(dir);
+
   return dir;
 }
 
@@ -55,7 +58,7 @@ describe('readCheckedOutBranch', () => {
     expect(await readCheckedOutBranch(await temp())).toBeUndefined();
   });
 
-  it.skipIf(process.platform === 'win32')(
+  it.skipIf(!onPosix)(
     'does not hang on a FIFO .git/HEAD or a FIFO .git file',
     async () => {
       const fifoHead = await temp();

@@ -17,6 +17,7 @@ function render(failure: CreateFailure, locale: AppLocale) {
         refreshing={false}
         onCopy={() => undefined}
         onRefresh={() => undefined}
+        onRefreshArchetypes={() => undefined}
         onUseAutomaticName={() => undefined}
         onUseCustomName={() => undefined}
       />

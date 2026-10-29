@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { isCreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import type { ProjectCreateRequest } from '../api/api.project';
+import type { ArchetypeChoice } from '../options/archetypeChoice';
 import { useAppServices } from '../../../../app/useAppServices';
 import { authSessionIdentity, type AuthStore } from '../../../../auth/store';
 import type { CreateFailure } from '../errors/createFailure';
@@ -27,8 +28,13 @@ export interface CreateDraft {
   readonly title: string;
   readonly goal: string;
   readonly choice: WorkspaceChoice;
+  /** The archetype and the ticks the owner chose ("Back to form" restores them). */
+  readonly archetype?: ArchetypeChoice;
   /** What the form said this Create does (workspace names, branches, folder); display only. */
   readonly facts?: CreateSettingsFacts;
+  /** The chosen archetype's title and the files Create makes, as the form showed them; display only. */
+  readonly archetypeTitle?: string;
+  readonly documentFiles?: readonly string[];
   readonly failure?: CreateFailure;
 }
 
@@ -58,21 +64,57 @@ function toDraft(value: unknown): CreateDraft | undefined {
     typeof value.operationId !== 'string' ||
     typeof value.title !== 'string' ||
     typeof value.goal !== 'string'
-  )
+  ) {
     return undefined;
-  if (!isRecord(value.choice)) return undefined;
+  }
+
+  if (!isRecord(value.choice)) {
+    return undefined;
+  }
+
   const failure =
     isRecord(value.failure) && typeof value.failure.kind === 'string'
       ? (value.failure as unknown as CreateFailure)
       : undefined;
   const facts = toCreateFacts(value.facts);
+  const archetype = toArchetypeChoice(value.archetype);
+  const documentFiles =
+    Array.isArray(value.documentFiles) &&
+    value.documentFiles.every((file): file is string => typeof file === 'string')
+      ? value.documentFiles
+      : undefined;
+
   return {
     operationId: value.operationId,
     title: value.title,
     goal: value.goal,
     choice: { ...initialWorkspaceChoice, ...(value.choice as Partial<WorkspaceChoice>) },
+    ...(archetype ? { archetype } : {}),
     ...(facts ? { facts } : {}),
+    ...(typeof value.archetypeTitle === 'string' ? { archetypeTitle: value.archetypeTitle } : {}),
+    ...(documentFiles ? { documentFiles } : {}),
     ...(failure ? { failure } : {}),
+  };
+}
+
+/** A stored archetype choice; a damaged one is dropped (the form then starts from the default). */
+function toArchetypeChoice(value: unknown): ArchetypeChoice | undefined {
+  if (!isRecord(value) || !isRecord(value.ticks)) {
+    return undefined;
+  }
+
+  const ticks: Record<string, readonly string[]> = {};
+  for (const [archetypeId, ids] of Object.entries(value.ticks)) {
+    if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) {
+      return undefined;
+    }
+
+    ticks[archetypeId] = ids;
+  }
+
+  return {
+    ...(typeof value.archetypeId === 'string' ? { archetypeId: value.archetypeId } : {}),
+    ticks,
   };
 }
 
@@ -83,20 +125,16 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
  * outdated entry (for example a malformed target) is dropped, never sent.
  */
 function isStored(value: unknown): value is StoredCreateOperation {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
   const { request, startedAt } = value as Partial<StoredCreateOperation>;
-  // The contract request schema also requires the archetype selection, which the project form does
-  // not send yet (see `ProjectCreateRequest`): probe the stored request with a placeholder selection.
-  const probe = {
-    ...(request as object | undefined),
-    archetypeId: 'placeholder',
-    archetypeVersion: 1,
-    catalogueRevision: 'placeholder',
-  };
+
   return (
     typeof startedAt === 'number' &&
-    isCreateSpecRequest(probe) &&
-    typeof probe.operationId === 'string'
+    isCreateSpecRequest(request) &&
+    typeof request.operationId === 'string'
   );
 }
 
@@ -119,17 +157,25 @@ export function createSessionOperationStorage(
       // Persistence is best effort.
     }
   };
+
   return {
     load(operationId) {
       try {
         const raw = storage?.getItem(key(operationId));
-        if (!raw) return undefined;
+        if (!raw) {
+          return undefined;
+        }
+
         const parsed: unknown = JSON.parse(raw);
-        if (isStored(parsed) && parsed.request.operationId === operationId) return parsed;
+        if (isStored(parsed) && parsed.request.operationId === operationId) {
+          return parsed;
+        }
+
         remove(key(operationId));
       } catch {
         // Unreadable entry: treated as absent.
       }
+
       return undefined;
     },
     save(operation) {
@@ -143,13 +189,20 @@ export function createSessionOperationStorage(
     loadDraft(operationId) {
       try {
         const raw = storage?.getItem(draftKey(operationId));
-        if (!raw) return undefined;
+        if (!raw) {
+          return undefined;
+        }
+
         const draft = toDraft(JSON.parse(raw));
-        if (draft?.operationId === operationId) return draft;
+        if (draft?.operationId === operationId) {
+          return draft;
+        }
+
         remove(draftKey(operationId));
       } catch {
         // Unreadable draft: treated as absent.
       }
+
       return undefined;
     },
     saveDraft(draft) {
@@ -175,6 +228,7 @@ function browserSessionStorage(): StorageLike | undefined {
 export function createOperationStorageFor(authStore: AuthStore): CreateOperationStorage {
   const state = authStore.getState();
   const identity = state.status === 'ready' ? authSessionIdentity(state.session) : 'unknown';
+
   return createSessionOperationStorage(identity, browserSessionStorage());
 }
 
@@ -186,5 +240,6 @@ export function createOperationStorageFor(authStore: AuthStore): CreateOperation
 export function useCreateOperationStorage(): CreateOperationStorage {
   const { authStore } = useAppServices();
   const [storage] = useState(() => createOperationStorageFor(authStore));
+
   return storage;
 }

@@ -38,6 +38,27 @@ import {
   Users,
   Workflow,
   X,
+  Download,
+  FolderInput,
+  Pencil,
+  PencilLine,
+  Tag,
+  Unlink,
+  Upload,
+  WrapText,
+  ZoomIn,
+  Link,
+  Undo2,
+  Image,
+  FileDigit,
+  ListFilter,
+  BookOpen,
+  Network,
+  Server,
+  ListOrdered,
+  FileCheck,
+  BookUser,
+  PanelsTopLeft,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -88,12 +109,56 @@ export const iconRegistry = {
   list: List,
   settings: Settings,
   'log-out': LogOut,
+  // Actions on an item: the name says what the action does, not a state.
+  edit: Pencil,
+  rename: PencilLine,
+  move: FolderInput,
+  upload: Upload,
+  download: Download,
+  classify: Tag,
+  unlink: Unlink,
+  wrap: WrapText,
+  'actual-size': ZoomIn,
+  'show-path': Link,
+  undo: Undo2,
+  // Content formats of a file (an image, a file that is not text).
+  image: Image,
+  'file-binary': FileDigit,
+  // Narrows a list to chosen values.
+  filter: ListFilter,
+  // Document types (the glyph a type definition names).
+  'book-open': BookOpen,
+  network: Network,
+  server: Server,
+  'list-ordered': ListOrdered,
+  'file-check': FileCheck,
+  'book-user': BookUser,
+  'panels-top-left': PanelsTopLeft,
 } satisfies Record<IconName, LucideIcon>;
+
+/**
+ * Whether `value` names a registered glyph: for icon names that come from data (for example a
+ * definition file), so an unknown name falls back instead of failing.
+ */
+export function isIconName(value: unknown): value is IconName {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(iconRegistry, value);
+}
 
 export const iconSizeClasses = {
   sm: 'size-icon-sm',
   md: 'size-icon-md',
+  lg: 'size-icon-lg',
+  xl: 'size-icon-xl',
 } as const satisfies Record<IconSize, string>;
+
+/**
+ * Stroke in the 24-unit glyph grid: control sizes keep the standard 2; illustration sizes use a
+ * lighter line so a large glyph reads as a drawing rather than a heavy mark.
+ */
+const iconStrokeWidths = { sm: 2, md: 2, lg: 1.25, xl: 1 } as const satisfies Record<
+  IconSize,
+  number
+>;
 
 type IconAccessibilityProps =
   { decorative?: true; 'aria-label'?: never } | { decorative: false; 'aria-label': string };
@@ -122,13 +187,14 @@ export function Icon({
       ? { assetRef: iconAssetRef(name, size), assetRepresentation: 'svg-mask' }
       : undefined,
   );
+
   return (
     <Glyph
       aria-hidden={decorative || undefined}
       aria-label={decorative ? undefined : ariaLabel}
       className={cn('block shrink-0', iconSizeClasses[size], className)}
       focusable="false"
-      strokeWidth="2"
+      strokeWidth={iconStrokeWidths[size]}
       {...props}
       {...capture}
     />

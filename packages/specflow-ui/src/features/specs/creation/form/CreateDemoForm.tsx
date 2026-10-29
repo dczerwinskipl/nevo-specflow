@@ -17,6 +17,14 @@ import {
 } from '../options/agentChoice';
 import { CreateAgentSection } from '../options/CreateAgentSection';
 import { CreateBasicsSection } from '../options/CreateBasicsSection';
+import { ArchetypeSection } from '../options/ArchetypeSection';
+import {
+  initialArchetypeChoice,
+  refreshedArchetypeChoice,
+  selectedArchetype,
+  tickedTemplates,
+  type ArchetypeChoice,
+} from '../options/archetypeChoice';
 import { CreateConfigurationNotice } from './CreateConfigurationNotice';
 import { CreateFailurePanel } from '../errors/CreateFailurePanel';
 import { CreateFooter } from './CreateFooter';
@@ -47,6 +55,8 @@ export interface CreateDemoFormProps {
   onSession: (spec: string, session: string) => void;
   configurationUnavailable: boolean;
   onRefresh: () => void;
+  /** Reads the catalogue again (after the archetypes changed under the form). */
+  onRefreshCatalogue: () => Promise<DemoCatalogue | undefined>;
 }
 
 /**
@@ -61,6 +71,7 @@ export function CreateDemoForm({
   onSession,
   configurationUnavailable,
   onRefresh,
+  onRefreshCatalogue,
 }: CreateDemoFormProps) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -83,14 +94,15 @@ export function CreateDemoForm({
 
   const [method, setMethod] = useState(specId ? 'ai' : ''),
     [title, setTitle] = useState(''),
-    [archetypeId, setArchetypeId] = useState(
-      catalogue.defaultArchetypeId ?? catalogue.archetypes[0]?.id ?? '',
-    ),
+    [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(initialArchetypeChoice),
     [agent, setAgent] = useState<AgentChoice>(() => initialAgentChoice(catalogue));
 
+  const archetype = selectedArchetype(catalogue, archetypeChoice);
+  const optionalDocumentIds = archetype ? tickedTemplates(archetype, archetypeChoice) : [];
   const configurationSnapshot = JSON.stringify({
     title,
-    archetypeId,
+    archetypeId: archetype?.id,
+    optionalDocumentIds,
     providerId: agent.providerId,
     modelId: agent.modelId,
     effort: agent.effort,
@@ -130,7 +142,7 @@ export function CreateDemoForm({
     method,
     title,
     catalogue,
-    archetypeId,
+    archetype,
     agent,
     workspaceState: createOptions.state,
     choice: place.choice,
@@ -139,7 +151,9 @@ export function CreateDemoForm({
   });
 
   useEffect(() => {
-    if (method && !supportsSplit) headingRef.current?.focus();
+    if (method && !supportsSplit) {
+      headingRef.current?.focus();
+    }
   }, [method, supportsSplit]);
 
   const refreshOptions = () =>
@@ -150,13 +164,14 @@ export function CreateDemoForm({
     });
 
   const submission = (): CreateSubmission => {
-    const archetype = catalogue.archetypes.find((a) => a.id === archetypeId)!;
+    const chosen = archetype!;
     const slug = workspaceOptions
       ? buildCreateSlug(place.choice, workspaceOptions, title)
       : undefined;
+
     return {
       title,
-      archetype: { id: archetype.id, version: archetype.version },
+      archetype: { id: chosen.id, version: chosen.version, optionalDocumentIds },
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
@@ -176,13 +191,14 @@ export function CreateDemoForm({
   };
 
   const leaveDialog = <CreateLeaveDialog guard={leaveGuard} />;
-  if (!method && !specId)
+  if (!method && !specId) {
     return (
       <CreateShell>
         <CreateMethodChoice onChoose={setMethod} />
         {leaveDialog}
       </CreateShell>
     );
+  }
 
   const working = busy || state.checking;
   const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
@@ -208,14 +224,15 @@ export function CreateDemoForm({
 
   const sections: ReactNode[] = [
     !specId && (
-      <CreateBasicsSection
-        key="basics"
-        catalogue={catalogue}
-        title={title}
-        archetypeId={archetypeId}
+      <CreateBasicsSection key="basics" title={title} locked={locked} onTitleChange={setTitle} />
+    ),
+    !specId && (
+      <ArchetypeSection
+        key="archetype"
+        state={{ status: 'ready', catalogue }}
+        choice={archetypeChoice}
         locked={locked}
-        onTitleChange={setTitle}
-        onArchetypeChange={setArchetypeId}
+        onChange={setArchetypeChoice}
       />
     ),
     method === 'ai' && (
@@ -242,57 +259,76 @@ export function CreateDemoForm({
         onAnnounce={announce}
       />
     ),
-    <CreateFooter
-      key="footer"
-      actionRegion={reveal.actionRegion}
-      submitRef={submitRef}
-      failureAlert={
-        <>
-          {configurationUnavailable && <CreateConfigurationNotice onRefresh={onRefresh} />}
-          {failure && (
-            <CreateFailurePanel
-              failure={failure}
-              state={state}
-              workspaceOptions={workspaceOptions}
-              typedTitle={title.trim()}
-              refreshing={createOptions.fetching}
-              announce={announce}
-              onRefresh={refreshOptions}
-              onUseAutomaticName={() => {
-                place.chooseAutomaticBranch();
-                actions.dismissFailure();
-              }}
-              onUseCustomName={() => {
-                place.chooseCustomBranch();
-                actions.dismissFailure();
-              }}
-            />
-          )}
-        </>
-      }
-      prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
-      note={note}
-      submitLabel={submitLabel}
-      submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
-    />,
   ].filter(Boolean);
+  // Under the last section, in the scrolling form: what went wrong and how to go on. The pinned
+  // footer stays one line; a failure is revealed here (`useRevealFailure`).
+  const failureRegion = (
+    <div ref={reveal.actionRegion} className="grid gap-4 empty:hidden">
+      {configurationUnavailable && <CreateConfigurationNotice onRefresh={onRefresh} />}
+      {failure && (
+        <CreateFailurePanel
+          failure={failure}
+          state={state}
+          workspaceOptions={workspaceOptions}
+          typedTitle={title.trim()}
+          refreshing={createOptions.fetching}
+          announce={announce}
+          onRefresh={refreshOptions}
+          onRefreshArchetypes={() =>
+            void (async () => {
+              const code = failure.kind === 'catalogue-stale' ? failure.code : undefined;
+              const fresh = await onRefreshCatalogue();
+              if (!fresh || !code) {
+                return;
+              }
+
+              setArchetypeChoice((current) => refreshedArchetypeChoice(current, code));
+              actions.dismissFailure();
+              announce(t('create.archetype.refreshed'));
+            })()
+          }
+          onUseAutomaticName={() => {
+            place.chooseAutomaticBranch();
+            actions.dismissFailure();
+          }}
+          onUseCustomName={() => {
+            place.chooseCustomBranch();
+            actions.dismissFailure();
+          }}
+        />
+      )}
+    </div>
+  );
 
   return (
-    <CreateShell specId={specId}>
-      <form
-        className="grid gap-8"
-        onSubmit={(event) => {
+    <CreateShell
+      specId={specId}
+      form={{
+        onSubmit: (event) => {
           event.preventDefault();
           if (recovery) {
             void actions.submit(submission());
+
             return;
           }
+
           if (!busy && (uncertain || canSubmit)) {
             reveal.captureSubmit(event);
             void actions.submit(submission());
           }
-        }}
-      >
+        },
+      }}
+      footer={
+        <CreateFooter
+          submitRef={submitRef}
+          prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
+          note={note}
+          submitLabel={submitLabel}
+          submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
+        />
+      }
+    >
+      <div className="grid gap-8">
         <CreateFormHeader
           headingRef={headingRef}
           lead={
@@ -308,15 +344,16 @@ export function CreateDemoForm({
           }
           heading={specId ? t('create.heading.session') : t('create.heading.specification')}
           subheading={
-            specId ? t('create.subheading.session') : t('create.subheading.specification')
+            specId ? t('create.subheading.session') : t('create.subheading.withArchetype')
           }
         />
         {sections.flatMap((section, index) => [
           index > 0 ? <Separator key={`separator-${index}`} /> : null,
           section,
         ])}
+        {failureRegion}
         {region}
-      </form>
+      </div>
       {leaveDialog}
     </CreateShell>
   );

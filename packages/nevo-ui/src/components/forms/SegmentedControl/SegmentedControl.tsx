@@ -65,6 +65,7 @@ function useSegmentedControlContext(part: string) {
   if (!context) {
     throw new Error(`${part} must be rendered inside SegmentedControl.`);
   }
+
   return context;
 }
 
@@ -162,7 +163,9 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
 
     const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
       onKeyDown?.(event);
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented) {
+        return;
+      }
 
       const enabledItems = findEnabledItems(
         event.currentTarget,
@@ -171,12 +174,19 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
       );
       const currentIndex = enabledItems.indexOf(event.currentTarget);
       const nextIndex = resolveRovingIndex(event.key, currentIndex, enabledItems.length, true);
-      if (nextIndex === null) return;
+      if (nextIndex === null) {
+        return;
+      }
 
       const nextItem = enabledItems[nextIndex];
-      if (!nextItem) return;
+      if (!nextItem) {
+        return;
+      }
+
       const nextValue = nextItem.dataset.segmentedControlValue;
-      if (!nextValue) return;
+      if (!nextValue) {
+        return;
+      }
 
       event.preventDefault();
       nextItem.focus();

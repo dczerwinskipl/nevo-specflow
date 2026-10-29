@@ -16,5 +16,6 @@ export function normalizeSearchText(value: string): string {
 /** Default Combobox filter: normalised "contains" match; an empty query matches everything. */
 export function defaultComboboxFilter(textValue: string, query: string): boolean {
   const needle = normalizeSearchText(query);
+
   return needle === '' || normalizeSearchText(textValue).includes(needle);
 }

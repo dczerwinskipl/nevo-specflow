@@ -42,21 +42,32 @@ export function selectCanonicalCaptures(
     group.push(capture);
     grouped.set(capture.stableId, group);
   }
+
   return new Map<string, ComponentCaptureIR>(
     [...grouped].map(([stableId, group]) => {
-      if (group.length === 1) return [stableId, group[0]!];
+      if (group.length === 1) {
+        return [stableId, group[0]!];
+      }
+
       const canonical = group.filter((item) => item.canonical);
       if (canonical.length !== 1 && requireExplicitDuplicates) {
         throw new Error(`${stableId} has ${group.length} captures; mark exactly one as canonical`);
       }
-      if (canonical.length === 1) return [stableId, canonical[0]!];
+
+      if (canonical.length === 1) {
+        return [stableId, canonical[0]!];
+      }
+
       // Screen fragments are Frames, not library main components. Their captured
       // content is overridden at use sites; this stable ordering only selects a
       // structural template.
       const selected = [...group].sort((left, right) =>
         JSON.stringify(left).localeCompare(JSON.stringify(right)),
       )[0];
-      if (!selected) throw new Error(`${stableId} has no captures`);
+      if (!selected) {
+        throw new Error(`${stableId} has no captures`);
+      }
+
       return [stableId, selected];
     }),
   );
@@ -70,12 +81,18 @@ interface OrderedFigmaComponentDefinition {
 function nestedReferences(children: readonly NestedLayerIR[], references: Set<string>) {
   for (const child of children) {
     if (!('componentRef' in child)) {
-      if (child.kind === 'element') nestedReferences(child.children, references);
+      if (child.kind === 'element') {
+        nestedReferences(child.children, references);
+      }
+
       continue;
     }
+
     references.add(child.componentRef);
     for (const slot of Object.values(child.slots)) {
-      if (typeof slot !== 'string') nestedReferences(slot.children, references);
+      if (typeof slot !== 'string') {
+        nestedReferences(slot.children, references);
+      }
     }
   }
 }
@@ -85,6 +102,7 @@ export function componentReferenceKind(
   definitions: ReadonlyMap<string, FigmaComponentDefinition>,
 ) {
   const target = definitions.get(componentRef)?.target;
+
   return target === 'fragment' || target === 'screen'
     ? ('screen-content' as const)
     : ('reusable-component' as const);
@@ -95,9 +113,12 @@ export function mainComponentRequirement(
   layer: Extract<NestedLayerIR, { componentRef: string }>,
   definitions: ReadonlyMap<string, FigmaComponentDefinition>,
 ) {
-  if (componentReferenceKind(layer.componentRef, definitions) === 'screen-content')
+  if (componentReferenceKind(layer.componentRef, definitions) === 'screen-content') {
     return undefined;
+  }
+
   const spec = definitions.get(layer.componentRef);
+
   return `${layer.componentRef}/${spec?.variantProperties.map((name) => String(layer.properties[name])).join('/') ?? ''}`;
 }
 
@@ -118,13 +139,17 @@ function addRequirement(
   stableId: string | undefined,
   kind: ReferenceRequirementKind,
 ) {
-  if (!stableId) return;
+  if (!stableId) {
+    return;
+  }
+
   const previous = result.get(stableId);
   if (previous && previous.kind !== kind) {
     throw new Error(
       `Stable identity ${stableId} is referenced as both ${previous.kind} and ${kind}`,
     );
   }
+
   result.set(stableId, { stableId, kind });
 }
 
@@ -136,19 +161,27 @@ function collectLayerRequirements(
   if ('componentRef' in layer) {
     addRequirement(result, mainComponentRequirement(layer, definitions), 'component');
     for (const slot of Object.values(layer.slots)) {
-      if (typeof slot !== 'string') collectNestedSlotRequirements(slot, definitions, result);
+      if (typeof slot !== 'string') {
+        collectNestedSlotRequirements(slot, definitions, result);
+      }
     }
+
     return;
   }
+
   if (layer.kind === 'element') {
     layer.children.forEach((child) => collectLayerRequirements(child, definitions, result));
+
     return;
   }
+
   if (layer.kind === 'asset') {
     addRequirement(result, layer.assetRef, 'asset');
     addRequirement(result, layer.colorRef, 'color');
+
     return;
   }
+
   if (layer.kind === 'text') {
     addRequirement(result, layer.textStyleRef, 'text-style');
     addRequirement(result, layer.colorRef ?? layer.bindings?.content, 'color');
@@ -193,16 +226,23 @@ function captureRequirements(
   );
   const result = new Map<string, ReferenceRequirement>();
   for (const [component, captures] of Object.entries(capturesByComponent)) {
-    if (roots && !roots.has(component)) continue;
+    if (roots && !roots.has(component)) {
+      continue;
+    }
+
     for (const capture of captures) {
       for (const slot of Object.values(capture.slots)) {
-        if (slot) collectSlotRequirements(slot, definitionsByComponent, result);
+        if (slot) {
+          collectSlotRequirements(slot, definitionsByComponent, result);
+        }
       }
+
       capture.structure?.forEach((layer) =>
         collectLayerRequirements(layer, definitionsByComponent, result),
       );
     }
   }
+
   return [...result.values()].sort((left, right) => left.stableId.localeCompare(right.stableId));
 }
 
@@ -220,6 +260,7 @@ export function designSystemRequirements(ir: DesignSystemIR): ReferenceRequireme
         ...selectCanonicalCaptures(ir.components[definition.component] ?? []).keys(),
       ]),
   );
+
   return captureRequirements(ir.definitions, ir.components, roots).filter(
     (requirement) => requirement.kind !== 'component' || !ownedStableIds.has(requirement.stableId),
   );
@@ -228,6 +269,7 @@ export function designSystemRequirements(ir: DesignSystemIR): ReferenceRequireme
 /** All existing managed identities required before a screen mutation starts. */
 export function screenRequirements(ir: ScreensIR): ReferenceRequirement[] {
   const roots = ir.profile ? new Set(ir.profile.roots) : undefined;
+
   return captureRequirements(ir.definitions, ir.screens, roots);
 }
 
@@ -246,8 +288,12 @@ function componentDependencies(captures: readonly ComponentCaptureIR[]) {
         nestedReferences(slot.children, references);
       }
     }
-    if (capture.structure) nestedReferences(capture.structure, references);
+
+    if (capture.structure) {
+      nestedReferences(capture.structure, references);
+    }
   }
+
   return references;
 }
 
@@ -269,10 +315,14 @@ export function orderFigmaComponentDefinitionsByDependencies<
   const visited = new Set<string>();
 
   function visit(spec: Spec) {
-    if (visited.has(spec.component)) return;
+    if (visited.has(spec.component)) {
+      return;
+    }
+
     if (visiting.has(spec.component)) {
       throw new Error(`Circular nested component dependency at ${spec.component}`);
     }
+
     visiting.add(spec.component);
     const dependencies = [...componentDependencies(capturesByComponent[spec.component] ?? [])]
       .map((component) => components.get(component))
@@ -285,6 +335,7 @@ export function orderFigmaComponentDefinitionsByDependencies<
   }
 
   sortedSpecs.forEach(visit);
+
   return result;
 }
 
@@ -296,14 +347,21 @@ export function buildOverviewLayout(axes: FigmaOverviewAxis[]): FigmaOverviewLay
   if (state) {
     const row =
       axes.find((axis) => axis !== state && axis !== size) ?? (size === state ? undefined : size);
+
     return { column: state, row, groups: axes.filter((axis) => axis !== state && axis !== row) };
   }
-  if (axes.length === 1) return { column: axes[0], groups: [] };
+
+  if (axes.length === 1) {
+    return { column: axes[0], groups: [] };
+  }
+
   if (axes.length >= 2) {
     const row = axes.find((axis) => axis !== size) ?? axes[0];
     const column = size && size !== row ? size : axes.find((axis) => axis !== row);
+
     return { column, row, groups: axes.filter((axis) => axis !== column && axis !== row) };
   }
+
   return { groups: [] };
 }
 
@@ -313,6 +371,7 @@ export function buildComponentImportPlan(
   captures: readonly ComponentCaptureIR[],
 ): FigmaComponentImportPlan {
   const variants = selectCanonicalCaptures(captures);
+
   return {
     component: spec.component,
     setStableId: spec.variantProperties.length

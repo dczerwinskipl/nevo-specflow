@@ -26,7 +26,7 @@ export function MergeSuggestionNotice({
   const { t } = useTranslation();
   const suggestion = mergeSuggestion(choice, options);
   const currentTarget = effectiveTargetBranch(choice, options);
-  if (suggestion?.kind === 'dirty')
+  if (suggestion?.kind === 'dirty') {
     return (
       <InlineNote>
         <Trans
@@ -35,7 +35,12 @@ export function MergeSuggestionNotice({
         />
       </InlineNote>
     );
-  if (suggestion?.kind !== 'offer') return null;
+  }
+
+  if (suggestion?.kind !== 'offer') {
+    return null;
+  }
+
   return (
     <Alert
       tone="info"

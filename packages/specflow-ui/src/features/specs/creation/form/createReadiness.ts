@@ -1,4 +1,5 @@
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
+import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
 import { providerDefaultEffort, type AgentChoice } from '../options/agentChoice';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
@@ -17,15 +18,15 @@ export function createReadiness(input: {
   method: string;
   title: string;
   catalogue: DemoCatalogue;
-  archetypeId: string;
+  /** The selected archetype (undefined when the catalogue has none). */
+  archetype: ArchetypeInfo | undefined;
   agent: AgentChoice;
   workspaceState: WorkspaceOptionsState;
   choice: WorkspaceChoice;
   configurationUnavailable: boolean;
   forbiddenCreate: boolean;
 }): CreateReadiness {
-  const { specId, method, title, catalogue, agent, workspaceState, choice } = input;
-  const archetype = catalogue.archetypes.find((a) => a.id === input.archetypeId);
+  const { specId, method, title, catalogue, agent, workspaceState, choice, archetype } = input;
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
   const model = provider?.models.find((m) => m.id === agent.modelId);
   const workspaceProblem: Message | undefined = specId
@@ -40,7 +41,7 @@ export function createReadiness(input: {
   const canSubmit =
     !input.configurationUnavailable &&
     !input.forbiddenCreate &&
-    Boolean(archetype) &&
+    (Boolean(archetype) || Boolean(specId)) &&
     Boolean(method) &&
     Boolean(specId ?? title.trim()) &&
     !workspaceProblem &&
@@ -56,8 +57,10 @@ export function createReadiness(input: {
       ? message('create.prerequisite.refreshConfiguration')
       : !title.trim() && !specId
         ? message('create.prerequisite.title')
-        : !archetype
-          ? message('create.prerequisite.workflow')
+        : !archetype && !specId
+          ? catalogue.archetypes.length === 0
+            ? message('create.prerequisite.noArchetypes')
+            : message('create.prerequisite.archetype')
           : (workspaceProblem ??
             (method === 'ai'
               ? !provider?.available
@@ -68,5 +71,6 @@ export function createReadiness(input: {
                     ? message('create.prerequisite.mode')
                     : undefined
               : undefined));
+
   return { prerequisite, canSubmit };
 }

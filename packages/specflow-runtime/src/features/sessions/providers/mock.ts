@@ -28,14 +28,21 @@ export function createMockDriver(scenario?: MockScenario): SessionDriver {
       modes: ['read-only'],
     }),
     validate(selection) {
-      if (selection.providerId !== 'mock')
+      if (selection.providerId !== 'mock') {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Provider is unavailable.');
-      if (selection.mode !== 'read-only')
+      }
+
+      if (selection.mode !== 'read-only') {
         throw new SessionError('CAPABILITY_UNSUPPORTED', 'Mock execution has no write capability.');
-      if (selection.modelId && selection.modelId !== 'mock')
+      }
+
+      if (selection.modelId && selection.modelId !== 'mock') {
         throw new SessionError('MODEL_UNSUPPORTED', 'Model is unavailable.');
-      if (selection.effort)
+      }
+
+      if (selection.effort) {
         throw new SessionError('CAPABILITY_UNSUPPORTED', 'Mock effort selection is unsupported.');
+      }
     },
     start(invocation, emit, signal) {
       const waiting = new Map<
@@ -43,25 +50,34 @@ export function createMockDriver(scenario?: MockScenario): SessionDriver {
         { resolve: (value: unknown) => void; reject: (reason: Error) => void }
       >();
       const onAbort = () => {
-        for (const task of waiting.values()) task.reject(new Error('Invocation aborted'));
+        for (const task of waiting.values()) {
+          task.reject(new Error('Invocation aborted'));
+        }
+
         waiting.clear();
       };
+
       signal.addEventListener('abort', onAbort, { once: true });
       const publish: EmitFact = async (fact) => {
         signal.throwIfAborted();
         await emit(fact);
       };
+
       const done = (async () => {
         await publish({ kind: 'correlation', providerSessionId: invocation.sessionId });
         if (scenario) {
           await scenario(invocation, publish, signal, (key) => {
             const pending = new Promise((resolve, reject) => {
-              if (signal.aborted) reject(new Error('Invocation aborted'));
-              else waiting.set(key, { resolve, reject });
+              if (signal.aborted) {
+                reject(new Error('Invocation aborted'));
+              } else {
+                waiting.set(key, { resolve, reject });
+              }
             });
             // A question may be registered before its request fact commits. Cancellation in that
             // window must not create an unhandled rejection before the scenario awaits the answer.
             void pending.catch(() => undefined);
+
             return pending;
           });
         } else {
@@ -83,7 +99,10 @@ export function createMockDriver(scenario?: MockScenario): SessionDriver {
           let offset = 0;
           while (offset < bytes.length) {
             let end = Math.min(bytes.length, offset + SessionLimits.chunkBytes);
-            while (end < bytes.length && (bytes[end]! & 0xc0) === 0x80) end--;
+            while (end < bytes.length && (bytes[end]! & 0xc0) === 0x80) {
+              end--;
+            }
+
             await publish({
               kind: 'text',
               key: 'answer',
@@ -93,22 +112,27 @@ export function createMockDriver(scenario?: MockScenario): SessionDriver {
             offset = end;
           }
         }
+
         await publish({ kind: 'outcome', outcome: 'completed' });
       })().finally(() => {
         signal.removeEventListener('abort', onAbort);
         waiting.clear();
       });
+
       return {
         done,
         respond(key, response) {
           const pending = waiting.get(key);
-          if (!pending)
+          if (!pending) {
             throw new SessionError(
               'INTERACTION_EXPIRED',
               'Live provider interaction no longer exists.',
             );
+          }
+
           waiting.delete(key);
           pending.resolve(response);
+
           return Promise.resolve({ deliveredKeys: [key] });
         },
       };

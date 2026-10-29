@@ -30,6 +30,7 @@ vi.mock('../../src/features/sessions/providers/claude/installation', () => ({
 vi.mock('../../src/features/sessions/providers/process', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('../../src/features/sessions/providers/process')>();
+
   return {
     ...original,
     launchOwnedProcess: (options: Parameters<typeof original.launchOwnedProcess>[0]) =>
@@ -225,6 +226,7 @@ async function open() {
     },
   );
 }
+
 async function setup(writable = false) {
   fixture.version = '2.1.296';
   fixture.hash = '76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a';
@@ -252,6 +254,7 @@ async function setup(writable = false) {
     );
     engine = await bootstrapProjectHome(workspace);
   }
+
   fixture.privateRoot = join(root, 'native');
   await mkdir(fixture.privateRoot);
   fixture.entry = join(root, 'native-provider.mjs');
@@ -268,8 +271,10 @@ async function setup(writable = false) {
     },
   });
   expect(created.statusCode).toBe(201);
+
   return created.json<{ sessionId: string }>().sessionId;
 }
+
 const snapshot = async (sessionId: string) =>
   (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
 async function start(sessionId: string, message: string) {
@@ -279,13 +284,17 @@ async function start(sessionId: string, message: string) {
     payload: { requestId: randomUUID(), message },
   });
   expect(response.statusCode).toBe(202);
+
   return response.json<{ turnId: string }>().turnId;
 }
+
 afterEach(async () => {
   await app?.close();
   app = undefined;
   engine = undefined;
-  if (root) await rm(root, { recursive: true, force: true });
+  if (root) {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 describe('Claude driver through the real process/store/HTTP boundary', () => {
   it(
@@ -303,6 +312,7 @@ describe('Claude driver through the real process/store/HTTP boundary', () => {
           'controlled write ' + turn,
         );
       }
+
       expect(
         (await readdir(fixture.privateRoot)).filter((name) => name.endsWith('.txt')),
       ).toHaveLength(1);

@@ -6,7 +6,8 @@ import type {
   DemoLocation,
 } from '@nevo/specflow-contracts/demo';
 import { isValidSpecSlug } from '@nevo/specflow-contracts/specs';
-import { DemoOperationError, fingerprintInput, type DemoState } from '../../../demo/state';
+import { DocumentError } from '@nevo/specflow-engine';
+import { fingerprintInput, type DemoState } from '../../../demo/state';
 import type { DemoDocuments } from '../../documents';
 import { DemoTargetError, demoSlugFor, resolveTarget, type ResolvedTarget } from './create-target';
 import {
@@ -31,18 +32,14 @@ interface CreateOperation {
 
 /**
  * Specs-owned demo operations over the shared demo state: the workspace registry and create-options
- * scenarios, atomic specification creation with idempotency and operation inspection. Document
- * validation and seeding go through the narrow documents API (`plan`, `append`).
+ * scenarios, atomic specification creation with idempotency and operation inspection. The
+ * Specification's documents are validated and built by the narrow documents API (`scaffold`, the
+ * Engine's own scaffold), so Create refuses with the real archetype and document codes.
  */
-export function createDemoSpecs(
-  state: DemoState,
-  documents: Pick<DemoDocuments, 'plan' | 'append'>,
-) {
+export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments, 'scaffold'>) {
   const { catalogue, specifications, locations } = state;
   const liveOptions: DemoCreateOptions = seedCreateOptions();
   const operations = new Map<string, CreateOperation>();
-  const { plan, append } = documents;
-  const stale = state.stale;
   const fail = state.fail;
   const id = state.id;
   const uuid = state.uuid;
@@ -50,30 +47,47 @@ export function createDemoSpecs(
     const scenario = scenarios.find((name): name is DemoOptionsScenario =>
       (demoOptionsScenarios as readonly string[]).includes(name),
     );
+
     return applyOptionsScenario(liveOptions, scenario ?? 'default');
   };
+
   const forcedFailure = (
     scenarios: readonly DemoScenario[],
     target: DemoCreateRequest['target'],
   ) => {
-    if (scenarios.includes('forbidden')) throw new DemoTargetError(403, 'forbidden', 'forbidden');
-    if (scenarios.includes('stale-workspace'))
+    if (scenarios.includes('forbidden')) {
+      throw new DemoTargetError(403, 'forbidden', 'forbidden');
+    }
+
+    if (scenarios.includes('stale-workspace')) {
       throw new DemoTargetError(
         409,
         'DEMO_WORKSPACE_UNAVAILABLE',
         'Wybrane środowisko pracy nie jest już dostępne.',
       );
-    if (scenarios.includes('integration-target-unavailable'))
+    }
+
+    if (scenarios.includes('integration-target-unavailable')) {
       throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
-    if (scenarios.includes('base-ref-unavailable'))
+    }
+
+    if (scenarios.includes('base-ref-unavailable')) {
       throw new DemoTargetError(422, 'BASE_REF_NOT_FOUND', 'BASE_REF_NOT_FOUND');
-    if (scenarios.includes('branch-protected'))
+    }
+
+    if (scenarios.includes('branch-protected')) {
       throw new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED');
-    if (scenarios.includes('commit-blocked'))
+    }
+
+    if (scenarios.includes('commit-blocked')) {
       throw new DemoTargetError(409, 'COMMIT_BLOCKED', 'COMMIT_BLOCKED');
-    if (scenarios.includes('branch-taken') && target?.kind === 'new-worktree')
+    }
+
+    if (scenarios.includes('branch-taken') && target?.kind === 'new-worktree') {
       throw new DemoTargetError(409, 'BRANCH_ALREADY_EXISTS', 'BRANCH_ALREADY_EXISTS');
+    }
   };
+
   const createWithOutcome = (
     subject: string,
     input: DemoCreateRequest,
@@ -85,73 +99,99 @@ export function createDemoSpecs(
     const operationId = input.operationId;
     const operationKey = JSON.stringify([subject, operationId]);
     const previous = operations.get(operationKey);
-    if (previous && previous.fingerprint !== fingerprintInput(input))
+    if (previous && previous.fingerprint !== fingerprintInput(input)) {
       throw new DemoTargetError(409, 'CREATE_CONFLICT', 'CREATE_CONFLICT');
-    if (previous?.status === 'completed') return { result: previous.result!, fresh: false };
+    }
+
+    if (previous?.status === 'completed') {
+      return { result: previous.result!, fresh: false };
+    }
+
     if (previous?.status === 'recovery-required') {
-      if (scenarios.includes('recovery-resolved'))
+      if (scenarios.includes('recovery-resolved')) {
         return { result: previous.commit!(), fresh: false };
+      }
+
       throw new DemoTargetError(503, 'CREATE_RECOVERY_REQUIRED', 'CREATE_RECOVERY_REQUIRED');
     }
-    stale(input.catalogueRevision);
-    const archetype = catalogue.archetypes.find(
-      (a) => a.id === input.archetypeId && a.version === input.archetypeVersion,
-    );
-    if (!archetype) throw new DemoOperationError(409, 'demo_catalogue_stale');
-    if (
-      !input.title.trim() ||
-      input.optionalDocumentIds.some(
-        (d) => !archetype.documents.some((t) => t.id === d && !t.required),
-      )
-    )
-      throw new DemoOperationError(400, 'demo_invalid_selection');
+
+    // Archetype admission, in the Engine's order: a stale catalogue first, then the archetype and
+    // its version; the templates, paths and limits are checked by the scaffold below.
+    if (input.catalogueRevision !== catalogue.revision) {
+      throw new DocumentError('CATALOGUE_STALE', 'The archetype catalogue changed; reload it.');
+    }
+
+    const archetype = catalogue.archetypes.find((a) => a.id === input.archetypeId);
+    if (!archetype) {
+      throw new DocumentError('ARCHETYPE_UNKNOWN', 'Unknown archetype.');
+    }
+
+    if (archetype.version !== input.archetypeVersion) {
+      throw new DocumentError('CATALOGUE_STALE', 'The archetype is at another version.');
+    }
+
+    if (!input.title.trim()) {
+      throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
+    }
+
     forcedFailure(scenarios, input.target);
     const usedSlugs = new Set([...specifications.values()].map((spec) => spec.slug));
     let slug: string;
     if (input.slug !== undefined) {
       // An explicit slug is never silently renamed (like the Engine): a taken one conflicts.
-      if (!isValidSpecSlug(input.slug))
+      if (!isValidSpecSlug(input.slug)) {
         throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
-      if (usedSlugs.has(input.slug))
+      }
+
+      if (usedSlugs.has(input.slug)) {
         throw new DemoTargetError(409, 'CREATE_CONFLICT', 'CREATE_CONFLICT');
+      }
+
       slug = input.slug;
     } else {
       const baseSlug = demoSlugFor(input.title);
       slug = baseSlug;
-      for (let n = 2; usedSlugs.has(slug); n += 1) slug = baseSlug + '-' + n;
+      for (let n = 2; usedSlugs.has(slug); n += 1) {
+        slug = baseSlug + '-' + n;
+      }
     }
+
     const resolved: ResolvedTarget = resolveTarget(optionsFor(scenarios), input.target, slug);
-    const selectedPaths = archetype.documents
-      .filter((d) => d.required || input.optionalDocumentIds.includes(d.id))
-      .map((d) => d.filename);
-    const additions =
-      input.addedDocuments?.length || input.folders?.length
-        ? plan(selectedPaths, [], { documents: input.addedDocuments ?? [], folders: input.folders })
-        : { documents: [], folders: [] };
+    const now = state.now();
+    const created = /^\d{4}-\d{2}-\d{2}/u.test(now)
+      ? now.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    const scaffold = (specId: string) => {
+      try {
+        return documents.scaffold({
+          specId,
+          title: input.title,
+          ...(input.goal !== undefined ? { goal: input.goal } : {}),
+          slug,
+          created,
+          archetypeId: archetype.id,
+          ...(input.optionalDocumentIds ? { optionalDocumentIds: input.optionalDocumentIds } : {}),
+          ...(input.addedDocuments ? { addedDocuments: input.addedDocuments } : {}),
+          ...(input.folders ? { folders: input.folders } : {}),
+        });
+      } catch (error) {
+        if (error instanceof DocumentError) {
+          throw error;
+        }
+
+        // An invalid title or slug is the Engine's SPEC_VALIDATION_ERROR: bad Create input.
+        throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
+      }
+    };
+
+    // Validate before anything is created (the Engine admits the scaffold the same way).
+    scaffold('demo-admission');
     fail('create', 'demo_specification_creation_failed');
     const newWorkspaceId = resolved.kind === 'new-worktree' ? uuid() : undefined;
     const workspaceId = (newWorkspaceId ?? resolved.workspaceId)!;
     const commit = (): DemoCreatedSpec => {
       const specId = 'demo-' + id();
-      const documents = new Map(
-        archetype.documents
-          .filter((d) => d.required || input.optionalDocumentIds.includes(d.id))
-          .map((d) => {
-            const documentId = 'document-' + id();
-            return [
-              documentId,
-              {
-                id: documentId,
-                title: d.title,
-                filename: d.filename,
-                content: d.content,
-                revision: '1',
-                required: d.required,
-              },
-            ] as const;
-          }),
-      );
-      append(documents, additions.documents);
+      const built = scaffold(specId);
       let branch: string | undefined;
       if (resolved.kind === 'new-worktree') {
         branch = resolved.branch!;
@@ -183,6 +223,7 @@ export function createDemoSpecs(
         workspace.specCount += 1;
         branch = workspace.branch;
       }
+
       const location: DemoLocation =
         workspaceId !== liveOptions.primaryWorkspaceId
           ? {
@@ -203,18 +244,7 @@ export function createDemoSpecs(
           currentExecutions: [],
         },
         archetype: archetype.title + ' v' + archetype.version,
-        documents,
-        folders: [
-          ...new Set([
-            ...additions.folders,
-            ...selectedPaths.flatMap((path) => {
-              const parts = path.split('/');
-              return parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/'));
-            }),
-          ]),
-        ],
-        requiredPaths: archetype.documents.filter((d) => d.required).map((d) => d.filename),
-        treeRevision: '1',
+        documents: built.documents,
         location,
         workspaceId,
         ...(branch ? { branch } : {}),
@@ -227,7 +257,7 @@ export function createDemoSpecs(
       locations.set(specId, structuredClone(location));
       const result: DemoCreatedSpec = {
         specId,
-        documentIds: [...documents.keys()],
+        documentIds: built.documentIds,
         operationId,
         kind: 'specification-create',
         status: 'completed',
@@ -244,8 +274,10 @@ export function createDemoSpecs(
         updatedAt: new Date().toISOString(),
         result,
       });
+
       return result;
     };
+
     if (scenarios.includes('commit-failed')) {
       // The files exist but the commit failed: the journal stays at commit-writing, so a re-submit
       // with the same operationId answers CREATE_RECOVERY_REQUIRED (like the Engine).
@@ -258,8 +290,10 @@ export function createDemoSpecs(
         updatedAt: new Date().toISOString(),
         commit,
       });
+
       throw new DemoTargetError(503, 'COMMIT_FAILED', 'COMMIT_FAILED');
     }
+
     if (scenarios.includes('recovery-required')) {
       operations.set(operationKey, {
         fingerprint: fingerprintInput(input),
@@ -270,10 +304,13 @@ export function createDemoSpecs(
         updatedAt: new Date().toISOString(),
         commit,
       });
+
       throw new DemoTargetError(503, 'CREATE_RECOVERY_REQUIRED', 'CREATE_RECOVERY_REQUIRED');
     }
+
     return { result: commit(), fresh: true };
   };
+
   return {
     /** Plain create. Throws on failure; see `createWithOutcome` for the HTTP seam. */
     create(
@@ -293,7 +330,10 @@ export function createDemoSpecs(
       const records: DemoOperationRecord[] = [];
       for (const [key, operation] of operations) {
         const [owner, operationId] = JSON.parse(key) as [string, string];
-        if (owner !== subject) continue;
+        if (owner !== subject) {
+          continue;
+        }
+
         const spec = operation.result ? specifications.get(operation.result.specId) : undefined;
         records.push({
           operationId,
@@ -308,6 +348,7 @@ export function createDemoSpecs(
           commits: liveOptions.commits !== undefined,
         });
       }
+
       return records;
     },
     /** Demo-proposed operation status read (IMPLEMENTATION-SPEC 10.5). */
@@ -318,10 +359,15 @@ export function createDemoSpecs(
     ): DemoOperationStatus {
       const key = JSON.stringify([subject, operationId]);
       const pending = operations.get(key);
-      if (pending?.status === 'recovery-required' && scenarios.includes('recovery-resolved'))
+      if (pending?.status === 'recovery-required' && scenarios.includes('recovery-resolved')) {
         pending.commit!();
+      }
+
       const operation = operations.get(key);
-      if (!operation) return { operationId, status: 'not-started' };
+      if (!operation) {
+        return { operationId, status: 'not-started' };
+      }
+
       return {
         operationId,
         status: operation.status,
@@ -334,4 +380,5 @@ export function createDemoSpecs(
     },
   };
 }
+
 export type DemoSpecs = ReturnType<typeof createDemoSpecs>;

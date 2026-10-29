@@ -15,6 +15,7 @@ export function ReadableText({
 }) {
   // Loaded pages, pagination and in-flight reads all belong to one immutable revision.
   const identity = JSON.stringify([sessionId, value.content?.contentId, value.content?.revision]);
+
   return <RevisionText key={identity} api={api} sessionId={sessionId} value={value} />;
 }
 
@@ -36,22 +37,33 @@ function RevisionText({
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
+
     return () => controller.abort();
   }, []);
   async function load(offset: number, ref: ContentRef) {
     const controller = lifetime.current;
-    if (!controller || controller.signal.aborted) return;
+    if (!controller || controller.signal.aborted) {
+      return;
+    }
+
     setBusy(true);
     setFailed(false);
     try {
       const result = await api.content(sessionId, ref, offset, controller.signal);
-      if (!controller.signal.aborted) setPage(result);
+      if (!controller.signal.aborted) {
+        setPage(result);
+      }
     } catch {
-      if (!controller.signal.aborted) setFailed(true);
+      if (!controller.signal.aborted) {
+        setFailed(true);
+      }
     } finally {
-      if (!controller.signal.aborted) setBusy(false);
+      if (!controller.signal.aborted) {
+        setBusy(false);
+      }
     }
   }
+
   return (
     <div className="grid min-w-0 gap-2">
       <p className="whitespace-pre-wrap break-words text-body-md">{page?.text ?? value.text}</p>

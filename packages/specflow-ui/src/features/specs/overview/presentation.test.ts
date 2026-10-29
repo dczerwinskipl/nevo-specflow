@@ -42,8 +42,9 @@ describe('Specs Overview presentation boundary', () => {
       { completed: 1.5, total: 3 },
       { completed: 0, total: Infinity },
       { completed: -1, total: 3 },
-    ])
+    ]) {
       expect(rowProgress(progress)).toBe('invalid');
+    }
   });
   it('sorts the displayed milestone using completion precedence, invalid dates last and stable identity ties', () => {
     const items = [
@@ -241,16 +242,9 @@ describe('Specs Overview capabilities', () => {
     });
   });
 
-  it('offers the updated time as a fact only when asked (flat list)', () => {
+  it('keeps the updated time out of the row facts (the flat list shows it in its own column)', () => {
     const row = currentRow(createSpecItem({ updatedAt: '2026-10-01T12:00:00Z' }));
-    expect(rowMetadata(row).some((fact) => fact.kind === 'updated')).toBe(false);
-    expect(rowMetadata(row, { updated: true })).toContainEqual({
-      id: 'updated',
-      kind: 'updated',
-      value: '2026-10-01T12:00:00Z',
-    });
-    expect(
-      rowMetadata(currentRow(createSpecItem({ updatedAt: 'not a date' })), { updated: true }),
-    ).toEqual([]);
+    expect(row.updatedAt).toBe('2026-10-01T12:00:00Z');
+    expect(rowMetadata(row).map((fact) => fact.kind)).not.toContain('updated');
   });
 });

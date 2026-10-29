@@ -11,6 +11,7 @@ export const accentBlockRecipe = tv({
 export const AccentBlock = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function AccentBlock({ className, children, ...props }, ref) {
     const capture = useDesignMetadata('AccentBlock', {});
+
     return (
       <div ref={ref} className={cn(accentBlockRecipe(), className)} {...props} {...capture}>
         <div data-design-slot="content" className="min-w-0">

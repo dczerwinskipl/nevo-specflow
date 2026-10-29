@@ -62,6 +62,7 @@ export const NavigationRow = forwardRef<HTMLLIElement, NavigationRowProps>(funct
       containedFocus.current = false;
     }
   }, [collapsed]);
+
   return (
     <li ref={ref} className={cn('min-w-0 list-none', className)} {...props} {...capture}>
       <div
@@ -130,8 +131,9 @@ export const NavigationRow = forwardRef<HTMLLIElement, NavigationRowProps>(funct
           }}
           onBlurCapture={() => {
             queueMicrotask(() => {
-              if (!content.current?.contains(document.activeElement))
+              if (!content.current?.contains(document.activeElement)) {
                 containedFocus.current = false;
+              }
             });
           }}
           id={id}

@@ -7,6 +7,7 @@ function createFailedBoundary() {
     children: null,
     fallback: (retry) => {
       retryRender = retry;
+
       return 'Contribution rendering failed';
     },
   });
@@ -16,11 +17,15 @@ function createFailedBoundary() {
     if (typeof update === 'function') {
       throw new Error('This boundary uses only object state updates');
     }
+
     instance.state = { ...instance.state, ...update };
   });
   instance.state = { failed: true };
   expect(instance.render()).toBe('Contribution rendering failed');
-  if (!retryRender) throw new Error('Expected render retry action');
+  if (!retryRender) {
+    throw new Error('Expected render retry action');
+  }
+
   return { instance, retryRender };
 }
 

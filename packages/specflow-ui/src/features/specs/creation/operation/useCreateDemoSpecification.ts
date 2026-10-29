@@ -29,7 +29,12 @@ import type { CreateFailure } from '../errors/createFailure';
 /** Everything the form contributes to one submit, captured when the user submits. */
 export interface CreateSubmission {
   title: string;
-  archetype: { id: string; version: DemoCreateRequest['archetypeVersion'] };
+  archetype: {
+    id: string;
+    version: DemoCreateRequest['archetypeVersion'];
+    /** The ticked optional templates of the archetype. */
+    optionalDocumentIds: readonly string[];
+  };
   /** Real slug override the owner typed (never an untouched default), else undefined. */
   slug?: string;
   /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
@@ -133,6 +138,7 @@ export function useCreateDemoSpecification(
                 ? ledger.attempt.current.input
                 : (() => {
                     const target = submission.buildTarget();
+
                     return retainRequest<DemoCreateRequest, 'operationId'>(
                       ledger.attempt,
                       {
@@ -141,7 +147,7 @@ export function useCreateDemoSpecification(
                         catalogueRevision,
                         archetypeId: submission.archetype.id,
                         archetypeVersion: submission.archetype.version,
-                        optionalDocumentIds: [],
+                        optionalDocumentIds: [...submission.archetype.optionalDocumentIds],
                         ...(target ? { target } : {}),
                       },
                       undefined,
@@ -152,10 +158,13 @@ export function useCreateDemoSpecification(
               type: 'request-prepared',
               sent: { operationId: input.operationId, title: input.title, target: input.target },
             });
-            if (typeof navigator !== 'undefined' && navigator.onLine === false)
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
               throw new RequestNotSentError();
+            }
+
             const created = await demoCreationApi.create(input);
             await cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
+
             return created;
           },
           ...(session ? { allocate: (id: string) => sessionsApi.allocate(id, session) } : {}),
@@ -164,8 +173,12 @@ export function useCreateDemoSpecification(
         notify(specId ? t('create.sessionReady') : t('create.specificationCreated'));
         ledger.navigationAllowed = true;
         dispatch({ type: 'submit-succeeded' });
-        if (result.sessionId) onSession(result.specId, result.sessionId);
-        else onCreated(result.specId, result.documentId);
+        if (result.sessionId) {
+          onSession(result.specId, result.sessionId);
+        } else {
+          onCreated(result.specId, result.documentId);
+        }
+
         return { kind: 'completed' };
       } catch (error) {
         const created = ledger.progress.created;
@@ -174,8 +187,10 @@ export function useCreateDemoSpecification(
           ledger.navigationAllowed = true;
           dispatch({ type: 'submit-succeeded' });
           onCreated(created.specId, created.documentIds[0]);
+
           return { kind: 'completed' };
         }
+
         const sentTarget = ledger.attempt.current?.input.target;
         const next = classifyDemoCreateFailure(error, {
           customBranch: sentTarget?.kind === 'new-worktree' ? sentTarget.branch : undefined,
@@ -184,16 +199,22 @@ export function useCreateDemoSpecification(
         if (next.kind === 'offline' && replay) {
           // Nothing was dispatched, so the earlier unknown outcome is unchanged.
           dispatch({ type: 'submit-offline-replay' });
+
           return { kind: 'failed', failure: next };
         }
+
         submission.onFailed?.(next);
         const discardSent = next.kind === 'operation-conflict';
-        if (discardSent) ledger.attempt.current = null;
+        if (discardSent) {
+          ledger.attempt.current = null;
+        }
+
         dispatch({
           type: 'submit-failed',
           failure: { ...next, snapshot: submission.snapshot },
           discardSent,
         });
+
         return { kind: 'failed', failure: next };
       }
     },
@@ -219,17 +240,24 @@ export function useCreateDemoSpecification(
       const operationId = ledger.attempt.current?.input.operationId;
       let status;
       try {
-        if (!operationId) throw new Error('Operation id missing');
+        if (!operationId) {
+          throw new Error('Operation id missing');
+        }
+
         status = await demoCreationApi.operationStatus(operationId);
       } catch {
         dispatch({ type: 'check-unreadable' });
+
         return { kind: 'checked' };
       }
+
       if (status.status === 'completed' && status.result) {
         ledger.progress.created = status.result;
         dispatch({ type: 'check-found-completed' });
+
         return { kind: 'checked', resumed: await execute(submission, 'recovery-required') };
       }
+
       if (status.status === 'not-started') {
         // `not-started` is a point-in-time answer: the original request may still be in flight or
         // queued. Keep the operation id and body and replay that same operation (idempotent); a new
@@ -245,6 +273,7 @@ export function useCreateDemoSpecification(
         // A completed operation without its result cannot be resumed: say so, keep the lock.
         dispatch({ type: 'check-unreadable', status });
       }
+
       return { kind: 'checked' };
     },
     [announce, demoCreationApi, execute, ledger, t],
@@ -253,18 +282,25 @@ export function useCreateDemoSpecification(
   const submit = useCallback(
     async (submission: CreateSubmission): Promise<CreateSubmitOutcome> => {
       if (state.phase === 'recovery-required') {
-        if (state.checking || !ledger.begin()) return { kind: 'ignored' };
+        if (state.checking || !ledger.begin()) {
+          return { kind: 'ignored' };
+        }
+
         try {
           return await checkOperation(submission);
         } finally {
           ledger.end();
         }
       }
-      if (state.phase === 'submitting' || state.phase === 'completed' || !ledger.begin())
+
+      if (state.phase === 'submitting' || state.phase === 'completed' || !ledger.begin()) {
         return { kind: 'ignored' };
+      }
+
       try {
         const resumedFrom = state.phase === 'outcome-unknown' ? state.phase : null;
         dispatch({ type: 'submit-started' });
+
         return await execute(submission, resumedFrom);
       } finally {
         ledger.end();
@@ -281,5 +317,6 @@ export function useCreateDemoSpecification(
     [submit, dismissFailure, isNavigationAllowed],
   );
   const flags = useMemo(() => selectCreateOperationFlags(state), [state]);
+
   return useMemo(() => ({ state, flags, actions }), [state, flags, actions]);
 }

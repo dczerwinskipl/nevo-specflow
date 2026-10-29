@@ -36,17 +36,22 @@ export function usePickerDraftState<T>({
   useEffect(() => {
     if (value === undefined) {
       previousControlledValue.current = value;
+
       return;
     }
 
-    if (Object.is(previousControlledValue.current, value)) return;
+    if (Object.is(previousControlledValue.current, value)) {
+      return;
+    }
 
     previousControlledValue.current = value;
     setDraftValue(value ?? (resolvedOpen ? fallbackValue : null));
   }, [fallbackValue, resolvedOpen, value]);
 
   useEffect(() => {
-    if (resolvedOpen === wasOpen.current) return;
+    if (resolvedOpen === wasOpen.current) {
+      return;
+    }
 
     setDraftValue(resolvedOpen ? (committedValue ?? fallbackValue) : committedValue);
     wasOpen.current = resolvedOpen;
@@ -54,7 +59,10 @@ export function usePickerDraftState<T>({
 
   const commitValue = useCallback(
     (nextValue: T | null) => {
-      if (value === undefined) setUncontrolledValue(nextValue);
+      if (value === undefined) {
+        setUncontrolledValue(nextValue);
+      }
+
       onChange?.(nextValue);
     },
     [onChange, value],
@@ -64,7 +72,10 @@ export function usePickerDraftState<T>({
     (nextOpen: boolean) => {
       setDraftValue(nextOpen ? (committedValue ?? fallbackValue) : committedValue);
 
-      if (open === undefined) setUncontrolledOpen(nextOpen);
+      if (open === undefined) {
+        setUncontrolledOpen(nextOpen);
+      }
+
       onOpenChange?.(nextOpen);
     },
     [committedValue, fallbackValue, onOpenChange, open],
@@ -72,13 +83,19 @@ export function usePickerDraftState<T>({
 
   const cancel = useCallback(() => {
     setDraftValue(committedValue);
-    if (open === undefined) setUncontrolledOpen(false);
+    if (open === undefined) {
+      setUncontrolledOpen(false);
+    }
+
     onOpenChange?.(false);
   }, [committedValue, onOpenChange, open]);
 
   const done = useCallback(() => {
     commitValue(draftValue);
-    if (open === undefined) setUncontrolledOpen(false);
+    if (open === undefined) {
+      setUncontrolledOpen(false);
+    }
+
     onOpenChange?.(false);
   }, [commitValue, draftValue, onOpenChange, open]);
 

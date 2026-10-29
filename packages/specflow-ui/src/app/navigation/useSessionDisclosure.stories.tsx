@@ -21,6 +21,7 @@ function Disclosure({
     controller.preferences,
     controller.setExpanded,
   );
+
   return (
     <>
       <output aria-label="Expanded">{String(expanded)}</output>
@@ -30,10 +31,12 @@ function Disclosure({
     </>
   );
 }
+
 function DisclosureFixture() {
   const controller = useSessionDisclosurePreferences();
   const [state, setState] = useState<'available' | 'partial' | 'stale'>('partial');
   const [mounted, setMounted] = useState(true);
+
   return (
     <>
       {mounted ? (
@@ -45,6 +48,7 @@ function DisclosureFixture() {
     </>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Contracts/Session navigation disclosure',
   component: DisclosureFixture,
@@ -60,8 +64,15 @@ export const PreferenceLifetime: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Available' }));
     await waitFor(() => expect(canvas.getByLabelText('Expanded')).toHaveTextContent('true'));
     await userEvent.click(canvas.getByRole('button', { name: 'Toggle disclosure' }));
-    for (const name of ['Stale', 'Available', 'Toggle navigation mount', 'Toggle navigation mount'])
+    for (const name of [
+      'Stale',
+      'Available',
+      'Toggle navigation mount',
+      'Toggle navigation mount',
+    ]) {
       await userEvent.click(canvas.getByRole('button', { name }));
+    }
+
     await expect(canvas.getByLabelText('Expanded')).toHaveTextContent('false');
   },
 };

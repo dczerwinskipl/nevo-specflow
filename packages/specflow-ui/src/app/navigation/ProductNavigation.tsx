@@ -24,6 +24,7 @@ import { NevoBrandLogo, defaultNevoBrand } from '../../brand';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
 import { useSessionNavigationSummary } from '../../features/sessions/navigation/summary';
 import { SpecificationSwitcher } from './SpecificationSwitcher';
+import { useNoSpecifications } from './useNoSpecifications';
 import { SessionNavigationPreview } from '../../features/sessions/navigation/SessionNavigationPreview';
 
 export function ProductNavigation({
@@ -40,7 +41,10 @@ export function ProductNavigation({
   const location = useRouterState({ select: (state) => state.location });
   const previousLocation = useRef(location);
   useEffect(() => {
-    if (previousLocation.current === location) return;
+    if (previousLocation.current === location) {
+      return;
+    }
+
     previousLocation.current = location;
     closeNavigation(() => document.querySelector<HTMLElement>('[data-workspace-active="true"] h1'));
   }, [closeNavigation, location]);
@@ -62,6 +66,7 @@ export function ProductNavigation({
     sessionDisclosure.setExpanded,
   );
   const demo = useRuntimeMode() === 'demo';
+  const noSpecifications = useNoSpecifications();
   useNavigationFocus();
   useHashSectionFocus();
   const state = useSyncExternalStore(
@@ -76,6 +81,7 @@ export function ProductNavigation({
     location.hash,
     navigation.status !== 'loading',
   );
+
   return (
     <div
       className="flex min-h-0 flex-1 flex-col"
@@ -110,10 +116,11 @@ export function ProductNavigation({
                   className={className}
                   activeOptions={{ exact: true }}
                   onClick={() => {
-                    if (location.pathname === '/')
+                    if (location.pathname === '/') {
                       closeNavigation(() =>
                         document.querySelector<HTMLElement>('[data-workspace-active="true"] h1'),
                       );
+                    }
                   }}
                 >
                   {children}
@@ -197,7 +204,9 @@ export function ProductNavigation({
                               ? () => {
                                   // Re-selecting the already active section does not change the
                                   // URL; still bring the section into view and focus.
-                                  if (location.hash === view.hash) focusHashSection(view.hash);
+                                  if (location.hash === view.hash) {
+                                    focusHashSection(view.hash);
+                                  }
                                 }
                               : undefined
                           }
@@ -279,7 +288,7 @@ export function ProductNavigation({
                 </div>
               ) : null}
             </section>
-          ) : showsNoSpecificationHint(location.pathname) ? (
+          ) : showsNoSpecificationHint(location.pathname) && !noSpecifications ? (
             <Typography
               as="p"
               variant="body-sm"
@@ -298,9 +307,10 @@ export function ProductNavigation({
       </nav>
       <Separator />
       <div
-        className="shrink-0 pt-4"
+        // The shared shell footer height (also the pinned Create footer): one line across the shell.
+        className="box-content flex h-shell-footer shrink-0 items-center"
         data-product-navigation-footer
-        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

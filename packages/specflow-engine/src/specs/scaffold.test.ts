@@ -1,12 +1,11 @@
 import { createHash } from 'node:crypto';
 
-import type { ArchetypeDefinitionFile } from '@nevo/specflow-contracts/documents';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 
 import goldenFixtures from './archetypes/fixtures/overview-golden.json';
-import { BUILT_IN_DEFINITIONS } from './archetypes/builtins';
-import { getBuiltInCatalogue, resolveCatalogue } from './archetypes/catalogue';
+import { resolveCatalogue } from './definitions/resolved-catalogue';
+import { seedCatalogueForTesting } from './definitions/testing-install';
 import { TEXT_CONTENT_MAX_BYTES, deriveUnclassifiedDocumentId } from './documents';
 import {
   ADDED_DOCUMENTS_MAX_FILES,
@@ -22,8 +21,10 @@ import {
   type SpecificationScaffoldInput,
 } from './scaffold';
 
+const catalogue = await seedCatalogueForTesting();
 const SPEC_ID = '11111111-2222-4333-8444-555555555555';
 const base = {
+  catalogue,
   specId: SPEC_ID,
   title: 'My feature',
   created: '2026-10-24',
@@ -42,8 +43,10 @@ function causeOf(overrides: Partial<SpecificationScaffoldInput> & { archetypeId:
     const failure = error as ScaffoldValidationError;
     expect(failure.code).toBe('SPEC_VALIDATION_ERROR');
     expect(failure.message).not.toMatch(/[A-Za-z]:\\|\/home\/|\/tmp\//u);
+
     return failure.cause;
   }
+
   throw new Error('Expected the scaffold to be refused.');
 }
 
@@ -52,7 +55,6 @@ const manifestOf = (scaffold: ReturnType<typeof createSpecificationScaffold>) =>
 
 describe('createSpecificationScaffold', () => {
   it('scaffolds each archetype and parses back to an equal model', () => {
-    const catalogue = getBuiltInCatalogue();
     for (const archetype of catalogue.archetypes) {
       const optional = archetype.templates
         .filter((template) => template.include === 'optional')
@@ -142,8 +144,9 @@ describe('createSpecificationScaffold', () => {
     it.each(goldenFixtures)('$name', (fixture) => {
       for (const archetypeId of ['minimal', 'feature', 'architecture']) {
         const scaffold = createSpecificationScaffold({
+          catalogue,
           archetypeId,
-          ...(fixture.input as Omit<SpecificationScaffoldInput, 'archetypeId'>),
+          ...(fixture.input as Omit<SpecificationScaffoldInput, 'archetypeId' | 'catalogue'>),
         });
         expect(scaffold.slug).toBe(fixture.slug);
         expect(scaffold.files[1]!.content).toBe(fixture.overview);
@@ -161,40 +164,42 @@ describe('createSpecificationScaffold', () => {
   });
 
   it('allocates deterministic suffixed ids for a second document of one type', () => {
-    const user: ArchetypeDefinitionFile = {
-      schemaVersion: 1,
-      archetypes: [
+    const twins = {
+      id: 'twins',
+      version: 1,
+      title: 'Twins',
+      description: 'Two notes.',
+      useWhen: 'Never.',
+      requirements: [{ documentType: 'overview', minCount: 1 }],
+      templates: [
+        ...catalogue.findArchetype('minimal')!.templates.slice(0, 1),
         {
-          id: 'twins',
-          version: 1,
-          title: 'Twins',
-          description: 'Two notes.',
-          useWhen: 'Never.',
-          requirements: [{ documentType: 'overview', minCount: 1 }],
-          templates: [
-            ...BUILT_IN_DEFINITIONS.archetypes![0]!.templates.slice(0, 1),
-            {
-              id: 'note-a',
-              documentType: 'note',
-              filename: 'note-a.md',
-              include: 'optional',
-              content: 'a',
-            },
-            {
-              id: 'note-b',
-              documentType: 'note',
-              filename: 'note-b.md',
-              include: 'optional',
-              content: 'b',
-            },
-          ],
+          id: 'note-a',
+          documentType: 'note',
+          filename: 'note-a.md',
+          include: 'optional' as const,
+          content: 'a',
+        },
+        {
+          id: 'note-b',
+          documentType: 'note',
+          filename: 'note-b.md',
+          include: 'optional' as const,
+          content: 'b',
         },
       ],
     };
-    const catalogue = resolveCatalogue(BUILT_IN_DEFINITIONS, user);
+    const withTwins = resolveCatalogue({
+      documentTypes: catalogue.documentTypes,
+      archetypes: [...catalogue.archetypes, twins],
+    });
     const build = () =>
       createSpecificationScaffold(
-        input({ archetypeId: 'twins', optionalDocumentIds: ['note-a', 'note-b'], catalogue }),
+        input({
+          archetypeId: 'twins',
+          optionalDocumentIds: ['note-a', 'note-b'],
+          catalogue: withTwins,
+        }),
       );
     const ids = build().documentIds;
     expect(ids).toHaveLength(3);

@@ -149,7 +149,10 @@ describe('environment gradient projection', () => {
     );
 
     const fills = node.fills;
-    if (!Array.isArray(fills)) throw new Error('Expected concrete paints after projection.');
+    if (!Array.isArray(fills)) {
+      throw new Error('Expected concrete paints after projection.');
+    }
+
     expect(fills).toHaveLength(2);
     expect(fills[0]).toMatchObject({ type: 'GRADIENT_RADIAL' });
     expect(fills[1]).toMatchObject({ type: 'SOLID', opacity: 0.028 });

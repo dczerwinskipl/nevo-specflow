@@ -19,6 +19,7 @@ export function CreateFailurePanel({
   refreshing,
   announce,
   onRefresh,
+  onRefreshArchetypes,
   onUseAutomaticName,
   onUseCustomName,
   showDiagnostics,
@@ -30,6 +31,8 @@ export function CreateFailurePanel({
   refreshing: boolean;
   announce: (message: string) => void;
   onRefresh: () => void;
+  /** Reads the archetypes again (after `catalogue-stale`); defaults to `onRefresh`. */
+  onRefreshArchetypes?: () => void;
   onUseAutomaticName: () => void;
   onUseCustomName: () => void;
   /** See {@link CreateFailureAlert}; the progress page shows its facts in "Technical details". */
@@ -54,7 +57,10 @@ export function CreateFailurePanel({
     try {
       // `navigator.clipboard` is missing outside secure contexts and may be refused: say so instead
       // of announcing a copy that did not happen.
-      if (!navigator.clipboard) throw new Error('Clipboard is unavailable');
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard is unavailable');
+      }
+
       await navigator.clipboard.writeText(copied);
       announce(
         t('create.announce.copied', {
@@ -79,6 +85,7 @@ export function CreateFailurePanel({
       refreshing={refreshing}
       onCopy={(kind) => void copyDetails(kind)}
       onRefresh={onRefresh}
+      onRefreshArchetypes={onRefreshArchetypes ?? onRefresh}
       onUseAutomaticName={onUseAutomaticName}
       onUseCustomName={onUseCustomName}
       showDiagnostics={showDiagnostics}

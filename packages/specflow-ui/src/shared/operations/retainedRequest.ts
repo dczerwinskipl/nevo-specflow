@@ -15,10 +15,13 @@ export function retainRequest<T extends Record<K, string>, K extends string = 'r
   key: K = 'requestId' as K,
 ): T {
   const signature = JSON.stringify(body);
-  if (holder.current?.signature !== signature)
+  if (holder.current?.signature !== signature) {
     holder.current = { signature, input: { ...body, [key]: newId() } as unknown as T };
+  }
+
   return holder.current.input;
 }
+
 /**
  * Sends one retained request and releases its idempotency key once the server confirmed it. The key
  * survives only a failed or unconfirmed attempt, so an identical later request (for example adding a
@@ -38,9 +41,13 @@ export async function sendRetained<T extends Record<K, string>, R, K extends str
   try {
     const result = await send(retainRequest(holder, body, undefined, key));
     holder.current = null;
+
     return result;
   } catch (error) {
-    if (releaseOnError?.(error)) holder.current = null;
+    if (releaseOnError?.(error)) {
+      holder.current = null;
+    }
+
     throw error;
   }
 }

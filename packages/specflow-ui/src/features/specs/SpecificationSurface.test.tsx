@@ -25,6 +25,7 @@ describe('SpecificationSurface', () => {
   ) {
     const queryClient = createSpecFlowQueryClient();
     const services = createSpecFlowAppServices(servicesOverride);
+
     return renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <UiModulesProvider modules={builtInUiModuleRegistry}>
@@ -194,7 +195,10 @@ describe('SpecificationSurface', () => {
     const cached = createSpecificationWorkspaceFixture('working', specId);
     queryClient.setQueryData(key, cached);
     const query = queryClient.getQueryCache().find({ queryKey: key, exact: true });
-    if (!query) throw new Error('Expected cached Workspace query');
+    if (!query) {
+      throw new Error('Expected cached Workspace query');
+    }
+
     query.setState({
       status: 'error',
       error: new HttpClientError('Specification deleted', {

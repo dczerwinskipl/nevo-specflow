@@ -19,6 +19,7 @@ vi.mock('../../src/features/sessions/providers/codex/installation', async (impor
     await importOriginal<
       typeof import('../../src/features/sessions/providers/codex/installation')
     >();
+
   return {
     ...original,
     inspectCodexInstallation: () =>
@@ -47,6 +48,7 @@ vi.mock('../../src/features/sessions/providers/codex/probe', () => ({
 vi.mock('../../src/features/sessions/providers/process', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('../../src/features/sessions/providers/process')>();
+
   return {
     ...original,
     launchOwnedProcess: (options: Parameters<typeof original.launchOwnedProcess>[0]) =>
@@ -137,8 +139,10 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
         },
         { timeout: 15000, interval: 50 },
       );
+
       return { snapshot: snapshot!, turnId };
     }
+
     const token = randomUUID();
     await turn('write:' + token);
     expect(await readFile(join(workspace, 'controlled-agent.txt'), 'utf8')).toBe(token);
@@ -190,12 +194,15 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
     } catch (cleanupError) {
       failures.push(cleanupError);
     }
+
     try {
       await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
     } catch (cleanupError) {
       failures.push(cleanupError);
     }
   }
-  if (failures.length)
+
+  if (failures.length) {
     throw new AggregateError(failures, 'Controlled HTTP lifecycle failed', { cause: failures[0] });
+  }
 }, 60000);

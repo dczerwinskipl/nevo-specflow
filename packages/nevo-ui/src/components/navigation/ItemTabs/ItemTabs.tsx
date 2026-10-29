@@ -66,13 +66,18 @@ export const getItemTabId = (scope: string, id: string) => `${scope}-tab-${encod
 export const getItemTabPanelId = (scope: string, id: string) =>
   `${scope}-panel-${encodeURIComponent(id)}`;
 
-/** Keeps the tail (extension) visible. One accessible name: the visual halves are hidden. */
+/**
+ * Keeps the tail (extension) visible. One accessible name: the visual halves are hidden. Both halves
+ * keep their white space (`whitespace-pre`): a space at the split point would otherwise collapse at
+ * the end of the head ("Single sign-on- UX").
+ */
 function MiddleTruncate({ text, maxChars }: { text: string; maxChars?: number }) {
   const { head, tail } = splitMiddle(text, maxChars);
+
   return (
     <span className="flex min-w-0 items-baseline">
       <span className="sr-only">{text}</span>
-      <span aria-hidden="true" className="min-w-0 truncate">
+      <span aria-hidden="true" className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">
         {head}
       </span>
       {tail ? (
@@ -94,7 +99,10 @@ function ItemGlyph({ item, badge = true }: { item: ItemTab; badge?: boolean }) {
       <Icon name={item.icon} size="sm" />
     ) : null;
   const showBadge = badge && item.dirty;
-  if (!glyph && !showBadge) return null;
+  if (!glyph && !showBadge) {
+    return null;
+  }
+
   return (
     <span className="relative inline-flex shrink-0">
       {glyph}
@@ -130,6 +138,7 @@ function Tab({
 }: TabProps) {
   const status = statusText(item, labels);
   const muted = item.state === 'missing' || item.state === 'loading';
+
   return (
     <div
       role="presentation"
@@ -153,7 +162,9 @@ function Tab({
             onClick={() => onActivate(item.id)}
             onMouseDown={(event) => {
               // Keeps middle-click from starting browser autoscroll.
-              if (event.button === 1) event.preventDefault();
+              if (event.button === 1) {
+                event.preventDefault();
+              }
             }}
             onAuxClick={(event) => {
               if (event.button === 1) {
@@ -240,20 +251,31 @@ function useElementWidth() {
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number>();
   useLayoutEffect(() => {
-    if (!element) return undefined;
+    if (!element) {
+      return undefined;
+    }
+
     const update = () => setWidth(element.getBoundingClientRect().width);
     update();
-    if (typeof ResizeObserver === 'undefined') return undefined;
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
     const observer = new ResizeObserver(update);
     observer.observe(element);
+
     return () => observer.disconnect();
   }, [element]);
+
   return { width, element, setElement };
 }
 
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
-  if (typeof ref === 'function') ref(value);
-  else if (ref) ref.current = value;
+  if (typeof ref === 'function') {
+    ref(value);
+  } else if (ref) {
+    ref.current = value;
+  }
 }
 
 /**
@@ -312,21 +334,33 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target;
-    if (!(target instanceof HTMLElement) || target.getAttribute('role') !== 'tab') return;
+    if (!(target instanceof HTMLElement) || target.getAttribute('role') !== 'tab') {
+      return;
+    }
+
     if (event.key === 'Delete') {
       event.preventDefault();
       const id = target.dataset.itemId;
-      if (id) onClose(id);
+      if (id) {
+        onClose(id);
+      }
+
       return;
     }
+
     const tabs = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')];
     const next = resolveRovingIndex(event.key, tabs.indexOf(target), tabs.length);
-    if (next === null) return;
+    if (next === null) {
+      return;
+    }
+
     event.preventDefault();
     const nextTab = tabs[next];
     nextTab?.focus();
     const id = nextTab?.dataset.itemId;
-    if (id && activation === 'automatic') onActivate(id);
+    if (id && activation === 'automatic') {
+      onActivate(id);
+    }
   };
 
   const menu: OpenedMenuProps = {
@@ -340,6 +374,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
 
   if (switcher) {
     const current = items.find((item) => item.id === activeId);
+
     return (
       <div
         {...props}

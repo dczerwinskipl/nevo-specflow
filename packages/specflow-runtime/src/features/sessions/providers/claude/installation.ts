@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { lstat, readFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, scryptSync } from 'node:crypto';
 import { join, resolve, isAbsolute } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
@@ -25,9 +25,13 @@ const files: Files = {
     let bytes = 0;
     for await (const chunk of createReadStream(path)) {
       bytes += (chunk as Buffer).length;
-      if (bytes > 512 * 1024 * 1024) throw new Error('Executable exceeds certification budget.');
+      if (bytes > 512 * 1024 * 1024) {
+        throw new Error('Executable exceeds certification budget.');
+      }
+
       hash.update(chunk as Buffer);
     }
+
     return hash.digest('hex');
   },
 };
@@ -37,8 +41,12 @@ function unavailable(): never {
     'Claude installation, authentication source or managed policy is outside the supported configuration.',
   );
 }
+
 function record(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return unavailable();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return unavailable();
+  }
+
   return value as Record<string, unknown>;
 }
 
@@ -61,10 +69,16 @@ export async function inspectClaudeInstallation(
   } = {},
 ) {
   const io = dependencies.files ?? files;
-  if ((dependencies.platform ?? process.platform) !== 'win32') unavailable();
+  if ((dependencies.platform ?? process.platform) !== 'win32') {
+    unavailable();
+  }
+
   const env = options.environment.values;
   const home = env.USERPROFILE;
-  if (!home || !isAbsolute(home) || !isAbsolute(options.workspace)) unavailable();
+  if (!home || !isAbsolute(home) || !isAbsolute(options.workspace)) {
+    unavailable();
+  }
+
   // This adapter supports only the default first-party OAuth source. Unknown
   // additions must not accidentally enable a helper, gateway, alternate profile or FD auth.
   if (
@@ -83,48 +97,77 @@ export async function inspectClaudeInstallation(
           'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS',
         ].includes(key),
     )
-  )
+  ) {
     unavailable();
+  }
+
   if (
     env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS !== undefined &&
     env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS !== '1'
-  )
+  ) {
     unavailable();
+  }
+
   const executable = options.executable ?? join(home, '.local', 'bin', 'claude.exe');
-  if (!isAbsolute(executable)) unavailable();
+  if (!isAbsolute(executable)) {
+    unavailable();
+  }
+
   async function absent(path: string) {
     try {
       await io.stat(path);
+
       return unavailable();
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') unavailable();
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        unavailable();
+      }
     }
   }
+
   async function regular(path: string, max: number) {
     const stat = await io.stat(path);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > max) unavailable();
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > max) {
+      unavailable();
+    }
   }
+
   async function json(path: string) {
     await regular(path, 256 * 1024);
     const bytes = await io.read(path);
-    if (bytes.length > 256 * 1024) unavailable();
+    if (bytes.length > 256 * 1024) {
+      unavailable();
+    }
+
     return record(JSON.parse(bytes.toString('utf8')));
   }
+
   try {
     options.signal.throwIfAborted();
     await regular(executable, 512 * 1024 * 1024);
     const sha256 = await io.hash(executable);
-    if (!/^[a-f0-9]{64}$/.test(sha256)) unavailable();
+    if (!/^[a-f0-9]{64}$/.test(sha256)) {
+      unavailable();
+    }
+
     const configDirectory = join(home, '.claude');
     const directory = await io.stat(configDirectory);
-    if (!directory.isDirectory() || directory.isSymbolicLink()) unavailable();
+    if (!directory.isDirectory() || directory.isSymbolicLink()) {
+      unavailable();
+    }
+
     const managed = 'C:\\Program Files\\ClaudeCode';
     try {
       const parent = await io.stat(managed);
-      if (!parent.isDirectory() || parent.isSymbolicLink()) unavailable();
+      if (!parent.isDirectory() || parent.isSymbolicLink()) {
+        unavailable();
+      }
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') unavailable();
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        unavailable();
+      }
     }
+
     for (const path of [
       join(managed, 'managed-settings.json'),
       join(managed, 'managed-settings.d'),
@@ -134,25 +177,42 @@ export async function inspectClaudeInstallation(
       join(env.APPDATA ?? join(home, 'AppData', 'Roaming'), 'Anthropic'),
       resolve(options.workspace, '/home/claude/.claude/remote/.api_key'),
       resolve(options.workspace, '/home/claude/.claude/remote/.oauth_token'),
-    ])
+    ]) {
       await absent(path);
+    }
+
     if (dependencies.registryAbsent) {
-      if (!(await dependencies.registryAbsent())) unavailable();
+      if (!(await dependencies.registryAbsent())) {
+        unavailable();
+      }
     } else {
       const policy = await inspectClaudeRegistryPolicy(options.environment);
-      if (policy === 'unavailable')
+      if (policy === 'unavailable') {
         throw new SessionError(
           'PROVIDER_UNAVAILABLE',
           'Claude machine policy inspection could not complete.',
         );
-      if (policy !== 'absent') unavailable();
+      }
+
+      if (policy !== 'absent') {
+        unavailable();
+      }
     }
+
     const config = await json(join(home, '.claude.json'));
-    if (config.primaryApiKey != null && config.primaryApiKey !== '') unavailable();
-    if (record(config.cachedGrowthBookFeatures ?? {}).tengu_windows_credman === true) unavailable();
-    const account = record(config.oauthAccount);
-    if (typeof account.accountUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(account.accountUuid))
+    if (config.primaryApiKey != null && config.primaryApiKey !== '') {
       unavailable();
+    }
+
+    if (record(config.cachedGrowthBookFeatures ?? {}).tengu_windows_credman === true) {
+      unavailable();
+    }
+
+    const account = record(config.oauthAccount);
+    if (typeof account.accountUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(account.accountUuid)) {
+      unavailable();
+    }
+
     const credentials = record(
       (await json(join(configDirectory, '.credentials.json'))).claudeAiOauth,
     );
@@ -165,15 +225,20 @@ export async function inspectClaudeInstallation(
       credentials.expiresAt <= (dependencies.now?.() ?? Date.now()) + 60000 ||
       !Array.isArray(credentials.scopes) ||
       !credentials.scopes.includes('user:inference')
-    )
+    ) {
       throw new SessionError(
         'PROVIDER_AUTH_REQUIRED',
         'Claude requires an active personal Pro or Max CLI login for this supported configuration.',
       );
+    }
+
     options.signal.throwIfAborted();
-    const authenticationFingerprint = createHash('sha256')
-      .update(credentials.accessToken)
-      .digest('hex');
+    const authenticationFingerprint = scryptSync(
+      credentials.accessToken,
+      'nevo:claude:auth-fingerprint',
+      32,
+    ).toString('hex');
+
     return {
       executable,
       sha256,
@@ -204,7 +269,10 @@ export async function inspectClaudeInstallation(
       ],
     };
   } catch (error) {
-    if (error instanceof SessionError) throw error;
+    if (error instanceof SessionError) {
+      throw error;
+    }
+
     return unavailable();
   }
 }

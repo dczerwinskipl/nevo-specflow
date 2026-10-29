@@ -24,6 +24,12 @@ describe('bundleProduct', () => {
     const uiSourceDir = join(dir, 'ui-dist');
     mkdirSync(uiSourceDir, { recursive: true });
     writeFileSync(join(uiSourceDir, 'index.html'), '<!doctype html><title>SpecFlow</title>\n');
+    const definitionsSourceDir = join(dir, 'seed-definitions');
+    mkdirSync(join(definitionsSourceDir, 'document-type'), { recursive: true });
+    writeFileSync(
+      join(definitionsSourceDir, 'document-type', 'overview.yaml'),
+      'kind: document-type\n',
+    );
 
     writeFileSync(
       join(dir, 'entry.ts'),
@@ -41,10 +47,15 @@ describe('bundleProduct', () => {
       version: '9.9.9-test.1',
       cwd: dir,
       uiSourceDir,
+      definitionsSourceDir,
     });
 
     expect(readFileSync(outfile, 'utf8').split('\n')[0]).toBe('#!/usr/bin/env node');
     expect(readFileSync(join(dir, 'out', 'ui', 'index.html'), 'utf8')).toContain('SpecFlow');
+    // The seed files sit next to the bundle, as data.
+    expect(
+      readFileSync(join(dir, 'out', 'definitions', 'document-type', 'overview.yaml'), 'utf8'),
+    ).toBe('kind: document-type\n');
     const stdout = execFileSync('node', [outfile], { encoding: 'utf8' });
     // version was baked in, and the sibling module was bundled (not left as an import).
     expect(stdout).toBe('9.9.9-test.1 sibling-ok');

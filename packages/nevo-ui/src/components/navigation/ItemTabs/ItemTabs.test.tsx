@@ -71,6 +71,7 @@ function renderTabs(props: Partial<ItemTabsProps> = {}) {
       {...props}
     />,
   );
+
   return { ...utils, onActivate, onClose };
 }
 
@@ -94,6 +95,20 @@ describe('ItemTabs', () => {
     expect(tabs[1]?.getAttribute('aria-controls')).toBe(getItemTabPanelId('t', 'item-1'));
     expect(tabs[0]?.hasAttribute('aria-controls')).toBe(false);
     expect(screen.getByRole('tab', { name: 'item-1.md' })).toBe(tabs[1]);
+  });
+
+  it('keeps the space at the split point of a middle-truncated label', () => {
+    renderTabs({ items: [makeItem('ux', { label: 'Single sign-on - UX' })] });
+    const tab = screen.getByRole('tab', { name: 'Single sign-on - UX' });
+    const halves = Array.from(tab.querySelectorAll('[aria-hidden="true"]')).filter(
+      (node) => node.textContent,
+    );
+    expect(halves.map((node) => node.textContent).join('')).toBe('Single sign-on - UX');
+    const head = halves[0]!;
+    expect(head.textContent?.endsWith(' ')).toBe(true);
+    // A truncating head with `white-space: nowrap` collapses its trailing space; `pre` keeps it.
+    expect(head.className).toContain('whitespace-pre');
+    expect(head.className).not.toMatch(/\btruncate\b|whitespace-nowrap/);
   });
 
   it('keeps the tablist free of non-tab owned elements and close buttons out of the tab order', () => {
@@ -205,6 +220,7 @@ describe('ItemTabs', () => {
           initialItems: makeItems(2),
           canClose: () => Promise.resolve(answer),
         });
+
         return (
           <ItemTabs
             items={opened.items}
@@ -215,6 +231,7 @@ describe('ItemTabs', () => {
           />
         );
       }
+
       render(<Host />);
       fireEvent.click(screen.getByRole('button', { name: 'Close item-0.md' }));
       await act(async () => {});
@@ -236,6 +253,7 @@ describe('ItemTabs', () => {
       canClose?: (id: string) => boolean | Promise<boolean>;
     }) {
       const opened = useOpenedItems<ItemTab>({ initialItems: initial, canClose });
+
       return (
         <ItemTabs
           items={opened.items}
@@ -252,8 +270,10 @@ describe('ItemTabs', () => {
       const focusTab = (name: string) => {
         const tab = screen.getByRole('tab', { name });
         tab.focus();
+
         return tab;
       };
+
       fireEvent.keyDown(focusTab('item-1.md'), { key: 'Delete' });
       expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-2.md' }));
       fireEvent.keyDown(document.activeElement!, { key: 'Delete' });
@@ -279,8 +299,10 @@ describe('ItemTabs', () => {
         ctrlKey: false,
         pointerType: 'mouse',
       });
+
       return screen.findByRole('menu');
     }
+
     const rowOf = (menu: HTMLElement, label: string) =>
       within(menu).getByRole('menuitem', { name: new RegExp(`^${label.replace('.', '\\.')}`) });
     const closers = {

@@ -12,7 +12,7 @@ import { Typography, type TypographyVariant } from '../../foundations/Typography
 export const buttonDefaults = { variant: 'primary', size: 'md', width: 'content' } as const;
 
 export const buttonVariants = tv({
-  base: `inline-flex cursor-pointer items-center justify-center border border-solid disabled:pointer-events-none disabled:opacity-50 ${fastColorTransitionClassName}`,
+  base: `inline-flex cursor-pointer items-center justify-center border border-solid disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 ${fastColorTransitionClassName}`,
   variants: {
     variant: {
       ...actionVariantClasses,
@@ -82,6 +82,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     width,
     state: disabled ? 'disabled' : 'default',
   });
+
   return (
     <button
       ref={ref}

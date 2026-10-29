@@ -23,12 +23,17 @@ async function main(argv: string[]): Promise<number> {
   const jsonMode = argv.includes('--json');
   try {
     await program.parseAsync(argv);
+
     return 0;
   } catch (err) {
     if (err instanceof CommanderError) {
-      if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') return 0;
+      if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') {
+        return 0;
+      }
+
       return 2;
     }
+
     const message = err instanceof Error ? err.message : String(err);
     if (jsonMode) {
       const type = err instanceof Error ? err.name : 'Error';
@@ -36,8 +41,15 @@ async function main(argv: string[]): Promise<number> {
     } else {
       process.stderr.write(`${message}\n`);
     }
-    if (err instanceof UsageError) return 2;
-    if (err instanceof DocsToolError) return 1;
+
+    if (err instanceof UsageError) {
+      return 2;
+    }
+
+    if (err instanceof DocsToolError) {
+      return 1;
+    }
+
     return 1;
   }
 }

@@ -7,8 +7,11 @@ import { CreateOperationError } from '../error';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
+import { OPERATION_ID_PATTERN } from '../../durable';
+
 import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';
+import { isSpecKey } from '../../spec-key';
 import { CREATE_SCAFFOLD_FILES_MAX } from '../limits';
 import {
   CREATE_JOURNAL_VERSION,
@@ -17,7 +20,7 @@ import {
   type CreateStage,
 } from './model';
 
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+export const UUID = OPERATION_ID_PATTERN;
 const INTENT_FIELDS = new Set([
   'title',
   'goal',
@@ -57,6 +60,7 @@ export function parseCreateJournal(
   ) {
     throw invalidJournal();
   }
+
   // Each part has been validated without changing the serialized record.
   return value as unknown as CreateJournal;
 }
@@ -76,6 +80,7 @@ function isValidJournalIdentity(
     typeof value.specId === 'string' &&
     UUID.test(value.specId) &&
     typeof value.slug === 'string' &&
+    (value.key === undefined || isSpecKey(value.key)) &&
     typeof value.title === 'string' &&
     typeof value.created === 'string' &&
     typeof value.catalogueRevision === 'string' &&
@@ -93,8 +98,14 @@ function isCreateStage(value: unknown): value is CreateStage {
 }
 
 function isValidJournalTarget(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  if (value.kind !== 'existing' && value.kind !== 'new-worktree') return false;
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (value.kind !== 'existing' && value.kind !== 'new-worktree') {
+    return false;
+  }
+
   if (
     typeof value.workspaceId !== 'string' ||
     !UUID.test(value.workspaceId) ||
@@ -104,9 +115,16 @@ function isValidJournalTarget(value: unknown): boolean {
   ) {
     return false;
   }
+
   const allowed = value.kind === 'existing' ? EXISTING_TARGET_FIELDS : WORKTREE_TARGET_FIELDS;
-  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
-  if (value.kind === 'existing') return true;
+  if (Object.keys(value).some((key) => !allowed.has(key))) {
+    return false;
+  }
+
+  if (value.kind === 'existing') {
+    return true;
+  }
+
   if (
     value.integrationDestination !== undefined &&
     (!isRecord(value.integrationDestination) ||
@@ -123,6 +141,7 @@ function isValidJournalTarget(value: unknown): boolean {
   ) {
     return false;
   }
+
   return (
     typeof value.instanceId === 'string' &&
     UUID.test(value.instanceId) &&
@@ -137,7 +156,10 @@ function isValidJournalCommit(value: Record<string, unknown>): boolean {
   const commit = value.commit;
   const stage = value.stage;
   const needsCommit = stage === 'commit-writing' || stage === 'commit-written';
-  if (commit === undefined) return !needsCommit;
+  if (commit === undefined) {
+    return !needsCommit;
+  }
+
   if (
     !isRecord(commit) ||
     commit.required !== true ||
@@ -153,15 +175,23 @@ function isValidJournalCommit(value: Record<string, unknown>): boolean {
   ) {
     return false;
   }
+
   if (isRecord(value.target) && value.target.kind === 'new-worktree') {
-    if (value.target.branch !== commit.branch) return false;
+    if (value.target.branch !== commit.branch) {
+      return false;
+    }
   }
-  if (needsCommit && commit.parentHead === undefined) return false;
+
+  if (needsCommit && commit.parentHead === undefined) {
+    return false;
+  }
+
   const committed =
     stage === 'commit-written' ||
     stage === 'registry-writing' ||
     stage === 'registry-linked' ||
     stage === 'completed';
+
   return !committed || commit.commitSha !== undefined;
 }
 
@@ -187,7 +217,11 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
   ) {
     return false;
   }
-  if (!isExplicitSpecificationSlug(slug)) return false;
+
+  if (!isExplicitSpecificationSlug(slug)) {
+    return false;
+  }
+
   const base = 'specs/active/' + slug + '/';
   const paths = new Set<string>();
   for (const file of value as unknown[]) {
@@ -206,9 +240,12 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
     ) {
       return false;
     }
+
     paths.add(file.relativePath);
   }
+
   const [manifest, overview] = value as [Record<string, unknown>, Record<string, unknown>];
+
   return (
     manifest.relativePath === base + 'specification.yaml' &&
     overview.relativePath === base + 'overview.md'
@@ -253,6 +290,7 @@ function isValidJournalIntent(
   ) {
     return false;
   }
+
   const target = intent.target;
   if (target.kind === 'existing') {
     if (
@@ -297,11 +335,19 @@ function isValidJournalIntent(
   } else {
     return false;
   }
-  if (typeof value.inputFingerprint !== 'string') return false;
+
+  if (typeof value.inputFingerprint !== 'string') {
+    return false;
+  }
+
   const persisted = intent as unknown as CreateClientIntent;
-  if (!isValidAddedDocumentEvidence(persisted.addedDocuments, value)) return false;
+  if (!isValidAddedDocumentEvidence(persisted.addedDocuments, value)) {
+    return false;
+  }
+
   try {
     const normalized = normalizePersistedCreateIntent(persisted);
+
     return (
       JSON.stringify(normalized) === JSON.stringify(persisted) &&
       fingerprintCreateClientIntent(normalized) === value.inputFingerprint
@@ -313,8 +359,12 @@ function isValidJournalIntent(
 
 /** Each added document of the intent is also a journal file of the same hash, size and path. */
 function isValidAddedDocumentEvidence(added: unknown, value: Record<string, unknown>): boolean {
-  if (!Array.isArray(added) || !Array.isArray(value.files)) return false;
+  if (!Array.isArray(added) || !Array.isArray(value.files)) {
+    return false;
+  }
+
   const base = 'specs/active/' + String(value.slug) + '/';
+
   return (added as unknown[]).every((document) => {
     if (
       !isRecord(document) ||
@@ -326,7 +376,9 @@ function isValidAddedDocumentEvidence(added: unknown, value: Record<string, unkn
     ) {
       return false;
     }
+
     const expected = base + document.path;
+
     return (value.files as unknown[]).some(
       (file) =>
         isRecord(file) &&
@@ -338,8 +390,14 @@ function isValidAddedDocumentEvidence(added: unknown, value: Record<string, unkn
 }
 
 function isClientOverride(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  if (value.kind === 'omitted') return Object.keys(value).length === 1;
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (value.kind === 'omitted') {
+    return Object.keys(value).length === 1;
+  }
+
   return (
     value.kind === 'explicit' &&
     typeof value.value === 'string' &&

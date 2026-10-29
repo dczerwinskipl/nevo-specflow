@@ -7,10 +7,12 @@ const NavigationTransitionContext = createContext({
 export function NavigationTransitionProvider({ children }: PropsWithChildren) {
   const [guardPending, setGuardPending] = useState(false);
   const value = useMemo(() => ({ guardPending, setGuardPending }), [guardPending]);
+
   return (
     <NavigationTransitionContext.Provider value={value}>
       {children}
     </NavigationTransitionContext.Provider>
   );
 }
+
 export const useNavigationTransition = () => useContext(NavigationTransitionContext);

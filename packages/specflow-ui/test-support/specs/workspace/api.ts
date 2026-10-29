@@ -1,3 +1,4 @@
+import { documentContentFixture } from '../../documents/fixtures';
 import type { SpecificationApi } from '../../../src/features/specs/read-model/api';
 import type { TaskApi } from '../../../src/features/tasks/api';
 import type { DocumentApi } from '../../../src/features/documents/api';
@@ -50,9 +51,11 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
       startSession: { available: false, reason: 'not_implemented' },
     },
   };
+
   return {
     getSpecificationWorkspace: (specId, signal) => {
       signal?.throwIfAborted();
+
       return specId === snapshot.specification.id
         ? Promise.resolve(snapshot)
         : Promise.reject(new Error('Unconfigured test Specification'));
@@ -68,6 +71,7 @@ export function createTaskIntegrationApi(): TaskApi {
       if (specId !== 'api-integration' || taskId !== 'TASK-01') {
         return Promise.reject(new Error('Unexpected test Task'));
       }
+
       return Promise.resolve({
         task: {
           id: taskId,
@@ -88,12 +92,17 @@ export function createDocumentIntegrationApi(): DocumentApi {
       if (specId !== 'api-integration' || documentId !== 'spec') {
         return Promise.reject(new Error('Unexpected test document'));
       }
-      return Promise.resolve({
-        id: documentId,
-        title: 'Integration document',
-        content: '# Document content from Runtime detail API\n\nDetail query loaded successfully.',
-        revision: 'integration-doc-2',
-      });
+
+      return Promise.resolve(
+        documentContentFixture({
+          id: documentId,
+          path: 'specification.md',
+          title: 'Integration document',
+          content:
+            '# Document content from Runtime detail API\n\nDetail query loaded successfully.',
+          revision: 'integration-doc-2',
+        }),
+      );
     },
   };
 }

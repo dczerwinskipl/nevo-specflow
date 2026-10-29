@@ -8,17 +8,20 @@ function Snapshot({ entry }: { entry: string }) {
   const snapshot = useCachedQueryState<string>(['cache-observer', entry]);
   const renders = useRef(0);
   renders.current++;
+
   return (
     <output aria-label="Cache snapshot" data-renders={renders.current}>
       {snapshot?.data ?? 'missing'}
     </output>
   );
 }
+
 function CacheObserverFixture() {
   const client = useMemo(() => new QueryClient(), []);
   const [entry, setEntry] = useState('first');
   const [mounted, setMounted] = useState(true);
   const [listeners, setListeners] = useState<boolean>();
+
   return (
     <QueryClientProvider client={client}>
       {mounted ? <Snapshot entry={entry} /> : null}
@@ -50,6 +53,7 @@ function CacheObserverFixture() {
     </QueryClientProvider>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Contracts/Cache observer',
   component: CacheObserverFixture,
@@ -69,6 +73,7 @@ export const CacheOnlyLifecycle: Story = {
       await userEvent.click(canvas.getByRole('button', { name: action }));
       await waitFor(() => expect(canvas.getByLabelText('Cache snapshot')).toHaveTextContent(value));
     }
+
     const count = canvas.getByLabelText('Cache snapshot').getAttribute('data-renders');
     await userEvent.click(canvas.getByRole('button', { name: 'Update old key' }));
     await expect(canvas.getByLabelText('Cache snapshot')).toHaveAttribute('data-renders', count);

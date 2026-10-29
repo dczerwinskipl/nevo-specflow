@@ -41,6 +41,7 @@ const InputGroupRoot = forwardRef<HTMLDivElement, InputGroupProps>(function Inpu
 ) {
   const field = useFieldControl({ disabled });
   const capture = useDesignMetadata('InputGroup');
+
   return (
     <InputGroupContext.Provider value={{ disabled: field.disabled, insideGroup: true }}>
       <div
@@ -93,6 +94,7 @@ export const InputGroupAction = forwardRef<HTMLSpanElement, InputGroupActionProp
       'data-focus-ring': 'delegated',
       disabled: group?.disabled ? true : children.props.disabled,
     });
+
     return (
       <span
         ref={ref}

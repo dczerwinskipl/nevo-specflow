@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   SpecificationWorkspaceResponse,
-  SpecificationDocumentResponse,
+  DocumentContent,
   SpecificationTaskResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 import type { CurrentSpecsOverview } from '@nevo/specflow-contracts/specs/overview';
@@ -21,17 +21,19 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       { ...config, authentication: { ...config.authentication, mode: 'none' } },
       {
         documents: {
-          source: {
+          readSource: {
             read: () =>
               Promise.resolve({
-                kind: 'ok',
-                document: {
-                  specId: 'admission',
-                  id: 'different',
-                  title: 'Wrong',
-                  content: 'Secret',
-                  revision: '1',
-                },
+                id: 'different',
+                path: 'different.md',
+                title: 'Wrong',
+                classification: 'unclassified',
+                kind: 'text',
+                mediaType: 'text/markdown; charset=utf-8',
+                size: 6,
+                revision: '1',
+                editable: true,
+                content: 'Secret',
               }),
           },
         },
@@ -39,6 +41,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
           definitions: {
             async resolve() {
               const def = (await sources.definitions!.resolve('admission', 'TASK-01'))!;
+
               return { ...def, task: { ...def.task, id: 'WRONG' } };
             },
           },
@@ -46,7 +49,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       },
     );
     try {
-      const doc = await app.inject('/api/specs/admission/documents/spec');
+      const doc = await app.inject('/api/specs/admission/documents/overview');
       const task = await app.inject('/api/specs/admission/tasks/TASK-01');
       expect(doc.statusCode).toBe(503);
       expect(task.statusCode).toBe(503);
@@ -71,9 +74,13 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       const overview = overviewResponse.json<CurrentSpecsOverview>();
       const admission = overview.items.find((item) => item.id === 'admission');
       expect(admission).toBeDefined();
-      if (!admission) throw new Error('Demo admission Specification is required.');
-      if (!admission.progress)
+      if (!admission) {
+        throw new Error('Demo admission Specification is required.');
+      }
+
+      if (!admission.progress) {
         throw new Error('Demo admission Specification must have known progress.');
+      }
 
       const response = await app.inject('/api/specs/admission/workspace');
       expect(response.statusCode).toBe(200);
@@ -84,7 +91,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       expect(workspace.specification.key).toBe(admission?.key);
       const taskSection = workspace.sections.tasks;
       expect(taskSection.state).toBe('available');
-      if (taskSection.state !== 'available') throw new Error('Expected demo Tasks');
+      if (taskSection.state !== 'available') {
+        throw new Error('Expected demo Tasks');
+      }
+
       const ids = taskSection.data.groups.flatMap((group) => group.tasks.map((task) => task.id));
       expect(ids).toContain('TASK-02');
       const currentExecutions = admission?.currentExecutions ?? [];
@@ -96,6 +106,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
           expect(item?.status.lifecycle).toBe('in_progress');
         }
       }
+
       expect(
         taskSection.data.groups
           .flatMap((group) => group.tasks)
@@ -105,7 +116,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
 
       const sessions = workspace.sections.sessions;
       expect(sessions.state).toBe('available');
-      if (sessions.state !== 'available') throw new Error('Expected demo Sessions');
+      if (sessions.state !== 'available') {
+        throw new Error('Expected demo Sessions');
+      }
+
       expect(sessions.data.items.some((item) => item.id === 'sample-session-24')).toBe(true);
       expect(sessions.data.items.some((item) => item.id === 'sample-session-23')).toBe(true);
 
@@ -113,10 +127,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       expect(taskResponse.statusCode).toBe(200);
       expect(taskResponse.json<SpecificationTaskResponse>().task.id).toBe('TASK-02');
 
-      const docResponse = await app.inject('/api/specs/admission/documents/spec');
+      const docResponse = await app.inject('/api/specs/admission/documents/overview');
       expect(docResponse.statusCode).toBe(200);
       // The seeded admission specification carries the rich synthetic showcase document.
-      expect(docResponse.json<SpecificationDocumentResponse>().content).toContain(
+      expect(docResponse.json<DocumentContent>().content).toContain(
         '# Deterministyczna admisja zadań i granice wykonania',
       );
     } finally {
@@ -157,7 +171,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       expect(missing.json()).toEqual({ error: 'specification_not_found' });
       const missingDoc = await app.inject('/api/specs/admission/documents/not-a-document');
       expect(missingDoc.statusCode).toBe(404);
-      expect(missingDoc.json()).toEqual({ error: 'specification_document_not_found' });
+      expect(missingDoc.json()).toEqual({
+        error: 'DOCUMENT_NOT_FOUND',
+        code: 'DOCUMENT_NOT_FOUND',
+      });
       const missingTask = await app.inject('/api/specs/admission/tasks/TASK-99');
       expect(missingTask.statusCode).toBe(404);
       expect(missingTask.json()).toEqual({ error: 'specification_task_not_found' });

@@ -124,7 +124,9 @@ const lists = `- one
 `;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 function overflowOf(element: Element) {
@@ -134,6 +136,7 @@ function overflowOf(element: Element) {
 function frameOf(canvasElement: HTMLElement) {
   const frame = canvasElement.querySelector('[data-testid="frame"]');
   assert(frame, 'The story frame should render.');
+
   return frame;
 }
 

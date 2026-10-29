@@ -17,6 +17,7 @@ export function registerRuntimeWebApp<RawServer extends RawServerBase>(
   app.get('/', (_request, reply) => {
     reply.type(webApp.indexHtml.contentType);
     reply.header('Cache-Control', 'no-cache');
+
     return reply.send(webApp.indexHtml.body);
   });
   app.get('/*', (request, reply) => {
@@ -34,11 +35,13 @@ export function registerRuntimeWebApp<RawServer extends RawServerBase>(
     if (asset) {
       reply.type(asset.contentType);
       reply.header('Cache-Control', 'no-cache');
+
       return reply.send(asset.body);
     }
 
     reply.type(webApp.indexHtml.contentType);
     reply.header('Cache-Control', 'no-cache');
+
     return reply.send(webApp.indexHtml.body);
   });
 }

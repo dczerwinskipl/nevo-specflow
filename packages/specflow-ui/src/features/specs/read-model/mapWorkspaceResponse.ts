@@ -72,6 +72,7 @@ export function mapWorkspaceResponse(
   const repository =
     sections.repository.state === 'available' ? sections.repository.data : undefined;
   const changes = sections.changes.state === 'available' ? sections.changes.data : undefined;
+
   return {
     id: specification.id,
     ...(specification.key ? { key: specification.key } : {}),
@@ -140,7 +141,11 @@ export function mapWorkspaceResponse(
                 { ...core, kind: 'info', ...(event.targetId ? { targetId: event.targetId } : {}) },
               ];
             }
-            if (!event.targetId) return [];
+
+            if (!event.targetId) {
+              return [];
+            }
+
             return [{ ...core, kind: event.kind, targetId: event.targetId }];
           })
         : [],

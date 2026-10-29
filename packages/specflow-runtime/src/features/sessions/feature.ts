@@ -28,18 +28,22 @@ export function createSessionsFeature(
     authorizationResources: [SessionCapabilities],
     async register(app) {
       const enabled = options.config?.enabled === true;
-      if (enabled && !options.storage)
+      if (enabled && !options.storage) {
         throw new SessionError(
           'SESSION_STORE_UNAVAILABLE',
           'Verified Session storage context is required.',
         );
+      }
+
       const claude = options.config?.providers.claude;
       const codex = options.config?.providers.codex;
-      if (enabled && (claude?.enabled || codex?.enabled) && !options.storage?.workspace)
+      if (enabled && (claude?.enabled || codex?.enabled) && !options.storage?.workspace) {
         throw new SessionError(
           'SESSION_STORE_UNAVAILABLE',
           'Verified workspace context is required for native providers.',
         );
+      }
+
       const drivers: SessionDriver[] = [];
       const effects =
         enabled &&
@@ -48,8 +52,11 @@ export function createSessionsFeature(
         options.storage.projectId === options.engine.context.project.projectId
           ? createEngineSessionEffects(options.engine)
           : undefined;
-      if (options.config?.providers.mock.enabled) drivers.push(createMockDriver());
-      if (enabled && claude?.enabled)
+      if (options.config?.providers.mock.enabled) {
+        drivers.push(createMockDriver());
+      }
+
+      if (enabled && claude?.enabled) {
         drivers.push(
           createClaudeDriver({
             workspace: options.storage!.workspace!,
@@ -58,7 +65,9 @@ export function createSessionsFeature(
             managedWrites: effects !== undefined,
           }),
         );
-      if (enabled && codex?.enabled)
+      }
+
+      if (enabled && codex?.enabled) {
         drivers.push(
           createCodexDriver({
             workspace: options.storage!.workspace!,
@@ -76,6 +85,8 @@ export function createSessionsFeature(
             managedWrites: effects !== undefined,
           }),
         );
+      }
+
       const store = enabled ? await openSessionStore(options.storage!) : undefined;
       const coordinator = store
         ? createSessionCoordinator(
@@ -98,9 +109,18 @@ export function createSessionsFeature(
             effects,
           )
         : undefined;
-      if (coordinator) app.addHook('onClose', () => coordinator.close());
-      if (coordinator) await coordinator.recoverEffects();
-      if (coordinator && (claude?.enabled || codex?.enabled)) await coordinator.providers();
+      if (coordinator) {
+        app.addHook('onClose', () => coordinator.close());
+      }
+
+      if (coordinator) {
+        await coordinator.recoverEffects();
+      }
+
+      if (coordinator && (claude?.enabled || codex?.enabled)) {
+        await coordinator.providers();
+      }
+
       registerSessionRoutes(app, {
         coordinator,
         projectId: options.storage?.projectId,

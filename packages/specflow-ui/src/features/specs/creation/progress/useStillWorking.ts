@@ -10,12 +10,17 @@ export const stillWorkingAfterMs = 20_000;
 export function useStillWorking(active: boolean, afterMs: number = stillWorkingAfterMs): boolean {
   const [elapsed, setElapsed] = useState(false);
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
+
     const timer = setTimeout(() => setElapsed(true), afterMs);
+
     return () => {
       clearTimeout(timer);
       setElapsed(false);
     };
   }, [active, afterMs]);
+
   return active && elapsed;
 }

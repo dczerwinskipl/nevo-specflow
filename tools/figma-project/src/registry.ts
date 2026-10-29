@@ -13,8 +13,12 @@ const storyModules = import.meta.glob<Record<string, unknown>>(
 );
 
 function isDesignSpec(value: unknown): value is FigmaComponentDefinition {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
   const candidate = value as Partial<FigmaComponentDefinition>;
+
   return (
     typeof candidate.component === 'string' &&
     Array.isArray(candidate.variantProperties) &&
@@ -40,19 +44,23 @@ export function validateExportProfiles(
   const profileIds = new Set<string>();
   const rootOwners = new Map<string, string>();
   for (const profile of profiles) {
-    if (profileIds.has(profile.id))
+    if (profileIds.has(profile.id)) {
       throw new Error(`Duplicate Figma export profile: ${profile.id}`);
+    }
+
     profileIds.add(profile.id);
     for (const root of profile.roots) {
       if (!definitionIds.has(root)) {
         throw new Error(`Figma export profile ${profile.id} references unknown root ${root}`);
       }
+
       const previousOwner = rootOwners.get(root);
       if (previousOwner) {
         throw new Error(
           `Figma export root ${root} is owned by both ${previousOwner} and ${profile.id}`,
         );
       }
+
       rootOwners.set(root, profile.id);
     }
   }
@@ -70,6 +78,7 @@ export function collectCaptureSections(
       .flatMap((value): CaptureSection[] => {
         const story = value as DesignStoryExport;
         const designCapture = story?.parameters?.designCapture;
+
         return designCapture && story.render ? [{ ...designCapture, render: story.render }] : [];
       })
       // Primitive capture fixtures materialize canonical resources used by every

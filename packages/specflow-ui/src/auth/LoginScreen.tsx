@@ -148,6 +148,7 @@ export function LoginScreenView({
           <div className="grid gap-3">
             {loginMethods.oidc.map((provider) => {
               const providerPending = pending === `oidc:${provider.id}`;
+
               return (
                 <Button
                   key={provider.id}
@@ -223,10 +224,16 @@ export function oidcButtonVariant(loginMethods: AuthLoginMethods): 'primary' | '
 }
 
 export function safeReturnTo(value: string | undefined): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/';
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/';
+  }
+
   try {
     const url = new URL(value, 'http://specflow.local');
-    if (url.origin !== 'http://specflow.local') return '/';
+    if (url.origin !== 'http://specflow.local') {
+      return '/';
+    }
+
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return '/';

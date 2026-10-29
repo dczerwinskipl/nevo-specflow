@@ -17,7 +17,10 @@ export function createGitClient(repoRoot: string): GitClient {
     try {
       return await gitLine(args);
     } catch (err) {
-      if (err instanceof CommandFailedError) return null;
+      if (err instanceof CommandFailedError) {
+        return null;
+      }
+
       throw err;
     }
   };
@@ -35,12 +38,16 @@ export function createGitClient(repoRoot: string): GitClient {
     async commitParents(ref): Promise<string[] | null> {
       // `rev-list --parents -n 1 X` -> "<commit> <parent1> [<parent2> ...]"
       const line = await tryGitLine(['rev-list', '--parents', '-n', '1', `${ref}^{commit}`]);
-      if (line === null) return null;
+      if (line === null) {
+        return null;
+      }
+
       return line.split(/\s+/).filter(Boolean).slice(1);
     },
 
     async changedFiles(fromRef, toRef): Promise<string[]> {
       const out = await git(['diff', '--name-only', `${fromRef}`, `${toRef}`]);
+
       return out
         .split('\n')
         .map((f) => f.trim())
@@ -59,12 +66,14 @@ export function createGitClient(repoRoot: string): GitClient {
         ) {
           return null;
         }
+
         throw err;
       }
     },
 
     async listTags(): Promise<string[]> {
       const out = await git(['tag', '--list']);
+
       return out
         .split('\n')
         .map((t) => t.trim())
@@ -83,12 +92,14 @@ export function createGitClient(repoRoot: string): GitClient {
 
     async remoteBranchExists(branch): Promise<boolean> {
       const out = await git(['ls-remote', '--heads', 'origin', `refs/heads/${branch}`]);
+
       return out.trim().length > 0;
     },
 
     async isAncestor(candidate, ref): Promise<boolean> {
       try {
         await git(['merge-base', '--is-ancestor', candidate, ref]);
+
         return true;
       } catch (err) {
         // exit 1 with no diagnostics = "not an ancestor"; anything else is a
@@ -96,6 +107,7 @@ export function createGitClient(repoRoot: string): GitClient {
         if (err instanceof CommandFailedError && err.exitCode === 1 && err.stderr.trim() === '') {
           return false;
         }
+
         throw err;
       }
     },
@@ -116,6 +128,7 @@ export function createGitClient(repoRoot: string): GitClient {
           withIndex,
         );
         const tree = (await run('git', ['write-tree'], withIndex)).trim();
+
         return (
           await git(['commit-tree', tree, '-p', `${baseRef}^{commit}`, '-m', message])
         ).trim();

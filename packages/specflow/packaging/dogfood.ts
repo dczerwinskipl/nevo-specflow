@@ -50,6 +50,7 @@ export async function dogfoodInstall(options: DogfoodInstallOptions = {}): Promi
         `expected the packed version ${JSON.stringify(packed.version)}`,
     );
   }
+
   checks.push(`nevo-specflow --version -> ${version}`);
 
   const help = nevoSpecFlow(['--help']);
@@ -60,6 +61,7 @@ export async function dogfoodInstall(options: DogfoodInstallOptions = {}): Promi
       );
     }
   }
+
   checks.push('nevo-specflow --help -> ok');
 
   const startHelp = nevoSpecFlow(['start', '--help']);
@@ -68,6 +70,7 @@ export async function dogfoodInstall(options: DogfoodInstallOptions = {}): Promi
       `\`nevo-specflow start --help\` does not describe the local SpecFlow server:\n${startHelp}`,
     );
   }
+
   checks.push('nevo-specflow start --help -> ok');
 
   return { ...packed, globalBinDir, checks };

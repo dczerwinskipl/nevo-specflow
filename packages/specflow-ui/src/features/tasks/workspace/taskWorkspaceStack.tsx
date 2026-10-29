@@ -24,9 +24,11 @@ type ScreenProps = SecondaryScreenProps<ResolvedData, Pages['material']>;
 export function findWorkspaceMaterial(data: TaskWorkspaceData, id: string) {
   return data.handoffs.flatMap((event) => event.materials).find((item) => item.id === id);
 }
+
 function MaterialHeader({ data, params }: ScreenProps) {
   const { t } = useTranslation();
   const material = findWorkspaceMaterial(data, params.id ?? data.initialMaterialId ?? '');
+
   return (
     <WorkspaceHeaderIdentity
       headingLevel={2}
@@ -43,15 +45,18 @@ function MaterialHeader({ data, params }: ScreenProps) {
     />
   );
 }
+
 function MaterialScreen({ data, params }: ScreenProps) {
   const { t } = useTranslation();
   const { setReading } = useTaskWorkspace();
   useLayoutEffect(() => {
     setReading(true);
+
     return () => setReading(false);
   }, [setReading]);
   const material = findWorkspaceMaterial(data, params.id ?? data.initialMaterialId ?? '');
   const content = material?.content;
+
   return (
     <AppContent className="w-full max-w-full">
       <AppWorkspaceBody scroll="area">
@@ -85,8 +90,10 @@ function MaterialScreen({ data, params }: ScreenProps) {
     </AppContent>
   );
 }
+
 function HistoryScreen() {
   const navigation = useSecondaryStack<Pages>();
+
   return (
     <AppContent className="w-full max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
@@ -99,22 +106,27 @@ function HistoryScreen() {
     </AppContent>
   );
 }
+
 function HistoryHeader() {
   const { t } = useTranslation();
+
   return (
     <WorkspaceHeaderIdentity title={t('taskWorkspace.history')} icon="clock" headingLevel={2} />
   );
 }
+
 const screens = {
   history: { title: 'History', header: HistoryHeader, component: HistoryScreen },
   material: { title: 'Material', header: MaterialHeader, component: MaterialScreen },
 };
 function useData({ taskId, id }: { taskId: string; id?: string }) {
   const { data } = useTaskWorkspace();
+
   return data.id === taskId
     ? { status: 'ready' as const, data: { ...data, initialMaterialId: id } }
     : { status: 'unavailable' as const };
 }
+
 export const taskWorkspaceHistoryStack = defineSecondaryStack<
   { taskId: string },
   ResolvedData,

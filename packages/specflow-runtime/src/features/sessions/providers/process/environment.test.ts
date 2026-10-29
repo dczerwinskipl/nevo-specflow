@@ -43,8 +43,10 @@ describe('provider environment projection', () => {
       { configured: { nevo_session_id: 'spoof' } },
       { inherit: ['NEVO_SESSION_ID'] },
       { secrets: { NEVO_SESSION_ID: 'spoof' } },
-    ])
+    ]) {
       expect(() => projectProviderEnvironment({ host: {}, ...options })).toThrow('Reserved');
+    }
+
     expect(() => projectProviderEnvironment({ host: {}, configured: { BROKEN: '\0' } })).toThrow(
       'Invalid',
     );

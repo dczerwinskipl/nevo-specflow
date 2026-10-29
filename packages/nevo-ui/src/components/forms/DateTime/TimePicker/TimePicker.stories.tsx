@@ -93,7 +93,10 @@ function ControlledStateFixture() {
         pickerPresentation="desktop"
         value={value}
         onChange={(nextValue) => {
-          if (!nextValue) return;
+          if (!nextValue) {
+            return;
+          }
+
           setValue(nextValue);
           setCommits((current) => [...current, nextValue.toString()]);
         }}
@@ -117,14 +120,20 @@ async function findDocumentButton(name: string) {
     const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
       (candidate) => candidate.textContent?.trim() === name,
     );
-    if (button) return button;
+    if (button) {
+      return button;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   return undefined;
 }
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 export const ControlledStateContract: Story = {
@@ -154,6 +163,7 @@ export const ControlledStateContract: Story = {
 
 function UncontrolledStateFixture() {
   const [commits, setCommits] = useState<string[]>([]);
+
   return (
     <div className="max-w-sm p-6" data-commits={commits.join(',')}>
       <TimePicker

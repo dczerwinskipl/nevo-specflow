@@ -30,7 +30,10 @@ export function configureFigmaImporter(config: FigmaImporterProjectConfig) {
 
 export const figmaProjectConfig = new Proxy({} as FigmaImporterProjectConfig, {
   get(_target, property: keyof FigmaImporterProjectConfig) {
-    if (!activeConfig) throw new Error('Figma importer project configuration has not been set');
+    if (!activeConfig) {
+      throw new Error('Figma importer project configuration has not been set');
+    }
+
     return activeConfig[property];
   },
 });

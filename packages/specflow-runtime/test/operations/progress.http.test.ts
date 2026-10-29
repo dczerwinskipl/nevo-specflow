@@ -28,6 +28,7 @@ function authenticated(role: 'developer' | 'viewer' = 'developer') {
     authenticatedWith: { kind: 'password' },
   });
   const cookie = authCookieNames(passwordConfig().server.port).session;
+
   return {
     store,
     role,
@@ -69,6 +70,7 @@ async function listen(
   apps.push(app);
   await app.listen({ port: 0, host: '127.0.0.1' });
   const url = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
+
   return { app, url, headers: auth.headers };
 }
 
@@ -89,7 +91,10 @@ async function readFrames(
   try {
     while (!until(frames)) {
       const next = await reader.read();
-      if (next.done) break;
+      if (next.done) {
+        break;
+      }
+
       buffer += next.value;
       let split: number;
       while ((split = buffer.indexOf('\n\n')) >= 0) {
@@ -97,17 +102,24 @@ async function readFrames(
         buffer = buffer.slice(split + 2);
         const frame: Frame = {};
         for (const line of raw.split('\n')) {
-          if (line.startsWith(':')) frame.comment = line.slice(1).trim();
-          else if (line.startsWith('id: ')) frame.id = line.slice(4);
-          else if (line.startsWith('event: ')) frame.event = line.slice(7);
-          else if (line.startsWith('data: ')) frame.data = JSON.parse(line.slice(6));
+          if (line.startsWith(':')) {
+            frame.comment = line.slice(1).trim();
+          } else if (line.startsWith('id: ')) {
+            frame.id = line.slice(4);
+          } else if (line.startsWith('event: ')) {
+            frame.event = line.slice(7);
+          } else if (line.startsWith('data: ')) {
+            frame.data = JSON.parse(line.slice(6));
+          }
         }
+
         frames.push(frame);
       }
     }
   } finally {
     await reader.cancel().catch(() => undefined);
   }
+
   return frames;
 }
 
@@ -118,14 +130,19 @@ describe('SSE connection caps', () => {
   const open = async (url: string, headers: Record<string, string>, id: string) => {
     const controller = new AbortController();
     const response = await fetch(eventsUrl(url, id), { headers, signal: controller.signal });
+
     return { response, close: () => controller.abort() };
   };
+
   const ids = (n: number) => `3f0a6d4e-8f2a-4b6e-9d0a-${String(n).padStart(12, '0')}`;
   const settle = () => new Promise((resolve) => setTimeout(resolve, 150));
 
   it('caps open streams per principal with 429 + Retry-After, then frees the slot', async () => {
     const registry = createOperationProgressRegistry();
-    for (let n = 1; n <= 3; n += 1) registry.begin({ operationId: ids(n), kind, steps });
+    for (let n = 1; n <= 3; n += 1) {
+      registry.begin({ operationId: ids(n), kind, steps });
+    }
+
     const { url, headers } = await listen(registry, { maxStreamsPerPrincipal: 2, waitMs: 1000 });
     const first = await open(url, headers, ids(1));
     const second = await open(url, headers, ids(2));
@@ -146,7 +163,10 @@ describe('SSE connection caps', () => {
 
   it('caps the global number of streams', async () => {
     const registry = createOperationProgressRegistry();
-    for (let n = 1; n <= 2; n += 1) registry.begin({ operationId: ids(n), kind, steps });
+    for (let n = 1; n <= 2; n += 1) {
+      registry.begin({ operationId: ids(n), kind, steps });
+    }
+
     const { url, headers } = await listen(registry, { maxStreams: 1 });
     const first = await open(url, headers, ids(1));
     expect(first.response.status).toBe(200);

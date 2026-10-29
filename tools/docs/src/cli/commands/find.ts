@@ -30,11 +30,15 @@ export function findCommand(ctx: DocsCliContext): Command {
         },
       ) => {
         const query = queryParts.join(' ').trim();
-        if (!query) throw new UsageError('find: a query is required');
+        if (!query) {
+          throw new UsageError('find: a query is required');
+        }
+
         const limit = opts.limit === undefined ? undefined : Number(opts.limit);
         if (opts.limit !== undefined && (!Number.isInteger(limit) || (limit ?? 0) <= 0)) {
           throw new UsageError('find: --limit must be a positive integer');
         }
+
         const results = findDocuments(ctx.repo, {
           query,
           type: opts.type,
@@ -46,19 +50,31 @@ export function findCommand(ctx: DocsCliContext): Command {
         });
         if (opts.json) {
           ctx.stdout(JSON.stringify(results, null, 2));
+
           return;
         }
+
         if (results.length === 0) {
           ctx.stdout(`(no documents match "${query}")`);
+
           return;
         }
+
         for (const d of results) {
           ctx.stdout(`${String(d.id)} — "${String(d.title)}"  ${d.file}`);
           const scored = d as Partial<ScoredDoc>;
           const why: string[] = [];
-          if (scored.matchedTerms?.length) why.push(`terms: ${scored.matchedTerms.join(', ')}`);
-          if (scored.matchedFields?.length) why.push(`in: ${scored.matchedFields.join(', ')}`);
-          if (why.length) ctx.stdout(`    (${why.join('; ')})`);
+          if (scored.matchedTerms?.length) {
+            why.push(`terms: ${scored.matchedTerms.join(', ')}`);
+          }
+
+          if (scored.matchedFields?.length) {
+            why.push(`in: ${scored.matchedFields.join(', ')}`);
+          }
+
+          if (why.length) {
+            ctx.stdout(`    (${why.join('; ')})`);
+          }
         }
       },
     );

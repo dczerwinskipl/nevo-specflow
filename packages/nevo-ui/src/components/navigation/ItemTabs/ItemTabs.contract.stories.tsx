@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ItemTabsHost, manyItems, sampleItems } from './ItemTabs.storyFixtures';
+import type { ItemTab } from './ItemTabs';
+import { ItemTabsHost, createItemTab, manyItems, sampleItems } from './ItemTabs.storyFixtures';
 
 const meta = {
   title: 'Nevo UI/Navigation/ItemTabs',
@@ -11,15 +12,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -129,6 +136,7 @@ export const OverflowContract: Story = {
       const { width } = tab.getBoundingClientRect();
       assert(width >= 140 && width <= 180, `A tab is 140-180 px wide (got ${width}).`);
     }
+
     await userEvent.click(
       canvas.getByRole('button', { name: `Opened items (${manyItems.length})` }),
     );
@@ -176,6 +184,117 @@ export const SwitcherContract: Story = {
       ),
       'The switcher menu exposes a Close menuitem per item.',
     );
+    assert(
+      menu.getBoundingClientRect().right <= window.innerWidth,
+      'The menu stays inside the viewport.',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+const longPathItems: readonly ItemTab[] = [
+  createItemTab(
+    'docs/product/specflow/projects/admission/architecture/decisions/2026/identity-and-access/0042-use-optimistic-locking-for-document-saves.md',
+  ),
+  // A root file: its path is its label, and its row is as tall as the others.
+  createItemTab('README.md'),
+  ...manyItems,
+];
+
+function openedMenuRows(menu: HTMLElement) {
+  return [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].filter(
+    (row) => !row.textContent?.startsWith('Close '),
+  );
+}
+
+async function assertCompactRows(menu: HTMLElement) {
+  const rows = openedMenuRows(menu);
+  assert(rows.length === longPathItems.length, 'Every opened item has one visible row.');
+  const heights = new Set(rows.map((row) => Math.round(row.getBoundingClientRect().height)));
+  assert(heights.size === 1, `Every row has the same height (got ${[...heights].join(', ')}).`);
+  const [first, second] = rows;
+  assert(first && second, 'Two rows at least.');
+  const gap = second.getBoundingClientRect().top - first.getBoundingClientRect().bottom;
+  assert(gap < 1, `The hidden Close item adds no gap between rows (got ${gap}px).`);
+  const root = rows.find((row) => row.textContent?.startsWith('README.md'));
+  assert(
+    root?.textContent?.includes('Root folder') === true &&
+      root.textContent.split('README.md').length === 2,
+    'A root item says where it is instead of repeating its name.',
+  );
+  const long = rows[0];
+  const path = longPathItems[0]?.description ?? '';
+  assert(long?.getAttribute('title') === path, 'The full path is the row tooltip.');
+  assert(long.textContent?.includes(path) === true, 'Assistive technology reads the full path.');
+  const walker = document.createTreeWalker(long, NodeFilter.SHOW_TEXT);
+  let pathText: Text | null = null;
+  while (walker.nextNode()) {
+    if (walker.currentNode.textContent === path) {
+      pathText = walker.currentNode as Text;
+    }
+  }
+
+  assert(pathText, 'The path is one text node.');
+  const fileName = document.createRange();
+  fileName.setStart(pathText, path.length - 12);
+  fileName.setEnd(pathText, path.length);
+  const visible = fileName.getBoundingClientRect();
+  const bounds = long.getBoundingClientRect();
+  assert(
+    visible.left >= bounds.left && visible.right <= bounds.right,
+    'A truncated path keeps the file-name end visible.',
+  );
+}
+
+export const OpenedMenuLongPathWide: Story = {
+  render: () => (
+    <div className="w-[1440px] max-w-full">
+      <ItemTabsHost items={longPathItems} activeId={longPathItems[0]?.id ?? null} />
+    </div>
+  ),
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(
+      await waitFor(
+        () => canvas.queryByRole('button', { name: `Opened items (${longPathItems.length})` }),
+        'The strip overflows into the Opened menu.',
+      ),
+    );
+    const menu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"]'),
+      'The Opened menu opens.',
+    );
+    await assertCompactRows(menu);
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{Delete}');
+    await waitFor(
+      () => openedMenuRows(menu).length === longPathItems.length - 1 || !menu.isConnected,
+      'Delete on a highlighted row still closes its item.',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+export const OpenedMenuLongPathNarrow: Story = {
+  render: () => (
+    <div className="w-[390px]">
+      <ItemTabsHost items={longPathItems} activeId={longPathItems[0]?.id ?? null} />
+    </div>
+  ),
+  globals: { viewport: { value: 'mobile2', isRotated: false } },
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(
+      await waitFor(
+        () => canvas.queryByRole('button', { name: /opened/ }),
+        'Under 480 px the switcher opens the Opened menu.',
+      ),
+    );
+    const menu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"]'),
+      'The Opened menu opens.',
+    );
+    await assertCompactRows(menu);
     assert(
       menu.getBoundingClientRect().right <= window.innerWidth,
       'The menu stays inside the viewport.',

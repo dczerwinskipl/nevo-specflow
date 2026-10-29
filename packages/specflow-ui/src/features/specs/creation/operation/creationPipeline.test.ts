@@ -22,6 +22,7 @@ function operations() {
     allocate: vi.fn(() => Promise.resolve({ sessionId: 'writer', location })),
   };
 }
+
 describe('creation stage recovery', () => {
   it('opens the authoritative first document after the atomic create, without a workplace stage', async () => {
     const op = operations();

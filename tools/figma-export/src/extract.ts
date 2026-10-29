@@ -23,9 +23,15 @@ type CapturedProjectIR = DesignSystemIR & { profiles: CapturedExportProfile[] };
 
 function numberFromEnvironment(name: string, fallback: number) {
   const value = process.env[name];
-  if (value === undefined) return fallback;
+  if (value === undefined) {
+    return fallback;
+  }
+
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`${name} must be a positive number`);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive number`);
+  }
+
   return parsed;
 }
 
@@ -56,17 +62,22 @@ async function waitForServer(url: string, timeoutMs = 20_000) {
   while (Date.now() - startedAt < timeoutMs) {
     try {
       const response = await fetch(url);
-      if (response.ok) return;
+      if (response.ok) {
+        return;
+      }
     } catch {
       // Vite is still starting.
     }
+
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
+
   throw new Error(`Timed out waiting for ${url}`);
 }
 
 function startVite(): ChildProcess {
   const viteEntry = path.resolve(process.cwd(), 'node_modules/vite/bin/vite.js');
+
   return spawn(process.execPath, [viteEntry, '--host', host, '--port', String(port)], {
     cwd: process.cwd(),
     env: { ...process.env, NO_COLOR: '1' },
@@ -85,7 +96,10 @@ async function extract(): Promise<CapturedProjectIR> {
 
     const captured = await page.evaluate((projectSource) => {
       const registryNode = document.querySelector<HTMLScriptElement>('#design-capture-registry');
-      if (!registryNode?.textContent) throw new Error('Missing #design-capture-registry');
+      if (!registryNode?.textContent) {
+        throw new Error('Missing #design-capture-registry');
+      }
+
       const registry = JSON.parse(registryNode.textContent) as {
         definitions: {
           component: string;
@@ -214,20 +228,25 @@ async function extract(): Promise<CapturedProjectIR> {
         ) {
           return true;
         }
+
         const clip = style.getPropertyValue('clip').replaceAll(' ', '');
         const clipPath = style.clipPath.replaceAll(' ', '');
+
         return (
           clip === 'rect(0px,0px,0px,0px)' || clip === 'rect(0,0,0,0)' || clipPath === 'inset(50%)'
         );
       };
+
       const typedDimension = (node: Element, property: 'width' | 'height') => {
         const typedNode = node as Element & {
           computedStyleMap?: () => {
             get: (name: string) => { toString: () => string } | undefined;
           };
         };
+
         return typedNode.computedStyleMap?.().get(property)?.toString() ?? '';
       };
+
       const diagnostics: {
         code:
           | 'unsupported-grid'
@@ -264,10 +283,14 @@ async function extract(): Promise<CapturedProjectIR> {
         const captureRoot = element.closest<HTMLElement>('[data-design-capture="true"]');
         const component = captureRoot?.dataset.designComponent ?? element.dataset.designComponent;
         const key = `${code}/${component}/${layer}/${message}`;
-        if (diagnosticKeys.has(key)) return;
+        if (diagnosticKeys.has(key)) {
+          return;
+        }
+
         diagnosticKeys.add(key);
         diagnostics.push({ code, severity: 'warning', message, component, layer });
       };
+
       const axisSizing = (node: Element, property: 'width' | 'height') => {
         const value = typedDimension(node, property);
         const intrinsic =
@@ -281,26 +304,41 @@ async function extract(): Promise<CapturedProjectIR> {
           const minimum = property === 'width' ? style.minWidth : style.minHeight;
           const maximum = property === 'width' ? style.maxWidth : style.maxHeight;
           const reachesFiniteConstraint = [minimum, maximum].some((constraint) => {
-            if (!constraint.endsWith('px')) return false;
+            if (!constraint.endsWith('px')) {
+              return false;
+            }
+
             const pixels = Number.parseFloat(constraint);
+
             return Number.isFinite(pixels) && pixels > 0 && Math.abs(measured - pixels) <= 0.75;
           });
           // CSS intrinsic sizing can still resolve to a product-layout boundary,
           // for example `width: max-content; max-width: 75%`. Figma Hug would
           // recompute that layer from its tiny placeholder content and collapse
           // the workspace. Preserve the browser-resolved boundary as Fixed.
-          if (reachesFiniteConstraint) return 'fixed';
+          if (reachesFiniteConstraint) {
+            return 'fixed';
+          }
+
           return 'hug';
         }
+
         if (value.includes('%')) {
           // A partial percentage (Progress 37%, 65%, etc.) is canonical
           // geometry, not Figma Fill. Only a full-width percentage carries
           // the same layout intent as Fill in the supported subset.
           return Number.parseFloat(value) >= 99.999 ? 'fill' : 'fixed';
         }
-        if (value !== 'auto') return 'fixed';
+
+        if (value !== 'auto') {
+          return 'fixed';
+        }
+
         const parent = node.parentElement;
-        if (!parent) return 'hug';
+        if (!parent) {
+          return 'hug';
+        }
+
         const parentStyle = getComputedStyle(parent);
         const ownStyle = getComputedStyle(node);
         const parentIsFlex = parentStyle.display.includes('flex');
@@ -310,13 +348,24 @@ async function extract(): Promise<CapturedProjectIR> {
           ['auto', 'normal', 'stretch'].includes(ownStyle.alignSelf);
         if (parentIsFlex) {
           if (property === 'width') {
-            if (parentIsVerticalFlex) return stretches ? 'fill' : 'hug';
+            if (parentIsVerticalFlex) {
+              return stretches ? 'fill' : 'hug';
+            }
+
             return Number.parseFloat(ownStyle.flexGrow) > 0 ? 'fill' : 'hug';
           }
-          if (!parentIsVerticalFlex) return stretches ? 'fill' : 'hug';
+
+          if (!parentIsVerticalFlex) {
+            return stretches ? 'fill' : 'hug';
+          }
+
           return Number.parseFloat(ownStyle.flexGrow) > 0 ? 'fill' : 'hug';
         }
-        if (property === 'height') return 'hug';
+
+        if (property === 'height') {
+          return 'hug';
+        }
+
         const blockLevelAutoWidth = new Set([
           'block',
           'flow-root',
@@ -340,13 +389,17 @@ async function extract(): Promise<CapturedProjectIR> {
           ) {
             return 'fixed';
           }
+
           return 'fill';
         }
+
         return 'hug';
       };
+
       const visibleFlowChildren = (node: Element) =>
         Array.from(node.children).filter((child) => {
           const childStyle = getComputedStyle(child);
+
           return (
             !isExcludedFromVisualCapture(child, childStyle) &&
             childStyle.position !== 'absolute' &&
@@ -356,11 +409,18 @@ async function extract(): Promise<CapturedProjectIR> {
       const isInlineDisplay = (display: string) =>
         display === 'inline' || display.startsWith('inline-');
       const isInlineFormattingContext = (node: Element, style = getComputedStyle(node)) => {
-        if (style.display.includes('flex') || style.display.includes('grid')) return false;
+        if (style.display.includes('flex') || style.display.includes('grid')) {
+          return false;
+        }
+
         const visibleNodes = Array.from(node.childNodes).filter((child) => {
-          if (child.nodeType === Node.TEXT_NODE) return Boolean(child.textContent?.trim());
+          if (child.nodeType === Node.TEXT_NODE) {
+            return Boolean(child.textContent?.trim());
+          }
+
           return child instanceof Element && !isExcludedFromVisualCapture(child);
         });
+
         return (
           visibleNodes.length > 0 &&
           visibleNodes.every(
@@ -370,8 +430,12 @@ async function extract(): Promise<CapturedProjectIR> {
           )
         );
       };
+
       const isNativeInlineTextFlow = (element: HTMLElement) => {
-        if (!isInlineFormattingContext(element)) return false;
+        if (!isInlineFormattingContext(element)) {
+          return false;
+        }
+
         const textualTags = new Set([
           'A',
           'B',
@@ -384,6 +448,7 @@ async function extract(): Promise<CapturedProjectIR> {
           'SPAN',
           'STRONG',
         ]);
+
         return Array.from(element.querySelectorAll<HTMLElement>('*')).every(
           (child) =>
             textualTags.has(child.tagName) &&
@@ -393,39 +458,55 @@ async function extract(): Promise<CapturedProjectIR> {
             !definitionNames.has(child.dataset.designComponent ?? ''),
         );
       };
+
       const flowDirectionOf = (node: Element, style = getComputedStyle(node)) => {
-        if (style.display.includes('flex'))
+        if (style.display.includes('flex')) {
           return style.flexDirection === 'column' ? 'vertical' : 'horizontal';
+        }
+
         if (style.display.includes('grid')) {
           const columns = style.gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length;
+
           return columns <= 1 ? 'vertical' : 'horizontal';
         }
+
         // CSS table layout has its own formatting context. A table and its row
         // groups stack vertically, while the cells of a table row are laid out
         // horizontally. Treating every non-inline display as vertical collapses
         // real tables into a single narrow column in Figma even though the IR
         // still contains the browser-measured cell widths.
-        if (style.display === 'table-row') return 'horizontal';
+        if (style.display === 'table-row') {
+          return 'horizontal';
+        }
+
         if (
           style.display === 'table' ||
           style.display === 'inline-table' ||
           style.display === 'table-header-group' ||
           style.display === 'table-row-group' ||
           style.display === 'table-footer-group'
-        )
+        ) {
           return 'vertical';
+        }
+
         return style.display === 'inline' || isInlineFormattingContext(node)
           ? 'horizontal'
           : 'vertical';
       };
+
       const isTwoDimensionalGrid = (node: Element) => {
         const style = getComputedStyle(node);
-        if (!style.display.includes('grid')) return false;
+        if (!style.display.includes('grid')) {
+          return false;
+        }
+
         const rects = visibleFlowChildren(node).map((child) => child.getBoundingClientRect());
         const rows = new Set(rects.map((rect) => Math.round(rect.top))).size;
         const columns = new Set(rects.map((rect) => Math.round(rect.left))).size;
+
         return rows > 1 && columns > 1;
       };
+
       const gridTrackCount = (value: string) =>
         value === 'none' ? 0 : value.trim().split(/\s+/).filter(Boolean).length;
       const box = (node: Element) => {
@@ -489,6 +570,7 @@ async function extract(): Promise<CapturedProjectIR> {
             }
           }
         }
+
         if (isTwoDimensionalGrid(node)) {
           result.layoutProjection = 'measured';
           report(
@@ -497,6 +579,7 @@ async function extract(): Promise<CapturedProjectIR> {
             'Two-dimensional CSS Grid is captured as fixed measured child geometry; responsive grid behavior is unsupported.',
           );
         }
+
         if (style.boxShadow !== 'none' || style.filter !== 'none') {
           report(
             node,
@@ -504,6 +587,7 @@ async function extract(): Promise<CapturedProjectIR> {
             'CSS shadow/filter is not projected into Figma effects.',
           );
         }
+
         if (style.transform !== 'none') {
           report(
             node,
@@ -511,6 +595,7 @@ async function extract(): Promise<CapturedProjectIR> {
             'CSS transform is not projected; provide explicit Figma geometry when the transformed result is canonical.',
           );
         }
+
         if (style.position === 'fixed') {
           report(
             node,
@@ -518,6 +603,7 @@ async function extract(): Promise<CapturedProjectIR> {
             'Fixed viewport positioning has no automatic Figma equivalent; captured geometry is only a static approximation.',
           );
         }
+
         if (style.zIndex !== 'auto' || style.isolation === 'isolate') {
           report(
             node,
@@ -525,6 +611,7 @@ async function extract(): Promise<CapturedProjectIR> {
             'CSS stacking context/order is not projected into Figma layer order.',
           );
         }
+
         if (
           style.position === 'absolute' &&
           node instanceof HTMLElement &&
@@ -537,12 +624,16 @@ async function extract(): Promise<CapturedProjectIR> {
             'Absolute positioning is supported only when the direct parent is the CSS containing block.',
           );
         }
+
         // Capture motion metadata, but serialize a deterministic canonical
         // static state rather than whichever animated opacity Playwright sampled.
-        if (style.animationName !== 'none')
+        if (style.animationName !== 'none') {
           result.opacity = node.getAttribute('data-design-static-opacity') ?? '1';
+        }
+
         return result;
       };
+
       const text = (node: Element) => ({
         ...pick(getComputedStyle(node), textProperties),
         cssWidth: typedDimension(node, 'width'),
@@ -555,6 +646,7 @@ async function extract(): Promise<CapturedProjectIR> {
         const definition = registry.definitions.find(
           (candidate) => candidate.component === node.dataset.designComponent,
         );
+
         return Object.fromEntries(
           Array.from(node.attributes)
             .filter((attribute) => attribute.name.startsWith('data-design-prop-'))
@@ -563,19 +655,28 @@ async function extract(): Promise<CapturedProjectIR> {
               const declared = definition?.propertyValues[name]?.find(
                 (candidate) => String(candidate) === attribute.value,
               );
+
               return [name, declared ?? value(attribute.value)];
             }),
         );
       };
+
       const belongsTo = (node: Element, root: HTMLElement) => {
         let parent = node.parentElement;
         while (parent && parent !== root) {
-          if (parent.dataset.designComponent && definitionNames.has(parent.dataset.designComponent))
+          if (
+            parent.dataset.designComponent &&
+            definitionNames.has(parent.dataset.designComponent)
+          ) {
             return false;
+          }
+
           parent = parent.parentElement;
         }
+
         return parent === root;
       };
+
       const resolveBinding = (
         rule: { property: string; values: Record<string, string> } | undefined,
         properties: Record<string, string | number | boolean>,
@@ -591,31 +692,44 @@ async function extract(): Promise<CapturedProjectIR> {
       const normalizedColors = new Map<string, string>();
       const normalizeColor = (value: string) => {
         const cached = normalizedColors.get(value);
-        if (cached) return cached;
+        if (cached) {
+          return cached;
+        }
+
         colorProbe.style.color = '';
         colorProbe.style.color = value;
-        if (!colorProbe.style.color) return undefined;
+        if (!colorProbe.style.color) {
+          return undefined;
+        }
+
         const normalized = getComputedStyle(colorProbe).color;
         normalizedColors.set(value, normalized);
+
         return normalized;
       };
+
       const colorValueByToken = new Map(
         registry.colorTokens.flatMap((token) => {
           const value = normalizeColor(`var(${token.cssVariable})`);
+
           return value ? [[token.stableId, value] as const] : [];
         }),
       );
       const tokenMatchesColor = (token: string, color: string) => {
         const tokenValue = colorValueByToken.get(token);
+
         return Boolean(tokenValue && normalizeColor(color) === tokenValue);
       };
+
       const borderBindingMatches = (token: string, style: CSSStyleDeclaration) => {
         const edges = ['Top', 'Right', 'Bottom', 'Left'] as const;
         const visibleEdges = edges.filter((edge) => {
           const width = style.getPropertyValue(`border-${edge.toLowerCase()}-width`);
           const borderStyle = style.getPropertyValue(`border-${edge.toLowerCase()}-style`);
+
           return Number.parseFloat(width) > 0 && borderStyle !== 'none' && borderStyle !== 'hidden';
         });
+
         return (
           visibleEdges.length > 0 &&
           visibleEdges.every((edge) =>
@@ -623,6 +737,7 @@ async function extract(): Promise<CapturedProjectIR> {
           )
         );
       };
+
       const semanticBindingsOf = (node: Element) => {
         const element = node as HTMLElement;
         const style = getComputedStyle(element);
@@ -649,21 +764,29 @@ async function extract(): Promise<CapturedProjectIR> {
               .map(tokenForUtility)
               .filter((stableId): stableId is string => Boolean(stableId))
               .at(-1);
-          if (!token) continue;
+          if (!token) {
+            continue;
+          }
+
           const matches =
             target === 'background'
               ? tokenMatchesColor(token, style.backgroundColor)
               : target === 'content'
                 ? tokenMatchesColor(token, style.color)
                 : borderBindingMatches(token, style);
-          if (matches) result[target] = token;
+          if (matches) {
+            result[target] = token;
+          }
         }
+
         return result;
       };
+
       const identityOf = (node: Element) => {
         const element = node as HTMLElement;
         const key = element.dataset.designKey;
         const layer = element.dataset.designLayer;
+
         return key || layer ? { ...(key ? { key } : {}), ...(layer ? { layer } : {}) } : undefined;
       };
 
@@ -722,32 +845,48 @@ async function extract(): Promise<CapturedProjectIR> {
         | BrowserSlotReference;
 
       const textFlowOf = (element: HTMLElement): BrowserNestedText | undefined => {
-        if (element.dataset.designTextFlow !== 'true' && !isNativeInlineTextFlow(element))
+        if (element.dataset.designTextFlow !== 'true' && !isNativeInlineTextFlow(element)) {
           return undefined;
+        }
+
         const separator = element.dataset.designTextSeparator;
         const fragments: { text: string; owner: HTMLElement }[] = [];
         const appendText = (raw: string, owner: HTMLElement) => {
-          if (raw) fragments.push({ text: raw, owner });
+          if (raw) {
+            fragments.push({ text: raw, owner });
+          }
         };
+
         const visit = (node: Node, owner: HTMLElement) => {
           if (node.nodeType === Node.TEXT_NODE) {
             appendText(node.textContent ?? '', owner);
+
             return;
           }
-          if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return;
+
+          if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) {
+            return;
+          }
+
           const child = node as HTMLElement;
-          if (isExcludedFromVisualCapture(child)) return;
+          if (isExcludedFromVisualCapture(child)) {
+            return;
+          }
+
           if (
             child !== element &&
             (child.dataset.designAssetRef ||
               child.dataset.designSlot ||
               child.dataset.designLayer ||
               definitionNames.has(child.dataset.designComponent ?? ''))
-          )
+          ) {
             return;
+          }
+
           const semanticOwner = child.dataset.designTextStyleRef ? child : owner;
           child.childNodes.forEach((nested) => visit(nested, semanticOwner));
         };
+
         if (separator !== undefined) {
           const children = Array.from(element.children).filter(
             (child): child is HTMLElement =>
@@ -756,24 +895,43 @@ async function extract(): Promise<CapturedProjectIR> {
           const visibleChildren = Array.from(element.children).filter(
             (child) => !isExcludedFromVisualCapture(child),
           );
-          if (children.length !== visibleChildren.length) return undefined;
-          for (const child of children) appendText(child.textContent ?? '', child);
+          if (children.length !== visibleChildren.length) {
+            return undefined;
+          }
+
+          for (const child of children) {
+            appendText(child.textContent ?? '', child);
+          }
         } else {
           element.childNodes.forEach((node) => visit(node, element));
         }
-        if (!fragments.length) return undefined;
+
+        if (!fragments.length) {
+          return undefined;
+        }
+
         let content = '';
         const runs = fragments.flatMap((child, index) => {
           let normalized = child.text.replace(/\s+/g, ' ');
-          if (separator !== undefined) normalized = normalized.trim();
-          else {
-            if (!content) normalized = normalized.replace(/^ /, '');
-            if (content.endsWith(' ') && normalized.startsWith(' '))
+          if (separator !== undefined) {
+            normalized = normalized.trim();
+          } else {
+            if (!content) {
+              normalized = normalized.replace(/^ /, '');
+            }
+
+            if (content.endsWith(' ') && normalized.startsWith(' ')) {
               normalized = normalized.slice(1);
+            }
           }
-          if (index && separator !== undefined) content += separator;
+
+          if (index && separator !== undefined) {
+            content += separator;
+          }
+
           const start = content.length;
           content += normalized;
+
           return normalized
             ? [
                 {
@@ -788,11 +946,15 @@ async function extract(): Promise<CapturedProjectIR> {
         if (separator === undefined && content.endsWith(' ')) {
           content = content.slice(0, -1);
           const lastRun = runs.at(-1);
-          if (lastRun) lastRun.end = content.length;
+          if (lastRun) {
+            lastRun.end = content.length;
+          }
         }
+
         const semanticRuns = runs.filter(
           (run) => run.end > run.start && (run.textStyleRef ?? run.colorRef),
         );
+
         return {
           kind: 'text',
           text: content,
@@ -814,7 +976,10 @@ async function extract(): Promise<CapturedProjectIR> {
 
       const assetOf = (element: HTMLElement): BrowserAsset | undefined => {
         const assetRef = element.dataset.designAssetRef;
-        if (!assetRef) return undefined;
+        if (!assetRef) {
+          return undefined;
+        }
+
         return {
           kind: 'asset',
           assetRef,
@@ -834,6 +999,7 @@ async function extract(): Promise<CapturedProjectIR> {
           (definition) => definition.component === parent.dataset.designComponent,
         );
         const fixedCanvasChild = parentDefinition?.figma?.root?.layoutMode === 'NONE';
+
         return {
           ...pick(getComputedStyle(parent), textProperties),
           width: `${rect.width}px`,
@@ -875,13 +1041,18 @@ async function extract(): Promise<CapturedProjectIR> {
           'rgba(0, 0, 0, 0)',
           'rgba(0, 0, 0, 0.0)',
         ]).has(style.backgroundColor.trim().toLowerCase());
+
         return hasPadding || hasBorder || hasBackground;
       };
+
       const boxedTextFlowOf = (
         element: HTMLElement,
         textFlow: BrowserNestedLayer,
       ): BrowserNestedLayer => {
-        if (!('kind' in textFlow) || textFlow.kind !== 'text') return textFlow;
+        if (!('kind' in textFlow) || textFlow.kind !== 'text') {
+          return textFlow;
+        }
+
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         const numeric = (value: string) => Number.parseFloat(value) || 0;
@@ -913,6 +1084,7 @@ async function extract(): Promise<CapturedProjectIR> {
           widthSizing: textFlow.style.widthSizing === 'fixed' ? 'fixed' : 'fill',
           heightSizing: 'hug',
         };
+
         return {
           kind: 'element',
           name:
@@ -925,6 +1097,7 @@ async function extract(): Promise<CapturedProjectIR> {
           children: [{ ...textFlow, identity: undefined, style: textStyle }],
         };
       };
+
       const nestedLayersOf = (
         container: HTMLElement,
         slotOwner?: {
@@ -935,6 +1108,7 @@ async function extract(): Promise<CapturedProjectIR> {
         Array.from(container.childNodes).flatMap((node): BrowserNestedLayer[] => {
           if (node.nodeType === Node.TEXT_NODE) {
             const content = node.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+
             return content
               ? [
                   {
@@ -947,9 +1121,16 @@ async function extract(): Promise<CapturedProjectIR> {
                 ]
               : [];
           }
-          if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return [];
+
+          if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) {
+            return [];
+          }
+
           const element = node as HTMLElement;
-          if (isExcludedFromVisualCapture(element)) return [];
+          if (isExcludedFromVisualCapture(element)) {
+            return [];
+          }
+
           const slotName = element.dataset.designSlot;
           if (slotName && slotOwner?.slots[slotName] && belongsTo(element, slotOwner.root)) {
             return [
@@ -960,27 +1141,38 @@ async function extract(): Promise<CapturedProjectIR> {
               },
             ];
           }
+
           if (getComputedStyle(element).display === 'contents') {
             return nestedLayersOf(element, slotOwner);
           }
+
           const asset = assetOf(element);
-          if (asset) return [asset];
+          if (asset) {
+            return [asset];
+          }
+
           const textFlow = textFlowOf(element);
-          if (textFlow)
+          if (textFlow) {
             return [
               hasTextBoxPresentation(element) ? boxedTextFlowOf(element, textFlow) : textFlow,
             ];
+          }
+
           if (definitionNames.has(element.dataset.designComponent ?? '')) {
             return [nestedComponentOf(element)];
           }
+
           let children = nestedLayersOf(element, slotOwner);
           if (
             !children.length &&
             (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)
           ) {
             const content = element.value || element.placeholder;
-            if (content) children = [{ kind: 'text', text: content, style: text(element) }];
+            if (content) {
+              children = [{ kind: 'text', text: content, style: text(element) }];
+            }
           }
+
           return [
             {
               kind: 'element',
@@ -1007,7 +1199,10 @@ async function extract(): Promise<CapturedProjectIR> {
           const childSlotNode = Array.from(
             child.querySelectorAll<HTMLElement>(`[data-design-slot="${childSlotName}"]`),
           ).find((candidate) => belongsTo(candidate, child));
-          if (!childSlotNode) continue;
+          if (!childSlotNode) {
+            continue;
+          }
+
           if (childSlot.kind === 'text') {
             childSlots[childSlotName] = childSlotNode.textContent?.trim() ?? '';
             // The host component's computed font is not necessarily the font of
@@ -1017,6 +1212,7 @@ async function extract(): Promise<CapturedProjectIR> {
             textSlotStyles[childSlotName] = text(childSlotNode);
             continue;
           }
+
           if (childSlot.kind === 'asset-swap') {
             const assetNode = childSlotNode.dataset.designAssetRef
               ? childSlotNode
@@ -1032,8 +1228,10 @@ async function extract(): Promise<CapturedProjectIR> {
                 },
               };
             }
+
             continue;
           }
+
           if (childSlot.kind === 'slot' || childSlot.kind === 'container') {
             const richText = textFlowOf(childSlotNode);
             childSlots[childSlotName] = {
@@ -1052,6 +1250,7 @@ async function extract(): Promise<CapturedProjectIR> {
             };
           }
         }
+
         return {
           componentRef,
           identity: identityOf(child),
@@ -1066,7 +1265,10 @@ async function extract(): Promise<CapturedProjectIR> {
       }
 
       const componentHostedSlotProjectionOf = (slot: HTMLElement) => {
-        if (!definitionNames.has(slot.dataset.designComponent ?? '')) return undefined;
+        if (!definitionNames.has(slot.dataset.designComponent ?? '')) {
+          return undefined;
+        }
+
         const style = box(slot);
         // The runtime component and the public slot may intentionally share one
         // DOM host. Figma still needs a physical slot wrapper, so the wrapper
@@ -1098,6 +1300,7 @@ async function extract(): Promise<CapturedProjectIR> {
           outlineStyle: 'none',
           opacity: '1',
         });
+
         return {
           style,
           children: [nestedComponentOf(slot)],
@@ -1107,8 +1310,10 @@ async function extract(): Promise<CapturedProjectIR> {
 
       const colors = registry.colorTokens.map((token) => {
         const value = colorValueByToken.get(token.stableId);
-        if (!value)
+        if (!value) {
           throw new Error(`Could not resolve ${token.stableId} from ${token.cssVariable}`);
+        }
+
         return { stableId: token.stableId, name: token.name, value };
       });
 
@@ -1118,6 +1323,7 @@ async function extract(): Promise<CapturedProjectIR> {
         ),
       ).map((node) => {
         const computed = getComputedStyle(node);
+
         return {
           kind: 'text-style' as const,
           stableId: node.dataset.designTextStyleRef!,
@@ -1137,7 +1343,10 @@ async function extract(): Promise<CapturedProjectIR> {
         document.querySelectorAll<HTMLElement>('[data-design-asset-capture]'),
       ).map((capture) => {
         const svg = capture.querySelector<SVGSVGElement>('svg[data-design-asset-ref]');
-        if (!svg) throw new Error('Asset capture is missing its SVG source');
+        if (!svg) {
+          throw new Error('Asset capture is missing its SVG source');
+        }
+
         const style = getComputedStyle(svg);
         const rect = svg.getBoundingClientRect();
         const serialized = svg.cloneNode(true) as SVGSVGElement;
@@ -1145,22 +1354,34 @@ async function extract(): Promise<CapturedProjectIR> {
         const serializedNodes = [serialized, ...serialized.querySelectorAll<SVGElement>('*')];
         for (const [index, sourceNode] of sourceNodes.entries()) {
           const serializedNode = serializedNodes[index];
-          if (!serializedNode) continue;
+          if (!serializedNode) {
+            continue;
+          }
+
           // Figma's SVG parser has no access to the page's CSS variables. Resolve
           // authored presentation attributes while they are still in the DOM;
           // this is generic for any semantic-token-driven SVG asset.
           for (const property of ['color', 'fill', 'stroke', 'stop-color'] as const) {
             const authored = serializedNode.getAttribute(property);
-            if (!authored?.includes('var(')) continue;
+            if (!authored?.includes('var(')) {
+              continue;
+            }
+
             const resolved = getComputedStyle(sourceNode).getPropertyValue(property).trim();
-            if (resolved) serializedNode.setAttribute(property, resolved);
+            if (resolved) {
+              serializedNode.setAttribute(property, resolved);
+            }
           }
         }
+
         for (const node of [serialized, ...serialized.querySelectorAll('*')]) {
           for (const attribute of [...node.attributes]) {
-            if (attribute.name.startsWith('data-design-')) node.removeAttribute(attribute.name);
+            if (attribute.name.startsWith('data-design-')) {
+              node.removeAttribute(attribute.name);
+            }
           }
         }
+
         serialized.removeAttribute('class');
         serialized.setAttribute('width', String(rect.width));
         serialized.setAttribute('height', String(rect.height));
@@ -1169,6 +1390,7 @@ async function extract(): Promise<CapturedProjectIR> {
         if (representation !== 'svg' && representation !== 'svg-mask') {
           throw new Error(`Asset ${svg.dataset.designAssetRef} has no supported representation`);
         }
+
         return {
           kind: 'asset' as const,
           stableId: svg.dataset.designAssetRef!,
@@ -1202,10 +1424,13 @@ async function extract(): Promise<CapturedProjectIR> {
                   ? slotCandidates[0]
                   : slotCandidates.find((candidate) => belongsTo(candidate, root));
               if (!slot) {
-                if (slotSpec.required)
+                if (slotSpec.required) {
                   throw new Error(`${definition.component} is missing required slot ${slotName}`);
+                }
+
                 return [slotName, undefined];
               }
+
               if (slotSpec.kind === 'text') {
                 return [
                   slotName,
@@ -1219,11 +1444,13 @@ async function extract(): Promise<CapturedProjectIR> {
                   },
                 ];
               }
+
               if (slotSpec.kind === 'asset-swap') {
                 const assetNode = slot.dataset.designAssetRef
                   ? slot
                   : slot.querySelector<HTMLElement>('[data-design-asset-ref]');
                 const asset = assetNode && assetOf(assetNode);
+
                 return [
                   slotName,
                   asset
@@ -1239,11 +1466,15 @@ async function extract(): Promise<CapturedProjectIR> {
                     : undefined,
                 ];
               }
+
               const componentHostedSlot = componentHostedSlotProjectionOf(slot);
-              if (componentHostedSlot)
+              if (componentHostedSlot) {
                 return [slotName, { kind: slotSpec.kind, ...componentHostedSlot }];
+              }
+
               const slotStyle = box(slot);
               const richText = textFlowOf(slot);
+
               return [
                 slotName,
                 {
@@ -1258,6 +1489,7 @@ async function extract(): Promise<CapturedProjectIR> {
             }),
           ) as ComponentCaptureIR['slots'];
           const stableValues = definition.variantProperties.map((name) => String(properties[name]));
+
           return {
             stableId: `${definition.component}/${stableValues.join('/')}`,
             sourceId: root.dataset.designSourceId ?? stableValues.join('-'),
@@ -1267,6 +1499,7 @@ async function extract(): Promise<CapturedProjectIR> {
             root: box(root),
             bindings: (() => {
               const semantic = semanticBindingsOf(root);
+
               return {
                 background:
                   resolveBinding(definition.bindings?.background, properties) ??
@@ -1286,6 +1519,7 @@ async function extract(): Promise<CapturedProjectIR> {
       }
 
       colorProbe.remove();
+
       return {
         kind: 'design-system' as const,
         schemaVersion: 4 as const,
@@ -1317,6 +1551,7 @@ async function extract(): Promise<CapturedProjectIR> {
       ...collectCssProjectionDiagnostics(captured.components, captured.resources),
     ];
     stripDiagnosticOnlyStyleProperties(captured.components, captured.resources);
+
     return {
       ...captured,
       diagnostics: diagnostics.filter(
@@ -1337,7 +1572,10 @@ async function extract(): Promise<CapturedProjectIR> {
 
 let vite: ChildProcess | undefined;
 try {
-  if (!process.env.NEVO_CAPTURE_URL) vite = startVite();
+  if (!process.env.NEVO_CAPTURE_URL) {
+    vite = startVite();
+  }
+
   await waitForServer(baseUrl);
   const captured = await extract();
   const outputByProfile = JSON.parse(
@@ -1350,7 +1588,10 @@ try {
   const writes: Promise<void>[] = [];
   for (const profile of captured.profiles) {
     const outputs = outputByProfile[profile.id];
-    if (!outputs) continue;
+    if (!outputs) {
+      continue;
+    }
+
     const { componentRoots, screenRoots } = selectExportProfileRoots(captured.definitions, profile);
     if (outputs.design && componentRoots.length) {
       const designIR: DesignSystemIR = {
@@ -1383,6 +1624,7 @@ try {
         `Prepared ${count} ${profile.displayName} component captures for ${outputs.design}`,
       );
     }
+
     if (outputs.screens && screenRoots.length) {
       const screensIR: ScreensIR = {
         kind: 'screens',
@@ -1415,6 +1657,7 @@ try {
       );
     }
   }
+
   await Promise.all(writes);
 } finally {
   vite?.kill();

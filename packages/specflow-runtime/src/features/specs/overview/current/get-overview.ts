@@ -33,6 +33,7 @@ export async function getCurrentOverview(
   ) {
     sections.push('unknown');
   }
+
   const items = candidates.filter((item) => sections.includes(item.classification.section));
 
   return {
@@ -51,6 +52,7 @@ function toOverviewItem(spec: CurrentSpecRecord): CurrentSpecOverviewItem {
     ...(spec.pullRequests === undefined ? {} : { pullRequests: [...spec.pullRequests] }),
     ...(spec.tags === undefined ? {} : { tags: [...spec.tags] }),
     updatedAt: spec.updatedAt,
+    ...(spec.status === undefined ? {} : { status: spec.status }),
     progress: spec.progress,
     classification: classifyCurrentSpec(spec),
     signals: spec.signals?.map((signal) => ({ ...signal })) ?? null,

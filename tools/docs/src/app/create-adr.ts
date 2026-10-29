@@ -26,7 +26,9 @@ export interface CreateAdrResult {
  */
 export function createAdr(repo: DocRepository, input: CreateAdrInput): CreateAdrResult {
   const preProblems = collectCorpusProblems(repo.scan());
-  if (preProblems.length) throw new CorpusInvalidError(preProblems);
+  if (preProblems.length) {
+    throw new CorpusInvalidError(preProblems);
+  }
 
   const plan = planNewAdr({ title: input.title, filenames: repo.adrFilenames(), date: input.date });
 
@@ -40,9 +42,11 @@ export function createAdr(repo: DocRepository, input: CreateAdrInput): CreateAdr
   const problems = collectCorpusProblems(scan);
   if (problems.length) {
     repo.removeDoc(plan.file);
+
     throw new CorpusInvalidError(problems);
   }
 
   repo.writeIndex(buildIndex(scan.docs));
+
   return { plan, written: true, indexRegenerated: true };
 }

@@ -15,6 +15,7 @@ export function SpecsOverviewNotice({
   readonly onRetry: () => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <Alert
       role="alert"

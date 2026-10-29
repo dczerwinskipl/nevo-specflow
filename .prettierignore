@@ -17,3 +17,6 @@ pnpm-lock.yaml
 
 # Local scratch area (git-ignored)
 .local/
+
+# Default definitions shipped as seeds: template bytes are golden-tested, so the files are not reformatted
+packages/specflow-engine/definitions/

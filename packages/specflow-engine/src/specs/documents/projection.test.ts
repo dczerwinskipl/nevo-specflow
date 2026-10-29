@@ -2,7 +2,15 @@ import { Value } from 'typebox/value';
 import { DocumentTreeSchema } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
-import { deriveUnclassifiedDocumentId } from './document-ids';
+import { deriveUnclassifiedDocumentId } from '../document-rules/document-ids';
+import {
+  buildJournal,
+  TEST_LATER,
+  TEST_SLUG,
+  TEST_SPEC_ID,
+  TEST_WORKSPACE_ID,
+} from './changes/test-support';
+import { deriveCommitView, type OperationPaths } from './reads/commit-model';
 import {
   computeTreeRevision,
   projectDocumentTree,
@@ -10,7 +18,7 @@ import {
   type TreeProjectionInput,
 } from './projection';
 
-const NOT_IMPLEMENTED = { available: false, reason: 'not-implemented' };
+const AVAILABLE = { available: true };
 
 function file(path: string, overrides: Partial<ObservedFile> = {}): ObservedFile {
   return {
@@ -73,19 +81,22 @@ describe('projectDocumentTree', () => {
     expect(overview.protected).toBe(true);
     for (const name of ['rename', 'move', 'delete'] as const) {
       expect(overview.actions[name]).toEqual({ available: false, reason: 'protected' });
-      expect(behaviour.actions[name]).toEqual(NOT_IMPLEMENTED);
+      expect(behaviour.actions[name]).toEqual(AVAILABLE);
     }
+
     expect(behaviour.protected).toBe(false);
   });
 
-  it('reports every write action and capability as not-implemented until the write operations exist', () => {
+  it('offers every write action and capability of an active Specification with nothing in flight', () => {
     const tree = projectDocumentTree(input());
-    expect(tree.capabilities.createFile).toEqual(NOT_IMPLEMENTED);
-    expect(tree.capabilities.createFolder).toEqual(NOT_IMPLEMENTED);
-    expect(tree.capabilities.import).toEqual(NOT_IMPLEMENTED);
-    expect(tree.capabilities.classify).toEqual(NOT_IMPLEMENTED);
-    // busy and commit-blocked are emitted by write operations only.
-    expect(JSON.stringify(tree)).not.toMatch(/"(busy|commit-blocked)"/u);
+    expect(tree.capabilities.createFile).toEqual(AVAILABLE);
+    expect(tree.capabilities.createFolder).toEqual(AVAILABLE);
+    expect(tree.capabilities.import).toEqual(AVAILABLE);
+    expect(tree.capabilities.classify).toEqual(AVAILABLE);
+    const behaviour = tree.documents.find((document) => document.id === 'behaviour')!;
+    expect(behaviour.actions.save).toEqual(AVAILABLE);
+    expect(JSON.stringify(tree)).not.toMatch(/"(busy|commit-blocked|not-implemented)"/u);
+    expect(tree.commits).toEqual({ pending: 0, failed: 0, recoveryRequired: 0, uncommitted: 0 });
   });
 
   it('never reports a registered document as classifiable and gives no reason for it', () => {
@@ -102,7 +113,7 @@ describe('projectDocumentTree', () => {
     expect(hand.id.startsWith('u-')).toBe(true);
     expect(hand.classification).toBe('unclassified');
     expect(hand.type).toBeUndefined();
-    expect(hand.actions.classify).toEqual(NOT_IMPLEMENTED);
+    expect(hand.actions.classify).toEqual(AVAILABLE);
     expect(hand.satisfiesRequirement).toBe(false);
     expect(tree.issues).toContainEqual({ code: 'unclassified', path: 'notes/Idea.MD' });
     expect(tree.folders.map((folder) => folder.path)).toEqual(['', 'notes']);
@@ -115,7 +126,7 @@ describe('projectDocumentTree', () => {
         id: 'behaviour',
         path: 'behaviour.md',
         type: 'behaviour',
-        actions: { delete: NOT_IMPLEMENTED },
+        actions: { delete: AVAILABLE },
       },
     ]);
     expect(tree.completeness.complete).toBe(false);
@@ -185,7 +196,11 @@ describe('projectDocumentTree', () => {
       expect(document.actions.classify).toEqual(archived);
       expect(document.actions.delete).toEqual(archived);
     }
-    for (const folder of tree.folders) expect(folder.actions.delete).toEqual(archived);
+
+    for (const folder of tree.folders) {
+      expect(folder.actions.delete).toEqual(archived);
+    }
+
     expect(tree.capabilities.createFile).toEqual(archived);
     expect(tree.capabilities.classify).toEqual(archived);
   });
@@ -194,7 +209,7 @@ describe('projectDocumentTree', () => {
     const tree = projectDocumentTree(input({ files: [file('overview.md'), file('a/b/c.md')] }));
     expect(tree.folders.map((folder) => folder.path)).toEqual(['', 'a', 'a/b']);
     expect(tree.folders[0]!.actions.delete).toEqual({ available: false, reason: 'root' });
-    expect(tree.folders[1]!.actions.rename).toEqual(NOT_IMPLEMENTED);
+    expect(tree.folders[1]!.actions.rename).toEqual(AVAILABLE);
   });
 
   it('adds explicit empty folders to the derived ones', () => {
@@ -383,5 +398,93 @@ describe('computeTreeRevision', () => {
     expect(computeTreeRevision(manifest, [{ path: 'a', revision: 'b:c' }])).not.toBe(
       computeTreeRevision(manifest, [{ path: 'a:b', revision: 'c' }]),
     );
+  });
+});
+
+describe('the open commits in the tree', () => {
+  const at = (name: string): string => `specs/active/${TEST_SLUG}/${name}`;
+  function commits(...journals: OperationPaths[]) {
+    return deriveCommitView({
+      specId: TEST_SPEC_ID,
+      workspaceId: TEST_WORKSPACE_ID,
+      directory: `specs/active/${TEST_SLUG}`,
+      journals,
+      batches: [],
+      unreadable: 0,
+      now: Date.parse(TEST_LATER),
+    });
+  }
+
+  it('puts the marker on the covered document and the summary on the tree', () => {
+    const tree = projectDocumentTree(
+      input({
+        commits: commits({
+          journal: buildJournal('commit-failed', { reason: 'detached' }),
+          paths: [at('behaviour.md')],
+        }),
+      }),
+    );
+    expect(Value.Check(DocumentTreeSchema, tree)).toBe(true);
+    const behaviour = tree.documents.find((document) => document.id === 'behaviour')!;
+    const overview = tree.documents.find((document) => document.id === 'overview')!;
+    expect(behaviour.commit).toMatchObject({ state: 'failed', reason: 'detached' });
+    expect(overview.commit).toBeUndefined();
+    expect(tree.commits).toEqual({
+      pending: 0,
+      failed: 1,
+      recoveryRequired: 0,
+      uncommitted: 0,
+    });
+  });
+
+  it('refuses every write with commit-blocked while a failed commit names a checkout blocker', () => {
+    const tree = projectDocumentTree(
+      input({
+        commits: commits({
+          journal: buildJournal('commit-failed', { reason: 'detached' }),
+          paths: [at('behaviour.md')],
+        }),
+      }),
+    );
+    const blocked = { available: false, reason: 'commit-blocked' };
+    expect(tree.capabilities.createFile).toEqual(blocked);
+    expect(tree.documents[0]!.actions.save).toEqual(blocked);
+    expect(tree.folders[0]!.actions.rename).toEqual({ available: false, reason: 'root' });
+  });
+
+  it('reports busy with the retry hint on the paths a write holds, and on nothing else', () => {
+    const tree = projectDocumentTree(
+      input({
+        commits: commits({
+          journal: buildJournal('files-writing'),
+          paths: [at('behaviour.md')],
+        }),
+      }),
+    );
+    const behaviour = tree.documents.find((document) => document.id === 'behaviour')!;
+    const overview = tree.documents.find((document) => document.id === 'overview')!;
+    expect(behaviour.actions.save).toEqual({
+      available: false,
+      reason: 'busy',
+      retryAfterMs: 1000,
+    });
+    expect(behaviour.actions.rename.reason).toBe('busy');
+    expect(overview.actions.save).toEqual({ available: true });
+    // The overview stays protected for the actions that protection refuses first.
+    expect(overview.actions.delete).toEqual({ available: false, reason: 'protected' });
+    expect(tree.capabilities.createFile).toEqual({ available: true });
+  });
+
+  it('changes the revision with each state of a commit and with nothing about its age', () => {
+    const revisionOf = (...journals: OperationPaths[]): string =>
+      projectDocumentTree(input({ commits: commits(...journals) })).revision;
+    const path = [at('behaviour.md')];
+    const none = revisionOf();
+    const queued = revisionOf({ journal: buildJournal('queued'), paths: path });
+    const failed = revisionOf({ journal: buildJournal('commit-failed'), paths: path });
+    const recovery = revisionOf({ journal: buildJournal('recovery-required'), paths: path });
+    expect(new Set([none, queued, failed, recovery]).size).toBe(4);
+    expect(revisionOf({ journal: buildJournal('queued'), paths: path })).toBe(queued);
+    expect(projectDocumentTree(input()).revision).toBe(none);
   });
 });

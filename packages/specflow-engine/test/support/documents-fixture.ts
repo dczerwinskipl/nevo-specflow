@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
@@ -9,25 +7,11 @@ import {
   createSpecificationForTesting,
   type SpecFlowEngine,
 } from '../../src/testing';
-import { DocumentError } from '../../src/specs/documents/errors';
+import { DocumentError } from '../../src/specs/document-rules/errors';
 import { createGitTestProject } from './git-project';
 import { writeSpecificationManifestFixture } from './manifest-fixture';
 
 const roots: string[] = [];
-
-/** Whether this process may create symbolic links (Windows needs a privilege or Developer Mode). */
-export const SYMLINKS_AVAILABLE: boolean = (() => {
-  const dir = mkdtempSync(join(tmpdir(), 'specflow-symlink-probe-'));
-  try {
-    writeFileSync(join(dir, 'target'), 'x');
-    symlinkSync(join(dir, 'target'), join(dir, 'link'), 'file');
-    return true;
-  } catch {
-    return false;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-})();
 
 /** Remember a directory for {@link removeTrackedRoots} (call it from `afterEach`). */
 export function trackRoot(path: string): void {
@@ -52,6 +36,7 @@ export interface DocumentsFixture {
 export async function documentsProject(config = GIT_OFF): Promise<DocumentsFixture> {
   const root = await createGitTestProject('specflow-documents-', config);
   roots.push(root, root + '-worktrees');
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -65,6 +50,7 @@ export async function createdFeature(fixture: DocumentsFixture) {
     optionalDocumentIds: ['behaviour', 'ux', 'backend'],
     target: { kind: 'existing', workspaceId: fixture.engine.workspace.workspaceId },
   });
+
   return { ...created, dir: join(fixture.root, 'specs', 'active', created.slug) };
 }
 
@@ -94,6 +80,7 @@ export async function handBuiltSpecification(
     await mkdir(join(dir, ...path.split('/').slice(0, -1)), { recursive: true });
     await writeFile(join(dir, ...path.split('/')), content);
   }
+
   return { specId: written.specId, dir };
 }
 
@@ -104,6 +91,7 @@ export async function failure(promise: Promise<unknown>): Promise<unknown> {
   } catch (error) {
     return error;
   }
+
   throw new Error('Expected the operation to fail.');
 }
 

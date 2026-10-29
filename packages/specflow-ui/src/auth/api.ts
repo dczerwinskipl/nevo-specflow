@@ -29,7 +29,10 @@ export function createBrowserAuthApi(client: HttpClient): AuthApi {
 }
 
 export function authErrorCode(error: unknown): string | undefined {
-  if (!isHttpClientError(error) || !isErrorPayload(error.data)) return undefined;
+  if (!isHttpClientError(error) || !isErrorPayload(error.data)) {
+    return undefined;
+  }
+
   return error.data.error;
 }
 

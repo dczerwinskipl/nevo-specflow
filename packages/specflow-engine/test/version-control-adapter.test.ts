@@ -47,6 +47,7 @@ async function project() {
   );
   git(root, 'branch', 'develop');
   const engine = await bootstrapProjectHome(root);
+
   return { root, engine, worktrees: openVersionControl(engine).worktrees };
 }
 
@@ -65,7 +66,10 @@ describe('internal Git worktree adapter (VC02)', () => {
   });
 
   it('accepts any reserved parent outside the repository (even a different-case sibling) but rejects targets inside it without Git or FS effects', async () => {
-    if (process.platform === 'win32') return;
+    if (process.platform === 'win32') {
+      return;
+    }
+
     const { root, worktrees } = await project();
     const plan = await worktrees.plan({ slug: 'case-proof', shortId: '1234abcd' });
     const refsBefore = git(root, 'for-each-ref', '--format=%(refname)', 'refs/heads');
@@ -89,6 +93,7 @@ describe('internal Git worktree adapter (VC02)', () => {
         code: 'WORKTREE_PATH_CONFLICT',
       });
     }
+
     await expect(lstat(join(root, 'inside'))).rejects.toMatchObject({ code: 'ENOENT' });
     expect(git(root, 'for-each-ref', '--format=%(refname)', 'refs/heads')).toBe(refsBefore);
     expect(git(root, 'worktree', 'list', '--porcelain')).toBe(worktreesBefore);
@@ -111,6 +116,7 @@ describe('internal Git worktree adapter (VC02)', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+
     expect(git(root, 'branch', '--list')).toBe(refsBefore);
   });
 
@@ -127,6 +133,7 @@ describe('internal Git worktree adapter (VC02)', () => {
     } finally {
       await rename(moved, gitMetadata);
     }
+
     await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\ngit:\n  enabled: maybe\n');
     await expect(worktrees.availability()).rejects.toMatchObject({ code: 'GIT_POLICY_INVALID' });
   });

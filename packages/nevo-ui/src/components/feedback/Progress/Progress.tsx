@@ -80,24 +80,38 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(function Progr
       ? normalizeProgressValue(input.completed, input.total)
       : normalizeProgressValue(input.value, input.max ?? 100);
   useEffect(() => {
-    if (!segmented || !element.current) return;
+    if (!segmented || !element.current) {
+      return;
+    }
+
     const node = element.current;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setWidth(entry.contentRect.width);
+      if (entry) {
+        setWidth(entry.contentRect.width);
+      }
     });
     observer.observe(node);
+
     return () => observer.disconnect();
   }, [segmented, valid]);
   const capture = useDesignMetadata('Progress', { size, variant });
-  if (!valid) return null;
+  if (!valid) {
+    return null;
+  }
+
   const showSegments = counts && fitsProgressSegments(width, counts.total);
 
   return (
     <div
       ref={(node) => {
         element.current = node;
-        if (typeof ref === 'function') return ref(node);
-        if (ref) ref.current = node;
+        if (typeof ref === 'function') {
+          return ref(node);
+        }
+
+        if (ref) {
+          ref.current = node;
+        }
       }}
       aria-valuemax={normalized.max}
       aria-valuemin={0}

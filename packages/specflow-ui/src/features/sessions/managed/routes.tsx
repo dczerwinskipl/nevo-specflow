@@ -27,6 +27,7 @@ function ManagedSessionRoute() {
   const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
   const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
   const owner = auth.status === 'ready' ? authSessionIdentity(auth.session) : 'unavailable';
+
   return (
     <AppWorkspaceProvider>
       <ManagedSession
@@ -38,6 +39,7 @@ function ManagedSessionRoute() {
     </AppWorkspaceProvider>
   );
 }
+
 function NewManagedSession() {
   const services = useAppServices();
   const subscribe = useCallback(
@@ -46,8 +48,13 @@ function NewManagedSession() {
   );
   const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
   const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
-  if (auth.status !== 'ready') return null;
+  if (auth.status !== 'ready') {
+    return null;
+  }
+
   const owner = authSessionIdentity(auth.session);
+
   return <CreateSession key={owner} owner={owner} api={services.managedSessionsApi} />;
 }
+
 export const managedSessionAppRoutes = [managedNewSessionRoute, managedSessionRoute] as const;

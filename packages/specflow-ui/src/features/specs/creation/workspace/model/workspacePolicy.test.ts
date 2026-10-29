@@ -67,8 +67,10 @@ const settingsSummary = (...args: Parameters<typeof rawSettingsSummary>) =>
   polishText(rawSettingsSummary(...args));
 const slugError = (value: string) => {
   const entry = rawSlugError(value);
+
   return entry ? polishText(entry) : undefined;
 };
+
 const specCountLabel = (count: number) => polishText(rawSpecCountLabel(count));
 const sharedUseNote = (count: number, place: 'workspace' | 'katalog') =>
   polishText(rawSharedUseNote(count, place === 'katalog' ? 'folder' : 'workspace'));
@@ -603,12 +605,13 @@ describe('operation diagnostics', () => {
 describe('integration target request semantics (explicit pin vs follow the project)', () => {
   const newTile = (patch: Partial<WorkspaceChoice> = {}) => choice({ tile: 'new', ...patch });
   it('switch off sends no integrationTargetWorkspaceId, whatever is remembered', () => {
-    for (const workspaceId of ['', ids.main, ids.platform])
+    for (const workspaceId of ['', ids.main, ids.platform]) {
       expect(buildCreateTarget(newTile({ target: { on: false, workspaceId } }), options())).toEqual(
         {
           kind: 'new-worktree',
         },
       );
+    }
   });
   it('switch on without a pick sends nothing and blocks Create with the footer prerequisite', () => {
     const pending = newTile({ target: { on: true, workspaceId: '' } });
@@ -626,11 +629,13 @@ describe('integration target request semantics (explicit pin vs follow the proje
     });
   });
   it('the target is independent of baseRef and never derived from a branch name', () => {
-    for (const ref of ['feature/platform', 'spec/architecture'])
+    for (const ref of ['feature/platform', 'spec/architecture']) {
       expect(buildCreateTarget(newTile({ base: { on: true, ref } }), options())).toEqual({
         kind: 'new-worktree',
         baseRef: ref,
       });
+    }
+
     const both = buildCreateTarget(
       newTile({
         base: { on: true, ref: 'feature/platform' },
@@ -686,6 +691,10 @@ describe('slug and branch defaults', () => {
     expect(branchPrefill(withId, 'a-b')).toBe('spec/a-b');
     expect(branchPrefill(o, 'a-b')).toBe('feature/a-b');
     expect(branchPrefill(o, '')).toBe('');
+    // The key is numbered at reservation: a named placeholder, never the raw pattern braces.
+    const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
+    expect(branchPreview(withKey, 'a-b')).toBe('feature/<key>-a-b');
+    expect(branchPrefill(withKey, 'a-b')).toBe('feature/a-b');
   });
   it('the effective slug follows the title until the owner edits it', () => {
     const on = choice({ slug: { on: true, value: '', edited: false } });

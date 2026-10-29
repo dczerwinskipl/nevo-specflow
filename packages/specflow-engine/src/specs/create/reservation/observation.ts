@@ -13,7 +13,10 @@ export async function followExistingCreateOperation(
 ): Promise<CreateJournal> {
   const deadline = Date.now() + OBSERVATION_TIMEOUT_MS;
   let record = await readCreateJournal(engine.context, operationId);
-  if (!record) throw recovery('Create journal disappeared during a concurrent operation.');
+  if (!record) {
+    throw recovery('Create journal disappeared during a concurrent operation.');
+  }
+
   while (
     record.stage !== 'completed' &&
     record.stage !== 'recovery-required' &&
@@ -21,9 +24,13 @@ export async function followExistingCreateOperation(
   ) {
     await sleep(OBSERVATION_POLL_MS);
     const current = await readCreateJournal(engine.context, operationId);
-    if (!current) throw recovery('Create journal disappeared during a concurrent operation.');
+    if (!current) {
+      throw recovery('Create journal disappeared during a concurrent operation.');
+    }
+
     record = current;
   }
+
   // Never resume mutable stages after observing a concurrent writer timeout.
   // The original writer may still be running (especially on Windows).
   return record;

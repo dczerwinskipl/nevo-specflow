@@ -130,11 +130,15 @@ const ScreenDataContext = createContext<ScreenResolvedData | null>(null);
 function ScreenDataHost({ entry, children }: PropsWithChildren<{ entry: SecondaryEntry }>) {
   const result = entry.definition.useData(entry.rootParams);
   const page = entry.definition.screens[entry.page];
-  if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  if (!page) {
+    throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  }
+
   const actions =
     result.status === 'ready'
       ? (page.actions?.({ data: result.data, params: entry.params }) ?? [])
       : [];
+
   return (
     <ScreenDataContext.Provider
       value={{ result, actions, actionLabels: page.actionLabels, menu: page.menu }}
@@ -146,7 +150,10 @@ function ScreenDataHost({ entry, children }: PropsWithChildren<{ entry: Secondar
 
 function useScreenData() {
   const resolved = useContext(ScreenDataContext);
-  if (!resolved) throw new Error('Secondary screen must be rendered inside ScreenDataHost');
+  if (!resolved) {
+    throw new Error('Secondary screen must be rendered inside ScreenDataHost');
+  }
+
   return resolved;
 }
 
@@ -154,7 +161,9 @@ function getActiveElement(): WorkspaceFocusTarget | null {
   if (typeof document === 'undefined' || !(document.activeElement instanceof HTMLElement)) {
     return null;
   }
+
   const element = document.activeElement;
+
   return {
     element,
     ariaLabel: element.getAttribute('aria-label'),
@@ -176,8 +185,12 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
   }
 
   const candidates = Array.from(document.querySelectorAll<HTMLElement>(target.tagName));
+
   return candidates.find((candidate) => {
-    if (!isInteractiveLayerElement(candidate)) return false;
+    if (!isInteractiveLayerElement(candidate)) {
+      return false;
+    }
+
     if (
       target.layerKey &&
       candidate.closest<HTMLElement>('[data-workspace-layer]')?.dataset.workspaceLayer !==
@@ -185,12 +198,22 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
     ) {
       return false;
     }
-    if (target.ariaLabel && candidate.getAttribute('aria-label') !== target.ariaLabel) return false;
-    if (target.name && candidate.getAttribute('name') !== target.name) return false;
+
+    if (target.ariaLabel && candidate.getAttribute('aria-label') !== target.ariaLabel) {
+      return false;
+    }
+
+    if (target.name && candidate.getAttribute('name') !== target.name) {
+      return false;
+    }
+
     if (!target.ariaLabel && !target.name) {
       const text = candidate.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-      if (text !== target.text) return false;
+      if (text !== target.text) {
+        return false;
+      }
     }
+
     return true;
   });
 }
@@ -215,12 +238,15 @@ function ScreenOutlet({
   } else if (result.status === 'unavailable' || result.status === 'access-denied') {
     lastReady.current = null;
   }
+
   const navigation = useMemo<ActiveScreenNavigation>(
     () => ({ flowId: flow.id, entryKey: entry.instanceKey, navigate, registerGuard }),
     [flow.id, entry.instanceKey, navigate, registerGuard],
   );
 
-  if (!screen) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  if (!screen) {
+    throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  }
 
   let notice: ReactNode = null;
   if (result.status === 'loading') {
@@ -270,7 +296,10 @@ function ScreenOutlet({
 function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
   const { result, actions, actionLabels, menu } = useScreenData();
   const page = entry.definition.screens[entry.page];
-  if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  if (!page) {
+    throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  }
+
   if (result.status !== 'ready' || !page.header) {
     return (
       <WorkspaceHeader
@@ -282,7 +311,9 @@ function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
       />
     );
   }
+
   const Header = page.header;
+
   return (
     <WorkspaceHeaderFrame
       actions={actions}
@@ -301,6 +332,7 @@ function CompactScreenActions({
   navigationAction?: WorkspaceHeaderAction;
 }) {
   const { actions, actionLabels, menu } = useScreenData();
+
   return (
     <CompactWorkspaceActions
       actions={actions}
@@ -319,7 +351,10 @@ function publicEntry(
   registerGuard: ActiveScreenNavigation['registerGuard'],
 ): WorkspaceSecondaryState {
   const page = entry.definition.screens[entry.page];
-  if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  if (!page) {
+    throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  }
+
   return {
     instanceKey: entry.instanceKey,
     surface: {
@@ -357,6 +392,7 @@ export function AppWorkspaceProvider({
     mounted.current = true;
     // The map is created once and only mutated: this is the instance to clear on unmount.
     const registeredGuards = guards.current;
+
     return () => {
       mounted.current = false;
       flowRef.current = null;
@@ -376,6 +412,7 @@ export function AppWorkspaceProvider({
       guards.current.clear();
       setFlow(null);
     }
+
     if (staleFlow || scopeChanged) {
       revision.current += 1;
       const revisionAtChange = revision.current;
@@ -389,27 +426,45 @@ export function AppWorkspaceProvider({
 
   const registerGuard = useCallback((entryKey: number, guard: LeaveGuard) => {
     guards.current.set(entryKey, guard);
+
     return () => {
-      if (guards.current.get(entryKey) === guard) guards.current.delete(entryKey);
+      if (guards.current.get(entryKey) === guard) {
+        guards.current.delete(entryKey);
+      }
     };
   }, []);
 
   const restoreFocus = useCallback(
     (target: WorkspaceFocusTarget | null, expectedKey: number | null) => {
-      if (!target || typeof requestAnimationFrame !== 'function') return;
+      if (!target || typeof requestAnimationFrame !== 'function') {
+        return;
+      }
+
       let attempts = 0;
       const tryFocus = () => {
-        if (!mounted.current) return;
+        if (!mounted.current) {
+          return;
+        }
+
         const active = flowRef.current?.entries.at(-1)?.instanceKey ?? null;
-        if (active !== expectedKey) return;
+        if (active !== expectedKey) {
+          return;
+        }
+
         const element = resolveFocusTarget(target);
         if (element) {
           element.focus();
-          if (document.activeElement === element) return;
+          if (document.activeElement === element) {
+            return;
+          }
         }
+
         attempts += 1;
-        if (attempts < 4) requestAnimationFrame(tryFocus);
+        if (attempts < 4) {
+          requestAnimationFrame(tryFocus);
+        }
       };
+
       requestAnimationFrame(tryFocus);
     },
     [],
@@ -420,6 +475,7 @@ export function AppWorkspaceProvider({
   const currentSurface = useCallback(
     (current: SecondaryFlow | null) => {
       const entry = current?.entries.at(-1);
+
       return current && entry
         ? publicEntry(current, entry, (...args) => navigateRef.current(...args), registerGuard)
         : null;
@@ -455,19 +511,24 @@ export function AppWorkspaceProvider({
       () => undefined,
       () => undefined,
     );
+
     return result;
   }, []);
 
   const passesGuard = useCallback(async (previous: SecondaryFlow | null) => {
     const key = previous?.entries.at(-1)?.instanceKey;
     const guard = key === undefined ? undefined : guards.current.get(key);
+
     return guard ? await guard() : true;
   }, []);
 
   const open = useCallback<WorkspaceContextValue['open']>(
     (definition, params) =>
       queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) return false;
+        if (!mounted.current || currentScope.current !== scopeKey) {
+          return false;
+        }
+
         const previous = flowRef.current?.scopeKey === scopeKey ? flowRef.current : null;
         if (
           !(await passesGuard(previous)) ||
@@ -476,11 +537,13 @@ export function AppWorkspaceProvider({
         ) {
           return false;
         }
+
         // Type erasure is confined to the infrastructure boundary; the public signature is typed.
         const runtime = definition as unknown as RuntimeDefinition;
         if (!runtime.screens[runtime.initial]) {
           throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
         }
+
         const entry: SecondaryEntry = {
           definition: runtime,
           rootParams: { ...params },
@@ -492,6 +555,7 @@ export function AppWorkspaceProvider({
         const next = startFlow(++counter.current, entry, scopeKey);
         guards.current.clear();
         publish(next, previous ? 'replace' : 'push', previous);
+
         return true;
       }),
     [passesGuard, publish, queue, scopeKey],
@@ -500,7 +564,10 @@ export function AppWorkspaceProvider({
   const navigate = useCallback<NavigationCommand>(
     (kind, flowId, entryKey, target) =>
       queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) return false;
+        if (!mounted.current || currentScope.current !== scopeKey) {
+          return false;
+        }
+
         const previous = flowRef.current;
         const current = previous?.entries.at(-1);
         if (
@@ -511,6 +578,7 @@ export function AppWorkspaceProvider({
         ) {
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
+
         if (
           !(await passesGuard(previous)) ||
           !mounted.current ||
@@ -518,25 +586,34 @@ export function AppWorkspaceProvider({
         ) {
           return false;
         }
+
         if (kind === 'close' || (kind === 'back' && previous.entries.length === 1)) {
           publish(null, 'close', previous);
           guards.current.clear();
           restoreFocus(previous.entries[0]?.returnFocusTo ?? null, null);
+
           return true;
         }
+
         if (kind === 'back') {
           const next = popEntry(previous);
           publish(next, 'pop', previous);
           guards.current.delete(current.instanceKey);
           restoreFocus(current.returnFocusTo, next?.entries.at(-1)?.instanceKey ?? null);
+
           return true;
         }
-        if (!target) throw new Error('Secondary navigation target is required.');
+
+        if (!target) {
+          throw new Error('Secondary navigation target is required.');
+        }
+
         const definition = target.kind === 'stack' ? target.definition : current.definition;
         const page = target.kind === 'stack' ? definition.initial : target.page;
         if (!definition.screens[page]) {
           throw new Error(`Unknown Secondary screen: ${page}`);
         }
+
         const nextEntry: SecondaryEntry = {
           definition,
           rootParams: target.kind === 'stack' ? { ...target.rootParams } : current.rootParams,
@@ -548,7 +625,10 @@ export function AppWorkspaceProvider({
         const next =
           kind === 'replace' ? replaceEntry(previous, nextEntry) : pushEntry(previous, nextEntry);
         publish(next, kind, previous);
-        if (kind === 'replace') guards.current.delete(current.instanceKey);
+        if (kind === 'replace') {
+          guards.current.delete(current.instanceKey);
+        }
+
         return true;
       }),
     [passesGuard, publish, queue, restoreFocus, scopeKey],
@@ -561,19 +641,24 @@ export function AppWorkspaceProvider({
   const back = useCallback(() => {
     const top = flowRef.current?.entries.at(-1);
     const id = flowRef.current?.id;
+
     return id && top ? navigate('back', id, top.instanceKey) : Promise.resolve(true);
   }, [navigate]);
 
   const close = useCallback(() => {
     const top = flowRef.current?.entries.at(-1);
     const id = flowRef.current?.id;
+
     return id && top ? navigate('close', id, top.instanceKey) : Promise.resolve(true);
   }, [navigate]);
 
   const canLeaveScope = useCallback(
     () =>
       queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) return false;
+        if (!mounted.current || currentScope.current !== scopeKey) {
+          return false;
+        }
+
         return passesGuard(flowRef.current);
       }),
     [queue, passesGuard, scopeKey],
@@ -610,6 +695,7 @@ export function AppWorkspaceProvider({
 export function useSecondaryNavigation() {
   const workspace = useWorkspace();
   const isOpen = workspace.secondaryDepth > 0;
+
   return useMemo(
     () => ({
       open: workspace.open,
@@ -627,7 +713,10 @@ export function useSecondaryStack<
   TPages extends { [K in keyof TPages]: object },
 >(): SecondaryStackActions<TPages> {
   const screen = useContext(ScreenNavigationContext);
-  if (!screen) throw new Error('useSecondaryStack must be used inside a Secondary screen');
+  if (!screen) {
+    throw new Error('useSecondaryStack must be used inside a Secondary screen');
+  }
+
   return useMemo(
     () => ({
       navTo: (pageOrStack: unknown, params?: object) => {
@@ -639,6 +728,7 @@ export function useSecondaryStack<
                 definition: pageOrStack as RuntimeDefinition,
                 rootParams: params ?? {},
               };
+
         return screen.navigate('push', screen.flowId, screen.entryKey, target);
       },
       replace: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
@@ -657,13 +747,19 @@ export function useSecondaryStack<
 /** Optional navigation guard. It protects the active page's unsaved edits. */
 export function useSecondaryLeaveGuard(guard: LeaveGuard) {
   const screen = useContext(ScreenNavigationContext);
-  if (!screen) throw new Error('useSecondaryLeaveGuard must be used inside a Secondary screen');
+  if (!screen) {
+    throw new Error('useSecondaryLeaveGuard must be used inside a Secondary screen');
+  }
+
   useEffect(() => screen.registerGuard(screen.entryKey, guard), [screen, guard]);
 }
 
 export function useWorkspace() {
   const workspace = useContext(WorkspaceContext);
-  if (!workspace) throw new Error('useWorkspace must be used within AppWorkspaceProvider');
+  if (!workspace) {
+    throw new Error('useWorkspace must be used within AppWorkspaceProvider');
+  }
+
   return workspace;
 }
 

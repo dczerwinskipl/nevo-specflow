@@ -30,7 +30,9 @@ export async function writeJsonAtomically(
       throw new Error('Refusing to overwrite a nonregular or symlinked state record.');
     }
   } catch (error) {
-    if (!isNodeError(error, 'ENOENT')) throw error;
+    if (!isNodeError(error, 'ENOENT')) {
+      throw error;
+    }
   }
 
   const staged = join(parent, `.${basename(path)}.${randomUUID()}.tmp`);

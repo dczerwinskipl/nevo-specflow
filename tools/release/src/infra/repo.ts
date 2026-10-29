@@ -24,6 +24,7 @@ export function findRepoRoot(start: string): string {
     if (!statSync(override, { throwIfNoEntry: false })?.isDirectory()) {
       throw new UsageError(`NEVO_RELEASE_REPO_ROOT is not a directory: ${override}`);
     }
+
     return override;
   }
 
@@ -31,10 +32,14 @@ export function findRepoRoot(start: string): string {
   for (;;) {
     try {
       readFileSync(join(dir, 'pnpm-workspace.yaml'));
+
       return dir;
     } catch {
       const parent = dirname(dir);
-      if (parent === dir) return start;
+      if (parent === dir) {
+        return start;
+      }
+
       dir = parent;
     }
   }
@@ -51,5 +56,6 @@ export function readWorkingVersion(repoRoot: string): VersionFile {
       { cause: err },
     );
   }
+
   return parseVersionFile(raw, 'version.json');
 }

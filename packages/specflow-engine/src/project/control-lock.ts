@@ -16,6 +16,18 @@ export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
 // Subscribers can profile contention without modifying the coordinated operation.
 const lockTimingChannel = channel('nevo.specflow.engine.control-lock');
 
+/**
+ * Lock files this process holds right now (path -> token). A takeover never clears one of them; it is
+ * how the operator command tells a lock this process holds from a leftover of an earlier process that
+ * had the same PID (containers restart with PID 1 again).
+ */
+const heldHere = new Map<string, string>();
+
+/** Whether this process holds the control lock of the Project Home at this moment. */
+export function holdsProjectControlLock(context: ResolvedProjectHome): boolean {
+  return heldHere.has(projectControlLockPath(context));
+}
+
 export type ProjectControlLockErrorCode =
   | 'CONTROL_LOCK_BUSY'
   | 'CONTROL_LOCK_CORRUPT'
@@ -71,20 +83,27 @@ export async function inspectProjectControlLock(
     if (!stat.isFile() || stat.isSymbolicLink()) {
       return { status: 'corrupt', reason: 'Control lock is not a regular file.' };
     }
+
     source = await readFileWindowsSafe(path);
   } catch (error) {
-    if (isNodeError(error, 'ENOENT')) return { status: 'free' };
+    if (isNodeError(error, 'ENOENT')) {
+      return { status: 'free' };
+    }
+
     throw error;
   }
+
   let value: unknown;
   try {
     value = JSON.parse(source) as unknown;
   } catch {
     return { status: 'corrupt', reason: 'Control lock metadata is incomplete or invalid.' };
   }
+
   if (!isLockRecord(value) || value.projectId !== context.project.projectId) {
     return { status: 'corrupt', reason: 'Control lock has invalid owner/project identity.' };
   }
+
   return { status: 'held', pid: value.pid, createdAt: value.createdAt };
 }
 
@@ -110,6 +129,7 @@ export async function withProjectControlLock<T>(
       'Project Home physical authority could not be pinned before acquiring control lock.',
     );
   }
+
   const dir = join(context.project.stateRoot, 'engine');
   await ensureSafeLockDirectory(context, dir);
   const path = projectControlLockPath(context);
@@ -131,6 +151,7 @@ export async function withProjectControlLock<T>(
   ) {
     throw new ProjectControlLockError('CONTROL_LOCK_INVALID_HOME', 'Invalid lock wait settings.');
   }
+
   const deadline = Date.now() + waitMs;
   const measuring = lockTimingChannel.hasSubscribers;
   const startedAt = measuring ? performance.now() : 0;
@@ -139,7 +160,10 @@ export async function withProjectControlLock<T>(
   while (true) {
     try {
       file = await open(path, 'wx', 0o600);
-      if (measuring) acquiredAt = performance.now();
+      if (measuring) {
+        acquiredAt = performance.now();
+      }
+
       break;
     } catch (error) {
       // Windows may report EPERM instead of EEXIST while another process
@@ -153,9 +177,13 @@ export async function withProjectControlLock<T>(
         (process.platform === 'win32' &&
           ['EPERM', 'EACCES', 'EBUSY'].some((code) => isNodeError(error, code)) &&
           ((await isExistingRegularLock(path)) || (await isMissingPath(path))));
-      if (!busy) throw error;
+      if (!busy) {
+        throw error;
+      }
+
       if (Date.now() >= deadline) {
         const inspected = await inspectProjectControlLock(context);
+
         throw new ProjectControlLockError(
           inspected.status === 'corrupt' ? 'CONTROL_LOCK_CORRUPT' : 'CONTROL_LOCK_BUSY',
           inspected.status === 'corrupt'
@@ -163,6 +191,7 @@ export async function withProjectControlLock<T>(
             : 'Another process owns the project control lock; retry after it settles.',
         );
       }
+
       await sleep(Math.min(retryMs, Math.max(1, deadline - Date.now())));
     }
   }
@@ -170,6 +199,7 @@ export async function withProjectControlLock<T>(
   try {
     // If killed between exclusive create and durable metadata publication, a
     // partial lock remains as recovery-required rather than becoming free.
+    heldHere.set(path, token);
     await file.writeFile(JSON.stringify(record) + '\n', 'utf8');
     await file.sync();
     await file.close();
@@ -183,6 +213,7 @@ export async function withProjectControlLock<T>(
           'Project Home or Git worktree identity changed while waiting for control lock.',
         );
       }
+
       return action();
     })().then(
       (value) => ({ success: true as const, value }),
@@ -194,7 +225,10 @@ export async function withProjectControlLock<T>(
       await releaseOwnedLock(path, token);
     } catch (error) {
       releaseFailure = error;
+    } finally {
+      heldHere.delete(path);
     }
+
     // Publish only after releasing the file; diagnostics must never break an operation.
     if (measuring) {
       try {
@@ -208,6 +242,7 @@ export async function withProjectControlLock<T>(
         // Diagnostic subscribers are untrusted observers, not lock participants.
       }
     }
+
     if (releaseFailure !== undefined) {
       if (!outcome.success) {
         throw new AggregateError(
@@ -215,17 +250,27 @@ export async function withProjectControlLock<T>(
           'Operation failed and its control lock could not be released safely.',
         );
       }
-      if (releaseFailure instanceof Error) throw releaseFailure;
+
+      if (releaseFailure instanceof Error) {
+        throw releaseFailure;
+      }
+
       throw new Error('Control lock release failed with a non-Error value.', {
         cause: releaseFailure,
       });
     }
-    if (!outcome.success) throw outcome.error;
+
+    if (!outcome.success) {
+      throw outcome.error;
+    }
+
     return outcome.value;
   } catch (error) {
     // A failed metadata write leaves a visible recovery artifact. Do not
     // silently unlink a possibly-published lock after an uncertain failure.
+    heldHere.delete(path);
     await file.close().catch(() => undefined);
+
     throw error;
   }
 }
@@ -233,6 +278,7 @@ export async function withProjectControlLock<T>(
 async function isMissingPath(path: string): Promise<boolean> {
   try {
     await lstat(path);
+
     return false;
   } catch (error) {
     return isNodeError(error, 'ENOENT');
@@ -248,9 +294,13 @@ async function isExistingRegularLock(path: string): Promise<boolean> {
         'Control lock is not a regular file. Explicit recovery is required.',
       );
     }
+
     return true;
   } catch (error) {
-    if (isNodeError(error, 'ENOENT')) return false;
+    if (isNodeError(error, 'ENOENT')) {
+      return false;
+    }
+
     throw error;
   }
 }
@@ -267,12 +317,14 @@ async function releaseOwnedLock(path: string, token: string): Promise<void> {
       'Control lock is unreadable; refusing to release an unknown owner.',
     );
   }
+
   if (!isLockRecord(existing) || existing.token !== token) {
     throw new ProjectControlLockError(
       'CONTROL_LOCK_OWNERSHIP_LOST',
       'Control lock ownership changed; refusing to release another writer.',
     );
   }
+
   await unlinkWindowsSafe(path);
 }
 
@@ -284,17 +336,22 @@ async function ensureSafeLockDirectory(context: ResolvedProjectHome, dir: string
       'Project state root must be a physical directory.',
     );
   }
+
   if ((await realpath(context.project.stateRoot)) !== context.project.stateRoot) {
     throw new ProjectControlLockError(
       'CONTROL_LOCK_INVALID_HOME',
       'Project state root changed or is redirected.',
     );
   }
+
   try {
     await mkdir(dir, { mode: 0o700 });
   } catch (error) {
-    if (!isNodeError(error, 'EEXIST')) throw error;
+    if (!isNodeError(error, 'EEXIST')) {
+      throw error;
+    }
   }
+
   const stat = await lstat(dir);
   if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(dir)) !== dir) {
     throw new ProjectControlLockError(
@@ -310,8 +367,10 @@ async function assertCurrentProjectHome(context: ResolvedProjectHome): Promise<v
       // Git-free mutation: on-disk evidence only (see request-verification-memo).
       await verifyProjectHomeOnDisk(context);
       await verifyCheckoutOnDisk(context, context.workspace.root);
+
       return;
     }
+
     const current = await resolveProjectHome({
       cwd: context.workspace.root,
       projectRoot: context.project.homeRoot,
@@ -327,7 +386,10 @@ async function assertCurrentProjectHome(context: ResolvedProjectHome): Promise<v
       );
     }
   } catch (error) {
-    if (error instanceof ProjectControlLockError) throw error;
+    if (error instanceof ProjectControlLockError) {
+      throw error;
+    }
+
     throw new ProjectControlLockError(
       'CONTROL_LOCK_INVALID_HOME',
       'Project Home cannot be revalidated before a coordinated mutation.',
@@ -336,8 +398,12 @@ async function assertCurrentProjectHome(context: ResolvedProjectHome): Promise<v
 }
 
 function isLockRecord(value: unknown): value is ControlLockRecord {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
   const obj = value as Record<string, unknown>;
+
   return (
     obj.version === 1 &&
     typeof obj.projectId === 'string' &&

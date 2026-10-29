@@ -21,6 +21,7 @@ export function reasonText(reason?: string): Message {
     `create.workspace.reason.${reasonSuffix(reason)}` as 'create.workspace.reason.other',
   );
 }
+
 /** The same reason phrased to continue a sentence (no leading capital). */
 export const reasonTextInline = (reason?: string): Message =>
   message(
@@ -54,6 +55,7 @@ export function specCountLabel(count: number): Message {
     ? message('create.workspace.specCountNone')
     : message('create.workspace.specCount', { count });
 }
+
 export const availableCountLabel = (count: number): Message =>
   message('create.workspace.availableCount', { count });
 /** Calm note that other specifications already use this place (shared changes and history). */
@@ -75,11 +77,25 @@ export function settingsSummary(
 ): Message {
   const overrides = createOverrides(choice, options, title);
   const names: Message[] = [];
-  if (overrides.baseRef) names.push(message('create.workspace.settings.nameBase'));
-  if (overrides.integrationTargetWorkspaceId)
+  if (overrides.baseRef) {
+    names.push(message('create.workspace.settings.nameBase'));
+  }
+
+  if (overrides.integrationTargetWorkspaceId) {
     names.push(message('create.workspace.settings.nameTarget'));
-  if (overrides.slug) names.push(message('create.workspace.settings.nameSlug'));
-  if (overrides.branch) names.push(message('create.workspace.settings.nameBranch'));
-  if (names.length === 0) return defaultSettingsSummary;
+  }
+
+  if (overrides.slug) {
+    names.push(message('create.workspace.settings.nameSlug'));
+  }
+
+  if (overrides.branch) {
+    names.push(message('create.workspace.settings.nameBranch'));
+  }
+
+  if (names.length === 0) {
+    return defaultSettingsSummary;
+  }
+
   return message('create.workspace.settings.changed', { count: names.length, names });
 }

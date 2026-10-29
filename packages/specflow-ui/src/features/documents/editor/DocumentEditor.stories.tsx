@@ -1,3 +1,8 @@
+import {
+  documentContentFixture,
+  saveResultFixture,
+} from '../../../../test-support/documents/fixtures';
+import type { SaveInput, SaveResult } from '@nevo/specflow-contracts/documents';
 import { useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -6,7 +11,6 @@ import { Button, WorkspaceHeader } from '@nevo/ui';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
-import type { DemoSaveInput } from '@nevo/specflow-contracts/demo';
 import { invokeDocumentAction } from './documentHeaderActions.stories-support';
 import { DocumentEditor } from './DocumentEditor';
 import { DocumentEditorProvider, useDocumentEditor } from './DocumentEditorProvider';
@@ -17,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 /** Mirrors the workspace header: title, unsaved marker and the actions the workspace places. */
 function DocumentHeader() {
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
+
   return (
     <WorkspaceHeader
       title="specification.md"
@@ -34,14 +39,15 @@ function DocumentHeader() {
     />
   );
 }
-const record = {
+
+const record = documentContentFixture({
   id: 'specification',
   title: 'Specification',
-  filename: 'specification.md',
+  path: 'specification.md',
   content:
     '# Feature: Logowanie SSO\n\n## Problem\n\nPracownicy logują się przez firmowego dostawcę tożsamości.\n\n- Powrót do projektu\n\nUżyj `identity_token`.',
   revision: '1',
-};
+});
 function EditorFixture({
   deferred = false,
   plainText = false,
@@ -58,23 +64,25 @@ function EditorFixture({
   const client = useMemo(() => new QueryClient(), []);
   const services = useMemo(() => {
     const services = createSpecFlowAppServices();
+
     return {
       ...services,
-      documentsApi: {
-        ...services.documentsApi,
-        save: (_spec: string, _document: string, _input: DemoSaveInput) =>
+      demoDocumentsApi: {
+        ...services.demoDocumentsApi,
+        save: (_spec: string, _document: string, _input: SaveInput) =>
           deferred
-            ? new Promise<{ revision: string }>((resolve) =>
+            ? new Promise<SaveResult>((resolve) =>
                 setRelease(() => () => {
-                  resolve({ revision: '2' });
+                  resolve(saveResultFixture('2'));
                   setRelease(null);
                 }),
               )
-            : Promise.resolve({ revision: '2' }),
+            : Promise.resolve(saveResultFixture('2')),
       },
     };
   }, [deferred]);
   const [visible, setVisible] = useState(true);
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -95,7 +103,7 @@ function EditorFixture({
                   specId="sso"
                   document={
                     textFormat
-                      ? { ...record, filename: 'CLIENT.TXT' }
+                      ? { ...record, path: 'CLIENT.TXT' }
                       : content === undefined
                         ? record
                         : { ...record, content }
@@ -118,6 +126,7 @@ function EditorFixture({
     </QueryClientProvider>
   );
 }
+
 const meta = {
   decorators: [withLocale('pl')],
   title: 'SpecFlow/Contracts/Demo Markdown editor V4',
@@ -134,7 +143,7 @@ export const RetainedDraftAndGuard: Story = {
     await userEvent.click(editor);
     await userEvent.keyboard('{Control>}End{/Control}');
     await userEvent.type(editor, ' Retained draft');
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Otwórz dokument' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
@@ -154,7 +163,7 @@ export const RetainedDraftAndGuard: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
     // Save exists only while the draft differs.
     await expect(canvas.queryByRole('button', { name: /^Zapisz$/ })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Niezapisane zmiany')).not.toBeInTheDocument();
   },
 };
 export const KeyboardSave: Story = {
@@ -186,11 +195,17 @@ export const DarkMarkdownHighlight: Story = {
     const heading = spans.find((span) => span.textContent?.includes('Feature: Logowanie SSO'));
     const list = spans.find((span) => span.textContent?.includes('Powrót do projektu'));
     const code = spans.find((span) => span.textContent === 'identity_token');
-    if (!heading || !list || !code) throw new Error('Markdown syntax spans are missing');
+    if (!heading || !list || !code) {
+      throw new Error('Markdown syntax spans are missing');
+    }
+
     const source = canvasElement.querySelector<HTMLElement>('.cm-content')!;
     const ordinary = getComputedStyle(source).color;
     const colors = [heading, list, code].map((span) => getComputedStyle(span).color);
-    for (const color of colors) await expect(color).not.toBe(ordinary);
+    for (const color of colors) {
+      await expect(color).not.toBe(ordinary);
+    }
+
     await expect(new Set(colors).size).toBe(3);
   },
 };
@@ -208,7 +223,7 @@ export const EditsDuringSave: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
       'UnsavedLater',
     );
-    await expect(canvas.getByRole('status')).toHaveTextContent('Niezapisane zmiany');
+    await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();
     await invokeDocumentAction(canvas, userEvent, 'Zapisz');
     await userEvent.click(canvas.getByRole('button', { name: 'Potwierdź zapis' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
@@ -273,6 +288,7 @@ function tokenColor(className: string) {
   document.body.append(probe);
   const color = getComputedStyle(probe).borderTopColor;
   probe.remove();
+
   return color;
 }
 
@@ -283,6 +299,7 @@ function fieldFill() {
   document.body.append(probe);
   const color = getComputedStyle(probe).backgroundColor;
   probe.remove();
+
   return color;
 }
 
@@ -291,7 +308,10 @@ export const EditSurfaceDiffersFromPage: Story = {
     // Preview stays on the page surface: no fill, no field border.
     const preview = await waitFor(() => {
       const node = canvasElement.querySelector('[data-document-preview]');
-      if (!node) throw new Error('Preview pending');
+      if (!node) {
+        throw new Error('Preview pending');
+      }
+
       return node;
     });
     const previewStyle = getComputedStyle(preview.closest('.scroll-area') ?? preview);

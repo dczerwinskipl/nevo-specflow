@@ -16,7 +16,10 @@ export function useTaskResources(specId: string, taskId: string, snapshot?: Task
     initialPageParam: undefined as string | undefined,
     enabled: reloadExpired && Boolean(token),
     queryFn: ({ pageParam, signal }) => {
-      if (!taskApi.getResources || !token) throw new Error('Task resource reader unavailable');
+      if (!taskApi.getResources || !token) {
+        throw new Error('Task resource reader unavailable');
+      }
+
       return taskApi.getResources(specId, taskId, token, pageParam, signal);
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -31,6 +34,7 @@ export function useTaskResources(specId: string, taskId: string, snapshot?: Task
       await query.fetchNextPage();
     }
   };
+
   return {
     ...query,
     retryPage,
@@ -38,6 +42,7 @@ export function useTaskResources(specId: string, taskId: string, snapshot?: Task
     readerAvailable: Boolean(token) && typeof taskApi.getResources === 'function',
   };
 }
+
 export function useTaskHistory(specId: string, taskId: string, snapshot?: TaskSnapshot) {
   const { taskApi } = useAppServices();
   const client = useQueryClient();
@@ -48,7 +53,10 @@ export function useTaskHistory(specId: string, taskId: string, snapshot?: TaskSn
     initialPageParam: undefined as string | undefined,
     enabled: Boolean(token && typeof taskApi.getHistory === 'function'),
     queryFn: ({ pageParam, signal }) => {
-      if (!taskApi.getHistory || !token) throw new Error('Task history reader unavailable');
+      if (!taskApi.getHistory || !token) {
+        throw new Error('Task history reader unavailable');
+      }
+
       return taskApi.getHistory(specId, taskId, token, pageParam, signal);
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -61,6 +69,7 @@ export function useTaskHistory(specId: string, taskId: string, snapshot?: TaskSn
       await query.fetchNextPage();
     }
   };
+
   return {
     ...query,
     retryPage,

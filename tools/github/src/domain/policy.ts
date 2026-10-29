@@ -38,10 +38,12 @@ export function parsePolicy(raw: string): RepositoryPolicy {
       cause: err,
     });
   }
+
   const p = parsed as Partial<RepositoryPolicy>;
   if (!p.merge || !p.pullRequest || !Array.isArray(p.rulesets)) {
     throw new UsageError('repository-policy.json must have `merge`, `pullRequest` and `rulesets`');
   }
+
   return p as RepositoryPolicy;
 }
 
@@ -98,6 +100,7 @@ export function decidePrReviewPolicy({
 
   const who = discovery.eligible.join(', ') || '(none)';
   const n = discovery.eligible.length;
+
   return {
     kind: 'bootstrap',
     params: {

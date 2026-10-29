@@ -32,6 +32,7 @@ export function DataTableColumnVisibility<TData extends RowData>({
             .filter((column) => column.getCanHide())
             .map((column) => {
               const definition = columns.get(column.id);
+
               return (
                 <label
                   key={column.id}

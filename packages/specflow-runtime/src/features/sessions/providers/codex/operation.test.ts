@@ -26,9 +26,11 @@ function fixture(
     incoming.push(JSON.stringify(frame));
     wake?.();
   };
+
   const abort = new AbortController();
   const beforeDispatch = vi.fn(() => {
     expect(facts).toContainEqual({ kind: 'correlation', providerSessionId: 'native-thread' });
+
     return Promise.resolve();
   });
   const invocation: Invocation = {
@@ -52,8 +54,12 @@ function fixture(
   const operation = createCodexOperation(
     invocation,
     (fact) => {
-      if (fact.kind === 'outcome' && options.persistFails) throw new Error('store unavailable');
+      if (fact.kind === 'outcome' && options.persistFails) {
+        throw new Error('store unavailable');
+      }
+
       facts.push(fact);
+
       return Promise.resolve();
     },
     abort.signal,
@@ -61,14 +67,20 @@ function fixture(
       workspace,
       home: () => resolve('private-home'),
       beforeInput() {
-        if (options.beforeInputFails) throw new Error('changed installation');
+        if (options.beforeInputFails) {
+          throw new Error('changed installation');
+        }
+
         return Promise.resolve();
       },
       launch() {
         return Promise.resolve({
           write(line: string) {
             const frame = JSON.parse(line) as (typeof sent)[number];
-            if (!frame.method && options.replyFails) throw new Error('stdin failed');
+            if (!frame.method && options.replyFails) {
+              throw new Error('stdin failed');
+            }
+
             sent.push(frame);
             const responses: Record<string, unknown> = {
               initialize: {
@@ -123,10 +135,14 @@ function fixture(
                 push({ method: 'thread/goal/cleared', params: { threadId: 'native-thread' } });
                 push({ id: frame.id, result: responses['thread/start'] });
               } else {
-                if (!(frame.method in responses)) throw new Error('Unexpected RPC');
+                if (!(frame.method in responses)) {
+                  throw new Error('Unexpected RPC');
+                }
+
                 push({ id: frame.id, result: responses[frame.method] });
               }
-              if (frame.method === 'turn/start')
+
+              if (frame.method === 'turn/start') {
                 push({
                   method: 'turn/started',
                   params: {
@@ -134,24 +150,34 @@ function fixture(
                     turn: { id: 'native-turn', status: 'inProgress' },
                   },
                 });
-              if (frame.method === 'turn/interrupt') finish('interrupted');
+              }
+
+              if (frame.method === 'turn/interrupt') {
+                finish('interrupted');
+              }
             }
+
             return Promise.resolve();
           },
           async *lines() {
             while (!ended) {
-              if (!incoming.length)
+              if (!incoming.length) {
                 await new Promise<void>((resolve) => {
                   wake = resolve;
                 });
+              }
+
               wake = undefined;
               const line = incoming.shift();
-              if (line !== undefined) yield line;
+              if (line !== undefined) {
+                yield line;
+              }
             }
           },
           dispose() {
             ended = true;
             wake?.();
+
             return Promise.resolve({
               process: options.unknown
                 ? { state: 'unknown' as const, reason: 'unverified-tree' as const }
@@ -173,8 +199,10 @@ function fixture(
       },
     });
   }
+
   const ready = () =>
     vi.waitFor(() => expect(sent.some((frame) => frame.method === 'turn/start')).toBe(true));
+
   return { operation, facts, sent, beforeDispatch, abort, ready, finish, push };
 }
 

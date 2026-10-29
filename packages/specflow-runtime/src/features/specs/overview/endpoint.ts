@@ -58,6 +58,7 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
       if (!options.repository) {
         return reply.code(503).send({ error: 'specification_source_unavailable' });
       }
+
       try {
         return await (request.query.collection === 'archive'
           ? getArchiveOverview({
@@ -71,7 +72,10 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
             }));
       } catch (error) {
         const code = readErrorCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         return reply.code(503).send({ error: code, code });
       }
     },
@@ -81,7 +85,10 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
 };
 
 function readErrorCode(error: unknown): SpecsReadErrorCode | undefined {
-  if (error instanceof SpecsReadError) return error.code;
+  if (error instanceof SpecsReadError) {
+    return error.code;
+  }
+
   if (
     error instanceof SpecificationError ||
     error instanceof WorkspaceRegistryError ||
@@ -90,5 +97,6 @@ function readErrorCode(error: unknown): SpecsReadErrorCode | undefined {
   ) {
     return 'SPEC_SOURCE_UNAVAILABLE';
   }
+
   return undefined;
 }

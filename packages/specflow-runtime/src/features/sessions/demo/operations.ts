@@ -20,8 +20,11 @@ export function createDemoSessions(state: DemoState) {
   return {
     /** Session context documents are materialized snapshots in this bounded demo; documents report changes here. */
     refreshDocuments(specId: string, paths: readonly string[]) {
-      for (const session of state.sessions.values())
-        if (session.specId === specId) session.context.documents = [...paths];
+      for (const session of state.sessions.values()) {
+        if (session.specId === specId) {
+          session.context.documents = [...paths];
+        }
+      }
     },
     allocate(
       subject: string,
@@ -39,10 +42,15 @@ export function createDemoSessions(state: DemoState) {
         !model ||
         !model.modes.includes(input.mode) ||
         (input.effort !== undefined && !model.efforts.includes(input.effort))
-      )
+      ) {
         throw new DemoOperationError(400, 'demo_invalid_selection');
-      const entry = state.request(subject, 'session:' + specId, input);
-      if (entry.result) return entry.result as DemoSessionResult;
+      }
+
+      const entry = state.request(subject, 'session:' + specId, input.requestId, input);
+      if (entry.result) {
+        return entry.result as DemoSessionResult;
+      }
+
       const location = state.locations.get(specId) ?? state.catalogue.currentLocation;
       state.fail('session', 'demo_session_allocation_failed');
       const sessionId = 'session-' + state.id();
@@ -74,6 +82,7 @@ export function createDemoSessions(state: DemoState) {
       state.sessions.set(sessionId, detail);
       const result = { sessionId, location: detail.location };
       entry.result = result;
+
       return result;
     },
     /** Detail of an allocated session, or a read-only detail of a seeded catalogue session. */
@@ -84,10 +93,14 @@ export function createDemoSessions(state: DemoState) {
       documentPaths: (record: DemoSpecification) => string[],
     ) {
       const allocated = state.sessions.get(sessionId);
-      if (allocated) return allocated;
+      if (allocated) {
+        return allocated;
+      }
+
       const record = await find(specId);
       const provider = state.catalogue.providers.find((item) => item.available);
       const model = provider?.models[0];
+
       return record && provider && model
         ? buildCatalogueSessionDetail({
             record,
@@ -108,6 +121,7 @@ export function createDemoSessions(state: DemoState) {
       return {
         async resolve(sessionId) {
           const session = state.sessions.get(sessionId);
+
           return session
             ? {
                 sessionId,
@@ -122,13 +136,16 @@ export function createDemoSessions(state: DemoState) {
     /** Workspace sessions section: seeded sessions plus the ones allocated in this environment. */
     async contribution(specId: string, find: Find) {
       const record = await find(specId);
-      if (!record)
+      if (!record) {
         return {
           section: { state: 'unavailable' as const, reason: 'source_unavailable' as const },
         };
+      }
+
       const original = state.specifications.has(specId)
         ? { section: { state: 'available' as const, data: { items: [], attention: [] } } }
         : buildDemoSessionContribution(record);
+
       return {
         ...original,
         section: {
@@ -152,4 +169,5 @@ export function createDemoSessions(state: DemoState) {
     },
   };
 }
+
 export type DemoSessions = ReturnType<typeof createDemoSessions>;

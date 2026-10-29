@@ -24,11 +24,13 @@ function StandaloneSurface({
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
     query.setDefaultOptions({ queries: { retry: false, retryOnMount: false } });
-    if (state === 'error')
+    if (state === 'error') {
       query
         .getQueryCache()
         .build(query, { queryKey: specificationKeys.detail('standalone') })
         .setState({ status: 'error', error: new Error('Unavailable') });
+    }
+
     const services = createSpecFlowAppServices({
       specificationApi: {
         getSpecificationWorkspace: () =>
@@ -37,8 +39,10 @@ function StandaloneSurface({
           }),
       },
     });
+
     return { query, services };
   }, [state]);
+
   return (
     <QueryClientProvider client={setup.query}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
@@ -75,6 +79,7 @@ function StandaloneSurface({
     </QueryClientProvider>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Contracts/Standalone specification navigation',
   component: StandaloneSurface,

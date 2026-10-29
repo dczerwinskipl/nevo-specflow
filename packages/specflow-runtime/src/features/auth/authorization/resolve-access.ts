@@ -24,6 +24,7 @@ export function resolveAuthorizationAccess(
   }
 
   const session = getAuthSession(authentication, store, sessionId);
+
   return session.authenticated
     ? {
         mode: 'subject',

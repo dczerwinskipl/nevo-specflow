@@ -46,6 +46,7 @@ export function interpretWatchResult(
       // A journal that needs recovery and a lost session or capability are told apart; every other
       // unknown stays "check it".
       const failure = isApiError(result.error) ? toCreateFailure(result.error) : undefined;
+
       return open(
         failure?.kind === 'unauthenticated' ||
           failure?.kind === 'forbidden' ||
@@ -54,10 +55,13 @@ export function interpretWatchResult(
           : { kind: 'uncertain' },
       );
     }
+
     case 'operation-failed': {
       const failure = toOperationFailure(result.code, sent);
+
       return isDefinite(failure) ? refused(failure, 'operationFailed') : open(failure);
     }
+
     case 'failed':
       return refused(
         isApiError(result.error) ? toCreateFailure(result.error, sent) : { kind: 'failed' },
@@ -87,7 +91,10 @@ function refused(
     kind: 'failed',
     failure,
     releaseStorage: true,
-    discardAttempt: failure.kind === 'operation-conflict' || failure.kind === 'name-conflict',
+    discardAttempt:
+      failure.kind === 'operation-conflict' ||
+      failure.kind === 'name-conflict' ||
+      failure.kind === 'name-invalid',
     ...(announce ? { announce } : {}),
   };
 }

@@ -70,6 +70,7 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
 
     can(input) {
       assertCapabilityResource(input.resource.name, input.capability);
+
       return resolveCapabilities(input).capabilities.includes(input.capability);
     },
 

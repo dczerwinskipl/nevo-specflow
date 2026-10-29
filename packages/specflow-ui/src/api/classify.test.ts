@@ -16,7 +16,10 @@ function http(status: number, data?: unknown, headers?: Record<string, string>):
 
 function classify(error: HttpClientError, method = 'POST') {
   const result = classifyHttpError(error, { operation: 'specs.create', method, codes });
-  if (!(result instanceof ApiError)) throw new Error('expected an ApiError');
+  if (!(result instanceof ApiError)) {
+    throw new Error('expected an ApiError');
+  }
+
   return result;
 }
 
@@ -105,11 +108,14 @@ describe('classifyHttpError', () => {
       ],
       [
         'B 409 revision',
-        http(409, { error: 'document_revision_unavailable' }),
+        http(409, {
+          error: 'DOCUMENT_REVISION_UNAVAILABLE',
+          code: 'DOCUMENT_REVISION_UNAVAILABLE',
+        }),
         'conflict',
         'not-applied',
         false,
-        'document_revision_unavailable',
+        'DOCUMENT_REVISION_UNAVAILABLE',
       ],
       [
         'C 409 context rule',

@@ -13,6 +13,7 @@ import {
   validateDocumentPath,
   validateFolderPath,
 } from './documents';
+import { isSpecKey } from './spec-key';
 
 export type SpecificationLocation = 'active' | 'archive';
 
@@ -56,6 +57,8 @@ export interface ManifestDocument {
 export interface SpecificationManifest {
   readonly specId: string;
   readonly slug: string;
+  /** The human key (`nevo-1234`, `spec-key.ts`); absent for a Specification created before keys. */
+  readonly key?: string;
   readonly title: string;
   readonly archetype: ManifestArchetype;
   readonly documents: readonly ManifestDocument[];
@@ -93,6 +96,7 @@ export function validateSpecificationSlug(value: unknown): string {
       'Specification slug must be portable: lowercase ASCII, no traversal, trailing dot or Windows reserved device name.',
     );
   }
+
   return value;
 }
 
@@ -103,6 +107,7 @@ export function isExplicitSpecificationSlug(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 80 || !EXPLICIT_SLUG_PATTERN.test(value)) {
     return false;
   }
+
   return !WINDOWS_DEVICE_PATTERN.test(value);
 }
 
@@ -117,6 +122,7 @@ export function specificationSlugFromTitle(title: string, specId: string): strin
     .slice(0, 80)
     .replace(/-+$/gu, '');
   const candidate = normalized || 'spec-' + specId.slice(0, 8);
+
   return validateSpecificationSlug(
     WINDOWS_DEVICE_PATTERN.test(candidate) ? candidate + '-' + specId.slice(0, 8) : candidate,
   );
@@ -139,12 +145,14 @@ export function parseSpecificationManifestText(
   if (Buffer.byteLength(text, 'utf8') > MANIFEST_MAX_BYTES) {
     throw sourceInvalid(slug, 'manifest', `is larger than ${MANIFEST_MAX_BYTES} bytes`);
   }
+
   let source: unknown;
   try {
     source = parse(text) as unknown;
   } catch {
     throw sourceInvalid(slug, 'manifest', 'is not valid YAML');
   }
+
   return parseSpecificationManifest(source, slug, location);
 }
 
@@ -160,34 +168,53 @@ export function parseSpecificationManifest(
   location: SpecificationLocation,
 ): SpecificationManifest {
   validateSpecificationSlug(slug);
-  if (!isRecord(source)) throw sourceInvalid(slug, 'manifest', 'is not an object');
-  if (source.id !== slug) throw sourceInvalid(slug, 'id', 'does not match the directory slug');
+  if (!isRecord(source)) {
+    throw sourceInvalid(slug, 'manifest', 'is not an object');
+  }
+
+  if (source.id !== slug) {
+    throw sourceInvalid(slug, 'id', 'does not match the directory slug');
+  }
+
   if (!isValidSpecificationId(source.spec_id)) {
     throw sourceInvalid(slug, 'spec_id', 'is missing or not a persisted UUID');
   }
+
   if (typeof source.title !== 'string' || !source.title.trim()) {
     throw sourceInvalid(slug, 'title', 'must be a non-empty string');
   }
+
   if (typeof source.status !== 'string' || !source.status.trim()) {
     throw sourceInvalid(slug, 'status', 'must be a non-empty string');
   }
-  if (!Array.isArray(source.tasks)) throw sourceInvalid(slug, 'tasks', 'must be an array');
+
+  if (!Array.isArray(source.tasks)) {
+    throw sourceInvalid(slug, 'tasks', 'must be an array');
+  }
+
   if (
     source.priority !== undefined &&
     (typeof source.priority !== 'number' || !Number.isFinite(source.priority))
   ) {
     throw sourceInvalid(slug, 'priority', 'must be a finite number');
   }
+
   if (source.created !== undefined && typeof source.created !== 'string') {
     throw sourceInvalid(slug, 'created', 'must be a string');
+  }
+
+  if (source.key !== undefined && !isSpecKey(source.key)) {
+    throw sourceInvalid(slug, 'key', 'must be <prefix>-<number>, for example nevo-12');
   }
 
   const archetype = parseArchetype(source.archetype, slug);
   const documents = parseDocuments(source.documents, slug);
   const folders = parseFolders(source.folders, documents, slug);
+
   return {
     specId: source.spec_id,
     slug,
+    ...(source.key !== undefined ? { key: source.key } : {}),
     title: source.title,
     archetype,
     documents,
@@ -201,26 +228,39 @@ export function parseSpecificationManifest(
 }
 
 function parseArchetype(value: unknown, slug: string): ManifestArchetype {
-  if (value === undefined) throw sourceInvalid(slug, 'archetype', 'is required');
-  if (!isRecord(value)) throw sourceInvalid(slug, 'archetype', 'must be an object');
+  if (value === undefined) {
+    throw sourceInvalid(slug, 'archetype', 'is required');
+  }
+
+  if (!isRecord(value)) {
+    throw sourceInvalid(slug, 'archetype', 'must be an object');
+  }
+
   assertKnownKeys(value, ARCHETYPE_KEYS, 'archetype', slug);
   if (typeof value.id !== 'string' || !CATALOGUE_ID.test(value.id)) {
     throw sourceInvalid(slug, 'archetype.id', 'must be a catalogue id');
   }
+
   if (typeof value.version !== 'number' || !Number.isInteger(value.version) || value.version < 1) {
     throw sourceInvalid(slug, 'archetype.version', 'must be a positive integer');
   }
+
   if (!Array.isArray(value.requirements)) {
     throw sourceInvalid(slug, 'archetype.requirements', 'is required and must be an array');
   }
+
   const seen = new Set<string>();
   const requirements = value.requirements.map((entry: unknown, index): ManifestRequirement => {
     const field = `archetype.requirements[${index}]`;
-    if (!isRecord(entry)) throw sourceInvalid(slug, field, 'must be an object');
+    if (!isRecord(entry)) {
+      throw sourceInvalid(slug, field, 'must be an object');
+    }
+
     assertKnownKeys(entry, REQUIREMENT_KEYS, field, slug);
     if (typeof entry.documentType !== 'string' || !CATALOGUE_ID.test(entry.documentType)) {
       throw sourceInvalid(slug, `${field}.documentType`, 'must be a document type id');
     }
+
     if (
       typeof entry.minCount !== 'number' ||
       !Number.isInteger(entry.minCount) ||
@@ -228,10 +268,13 @@ function parseArchetype(value: unknown, slug: string): ManifestArchetype {
     ) {
       throw sourceInvalid(slug, `${field}.minCount`, 'must be an integer of at least 0');
     }
+
     if (seen.has(entry.documentType)) {
       throw sourceInvalid(slug, `${field}.documentType`, 'is required more than once');
     }
+
     seen.add(entry.documentType);
+
     return { documentType: entry.documentType, minCount: entry.minCount };
   });
   const overview = requirements.find((item) => item.documentType === OVERVIEW_DOCUMENT_TYPE);
@@ -242,16 +285,26 @@ function parseArchetype(value: unknown, slug: string): ManifestArchetype {
       'must require the overview document type with minCount of at least 1',
     );
   }
+
   return { id: value.id, version: value.version, requirements };
 }
 
 function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
-  if (value === undefined) throw sourceInvalid(slug, 'documents', 'is required');
-  if (!Array.isArray(value)) throw sourceInvalid(slug, 'documents', 'must be an array');
+  if (value === undefined) {
+    throw sourceInvalid(slug, 'documents', 'is required');
+  }
+
+  if (!Array.isArray(value)) {
+    throw sourceInvalid(slug, 'documents', 'must be an array');
+  }
+
   const ids = new Set<string>();
   const documents = value.map((entry: unknown, index): ManifestDocument => {
     const field = `documents[${index}]`;
-    if (!isRecord(entry)) throw sourceInvalid(slug, field, 'must be an object');
+    if (!isRecord(entry)) {
+      throw sourceInvalid(slug, field, 'must be an object');
+    }
+
     assertKnownKeys(entry, DOCUMENT_KEYS, field, slug);
     if (typeof entry.id !== 'string' || !isRegisteredDocumentId(entry.id)) {
       throw sourceInvalid(
@@ -260,18 +313,25 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
         'must match the document id pattern and must not start with "u-"',
       );
     }
-    if (ids.has(entry.id)) throw sourceInvalid(slug, `${field}.id`, 'is not unique');
+
+    if (ids.has(entry.id)) {
+      throw sourceInvalid(slug, `${field}.id`, 'is not unique');
+    }
+
     ids.add(entry.id);
     if (typeof entry.type !== 'string' || !CATALOGUE_ID.test(entry.type)) {
       throw sourceInvalid(slug, `${field}.type`, 'must be a document type id');
     }
+
     if (typeof entry.path !== 'string') {
       throw sourceInvalid(slug, `${field}.path`, 'must be a string');
     }
+
     const path = validateDocumentPath(entry.path);
     if (!path.ok) {
       throw sourceInvalid(slug, `${field}.path`, `is not a portable path (${path.violation})`);
     }
+
     return { id: entry.id, path: entry.path, type: entry.type };
   });
 
@@ -281,6 +341,7 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
     if (pathKeys.has(key)) {
       throw sourceInvalid(slug, 'documents[].path', `"${item.path}" is not unique ignoring case`);
     }
+
     pathKeys.add(key);
   }
 
@@ -314,6 +375,7 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
       `must contain exactly one overview entry with id "${OVERVIEW_DOCUMENT_ID}", path "${OVERVIEW_DOCUMENT_PATH}" and type "${OVERVIEW_DOCUMENT_TYPE}"`,
     );
   }
+
   return documents;
 }
 
@@ -322,26 +384,44 @@ function parseFolders(
   documents: readonly ManifestDocument[],
   slug: string,
 ): string[] {
-  if (value === undefined) return [];
-  if (!Array.isArray(value)) throw sourceInvalid(slug, 'folders', 'must be an array');
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw sourceInvalid(slug, 'folders', 'must be an array');
+  }
+
   const filePaths = new Set(documents.map((item) => foldPathKey(item.path)));
   const seen = new Set<string>();
+
   return value.map((entry: unknown, index): string => {
     const field = `folders[${index}]`;
-    if (typeof entry !== 'string') throw sourceInvalid(slug, field, 'must be a string');
+    if (typeof entry !== 'string') {
+      throw sourceInvalid(slug, field, 'must be a string');
+    }
+
     const path = validateFolderPath(entry);
     if (!path.ok) {
       throw sourceInvalid(slug, field, `is not a portable folder path (${path.violation})`);
     }
+
     const key = foldPathKey(entry);
-    if (seen.has(key)) throw sourceInvalid(slug, field, 'is not unique ignoring case');
+    if (seen.has(key)) {
+      throw sourceInvalid(slug, field, 'is not unique ignoring case');
+    }
+
     seen.add(key);
-    if (filePaths.has(key)) throw sourceInvalid(slug, field, 'equals a registered document path');
+    if (filePaths.has(key)) {
+      throw sourceInvalid(slug, field, 'equals a registered document path');
+    }
+
     for (const ancestor of ancestorFolders(entry + '/x')) {
       if (filePaths.has(foldPathKey(ancestor))) {
         throw sourceInvalid(slug, field, `is below the registered file "${ancestor}"`);
       }
     }
+
     return entry;
   });
 }
@@ -353,7 +433,9 @@ function assertKnownKeys(
   slug: string,
 ): void {
   const unknown = Object.keys(value).find((key) => !allowed.includes(key));
-  if (unknown !== undefined) throw sourceInvalid(slug, `${field}.${unknown}`, 'is not allowed');
+  if (unknown !== undefined) {
+    throw sourceInvalid(slug, `${field}.${unknown}`, 'is not allowed');
+  }
 }
 
 /** `SPEC_SOURCE_INVALID` naming the slug and the field, never an absolute path. */
@@ -380,10 +462,12 @@ export function validateSpecificationScaffoldInput(input: {
       'Title and goal must be well-formed text (no lone surrogates).',
     );
   }
+
   const title = input.title.replace(/\s+/gu, ' ').trim();
   if (!title || title.length > 200) {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'Title must be 1 to 200 characters.');
   }
+
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(input.created)) {
     throw new SpecificationError('SPEC_VALIDATION_ERROR', 'Creation date must use YYYY-MM-DD.');
   }

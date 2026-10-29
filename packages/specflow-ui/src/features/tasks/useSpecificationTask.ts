@@ -26,5 +26,6 @@ export function useSpecificationTask(
     data !== null &&
     'error' in data &&
     data.error === 'specification_task_not_found';
+
   return { ...query, errorStatus, isTaskNotFound };
 }

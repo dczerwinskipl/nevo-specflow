@@ -36,6 +36,7 @@ function fixture(options: { write?: boolean; managed?: boolean; modes?: string[]
     },
     { inspect, probe },
   );
+
   return {
     driver,
     probe,
@@ -45,6 +46,7 @@ function fixture(options: { write?: boolean; managed?: boolean; modes?: string[]
     },
   };
 }
+
 const signal = () => new AbortController().signal;
 it('admits an unpinned future version provisionally with native Agent as its default', async () => {
   const f = fixture();

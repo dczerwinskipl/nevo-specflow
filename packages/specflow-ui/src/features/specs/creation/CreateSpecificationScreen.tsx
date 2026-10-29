@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { documentCatalogueKeys } from '../../documents/read-model';
 import { Alert, Button } from '@nevo/ui';
 import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
@@ -33,6 +34,7 @@ interface Props {
  */
 export function CreateSpecificationScreen(props: Props) {
   const view = props.specId ? 'new-session' : 'new-specification';
+
   return (
     <CreateRuntimeGate specId={props.specId} view={view}>
       {(mode) =>
@@ -59,18 +61,21 @@ function DemoCreateSpecification(props: Props) {
   const { t } = useTranslation();
   const services = useAppServices();
   const runtime = useRuntimeInfo();
+  const cache = useQueryClient();
   const view = props.specId ? 'new-session' : 'new-specification';
   const catalogue = useQuery({
     queryKey: demoCreationKeys.catalogue(props.specId),
     queryFn: ({ signal }) => services.demoCreationApi.catalogue(props.specId, signal),
   });
-  if (catalogue.isPending)
+  if (catalogue.isPending) {
     return (
       <CreateFallback specId={props.specId} view={view}>
         <p role="status">{t('create.loading')}</p>
       </CreateFallback>
     );
-  if (!catalogue.data)
+  }
+
+  if (!catalogue.data) {
     return (
       <CreateFallback specId={props.specId} view={view}>
         <Alert tone="attention" title={t('create.loadError')}>
@@ -78,6 +83,8 @@ function DemoCreateSpecification(props: Props) {
         </Alert>
       </CreateFallback>
     );
+  }
+
   return (
     <CreateDemoForm
       key={props.specId ?? 'new'}
@@ -87,6 +94,13 @@ function DemoCreateSpecification(props: Props) {
       catalogue={catalogue.data}
       configurationUnavailable={runtime.isError || catalogue.isError}
       onRefresh={() => void Promise.all([runtime.refetch(), catalogue.refetch()])}
+      onRefreshCatalogue={async () => {
+        // The documents feature reads the same catalogue: it is refreshed with it.
+        void cache.invalidateQueries({ queryKey: documentCatalogueKeys.all });
+        const result = await catalogue.refetch();
+
+        return result.isError ? undefined : result.data;
+      }}
     />
   );
 }

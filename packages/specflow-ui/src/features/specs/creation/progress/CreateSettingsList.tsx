@@ -47,6 +47,16 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
           <span className="wrap-anywhere">{settings.name}</span>
         </SummaryRow>
       )}
+      {settings.archetype && (
+        <SummaryRow label={t('create.page.settings.archetype')} override>
+          {settings.archetype}
+        </SummaryRow>
+      )}
+      {settings.documents && (
+        <SummaryRow label={t('create.page.settings.documents')} override={false}>
+          <span className="wrap-anywhere">{settings.documents.join(', ')}</span>
+        </SummaryRow>
+      )}
       <SummaryRow label={t('create.page.settings.where')} override>
         {where}
       </SummaryRow>

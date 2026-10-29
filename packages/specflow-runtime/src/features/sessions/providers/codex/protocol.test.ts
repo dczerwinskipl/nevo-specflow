@@ -10,6 +10,7 @@ function fixture() {
     (fact) => {
       validateDriverFact(fact);
       facts.push(fact);
+
       return Promise.resolve();
     },
     'native-thread',
@@ -30,10 +31,13 @@ function fixture() {
       item: { id, type: 'agentMessage', text, ...(phase ? { phase } : {}) },
     });
   };
+
   const finish = (status = 'completed', extra: Record<string, unknown> = {}) =>
     send('turn/completed', { turn: { id: 'native-turn', status, items: [], ...extra } });
+
   return { facts, protocol, send, start, item, finish };
 }
+
 describe('Codex authoritative native item normalization', () => {
   it('keeps phase-aware commentary/partial/final text separate and never repeats deltas', async () => {
     const f = fixture();
@@ -169,6 +173,7 @@ describe('Codex authoritative native item normalization', () => {
       const protocol = createCodexProtocol(
         (fact) => {
           facts.push(fact);
+
           return Promise.resolve();
         },
         'thread',
@@ -195,8 +200,10 @@ describe('Codex authoritative native item normalization', () => {
             : {}),
         },
       });
+
       return facts;
     }
+
     expect((await run(true)).filter((fact) => fact.kind === 'action-open')).toHaveLength(1);
     await expect(run(false)).rejects.toThrow();
     await expect(run(true, true)).rejects.toThrow();

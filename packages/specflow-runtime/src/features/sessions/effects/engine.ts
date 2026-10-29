@@ -15,6 +15,7 @@ import { SessionError } from '../errors';
 export function workspaceExecutionIdentity(engine: SpecFlowEngine) {
   return recordedIdentity(engine, engine.workspace);
 }
+
 function recordedIdentity(
   engine: SpecFlowEngine,
   workspace: { workspaceId: string; root: string; instanceId?: string },
@@ -40,38 +41,46 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       binding: identity.binding,
     };
   }
+
   async function guarded<T>(run: () => Promise<T>): Promise<T> {
     try {
       return await run();
     } catch (error) {
-      if ((error as { code?: unknown }).code === 'RESOURCE_CONFLICT')
+      if ((error as { code?: unknown }).code === 'RESOURCE_CONFLICT') {
         throw new SessionError(
           'TURN_CONFLICT',
           'An unfinished project writer prevents agent execution.',
         );
+      }
+
       throw new SessionError(
         'SESSION_RECOVERY_REQUIRED',
         'Engine execution evidence could not be confirmed.',
       );
     }
   }
+
   return {
     async admit(identity) {
       if (
         identity.workspace !== engine.workspace.root ||
         identity.workspaceIdentity !== workspaceExecutionIdentity(engine)
-      )
+      ) {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
           'Execution workspace identity is not verified.',
         );
+      }
+
       const request = intent(identity);
       const record = await guarded(() => admitWorkspaceExecution(engine, request));
-      if (record.phase !== 'admitted')
+      if (record.phase !== 'admitted') {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
           'An execution claim cannot be dispatched again.',
         );
+      }
+
       return {
         dispatch: () =>
           guarded(async () => {
@@ -108,24 +117,39 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
         // journal data alone never authorizes a canonical terminal transition.
         record = await guarded(() => admitWorkspaceExecution(engine, intent(identity)));
       }
+
       if (
         record?.intent.ownerId !== identity.sessionId ||
         record.intent.binding !== identity.binding
-      )
+      ) {
         return undefined;
+      }
+
       if (
         record.workspace.root !== identity.workspace ||
         recordedIdentity(engine, record.workspace) !== identity.workspaceIdentity
-      )
+      ) {
         return undefined;
-      if (record.phase === 'admitted' && !identity.nativeDispatched)
+      }
+
+      if (record.phase === 'admitted' && !identity.nativeDispatched) {
         record = await guarded(() => abandonWorkspaceExecutionAdmission(engine, intent(identity)));
-      if (record.phase !== 'settled') return undefined;
-      if (record.settlement?.kind === 'not-dispatched')
+      }
+
+      if (record.phase !== 'settled') {
+        return undefined;
+      }
+
+      if (record.settlement?.kind === 'not-dispatched') {
         return identity.nativeDispatched
           ? undefined
           : { process: 'stopped', outcome: 'interrupted', source: 'not-dispatched' };
-      if (record.settlement?.kind !== 'native-result') return undefined;
+      }
+
+      if (record.settlement?.kind !== 'native-result') {
+        return undefined;
+      }
+
       return { ...record.settlement.receipt, source: 'native-result' };
     },
   };

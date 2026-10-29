@@ -7,6 +7,7 @@ import { SpecFlowStandaloneShell, StandaloneScreenHeader } from '../StandaloneSc
 export function NotFoundView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
   return (
     <SpecFlowStandaloneShell>
       <div className="grid w-full gap-8">

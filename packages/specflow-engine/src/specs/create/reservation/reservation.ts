@@ -29,12 +29,13 @@ import {
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { admitCreateArchetype } from '../admission';
 import { assertCreatePathsFitWindows, type WindowsPathBoundOptions } from '../path-bound';
-import { getBuiltInCatalogue } from '../../archetypes/catalogue';
+import { getStableProjectCatalogue } from '../../definitions/catalogue-source';
 import { assertJournalFitsItsCap } from './journal-cap';
 import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
+import { nextSpecKey } from '../../spec-key';
 import {
   ScaffoldValidationError,
   createSpecificationScaffold,
@@ -66,6 +67,11 @@ export async function reserveCreateOperation(
           intent.target.integrationTargetWorkspaceId,
         )
       : undefined;
+  // The project catalogue is read outside the lock (stat-on-read, no lock, no Git); a read the files
+  // kept changing under is refused as `CATALOGUE_STALE` rather than pinned. A definition edited
+  // meanwhile is caught by the revision the journal pins and by `CATALOGUE_STALE`.
+  const project = previousOutsideLock ? undefined : await getStableProjectCatalogue(engine);
+
   return withCreateJournalLock(engine.context, async () => {
     // Retention sweep of settled journals under the reservation lock: bounded, Git-free, best effort.
     await removeExpiredCompletedCreateJournals(engine.context, { keepOperationId: operationId });
@@ -79,12 +85,14 @@ export async function reserveCreateOperation(
           'OperationId was already used with different immutable inputs.',
         );
       }
+
       return { record: previous, existing: true };
     }
 
     // A new operation: the archetype part is admitted before anything is reserved or written. An
     // existing operation is replayed above regardless of the current catalogue.
-    admitCreateArchetype(intent, addedContents);
+    const loadedProject = project ?? (await getStableProjectCatalogue(engine));
+    admitCreateArchetype(intent, addedContents, loadedProject);
 
     // Date generated once under Project Home lock, after checking no journal.
     const created = creationDate();
@@ -98,10 +106,20 @@ export async function reserveCreateOperation(
     if (canonical.some((item) => item.status !== 'available')) {
       throw recovery('Cannot reserve new Spec while an existing canonical source is unavailable.');
     }
+
     const specId = randomUUID();
-    const catalogue = getBuiltInCatalogue();
+    // The key is allocated here, under the lock that serializes reservations: one more than every key
+    // a Specification (active or archived, any checkout) or a reserved Create already holds.
+    const key = nextSpecKey([
+      ...canonical.map((item) =>
+        item.status === 'available' ? item.specification.key : undefined,
+      ),
+      ...operations.map((item) => item.key),
+    ]);
+    const { catalogue } = loadedProject;
     const scaffold = scaffoldOf({
       specId,
+      key,
       catalogue,
       title: intent.title,
       created,
@@ -136,6 +154,7 @@ export async function reserveCreateOperation(
       if (!isValidSpecificationId(existingWorkspaceId)) {
         throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid target workspaceId.');
       }
+
       const registry = await engine.readRegistry();
       const inspected = await inspectRegisteredWorkspace(
         engine.context,
@@ -145,6 +164,7 @@ export async function reserveCreateOperation(
       if (inspected.status !== 'available') {
         throw recovery('Selected existing workspace is unavailable.');
       }
+
       if (inspected.workspace.kind === 'linked') {
         // Admission happens BEFORE publishing a Create journal, writing a
         // manifest or spawning Git. Count already bound Specs AND reserved
@@ -172,6 +192,7 @@ export async function reserveCreateOperation(
           );
         }
       }
+
       if (policy.enabled) {
         commit = {
           required: true,
@@ -185,6 +206,7 @@ export async function reserveCreateOperation(
           }),
         };
       }
+
       target = {
         kind: 'existing',
         workspaceId: intent.target.workspaceId,
@@ -198,6 +220,7 @@ export async function reserveCreateOperation(
             'Destination preflight was superseded by another reservation.',
           );
         }
+
         const registry = await engine.readRegistry();
         const chosen = registry.workspaces.find(
           (item) => item.workspaceId === explicit.destination.workspaceId,
@@ -213,9 +236,11 @@ export async function reserveCreateOperation(
           );
         }
       }
+
       const plan = await openVersionControl(engine).worktrees.plan({
         slug: scaffold.slug,
         shortId: specId.slice(0, 8),
+        key,
         ...(intent.target.baseRef.kind === 'explicit'
           ? { baseRefOverride: intent.target.baseRef.value }
           : {}),
@@ -236,6 +261,7 @@ export async function reserveCreateOperation(
           'Git branch or worktree path is reserved.',
         );
       }
+
       admitNewWorktreeCreateCommit(policy.commits, plan.branch);
       commit = { required: true, branch: plan.branch };
       target = {
@@ -262,7 +288,10 @@ export async function reserveCreateOperation(
         windowsPathBound,
       );
     } catch (error) {
-      if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+      if (error instanceof ScaffoldValidationError) {
+        throw documentErrorOf(error);
+      }
+
       throw error;
     }
 
@@ -274,6 +303,7 @@ export async function reserveCreateOperation(
       requestIntent: intent,
       specId,
       slug: scaffold.slug,
+      key,
       title: intent.title,
       created,
       startedAt: new Date().toISOString(),
@@ -299,8 +329,10 @@ export async function reserveCreateOperation(
           error.message,
         );
       }
+
       throw error;
     }
+
     assertJournalFitsItsCap(record);
     // The scaffold contents are durable in the hash-addressed payload store BEFORE the journal that
     // refers to them is published; a crash in between leaves only an orphan payload (swept later).
@@ -310,6 +342,7 @@ export async function reserveCreateOperation(
       scaffold.files.map(({ sha256, content }) => ({ sha256, content })),
     );
     await publishCreateJournal(engine.context, record);
+
     return { record, existing: false };
   });
 }
@@ -319,7 +352,10 @@ function scaffoldOf(input: Parameters<typeof createSpecificationScaffold>[0]) {
   try {
     return createSpecificationScaffold(input);
   } catch (error) {
-    if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+    if (error instanceof ScaffoldValidationError) {
+      throw documentErrorOf(error);
+    }
+
     throw error;
   }
 }
@@ -327,6 +363,7 @@ function scaffoldOf(input: Parameters<typeof createSpecificationScaffold>[0]) {
 function branchesOverlap(left: string, right: string): boolean {
   const a = left.toLowerCase();
   const b = right.toLowerCase();
+
   return a === b || a.startsWith(b + '/') || b.startsWith(a + '/');
 }
 
@@ -344,10 +381,14 @@ export function writingSlugsByWorkspace(
 ): ReadonlyMap<string, ReadonlySet<string>> {
   const writingSlugs = new Map<string, Set<string>>();
   for (const item of operations) {
-    if (item.stage !== 'manifest-writing') continue;
+    if (item.stage !== 'manifest-writing') {
+      continue;
+    }
+
     const slugs = writingSlugs.get(item.target.workspaceRoot) ?? new Set<string>();
     slugs.add(item.slug);
     writingSlugs.set(item.target.workspaceRoot, slugs);
   }
+
   return writingSlugs;
 }

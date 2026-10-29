@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DATA_KEY } from '../core/model';
-import type { DesignSystemIR, DesignResources } from '../core/model';
+import { DATA_KEY, type DesignSystemIR, type DesignResources } from '../core/model';
 import type { ResourceCatalogDefinition } from '@nevo/figma-core/authoring';
 import { repairSetIfNeeded, upsertTextStyleCatalog } from './resourceComponents';
 
@@ -33,6 +32,7 @@ describe('component-set repair', () => {
       children: {
         get: () => {
           childrenRead();
+
           throw new Error('Node not found');
         },
       },
@@ -72,7 +72,9 @@ describe('component-set repair', () => {
     Object.defineProperty(staleMaster, 'name', {
       get: () => 'stale',
       set: () => {
-        if (moved) throw new Error('Node not found');
+        if (moved) {
+          throw new Error('Node not found');
+        }
       },
     });
     const liveMaster = component('live-master', stableId);
@@ -95,15 +97,20 @@ describe('component-set repair', () => {
       currentPage: {
         findAllWithCriteria: ({ types }: { types: NodeType[] }) => {
           const candidate = moved ? liveMaster : staleMaster;
+
           return types.includes(candidate.type) ? [candidate] : [];
         },
       },
       getNodeByIdAsync: vi.fn(async (id: string) => {
-        if (id === set.id) return set;
+        if (id === set.id) {
+          return set;
+        }
+
         return moved ? liveMaster : staleMaster;
       }),
       combineAsVariants: vi.fn((masters: ComponentNode[]) => {
         expect(masters).toEqual([liveMaster]);
+
         return repaired;
       }),
     });
@@ -155,13 +162,21 @@ describe('component-set repair', () => {
           types.includes('COMPONENT') ? [beforeMove] : [],
       },
       getNodeByIdAsync: vi.fn(async (id: string) => {
-        if (id === set.id) return set;
-        if (!moved) return beforeMove;
+        if (id === set.id) {
+          return set;
+        }
+
+        if (!moved) {
+          return beforeMove;
+        }
+
         postMoveLookupCount += 1;
+
         return postMoveLookupCount === 1 ? invalidatedAfterMove : liveAfterRetry;
       }),
       combineAsVariants: vi.fn((masters: ComponentNode[]) => {
         expect(masters).toEqual([liveAfterRetry]);
+
         return repaired;
       }),
     });
@@ -190,6 +205,7 @@ describe('text-style catalog reconstruction', () => {
     const catalogIds = resourceIds.map((stableId) => `${stableId}/presentation`);
     const samples = resourceIds.map((stableId, index) => {
       const pluginData = new Map<string, string>([[DATA_KEY, `${stableId}/sample`]]);
+
       return {
         id: `sample-${index}`,
         type: 'TEXT',

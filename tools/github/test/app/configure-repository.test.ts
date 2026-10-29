@@ -17,6 +17,7 @@ const policy: RepositoryPolicy = parsePolicy(
 
 const ruleParams = (rs: Record<string, unknown>, type: string): Record<string, unknown> => {
   const rules = rs.rules as { type: string; parameters?: Record<string, unknown> }[];
+
   return rules.find((r) => r.type === type)?.parameters ?? {};
 };
 

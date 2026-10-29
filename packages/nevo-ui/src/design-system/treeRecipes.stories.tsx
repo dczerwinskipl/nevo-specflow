@@ -12,13 +12,24 @@ import {
   treeRequiredLabelClassName,
   treeRequiredMarkerClassName,
   treeRootClassName,
+  treeAttentionGlyphClassName,
+  treeAttentionStateLabelClassName,
   treeRowActionClassName,
   treeRowClassName,
+  treeSectionHeaderClassName,
+  treeStateLabelClassName,
 } from './treeRecipes';
 
 type TreeEntry =
   | { kind: 'folder'; name: string; children: TreeEntry[] }
-  | { kind: 'file'; name: string; required?: boolean; disabled?: boolean };
+  | {
+      kind: 'file';
+      name: string;
+      required?: boolean;
+      disabled?: boolean;
+      /** Trailing label: a state label or an attention state label (they never hide). */
+      trailing?: { text: string; kind: 'state' | 'attention' };
+    };
 
 const longName = 'adr-001-deterministyczna-admisja-zadan-i-granice-wykonania-agentow.md';
 
@@ -77,6 +88,9 @@ function TreeLevel({
   toggle: (path: string) => void;
   top?: boolean;
 }) {
+  // A top level without folders is flat: its leaves have no folder icon column to align with.
+  const flat = top && entries.every((entry) => entry.kind === 'file');
+
   return (
     <ul
       className={top ? treeRootClassName : treeBranchClassName}
@@ -90,14 +104,29 @@ function TreeLevel({
               <div className={treeRowClassName}>
                 <button
                   aria-current={selected.includes(path) ? 'true' : undefined}
-                  className={treeLeafItemClassName}
+                  className={flat ? treeItemClassName : treeLeafItemClassName}
                   data-tree-item={path}
                   data-tree-leaf
                   disabled={entry.disabled}
                   type="button"
                 >
-                  <Icon name="file" />
+                  {entry.trailing?.kind === 'attention' ? (
+                    <Icon name="triangle-alert" className={treeAttentionGlyphClassName} />
+                  ) : (
+                    <Icon name="file" />
+                  )}
                   <span className={treeItemLabelTruncateClassName}>{entry.name}</span>
+                  {entry.trailing && (
+                    <span
+                      className={
+                        entry.trailing.kind === 'state'
+                          ? treeStateLabelClassName
+                          : treeAttentionStateLabelClassName
+                      }
+                    >
+                      {entry.trailing.text}
+                    </span>
+                  )}
                   {entry.required && (
                     <>
                       <span className={treeRequiredLabelClassName}>Required</span>
@@ -112,8 +141,10 @@ function TreeLevel({
             </li>
           );
         }
+
         const empty = entry.children.length === 0;
         const expanded = empty ? closed.includes(`open:${path}`) : !closed.includes(path);
+
         return (
           <li className={treeNodeClassName} key={path}>
             <div className={treeRowClassName}>
@@ -153,25 +184,56 @@ function TreeLevel({
   );
 }
 
+/** Trailing state labels: they never hide, the name truncates instead. */
+const labelledFixture: TreeEntry[] = [
+  {
+    kind: 'folder',
+    name: 'notes',
+    children: [
+      { kind: 'file', name: 'login-flow.md' },
+      {
+        kind: 'file',
+        name: 'meeting-2026-10-20-with-the-identity-team.md',
+        trailing: { text: 'Read-only', kind: 'state' },
+      },
+    ],
+  },
+  { kind: 'file', name: 'backend.md', trailing: { text: 'File missing', kind: 'attention' } },
+  { kind: 'file', name: 'overview.md' },
+];
+
 function TreeExample({
   selected = nothing,
   width = 'w-full max-w-sm',
   opened = nothing,
+  entries = fixture,
+  header,
 }: {
   selected?: string[];
   width?: string;
   opened?: string[];
+  entries?: TreeEntry[];
+  /** The root section header (the tree's own title). */
+  header?: string;
 }) {
   const [closed, setClosed] = useState<string[]>(opened);
   const toggle = (path: string) =>
     setClosed((value) =>
       value.includes(path) ? value.filter((item) => item !== path) : [...value, path],
     );
+
   return (
     <nav aria-label="Documents" className={`${width} min-w-0`}>
+      {header && (
+        <div className={treeSectionHeaderClassName} data-tree-header>
+          <span className="min-w-0 flex-1 truncate text-section-label uppercase text-content-muted">
+            {header}
+          </span>
+        </div>
+      )}
       <TreeLevel
         closed={closed}
-        entries={fixture}
+        entries={entries}
         parent=""
         selected={selected}
         toggle={toggle}
@@ -199,13 +261,89 @@ export const SelectedNestedFile: Story = {
 export const SelectedRequiredFile: Story = { args: { selected: ['specification.md'] } };
 /** An opened empty folder shows the quiet hint, not a tree item. */
 export const EmptyFolderOpened: Story = { args: { opened: ['open:notatki'] } };
+/** State labels never hide: the name truncates instead. */
+export const TrailingLabels: Story = { args: { entries: labelledFixture } };
+export const TrailingLabelsNarrow: Story = {
+  args: { entries: labelledFixture, width: 'w-[15rem]' },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const row = (key: string) =>
+      canvasElement.querySelector<HTMLElement>(`[data-tree-item="${key}"]`)!;
+    const missing = row('backend.md');
+    const state = Array.from(missing.querySelectorAll('span')).find(
+      (span) => span.textContent === 'File missing',
+    );
+    if (!state || state.getBoundingClientRect().width === 0) {
+      throw new Error('A state label stays visible on a narrow row.');
+    }
+
+    const stateRow = row('notes/meeting-2026-10-20-with-the-identity-team.md');
+    const readOnly = Array.from(stateRow.querySelectorAll('span')).find(
+      (span) => span.textContent === 'Read-only',
+    );
+    if (
+      !readOnly ||
+      readOnly.getBoundingClientRect().right > stateRow.getBoundingClientRect().right
+    ) {
+      throw new Error('A long name truncates so the state label stays inside the row.');
+    }
+  },
+};
+
+/** The open (selected) missing row keeps the attention tone on its warning glyph. */
+export const SelectedMissingRowKeepsItsWarning: Story = {
+  args: { entries: labelledFixture, selected: ['backend.md'] },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>('[data-tree-item="backend.md"]')!;
+    const glyph = row.querySelector('svg')!;
+    const label = Array.from(row.querySelectorAll('span')).find(
+      (span) => span.textContent === 'File missing',
+    )!;
+    if (getComputedStyle(glyph).color !== getComputedStyle(label).color) {
+      throw new Error('The warning glyph keeps the attention tone on the selected row.');
+    }
+  },
+};
+/** Files only: the root section header names the tree and the files are not indented. */
+const flatFixture: TreeEntry[] = [
+  { kind: 'file', name: 'behaviour.md' },
+  { kind: 'file', name: 'overview.md' },
+  { kind: 'file', name: 'ux.md' },
+];
+export const FlatWithSectionHeader: Story = {
+  args: { entries: flatFixture, header: 'Project files' },
+};
+export const FlatWithSectionHeaderGeometry: Story = {
+  args: { entries: flatFixture, header: 'Project files' },
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    const header = canvasElement.querySelector<HTMLElement>('[data-tree-header]')!;
+    const title = header.querySelector('span')!.getBoundingClientRect();
+    const file = item(canvasElement, 'overview.md');
+    assert(
+      near(file.querySelector('svg')!.getBoundingClientRect().left, title.left),
+      'A flat file starts on the header text edge: it does not look nested.',
+    );
+    assert(
+      near(header.getBoundingClientRect().height, file.getBoundingClientRect().height, 1),
+      'The header is one row high.',
+    );
+  },
+};
+/** With a folder the files keep the offset that aligns them with the folder icon. */
+export const SectionHeaderWithFolders: Story = {
+  args: { header: 'Project files' },
+};
 export const Narrow: Story = {
   args: { selected: [`architektura/decyzje/${longName}`], width: 'w-full' },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 const near = (a: number, b: number, tolerance = 0.5) => Math.abs(a - b) <= tolerance;
@@ -235,6 +373,7 @@ function verifyCompactGeometry(root: HTMLElement) {
       'No pass-through guide.',
     );
   }
+
   // Consecutive rows touch: no gaps between rows.
   const first = item(root, 'architektura').getBoundingClientRect();
   const second = item(root, 'architektura/decyzje').getBoundingClientRect();

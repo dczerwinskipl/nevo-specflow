@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@nevo/ui';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
-import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
@@ -26,7 +26,13 @@ import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { DocumentPane } from './DocumentPane';
 import { DocumentsEmptyState } from './DocumentsEmptyState';
+import {
+  DocumentsTreeActionsContext,
+  assignTypeFor,
+  type DocumentsTreeActions,
+} from './DocumentsTreeActions';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
+import { startDocument } from './startDocument';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
 
@@ -54,23 +60,52 @@ export function DocumentsWorkspace({
 function Workspace({ specId, documentId }: { specId: string; documentId?: string }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
-  const { documentsApi } = useAppServices();
-  const { supportsSplit } = useWorkspaceCapabilities();
+  const { api: documentsApi } = useDocumentsApi();
+  const { supportsSplit, measured } = useWorkspaceCapabilities();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
   const editor = useDocumentEditor();
   const tabs = useDocumentTabs();
-  const documentHeader = documentHeaderModel(editor, t, {
-    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
-  });
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
+  // Stable: the callbacks read the controller only when the user acts.
+  const [treeActions] = useState<DocumentsTreeActions>(() => ({
+    assignType: (id) => treeController.current?.assignType(id),
+    removeRegistration: (id) => treeController.current?.removeRegistration(id),
+  }));
+  const documentHeader = documentHeaderModel(editor, t, {
+    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
+    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
+  });
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
   const commitRef = useRef<(() => void) | null>(null);
+  const takeDiscardedRef = useRef<(() => string[]) | null>(null);
   const operations = useDocumentTreeOperations({ specId });
   const opening = useDocumentOpening({ specId, documentId, requestRef, commitRef });
+  // Once per visit (this screen's mount), as soon as the tree and the layout are known: the main
+  // file opens when nothing is chosen. Decided once, so closing it never reopens it in this visit.
+  const startDecided = useRef(false);
+  const { show } = tabs;
+  const openTabCount = tabs.tabs.length;
+  useEffect(() => {
+    if (startDecided.current || !tree.data || !measured) {
+      return;
+    }
+
+    startDecided.current = true;
+    const start = startDocument({
+      tree: tree.data,
+      documentId,
+      openTabs: openTabCount,
+      split: supportsSplit,
+    });
+    // Replaces the entry: Back leaves the screen instead of returning to an empty document area.
+    if (start) {
+      void show(start, { replace: true });
+    }
+  }, [tree.data, measured, supportsSplit, documentId, openTabCount, show]);
   const rootActions = documentRootActions(
     treeController,
     tree.data?.capabilities,
@@ -87,11 +122,31 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <DocumentPane data={{ specId, documentId }} />
     </div>
   ) : (
-    <DocumentsEmptyState documents={tree.data?.documents ?? []} onOpen={opening.select} />
+    <DocumentsEmptyState
+      // The start actions the Specification allows; a running operation only disables them.
+      actions={rootActions.filter((action) => {
+        const capabilities = tree.data?.capabilities;
+        if (action.id === 'documents-new-file') {
+          return capabilities?.createFile.available === true;
+        }
+
+        if (action.id === 'documents-upload') {
+          return capabilities?.import.available === true;
+        }
+
+        return false;
+      })}
+    />
   );
+
   return (
-    <>
-      <DocumentRouteGuard specId={specId} requestRef={requestRef} commitRef={commitRef} />
+    <DocumentsTreeActionsContext.Provider value={treeActions}>
+      <DocumentRouteGuard
+        specId={specId}
+        requestRef={requestRef}
+        commitRef={commitRef}
+        takeDiscardedRef={takeDiscardedRef}
+      />
       <AppWorkspace
         scroll="content"
         fit="available"
@@ -113,12 +168,17 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             specId,
             actions: [
               ...rootActions,
-              {
-                id: 'demo-scope',
-                label: t('documents.demo.title'),
-                icon: 'info',
-                onPress: () => setDemoNotice(true),
-              },
+              // What the demo emulates; a project Runtime has nothing to explain here.
+              ...(documentsApi.emulated
+                ? [
+                    {
+                      id: 'demo-scope',
+                      label: t('documents.demo.title'),
+                      icon: 'info' as const,
+                      onPress: () => setDemoNotice(true),
+                    },
+                  ]
+                : []),
             ],
           })}
         >
@@ -128,7 +188,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             controllerRef={treeController}
             operations={operations}
             requestRef={requestRef}
-            commitRef={commitRef}
+            takeDiscardedRef={takeDiscardedRef}
             onSelect={opening.select}
           />
         </AppWorkspace.Primary>
@@ -137,7 +197,9 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             open
             // The region's close closes every tab, asking once about the unsaved documents.
             onOpenChange={(next) => {
-              if (!next) opening.closeAll();
+              if (!next) {
+                opening.closeAll();
+              }
             }}
             header={
               <WorkspaceHeader
@@ -149,11 +211,10 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                   menuDisplay: t('documents.menuDisplay'),
                 }}
                 headingLevel={2}
+                // The tab label: the file name, also for a missing (dangling) document.
                 title={
-                  tree.data?.documents
-                    .find((item) => item.id === documentId)
-                    ?.path.split('/')
-                    .at(-1) ?? t('specification.documentPreviewTitle')
+                  tabs.tabs.find((tab) => tab.id === documentId)?.label ??
+                  t('specification.documentPreviewTitle')
                 }
                 identityContent={<DocumentTabStrip />}
               />
@@ -178,6 +239,6 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
           <DialogBody>{t('documents.demo.body')}</DialogBody>
         </DialogContent>
       </Dialog>
-    </>
+    </DocumentsTreeActionsContext.Provider>
   );
 }

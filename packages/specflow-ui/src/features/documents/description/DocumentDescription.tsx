@@ -8,10 +8,13 @@ export function descriptionScrollOwner(node: HTMLElement): HTMLElement {
     if (
       /(auto|scroll)/.test(getComputedStyle(parent).overflowY) &&
       parent.scrollHeight > parent.clientHeight + 1
-    )
+    ) {
       return parent;
+    }
+
     parent = parent.parentElement;
   }
+
   return document.scrollingElement as HTMLElement;
 }
 
@@ -41,13 +44,19 @@ export function DocumentDescription({
   const saved = useRef<{ owner: HTMLElement; top: number } | null>(null);
   const restore = useRef(false);
   useLayoutEffect(() => {
-    if (!restore.current) return;
+    if (!restore.current) {
+      return;
+    }
+
     const position =
       saved.current ??
       (control.current && savedScrollTop !== undefined
         ? { owner: descriptionScrollOwner(control.current), top: savedScrollTop }
         : null);
-    if (position) position.owner.scrollTop = position.top;
+    if (position) {
+      position.owner.scrollTop = position.top;
+    }
+
     control.current?.focus({ preventScroll: true });
     restore.current = false;
   }, [expanded, savedScrollTop]);
@@ -56,11 +65,16 @@ export function DocumentDescription({
       const owner = descriptionScrollOwner(control.current);
       saved.current = { owner, top: owner.scrollTop };
     }
+
     restore.current = true;
     onExpandedChange?.(!expanded, saved.current?.top ?? savedScrollTop ?? 0);
     setExpanded(!expanded);
   };
-  if (!intro && !renderDocument) return null;
+
+  if (!intro && !renderDocument) {
+    return null;
+  }
+
   return (
     <div className="mt-2 grid min-w-0 justify-items-start gap-2 [overflow-wrap:anywhere]">
       {!expanded && intro ? (

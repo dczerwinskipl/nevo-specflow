@@ -51,11 +51,15 @@ function Harness({
   const handle = useRef<WorkspacePlaceSectionHandle>(null);
   // The owner flags a refused typed field after the form was submitted; the story does it on mount.
   useEffect(() => {
-    if (branchConflict) handle.current?.focusField('branch');
-    else if (slugConflict) handle.current?.focusField('slug');
+    if (branchConflict) {
+      handle.current?.focusField('branch');
+    } else if (slugConflict) {
+      handle.current?.focusField('slug');
+    }
   }, [branchConflict, slugConflict]);
   const options = createOptionsFixture(variant);
   const state: WorkspaceOptionsState = status === 'ready' ? { status, options } : { status };
+
   return (
     <TooltipProvider>
       <div className="@container w-full" style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -108,15 +112,29 @@ type Context = Parameters<Play>[0];
 const request = (canvas: Context['canvas']) => canvas.getByLabelText('Żądanie').textContent;
 const summary = (canvas: Context['canvas']) =>
   canvas.getByRole('group', { name: 'Podsumowanie środowiska pracy' });
+/**
+ * Sizes the story viewport and waits until the window really has that size: the resize reaches the
+ * story's window asynchronously, and a Radix Select closes its list on any window resize, so a late
+ * resize (also one left over from the previous story) would close a list the story just opened.
+ */
 async function settle(width: number, height = 900) {
   await (await browserPage()).viewport(width, height);
+  await waitFor(() => {
+    if (window.innerWidth !== width || window.innerHeight !== height) {
+      throw new Error(
+        `Viewport ${window.innerWidth}x${window.innerHeight}, not ${width}x${height}`,
+      );
+    }
+  });
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
+
 /** Close an open Combobox list and wait for it to unmount, so no overlay state leaks into the next story. */
 async function closeList(userEvent: Context['userEvent']) {
   await userEvent.keyboard('{Escape}');
   await waitFor(() => expect(within(document.body).queryByRole('listbox')).not.toBeInTheDocument());
 }
+
 async function expectNoOverflow(width: number) {
   await settle(width);
   const culprits = [...document.querySelectorAll('body *')]
@@ -124,6 +142,7 @@ async function expectNoOverflow(width: number) {
     .map((element) => `${element.tagName}.${String(element.className).slice(0, 50)}`);
   await expect(culprits.slice(0, 5), `overflow at ${width}`).toEqual([]);
 }
+
 /** Value cell of one row of the default-settings definition list. */
 const rowValue = (canvas: Context['canvas'], term: string) =>
   within(summary(canvas)).getByText(term, { selector: 'dt' }).nextElementSibling as HTMLElement;
@@ -363,12 +382,13 @@ export const ExistingOutsideNevo: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Środowisko pracy' }));
-    const option = await within(document.body).findByRole(
-      'option',
-      { name: /architecture/ },
-      { timeout: 5000 },
-    );
+    // Own the viewport first (a pending resize closes the list), then open the list and wait until
+    // it is open: the option is read from an open list, not from a click that may not have landed.
+    await settle(1440);
+    const trigger = canvas.getByRole('combobox', { name: 'Środowisko pracy' });
+    await userEvent.click(trigger);
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+    const option = await within(document.body).findByRole('option', { name: /architecture/ });
     await expect(option).toHaveTextContent('Poza Nevo');
     await closeList(userEvent);
   },
@@ -395,7 +415,10 @@ export const IndependentSwitchesStartFromTheDefaults: Story = {
     const target = canvas.getByRole('switch', { name: 'Scal później do innego środowiska' });
     const slug = canvas.getByRole('switch', { name: 'Zmień nazwę (slug)' });
     const name = canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' });
-    for (const control of [base, target, slug, name]) await expect(control).not.toBeChecked();
+    for (const control of [base, target, slug, name]) {
+      await expect(control).not.toBeChecked();
+    }
+
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
 
     // Switching on prefills the effective default: nothing is an override until it differs.
@@ -812,6 +835,7 @@ export const NothingAvailable: Story = {
       await expect(tile).toHaveAttribute('aria-disabled', 'true');
       await expect(tile).not.toBeChecked();
     }
+
     await expect(canvas.queryByRole('group', { name: 'Podsumowanie środowiska pracy' })).toBeNull();
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
@@ -958,8 +982,13 @@ export const LockedWhileCreating: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas }) => {
-    for (const tile of tiles(canvas)) await expect(tile).toBeDisabled();
-    for (const control of canvas.getAllByRole('switch')) await expect(control).toBeDisabled();
+    for (const tile of tiles(canvas)) {
+      await expect(tile).toBeDisabled();
+    }
+
+    for (const control of canvas.getAllByRole('switch')) {
+      await expect(control).toBeDisabled();
+    }
   },
 };
 
@@ -973,7 +1002,9 @@ export const LongNamesWrapWithoutOverflow: Story = {
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /very-long-descriptive/ }),
     );
-    for (const width of [320, 390, 1440]) await expectNoOverflow(width);
+    for (const width of [320, 390, 1440]) {
+      await expectNoOverflow(width);
+    }
   },
 };
 
@@ -994,6 +1025,7 @@ export const ResponsiveColumnsAndNoOverflow: Story = {
       await expect(c.top).toBeGreaterThan(b.bottom - 1);
       await expect(Math.abs(a.left - c.left)).toBeLessThan(1);
     }
+
     for (const width of [768, 884, 1024, 1440, 2560]) {
       await expectNoOverflow(width);
       const [a, b, c] = rects();
@@ -1001,6 +1033,7 @@ export const ResponsiveColumnsAndNoOverflow: Story = {
       await expect(Math.abs(b.top - c.top)).toBeLessThan(1);
       await expect(Math.abs(a.height - c.height)).toBeLessThan(1);
     }
+
     // The wide column stops at the standard content width.
     await settle(2560);
     await expect(document.querySelector('form')!.getBoundingClientRect().width).toBeLessThanOrEqual(
@@ -1035,9 +1068,12 @@ const brokenWords = (root: Element) => {
       range.setStart(node, match.index);
       range.setEnd(node, match.index + match[0].length);
       const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
-      if (lines.size > 1) broken.push(match[0]);
+      if (lines.size > 1) {
+        broken.push(match[0]);
+      }
     }
   }
+
   return broken;
 };
 
@@ -1135,6 +1171,7 @@ export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
       await expect(brokenWords(canvas.getByText(/Zmienione ustawienia/))).toEqual([]);
       await expect(trigger.scrollWidth).toBeLessThanOrEqual(trigger.clientWidth + 1);
     }
+
     // F-10: the accessible name has no stray separator (the list is joined the Polish way).
     await expect(canvas.getByText('Zmienione ustawienia (2): baza i nazwa')).toBeVisible();
     await expectNoOverflow(320);
@@ -1162,6 +1199,7 @@ export const BranchIconStaysOnTheFirstLineOfAWrappingValue: Story = {
     const first = (() => {
       const range = document.createRange();
       range.selectNodeContents(value);
+
       return [...range.getClientRects()].sort((a, b) => a.top - b.top)[0]!;
     })();
     const iconBox = icon.getBoundingClientRect();

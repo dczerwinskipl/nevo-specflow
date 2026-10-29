@@ -13,10 +13,12 @@ describe('provider resource scope', () => {
       await scope.temporaryFile('mcp.json', '{}');
       scope.defer('mcp', () => {
         order.push('mcp');
+
         return Promise.resolve();
       });
       scope.defer('transport', () => {
         order.push('transport');
+
         return Promise.reject(new Error('private cause'));
       });
       const [one, two] = await Promise.all([scope.close(), scope.close()]);
@@ -32,8 +34,10 @@ describe('provider resource scope', () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-scope-'));
     try {
       const scope = await createInvocationScope(root, randomUUID());
-      for (const name of ['../outside.json', 'CON.json', 'nested/file.json'])
+      for (const name of ['../outside.json', 'CON.json', 'nested/file.json']) {
         await expect(scope.temporaryFile(name, '{}')).rejects.toThrow();
+      }
+
       const file = await scope.temporaryFile('mcp.json', '{}');
       expect(await scope.close(false)).toEqual([
         { resource: 'temporary-files', code: 'PROCESS_NOT_STOPPED' },

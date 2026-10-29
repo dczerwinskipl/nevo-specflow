@@ -51,6 +51,7 @@ export function operationProgressReducer(
       return { ...state, outcome: event.type };
     default: {
       const exhaustive: never = event;
+
       return exhaustive;
     }
   }

@@ -69,6 +69,7 @@ function Host({
   const navigation = useSecondaryNavigation();
   flags.isOpen.push(navigation.isOpen);
   close = navigation.close;
+
   return (
     <AppWorkspace split="primary" stackedSecondaryClose={stackedClose}>
       <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
@@ -80,6 +81,7 @@ function Host({
     </AppWorkspace>
   );
 }
+
 function mount(stack: ReturnType<typeof stackWith>, stackedClose?: 'show' | 'hide') {
   flags.isOpen = [];
   render(
@@ -90,6 +92,7 @@ function mount(stack: ReturnType<typeof stackWith>, stackedClose?: 'show' | 'hid
     </AppWorkspaceProvider>,
   );
 }
+
 const openStack = async () => {
   await act(async () => {
     fireEvent.click(screen.getByText('Open stack'));
@@ -97,10 +100,12 @@ const openStack = async () => {
   });
   await screen.findByText('Stack content');
 };
+
 const menuOf = (index = 0) => {
   const trigger = screen.getAllByRole('button', { name: 'Screen actions', hidden: true })[index]!;
   trigger.focus();
   fireEvent.keyDown(trigger, { key: 'Enter' });
+
   return screen.getByRole('menu');
 };
 

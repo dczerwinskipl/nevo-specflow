@@ -37,9 +37,11 @@ function passwordFromStdin(input: string): string {
   if (password.includes('\n') || password.includes('\r')) {
     throw new Error('Password input must contain exactly one line.');
   }
+
   if (password.length === 0) {
     throw new Error('Password must not be empty.');
   }
+
   if ([...password].length > PASSWORD_MAX_LENGTH) {
     throw new Error(`Password must be at most ${PASSWORD_MAX_LENGTH} characters.`);
   }

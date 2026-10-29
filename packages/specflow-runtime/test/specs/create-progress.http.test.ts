@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { bootstrapProjectHome } from '@nevo/specflow-engine/testing';
+import { bootstrapProjectHome, installDefinitionsForTesting } from '@nevo/specflow-engine/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -49,8 +49,12 @@ async function server(gitEnabled: boolean) {
     '-qm',
     'initial',
   );
-  if (gitEnabled) git(root, 'branch', '-m', 'develop');
+  if (gitEnabled) {
+    git(root, 'branch', '-m', 'develop');
+  }
+
   const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
 
   const store = new InMemoryAuthenticationStore();
   const session = store.createSession({
@@ -67,6 +71,7 @@ async function server(gitEnabled: boolean) {
   );
   apps.push(app);
   await app.listen({ port: 0, host: '127.0.0.1' });
+
   return {
     root,
     headers,
@@ -96,7 +101,10 @@ async function subscribe(
     let buffer = '';
     for (;;) {
       const next = await reader.read();
-      if (next.done) break;
+      if (next.done) {
+        break;
+      }
+
       buffer += next.value;
       let split: number;
       while ((split = buffer.indexOf('\n\n')) >= 0) {
@@ -111,8 +119,10 @@ async function subscribe(
         }
       }
     }
+
     return seen;
   })();
+
   return { events };
 }
 
@@ -123,13 +133,17 @@ async function readJournal(root: string, operationId: string): Promise<string | 
       const path = join(dir, entry.name);
       if (entry.isDirectory()) {
         const found = await walk(path);
-        if (found !== undefined) return found;
+        if (found !== undefined) {
+          return found;
+        }
       } else if (entry.name === operationId + '.json') {
         return readFile(path, 'utf8');
       }
     }
+
     return undefined;
   };
+
   return walk(join(root, '.nevo'));
 }
 
@@ -236,7 +250,9 @@ describe('Create progress over the generic operations stream (real Git)', () => 
     const operationId = randomUUID();
     const watching = await subscribe(url, headers, operationId, (event) => {
       // First live step: the request is in flight and the worktree is being prepared.
-      if (event.event === 'step') abort.abort();
+      if (event.event === 'step') {
+        abort.abort();
+      }
     });
     const abort = new AbortController();
     const request = fetch(`${url}/api/specs`, {

@@ -13,7 +13,10 @@ export function specsOverviewQueryOptions(api: SpecsOverviewApi, collection: Spe
     queryKey: specsOverviewKeys.collection(collection),
     queryFn: async ({ signal }) => {
       const projection = await api.getOverview(collection, signal);
-      if (projection.collection !== collection) throw new Error('Specs projection scope mismatch.');
+      if (projection.collection !== collection) {
+        throw new Error('Specs projection scope mismatch.');
+      }
+
       if (
         projection.items.some(
           ({ progress }) =>
@@ -24,8 +27,10 @@ export function specsOverviewQueryOptions(api: SpecsOverviewApi, collection: Spe
               progress.completed < 0 ||
               progress.completed > progress.total),
         )
-      )
+      ) {
         throw new Error('Invalid Specs progress aggregate.');
+      }
+
       return projection;
     },
   });

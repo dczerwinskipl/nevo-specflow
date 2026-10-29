@@ -81,6 +81,7 @@ export function demoExecutionFacts(
         ]
       : [],
   };
+
   return {
     identity: { projectId: 'demo-project', workspaceId: 'demo-workspace', specId, taskId: task.id },
     definitionVersion: 'demo-definition-1',
@@ -120,6 +121,7 @@ export function demoExecutionFacts(
     recovery: null,
   };
 }
+
 export function demoTaskResources(specId: string, taskId: string): ResourceFacts[] {
   return Array.from({ length: 14 }, (_, i) => ({
     id: `document-${i + 1}`,
@@ -131,10 +133,11 @@ export function demoTaskResources(specId: string, taskId: string): ResourceFacts
     origin: { kind: 'explicit_association', sourceId: taskId },
     link: {
       state: 'available',
-      target: { kind: 'document', specId, documentId: 'spec', revision: 'demo-document-1' },
+      target: { kind: 'document', specId, documentId: 'overview', revision: 'demo-document-1' },
     },
   }));
 }
+
 export function demoTaskHistory(specId: string, taskId: string): HistoryFacts[] {
   return [
     {

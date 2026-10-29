@@ -15,17 +15,6 @@ import {
   AppWorkspaceBody,
   AppWorkspaceProvider,
   APP_NAVIGATION_INLINE_PADDING,
-  WorkspaceHeader,
-  WorkspaceHeaderIdentity,
-  useAppNavigation,
-  useSecondaryNavigation,
-  useSecondaryStack,
-  useSecondaryLeaveGuard,
-  defineSecondaryStack,
-  type SecondaryData,
-  type SecondaryScreenProps,
-} from '@nevo/ui';
-import {
   Badge,
   Button,
   DataTable,
@@ -40,13 +29,22 @@ import {
   TextArea,
   TextInput,
   Typography,
+  WorkspaceHeader,
+  WorkspaceHeaderIdentity,
+  cn,
+  defineSecondaryStack,
+  useAppNavigation,
+  useSecondaryLeaveGuard,
+  useSecondaryNavigation,
+  useSecondaryStack,
   type DataTableColumn,
   type NavigationAdapter,
   type NavigationNode,
+  type SecondaryData,
+  type SecondaryScreenProps,
   type StatusTone,
 } from '@nevo/ui';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
-import { cn } from '@nevo/ui';
 
 type CustomerStatus = 'Active' | 'Lead' | 'At risk';
 type CustomerSegment = 'Enterprise' | 'Growth' | 'Startup';
@@ -404,9 +402,11 @@ function createBlankCustomer(): Customer {
 function createCustomerStore() {
   let snapshot: Customer[] = initialCustomers;
   const listeners = new Set<() => void>();
+
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
@@ -417,7 +417,9 @@ function createCustomerStore() {
       snapshot = exists
         ? snapshot.map((item) => (item.id === customer.id ? customer : item))
         : [customer, ...snapshot];
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
   };
 }
@@ -457,6 +459,7 @@ function CustomerEditorScreen({
   useSecondaryLeaveGuard(
     useCallback(() => !dirty.current || window.confirm('Discard unsaved customer changes?'), []),
   );
+
   return (
     <div>
       <div className="p-4">
@@ -479,6 +482,7 @@ function CustomerEditorScreen({
     </div>
   );
 }
+
 function CustomerBillingScreen({
   data,
 }: SecondaryScreenProps<CustomerSidebarData, CustomerPages['billing']>) {
@@ -495,10 +499,12 @@ function createCustomerStack(store: CustomerStore) {
   function useCustomerData({ id }: { id: string }): SecondaryData<CustomerSidebarData> {
     const customers = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
     const customer = customers.find((value) => value.id === id);
+
     return customer
       ? { status: 'ready', data: { customer, save: store.save } }
       : { status: 'unavailable', message: 'This customer is no longer available.' };
   }
+
   return defineSecondaryStack<{ id: string }, CustomerSidebarData, CustomerPages>({
     id: 'crm-customer',
     initial: 'editor',
@@ -528,7 +534,10 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
 
   const filteredCustomers = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
-    if (!normalized) return customers;
+    if (!normalized) {
+      return customers;
+    }
+
     return customers.filter((customer) =>
       [customer.company, customer.contact, customer.email, customer.owner, customer.segment].some(
         (value) => value.toLocaleLowerCase().includes(normalized),

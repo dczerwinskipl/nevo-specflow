@@ -20,18 +20,28 @@ export function createRetryableOidcDiscovery<T>(
   let failure: { readonly error: unknown; readonly retryAt: number } | undefined;
 
   return async () => {
-    if (resolved) return resolved.value;
-    if (pending) return pending;
-    if (failure && now() < failure.retryAt) throw failure.error;
+    if (resolved) {
+      return resolved.value;
+    }
+
+    if (pending) {
+      return pending;
+    }
+
+    if (failure && now() < failure.retryAt) {
+      throw failure.error;
+    }
 
     pending = discover()
       .then((value) => {
         resolved = { value };
         failure = undefined;
+
         return value;
       })
       .catch((error: unknown) => {
         failure = { error, retryAt: now() + retryDelayMs };
+
         throw error;
       })
       .finally(() => {

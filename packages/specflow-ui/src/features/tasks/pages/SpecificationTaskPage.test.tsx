@@ -40,8 +40,10 @@ function renderTask(options: { error?: HttpClientError; seedDetail?: boolean } =
   } else if (options.seedDetail !== false) {
     queryClient.setQueryData(taskKeys.detail(specId, taskId), detail);
   }
+
   function TaskHarness() {
     const taskState = useSpecificationTask(specId, taskId);
+
     return (
       <SpecificationTaskPage
         specId={specId}
@@ -52,6 +54,7 @@ function renderTask(options: { error?: HttpClientError; seedDetail?: boolean } =
       />
     );
   }
+
   return renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={createSpecFlowAppServices()}>

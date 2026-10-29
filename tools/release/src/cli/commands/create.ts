@@ -50,9 +50,16 @@ export function createReleaseCommand(ctx: CliContext): Command {
             mutated: result.mutated,
           }),
         );
+
         return;
       }
-      for (const e of result.events) (e.level === 'warn' ? ctx.stderr : ctx.stdout)(e.message);
-      if (!mutate) ctx.stdout('\nvalidate-only: every check passed; nothing was changed.');
+
+      for (const e of result.events) {
+        (e.level === 'warn' ? ctx.stderr : ctx.stdout)(e.message);
+      }
+
+      if (!mutate) {
+        ctx.stdout('\nvalidate-only: every check passed; nothing was changed.');
+      }
     });
 }

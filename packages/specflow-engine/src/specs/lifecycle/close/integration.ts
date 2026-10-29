@@ -27,8 +27,9 @@ export async function advanceCloseIntegration(
   if (
     journal.stage === 'reserved' &&
     (journal.plan.kind === 'worktree-close' || journal.plan.kind === 'workspace-close')
-  )
+  ) {
     journal = await prepareCloseGitIntegration(engine, operationId);
+  }
 
   if (journal.stage === 'integration-preparation-initiated') {
     switch (journal.integration?.relationship) {
@@ -48,19 +49,25 @@ export async function advanceCloseIntegration(
         );
     }
   }
-  if (journal.stage === 'integration-scratch-candidate')
+
+  if (journal.stage === 'integration-scratch-candidate') {
     journal = await publishDivergentCloseCandidate(engine, operationId);
+  }
 
   // On scratch conflict, Worktree Close offers resolution; Specification
   // Close persists retained archived conflict separately in its own use case.
-  if (journal.stage === 'integration-scratch-conflict') return journal;
+  if (journal.stage === 'integration-scratch-conflict') {
+    return journal;
+  }
 
   if (journal.stage === 'integration-verified') {
     await requireVerifiedCloseIntegration(engine, operationId);
     journal = await rebindVerifiedClose(engine, operationId);
   }
-  if (journal.stage === 'binding-rebound')
+
+  if (journal.stage === 'binding-rebound') {
     journal = await disposeReboundWorktree(engine, operationId);
+  }
 
   return journal;
 }

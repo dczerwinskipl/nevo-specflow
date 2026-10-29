@@ -1,13 +1,7 @@
+import { WINDOWS_ABSOLUTE_PATH_MAX } from '../document-rules/limits';
 import { ScaffoldValidationError } from '../scaffold';
 
-/**
- * Longest absolute path (`workspaceRoot` + `/` + relative path, in characters) Create accepts on
- * Windows. Below the 260 characters of MAX_PATH with room for Git's own working files. The Engine
- * does not enable long paths (that is a per-user or per-repository setting it cannot verify), so a
- * longer path is refused before anything is written. See "Windows-hosted paths" in
- * `docs/architecture/runtime/specification-documents.md`.
- */
-export const WINDOWS_ABSOLUTE_PATH_MAX = 240;
+export { WINDOWS_ABSOLUTE_PATH_MAX };
 
 /** Length of the staged file name `.<uuid>.tmp` the scaffold writer creates next to each file. */
 const STAGED_FILE_NAME_LENGTH = 1 + 36 + 4;
@@ -26,7 +20,10 @@ export function assertCreatePathsFitWindows(
   relativePaths: readonly string[],
   options: WindowsPathBoundOptions = {},
 ): void {
-  if ((options.platform ?? process.platform) !== 'win32') return;
+  if ((options.platform ?? process.platform) !== 'win32') {
+    return;
+  }
+
   for (const path of relativePaths) {
     const slash = path.lastIndexOf('/');
     const staged = slash < 0 ? STAGED_FILE_NAME_LENGTH : slash + 1 + STAGED_FILE_NAME_LENGTH;

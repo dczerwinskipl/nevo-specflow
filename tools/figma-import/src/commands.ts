@@ -36,12 +36,19 @@ import type { IRInspection, IRInspectionItem, InspectionItemKind } from '../mess
 import { createImportProgress, type ImportProgress } from '../progress';
 export function assertDesignSystemIR(value: unknown): asserts value is DesignSystemIR {
   validateIR(value);
-  if (!value || typeof value !== 'object') throw new Error('IR must be a JSON object');
+  if (!value || typeof value !== 'object') {
+    throw new Error('IR must be a JSON object');
+  }
+
   const candidate = value as unknown as Partial<DesignSystemIR>;
-  if (candidate.kind !== 'design-system')
+  if (candidate.kind !== 'design-system') {
     throw new Error(`Expected design-system IR, received ${candidate.kind ?? 'unknown'}`);
-  if (candidate.schemaVersion !== 4)
+  }
+
+  if (candidate.schemaVersion !== 4) {
     throw new Error(`Unsupported schemaVersion: ${candidate.schemaVersion}`);
+  }
+
   if (!Array.isArray(candidate.definitions) || !candidate.resources || !candidate.components) {
     throw new Error('Design System IR v4 must contain definitions[], resources and components');
   }
@@ -49,12 +56,19 @@ export function assertDesignSystemIR(value: unknown): asserts value is DesignSys
 
 export function assertScreensIR(value: unknown): asserts value is ScreensIR {
   validateIR(value);
-  if (!value || typeof value !== 'object') throw new Error('IR must be a JSON object');
+  if (!value || typeof value !== 'object') {
+    throw new Error('IR must be a JSON object');
+  }
+
   const candidate = value as unknown as Partial<ScreensIR>;
-  if (candidate.kind !== 'screens')
+  if (candidate.kind !== 'screens') {
     throw new Error(`Expected screens IR, received ${candidate.kind ?? 'unknown'}`);
-  if (candidate.schemaVersion !== 3)
+  }
+
+  if (candidate.schemaVersion !== 3) {
     throw new Error(`Unsupported screens schemaVersion: ${candidate.schemaVersion}`);
+  }
+
   if (!Array.isArray(candidate.definitions) || !candidate.resources || !candidate.screens) {
     throw new Error('Screens IR must contain definitions[], resources and screens');
   }
@@ -71,14 +85,19 @@ export async function importStage<T>(label: string, action: () => Promise<T> | T
       return await action();
     } catch (error) {
       lastError = error;
-      if (!isTransientFigmaNodeInvalidation(error) || attempt === 2) break;
+      if (!isTransientFigmaNodeInvalidation(error) || attempt === 2) {
+        break;
+      }
+
       // Structural component/set mutations can invalidate Figma node proxies
       // until the next plugin turn. The import stages are reconciliation upserts,
       // so retrying the current stage is safe and avoids requiring a manual rerun.
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
+
   const detail = lastError instanceof Error ? lastError.message : String(lastError);
+
   throw new Error(`${label}: ${detail}`);
 }
 
@@ -94,6 +113,7 @@ function designMasterRequirements(
         (!spec.target || spec.target === 'component') && (!roots || roots.has(spec.component)),
     )
     .flatMap((spec) => [...canonicalCaptures(spec, ir.components[spec.component] ?? []).keys()]);
+
   return [
     ...new Set([
       ...componentIds,
@@ -140,6 +160,7 @@ export async function inspectIR(
       (node) =>
         node.type === 'COMPONENT_SET' && node.getPluginData(DATA_KEY) === catalog.setStableId,
     );
+
     return set?.type === 'COMPONENT_SET' ? [set] : [];
   });
   const existingAssetIds = new Set(
@@ -210,6 +231,7 @@ export async function inspectIR(
             .map((stableId) => ({ stableId, kind })),
         )
       : [];
+
   return {
     kind: ir.kind,
     managedPageExists: Boolean(page),
@@ -223,16 +245,27 @@ export async function importIR(
   resourceCatalogs: readonly ResourceCatalogDefinition[],
   report: ImportProgress = () => undefined,
 ) {
-  if (!value || typeof value !== 'object') throw new Error('IR must be a JSON object');
+  if (!value || typeof value !== 'object') {
+    throw new Error('IR must be a JSON object');
+  }
+
   const kind = (value as { kind?: unknown }).kind;
-  if (kind === 'design-system') return importDesignSystemIR(value, resourceCatalogs, report);
-  if (kind === 'screens') return importScreensIR(value, report);
+  if (kind === 'design-system') {
+    return importDesignSystemIR(value, resourceCatalogs, report);
+  }
+
+  if (kind === 'screens') {
+    return importScreensIR(value, report);
+  }
+
   const kindLabel = typeof kind === 'string' ? kind : 'unknown';
+
   throw new Error(`Unsupported IR kind: ${kindLabel}`);
 }
 
 function warningSuffix(ir: DesignSystemIR | ScreensIR) {
   const count = ir.diagnostics?.length ?? 0;
+
   return count ? ` ${count} CSS projection warning${count === 1 ? '' : 's'} recorded in IR.` : '';
 }
 
@@ -263,11 +296,17 @@ export async function importDesignSystemIR(
   );
   progress.complete('Validated Design System IR.');
   await progress.run('Preparing managed Figma page…', async () => {
-    if (ownsResources) return ensureManagedPage();
+    if (ownsResources) {
+      return ensureManagedPage();
+    }
+
     const existing = await locateManagedPage();
-    if (!existing)
+    if (!existing) {
       throw new Error('Missing managed Design System page. Run the Nevo UI sync first.');
+    }
+
     await figma.setCurrentPageAsync(existing);
+
     return existing;
   });
   const definitions = new Map(
@@ -289,6 +328,7 @@ export async function importDesignSystemIR(
       );
     }
   }
+
   const sectionSuffix = ir.profile ? `/${ir.profile.id}` : '';
   const section = ensureSection(
     `${DESIGN_SECTION_ID}${sectionSuffix}`,
@@ -306,6 +346,7 @@ export async function importDesignSystemIR(
     );
     resources = { ...resources, assets };
   }
+
   const generated: (ComponentSetNode | ComponentNode)[] = [];
   const overviews: FrameNode[] = [];
   let y = 24;
@@ -330,10 +371,14 @@ export async function importDesignSystemIR(
           assetSet,
           overviewY,
         );
+
         return { assetSet, assetOverview };
       },
     );
-    for (const item of assetCatalog.items) presentedAssetRefs.add(item.resourceRef);
+    for (const item of assetCatalog.items) {
+      presentedAssetRefs.add(item.resourceRef);
+    }
+
     generated.push(assetSet);
     overviews.push(assetOverview);
     lastComponent = assetSet;
@@ -349,19 +394,27 @@ export async function importDesignSystemIR(
     : [];
   if (ownsResources && assetCatalogs.length) {
     for (const [index, master] of unpresentedAssets.entries()) {
-      if (master.parent !== section) section.appendChild(master);
+      if (master.parent !== section) {
+        section.appendChild(master);
+      }
+
       master.x = (lastAssetSet?.x ?? 24) + (lastAssetSet?.width ?? 0) + 24 + index * 40;
       master.y = lastAssetSet?.y ?? 24;
     }
+
     generated.push(...unpresentedAssets);
     y = Math.max(y, ...unpresentedAssets.map((asset) => asset.y + asset.height + 48));
   } else if (ownsResources) {
     const assetMasters = unpresentedAssets;
     for (const [index, master] of assetMasters.entries()) {
-      if (master.parent !== section) section.appendChild(master);
+      if (master.parent !== section) {
+        section.appendChild(master);
+      }
+
       master.x = 24 + index * 40;
       master.y = 24;
     }
+
     generated.push(...assetMasters);
     lastComponent = assetMasters[assetMasters.length - 1];
     y = Math.max(...assetMasters.map((asset) => asset.y + asset.height), 24) + 48;
@@ -381,6 +434,7 @@ export async function importDesignSystemIR(
           textStyleSet,
           overviewY,
         );
+
         return { textStyleSet, textStyleOverview };
       },
     );
@@ -390,6 +444,7 @@ export async function importDesignSystemIR(
     y = textStyleSet.y + textStyleSet.height + 48;
     overviewY = textStyleOverview.y + textStyleOverview.height + 48;
   }
+
   for (const spec of componentSpecs) {
     const { set, overview } = await progress.run(`Synchronizing ${spec.component}…`, async () => {
       const set = await importStage(`Component ${spec.component}`, () =>
@@ -401,6 +456,7 @@ export async function importDesignSystemIR(
         set,
         overviewY,
       );
+
       return { set, overview };
     });
     generated.push(set);
@@ -409,6 +465,7 @@ export async function importDesignSystemIR(
     y = set.y + set.height + 48;
     overviewY = overview.y + overview.height + 48;
   }
+
   for (const spec of componentSpecs) {
     await progress.run(`Finalizing ${spec.component} nested content…`, () =>
       importStage(`Component ${spec.component} nested slot reconciliation`, () =>
@@ -416,6 +473,7 @@ export async function importDesignSystemIR(
       ),
     );
   }
+
   await progress.run('Finalizing sections and overview layout…', () => {
     removeStaleManagedChildren(
       section,
@@ -441,7 +499,10 @@ export async function importDesignSystemIR(
     );
     overviewsSection.x = section.x + section.width + 80;
     overviewsSection.y = section.y;
-    if (lastComponent) figma.currentPage.selection = [lastComponent];
+    if (lastComponent) {
+      figma.currentPage.selection = [lastComponent];
+    }
+
     figma.viewport.scrollAndZoomIntoView([section, overviewsSection]);
   });
   const componentSummary = ir.definitions
@@ -452,11 +513,13 @@ export async function importDesignSystemIR(
     )
     .map((spec) => {
       const count = canonicalCaptures(spec, ir.components[spec.component] ?? []).size;
+
       return spec.variantProperties.length
         ? `${count} ${spec.component} variants`
         : `${count} ${spec.component}`;
     })
     .join(', ');
+
   return `Updated ${ir.resources.colors.length} colors, ${ir.resources.textStyles.length} text styles, ${ir.resources.assets.length} assets and ${componentSummary}.${warningSuffix(ir)}`;
 }
 
@@ -472,9 +535,12 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
     'Locating Design System resources…',
     async () => {
       const managedPage = await locateManagedPage();
-      if (!managedPage)
+      if (!managedPage) {
         throw new Error('Missing managed Design System page. Run Design System sync first.');
+      }
+
       await figma.setCurrentPageAsync(managedPage);
+
       return { managedPage, resources: await readDesignResources(value) };
     },
   );
@@ -503,12 +569,14 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
       `Missing Design System main components: ${missingMasters.join(', ')}. Run Design System sync first.`,
     );
   }
+
   const section = await progress.run('Preparing managed Screens section…', async () => {
     await adoptManagedPage(managedPage);
     const designSection =
       findStable<SectionNode>(`${DESIGN_SECTION_ID}/nevo-ui`, ['SECTION']) ??
       findStable<SectionNode>(DESIGN_SECTION_ID, ['SECTION']);
     const sectionSuffix = value.profile ? `/${value.profile.id}` : '';
+
     return ensureSection(
       `${SCREENS_SECTION_ID}${sectionSuffix}`,
       value.profile?.displayName ?? figmaProjectConfig.figma.sections.screens.name,
@@ -529,7 +597,11 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
     frames.push(...result.frames);
     y = result.nextY;
   }
-  if (!frames.length) throw new Error('Screens IR contains no captured screens');
+
+  if (!frames.length) {
+    throw new Error('Screens IR contains no captured screens');
+  }
+
   await progress.run('Finalizing Screens layout…', () => {
     removeStaleManagedChildren(
       section,
@@ -540,5 +612,6 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
     figma.currentPage.selection = frames;
     figma.viewport.scrollAndZoomIntoView([section]);
   });
+
   return `Updated ${frames.length} screen${frames.length === 1 ? '' : 's'} without changing the Design System.${warningSuffix(value)}`;
 }

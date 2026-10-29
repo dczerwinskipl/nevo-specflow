@@ -8,6 +8,7 @@ export function StoryLocalization({
   locale = 'en',
 }: PropsWithChildren<{ readonly locale?: AppLocale }>) {
   const instance = useMemo(() => createSpecFlowI18n(locale), [locale]);
+
   return <LocalizationProvider instance={instance}>{children}</LocalizationProvider>;
 }
 

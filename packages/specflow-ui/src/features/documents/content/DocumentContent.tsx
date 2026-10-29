@@ -5,6 +5,8 @@ import { Alert, Button, MarkdownDocument, useInitialAppearance } from '@nevo/ui'
 import { useTranslation } from 'react-i18next';
 import { useAppServices } from '../../../app/useAppServices';
 import { markdownIntro } from '../description/markdownIntro';
+import { hasTextDraft } from '../content-kinds/kindId';
+import { DocumentNonTextPreview } from './DocumentFileViews';
 import { useMarkdownLabels } from '../useMarkdownLabels';
 import { documentKeys } from '../read-model/queries';
 
@@ -45,7 +47,7 @@ export function DocumentContent({
     query.isPending && query.fetchStatus === 'fetching',
     usable,
   );
-  if (query.isPending)
+  if (query.isPending) {
     return (
       <div ref={appearance}>
         <LoadingPresentation
@@ -55,6 +57,8 @@ export function DocumentContent({
         />
       </div>
     );
+  }
+
   if (query.isError && !usable) {
     const forbidden = isHttpClientError(query.error) && query.error.status === 403;
     const title = t(
@@ -63,6 +67,7 @@ export function DocumentContent({
     const description = forbidden
       ? t('specification.resourceAccessDeniedDescription')
       : t('specification.unavailableDescription', { id: documentId });
+
     return (
       <div className="grid gap-3">
         <Alert tone="attention" role="alert" title={title}>
@@ -74,6 +79,7 @@ export function DocumentContent({
       </div>
     );
   }
+
   return (
     <div ref={appearance} className="grid min-w-0 gap-3">
       {usable && query.isError ? (
@@ -89,12 +95,17 @@ export function DocumentContent({
           </Button>
         </Alert>
       ) : null}
-      {usable && query.data ? (
+      {usable && query.data && !hasTextDraft(query.data) ? (
+        // Images and files without text to render have their own previews.
+        <DocumentNonTextPreview specId={specId} document={query.data} />
+      ) : usable && query.data ? (
         <MarkdownDocument
           labels={markdownLabels}
           headingOffset={headingOffset}
           source={
-            omitTitle ? markdownIntro(query.data.content, omitTitle).source : query.data.content
+            omitTitle
+              ? markdownIntro(query.data.content ?? '', omitTitle).source
+              : (query.data.content ?? '')
           }
         />
       ) : (

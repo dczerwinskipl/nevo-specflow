@@ -5,6 +5,7 @@ export function createFixtureSpecsOverviewApi(): SpecsOverviewApi {
   return {
     getOverview: (collection, signal) => {
       signal?.throwIfAborted();
+
       return Promise.resolve(createSpecsFixture(collection));
     },
   };

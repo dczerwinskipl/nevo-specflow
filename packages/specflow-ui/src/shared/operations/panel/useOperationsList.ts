@@ -50,15 +50,23 @@ export function useOperationsList(options: UseOperationsListOptions): Operations
 
   const list = query.data?.list;
   useEffect(() => {
-    if (!list) return;
+    if (!list) {
+      return;
+    }
+
     const previous = seen.current;
     seen.current = new Map(list.items.map((item) => [item.operationId, item.status]));
     // The first read only records: the specification list loads on its own with the page.
-    if (!previous) return;
+    if (!previous) {
+      return;
+    }
+
     const completed = list.items.filter(
       (item) => item.status === 'completed' && previous.get(item.operationId) !== 'completed',
     );
-    if (completed.length) onCompletedRef.current?.(completed);
+    if (completed.length) {
+      onCompletedRef.current?.(completed);
+    }
   }, [list]);
 
   return {

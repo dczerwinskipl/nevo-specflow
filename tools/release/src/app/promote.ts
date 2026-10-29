@@ -59,6 +59,7 @@ export async function promoteRelease(
       `--target must be 'rc' or 'stable' (got ${JSON.stringify(input.target)}).`,
     );
   }
+
   const target: PromotionTarget = input.target;
 
   await git.fetch();
@@ -74,6 +75,7 @@ export async function promoteRelease(
   if (remoteHead === null) {
     throw new InconsistentStateError(`Cannot resolve origin/${branch} after fetch.`);
   }
+
   if (remoteHead !== headSha) {
     throw new InconsistentStateError(
       `${branch} local HEAD ${headSha.slice(0, 7)} is not origin/${branch} ${remoteHead.slice(0, 7)} ` +
@@ -85,8 +87,10 @@ export async function promoteRelease(
 
   if (current.channel === target) {
     events.push(info(`${branch} is already { ${target}, ${current.version} } — already promoted.`));
+
     return { events, mutated: false, alreadyPromoted: true, prPending: false };
   }
+
   const requiredCurrent = REQUIRED_CURRENT[target];
   if (current.channel !== requiredCurrent) {
     throw new UsageError(
@@ -142,6 +146,7 @@ async function readVersionFileAt(git: GitClient, ref: string, label: string): Pr
   if (raw === null) {
     throw new InconsistentStateError(`${label} has no version.json — cannot promote.`);
   }
+
   try {
     return parseVersionFile(raw, `${label}:version.json`);
   } catch (err) {

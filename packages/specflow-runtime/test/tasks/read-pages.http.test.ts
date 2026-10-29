@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createRuntimeApp } from '../../src/server/app';
+import { createDemoEnvironment } from '../../src/demo';
+import { createDemoDocumentReadSource } from '../../src/features/documents';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import { createDemoTaskSources } from '../../src/features/tasks';
 import { demoTaskHistory, demoTaskResources } from '../../src/features/tasks/demo/execution';
@@ -15,10 +17,15 @@ import type {
   ReferenceVisibility,
 } from '../../src/features/tasks/reads/facts';
 
+/** The demo read source of the document routes over a fresh demo environment. */
+const demoDocuments = (catalogue: Parameters<typeof createDemoDocumentReadSource>[1]) =>
+  createDemoDocumentReadSource(createDemoEnvironment().documents, catalogue);
 const config = () => {
   const config = passwordConfig();
+
   return { ...config, authentication: { ...config.authentication, mode: 'none' as const } };
 };
+
 describe('Task source paging and lease HTTP boundary', () => {
   it('keeps frozen workflow, approvals, associations and recovery unchanged across GET reads', async () => {
     const demo = createDemoSpecsRepositories(),
@@ -33,21 +40,24 @@ describe('Task source paging and lease HTTP boundary', () => {
     };
     const freeze = (value: unknown): void => {
       if (value && typeof value === 'object') {
-        for (const item of Object.values(value)) freeze(item);
+        for (const item of Object.values(value)) {
+          freeze(item);
+        }
+
         Object.freeze(value);
       }
     };
+
     const before = JSON.stringify({ definition, execution });
     freeze(definition);
     freeze(execution);
-    const { createDemoDocumentSource } = await import('../../src/features/documents');
     const app = await createRuntimeApp(config(), {
       tasks: {
         ...sources,
         definitions: { resolve: () => Promise.resolve(definition) },
         execution: { inspect: () => Promise.resolve(execution) },
       },
-      documents: { source: createDemoDocumentSource(demo.catalogue) },
+      documents: { readSource: demoDocuments(demo.catalogue) },
     });
     try {
       const response = await app.inject('/api/specs/admission/tasks/TASK-03');
@@ -66,7 +76,10 @@ describe('Task source paging and lease HTTP boundary', () => {
                 ? section.data.page
                 : null
             : null;
-        if (!ref) throw Error('Expected page');
+        if (!ref) {
+          throw Error('Expected page');
+        }
+
         expect(
           (
             await app.inject(
@@ -75,8 +88,9 @@ describe('Task source paging and lease HTTP boundary', () => {
           ).statusCode,
         ).toBe(200);
       }
+
       expect(
-        (await app.inject('/api/specs/admission/documents/spec?revision=demo-document-1'))
+        (await app.inject('/api/specs/admission/documents/overview?revision=demo-document-1'))
           .statusCode,
       ).toBe(200);
       expect(JSON.stringify({ definition, execution })).toBe(before);
@@ -90,10 +104,9 @@ describe('Task source paging and lease HTTP boundary', () => {
     const definition = (await sources.definitions!.resolve('admission', 'TASK-03'))!;
     const execution = (await sources.execution!.inspect(definition.identity, definition.version))!;
     execution.definitionVersion = 'other-definition';
-    const { createDemoDocumentSource } = await import('../../src/features/documents');
     const app = await createRuntimeApp(config(), {
       tasks: { ...sources, execution: { inspect: () => Promise.resolve(execution) } },
-      documents: { source: createDemoDocumentSource(demo.catalogue) },
+      documents: { readSource: demoDocuments(demo.catalogue) },
     });
     try {
       const response = await app.inject('/api/specs/admission/tasks/TASK-03');
@@ -102,7 +115,7 @@ describe('Task source paging and lease HTTP boundary', () => {
       expect(sections.work.state).toBe('unavailable');
       expect(sections.history.state).toBe('unavailable');
       expect(
-        (await app.inject('/api/specs/admission/documents/spec?revision=demo-document-1'))
+        (await app.inject('/api/specs/admission/documents/overview?revision=demo-document-1'))
           .statusCode,
       ).toBe(200);
       expect((await app.inject('/api/specs/admission/workspace')).statusCode).toBe(503);
@@ -127,6 +140,7 @@ describe('Task source paging and lease HTTP boundary', () => {
         expect(limit).toBeLessThanOrEqual(50);
         const offset = continuation === null ? 0 : Number(continuation),
           end = Math.min(offset + limit, entries.length);
+
         return Promise.resolve({
           identity,
           version,
@@ -152,7 +166,10 @@ describe('Task source paging and lease HTTP boundary', () => {
       ).json<SpecificationTaskResponse>();
       expect(read).not.toHaveBeenCalled();
       const history = detail.snapshot!.sections.history;
-      if (history.state !== 'available') throw Error('Expected history');
+      if (history.state !== 'available') {
+        throw Error('Expected history');
+      }
+
       const url =
         '/api/specs/admission/tasks/TASK-03/history?token=' +
         encodeURIComponent(history.data.token);
@@ -183,9 +200,15 @@ describe('Task source paging and lease HTTP boundary', () => {
     };
     const select = async (visible: ReferenceVisibility) => {
       const result: ResourceFacts[] = [];
-      for (const item of candidates) if (await visible(item.link)) result.push(item);
+      for (const item of candidates) {
+        if (await visible(item.link)) {
+          result.push(item);
+        }
+      }
+
       return result;
     };
+
     const read = vi.fn(
       async (
         identity: TaskIdentity,
@@ -197,6 +220,7 @@ describe('Task source paging and lease HTTP boundary', () => {
         const items = await select(visible),
           offset = continuation === null ? 0 : Number(continuation),
           end = Math.min(offset + limit, items.length);
+
         return {
           identity,
           version: '1',
@@ -226,7 +250,10 @@ describe('Task source paging and lease HTTP boundary', () => {
         await app.inject('/api/specs/admission/tasks/TASK-03')
       ).json<SpecificationTaskResponse>();
       const section = detail.snapshot!.sections.resources;
-      if (section.state !== 'available') throw Error('Expected resources');
+      if (section.state !== 'available') {
+        throw Error('Expected resources');
+      }
+
       expect(section.data.visibleTotal).toBe(6);
       expect(section.data.recommended.map((item) => item.id)).toEqual([
         'document-3',
@@ -275,7 +302,10 @@ describe('Task source paging and lease HTTP boundary', () => {
         await app.inject('/api/specs/admission/tasks/TASK-03')
       ).json<SpecificationTaskResponse>();
       const section = detail.snapshot!.sections.history;
-      if (section.state !== 'available') throw Error('Expected history');
+      if (section.state !== 'available') {
+        throw Error('Expected history');
+      }
+
       const url =
         '/api/specs/admission/tasks/TASK-03/history?token=' +
         encodeURIComponent(section.data.token);

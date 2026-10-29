@@ -21,7 +21,10 @@ const registry = createUiRegistry([settings], [{ id: 'test.module', contribution
 /** Compile-time checks: registration and lookup are both typed to the host contract. */
 export function verifyUiExtensionPointTypes() {
   const contribution = registry.get(settings)[0];
-  if (!contribution) return;
+  if (!contribution) {
+    return;
+  }
+
   const settingsKey: string = contribution.settingsKey;
   const editable: boolean = contribution.editable;
   void settingsKey;

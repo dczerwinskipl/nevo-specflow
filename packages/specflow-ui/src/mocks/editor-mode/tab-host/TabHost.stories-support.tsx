@@ -59,6 +59,7 @@ const noop = () => undefined;
 export function tabsOf(host: TabHost, content: TabContentProvider): ItemTab[] {
   return host.open.map((id) => {
     const item = content(id);
+
     return {
       id,
       label: item.label,
@@ -96,6 +97,7 @@ function splitActions(actions: readonly TabAction[], budget: number) {
       .map((entry) => entry.index),
   );
   const picked = actions.filter((_, index) => chosen.has(index));
+
   return {
     direct: [...picked.filter((a) => !a.primary), ...picked.filter((a) => a.primary)],
     overflow: actions.filter((_, index) => !chosen.has(index)),
@@ -104,6 +106,7 @@ function splitActions(actions: readonly TabAction[], budget: number) {
 
 function MenuEntry({ action }: { action: TabAction }) {
   const toggle = action.checked !== undefined;
+
   return (
     <MenuItem
       disabled={action.disabled}
@@ -138,7 +141,10 @@ function ActionsMenu({ actions, label }: { actions: readonly TabAction[]; label:
     { name: 'Display', items: actions.filter((action) => action.group === 'display') },
     { name: 'Actions', items: actions.filter((action) => action.group !== 'display') },
   ].filter((group) => group.items.length > 0);
-  if (groups.length === 0) return null;
+  if (groups.length === 0) {
+    return null;
+  }
+
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -188,6 +194,7 @@ function ActionSlot({
   const { direct, overflow } = splitActions(all, budget);
   // A primary action that is direct (Save) also stays reachable in the menu, with its shortcut.
   const inMenu = [...direct.filter((action) => action.primary), ...overflow];
+
   return (
     <div className="flex items-center gap-1.5">
       <div className="min-w-0 flex-1">
@@ -233,6 +240,7 @@ export function TabHostHeader({
 }) {
   const tabs = tabsOf(host, content);
   const id = host.active;
+
   return (
     <PaneHeader leading={leading} trailing={trailing}>
       {id && tabs.length > 0 ? (
@@ -281,7 +289,10 @@ export function TabHostBody({
   panelled?: boolean;
 }) {
   const id = host.active;
-  if (id === null) return <>{empty}</>;
+  if (id === null) {
+    return <>{empty}</>;
+  }
+
   const item = content(id);
   const panel = panelled
     ? {
@@ -290,6 +301,7 @@ export function TabHostBody({
         'aria-labelledby': getItemTabId(scope, id),
       }
     : { role: 'region' as const, 'aria-label': item.label };
+
   return (
     <div key={id} {...panel} className="flex h-full min-h-0 flex-col">
       {item.render()}
@@ -327,6 +339,7 @@ export function TabHostNarrowHeader({
       }}
     />
   );
+
   return (
     <PaneHeader
       bordered={false}
@@ -363,11 +376,14 @@ export function UnsavedChangesDialog({
   content: TabContentProvider;
 }) {
   const target = host.pendingClose ? content(host.pendingClose).label : '';
+
   return (
     <AlertDialog
       open={host.pendingClose !== null}
       onOpenChange={(open) => {
-        if (!open) host.cancelClose();
+        if (!open) {
+          host.cancelClose();
+        }
       }}
     >
       <AlertDialogContent>

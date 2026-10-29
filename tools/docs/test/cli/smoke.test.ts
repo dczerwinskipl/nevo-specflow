@@ -13,9 +13,11 @@ const bin = join(pkgRoot, 'dist', 'bin.js');
 async function cli(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
     const { stdout, stderr } = await execFileAsync('node', [bin, ...args], { cwd: pkgRoot });
+
     return { code: 0, stdout, stderr };
   } catch (err) {
     const e = err as { code?: number; stdout?: string; stderr?: string };
+
     return { code: e.code ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
   }
 }
@@ -34,8 +36,9 @@ describe('nevo-docs CLI', () => {
   it('--help lists every subcommand', async () => {
     const { code, stdout } = await cli(['--help']);
     expect(code).toBe(0);
-    for (const cmd of ['list', 'find', 'get', 'context', 'check', 'adr'])
+    for (const cmd of ['list', 'find', 'get', 'context', 'check', 'adr']) {
       expect(stdout).toContain(cmd);
+    }
   });
 
   it('`adr new --help` documents its own options', async () => {
@@ -57,6 +60,7 @@ describe('nevo-docs CLI', () => {
     if (code !== 0) {
       throw new Error(`nevo-docs check failed:\n${stderr}\n${stdout}`);
     }
+
     expect(stdout).toMatch(/corpus valid, index current/);
   });
 

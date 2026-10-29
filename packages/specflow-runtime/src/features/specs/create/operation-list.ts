@@ -38,6 +38,7 @@ export function createOperationSource(engine: SpecFlowEngine): OperationListSour
           });
           continue;
         }
+
         const checklist = specificationCreateSteps(row.target.kind, row.commits === true);
         const at = row.currentStep ? checklist.findIndex((step) => step === row.currentStep) : -1;
         const steps =
@@ -75,6 +76,7 @@ export function createOperationSource(engine: SpecFlowEngine): OperationListSour
           updatedAt: row.updatedAt,
         });
       }
+
       return rows;
     },
   };

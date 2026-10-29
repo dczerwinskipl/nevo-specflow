@@ -76,6 +76,7 @@ export async function executeRelease(
   if (versionRaw === null) {
     throw new InconsistentStateError(`origin/${branch} has no version.json — cannot release.`);
   }
+
   let versionFile: VersionFile;
   try {
     versionFile = parseVersionFile(versionRaw, `origin/${branch}:version.json`);
@@ -108,6 +109,7 @@ export async function executeRelease(
       ),
     );
   }
+
   events.push(info(mutate ? '' : '(validate-only — running every check, changing nothing)'));
 
   // The branch HEAD must have passed CI.
@@ -161,7 +163,10 @@ export async function executeRelease(
 
   const existing = await inspectTag(deps, tag, headSha);
   const decision = decideReleaseAction(existing, { tag, headShort, branch });
-  if ('error' in decision) throw new InconsistentStateError(decision.error);
+  if ('error' in decision) {
+    throw new InconsistentStateError(decision.error);
+  }
+
   events.push(info(decision.message));
 
   if (decision.action === 'tag-and-release') {
@@ -172,6 +177,7 @@ export async function executeRelease(
       events.push(info(`Would create annotated tag ${tag} at ${headShort} and push it.`));
     }
   }
+
   if (decision.action !== 'noop') {
     if (mutate) {
       const { url } = await github.createRelease({ tag, prerelease: plan.prerelease });
@@ -233,6 +239,7 @@ async function hasRequiredReleaseArtifacts(github: GitHubClient, tag: string): P
   const version = tag.replace(/^v/, '');
   const tarball = `nevo-specflow-${version}.tgz`;
   const required = [tarball, `${tarball}.sha256`];
+
   return required.every((name) => names.includes(name));
 }
 
@@ -249,6 +256,7 @@ async function assertLocalHeadIsRemoteHead(
         `remote state is unknown.`,
     );
   }
+
   if (remote !== headSha) {
     throw new InconsistentStateError(
       `${branch} local HEAD ${headSha.slice(0, 7)} is not origin/${branch} ${remote.slice(0, 7)} ` +
@@ -287,6 +295,10 @@ async function inspectTag(
       { cause: err },
     );
   }
-  if (!tagSha) return { state: 'absent', release };
+
+  if (!tagSha) {
+    return { state: 'absent', release };
+  }
+
   return { state: tagSha === headSha ? 'ok' : 'mismatch', release };
 }

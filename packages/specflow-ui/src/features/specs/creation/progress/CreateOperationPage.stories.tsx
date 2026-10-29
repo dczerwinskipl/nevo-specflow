@@ -23,6 +23,7 @@ import { createSessionOperationStorage } from '../operation/createOperationStora
 import type { ProjectCreateRequest } from '../api/api.project';
 import type { CreateSettingsFacts } from '../workspace/model/createFacts';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
 const base = { operationId, kind: 'specification-create' as const };
@@ -47,6 +48,7 @@ type Server =
   | 'lost'
   | 'refuses-protected'
   | 'refuses-blocked'
+  | 'refuses-path'
   | 'commit-failed';
 type Stream = 'steps' | 'unavailable' | 'commit-steps' | 'commit-steps-existing';
 
@@ -108,15 +110,23 @@ function operationsFor(behavior: Stream): OperationsApi {
         { ...event, type: 'step', step: 'reserving', status: 'done' },
         { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
       ];
+
   return {
     list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(_streamUrl, signal) {
-      if (behavior === 'unavailable') throw new Error('Stream unavailable');
+      if (behavior === 'unavailable') {
+        throw new Error('Stream unavailable');
+      }
+
       for (const next of events) {
         await new Promise((resolve) => setTimeout(resolve, 60));
-        if (signal?.aborted) return;
+        if (signal?.aborted) {
+          return;
+        }
+
         yield next;
       }
+
       await new Promise<void>((resolve) =>
         signal?.addEventListener('abort', () => resolve(), { once: true }),
       );
@@ -137,6 +147,7 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
     case 'refuses-branch':
     case 'refuses-protected':
     case 'refuses-blocked':
+    case 'refuses-path':
     case 'commit-failed':
       return Promise.reject(apiError({ kind: 'not-found', outcome: 'not-applied', status: 404 }));
     case 'lost':
@@ -146,7 +157,9 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
 
 interface FixtureProps {
   /** The request this browser stored when the form handed over; none is a direct link. */
-  request?: ProjectCreateRequest & { operationId?: string };
+  request?: Omit<ProjectCreateRequest, keyof typeof archetypeSelectionFixture> & {
+    operationId?: string;
+  };
   /** What the form saved with the draft about this Create (workspace names, folder, merge target). */
   facts?: CreateSettingsFacts;
   server?: Server;
@@ -173,12 +186,21 @@ function Fixture({
   useMemo(() => {
     sessionStorage.clear();
     const storage = createSessionOperationStorage('unknown', sessionStorage);
-    if (request) storage.save({ request: { ...request, operationId }, startedAt: Date.now() });
+    if (request) {
+      storage.save({
+        request: { ...archetypeSelectionFixture, ...request, operationId },
+        startedAt: Date.now(),
+      });
+    }
+
     storage.saveDraft({
       operationId,
       title: request?.title ?? '',
       goal: request?.goal ?? '',
       choice: initialWorkspaceChoice,
+      // What the form showed about the archetype: the page lists it with the files it makes.
+      archetypeTitle: 'Feature',
+      documentFiles: ['overview.md', 'behaviour.md', 'ux.md'],
       ...(facts ? { facts } : {}),
     });
   }, [request, facts]);
@@ -188,6 +210,7 @@ function Fixture({
         runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
         projectCreationApi: {
           createOptions: () => Promise.reject(new Error('not used by the page')),
+          archetypes: () => Promise.reject(new Error('not used by the page')),
           // The Runtime that has not seen the request: the page sends it, the answer follows `server`.
           create: () =>
             server === 'refuses-protected'
@@ -199,36 +222,45 @@ function Fixture({
                     code: 'BRANCH_PROTECTED',
                   }),
                 )
-              : server === 'refuses-blocked'
+              : server === 'refuses-path'
                 ? Promise.reject(
                     apiError({
-                      kind: 'conflict',
+                      kind: 'validation',
                       outcome: 'not-applied',
-                      status: 409,
-                      code: 'COMMIT_BLOCKED',
+                      status: 400,
+                      code: 'DOCUMENT_PATH_INVALID',
                     }),
                   )
-                : server === 'commit-failed'
+                : server === 'refuses-blocked'
                   ? Promise.reject(
                       apiError({
-                        kind: 'recovery-required',
-                        outcome: 'unknown',
-                        status: 503,
-                        code: 'COMMIT_FAILED',
+                        kind: 'conflict',
+                        outcome: 'not-applied',
+                        status: 409,
+                        code: 'COMMIT_BLOCKED',
                       }),
                     )
-                  : server === 'refuses-branch'
+                  : server === 'commit-failed'
                     ? Promise.reject(
                         apiError({
-                          kind: 'conflict',
-                          outcome: 'not-applied',
-                          status: 409,
-                          code: 'BRANCH_ALREADY_EXISTS',
+                          kind: 'recovery-required',
+                          outcome: 'unknown',
+                          status: 503,
+                          code: 'COMMIT_FAILED',
                         }),
                       )
-                    : server === 'unknown'
-                      ? Promise.reject(apiError({ kind: 'network' }))
-                      : Promise.resolve(accepted),
+                    : server === 'refuses-branch'
+                      ? Promise.reject(
+                          apiError({
+                            kind: 'conflict',
+                            outcome: 'not-applied',
+                            status: 409,
+                            code: 'BRANCH_ALREADY_EXISTS',
+                          }),
+                        )
+                      : server === 'unknown'
+                        ? Promise.reject(apiError({ kind: 'network' }))
+                        : Promise.resolve(accepted),
           inspectOperation: () => inspect(server),
           operationEventsUrl: createOperationEventsUrl,
         },
@@ -236,6 +268,7 @@ function Fixture({
       }),
     [server, stream],
   );
+
   return (
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
@@ -424,8 +457,9 @@ export const LongTitleAt320: Story = {
     await expect(
       within(canvas.getByLabelText('Ustawienia tworzenia')).getByText(/dostawcami rozliczeń$/),
     ).toBeInTheDocument();
-    for (const row of steps(canvasElement).getAllByRole('listitem'))
+    for (const row of steps(canvasElement).getAllByRole('listitem')) {
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
+    }
   },
 };
 
@@ -451,8 +485,10 @@ export const Success: Story = {
       }),
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
-    for (const row of steps(canvasElement).getAllByRole('listitem'))
+    for (const row of steps(canvasElement).getAllByRole('listitem')) {
       await expect(row).toHaveTextContent(/gotowe/);
+    }
+
     await waitFor(() => expect(args.onOpen).toHaveBeenCalledWith(createdSpec), { timeout: 4000 });
   },
 };
@@ -477,6 +513,45 @@ export const Refused: Story = {
     await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeEnabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
+  },
+};
+
+/**
+ * The progress page and the form share one content width (`content-form`, 880 px, centred by
+ * the bounded workspace): the layout does not jump on submit, running or refused alike. Narrower
+ * screens fill the workspace; a drawer layout a little wider than the form centres it.
+ */
+async function expectFormWidth() {
+  const standard =
+    parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-form'),
+    ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const heading = await within(document.body).findByRole('heading', { level: 1 });
+  const content = heading.closest('.scroll-area')!.parentElement!;
+  const surface =
+    content.closest<HTMLElement>('[data-workspace-surface]') ?? content.parentElement!;
+  for (const width of [1440, 1920, 2560, 900, 390]) {
+    await settleViewport(width, 900);
+    const box = content.getBoundingClientRect(),
+      host = surface.getBoundingClientRect();
+    // One width everywhere: the form width, or the whole surface when it is narrower; centred, so a
+    // surface a little wider than the form (a drawer layout) leaves equal gutters, no strip.
+    await expect(Math.abs(box.width - Math.min(standard, host.width))).toBeLessThan(2);
+    await expect(Math.abs(box.left - host.left - (host.right - box.right))).toBeLessThan(2);
+  }
+
+  await settleViewport();
+}
+
+export const SharesTheFormWidth: Story = {
+  args: { request: newWorkspace, facts: newWorkspaceFacts },
+  play: () => expectFormWidth(),
+};
+export const RefusedSharesTheFormWidth: Story = {
+  args: Refused.args,
+  play: async ({ canvas }) => {
+    await canvas.findByRole('alert');
+    await expectFormWidth();
   },
 };
 
@@ -589,6 +664,31 @@ export const RefusedBecauseTheBranchIsProtected: Story = {
     await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByText(/Gałąź wybranego środowiska pracy jest chroniona/)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje' }));
+    await expect(args.onBackToForm).toHaveBeenCalledOnce();
+  },
+};
+
+/**
+ * A long name makes a path the Engine refuses (`DOCUMENT_PATH_INVALID`): the name is the problem,
+ * so the page says to shorten it and offers the form, never Refresh options.
+ */
+export const RefusedBecauseTheNameMakesAnInvalidPath: Story = {
+  args: {
+    request: {
+      ...newWorkspace,
+      title: 'Przegląd projektu z bardzo długą nazwą specyfikacji do sprawdzenia zawijania',
+    },
+    facts: newWorkspaceFacts,
+    server: 'refuses-path',
+    onBackToForm: fn(),
+  },
+  play: async ({ canvas, userEvent, args }) => {
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Nazwa daje specyfikacji nieprawidłową lub zbyt długą ścieżkę',
+    );
+    await expect(canvas.getByText(/Skróć nazwę lub użyj prostszych znaków/)).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Odśwież opcje' })).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
   },
 };

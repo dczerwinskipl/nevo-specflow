@@ -87,6 +87,7 @@ async function fixture() {
   );
   const context = await resolveProjectHome({ cwd: root });
   await initializeWorkspaceRegistry(context);
+
   return { root, context };
 }
 
@@ -94,6 +95,7 @@ async function linked(root: string): Promise<string> {
   const path = await realpath(await mkdtemp(join(tmpdir(), 'specflow-linked-Ż ')));
   roots.push(path);
   git(root, 'worktree', 'add', '--detach', path);
+
   return path;
 }
 
@@ -161,6 +163,7 @@ function startWorker(root: string, options: WorkerOptions): Worker {
       child.once('close', (code, signal) => resolvePromise({ code, signal, log }));
     },
   );
+
   return { ready, start, outcome };
 }
 
@@ -172,11 +175,15 @@ async function launchTogether(workers: readonly Worker[]): Promise<void> {
         await access(worker.ready);
         break;
       } catch {
-        if (Date.now() > deadline) throw new Error('Independent worker did not reach barrier.');
+        if (Date.now() > deadline) {
+          throw new Error('Independent worker did not reach barrier.');
+        }
+
         await sleep(25);
       }
     }
   }
+
   await Promise.all(workers.map((worker) => writeFile(worker.start, 'go')));
 }
 
@@ -188,11 +195,13 @@ describe('E1.T05 independent OS-process coordination', () => {
     const listener = (message: unknown): void => {
       samples.push(message);
     };
+
     diagnostics.subscribe(listener);
     let duringAction = -1;
     try {
       await withProjectControlLock(context, () => {
         duringAction = samples.length;
+
         return Promise.resolve();
       });
     } finally {
@@ -362,6 +371,7 @@ describe('E1.T05 independent OS-process coordination', () => {
     await expect(
       updateWorkspaceRegistry(context, (current) => {
         (current.workspaces as unknown as { managed: boolean }[])[0]!.managed = true;
+
         return current;
       }),
     ).rejects.toThrow();

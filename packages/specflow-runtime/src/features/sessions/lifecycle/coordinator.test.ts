@@ -14,7 +14,9 @@ let runtime: SessionCoordinator | undefined,
 afterEach(async () => {
   await runtime?.close();
   runtime = undefined;
-  if (directory) await rm(directory, { recursive: true, force: true });
+  if (directory) {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 async function setup(
   scenario?: MockScenario,
@@ -28,12 +30,14 @@ async function setup(
     driver ?? createMockDriver(scenario),
     'project',
   );
+
   return runtime.create('actor', {
     requestId: randomUUID(),
     providerId: driver?.describe().providerId ?? 'mock',
     mode: 'read-only',
   });
 }
+
 describe('Session coordinator', () => {
   it.each(['before-commit', 'lost-acknowledgement'] as const)(
     'recovers a known terminal fact after transient storage pressure: %s',
@@ -52,9 +56,11 @@ describe('Session coordinator', () => {
             if (receipts.length === 1) {
               const reject = () =>
                 Promise.reject(new SessionError('SESSION_STORE_BUSY', 'Transient pressure.'));
+
               return failure === 'before-commit' ? reject() : store.call(command).then(reject);
             }
           }
+
           return store.call(command);
         },
       }));
@@ -86,10 +92,12 @@ describe('Session coordinator', () => {
       call(command) {
         if (command.op === 'fact' && command.fact.kind === 'outcome') {
           attempts++;
+
           return Promise.reject(
             new SessionError('SESSION_STORE_BUSY', 'Storage admission timed out.'),
           );
         }
+
         return store.call(command);
       },
     }));
@@ -116,12 +124,14 @@ describe('Session coordinator', () => {
     const { sessionId } = await setup(undefined, driver, (store) => ({
       ...store,
       call(command) {
-        if (command.op === 'fact' && command.fact.kind === 'lost' && ++receipts === 1)
+        if (command.op === 'fact' && command.fact.kind === 'lost' && ++receipts === 1) {
           return store
             .call(command)
             .then(() =>
               Promise.reject(new SessionError('SESSION_STORE_BUSY', 'Acknowledgement lost.')),
             );
+        }
+
         return store.call(command);
       },
     }));
@@ -197,7 +207,9 @@ describe('Session coordinator', () => {
             done: (async () => {
               await emit({ kind: 'lost', message: 'Transport connection lost.' });
               await completed;
-              if (completion === 'reject') throw new Error('Private native error');
+              if (completion === 'reject') {
+                throw new Error('Private native error');
+              }
             })(),
             respond: () => Promise.resolve({ deliveredKeys: [] }),
           };

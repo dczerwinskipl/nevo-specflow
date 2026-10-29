@@ -20,6 +20,7 @@ const runtimeFeatures = ['auth', 'documents', 'sessions', 'settings', 'specs', '
 
 function runtimeBoundaryBlocks() {
   const nonProduction = ['src/**/*.test.ts'];
+
   return runtimeFeatures.map((feature) => ({
     files: [`src/features/${feature}/**/*.ts`],
     ignores: nonProduction,

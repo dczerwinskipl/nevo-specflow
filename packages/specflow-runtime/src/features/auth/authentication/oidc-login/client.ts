@@ -42,7 +42,10 @@ export function createOidcClient(provider: RuntimeOidcEnabledProviderConfig): Oi
       return await getConfiguration();
     } catch (error) {
       const providerError = classifyOidcDiscoveryError(error);
-      if (providerError) throw providerError;
+      if (providerError) {
+        throw providerError;
+      }
+
       throw error;
     }
   }
@@ -82,7 +85,10 @@ export function createOidcClient(provider: RuntimeOidcEnabledProviderConfig): Oi
         });
       } catch (error) {
         const providerError = classifyOidcGrantError(error);
-        if (providerError) throw providerError;
+        if (providerError) {
+          throw providerError;
+        }
+
         throw error;
       }
 
@@ -95,6 +101,7 @@ export function createOidcClient(provider: RuntimeOidcEnabledProviderConfig): Oi
       }
 
       const claimedName = typeof claims?.name === 'string' ? claims.name.trim() : '';
+
       return { email, name: claimedName || email };
     },
   };

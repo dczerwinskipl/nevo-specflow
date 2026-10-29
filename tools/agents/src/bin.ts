@@ -10,7 +10,10 @@ import type { ContentMode } from './model.js';
 import { findRepoRoot } from './repo.js';
 
 function parseContent(value: string): ContentMode {
-  if (value === 'embed' || value === 'reference') return value;
+  if (value === 'embed' || value === 'reference') {
+    return value;
+  }
+
   throw new Error(`--content must be 'embed' or 'reference'`);
 }
 
@@ -49,10 +52,15 @@ program
     const content = parseContent(opts.content);
     const problems = checkAgents(repoRoot, providers, content);
     if (problems.length) {
-      for (const problem of problems) process.stderr.write(`${problem}\n`);
+      for (const problem of problems) {
+        process.stderr.write(`${problem}\n`);
+      }
+
       process.exitCode = 1;
+
       return;
     }
+
     process.stdout.write(`OK — generated agent projections are current (${content})\n`);
   });
 

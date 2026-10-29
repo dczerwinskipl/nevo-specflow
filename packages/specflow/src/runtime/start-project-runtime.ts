@@ -24,6 +24,7 @@ export async function startProjectRuntime(
   if (options.demo) {
     const layout = await (dependencies.resolveLayout ?? resolveProjectLayout)(cwd);
     const webApp = await (dependencies.loadWebApp ?? loadProductWebApp)();
+
     return (dependencies.start ?? startRuntime)({
       projectRoot: layout.root,
       demo: true,
@@ -32,11 +33,13 @@ export async function startProjectRuntime(
       dependencies: { webApp },
     });
   }
+
   // The current checkout is an execution workspace, not an operational
   // config authority. Both CLI and Runtime must pass the same Engine gate.
   const engine = await (dependencies.openEngine ?? openSpecFlowEngine)({ cwd });
   const project = engine.context.project;
   const webApp = await (dependencies.loadWebApp ?? loadProductWebApp)();
+
   return (dependencies.start ?? startRuntime)({
     projectRoot: project.homeRoot,
     projectConfigPath: project.projectConfigPath,

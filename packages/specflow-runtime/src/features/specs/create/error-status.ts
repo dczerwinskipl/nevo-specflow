@@ -1,4 +1,4 @@
-import type { DocumentErrorCode } from '@nevo/specflow-contracts/documents';
+import type { DocumentErrorCode, DocumentErrorDetails } from '@nevo/specflow-contracts/documents';
 import {
   CreateOperationError,
   DocumentError,
@@ -18,6 +18,7 @@ import {
 export const CREATE_DOCUMENT_ERROR_CODES = [
   'CATALOGUE_STALE',
   'ARCHETYPE_UNKNOWN',
+  'DEFINITIONS_MISSING',
   'DOCUMENT_PATH_INVALID',
   'DOCUMENT_PATH_CONFLICT',
   'DOCUMENT_OPERATION_INVALID',
@@ -69,6 +70,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'BASE_REF_NOT_FOUND':
     case 'GIT_BASE_CONFIG_MISSING':
     case 'ARCHETYPE_UNKNOWN':
+    case 'DEFINITIONS_MISSING':
       return 422;
 
     case 'CREATE_RECOVERY_REQUIRED':
@@ -101,6 +103,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
       return 503;
     default: {
       const exhaustive: never = code;
+
       return exhaustive;
     }
   }
@@ -111,6 +114,11 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
  * as EACCES is not a client validation failure and must never be misreported as HTTP 4xx (it falls
  * through to the Runtime error handler, which answers a generic 500).
  */
+/** The cause of a document refusal (for example `definitions-missing`), when the Engine named one. */
+export function createErrorDetails(error: unknown): DocumentErrorDetails | undefined {
+  return error instanceof DocumentError ? error.details : undefined;
+}
+
 export function createErrorCode(error: unknown): CreateErrorCode | undefined {
   if (
     error instanceof CreateOperationError ||
@@ -122,6 +130,10 @@ export function createErrorCode(error: unknown): CreateErrorCode | undefined {
   ) {
     return error.code;
   }
-  if (error instanceof DocumentError && isCreateDocumentErrorCode(error.code)) return error.code;
+
+  if (error instanceof DocumentError && isCreateDocumentErrorCode(error.code)) {
+    return error.code;
+  }
+
   return undefined;
 }

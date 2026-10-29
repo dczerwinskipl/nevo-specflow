@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, type MutableRefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 import {
   EditorView,
   drawSelection,
@@ -7,7 +7,7 @@ import {
   keymap,
   lineNumbers,
 } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -17,6 +17,7 @@ import {
   clampAnchor,
   ratioOf,
   restoreWhileIdle,
+  sameAnchor,
   trackUserScroll,
   type ScrollAnchor,
 } from './documentScrollAnchor';
@@ -40,6 +41,8 @@ export function MarkdownSourceEditor({
   onSave,
   label,
   plainText = false,
+  readOnly = false,
+  wrapLines = true,
   viewState,
   onViewStateChange,
   anchor,
@@ -51,6 +54,10 @@ export function MarkdownSourceEditor({
   onSave: () => void;
   label: string;
   plainText?: boolean;
+  /** The text can be read, selected and copied but not changed (a read-only or locked document). */
+  readOnly?: boolean;
+  /** Long lines wrap at the pane edge (else the editor scrolls sideways). Changes in place. */
+  wrapLines?: boolean;
   viewState?: {
     anchor: number;
     head: number;
@@ -76,6 +83,9 @@ export function MarkdownSourceEditor({
   const emittedValues = useRef(new Set<string>()),
     applyingExternal = useRef(false);
   const callbacks = useRef({ onChange, onSave, onViewStateChange });
+  // Line wrapping is reconfigured in place: toggling it never rebuilds the view (caret, history).
+  const [wrapping] = useState(() => new Compartment());
+  const wrapAtCreation = useRef(wrapLines);
   useLayoutEffect(() => {
     callbacks.current = { onChange, onSave, onViewStateChange };
   });
@@ -108,13 +118,15 @@ export function MarkdownSourceEditor({
           drawSelection(),
           history(),
           ...(plainText ? [] : [markdown(), syntaxHighlighting(markdownHighlight)]),
-          EditorView.lineWrapping,
+          wrapping.of(wrapAtCreation.current ? EditorView.lineWrapping : []),
+          EditorState.readOnly.of(readOnly),
           EditorView.contentAttributes.of({ 'aria-label': label, tabindex: '0' }),
           keymap.of([
             {
               key: 'Mod-s',
               run: () => {
                 callbacks.current.onSave();
+
                 return true;
               },
             },
@@ -122,7 +134,7 @@ export function MarkdownSourceEditor({
             ...historyKeymap,
           ]),
           EditorView.updateListener.of((update) => {
-            if (update.selectionSet || update.docChanged)
+            if (update.selectionSet || update.docChanged) {
               callbacks.current.onViewStateChange?.({
                 anchor: update.state.selection.main.anchor,
                 head: update.state.selection.main.head,
@@ -130,6 +142,8 @@ export function MarkdownSourceEditor({
                 scrollLeft: update.view.scrollDOM.scrollLeft,
                 scrollSnapshot: update.view.scrollSnapshot(),
               });
+            }
+
             if (update.docChanged && !applyingExternal.current) {
               const text = update.state.doc.toString();
               emittedValues.current.add(text);
@@ -156,21 +170,24 @@ export function MarkdownSourceEditor({
                 fontSize: 'var(--text-code-md)',
                 lineHeight: 'var(--text-code-md--line-height)',
               },
-              // Same inner padding as the DS text area (control-padding-default); CodeMirror's own
-              // line padding is dropped so there is a single inset layer, not three.
-              '.cm-content': { padding: 'var(--spacing-control-padding-default)' },
-              '.cm-line': { padding: '0' },
+              // The block inset is on the content, the inline inset on each line: the current-line
+              // tint then fills the line from the gutter edge, with no hole between the two.
+              '.cm-content': { padding: 'var(--spacing-control-padding-default) 0' },
+              '.cm-line': {
+                padding:
+                  '0 var(--spacing-control-padding-default) 0 var(--spacing-control-padding-compact)',
+              },
+              // The line numbers are a quiet band of their own (a slightly different surface), so
+              // the text column starts where that band ends; no hairline between them.
               '.cm-gutters': {
-                backgroundColor: 'transparent',
+                backgroundColor: 'var(--color-surface-subtle)',
                 color: 'var(--color-content-muted)',
                 border: 'none',
-                // A gutter hairline would be a second frame inside the field: none.
-                paddingLeft: 'var(--spacing-control-padding-default)',
               },
               // At least two digits wide, so the gutter does not jump from line 9 to 10.
               '.cm-lineNumbers .cm-gutterElement': {
                 minWidth: '2ch',
-                padding: '0 var(--spacing-control-padding-compact) 0 0',
+                padding: '0 var(--spacing-control-padding-compact)',
               },
               '.cm-activeLine, .cm-activeLineGutter': {
                 backgroundColor:
@@ -199,18 +216,21 @@ export function MarkdownSourceEditor({
       const padding = editor.documentPadding.top;
       const top = Math.max(0, scroller.scrollTop - padding);
       const block = editor.lineBlockAtHeight(top);
+
       return {
         line: editor.state.doc.lineAt(block.from).number,
         offset: block.height > 0 ? clamp01((top - block.top) / block.height) : 0,
         ratio: ratioOf(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight),
       };
     };
+
     const applyAnchor = (raw: ScrollAnchor) => {
       const next = clampAnchor(raw, editor.state.doc.lines);
-      if (next.line === undefined)
+      if (next.line === undefined) {
         scroller.scrollTop = next.ratio * (scroller.scrollHeight - scroller.clientHeight);
-      else if (next.line === 1 && next.offset === 0) scroller.scrollTop = 0;
-      else {
+      } else if (next.line === 1 && next.offset === 0) {
+        scroller.scrollTop = 0;
+      } else {
         const block = editor.lineBlockAt(editor.state.doc.line(next.line).from);
         // Round up: a fractional scrollTop floors into the previous line.
         scroller.scrollTop = Math.ceil(
@@ -218,8 +238,16 @@ export function MarkdownSourceEditor({
         );
       }
     };
-    const cancelRestore = initial
-      ? restoreWhileIdle(scroller, () => applyAnchor(initial), 3)
+
+    // The editor estimates the heights of lines it has not measured yet (wrapped lines above the
+    // target): the restore re-applies until the view reads back the target.
+    const target = initial && clampAnchor(initial, editor.state.doc.lines);
+    const cancelRestore = target
+      ? restoreWhileIdle(
+          scroller,
+          () => applyAnchor(target),
+          () => sameAnchor(readAnchor(), target),
+        )
       : undefined;
     const restore = requestAnimationFrame(() => {
       if (!initial && viewState && !viewState.scrollSnapshot) {
@@ -235,11 +263,17 @@ export function MarkdownSourceEditor({
     const keepCaretVisible = () => {
       const before = heightBefore;
       heightBefore = scroller.clientHeight;
-      if (!editor.hasFocus) return;
+      if (!editor.hasFocus) {
+        return;
+      }
+
       // A caret that was off screen stays there: it scrolls into view at the first keystroke.
       const caret = editor.lineBlockAt(editor.state.selection.main.head);
       const top = caret.top + editor.documentPadding.top;
-      if (top + caret.height < scroller.scrollTop || top > scroller.scrollTop + before) return;
+      if (top + caret.height < scroller.scrollTop || top > scroller.scrollTop + before) {
+        return;
+      }
+
       editor.dispatch({
         effects: EditorView.scrollIntoView(editor.state.selection.main.head, {
           y: 'nearest',
@@ -247,9 +281,13 @@ export function MarkdownSourceEditor({
         }),
       });
     };
+
     window.visualViewport?.addEventListener('resize', keepCaretVisible);
     const reader = anchorCallbacks.current.readerRef;
-    if (reader) reader.current = readAnchor;
+    if (reader) {
+      reader.current = readAnchor;
+    }
+
     return () => {
       cancelAnimationFrame(restore);
       cancelRestore?.();
@@ -258,7 +296,10 @@ export function MarkdownSourceEditor({
       // Scrolling is persisted as the shared anchor (a ref, no re-render); the caret and snapshot are
       // handed over once, right before the mode changes or the editor unmounts.
       remember();
-      if (reader?.current === readAnchor) reader.current = null;
+      if (reader?.current === readAnchor) {
+        reader.current = null;
+      }
+
       editor.destroy();
       view.current = null;
     };
@@ -266,16 +307,33 @@ export function MarkdownSourceEditor({
     // creation, and later value changes are synchronised by the effect below, so they must not
     // rebuild (and reset) the CodeMirror view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plainText, label]);
+  }, [plainText, label, readOnly]);
   useEffect(() => {
     const editor = view.current;
-    if (!editor) return;
-    // Delayed React acknowledgements must not replace newer CodeMirror keystrokes.
-    if (emittedValues.current.has(value)) {
-      if (editor.state.doc.toString() === value) emittedValues.current.clear();
-      else emittedValues.current.delete(value);
+    if (!editor) {
       return;
     }
+
+    wrapAtCreation.current = wrapLines;
+    editor.dispatch({ effects: wrapping.reconfigure(wrapLines ? EditorView.lineWrapping : []) });
+  }, [wrapLines, wrapping]);
+  useEffect(() => {
+    const editor = view.current;
+    if (!editor) {
+      return;
+    }
+
+    // Delayed React acknowledgements must not replace newer CodeMirror keystrokes.
+    if (emittedValues.current.has(value)) {
+      if (editor.state.doc.toString() === value) {
+        emittedValues.current.clear();
+      } else {
+        emittedValues.current.delete(value);
+      }
+
+      return;
+    }
+
     if (editor.state.doc.toString() !== value) {
       applyingExternal.current = true;
       try {
@@ -285,6 +343,7 @@ export function MarkdownSourceEditor({
       }
     }
   }, [value]);
+
   return (
     <div
       ref={mount}
@@ -299,8 +358,12 @@ function lineStart(text: string, line: number) {
   let from = 0;
   for (let current = 1; current < line; current++) {
     const next = text.indexOf('\n', from);
-    if (next === -1) return from;
+    if (next === -1) {
+      return from;
+    }
+
     from = next + 1;
   }
+
   return from;
 }

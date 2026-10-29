@@ -100,6 +100,7 @@ export function NavigationSurface({
   width?: 240 | 256 | 280;
 }) {
   const adapter = useMemo(() => navigationAdapter(active), [active]);
+
   return (
     <div
       className="rounded-composite border border-border-default bg-surface p-2"
@@ -120,6 +121,7 @@ export function NavigationSurface({
 
 export function ControlledExample() {
   const [expandedKeys, setExpandedKeys] = useState<readonly string[]>([]);
+
   return (
     <div
       className="w-64 rounded-composite border border-border-default bg-surface p-2"

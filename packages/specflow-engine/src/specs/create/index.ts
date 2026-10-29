@@ -25,7 +25,11 @@ export {
   type CreateSpecificationRequest,
   type CreateSpecificationRequestOptions,
 } from './request';
-export { createSpecificationForTesting, type TestCreateOptions } from './test-support';
+export {
+  createSpecificationForTesting,
+  createSpecificationFromRequestForTesting,
+  type TestCreateOptions,
+} from './test-support';
 export { inspectPublicCreateOperation, type PublicCreateInspection } from './inspect/inspection';
 export {
   listPublicCreateOperations,

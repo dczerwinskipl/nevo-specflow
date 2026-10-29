@@ -17,9 +17,11 @@ const bin = join(pkgRoot, 'packaging', 'bin.ts');
 async function cli(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
     const { stdout, stderr } = await execFileAsync('node', [bin, ...args], { cwd: pkgRoot });
+
     return { code: 0, stdout, stderr };
   } catch (err) {
     const e = err as { code?: number; stdout?: string; stderr?: string };
+
     return { code: e.code ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
   }
 }
@@ -38,7 +40,9 @@ describe('@nevo/specflow packaging CLI', () => {
   it('--help lists bundle, pack and dogfood', async () => {
     const { code, stdout } = await cli(['--help']);
     expect(code).toBe(0);
-    for (const cmd of ['bundle', 'pack', 'dogfood']) expect(stdout).toContain(cmd);
+    for (const cmd of ['bundle', 'pack', 'dogfood']) {
+      expect(stdout).toContain(cmd);
+    }
   });
 
   it('pack --help documents --json', async () => {

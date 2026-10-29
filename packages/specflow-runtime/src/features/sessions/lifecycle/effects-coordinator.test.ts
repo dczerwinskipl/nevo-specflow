@@ -15,7 +15,9 @@ let root = '',
 afterEach(async () => {
   await runtime?.close();
   runtime = undefined;
-  if (root) await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+  if (root) {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 100 });
+  }
 });
 async function fixture(failTerminal = false) {
   root = await mkdtemp(join(tmpdir(), 'managed-effects-'));
@@ -27,21 +29,28 @@ async function fixture(failTerminal = false) {
     admit(identity) {
       owner = identity;
       phase = 'admitted';
+
       return Promise.resolve({
         dispatch: () => {
           phase = 'dispatched';
+
           return Promise.resolve();
         },
         abandon: () => {
           phase = 'settled';
+
           return Promise.resolve();
         },
         unknown: () => {
-          if (phase !== 'settled') phase = 'unknown';
+          if (phase !== 'settled') {
+            phase = 'unknown';
+          }
+
           return Promise.resolve();
         },
         settle: () => {
           phase = 'settled';
+
           return Promise.resolve();
         },
       });
@@ -63,6 +72,7 @@ async function fixture(failTerminal = false) {
       });
       await emit(result);
     })();
+
     return {
       done,
       settlement: done.then(() => ({
@@ -95,10 +105,12 @@ async function fixture(failTerminal = false) {
   const wrapped: SessionStore = {
     ...store,
     call(command) {
-      if (failTerminal && command.op === 'reconcile-effect')
+      if (failTerminal && command.op === 'reconcile-effect') {
         return Promise.reject(
           new SessionError('SESSION_STORE_UNAVAILABLE', 'Injected terminal persistence failure.'),
         );
+      }
+
       return store.call(command);
     },
   };
@@ -109,6 +121,7 @@ async function fixture(failTerminal = false) {
     mode: 'workspace-write',
     providerModeId: 'acceptEdits',
   });
+
   return {
     sessionId,
     start,
@@ -130,6 +143,7 @@ async function fixture(failTerminal = false) {
     },
   };
 }
+
 it('commits a writable outcome only after effect settlement and never reruns an admitted request', async () => {
   const f = await fixture();
   const input = { requestId: randomUUID(), message: 'Write once' };
@@ -153,7 +167,10 @@ it.each(['same-binding', 'changed-account', 'changed-workspace'])(
     );
     expect(f.phase()).toBe('settled');
     await f.reopen(change === 'changed-workspace' ? '2'.repeat(64) : undefined);
-    if (change === 'changed-account') f.scope('account-b');
+    if (change === 'changed-account') {
+      f.scope('account-b');
+    }
+
     await runtime!.recoverEffects();
     const snapshot = await runtime!.snapshot(f.sessionId, 'actor');
     expect(snapshot.activeTurn).toBeUndefined();
@@ -165,10 +182,12 @@ it.each(['same-binding', 'changed-account', 'changed-workspace'])(
     ).toBe(true);
     expect(f.start).toHaveBeenCalledTimes(1);
     expect(await runtime!.start('actor', f.sessionId, input)).toEqual(admitted);
-    if (change !== 'same-binding')
+    if (change !== 'same-binding') {
       await expect(
         runtime!.start('actor', f.sessionId, { requestId: randomUUID(), message: 'New intent' }),
       ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    }
+
     expect(f.start).toHaveBeenCalledTimes(1);
   },
   // Includes two cold SQLite Workers, shutdown and restart. Windows CI can

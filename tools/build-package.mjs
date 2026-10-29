@@ -70,6 +70,7 @@ function resolvePackageProfile(cwd, pkg) {
         `${pkg.name}: neutral packages must not declare engines.node; use tsconfig.package-node.json for Node-only packages.`,
       );
     }
+
     return 'neutral';
   }
 
@@ -79,6 +80,7 @@ function resolvePackageProfile(cwd, pkg) {
         `${pkg.name}: Node packages must declare engines.node alongside tsconfig.package-node.json.`,
       );
     }
+
     return 'node';
   }
 
@@ -99,9 +101,11 @@ function deriveEntries(cwd, pkg) {
     if (typeof runtimeTarget !== 'string' || typeof typeTarget !== 'string') {
       throw new Error(`${pkg.name}: export '${subpath}' must define string types/default targets.`);
     }
+
     if (!runtimeTarget.startsWith('./dist/') || !runtimeTarget.endsWith('.js')) {
       throw new Error(`${pkg.name}: export '${subpath}' default target must be ./dist/*.js.`);
     }
+
     if (!typeTarget.startsWith('./dist/') || !typeTarget.endsWith('.d.ts')) {
       throw new Error(`${pkg.name}: export '${subpath}' types target must be ./dist/*.d.ts.`);
     }
@@ -117,14 +121,18 @@ function deriveEntries(cwd, pkg) {
     const source = findSource(cwd, runtimeStem);
     entries[runtimeStem] = source;
   }
+
   return entries;
 }
 
 function findSource(cwd, stem) {
   for (const extension of ['.ts', '.tsx', '.mts', '.cts']) {
     const candidate = join(cwd, 'src', `${stem}${extension}`);
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(candidate)) {
+      return candidate;
+    }
   }
+
   throw new Error(`No source entry found for dist/${stem}.js.`);
 }
 
@@ -172,24 +180,32 @@ function resolveTarget(cwd, target, subpath, condition) {
   if (typeof target !== 'string') {
     throw new Error(`${condition} export '${subpath}' must be a string.`);
   }
+
   const absolute = resolve(cwd, target);
   if (!existsSync(absolute)) {
     throw new Error(`Missing ${condition} output for export '${subpath}': ${target}`);
   }
+
   return absolute;
 }
 
 function collectMatchingFiles(dir, out, matches) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) collectMatchingFiles(path, out, matches);
-    else if (entry.isFile() && matches(entry.name)) out.push(path);
+    if (entry.isDirectory()) {
+      collectMatchingFiles(path, out, matches);
+    } else if (entry.isFile() && matches(entry.name)) {
+      out.push(path);
+    }
   }
 }
 
 function rejectExtensionlessDeclarationImports(file) {
   for (const specifier of moduleSpecifiers(file, readFileSync(file, 'utf8'))) {
-    if (!specifier.startsWith('.')) continue;
+    if (!specifier.startsWith('.')) {
+      continue;
+    }
+
     if (!extname(specifier)) {
       throw new Error(`Extensionless relative declaration import in ${file}: ${specifier}`);
     }
@@ -198,7 +214,10 @@ function rejectExtensionlessDeclarationImports(file) {
 
 function rejectNodeBuiltinImports(file, packageName) {
   for (const specifier of moduleSpecifiers(file, readFileSync(file, 'utf8'))) {
-    if (!isNodeBuiltin(specifier)) continue;
+    if (!isNodeBuiltin(specifier)) {
+      continue;
+    }
+
     throw new Error(
       `${packageName}: neutral package imports Node builtin '${specifier}' in ${relative(packageDir, file)}.`,
     );
@@ -207,6 +226,7 @@ function rejectNodeBuiltinImports(file, packageName) {
 
 function isNodeBuiltin(specifier) {
   const normalized = specifier.startsWith('node:') ? specifier.slice('node:'.length) : specifier;
+
   return NODE_BUILTINS.has(normalized) || NODE_BUILTINS.has(normalized.split('/')[0]);
 }
 
@@ -215,7 +235,9 @@ function moduleSpecifiers(file, text) {
   const specifiers = [];
 
   const addLiteral = (node) => {
-    if (node && ts.isStringLiteralLike(node)) specifiers.push(node.text);
+    if (node && ts.isStringLiteralLike(node)) {
+      specifiers.push(node.text);
+    }
   };
 
   const visit = (node) => {
@@ -230,22 +252,32 @@ function moduleSpecifiers(file, text) {
       addLiteral(node.arguments[0]);
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument;
-      if (ts.isLiteralTypeNode(argument)) addLiteral(argument.literal);
+      if (ts.isLiteralTypeNode(argument)) {
+        addLiteral(argument.literal);
+      }
     }
 
     ts.forEachChild(node, visit);
   };
 
   visit(source);
+
   return specifiers;
 }
 
 function scriptKindFor(file) {
-  if (file.endsWith('.tsx')) return ts.ScriptKind.TSX;
-  if (file.endsWith('.jsx')) return ts.ScriptKind.JSX;
+  if (file.endsWith('.tsx')) {
+    return ts.ScriptKind.TSX;
+  }
+
+  if (file.endsWith('.jsx')) {
+    return ts.ScriptKind.JSX;
+  }
+
   if (file.endsWith('.js') || file.endsWith('.mjs') || file.endsWith('.cjs')) {
     return ts.ScriptKind.JS;
   }
+
   return ts.ScriptKind.TS;
 }
 
@@ -255,6 +287,7 @@ function resolveNodeBuildTarget(root) {
   if (!match?.[1]) {
     throw new Error(`Could not derive the Node build target from .nvmrc: ${version}`);
   }
+
   return `node${match[1]}`;
 }
 
@@ -268,14 +301,20 @@ function verifyNodeNextDeclarations(cwd, pkg, profile) {
     const imports = Object.values(pkg.exports ?? {}).map((target, index) => {
       const runtimeFile = resolve(cwd, target.default);
       let specifier = relative(tempDir, runtimeFile).split(sep).join('/');
-      if (!specifier.startsWith('.')) specifier = `./${specifier}`;
+      if (!specifier.startsWith('.')) {
+        specifier = `./${specifier}`;
+      }
+
       return `import * as Entry${index} from ${JSON.stringify(specifier)}; void Entry${index};`;
     });
     writeFileSync(consumer, `${imports.join('\n')}\n`);
 
     const configPath = join(cwd, 'tsconfig.json');
     const read = ts.readConfigFile(configPath, ts.sys.readFile);
-    if (read.error) throw new Error(formatDiagnostics([read.error]));
+    if (read.error) {
+      throw new Error(formatDiagnostics([read.error]));
+    }
+
     const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, cwd);
     const options = {
       ...parsed.options,

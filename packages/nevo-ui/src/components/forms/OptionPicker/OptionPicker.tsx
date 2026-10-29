@@ -51,11 +51,13 @@ export function OptionPicker({
   disabled,
   controlRef,
 }: OptionPickerProps) {
-  if (items.length > OPTION_PICKER_SELECT_MAX)
+  if (items.length > OPTION_PICKER_SELECT_MAX) {
     return (
       <Combobox
         inputRef={(node) => {
-          if (controlRef) controlRef.current = node;
+          if (controlRef) {
+            controlRef.current = node;
+          }
         }}
         value={value || null}
         invalid={invalid}
@@ -63,7 +65,9 @@ export function OptionPicker({
         placeholder={placeholder}
         labels={labels}
         onValueChange={(next) => {
-          if (next !== null) onValueChange(next);
+          if (next !== null) {
+            onValueChange(next);
+          }
         }}
       >
         {items.map((item) => (
@@ -80,11 +84,15 @@ export function OptionPicker({
         ))}
       </Combobox>
     );
+  }
+
   return (
     <Select value={value} invalid={invalid} disabled={disabled} onValueChange={onValueChange}>
       <SelectTrigger
         ref={(node) => {
-          if (controlRef) controlRef.current = node;
+          if (controlRef) {
+            controlRef.current = node;
+          }
         }}
       >
         <SelectValue placeholder={placeholder} />

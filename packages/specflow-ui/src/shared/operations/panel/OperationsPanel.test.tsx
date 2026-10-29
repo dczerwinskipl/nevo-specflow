@@ -33,6 +33,7 @@ function renderPanel(props: Partial<OperationsPanelProps> = {}, language: 'en' |
     </LocalizationProvider>
   );
   const view = render(tree({}));
+
   return { onRetry, update: (next: Partial<OperationsPanelProps>) => view.rerender(tree(next)) };
 }
 
@@ -245,6 +246,7 @@ describe('OperationsPanel structure', () => {
     for (const item of section.querySelectorAll('li, li a')) {
       expect(item.className).not.toMatch(/(^| )border( |$)|rounded-composite|bg-surface-subtle/);
     }
+
     expect(section.querySelector('[class*="chevron"]')).toBeNull();
   });
 

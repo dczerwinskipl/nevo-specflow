@@ -25,6 +25,7 @@ function PendingPreviewInner() {
     () => ({ ...createSpecificationWorkspaceFixture('working', 'spec'), taskGroups: [] }),
     [],
   );
+
   return (
     <SpecificationSecondaryDataContext.Provider
       value={{ specId: 'spec', data, openFullTask: () => undefined, previewTask: () => undefined }}
@@ -54,6 +55,7 @@ function PendingPreviewInner() {
     </SpecificationSecondaryDataContext.Provider>
   );
 }
+
 function PendingPreview() {
   const setup = useMemo(
     () => ({
@@ -64,6 +66,7 @@ function PendingPreview() {
     }),
     [],
   );
+
   return (
     <QueryClientProvider client={setup.query}>
       <TestServicesRouterContext services={setup.services}>
@@ -76,6 +79,7 @@ function PendingPreview() {
     </QueryClientProvider>
   );
 }
+
 const meta = {
   title: 'SpecFlow/Features/Specification/Pending Task Preview',
   component: PendingPreview,

@@ -11,9 +11,18 @@ export type BranchNameProblem = 'empty' | 'too-long' | 'characters' | 'structure
 
 /** Why a branch name is not acceptable, or `undefined` when it is valid. */
 export function branchNameProblem(value: string): BranchNameProblem | undefined {
-  if (value.length === 0) return 'empty';
-  if (value.length > BRANCH_NAME_MAX_LENGTH) return 'too-long';
-  if (!BRANCH_CHARACTERS.test(value)) return 'characters';
+  if (value.length === 0) {
+    return 'empty';
+  }
+
+  if (value.length > BRANCH_NAME_MAX_LENGTH) {
+    return 'too-long';
+  }
+
+  if (!BRANCH_CHARACTERS.test(value)) {
+    return 'characters';
+  }
+
   if (
     value.includes('//') ||
     value.includes('..') ||
@@ -23,6 +32,7 @@ export function branchNameProblem(value: string): BranchNameProblem | undefined 
   ) {
     return 'structure';
   }
+
   return undefined;
 }
 

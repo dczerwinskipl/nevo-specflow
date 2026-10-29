@@ -29,6 +29,7 @@ export function CreateTechnicalDetails({
         ? settings.branch
         : settings.workspace?.branch
       : undefined;
+
   return (
     <Collapsible className="-ml-control-padding-compact">
       <Collapsible.Trigger>{t('create.page.details.title')}</Collapsible.Trigger>

@@ -65,15 +65,22 @@ Implement typed schemas in a dedicated `@nevo/specflow-contracts` demo export an
 the existing application HttpClient. No raw fetch, local success fallback or Storybook fixture import
 in connected routes. Names below are the temporary contract, not a production API commitment.
 
-| Method | Path                                            | Result                                                               |
-| ------ | ----------------------------------------------- | -------------------------------------------------------------------- |
-| GET    | `/api/demo/specification-creation`              | Preparation catalogue and availability                               |
-| POST   | `/api/demo/specifications`                      | Create Specification and its selected document set                   |
-| POST   | `/api/demo/specs/:specId/sessions`              | Allocate a placeholder in the Specification place fixed by Create    |
-| GET    | `/api/demo/specs/:specId/sessions/:sessionId`   | Placeholder identity, configuration and context summary              |
-| POST   | `/api/demo/specs/:specId/documents`             | Atomically add/import a batch of text documents and optional folders |
-| POST   | `/api/demo/specs/:specId/folders`               | Create a document folder                                             |
-| PUT    | `/api/demo/specs/:specId/documents/:documentId` | Save demo Markdown with revision precondition                        |
+| Method | Path                                            | Result                                                                 |
+| ------ | ----------------------------------------------- | ---------------------------------------------------------------------- |
+| GET    | `/api/demo/specification-creation`              | Preparation catalogue and availability                                 |
+| POST   | `/api/demo/specifications`                      | Create Specification and its selected document set                     |
+| POST   | `/api/demo/specs/:specId/sessions`              | Allocate a placeholder in the Specification place fixed by Create      |
+| GET    | `/api/demo/specs/:specId/sessions/:sessionId`   | Placeholder identity, configuration and context summary                |
+| POST   | `/api/demo/specs/:specId/documents`             | Create documents (from a template or content) and folders in one batch |
+| POST   | `/api/demo/specs/:specId/folders`               | Create a document folder                                               |
+| POST   | `/api/demo/specs/:specId/document-operations`   | Rename, move, delete or classify a document or folder                  |
+| PUT    | `/api/demo/specs/:specId/documents/:documentId` | Save a text document with a revision precondition                      |
+
+The document reads are not demo routes: the demo Runtime serves the real `GET /api/specs/:specId/document-tree`,
+`GET /api/specs/:specId/documents/:documentId` and `GET .../raw` routes from its in-memory data, with the shapes,
+headers and error codes of [the documents contract](specification-documents.md). The writes above emulate the D4
+operations of that contract (which the project Runtime does not serve yet) with its schemas
+(`@nevo/specflow-contracts/documents`, re-exported under demo names).
 
 Catalogue accepts optional `specId` query context for an existing Specification. After `spec.view`
 authorization it returns that Specification's confirmed current location; an unknown Specification
@@ -90,20 +97,27 @@ at the target Specification scope; detail requires `spec.view` and `session.view
 Session scope. Document save requires `spec.manage` at that Specification. Existing read adapters
 retain existing authorization filtering. Do not bypass authorization because this is demo mode.
 
-The catalogue contains a revision, the demo project/current location, versioned archetypes and their
-ordered required/optional Markdown templates, provider identities/marks/version/access/availability,
-and models and supported effort/mode choices. Workspace, branch pattern and worktree availability come from create-options, not from the catalogue. Include empty,
-single-file and multiple-file archetypes; selectable Codex and Claude fixtures; an unavailable
+The catalogue is the real `ArchetypeCatalogue` (`revision`, `documentTypes`, archetypes with an integer
+`version`, `requirements` and `always`/`optional` templates) resolved by the Engine's own catalogue resolver from
+definitions held in memory: the definitions `nevo-specflow definitions install` writes (a copy of the Engine's
+seeds, checked against them by a test) plus one demo-only owner archetype (`cross-module`, which
+requires a `decisions` document), and `defaultArchetypeId`. The demo-only part adds the demo
+project/current location, provider identities/marks/version/access/availability, and models and supported
+effort/mode choices. Workspace, branch pattern and worktree availability come from create-options, not from the
+catalogue. Include selectable Codex and Claude fixtures; an unavailable
 adapter; explicit synthetic model names. Unknown metadata stays unknown. Model selection starts
 empty. Dependent choices clear when no longer valid. The catalogue is stable within the app instance.
 Fixtures must be labelled demo; they make no statement about installed providers or actual quotas.
 
-Create input consists of a client-generated `operationId` (UUID), trimmed nonempty title, catalogue revision,
-archetype identity/version, selected optional document IDs, and optional `addedDocuments` / `folders`. Required files are included by the
-Runtime; unknown document IDs, stale versions and invalid combinations are rejected. Success returns
-`specId` and created document IDs in authoritative order. The write is atomic: failure creates none.
-Created document metadata preserves the template's exact filename separately from its display title;
-document detail/read projections expose that identity. The UI does not infer it from a title/slug.
+Create input is the real `CreateSpecRequest` with a required client-generated `operationId` (UUID): trimmed
+nonempty title, optional goal and slug, catalogue revision, archetype id and integer version, optional
+`optionalDocumentIds`, `addedDocuments` (`{path, type?, content}`, no title) and `folders`. The documents are
+built by the Engine's scaffold (template selection and rendering, registered id allocation, path rules and Create
+limits): a stale revision or archetype version answers 409 `CATALOGUE_STALE`, an unknown archetype or optional
+template 422 `ARCHETYPE_UNKNOWN`, a bad or conflicting path 400 `DOCUMENT_PATH_INVALID` / 409
+`DOCUMENT_PATH_CONFLICT`, a limit or an added type that cannot be registered 400 `DOCUMENT_OPERATION_INVALID`.
+Success returns `specId` (a demo id, not a UUID) and the registered `documentIds` in manifest order (`overview`
+first). The write is atomic: failure creates none. Display titles are derived (first H1, else the file stem).
 
 Create is atomic and also fixes the Specification place from its `target` (see "Workspace target and create-options"): there is no
 separate workplace stage and no "new branch without worktree". The place is a simulated worktree for linked workspaces, the project
@@ -119,7 +133,8 @@ The result is `sessionId` plus an immutable snapshot of the confirmed place. All
 a worktree or mutates the Specification place. Its failure leaves the created Specification intact for retry.
 
 All POST operations are idempotent within the app instance by authenticated identity, operation,
-Specification scope where relevant, and `requestId` (Create uses `operationId`, see below). Replaying identical input returns the original
+Specification scope where relevant, and `requestId` (Session allocation) or `operationId` (Create and every
+document write). Replaying identical input returns the original
 resource/result or retries only an incomplete stage; changed input under the same key returns conflict.
 Input fingerprint recursively includes all fields, including branch, nested import paths and file content. Two intentional additional Sessions use
 different keys. Pending UI blocks duplicate clicks, but Runtime owns lost-response/retry correctness.
@@ -137,39 +152,37 @@ or recovery after full reload is promised for unsaved UI drafts.
 Opening or reopening the Session never invokes an agent. Future provider prompt construction is
 deferred; do not build a speculative prompt protocol now.
 
-Document additions use `{requestId, documents: [{path, title?, content}], folders?: string[]}`;
-folder creation uses `{requestId, path}`. Creation accepts the same document shape as
-`addedDocuments`. MD and TXT files are accepted, up to 200,000 characters per document, at most ten
-files and 100 explicitly supplied folders per batch, within the Runtime request-body limit. Paths
-are relative slash-separated identities, at most 500 characters, without absolute prefixes, traversal,
-empty/dot/dotdot segments, backslash, control characters, or Windows-reserved punctuation. Folder
-and file collisions are case-insensitive; existing identities/content/revisions are never overwritten.
-The entire batch validates before mutations; a collision returns 409 `demo_document_path_conflict`,
-invalid input returns 400 `demo_invalid_selection`. Parents are inferred, and an existing file cannot
-become a directory. Replays use the same scoped operation key and recursively fingerprint all input.
+Document creation uses the contract's `CreateDocumentsInput`
+(`{operationId, documents: [{path, type?, templateId | content}], folders?}`, at most ten files and 100 folders);
+folder creation uses the contract's `FolderInput` (`{operationId, path}`). Both answer the contract's
+`DocumentOperationResult` (the created documents with their ids, the complete folder list, `commit`). A template entry renders a template of the Specification's archetype and is registered
+with its type unless `type` says otherwise; a content entry without `type` is created unclassified (derived `u-`
+id). Created files are `md` or `txt`. Paths follow the Engine's portable path rules; collisions are
+case-insensitive and nothing existing is overwritten. The whole batch validates before any change.
 
-Document/folder additions require `spec.manage` and an existing Specification, including seeded demo
-Specifications. Success returns new `documentIds` and the complete folder list; folder-only success
-returns `folders`. The existing Workspace documents collection exposes optional `folders`, and each
-file's `filename` retains its exact nested path. Existing scoped body reads and revision saves handle
-new files without another document authority. UI invalidates the Workspace collection after additions.
-The Runtime restart clears these additions; browser refresh retains committed data.
+Every Specification, created or seeded, has one in-memory document directory (registry, files, folders), so
+every write applies to seeded Specifications too. The Workspace documents collection lists the registered
+documents whose file exists (like the project Runtime) plus the folder list. The Runtime restart clears every
+change; browser refresh retains committed data.
 
-Save input is Markdown content plus expected revision. Success returns a new revision and updates the
-existing document read adapter. Stale revision returns conflict without overwriting; failed save
-retains the UI draft. Template preview remains read-only before creation.
+Save input is the contract's `SaveInput` (`operationId`, content, `expectedRevision`); the result is `SaveResult`
+(`operationId`, the written `document` with its new `revision`, `commit`). The demo commits at once: every
+write answers `commit.state: 'committed'` with a demo sha. A stale revision answers 409 `DOCUMENT_REVISION_CONFLICT`
+without overwriting; a non-editable file 415 `DOCUMENT_NOT_EDITABLE`. Template preview remains read-only before
+creation. An optional demo commit latency (`documentCommitLatencyMs`, default 0) makes a write hold the
+Specification busy: the tree reports `busy` and other writes answer 409 `SPEC_BUSY`.
 
-Use existing 400/401/403 conventions. Unknown scoped resources return 404; invalid/stale catalogue,
-revision or idempotency-key reuse returns 409; deterministic create/allocation/save failure
-returns 503. Demo error bodies MUST distinguish `demo_specification_creation_failed`,
-`demo_session_allocation_failed`, `demo_document_save_failed`, `demo_catalogue_stale`,
-`demo_document_revision_conflict` and `demo_request_conflict` so recovery is not guessed from status.
+Use existing 400/401/403 conventions. Every document write and read answers the contract's
+`{ error, code, details? }` with the codes of the documents error table. Demo-only error bodies remain for the
+non-document stages: `demo_specification_creation_failed`, `demo_session_allocation_failed`,
+`demo_catalogue_stale` and `demo_request_conflict` (Session allocation), so recovery is not guessed from status.
 Transport schema/code owns precise TypeScript field representation and bounds; maintain these semantics.
 
 ## Failure fixtures and freshness
 
 Tests inject deterministic one-shot failures into the app-owned demo dependency, before create,
-Session allocation or save. Do not expose a product failure dropdown or accept
+Session allocation or a document write (the `save` stage refuses the write with 409 `COMMIT_BLOCKED`,
+nothing written). Do not expose a product failure dropdown or accept
 failure instructions from ordinary request bodies. A failed stage can succeed on retry with the same
 key; completed effects are never repeated. A lost successful HTTP response is tested by replay.
 
@@ -202,45 +215,45 @@ nonempty documents plus Empty, full editing and both drafts surviving mobile/rou
 Compare rendered application screenshots and actual scroll ownership to the accepted mock and Nevo
 components. Passing the old demo tests alone is insufficient for acceptance.
 
-Demo ingest uses scoped Fastify body limits: **16 MiB** for specification creation and document batches, **2 MiB** for document save. These bounds accommodate the accepted 10 × 200,000-character batch including JSON escaping; other Runtime/authentication endpoints retain their existing limits. The current UI imports up to 10 files per post-create batch, with 500-character joined paths; Create no longer exposes file addition or import. Legacy optional document payloads remain compatibility capabilities rather than current Create UI. Larger imports can be added as subsequent batches after creation.
+Demo ingest uses scoped Fastify body limits: **16 MiB** for specification creation and document batches, **2 MiB** for document save. The content limits are the Engine's (1 MiB of added content at Create, 1 MiB per saved text); the body limits leave room for JSON escaping; other Runtime/authentication endpoints retain their existing limits. The current UI imports up to 10 files per post-create batch, with 500-character joined paths; Create no longer exposes file addition or import. Legacy optional document payloads remain compatibility capabilities rather than current Create UI. Larger imports can be added as subsequent batches after creation.
 
 ## Owner v4 authoring extension (bounded demo)
 
-The demo catalogue now optionally exposes `defaultArchetypeId`, and each archetype's `workflow`
-contains `phases`, `requiredDocuments`, and `suggestedDocuments`. These are explicitly demonstration
-configuration descriptors, **not an executing production workflow**. The v4 creation UI sends an
-empty optional selection and creates required templates only; legacy explicit optional/addition
-payloads remain accepted for API compatibility. Suggestions never materialize by merely viewing them.
+The demo catalogue exposes `defaultArchetypeId` and no `workflow` (the real backend omits it too). The creation
+UI sends the optional templates ticked in its Archetype section as `optionalDocumentIds`: the preselected ones
+start ticked, and the user may untick them or tick others before Create.
 Provider fixtures expose `connection: unknown`, a demonstration `profile`, and `quota.state: unknown`;
 no real account, subscription, usage value, unit or measurement window is fabricated.
 
-`GET /api/demo/specs/:specId/document-tree` requires `spec.view`. It returns `revision`, explicit
-`folders` (including root `path: ""`), and `documents` with stable `id`, `path`, `revision`, `required`
-and per-action `rename`, `move`, `delete` availability/reason. `required` is omitted when seeded
-fixtures have no known workflow policy; their document revision reflects any saved overlay. Top-level `capabilities` describe
-`createFile`, `createFolder`, `import` and `formats` (`md`, `txt`). Required-path identity is captured
-at creation independently of the filename; required documents and all ancestor folders are protected.
-Seed fixture documents expose read-only operation capabilities (`demo_document_operations_unavailable`);
-the existing add/import/save demo remains available. Newly created specifications support the full tree.
-Workspace document projections also expose optional `required` and `revision` metadata.
+The document tree is the real `DocumentTree` (`GET /api/specs/:specId/document-tree`, `spec.view`), projected
+by the Engine's own tree projection from the in-memory directory: registered and unclassified documents (`kind`,
+`mediaType`, `size`, `revision`, `protected` only for `overview`, `editable`, `satisfiesRequirement`), dangling
+entries, completeness, issues and per-action availability with an `ActionReason`. A write action the Engine
+reports as available is `busy` while a demo write runs; the refusal
+reasons (`protected`, `root`, `archived`, the branch policy) are kept. The seeded Specifications show every
+state: `admission` (the showcase: registered documents of several types, an unclassified file, an empty folder),
+`security` (the demo-only `cross-module` archetype with its `decisions` requirement unmet, an unclassified file),
+`review` (an image, a binary file and a dangling `ux` entry), `packaging` (a protected branch: writes refused
+with 422 `BRANCH_PROTECTED`, reason `branch-protected`), `providers` (a `json` text file that is not editable),
+`localization` (an overview only) and `archived-shell` (archived: writes refused with 409 `SPEC_ARCHIVED`).
 
-`POST /api/demo/specs/:specId/document-operations` requires `spec.manage`. Input:
-`{requestId, action: rename|move|delete, kind: document|folder, documentId?, path?, name?, targetFolder?, expectedRevision}`.
-Documents use `documentId` and their current document revision; folders use `path` and the tree revision.
-Rename takes a leaf `name` (file extension must explicitly be MD/TXT); move takes an existing
-`targetFolder` (empty string means root). Delete takes neither. Root cannot be renamed/moved/deleted.
-Every subtree replacement is validated before commit: containment, names, reserved Windows names,
-dot names, case-insensitive collisions, file/folder conflicts, protected paths and revision guards.
-IDs remain stable across rename/move; affected document revisions and tree revision change. Result:
-`{revision, documents:[{id,path,revision}], removedDocumentIds, folders}`. Replaying the same request
-returns the same ACK; changing its input returns `demo_request_conflict`. Concurrent stale edits do
-not resurrect deleted documents. Empty folders are authoritative only for the Runtime process lifetime.
+`POST /api/demo/specs/:specId/document-operations` requires `spec.manage`. Input is the contract's
+`DocumentOperationInput` (`operationId`, `action: rename|move|delete|classify`, `kind: document|folder`,
+`documentId` or `path`, `name`, `targetFolder`, `type`, `expectedRevision`). Documents use `documentId` and their
+current revision; folders, and a dangling entry, use `path`/`documentId` and the tree revision. Rename takes a
+leaf `name`; move takes an existing `targetFolder` (empty string means root); classify takes a catalogue `type`
+and registers an unclassified file under an allocated id (`DOCUMENT_ALREADY_CLASSIFIED` for a registered one).
+Deleting a dangling entry removes its registration. The overview cannot be renamed, moved or deleted
+(`DOCUMENT_PROTECTED`); the root cannot be changed. Registered ids stay stable across rename/move; an unclassified
+file's derived `u-` id changes with its path and after classification, and the result's `documents` carry the
+new ids. Result: the contract's `DocumentOperationResult`. Replaying the same operation returns the same result;
+changing its input under the same `operationId` answers 409 `DOCUMENT_OPERATION_CONFLICT`.
 
-Mutation commits are synchronous and atomic within this one in-memory Runtime; no filesystem/Git
-transaction is implied. Workspace projections read the new manifest directly. Allocated idle Session
-context document paths are refreshed after add/rename/move/delete (Session configuration remains a
-snapshot), so the placeholder context does not retain removed or obsolete paths. UI must invalidate
-its document tree, Workspace, content and affected Session-detail queries after an acknowledged change.
+Mutation commits are atomic within this one in-memory Runtime; no filesystem/Git transaction is implied.
+Workspace projections read the new registry directly. Allocated idle Session context document paths are
+refreshed after every change of the file set (Session configuration remains a snapshot), so the placeholder
+context does not retain removed or obsolete paths. UI must invalidate its document tree, Workspace, content and
+affected Session-detail queries after an acknowledged change.
 The existing 16 MiB batch and 2 MiB save request limits remain unchanged.
 
 ## Workspace target and create-options extension (demo)

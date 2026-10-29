@@ -38,32 +38,56 @@ export function projectProviderEnvironment(options: {
       !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) ||
       value.includes('\0') ||
       Buffer.byteLength(value) > 32768
-    )
+    ) {
       throw new Error('Invalid provider environment entry.');
-    if (reserved(key) !== (source === 'runtime'))
+    }
+
+    if (reserved(key) !== (source === 'runtime')) {
       throw new Error('Reserved provider environment entry.');
+    }
+
     const name = normalize(key);
     values[name] = value;
     sources[name] = source;
   }
+
   function inherit(keys: readonly string[], source: 'platform' | 'inherited') {
     for (const key of keys) {
-      if (reserved(key)) throw new Error('Reserved inherited provider environment entry.');
+      if (reserved(key)) {
+        throw new Error('Reserved inherited provider environment entry.');
+      }
+
       const matches = Object.keys(options.host).filter(
         (k) => normalize(k) === normalize(key) && options.host[k] !== undefined,
       );
       const distinct = new Set(matches.map((k) => options.host[k]));
-      if (distinct.size > 1) throw new Error('Ambiguous provider environment casing.');
-      if (matches[0]) put(key, options.host[matches[0]]!, source);
+      if (distinct.size > 1) {
+        throw new Error('Ambiguous provider environment casing.');
+      }
+
+      if (matches[0]) {
+        put(key, options.host[matches[0]]!, source);
+      }
     }
   }
+
   inherit(windows ? windowsBase : posixBase, 'platform');
   inherit(options.inherit ?? [], 'inherited');
-  for (const [key, value] of Object.entries(options.configured ?? {}))
+  for (const [key, value] of Object.entries(options.configured ?? {})) {
     put(key, value, 'configured');
-  for (const [key, value] of Object.entries(options.secrets ?? {})) put(key, value, 'secret');
-  for (const [key, value] of Object.entries(options.runtime ?? {})) put(key, value, 'runtime');
-  if (Buffer.byteLength(JSON.stringify(values)) > 128 * 1024)
+  }
+
+  for (const [key, value] of Object.entries(options.secrets ?? {})) {
+    put(key, value, 'secret');
+  }
+
+  for (const [key, value] of Object.entries(options.runtime ?? {})) {
+    put(key, value, 'runtime');
+  }
+
+  if (Buffer.byteLength(JSON.stringify(values)) > 128 * 1024) {
     throw new Error('Provider environment exceeds its byte budget.');
+  }
+
   return { values: Object.freeze(values), sources: Object.freeze(sources) };
 }

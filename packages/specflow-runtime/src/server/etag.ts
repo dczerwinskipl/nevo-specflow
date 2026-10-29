@@ -11,9 +11,13 @@ interface BodylessReply {
  */
 export function matchesEtag(header: string | string[] | undefined, etag: string): boolean {
   const value = Array.isArray(header) ? header.join(',') : header;
-  if (!value) return false;
+  if (!value) {
+    return false;
+  }
+
   const weak = (tag: string): string => tag.trim().replace(/^W\//u, '');
   const current = weak(etag);
+
   return value.split(',').some((item) => weak(item) === '*' || weak(item) === current);
 }
 
@@ -30,5 +34,6 @@ export function sendNotModified<R>(reply: R): R {
     .removeHeader('content-type')
     .removeHeader('content-length')
     .send();
+
   return reply;
 }

@@ -4,10 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { CREATE_JOURNAL_MAX_BYTES } from '../limits';
+import { seedCatalogueForTesting } from '../../definitions/testing-install';
 import { createSpecificationScaffold } from '../../scaffold';
 import { fingerprintCreateClientIntent, normalizeCreateClientIntent } from '../intent';
 import { parseCreateJournal } from './codec';
 import type { CreateJournal } from './model';
+
+const catalogue = await seedCatalogueForTesting();
 
 const projectId = randomUUID();
 const context = { project: { projectId } } as unknown as ResolvedProjectHome;
@@ -29,6 +32,7 @@ function build(
     ...options,
   });
   const scaffold = createSpecificationScaffold({
+    catalogue,
     specId,
     title: 'Checkout flow',
     created: '2026-10-14',
@@ -37,6 +41,7 @@ function build(
     addedDocuments: options.addedDocuments,
     folders: requestIntent.folders,
   });
+
   return {
     version: 2,
     projectId,
@@ -261,6 +266,7 @@ describe('Create journal version 2 codec', () => {
         expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
       );
     }
+
     for (const slug of ['..', 'a/b', 'A', '', 'con']) {
       const files = journal.files.map((file) => ({
         ...file,

@@ -17,6 +17,7 @@ export function DocumentRouteGuard({
   specId,
   requestRef,
   commitRef,
+  takeDiscardedRef,
 }: {
   specId: string;
   /** Asks to leave the unsaved documents (tree operations, closing every tab); false = keep editing. */
@@ -26,6 +27,12 @@ export function DocumentRouteGuard({
    * operation went on): only then do the drafts the user discarded go.
    */
   commitRef?: RefObject<(() => void) | null>;
+  /**
+   * For an asker that removes the drafts itself, later and only if what it asked for succeeds (a
+   * tree operation): hands over the ids the user agreed to discard and forgets them here, so the
+   * guard itself never removes them.
+   */
+  takeDiscardedRef?: RefObject<(() => string[]) | null>;
 }) {
   const store = useDocumentDraftStore();
   const ops = useDocumentSaveOwner();
@@ -46,45 +53,74 @@ export function DocumentRouteGuard({
   const ask = useCallback(
     () =>
       new Promise<boolean>((resolve) => {
-        if (waiting.current.length === 0) discarded.current = [];
+        if (waiting.current.length === 0) {
+          discarded.current = [];
+        }
+
         waiting.current.push(resolve);
         setOpen(true);
       }),
     [],
   );
   const commit = useCallback(() => {
-    for (const id of discarded.current.splice(0)) store.remove(specId, id);
+    for (const id of discarded.current.splice(0)) {
+      store.remove(specId, id);
+    }
   }, [store, specId]);
   const finish = useCallback((allow: boolean) => {
     setOpen(false);
     setFailed([]);
-    for (const resolve of waiting.current.splice(0)) resolve(allow);
+    for (const resolve of waiting.current.splice(0)) {
+      resolve(allow);
+    }
   }, []);
   // Nobody can answer once the guard is gone: staying is the safe answer, never a hanging promise.
   useEffect(() => {
     mounted.current = true;
     // The queue is one array for the guard's whole life (it is only ever spliced).
     const queue = waiting.current;
+
     return () => {
       mounted.current = false;
-      for (const resolve of queue.splice(0)) resolve(false);
+      for (const resolve of queue.splice(0)) {
+        resolve(false);
+      }
     };
   }, []);
   // The guard unmounts when the screen or the specification really changes: a discard that was
   // granted for that departure is carried out now (a refused departure keeps the guard, and the drafts).
   useEffect(() => commit, [commit]);
   useEffect(() => {
-    if (!commitRef) return;
+    if (!commitRef) {
+      return;
+    }
+
     commitRef.current = commit;
+
     return () => {
       commitRef.current = null;
     };
   }, [commit, commitRef]);
+  useEffect(() => {
+    if (!takeDiscardedRef) {
+      return;
+    }
+
+    takeDiscardedRef.current = () => discarded.current.splice(0);
+
+    return () => {
+      takeDiscardedRef.current = null;
+    };
+  }, [takeDiscardedRef]);
   const anyUnsaved = useCallback(() => store.dirtyIds(specId).length > 0, [store, specId]);
 
   useEffect(() => {
-    if (!requestRef) return;
+    if (!requestRef) {
+      return;
+    }
+
     requestRef.current = () => (anyUnsaved() ? ask() : Promise.resolve(true));
+
     return () => {
       requestRef.current = null;
     };
@@ -92,7 +128,10 @@ export function DocumentRouteGuard({
   useBlocker({
     // The router blocks when this resolves true, so a granted departure resolves false.
     shouldBlockFn: ({ current, next }) => {
-      if (isWithinSpecDocuments(current, next, specId)) return false;
+      if (isWithinSpecDocuments(current, next, specId)) {
+        return false;
+      }
+
       return anyUnsaved() ? ask().then((allow) => !allow) : false;
     },
     enableBeforeUnload: anyUnsaved,
@@ -104,6 +143,7 @@ export function DocumentRouteGuard({
     discarded.current = store.dirtyIds(specId);
     finish(true);
   };
+
   const saveAll = async () => {
     setSaving(true);
     setFailed([]);
@@ -112,15 +152,26 @@ export function DocumentRouteGuard({
     } catch {
       // A save that throws leaves its document unsaved: it is listed below like any other failure.
     } finally {
-      if (mounted.current) setSaving(false);
+      if (mounted.current) {
+        setSaving(false);
+      }
     }
-    if (!mounted.current) return;
+
+    if (!mounted.current) {
+      return;
+    }
+
     // `saved` is not proof: edits made during IO stay dirty, failures and skipped ids as well.
     const left = store.dirtyIds(specId);
-    if (left.length === 0) finish(true);
-    else setFailed(left);
+    if (left.length === 0) {
+      finish(true);
+    } else {
+      setFailed(left);
+    }
   };
+
   const labelOf = (id: string) => tabs.find((tab) => tab.id === id)?.label ?? id;
+
   return (
     <UnsavedChangesDialog
       open={open}

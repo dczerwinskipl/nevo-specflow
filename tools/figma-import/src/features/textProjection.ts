@@ -2,16 +2,31 @@ import type { ComputedStyle } from '../core/model';
 import { px } from '../core/figmaNodes';
 
 export function textCaseFromCss(value: string | undefined): TextCase {
-  if (value === 'uppercase') return 'UPPER';
-  if (value === 'lowercase') return 'LOWER';
-  if (value === 'capitalize') return 'TITLE';
+  if (value === 'uppercase') {
+    return 'UPPER';
+  }
+
+  if (value === 'lowercase') {
+    return 'LOWER';
+  }
+
+  if (value === 'capitalize') {
+    return 'TITLE';
+  }
+
   return 'ORIGINAL';
 }
 
 export function textDecorationFromCss(value: string | undefined): TextDecoration {
   const decorations = new Set((value ?? '').split(/\s+/));
-  if (decorations.has('line-through')) return 'STRIKETHROUGH';
-  if (decorations.has('underline')) return 'UNDERLINE';
+  if (decorations.has('line-through')) {
+    return 'STRIKETHROUGH';
+  }
+
+  if (decorations.has('underline')) {
+    return 'UNDERLINE';
+  }
+
   return 'NONE';
 }
 
@@ -59,16 +74,21 @@ export function applyTextSizing(
 
   if (widthSizing === 'hug') {
     node.textAutoResize = heightSizing === 'fixed' ? 'NONE' : 'WIDTH_AND_HEIGHT';
-    if (heightSizing === 'fixed') node.resizeWithoutConstraints(fixedWidth, fixedHeight);
+    if (heightSizing === 'fixed') {
+      node.resizeWithoutConstraints(fixedWidth, fixedHeight);
+    }
   } else {
     node.textAutoResize = 'NONE';
     node.resizeWithoutConstraints(fixedWidth, fixedHeight);
-    if (heightSizing !== 'fixed') node.textAutoResize = 'HEIGHT';
+    if (heightSizing !== 'fixed') {
+      node.textAutoResize = 'HEIGHT';
+    }
   }
 
   if (!inAutoLayout) {
     node.layoutSizingHorizontal = 'FIXED';
     node.layoutSizingVertical = 'FIXED';
+
     return;
   }
 

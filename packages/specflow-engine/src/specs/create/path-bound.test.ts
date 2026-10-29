@@ -14,9 +14,13 @@ function refusal(root: string, paths: string[]): ScaffoldValidationError {
   try {
     assertCreatePathsFitWindows(root, paths, win32);
   } catch (error) {
-    if (error instanceof ScaffoldValidationError) return error;
+    if (error instanceof ScaffoldValidationError) {
+      return error;
+    }
+
     throw error;
   }
+
   throw new Error('Expected a refusal.');
 }
 

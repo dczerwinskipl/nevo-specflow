@@ -15,8 +15,10 @@ interface TaskViewState {
 const Context = createContext<Map<string, TaskViewState> | null>(null);
 export function TaskViewStateProvider({ children }: { readonly children: ReactNode }) {
   const store = useRef(new Map<string, TaskViewState>());
+
   return <Context.Provider value={store.current}>{children}</Context.Provider>;
 }
+
 export function useTaskViewState(taskId: string) {
   const store = useContext(Context);
   const [state, setState] = useState<TaskViewState>(() => store?.get(taskId) ?? {});
@@ -26,6 +28,7 @@ export function useTaskViewState(taskId: string) {
         const current = store?.get(taskId) ?? previous;
         const next = { ...current, ...(typeof patch === 'function' ? patch(current) : patch) };
         store?.set(taskId, next);
+
         return next;
       });
     },
@@ -53,5 +56,6 @@ export function useTaskViewState(taskId: string) {
     },
     [store, taskId],
   );
+
   return { state, update, saveScroll, saveHistoryScroll, saveInspectionScroll };
 }

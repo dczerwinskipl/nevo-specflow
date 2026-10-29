@@ -28,12 +28,22 @@ export function createNavigationTreeState<TTarget>(
       nodesByKey.set(node.key, node);
       parentByKey.set(node.key, parentKey);
       pathByKey.set(node.key, path);
-      if (node.children?.length) orderedExpandableKeys.push(node.key);
+      if (node.children?.length) {
+        orderedExpandableKeys.push(node.key);
+      }
 
       const match = adapter.match(node);
-      if (match === 'active') activeKeys.add(node.key);
-      if (match === 'ancestor') ancestorKeys.add(node.key);
-      if (node.children?.length) visit(node.children, node.key, path);
+      if (match === 'active') {
+        activeKeys.add(node.key);
+      }
+
+      if (match === 'ancestor') {
+        ancestorKeys.add(node.key);
+      }
+
+      if (node.children?.length) {
+        visit(node.children, node.key, path);
+      }
     }
   };
 
@@ -46,7 +56,10 @@ export function createNavigationTreeState<TTarget>(
       parentKey = parentByKey.get(parentKey) ?? null;
     }
   }
-  for (const activeKey of activeKeys) ancestorKeys.delete(activeKey);
+
+  for (const activeKey of activeKeys) {
+    ancestorKeys.delete(activeKey);
+  }
 
   return { activeKeys, ancestorKeys, nodesByKey, orderedExpandableKeys, parentByKey };
 }
@@ -56,6 +69,7 @@ export function normalizeExpandedKeys<TTarget>(
   keys: Iterable<string>,
 ): string[] {
   const requested = new Set(keys);
+
   return tree.orderedExpandableKeys.filter((key) => requested.has(key));
 }
 

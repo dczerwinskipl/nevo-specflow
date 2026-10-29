@@ -10,8 +10,14 @@ const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
 const pluralForms = ['one', 'few', 'many', 'other'] as const;
 
 function flatten(value: unknown, prefix = ''): Record<string, string> {
-  if (typeof value === 'string') return { [prefix]: value };
-  if (typeof value !== 'object' || value === null) return {};
+  if (typeof value === 'string') {
+    return { [prefix]: value };
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return {};
+  }
+
   return Object.fromEntries(
     Object.entries(value).flatMap(([key, nested]) =>
       Object.entries(flatten(nested, prefix ? `${prefix}.${key}` : key)),
@@ -23,7 +29,10 @@ function flatten(value: unknown, prefix = ''): Record<string, string> {
 function allFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : allFiles(path);
+    if (entry.isDirectory()) {
+      return entry.name === 'node_modules' ? [] : allFiles(path);
+    }
+
     return /\.tsx?$/.test(entry.name) && entry.name !== 'catalog.test.ts' ? [path] : [];
   });
 }
@@ -31,7 +40,10 @@ function allFiles(directory: string): string[] {
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) return entry.name === 'test-support' ? [] : sourceFiles(path);
+    if (entry.isDirectory()) {
+      return entry.name === 'test-support' ? [] : sourceFiles(path);
+    }
+
     return /\.tsx?$/.test(entry.name) && !/\.(test|stories)\.tsx?$/.test(entry.name) ? [path] : [];
   });
 }
@@ -52,9 +64,11 @@ describe('message catalogues', () => {
       const bases = new Set(
         keys.filter((key) => /_(one|few|many|other)$/.test(key)).map(pluralBase),
       );
-      for (const base of bases)
-        for (const form of pluralForms)
+      for (const base of bases) {
+        for (const form of pluralForms) {
           expect(keys, `${base}_${form}`).toContain(`${base}_${form}`);
+        }
+      }
     }
   });
 
@@ -65,10 +79,13 @@ describe('message catalogues', () => {
     const sameInBoth = new Set([
       'create.workspace.settings.unavailableReason',
       'documents.tree.skippedItem',
+      'documents.tabs.typeAndPath',
       'common.pullRequestNumber',
       'playground.title',
       'sessions.demo.writer',
       'specification.changesSourcePr',
+      // A shell command, the same in every language.
+      'create.archetype.installCommand',
     ]);
     const identical = plKeys.filter(
       (key) =>
@@ -120,15 +137,21 @@ describe('message catalogues', () => {
       const text = readFileSync(file, 'utf8');
       for (const match of text.matchAll(literal)) {
         const key = match[1] ?? '';
-        if (!namespaces.has(key.split('.')[0])) continue;
+        if (!namespaces.has(key.split('.')[0])) {
+          continue;
+        }
+
         if (match[2] === '${') {
           // Dynamic key: the static prefix must lead to at least one catalogue entry.
-          if (!plKeys.some((entry) => entry.startsWith(key))) missing.push(`${file}: ${key}\${…}`);
+          if (!plKeys.some((entry) => entry.startsWith(key))) {
+            missing.push(`${file}: ${key}\${…}`);
+          }
         } else if (!catalogueBases.has(key) && !plKeys.includes(key)) {
           missing.push(`${file}: ${key}`);
         }
       }
     }
+
     expect(missing).toEqual([]);
   });
 });

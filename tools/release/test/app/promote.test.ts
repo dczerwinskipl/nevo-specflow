@@ -40,6 +40,7 @@ function seedPromotionBranch(target: string, vf: VersionFile, parent = HEAD): st
   const sha = git.addCommit({ parents: [parent], files: { 'version.json': versionFileText(vf) } });
   git.state.refs.set(`origin/${promoteBranch(target)}`, sha);
   git.state.remoteBranches.add(promoteBranch(target));
+
   return sha;
 }
 

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   CloseOperationError,
+  DocumentError,
   GitCapabilityError,
   ProjectControlLockError,
   ProjectHomeError,
@@ -15,6 +16,7 @@ import {
   inspectPublicCloseOperation,
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  type PlanPublicCloseOptions,
   type PublicClosePreview,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
@@ -39,10 +41,12 @@ import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
+import type { DocumentErrorDetails } from '@nevo/specflow-contracts/documents';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify';
 
 import { requireCapability } from '../../auth';
+import { documentFailure } from '../../documents';
 
 export interface SpecsCloseEndpointOptions {
   readonly engine?: SpecFlowEngine;
@@ -74,6 +78,7 @@ async function authorizedPlan(
   specId: string,
   operationId: string,
   integrateToTargetBranch?: boolean,
+  options: PlanPublicCloseOptions = {},
 ): Promise<PublicClosePreview> {
   // Spec-scoped authentication precedes every operation-id/immutable-journal read.
   // Integration authority follows the Engine's immutable retry plan, not a
@@ -88,9 +93,34 @@ async function authorizedPlan(
           specId,
           ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
         },
+    options,
   );
-  if (plan.integrationRequired) projectIntegrationAllowed(request, engine);
+  if (plan.integrationRequired) {
+    projectIntegrationAllowed(request, engine);
+  }
+
   return plan;
+}
+
+/**
+ * A Close admission that the document commit queue refuses (`DOCUMENT_COMMITS_PENDING` with its
+ * `details.cause`): the stable `{error, code, details}` body of the documents contract, 409.
+ */
+function documentRefusal(error: unknown) {
+  if (!(error instanceof DocumentError)) {
+    return undefined;
+  }
+
+  const failure = documentFailure(error);
+  if (!failure) {
+    return undefined;
+  }
+
+  // Statuses outside the declared Close responses are served as the schemaless JSON they are.
+  return failure as unknown as {
+    status: 409;
+    body: { error: string; code: string; details?: DocumentErrorDetails };
+  };
 }
 
 type SafeCode =
@@ -109,8 +139,10 @@ function safeCode(error: unknown): SafeCode | undefined {
     error instanceof ProjectHomeError ||
     error instanceof SpecificationError ||
     error instanceof WorkspaceRegistryError
-  )
+  ) {
     return error.code;
+  }
+
   return undefined;
 }
 
@@ -166,6 +198,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
       return 503;
     default: {
       const exhaustive: never = code;
+
       return exhaustive;
     }
   }
@@ -218,8 +251,10 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       async (request, reply) => {
         reply.header('Cache-Control', 'no-store');
         const engine = options.engine;
-        if (!engine)
+        if (!engine) {
           return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+        }
+
         try {
           const { specId } = request.params;
           const body = request.body as { operationId: string; integrateToTargetBranch?: boolean };
@@ -230,6 +265,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             specId,
             body.operationId,
             body.integrateToTargetBranch,
+            // The admission commits the queued document changes first; the authorization plan must too.
+            { flushDocumentCommits: true },
           );
           const result =
             kind === 'worktree-close'
@@ -241,10 +278,19 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
                     ? {}
                     : { integrateToTargetBranch: body.integrateToTargetBranch }),
                 });
+
           return reply.code(result.status === 'completed' ? 200 : 202).send(result);
         } catch (error) {
+          const refusal = documentRefusal(error);
+          if (refusal) {
+            return reply.code(refusal.status).send(refusal.body);
+          }
+
           const code = safeCode(error);
-          if (!code) throw error;
+          if (!code) {
+            throw error;
+          }
+
           return reply.code(statusForCloseError(code)).send({
             code,
             error: code,
@@ -271,8 +317,10 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       },
       async (request, reply) => {
         reply.header('Cache-Control', 'no-store');
-        if (!options.engine)
+        if (!options.engine) {
           return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+        }
+
         try {
           const engine = options.engine;
           const { specId } = request.params;
@@ -285,10 +333,14 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             operationId,
             request.query.integrateToTargetBranch,
           );
+
           return reply.code(200).send(plan);
         } catch (error) {
           const code = safeCode(error);
-          if (!code) throw error;
+          if (!code) {
+            throw error;
+          }
+
           return reply.code(statusForCloseError(code)).send({
             code,
             error: code,
@@ -318,11 +370,14 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
-      if (!engine)
+      if (!engine) {
         return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
       try {
         projectWorkspaceCloseAllowed(request, engine);
         projectIntegrationAllowed(request, engine);
+
         return reply.code(200).send(
           await planPublicWorkspaceCloseOperation(engine, {
             workspaceId: request.params.workspaceId,
@@ -331,7 +386,10 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         );
       } catch (error) {
         const code = safeCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         return reply.code(statusForCloseError(code)).send({ code, error: code });
       }
     },
@@ -349,8 +407,10 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
-      if (!engine)
+      if (!engine) {
         return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
       try {
         projectWorkspaceCloseAllowed(request, engine);
         projectIntegrationAllowed(request, engine);
@@ -359,12 +419,21 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           operationId: request.body.operationId,
         };
         // A retry uses the stored immutable plan, not a client supplied list.
-        await planPublicWorkspaceCloseOperation(engine, params);
+        await planPublicWorkspaceCloseOperation(engine, params, { flushDocumentCommits: true });
         const result = await closeWorkspaceOperation(engine, params);
+
         return reply.code(result.status === 'completed' ? 200 : 202).send(result);
       } catch (error) {
+        const refusal = documentRefusal(error);
+        if (refusal) {
+          return reply.code(refusal.status).send(refusal.body);
+        }
+
         const code = safeCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         return reply.code(statusForCloseError(code)).send({ code, error: code });
       }
     },
@@ -381,8 +450,10 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
-      if (!engine)
+      if (!engine) {
         return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
       try {
         projectWorkspaceCloseAllowed(request, engine);
         projectIntegrationAllowed(request, engine);
@@ -391,12 +462,17 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           request.params.operationId,
           request.params.workspaceId,
         );
-        if (!result)
+        if (!result) {
           return reply.code(404).send({ code: 'CLOSE_NOT_FOUND', error: 'CLOSE_NOT_FOUND' });
+        }
+
         return reply.code(200).send(result);
       } catch (error) {
         const code = safeCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         return reply.code(statusForCloseError(code)).send({ code, error: code });
       }
     },
@@ -413,14 +489,20 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      if (!options.engine)
+      if (!options.engine) {
         return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
       const { specId, operationId } = request.params;
       const existing = await inspectPublicCloseOperation(options.engine, operationId);
       if (existing?.specId !== specId || existing.kind !== 'specification-close') {
         return reply.code(404).send({ code: 'CLOSE_NOT_FOUND', error: 'CLOSE_NOT_FOUND' });
       }
-      if (existing.integrationRequired) projectIntegrationAllowed(request, options.engine);
+
+      if (existing.integrationRequired) {
+        projectIntegrationAllowed(request, options.engine);
+      }
+
       return reply.code(200).send(existing);
     },
   );
@@ -438,24 +520,32 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
-      if (!engine)
+      if (!engine) {
         return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
       const { specId, operationId } = request.params;
       try {
         // Project-wide Git grant is required BEFORE journal inspection.
         projectIntegrationAllowed(request, engine);
         const existing = await inspectPublicCloseOperation(engine, operationId);
-        if (existing?.specId !== specId || existing.kind !== 'specification-close')
+        if (existing?.specId !== specId || existing.kind !== 'specification-close') {
           return reply.code(404).send({ code: 'CLOSE_NOT_FOUND', error: 'CLOSE_NOT_FOUND' });
+        }
+
         const settled = await reconcileArchivedConflictScratchOperation(
           engine,
           operationId,
           request.body.confirmedNoActiveGitProcess,
         );
+
         return reply.code(200).send(settled);
       } catch (error) {
         const code = safeCode(error);
-        if (!code) throw error;
+        if (!code) {
+          throw error;
+        }
+
         return reply.code(statusForCloseError(code)).send({
           code,
           error: code,
@@ -481,14 +571,17 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      if (!options.engine)
+      if (!options.engine) {
         return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
       const { specId, operationId } = request.params;
       projectIntegrationAllowed(request, options.engine);
       const existing = await inspectPublicCloseOperation(options.engine, operationId);
       if (existing?.specId !== specId || existing.kind !== 'worktree-close') {
         return reply.code(404).send({ code: 'CLOSE_NOT_FOUND', error: 'CLOSE_NOT_FOUND' });
       }
+
       return reply.code(200).send(existing);
     },
   );

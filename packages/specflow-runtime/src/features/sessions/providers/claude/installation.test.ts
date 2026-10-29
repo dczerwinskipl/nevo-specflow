@@ -38,15 +38,19 @@ function fixture() {
         registryAbsent: () => Promise.resolve(registryAbsent),
         files: {
           stat(path) {
-            if (path === denied)
+            if (path === denied) {
               return Promise.reject(
                 Object.assign(new Error('Private path details'), { code: 'EACCES' }),
               );
+            }
+
             if (
               ![executable, configPath, credentialsPath, join(home, '.claude')].includes(path) &&
               !present.has(path)
-            )
+            ) {
               return Promise.reject(Object.assign(new Error('Missing'), { code: 'ENOENT' }));
+            }
+
             return Promise.resolve({
               isFile: () => path !== join(home, '.claude'),
               isDirectory: () => path === join(home, '.claude'),
@@ -62,6 +66,7 @@ function fixture() {
         },
       },
     );
+
   return {
     run,
     home,
@@ -88,6 +93,7 @@ function fixture() {
     },
   };
 }
+
 describe('Claude installation and policy inspection', () => {
   it('invalidates credential discovery after external token renewal without changing account affinity', async () => {
     const f = fixture();

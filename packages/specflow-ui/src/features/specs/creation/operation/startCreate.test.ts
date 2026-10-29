@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createSessionOperationStorage } from './createOperationStorage';
 import { startCreate } from './startCreate';
 import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
+
+const selection = archetypeSelectionFixture;
 
 function setup() {
   const values = new Map<string, string>();
@@ -12,6 +15,7 @@ function setup() {
   });
   const attempt = { current: null };
   const draft = { title: '  Payment limits ', goal: ' ', choice: initialWorkspaceChoice };
+
   return { storage, attempt, draft, values };
 }
 
@@ -23,9 +27,14 @@ describe('startCreate', () => {
       storage,
       draft,
       buildTarget: () => ({ kind: 'new-worktree' }),
+      selection: archetypeSelectionFixture,
       now: () => 42,
     });
-    expect(request).toMatchObject({ title: 'Payment limits', target: { kind: 'new-worktree' } });
+    expect(request).toMatchObject({
+      title: 'Payment limits',
+      target: { kind: 'new-worktree' },
+      ...archetypeSelectionFixture,
+    });
     expect(request).not.toHaveProperty('goal');
     expect(request?.operationId).toMatch(/^[0-9a-f-]{36}$/);
     expect(storage.load(request?.operationId ?? '')).toEqual({ request, startedAt: 42 });
@@ -38,13 +47,14 @@ describe('startCreate', () => {
   it('keeps the operation id of an identical second submit and changes it for an edited one', () => {
     const { storage, attempt, draft } = setup();
     const build = () => undefined;
-    const first = startCreate({ attempt, storage, draft, buildTarget: build });
-    const again = startCreate({ attempt, storage, draft, buildTarget: build });
+    const first = startCreate({ attempt, storage, draft, buildTarget: build, selection });
+    const again = startCreate({ attempt, storage, draft, buildTarget: build, selection });
     const edited = startCreate({
       attempt,
       storage,
       draft: { ...draft, title: 'Other' },
       buildTarget: build,
+      selection,
     });
     expect(again?.operationId).toBe(first?.operationId);
     expect(edited?.operationId).not.toBe(first?.operationId);
@@ -57,12 +67,14 @@ describe('startCreate', () => {
       storage,
       draft,
       buildTarget: () => undefined,
+      selection,
     });
     const second = startCreate({
       attempt: { current: null },
       storage,
       draft: { ...draft, title: 'Second' },
       buildTarget: () => undefined,
+      selection,
     });
     expect(second?.operationId).not.toBe(first?.operationId);
     expect(storage.load(first?.operationId ?? '')?.request).toEqual(first);
@@ -76,6 +88,7 @@ describe('startCreate', () => {
       attempt,
       storage,
       draft,
+      selection,
       buildTarget: () => {
         throw new TypeError('broken');
       },

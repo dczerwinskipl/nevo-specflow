@@ -12,15 +12,19 @@ import {
 export function readPreviewBlocks(scroller: HTMLElement, lineCount: number): MappedBlock[] {
   const origin = scroller.getBoundingClientRect().top;
   const elements = [...scroller.querySelectorAll<HTMLElement>('[data-source-line]')];
+
   return elements.map((element, index) => {
     const line = Number(element.dataset.sourceLine);
     let next: HTMLElement | undefined;
-    for (let i = index + 1; i < elements.length; i++)
+    for (let i = index + 1; i < elements.length; i++) {
       if (!element.contains(elements[i]!)) {
         next = elements[i];
         break;
       }
+    }
+
     const rect = element.getBoundingClientRect();
+
     return {
       line,
       top: rect.top - origin,
@@ -32,6 +36,7 @@ export function readPreviewBlocks(scroller: HTMLElement, lineCount: number): Map
 
 export function readPreviewAnchor(scroller: HTMLElement, lineCount: number) {
   const ratio = ratioOf(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight);
+
   return anchorFromBlocks(readPreviewBlocks(scroller, lineCount), ratio) ?? { offset: 0, ratio };
 }
 
@@ -43,9 +48,14 @@ export function applyPreviewAnchor(scroller: HTMLElement, raw: ScrollAnchor, lin
     anchor.line === undefined ? undefined : blockForLine(blocks, anchor.line, anchor.offset);
   if (!target) {
     scroller.scrollTop = clamp01(anchor.ratio) * (scroller.scrollHeight - scroller.clientHeight);
+
     return;
   }
+
   // The document top (padding above the first block) is the top of the view, not the block.
-  if (target.block === blocks[0] && target.through === 0) scroller.scrollTop = 0;
-  else scroller.scrollTop += target.block.top + target.through * target.block.height;
+  if (target.block === blocks[0] && target.through === 0) {
+    scroller.scrollTop = 0;
+  } else {
+    scroller.scrollTop += target.block.top + target.through * target.block.height;
+  }
 }

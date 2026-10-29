@@ -22,6 +22,7 @@ export function createUiRegistry(
     if (!point.id || knownPoints.has(point.id)) {
       throw new Error(`Duplicate or empty UI extension point id: ${point.id}`);
     }
+
     knownPoints.set(point.id, point);
     contributions.set(point.id, []);
   }
@@ -36,6 +37,7 @@ export function createUiRegistry(
     if (!module.id || moduleIds.has(module.id)) {
       throw new Error(`Duplicate or empty UI module id: ${module.id}`);
     }
+
     moduleIds.add(module.id);
 
     for (const { point, contribution } of module.contributions) {
@@ -43,6 +45,7 @@ export function createUiRegistry(
       if (!contribution.id || contributionIds.has(contribution.id)) {
         throw new Error(`Duplicate or empty UI contribution id: ${contribution.id}`);
       }
+
       contributionIds.add(contribution.id);
       contributions.get(point.id)?.push(contribution);
     }
@@ -57,6 +60,7 @@ export function createUiRegistry(
   return {
     get<T extends UiContribution>(point: UiExtensionPoint<T>): readonly T[] {
       assertSupported(point);
+
       // Controlled erasure: only contributeTo(point, NoInfer<T>) creates registrations.
       // Each entry is checked against its exact token at composition time.
       return registered.get(point.id) as readonly T[];

@@ -1,10 +1,21 @@
 import { Type, type Static } from 'typebox';
 
-import { CATALOGUE_ID_PATTERN, DOCUMENT_ID_PATTERN } from './vocabulary';
+import {
+  catalogueId,
+  DEFINITION_INSTRUCTIONS_MAX_BYTES,
+  DEFINITION_SHORT_TEXT_MAX_BYTES,
+  DEFINITION_TEMPLATE_MAX_BYTES,
+  byteLimitNote,
+  iconName,
+  instructionsText,
+  shortText,
+  templateId,
+  utf8ByteLength,
+} from './definition-schema-parts';
 
 /**
- * Declarative definition schema (`schemaVersion: 1`) shared by the built-in definitions and the
- * future user-defined files. Rules: architecture document "Definitions". Published as
+ * Declarative definition schema (`schemaVersion: 1`) of the entities a project's definition files
+ * describe (the shape of a resolved catalogue entry). Rules: architecture document "Definitions". Published as
  * JSON Schema through {@link createArchetypeDefinitionsJsonSchema}.
  *
  * Cross-checks that need the whole catalogue (template `documentType` exists, ids unique across
@@ -12,36 +23,18 @@ import { CATALOGUE_ID_PATTERN, DOCUMENT_ID_PATTERN } from './vocabulary';
  * validation.
  */
 
+// The byte limits are part of the public contract; the schema builders are internal to this package.
+export {
+  DEFINITION_ICON_MAX_LENGTH,
+  DEFINITION_ICON_PATTERN,
+  DEFINITION_INSTRUCTIONS_MAX_BYTES,
+  DEFINITION_SHORT_TEXT_MAX_BYTES,
+  DEFINITION_TEMPLATE_MAX_BYTES,
+} from './definition-schema-parts';
+
 export const ARCHETYPE_DEFINITION_SCHEMA_VERSION = 1;
 export const ARCHETYPE_DEFINITIONS_SCHEMA_ID = 'urn:nevo:specflow:archetype-definitions:1';
 export const JSON_SCHEMA_DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
-
-/** Byte limits of the architecture document "Limits" for definition text. */
-export const DEFINITION_SHORT_TEXT_MAX_BYTES = 1000;
-export const DEFINITION_INSTRUCTIONS_MAX_BYTES = 16 * 1024;
-export const DEFINITION_TEMPLATE_MAX_BYTES = 64 * 1024;
-
-// The limits are in UTF-8 bytes, which JSON Schema cannot express (`maxLength` counts characters).
-// The schema therefore enforces `maxLength = limit` as a necessary condition (a string longer than
-// the limit in characters is always longer in bytes) and `findDefinitionTextLimitViolations` is the
-// exact byte check.
-const byteLimitNote = (bytes: number) =>
-  `Limit: ${bytes} UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine.`;
-const shortText = () =>
-  Type.String({
-    minLength: 1,
-    maxLength: DEFINITION_SHORT_TEXT_MAX_BYTES,
-    description: byteLimitNote(DEFINITION_SHORT_TEXT_MAX_BYTES),
-  });
-const instructionsText = () =>
-  Type.String({
-    minLength: 1,
-    maxLength: DEFINITION_INSTRUCTIONS_MAX_BYTES,
-    description: byteLimitNote(DEFINITION_INSTRUCTIONS_MAX_BYTES),
-  });
-
-const catalogueId = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
-const templateId = () => Type.String({ pattern: DOCUMENT_ID_PATTERN });
 
 /** Longest document path (and template filename) in characters; the Engine enforces the same bound. */
 export const DOCUMENT_PATH_MAX_LENGTH = 500;
@@ -57,6 +50,8 @@ export const DocumentTypeDefinitionSchema = Type.Object(
     defaultFilename: Type.Optional(
       Type.String({ minLength: 1, maxLength: DOCUMENT_PATH_MAX_LENGTH }),
     ),
+    /** Optional icon of the type in the document tree (a Design System icon name). */
+    icon: Type.Optional(iconName()),
   },
   { additionalProperties: false },
 );
@@ -144,16 +139,6 @@ export const ArchetypeDefinitionFileSchema = Type.Object(
 );
 export type ArchetypeDefinitionFile = Static<typeof ArchetypeDefinitionFileSchema>;
 
-/** UTF-8 byte length of a string (this neutral package has no `TextEncoder` or `Buffer` typings). */
-function utf8ByteLength(text: string): number {
-  let bytes = 0;
-  for (const char of text) {
-    const code = char.codePointAt(0) ?? 0;
-    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
-  }
-  return bytes;
-}
-
 export interface DefinitionTextLimitViolation {
   /** JSON-pointer-like location, for example `/archetypes/0/templates/1/content`. */
   readonly path: string;
@@ -170,9 +155,14 @@ export function findDefinitionTextLimitViolations(
 ): DefinitionTextLimitViolation[] {
   const violations: DefinitionTextLimitViolation[] = [];
   const check = (path: string, text: string | undefined, limitBytes: number): void => {
-    if (text === undefined) return;
+    if (text === undefined) {
+      return;
+    }
+
     const actualBytes = utf8ByteLength(text);
-    if (actualBytes > limitBytes) violations.push({ path, limitBytes, actualBytes });
+    if (actualBytes > limitBytes) {
+      violations.push({ path, limitBytes, actualBytes });
+    }
   };
 
   (file.documentTypes ?? []).forEach((type, index) => {
@@ -192,6 +182,7 @@ export function findDefinitionTextLimitViolations(
       check(`${path}/content`, template.content, DEFINITION_TEMPLATE_MAX_BYTES);
     });
   });
+
   return violations;
 }
 

@@ -1,6 +1,12 @@
-import { Button, EmptyState } from '@nevo/ui';
+import { Button, EmptyState, type IconName } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecsCollection } from './model';
+
+const kindIcon: Record<'noResults' | 'emptyCurrent' | 'emptyArchive', IconName> = {
+  noResults: 'search',
+  emptyCurrent: 'file',
+  emptyArchive: 'archive',
+};
 
 /** No rows to show: nothing matches the search, or the collection itself is empty. */
 export function SpecsOverviewEmpty({
@@ -18,9 +24,11 @@ export function SpecsOverviewEmpty({
 }) {
   const { t } = useTranslation();
   const kind = searching ? 'noResults' : collection === 'current' ? 'emptyCurrent' : 'emptyArchive';
+
   return (
     <EmptyState
-      className="border-0"
+      variant="pane"
+      icon={kindIcon[kind]}
       title={t(`specifications.${kind}`)}
       description={t(`specifications.${kind}Description`)}
       actions={

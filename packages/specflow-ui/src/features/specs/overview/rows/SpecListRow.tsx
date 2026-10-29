@@ -18,9 +18,10 @@ import { formatSpecDate } from './specDate';
 export interface SpecListRowProps {
   readonly item: SpecRowModel;
   /**
-   * `flat`: the list has no work status (the Runtime does not provide it): the row is the title,
-   * its facts including when it was updated and, only when it exists, the progress; no empty
-   * situation column. Default `grouped`: title, situation and progress.
+   * `flat`: the list has no work status (the Runtime does not provide it): the row is the title
+   * with its facts, when it was last updated (a column of its own from 48rem) and, only when it
+   * exists, the progress; no empty situation column. Default `grouped`: title, situation and
+   * progress.
    */
   readonly layout?: 'grouped' | 'flat';
   /** Flat layout only: the list has progress, so the row keeps its progress column. */
@@ -48,6 +49,7 @@ export function SpecListRow({
       renderLink={renderSpecificationLink}
     />
   );
+
   return (
     <InformationList.Item
       interactive={
@@ -62,9 +64,7 @@ export function SpecListRow({
           className={cn(
             'grid min-w-0 gap-x-6 gap-y-2',
             flat
-              ? showProgress
-                ? specRowColumns.flatWithProgress.row
-                : undefined
+              ? specRowColumns[showProgress ? 'flatWithProgress' : 'flat'].row
               : specRowColumns[item.collection].row,
           )}
         >
@@ -72,9 +72,10 @@ export function SpecListRow({
           {item.collection === 'archive' ? (
             <ArchivedSpecRowContent item={item} />
           ) : flat ? (
-            showProgress ? (
-              <SpecProgress item={item} column={2} />
-            ) : null
+            <>
+              <SpecUpdated item={item} />
+              {showProgress ? <SpecProgress item={item} /> : null}
+            </>
           ) : (
             <CurrentSpecRowContent item={item} />
           )}
@@ -93,8 +94,8 @@ function SpecRowIdentity({
   primary: ReactNode;
   flat: boolean;
 }) {
-  const { t, i18n } = useTranslation();
-  const facts = rowMetadata(item, { updated: flat });
+  const facts = rowMetadata(item);
+
   return (
     <div className="min-w-0">
       <Typography
@@ -128,12 +129,6 @@ function SpecRowIdentity({
                 <span>
                   <SpecPullRequests item={item} />
                 </span>
-              ) : fact.kind === 'updated' ? (
-                <time dateTime={fact.value}>
-                  {t('specifications.updated', {
-                    date: formatSpecDate(fact.value, i18n.resolvedLanguage),
-                  })}
-                </time>
               ) : (
                 <span>{fact.value}</span>
               )}
@@ -144,22 +139,57 @@ function SpecRowIdentity({
     </div>
   );
 }
-function SpecProgress({ item, column = 3 }: { item: CurrentSpecRowModel; column?: 2 | 3 }) {
+
+/**
+ * When the specification last changed, in the flat list: one line under the title on narrow rows,
+ * its own column from 48rem, where the column header names it (the full phrase stays readable to
+ * assistive technology, which does not see the header).
+ */
+function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
+  const { t, i18n } = useTranslation();
+  const updatedAt = item.updatedAt;
+  const date =
+    updatedAt && Number.isFinite(Date.parse(updatedAt))
+      ? formatSpecDate(updatedAt, i18n.resolvedLanguage)
+      : undefined;
+
+  return (
+    <Typography
+      as="div"
+      variant="body-sm"
+      className="min-w-0 text-content-secondary @min-[48rem]/collection:col-start-2 @min-[48rem]/collection:row-start-1"
+      data-spec-updated
+    >
+      {date ? (
+        <time dateTime={updatedAt}>
+          <span className="@min-[48rem]/collection:sr-only">
+            {t('specifications.updated', { date })}
+          </span>
+          <span aria-hidden="true" className="hidden @min-[48rem]/collection:inline">
+            {date}
+          </span>
+        </time>
+      ) : (
+        t('specifications.dateUnavailable')
+      )}
+    </Typography>
+  );
+}
+
+function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
   const { t } = useTranslation();
   const details = item.progress;
   const count = details
     ? t('specifications.progress', details)
     : t('specifications.progressUnknown');
   const progress = rowProgress(details);
+
   return (
     <Typography
       as="div"
       variant="body-sm"
       className={cn(
-        'flex min-w-0 items-center gap-2 text-content-secondary @min-[48rem]/collection:row-start-1 @min-[48rem]/collection:flex-col @min-[48rem]/collection:items-start',
-        column === 3
-          ? '@min-[48rem]/collection:col-start-3'
-          : '@min-[48rem]/collection:col-start-2',
+        'flex min-w-0 items-center gap-2 text-content-secondary @min-[48rem]/collection:col-start-3 @min-[48rem]/collection:row-start-1 @min-[48rem]/collection:flex-col @min-[48rem]/collection:items-start',
       )}
       data-spec-progress
     >
@@ -168,7 +198,10 @@ function SpecProgress({ item, column = 3 }: { item: CurrentSpecRowModel; column?
       ) : progress === 'invalid' ? (
         t('specifications.invalidProgress')
       ) : progress === 'empty' ? (
-        t('specifications.noTasks')
+        // Not a final state: the tasks are not written yet. Muted, in the place of the bar.
+        <span className="text-content-muted" data-spec-progress-empty>
+          {t('specifications.noTasks')}
+        </span>
       ) : details ? (
         <>
           <div className="w-28 shrink-0">
@@ -187,6 +220,7 @@ function SpecProgress({ item, column = 3 }: { item: CurrentSpecRowModel; column?
     </Typography>
   );
 }
+
 function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
   return (
     <>
@@ -202,6 +236,7 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
     </>
   );
 }
+
 function ArchivedSpecRowContent({ item }: { item: ArchiveSpecRowModel }) {
   return (
     <>

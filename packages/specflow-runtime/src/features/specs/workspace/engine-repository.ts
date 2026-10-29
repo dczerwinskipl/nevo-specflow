@@ -24,16 +24,21 @@ export function createEngineWorkspaceRepository(
     async readSpecification(specId) {
       const sources = await readCanonicalSpecSources(engine, (candidate) => candidate === specId);
       const source = sources.find((item) => item.specId === specId);
-      if (!source) return null;
+      if (!source) {
+        return null;
+      }
+
       if (source.status === 'workspace_unavailable') {
         throw new SpecsReadError(
           'SPEC_WORKSPACE_UNAVAILABLE',
           'The specification workspace is unavailable.',
         );
       }
+
       if (source.status === 'manifest_missing') {
         throw new SpecsReadError('SPEC_MANIFEST_MISSING', 'The specification manifest is missing.');
       }
+
       return {
         revision: source.sourceRevision,
         specification: {

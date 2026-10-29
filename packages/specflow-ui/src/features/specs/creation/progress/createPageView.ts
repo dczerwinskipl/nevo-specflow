@@ -19,7 +19,10 @@ export function createPageView(
   state: Pick<CreateOperationState, 'phase'>,
   unknownOperation: boolean,
 ): CreatePageView {
-  if (unknownOperation) return 'not-found';
+  if (unknownOperation) {
+    return 'not-found';
+  }
+
   switch (state.phase) {
     case 'completed':
       return 'completed';
@@ -62,11 +65,13 @@ const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
   'branch-invalid',
   'stale',
   'name-conflict',
+  'name-invalid',
   'offline',
   'forbidden',
   'unauthenticated',
   'branch-protected',
   'commit-blocked',
+  'catalogue-stale',
 ]);
 
 /** What the page needs to say what is going on now. */
@@ -105,12 +110,20 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
     case 'not-found':
       return undefined;
     case 'working':
-      if (input.stillWorking) return message('create.page.status.stillWorking');
-      if (input.runningStep) return input.runningStep;
-      if (input.monitoring)
+      if (input.stillWorking) {
+        return message('create.page.status.stillWorking');
+      }
+
+      if (input.runningStep) {
+        return input.runningStep;
+      }
+
+      if (input.monitoring) {
         return message(
           input.newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working',
         );
+      }
+
       return message(input.reading ? 'create.page.status.reading' : 'create.page.status.sending');
   }
 }
@@ -120,10 +133,17 @@ export const goalPreviewLength = 160;
 /** The goal as a short preview: whitespace collapsed, cut on a word edge with an ellipsis. */
 export function shortenGoal(goal: string | undefined, max = goalPreviewLength): string | undefined {
   const flat = goal?.replace(/\s+/gu, ' ').trim();
-  if (!flat) return undefined;
-  if (flat.length <= max) return flat;
+  if (!flat) {
+    return undefined;
+  }
+
+  if (flat.length <= max) {
+    return flat;
+  }
+
   const cut = flat.slice(0, max);
   const edge = cut.lastIndexOf(' ');
+
   return `${(edge > max / 2 ? cut.slice(0, edge) : cut).trimEnd()}…`;
 }
 
@@ -145,6 +165,10 @@ export interface CreateSettingsModel {
   readonly mergeInto?: FactWorkspace;
   readonly slug?: string;
   readonly goal?: string;
+  /** The chosen archetype's title (as the form showed it). */
+  readonly archetype?: string;
+  /** The files Create makes, in order. */
+  readonly documents?: readonly string[];
   /** Git is enabled: the specification files are committed (the branch is `branch` or the workspace's). */
   readonly commit?: true;
 }
@@ -154,8 +178,12 @@ export function createSettingsModel(
   draftGoal: string | undefined,
   facts: CreateSettingsFacts | undefined,
   draftTitle?: string,
+  archetype?: { title?: string; documents?: readonly string[] },
 ): CreateSettingsModel | undefined {
-  if (!request && !facts) return undefined;
+  if (!request && !facts) {
+    return undefined;
+  }
+
   const target = request?.target;
   const place =
     facts?.place ??
@@ -164,8 +192,11 @@ export function createSettingsModel(
   const name = (request?.title ?? draftTitle)?.trim();
   const slug = facts?.slug ?? request?.slug;
   const branch = facts?.branch ?? (target?.kind === 'new-worktree' ? target.branch : undefined);
+
   return {
     ...(name ? { name } : {}),
+    ...(archetype?.title ? { archetype: archetype.title } : {}),
+    ...(archetype?.documents?.length ? { documents: archetype.documents } : {}),
     place,
     ...(facts?.workspace ? { workspace: facts.workspace } : {}),
     ...(place === 'new' && facts?.base ? { base: facts.base } : {}),

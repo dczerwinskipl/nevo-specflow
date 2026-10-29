@@ -27,13 +27,18 @@ export function markdownIntro(source: string, title?: string) {
   let intro = graphemes.slice(0, 320).join('');
   if (graphemes.length > 320) {
     const boundary = intro.lastIndexOf(' ');
-    if (boundary > 240) intro = intro.slice(0, boundary);
+    if (boundary > 240) {
+      intro = intro.slice(0, boundary);
+    }
+
     intro = intro.trimEnd() + '…';
   }
+
   const first = nodes[0];
   const omitHeading = first?.type === 'heading' && visibleText(first).trim() === title?.trim();
   const displaySource = omitHeading ? body.replace(/^\s*#[^\n]*\r?\n/, '') : body;
   const content = nodes.filter((node) => node !== (omitHeading ? first : undefined));
+
   return {
     intro,
     hasMore:

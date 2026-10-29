@@ -11,13 +11,20 @@ export function useTaskInspectionScroll(taskId: string, key: string) {
   const prepared = useRef(false);
   useLayoutEffect(() => {
     const node = root.current;
-    if (!node) return;
+    if (!node) {
+      return;
+    }
+
     const stopRestoring = restoreScrollPosition(node, () => initial.current);
+
     return () => {
       stopRestoring();
-      if (!prepared.current) saveInspectionScroll(key, descriptionScrollOwner(node).scrollTop);
+      if (!prepared.current) {
+        saveInspectionScroll(key, descriptionScrollOwner(node).scrollTop);
+      }
     };
   }, [key, saveInspectionScroll]);
+
   return {
     root,
     remember: () => {

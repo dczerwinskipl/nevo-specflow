@@ -5,11 +5,26 @@ function safe(value: string) {
 }
 
 export function semanticLayerKey(layer: NestedLayerIR): string | undefined {
-  if ('identity' in layer && layer.identity?.key) return `key/${safe(layer.identity.key)}`;
-  if ('componentRef' in layer) return `component/${safe(layer.componentRef)}`;
-  if (layer.kind === 'slot-ref') return `slot/${safe(layer.name)}`;
-  if (layer.kind === 'text' && layer.runs?.length) return 'typography-flow';
-  if (layer.kind === 'asset') return `asset/${safe(layer.assetRef)}`;
+  if ('identity' in layer && layer.identity?.key) {
+    return `key/${safe(layer.identity.key)}`;
+  }
+
+  if ('componentRef' in layer) {
+    return `component/${safe(layer.componentRef)}`;
+  }
+
+  if (layer.kind === 'slot-ref') {
+    return `slot/${safe(layer.name)}`;
+  }
+
+  if (layer.kind === 'text' && layer.runs?.length) {
+    return 'typography-flow';
+  }
+
+  if (layer.kind === 'asset') {
+    return `asset/${safe(layer.assetRef)}`;
+  }
+
   return undefined;
 }
 
@@ -19,14 +34,18 @@ export function semanticLayerKey(layer: NestedLayerIR): string | undefined {
  */
 export function nestedStableIds(parentStableId: string, layers: readonly NestedLayerIR[]) {
   const occurrences = new Map<string, number>();
+
   return layers.map((layer, index) => {
     const semantic = semanticLayerKey(layer);
     if (!semantic) {
       const kind = 'componentRef' in layer ? 'component' : layer.kind;
+
       return `${parentStableId}/child/anonymous-${index}/${kind}`;
     }
+
     const occurrence = occurrences.get(semantic) ?? 0;
     occurrences.set(semantic, occurrence + 1);
+
     return `${parentStableId}/child/${semantic}${occurrence ? `~${occurrence + 1}` : ''}`;
   });
 }

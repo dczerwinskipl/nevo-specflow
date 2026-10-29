@@ -54,6 +54,12 @@ interface WorkspaceHeaderActionBase {
   label: string;
   primary?: boolean;
   disabled?: boolean;
+  /**
+   * The action is running (for example Save while it commits): it is unavailable but keeps focus
+   * (`aria-disabled`, presses ignored), so a keyboard user is not dropped to the page. A menu lists
+   * it as disabled.
+   */
+  busy?: boolean;
   tone?: WorkspaceHeaderActionTone;
   /** Defaults: `primary` is direct on wide and narrow headers, every other action is `'never'`. */
   direct?: WorkspaceHeaderActionDirect;
@@ -146,9 +152,18 @@ export interface ResolvedWorkspaceHeaderActions {
 }
 
 function directRank(action: WorkspaceHeaderAction, density: 'wide' | 'narrow'): number | null {
-  if (action.tone === 'danger' || action.direct === 'never') return null;
-  if (action.direct === 'always') return 0;
-  if (action.primary) return 1;
+  if (action.tone === 'danger' || action.direct === 'never') {
+    return null;
+  }
+
+  if (action.direct === 'always') {
+    return 0;
+  }
+
+  if (action.primary) {
+    return 1;
+  }
+
   return density === 'wide' && action.direct === 'wide' ? 2 : null;
 }
 
@@ -165,7 +180,9 @@ export function resolveWorkspaceHeaderActions(
 ): ResolvedWorkspaceHeaderActions {
   const resolvedDensity: WorkspaceHeaderDensity =
     density === true ? 'compact' : density === false ? 'wide' : density;
-  if (resolvedDensity === 'compact') return { direct: [], overflow: actions };
+  if (resolvedDensity === 'compact') {
+    return { direct: [], overflow: actions };
+  }
 
   const chosen = new Set(
     actions
@@ -180,6 +197,7 @@ export function resolveWorkspaceHeaderActions(
     ...picked.filter((action) => !action.primary),
     ...picked.filter((action) => action.primary),
   ];
+
   return {
     direct,
     directPrimary: direct.find((action) => action.primary),
@@ -231,9 +249,10 @@ function WorkspaceMenuEntry({
       <span aria-hidden="true" className="inline-block size-icon-sm" />
     )
   ) : null;
+
   return (
     <MenuItem
-      disabled={action.disabled}
+      disabled={action.disabled === true || action.busy === true}
       leadingIcon={action.icon}
       onSelect={onSelect}
       tone={action.tone ?? 'neutral'}
@@ -272,16 +291,22 @@ function WorkspaceActionMenu({
 }) {
   const closedHandler = useRef<(() => void) | undefined>(undefined);
   const groupLabelId = useId();
-  if (actions.length === 0 && !navigationAction) return null;
+  if (actions.length === 0 && !navigationAction) {
+    return null;
+  }
 
   const select = (action: WorkspaceHeaderAction) => () => {
     closedHandler.current = action.onMenuClosed;
     action.onPress();
   };
+
   const onCloseAutoFocus = (event: Event) => {
     const handler = closedHandler.current;
     closedHandler.current = undefined;
-    if (!handler) return;
+    if (!handler) {
+      return;
+    }
+
     event.preventDefault();
     handler();
   };
@@ -377,8 +402,9 @@ function DirectIconAction({
                 : 'aria-pressed:bg-surface-selected aria-pressed:text-content-primary'
             }
             disabled={action.disabled}
+            aria-disabled={action.busy ? true : undefined}
             icon={action.icon}
-            onClick={action.onPress}
+            onClick={action.busy ? undefined : action.onPress}
             size="sm"
             variant={action.primary ? 'primary' : 'ghost'}
           />
@@ -396,10 +422,18 @@ function DirectPrimaryAction({
   action: WorkspaceHeaderAction;
   narrow: boolean;
 }) {
-  if (action.presentation === 'icon') return <DirectIconAction action={action} />;
+  if (action.presentation === 'icon') {
+    return <DirectIconAction action={action} />;
+  }
+
   if (!action.icon) {
     return (
-      <Button disabled={action.disabled} onClick={action.onPress} size="sm">
+      <Button
+        disabled={action.disabled}
+        aria-disabled={action.busy ? true : undefined}
+        onClick={action.busy ? undefined : action.onPress}
+        size="sm"
+      >
         {action.label}
       </Button>
     );
@@ -407,15 +441,17 @@ function DirectPrimaryAction({
 
   // Narrow headers collapse a direct action that has an icon to an icon-only IconButton (same
   // 32px primary look, with a tooltip) instead of a text Button.
-  if (narrow)
+  if (narrow) {
     return <DirectIconAction action={{ ...action, icon: action.icon, presentation: 'icon' }} />;
+  }
 
   return (
     <Button
       aria-label={action.label}
       disabled={action.disabled}
+      aria-disabled={action.busy ? true : undefined}
       leadingIcon={action.icon}
-      onClick={action.onPress}
+      onClick={action.busy ? undefined : action.onPress}
       size="sm"
     >
       {action.label}
@@ -472,15 +508,23 @@ function useNarrowHeader() {
   const [narrow, setNarrow] = useState(false);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) return undefined;
+    if (!element) {
+      return undefined;
+    }
+
     const update = () =>
       setNarrow(element.getBoundingClientRect().width < WORKSPACE_HEADER_NARROW_MAX_WIDTH);
     update();
-    if (typeof ResizeObserver === 'undefined') return undefined;
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
     const observer = new ResizeObserver(update);
     observer.observe(element);
+
     return () => observer.disconnect();
   }, []);
+
   return { ref, narrow };
 }
 
@@ -602,6 +646,7 @@ export function CompactWorkspaceActions({
   const labels = actionLabels
     ? { ...defaultWorkspaceHeaderLabels, ...actionLabels }
     : getWorkspaceHeaderLabels(header);
+
   return (
     <WorkspaceActionMenu
       actions={

@@ -43,6 +43,11 @@ export interface ProjectSubmission {
   slug?: string;
   /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
   buildTarget: () => CreateSpecRequest['target'] | undefined;
+  /** The archetype part of the request (absent for a status check, which never starts one). */
+  selection?: Pick<
+    CreateSpecRequest,
+    'archetypeId' | 'archetypeVersion' | 'catalogueRevision' | 'optionalDocumentIds'
+  >;
   /** Fingerprint of the form, so editing it retires the alert of a definite failure. */
   snapshot: string;
   /** Called synchronously with a definite failure, just before it is published. */
@@ -101,6 +106,7 @@ export interface UseCreateProjectSpecificationOptions {
 /** The shared ledger seeded with the stored operation, plus the progress-stream hints. */
 function createProjectLedger(stored: StoredCreateOperation | undefined) {
   const { operationId: _id, ...body } = stored?.request ?? {};
+
   return {
     ...createOperationLedger<SentCreateRequest>(
       stored ? { signature: JSON.stringify(body), input: stored.request } : null,
@@ -121,12 +127,16 @@ function stateOfStored(seed: {
   operationId: string | undefined;
 }): CreateOperationState {
   const { stored, operationId } = seed;
-  if (!stored && !operationId) return initialCreateOperation;
+  if (!stored && !operationId) {
+    return initialCreateOperation;
+  }
+
   const request = stored?.request ?? {
     operationId: operationId ?? '',
     title: '',
     target: undefined,
   };
+
   return [
     { type: 'submit-started' as const },
     {
@@ -179,7 +189,10 @@ export function useCreateProjectSpecification(
   const finish = useCallback(
     (result: CreateWatchResult, submission: Settling) => {
       // The page is gone: nothing may navigate or publish for it; the stored operation stays.
-      if (lifetime.aborted) return;
+      if (lifetime.aborted) {
+        return;
+      }
+
       const sentTarget = ledger.attempt.current?.input.target;
       // The ledger entry of this operation only: another operation's entry is never touched.
       const id = ledger.attempt.current?.input.operationId ?? operationId;
@@ -192,18 +205,33 @@ export function useCreateProjectSpecification(
           storage.clear(id);
           storage.clearDraft(id);
         }
+
         ledger.navigationAllowed = true;
         void cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
         void cache.invalidateQueries({ queryKey: projectCreationKeys.createOptions });
         notify(t('create.specificationCreated'));
         dispatch({ type: 'submit-succeeded' });
         onCreated(outcome.created);
+
         return;
       }
-      if (outcome.announce) announce(t(`create.announce.${outcome.announce}`));
-      if (outcome.releaseStorage && id) storage.clear(id);
-      if (outcome.discardAttempt) ledger.attempt.current = null;
-      if (outcome.releaseStorage) submission.onFailed?.(outcome.failure);
+
+      if (outcome.announce) {
+        announce(t(`create.announce.${outcome.announce}`));
+      }
+
+      if (outcome.releaseStorage && id) {
+        storage.clear(id);
+      }
+
+      if (outcome.discardAttempt) {
+        ledger.attempt.current = null;
+      }
+
+      if (outcome.releaseStorage) {
+        submission.onFailed?.(outcome.failure);
+      }
+
       dispatch({
         type: 'submit-failed',
         failure: { ...outcome.failure, snapshot: submission.snapshot },
@@ -224,21 +252,37 @@ export function useCreateProjectSpecification(
     async (submission: Settling) => {
       const input = ledger.attempt.current?.input;
       const id = input?.operationId ?? operationId;
-      if (!id) return;
-      const reading = await readOperation(api, id, lifetime);
-      if (reading.kind === 'completed') return finish(reading, submission);
-      if (reading.kind === 'recovery-required') return finish(reading, submission);
-      if (reading.kind === 'failed')
-        return finish({ kind: 'operation-failed', code: reading.code }, submission);
-      if (reading.kind === 'unreadable') {
-        // The check itself failed: the earlier unknown outcome is unchanged.
-        if (isApiError(reading.error) && reading.error.kind === 'network')
-          dispatch({ type: 'submit-offline-replay' });
-        else finish({ kind: 'unresolved', error: reading.error }, submission);
+      if (!id) {
         return;
       }
+
+      const reading = await readOperation(api, id, lifetime);
+      if (reading.kind === 'completed') {
+        return finish(reading, submission);
+      }
+
+      if (reading.kind === 'recovery-required') {
+        return finish(reading, submission);
+      }
+
+      if (reading.kind === 'failed') {
+        return finish({ kind: 'operation-failed', code: reading.code }, submission);
+      }
+
+      if (reading.kind === 'unreadable') {
+        // The check itself failed: the earlier unknown outcome is unchanged.
+        if (isApiError(reading.error) && reading.error.kind === 'network') {
+          dispatch({ type: 'submit-offline-replay' });
+        } else {
+          finish({ kind: 'unresolved', error: reading.error }, submission);
+        }
+
+        return;
+      }
+
       if (reading.kind === 'in-progress') {
         onAccepted();
+
         return finish(
           await resumeCreateOperation(api, id, {
             startedAt: ledger.startedAt,
@@ -247,11 +291,16 @@ export function useCreateProjectSpecification(
           submission,
         );
       }
+
       // Without a retained request there is nothing to send: the operation simply does not exist.
       if (!input) {
-        if (!lifetime.aborted) setUnknownOperation(true);
+        if (!lifetime.aborted) {
+          setUnknownOperation(true);
+        }
+
         return finish({ kind: 'not-started' }, submission);
       }
+
       // The Engine has no record: the request never arrived, so sending it again (same id) is safe.
       return finish(await submitCreateOperation(api, input, hooksOf()), submission);
     },
@@ -260,7 +309,10 @@ export function useCreateProjectSpecification(
 
   // A reloaded page resumes the operation it found stored.
   useEffect(() => {
-    if ((!stored && !operationId) || ledger.resumed) return;
+    if ((!stored && !operationId) || ledger.resumed) {
+      return;
+    }
+
     ledger.resumed = true;
     ledger.begin();
     void resolveUnknown({ snapshot: '' }).finally(() => ledger.end());
@@ -272,31 +324,39 @@ export function useCreateProjectSpecification(
       dispatch({ type: 'check-started' });
       const id = ledger.attempt.current?.input.operationId ?? operationId;
       const reading = id ? await readOperation(api, id, lifetime) : undefined;
-      if (lifetime.aborted) return;
+      if (lifetime.aborted) {
+        return;
+      }
+
       if (reading?.kind === 'completed') {
         dispatch({ type: 'check-found-completed' });
+
         return finish(reading, submission);
       }
+
       if (reading?.kind === 'failed') {
         const failure = toOperationFailure(reading.code);
-        if (failure.kind === 'uncertain' || failure.kind === 'recovery-required')
+        if (failure.kind === 'uncertain' || failure.kind === 'recovery-required') {
           dispatch({ type: 'check-still-open', status: { status: 'failed' } });
-        else
+        } else {
           dispatch({
             type: 'check-failed-operation',
             status: { status: 'failed' },
             snapshot: submission.snapshot,
             failure,
           });
-      } else if (reading?.kind === 'in-progress' || reading?.kind === 'recovery-required')
+        }
+      } else if (reading?.kind === 'in-progress' || reading?.kind === 'recovery-required') {
         dispatch({ type: 'check-still-open', status: { status: reading.kind } });
-      else if (reading?.kind === 'not-started')
+      } else if (reading?.kind === 'not-started') {
         dispatch({
           type: 'check-not-started',
           status: { status: 'not-started' },
           snapshot: submission.snapshot,
         });
-      else dispatch({ type: 'check-unreadable' });
+      } else {
+        dispatch({ type: 'check-unreadable' });
+      }
     },
     [api, finish, ledger, lifetime, operationId],
   );
@@ -307,6 +367,11 @@ export function useCreateProjectSpecification(
       try {
         const target = submission.buildTarget();
         const goal = submission.goal.trim();
+        // Without an archetype there is no request to send: a definite failure, nothing was sent.
+        if (!submission.selection) {
+          throw new Error('The archetype selection is missing.');
+        }
+
         input = retainRequest<SentCreateRequest, 'operationId'>(
           ledger.attempt,
           {
@@ -314,6 +379,7 @@ export function useCreateProjectSpecification(
             ...(goal ? { goal } : {}),
             ...(submission.slug ? { slug: submission.slug } : {}),
             ...(target ? { target } : {}),
+            ...submission.selection,
           },
           undefined,
           'operationId',
@@ -323,8 +389,10 @@ export function useCreateProjectSpecification(
         const failure: CreateFailure = { kind: 'failed' };
         submission.onFailed?.(failure);
         dispatch({ type: 'submit-failed', failure: { ...failure, snapshot: submission.snapshot } });
+
         return;
       }
+
       ledger.startedAt = Date.now();
       storage.save({ request: input, startedAt: ledger.startedAt });
       dispatch({
@@ -339,16 +407,29 @@ export function useCreateProjectSpecification(
   const submit = useCallback(
     async (submission: ProjectSubmission) => {
       const { phase } = state;
-      if (phase === 'submitting' || phase === 'monitoring' || phase === 'completed') return;
-      if (!ledger.begin()) return;
+      if (phase === 'submitting' || phase === 'monitoring' || phase === 'completed') {
+        return;
+      }
+
+      if (!ledger.begin()) {
+        return;
+      }
+
       try {
         if (phase === 'recovery-required') {
-          if (!state.checking) await checkRecovery(submission);
+          if (!state.checking) {
+            await checkRecovery(submission);
+          }
+
           return;
         }
+
         dispatch({ type: 'submit-started' });
-        if (phase === 'outcome-unknown') await resolveUnknown(submission);
-        else await start(submission);
+        if (phase === 'outcome-unknown') {
+          await resolveUnknown(submission);
+        } else {
+          await start(submission);
+        }
       } finally {
         ledger.end();
       }
@@ -366,7 +447,10 @@ export function useCreateProjectSpecification(
    * for a failure that kept the operation (a lost session, for instance); a refusal ends it.
    */
   const retry = useCallback(async () => {
-    if (state.phase !== 'failed' || !ledger.begin()) return;
+    if (state.phase !== 'failed' || !ledger.begin()) {
+      return;
+    }
+
     try {
       dispatch({ type: 'submit-started' });
       await resolveUnknown({ snapshot: '' });
@@ -383,6 +467,7 @@ export function useCreateProjectSpecification(
     [submit, check, retry, dismissFailure, isNavigationAllowed, setStreamHint],
   );
   const flags = useMemo(() => selectCreateOperationFlags(state), [state]);
+
   return useMemo(
     () => ({ state, flags, unknownOperation, actions }),
     [state, flags, unknownOperation, actions],

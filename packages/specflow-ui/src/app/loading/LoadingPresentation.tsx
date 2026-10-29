@@ -33,6 +33,7 @@ export function LoadingPresentation({
     </div>
   );
   const rows = shape === 'overview' || shape === 'list' || shape === 'catalogue';
+
   return (
     <div
       role="status"

@@ -32,8 +32,10 @@ export async function openSpecFlowEngine(
       'The current Git worktree is not registered with this Project Home.',
     );
   }
+
   await verifyWorkspaceRoot(context, current.root, current);
   const workspace = Object.freeze({ ...current });
+
   return {
     context,
     workspace,
@@ -50,7 +52,9 @@ export async function openSpecFlowEngine(
           'The current workspace registration is no longer available.',
         );
       }
+
       await verifyWorkspaceRoot(context, registered.root, registered);
+
       return latest;
     },
   };

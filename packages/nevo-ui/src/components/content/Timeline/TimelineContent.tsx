@@ -42,9 +42,18 @@ const extraContentVariants = tv({
 });
 
 function hasRenderableValue(value: ReactNode): boolean {
-  if (value === null || value === undefined || typeof value === 'boolean') return false;
-  if (typeof value === 'string') return value.length > 0;
-  if (Array.isArray(value)) return value.some(hasRenderableValue);
+  if (value === null || value === undefined || typeof value === 'boolean') {
+    return false;
+  }
+
+  if (typeof value === 'string') {
+    return value.length > 0;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some(hasRenderableValue);
+  }
+
   return true;
 }
 

@@ -60,7 +60,10 @@ export function MergeTargetSetting({
         aria-disabled={unavailable ? true : undefined}
         description={description}
         onCheckedChange={(on) => {
-          if (unavailable && on) return;
+          if (unavailable && on) {
+            return;
+          }
+
           // On starts from the default target workspace; it is sent only once it differs.
           update.set({ target: { on, workspaceId: on ? defaultTargetWorkspaceId(options) : '' } });
         }}
@@ -76,6 +79,7 @@ export function MergeTargetSetting({
             onValueChange={(workspaceId) => update.set({ target: { on: true, workspaceId } })}
             items={targets.map((workspace) => {
               const blocked = workspace.integrationSelectable !== true;
+
               return {
                 value: workspace.workspaceId,
                 textValue: `${workspace.name} ${workspace.branch ?? text(noBranchLabel)}`,

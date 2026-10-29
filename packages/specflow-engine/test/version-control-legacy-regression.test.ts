@@ -50,11 +50,13 @@ async function fixture() {
     'initial',
   );
   const engine = await bootstrapProjectHome(root);
+
   return { root, engine, worktrees: openVersionControl(engine).worktrees };
 }
 
 function request(root: string) {
   const shortId = randomUUID().slice(0, 8);
+
   return {
     shortId,
     slug: 'feature-branch',

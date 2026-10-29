@@ -27,6 +27,7 @@ async function tempRoot(): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), 'nevo-home-Ż project '));
   const root = await realpath(directory);
   temporaryRoots.push(root);
+
   return root;
 }
 
@@ -51,12 +52,14 @@ async function repository(): Promise<string> {
     '-qm',
     'bootstrap',
   );
+
   return root;
 }
 
 async function linkedWorktree(root: string): Promise<string> {
   const linked = await tempRoot();
   git(root, 'worktree', 'add', '--detach', linked);
+
   return linked;
 }
 
@@ -83,6 +86,7 @@ async function designateHome(root: string, commonDir?: string): Promise<string> 
       JSON.stringify({ version: 1, projectId, instanceId: gitInstanceId }),
     );
   }
+
   await writeFile(
     join(root, PROJECT_HOME_MARKER_RELATIVE_PATH),
     JSON.stringify(
@@ -97,6 +101,7 @@ async function designateHome(root: string, commonDir?: string): Promise<string> 
       2,
     ),
   );
+
   return projectId;
 }
 

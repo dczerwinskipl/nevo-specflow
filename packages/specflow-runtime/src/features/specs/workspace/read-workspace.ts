@@ -11,13 +11,17 @@ export async function readWorkspace(
   specId: string,
 ): Promise<WorkspaceReadModel | null> {
   const specification = await source.readSpecification(specId);
-  if (!specification) return null;
+  if (!specification) {
+    return null;
+  }
+
   const missing = { state: 'unavailable' as const, reason: 'not_implemented' as const };
   const [tasks, documents, sessions] = await Promise.all([
     contributions?.tasks?.(specId),
     contributions?.documents?.(specId),
     contributions?.sessions?.(specId),
   ]);
+
   return {
     ...specification,
     ...(sessions?.recommendedSessionId

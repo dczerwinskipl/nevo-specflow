@@ -21,7 +21,10 @@ export function slugify(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  if (!s) throw new UsageError(`Cannot slugify title ${JSON.stringify(title)} — no alphanumerics.`);
+  if (!s) {
+    throw new UsageError(`Cannot slugify title ${JSON.stringify(title)} — no alphanumerics.`);
+  }
+
   return s;
 }
 
@@ -34,11 +37,18 @@ export function padNumber(n: number | string): string {
 export function nextAdrNumber(filenames: readonly string[]): { next: number } {
   const nums: number[] = [];
   for (const f of filenames) {
-    if (f === 'README.md') continue;
+    if (f === 'README.md') {
+      continue;
+    }
+
     const m = ADR_FILE_RE.exec(f);
-    if (!m) throw new UsageError(`ADR filename '${f}' does not match NNNN-kebab-title.md`);
+    if (!m) {
+      throw new UsageError(`ADR filename '${f}' does not match NNNN-kebab-title.md`);
+    }
+
     nums.push(Number(m[1]));
   }
+
   nums.sort((a, b) => a - b);
   for (let i = 0; i < nums.length; i++) {
     if (nums[i] !== i + 1) {
@@ -48,6 +58,7 @@ export function nextAdrNumber(filenames: readonly string[]): { next: number } {
       );
     }
   }
+
   return { next: nums.length + 1 };
 }
 
@@ -58,8 +69,12 @@ export function isoDate(d = new Date()): string {
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isIsoDate(v: unknown): v is string {
-  if (typeof v !== 'string' || !ISO_DATE_RE.test(v)) return false;
+  if (typeof v !== 'string' || !ISO_DATE_RE.test(v)) {
+    return false;
+  }
+
   const d = new Date(`${v}T00:00:00Z`);
+
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
 }
 
@@ -130,7 +145,10 @@ export function validateRenderedAdr(content: string, file: string): string[] {
   } catch (err) {
     return [`${file}: ${err instanceof Error ? err.message : String(err)}`];
   }
-  if (!parsed) return [`${file}: rendered ADR has no frontmatter block`];
+
+  if (!parsed) {
+    return [`${file}: rendered ADR has no frontmatter block`];
+  }
 
   const doc: DocRecord = { ...parsed.frontmatter, file, body: parsed.body };
   const problems = validateDoc(doc);
@@ -144,9 +162,11 @@ export function validateRenderedAdr(content: string, file: string): string[] {
       `${file}: id '${String(doc.id)}' must match the filename ('adr.${m[1]}-${m[2]}')`,
     );
   }
+
   if (!isIsoDate(doc.date)) {
     problems.push(`${file}: 'date' must be ISO YYYY-MM-DD (got ${JSON.stringify(doc.date)})`);
   }
+
   return problems;
 }
 
@@ -168,14 +188,21 @@ export function planNewAdr({
   filenames: readonly string[];
   date?: string;
 }): AdrPlan {
-  if (!title.trim()) throw new UsageError('An ADR title is required.');
+  if (!title.trim()) {
+    throw new UsageError('An ADR title is required.');
+  }
+
   if (!isIsoDate(date)) {
     throw new UsageError(`date must be ISO YYYY-MM-DD, got ${JSON.stringify(date)}`);
   }
+
   const { next } = nextAdrNumber(filenames);
   const slug = slugify(title);
   const name = `${padNumber(next)}-${slug}.md`;
-  if (filenames.includes(name)) throw new UsageError(`${ADR_DIR}/${name} already exists.`);
+  if (filenames.includes(name)) {
+    throw new UsageError(`${ADR_DIR}/${name} already exists.`);
+  }
+
   const file = `${ADR_DIR}/${name}`;
   const content = renderAdr({ number: next, slug, title: title.trim(), date });
 
@@ -183,6 +210,7 @@ export function planNewAdr({
   if (problems.length) {
     throw new UsageError(`refusing to create an invalid ADR:\n  - ${problems.join('\n  - ')}`);
   }
+
   return { number: next, slug, file, id: `adr.${padNumber(next)}-${slug}`, content };
 }
 
@@ -194,13 +222,17 @@ export function validateAdrs(docs: readonly DocRecord[]): string[] {
   );
 
   for (const doc of docs) {
-    if (doc.type !== 'adr') continue;
+    if (doc.type !== 'adr') {
+      continue;
+    }
+
     const base = doc.file.split('/').pop() ?? '';
     const m = ADR_FILE_RE.exec(base);
     if (!m) {
       problems.push(`${doc.file}: ADR filename must be NNNN-kebab-title.md`);
       continue;
     }
+
     const [, num, slug] = m;
     const expectedId = `adr.${num}-${slug}`;
     if (doc.id !== expectedId) {
@@ -208,9 +240,11 @@ export function validateAdrs(docs: readonly DocRecord[]): string[] {
         `${doc.file}: id '${String(doc.id)}' must match the filename ('${expectedId}')`,
       );
     }
+
     if (!isIsoDate(doc.date)) {
       problems.push(`${doc.file}: 'date' must be ISO YYYY-MM-DD (got ${JSON.stringify(doc.date)})`);
     }
+
     if (doc.status === 'superseded') {
       if (!doc.superseded_by) {
         problems.push(`${doc.file}: status 'superseded' requires a 'superseded_by' ADR id`);
@@ -222,9 +256,11 @@ export function validateAdrs(docs: readonly DocRecord[]): string[] {
         problems.push(`${doc.file}: 'superseded_by' must reference an ADR (adr.*)`);
       }
     }
+
     if (doc.supersedes && (typeof doc.supersedes !== 'string' || !adrIds.has(doc.supersedes))) {
       problems.push(`${doc.file}: 'supersedes' -> unknown ADR '${asString(doc.supersedes)}'`);
     }
+
     // §17 — a `current` ADR is an adopted decision; it must carry NO generated
     // TODO placeholder, in its summary OR anywhere in its body.
     if (doc.status === 'current') {
@@ -246,7 +282,9 @@ export function validateAdrs(docs: readonly DocRecord[]): string[] {
     .filter((n) => Number.isInteger(n))
     .sort((a, b) => a - b);
   nums.forEach((n, i) => {
-    if (n !== i + 1) problems.push(`ADR numbering has a gap or duplicate near ${padNumber(n)}`);
+    if (n !== i + 1) {
+      problems.push(`ADR numbering has a gap or duplicate near ${padNumber(n)}`);
+    }
   });
 
   return problems;

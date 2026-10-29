@@ -134,6 +134,14 @@ describe('resolveWorkspaceFit', () => {
   );
 });
 
+describe('resolveWorkspaceFit with a drawer navigation', () => {
+  it('fills a bounded workspace (no bare strip beside it) and leaves the other fits alone', () => {
+    expect(resolveWorkspaceFit('bounded', 'split', false, 'drawer')).toBe('available');
+    expect(resolveWorkspaceFit('bounded', 'split', false, 'persistent')).toBe('content');
+    expect(resolveWorkspaceFit('content', 'split', true, 'drawer')).toBe('content');
+  });
+});
+
 describe('resolveWorkspaceContentWidth', () => {
   it('removes one edge border for an edge-fit surface and two for an inset one', () => {
     expect(APP_WORKSPACE_EDGE_BORDER).toBe(1);

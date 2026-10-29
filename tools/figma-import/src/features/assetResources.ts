@@ -14,7 +14,10 @@ export function assetMainComponentFor(
   resources: Pick<DesignResources, 'assets'>,
 ) {
   const mainComponent = resources.assets.get(assetRef);
-  if (!mainComponent) throw new Error(`Missing asset main component ${assetRef}`);
+  if (!mainComponent) {
+    throw new Error(`Missing asset main component ${assetRef}`);
+  }
+
   return mainComponent;
 }
 
@@ -24,9 +27,13 @@ export function assetMainComponentFor(
  */
 async function liveAsset(stableId: string) {
   const candidate = findStable<ComponentNode>(stableId, ['COMPONENT']);
-  if (!candidate) return undefined;
+  if (!candidate) {
+    return undefined;
+  }
+
   try {
     const live = await figma.getNodeByIdAsync(candidate.id);
+
     return live?.type === 'COMPONENT' ? live : undefined;
   } catch {
     return undefined;
@@ -46,12 +53,17 @@ export async function upsertAssetResources(
       mark(component, asset.stableId);
       section.appendChild(component);
     }
+
     configureAsset(component, asset, resources);
-    if (component.parent?.type === 'PAGE') section.appendChild(component);
+    if (component.parent?.type === 'PAGE') {
+      section.appendChild(component);
+    }
+
     if (component.parent === section) {
       component.x = 24 + index * 40;
       component.y = 24;
     }
+
     assets.set(asset.stableId, component);
   }
 
@@ -63,8 +75,11 @@ export async function upsertAssetResources(
       candidate.getPluginData(RESOURCE_KIND_KEY) === 'asset',
   )) {
     const stableId = node.getPluginData(DATA_KEY);
-    if (stableId && !expected.has(stableId)) node.remove();
+    if (stableId && !expected.has(stableId)) {
+      node.remove();
+    }
   }
+
   return assets;
 }
 
@@ -72,9 +87,11 @@ export async function existingAssetResources(definitions: readonly AssetResource
   const entries = await Promise.all(
     definitions.map(async (asset) => {
       const mainComponent = await liveAsset(asset.stableId);
+
       return mainComponent ? ([asset.stableId, mainComponent] as const) : undefined;
     }),
   );
+
   return new Map(
     entries.filter((entry): entry is readonly [string, ComponentNode] => Boolean(entry)),
   );

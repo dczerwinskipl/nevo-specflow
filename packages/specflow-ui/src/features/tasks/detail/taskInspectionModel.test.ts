@@ -9,7 +9,10 @@ describe('human work context identity', () => {
       const { response } = createTaskDetailFixture(scenario);
       const snapshot = response.snapshot!;
       const source = snapshot.sections.humanRequirements;
-      if (source.state !== 'available') throw Error('fixture');
+      if (source.state !== 'available') {
+        throw Error('fixture');
+      }
+
       expect(matchesWork(snapshot, response.task.id, source.data.items[0]!)).toBe(true);
     },
   );
@@ -19,16 +22,36 @@ describe('human work context identity', () => {
       const { response } = createTaskDetailFixture();
       const snapshot = response.snapshot!;
       const source = snapshot.sections.humanRequirements;
-      if (source.state !== 'available') throw Error('fixture');
+      if (source.state !== 'available') {
+        throw Error('fixture');
+      }
+
       const requirement = structuredClone(source.data.items[0]!);
-      if (field === 'spec') requirement.key!.specId = 'other';
-      if (field === 'task') requirement.key!.taskId = 'other';
-      if (field === 'step') requirement.key!.stepId = 'other';
-      if (field === 'attempt') requirement.key!.attempt++;
-      if (field === 'revision') requirement.definitionRevision = 'old';
-      if (field === 'relation')
+      if (field === 'spec') {
+        requirement.key!.specId = 'other';
+      }
+
+      if (field === 'task') {
+        requirement.key!.taskId = 'other';
+      }
+
+      if (field === 'step') {
+        requirement.key!.stepId = 'other';
+      }
+
+      if (field === 'attempt') {
+        requirement.key!.attempt++;
+      }
+
+      if (field === 'revision') {
+        requirement.definitionRevision = 'old';
+      }
+
+      if (field === 'relation') {
         requirement.source = { kind: 'human-step', stepId: 'verify', relation: 'next-ready' };
-      if (field === 'gate')
+      }
+
+      if (field === 'gate') {
         requirement.source = {
           kind: 'human-gate',
           gateId: 'gate',
@@ -37,7 +60,12 @@ describe('human work context identity', () => {
           scope: 'task',
           targetId: response.task.id,
         };
-      if (field === 'passed') requirement.state = 'passed';
+      }
+
+      if (field === 'passed') {
+        requirement.state = 'passed';
+      }
+
       expect(matchesWork(snapshot, response.task.id, requirement)).toBe(false);
     },
   );
@@ -45,7 +73,10 @@ describe('human work context identity', () => {
     const { response, key } = createTaskDetailFixture('next-human');
     const snapshot = response.snapshot!;
     const source = snapshot.sections.humanRequirements;
-    if (source.state !== 'available') throw Error('fixture');
+    if (source.state !== 'available') {
+      throw Error('fixture');
+    }
+
     const requirement = structuredClone(source.data.items[0]!);
     requirement.key = key;
     expect(matchesWork(snapshot, response.task.id, requirement)).toBe(false);

@@ -101,12 +101,14 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
           code: OPERATION_LIST_QUERY_INVALID_CODE,
         });
       }
+
       const { statuses, limit } = query;
       if (!route.sources) {
         return reply
           .code(503)
           .send({ error: OPERATIONS_UNAVAILABLE_CODE, code: OPERATIONS_UNAVAILABLE_CODE });
       }
+
       const authorization = (request as unknown as FastifyRequest).authz;
       let list;
       try {
@@ -122,6 +124,7 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
       } catch (error) {
         // Never surface raw errors (paths, Git text): log here, answer with the stable code.
         request.log.error({ err: error }, 'Operation list failed');
+
         return reply
           .code(503)
           .send({ error: OPERATIONS_UNAVAILABLE_CODE, code: OPERATIONS_UNAVAILABLE_CODE });
@@ -133,6 +136,7 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
       if (matchesEtag(request.headers['if-none-match'], etag)) {
         return sendNotModified(reply);
       }
+
       return reply.code(200).send(list);
     },
   );
@@ -145,19 +149,27 @@ export function parseOperationListQuery(query: {
 }): { readonly statuses?: ReadonlySet<string>; readonly limit: number } | undefined {
   const statuses = parseStatuses(query.status);
   const limit = query.limit === undefined ? OPERATION_LIST_DEFAULT_LIMIT : Number(query.limit);
-  if (statuses === 'invalid' || !(limit >= 1 && limit <= OPERATION_LIST_MAX_LIMIT))
+  if (statuses === 'invalid' || !(limit >= 1 && limit <= OPERATION_LIST_MAX_LIMIT)) {
     return undefined;
+  }
+
   return { ...(statuses ? { statuses } : {}), limit };
 }
 
 function parseStatuses(raw: string | undefined): ReadonlySet<string> | undefined | 'invalid' {
-  if (raw === undefined) return undefined;
+  if (raw === undefined) {
+    return undefined;
+  }
+
   const values = raw
     .split(',')
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
   const known: readonly string[] = OPERATION_LIST_ALL_STATUSES;
-  if (values.length === 0 || values.some((value) => !known.includes(value))) return 'invalid';
+  if (values.length === 0 || values.some((value) => !known.includes(value))) {
+    return 'invalid';
+  }
+
   return new Set(values);
 }
 

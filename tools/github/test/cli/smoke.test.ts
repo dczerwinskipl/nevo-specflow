@@ -13,9 +13,11 @@ const bin = join(pkgRoot, 'dist', 'bin.js');
 async function cli(args: string[]): Promise<{ code: number; stdout: string }> {
   try {
     const { stdout } = await execFileAsync('node', [bin, ...args], { cwd: pkgRoot });
+
     return { code: 0, stdout };
   } catch (err) {
     const e = err as { code?: number; stdout?: string };
+
     return { code: e.code ?? 1, stdout: e.stdout ?? '' };
   }
 }

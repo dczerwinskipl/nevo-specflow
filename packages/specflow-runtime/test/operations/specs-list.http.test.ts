@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import {
   CREATE_JOURNAL_RELATIVE_DIR,
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
 } from '@nevo/specflow-engine/testing';
 import type { OperationListResponse } from '@nevo/specflow-contracts/operations';
 import type { FastifyInstance } from 'fastify';
@@ -68,6 +68,7 @@ async function project() {
   const template = JSON.parse(
     await readFile(join(dir, created.operationId + '.json'), 'utf8'),
   ) as Record<string, unknown>;
+
   return { root, engine, dir, created, template };
 }
 
@@ -91,6 +92,7 @@ async function variant(
   await writeFile(path, JSON.stringify(record));
   const at = new Date(Date.now() - ageMs);
   await utimes(path, at, at);
+
   return operationId;
 }
 
@@ -133,6 +135,7 @@ async function listen(
       url: '/api/specs/operations' + query,
       headers: { ...headers, ...extra },
     });
+
   return { app, get };
 }
 
@@ -262,7 +265,10 @@ describe('GET /api/specs/operations', () => {
 
   it('honours limit and status filters and rejects malformed queries', async () => {
     const fx = await project();
-    for (let index = 0; index < 4; index += 1) await variant(fx, { stage: 'registry-writing' });
+    for (let index = 0; index < 4; index += 1) {
+      await variant(fx, { stage: 'registry-writing' });
+    }
+
     await variant(fx, { stage: 'recovery-required' });
     const { get } = await listen(fx);
 

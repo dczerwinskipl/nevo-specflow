@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_BASE_REF,
   DEFAULT_BRANCH_PATTERN,
+  expandBranchPattern,
   type GitWorktreePolicy,
 } from '../../../version-control/worktrees/policy';
 import { runReadRequest } from '../../../project/request-verification-memo';
@@ -134,8 +135,12 @@ async function readPolicyOrDegrade(
   try {
     return { policy: (await readProjectGitPolicy(engine.context)).policy, policyInvalid: false };
   } catch (error) {
-    if (!(error instanceof GitCapabilityError) || error.code !== 'GIT_POLICY_INVALID') throw error;
+    if (!(error instanceof GitCapabilityError) || error.code !== 'GIT_POLICY_INVALID') {
+      throw error;
+    }
+
     options.onPolicyProblem?.(error.message);
+
     return { policy: UNREADABLE_POLICY, policyInvalid: true };
   }
 }
@@ -162,15 +167,20 @@ async function inspectCreateOptionsInRequest(
   ]);
   let gitReachable = gitEnabled;
   if (gitEnabled && worktreesResult.status === 'rejected') {
-    if (!isGitUnavailable(worktreesResult.reason)) throw worktreesResult.reason;
+    if (!isGitUnavailable(worktreesResult.reason)) {
+      throw worktreesResult.reason;
+    }
+
     gitReachable = false;
   }
+
   const worktrees = gitReachable ? settledValue(worktreesResult) : [];
   const branches = gitReachable ? settledValue(branchesResult) : [];
   const discovered = settledValue(discoveredResult);
   const counts = new Map<string, number>();
-  for (const spec of discovered)
+  for (const spec of discovered) {
     counts.set(spec.workspaceId, (counts.get(spec.workspaceId) ?? 0) + 1);
+  }
 
   const workspaces = await mapBounded(
     registry.workspaces,
@@ -192,6 +202,7 @@ async function inspectCreateOptionsInRequest(
       if (checked.status !== 'unavailable' && policyInvalid) {
         return { ...common, state: 'unavailable', selectable: false, reason: 'git-policy-invalid' };
       }
+
       if (checked.status === 'unavailable' || (gitEnabled && !gitReachable)) {
         return {
           ...common,
@@ -200,8 +211,12 @@ async function inspectCreateOptionsInRequest(
           reason: checked.status === 'unavailable' ? 'checkout-unavailable' : 'git-unavailable',
         };
       }
+
       // Git disabled: the filesystem verification above is the whole answer.
-      if (!gitEnabled) return { ...common, state: 'available', selectable: true };
+      if (!gitEnabled) {
+        return { ...common, state: 'available', selectable: true };
+      }
+
       const gitWorktree = worktrees.find((item) => samePath(item.root, checked.root));
       if (!gitWorktree || gitWorktree.prunable) {
         return {
@@ -211,9 +226,11 @@ async function inspectCreateOptionsInRequest(
           reason: 'git-membership-mismatch',
         };
       }
+
       if (!gitWorktree.branch?.startsWith('refs/heads/')) {
         return { ...common, state: 'detached', selectable: false, reason: 'detached' };
       }
+
       const branch = gitWorktree.branch.slice('refs/heads/'.length);
       const refusal = engineCommitRefusal(policy.commits, branch);
       const status = await executeGit(checked.root, [
@@ -231,6 +248,7 @@ async function inspectCreateOptionsInRequest(
           reason: 'checkout-unavailable',
         };
       }
+
       // The Engine would not commit the scaffold here: the checkout stays visible but not selectable.
       if (refusal) {
         return {
@@ -241,18 +259,21 @@ async function inspectCreateOptionsInRequest(
           reason: refusal,
         };
       }
+
       if (status.stdout.length !== 0) {
         return { ...common, state: 'dirty', selectable: true, branch, reason: 'dirty' };
       }
+
       return { ...common, state: 'available', selectable: true, branch };
     },
   );
   // A concurrent rebind/registration invalidates the whole snapshot.
-  if ((await engine.readRegistry()).revision !== registry.revision)
+  if ((await engine.readRegistry()).revision !== registry.revision) {
     throw new WorkspaceRegistryError(
       'REGISTRY_CONFLICT',
       'Workspace registry changed during create-options inspection.',
     );
+  }
 
   const checkedOut = new Map(
     workspaces
@@ -263,6 +284,7 @@ async function inspectCreateOptionsInRequest(
     const registration = registry.workspaces.find(
       (candidate) => candidate.workspaceId === item.workspaceId,
     );
+
     return {
       ...item,
       integrationSelectable:
@@ -280,6 +302,7 @@ async function inspectCreateOptionsInRequest(
   // A local `git.worktreesRoot` inside the repository is an invalid Git setting like any other:
   // the read degrades (new worktrees unavailable) instead of failing as a whole.
   const worktreesRoot = await describeWorktreesRoot(engine, policy, options);
+
   return {
     primaryWorkspaceId: registry.primaryWorkspaceId,
     workspaces: integrationChoices,
@@ -312,13 +335,19 @@ async function inspectCreateOptionsInRequest(
       : {}),
     baseRefs: branches
       .filter((ref) => {
-        if (!ref.startsWith('refs/heads/')) return false;
+        if (!ref.startsWith('refs/heads/')) {
+          return false;
+        }
+
         try {
           validateBaseRef(ref);
+
           return true;
         } catch (error) {
-          if (error instanceof GitCapabilityError && error.code === 'GIT_POLICY_INVALID')
+          if (error instanceof GitCapabilityError && error.code === 'GIT_POLICY_INVALID') {
             return false;
+          }
+
           throw error;
         }
       })
@@ -339,7 +368,8 @@ async function inspectCreateOptionsInRequest(
 function branchPatternIsProtected(
   policy: Awaited<ReturnType<typeof readProjectGitPolicy>>['policy'],
 ): boolean {
-  const branch = policy.branchPattern.replaceAll('{slug}', 'a0').replaceAll('{shortId}', '0000000');
+  const branch = expandBranchPattern(policy.branchPattern, 'a0', '0000000', 'nevo-1');
+
   return engineCommitRefusal(policy.commits, branch) !== undefined;
 }
 
@@ -355,10 +385,14 @@ async function describeWorktreesRoot(
   try {
     path = effectiveWorktreesRoot(engine.context, policy);
   } catch (error) {
-    if (!(error instanceof GitCapabilityError) || error.code !== 'GIT_POLICY_INVALID') throw error;
+    if (!(error instanceof GitCapabilityError) || error.code !== 'GIT_POLICY_INVALID') {
+      throw error;
+    }
+
     options.onPolicyProblem?.(error.message);
     // The configured value is unusable: show where worktrees would go by default.
     const home = engine.context.project.homeRoot;
+
     return {
       value: {
         path: join(dirname(home), basename(home) + '-worktrees'),
@@ -367,14 +401,17 @@ async function describeWorktreesRoot(
       invalid: true,
     };
   }
+
   // Anything but a readable directory (missing, no permission, ...) is "does not exist yet".
   const found = await stat(path).catch(() => undefined);
+
   return { value: { path, exists: found?.isDirectory() === true }, invalid: false };
 }
 
 function samePath(left: string, right: string): boolean {
   const a = resolve(left);
   const b = resolve(right);
+
   return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
@@ -388,6 +425,9 @@ function isGitUnavailable(error: unknown): boolean {
 }
 
 function settledValue<T>(result: PromiseSettledResult<T>): T {
-  if (result.status === 'rejected') throw result.reason;
+  if (result.status === 'rejected') {
+    throw result.reason;
+  }
+
   return result.value;
 }

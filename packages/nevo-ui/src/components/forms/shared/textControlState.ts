@@ -16,8 +16,17 @@ export function textControlDesignState({
   autoFocus?: boolean;
   disabled?: boolean;
 }): TextControlDesignState {
-  if (disabled) return 'disabled';
-  if (isAriaInvalid(ariaInvalid)) return 'invalid';
-  if (autoFocus) return 'focus';
+  if (disabled) {
+    return 'disabled';
+  }
+
+  if (isAriaInvalid(ariaInvalid)) {
+    return 'invalid';
+  }
+
+  if (autoFocus) {
+    return 'focus';
+  }
+
   return 'default';
 }

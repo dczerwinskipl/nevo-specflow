@@ -3,6 +3,7 @@ import { createTaskDetailFixture } from '../taskDetail.test-support';
 
 export function createHistoryDetailsFixture(): TaskHistoryPage['items'][number] {
   const fixture = createTaskDetailFixture('rich-human');
+
   return {
     id: 'history-record',
     key: { ...fixture.key, stepId: 'build', attempt: 1 },

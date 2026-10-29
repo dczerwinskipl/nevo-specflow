@@ -36,6 +36,7 @@ export function buildDemoTasks(record: DemoSpecification): TaskDefinitionFacts['
   const completed = new Set(
     ids.filter((id) => !active.has(id)).slice(0, record.progress.completed),
   );
+
   return ids.map((id, index) => ({
     id,
     title: id + ' · ' + demoTaskTitles[index % demoTaskTitles.length],
@@ -46,6 +47,7 @@ export function buildDemoTasks(record: DemoSpecification): TaskDefinitionFacts['
     },
   }));
 }
+
 const identityFor = (specId: string, taskId: string): TaskIdentity => ({
   projectId: 'demo-project',
   workspaceId: 'demo-workspace',
@@ -57,7 +59,10 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
     async resolve(specId, taskId) {
       const record = await catalogue.find(specId),
         task = record && buildDemoTasks(record).find((task) => task.id === taskId);
-      if (!record || !task) return null;
+      if (!record || !task) {
+        return null;
+      }
+
       return {
         identity: identityFor(specId, taskId),
         version: 'demo-definition-1',
@@ -79,10 +84,15 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
       : null;
   const visibleResources = async (identity: TaskIdentity, visible: ReferenceVisibility) => {
     const items: ResourceFacts[] = [];
-    for (const resource of demoTaskResources(identity.specId, identity.taskId))
-      if (await visible(resource.link)) items.push(resource);
+    for (const resource of demoTaskResources(identity.specId, identity.taskId)) {
+      if (await visible(resource.link)) {
+        items.push(resource);
+      }
+    }
+
     return items;
   };
+
   const page = <T>(
     items: T[],
     identity: TaskIdentity,
@@ -97,9 +107,12 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
       !Number.isInteger(limit) ||
       limit < 1 ||
       limit > 50
-    )
+    ) {
       return null;
+    }
+
     const end = Math.min(start + limit, items.length);
+
     return {
       identity,
       version,
@@ -108,11 +121,13 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
       coverage: 'complete',
     };
   };
+
   return {
     definitions,
     execution: {
       async inspect(identity, version) {
         const definition = await definitions.resolve(identity.specId, identity.taskId);
+
         return definition?.version === version
           ? demoExecutionFacts(identity.specId, definition.task)
           : null;
@@ -121,7 +136,10 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
     history: {
       open,
       async read(identity, handle, continuation, limit) {
-        if (handle !== 'demo-history-1' || !(await open(identity))) return null;
+        if (handle !== 'demo-history-1' || !(await open(identity))) {
+          return null;
+        }
+
         return page(
           demoTaskHistory(identity.specId, identity.taskId),
           identity,
@@ -133,7 +151,10 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
     },
     resources: {
       async open(identity, visible) {
-        if (!(await open(identity))) return null;
+        if (!(await open(identity))) {
+          return null;
+        }
+
         return {
           identity,
           handle: 'demo-resources-1',
@@ -143,7 +164,10 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
         };
       },
       async read(identity, handle, continuation, limit, visible) {
-        if (handle !== 'demo-resources-1' || !(await open(identity))) return null;
+        if (handle !== 'demo-resources-1' || !(await open(identity))) {
+          return null;
+        }
+
         return page(
           await visibleResources(identity, visible),
           identity,

@@ -32,6 +32,7 @@ import {
   type DocumentsApi,
 } from '../features/documents/api';
 import { createDemoDocumentsApi } from '../features/documents/api.demo';
+import { createProjectDocumentsApi } from '../features/documents/api.project';
 
 export interface SpecFlowAppServices {
   readonly managedSessionsApi: ManagedSessionsApi;
@@ -43,7 +44,13 @@ export interface SpecFlowAppServices {
   readonly specificationApi: SpecificationApi;
   readonly taskApi: TaskApi;
   readonly documentApi: DocumentApi;
-  readonly documentsApi: DocumentsApi;
+  /** Document tree, catalogue and writes of the demo Runtime (writes emulated under `/api/demo`). */
+  readonly demoDocumentsApi: DocumentsApi;
+  /**
+   * The same port in a project Runtime: the real tree, catalogue and write routes. The documents
+   * feature picks one of the two by Runtime mode (`useDocumentsApi`).
+   */
+  readonly projectDocumentsApi: DocumentsApi;
   readonly sessionsApi: SessionsApi;
   readonly demoCreationApi: DemoCreationApi;
   /** Specification creation of a project Runtime (the demo Runtime uses `demoCreationApi`). */
@@ -63,7 +70,8 @@ export interface SpecFlowServicesOptions {
   readonly specificationApi?: SpecificationApi;
   readonly taskApi?: TaskApi;
   readonly documentApi?: DocumentApi;
-  readonly documentsApi?: DocumentsApi;
+  readonly demoDocumentsApi?: DocumentsApi;
+  readonly projectDocumentsApi?: DocumentsApi;
   readonly sessionsApi?: SessionsApi;
   readonly demoCreationApi?: DemoCreationApi;
   readonly projectCreationApi?: ProjectCreationApi;
@@ -100,7 +108,13 @@ export function createSpecFlowAppServices(
     specificationApi,
     taskApi: options.taskApi ?? createRuntimeTaskApi(runtimeHttp),
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
-    documentsApi: options.documentsApi ?? createDemoDocumentsApi(runtimeHttp),
+    demoDocumentsApi: options.demoDocumentsApi ?? createDemoDocumentsApi(runtimeHttp),
+    projectDocumentsApi:
+      options.projectDocumentsApi ??
+      createProjectDocumentsApi(
+        createApiTransport(runtimeHttp, { operation: 'documents.read' }),
+        runtimeHttp,
+      ),
     sessionsApi: options.sessionsApi ?? createDemoSessionsApi(runtimeHttp),
     demoCreationApi: options.demoCreationApi ?? createDemoCreationApi(runtimeHttp),
     projectCreationApi:

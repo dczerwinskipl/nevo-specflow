@@ -112,7 +112,10 @@ export function useMobileWorkspaceTransition({
 
   const completeMotion = useCallback(
     (event: AnimationEvent<HTMLElement>) => {
-      if (event.currentTarget !== event.target || !transition) return;
+      if (event.currentTarget !== event.target || !transition) {
+        return;
+      }
+
       setCompletedTransitionRevision(transition.revision);
     },
     [transition],

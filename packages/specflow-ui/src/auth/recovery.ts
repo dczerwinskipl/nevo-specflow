@@ -28,7 +28,10 @@ export function createAuthRecoveryCoordinator(auth: AuthStore): AuthRecoveryCoor
   const listeners = new Set<(result: 'login' | 'runtime-unavailable') => void>();
 
   auth.subscribe(() => {
-    if (!blocked) return;
+    if (!blocked) {
+      return;
+    }
+
     const state = auth.getState();
     if (
       state.status === 'ready' &&
@@ -50,8 +53,13 @@ export function createAuthRecoveryCoordinator(auth: AuthStore): AuthRecoveryCoor
     request.mutationGeneration === auth.mutationGeneration();
 
   const report = (result: RecoveryResult) => {
-    if (result !== 'login' && result !== 'runtime-unavailable') return;
-    for (const listener of listeners) listener(result);
+    if (result !== 'login' && result !== 'runtime-unavailable') {
+      return;
+    }
+
+    for (const listener of listeners) {
+      listener(result);
+    }
   };
 
   return {
@@ -60,25 +68,42 @@ export function createAuthRecoveryCoordinator(auth: AuthStore): AuthRecoveryCoor
     isCurrent,
     subscribe(listener) {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
     subscribeInvalidation(request, listener) {
       return auth.subscribe(() => {
-        if (!isCurrent(request)) listener();
+        if (!isCurrent(request)) {
+          listener();
+        }
       });
     },
     recover(request) {
-      if (!isCurrent(request)) return Promise.resolve('superseded');
-      if (request.recoveryGeneration < generation || blocked) return Promise.resolve(lastResult);
+      if (!isCurrent(request)) {
+        return Promise.resolve('superseded');
+      }
+
+      if (request.recoveryGeneration < generation || blocked) {
+        return Promise.resolve(lastResult);
+      }
+
       // A new logged-in identity must not join a refresh from an older session.
-      if (pending && pendingSessionGeneration === request.sessionGeneration) return pending;
+      if (pending && pendingSessionGeneration === request.sessionGeneration) {
+        return pending;
+      }
 
       const requestPromise = auth
         .refresh()
         .then(
           (session): RecoveryResult => {
-            if (request.mutationGeneration !== auth.mutationGeneration()) return 'superseded';
-            if (session.authenticationRequired && !session.authenticated) return 'login';
+            if (request.mutationGeneration !== auth.mutationGeneration()) {
+              return 'superseded';
+            }
+
+            if (session.authenticationRequired && !session.authenticated) {
+              return 'login';
+            }
+
             return isCurrent(request) ? 'retry' : 'superseded';
           },
           (error: unknown): RecoveryResult =>
@@ -91,17 +116,22 @@ export function createAuthRecoveryCoordinator(auth: AuthStore): AuthRecoveryCoor
           if (result === 'superseded' || request.mutationGeneration !== auth.mutationGeneration()) {
             return 'superseded';
           }
+
           generation += 1;
           lastResult = result;
           blocked = result !== 'retry';
           report(result);
+
           return result;
         })
         .finally(() => {
-          if (pending === requestPromise) pending = undefined;
+          if (pending === requestPromise) {
+            pending = undefined;
+          }
         });
       pending = requestPromise;
       pendingSessionGeneration = request.sessionGeneration;
+
       return requestPromise;
     },
   };

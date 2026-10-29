@@ -6,7 +6,9 @@ export function resolveSemanticTokenId(
   _value: string | undefined,
   tokens: readonly ColorTokenIR[],
 ) {
-  if (explicitStableId && tokens.some((token) => token.stableId === explicitStableId))
+  if (explicitStableId && tokens.some((token) => token.stableId === explicitStableId)) {
     return explicitStableId;
+  }
+
   return undefined;
 }

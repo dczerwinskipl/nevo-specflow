@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { polishText } from '../../../i18n/testing';
 import {
+  documentTreeFixture,
+  folderRevisionFixture,
+} from '../../../../test-support/documents/fixtures';
+import {
   allDocumentFolders,
+  folderActions,
+  folderOperationRevision,
   entryNameError as rawEntryNameError,
   finalEntryName,
   orderTreeLevel,
   pathCollides,
   createTreeIndex,
+  treeRows,
   treeLevel,
   uploadNameReason,
   validEntryName,
@@ -16,8 +23,10 @@ const entryNameError = (...args: Parameters<typeof rawEntryNameError>) =>
 
 describe('creation document policy', () => {
   it('rejects paths and absent basenames at the entry boundary', () => {
-    for (const value of ['.md', '.txt', '../spec.md', 'dir/file.md', 'bad\\name.md', 'foo.md '])
+    for (const value of ['.md', '.txt', '../spec.md', 'dir/file.md', 'bad\\name.md', 'foo.md ']) {
       expect(validEntryName(value, true), value).toBe(false);
+    }
+
     expect(validEntryName('client-notes.txt', true)).toBe(true);
   });
   it('prevents file/folder collision including parent and descendants, case-insensitively', () => {
@@ -86,8 +95,8 @@ describe('inline entry names', () => {
       'Nazwa może mieć maksymalnie 200 znaków.',
     );
     expect(entryNameError('abc.', 'folder')).toBe('Nazwa nie może kończyć się kropką ani spacją.');
-    expect(entryNameError('..', 'folder')).toBe('Wpisz inną nazwę.');
-    expect(entryNameError('a.pdf', 'document')).toBe('Obsługiwane formaty to .md i .txt.');
+    expect(entryNameError('..', 'folder')).toBe('Nazwa nie może składać się z samych kropek.');
+    expect(entryNameError('a.pdf', 'document')).toBe('Obsługiwane formaty: .md, .txt.');
     expect(entryNameError('a.pdf', 'folder')).toBeUndefined();
   });
   it('appends .md on create and keeps the current extension on rename', () => {
@@ -100,10 +109,31 @@ describe('inline entry names', () => {
 
 describe('upload name policy', () => {
   it('rejects the names the Runtime rejects, so one bad file never fails the batch', () => {
-    for (const name of ['.hidden.md', 'CON.md', 'nul.txt', 'notes.md ', 'notes.', 'a:b.md'])
+    for (const name of ['.hidden.md', 'CON.md', 'nul.txt', 'notes.md ', 'notes.', 'a:b.md']) {
       expect(uploadNameReason(name), name).toBeTruthy();
-    for (const name of ['interview.md', 'konsola.md', 'a.b.txt'])
+    }
+
+    for (const name of ['interview.md', 'konsola.md', 'a.b.txt']) {
       expect(uploadNameReason(name), name).toBeUndefined();
+    }
+  });
+});
+
+describe('treeRows', () => {
+  const action = { available: true };
+  const tree = {
+    folders: [{ path: 'docs', actions: { rename: action, move: action, delete: action } }],
+    documents: [],
+    dangling: [
+      { id: 'backend', path: 'docs/backend.md', type: 'backend', actions: { delete: action } },
+      { id: 'ux', path: 'gone/ux.md', type: 'ux', actions: { delete: action } },
+    ],
+  } as unknown as Parameters<typeof treeRows>[0];
+
+  it('places a dangling entry at its registered path, or in the main folder when its folder is gone', () => {
+    const index = createTreeIndex(treeRows(tree));
+    expect(index.level('docs').documents.map((row) => row.id)).toEqual(['backend']);
+    expect(index.level('').documents.map((row) => [row.id, row.dangling])).toEqual([['ux', true]]);
   });
 });
 
@@ -116,7 +146,7 @@ describe('treeLevel', () => {
       { id: '3', path: 'DOCS/a.md' },
       { id: '4', path: 'docs/sub/c.md' },
     ],
-  } as unknown as Parameters<typeof treeLevel>[0];
+  };
 
   it('lists the direct children of the root', () => {
     const level = treeLevel(tree, '');
@@ -174,12 +204,17 @@ describe('createTreeIndex', () => {
     const reads = { count: 0 };
     const proxy = new Proxy(items, {
       get(target, key, receiver) {
-        if (typeof key === 'string' && /^\d+$/.test(key)) reads.count++;
+        if (typeof key === 'string' && /^\d+$/.test(key)) {
+          reads.count++;
+        }
+
         return Reflect.get(target, key, receiver) as unknown;
       },
     });
+
     return { proxy, reads };
   }
+
   /** 40 top folders x 4 nested folders x 10 documents plus root files: over 2000 nodes. */
   function largeTree() {
     const folders: { path: string }[] = [];
@@ -188,14 +223,20 @@ describe('createTreeIndex', () => {
       folders.push({ path: `f${top}` });
       for (let sub = 0; sub < 4; sub++) {
         folders.push({ path: `f${top}/s${sub}` });
-        for (let doc = 0; doc < 10; doc++)
+        for (let doc = 0; doc < 10; doc++) {
           documents.push({ id: `${top}-${sub}-${doc}`, path: `f${top}/s${sub}/d${doc}.md` });
+        }
       }
-      for (let doc = 0; doc < 10; doc++)
+
+      for (let doc = 0; doc < 10; doc++) {
         documents.push({ id: `${top}-${doc}`, path: `f${top}/d${doc}.md` });
+      }
     }
-    for (let doc = 0; doc < 100; doc++)
+
+    for (let doc = 0; doc < 100; doc++) {
       documents.push({ id: `root-${doc}`, path: `root${doc}.md` });
+    }
+
     return { folders, documents };
   }
 
@@ -206,7 +247,7 @@ describe('createTreeIndex', () => {
     const index = createTreeIndex({
       folders: folders.proxy,
       documents: documents.proxy,
-    } as unknown as Parameters<typeof createTreeIndex>[0]);
+    });
     const total = source.folders.length + source.documents.length;
     expect(total).toBeGreaterThanOrEqual(2000);
     const afterBuild = folders.reads.count + documents.reads.count;
@@ -216,6 +257,7 @@ describe('createTreeIndex', () => {
       index.level(folder.path);
       index.level(folder.path);
     }
+
     index.level('');
     expect(folders.reads.count + documents.reads.count).toBe(afterBuild);
   });
@@ -227,6 +269,29 @@ describe('createTreeIndex', () => {
       const expected = treeLevel(source, parent);
       expect(index.level(parent)).toEqual(expected);
     }
+
     expect(index.level('f3')).toBe(index.level('F3'));
+  });
+});
+
+describe('folder operation policy', () => {
+  const tree = documentTreeFixture({ revision: 'tree-1', folders: ['notes'] });
+
+  it('uses the folder revision, never the tree revision', () => {
+    expect(folderOperationRevision(tree, 'notes')).toBe(folderRevisionFixture('notes'));
+    expect(folderOperationRevision(tree, '')).toBeUndefined();
+    expect(folderOperationRevision(tree, 'missing')).toBeUndefined();
+  });
+
+  it('offers no rename, move or delete for a folder without a revision', () => {
+    const [root, notes] = tree.folders;
+    expect(folderActions(notes!)).toBe(notes!.actions);
+    const { revision: _revision, ...withoutRevision } = notes!;
+    expect(folderActions(withoutRevision)).toEqual({
+      rename: { available: false, reason: 'root' },
+      move: { available: false, reason: 'root' },
+      delete: { available: false, reason: 'root' },
+    });
+    expect(folderActions(root!).rename.available).toBe(false);
   });
 });

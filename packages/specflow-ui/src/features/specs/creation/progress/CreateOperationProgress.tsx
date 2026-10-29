@@ -40,14 +40,19 @@ export function CreateOperationProgress({
   monitoring: boolean;
 }) {
   const { t } = useTranslation();
-  if (completed)
+  if (completed) {
     return (
       <OperationProgress
         steps={createCompletedSteps(target, commits)}
         label={createProgressLabel}
       />
     );
-  if (!working) return null;
+  }
+
+  if (!working) {
+    return null;
+  }
+
   return (
     <>
       <OperationProgress

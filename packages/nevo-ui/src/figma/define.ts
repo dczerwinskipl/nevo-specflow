@@ -66,6 +66,7 @@ export function defineRecipeDesign<
 ): RecipeDesignSpec<Id, MergeAxes<RecipeAxes<Recipe>, Additional>, Slots> {
   const derived = getVariantContract(input.recipe);
   const additionalProperties = input.additionalProperties ?? {};
+
   return {
     component: input.component,
     ...(input.description === undefined ? {} : { description: input.description }),

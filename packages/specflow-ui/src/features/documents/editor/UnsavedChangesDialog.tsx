@@ -47,11 +47,14 @@ export function UnsavedChangesDialog({
   onCloseAutoFocus?: ComponentPropsWithoutRef<typeof AlertDialogContent>['onCloseAutoFocus'];
 }) {
   const { t } = useTranslation();
+
   return (
     <AlertDialog
       open={open}
       onOpenChange={(value) => {
-        if (!value) onContinue();
+        if (!value) {
+          onContinue();
+        }
       }}
     >
       <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>

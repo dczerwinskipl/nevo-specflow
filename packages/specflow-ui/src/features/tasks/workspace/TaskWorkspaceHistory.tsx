@@ -11,6 +11,7 @@ export function TaskWorkspaceHistory({
   const { t } = useTranslation();
   const { data, event, setEvent } = useTaskWorkspace();
   const { ref, captureBeforeNavigation } = useWorkspaceScroll('history');
+
   return (
     <div ref={ref} className="min-w-0 p-4" data-task-workspace="history">
       {!data.handoffs.length ? (

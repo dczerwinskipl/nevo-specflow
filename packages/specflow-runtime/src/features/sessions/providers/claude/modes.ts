@@ -21,13 +21,16 @@ export function claudeMode(selection?: Invocation['selection']): ClaudeMode {
   const id =
     selection?.providerModeId ?? (selection?.mode === 'workspace-write' ? undefined : 'plan');
   const mode = claudeModes.find((mode) => mode.modeId === id);
-  if (!mode || (selection && mode.mode !== selection.mode))
+  if (!mode || (selection && mode.mode !== selection.mode)) {
     throw new SessionError(
       'CAPABILITY_UNSUPPORTED',
       'Select a supported native Claude mode with matching effect authority.',
     );
+  }
+
   return mode;
 }
+
 export function toolsForClaudeMode(mode: ClaudeMode): readonly string[] {
   return mode.mode === 'read-only' ? claudeReadTools : claudeAgentTools;
 }

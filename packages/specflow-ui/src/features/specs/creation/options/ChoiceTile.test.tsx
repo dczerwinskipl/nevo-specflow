@@ -43,6 +43,7 @@ function renderGroup(onSelect = vi.fn<(value: string) => void>(), checkedValue =
       </ChoiceTileGroup>
     </>,
   );
+
   return onSelect;
 }
 

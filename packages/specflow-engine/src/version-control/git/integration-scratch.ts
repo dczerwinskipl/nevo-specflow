@@ -18,6 +18,7 @@ async function gitValue(root: string, args: readonly string[]): Promise<string> 
   if (result.exitCode !== 0 || !SHA.test(value)) {
     throw invalid('Cannot prove pinned scratch Git object.');
   }
+
   return value;
 }
 
@@ -33,7 +34,10 @@ export async function createDetachedIntegrationCheckout(input: {
   readonly hooksDirectory: string;
 }): Promise<void> {
   const { projectRoot, scratchRoot, targetCommit, hooksDirectory } = input;
-  if (!SHA.test(targetCommit)) throw invalid('Invalid pinned target commit.');
+  if (!SHA.test(targetCommit)) {
+    throw invalid('Invalid pinned target commit.');
+  }
+
   const result = await executeGitMutation(projectRoot, [
     '-c',
     'core.hooksPath=' + hooksDirectory,
@@ -76,6 +80,7 @@ export async function inspectDetachedIntegrationCheckout(input: {
   ) {
     throw invalid('Scratch is not the expected detached checkout of this Git instance.');
   }
+
   if (requireClean) {
     const status = await executeGit(root, [
       '-c',
@@ -138,6 +143,7 @@ export async function mergeDivergentInScratch(input: {
       gitValue(scratchRoot, ['rev-parse', '--verify', 'HEAD']),
       gitValue(scratchRoot, ['rev-parse', '--verify', 'HEAD^{tree}']),
     ]);
+
     return { status: 'candidate', candidateCommit, candidateTree };
   }
 
@@ -150,6 +156,7 @@ export async function mergeDivergentInScratch(input: {
       'Scratch merge ended without provable conflict index; explicit recovery required.',
     );
   }
+
   const conflictPaths = [
     ...new Set(
       unmerged.stdout
@@ -161,6 +168,7 @@ export async function mergeDivergentInScratch(input: {
   if (conflictPaths.some((value) => !value || value.includes('\0'))) {
     throw invalid('Scratch unmerged paths cannot be interpreted safely.');
   }
+
   return {
     status: 'conflict',
     conflictPaths,
@@ -196,6 +204,7 @@ export async function verifyIntegrationCandidate(input: {
   ) {
     throw invalid('Invalid pinned merge candidate proof.');
   }
+
   await inspectDetachedIntegrationCheckout({
     root: scratchRoot,
     expectedGitCommonDir,
@@ -249,6 +258,7 @@ export async function verifyIsolatedMergeConflict(input: {
   ) {
     throw invalid('Invalid conflict evidence.');
   }
+
   await inspectDetachedIntegrationCheckout({
     root: scratchRoot,
     expectedGitCommonDir,
@@ -263,6 +273,7 @@ export async function verifyIsolatedMergeConflict(input: {
   if (staged.exitCode !== 0 || !staged.stdout) {
     throw invalid('The conflicting scratch no longer contains an unmerged index.');
   }
+
   const observedPaths = [
     ...new Set(
       staged.stdout

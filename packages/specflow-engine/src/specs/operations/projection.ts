@@ -65,6 +65,7 @@ function projectCloseJournalState(
             stage === 'disposal-initiated'
           ? 'recovery-required'
           : 'in-progress';
+
   return {
     status,
     ...(journal.outcome !== undefined ? { outcome: journal.outcome } : {}),
@@ -76,8 +77,10 @@ function projectCloseJournalState(
 }
 
 export function projectCloseOperation(journal: CloseJournal): PublicCloseOperation {
-  if (journal.plan.kind === 'workspace-close')
+  if (journal.plan.kind === 'workspace-close') {
     throw new Error('Workspace Close must use the workspace-specific projection.');
+  }
+
   return {
     operationId: journal.plan.operationId,
     specId: journal.plan.specId,
@@ -87,8 +90,10 @@ export function projectCloseOperation(journal: CloseJournal): PublicCloseOperati
 }
 
 export function projectClosePreview(plan: ClosePlan): PublicClosePreview {
-  if (plan.kind === 'workspace-close')
+  if (plan.kind === 'workspace-close') {
     throw new Error('Workspace Close must use the workspace-specific preview.');
+  }
+
   return {
     operationId: plan.operationId,
     specId: plan.specId,
@@ -133,8 +138,10 @@ export function projectWorkspaceClosePreview(plan: ClosePlan): PublicWorkspaceCl
     !plan.occupants ||
     !plan.target ||
     !plan.targetBranch
-  )
+  ) {
     throw new Error('Expected complete workspace Close preview.');
+  }
+
   return {
     operationId: plan.operationId,
     workspaceId: plan.workspaceId,
@@ -160,11 +167,16 @@ export function projectWorkspaceCloseOperation(
     journal.plan.kind !== 'workspace-close' ||
     !journal.plan.workspaceId ||
     !journal.plan.occupants
-  )
+  ) {
     throw new Error('Expected workspace Close journal.');
-  if (journal.outcome !== undefined && journal.outcome !== 'worktree-integrated-and-removed')
+  }
+
+  if (journal.outcome !== undefined && journal.outcome !== 'worktree-integrated-and-removed') {
     throw new Error('Unexpected Workspace Close outcome.');
+  }
+
   const projected = projectCloseJournalState(journal);
+
   return {
     operationId: journal.plan.operationId,
     workspaceId: journal.plan.workspaceId,

@@ -142,9 +142,11 @@ function normalizeIntentFields(
   if (!title || title.length > 200) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid specification title.');
   }
+
   if (input.slug !== undefined && !isExplicitSpecificationSlug(input.slug)) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid specification slug.');
   }
+
   if (
     input.target.kind === 'new-worktree' &&
     input.target.branch !== undefined &&
@@ -152,6 +154,7 @@ function normalizeIntentFields(
   ) {
     throw new CreateOperationError('BRANCH_NAME_INVALID', 'Invalid branch name.');
   }
+
   const archetype = input.archetype;
   if (
     typeof archetype?.id !== 'string' ||
@@ -161,13 +164,16 @@ function normalizeIntentFields(
   ) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid archetype selection.');
   }
+
   if (
     input.catalogueRevision !== undefined &&
     (typeof input.catalogueRevision !== 'string' || input.catalogueRevision.length === 0)
   ) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid catalogue revision.');
   }
+
   const target = normalizeClientTarget(input.target);
+
   return {
     title,
     ...(goal ? { goal } : {}),
@@ -197,6 +203,7 @@ function normalizeIntentFields(
  */
 export function fingerprintCreateClientIntent(intent: CreateClientIntent): string {
   const { catalogueRevision: _precondition, ...identity } = intent;
+
   return sha256Hex(JSON.stringify(identity));
 }
 
@@ -219,6 +226,7 @@ function normalizeClientTarget(input: CreateClientTargetInput): ClientCreateTarg
       };
     default: {
       const exhaustive: never = input;
+
       return exhaustive;
     }
   }
@@ -227,6 +235,7 @@ function normalizeClientTarget(input: CreateClientTargetInput): ClientCreateTarg
 function isValidBranchName(branch: string): boolean {
   try {
     validateBranchName(branch);
+
     return true;
   } catch {
     return false;
@@ -234,6 +243,9 @@ function isValidBranchName(branch: string): boolean {
 }
 
 function normalizeOverride(value: string | undefined): ClientOverride {
-  if (value === undefined) return { kind: 'omitted' };
+  if (value === undefined) {
+    return { kind: 'omitted' };
+  }
+
   return { kind: 'explicit', value };
 }

@@ -84,7 +84,9 @@ export interface RuntimeAppDependencies {
 export const RUNTIME_FASTIFY_OPTIONS = {
   // Above the longest schema-legal path parameter (a 200 character id), so the schema answers 404 or
   // 400 instead of the router answering 414 FST_ERR_MAX_PARAM_LENGTH (Fastify's default is 100).
-  maxParamLength: 256,
+  routerOptions: {
+    maxParamLength: 256,
+  },
   logger: {
     level: 'warn',
     stream: process.stderr,
@@ -106,6 +108,7 @@ export async function createRuntimeApp(
 ): Promise<FastifyInstance> {
   const app = Fastify(RUNTIME_FASTIFY_OPTIONS);
   await configureRuntimeApp(app, config, dependencies);
+
   return app;
 }
 
@@ -127,10 +130,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
               showcase: true,
               scenarios: dependencies.demoScenarios === true,
             }),
-          {
-            references: dependencies.sessions?.references,
-            documentSource: dependencies.documents?.source,
-          },
+          { references: dependencies.sessions?.references },
         )
       : undefined;
   const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
@@ -153,7 +153,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   };
   const sessionReferences: SessionReferenceOwner | undefined =
     demo?.sessionReferences ?? dependencies.sessions?.references;
-  const documentSource = demo?.documentSource ?? dependencies.documents?.source;
+  // Demo mode serves the real document read routes from the demo directories.
+  const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
   // Project mode: the Engine is the source of the workspace `documents` section, unless a
   // contribution was injected (tests, demo).
   const engine = dependencies.specs?.engine;
@@ -192,12 +193,17 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
     }),
     createDocumentsFeature({
-      source: documentSource,
-      legacyDemoRead: documentSource !== undefined,
-      ...(dependencies.documents?.readSource
-        ? { readSource: dependencies.documents.readSource }
-        : {}),
+      ...(documentReadSource ? { readSource: documentReadSource } : {}),
       ...(engine ? { engine } : {}),
+      // The demo emulates the writes under `/api/demo/...`; the real write routes are project-only.
+      ...(demo ? { writeRoutes: false } : {}),
+      operations: {
+        registry: progressRegistry,
+        ...(dependencies.operations?.now ? { now: dependencies.operations.now } : {}),
+      },
+      ...(dependencies.documents?.writeSource
+        ? { writeSource: dependencies.documents.writeSource }
+        : {}),
     }),
     createSessionsFeature({
       ...(engine ? { engine } : {}),
@@ -236,6 +242,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     },
     (_request, reply) => {
       reply.header('Cache-Control', 'no-store');
+
       return {
         dataMode: mode,
       };
@@ -246,10 +253,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     await feature.register?.(app);
   }
 
-  if (demo) registerDemoRoutes(app, demo, { registry: progressRegistry, stream: progressStream });
+  if (demo) {
+    registerDemoRoutes(app, demo, { registry: progressRegistry, stream: progressStream });
+  }
 
   if (dependencies.webApp) {
     registerRuntimeWebApp(app, dependencies.webApp);
+
     return;
   }
 

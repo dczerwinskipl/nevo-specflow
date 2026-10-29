@@ -1,3 +1,4 @@
+import { documentContentFixture } from '../../../../test-support/documents/fixtures';
 import { within, waitFor } from 'storybook/test';
 import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -48,12 +49,14 @@ export function TaskWorkbenchFixture({
       fixture.resources[2]!.title = 'Missing material';
       fixture.resources[2]!.link = { state: 'unavailable', reason: 'not_found' };
       const human = fixture.response.snapshot!.sections.humanRequirements;
-      if (human.state === 'available')
+      if (human.state === 'available') {
         human.data.items[0]!.evidence.push(
           { title: 'Session evidence without a reader', link: fixture.resources[1]!.link },
           { title: 'Missing evidence', link: fixture.resources[2]!.link },
         );
+      }
     }
+
     const query = createSpecFlowQueryClient();
     query.setQueryDefaults(taskKeys.detail('admission', 'TASK-03'), { staleTime: Infinity });
     query.setQueryData(taskKeys.detail('admission', 'TASK-03'), fixture.response);
@@ -62,14 +65,18 @@ export function TaskWorkbenchFixture({
     if (fresh.snapshot) {
       fresh.snapshot.revision = 'fixture-2';
       const source = fresh.snapshot.sections.resources;
-      if (source.state === 'available' && source.data.page) source.data.page.token = 'fixture-2';
+      if (source.state === 'available' && source.data.page) {
+        source.data.page.token = 'fixture-2';
+      }
     }
+
     const services = createSpecFlowAppServices({
       taskApi: {
         getTask: () => Promise.resolve(expired ? fresh : fixture.response),
         getResources: () => {
           if (pageState === 'expired' && !expired) {
             expired = true;
+
             return Promise.reject(
               new HttpClientError('Snapshot expired', {
                 kind: 'http',
@@ -78,6 +85,7 @@ export function TaskWorkbenchFixture({
               }),
             );
           }
+
           return pageState === 'error'
             ? Promise.reject(new Error('Page unavailable'))
             : Promise.resolve({
@@ -154,18 +162,21 @@ export function TaskWorkbenchFixture({
       },
       documentApi: {
         getDocument: (_specId, documentId) =>
-          Promise.resolve({
-            id: documentId,
-            title: fixture.response.task.title,
-            content:
-              documentId === 'history-guide'
-                ? '# Historical verification record\n\nMaterial from the selected completed attempt.'
-                : fixture.document,
-            revision: 'fixture-1',
-          }),
+          Promise.resolve(
+            documentContentFixture({
+              id: documentId,
+              title: fixture.response.task.title,
+              content:
+                documentId === 'history-guide'
+                  ? '# Historical verification record\n\nMaterial from the selected completed attempt.'
+                  : fixture.document,
+              revision: 'fixture-1',
+            }),
+          ),
       },
     });
     const workspace = createSpecificationWorkspaceFixture('working', 'admission');
+
     return {
       fixture,
       query,
@@ -182,6 +193,7 @@ export function TaskWorkbenchFixture({
       },
     };
   }, [scenario, stress, pageState, emptyHistoryHints, mixedReferences]);
+
   return (
     <StoryLocalization>
       <QueryClientProvider client={setup.query}>
@@ -206,8 +218,10 @@ export function TaskWorkbenchFixture({
     </StoryLocalization>
   );
 }
+
 function ConnectedTaskFixture() {
   const taskState = useSpecificationTask('admission', 'TASK-03');
+
   return (
     <SpecificationTaskPage
       specId="admission"
@@ -218,6 +232,7 @@ function ConnectedTaskFixture() {
     />
   );
 }
+
 const meta = {
   title: 'SpecFlow/Screens/Task Workbench',
   tags: ['visual'],
@@ -231,10 +246,12 @@ export const HumanWithGates: Story = {};
 export const RichHuman: Story = { args: { scenario: 'rich-human' } };
 export const RichLongContent: Story = { args: { scenario: 'rich-human', stress: true } };
 function assertWrappedHint(reference: HTMLElement) {
-  if ((reference.closest('li')?.clientWidth ?? 0) < 640)
+  if ((reference.closest('li')?.clientWidth ?? 0) < 640) {
     throw new Error(
       'This regression must exercise a row at or above the 40rem truncation threshold',
     );
+  }
+
   const style = getComputedStyle(reference);
   const bounds = reference.getBoundingClientRect();
   const range = reference.ownerDocument.createRange();
@@ -244,17 +261,21 @@ function assertWrappedHint(reference: HTMLElement) {
     style.whiteSpace === 'nowrap' ||
     lines.length < 2 ||
     lines.some((line) => line.right > bounds.right + 1 || line.bottom > bounds.bottom + 1)
-  )
+  ) {
     throw new Error('Every line, including the reference suffix, must fit the wrapping primary');
+  }
 }
+
 const hintsContract: NonNullable<Story['play']> = async ({
   canvas,
   canvasElement,
   userEvent,
   args,
 }) => {
-  if (args.preview)
+  if (args.preview) {
     await userEvent.click(await canvas.findByRole('button', { name: /Preserve .*session/ }));
+  }
+
   if (args.emptyHistoryHints) {
     if (!canvasElement.querySelector('[data-layout="split"]')) {
       await userEvent.click(await canvas.findByRole('button', { name: 'More actions' }));
@@ -264,6 +285,7 @@ const hintsContract: NonNullable<Story['play']> = async ({
         }),
       );
     }
+
     await userEvent.click(await canvas.findByRole('button', { name: 'Attempt details' }));
     await canvas.findByRole('heading', { name: 'Original session implementation' });
   } else {
@@ -279,19 +301,26 @@ const hintsContract: NonNullable<Story['play']> = async ({
     );
     await canvas.findByRole('heading', { name: 'Declared work transitions' });
   }
+
   if (!args.stress) {
-    if (canvas.queryByRole('heading', { name: 'Hints' }))
+    if (canvas.queryByRole('heading', { name: 'Hints' })) {
       throw new Error('Known empty hints must omit the entire region');
+    }
+
     return;
   }
-  if (canvas.queryByText(`${'src/very-long-path/'.repeat(12)}session.ts`))
+
+  if (canvas.queryByText(`${'src/very-long-path/'.repeat(12)}session.ts`)) {
     throw Error('Raw reference must be collapsed on the first scan');
+  }
+
   await userEvent.click(canvas.getAllByRole('button', { name: 'Full reference' })[2]!);
   const reference = await canvas.findByText(`${'src/very-long-path/'.repeat(12)}session.ts`, {
     exact: true,
   });
   await waitFor(() => assertWrappedHint(reference));
 };
+
 export const HintsLongFull: Story = {
   args: { scenario: 'rich-human', stress: true },
   tags: ['contract', '!visual'],
@@ -318,6 +347,7 @@ export const HintsLongHistory: Story = {
         }),
       );
     }
+
     await userEvent.click(await canvas.findByRole('button', { name: 'Attempt details' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Full reference' }));
     const reference = await canvas.findByText(
@@ -401,7 +431,10 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
     }),
   );
   const preview = canvasElement.querySelector<HTMLElement>('[data-task-details="preview"]');
-  if (!preview) throw new Error('Expected Task preview');
+  if (!preview) {
+    throw new Error('Expected Task preview');
+  }
+
   const content = within(preview);
   await userEvent.click(await content.findByRole('button', { name: 'Show more' }));
   await content.findByRole('heading', { name: 'Section 100' });
@@ -416,9 +449,14 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
       /auto|scroll/.test(getComputedStyle(owner).overflowY) &&
       owner.scrollHeight > owner.clientHeight + 1
     )
-  )
+  ) {
     owner = owner.parentElement;
-  if (!owner) throw new Error('Expected a scrolling viewport');
+  }
+
+  if (!owner) {
+    throw new Error('Expected a scrolling viewport');
+  }
+
   owner.scrollTop = Math.max(0, owner.scrollTop - 100);
   const savedTop = owner.scrollTop;
   await userEvent.click(resource);
@@ -436,25 +474,35 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
           /auto|scroll/.test(getComputedStyle(restoredOwner).overflowY) &&
           restoredOwner.scrollHeight > restoredOwner.clientHeight + 1
         )
-      )
+      ) {
         restoredOwner = restoredOwner.parentElement;
-      if (!restoredOwner || Math.abs(restoredOwner.scrollTop - savedTop) > 2)
+      }
+
+      if (!restoredOwner || Math.abs(restoredOwner.scrollTop - savedTop) > 2) {
         throw new Error(
           `Back must restore the exact viewport position: ${savedTop} -> ${restoredOwner?.scrollTop}`,
         );
-      if (canvasElement.ownerDocument.activeElement !== restored)
+      }
+
+      if (canvasElement.ownerDocument.activeElement !== restored) {
         throw new Error('Back must restore resource focus');
+      }
     },
     { timeout: 5000 },
   );
   const returned = canvasElement.querySelector<HTMLElement>('[data-task-details="preview"]');
-  if (!returned) throw new Error('Expected preview after Back');
+  if (!returned) {
+    throw new Error('Expected preview after Back');
+  }
+
   const less = within(returned).getAllByRole('button', { name: 'Show less' });
   await userEvent.click(less.at(-1)!);
   const opener = await within(returned).findByRole('button', { name: 'Show more' });
-  if (canvasElement.ownerDocument.activeElement !== opener)
+  if (canvasElement.ownerDocument.activeElement !== opener) {
     throw new Error('Collapse must restore the description opener');
+  }
 };
+
 export const PreviewScrollDesktop: Story = {
   args: { preview: true, stress: true },
   tags: ['contract'],
@@ -471,12 +519,14 @@ const evidenceContract: NonNullable<Story['play']> = async ({
   userEvent,
   args,
 }) => {
-  if (args.preview)
+  if (args.preview) {
     await userEvent.click(
       await canvas.findByRole('button', {
         name: 'Preserve session and navigation context',
       }),
     );
+  }
+
   await userEvent.click(await canvas.findByRole('button', { name: 'Verify session behaviour' }));
   const evidence = await canvas.findByRole('button', { name: 'Verification instructions' });
   // Let the workspace's entering-screen focus settle before exercising keyboard activation.
@@ -489,12 +539,14 @@ const evidenceContract: NonNullable<Story['play']> = async ({
   await userEvent.click(await canvas.findByRole('button', { name: 'Back' }));
   await waitFor(() => {
     const restored = canvas.getByRole('button', { name: 'Verification instructions' });
-    if (canvasElement.ownerDocument.activeElement !== restored)
+    if (canvasElement.ownerDocument.activeElement !== restored) {
       throw new Error('Back must restore evidence focus in its requirement');
+    }
   });
   await canvas.findByRole('heading', { name: 'Declared work transitions' });
   await canvas.findByRole('heading', { name: 'Requirement decisions' });
 };
+
 export const EvidenceFull: Story = { tags: ['contract'], play: evidenceContract };
 export const EvidencePreview: Story = {
   args: { preview: true },
@@ -512,12 +564,14 @@ const flowContract: NonNullable<Story['play']> = async ({
   userEvent,
   args,
 }) => {
-  if (args.preview)
+  if (args.preview) {
     await userEvent.click(
       await canvas.findByRole('button', {
         name: 'Preserve session and navigation context',
       }),
     );
+  }
+
   await userEvent.click(await canvas.findByRole('button', { name: 'Work actions' }));
   await userEvent.click(
     await within(canvasElement.ownerDocument.body).findByRole('menuitem', { name: 'Flow details' }),
@@ -529,6 +583,7 @@ const flowContract: NonNullable<Story['play']> = async ({
   await canvas.findByText('To: done · Completed successfully');
   await canvas.findByText(/verify · Human · Current position · Attempt 1/);
 };
+
 export const FlowFull: Story = { tags: ['contract'], play: flowContract };
 export const FlowPreview: Story = {
   args: { preview: true },
@@ -550,24 +605,32 @@ export const FlowFullNarrow: Story = {
 };
 
 const rowCompositionContract: NonNullable<Story['play']> = async ({ canvas, userEvent, args }) => {
-  if (args.preview)
+  if (args.preview) {
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
     );
+  }
+
   const gate = await canvas.findByRole('button', { name: 'Independent verification 1' });
   const row = gate.closest('li')!.getBoundingClientRect();
   const title = gate.getBoundingClientRect();
-  if (title.left - row.left > 9)
+  if (title.left - row.left > 9) {
     throw new Error('Requirements must not reserve an empty utility column');
-  if (row.height < 36 || row.height > 40)
+  }
+
+  if (row.height < 36 || row.height > 40) {
     throw new Error('A short requirement must retain compact activation geometry');
+  }
+
   const resource = await canvas.findByRole('button', { name: 'Verification material 1' });
   if (
     resource.getBoundingClientRect().left - resource.closest('li')!.getBoundingClientRect().left >
     9
-  )
+  ) {
     throw new Error('Resources must not reserve an empty utility column');
+  }
 };
+
 export const RowCompositionFull: Story = { tags: ['contract'], play: rowCompositionContract };
 export const RowCompositionPreview: Story = {
   args: { preview: true },
@@ -586,8 +649,9 @@ export const HistoryComposition: Story = {
       'Implement the original session behaviour before manual verification.',
       { selector: 'p' },
     );
-    if (purpose.getBoundingClientRect().top < result.getBoundingClientRect().bottom + 3)
+    if (purpose.getBoundingClientRect().top < result.getBoundingClientRect().bottom + 3) {
       throw new Error('History purpose must occupy its own band with a gap after the result');
+    }
   },
 };
 export const UnavailableComposition: Story = {
@@ -596,8 +660,9 @@ export const UnavailableComposition: Story = {
   play: async ({ canvas }) => {
     const identity = await canvas.findByText('TASK-03 · admission');
     const source = (await canvas.findAllByText('This source is unavailable.'))[0]!;
-    if (source.getBoundingClientRect().top < identity.getBoundingClientRect().bottom)
+    if (source.getBoundingClientRect().top < identity.getBoundingClientRect().bottom) {
       throw new Error('Unavailable source must start below the Task identity');
+    }
   },
 };
 
@@ -607,10 +672,12 @@ const richContextContract: NonNullable<Story['play']> = async ({
   userEvent,
   args,
 }) => {
-  if (args.preview)
+  if (args.preview) {
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
     );
+  }
+
   const opener = await canvas.findByRole('button', { name: 'Details' });
   await userEvent.click(opener);
   await canvas.findByRole('heading', { name: 'Step details' });
@@ -631,8 +698,9 @@ const richContextContract: NonNullable<Story['play']> = async ({
     if (
       canvasElement.ownerDocument.activeElement !==
       canvas.getByRole('button', { name: 'Verification instructions' })
-    )
+    ) {
       throw Error('Evidence focus lost');
+    }
   });
   const close = canvas.queryByRole('button', { name: 'Close secondary content' });
   await userEvent.click(
@@ -643,10 +711,12 @@ const richContextContract: NonNullable<Story['play']> = async ({
   await waitFor(() => {
     if (
       canvasElement.ownerDocument.activeElement !== canvas.getByRole('button', { name: 'Details' })
-    )
+    ) {
       throw Error('Step opener focus lost');
+    }
   });
 };
+
 export const CompleteHumanFull: Story = {
   args: { scenario: 'rich-human' },
   tags: ['contract'],
@@ -682,6 +752,7 @@ const historyContextContract: NonNullable<Story['play']> = async ({
       }),
     );
   }
+
   await canvas.findByRole('heading', { name: 'Preserve session and navigation context' });
   if (!canvasElement.querySelector('[data-layout="split"]')) {
     await userEvent.click(await canvas.findByRole('button', { name: 'More actions' }));
@@ -691,6 +762,7 @@ const historyContextContract: NonNullable<Story['play']> = async ({
       }),
     );
   }
+
   await canvas.findByRole('button', { name: 'Attempt details' });
   const history = canvas
     .getByRole('button', { name: 'Attempt details' })
@@ -724,14 +796,17 @@ const historyContextContract: NonNullable<Story['play']> = async ({
       canvas.getByRole('button', {
         name: 'Historical verification record · build · Attempt 2',
       })
-    )
+    ) {
       throw Error('History resource focus lost');
+    }
   });
   const hide = canvas.getByRole('button', { name: 'Hide attempt details' });
   await userEvent.click(hide);
-  if (canvasElement.ownerDocument.activeElement !== hide)
+  if (canvasElement.ownerDocument.activeElement !== hide) {
     throw Error('History collapse focus lost');
+  }
 };
+
 export const HistoricalAttempt: Story = { tags: ['contract'], play: historyContextContract };
 export const HistoricalAttemptNarrow: Story = {
   ...HistoricalAttempt,
@@ -757,16 +832,24 @@ export const MixedReferenceReaders: Story = {
   tags: ['contract'],
   play: async ({ canvas, userEvent }) => {
     await canvas.findByText('Session without a reader');
-    if (canvas.queryByRole('button', { name: 'Session without a reader' }))
+    if (canvas.queryByRole('button', { name: 'Session without a reader' })) {
       throw Error('Unsupported reader must not offer navigation');
-    if (canvas.queryByRole('button', { name: 'Missing material' }))
+    }
+
+    if (canvas.queryByRole('button', { name: 'Missing material' })) {
       throw Error('Unavailable material must not offer navigation');
+    }
+
     await userEvent.click(await canvas.findByRole('button', { name: 'Details' }));
     await canvas.findByText('Session evidence without a reader');
-    if (canvas.queryByRole('button', { name: 'Session evidence without a reader' }))
+    if (canvas.queryByRole('button', { name: 'Session evidence without a reader' })) {
       throw Error('Unsupported evidence reader must not offer navigation');
-    if (canvas.queryByRole('button', { name: 'Missing evidence' }))
+    }
+
+    if (canvas.queryByRole('button', { name: 'Missing evidence' })) {
       throw Error('Unavailable evidence must not offer navigation');
+    }
+
     await canvas.findByRole('button', { name: 'Verification instructions' });
   },
 };

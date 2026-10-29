@@ -136,8 +136,14 @@ const isUnknown = (phase: CreatePhase): phase is UnknownPhase =>
 
 /** The phase a definite or unknown failure leads to. */
 export function phaseOfFailure(failure: CreateFailure): CreatePhase {
-  if (failure.kind === 'uncertain') return 'outcome-unknown';
-  if (failure.kind === 'recovery-required') return 'recovery-required';
+  if (failure.kind === 'uncertain') {
+    return 'outcome-unknown';
+  }
+
+  if (failure.kind === 'recovery-required') {
+    return 'recovery-required';
+  }
+
   return 'failed';
 }
 
@@ -147,7 +153,7 @@ export function createOperationReducer(
 ): CreateOperationState {
   switch (event.type) {
     case 'submit-started': {
-      if (state.phase === 'idle' || state.phase === 'failed')
+      if (state.phase === 'idle' || state.phase === 'failed') {
         return {
           ...state,
           phase: 'submitting',
@@ -159,8 +165,10 @@ export function createOperationReducer(
           submitFailed: false,
           retained: false,
         };
+      }
+
       // An unknown outcome stays on screen while it is being checked.
-      if (isUnknown(state.phase))
+      if (isUnknown(state.phase)) {
         return {
           ...state,
           phase: 'submitting',
@@ -170,8 +178,11 @@ export function createOperationReducer(
           connectionLost: false,
           submitFailed: false,
         };
+      }
+
       return state;
     }
+
     case 'request-prepared':
       return state.phase === 'submitting' ? { ...state, sent: event.sent } : state;
     case 'submit-accepted':
@@ -299,6 +310,7 @@ export function selectCreateOperationFlags(state: CreateOperationState): CreateO
   const recovery = state.failure?.kind === 'recovery-required';
   const monitoring = state.phase === 'monitoring';
   const busy = state.phase === 'submitting' || monitoring;
+
   return {
     busy,
     monitoring,

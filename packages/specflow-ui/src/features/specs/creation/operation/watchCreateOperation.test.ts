@@ -12,6 +12,7 @@ import {
   resumeCreateOperation,
   submitCreateOperation,
 } from './watchCreateOperation';
+import { archetypeSelectionFixture } from '../workspace/model/createRequest.test-support';
 
 const operationId = '11111111-1111-4111-8111-111111111111';
 const created: CreatedSpec = {
@@ -24,7 +25,7 @@ const created: CreatedSpec = {
   relativeManifestPath: 'specs/active/title/specification.yaml',
   documentIds: ['overview'],
 };
-const input = { title: 'Title', operationId };
+const input = { title: 'Title', operationId, ...archetypeSelectionFixture };
 
 function apiError(kind: ApiError['kind'], outcome: ApiError['outcome'], code?: string): ApiError {
   return new ApiError({ kind, operation: 'specs.create', outcome, retryable: false, code });
@@ -46,6 +47,7 @@ function fakeApi(
     inspectOperation: vi.fn(() => {
       const next = inspections[Math.min(call, inspections.length - 1)];
       call += 1;
+
       return next
         ? next()
         : Promise.resolve({
@@ -55,6 +57,7 @@ function fakeApi(
           } as const);
     }),
   };
+
   return { api: raw as unknown as ProjectCreationApi, raw };
 }
 
@@ -273,6 +276,7 @@ describe('submitCreateOperation', () => {
       const { api, raw } = fakeApi([
         () => {
           stream.set('terminal');
+
           return inProgress();
         },
         () => Promise.resolve(created),

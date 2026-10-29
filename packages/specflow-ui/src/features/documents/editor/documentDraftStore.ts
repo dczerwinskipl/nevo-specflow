@@ -1,5 +1,5 @@
+import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import type { EditorView } from '@codemirror/view';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { createKeyedStore, type KeyedStore } from '../../../shared/state/keyedStore';
 import type { ScrollAnchor } from './documentScrollAnchor';
 
@@ -30,6 +30,7 @@ export const documentDraftKey = (spec: string, document: string) =>
  */
 export function parseDocumentDraftKey(key: string): { specId: string; documentId: string } {
   const at = key.indexOf(':');
+
   return {
     specId: decodeURIComponent(key.slice(0, at)),
     documentId: key.slice(at + 1),
@@ -40,11 +41,17 @@ export function parseDocumentDraftKey(key: string): { specId: string; documentId
 export const isDraftDirty = (draft: Pick<DocumentDraft, 'content' | 'baseline'>): boolean =>
   draft.content !== draft.baseline;
 
-/** An opened editable document defaults to Preview, not Edit; see DocumentEditor. */
-export function draftFor(record: SpecificationDocumentResponse): DocumentDraft {
+/**
+ * An opened editable document defaults to Preview, not Edit; see DocumentEditor. Images and files
+ * that cannot be shown carry no `content`: the editor uses this only as a view-only value and never
+ * stores it (no draft, never dirty; see `hasTextDraft`).
+ */
+export function draftFor(record: DocumentContent): DocumentDraft {
+  const content = record.content ?? '';
+
   return {
-    content: record.content,
-    baseline: record.content,
+    content,
+    baseline: content,
     revision: record.revision,
     editing: false,
   };
@@ -90,12 +97,15 @@ export interface DocumentDraftStore {
   subscribeSpec(specId: string, listener: () => void): () => void;
   getAnchor(specId: string, documentId: string): ScrollAnchor | undefined;
   setAnchor(specId: string, documentId: string, anchor: ScrollAnchor): void;
+  /** Forgets a reading position (the document moved to another id). */
+  removeAnchor(specId: string, documentId: string): void;
 }
 
 export function createDocumentDraftStore(): DocumentDraftStore {
   const drafts: KeyedStore<DocumentDraft> = createKeyedStore();
   const anchors = new Map<string, ScrollAnchor>();
   const incarnations = new Map<string, number>();
+
   return {
     get: (s, d) => drafts.get(documentDraftKey(s, d)),
     set: (s, d, draft) => drafts.set(documentDraftKey(s, d), draft),
@@ -116,17 +126,26 @@ export function createDocumentDraftStore(): DocumentDraftStore {
       const ids: string[] = [];
       for (const key of drafts.keys()) {
         const parsed = parseDocumentDraftKey(key);
-        if (parsed.specId !== specId) continue;
+        if (parsed.specId !== specId) {
+          continue;
+        }
+
         const draft = drafts.get(key);
-        if (draft && isDraftDirty(draft)) ids.push(parsed.documentId);
+        if (draft && isDraftDirty(draft)) {
+          ids.push(parsed.documentId);
+        }
       }
+
       return ids;
     },
     subscribeSpec: (specId, listener) =>
       drafts.subscribeAll((key) => {
-        if (parseDocumentDraftKey(key).specId === specId) listener();
+        if (parseDocumentDraftKey(key).specId === specId) {
+          listener();
+        }
       }),
     getAnchor: (s, d) => anchors.get(documentDraftKey(s, d)),
     setAnchor: (s, d, anchor) => void anchors.set(documentDraftKey(s, d), anchor),
+    removeAnchor: (s, d) => void anchors.delete(documentDraftKey(s, d)),
   };
 }

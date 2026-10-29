@@ -26,7 +26,8 @@ function content(overrides: Partial<DocumentContent> = {}): DocumentContent {
 }
 
 function tree(revision = 'tree-1'): DocumentTree {
-  const not = { available: false, reason: 'not-implemented' } as const;
+  const not = { available: false, reason: 'archived' } as const;
+
   return {
     revision,
     archetype: { id: 'minimal', version: 1 },
@@ -43,6 +44,7 @@ function tree(revision = 'tree-1'): DocumentTree {
 
 async function app(source: DocumentReadSource) {
   const config = passwordConfig();
+
   return createRuntimeApp(
     { ...config, authentication: { ...config.authentication, mode: 'none' } },
     { documents: { readSource: source } },
@@ -58,6 +60,7 @@ describe('GET /api/specs/:specId/documents/:documentId', () => {
         if (documentId !== 'report') {
           return Promise.reject(new DocumentError('DOCUMENT_NOT_FOUND', 'unknown'));
         }
+
         return revision && revision !== 'v2'
           ? Promise.reject(new DocumentError('DOCUMENT_REVISION_UNAVAILABLE', 'stale'))
           : Promise.resolve(content());
@@ -120,6 +123,7 @@ describe('GET /api/specs/:specId/documents/:documentId', () => {
               editable: false,
             });
             delete (image as { type?: string }).type;
+
             return image;
           })(),
         ),
@@ -278,6 +282,7 @@ describe('authorization of the read routes', () => {
         expect(hidden.statusCode).toBe(403);
         expect(hidden.json()).toEqual({ error: 'forbidden' });
       }
+
       expect(
         (await server.inject({ url: '/api/specs/visible/document-tree', headers })).statusCode,
       ).toBe(200);

@@ -58,6 +58,7 @@ function hexToOklch(value: string): OklchColor {
   const lightness = 0.2104542553 * lRoot + 0.793617785 * mRoot - 0.0040720468 * sRoot;
   const a = 1.9779984951 * lRoot - 2.428592205 * mRoot + 0.4505937099 * sRoot;
   const b = 0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.808675766 * sRoot;
+
   return {
     l: lightness,
     c: Math.hypot(a, b),
@@ -75,6 +76,7 @@ function oklchToLinearRgb({ l, c, h }: OklchColor) {
   const linearL = lRoot ** 3;
   const linearM = mRoot ** 3;
   const linearS = sRoot ** 3;
+
   return [
     4.0767416621 * linearL - 3.3077115913 * linearM + 0.2309699292 * linearS,
     -1.2684380046 * linearL + 2.6097574011 * linearM - 0.3413193965 * linearS,
@@ -107,6 +109,7 @@ function gamutMappedRgb(color: OklchColor) {
       }
     }
   }
+
   return channels.map((channel) => clamp(linearToSrgb(clamp(channel, 0, 1)), 0, 1));
 }
 
@@ -137,12 +140,15 @@ function ribbonHueOffsets(hue: number) {
   if (hue >= 130 && hue < 210) {
     return [-28, -10, 10] as const;
   }
+
   if (hue >= 210 && hue < 280) {
     return [-85, -50, 10] as const;
   }
+
   if (hue >= 280 && hue < 335) {
     return [-35, -20, 10] as const;
   }
+
   return [-28, -10, 10] as const;
 }
 
@@ -157,6 +163,7 @@ function deriveBackColor(
 
 function mixOklch(first: OklchColor, second: OklchColor, amount: number): OklchColor {
   const hueDelta = ((second.h - first.h + 540) % 360) - 180;
+
   return {
     l: first.l + (second.l - first.l) * amount,
     c: first.c + (second.c - first.c) * amount,
@@ -181,6 +188,7 @@ export function deriveNevoMarkPalette({
     });
     const ribbonEnd = toHex(secondary);
     const shadowBase = mixOklch(primary, secondary, 0.35);
+
     return {
       ribbonStart,
       ribbonMid,
@@ -191,10 +199,12 @@ export function deriveNevoMarkPalette({
       shadow: toHex({ l: 0.18, c: Math.min(shadowBase.c * 0.25, 0.04), h: shadowBase.h }),
     };
   }
+
   const hueOffsets = ribbonHueOffsets(primary.h);
   const ribbonStart = transform(primary, 0.12, 1, hueOffsets[0]);
   const ribbonMid = transform(primary, 0.06, 1.05, hueOffsets[1]);
   const ribbonEnd = transform(primary, -0.05, 1.05, hueOffsets[2]);
+
   return {
     ribbonStart,
     ribbonMid,

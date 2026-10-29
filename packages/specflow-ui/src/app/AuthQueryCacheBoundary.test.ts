@@ -33,6 +33,7 @@ function setup(
   const detach = bindAuthQueryCache(auth, queryClient);
   const key = ['specifications', 'a', 'document', 'notes'];
   queryClient.setQueryData(key, { data: 'private' });
+
   return { auth, queryClient, detach, key };
 }
 

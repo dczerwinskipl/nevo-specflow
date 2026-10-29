@@ -40,9 +40,18 @@ import {
 } from './nestedContent';
 
 function expectedSlotNodeType(slot: FigmaSlotDefinition): SceneNode['type'] {
-  if (slot.kind === 'text') return 'TEXT';
-  if (slot.kind === 'asset-swap') return 'INSTANCE';
-  if (slot.kind === 'slot') return 'SLOT';
+  if (slot.kind === 'text') {
+    return 'TEXT';
+  }
+
+  if (slot.kind === 'asset-swap') {
+    return 'INSTANCE';
+  }
+
+  if (slot.kind === 'slot') {
+    return 'SLOT';
+  }
+
   return 'FRAME';
 }
 
@@ -56,6 +65,7 @@ export function findPublicSlotNode(
   expectedType: SceneNode['type'],
 ) {
   const stableId = `${capture.stableId}/slot/${slotName}`;
+
   return component.findAll(
     (node) => node.type === expectedType && node.getPluginData(DATA_KEY) === stableId,
   )[0];
@@ -71,12 +81,23 @@ export function applyPublicSlotSizing(
   node.layoutGrow = 0;
   node.layoutAlign = 'INHERIT';
   if (parent.layoutMode === 'VERTICAL') {
-    if (style.widthSizing === 'fill') node.layoutAlign = 'STRETCH';
-    if (style.heightSizing === 'fill') node.layoutGrow = 1;
+    if (style.widthSizing === 'fill') {
+      node.layoutAlign = 'STRETCH';
+    }
+
+    if (style.heightSizing === 'fill') {
+      node.layoutGrow = 1;
+    }
   } else if (parent.layoutMode === 'HORIZONTAL') {
-    if (style.heightSizing === 'fill') node.layoutAlign = 'STRETCH';
-    if (style.widthSizing === 'fill') node.layoutGrow = 1;
+    if (style.heightSizing === 'fill') {
+      node.layoutAlign = 'STRETCH';
+    }
+
+    if (style.widthSizing === 'fill') {
+      node.layoutGrow = 1;
+    }
   }
+
   node.layoutSizingHorizontal = layoutSizingForChild(
     style.widthSizing,
     node.layoutMode,
@@ -121,8 +142,14 @@ function configurePublicContainerSlot(
     slot.bindings?.background,
   );
   const border = colorVariableFor(ir, resources, slot.style.borderTopColor, slot.bindings?.border);
-  if (background) bindPaintVariable(node, 'fills', background);
-  if (border) bindPaintVariable(node, 'strokes', border);
+  if (background) {
+    bindPaintVariable(node, 'fills', background);
+  }
+
+  if (border) {
+    bindPaintVariable(node, 'strokes', border);
+  }
+
   applyPublicSlotSizing(node, slot.style, parent);
   applyChildPlacement(node, parent, slot.style);
 }
@@ -136,9 +163,15 @@ export function reconcilePublicSlotLayouts(
   resources: DesignResources,
 ) {
   for (const [slotName, slotSpec] of Object.entries(spec.slots)) {
-    if (slotSpec.kind !== 'container' && slotSpec.kind !== 'slot') continue;
+    if (slotSpec.kind !== 'container' && slotSpec.kind !== 'slot') {
+      continue;
+    }
+
     const slot = capture.slots[slotName];
-    if (!slot || (slot.kind !== 'container' && slot.kind !== 'slot')) continue;
+    if (!slot || (slot.kind !== 'container' && slot.kind !== 'slot')) {
+      continue;
+    }
+
     const expectedType =
       slotSpec.kind === 'slot' && component.type === 'COMPONENT' ? 'SLOT' : 'FRAME';
     const node = findPublicSlotNode(component, capture, slotName, expectedType);
@@ -150,6 +183,7 @@ export function reconcilePublicSlotLayouts(
     ) {
       continue;
     }
+
     configurePublicContainerSlot(node as PublicContainerNode, slot, parent, ir, resources);
   }
 }
@@ -180,9 +214,14 @@ export function recoverPublicSlotNodes(
     const compatible = matches.filter((node) => node.type === expectedType);
     const keep = compatible[0];
     for (const duplicate of matches) {
-      if (duplicate !== keep) duplicate.remove();
+      if (duplicate !== keep) {
+        duplicate.remove();
+      }
     }
-    if (keep && keep.parent !== component) component.appendChild(keep);
+
+    if (keep && keep.parent !== component) {
+      component.appendChild(keep);
+    }
   }
 }
 
@@ -196,14 +235,23 @@ export async function reconcileNestedSlotOverrides(
   configureComponent: ConfigureNestedComponent,
 ) {
   for (const [slotName, slotSpec] of Object.entries(spec.slots)) {
-    if (slotSpec.kind !== 'container' && slotSpec.kind !== 'slot') continue;
+    if (slotSpec.kind !== 'container' && slotSpec.kind !== 'slot') {
+      continue;
+    }
+
     const slot = capture.slots[slotName];
-    if (!slot || (slot.kind !== 'container' && slot.kind !== 'slot')) continue;
+    if (!slot || (slot.kind !== 'container' && slot.kind !== 'slot')) {
+      continue;
+    }
+
     const stableId = `${capture.stableId}/slot/${slotName}`;
     const expectedType = slotSpec.kind === 'slot' ? 'SLOT' : 'FRAME';
     const host = findPublicSlotNode(component, capture, slotName, expectedType) as
       FrameNode | SlotNode | undefined;
-    if (!host) continue;
+    if (!host) {
+      continue;
+    }
+
     await syncNestedOverridesInPlace(
       host,
       slot.children,
@@ -214,11 +262,13 @@ export async function reconcileNestedSlotOverrides(
       configureComponent,
     );
   }
+
   reconcilePublicSlotLayouts(component, capture, spec, ir, resources);
   // Nested reconciliation and slot reparenting must not be allowed to shrink
   // an explicitly authored Figma root.
   configureRoot(component, capture, ir, resources);
 }
+
 export async function upsertContainerSlot(
   component: RenderRootNode,
   capture: ComponentCaptureIR,
@@ -240,6 +290,7 @@ export async function upsertContainerSlot(
     frame = figma.createFrame();
     component.appendChild(frame);
   }
+
   frame.name = slotDisplayName(slotName, displayName);
   mark(frame, stableId);
   configurePublicContainerSlot(frame, slot, component, ir, resources);
@@ -261,11 +312,13 @@ export async function upsertContainerSlot(
     ).slots?.[slotName],
     component,
   );
+
   return frame;
 }
 
 export function nativeSlotPropertyKey(slot: SlotNode) {
   const references = slot.componentPropertyReferences as Record<string, string> | null;
+
   return references?.slotContentId;
 }
 
@@ -295,6 +348,7 @@ export async function upsertNativeSlot(
     component.insertChild(index, nativeSlot);
     legacy?.remove();
   }
+
   nativeSlot.name = slotDisplayName(slotName, slotSpec.displayName ?? slotSpec.propertyName);
   mark(nativeSlot, stableId);
   configurePublicContainerSlot(nativeSlot, slot, component, ir, resources);
@@ -313,6 +367,7 @@ export async function upsertNativeSlot(
       },
     });
   }
+
   await syncNestedChildren(
     nativeSlot,
     slot.children,
@@ -330,6 +385,7 @@ export async function upsertNativeSlot(
     ).slots?.[slotName],
     component,
   );
+
   return nativeSlot;
 }
 
@@ -362,18 +418,24 @@ export async function configureComponent(
         child.remove();
       }
     }
+
     configureRoot(component, capture, ir, resources);
+
     return;
   }
+
   const ordered: SceneNode[] = [];
   for (const [slotName, slotSpec] of Object.entries(spec.slots)) {
     const slot = capture.slots[slotName];
     if (slotSpec.kind === 'text') {
       if (slot?.kind !== 'text') {
-        if (slotSpec.required)
+        if (slotSpec.required) {
           throw new Error(`${spec.component} is missing text slot ${slotName}`);
+        }
+
         continue;
       }
+
       ordered.push(
         await upsertTextSlot(
           component,
@@ -399,10 +461,13 @@ export async function configureComponent(
       );
     } else if (slotSpec.kind === 'container') {
       if (slot?.kind !== 'container') {
-        if (slotSpec.required)
+        if (slotSpec.required) {
           throw new Error(`${spec.component} is missing container slot ${slotName}`);
+        }
+
         continue;
       }
+
       ordered.push(
         await upsertContainerSlot(
           component,
@@ -418,10 +483,13 @@ export async function configureComponent(
       );
     } else {
       if (slot?.kind !== 'slot') {
-        if (slotSpec.required)
+        if (slotSpec.required) {
           throw new Error(`${spec.component} is missing native slot ${slotName}`);
+        }
+
         continue;
       }
+
       if (component.type !== 'COMPONENT') {
         // Screens are ordinary frames. Native Figma Slots only exist inside
         // components, so a screen-level slot remains a structural container.
@@ -455,6 +523,7 @@ export async function configureComponent(
       }
     }
   }
+
   const orderedIds = new Set(ordered.map((node) => node.getPluginData(DATA_KEY)));
   for (const child of [...component.children]) {
     const stableId = child.getPluginData(DATA_KEY);
@@ -462,16 +531,20 @@ export async function configureComponent(
       child.getPluginData(MANAGED_KEY) === 'true' &&
       stableId.startsWith(`${capture.stableId}/slot/`) &&
       !orderedIds.has(stableId)
-    )
+    ) {
       child.remove();
+    }
   }
+
   ordered.forEach((node, index) => component.insertChild(index, node));
 
   const slotNodes = new Map<string, SceneNode>();
   for (const [slotName] of Object.entries(spec.slots)) {
     const stableId = `${capture.stableId}/slot/${slotName}`;
     const node = ordered.find((candidate) => candidate.getPluginData(DATA_KEY) === stableId);
-    if (node) slotNodes.set(slotName, node);
+    if (node) {
+      slotNodes.set(slotName, node);
+    }
   }
 
   // Slots are declared as a flat public API, but their rendered DOM anatomy can
@@ -511,6 +584,7 @@ export async function configureComponent(
       slotNodes,
     );
   }
+
   reconcilePublicSlotLayouts(component, capture, spec, ir, resources);
   configureRoot(component, capture, ir, resources);
 }

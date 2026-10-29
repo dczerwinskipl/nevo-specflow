@@ -16,6 +16,7 @@ export function projectionRevision(
     policy = randomUUID();
     policies.set(context.policy, policy);
   }
+
   const { resources, history } = snapshot.sections;
   // Fresh lease tokens describe temporary transport handles, not a changed inspected object.
   const view = {
@@ -41,20 +42,26 @@ export function projectionRevision(
           : history,
     },
   };
+
   return createHash('sha256')
     .update(JSON.stringify(canonical([identity, context.subject, policy, basis, view])))
     .digest('hex');
 }
 
 function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
+  if (Array.isArray(value)) {
+    return value.map(canonical);
+  }
+
   if (value !== null && typeof value === 'object') {
     const record = value as Record<string, unknown>;
+
     return Object.fromEntries(
       Object.keys(record)
         .sort()
         .map((key) => [key, canonical(record[key])]),
     );
   }
+
   return value;
 }

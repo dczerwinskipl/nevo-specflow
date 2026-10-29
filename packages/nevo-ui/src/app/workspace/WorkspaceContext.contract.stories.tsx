@@ -19,6 +19,7 @@ interface Pages {
 
 function FirstScreen() {
   const navigation = useSecondaryStack<Pages>();
+
   return (
     <div>
       <p>Stack level 1</p>
@@ -28,12 +29,15 @@ function FirstScreen() {
     </div>
   );
 }
+
 function SecondScreen() {
   return <p>Stack level 2</p>;
 }
+
 function GuardedScreen() {
   const [allow, setAllow] = useState(false);
   useSecondaryLeaveGuard(useCallback(() => allow, [allow]));
+
   return (
     <div>
       <p>Protected editor</p>
@@ -69,6 +73,7 @@ const guardedStack = defineSecondaryStack<
 
 function ContractWorkspace() {
   const navigation = useSecondaryNavigation();
+
   return (
     <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
       <AppWorkspace split="primary">
@@ -85,7 +90,9 @@ function ContractWorkspace() {
               onClick={() =>
                 void navigation.canLeaveScope().then((allowed) => {
                   const output = document.querySelector('[data-route-leave-result]');
-                  if (output) output.textContent = allowed ? 'route allowed' : 'route blocked';
+                  if (output) {
+                    output.textContent = allowed ? 'route allowed' : 'route blocked';
+                  }
                 })
               }
             >
@@ -111,7 +118,9 @@ export default meta;
 type Story = StoryObj;
 
 function assert(value: unknown, message: string): asserts value {
-  if (!value) throw new Error(message);
+  if (!value) {
+    throw new Error(message);
+  }
 }
 
 async function frame() {
@@ -177,9 +186,11 @@ interface EditableSnapshot {
 function createEditableSource() {
   let snapshot: EditableSnapshot = { status: 'ready', value: 'Original draft' };
   const listeners = new Set<() => void>();
+
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
@@ -187,14 +198,19 @@ function createEditableSource() {
     getSnapshot: () => snapshot,
     setAvailable: (available: boolean) => {
       snapshot = { ...snapshot, status: available ? 'ready' : 'error' };
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
     setStatus: (status: EditableSnapshot['status']) => {
       snapshot = { ...snapshot, status };
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
   };
 }
+
 type EditableSource = ReturnType<typeof createEditableSource>;
 interface EditorPages {
   details: Record<never, never>;
@@ -206,6 +222,7 @@ function PersistentEditor() {
   const [draft, setDraft] = useState('Original draft');
   const [allow, setAllow] = useState(false);
   useSecondaryLeaveGuard(useCallback(() => !draft.endsWith('!') || allow, [draft, allow]));
+
   return (
     <div>
       <input aria-label="Draft" onChange={(e) => setDraft(e.target.value)} value={draft} />
@@ -216,13 +233,16 @@ function PersistentEditor() {
     </div>
   );
 }
+
 function createEditableStack(source: EditableSource) {
   function useEditorData() {
     const data = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+
     return data.status === 'ready'
       ? { status: 'ready' as const, data: data.value }
       : { status: data.status, message: 'Editing data unavailable.' };
   }
+
   return defineSecondaryStack<Record<never, never>, string, EditorPages>({
     id: 'editable-status-contract',
     initial: 'details',
@@ -241,6 +261,7 @@ function EditableContractFixture() {
   const [source] = useState(createEditableSource);
   const [stack] = useState(() => createEditableStack(source));
   const navigation = useSecondaryNavigation();
+
   return (
     <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
       <AppWorkspace split="primary">
@@ -345,6 +366,7 @@ const sharedHostStack = defineSecondaryStack<
   initial: 'details',
   useData: () => {
     const [instance] = useState(() => ++sharedHostCount);
+
     return { status: 'ready', data: { instance } };
   },
   screens: {
@@ -357,6 +379,7 @@ const sharedHostStack = defineSecondaryStack<
 });
 function SharedHostWorkspace() {
   const navigation = useSecondaryNavigation();
+
   return (
     <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
       <AppWorkspace split="primary">
@@ -370,6 +393,7 @@ function SharedHostWorkspace() {
     </AppShell>
   );
 }
+
 export const HeaderAndBodyShareOneDataHost: Story = {
   render: () => (
     <AppWorkspaceProvider>

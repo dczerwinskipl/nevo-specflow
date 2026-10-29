@@ -1,3 +1,5 @@
+import { documentTreeFixture } from '../../../test-support/documents/fixtures';
+import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,12 +12,12 @@ import {
   cn,
   workspaceSurfaceClassName,
 } from '@nevo/ui';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
 import {
   DocumentsExplorer,
   documentRootActions,
   type DocumentTreeController,
 } from '../../features/documents/explorer/DocumentsExplorer';
+import { NotificationProvider } from '../../shared/notifications/notifications';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { contentRegistry, type MockLayout } from './content-kinds/contentKinds.stories-support';
 import { editorProvider, headerBudget } from './content-kinds/editorProvider.stories-support';
@@ -78,20 +80,28 @@ function useMeasuredWidth() {
   const [width, setWidth] = useState<number>();
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) return undefined;
+    if (!element) {
+      return undefined;
+    }
+
     // Thresholds apply to the border-box of the shell workspace region (the parent), as in AppWorkspace.
     const region = element.parentElement ?? element;
     const update = () => setWidth(region.getBoundingClientRect().width);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(region);
+
     return () => observer.disconnect();
   }, []);
+
   return { ref, width };
 }
 
 function layoutFor(width: number | undefined): MockLayout {
-  if (width === undefined || width >= WIDE_WORKSPACE_MIN_WIDTH) return 'wide';
+  if (width === undefined || width >= WIDE_WORKSPACE_MIN_WIDTH) {
+    return 'wide';
+  }
+
   return width >= SPLIT_WORKSPACE_MIN_WIDTH ? 'compact' : 'narrow';
 }
 
@@ -107,30 +117,20 @@ function NavigationButton() {
 /* Tree: the product explorer with static data                                                  */
 /* ------------------------------------------------------------------------------------------ */
 
-const yes = { available: true };
-const no = { available: false, reason: 'demo_document_required' };
-const allowed = { rename: yes, move: yes, delete: yes };
-const locked = { rename: no, move: no, delete: no };
-const mockTreeData: DemoDocumentTree = {
-  revision: '1',
-  folders: [
-    { path: '', actions: locked },
-    ...treeFolders.map((path) => ({ path, actions: allowed })),
-  ],
+const no = { available: false, reason: 'protected' } as const;
+const mockTreeData: DocumentTree = documentTreeFixture({
+  folders: [...treeFolders],
   documents: mockDocuments.map((doc) => ({
     id: doc.id,
     path: doc.path,
-    required: !!doc.required,
-    revision: '1',
-    actions: doc.required ? locked : allowed,
+    ...(doc.required
+      ? {
+          protected: true,
+          actions: { rename: no, move: no, delete: no, classify: { available: false } },
+        }
+      : {}),
   })),
-  capabilities: {
-    createFile: yes,
-    createFolder: yes,
-    import: yes,
-    formats: ['md', 'txt'],
-  },
-};
+});
 
 /** The Primary-like tree header, exactly as the product builds it (title, subtitle, root actions). */
 function TreeHeader({
@@ -143,6 +143,7 @@ function TreeHeader({
   bordered?: boolean;
 }) {
   const { t } = useTranslation();
+
   return (
     <PaneHeader leading={leading} bordered={bordered}>
       <WorkspaceHeader
@@ -166,14 +167,17 @@ function TreeList({
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto p-3" data-mock-tree="true">
-      <DocumentsExplorer
-        tree={mockTreeData}
-        controllerRef={controller}
-        active={activeId ?? undefined}
-        onSelect={onOpen}
-        onAdd={() => Promise.resolve()}
-        onOperate={() => Promise.resolve()}
-      />
+      {/* The explorer confirms operations with toasts. */}
+      <NotificationProvider>
+        <DocumentsExplorer
+          tree={mockTreeData}
+          controllerRef={controller}
+          active={activeId ?? undefined}
+          onSelect={onOpen}
+          onAdd={() => Promise.resolve()}
+          onOperate={() => Promise.resolve()}
+        />
+      </NotificationProvider>
     </div>
   );
 }
@@ -221,11 +225,15 @@ function EditorWorkspace({
   const stacked = layout === 'narrow';
   useLayoutEffect(() => {
     const el = docRef.current;
-    if (!el) return undefined;
+    if (!el) {
+      return undefined;
+    }
+
     const update = () => setDocWidth(el.getBoundingClientRect().width);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
+
     return () => observer.disconnect();
   }, [stacked]);
   const splitAvailable = docWidth >= (contentRegistry.md.viewMinWidth?.split ?? Infinity);
@@ -238,7 +246,9 @@ function EditorWorkspace({
   const hamburger = persistentNav ? undefined : <NavigationButton />;
   const openFromTree = (id: string) => {
     host.openItem(id);
-    if (stacked) setPage('document');
+    if (stacked) {
+      setPage('document');
+    }
   };
 
   return (
@@ -250,7 +260,9 @@ function EditorWorkspace({
         // Ctrl/Cmd+S saves the active file (the only global shortcut the mock wires).
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
           event.preventDefault();
-          if (host.active && session.isDirty(host.active)) session.save(host.active);
+          if (host.active && session.isDirty(host.active)) {
+            session.save(host.active);
+          }
         }
       }}
       className={cn(
@@ -339,6 +351,7 @@ export function EditorModeMock(props: EditorModeMockProps) {
     props.dialog,
     props.treeWidth,
   ]);
+
   return (
     <StoryLocalization locale="en">
       <div style={{ width, height }} data-mock-frame={width}>

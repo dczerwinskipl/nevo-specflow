@@ -22,6 +22,7 @@ type Story = StoryObj<typeof meta>;
 async function frame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
+
 async function settle(width: number, height = 900) {
   await (await browserPage()).viewport(width, height);
   await frame();
@@ -37,25 +38,31 @@ async function settle(width: number, height = 900) {
           motion: element.dataset.workspaceMotion,
         }));
       const first = read();
-      if (first.some((item) => item.motion && item.motion !== 'idle'))
+      if (first.some((item) => item.motion && item.motion !== 'idle')) {
         throw new Error('Workspace motion pending');
+      }
+
       await frame();
       await frame();
       const next = read();
-      if (JSON.stringify(first) !== JSON.stringify(next))
+      if (JSON.stringify(first) !== JSON.stringify(next)) {
         throw new Error('Responsive bounds pending');
+      }
+
       const active = document.querySelector<HTMLElement>(
         '[data-workspace-surface="secondary"][data-workspace-active="true"]',
       );
       if (width < 840 && active) {
         const box = active.getBoundingClientRect();
-        if (Math.abs(box.x) > 1 || Math.abs(box.right - width) > 1)
+        if (Math.abs(box.x) > 1 || Math.abs(box.right - width) > 1) {
           throw new Error('Narrow Secondary bounds pending');
+        }
       }
     },
     { timeout: 5000 },
   );
 }
+
 function contrast(name: string) {
   const nodes = [...document.querySelectorAll<HTMLElement>('[class*="text-content-"]')].filter(
     (e) => e.textContent?.trim() && e.getBoundingClientRect().height && e.children.length < 2,
@@ -66,9 +73,13 @@ function contrast(name: string) {
     const backgrounds = [];
     while (parent) {
       const color = getComputedStyle(parent).backgroundColor;
-      if (color !== 'rgba(0, 0, 0, 0)') backgrounds.push(color);
+      if (color !== 'rgba(0, 0, 0, 0)') {
+        backgrounds.push(color);
+      }
+
       parent = parent.parentElement;
     }
+
     return {
       text: e.textContent?.trim().slice(0, 100),
       color: style.color,
@@ -80,6 +91,7 @@ function contrast(name: string) {
   });
   console.info('OWNER_V5_CONTRAST', JSON.stringify({ name, pairs }));
 }
+
 async function shot(name: string, width: number, height = 900) {
   await settle(width, height);
   contrast(name);
@@ -106,6 +118,27 @@ async function shot(name: string, width: number, height = 900) {
     }),
   );
 }
+
+/**
+ * Scrolls the Create form to its end (the submit button is pinned below it) and waits until it
+ * stays there: late layout (options, focus on narrow screens) may still move it.
+ */
+async function toFormEnd(canvas: {
+  getByRole: (role: string, options: { name: string }) => HTMLElement;
+}) {
+  const scroller = canvas
+    .getByRole('textbox', { name: 'Nazwa specyfikacji' })
+    .closest<HTMLElement>('.scroll-area-viewport')!;
+  await waitFor(async () => {
+    scroller.scrollTop = scroller.scrollHeight;
+    await frame();
+    await frame();
+    if (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1) {
+      throw new Error('The form did not stay at its end');
+    }
+  });
+}
+
 export const CreateBottomFailure: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
@@ -116,39 +149,43 @@ export const CreateBottomFailure: Story = {
       'Eksport CSV',
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-    submit.scrollIntoView({ block: 'end' });
+    // The submit button is pinned under the form: the owner scrolls the form, fully loaded, to its
+    // end right before submitting.
+    await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     await shot('create-bottom-before', 390, 844);
+    await toFormEnd(canvas);
     await userEvent.click(submit);
-    await canvas.findByRole('alert');
-    await waitFor(() => {
-      if (
-        canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect().bottom >
-        844
-      )
-        throw new Error('CTA not revealed');
-    });
-    const feedback = canvas.getByRole('alert').getBoundingClientRect(),
-      cta = canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect();
-    console.info(
-      'OWNER_V5_CREATE_RESULT',
-      JSON.stringify({
+    const alert = await canvas.findByRole('alert');
+    // The reveal is an animation-frame step after the alert appears (frames are throttled while
+    // other story files run in parallel tabs): wait for the settled geometry, never read it once.
+    // Measured against the real boxes (the form's scroll view and the window), not fixed numbers.
+    const view = alert.closest<HTMLElement>('.scroll-area-viewport')!;
+    const visible = () => {
+      const feedback = alert.getBoundingClientRect(),
+        box = view.getBoundingClientRect(),
+        cta = canvas.getByRole('button', { name: 'Utwórz specyfikację' }).getBoundingClientRect();
+
+      return {
         feedback: feedback.toJSON() as Record<string, number>,
         cta: cta.toJSON() as Record<string, number>,
-        viewport: 844,
-        feedbackVisible: feedback.top >= 56 && feedback.bottom <= 844,
-        ctaVisible: cta.top >= 56 && cta.bottom <= 844,
-      }),
+        view: box.toJSON() as Record<string, number>,
+        window: window.innerHeight,
+        feedbackVisible: feedback.top >= box.top - 1 && feedback.bottom <= box.bottom + 1,
+        ctaVisible: cta.top >= box.bottom - 1 && cta.bottom <= window.innerHeight + 1,
+      };
+    };
+
+    await waitFor(
+      () => {
+        const state = visible();
+        if (!state.feedbackVisible || !state.ctaVisible) {
+          throw new Error('UX01 ' + JSON.stringify(state));
+        }
+      },
+      { timeout: 5000 },
     );
+    console.info('OWNER_V5_CREATE_RESULT', JSON.stringify(visible()));
     await shot('create-bottom-error', 390, 844);
-    if (feedback.bottom > 844 || cta.bottom > 844)
-      throw new Error(
-        'UX01 ' +
-          JSON.stringify({
-            feedback: feedback.toJSON() as Record<string, number>,
-            cta: cta.toJSON() as Record<string, number>,
-            viewport: 844,
-          }),
-      );
   },
 };
 export const CreateUnknown: Story = {
@@ -187,7 +224,10 @@ export const DocumentsTablet: Story = {
   play: async ({ canvas, userEvent }) => {
     // The active document opens in Preview by default; wait for its toolbar, not the textbox.
     await waitForDocumentActions(canvas);
-    for (const width of [839, 840, 1024, 1180, 1280]) await shot('documents-tablet', width);
+    for (const width of [839, 840, 1024, 1180, 1280]) {
+      await shot('documents-tablet', width);
+    }
+
     await settle(390, 844);
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
     await userEvent.click((await canvas.findAllByRole('button', { name: 'Więcej akcji' }))[0]!);
@@ -220,14 +260,18 @@ export const OverviewTablet: Story = {
       name: 'Deterministic admission and execution boundaries',
       level: 1,
     });
-    for (const width of [839, 840, 1024, 1180, 1280]) await shot('overview-tablet', width);
+    for (const width of [839, 840, 1024, 1180, 1280]) {
+      await shot('overview-tablet', width);
+    }
   },
 };
 export const SessionTablet: Story = {
   args: { path: '/specs/api-integration/sessions/session?collection=current' },
   play: async ({ canvas }) => {
     await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' });
-    for (const width of [839, 840, 1024, 1180]) await shot('session-tablet', width);
+    for (const width of [839, 840, 1024, 1180]) {
+      await shot('session-tablet', width);
+    }
   },
 };
 export const ProviderAndCapabilities: Story = {
@@ -281,6 +325,7 @@ export const GuardFromDrawer: Story = {
       await userEvent.tab();
       await expect(top.contains(document.activeElement)).toBe(true);
     }
+
     await userEvent.tab({ shift: true });
     await expect(top.contains(document.activeElement)).toBe(true);
     await userEvent.keyboard('{Escape}');
@@ -303,7 +348,9 @@ export const SharedLoading: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open pending detail' }));
     await canvas.findByText('Loading…');
-    for (const width of [840, 1024, 1180]) await shot('shared-loading', width);
+    for (const width of [840, 1024, 1180]) {
+      await shot('shared-loading', width);
+    }
   },
 };
 export const SharedNullLoading: Story = {
@@ -311,7 +358,9 @@ export const SharedNullLoading: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open pending detail' }));
     await canvas.findByText('Pending detail');
-    for (const width of [840, 1024, 1180]) await shot('shared-null-loading', width);
+    for (const width of [840, 1024, 1180]) {
+      await shot('shared-null-loading', width);
+    }
   },
 };
 
@@ -319,7 +368,9 @@ export const GlobalSpecsOverviewTablet: Story = {
   render: () => <RoutedApplication path="/?collection=current" locale="pl" />,
   play: async ({ canvas }) => {
     await canvas.findByRole('heading', { name: 'Specyfikacje', level: 1 });
-    for (const width of [839, 840, 1024, 1180]) await shot('global-overview-tablet', width);
+    for (const width of [839, 840, 1024, 1180]) {
+      await shot('global-overview-tablet', width);
+    }
   },
 };
 
@@ -383,7 +434,8 @@ export const DeferredFailureKeepsReadingPosition: Story = {
     submit.scrollIntoView({ block: 'end' });
     await userEvent.click(submit);
     await canvas.findByRole('button', { name: 'Przygotowywanie…' });
-    const scroller = submit.closest<HTMLElement>('.scroll-area-viewport')!;
+    // The submit button is pinned under the form; the form itself scrolls.
+    const scroller = title.closest<HTMLElement>('.scroll-area-viewport')!;
     scroller.scrollTop = 0;
     await frame();
     const position = scroller.scrollTop;
@@ -399,28 +451,32 @@ export const DeferredFailureKeepsReadingPosition: Story = {
 export const OversizeFeedbackInShortViewport: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
-    await settle(390, 210);
+    // Short enough that the feedback is taller than the form's view above the 56px pinned footer.
+    await settle(390, 180);
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Eksport CSV',
     );
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-    submit.scrollIntoView({ block: 'end' });
+    await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
+    await toFormEnd(canvas);
     await userEvent.click(submit);
     const alert = await canvas.findByRole('alert');
-    const region = submit.closest<HTMLElement>('[aria-label="Utworzenie specyfikacji"]')!,
-      scroller = submit.closest<HTMLElement>('.scroll-area-viewport')!;
+    // The failure is explained at the end of the scrolling form, above the pinned footer.
+    const region = alert.parentElement!,
+      scroller = alert.closest<HTMLElement>('.scroll-area-viewport')!;
+    await expect(scroller.contains(submit)).toBe(false);
     await expect(region.offsetHeight).toBeGreaterThan(scroller.clientHeight);
     await waitFor(() =>
       expect(alert.getBoundingClientRect().top).toBeGreaterThanOrEqual(
         scroller.getBoundingClientRect().top,
       ),
     );
-    await shot('oversize-feedback-start', 390, 210);
+    await shot('oversize-feedback-start', 390, 180);
     submit.scrollIntoView({ block: 'end' });
     await frame();
-    await expect(submit.getBoundingClientRect().bottom).toBeLessThanOrEqual(210);
-    await shot('oversize-feedback-retry', 390, 210);
+    await expect(submit.getBoundingClientRect().bottom).toBeLessThanOrEqual(180);
+    await shot('oversize-feedback-retry', 390, 180);
   },
 };

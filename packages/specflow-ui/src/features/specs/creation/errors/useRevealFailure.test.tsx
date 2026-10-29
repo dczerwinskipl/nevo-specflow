@@ -29,13 +29,14 @@ function layout({
   scroller.getBoundingClientRect = () => box(0, 400);
   const region = document.createElement('div');
   Object.defineProperty(region, 'offsetHeight', { value: regionHeight });
-  const scrollIntoView = vi.fn();
-  region.scrollIntoView = scrollIntoView;
+  // The region starts just above the bottom of the 400 px view.
+  region.getBoundingClientRect = () => box(380, 380 + regionHeight);
   const submitter = document.createElement('button');
   submitter.getBoundingClientRect = () => (buttonInView ? box(300, 340) : box(900, 940));
   scroller.append(region, submitter);
   document.body.append(scroller);
-  return { scroller, region, submitter, scrollIntoView };
+
+  return { scroller, region, submitter };
 }
 
 function submitEvent(submitter: HTMLElement) {
@@ -49,6 +50,7 @@ function setup(parts: ReturnType<typeof layout>) {
     initialProps: { failed: false, seq: 0 },
   });
   view.result.current.actionRegion.current = parts.region;
+
   return view;
 }
 
@@ -58,13 +60,13 @@ const flush = () =>
   });
 
 describe('useRevealFailure', () => {
-  it('scrolls a short failure region to the end of the view after a submit made from inside the view', () => {
+  it('scrolls the form so a short failure region ends at the bottom of the view after a submit made from inside the view', () => {
     const parts = layout({ buttonInView: true });
     const view = setup(parts);
     view.result.current.captureSubmit(submitEvent(parts.submitter));
     view.rerender({ failed: true, seq: 1 });
     flush();
-    expect(parts.scrollIntoView).toHaveBeenCalledWith({ block: 'end' });
+    expect(parts.scroller.scrollTop).toBe(80);
   });
 
   it('aligns a region taller than the view to its start so the alert is read from the top', () => {
@@ -73,7 +75,7 @@ describe('useRevealFailure', () => {
     view.result.current.captureSubmit(submitEvent(parts.submitter));
     view.rerender({ failed: true, seq: 1 });
     flush();
-    expect(parts.scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    expect(parts.scroller.scrollTop).toBe(380);
   });
 
   it('never fights the user: no scroll when they scrolled since the submit', () => {
@@ -83,7 +85,31 @@ describe('useRevealFailure', () => {
     parts.scroller.scrollTop = 120;
     view.rerender({ failed: true, seq: 1 });
     flush();
-    expect(parts.scrollIntoView).not.toHaveBeenCalled();
+    expect(parts.scroller.scrollTop).toBe(120);
+  });
+
+  it('with the pinned footer, reveals the failure only when the form was scrolled to its end', () => {
+    const parts = layout({ buttonInView: false });
+    // The footer sits under the scroll area, never scrolled away.
+    document.body.append(parts.submitter);
+    Object.defineProperty(parts.scroller, 'scrollHeight', { value: 1200 });
+    parts.scroller.scrollTop = 800;
+    const view = setup(parts);
+    view.result.current.captureSubmit(submitEvent(parts.submitter));
+    view.rerender({ failed: true, seq: 1 });
+    flush();
+    expect(parts.scroller.scrollTop).toBe(880);
+  });
+
+  it('with the pinned footer, leaves the owner where they read when the end was not in view', () => {
+    const parts = layout({ buttonInView: false });
+    document.body.append(parts.submitter);
+    Object.defineProperty(parts.scroller, 'scrollHeight', { value: 1200 });
+    const view = setup(parts);
+    view.result.current.captureSubmit(submitEvent(parts.submitter));
+    view.rerender({ failed: true, seq: 1 });
+    flush();
+    expect(parts.scroller.scrollTop).toBe(0);
   });
 
   it('does nothing when the submit button was not in view (the owner was elsewhere)', () => {
@@ -92,7 +118,7 @@ describe('useRevealFailure', () => {
     view.result.current.captureSubmit(submitEvent(parts.submitter));
     view.rerender({ failed: true, seq: 1 });
     flush();
-    expect(parts.scrollIntoView).not.toHaveBeenCalled();
+    expect(parts.scroller.scrollTop).toBe(0);
   });
 
   it('does nothing without a failure, and drops a pending scroll when unmounted', () => {
@@ -101,10 +127,10 @@ describe('useRevealFailure', () => {
     view.result.current.captureSubmit(submitEvent(parts.submitter));
     view.rerender({ failed: false, seq: 1 });
     flush();
-    expect(parts.scrollIntoView).not.toHaveBeenCalled();
+    expect(parts.scroller.scrollTop).toBe(0);
     view.rerender({ failed: true, seq: 2 });
     view.unmount();
     flush();
-    expect(parts.scrollIntoView).not.toHaveBeenCalled();
+    expect(parts.scroller.scrollTop).toBe(0);
   });
 });

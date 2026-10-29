@@ -24,6 +24,7 @@ export function TaskHistoryDetails({
   const { t } = useTranslation();
   const scope = `history:${revision}:${token}:${entry.id}`;
   const legalResources = entry.resources.filter((resource) => resource.link.state !== 'forbidden');
+
   return (
     <div className="grid min-w-0 gap-3">
       <TaskHints hints={entry.step.hints} taskId={taskId} scope={`${scope}:hints`} />
@@ -36,6 +37,7 @@ export function TaskHistoryDetails({
             {entry.resources.map((resource, index) => {
               const forbidden = resource.link.state === 'forbidden';
               const readable = canInspectTaskReference(resource.link) && !!onOpenResource;
+
               return (
                 <OperationalRow
                   key={resource.id}

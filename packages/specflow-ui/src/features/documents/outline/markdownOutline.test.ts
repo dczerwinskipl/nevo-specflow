@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { render, cleanup } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { MarkdownDocument } from '@nevo/ui';
+import { outlineTree } from './DocumentOutline';
 import {
   markdownOutline,
   outlineColumnMinWidth,
@@ -114,13 +115,47 @@ describe('contents column geometry', () => {
   it('shows the column from a 840 px panel and not below', () => {
     const showsColumn = (width: number) => width >= outlineColumnMinWidth;
     expect(outlineColumnMinWidth).toBe(840);
-    for (const width of [820, 831, 832, 839]) expect(showsColumn(width)).toBe(false);
-    for (const width of [840, 847, 877, 900, 1035, 1290]) expect(showsColumn(width)).toBe(true);
+    for (const width of [820, 831, 832, 839]) {
+      expect(showsColumn(width)).toBe(false);
+    }
+
+    for (const width of [840, 847, 877, 900, 1035, 1290]) {
+      expect(showsColumn(width)).toBe(true);
+    }
   });
 
   it('leaves the text at least 528 px (about 62 characters) from the threshold up', () => {
     expect(outlineTextMinWidth).toBe(528);
-    for (const width of [840, 847, 877, 900, 922, 997, 1035, 1100, 1290])
+    for (const width of [840, 847, 877, 900, 922, 997, 1035, 1100, 1290]) {
       expect(outlineTextWidth(width)).toBeGreaterThanOrEqual(outlineTextMinWidth);
+    }
+  });
+});
+
+describe('the contents tree', () => {
+  const heading = (line: number, level: 1 | 2 | 3 | 4) => ({ line, level, text: `h${line}` });
+  const shape = (nodes: ReturnType<typeof outlineTree>): unknown =>
+    nodes.map((node) =>
+      node.children.length ? [node.heading.line, shape(node.children)] : node.heading.line,
+    );
+
+  it('is a flat list when every heading has the same level', () => {
+    expect(shape(outlineTree([heading(1, 2), heading(3, 2), heading(5, 2)]))).toEqual([1, 3, 5]);
+  });
+
+  it('nests by the real levels, a skipped level one step only', () => {
+    expect(
+      shape(
+        outlineTree([heading(1, 1), heading(2, 2), heading(3, 4), heading(4, 2), heading(5, 3)]),
+      ),
+    ).toEqual([
+      [
+        1,
+        [
+          [2, [3]],
+          [4, [5]],
+        ],
+      ],
+    ]);
   });
 });

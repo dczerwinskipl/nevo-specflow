@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 import {
   Alert,
@@ -18,6 +19,13 @@ import {
 } from '../../../app/navigation/ApplicationLocation';
 import { BackLink } from '../../../app/navigation/LocationLink';
 import { translateNow } from '../../../i18n/message';
+import { useDocumentsApi } from '../useDocumentsApi';
+import { typeTitle } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
+import { documentTreeKeys } from '../read-model/queries';
+import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { DocumentFileView, downloadDocument } from '../content/DocumentFileViews';
+import { assignTypeFor, useDocumentsTreeActions } from './DocumentsTreeActions';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
@@ -44,13 +52,18 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
   const tabs = useDocumentTabs();
   const { t } = useTranslation();
   const documentId = tabs.activeId ?? params.documentId;
+  const treeActions = useDocumentsTreeActions();
+  const { api: documentsApi } = useDocumentsApi();
+  const tree = useQuery({
+    queryKey: documentTreeKeys.tree(params.specId),
+    queryFn: ({ signal }) => documentsApi.documentTree(params.specId, signal),
+  });
   const { actions, dirty } = documentHeaderModel(session, t, {
     onCloseTab: () => void tabs.requestClose(documentId),
+    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
   });
-  const name =
-    tabs.tabs.find((tab) => tab.id === documentId)?.label ??
-    session?.document.filename ??
-    session?.document.title;
+  const name = tabs.tabs.find((tab) => tab.id === documentId)?.label ?? session?.document.path;
+
   return {
     status: 'ready',
     data: {
@@ -63,8 +76,55 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
   };
 }
 
+/**
+ * A registry entry whose file is missing (dangling): what happened, how to keep it, and Remove
+ * registration (confirmed in the tree's dialog; it closes this tab).
+ */
+function DanglingDocument({
+  entry,
+  dirty,
+}: {
+  entry: { id: string; path: string; type: string; actions: { delete: { available: boolean } } };
+  dirty: boolean;
+}) {
+  const { t } = useTranslation();
+  const catalogue = useDocumentCatalogue();
+  const actions = useDocumentsTreeActions();
+  const name = entry.path.split('/').at(-1) ?? entry.path;
+
+  return (
+    <div className="p-4">
+      <Alert
+        tone="attention"
+        title={t('documents.dangling.title', { name })}
+        actions={
+          actions && entry.actions.delete.available ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => actions.removeRegistration(entry.id)}
+            >
+              {t('documents.tree.removeRegistration')}
+            </Button>
+          ) : undefined
+        }
+      >
+        <p>{t('documents.dangling.body', { name, type: typeTitle(catalogue.data, entry.type) })}</p>
+        <p className="mt-1 text-content-secondary">{t('documents.dangling.restore')}</p>
+        {dirty && <p className="mt-1">{t('documents.tabs.missingHint')}</p>}
+      </Alert>
+    </div>
+  );
+}
+
 /** The open document: loading and error states, the way back, and the editor. */
 export function DocumentPane({ data }: { data: DocumentParams }) {
+  const { api: documentsApi } = useDocumentsApi();
+  const tree = useQuery({
+    queryKey: documentTreeKeys.tree(data.specId),
+    queryFn: ({ signal }) => documentsApi.documentTree(data.specId, signal),
+  });
+  const dangling = tree.data?.dangling.find((entry) => entry.id === data.documentId);
   const session = useSessionReturn(data.specId);
   const { supportsSplit } = useWorkspaceCapabilities();
   const collection = useApplicationCollection();
@@ -83,18 +143,51 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
     />
   );
   const query = record?.documentId === data.documentId ? record.query : undefined;
+  if (dangling) {
+    return (
+      <AppContent className="h-full w-full">
+        {closeFailed}
+        <DanglingDocument
+          entry={dangling}
+          dirty={tabs.tabs.some((tab) => tab.id === dangling.id && tab.dirty)}
+        />
+      </AppContent>
+    );
+  }
+
   const status = isHttpClientError(query?.error) ? query.error.status : undefined;
-  if (!query || query.isPending)
+  // Text above the JSON read limit (413): the file view with its facts from the tree and Download;
+  // retrying could only fail the same way.
+  const tooLarge =
+    apiErrorCode(query?.error) === 'DOCUMENT_TOO_LARGE'
+      ? tree.data?.documents.find((entry) => entry.id === data.documentId)
+      : undefined;
+  if (tooLarge) {
+    return (
+      <AppContent className="h-full w-full">
+        {closeFailed}
+        <DocumentFileView
+          document={{ ...tooLarge, kind: 'text' }}
+          onDownload={() => downloadDocument(data.specId, tooLarge)}
+        />
+      </AppContent>
+    );
+  }
+
+  if (!query || query.isPending) {
     return (
       <p role="status" className="p-5">
         {t('documents.loadingDocument')}
       </p>
     );
+  }
+
   if (!query.data || status === 401 || status === 403 || status === 404) {
     const tab = tabs.tabs.find((candidate) => candidate.id === data.documentId);
     const missing = status === 404;
     // The tab keeps the last known name; before the tree knew it the id is not worth showing.
     const name = tab && tab.label !== tab.id ? tab.label : undefined;
+
     return (
       <div className="p-4">
         <Alert
@@ -122,9 +215,11 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
       </div>
     );
   }
+
   // A document promoted from the Specification Overview preview returns there on narrow, where
   // the stacked Back would otherwise only reveal the document tree.
   const overviewReturn = !session && !supportsSplit && returnTo === 'overview';
+
   return (
     <AppContent className="h-full w-full">
       <div className="flex h-full min-h-0 flex-col">

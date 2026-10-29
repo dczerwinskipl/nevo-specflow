@@ -72,17 +72,29 @@ export const PrimaryAndSecondaryActions: Story = {
     const trigger = canvas.getByRole('button', { name: 'More actions' });
     await userEvent.click(trigger);
     const menu = document.querySelector<HTMLElement>('[role="menu"]');
-    if (!menu || menu.querySelector('button'))
+    if (!menu || menu.querySelector('button')) {
       throw new Error('Overflow should contain only menu actions.');
-    if (menu.getBoundingClientRect().width > 192)
+    }
+
+    if (menu.getBoundingClientRect().width > 192) {
       throw new Error('Short action menus must remain compact.');
-    if ([...menu.querySelectorAll('[role="menuitem"]')].some((item) => !item.querySelector('svg')))
+    }
+
+    if (
+      [...menu.querySelectorAll('[role="menuitem"]')].some((item) => !item.querySelector('svg'))
+    ) {
       throw new Error('Each menu action must expose its semantic icon.');
+    }
+
     const style = getComputedStyle(menu);
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches && style.animationName !== 'none')
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches && style.animationName !== 'none') {
       throw new Error('Reduced motion must disable menu reveal.');
+    }
+
     await userEvent.keyboard('{Escape}');
-    if (document.querySelector('[role="menu"]')) throw new Error('Escape must dismiss actions.');
+    if (document.querySelector('[role="menu"]')) {
+      throw new Error('Escape must dismiss actions.');
+    }
   },
 };
 
@@ -130,6 +142,41 @@ export const DisabledPrimary: Story = {
   },
 };
 
+const busyPresses = { count: 0 };
+/** A running action keeps focus: `aria-disabled`, presses ignored (for example Save while it commits). */
+export const BusyPrimaryKeepsFocus: Story = {
+  args: {
+    actions: [
+      {
+        id: 'save',
+        label: 'Saving…',
+        icon: 'save',
+        primary: true,
+        busy: true,
+        onPress: () => void busyPresses.count++,
+      },
+    ],
+  },
+  tags: ['contract'],
+  play: async ({ canvas, userEvent }) => {
+    busyPresses.count = 0;
+    const save = canvas.getByRole('button', { name: 'Saving…' });
+    save.focus();
+    await userEvent.click(save);
+    if (document.activeElement !== save) {
+      throw new Error('The busy action keeps focus.');
+    }
+
+    if (save.getAttribute('aria-disabled') !== 'true') {
+      throw new Error('It is aria-disabled.');
+    }
+
+    if (busyPresses.count > 0) {
+      throw new Error('A press while busy does nothing.');
+    }
+  },
+};
+
 const documentEditActions = [
   {
     id: 'preview',
@@ -144,7 +191,9 @@ const documentEditActions = [
 ] as const;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 const labelsOf = (root: HTMLElement) =>
@@ -199,6 +248,7 @@ export const DirectActionBudget: Story = {
 
 function ResizableHeader() {
   const [width, setWidth] = useState(640);
+
   return (
     <div>
       <button data-testid="shrink" onClick={() => setWidth(300)} type="button">
@@ -222,6 +272,7 @@ export const DensityFollowsMeasuredWidth: Story = {
     for (let attempt = 0; attempt < 40 && labelsOf(frame).includes('Show preview'); attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
+
     assert(!labelsOf(frame).includes('Show preview'), 'Narrow moves the preview into the menu.');
     await userEvent.click(frame.querySelector<HTMLElement>('button[aria-label="More actions"]')!);
     const items = [...document.querySelectorAll('[role="menuitem"]')].map((item) =>
@@ -256,6 +307,7 @@ export const ViewStateSingleIconAction: Story = {
 function InlineEntry() {
   const [mounted, setMounted] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+
   return (
     <>
       <WorkspaceHeader
@@ -283,7 +335,10 @@ export const MenuActionMayMoveFocusItself: Story = {
     const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (node) => node.textContent?.trim() === 'New file',
     );
-    if (!item) throw new Error('The New file action is in the menu.');
+    if (!item) {
+      throw new Error('The New file action is in the menu.');
+    }
+
     await userEvent.click(item);
     const input = await canvas.findByRole('textbox', { name: 'File name' });
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -395,6 +450,7 @@ export const DefaultMenuUnchanged: Story = {
 
 function PressedToggle(args: ComponentProps<typeof WorkspaceHeader>) {
   const [pressed, setPressed] = useState(false);
+
   return (
     <WorkspaceHeader
       {...args}

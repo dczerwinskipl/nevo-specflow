@@ -24,6 +24,7 @@ function MenuExample({
   longLabels?: boolean;
 }) {
   const [selection, setSelection] = useState('No action selected');
+
   return (
     <div className="flex min-h-64 flex-col items-center justify-center gap-4 bg-canvas p-8 text-content-primary">
       <Menu
@@ -181,15 +182,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = read();
-    if (result) return result;
+    if (result) {
+      return result;
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+
   throw new Error(message);
 }
 
@@ -213,6 +220,7 @@ export const ViewportContainment: Story = {
     );
     await waitFor(() => {
       const bounds = menu.getBoundingClientRect();
+
       return bounds.left >= 0 && bounds.right <= window.innerWidth && bounds.width > 0;
     }, 'Menu must remain inside the viewport without horizontal overflow.');
     await userEvent.keyboard('{Escape}');

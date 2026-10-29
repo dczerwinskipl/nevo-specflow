@@ -12,12 +12,14 @@ afterEach(cleanup);
 function Mode() {
   return <p data-testid="mode">{useRuntimeMode()}</p>;
 }
+
 function Info() {
   return <p data-testid="info">{useRuntimeInfo().isError ? 'failed' : 'ok'}</p>;
 }
 
 function renderWith(getInfo: () => Promise<{ dataMode: 'project' | 'demo' }>) {
   const services = createSpecFlowAppServices({ runtimeInfoApi: { getInfo } });
+
   return render(
     <QueryClientProvider client={createSpecFlowQueryClient()}>
       <TestServicesRouterContext services={services}>

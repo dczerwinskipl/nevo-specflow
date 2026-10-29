@@ -32,8 +32,9 @@ it('rejects secret, nonblocking, duplicate and ambiguous questions before admiss
     { isBlocking: true, questions: [{ ...question, isSecret: true }] },
     { isBlocking: true, questions: [question, question] },
     { isBlocking: true, questions: [{ ...question, options: [choice, choice] }] },
-  ])
+  ]) {
     expect(() => prepareCodexQuestions(input, 1)).toThrow();
+  }
 });
 it('maps exactly one permission without session or persistent grants', () => {
   const group = prepareCodexPermission(['workspace/file.txt'], 1);

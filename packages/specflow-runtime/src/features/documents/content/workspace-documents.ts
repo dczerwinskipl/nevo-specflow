@@ -33,6 +33,7 @@ export function createEngineWorkspaceDocuments(engine: SpecFlowEngine): Workspac
   return async (specId) => {
     try {
       const summaries = await readRegisteredDocumentSummaries(engine, specId);
+
       return {
         state: 'available',
         data: {
@@ -49,6 +50,7 @@ export function createEngineWorkspaceDocuments(engine: SpecFlowEngine): Workspac
       if (error instanceof DocumentError || documentFailure(error) !== undefined) {
         return { state: 'unavailable', reason: 'source_unavailable' };
       }
+
       throw error;
     }
   };

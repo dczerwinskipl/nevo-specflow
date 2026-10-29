@@ -46,6 +46,7 @@ export interface ManagedSessionsApi {
 export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessionsApi {
   const read = createApiTransport(http, { operation: 'sessions' });
   const path = (id: string) => '/api/sessions/' + encodeURIComponent(id);
+
   return {
     providers: (signal) =>
       read.get('/api/session-providers', { signal, isValid: sessionValidators.providers }),
@@ -90,14 +91,24 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
         for await (const frame of stream) {
           if (frame.type === 'resync-required') {
             yield undefined;
+
             return;
           }
-          if (frame.type !== 'session-change') continue;
+
+          if (frame.type !== 'session-change') {
+            continue;
+          }
+
           const value: unknown = JSON.parse(frame.data);
-          if (!sessionValidators.event(value)) throw new Error('Invalid Session event.');
+          if (!sessionValidators.event(value)) {
+            throw new Error('Invalid Session event.');
+          }
+
           const event = value;
-          if (String(event.eventSeq) !== frame.id)
+          if (String(event.eventSeq) !== frame.id) {
             throw new Error('Session event cursor mismatch.');
+          }
+
           yield event;
         }
       } finally {

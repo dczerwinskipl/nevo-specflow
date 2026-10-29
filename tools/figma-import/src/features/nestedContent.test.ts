@@ -137,7 +137,10 @@ describe('slot-ref materialization', () => {
       layoutMode: 'HORIZONTAL',
       insertChild(index: number, node: SceneNode) {
         const current = children.indexOf(node);
-        if (current >= 0) children.splice(current, 1);
+        if (current >= 0) {
+          children.splice(current, 1);
+        }
+
         children.splice(index, 0, node);
       },
     } as unknown as FrameNode;

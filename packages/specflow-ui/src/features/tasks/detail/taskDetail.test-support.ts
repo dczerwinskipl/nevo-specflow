@@ -146,7 +146,7 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
         },
       ]
     : [];
-  if (['human-gates', 'gates', 'rich-human', 'work-unavailable', 'mismatch'].includes(scenario))
+  if (['human-gates', 'gates', 'rich-human', 'work-unavailable', 'mismatch'].includes(scenario)) {
     requirements.push(
       ...Array.from({ length: 20 }, (_, index): TaskHumanRequirement => ({
         id: `gate-${index}`,
@@ -168,6 +168,8 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
         evidence: [],
       })),
     );
+  }
+
   const response: SpecificationTaskResponse = {
     task: {
       id: taskId,
@@ -273,16 +275,25 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
     requirements[0]!.source = { kind: 'human-step', stepId: step.id, relation: 'next-ready' };
     requirements[0]!.key = null;
   }
-  if (scenario === 'mismatch') requirements[0]!.definitionRevision = 'old-definition';
-  if (scenario === 'work-unavailable')
+
+  if (scenario === 'mismatch') {
+    requirements[0]!.definitionRevision = 'old-definition';
+  }
+
+  if (scenario === 'work-unavailable') {
     response.snapshot!.sections.work = { state: 'unavailable', reason: 'not_implemented' };
-  if (scenario === 'human-forbidden')
+  }
+
+  if (scenario === 'human-forbidden') {
     response.snapshot!.sections.humanRequirements = { state: 'forbidden' };
+  }
+
   if (scenario === 'no-description') {
     response.snapshot!.summary = null;
     response.snapshot!.sections.document = { state: 'available', data: null };
   }
-  if (scenario === 'recovery')
+
+  if (scenario === 'recovery') {
     response.snapshot!.sections.recovery = {
       state: 'available',
       data: {
@@ -292,6 +303,8 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
         link: { state: 'unavailable', reason: 'not_implemented' },
       },
     };
+  }
+
   if (scenario === 'unavailable' || scenario === 'forbidden') {
     const empty =
       scenario === 'unavailable'
@@ -308,5 +321,6 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
       recovery: empty,
     };
   }
+
   return { response, resources, document, step, key };
 }

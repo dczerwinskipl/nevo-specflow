@@ -73,21 +73,60 @@ function rehypeSourceLines() {
       node.properties = { ...node.properties, dataSourceLine: line };
     }
   };
+
   const walkItems = (node: SourceNode) => {
     for (const child of node.children ?? []) {
-      if (child.type === 'element' && child.tagName === 'li') mark(child);
+      if (child.type === 'element' && child.tagName === 'li') {
+        mark(child);
+      }
+
       walkItems(child);
     }
   };
+
   return (tree: SourceNode) => {
-    for (const child of tree.children ?? []) mark(child);
+    for (const child of tree.children ?? []) {
+      mark(child);
+    }
+
     walkItems(tree);
   };
+}
+
+interface MdastNode {
+  type: string;
+  value?: string;
+  children?: MdastNode[];
+}
+
+// One comment, start to end: text between two comments on one line is not a comment.
+const htmlComment = /^\s*<!--(?:(?!-->)[\s\S])*-->\s*$/;
+
+/**
+ * Remark step: an HTML comment (`<!-- note to the writer -->`) is not content. Raw HTML is never
+ * rendered as markup here, so without this step the comment would be shown as literal text.
+ */
+function remarkDropHtmlComments() {
+  const walk = (node: MdastNode) => {
+    if (!node.children) {
+      return;
+    }
+
+    node.children = node.children.filter(
+      (child) => !(child.type === 'html' && htmlComment.test(child.value ?? '')),
+    );
+    for (const child of node.children) {
+      walk(child);
+    }
+  };
+
+  return walk;
 }
 
 /** react-markdown forwards hast properties as props; keep the source line on the rendered block. */
 function sourceLine(props: object): { 'data-source-line'?: number } {
   const line = (props as { 'data-source-line'?: number })['data-source-line'];
+
   return line === undefined ? {} : { 'data-source-line': line };
 }
 
@@ -98,6 +137,7 @@ function markdownComponents(
 ): Components {
   const heading = (level: number) =>
     `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+
   return {
     h1: ({ children, ...rest }) => (
       <Typography
@@ -314,12 +354,13 @@ export function MarkdownDocument({
       ),
     [completedTask, incompleteTask, table, codeBlock, renderLink, headingOffset],
   );
+
   return (
     <div className={cn('w-full min-w-0 max-w-full [overflow-wrap:anywhere]', className)}>
       <ReactMarkdown
         components={components}
         rehypePlugins={sourceLines ? [rehypeSourceLines] : []}
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkDropHtmlComments]}
       >
         {source}
       </ReactMarkdown>

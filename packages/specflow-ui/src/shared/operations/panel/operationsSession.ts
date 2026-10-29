@@ -10,11 +10,15 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
+
   return () => void listeners.delete(listener);
 };
 
 export function dismissOperation(operationId: string): void {
-  if (dismissed.has(operationId)) return;
+  if (dismissed.has(operationId)) {
+    return;
+  }
+
   dismissed = new Set([...dismissed, operationId]);
   emit();
 }

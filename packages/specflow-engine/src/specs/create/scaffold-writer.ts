@@ -30,6 +30,7 @@ export async function expectedScaffold(
       bytes: file.bytes,
     });
   }
+
   // The registry the manifest carries must be the one the journal answers with.
   const manifest = files[0]!;
   let documentIds: string[];
@@ -42,12 +43,14 @@ export async function expectedScaffold(
   } catch {
     throw recovery('Scaffold manifest in the payload is not a valid manifest.');
   }
+
   if (
     documentIds.length !== record.documentIds.length ||
     !documentIds.every((id, index) => id === record.documentIds[index])
   ) {
     throw recovery('Scaffold registry differs from the recorded creation intent.');
   }
+
   return files;
 }
 
@@ -69,14 +72,18 @@ export async function writeScaffoldWithEvidence(
     if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) {
       throw recovery('Scaffold path escapes the Specification directory.');
     }
+
     // No symlink or path redirection may alter the target after validation. Every directory from
     // `specs` down to the file's parent is created (or verified) one segment at a time.
     for (const directory of directoriesOf(root, file.relativePath)) {
       try {
         await mkdir(directory);
       } catch (error) {
-        if (!isExists(error)) throw error;
+        if (!isExists(error)) {
+          throw error;
+        }
       }
+
       const stat = await lstat(directory);
       if (
         !stat.isDirectory() ||
@@ -86,6 +93,7 @@ export async function writeScaffoldWithEvidence(
         throw recovery('Specification directory has been redirected.');
       }
     }
+
     await publishFile(
       absolute,
       file.content,
@@ -118,18 +126,31 @@ async function publishFile(
   let existing: Buffer | undefined;
   try {
     const stat = await lstat(absolute);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw recovery('Scaffold file was redirected.');
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw recovery('Scaffold file was redirected.');
+    }
+
     // Larger than the pinned content can neither be equal nor a prefix: decide without reading it.
     if (stat.size > expected.length) {
       throw recovery('Scaffold was modified since the recorded creation intent.');
     }
+
     existing = await readFile(absolute);
   } catch (error) {
-    if (error instanceof CreateOperationError) throw error;
-    if (!isMissing(error)) throw recovery('Scaffold evidence is missing or unreadable.');
+    if (error instanceof CreateOperationError) {
+      throw error;
+    }
+
+    if (!isMissing(error)) {
+      throw recovery('Scaffold evidence is missing or unreadable.');
+    }
   }
+
   if (existing !== undefined) {
-    if (existing.equals(expected)) return;
+    if (existing.equals(expected)) {
+      return;
+    }
+
     if (
       existing.length > expected.length ||
       !expected.subarray(0, existing.length).equals(existing)
@@ -137,6 +158,7 @@ async function publishFile(
       throw recovery('Scaffold was modified since the recorded creation intent.');
     }
   }
+
   const staged = join(directory, `.${randomUUID()}.tmp`);
   const handle = await open(staged, 'wx', 0o600);
   try {
@@ -146,9 +168,11 @@ async function publishFile(
   } finally {
     await handle.close();
   }
+
   await renameWindowsSafe(staged, absolute);
-  if (process.platform !== 'win32')
+  if (process.platform !== 'win32') {
     await syncDirectoryWhenSupported(directory).catch(() => undefined);
+  }
 }
 
 const STAGED_FILE = /^\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/u;
@@ -181,6 +205,7 @@ function directoriesOf(root: string, relativePath: string): string[] {
     current = join(current, segment);
     directories.push(current);
   }
+
   return directories;
 }
 
@@ -188,11 +213,15 @@ async function verifyFile(path: string, expectedHash: string): Promise<void> {
   let content: string;
   try {
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw recovery('Scaffold file was redirected.');
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw recovery('Scaffold file was redirected.');
+    }
+
     content = await readFile(path, 'utf8');
   } catch {
     throw recovery('Scaffold evidence is missing or unreadable.');
   }
+
   if (sha256Hex(content) !== expectedHash) {
     throw recovery('Scaffold was modified since the recorded creation intent.');
   }

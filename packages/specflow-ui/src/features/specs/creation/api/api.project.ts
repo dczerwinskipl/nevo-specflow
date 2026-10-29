@@ -1,3 +1,4 @@
+import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type {
   CreateOperationAccepted,
   CreateOperationInspection,
@@ -5,6 +6,7 @@ import type {
   CreateSpecRequest,
   CreatedSpec,
 } from '@nevo/specflow-contracts/specs';
+import { isArchetypeCatalogue } from '../../../../shared/http/isArchetypeCatalogue';
 import type { ApiTransport } from '../../../../api';
 
 /**
@@ -22,25 +24,20 @@ export const respondAsyncHeaders = { Prefer: 'respond-async' } as const;
 const createOptionsTimeoutMs = 30_000;
 
 /**
- * What the project Create form sends today. The contract request (`CreateSpecRequest`) also carries
- * the archetype selection (`archetypeId`, `archetypeVersion`, `catalogueRevision` and the optional
- * suggestions, added documents and folders); the project form does not choose an archetype yet, so
- * this type leaves those fields out and must be replaced by `CreateSpecRequest` when the form does
- * (delivery D2.T08). Until then a real Runtime refuses this request.
+ * What the project Create form sends: the contract request (`CreateSpecRequest`) with the archetype
+ * selection (archetype, version, catalogue revision and the ticked optional templates). Adding own
+ * files or folders at Create is not offered, so those fields are never sent.
  */
-export type ProjectCreateRequest = Omit<
-  CreateSpecRequest,
-  | 'archetypeId'
-  | 'archetypeVersion'
-  | 'catalogueRevision'
-  | 'optionalDocumentIds'
-  | 'addedDocuments'
-  | 'folders'
->;
+export type ProjectCreateRequest = Omit<CreateSpecRequest, 'addedDocuments' | 'folders'>;
 
 /** Port of the project Runtime Specification creation (the contracts `specs` context). */
 export interface ProjectCreationApi {
   createOptions(signal?: AbortSignal): Promise<CreateOptions>;
+  /**
+   * The archetype catalogue (`GET /api/specs/archetypes`), the same `ArchetypeCatalogue` the demo
+   * embeds in its creation catalogue; the Create form chooses the archetype from it.
+   */
+  archetypes(signal?: AbortSignal): Promise<ArchetypeCatalogue>;
   /**
    * Sends the request asking for async mode. The Runtime answers 202 (`CreateOperationAccepted`: the
    * work continues detached, watch the operation) or, when it does not know the preference, the
@@ -77,6 +74,12 @@ export function createProjectCreationApi(api: ApiTransport): ProjectCreationApi 
         signal,
         timeoutMs: createOptionsTimeoutMs,
         isValid: (data) => isObject(data) && Array.isArray(data.workspaces),
+      }),
+    archetypes: (signal) =>
+      api.get<ArchetypeCatalogue>('/api/specs/archetypes', {
+        operation: 'specs.create.archetypes',
+        signal,
+        isValid: isArchetypeCatalogue,
       }),
     create: (input, signal) =>
       api.post<CreatedSpec | CreateOperationAccepted, ProjectCreateRequest>('/api/specs', input, {

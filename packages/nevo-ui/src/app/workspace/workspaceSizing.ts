@@ -20,7 +20,10 @@ export function resolveWorkspaceContentWidth(
   availableWidth: number | undefined,
   { bordered, inset }: { bordered: boolean; inset: boolean },
 ): number | undefined {
-  if (availableWidth === undefined || !bordered) return availableWidth;
+  if (availableWidth === undefined || !bordered) {
+    return availableWidth;
+  }
+
   return Math.max(0, availableWidth - APP_WORKSPACE_EDGE_BORDER * (inset ? 2 : 1));
 }
 
@@ -42,15 +45,24 @@ export type AppWorkspaceFit = 'content' | 'available' | 'bounded';
 /**
  * Resolves the rendered workspace fit. `content` makes the workspace `max-content` wide so the
  * shell centres navigation and workspace together; `available` fills the measured width.
- * Stacked layouts always fill.
+ * Stacked layouts always fill, and so does a `bounded` workspace while the navigation is a drawer:
+ * there is nothing to centre it with, and a content-wide surface would leave a bare strip beside
+ * it (the bounded content centres itself inside instead).
  */
 export function resolveWorkspaceFit(
   fit: AppWorkspaceFit,
   mode: 'split' | 'stacked',
   showSecondary: boolean,
+  navigationMode: 'persistent' | 'drawer' = 'persistent',
 ): 'content' | 'available' {
-  if (mode === 'stacked' || fit === 'available') return 'available';
-  if (fit === 'bounded') return 'content';
+  if (mode === 'stacked' || fit === 'available') {
+    return 'available';
+  }
+
+  if (fit === 'bounded') {
+    return navigationMode === 'drawer' ? 'available' : 'content';
+  }
+
   return showSecondary ? 'content' : 'available';
 }
 
@@ -81,11 +93,15 @@ export function resolveWorkspaceSplit(
   hasSecondary: boolean,
   availableWidth?: number,
 ): AppWorkspaceSplit {
-  if (!hasSecondary) return { primary: 100, secondary: 0 };
+  if (!hasSecondary) {
+    return { primary: 100, secondary: 0 };
+  }
+
   const splits =
     availableWidth !== undefined && availableWidth < WORKSPACE_WIDE_DOMINANCE_MIN_WIDTH
       ? MEDIUM_WORKSPACE_SPLITS
       : WIDE_WORKSPACE_SPLITS;
+
   return splits[split];
 }
 
@@ -112,8 +128,10 @@ export function capPrimaryWidth(
     widths.primary === undefined ||
     widths.secondary === undefined ||
     widths.primary <= cap
-  )
+  ) {
     return widths;
+  }
+
   return { primary: cap, secondary: Math.max(0, contentWidth - cap) };
 }
 
@@ -123,6 +141,7 @@ export function resolveWorkspacePixelSplit(
   hasSecondary: boolean,
 ): AppWorkspacePixelSplit {
   const resolvedSplit = resolveWorkspaceSplit(split, hasSecondary, availableWidth);
+
   return {
     primary: resolveSlotMaxWidth(availableWidth, resolvedSplit.primary)!,
     ...(resolvedSplit.secondary === 0

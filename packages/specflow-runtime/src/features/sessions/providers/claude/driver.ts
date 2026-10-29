@@ -73,7 +73,10 @@ export function createClaudeDriver(
     authenticationFingerprint?: string,
     source: 'discovery' | 'operation' = 'discovery',
   ) {
-    if (!error && descriptor.compatibility?.classification === 'unsupported') return;
+    if (!error && descriptor.compatibility?.classification === 'unsupported') {
+      return;
+    }
+
     const reasonCode =
       error instanceof ClaudeProbeError
         ? error.reasonCode
@@ -84,8 +87,11 @@ export function createClaudeDriver(
             : 'PROBE_FAILED';
     if (reasonCode === 'AUTHENTICATION_REQUIRED' && authenticationFingerprint) {
       const current = authentication.reject(authenticationFingerprint);
-      if (source === 'operation' && !current) return;
+      if (source === 'operation' && !current) {
+        return;
+      }
     }
+
     checkedAt = 0;
     scope = '';
     modeModels.clear();
@@ -105,21 +111,28 @@ export function createClaudeDriver(
       ['PROTOCOL_UNSUPPORTED', 'RESTRICTION_UNSUPPORTED', 'KNOWN_INCOMPATIBILITY'].includes(
         reasonCode,
       )
-    )
+    ) {
       descriptor.compatibility = {
         classification: 'unsupported',
         protocolProfile: 'claude-stream-json-v1',
       };
+    }
   }
+
   function requireAuthentication(fingerprint: string) {
-    if (!authentication.isRejected(fingerprint)) return;
+    if (!authentication.isRejected(fingerprint)) {
+      return;
+    }
+
     const error = new SessionError(
       'PROVIDER_AUTH_REQUIRED',
       'Sign in again using the Claude CLI, then recheck provider availability.',
     );
     invalidate(error, fingerprint);
+
     throw error;
   }
+
   async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
       const boundedSignal = AbortSignal.any([
@@ -133,12 +146,16 @@ export function createClaudeDriver(
           const installation = await inspect(boundedSignal);
           inspectedAuthentication = installation.authenticationFingerprint;
           requireAuthentication(installation.authenticationFingerprint);
-          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000)
+          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000) {
             return structuredClone(descriptor);
+          }
+
           const identity = { ...installation, providerId: 'claude' };
           const known = classifyProviderInstallation(identity);
-          if (known.classification === 'unsupported')
+          if (known.classification === 'unsupported') {
             throw new ClaudeProbeError('KNOWN_INCOMPATIBILITY', known.reason);
+          }
+
           const result = await probe({
             ...installation,
             workspace: options.workspace,
@@ -162,9 +179,9 @@ export function createClaudeDriver(
                   mode.mode,
                 ).classification;
                 if (mode.mode === 'workspace-write') {
-                  if (!options.managedWrites)
+                  if (!options.managedWrites) {
                     reason = 'Managed workspace execution is unavailable.';
-                  else {
+                  } else {
                     try {
                       const native = await probe({
                         ...installation,
@@ -191,19 +208,27 @@ export function createClaudeDriver(
                         executionMode: mode.mode,
                         managedEffectsAvailable: options.managedWrites,
                       });
-                      if (!admitted.allowed)
+                      if (!admitted.allowed) {
                         throw new ClaudeProbeError(
                           'KNOWN_INCOMPATIBILITY',
                           'Native mode admission failed.',
                         );
+                      }
+
                       available.set(mode.modeId, native.models);
                     } catch (error) {
-                      if (error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED')
+                      if (
+                        error instanceof SessionError &&
+                        error.code === 'PROVIDER_AUTH_REQUIRED'
+                      ) {
                         authenticationFailure = error;
+                      }
+
                       reason = 'The installed Claude could not initialize this native mode.';
                     }
                   }
                 }
+
                 return {
                   ...mode,
                   compatibility: modeCompatibility,
@@ -212,12 +237,19 @@ export function createClaudeDriver(
                 };
               }),
             );
-            if (authenticationFailure) throw authenticationFailure;
+            if (authenticationFailure) {
+              throw authenticationFailure;
+            }
+
             providerModes.push(...checkedModes);
           }
+
           inspectedAuthentication = undefined;
           const after = await inspect(boundedSignal);
-          if (after.fingerprint !== installation.fingerprint) continue;
+          if (after.fingerprint !== installation.fingerprint) {
+            continue;
+          }
+
           requireAuthentication(installation.authenticationFingerprint);
           const compatibility = classifyProviderInstallation({ ...identity, ...result });
           const admission = admitProvider(compatibility, {
@@ -227,8 +259,10 @@ export function createClaudeDriver(
             protocolVerified: true,
             executionMode: 'read-only',
           });
-          if (!admission.allowed)
+          if (!admission.allowed) {
             throw new ClaudeProbeError('KNOWN_INCOMPATIBILITY', admission.reason!);
+          }
+
           descriptor = {
             ...descriptor,
             models: result.models,
@@ -243,21 +277,27 @@ export function createClaudeDriver(
             modes: options.managedWrites ? ['read-only', 'workspace-write'] : ['read-only'],
           };
           modeModels.clear();
-          for (const [mode, models] of available) modeModels.set(mode, models);
+          for (const [mode, models] of available) {
+            modeModels.set(mode, models);
+          }
+
           delete descriptor.reason;
           delete descriptor.reasonCode;
           checkedFingerprint = installation.fingerprint;
           authentication.verified(installation.authenticationFingerprint);
           checkedAt = Date.now();
           scope = installation.accountScope;
+
           return structuredClone(descriptor);
         }
+
         throw new ClaudeProbeError(
           'PROBE_FAILED',
           'Claude installation changed repeatedly during its compatibility probe.',
         );
       } catch (error) {
         invalidate(error, inspectedAuthentication);
+
         return structuredClone(descriptor);
       }
     })();
@@ -267,62 +307,83 @@ export function createClaudeDriver(
       discovery = undefined;
     }
   }
+
   async function readyInstallation(signal: AbortSignal) {
     for (let attempt = 0; attempt < 2; attempt++) {
       await refresh(signal);
-      if (descriptor.readiness !== 'ready')
+      if (descriptor.readiness !== 'ready') {
         throw new SessionError(
           descriptor.readiness === 'authenticationRequired'
             ? 'PROVIDER_AUTH_REQUIRED'
             : 'PROVIDER_UNAVAILABLE',
           descriptor.reason ?? 'Claude is unavailable.',
         );
+      }
+
       const installation = await inspect(signal).catch((error: unknown) => {
         invalidate(error);
+
         throw error;
       });
       if (installation.fingerprint === checkedFingerprint && installation.accountScope === scope) {
         requireAuthentication(installation.authenticationFingerprint);
+
         return installation;
       }
     }
+
     invalidate();
+
     throw new SessionError(
       'PROVIDER_UNAVAILABLE',
       'Claude installation changed before invocation.',
     );
   }
+
   function validateModel(selection: Invocation['selection']) {
     const profile = claudeMode(selection);
     const models = modeModels.get(profile.modeId);
-    if (!models)
+    if (!models) {
       throw new SessionError(
         'CAPABILITY_UNSUPPORTED',
         'Requested native Claude mode is unavailable.',
       );
-    if (!selection.modelId && !selection.effort) return;
+    }
+
+    if (!selection.modelId && !selection.effort) {
+      return;
+    }
+
     const model = models.find((model) => model.modelId === (selection.modelId ?? 'default'));
-    if (!model)
+    if (!model) {
       throw new SessionError('MODEL_UNSUPPORTED', 'Requested Claude model is unavailable.');
-    if (selection.effort && !model.efforts.includes(selection.effort))
+    }
+
+    if (selection.effort && !model.efforts.includes(selection.effort)) {
       throw new SessionError(
         'CAPABILITY_UNSUPPORTED',
         'Requested Claude effort is unavailable for this model.',
       );
+    }
   }
+
   return {
     supportsManagedWrites: options.managedWrites === true,
     describe: () => structuredClone(descriptor),
     refresh,
     contextScope: () => scope,
     async validate(selection, signal = AbortSignal.timeout(ProviderTimeouts.discoveryMs)) {
-      if (selection.providerId !== 'claude')
+      if (selection.providerId !== 'claude') {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Claude provider identity is required.');
-      if (selection.mode === 'workspace-write' && !options.managedWrites)
+      }
+
+      if (selection.mode === 'workspace-write' && !options.managedWrites) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',
           'Claude writable dispatch requires Engine effect admission.',
         );
+      }
+
       await readyInstallation(signal);
       validateModel(selection);
     },
@@ -336,17 +397,20 @@ export function createClaudeDriver(
             invocation.executionContext.admission.operationId !== invocation.invocationId)) ||
         invocation.executionContext.kind !== invocation.selection.mode ||
         invocation.executionContext.workspace !== options.workspace
-      )
+      ) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',
           'Verified read-only workspace is required.',
         );
+      }
+
       let verified = false;
       let expectedVersion: string | undefined;
       let launchFingerprint: string | undefined;
       let launchAuthentication: string | undefined;
       let dispatched = false;
       const beforeDispatch = invocation.beforeDispatch;
+
       return createClaudeOperation(
         {
           ...invocation,
@@ -354,7 +418,10 @@ export function createClaudeDriver(
             ? {
                 beforeDispatch: async () => {
                   await beforeDispatch();
-                  if (launchAuthentication) requireAuthentication(launchAuthentication);
+                  if (launchAuthentication) {
+                    requireAuthentication(launchAuthentication);
+                  }
+
                   dispatched = true;
                 },
               }
@@ -371,7 +438,7 @@ export function createClaudeDriver(
                 'PROCESS_FAILED',
                 'TIMEOUT',
               ].includes(fact.error.code))
-          )
+          ) {
             invalidate(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
                 ? new SessionError('PROVIDER_AUTH_REQUIRED', fact.error.message)
@@ -379,6 +446,8 @@ export function createClaudeDriver(
               dispatched ? launchAuthentication : undefined,
               dispatched ? 'operation' : 'discovery',
             );
+          }
+
           await emit(fact);
         },
         signal,
@@ -388,15 +457,18 @@ export function createClaudeDriver(
             launchFingerprint = installation.fingerprint;
             launchAuthentication = installation.authenticationFingerprint;
             validateModel(invocation.selection);
-            if (installation.accountScope !== invocation.providerContext?.scope)
+            if (installation.accountScope !== invocation.providerContext?.scope) {
               throw new SessionError(
                 'SESSION_RECOVERY_REQUIRED',
                 'Claude account changed after native context admission.',
               );
+            }
+
             const temporary = await createInvocationScope(
               options.temporaryRoot,
               invocation.invocationId,
             );
+
             return launchOwnedProcess({
               invocationId: invocation.invocationId,
               scope: temporary,
@@ -420,20 +492,24 @@ export function createClaudeDriver(
                   (!invocation.selection.effort ||
                     entry.efforts.includes(invocation.selection.effort)),
               )
-            )
+            ) {
               throw new SessionError(
                 'MODEL_UNSUPPORTED',
                 'Claude model capabilities changed before dispatch.',
               );
+            }
+
             const current = await inspect(signal);
             if (
               current.fingerprint !== launchFingerprint ||
               current.accountScope !== invocation.providerContext?.scope
-            )
+            ) {
               throw new SessionError(
                 'SESSION_RECOVERY_REQUIRED',
                 'Claude installation changed before dispatch.',
               );
+            }
+
             requireAuthentication(current.authenticationFingerprint);
             expectedVersion = claudeVersion(payload);
           },
@@ -448,11 +524,14 @@ export function createClaudeDriver(
                     'Claude invocation does not satisfy the restricted protocol profile.',
                   ),
                 );
+
                 throw error;
               }
+
               verified = true;
-            } else if (frame.type === 'system' && frame.subtype === 'init')
+            } else if (frame.type === 'system' && frame.subtype === 'init') {
               verifyClaudeInit(frame, options.workspace, expectedVersion, invocation.selection);
+            }
           },
         },
       );

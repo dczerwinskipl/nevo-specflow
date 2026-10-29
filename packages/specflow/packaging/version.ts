@@ -32,6 +32,7 @@ export function resolveProductVersion({
       `resolved product version ${JSON.stringify(raw)} is not a valid npm package version`,
     );
   }
+
   return raw;
 }
 
@@ -46,5 +47,6 @@ function readFromReleaseTool(
         `(the pack command does this for you).`,
     );
   }
+
   return run('node', [releaseBin, 'version'], { cwd: repoRoot, env });
 }

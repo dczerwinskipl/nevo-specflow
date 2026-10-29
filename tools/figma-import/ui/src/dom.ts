@@ -1,6 +1,9 @@
 function byId<T extends HTMLElement>(id: string) {
   const node = document.getElementById(id);
-  if (!node) throw new Error(`Importer UI is missing #${id}`);
+  if (!node) {
+    throw new Error(`Importer UI is missing #${id}`);
+  }
+
   return node as T;
 }
 
@@ -34,8 +37,14 @@ export function element<K extends keyof HTMLElementTagNameMap>(
   className?: string,
 ) {
   const node = document.createElement(tag);
-  if (text !== undefined) node.textContent = text;
-  if (className) node.className = className;
+  if (text !== undefined) {
+    node.textContent = text;
+  }
+
+  if (className) {
+    node.className = className;
+  }
+
   return node;
 }
 
@@ -44,6 +53,9 @@ export function detailsRow(name: string, count: string, description?: string) {
   const heading = element('summary');
   heading.append(element('span', name, 'node-name'), element('span', count, 'count'));
   details.append(heading);
-  if (description) details.append(element('div', description, 'description'));
+  if (description) {
+    details.append(element('div', description, 'description'));
+  }
+
   return details;
 }

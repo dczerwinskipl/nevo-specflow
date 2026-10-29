@@ -27,8 +27,9 @@ import {
 
 const roots: string[] = [];
 afterEach(async () => {
-  for (const root of roots.splice(0))
+  for (const root of roots.splice(0)) {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 });
+  }
 });
 async function fixture() {
   const root = await createGitTestProject(
@@ -56,8 +57,10 @@ async function fixture() {
     archetype: { id: 'minimal', version: 1 },
     target: { kind: 'existing' as const, workspaceId: engine.workspace.workspaceId },
   });
+
   return { root, engine, intent, create };
 }
+
 it('keeps claims across restart and lost acknowledgements, preserving exact identity and settlement', async () => {
   const { root, engine, intent } = await fixture();
   const admitted = await admitWorkspaceExecution(engine, intent);
@@ -118,9 +121,11 @@ it('admits only one concurrent external writer under the existing Project Home l
   ]);
   expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
   expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
-  for (const result of results)
-    if (result.status === 'fulfilled')
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
       await abandonWorkspaceExecutionAdmission(engine, result.value.intent);
+    }
+  }
 });
 it('blocks new Create and Close reservations while a native CLI owns the project', async () => {
   const { engine, intent, create } = await fixture();
@@ -192,10 +197,11 @@ it.each(['admitted', 'dispatched', 'settled'])(
         await expect(admitWorkspaceExecution(reopened, other)).rejects.toMatchObject({
           code: 'RESOURCE_CONFLICT',
         });
-        if (stage === 'dispatched')
+        if (stage === 'dispatched') {
           await expect(abandonWorkspaceExecutionAdmission(reopened, intent)).rejects.toMatchObject({
             code: 'EXECUTION_RECOVERY_REQUIRED',
           });
+        }
       }
     } finally {
       await reapVitestWorker(worker);

@@ -49,6 +49,7 @@ function setup(
   const services = createSpecFlowAppServices({ http, authStore });
   const events: string[] = [];
   services.authRecovery.subscribe((result) => events.push(result));
+
   return { http, authStore, services, getSession, events };
 }
 
@@ -59,8 +60,10 @@ function deferred<T>() {
     resolve = done;
     reject = fail;
   });
+
   return { promise, resolve, reject };
 }
+
 const otherUser: AuthSessionResponse = {
   ...authenticated,
   user: { id: 'other', name: 'Other User' },
@@ -168,8 +171,10 @@ describe('application-composed Runtime authentication recovery', () => {
       sessionCalls += 1;
       if (sessionCalls === 1) {
         started.resolve();
+
         return pending.promise;
       }
+
       return Promise.resolve(unauthenticated);
     });
     const get = vi.spyOn(http, 'get').mockRejectedValue(unauthorized());
@@ -193,6 +198,7 @@ describe('application-composed Runtime authentication recovery', () => {
       authenticated,
       () => {
         started.resolve();
+
         return pending.promise;
       },
       otherUser,
@@ -239,8 +245,10 @@ describe('application-composed Runtime authentication recovery', () => {
         sessionCalls += 1;
         if (sessionCalls === 1) {
           started.resolve();
+
           return pending.promise;
         }
+
         return Promise.resolve(otherUser);
       },
       otherUser,
@@ -361,7 +369,10 @@ describe('application-composed Runtime authentication recovery', () => {
     vi.spyOn(http, 'sse').mockImplementation(() => source);
     const sse = createProtectedRuntimeHttpClient(http, services.authRecovery).sse('/api/events');
     const events: SseEvent[] = [];
-    for await (const event of sse) events.push(event);
+    for await (const event of sse) {
+      events.push(event);
+    }
+
     expect(events).toEqual([{ type: 'message', data: 'allowed' }]);
     expect(close).toHaveBeenCalledOnce();
   });
@@ -391,6 +402,7 @@ describe('application-composed Runtime authentication recovery', () => {
     let refreshCalls = 0;
     const { http, services, authStore, events } = setup(authenticated, () => {
       refreshCalls += 1;
+
       return refreshCalls === 1
         ? Promise.reject(new Error('temporary network outage'))
         : Promise.resolve(otherUser);

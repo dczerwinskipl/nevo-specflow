@@ -33,6 +33,7 @@ it.skipIf(!enabled)(
       // Parent test sends SIGKILL to this exact OS process. No completion.
       await new Promise<void>(() => undefined);
     };
+
     if (stage === 'scratch-intent') {
       await prepareDivergentCloseCandidate(engine, operationId, checkpoint);
     } else if (stage === 'publish-intent') {
@@ -64,13 +65,19 @@ it.skipIf(!enabled)(
       await publishCloseGitFastForward(engine, operationId, async () => {
         const journal = await inspectCloseOperation(engine, operationId);
         const source = journal?.integration?.sourceCommit;
-        if (!source) throw new Error('Pinned source commit is unavailable.');
+        if (!source) {
+          throw new Error('Pinned source commit is unavailable.');
+        }
+
         // A REAL git update-ref advances the checked-out branch without
         // updating its index or physical working tree. Kill the worker before
         // the ordinary fast-forward child can run. This probes the torn state,
         // not a claim about the exact internal scheduling of git merge.
         const change = await executeGitMutation(root, ['update-ref', 'HEAD', source]);
-        if (change.exitCode !== 0) throw new Error('Failed to materialize torn Git ref.');
+        if (change.exitCode !== 0) {
+          throw new Error('Failed to materialize torn Git ref.');
+        }
+
         await checkpoint();
       });
     } else if (stage === 'live-merge-child') {
@@ -84,9 +91,11 @@ it.skipIf(!enabled)(
           writeFileSync(pidSignal, JSON.stringify({ pid: data.pid, args: data.args }));
         }
       };
+
       processChannel.subscribe(observe);
       try {
         await publishCloseGitFastForward(engine, operationId);
+
         throw new Error('Interrupted merge unexpectedly completed.');
       } catch (error) {
         if (
@@ -97,7 +106,9 @@ it.skipIf(!enabled)(
         ) {
           throw error;
         }
+
         await writeFile(outcomeSignal, JSON.stringify({ result: 'recovery-required' }));
+
         return;
       } finally {
         processChannel.unsubscribe(observe);
@@ -105,6 +116,7 @@ it.skipIf(!enabled)(
     } else {
       throw new Error('Unknown Close SIGKILL checkpoint.');
     }
+
     throw new Error('Close crash barrier unexpectedly returned.');
   },
   90000,

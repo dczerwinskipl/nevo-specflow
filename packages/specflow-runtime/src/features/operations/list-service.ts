@@ -54,7 +54,9 @@ export async function buildOperationList(
   const kinds = new Set(input.sources.map((source) => source.kind));
   const live = new Map<string, OperationProgressListing>();
   for (const item of input.registry.list()) {
-    if (kinds.has(item.kind)) live.set(keyOf(item.kind, item.operationId), item);
+    if (kinds.has(item.kind)) {
+      live.set(keyOf(item.kind, item.operationId), item);
+    }
   }
 
   const rows: OperationSummary[] = [];
@@ -66,10 +68,14 @@ export async function buildOperationList(
       rows.push(merge(source.kind, row, live.get(key), nowMs, config));
     }
   }
+
   // Running before the journal is reserved: only the registry knows the operation. Finished
   // registry-only runs failed before anything was created and are reported by the request itself.
   for (const [key, item] of live) {
-    if (seen.has(key) || item.status !== 'running') continue;
+    if (seen.has(key) || item.status !== 'running') {
+      continue;
+    }
+
     rows.push(fromRegistry(item));
   }
 
@@ -106,6 +112,7 @@ export function shapeOperationList(
   const ordered = [...recent].sort(compareRows);
   const { statuses } = input;
   const filtered = statuses ? ordered.filter((row) => statuses.has(row.status)) : ordered;
+
   return {
     items: filtered.slice(0, input.limit),
     counts,
@@ -127,6 +134,8 @@ function merge(
     ...(row.title !== undefined ? { title: row.title } : {}),
     ...(row.subject ? { subject: { ...row.subject } } : {}),
     ...(row.target ? { target: { ...row.target } } : {}),
+    ...(row.action !== undefined ? { action: row.action } : {}),
+    ...(row.documentCount !== undefined ? { documentCount: row.documentCount } : {}),
   };
   const startedAt = row.startedAt ?? reg?.startedAt;
   const withStart = startedAt ? { startedAt } : {};
@@ -140,6 +149,7 @@ function merge(
     case 'journal-completed': {
       const finishedAt =
         reg?.status === 'completed' && reg.finishedAt ? reg.finishedAt : row.updatedAt;
+
       return {
         ...base,
         status: 'completed',
@@ -149,6 +159,17 @@ function merge(
         finishedAt,
       };
     }
+
+    case 'journal-queued':
+      return { ...base, status: 'queued', ...withStart, updatedAt: row.updatedAt };
+    case 'journal-failed':
+      return {
+        ...base,
+        status: 'failed',
+        ...withStart,
+        ...(derived.code ? { code: derived.code } : {}),
+        updatedAt: row.updatedAt,
+      };
     case 'journal-recovery':
     case 'idle':
       return {
@@ -170,6 +191,7 @@ function merge(
     case 'registry':
       break;
   }
+
   // Only reached with a live registry outcome overlaying a non terminal journal.
   const live = reg!;
   switch (live.status) {
@@ -210,11 +232,17 @@ function merge(
 
 /** What the status table decided and which rule decided it. */
 export interface DerivedOperationStatus {
-  readonly status: 'in-progress' | 'failed' | 'recovery-required' | 'completed';
+  readonly status: 'in-progress' | 'failed' | 'recovery-required' | 'completed' | 'queued';
   /** Stable code of a failed or recovery-required result when known. */
   readonly code?: string;
   readonly source:
-    'journal-completed' | 'journal-recovery' | 'registry' | 'idle' | 'journal-in-progress';
+    | 'journal-completed'
+    | 'journal-recovery'
+    | 'journal-queued'
+    | 'journal-failed'
+    | 'registry'
+    | 'idle'
+    | 'journal-in-progress';
 }
 
 /**
@@ -229,7 +257,24 @@ export function deriveOperationStatus(
   nowMs: number,
   staleAfterMs: number = DEFAULT_OPERATION_LIST_CONFIG.staleAfterMs,
 ): DerivedOperationStatus {
-  if (row.state === 'completed') return { status: 'completed', source: 'journal-completed' };
+  if (row.state === 'completed') {
+    return { status: 'completed', source: 'journal-completed' };
+  }
+
+  // A document change waits for its commit or for a decision legitimately: neither the live registry
+  // nor the idle-interrupted rule ever applies to it (what is interrupted is known from the writer).
+  if (row.state === 'queued') {
+    return { status: 'queued', source: 'journal-queued' };
+  }
+
+  if (row.state === 'failed') {
+    return {
+      status: 'failed',
+      ...(row.code ? { code: row.code } : {}),
+      source: 'journal-failed',
+    };
+  }
+
   if (row.state === 'recovery-required') {
     return {
       status: 'recovery-required',
@@ -237,6 +282,7 @@ export function deriveOperationStatus(
       source: 'journal-recovery',
     };
   }
+
   if (reg) {
     return {
       status: reg.status === 'running' ? 'in-progress' : reg.status,
@@ -244,6 +290,7 @@ export function deriveOperationStatus(
       source: 'registry',
     };
   }
+
   if (nowMs - Date.parse(row.updatedAt) > staleAfterMs) {
     return {
       status: 'recovery-required',
@@ -251,6 +298,7 @@ export function deriveOperationStatus(
       source: 'idle',
     };
   }
+
   return { status: 'in-progress', source: 'journal-in-progress' };
 }
 
@@ -290,17 +338,25 @@ function capCompleted(
     )
     .sort((a, b) => finishedOf(b) - finishedOf(a))
     .slice(0, config.maxCompleted);
+
   return [...rows.filter((row) => row.status !== 'completed'), ...recent];
 }
 
 function countOf(rows: readonly OperationSummary[]): OperationListCounts {
   const counts = { inProgress: 0, recoveryRequired: 0, failed: 0, completed: 0 };
   for (const row of rows) {
-    if (row.status === 'in-progress') counts.inProgress += 1;
-    else if (row.status === 'recovery-required') counts.recoveryRequired += 1;
-    else if (row.status === 'failed') counts.failed += 1;
-    else if (row.status === 'completed') counts.completed += 1;
+    // A queued document change is work in progress: the counts have no separate bucket for it.
+    if (row.status === 'in-progress' || row.status === 'queued') {
+      counts.inProgress += 1;
+    } else if (row.status === 'recovery-required') {
+      counts.recoveryRequired += 1;
+    } else if (row.status === 'failed') {
+      counts.failed += 1;
+    } else if (row.status === 'completed') {
+      counts.completed += 1;
+    }
   }
+
   return counts;
 }
 
@@ -308,13 +364,18 @@ const RANK: Readonly<Record<string, number>> = {
   'recovery-required': 0,
   failed: 1,
   'in-progress': 2,
+  queued: 2,
   completed: 3,
 };
 
 function compareRows(a: OperationSummary, b: OperationSummary): number {
   const byRank = (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9);
-  if (byRank !== 0) return byRank;
+  if (byRank !== 0) {
+    return byRank;
+  }
+
   const time = (row: OperationSummary) =>
     row.status === 'completed' ? finishedOf(row) : Date.parse(row.updatedAt);
+
   return time(b) - time(a) || a.operationId.localeCompare(b.operationId);
 }

@@ -31,6 +31,7 @@ export async function startOidcLogin(
     if (error instanceof OidcProviderError && error.kind === 'unavailable') {
       return { ok: false, error: 'provider_unavailable', providerError: error };
     }
+
     throw error;
   }
 
@@ -47,6 +48,7 @@ export async function startOidcLogin(
     if (error instanceof AuthenticationStoreCapacityError) {
       return { ok: false, error: 'service_unavailable' };
     }
+
     throw error;
   }
 }

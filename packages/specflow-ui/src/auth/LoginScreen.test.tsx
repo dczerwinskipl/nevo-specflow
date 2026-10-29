@@ -13,6 +13,7 @@ function openingTagFor(markup: string, marker: string): string {
   const end = markup.indexOf('>', markerIndex);
   expect(start).toBeGreaterThanOrEqual(0);
   expect(end).toBeGreaterThan(markerIndex);
+
   return markup.slice(start, end + 1);
 }
 

@@ -52,10 +52,13 @@ const query = (request: FastifyRequest) => request.query as Query;
 const ids = (request: FastifyRequest) => request.params as Params;
 const count = (value: string | undefined, fallback: number, max: number) => {
   const n = value === undefined ? fallback : Number(value);
-  if (!Number.isSafeInteger(n) || n < 1 || n > max)
+  if (!Number.isSafeInteger(n) || n < 1 || n > max) {
     throw new SessionError('SESSION_INPUT_INVALID', 'Page limit is out of range.');
+  }
+
   return n;
 };
+
 export function registerSessionRoutes<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
   options: {
@@ -66,7 +69,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
   const streams = createSessionStreams(app);
   app.register((feature, _options, registered) => {
     feature.setErrorHandler((error, _request, reply) => {
-      if (error instanceof SessionError)
+      if (error instanceof SessionError) {
         return reply
           .header('Cache-Control', 'no-store')
           .code(error.statusCode)
@@ -76,12 +79,15 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             message: error.message,
             ...(error.details ? { details: error.details } : {}),
           });
+      }
+
       if (
         typeof error === 'object' &&
         error !== null &&
         ('validation' in error || ('code' in error && error.code === 'FST_ERR_CTP_BODY_TOO_LARGE'))
       ) {
         const tooLarge = 'code' in error && error.code === 'FST_ERR_CTP_BODY_TOO_LARGE';
+
         return reply
           .header('Cache-Control', 'no-store')
           .code(tooLarge ? 413 : 400)
@@ -91,6 +97,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             message: tooLarge ? 'Request exceeds byte budget.' : 'Invalid Session request.',
           });
       }
+
       throw error;
     });
     feature.addHook('onSend', (_request, reply, _payload, done) => {
@@ -98,16 +105,22 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       done();
     });
     const coordinator = () => {
-      if (!options.coordinator)
+      if (!options.coordinator) {
         throw new SessionError('SESSION_DISABLED', 'Managed Sessions are disabled.');
+      }
+
       return options.coordinator;
     };
+
     const authorize = (request: FastifyRequest, manage = false) =>
       authorizeSession(request, coordinator(), ids(request).sessionId, manage);
     async function authorizeExecution(request: FastifyRequest, continuation = false) {
       await authorize(request, true);
       const response = request.body as RespondInteraction;
-      if (continuation && response.kind === 'permission' && response.decision === 'deny') return;
+      if (continuation && response.kind === 'permission' && response.decision === 'deny') {
+        return;
+      }
+
       const snapshot = await coordinator().snapshot(
         ids(request).sessionId,
         request.authz.readContext().subject,
@@ -115,12 +128,14 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       const mode = continuation
         ? (snapshot.activeTurn?.mode ?? snapshot.session.mode)
         : ((request.body as StartTurn).mode ?? snapshot.session.mode);
-      if (mode === 'workspace-write')
+      if (mode === 'workspace-write') {
         authorizeSessionWrite(request, {
           projectId: snapshot.session.projectId,
           sessionId: snapshot.session.sessionId,
         });
+      }
     }
+
     function authorizeCreate(
       request: FastifyRequest,
       _reply: unknown,
@@ -133,10 +148,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         capability: SessionCapabilities.capabilities.Create,
         scope: { projectId: options.projectId! },
       });
-      if ((request.body as CreateSession | undefined)?.mode === 'workspace-write')
+      if ((request.body as CreateSession | undefined)?.mode === 'workspace-write') {
         authorizeSessionWrite(request, { projectId: options.projectId! });
+      }
+
       done();
     }
+
     const actor = (request: FastifyRequest) => request.authz.readContext().subject;
     feature.get(
       '/api/session-providers',
@@ -147,12 +165,15 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           resource: SessionCapabilities,
           scope: { projectId: options.projectId! },
         });
-        for (const provider of items)
-          if (provider.providerModes)
+        for (const provider of items) {
+          if (provider.providerModes) {
             provider.providerModes = provider.providerModes.map((mode) => ({
               ...mode,
               authorized: mode.mode !== 'workspace-write' || permissions['execute-write'],
             }));
+          }
+        }
+
         return { items };
       },
     );
@@ -186,11 +207,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       },
       async (request) => {
         const q = query(request);
-        if (!q.before)
+        if (!q.before) {
           throw new SessionError(
             'SESSION_CURSOR_INVALID',
             'History requires a cursor from the Session snapshot.',
           );
+        }
+
         return coordinator().store.call({
           op: 'history',
           sessionId: ids(request).sessionId,

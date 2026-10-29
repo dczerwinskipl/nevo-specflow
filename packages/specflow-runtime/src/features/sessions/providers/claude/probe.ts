@@ -48,22 +48,32 @@ export async function probeClaude(
     );
     for await (const line of owner.lines()) {
       const frame = object(JSON.parse(line));
-      if (frame.type !== 'control_response') throw new ClaudeProtocolError();
-      const response = object(frame.response);
-      if (response.subtype !== 'success' || response.request_id !== requestId)
+      if (frame.type !== 'control_response') {
         throw new ClaudeProtocolError();
+      }
+
+      const response = object(frame.response);
+      if (response.subtype !== 'success' || response.request_id !== requestId) {
+        throw new ClaudeProtocolError();
+      }
+
       const payload = object(response.response);
       const models = claudeModels(payload);
-      if (!models.length) throw new ClaudeProtocolError();
+      if (!models.length) {
+        throw new ClaudeProtocolError();
+      }
+
       const version = claudeVersion(payload);
       result = { models, ...(version ? { version } : {}) };
       break;
     }
-    if (!result)
+
+    if (!result) {
       throw new ClaudeProbeError(
         'PROBE_FAILED',
         'Claude did not complete protocol initialization.',
       );
+    }
   } catch (error) {
     failure =
       error instanceof ClaudeProtocolError || error instanceof SyntaxError
@@ -77,14 +87,25 @@ export async function probeClaude(
       (value) => value.process.state === 'stopped',
       () => false,
     );
-    if (!stopped)
+    if (!stopped) {
       failure = new ClaudeProbeError(
         'PROCESS_SETTLEMENT_UNVERIFIED',
         'Claude probe process settlement could not be verified.',
       );
+    }
   }
-  if (failure instanceof Error) throw failure;
-  if (failure) throw new ClaudeProbeError('PROBE_FAILED', 'Claude initialization failed.');
-  if (!result) throw new ClaudeProbeError('PROBE_FAILED', 'Claude initialization is unavailable.');
+
+  if (failure instanceof Error) {
+    throw failure;
+  }
+
+  if (failure) {
+    throw new ClaudeProbeError('PROBE_FAILED', 'Claude initialization failed.');
+  }
+
+  if (!result) {
+    throw new ClaudeProbeError('PROBE_FAILED', 'Claude initialization is unavailable.');
+  }
+
   return result;
 }

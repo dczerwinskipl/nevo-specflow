@@ -17,6 +17,7 @@ import { SpecificationWorkspace } from './SpecificationWorkspace';
 function justCreated(): SpecificationWorkspaceData {
   const base = createSpecificationWorkspaceFixture('empty', 'created-spec');
   const sections = ['tasks', 'documents', 'sessions', 'activity', 'repository', 'changes'] as const;
+
   return {
     ...base,
     sectionAvailability: Object.fromEntries(sections.map((id) => [id, 'unavailable'])),
@@ -33,6 +34,7 @@ function Workspace({ demo }: { readonly demo: boolean }) {
     () => (demo ? createSpecificationWorkspaceFixture('empty', 'created-spec') : justCreated()),
     [demo],
   );
+
   return (
     <QueryClientProvider client={setup.query}>
       <TestServicesRouterContext services={setup.services}>

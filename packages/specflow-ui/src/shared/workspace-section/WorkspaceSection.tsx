@@ -63,7 +63,10 @@ export interface WorkspaceSectionFooterProps {
 }
 
 export function WorkspaceSectionFooter({ children, className }: WorkspaceSectionFooterProps) {
-  if (!children) return null;
+  if (!children) {
+    return null;
+  }
+
   return <div className={cn('pt-1.5 text-body-sm', className)}>{children}</div>;
 }
 

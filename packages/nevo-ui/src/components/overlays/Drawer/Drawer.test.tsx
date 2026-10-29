@@ -46,6 +46,7 @@ function renderDrawer(side?: DrawerSide, contentProps: Partial<DrawerContentProp
     </Drawer>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
   return screen.getByRole('dialog', { name: 'Contents' });
 }
 

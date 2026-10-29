@@ -1,6 +1,64 @@
+import type { ArchetypeDefinition, TemplateDefinition } from '@nevo/specflow-contracts/documents';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-const catalogue: DemoCatalogue = {
-  revision: 'demo-creation-5',
+import {
+  resolveCatalogue,
+  toArchetypeCatalogue,
+  type ResolvedCatalogue,
+} from '@nevo/specflow-engine';
+import { seedArchetypes, seedDocumentTypes } from './definitions';
+
+function seedTemplate(archetypeId: string, templateId: string): TemplateDefinition {
+  const template = seedArchetypes
+    .find((archetype) => archetype.id === archetypeId)
+    ?.templates.find((candidate) => candidate.id === templateId);
+  if (!template) {
+    throw new Error(`Seed template ${archetypeId}/${templateId} is missing.`);
+  }
+
+  return template;
+}
+
+/**
+ * Demo-only owner archetype, declared like a project's own definition would be. Its requirement
+ * on `decisions` lets the demo show an unmet requirement; its templates are the seeds' ones.
+ */
+const crossModule: ArchetypeDefinition = {
+  id: 'cross-module',
+  version: 1,
+  title: 'Cross-module change (demo)',
+  description:
+    'Demo-only owner archetype: a change that spans several modules and must record its decisions.',
+  useWhen:
+    'Demo only: shows an archetype defined by a project owner whose requirements go beyond the overview.',
+  instructions:
+    'Record every decision that affects more than one module in the decisions document before the implementation starts. Describe the structure in the architecture document when it changes.',
+  requirements: [
+    { documentType: 'overview', minCount: 1 },
+    { documentType: 'decisions', minCount: 1 },
+  ],
+  templates: [
+    seedTemplate('minimal', 'overview'),
+    { ...seedTemplate('architecture', 'decisions'), include: 'optional', preselected: true },
+    { ...seedTemplate('architecture', 'architecture'), include: 'optional', preselected: false },
+  ],
+};
+
+/**
+ * The demo archetype catalogue: what a project gets from `definitions install` (the three seed
+ * archetypes and their document types, see `./definitions`) plus the demo-only owner archetype,
+ * resolved by the Engine's own resolver. Create scaffolds from it.
+ */
+export const demoArchetypes: ResolvedCatalogue = resolveCatalogue({
+  documentTypes: seedDocumentTypes,
+  archetypes: [...seedArchetypes, crossModule],
+});
+
+/**
+ * `GET /api/demo/specification-creation`: the real `ArchetypeCatalogue` of {@link demoArchetypes}
+ * plus the demo-only part (project, simulated location, providers).
+ */
+export const creationCatalogue: DemoCatalogue = {
+  ...toArchetypeCatalogue({ catalogue: demoArchetypes }),
   defaultArchetypeId: 'feature',
   demo: true,
   project: { id: 'demo-project', title: 'Nevo SpecFlow · Demo' },
@@ -10,64 +68,6 @@ const catalogue: DemoCatalogue = {
     branch: 'main',
     simulated: false,
   },
-  archetypes: [
-    {
-      id: 'empty',
-      version: '1',
-      title: 'Empty',
-      description: 'Rozpocznij od pustej specyfikacji i dodawaj dokumenty w miarę potrzeb.',
-      documents: [],
-    },
-    {
-      id: 'simple',
-      version: '1',
-      title: 'Specification',
-      description: 'Opisz cel i kryteria akceptacji w jednym dokumencie specyfikacji.',
-      documents: [
-        {
-          id: 'specification',
-          title: 'Specification',
-          filename: 'specification.md',
-          required: true,
-          content:
-            '# Specification\n\n## Goal\n\nDescribe the outcome.\n\n## Acceptance criteria\n\n- ',
-        },
-      ],
-    },
-    {
-      id: 'feature',
-      version: '2',
-      title: 'Feature',
-      description:
-        'Doprecyzuj zmianę produktu w specyfikacji, z możliwością zapisania decyzji i wyników rozpoznania.',
-      documents: [
-        {
-          id: 'specification',
-          title: 'Specification',
-          filename: 'specification.md',
-          required: true,
-          content:
-            '# Feature\n\n## Problem\n\nOpisz problem użytkownika i cel zmiany.\n\n## Proposed behaviour\n\nOpisz oczekiwane zachowanie produktu.\n\n## Acceptance criteria\n\n- Dodaj sprawdzalne kryteria akceptacji.\n\n## Poza zakresem\n\nOkreśl ograniczenia tej zmiany.\n\n## Sytuacje wyjątkowe\n\nOpisz błędy i sposoby odzyskania poprawnego stanu.\n\n## Otwarte pytania\n\nZapisz kwestie wymagające decyzji.',
-        },
-        {
-          id: 'decisions',
-          title: 'Decisions',
-          filename: 'decisions.md',
-          required: false,
-          content:
-            '# Decyzje\n\n## Kontekst\n\nOpisz problem wymagający decyzji.\n\n## Rozważone warianty\n\nZapisz opcje i ich ograniczenia.\n\n## Decyzja\n\nZapisz wybrany wariant oraz uzasadnienie.\n\n## Konsekwencje\n\nOpisz skutki i dalsze działania.',
-        },
-        {
-          id: 'research',
-          title: 'Research',
-          filename: 'research.md',
-          required: false,
-          content:
-            '# Rozpoznanie\n\n## Do sprawdzenia\n\n- Zapisz pytania i źródła.\n\n## Ustalenia\n\nZapisz wyniki rozpoznania.',
-        },
-      ],
-    },
-  ],
   providers: [
     {
       id: 'codex',
@@ -75,6 +75,9 @@ const catalogue: DemoCatalogue = {
       mark: 'codex',
       version: 'Demo adapter v1',
       access: 'Demo fixture',
+      connection: 'unknown',
+      profile: 'Profil demonstracyjny',
+      quota: { state: 'unknown' },
       available: true,
       models: [
         {
@@ -92,6 +95,9 @@ const catalogue: DemoCatalogue = {
       mark: 'claude',
       version: 'Demo adapter v1',
       access: 'Demo fixture',
+      connection: 'unknown',
+      profile: 'Profil demonstracyjny',
+      quota: { state: 'unknown' },
       available: true,
       models: [
         {
@@ -100,12 +106,7 @@ const catalogue: DemoCatalogue = {
           efforts: ['low', 'high'],
           modes: ['ask', 'edit', 'agent'],
         },
-        {
-          id: 'model-b',
-          title: 'Model B · demo',
-          efforts: [],
-          modes: ['ask', 'edit'],
-        },
+        { id: 'model-b', title: 'Model B · demo', efforts: [], modes: ['ask', 'edit'] },
       ],
     },
     {
@@ -114,32 +115,12 @@ const catalogue: DemoCatalogue = {
       mark: 'neutral',
       version: 'Demo adapter',
       access: 'Unknown',
+      connection: 'unknown',
+      profile: 'Profil demonstracyjny',
+      quota: { state: 'unknown' },
       available: false,
       reason: 'Niedostępny w tym środowisku demonstracyjnym.',
       models: [],
     },
   ],
-};
-
-// This fixture describes authoring phases; it does not execute a workflow.
-export const creationCatalogue: DemoCatalogue = {
-  ...catalogue,
-  archetypes: catalogue.archetypes.map((archetype) => ({
-    ...archetype,
-    workflow: {
-      phases: archetype.id === 'empty' ? [] : ['Doprecyzowanie', 'Opracowanie', 'Weryfikacja'],
-      requiredDocuments: archetype.documents
-        .filter((document) => document.required)
-        .map((document) => document.filename),
-      suggestedDocuments: archetype.documents
-        .filter((document) => !document.required)
-        .map((document) => document.filename),
-    },
-  })),
-  providers: catalogue.providers.map((provider) => ({
-    ...provider,
-    connection: 'unknown',
-    profile: 'Profil demonstracyjny',
-    quota: { state: 'unknown' },
-  })),
 };

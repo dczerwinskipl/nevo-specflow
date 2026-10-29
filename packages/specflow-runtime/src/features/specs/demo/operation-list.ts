@@ -47,10 +47,15 @@ function checklist(
 ): { id: string; status: OperationStepStatus }[] {
   const ids = specificationCreateSteps(newWorktree ? 'new-worktree' : 'existing', commits);
   const current = currentStep ? ids.findIndex((id) => id === currentStep) : -1;
+
   return ids.map((id, index) => {
     let status: OperationStepStatus = 'pending';
-    if (done || (current >= 0 && index < current)) status = 'done';
-    else if (index === current) status = 'running';
+    if (done || (current >= 0 && index < current)) {
+      status = 'done';
+    } else if (index === current) {
+      status = 'running';
+    }
+
     return { id, status };
   });
 }
@@ -68,6 +73,7 @@ function seededRows(now: Date): OperationSummary[] {
     workspaceId: demoId(900),
     branch: 'develop',
   };
+
   return [
     {
       ...base(1),
@@ -186,7 +192,9 @@ export function buildDemoOperationList(input: DemoOperationListInput): Operation
         finishedAt: record.updatedAt,
       };
     }
+
     const current = record.step === 'commit-writing' ? 'committing-specification' : undefined;
+
     return {
       ...common,
       status: 'recovery-required',
@@ -197,7 +205,10 @@ export function buildDemoOperationList(input: DemoOperationListInput): Operation
     };
   });
   for (const item of input.live) {
-    if (item.kind !== KIND || item.status !== 'running' || known.has(item.operationId)) continue;
+    if (item.kind !== KIND || item.status !== 'running' || known.has(item.operationId)) {
+      continue;
+    }
+
     rows.push({
       operationId: item.operationId,
       kind: KIND,
@@ -208,7 +219,11 @@ export function buildDemoOperationList(input: DemoOperationListInput): Operation
       updatedAt: item.updatedAt,
     });
   }
-  if (input.scenarios.includes('operations-panel')) rows.push(...seededRows(input.now));
+
+  if (input.scenarios.includes('operations-panel')) {
+    rows.push(...seededRows(input.now));
+  }
+
   return shapeOperationList(rows, {
     now: input.now,
     admit: input.admit,

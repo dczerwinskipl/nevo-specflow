@@ -19,8 +19,9 @@ import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
 afterEach(async () => {
-  for (const root of roots.splice(0).reverse())
+  for (const root of roots.splice(0).reverse()) {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
+  }
 });
 
 function git(root: string, ...args: string[]): string {
@@ -72,7 +73,10 @@ async function fixture(linked: boolean) {
       ? { kind: 'new-worktree' as const, baseRef: 'HEAD' }
       : { kind: 'existing' as const, workspaceId: registry.primaryWorkspaceId },
   });
-  if (linked) roots.push(dirname(spec.workspaceRoot));
+  if (linked) {
+    roots.push(dirname(spec.workspaceRoot));
+  }
+
   git(
     spec.workspaceRoot,
     'add',
@@ -93,6 +97,7 @@ async function fixture(linked: boolean) {
       'canonical source',
     );
   }
+
   return { root, engine, spec };
 }
 
@@ -113,6 +118,7 @@ async function authedApp(
     },
     { auth: { store }, specs: { engine } },
   );
+
   return {
     app,
     headers: { cookie: authCookieNames(config.server.port).session + '=' + session },
@@ -146,6 +152,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
         expect(await inspectCloseOperation(engine, operationId)).toBeUndefined();
         expect(git(root, 'rev-parse', 'HEAD')).toBe(originalHead);
       }
+
       const approved = await app.inject({
         method: 'POST',
         url,
@@ -278,6 +285,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     } finally {
       await developer.app.close();
     }
+
     const admin = await authedApp(engine, 'admin');
     try {
       const result = await admin.app.inject({
@@ -328,6 +336,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
         'add HTTP sibling',
       );
     }
+
     const operationId = randomUUID();
     const url = '/api/workspaces/' + workspaceId + '/close';
     const developer = await authedApp(engine, 'developer');
@@ -350,6 +359,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     } finally {
       await developer.app.close();
     }
+
     const admin = await authedApp(engine, 'admin');
     try {
       const preview = await admin.app.inject({
@@ -413,6 +423,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     } finally {
       await developer.app.close();
     }
+
     const admin = await authedApp(engine, 'admin');
     try {
       // This is an operator attestation, not an automated process-liveness proof.

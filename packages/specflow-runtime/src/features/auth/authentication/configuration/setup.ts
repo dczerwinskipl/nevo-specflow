@@ -147,6 +147,7 @@ async function addPasswordAccount(
         options.ui.note(`Password account '${username}' already exists.`, 'Username');
         continue;
       }
+
       if (canonicalUsers.has(username)) {
         options.ui.note(
           `User '${username}' already exists. ` +
@@ -155,6 +156,7 @@ async function addPasswordAccount(
         );
         continue;
       }
+
       break;
     }
 
@@ -194,7 +196,10 @@ async function addOidcProvider(
     let email: string;
     while (true) {
       email = (await requiredInput(ui, 'Allowed email')).trim().toLowerCase();
-      if (email.includes('@') && !Object.hasOwn(allowedEmails, email)) break;
+      if (email.includes('@') && !Object.hasOwn(allowedEmails, email)) {
+        break;
+      }
+
       ui.note(
         Object.hasOwn(allowedEmails, email)
           ? `Identity '${email}' is already configured for this provider.`
@@ -219,11 +224,14 @@ async function resolveOidcUser(
   canonicalUsers: Map<string, RuntimeUserConfig>,
   email: string,
 ): Promise<string> {
-  if (canonicalUsers.has(email)) return email;
+  if (canonicalUsers.has(email)) {
+    return email;
+  }
 
   // OIDC supplies the human-facing profile at sign-in time. The normalized
   // allowed email is the stable configured identity and fallback display value.
   await addCanonicalUser(options, canonicalUsers, email, { name: email });
+
   return email;
 }
 
@@ -236,6 +244,7 @@ async function addCanonicalUser(
   if (canonicalUsers.has(userId)) {
     throw new Error(`Canonical user '${userId}' already exists.`);
   }
+
   canonicalUsers.set(userId, user);
   await options.onUserCreated(userId, user);
 }
@@ -274,7 +283,10 @@ async function uniquePasswordUsername(
 ): Promise<string> {
   while (true) {
     const username = normalizePasswordUsername(await requiredInput(ui, 'Username', defaultValue));
-    if (!Object.hasOwn(accounts, username)) return username;
+    if (!Object.hasOwn(accounts, username)) {
+      return username;
+    }
+
     ui.note(`Password account '${username}' already exists.`, 'Username');
   }
 }
@@ -319,7 +331,10 @@ async function requiredOidcIssuer(ui: RuntimeSetupUi): Promise<string> {
     try {
       return absoluteHttpsUrl(value, 'OIDC issuer');
     } catch (error) {
-      if (!(error instanceof RuntimeConfigError)) throw error;
+      if (!(error instanceof RuntimeConfigError)) {
+        throw error;
+      }
+
       ui.note(error.message, 'OIDC issuer');
     }
   }
@@ -332,7 +347,9 @@ async function requiredProviderId(
 ): Promise<string> {
   while (true) {
     const id = (await requiredInput(ui, 'Provider id', suggested)).trim();
-    if (isValidOidcProviderId(id) && !Object.hasOwn(existing, id)) return id;
+    if (isValidOidcProviderId(id) && !Object.hasOwn(existing, id)) {
+      return id;
+    }
 
     ui.note(
       Object.hasOwn(existing, id)
@@ -391,7 +408,10 @@ function usersConfig(
   canonicalUsers: ReadonlyMap<string, RuntimeUserConfig>,
 ): Record<string, RuntimeUserConfig> {
   const result = dictionary<RuntimeUserConfig>();
-  for (const [userId, user] of canonicalUsers) result[userId] = user;
+  for (const [userId, user] of canonicalUsers) {
+    result[userId] = user;
+  }
+
   return result;
 }
 
@@ -400,7 +420,10 @@ function formatUser(
   userId: string,
 ): string {
   const user = canonicalUsers.get(userId);
-  if (!user || user.name === userId) return userId;
+  if (!user || user.name === userId) {
+    return userId;
+  }
+
   return `${user.name} (${userId})`;
 }
 
@@ -411,14 +434,18 @@ async function requiredInput(
 ): Promise<string> {
   while (true) {
     const value = (await ui.input(message, defaultValue)).trim();
-    if (value) return value;
+    if (value) {
+      return value;
+    }
   }
 }
 
 async function requiredSecret(ui: RuntimeSetupUi, message: string): Promise<string> {
   while (true) {
     const value = await ui.secret(message);
-    if (value.length > 0) return value;
+    if (value.length > 0) {
+      return value;
+    }
   }
 }
 
@@ -430,7 +457,10 @@ async function confirmedSecret(
   while (true) {
     const value = await requiredSecret(ui, message);
     const confirmation = await ui.secret(confirmationMessage);
-    if (value === confirmation) return value;
+    if (value === confirmation) {
+      return value;
+    }
+
     ui.note('The values do not match. Try again.', 'Password');
   }
 }

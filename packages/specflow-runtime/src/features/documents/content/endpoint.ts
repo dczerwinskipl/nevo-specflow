@@ -43,11 +43,17 @@ export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentR
     },
     documentRoute(async (request, reply) => {
       const source = options.source;
-      if (!source?.readTree) return replyWithDocumentFailure(unavailable(), reply);
+      if (!source?.readTree) {
+        return replyWithDocumentFailure(unavailable(), reply);
+      }
+
       const tree = await source.readTree(request.params.specId);
       const etag = `"${tree.revision}"`;
       reply.header('ETag', etag);
-      if (matchesEtag(request.headers['if-none-match'], etag)) return sendNotModified(reply);
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return sendNotModified(reply);
+      }
+
       return reply.code(200).send(tree);
     }),
   );
@@ -63,11 +69,17 @@ export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentR
       },
     },
     documentRoute(async (request, reply) => {
-      if (!options.source) return replyWithDocumentFailure(unavailable(), reply);
+      if (!options.source) {
+        return replyWithDocumentFailure(unavailable(), reply);
+      }
+
       const { specId, documentId } = request.params;
       const content = await options.source.read(specId, documentId, request.query.revision);
       // An adapter must answer for the document that was asked for; anything else is a defect.
-      if (content.id !== documentId) return replyWithDocumentFailure(unavailable(), reply);
+      if (content.id !== documentId) {
+        return replyWithDocumentFailure(unavailable(), reply);
+      }
+
       return reply.code(200).send(content);
     }),
   );

@@ -1,3 +1,4 @@
+import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
 import {
   createContext,
   useCallback,
@@ -14,10 +15,11 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
 import { useOpenedItems, type OpenedItem } from '@nevo/ui';
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
-import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
+import { documentGuidance, documentReadOnlyReason } from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
+import { useDocumentsApi } from '../useDocumentsApi';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { DocumentEditorProvider, useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
 import { isDraftDirty } from '../editor/documentDraftStore';
@@ -28,7 +30,7 @@ import { documentTabs, neighbourOf, survivorOf, type DocumentTab } from './docum
 /** The record query of the document on screen: the one place that loads it. */
 export interface DocumentRecordState {
   documentId: string;
-  query: UseQueryResult<SpecificationDocumentResponse>;
+  query: UseQueryResult<DocumentContent>;
 }
 
 const RecordContext = createContext<DocumentRecordState | null>(null);
@@ -49,7 +51,8 @@ export interface DocumentTabs {
   activeId: string | null;
   isOpen: (id: string) => boolean;
   /** Opens a new tab (history push) or switches to the open one (history replace). */
-  show: (id: string) => Promise<void>;
+  /** Activates the document's tab (opening it); `replace` keeps the history entry (an automatic open). */
+  show: (id: string, options?: { replace?: boolean }) => Promise<void>;
   /**
    * Closes one tab after asking about its unsaved changes. Resolves true only when it closed;
    * a failure of the question is a refusal and `closeFailed` tells the user.
@@ -59,6 +62,11 @@ export interface DocumentTabs {
   closeAll: () => Promise<boolean>;
   /** Closes the tabs of deleted documents and drops their drafts; the user already confirmed. */
   removeTabs: (ids: readonly string[]) => Promise<void>;
+  /**
+   * A document got a new id (classified, or an unclassified file renamed or moved): its tab keeps
+   * its place and, when it is the active one, the route is replaced with the new id.
+   */
+  follow: (from: string, to: string) => Promise<void>;
   closeFailed: boolean;
   /** A close was refused because another tab's question was still open. */
   closeBusy: boolean;
@@ -69,7 +77,10 @@ const TabsContext = createContext<DocumentTabs | null>(null);
 
 export function useDocumentTabs(): DocumentTabs {
   const tabs = useContext(TabsContext);
-  if (!tabs) throw new Error('DocumentTabsProvider missing');
+  if (!tabs) {
+    throw new Error('DocumentTabsProvider missing');
+  }
+
   return tabs;
 }
 
@@ -87,7 +98,8 @@ export function DocumentTabsProvider({
   documentId?: string;
   children: ReactNode;
 }) {
-  const { documentApi, documentsApi } = useAppServices();
+  const { documentApi } = useAppServices();
+  const { api: documentsApi } = useDocumentsApi();
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
@@ -95,27 +107,41 @@ export function DocumentTabsProvider({
   const query = useQuery({
     queryKey: documentKeys.detail(specId, documentId ?? ''),
     queryFn: ({ signal }) => documentApi.getDocument(specId, documentId!, signal),
-    enabled: Boolean(documentId),
+    // A dangling entry has no file to read: its tab shows the missing state from the tree.
+    // The tree settles first, so a dangling id is never requested; a tree that failed to load does
+    // not hold the document back (it opens, the tree shows its own failure and Retry).
+    enabled:
+      Boolean(documentId) &&
+      !tree.isPending &&
+      !tree.data?.dangling.some((entry) => entry.id === documentId),
   });
   const record = useMemo<DocumentRecordState | null>(
     () => (documentId ? { documentId, query } : null),
     [documentId, query],
   );
-  const document = useMemo(
+  const document = query.data && documentId ? query.data : undefined;
+  const catalogue = useDocumentCatalogue();
+  // Memoised on what it reads, so the editor session is not rebuilt on every render.
+  const archetype = tree.data?.archetype;
+  const classification = document?.classification;
+  const documentType = document?.type;
+  const guidance = useMemo(
     () =>
-      query.data && documentId
-        ? {
-            ...query.data,
-            filename:
-              query.data.filename ??
-              tree.data?.documents.find((doc) => doc.id === documentId)?.path,
-          }
-        : undefined,
-    [query.data, tree.data, documentId],
+      documentGuidance(catalogue.data, archetype && { archetype }, {
+        classification,
+        type: documentType,
+      }),
+    [catalogue.data, archetype, classification, documentType],
   );
+
   return (
     <RecordContext.Provider value={record}>
-      <DocumentEditorProvider specId={specId} document={document}>
+      <DocumentEditorProvider
+        specId={specId}
+        document={document}
+        readOnlyReason={document ? documentReadOnlyReason(tree.data, document) : undefined}
+        guidance={document ? guidance : undefined}
+      >
         <TabsHost specId={specId} documentId={documentId} tree={tree.data}>
           {children}
         </TabsHost>
@@ -132,7 +158,7 @@ function TabsHost({
 }: {
   specId: string;
   documentId?: string;
-  tree: DemoDocumentTree | undefined;
+  tree: DocumentTree | undefined;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -148,14 +174,16 @@ function TabsHost({
   // Every path the tree has shown, so a tab keeps its name when its document disappears. Adjusted
   // while rendering (the tree is the source), not synchronised by an effect.
   const [known, setKnown] = useState<{
-    tree?: DemoDocumentTree;
+    tree?: DocumentTree;
     paths: Readonly<Record<string, string>>;
   }>({ paths: {} });
-  if (tree && known.tree !== tree)
+  if (tree && known.tree !== tree) {
     setKnown({
       tree,
       paths: { ...known.paths, ...Object.fromEntries(tree.documents.map((d) => [d.id, d.path])) },
     });
+  }
+
   // The tab whose unsaved-changes question is on screen, and whether its Save failed.
   const [asking, setAsking] = useState<{ id: string; saveFailed: boolean } | null>(null);
   const answer = useRef<((decision: boolean | 'discard') => void) | null>(null);
@@ -168,7 +196,7 @@ function TabsHost({
     scope: specId,
     canClose: (id) => canCloseRef.current(id),
   });
-  const { open: ensureOpen, close: closeNow, closeAll: closeEvery } = opened;
+  const { open: ensureOpen, close: closeNow, closeAll: closeEvery, replace: replaceItem } = opened;
   const ids = useMemo(() => opened.items.map((item) => item.id), [opened.items]);
   // Event-time reads: closing outlives the render that started it.
   const latest = useRef({ ids, documentId, requestClose: opened.requestClose });
@@ -178,7 +206,9 @@ function TabsHost({
 
   // The route is the source of the active tab: a document in the URL always has its tab.
   useEffect(() => {
-    if (documentId) ensureOpen({ id: documentId });
+    if (documentId) {
+      ensureOpen({ id: documentId });
+    }
   }, [documentId, ensureOpen]);
 
   const goTo = useCallback(
@@ -208,16 +238,20 @@ function TabsHost({
     (id?: string) =>
       router.state.matches.some((match) => {
         const shown = (match.params as Record<string, unknown>).documentId;
+
         return id === undefined ? shown !== undefined : shown === id;
       }),
     [router],
   );
 
   const show = useCallback(
-    async (id: string) => {
+    async (id: string, options?: { replace?: boolean }) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      if (id === shown) return;
-      await goTo(id, openIds.includes(id));
+      if (id === shown) {
+        return;
+      }
+
+      await goTo(id, options?.replace === true || openIds.includes(id));
     },
     [goTo],
   );
@@ -226,8 +260,12 @@ function TabsHost({
   const leave = useCallback(
     async (id: string) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      if (shown !== id) return true;
+      if (shown !== id) {
+        return true;
+      }
+
       await goTo(neighbourOf(openIds, id), true);
+
       return !routeShows(id);
     },
     [goTo, routeShows],
@@ -249,29 +287,41 @@ function TabsHost({
         // One question at a time, until its tab has left: another close meanwhile is refused, and
         // the user is told.
         if (closing.current) {
-          if (mounted.current) setCloseBusy(true);
+          if (mounted.current) {
+            setCloseBusy(true);
+          }
+
           return false;
         }
+
         closing.current = true;
         try {
           const decision = await new Promise<boolean | 'discard'>((resolve) => {
             answer.current = resolve;
             setAsking({ id, saveFailed: false });
           });
-          if (!decision) return false;
+          if (!decision) {
+            return false;
+          }
+
           const left = await leave(id);
           // The draft goes only once the tab really leaves: a refused navigation keeps the edits.
-          if (left && decision === 'discard') store.remove(specId, id);
+          if (left && decision === 'discard') {
+            store.remove(specId, id);
+          }
+
           return left;
         } finally {
           closing.current = false;
         }
       }
+
       return leave(id);
     };
   });
   useEffect(() => {
     mounted.current = true;
+
     return () => {
       mounted.current = false;
       // Nobody can answer once the host is gone: the tab stays open.
@@ -288,29 +338,60 @@ function TabsHost({
         setCloseFailed(false);
         setCloseBusy(false);
       }
+
       return closed;
     } catch {
       // A guard that throws is a refusal; the tab stays open and the user is told.
-      if (mounted.current) setCloseFailed(true);
+      if (mounted.current) {
+        setCloseFailed(true);
+      }
+
       return false;
     }
   }, []);
 
   const closeAll = useCallback(async () => {
     await goTo(undefined, true);
-    if (routeShows()) return false;
+    if (routeShows()) {
+      return false;
+    }
+
     closeEvery();
+
     return true;
   }, [goTo, routeShows, closeEvery]);
 
   const removeTabs = useCallback(
     async (removed: readonly string[]) => {
       const { ids: openIds, documentId: shown } = latest.current;
-      for (const id of removed) store.remove(specId, id);
-      if (shown && removed.includes(shown)) await goTo(survivorOf(openIds, shown, removed), true);
-      for (const id of removed) closeNow(id);
+      for (const id of removed) {
+        store.remove(specId, id);
+      }
+
+      if (shown && removed.includes(shown)) {
+        await goTo(survivorOf(openIds, shown, removed), true);
+      }
+
+      for (const id of removed) {
+        closeNow(id);
+      }
     },
     [store, specId, goTo, closeNow],
+  );
+
+  const follow = useCallback(
+    async (from: string, to: string) => {
+      const { ids: openIds, documentId: shown } = latest.current;
+      if (!openIds.includes(from)) {
+        return;
+      }
+
+      replaceItem(from, { id: to });
+      if (shown === from) {
+        await goTo(to, true);
+      }
+    },
+    [replaceItem, goTo],
   );
 
   const recordGone = isHttpClientError(record?.query.error) && record.query.error.status === 404;
@@ -335,6 +416,7 @@ function TabsHost({
       requestClose,
       closeAll,
       removeTabs,
+      follow,
       closeFailed,
       closeBusy,
       dismissCloseFailed: () => {
@@ -351,12 +433,14 @@ function TabsHost({
       requestClose,
       closeAll,
       removeTabs,
+      follow,
       closeFailed,
       closeBusy,
     ],
   );
 
   const askedName = tabs.find((tab) => tab.id === asking?.id)?.label ?? asking?.id ?? '';
+
   return (
     <TabsContext.Provider value={value}>
       {children}
@@ -372,11 +456,17 @@ function TabsHost({
         onDiscard={() => settle('discard')}
         onSave={() => {
           const target = asking?.id;
-          if (!target) return;
+          if (!target) {
+            return;
+          }
+
           void ops.save(target).then((result) => {
             const draft = store.get(specId, target);
-            if (result?.ok && (!draft || !isDraftDirty(draft))) settle(true);
-            else if (mounted.current) setAsking({ id: target, saveFailed: true });
+            if (result?.ok && (!draft || !isDraftDirty(draft))) {
+              settle(true);
+            } else if (mounted.current) {
+              setAsking({ id: target, saveFailed: true });
+            }
           });
         }}
       />

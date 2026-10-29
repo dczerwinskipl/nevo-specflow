@@ -7,7 +7,7 @@ import { engineCommitRefusal } from '../../version-control/commits/branch-patter
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { PolicyReason } from './projection';
 import { ADVISORY_FILE_MAX_BYTES } from './limits';
-import { READ_OPEN_FLAGS } from './verified-file';
+import { READ_OPEN_FLAGS } from '../document-rules/verified-file';
 
 /**
  * Advisory branch reasons for the tree (`branch-protected`, `branch-not-allowed`,
@@ -28,8 +28,13 @@ export async function advisoryPolicyReason(
       ? 'git-policy-invalid'
       : undefined;
   }
-  if (!policy.enabled) return undefined;
+
+  if (!policy.enabled) {
+    return undefined;
+  }
+
   const branch = await readCheckedOutBranch(workspaceRoot);
+
   return branch === undefined ? undefined : engineCommitRefusal(policy.commits, branch);
 }
 
@@ -42,9 +47,13 @@ async function readSmallRegularFile(path: string): Promise<string | undefined> {
   const handle = await open(path, READ_OPEN_FLAGS);
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.size > ADVISORY_FILE_MAX_BYTES) return undefined;
+    if (!stat.isFile() || stat.size > ADVISORY_FILE_MAX_BYTES) {
+      return undefined;
+    }
+
     const buffer = Buffer.alloc(ADVISORY_FILE_MAX_BYTES);
     const { bytesRead } = await handle.read(buffer, 0, ADVISORY_FILE_MAX_BYTES, 0);
+
     return buffer.toString('utf8', 0, bytesRead);
   } finally {
     await handle.close();
@@ -66,13 +75,18 @@ export async function readCheckedOutBranch(workspaceRoot: string): Promise<strin
     } else if (stat.isFile()) {
       const text = await readSmallRegularFile(dotGit);
       const target = text === undefined ? undefined : /^gitdir:\s*(.+?)\s*$/mu.exec(text)?.[1];
-      if (target === undefined) return undefined;
+      if (target === undefined) {
+        return undefined;
+      }
+
       gitDir = isAbsolute(target) ? target : resolve(workspaceRoot, target);
     } else {
       return undefined;
     }
+
     const head = await readSmallRegularFile(join(gitDir, 'HEAD'));
     const ref = head === undefined ? null : /^ref:\s*refs\/heads\/(.+?)\s*$/mu.exec(head);
+
     return ref ? ref[1] : undefined;
   } catch {
     return undefined;

@@ -1,5 +1,6 @@
 import type { ResolvedProjectHome } from '../../project/home/home';
 import { assertSharedResourcesAvailable, SharedResourceError } from '../coordination/resources';
+import type { ClaimSelf } from '../durable';
 import { CloseOperationError } from './model';
 
 export {
@@ -13,7 +14,7 @@ export {
 export async function assertResourcesAvailable(
   context: ResolvedProjectHome,
   resources: readonly string[],
-  self?: { readonly kind: 'create' | 'close'; readonly operationId: string },
+  self?: ClaimSelf,
 ): Promise<void> {
   try {
     await assertSharedResourcesAvailable(context, resources, self);
@@ -24,6 +25,7 @@ export async function assertResourcesAvailable(
         error.message,
       );
     }
+
     throw error;
   }
 }

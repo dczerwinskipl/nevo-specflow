@@ -2,6 +2,7 @@ import type { DocumentErrorCode, DocumentErrorDetails } from '@nevo/specflow-con
 import {
   DocumentError,
   GitCapabilityError,
+  ProjectControlLockError,
   ProjectHomeError,
   SpecificationError,
   WorkspaceRegistryError,
@@ -18,10 +19,12 @@ export function statusForDocumentError(code: DocumentErrorCode): DocumentHttpSta
     case 'DOCUMENT_PATH_INVALID':
     case 'DOCUMENT_TYPE_INVALID':
     case 'DOCUMENT_OPERATION_INVALID':
+    case 'MANUAL_COMMIT_MESSAGE_INVALID':
       return 400;
 
     case 'DOCUMENT_NOT_FOUND':
     case 'DOCUMENT_FILE_MISSING':
+    case 'DOCUMENT_OPERATION_NOT_FOUND':
       return 404;
 
     case 'DOCUMENT_REVISION_UNAVAILABLE':
@@ -35,6 +38,12 @@ export function statusForDocumentError(code: DocumentErrorCode): DocumentHttpSta
     case 'SPEC_BUSY':
     case 'COMMIT_BLOCKED':
     case 'CATALOGUE_STALE':
+    case 'DOCUMENT_COMMITS_PENDING':
+    case 'DOCUMENT_OPERATION_STATE_INVALID':
+    case 'DOCUMENT_UNCOMMITTED_LIMIT':
+    case 'MANUAL_COMMIT_UNAVAILABLE':
+    case 'MANUAL_COMMIT_CONFLICT':
+    case 'MANUAL_COMMIT_STALE':
       return 409;
 
     case 'DOCUMENT_TOO_LARGE':
@@ -45,6 +54,8 @@ export function statusForDocumentError(code: DocumentErrorCode): DocumentHttpSta
 
     case 'BRANCH_PROTECTED':
     case 'ARCHETYPE_UNKNOWN':
+    case 'DEFINITIONS_MISSING':
+    case 'MANUAL_COMMIT_SUBSET_INVALID':
       return 422;
 
     case 'SPEC_SOURCE_UNAVAILABLE':
@@ -52,9 +63,12 @@ export function statusForDocumentError(code: DocumentErrorCode): DocumentHttpSta
     case 'COMMIT_FAILED':
     case 'GIT_POLICY_INVALID':
     case 'CREATE_JOURNAL_UNSUPPORTED':
+    case 'DOCUMENT_WRITE_FAILED':
+    case 'MANUAL_COMMIT_RECOVERY_REQUIRED':
       return 503;
     default: {
       const exhaustive: never = code;
+
       return exhaustive;
     }
   }
@@ -82,7 +96,10 @@ function failure(code: DocumentErrorCode, details?: DocumentErrorDetails): Docum
  * never a path.
  */
 export function documentFailure(error: unknown): DocumentFailure | undefined {
-  if (error instanceof DocumentError) return failure(error.code, error.details);
+  if (error instanceof DocumentError) {
+    return failure(error.code, error.details);
+  }
+
   // The Engine turns an unknown or malformed id into DOCUMENT_NOT_FOUND itself, but a manifest that
   // fails to parse reaches here as SPEC_SOURCE_INVALID, so this branch is live (and tested).
   if (error instanceof SpecificationError) {
@@ -90,13 +107,16 @@ export function documentFailure(error: unknown): DocumentFailure | undefined {
       ? failure('DOCUMENT_NOT_FOUND')
       : failure('SPEC_SOURCE_UNAVAILABLE');
   }
-  // The canonical source (registry, Project Home, Git configuration) cannot be read.
+
+  // The canonical source (registry, Project Home, control lock, Git configuration) cannot be used.
   if (
     error instanceof WorkspaceRegistryError ||
     error instanceof ProjectHomeError ||
+    error instanceof ProjectControlLockError ||
     error instanceof GitCapabilityError
   ) {
     return failure('SPEC_SOURCE_UNAVAILABLE');
   }
+
   return undefined;
 }

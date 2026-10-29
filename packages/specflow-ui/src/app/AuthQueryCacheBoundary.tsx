@@ -14,6 +14,7 @@ export function bindAuthQueryCache(auth: AuthStore, queryClient: QueryClient): (
         void queryClient.cancelQueries();
         queryClient.clear();
       }
+
       previousIdentity = identity;
     } else if (state.status === 'loading' && state.reason === 'logout') {
       void queryClient.cancelQueries();
@@ -21,7 +22,9 @@ export function bindAuthQueryCache(auth: AuthStore, queryClient: QueryClient): (
       previousIdentity = undefined;
     }
   };
+
   sync();
+
   return auth.subscribe(sync);
 }
 

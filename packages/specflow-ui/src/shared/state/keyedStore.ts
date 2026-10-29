@@ -26,13 +26,22 @@ export function createKeyedStore<V>(): KeyedStore<V> {
     listeners.get(key)?.forEach((listener) => listener());
     allListeners.forEach((listener) => listener(key));
   };
+
   const write = (key: string, value: V | undefined) => {
     const current = values.get(key);
-    if (Object.is(current, value)) return;
-    if (value === undefined) values.delete(key);
-    else values.set(key, value);
+    if (Object.is(current, value)) {
+      return;
+    }
+
+    if (value === undefined) {
+      values.delete(key);
+    } else {
+      values.set(key, value);
+    }
+
     notify(key);
   };
+
   return {
     get: (key) => values.get(key),
     set: (key, value) => write(key, value),
@@ -41,15 +50,22 @@ export function createKeyedStore<V>(): KeyedStore<V> {
     keys: () => [...values.keys()],
     subscribeAll: (listener) => {
       allListeners.add(listener);
+
       return () => void allListeners.delete(listener);
     },
     subscribe: (key, listener) => {
       let set = listeners.get(key);
-      if (!set) listeners.set(key, (set = new Set()));
+      if (!set) {
+        listeners.set(key, (set = new Set()));
+      }
+
       set.add(listener);
+
       return () => {
         set.delete(listener);
-        if (!set.size) listeners.delete(key);
+        if (!set.size) {
+          listeners.delete(key);
+        }
       };
     },
   };
@@ -62,5 +78,6 @@ export function useKeyedStoreValue<V>(store: KeyedStore<V>, key: string): V | un
     [store, key],
   );
   const read = useCallback(() => store.get(key), [store, key]);
+
   return useSyncExternalStore(subscribe, read, read);
 }

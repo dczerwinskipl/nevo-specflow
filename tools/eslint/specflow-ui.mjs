@@ -34,6 +34,7 @@ function boundaryBlocks() {
       ...specflowUiSharedPatterns,
       featureBarrelPattern(features.filter((other) => other !== feature)),
     ];
+
     return restrict(patterns, [`src/features/${feature}/**/*.{ts,tsx}`], nonProductionUiSources);
   });
   // Specification creation is internal to specs/creation: the rest of specs does not import it; the
@@ -84,6 +85,7 @@ function boundaryBlocks() {
       ['src/shared/**/*.{ts,tsx}'],
     ),
   );
+
   return blocks;
 }
 

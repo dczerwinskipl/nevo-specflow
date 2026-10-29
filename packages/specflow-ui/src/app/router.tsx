@@ -106,6 +106,6 @@ declare module '@tanstack/react-router' {
   }
   interface HistoryState {
     /** Primary location that promoted a Document Preview or list item to Full. */
-    specflowDocumentReturnTo?: 'overview' | 'documents';
+    specflowDocumentReturnTo?: 'overview';
   }
 }

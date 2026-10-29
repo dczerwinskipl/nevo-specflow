@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engineRoot = join(root, 'packages', 'specflow-engine');
 const testRoot = join(engineRoot, 'test');
-const hot = 'test/git-integration-proof.test.ts';
+const hot = 'test/git/git-integration-proof.test.ts';
 const part = Number(process.argv[2]);
 const total = Number(process.argv[3]);
 if (
@@ -27,13 +27,23 @@ if (
 function discover(folder) {
   return readdirSync(folder, { withFileTypes: true }).flatMap((item) => {
     const path = join(folder, item.name);
-    if (item.isDirectory()) return discover(path);
-    if (!item.isFile() || !item.name.endsWith('.test.ts')) return [];
+    if (item.isDirectory()) {
+      return discover(path);
+    }
+
+    if (!item.isFile() || !item.name.endsWith('.test.ts')) {
+      return [];
+    }
+
     return [relative(engineRoot, path).split(sep).join('/')];
   });
 }
+
 const allFiles = discover(testRoot).sort();
-if (!allFiles.includes(hot)) throw new Error('Pinned hot test file is missing from the suite.');
+if (!allFiles.includes(hot)) {
+  throw new Error('Pinned hot test file is missing from the suite.');
+}
+
 const files = allFiles.filter((name) => name !== hot);
 
 // Historical durations in seconds from the Windows run 39288746460 of the Create branch.
@@ -59,6 +69,29 @@ const known = {
   'project-home': 11,
   'platform-filesystem-contract': 9,
   'quality-hardening-q00-journals': 8,
+  platform: 1,
+  // Document write and queue suites (Linux seconds x about 10 on a Windows runner); the others keep the default.
+  'document-queue-faults': 900,
+  'document-state-machine': 900,
+  'document-writer-faults': 450,
+  'document-queue': 350,
+  'document-queue-failures': 350,
+  'document-queue-held': 250,
+  'document-uncommitted': 250,
+  // Manual commit, reads, scheduler and Create commit suites: measured on Linux, scaled by the median Windows/Linux ratio (about 12.5) of the suites above.
+  'manual-commit': 325,
+  'manual-commit-recovery': 303,
+  'manual-commit-crash': 305,
+  'document-reader-tree': 223,
+  'document-scheduler': 169,
+  'document-commit-reads': 167,
+  'document-change-commit': 153,
+  'create-commit': 1000,
+  'document-uncommitted-crash': 1,
+  'document-writer-crash': 1,
+  'document-queue-crash': 1,
+  'document-crash-cutpoints': 1,
+  'document-contention': 1,
   'workspace-registry': 4,
   'git-checkout': 1,
   specifications: 1,
@@ -68,16 +101,21 @@ const known = {
 };
 function weight(file) {
   const base = file.slice(file.lastIndexOf('/') + 1).replace(/\.test\.ts$/, '');
+
   return known[base] ?? (file.includes('/fixtures/') ? 1 : 60);
 }
+
 const buckets = Array.from({ length: total }, () => ({ seconds: 0, files: [] }));
 for (const file of files.sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
   const target = buckets.reduce((best, bucket) => (bucket.seconds < best.seconds ? bucket : best));
   target.files.push(file);
   target.seconds += weight(file);
 }
+
 const selected = buckets[part - 1];
-if (!selected?.files.length) throw new Error('Selected empty test shard.');
+if (!selected?.files.length) {
+  throw new Error('Selected empty test shard.');
+}
 
 const summary = {
   shard: part + '/' + total,
@@ -87,14 +125,16 @@ const summary = {
   selected: selected.files,
 };
 console.log(JSON.stringify(summary, null, 2));
-if (process.argv.includes('--list')) process.exit(0);
+if (process.argv.includes('--list')) {
+  process.exit(0);
+}
 
 const vitestMain = join(engineRoot, 'node_modules', 'vitest', 'vitest.mjs');
 const args = [
   vitestMain,
   'run',
   ...selected.files,
-  '--testTimeout=20000',
+  '--testTimeout=120000',
   '--maxWorkers=1',
   '--no-file-parallelism',
   '--reporter=verbose',
@@ -105,9 +145,13 @@ const child = spawnSync(process.execPath, args, {
   stdio: 'inherit',
   windowsHide: true,
 });
-if (child.error) throw child.error;
+if (child.error) {
+  throw child.error;
+}
+
 if (child.signal) {
   console.error('Vitest terminated by signal:', child.signal);
   process.exit(1);
 }
+
 process.exit(child.status ?? 1);

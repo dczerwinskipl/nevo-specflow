@@ -41,6 +41,7 @@ async function project() {
     ],
     { cwd: root },
   );
+
   return bootstrapProjectHome(root);
 }
 
@@ -105,6 +106,7 @@ describe('OS filesystem contracts (real Git checkout and separate Node processes
       // The foreign process cannot exclusively create a lock already owned by
       // the Engine, even on Windows where contention can surface as EPERM.
       expect(child(tryExclusiveCreate, lockPath)).toBe('busy');
+
       return Promise.resolve();
     });
 

@@ -197,7 +197,7 @@ whose rows are designed for `content-standard`) bounds the workspace rather than
 or leaving the content left-anchored in a wide workspace. Use `AppWorkspace fit="bounded"` with the
 existing width token on `AppContent`; do not add a new width token or a local maximum width. The
 workspace and navigation are then centred as one group, and header actions stay aligned with the
-content. Narrow and drawer layouts are unchanged.
+content. Narrow and drawer layouts fill the workspace (a bounded `AppContent` centres itself inside it), so no bare strip is left beside a content-wide surface.
 
 ## Nested-containment rule
 

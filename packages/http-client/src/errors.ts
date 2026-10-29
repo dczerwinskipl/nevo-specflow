@@ -101,8 +101,10 @@ function toPlainHeaders(headers: unknown): Record<string, string> | undefined {
   if (!headers || typeof headers !== 'object') {
     return undefined;
   }
+
   const entries = Object.entries(headers as Record<string, unknown>).flatMap(([name, value]) =>
     typeof value === 'string' ? [[name.toLowerCase(), value] as const] : [],
   );
+
   return Object.fromEntries(entries);
 }

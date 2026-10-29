@@ -76,10 +76,14 @@ function AppRouteLayout() {
     () => auth.getState(),
   );
   const priorIdentity = useRef('initial');
-  if (authState.status === 'ready') priorIdentity.current = authSessionIdentity(authState.session);
-  else if (authState.status === 'loading' && authState.reason === 'logout')
+  if (authState.status === 'ready') {
+    priorIdentity.current = authSessionIdentity(authState.session);
+  } else if (authState.status === 'loading' && authState.reason === 'logout') {
     priorIdentity.current = 'logout';
+  }
+
   const identity = priorIdentity.current;
+
   return (
     <VisitStateProvider key={identity}>
       <SpecFlowShell auth={auth}>

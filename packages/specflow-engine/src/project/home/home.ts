@@ -89,15 +89,20 @@ export async function resolveProjectHome(
     if (!isAbsolute(options.projectRoot)) {
       throw new ProjectHomeError('PROJECT_HOME_INVALID', 'Project Home override must be absolute.');
     }
+
     try {
       requested = await realpath(options.projectRoot);
     } catch (error) {
-      if (!isMissing(error)) throw error;
+      if (!isMissing(error)) {
+        throw error;
+      }
+
       throw new ProjectHomeError(
         'PROJECT_HOME_NOT_FOUND',
         'The requested Project Home is unavailable.',
       );
     }
+
     if (!roots.includes(requested)) {
       throw new ProjectHomeError(
         'PROJECT_HOME_MISMATCH',
@@ -121,6 +126,7 @@ export async function resolveProjectHome(
       'Multiple Project Home designations exist. Resolve the conflict before using this project; an override cannot grant write authority.',
     );
   }
+
   const selected = designated[0];
   if (!selected) {
     throw new ProjectHomeError(
@@ -128,6 +134,7 @@ export async function resolveProjectHome(
       'No designated Project Home exists for this local Git repository. Repair or initialize explicitly.',
     );
   }
+
   if (requested !== undefined && requested !== selected.checkout.root) {
     throw new ProjectHomeError(
       'PROJECT_HOME_MISMATCH',
@@ -136,6 +143,7 @@ export async function resolveProjectHome(
   }
 
   const { checkout: home, marker } = selected;
+
   return {
     project: {
       projectId: marker.projectId,
@@ -160,6 +168,7 @@ async function inspectCheckout(cwd: string): Promise<GitCheckout> {
   if (result.code !== 0 || !result.stdout.trim()) {
     throw new ProjectHomeError('PROJECT_HOME_INVALID', 'Unable to inspect Git common directory.');
   }
+
   return {
     root,
     commonDir: await realpath(resolve(root, result.stdout.trim())),
@@ -174,16 +183,22 @@ async function worktreeRoots(caller: GitCheckout): Promise<string[]> {
 
   const roots = new Set<string>();
   for (const record of result.stdout.split('\0')) {
-    if (!record.startsWith('worktree ')) continue;
+    if (!record.startsWith('worktree ')) {
+      continue;
+    }
+
     const raw = record.slice('worktree '.length);
     try {
       roots.add(await realpath(raw));
     } catch (error) {
       // Git may retain an unavailable worktree. Never use a stale path as a home
       // or create fallback state; absence is diagnosed by the final selection.
-      if (!isMissing(error)) throw error;
+      if (!isMissing(error)) {
+        throw error;
+      }
     }
   }
+
   return [...roots];
 }
 
@@ -197,9 +212,13 @@ async function readDesignatedHome(
   try {
     await lstat(markerPath);
   } catch (error) {
-    if (isMissing(error)) return undefined;
+    if (isMissing(error)) {
+      return undefined;
+    }
+
     throw error;
   }
+
   await requireDirectory(root, '.nevo');
   await requireDirectory(root, '.nevo/local');
   await requireDirectory(root, PROJECT_STATE_RELATIVE_PATH);
@@ -213,6 +232,7 @@ async function readDesignatedHome(
   } catch {
     throw new ProjectHomeError('PROJECT_HOME_INVALID', 'Project Home marker is not valid JSON.');
   }
+
   if (!isHomeMarker(parsed)) {
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',
@@ -236,7 +256,10 @@ async function readDesignatedHome(
     inspectCheckout(root),
     areGitIgnored(root, localPaths),
   ]);
-  if (checkoutResult.status === 'rejected') throw checkoutResult.reason;
+  if (checkoutResult.status === 'rejected') {
+    throw checkoutResult.reason;
+  }
+
   const checkout = checkoutResult.value;
   if (
     checkout.root !== root ||
@@ -249,6 +272,7 @@ async function readDesignatedHome(
       'Project Home designation does not match the current Git repository or physical checkout.',
     );
   }
+
   // Git common-dir path alone cannot prove its physical incarnation. A fresh
   // git init at the same path must not inherit the old Project Home authority.
   await verifyGitInstance(checkout.commonDir, parsed.projectId, parsed.gitInstanceId);
@@ -256,7 +280,10 @@ async function readDesignatedHome(
   // An isolated marker rule could otherwise expose credentials, registry data,
   // claims or provider transcripts. Checking actual paths also detects Git
   // negation rules that selectively re-expose a sensitive descendant.
-  if (ignoredResult.status === 'rejected') throw ignoredResult.reason;
+  if (ignoredResult.status === 'rejected') {
+    throw ignoredResult.reason;
+  }
+
   const ignored = ignoredResult.value;
   const firstExposed = localPaths.find((_, index) => !ignored[index]);
   if (firstExposed !== undefined) {
@@ -270,8 +297,12 @@ async function readDesignatedHome(
 }
 
 function isHomeMarker(value: unknown): value is HomeMarker {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
   const marker = value as Record<string, unknown>;
+
   return (
     marker.version === 1 &&
     typeof marker.projectId === 'string' &&
@@ -291,9 +322,13 @@ async function requireDirectory(root: string, relative: string): Promise<void> {
   try {
     stat = await lstat(path);
   } catch (error) {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
+
     throw new ProjectHomeError('PROJECT_HOME_INVALID', 'Project Home state directory is missing.');
   }
+
   if (!stat.isDirectory() || stat.isSymbolicLink()) {
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',
@@ -307,12 +342,16 @@ async function requirePlainFile(path: string): Promise<void> {
   try {
     stat = await lstat(path);
   } catch (error) {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
+
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',
       'Project Home marker/config file is missing.',
     );
   }
+
   if (!stat.isFile() || stat.isSymbolicLink()) {
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',

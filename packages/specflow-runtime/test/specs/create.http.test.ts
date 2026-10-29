@@ -11,6 +11,7 @@ import {
   createSpecificationForTesting,
   discoverSpecifications,
   workspaceRegistryPath,
+  installDefinitionsForTesting,
 } from '@nevo/specflow-engine/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -39,7 +40,7 @@ async function fixture(gitEnabled = false, extraGitConfig = '') {
   await writeFile(
     join(root, '.nevo/config.yaml'),
     gitEnabled
-      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n' + extraGitConfig
+      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n'
       : 'runtime: {}\ngit:\n  enabled: false\n',
   );
   git(root, 'add', '.gitignore', '.nevo/config.yaml');
@@ -53,8 +54,33 @@ async function fixture(gitEnabled = false, extraGitConfig = '') {
     '-qm',
     'initial',
   );
-  if (gitEnabled) git(root, 'branch', '-m', 'develop');
-  return { root, engine: await bootstrapProjectHome(root) };
+  if (gitEnabled) {
+    git(root, 'branch', '-m', 'develop');
+  }
+
+  const engine = await bootstrapProjectHome(root);
+  await installDefinitionsForTesting(engine);
+  if (extraGitConfig !== '') {
+    // The owner protects the branch after the definitions were installed (an install on a protected
+    // branch is refused, so the other order is not possible).
+    await writeFile(
+      join(root, '.nevo/config.yaml'),
+      'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n' + extraGitConfig,
+    );
+    git(root, 'add', '.nevo/config.yaml');
+    git(
+      root,
+      '-c',
+      'user.name=SpecFlow Test',
+      '-c',
+      'user.email=specflow@example.invalid',
+      'commit',
+      '-qm',
+      'protect the branch',
+    );
+  }
+
+  return { root, engine };
 }
 
 function authenticatedStore() {
@@ -64,6 +90,7 @@ function authenticatedStore() {
     authenticatedWith: { kind: 'password' },
   });
   const cookie = authCookieNames(passwordConfig().server.port).session;
+
   return { store, headers: { cookie: cookie + '=' + session } };
 }
 
@@ -236,7 +263,10 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
         (item) => item.workspaceId === result.workspaceId,
       );
       expect(registered?.kind).toBe('linked');
-      if (registered?.kind !== 'linked') throw new Error('HTTP linked checkout not registered.');
+      if (registered?.kind !== 'linked') {
+        throw new Error('HTTP linked checkout not registered.');
+      }
+
       expect(registered.integrationDestination).toMatchObject({
         workspaceId: feature.workspaceId,
         branch: 'feature/x',
@@ -324,11 +354,60 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
         const response = await app.inject({ method: 'POST', url: '/api/specs', payload });
         expect(response.statusCode, response.body).toBe(400);
       }
+
       expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
     } finally {
       await app.close();
     }
   });
+
+  it(
+    'answers a path beyond the Windows bound as DOCUMENT_PATH_INVALID with details.cause path-too-long',
+    async () => {
+      const { engine } = await fixture();
+      const app = await createRuntimeApp(
+        {
+          ...passwordConfig(),
+          authentication: { ...passwordConfig().authentication, mode: 'none' },
+        },
+        { specs: { engine } },
+      );
+      // Three 100-character folders: every segment is valid, only the absolute length is not.
+      const over = Array.from({ length: 3 }, () => 'f'.repeat(100)).join('/');
+      const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+      // The bound applies on Windows only (a simulated host on the other systems).
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+      try {
+        const before = await readFile(workspaceRegistryPath(engine.context), 'utf8');
+        for (const prefer of [undefined, 'respond-async']) {
+          const response = await app.inject({
+            method: 'POST',
+            url: '/api/specs',
+            ...(prefer !== undefined ? { headers: { prefer } } : {}),
+            payload: {
+              ...ARCHETYPE_REQUEST,
+              operationId: randomUUID(),
+              title: 'Too long',
+              addedDocuments: [{ path: over + '/a.md', type: 'note', content: 'x' }],
+            },
+          });
+          expect(response.statusCode, response.body).toBe(400);
+          expect(response.json()).toEqual({
+            error: 'DOCUMENT_PATH_INVALID',
+            code: 'DOCUMENT_PATH_INVALID',
+            details: { cause: 'path-too-long' },
+          });
+        }
+
+        expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
+        expect(await discoverSpecifications(engine)).toEqual([]);
+      } finally {
+        Object.defineProperty(process, 'platform', original);
+        await app.close();
+      }
+    },
+    createTestTimeoutMs,
+  );
 
   it('returns a typed 503 for a busy Project Home lock during default target selection', async () => {
     const { engine } = await fixture();
@@ -737,6 +816,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
           expect(response.body).not.toContain('workspaceId');
           expect(await readFile(path, 'utf8')).toBe(before);
         }
+
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
       } finally {
         await app.close();

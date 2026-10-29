@@ -24,14 +24,18 @@ export function createNotificationStore(): NotificationStore {
     current = next;
     listeners.forEach((listener) => listener());
   };
+
   return {
     get: () => current,
     notify: (message) => write({ id: newId(), message }),
     dismiss: () => {
-      if (current) write(undefined);
+      if (current) {
+        write(undefined);
+      }
     },
     subscribe: (listener) => {
       listeners.add(listener);
+
       return () => listeners.delete(listener);
     },
   };
@@ -42,31 +46,43 @@ const Context = createContext<NotificationStore | null>(null);
 function NotificationHost({ store }: { store: NotificationStore }) {
   const { t } = useTranslation();
   const notification = useSyncExternalStore(store.subscribe, store.get, store.get);
+
   return (
     <>
       {notification && (
         <Toast
           key={notification.id}
+          // A confirmation, not an interruption: announced politely (role="status").
+          type="background"
           open
           onOpenChange={(open) => {
-            if (!open) store.dismiss();
+            if (!open) {
+              store.dismiss();
+            }
           }}
         >
-          <ToastTitle role="status">{notification.message}</ToastTitle>
+          {/*
+           * No live role here: the toast primitive announces the message once through its own
+           * transient status region; a second role="status" would announce it twice.
+           */}
+          <ToastTitle>{notification.message}</ToastTitle>
           <ToastClose dismissLabel={t('common.dismissNotification')} />
         </Toast>
       )}
-      <ToastViewport />
+      <ToastViewport label={t('common.notificationsRegion', { hotkey: '{hotkey}' })} />
     </>
   );
 }
 
 /** Visit-scoped notifications and their toast host; children never re-render for a notification. */
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [store] = useState(createNotificationStore);
+
   return (
     <Context.Provider value={store}>
-      <ToastProvider>
+      {/* The label prefixes every announcement ("Powiadomienie …"), so it is translated. */}
+      <ToastProvider label={t('common.notification')}>
         {children}
         <NotificationHost store={store} />
       </ToastProvider>
@@ -77,6 +93,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 /** Stable function that shows a notification. */
 export function useNotify(): (message: string) => void {
   const store = useContext(Context);
-  if (!store) throw new Error('NotificationProvider missing');
+  if (!store) {
+    throw new Error('NotificationProvider missing');
+  }
+
   return store.notify;
 }

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import {
   bootstrapProjectHome,
-  createSpecificationFromRequest,
+  createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   readCanonicalSpecDocument,
 } from '@nevo/specflow-engine/testing';
 import { CreateOptionsSchema } from '@nevo/specflow-contracts/specs';
@@ -95,6 +95,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
         const read = await app.inject(url);
         expect(read.statusCode, `${url}: ${read.body}`).toBe(200);
       }
+
       const document = await readCanonicalSpecDocument(engine, created.specId, 'overview');
       expect(document).toBeDefined();
 
@@ -151,7 +152,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
           title: 'Closed',
           catalogueRevision: catalogue.revision,
           archetypeId: 'feature',
-          archetypeVersion: '2',
+          archetypeVersion: 1,
           optionalDocumentIds: [],
         },
       });

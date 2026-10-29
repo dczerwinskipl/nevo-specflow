@@ -9,7 +9,9 @@ import { buildThirdPartyNotices } from '../../packaging/notices';
 const dirs: string[] = [];
 
 afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 function packageDir(manifest: object, licenseText?: string): string {
@@ -17,7 +19,10 @@ function packageDir(manifest: object, licenseText?: string): string {
   dirs.push(dir);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'package.json'), JSON.stringify(manifest), 'utf8');
-  if (licenseText) writeFileSync(join(dir, 'LICENSE'), licenseText, 'utf8');
+  if (licenseText) {
+    writeFileSync(join(dir, 'LICENSE'), licenseText, 'utf8');
+  }
+
   return dir;
 }
 

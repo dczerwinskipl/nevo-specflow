@@ -28,6 +28,7 @@ export function BranchSetting({
   const text = useMessage();
   // The generated branch is one the Engine will not commit on: the owner has to type another name.
   const generatedProblem = generatedBranchProblem(choice, options, title);
+
   return (
     <div className="grid grid-cols-1 gap-3 pt-3">
       <SwitchField

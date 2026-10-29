@@ -22,6 +22,7 @@ const pendingStack = defineSecondaryStack<
 function FixtureInner({ mode }: { mode: 'custom' | 'fallback' | 'null' }) {
   const navigation = useSecondaryNavigation();
   const [openCount, setOpenCount] = useState(0);
+
   return (
     <Presentation.Provider
       value={{
@@ -50,6 +51,7 @@ function FixtureInner({ mode }: { mode: 'custom' | 'fallback' | 'null' }) {
     </Presentation.Provider>
   );
 }
+
 function Fixture({ mode = 'custom' }: { mode?: 'custom' | 'fallback' | 'null' }) {
   return (
     <AppWorkspaceProvider>
@@ -57,6 +59,7 @@ function Fixture({ mode = 'custom' }: { mode?: 'custom' | 'fallback' | 'null' })
     </AppWorkspaceProvider>
   );
 }
+
 const meta = {
   title: 'Nevo UI/Workspace/Secondary loading',
   component: Fixture,
@@ -69,13 +72,22 @@ export const Custom: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open pending detail' }));
     await canvas.findByRole('status', { name: '' });
-    if (!canvas.getByText('Product loading')) throw new Error('Custom presentation missing');
-    if (canvas.queryByText('Loading…')) throw new Error('Unexpected default loading status');
-    if (canvas.queryByText('Ready must never be mounted'))
+    if (!canvas.getByText('Product loading')) {
+      throw new Error('Custom presentation missing');
+    }
+
+    if (canvas.queryByText('Loading…')) {
+      throw new Error('Unexpected default loading status');
+    }
+
+    if (canvas.queryByText('Ready must never be mounted')) {
       throw new Error('Ready component mounted without data');
+    }
+
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
-    if (canvas.queryByText('Product loading'))
+    if (canvas.queryByText('Product loading')) {
       throw new Error('Loading presentation survived Close');
+    }
   },
 };
 export const Fallback: Story = {
@@ -90,8 +102,12 @@ export const ExplicitNull: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open pending detail' }));
     await canvas.findByText('Pending detail');
-    if (canvas.queryByText('Loading…')) throw new Error('Unexpected default loading status');
-    if (canvas.queryByText('Ready must never be mounted'))
+    if (canvas.queryByText('Loading…')) {
+      throw new Error('Unexpected default loading status');
+    }
+
+    if (canvas.queryByText('Ready must never be mounted')) {
       throw new Error('Ready component mounted without data');
+    }
   },
 };

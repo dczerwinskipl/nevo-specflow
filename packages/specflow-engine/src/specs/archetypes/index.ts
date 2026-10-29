@@ -1,2 +1,2 @@
-export { catalogueRevision, getBuiltInCatalogue } from './catalogue';
-export { projectCatalogue } from './projection';
+export { toArchetypeCatalogue } from './projection';
+export { renderTemplate, templateValues } from './template-renderer';

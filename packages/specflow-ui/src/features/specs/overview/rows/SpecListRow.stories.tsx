@@ -38,9 +38,11 @@ export const HrefOnlyNavigation: Story = {
     if (link.getAttribute('href') !== '/specs/admission') {
       throw new Error('Specification identity must remain a real link.');
     }
+
     if (canvas.queryByRole('button', { name: /^Specification actions/ })) {
       throw new Error('Rows must not expose a per-row overflow menu.');
     }
+
     if (canvas.getAllByRole('link').length !== 1) {
       throw new Error('The specification link is the only link in the row.');
     }
@@ -49,6 +51,7 @@ export const HrefOnlyNavigation: Story = {
 
 function HrefWithCallbackRow() {
   const [opened, setOpened] = useState(false);
+
   return (
     <StoryLocalization locale="en">
       <InformationList>

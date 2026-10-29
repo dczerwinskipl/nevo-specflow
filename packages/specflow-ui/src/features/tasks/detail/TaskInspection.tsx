@@ -27,7 +27,7 @@ export function TaskInspection({
   readonly onOpenEvidence?: (params: TaskEvidenceParams) => void;
 }) {
   const { t } = useTranslation();
-  if (page !== 'flow')
+  if (page !== 'flow') {
     return (
       <TaskStepInspection
         task={task}
@@ -37,12 +37,17 @@ export function TaskInspection({
         onOpenEvidence={onOpenEvidence}
       />
     );
+  }
+
   const snapshot = task.snapshot;
   const work = snapshot?.sections.work;
-  if (work?.state !== 'available')
+  if (work?.state !== 'available') {
     return <TaskSourceState state={work?.state === 'forbidden' ? 'forbidden' : 'unavailable'} />;
+  }
+
   const data = work.data;
   const position = data.position;
+
   return (
     <div className="grid min-w-0 gap-3 p-4 [overflow-wrap:anywhere]">
       <Typography as="h3" variant="title-sm">
@@ -107,23 +112,34 @@ export function TaskEvidenceInspection({
   readonly params: TaskEvidenceParams;
 }) {
   const section = task.snapshot?.sections.humanRequirements;
-  if (section?.state !== 'available')
+  if (section?.state !== 'available') {
     return <TaskSourceState state={section?.state === 'forbidden' ? 'forbidden' : 'unavailable'} />;
+  }
+
   // A refreshed snapshot must never silently retarget an already open evidence reference.
   const evidence =
     task.snapshot?.revision === params.revision
       ? section.data.items.find((item) => item.id === params.requirementId)?.evidence[params.index]
       : undefined;
+
   return <TaskReferenceInspection link={evidence?.link} />;
 }
+
 export function TaskResourceInspection({ resource }: { readonly resource?: TaskResource }) {
   return <TaskReferenceInspection link={resource?.link} />;
 }
+
 export function TaskReferenceInspection({ link }: { readonly link?: TaskLink }) {
-  if (!link) return <TaskSourceState state="unavailable" />;
-  if (link.state !== 'available') return <TaskSourceState state={link.state} />;
+  if (!link) {
+    return <TaskSourceState state="unavailable" />;
+  }
+
+  if (link.state !== 'available') {
+    return <TaskSourceState state={link.state} />;
+  }
+
   const target = link.target;
-  if (target.kind === 'document')
+  if (target.kind === 'document') {
     return (
       <DocumentContent
         specId={target.specId}
@@ -131,6 +147,8 @@ export function TaskReferenceInspection({ link }: { readonly link?: TaskLink }) 
         expectedRevision={target.revision}
       />
     );
+  }
+
   // Other resource owners have no inspection reader in this increment.
   return <TaskSourceState state="unavailable" />;
 }
@@ -157,22 +175,31 @@ export function TaskContextHeader({
           work.data.position.state !== 'active'
         ? 'taskDetails.nextStepDetails'
         : 'taskDetails.stepDetails';
+
   return <WorkspaceHeaderIdentity headingLevel={2} title={t(title)} />;
 }
+
 export function TaskFlowHeader() {
   const { t } = useTranslation();
+
   return <WorkspaceHeaderIdentity headingLevel={2} title={t('taskDetails.flowDetails')} />;
 }
+
 export function TaskRequirementHeader() {
   const { t } = useTranslation();
+
   return <WorkspaceHeaderIdentity headingLevel={2} title={t('taskDetails.requirement')} />;
 }
+
 export function TaskResourceHeader() {
   const { t } = useTranslation();
+
   return <WorkspaceHeaderIdentity headingLevel={2} title={t('taskDetails.resource')} />;
 }
+
 export function TaskHistoryHeader() {
   const { t } = useTranslation();
+
   return (
     <WorkspaceHeaderIdentity headingLevel={2} title={t('specification.taskFullHistoryHeading')} />
   );
@@ -180,5 +207,6 @@ export function TaskHistoryHeader() {
 
 export function TaskEvidenceHeader() {
   const { t } = useTranslation();
+
   return <WorkspaceHeaderIdentity headingLevel={2} title={t('taskDetails.evidence')} />;
 }

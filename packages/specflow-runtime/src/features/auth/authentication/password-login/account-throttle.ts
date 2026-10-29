@@ -62,16 +62,21 @@ export class InMemoryPasswordAccountThrottle implements PasswordAccountThrottle 
       }
 
       existing.count += 1;
+
       return { allowed: true };
     }
 
-    if (existing) this.accounts.delete(key);
+    if (existing) {
+      this.accounts.delete(key);
+    }
+
     this.pruneExpired(now);
 
     if (this.accounts.size >= this.maxAccountKeys) {
       const earliestReset = Math.min(
         ...[...this.accounts.values()].map((window) => window.resetsAt),
       );
+
       return {
         allowed: false,
         retryAfterSeconds: retryAfterSeconds(earliestReset, now),
@@ -79,6 +84,7 @@ export class InMemoryPasswordAccountThrottle implements PasswordAccountThrottle 
     }
 
     this.accounts.set(key, { count: 1, resetsAt: now + this.accountWindowMs });
+
     return { allowed: true };
   }
 
@@ -88,7 +94,9 @@ export class InMemoryPasswordAccountThrottle implements PasswordAccountThrottle 
 
   private pruneExpired(now: number): void {
     for (const [key, window] of this.accounts) {
-      if (window.resetsAt <= now) this.accounts.delete(key);
+      if (window.resetsAt <= now) {
+        this.accounts.delete(key);
+      }
     }
   }
 }
@@ -101,6 +109,7 @@ function positive(value: number, name: string): number {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${name} must be greater than zero.`);
   }
+
   return value;
 }
 
@@ -108,5 +117,6 @@ function positiveInteger(value: number, name: string): number {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer.`);
   }
+
   return value;
 }

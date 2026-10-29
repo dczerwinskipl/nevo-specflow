@@ -13,7 +13,10 @@ function fail(status: number, code?: string, method = 'POST'): ApiError {
     }),
     { operation: 'specs.create', method, codes: createSpecErrorCodes },
   );
-  if (!(classified instanceof ApiError)) throw new Error('expected ApiError');
+  if (!(classified instanceof ApiError)) {
+    throw new Error('expected ApiError');
+  }
+
   return classified;
 }
 
@@ -36,6 +39,10 @@ describe('Create error codes', () => {
     [409, 'COMMIT_BLOCKED', 'commit-blocked'],
     [503, 'COMMIT_FAILED', 'recovery-required'],
     [422, 'BRANCH_NAME_INVALID', 'branch-invalid'],
+    // The name makes a path the Engine refuses: a name problem, never a stale option.
+    [400, 'DOCUMENT_PATH_INVALID', 'name-invalid'],
+    [409, 'DOCUMENT_PATH_CONFLICT', 'name-conflict'],
+    [422, 'DEFINITIONS_MISSING', 'catalogue-stale'],
     [503, 'SPEC_NOT_FOUND', 'stale'],
     [503, 'CREATE_RECOVERY_REQUIRED', 'recovery-required'],
     [503, 'CREATE_JOURNAL_CORRUPT', 'recovery-required'],
@@ -92,12 +99,13 @@ describe('Create error codes', () => {
       'GIT_POLICY_INVALID',
       'WORKTREE_PATH_CONFLICT',
     ];
-    for (const [code, rule] of Object.entries(createSpecErrorCodes))
+    for (const [code, rule] of Object.entries(createSpecErrorCodes)) {
       expect(rule.outcome, code).toBe(
         rule.kind === 'recovery-required' || mayFollowReservation.includes(code)
           ? 'unknown'
           : 'not-applied',
       );
+    }
   });
 
   it('an unknown 4xx code is classified by its status, never treated as an unknown outcome', () => {

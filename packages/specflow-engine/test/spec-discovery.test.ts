@@ -22,7 +22,10 @@ import {
   updateWorkspaceRegistry,
   type SpecFlowEngine,
   type SpecificationScaffold,
+  seedCatalogueForTesting,
 } from '../src/testing';
+
+const catalogue = await seedCatalogueForTesting();
 
 // Real-Git and checkout-incarnation probes are disk-intensive on Windows,
 // especially when concurrent crash/multiprocess suites run in CI.
@@ -42,6 +45,7 @@ afterEach(async () => {
 async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
   const root = await createGitTestProject('specflow-discovery-Ż space ', 'runtime: {}\n');
   roots.push(root);
+
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -56,6 +60,7 @@ async function linkedWorkspace(engine: SpecFlowEngine, branch = 'spec/discovery'
     false,
   );
   await updateWorkspaceRegistry(engine.context, (registry) => addWorkspace(registry, registration));
+
   return registration;
 }
 
@@ -65,11 +70,13 @@ async function persist(root: string, scaffold: SpecificationScaffold): Promise<s
     await mkdir(dirname(absolute), { recursive: true });
     await writeFile(absolute, file.content, 'utf8');
   }
+
   return join(root, scaffold.files[0]!.relativePath);
 }
 
 function scaffold(specId: string, title: string): SpecificationScaffold {
   return createSpecificationScaffold({
+    catalogue,
     archetypeId: 'minimal',
     specId,
     title,
@@ -314,6 +321,7 @@ describe('E2.T07 — canonical reads across concurrent source changes (real Git)
             bindSpecToWorkspace(registry, specId, linked.workspaceId),
           );
         }
+
         return snapshot;
       },
     };
@@ -350,6 +358,7 @@ describe('E2.T07 — canonical reads across concurrent source changes (real Git)
             bindSpecToWorkspace(registry, specId, linked.workspaceId),
           );
         }
+
         return snapshot;
       },
     };
@@ -382,7 +391,10 @@ describe('E2.T07 — canonical reads across concurrent source changes (real Git)
       async readRegistry() {
         const snapshot = await engine.readRegistry();
         registryReads++;
-        if (registryReads === 3) await rename(temporary, originalPath);
+        if (registryReads === 3) {
+          await rename(temporary, originalPath);
+        }
+
         return snapshot;
       },
     };
@@ -414,7 +426,10 @@ describe('E2.T07 — canonical reads across concurrent source changes (real Git)
       async readRegistry() {
         const snapshot = await engine.readRegistry();
         registryReads++;
-        if (registryReads === 3) await rename(temporary, path);
+        if (registryReads === 3) {
+          await rename(temporary, path);
+        }
+
         return snapshot;
       },
     };

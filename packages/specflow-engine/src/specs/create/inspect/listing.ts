@@ -1,11 +1,15 @@
-import { lstat, readFile, readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 import type { SpecFlowEngine } from '../../../application';
-import { UUID, parseCreateJournal } from '../journal/codec';
+import {
+  listJournalRowsTolerant,
+  readJournalRowTolerant,
+  type TolerantJournalReader,
+} from '../../durable';
+import { parseCreateJournal } from '../journal/codec';
+import { CREATE_JOURNAL_KIND } from '../journal/kind';
 import { classifyCreateJournalText } from '../journal/unsupported';
-import { CREATE_JOURNAL_LISTING_MAX_FILES, CREATE_JOURNAL_MAX_BYTES } from '../limits';
-import { CREATE_JOURNAL_RELATIVE_DIR } from '../journal/store';
+import { CREATE_JOURNAL_MAX_BYTES } from '../limits';
 import { createStepForStage, type PublicCreateStepId } from './step-mapping';
 
 export type PublicCreateListingState = 'in-progress' | 'recovery-required' | 'completed';
@@ -21,7 +25,7 @@ export interface PublicCreateListingRow {
   readonly state: PublicCreateListingState;
   /** The journal could not be read or validated: only the id is known. */
   readonly unreadable?: true;
-  /** Stable code of the cause when it is known (an older-format journal). */
+  /** Stable code of the cause when it is known (an unreadable journal). */
   readonly code?: 'CREATE_JOURNAL_UNSUPPORTED';
   readonly specId?: string;
   readonly slug?: string;
@@ -41,17 +45,6 @@ export interface PublicCreateListingRow {
   readonly updatedAt: string;
 }
 
-interface Memo {
-  readonly mtimeMs: number;
-  readonly ctimeMs: number;
-  readonly size: number;
-  readonly ino: number;
-  readonly row: PublicCreateListingRow;
-}
-
-/** Process-local memo per journal directory: only files whose stat signature changed are parsed. */
-const memos = new Map<string, Map<string, Memo>>();
-
 /**
  * Tolerant, read-only listing of the Create journals from disk. It never spawns Git, never takes
  * the Project Home control lock and never fails because of one bad file: an unreadable journal is
@@ -61,59 +54,7 @@ const memos = new Map<string, Map<string, Memo>>();
 export async function listPublicCreateOperations(
   engine: SpecFlowEngine,
 ): Promise<readonly PublicCreateListingRow[]> {
-  const dir = join(engine.context.project.stateRoot, CREATE_JOURNAL_RELATIVE_DIR);
-  let names: string[];
-  try {
-    const stat = await lstat(dir);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) return [];
-    names = (await readdir(dir)).filter((name) => name.endsWith('.json'));
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
-  }
-  names.sort();
-  names = names.slice(0, CREATE_JOURNAL_LISTING_MAX_FILES);
-
-  const previous = memos.get(dir) ?? new Map<string, Memo>();
-  const next = new Map<string, Memo>();
-  const rows: PublicCreateListingRow[] = [];
-  for (const name of names) {
-    const operationId = name.slice(0, -5);
-    // A name that is not an operation id cannot be addressed by anything: not a journal.
-    if (!UUID.test(operationId)) continue;
-    const path = join(dir, name);
-    let stat;
-    try {
-      stat = await lstat(path);
-    } catch (error) {
-      if (isMissing(error)) continue;
-      rows.push(unreadable(operationId, new Date(0)));
-      continue;
-    }
-    const updatedAt = new Date(stat.mtimeMs);
-    const known = previous.get(name);
-    if (
-      known?.mtimeMs === stat.mtimeMs &&
-      known.ctimeMs === stat.ctimeMs &&
-      known.size === stat.size &&
-      known.ino === stat.ino
-    ) {
-      next.set(name, known);
-      rows.push(known.row);
-      continue;
-    }
-    const row = await readRow(engine, path, operationId, stat, updatedAt);
-    next.set(name, {
-      mtimeMs: stat.mtimeMs,
-      ctimeMs: stat.ctimeMs,
-      size: stat.size,
-      ino: stat.ino,
-      row,
-    });
-    rows.push(row);
-  }
-  memos.set(dir, next);
-  return rows;
+  return listJournalRowsTolerant(engine.context, CREATE_JOURNAL_KIND, readerOf(engine));
 }
 
 /**
@@ -124,20 +65,15 @@ export async function readPublicCreateOperationRow(
   engine: SpecFlowEngine,
   operationId: string,
 ): Promise<PublicCreateListingRow | undefined> {
-  if (!UUID.test(operationId)) return undefined;
-  const path = join(
-    engine.context.project.stateRoot,
-    CREATE_JOURNAL_RELATIVE_DIR,
-    operationId + '.json',
-  );
-  let stat;
-  try {
-    stat = await lstat(path);
-  } catch (error) {
-    if (isMissing(error)) return undefined;
-    return unreadable(operationId, new Date(0));
-  }
-  return readRow(engine, path, operationId, stat, new Date(stat.mtimeMs));
+  return readJournalRowTolerant(engine.context, CREATE_JOURNAL_KIND, operationId, readerOf(engine));
+}
+
+function readerOf(engine: SpecFlowEngine): TolerantJournalReader<PublicCreateListingRow> {
+  return {
+    readRow: (path, operationId, stat, updatedAt) =>
+      readRow(engine, path, operationId, stat, updatedAt),
+    unreadable,
+  };
 }
 
 async function readRow(
@@ -150,14 +86,19 @@ async function readRow(
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) {
     return unreadable(operationId, updatedAt);
   }
+
   try {
     const classified = classifyCreateJournalText(await readFile(path, 'utf8'));
-    if (classified.kind === 'unsupported') return unsupported(operationId, updatedAt);
+    if (classified.kind === 'unsupported') {
+      return unsupported(operationId, updatedAt);
+    }
+
     const journal = parseCreateJournal(engine.context, classified.value, operationId);
     const commits = Boolean(journal.commit);
     const branch =
       journal.target.kind === 'new-worktree' ? journal.target.branch : journal.commit?.branch;
     const currentStep = createStepForStage(journal.stage, journal.target.kind, commits);
+
     return {
       operationId,
       kind: 'specification-create',
@@ -185,7 +126,7 @@ async function readRow(
   }
 }
 
-/** A row for an older-format journal: only its id; the cause is a stable code, never its content. */
+/** A row for an unreadable journal: only its id; the cause is a stable code, never its content. */
 function unsupported(operationId: string, updatedAt: Date): PublicCreateListingRow {
   return { ...unreadable(operationId, updatedAt), code: 'CREATE_JOURNAL_UNSUPPORTED' };
 }
@@ -198,10 +139,4 @@ function unreadable(operationId: string, updatedAt: Date): PublicCreateListingRo
     unreadable: true,
     updatedAt: updatedAt.toISOString(),
   };
-}
-
-function isMissing(error: unknown): boolean {
-  return (
-    typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'ENOENT'
-  );
 }

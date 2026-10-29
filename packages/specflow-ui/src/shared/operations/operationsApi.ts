@@ -53,11 +53,19 @@ export function decodeProgressEvent(frame: SseEvent): OperationProgressEvent | u
   } catch {
     return undefined;
   }
-  if (!isObject(data) || typeof data.type !== 'string' || !eventTypes.has(data.type))
+
+  if (!isObject(data) || typeof data.type !== 'string' || !eventTypes.has(data.type)) {
     return undefined;
-  if (data.type === 'snapshot' && !Array.isArray(data.steps)) return undefined;
-  if (data.type === 'step' && (typeof data.step !== 'string' || typeof data.status !== 'string'))
+  }
+
+  if (data.type === 'snapshot' && !Array.isArray(data.steps)) {
     return undefined;
+  }
+
+  if (data.type === 'step' && (typeof data.step !== 'string' || typeof data.status !== 'string')) {
+    return undefined;
+  }
+
   return data as unknown as OperationProgressEvent;
 }
 
@@ -71,14 +79,22 @@ export function createRuntimeOperationsApi(http: HttpRequestClient): OperationsA
           timeoutMs: listTimeoutMs,
         });
         const list = decodeOperationList(data);
-        if (!list) throw new Error('Operation list has an unexpected shape.');
+        if (!list) {
+          throw new Error('Operation list has an unexpected shape.');
+        }
+
         return { kind: 'list', list };
       } catch (error) {
         if (isHttpClientError(error)) {
-          if (error.status === 304) return { kind: 'not-modified' };
-          if (error.status === 404 || error.status === 403 || error.status === 501)
+          if (error.status === 304) {
+            return { kind: 'not-modified' };
+          }
+
+          if (error.status === 404 || error.status === 403 || error.status === 501) {
             return { kind: 'unavailable' };
+          }
         }
+
         throw error;
       }
     },
@@ -89,16 +105,23 @@ export function createRuntimeOperationsApi(http: HttpRequestClient): OperationsA
       });
       try {
         for await (const event of stream) {
-          if (signal?.aborted) return;
-          if (!event) continue;
+          if (signal?.aborted) {
+            return;
+          }
+
+          if (!event) {
+            continue;
+          }
+
           yield event;
           // The server closes after a terminal event, and the SSE client would reconnect.
           if (
             event.type === 'completed' ||
             event.type === 'failed' ||
             event.type === 'recovery-required'
-          )
+          ) {
             return;
+          }
         }
       } finally {
         stream.close();

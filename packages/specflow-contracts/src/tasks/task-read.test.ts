@@ -20,6 +20,7 @@ function snapshot(): TaskSnapshot {
     { id: 'return', feedbackRequired: true, target: { kind: 'step' as const, step: build } },
   ];
   const unavailable = { state: 'unavailable' as const, reason: 'not_implemented' as const };
+
   return {
     revision: '1',
     specification: { id: 'spec', title: 'Specification' },
@@ -65,20 +66,27 @@ function snapshot(): TaskSnapshot {
     },
   };
 }
+
 describe('Task flow definition contract', () => {
   it('represents all steps, branches, return transitions and an independent active attempt', () => {
     expect(Value.Check(TaskSnapshotSchema, snapshot())).toBe(true);
   });
   it('rejects an available work projection without the full definition graph', () => {
     const value = snapshot();
-    if (value.sections.work.state !== 'available') throw new Error('Expected work');
+    if (value.sections.work.state !== 'available') {
+      throw new Error('Expected work');
+    }
+
     const definition: Record<string, unknown> = value.sections.work.data.definition;
     delete definition.steps;
     expect(Value.Check(TaskSnapshotSchema, value)).toBe(false);
   });
   it('requires an explicit target for every definition transition', () => {
     const value = snapshot();
-    if (value.sections.work.state !== 'available') throw new Error('Expected work');
+    if (value.sections.work.state !== 'available') {
+      throw new Error('Expected work');
+    }
+
     const transition: Record<string, unknown> =
       value.sections.work.data.definition.steps[0]!.transitions[0]!;
     delete transition.target;

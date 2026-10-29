@@ -27,9 +27,11 @@ let nextMount = 0;
 function createSource() {
   let snapshot = { version: 1, lastAction: 'None' };
   const listeners = new Set<() => void>();
+
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
@@ -40,10 +42,13 @@ function createSource() {
         version: action === 'Refresh' ? snapshot.version + 1 : snapshot.version,
         lastAction: action,
       };
-      for (const listener of listeners) listener();
+      for (const listener of listeners) {
+        listener();
+      }
     },
   };
 }
+
 type Source = ReturnType<typeof createSource>;
 
 function InspectorHeader({ data }: SecondaryScreenProps<HeaderData, EditorPages['details']>) {
@@ -53,6 +58,7 @@ function InspectorHeader({ data }: SecondaryScreenProps<HeaderData, EditorPages[
 
 function InspectorContent({ data }: SecondaryScreenProps<HeaderData, EditorPages['details']>) {
   const [mount] = useState(() => ++nextMount);
+
   return (
     <div className="grid gap-4 p-5">
       <output data-header-test-version>{data.version}</output>
@@ -66,8 +72,10 @@ function InspectorContent({ data }: SecondaryScreenProps<HeaderData, EditorPages
 function createInspectorStack(source: Source, menu?: 'complete') {
   function useInspectorData(): SecondaryData<HeaderData> {
     const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+
     return { status: 'ready', data: { ...snapshot, recordAction: source.recordAction } };
   }
+
   return defineSecondaryStack<Record<never, never>, HeaderData, EditorPages>({
     id: 'header-actions-contract',
     initial: 'details',
@@ -109,6 +117,7 @@ function HeaderActionsWorkspace({ menu }: { menu?: 'complete' }) {
   const [source] = useState(createSource);
   const [stack] = useState(() => createInspectorStack(source, menu));
   const navigation = useSecondaryNavigation();
+
   return (
     <AppWorkspace split="primary">
       <AppWorkspace.Primary header={<WorkspaceHeader title="Primary records" />}>
@@ -144,7 +153,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(value: unknown, message: string): asserts value {
-  if (!value) throw new Error(message);
+  if (!value) {
+    throw new Error(message);
+  }
 }
 
 async function settleFrame() {
@@ -222,6 +233,7 @@ export const MobileCollapsedCustomHeaderActions: Story = {
     for (const label of ['Save', 'Refresh', 'Open full view', 'Close secondary content']) {
       assert(findMenuItem(doc, label), `Missing compact action: ${label}`);
     }
+
     const save = findMenuItem(doc, 'Save');
     assert(save, 'Save action must be available');
     await userEvent.click(save);
@@ -266,8 +278,10 @@ export const DesktopCompleteMenuFromScreenDefinition: Story = {
     assert(canvas.getByRole('button', { name: 'Save' }), 'Save must be direct');
     await userEvent.click(canvas.getByRole('button', { name: 'Screen actions' }));
     const doc = canvasElement.ownerDocument;
-    for (const label of ['Save', 'Refresh', 'Open full view'])
+    for (const label of ['Save', 'Refresh', 'Open full view']) {
       assert(findMenuItem(doc, label), `Complete menu must list ${label}`);
+    }
+
     assert(
       doc.querySelector('[role="menu"] [role="group"]'),
       'Complete menu must render its action group',

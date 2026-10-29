@@ -127,7 +127,7 @@ assetRef('Icon', { glyph: 'search', size: 'sm' });
 assetRef('Icon', { name: 'does-not-exist', size: 'sm' });
 
 // @ts-expect-error invalid Icon size
-assetRef('Icon', { name: 'search', size: 'xl' });
+assetRef('Icon', { name: 'search', size: 'huge' });
 
 // @ts-expect-error missing required Icon axis
 assetRef('Icon', { name: 'search' });

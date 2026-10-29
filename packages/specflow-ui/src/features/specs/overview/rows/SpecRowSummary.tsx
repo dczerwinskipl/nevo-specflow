@@ -9,6 +9,7 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
     const history = item.history;
     const validDate = history.timestamp && Number.isFinite(Date.parse(history.timestamp));
     const date = validDate ? formatSpecDate(history.timestamp!, i18n.resolvedLanguage) : undefined;
+
     return (
       <span className="flex flex-wrap gap-x-1 @min-[48rem]/collection:flex-col">
         <span className="@min-[48rem]/collection:order-2">
@@ -25,6 +26,7 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
       </span>
     );
   }
+
   const summary = item.summary;
   const text =
     summary.kind === 'attention'
@@ -39,6 +41,7 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
       : summary.kind === 'active'
         ? t('specifications.summary.active', { count: summary.executionCount })
         : t(`specifications.summary.${summary.kind}`);
+
   return (
     <span
       className={

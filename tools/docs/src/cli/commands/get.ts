@@ -12,11 +12,15 @@ export function getCommand(ctx: DocsCliContext): Command {
       const entries = getDocuments(ctx.repo, ids);
       if (opts.json) {
         ctx.stdout(JSON.stringify(entries, null, 2));
+
         return;
       }
+
       for (const entry of entries) {
         ctx.stdout(`${entry.id} — "${entry.title}" [${entry.status}]  ${entry.file}`);
-        if (entry.summary) ctx.stdout(`    ${entry.summary.replace(/\s+/g, ' ').trim()}`);
+        if (entry.summary) {
+          ctx.stdout(`    ${entry.summary.replace(/\s+/g, ' ').trim()}`);
+        }
       }
     });
 }

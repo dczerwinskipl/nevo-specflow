@@ -23,7 +23,10 @@ export async function inspectPublicCreateOperation(
   operationId: string,
 ): Promise<PublicCreateInspection | undefined> {
   const record = await readCreateJournal(engine.context, operationId);
-  if (!record) return undefined;
+  if (!record) {
+    return undefined;
+  }
+
   if (record.stage === 'completed') {
     return projectCreatedSpecification({
       operationId: record.operationId,
@@ -35,6 +38,7 @@ export async function inspectPublicCreateOperation(
       documentIds: record.documentIds,
     });
   }
+
   return {
     operationId: record.operationId,
     kind: 'specification-create',

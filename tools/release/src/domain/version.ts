@@ -48,12 +48,14 @@ export function releaseBranchFor(version: string): string {
   if (!isCoreVersion(version)) {
     throw new UsageError(`Not a plain SemVer version: ${JSON.stringify(version)}`);
   }
+
   return `release/v${String(semver.major(version))}.${String(semver.minor(version))}`;
 }
 
 /** `release/v1.3` -> `"1.3"`; anything else -> `null`. */
 export function lineOfBranch(branch: string): string | null {
   const m = /^release\/v(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(branch);
+
   return m ? `${m[1]}.${m[2]}` : null;
 }
 
@@ -76,17 +78,21 @@ export function parseVersionFile(raw: string, label = 'version.json'): VersionFi
       { cause: err },
     );
   }
+
   if (typeof meta !== 'object' || meta === null) {
     throw new UsageError(`${label}: expected a JSON object`);
   }
+
   const record = meta as Record<string, unknown>;
   const { channel, version } = record;
   if (!isChannel(channel)) {
     throw new UsageError(`${label}: 'channel' must be one of ${CHANNELS.join(', ')}`);
   }
+
   if (!isCoreVersion(version)) {
     throw new UsageError(`${label}: 'version' must be a plain SemVer version (X.Y.Z)`);
   }
+
   return { channel, version };
 }
 
@@ -106,12 +112,25 @@ export function versionFileText({ channel, version }: VersionFile): string {
 
 /** `1.3.0`, `1.3.0-beta.2`, `1.3.0-rc.10` — shapes a public release tag may take. */
 export function isReleaseTagVersion(v: unknown): boolean {
-  if (isCoreVersion(v)) return true;
-  if (typeof v !== 'string' && typeof v !== 'number') return false;
+  if (isCoreVersion(v)) {
+    return true;
+  }
+
+  if (typeof v !== 'string' && typeof v !== 'number') {
+    return false;
+  }
+
   const parsed = semver.parse(String(v));
-  if (parsed === null) return false;
-  if (parsed.prerelease.length !== 2) return false;
+  if (parsed === null) {
+    return false;
+  }
+
+  if (parsed.prerelease.length !== 2) {
+    return false;
+  }
+
   const [id, n] = parsed.prerelease;
+
   return isPrereleaseChannel(id) && typeof n === 'number' && Number.isInteger(n) && n >= 1;
 }
 
@@ -143,17 +162,22 @@ export function deriveBuildVersion({
           `refusing to derive a build version for it.`,
       );
     }
+
     return v;
   }
 
   const { channel, version } = versionFile;
-  if (channel === 'stable') return version;
+  if (channel === 'stable') {
+    return version;
+  }
 
   const buildNum = Number(build);
   if (!Number.isInteger(buildNum) || buildNum < 0) {
     throw new UsageError(`build must be a non-negative integer, got ${JSON.stringify(build)}`);
   }
+
   const base = `${version}-${channel}.${String(buildNum)}`;
+
   return sha ? `${base}+${sha}` : base;
 }
 
@@ -173,11 +197,13 @@ function maxPrereleaseNumber({
   if (!isCoreVersion(version)) {
     throw new UsageError(`${caller}: bad version ${JSON.stringify(version)}`);
   }
+
   if (!isPrereleaseChannel(channel)) {
     throw new UsageError(
       `${caller}: channel must be 'beta' or 'rc', got ${JSON.stringify(channel)}`,
     );
   }
+
   let max = 0;
   for (const t of existingTags) {
     const p = semver.parse(t.trim().replace(/^v/, ''));
@@ -195,6 +221,7 @@ function maxPrereleaseNumber({
       max = Math.max(max, p.prerelease[1]);
     }
   }
+
   return max;
 }
 
@@ -207,6 +234,7 @@ export interface PrereleaseTagInput {
 /** Next intentional prerelease tag for a target version + channel. */
 export function nextPrereleaseTag({ version, channel, existingTags }: PrereleaseTagInput): string {
   const max = maxPrereleaseNumber({ version, channel, existingTags, caller: 'nextPrereleaseTag' });
+
   return `v${version}-${channel}.${String(max + 1)}`;
 }
 
@@ -226,6 +254,7 @@ export function highestPrereleaseTag({
     existingTags,
     caller: 'highestPrereleaseTag',
   });
+
   return max === 0 ? null : `v${version}-${channel}.${String(max)}`;
 }
 
@@ -243,11 +272,18 @@ export function planPromotion({
   toChannel: Channel;
 }): VersionFile {
   const { channel, version } = current;
-  if (channel === 'beta' && toChannel === 'rc') return { channel: 'rc', version };
-  if (channel === 'rc' && toChannel === 'stable') return { channel: 'stable', version };
+  if (channel === 'beta' && toChannel === 'rc') {
+    return { channel: 'rc', version };
+  }
+
+  if (channel === 'rc' && toChannel === 'stable') {
+    return { channel: 'stable', version };
+  }
+
   if (channel === 'stable' && (toChannel === 'beta' || toChannel === 'rc')) {
     return { channel: toChannel, version: semver.inc(version, 'patch') ?? version };
   }
+
   throw new UsageError(
     `Invalid promotion ${channel} -> ${toChannel}. Allowed: beta->rc, rc->stable, ` +
       `stable->beta|rc (starts the next patch).`,

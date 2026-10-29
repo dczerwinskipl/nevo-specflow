@@ -41,6 +41,7 @@ export async function executeReleaseCut(
   if (!plan.ok) {
     throw new UsageError(`Invalid inputs:\n  - ${plan.errors.join('\n  - ')}`);
   }
+
   const { releaseBranch, releaseVersion, nextVersion, bumpBranch } = plan;
 
   events.push(info('Plan'));
@@ -60,6 +61,7 @@ export async function executeReleaseCut(
   if (!baseSha) {
     throw new InconsistentStateError('Cannot resolve origin/main — run `git fetch origin` first.');
   }
+
   const baseShort = baseSha.slice(0, 7);
   const mainVf = await readVersionFileAt(git, baseSha, `origin/main@${baseShort}`);
 
@@ -90,6 +92,7 @@ export async function executeReleaseCut(
             `not exist on origin. Fail closed — investigate.`,
         );
       }
+
       const bumpCheck = await validateSingleFileBranch(git, {
         ref: `origin/${bumpBranch}`,
         nextState: { channel: 'alpha', version: nextVersion },
@@ -102,6 +105,7 @@ export async function executeReleaseCut(
             `refusing to treat this cut as complete. Investigate.`,
         );
       }
+
       events.push(
         info(
           `${releaseBranch} is already cut correctly and the main-bump PR is open:\n  ${openBumpPr.url}`,
@@ -112,7 +116,9 @@ export async function executeReleaseCut(
       if (hasToken && mutate) {
         await requestAutoMerge(github, openBumpPr.url, events);
       }
+
       events.push(info('Nothing to do — merge that PR to finish.'));
+
       return { events, plan, alreadyDone: true, mutated: false };
     }
 
@@ -124,6 +130,7 @@ export async function executeReleaseCut(
             `the line is fully cut. Nothing to do.`,
         ),
       );
+
       return { events, plan, alreadyDone: true, mutated: false };
     }
 
@@ -154,6 +161,7 @@ export async function executeReleaseCut(
         `does not. Resolve that PR before cutting the line.`,
     );
   }
+
   events.push(info(`origin/main at ${baseShort} is alpha ${mainVf.version} — cut is consistent.`));
 
   const relContent = versionFileText({ channel: 'beta', version: releaseVersion });
@@ -173,6 +181,7 @@ export async function executeReleaseCut(
     events.push(
       info(`Would ${hasToken ? 'open' : 'hand off'} the main-bump PR (${bumpBranch} -> main).`),
     );
+
     return { events, plan, alreadyDone: false, mutated: false };
   }
 
@@ -231,6 +240,7 @@ async function readVersionFileAt(git: GitClient, ref: string, label: string): Pr
   if (raw === null) {
     throw new InconsistentStateError(`${label} has no version.json — refusing to proceed.`);
   }
+
   try {
     return parseVersionFile(raw, `${label}:version.json`);
   } catch (err) {
@@ -267,18 +277,26 @@ async function validateSingleFileBranch(
   },
 ): Promise<BranchCheck> {
   const parents = await git.commitParents(ref);
-  if (parents === null) return { ok: false, reason: `${ref} cannot be resolved` };
+  if (parents === null) {
+    return { ok: false, reason: `${ref} cannot be resolved` };
+  }
+
   if (parents.length !== 1) {
     return { ok: false, reason: `it has ${String(parents.length)} parents, not 1` };
   }
+
   const parent = parents[0];
-  if (parent === undefined) return { ok: false, reason: `${ref} has no parent` };
+  if (parent === undefined) {
+    return { ok: false, reason: `${ref} has no parent` };
+  }
+
   if (expectedParent && parent !== expectedParent) {
     return {
       ok: false,
       reason: `its base ${parent.slice(0, 7)} is not the expected ${expectedParent.slice(0, 7)}`,
     };
   }
+
   if (parentAncestorOf && !(await git.isAncestor(parent, parentAncestorOf))) {
     return {
       ok: false,

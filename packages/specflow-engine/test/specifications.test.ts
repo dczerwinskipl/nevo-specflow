@@ -14,11 +14,14 @@ import {
   readWorkspaceSpecification,
   validateSpecificationSlug,
   type SpecificationScaffold,
+  seedCatalogueForTesting,
 } from '../src/testing';
 import {
   writeOldShapeManifestFixture,
   writeSpecificationManifestFixture,
 } from './support/manifest-fixture';
+
+const catalogue = await seedCatalogueForTesting();
 
 const roots: string[] = [];
 
@@ -34,6 +37,7 @@ async function workspace(): Promise<string> {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-specs-Ż ')));
   roots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
+
   return root;
 }
 
@@ -49,6 +53,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('marks the Goal section as the initial, freely refinable goal for agents', () => {
     const specId = randomUUID();
     const withGoal = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId,
       title: 'Goal note',
@@ -60,6 +65,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       '## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nShip the thing.\n',
     );
     const empty = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId,
       title: 'Goal note',
@@ -71,6 +77,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('creates a deterministic title-only scaffold using the canonical specification.yaml', async () => {
     const specId = randomUUID();
     const input = {
+      catalogue,
       specId,
       title: 'Żółty Projekt',
       created: '2026-10-14',
@@ -87,6 +94,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     for (const file of first.files) {
       expect(file.sha256).toMatch(/^[a-f0-9]{64}$/u);
     }
+
     expect(first.files[0]?.content).toContain('spec_id: ' + specId);
     expect(first.files[0]?.content).not.toContain('workflow:');
     expect(first.files[0]?.content).not.toContain('mode: deterministic');
@@ -122,6 +130,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('fails closed on an obsolete change.yaml-only directory', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Outdated prototype',
@@ -138,6 +147,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('rejects two manifest filenames rather than selecting a preferred source', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Ambiguous manifest',
@@ -154,6 +164,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('rejects incorrectly cased manifest names', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Wrong case',
@@ -170,6 +181,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('reflects manifest edits directly without a generated index or stale status cache', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Status source',
@@ -189,6 +201,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     await persist(
       root,
       createSpecificationScaffold({
+        catalogue,
         archetypeId: 'minimal',
         specId,
         title: 'Primary',
@@ -196,6 +209,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       }),
     );
     const other = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId,
       title: 'Duplicate',
@@ -212,6 +226,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('fails closed on missing identity, malformed YAML and non-file manifests', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId: randomUUID(),
       title: 'Invalid source',
@@ -244,6 +259,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
   it('uses a valid explicit slug for the scaffold paths and rejects an unsafe one', () => {
     const specId = randomUUID();
     const result = createSpecificationScaffold({
+      catalogue,
       archetypeId: 'minimal',
       specId,
       title: 'Żółty Projekt',
@@ -255,6 +271,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     for (const slug of ['My-Slug', 'a--b', '-a', 'a.b', '../x', 'nul', 'a'.repeat(81)]) {
       expect(() =>
         createSpecificationScaffold({
+          catalogue,
           archetypeId: 'minimal',
           specId,
           title: 'T',
@@ -271,6 +288,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     expect(() => validateSpecificationSlug('../escape')).toThrow(SpecificationError);
     expect(() =>
       createSpecificationScaffold({
+        catalogue,
         archetypeId: 'minimal',
         specId: randomUUID(),
         title: '  ',
@@ -279,6 +297,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     ).toThrow(SpecificationError);
     expect(() =>
       createSpecificationScaffold({
+        catalogue,
         archetypeId: 'minimal',
         specId: 'not-a-uuid',
         title: 'Valid',
@@ -311,6 +330,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     for (const slug of invalid) {
       expect(() => validateSpecificationSlug(slug), slug).toThrow(SpecificationError);
     }
+
     for (const safe of ['content', 'con-text', 'auxiliary', 'com10', 'trailing.txt', 'spec-1']) {
       expect(validateSpecificationSlug(safe)).toBe(safe);
     }
@@ -318,6 +338,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     const specId = randomUUID();
     for (const title of ['CON', 'NUL', 'LPT1', 'COM9', 'AUX']) {
       const result = createSpecificationScaffold({
+        catalogue,
         archetypeId: 'minimal',
         specId,
         title,

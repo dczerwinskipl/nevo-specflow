@@ -14,9 +14,13 @@ async function exitCodeOf(args: string[]): Promise<number> {
   try {
     await program.parseAsync(['node', 'nevo-specflow', ...args]);
   } catch (error) {
-    if (error instanceof CommanderError) return commanderExitCode(error);
+    if (error instanceof CommanderError) {
+      return commanderExitCode(error);
+    }
+
     throw error;
   }
+
   throw new Error('Expected a Commander outcome for: ' + args.join(' '));
 }
 
@@ -31,6 +35,9 @@ describe('usage exit codes', () => {
     [['specs', 'worktree'], 2],
     [['specs', 'worktree', 'close'], 2],
     [['specs', 'workspace', 'close'], 2],
+    [['specs', 'documents'], 2],
+    [['specs', 'documents', 'add'], 2],
+    [['specs', 'documents', 'recover', '--bogus'], 2],
     [['auth', 'nope'], 2],
   ] as const)('%j exits %i', async (args, code) => {
     expect(await exitCodeOf([...args])).toBe(code);
@@ -43,6 +50,8 @@ describe('usage exit codes', () => {
     [['specs', 'create', '--help']],
     [['specs', 'worktree', 'close', '--help']],
     [['specs', 'workspace', '--help']],
+    [['specs', 'documents', '--help']],
+    [['specs', 'documents', 'recover', '--help']],
   ] as const)('%j exits 0', async (args) => {
     expect(await exitCodeOf([...args])).toBe(0);
   });

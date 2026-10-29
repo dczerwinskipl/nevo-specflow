@@ -80,6 +80,7 @@ export async function completeOidcLogin(
             returnTo: consumption.transaction.returnTo,
           };
     }
+
     throw error;
   }
 
@@ -122,6 +123,7 @@ export async function completeOidcLogin(
         returnTo: consumption.transaction.returnTo,
       };
     }
+
     throw error;
   }
 }

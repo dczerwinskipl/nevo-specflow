@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
+import { lstat, open, readFile, readdir } from 'node:fs/promises';
 
 import { executeGit } from '../../../git/process';
 import { executeGitMutation } from '../../../git/mutation';
@@ -20,6 +20,8 @@ import {
 } from '../../../version-control/git/integration-scratch';
 import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
 import { inspectCloseGitIntegration } from './integration';
+export { disabledIntegrationHooksDirectory } from './scratch-directories';
+import { createRealDirectory, requireDirectory, scratchDirectories } from './scratch-directories';
 import { readCloseJournal } from '../journal/store';
 import { CloseOperationError, type CloseJournal, type CloseIntegrationScratch } from '../model';
 
@@ -28,66 +30,26 @@ const OWNER_MARKER = '.nevo/local/state/integration-scratch-owner.json';
 function conflict(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_CONFLICT', message);
 }
+
 function recovery(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
 }
+
 function isMissing(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
-}
-
-async function createRealDirectory(path: string): Promise<void> {
-  try {
-    await mkdir(path, { mode: 0o700 });
-  } catch (error) {
-    if (
-      typeof error !== 'object' ||
-      error === null ||
-      !('code' in error) ||
-      error.code !== 'EEXIST'
-    )
-      throw error;
-  }
-  await requireDirectory(path);
-}
-
-async function requireDirectory(path: string): Promise<void> {
-  const stat = await lstat(path);
-  if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
-    throw recovery('Engine scratch directory has been redirected or replaced.');
-  }
-}
-
-async function scratchDirectories(engine: SpecFlowEngine): Promise<{
-  readonly root: string;
-  readonly hooks: string;
-}> {
-  const state = engine.context.project.stateRoot;
-  const engineRoot = join(state, 'engine');
-  const root = join(engineRoot, 'integration-scratch');
-  const hooks = join(engineRoot, 'integration-hooks-disabled');
-  // Do not recursively traverse an unverified symlinked parent.
-  await requireDirectory(state);
-  for (const path of [engineRoot, root, hooks]) {
-    await createRealDirectory(path);
-  }
-  if ((await readdir(hooks)).length !== 0) {
-    throw recovery('Disabled-hook directory contains unexpected files.');
-  }
-  return { root, hooks };
-}
-
-/** Verified, empty Engine-owned hooks directory for all mutating integration Git operations. */
-export async function disabledIntegrationHooksDirectory(engine: SpecFlowEngine): Promise<string> {
-  return (await scratchDirectories(engine)).hooks;
 }
 
 async function requireAbsentScratch(path: string): Promise<void> {
   try {
     await lstat(path);
   } catch (error) {
-    if (isMissing(error)) return;
+    if (isMissing(error)) {
+      return;
+    }
+
     throw error;
   }
+
   throw recovery('Scratch path exists before its recorded Git creation; manual recovery required.');
 }
 
@@ -100,10 +62,12 @@ async function putScratchOwner(
   if (!(await isGitIgnored(root, OWNER_MARKER))) {
     throw recovery('Scratch owner identity would not be ignored by Git.');
   }
+
   for (const part of ['.nevo', '.nevo/local', '.nevo/local/state']) {
     const folder = join(root, part);
     await createRealDirectory(folder);
   }
+
   const ownerPath = join(root, OWNER_MARKER);
   const handle = await open(ownerPath, 'wx', 0o600);
   try {
@@ -132,15 +96,18 @@ async function verifyScratchOwner(
   ) {
     throw recovery('Scratch path does not belong to the recorded Close operation.');
   }
+
   await requireDirectory(scratch.root);
   for (const part of ['.nevo', '.nevo/local', '.nevo/local/state']) {
     await requireDirectory(join(scratch.root, part));
   }
+
   const path = join(scratch.root, OWNER_MARKER);
   const stat = await lstat(path);
   if (!stat.isFile() || stat.isSymbolicLink()) {
     throw recovery('Scratch checkout identity marker was replaced.');
   }
+
   const owner = JSON.parse(await readFile(path, 'utf8')) as unknown;
   if (
     typeof owner !== 'object' ||
@@ -169,15 +136,18 @@ async function publishScratchStage(
     onReadbackFailure: 'Scratch checkpoint cannot be proved durable.',
     verifyCurrent: async () => {
       const registry = await readWorkspaceRegistry(engine.context);
-      if (registry.revision !== before.plan.registryRevision)
+      if (registry.revision !== before.plan.registryRevision) {
         throw conflict('Workspace registry changed since Close reservation.');
+      }
+
       if (before.plan.configRevision) {
         const policy = await readProjectGitPolicy(engine.context);
         if (
           policy.revision !== before.plan.configRevision ||
           policy.policy.integrationTargetBranch !== before.plan.targetBranch
-        )
+        ) {
           throw conflict('Integration target policy changed since Close reservation.');
+        }
       } else {
         const source = registry.workspaces.find(
           (item) => item.workspaceId === before.plan.source.workspaceId,
@@ -188,8 +158,9 @@ async function publishScratchStage(
           pinned.workspaceId !== before.plan.target?.workspaceId ||
           pinned.instanceId !== before.plan.target.instanceId ||
           pinned.branch !== before.plan.targetBranch
-        )
+        ) {
           throw conflict('Pinned workspace destination changed since Close reservation.');
+        }
       }
     },
   });
@@ -219,6 +190,7 @@ export async function prepareDivergentCloseCandidate(
   ) {
     throw conflict('Only a freshly prepared divergent Worktree Close may start scratch Git.');
   }
+
   const proof = await inspectCloseGitIntegration(engine, operationId);
   if (
     proof.relationship !== 'divergent' ||
@@ -230,12 +202,14 @@ export async function prepareDivergentCloseCandidate(
   ) {
     throw conflict('Pinned Git ancestry changed before isolated merge.');
   }
+
   if (proof.projectConfigChanged) {
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
       'Project-wide Git configuration changes require separate integration authority.',
     );
   }
+
   const directories = await scratchDirectories(engine);
   const root = join(directories.root, operationId);
   await requireAbsentScratch(root);
@@ -281,6 +255,7 @@ export async function prepareDivergentCloseCandidate(
         conflictPaths: merged.conflictPaths,
         conflictIndexHash: merged.conflictIndexHash,
       });
+
       return publishScratchStage(engine, started, {
         ...started,
         stage: 'integration-scratch-conflict',
@@ -308,6 +283,7 @@ export async function prepareDivergentCloseCandidate(
         specificationPath: 'specs/' + spec.location + '/' + spec.slug,
       });
     }
+
     return publishScratchStage(engine, started, {
       ...started,
       stage: 'integration-scratch-candidate',
@@ -322,9 +298,11 @@ export async function prepareDivergentCloseCandidate(
     if (error instanceof CloseOperationError && error.code === 'CLOSE_RECOVERY_REQUIRED') {
       throw error;
     }
+
     if (error instanceof GitCapabilityError) {
       throw recovery('Scratch Git result is uncertain; preserve checkout and recheck ownership.');
     }
+
     throw recovery('Scratch candidate is not proven; preserve intent and inspect before recovery.');
   }
 }
@@ -338,7 +316,9 @@ export async function verifyDivergentCloseCandidate(
   if (journal?.stage !== 'integration-scratch-candidate') {
     throw recovery('No durable complete divergent candidate exists.');
   }
+
   await requireRecordedDivergentCandidate(engine, journal);
+
   return journal;
 }
 
@@ -354,8 +334,10 @@ export async function requireRecordedDivergentCandidate(
     !scratch.candidateTree ||
     integration?.relationship !== 'divergent' ||
     !journal.plan.target
-  )
+  ) {
     throw recovery('Durable divergent candidate evidence is absent.');
+  }
+
   try {
     await verifyScratchOwner(engine, scratch, journal.plan.operationId);
     for (const spec of journal.plan.occupants ?? [
@@ -390,8 +372,10 @@ export async function verifyDivergentCloseConflict(
     !journal.integration ||
     !journal.scratch?.conflictPaths ||
     !journal.scratch.conflictIndexHash
-  )
+  ) {
     throw recovery('No durable known-conflict evidence exists.');
+  }
+
   try {
     await verifyScratchOwner(engine, journal.scratch, operationId);
     await verifyIsolatedMergeConflict({
@@ -405,6 +389,7 @@ export async function verifyDivergentCloseConflict(
   } catch {
     throw recovery('Scratch conflict owner, merge inputs or staged conflict were modified.');
   }
+
   return journal;
 }
 
@@ -446,11 +431,13 @@ export async function inspectDivergentCloseResolution(
   ) {
     throw recovery('Known conflict has changed source or primary Git evidence.');
   }
+
   const scratch = journal.scratch;
   const integration = journal.integration;
   if (!scratch?.conflictPaths || !scratch.conflictIndexHash || !integration) {
     throw recovery('Known conflict is missing durable evidence.');
   }
+
   return {
     status: 'requires-resolution',
     disposition: 'retained-scratch',
@@ -485,6 +472,7 @@ export async function settleArchivedLinkedConflict(
   ) {
     throw conflict('A verified post-archive linked merge conflict is required.');
   }
+
   await inspectDivergentCloseResolution(engine, operationId);
   const registry = await readWorkspaceRegistry(engine.context);
   const binding = registry.specBindings.find((x) => x.specId === record.plan.specId);
@@ -495,9 +483,12 @@ export async function settleArchivedLinkedConflict(
   ) {
     throw recovery('Canonical archived linked binding was changed during conflict handling.');
   }
+
   const archived = await readWorkspaceSpecification(record.plan.source.root, record.plan.specId);
-  if (archived.location !== 'archive' || archived.status !== 'archived')
+  if (archived.location !== 'archive' || archived.status !== 'archived') {
     throw recovery('Cannot settle conflict without a canonical archived source.');
+  }
+
   return publishScratchStage(engine, record, {
     ...record,
     stage: 'archived-linked-awaiting-integration',
@@ -521,26 +512,38 @@ export async function removeVerifiedIntegrationScratch(
   ) {
     throw recovery('Divergent scratch disposal needs durable, pinned intent.');
   }
+
   await requireRecordedDivergentCandidate(engine, journal);
 
   // A clean Git status alone misses ignored data, so enumerate the whole
   // checkout and authorize just the single verified owner marker.
   const root = journal.scratch.root;
   const tracked = await executeGit(root, ['ls-files', '-z', '--cached', '--full-name']);
-  if (tracked.exitCode !== 0) throw recovery('Cannot inventory scratch Git index.');
+  if (tracked.exitCode !== 0) {
+    throw recovery('Cannot inventory scratch Git index.');
+  }
+
   const indexed = new Set(tracked.stdout.split('\0').filter(Boolean));
   let visited = 0;
   async function walk(relative: string): Promise<void> {
     for (const entry of await readdir(join(root, relative), { withFileTypes: true })) {
-      if (++visited > 100000) throw recovery('Scratch inventory exceeded safety bound.');
+      if (++visited > 100000) {
+        throw recovery('Scratch inventory exceeded safety bound.');
+      }
+
       const name = relative ? relative + '/' + entry.name : entry.name;
-      if (entry.isSymbolicLink() || (!entry.isDirectory() && !entry.isFile()))
+      if (entry.isSymbolicLink() || (!entry.isDirectory() && !entry.isFile())) {
         throw recovery('Scratch contains an unknown filesystem entry.');
-      if (entry.isDirectory()) await walk(name);
-      else if (name !== OWNER_MARKER && !(name === '.git' && !relative) && !indexed.has(name))
+      }
+
+      if (entry.isDirectory()) {
+        await walk(name);
+      } else if (name !== OWNER_MARKER && !(name === '.git' && !relative) && !indexed.has(name)) {
         throw recovery('Unrecognized ignored/untracked scratch content blocks cleanup.');
+      }
     }
   }
+
   await walk('');
   // Git knows this checkout and its physical incarnation was just verified.
   // A nonzero result is uncertain: preserve journal ownership, never retry.
@@ -551,10 +554,13 @@ export async function removeVerifiedIntegrationScratch(
       '--',
       root,
     ]);
-    if (result.exitCode !== 0) throw recovery('Git refused non-force scratch removal.');
+    if (result.exitCode !== 0) {
+      throw recovery('Git refused non-force scratch removal.');
+    }
   } catch {
     throw recovery('Scratch removal outcome is uncertain; inspect Git without replay.');
   }
+
   await proveIntegrationScratchAbsent(engine, journal);
 }
 
@@ -564,13 +570,20 @@ export async function proveIntegrationScratchAbsent(
   journal: CloseJournal,
 ): Promise<void> {
   const scratch = journal.scratch;
-  if (!scratch) return;
+  if (!scratch) {
+    return;
+  }
+
   try {
     await lstat(scratch.root);
+
     throw recovery('Integration scratch path still exists.');
   } catch (error) {
-    if (!isMissing(error)) throw error;
+    if (!isMissing(error)) {
+      throw error;
+    }
   }
+
   const listed = await executeGit(engine.context.project.homeRoot, [
     'worktree',
     'list',
@@ -580,8 +593,9 @@ export async function proveIntegrationScratchAbsent(
   if (
     listed.exitCode !== 0 ||
     listed.stdout.split('\0').some((entry) => entry === 'worktree ' + scratch.root)
-  )
+  ) {
     throw recovery('Git still registers the temporary integration checkout.');
+  }
 }
 
 /**
@@ -605,8 +619,11 @@ export async function reconcileArchivedConflictScratch(
   ) {
     throw conflict('No settled linked archive conflict scratch to reconcile.');
   }
-  if (!confirmedNoActiveGitProcess)
+
+  if (!confirmedNoActiveGitProcess) {
     throw recovery('Cannot retire scratch while Git execution may still be active.');
+  }
+
   await proveIntegrationScratchAbsent(engine, record);
   const registry = await readWorkspaceRegistry(engine.context);
   const binding = registry.specBindings.find((item) => item.specId === record.plan.specId);
@@ -617,10 +634,16 @@ export async function reconcileArchivedConflictScratch(
   ) {
     throw recovery('Canonical archived linked binding changed during scratch reconciliation.');
   }
+
   const archived = await readWorkspaceSpecification(record.plan.source.root, record.plan.specId);
-  if (archived.location !== 'archive' || archived.status !== 'archived')
+  if (archived.location !== 'archive' || archived.status !== 'archived') {
     throw recovery('Archived linked canonical source is no longer available.');
-  if (record.scratchRetired === true) return record;
+  }
+
+  if (record.scratchRetired === true) {
+    return record;
+  }
+
   // The short Project Home lock serializes the claim release with new Create/Close.
   // Do not perform Git subprocess operations under the lock.
   return publishScratchStage(engine, record, { ...record, scratchRetired: true });

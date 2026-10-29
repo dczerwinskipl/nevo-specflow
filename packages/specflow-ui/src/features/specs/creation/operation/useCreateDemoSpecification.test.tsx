@@ -38,7 +38,7 @@ const timeout = () => new HttpClientError('timeout', { kind: 'network' });
 
 const submission = (overrides: Partial<CreateSubmission> = {}): CreateSubmission => ({
   title: ' Title ',
-  archetype: { id: 'workflow', version: '1' },
+  archetype: { id: 'workflow', version: 1, optionalDocumentIds: ['ux'] },
   buildTarget: () => undefined,
   snapshot: 'form-1',
   ...overrides,
@@ -73,6 +73,7 @@ function setup(demoCreationApi: Partial<DemoCreationApi>) {
     { wrapper, initialProps: { snapshot: 'form-1' } },
   );
   const model = (): CreateSpecificationModel => hook.result.current;
+
   return { hook, model, onCreated, onSession, announce };
 }
 

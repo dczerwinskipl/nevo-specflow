@@ -56,6 +56,7 @@ async function fixture() {
     'specs/active/' + feature.slug + '/overview.md',
   );
   commitStaged(feature.workspaceRoot, 'feature workspace baseline');
+
   return { root, engine, feature };
 }
 
@@ -83,6 +84,7 @@ async function createCommittedChild(
     'specs/active/' + child.slug + '/overview.md',
   );
   commitStaged(child.workspaceRoot, 'source spec commit');
+
   return child;
 }
 
@@ -105,7 +107,10 @@ describe('E2.I02 workspace-owned integration destination', () => {
       (item) => item.workspaceId === created.workspaceId,
     );
     expect(record?.kind).toBe('linked');
-    if (record?.kind !== 'linked') throw new Error('New workspace is not registered.');
+    if (record?.kind !== 'linked') {
+      throw new Error('New workspace is not registered.');
+    }
+
     expect(record.integrationDestination).toEqual({
       workspaceId: feature.workspaceId,
       instanceId: (await engine.readRegistry()).workspaces.find(
@@ -192,6 +197,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
         feature.workspaceId,
       );
     }
+
     expect(registry.workspaces.some((x) => x.workspaceId === child.workspaceId)).toBe(false);
     expect(registry.workspaces.some((x) => x.workspaceId === feature.workspaceId)).toBe(true);
     expect(git(root, 'status', '--porcelain')).toBe('');
@@ -215,7 +221,10 @@ describe('E2.I02 workspace-owned integration destination', () => {
       (item) => item.workspaceId === created.workspaceId,
     );
     expect(entry?.kind).toBe('linked');
-    if (entry?.kind !== 'linked') throw new Error('Missing linked registration.');
+    if (entry?.kind !== 'linked') {
+      throw new Error('Missing linked registration.');
+    }
+
     expect(entry.integrationDestination).toBeUndefined();
     git(
       created.workspaceRoot,

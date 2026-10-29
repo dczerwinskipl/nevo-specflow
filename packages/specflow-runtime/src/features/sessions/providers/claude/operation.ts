@@ -32,8 +32,10 @@ export function createClaudeOperation(
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
-  if (!context || !invocation.beforeDispatch)
+  if (!context || !invocation.beforeDispatch) {
     throw new SessionError('SESSION_RECOVERY_REQUIRED', 'Durable native context is required.');
+  }
+
   const pending = new Map<string, { group: Questions; index: number; live: boolean }>();
   const groups = new Map<string, Questions>();
   const seen = new Map<string, string>();
@@ -56,9 +58,14 @@ export function createClaudeOperation(
   function cancel() {
     if (!dispatched) {
       internal.abort(signal.reason);
+
       return;
     }
-    if (interruptSent || closed) return;
+
+    if (interruptSent || closed) {
+      return;
+    }
+
     interruptSent = true;
     cancellationDeadline = setTimeout(() => internal.abort('interrupt-timeout'), 2000);
     cancellationDeadline.unref();
@@ -68,18 +75,29 @@ export function createClaudeOperation(
       request: { subtype: 'interrupt' },
     }).catch(() => internal.abort('interrupt-write-failed'));
   }
+
   signal.addEventListener('abort', cancel, { once: true });
-  if (signal.aborted) cancel();
+  if (signal.aborted) {
+    cancel();
+  }
+
   async function send(frame: unknown, live: () => boolean = () => true) {
     const line = JSON.stringify(frame) + '\n';
     const bytes = Buffer.byteLength(line);
-    if (closed || queued >= 32 || queuedBytes + bytes > 1024 * 1024)
+    if (closed || queued >= 32 || queuedBytes + bytes > 1024 * 1024) {
       throw new ClaudeProtocolError();
+    }
+
     queued++;
     queuedBytes += bytes;
     const write = writes.then(async () => {
-      if (closed || operationSignal.aborted || !owner) throw new ClaudeProtocolError();
-      if (live()) await owner.write(line);
+      if (closed || operationSignal.aborted || !owner) {
+        throw new ClaudeProtocolError();
+      }
+
+      if (live()) {
+        await owner.write(line);
+      }
     });
     writes = write.catch(() => undefined);
     try {
@@ -89,13 +107,18 @@ export function createClaudeOperation(
       queuedBytes -= bytes;
     }
   }
+
   const publish: EmitFact = async (fact) => {
-    if (fact.kind === 'outcome') pendingOutcome = fact;
-    else {
+    if (fact.kind === 'outcome') {
+      pendingOutcome = fact;
+    } else {
       await emit(fact);
-      if (fact.kind === 'lost') lost = true;
+      if (fact.kind === 'lost') {
+        lost = true;
+      }
     }
   };
+
   const protocol = createClaudeProtocol(
     publish,
     context.nativeSessionId,
@@ -104,24 +127,31 @@ export function createClaudeOperation(
   async function outcome(fact: Extract<DriverFact, { kind: 'outcome' }>) {
     // Safe adapter messages must survive reload through the normal bounded conversation,
     // rather than existing only in a transient Turn event or private diagnostics.
-    if (fact.error)
+    if (fact.error) {
       await emit({
         kind: 'text',
         key: 'provider-error',
         channel: 'commentary',
         text: fact.error.message,
       });
+    }
+
     await emit(fact);
   }
+
   async function expire(group: Questions) {
     groups.delete(group.requestId);
     for (const question of group.questions) {
       const entry = pending.get(question.key);
-      if (entry) entry.live = false;
+      if (entry) {
+        entry.live = false;
+      }
+
       pending.delete(question.key);
       await publish({ kind: 'interaction-expired', key: question.key });
     }
   }
+
   const done = (async () => {
     // Admission/discovery and native initialization have separate deadlines. A
     // cold profile refresh must not consume the subsequent handshake's budget.
@@ -150,11 +180,18 @@ export function createClaudeOperation(
             interruptSent &&
             response.request_id === interruptId &&
             response.subtype === 'success'
-          )
+          ) {
             continue;
-          if (initialized) throw new ClaudeProtocolError();
-          if (response.request_id !== initializeId || response.subtype !== 'success')
+          }
+
+          if (initialized) {
             throw new ClaudeProtocolError();
+          }
+
+          if (response.request_id !== initializeId || response.subtype !== 'success') {
+            throw new ClaudeProtocolError();
+          }
+
           await options.initialize(object(response.response));
           initialized = true;
           clearTimeout(deadline);
@@ -166,24 +203,39 @@ export function createClaudeOperation(
           await send(claudeUserMessage(invocation.request.message, context.nativeSessionId));
           continue;
         }
-        if (!initialized) throw new ClaudeProtocolError();
+
+        if (!initialized) {
+          throw new ClaudeProtocolError();
+        }
+
         // The production driver requires the restricted system/init inventory
         // before admitting any host interaction, including permission requests.
         options.verifyFrame?.(frame);
         if (frame.type === 'control_cancel_request') {
           const group = groups.get(identifier(frame.request_id));
-          if (group) await expire(group);
+          if (group) {
+            await expire(group);
+          }
+
           continue;
         }
+
         if (frame.type === 'control_request') {
           const requestId = identifier(frame.request_id);
           const hash = createHash('sha256').update(line).digest('hex');
           const previous = seen.get(requestId);
           if (previous !== undefined) {
-            if (previous !== hash) throw new ClaudeProtocolError();
+            if (previous !== hash) {
+              throw new ClaudeProtocolError();
+            }
+
             continue;
           }
-          if (seen.size >= 1024) throw new ClaudeProtocolError();
+
+          if (seen.size >= 1024) {
+            throw new ClaudeProtocolError();
+          }
+
           seen.set(requestId, hash);
           const request = prepareClaudeRequest(
             frame,
@@ -193,7 +245,11 @@ export function createClaudeOperation(
             await send(request.response);
             continue;
           }
-          if (pending.size + request.questions.length > 32) throw new ClaudeProtocolError();
+
+          if (pending.size + request.questions.length > 32) {
+            throw new ClaudeProtocolError();
+          }
+
           groups.set(requestId, request);
           for (const [index, question] of request.questions.entries()) {
             pending.set(question.key, { group: request, index, live: true });
@@ -208,11 +264,18 @@ export function createClaudeOperation(
             });
             await publish({ kind: 'interaction', ...question });
           }
+
           continue;
         }
-        if (frame.type === 'result' && pending.size) throw new ClaudeProtocolError();
+
+        if (frame.type === 'result' && pending.size) {
+          throw new ClaudeProtocolError();
+        }
+
         await protocol.accept(line);
-        if (protocol.terminal) break;
+        if (protocol.terminal) {
+          break;
+        }
       }
     } catch (error) {
       failure = error;
@@ -232,8 +295,9 @@ export function createClaudeOperation(
         (failure instanceof ProviderProcessError &&
           failure.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED'));
       let result: Extract<DriverFact, { kind: 'outcome' }> | undefined;
-      if (!unverified && pendingOutcome && !lost) result = pendingOutcome;
-      else if (!unverified && signal.aborted) {
+      if (!unverified && pendingOutcome && !lost) {
+        result = pendingOutcome;
+      } else if (!unverified && signal.aborted) {
         result = {
           kind: 'outcome',
           outcome: signal.reason === 'shutdown' ? 'interrupted' : 'cancelled',
@@ -252,12 +316,14 @@ export function createClaudeOperation(
           error.code = failure.code;
           error.message = failure.message;
         }
+
         result = {
           kind: 'outcome',
           outcome: 'failed',
           error,
         };
       }
+
       // Keep proven outcome/liveness evidence even if later canonical persistence
       // fails. This receipt never authorizes replaying native input.
       const source = unverified
@@ -275,37 +341,47 @@ export function createClaudeOperation(
         ...(result ? { result } : {}),
       });
       await writes;
-      for (const group of [...groups.values()]) await expire(group);
+      for (const group of [...groups.values()]) {
+        await expire(group);
+      }
+
       pending.clear();
       seen.clear();
-      if (unverified)
+      if (unverified) {
         await publish({ kind: 'lost', message: 'Claude process-tree settlement is unknown.' });
-      else if (result) await outcome(result);
-      else if (!lost) {
+      } else if (result) {
+        await outcome(result);
+      } else if (!lost) {
         await protocol.end();
       }
     }
   })();
+
   return {
     done,
     settlement: settlement.promise,
     async respond(key: string, response: RespondInteraction) {
       const entry = pending.get(key);
-      if (closed || !entry?.live)
+      if (closed || !entry?.live) {
         throw new SessionError('INTERACTION_EXPIRED', 'The native question expired.');
+      }
+
       const frame = entry.group.respond(entry.index, response);
       pending.delete(key);
       if (frame) {
         let delivered = false;
         await send(frame, () => {
           delivered = groups.has(entry.group.requestId);
+
           return delivered;
         });
         groups.delete(entry.group.requestId);
+
         return {
           deliveredKeys: delivered ? entry.group.questions.map((question) => question.key) : [],
         };
       }
+
       return { deliveredKeys: [] };
     },
   };

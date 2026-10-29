@@ -12,6 +12,7 @@ import {
   createSpecificationForTesting as createSpecification,
   discoverSpecifications,
   inspectCreateSpecification,
+  installDefinitionsForTesting,
   openSpecFlowEngine,
   workspaceRegistryPath,
   type CreateSpecificationInput,
@@ -34,7 +35,12 @@ async function project(enabled = true): Promise<{ root: string; engine: SpecFlow
     'runtime: {}\ngit:\n  enabled: ' + String(enabled) + '\n',
   );
   roots.push(root);
-  return { root, engine: await bootstrapProjectHome(root) };
+  const engine = await bootstrapProjectHome(root);
+  // The definitions are installed (and committed) up front, so a test that notes HEAD before its first
+  // Create sees the commit of the Create alone, and every process of the test finds them in place.
+  await installDefinitionsForTesting(engine).catch(() => undefined);
+
+  return { root, engine };
 }
 
 function existing(engine: SpecFlowEngine, title = 'Create durable spec'): CreateSpecificationInput {
@@ -63,7 +69,10 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const input = existing(engine, 'Reordered durable journal');
     const created = await createSpecification(engine, input, {
       afterEffect: async (effect) => {
-        if (effect !== 'reservation') return;
+        if (effect !== 'reservation') {
+          return;
+        }
+
         const path = createJournalPath(engine.context, input.operationId);
         const journal = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
         await writeFile(
@@ -134,7 +143,9 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const first = await createSpecification(engine, linked('First isolated worktree'));
     const second = await createSpecification(engine, linked('Second isolated worktree'));
     for (const parent of [dirname(first.workspaceRoot), dirname(second.workspaceRoot)]) {
-      if (!roots.includes(parent)) roots.push(parent);
+      if (!roots.includes(parent)) {
+        roots.push(parent);
+      }
     }
 
     expect(first.specId).not.toBe(second.specId);
@@ -199,6 +210,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
           .digest('hex'),
       );
     }
+
     const sourceStatus = git(root, 'status', '--porcelain', '--untracked-files=all');
     expect(sourceStatus).toContain(result.relativeManifestPath);
 
@@ -226,7 +238,10 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     ).rejects.toThrow('Stop after durable reservation');
 
     const journal = await inspectCreateSpecification(engine, input.operationId);
-    if (journal?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
+    if (journal?.target.kind !== 'new-worktree') {
+      throw new Error('Expected linked reservation.');
+    }
+
     expect(journal.version).toBe(2);
     expect(journal?.stage).toBe('reserved');
     expect(journal?.target.branch).toBe('feature/pinned-git-reservation');
@@ -355,7 +370,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         '',
       ].join('\n'),
     );
-    const { createSpecificationFromRequest } = await import('../src/index');
+    const { createSpecificationFromRequestForTesting: createSpecificationFromRequest } =
+      await import('../src/testing');
     const request = {
       operationId: randomUUID(),
       archetype: { id: 'minimal', version: 1 },
@@ -405,7 +421,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
   it('rejects a malformed explicit slug before reserving anything', async () => {
     const { engine } = await project(false);
-    const { createSpecificationFromRequest } = await import('../src/index');
+    const { createSpecificationFromRequestForTesting: createSpecificationFromRequest } =
+      await import('../src/testing');
     for (const slug of ['Upper', 'a--b', '../x', 'con', 'a_b', 'a'.repeat(81)]) {
       await expect(
         createSpecificationFromRequest(engine, {
@@ -437,7 +454,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         '',
       ].join('\n'),
     );
-    const { createSpecificationFromRequest } = await import('../src/index');
+    const { createSpecificationFromRequestForTesting: createSpecificationFromRequest } =
+      await import('../src/testing');
     const operationId = randomUUID();
     const request = {
       operationId,
@@ -448,7 +466,10 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const first = await createSpecificationFromRequest(engine, request);
     roots.push(dirname(first.workspaceRoot));
     const reserved = await inspectCreateSpecification(engine, operationId);
-    if (reserved?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
+    if (reserved?.target.kind !== 'new-worktree') {
+      throw new Error('Expected linked reservation.');
+    }
+
     expect(reserved.version).toBe(2);
     expect(reserved.target.branch).toBe(
       'feature/policy-picked-once-' + reserved.specId.slice(0, 8),
@@ -466,6 +487,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
   it('VC05: reserved omitted defaults survive config changes', async () => {
     const { root, engine } = await project();
+    // This test enters Create below the test seam, so the project gets its definitions here.
+    await installDefinitionsForTesting(engine);
     const config = join(root, '.nevo/config.yaml');
     const head = git(root, 'rev-parse', 'HEAD');
     git(root, 'branch', 'develop');
@@ -505,7 +528,10 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     ).rejects.toThrow('Stop after frozen v2 reservation');
 
     const reserved = await inspectCreateSpecification(engine, operationId);
-    if (reserved?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
+    if (reserved?.target.kind !== 'new-worktree') {
+      throw new Error('Expected linked reservation.');
+    }
+
     expect(reserved.version).toBe(2);
     expect(reserved.stage).toBe('reserved');
     expect(reserved.created).toBe('2026-10-14');

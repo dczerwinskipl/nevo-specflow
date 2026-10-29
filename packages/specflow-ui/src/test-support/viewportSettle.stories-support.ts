@@ -8,8 +8,10 @@ export async function settleViewport(width = 1440, height = 900, anchor?: () => 
   await (await browserPage()).viewport(width, height);
   await waitFor(() => {
     const layout = document.querySelector('[data-layout]')?.getAttribute('data-layout');
-    if (layout && layout !== (width < 840 ? 'stacked' : 'split'))
+    if (layout && layout !== (width < 840 ? 'stacked' : 'split')) {
       throw new Error('Responsive layout has not settled');
+    }
+
     const active = document.querySelector<HTMLElement>(
       '[data-workspace-surface="secondary"][data-workspace-active="true"]',
     );
@@ -20,22 +22,27 @@ export async function settleViewport(width = 1440, height = 900, anchor?: () => 
         Math.abs(bounds.left) > 1 ||
         Math.abs(bounds.right - width) > 1 ||
         active.getAnimations().some((animation) => animation.playState === 'running')
-      )
+      ) {
         throw new Error('Secondary presentation is not settled');
+      }
     }
-    if (document.querySelector('[data-workspace-role="outgoing"]'))
+
+    if (document.querySelector('[data-workspace-role="outgoing"]')) {
       throw new Error('Outgoing workspace still mounted');
+    }
   });
   if (anchor) {
     anchor().scrollIntoView({ block: 'center' });
     await waitFor(() => {
       const rect = anchor().getBoundingClientRect();
-      if (rect.bottom > height + 1 || rect.top < 56)
+      if (rect.bottom > height + 1 || rect.top < 56) {
         throw new Error(
           'Capture anchor bounds ' + JSON.stringify({ top: rect.top, bottom: rect.bottom, height }),
         );
+      }
     });
   }
+
   // Let the resized layout, focus ring transitions and Radix positioning settle before the next
   // interaction (the former screenshot write used to provide this pause).
   await new Promise<void>((resolve) =>

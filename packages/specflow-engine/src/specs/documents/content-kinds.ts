@@ -65,25 +65,33 @@ const imageExtensions: ReadonlySet<string> = new Set(Object.keys(IMAGE_MEDIA_TYP
 export function extensionOf(path: string): string {
   const name = path.slice(path.lastIndexOf('/') + 1);
   const index = name.lastIndexOf('.');
+
   return index <= 0 ? '' : name.slice(index + 1).toLowerCase();
 }
 
 /** Kind by extension alone, before the content check. */
 export function kindForExtension(extension: string): ContentKind {
   const key = normaliseExtension(extension);
-  if (imageExtensions.has(key)) return 'image';
+  if (imageExtensions.has(key)) {
+    return 'image';
+  }
+
   return textExtensions.has(key) ? 'text' : 'binary';
 }
 
 /** True when `bytes` (the first {@link CONTENT_SNIFF_BYTES} of a file) are valid UTF-8 without NUL. */
 function looksLikeText(bytes: Uint8Array): boolean {
   const head = bytes.length > CONTENT_SNIFF_BYTES ? bytes.subarray(0, CONTENT_SNIFF_BYTES) : bytes;
-  if (head.includes(0)) return false;
+  if (head.includes(0)) {
+    return false;
+  }
+
   try {
     // A multi-byte sequence cut by the sniff window is not an error; at end of file it is.
     new TextDecoder('utf-8', { fatal: true }).decode(head, {
       stream: head.length >= CONTENT_SNIFF_BYTES,
     });
+
     return true;
   } catch {
     return false;
@@ -97,13 +105,17 @@ function looksLikeText(bytes: Uint8Array): boolean {
 export function classifyContent(extension: string, firstBytes: Uint8Array): ContentClassification {
   const key = normaliseExtension(extension);
   const imageMediaType = IMAGE_MEDIA_TYPES[key];
-  if (imageMediaType !== undefined) return { kind: 'image', mediaType: imageMediaType };
+  if (imageMediaType !== undefined) {
+    return { kind: 'image', mediaType: imageMediaType };
+  }
+
   if (textExtensions.has(key) && looksLikeText(firstBytes)) {
     return {
       kind: 'text',
       mediaType: key === 'md' || key === 'markdown' ? MARKDOWN_MEDIA_TYPE : TEXT_MEDIA_TYPE,
     };
   }
+
   return { kind: 'binary', mediaType: BINARY_MEDIA_TYPE };
 }
 

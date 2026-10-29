@@ -6,6 +6,7 @@ import { NotificationProvider, useNotify } from './notifications';
 
 function Trigger() {
   const notify = useNotify();
+
   return (
     <button type="button" onClick={() => notify('Saved')}>
       notify
@@ -31,5 +32,21 @@ describe('notification toast', () => {
       screen.getByRole('button', { name: 'notify' }).click();
     });
     expect(await screen.findByRole('button', { name: label })).toBeTruthy();
+  });
+
+  it('announces with a translated label and names its region in the catalogue language', async () => {
+    render(
+      <LocalizationProvider instance={createSpecFlowI18n('pl')}>
+        <NotificationProvider>
+          <Trigger />
+        </NotificationProvider>
+      </LocalizationProvider>,
+    );
+    act(() => {
+      screen.getByRole('button', { name: 'notify' }).click();
+    });
+    expect(await screen.findByRole('region', { name: /^Powiadomienia \(F8\)/ })).toBeTruthy();
+    const announced = await screen.findByText(/Powiadomienie/);
+    expect(announced.textContent).not.toContain('Notification');
   });
 });

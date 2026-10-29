@@ -25,7 +25,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 /** `--target-size` is what `@media (pointer: coarse)` sets on :root; the story forces it per surface. */
@@ -51,6 +53,7 @@ function Controls({ testId }: { testId: string }) {
 
 function hit(x: number, y: number, target: Element) {
   const found = document.elementFromPoint(x, y);
+
   return found === target || (found !== null && target.contains(found));
 }
 

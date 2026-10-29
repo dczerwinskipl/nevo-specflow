@@ -11,9 +11,13 @@ export const DEFAULT_LOCALE: AppLocale = 'en';
 export const LOCALE_STORAGE_KEY = 'nevo-specflow.locale';
 
 export function normalizeLocale(value: string | null | undefined): AppLocale | undefined {
-  if (!value) return undefined;
+  if (!value) {
+    return undefined;
+  }
+
   const normalized = value.trim().toLowerCase().replace('_', '-');
   const language = normalized.split('-', 1)[0];
+
   return supportedLocales.find((locale) => locale === language);
 }
 
@@ -23,14 +27,18 @@ export function resolveInitialLocale(
 ): AppLocale {
   try {
     const stored = normalizeLocale(storage?.getItem(LOCALE_STORAGE_KEY));
-    if (stored) return stored;
+    if (stored) {
+      return stored;
+    }
   } catch {
     // Browser storage can be unavailable or blocked. Locale detection still works without it.
   }
 
   for (const language of languages) {
     const locale = normalizeLocale(language);
-    if (locale) return locale;
+    if (locale) {
+      return locale;
+    }
   }
 
   return DEFAULT_LOCALE;
@@ -49,6 +57,7 @@ export function createSpecFlowI18n(locale: AppLocale = resolveInitialLocale()): 
     interpolation: { escapeValue: false },
     initAsync: false,
   });
+
   return instance;
 }
 
@@ -73,7 +82,10 @@ export async function changeLocale(
 }
 
 function browserStorage(): Pick<Storage, 'getItem' | 'setItem'> | undefined {
-  if (typeof window === 'undefined') return undefined;
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
   try {
     return window.localStorage;
   } catch {
@@ -82,7 +94,13 @@ function browserStorage(): Pick<Storage, 'getItem' | 'setItem'> | undefined {
 }
 
 function browserLanguages(): readonly string[] {
-  if (typeof navigator === 'undefined') return [];
-  if (navigator.languages.length > 0) return navigator.languages;
+  if (typeof navigator === 'undefined') {
+    return [];
+  }
+
+  if (navigator.languages.length > 0) {
+    return navigator.languages;
+  }
+
   return navigator.language ? [navigator.language] : [];
 }

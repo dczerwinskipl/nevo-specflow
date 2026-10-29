@@ -11,10 +11,12 @@ it('reserves lifecycle capacity under read pressure and drains waiting facts in 
   const order: number[] = [];
   const first = admission.acquire(true).then((release) => {
     order.push(1);
+
     return release;
   });
   const second = admission.acquire(true).then((release) => {
     order.push(2);
+
     return release;
   });
   reads.pop()!();
@@ -24,7 +26,9 @@ it('reserves lifecycle capacity under read pressure and drains waiting facts in 
   const releaseSecond = await second;
   expect(order).toEqual([1, 2]);
   releaseSecond();
-  for (const release of [...reads, ...facts]) release();
+  for (const release of [...reads, ...facts]) {
+    release();
+  }
 });
 
 it('bounds lifecycle waiting, expires it explicitly, and rejects waiters on Worker loss', async () => {
@@ -40,6 +44,9 @@ it('bounds lifecycle waiting, expires it explicitly, and rejects waiters on Work
   const rejected = expect(afterTimeout).rejects.toThrow('Worker stopped');
   admission.fail(new Error('Worker stopped'));
   await rejected;
-  for (const release of held) release();
+  for (const release of held) {
+    release();
+  }
+
   await expect(admission.acquire(true)).rejects.toThrow('Worker stopped');
 });

@@ -95,6 +95,7 @@ describe('shared Specs catalogue boundary', () => {
       {
         getOverview: (_collection, signal) => {
           received = signal;
+
           return new Promise((_resolve, reject) =>
             signal?.addEventListener('abort', () => reject(new Error('aborted'))),
           );

@@ -1,9 +1,8 @@
 import type { FastifyInstance, RawServerBase } from 'fastify';
 import {
+  createDemoDocumentReadSource,
   createDemoDocuments,
-  createDemoDocumentSource,
   registerDemoDocumentRoutes,
-  type DocumentContentSource,
 } from '../features/documents';
 import {
   createDemoSessionReferences,
@@ -25,6 +24,8 @@ export { DemoOperationError, type DemoFailureStage, type DemoState } from './sta
 export interface DemoEnvironmentOptions extends DemoStateOptions {
   /** Seed synthetic showcase content (nested document tree) used by the demo server. */
   showcase?: boolean;
+  /** Simulated commit latency of every document write, in ms (default 0). */
+  documentCommitLatencyMs?: number;
 }
 
 /**
@@ -36,11 +37,16 @@ export function createDemoEnvironment(options: DemoEnvironmentOptions = {}) {
   const sessions = createDemoSessions(state);
   const documents = createDemoDocuments(state, {
     showcase: options.showcase === true,
+    ...(options.documentCommitLatencyMs !== undefined
+      ? { commitLatencyMs: options.documentCommitLatencyMs }
+      : {}),
     onPathsChanged: (specId, paths) => sessions.refreshDocuments(specId, paths),
   });
   const specs = createDemoSpecs(state, documents);
+
   return { state, documents, sessions, specs };
 }
+
 export type DemoEnvironment = ReturnType<typeof createDemoEnvironment>;
 
 /**
@@ -49,24 +55,23 @@ export type DemoEnvironment = ReturnType<typeof createDemoEnvironment>;
  */
 export function createDemoRuntime(
   environment: DemoEnvironment,
-  overrides: { references?: SessionReferenceOwner; documentSource?: DocumentContentSource } = {},
+  overrides: { references?: SessionReferenceOwner } = {},
 ) {
   const { state, documents, sessions } = environment;
   const repositories = createDemoSpecsRepositories({ state, documents, sessions });
   const sessionReferences = sessions.overlayReferences(
     overrides.references ?? createDemoSessionReferences(repositories.catalogue),
   );
-  const documentSource = documents.overlaySource(
-    overrides.documentSource ?? createDemoDocumentSource(repositories.catalogue),
-  );
+
   return {
     environment,
     ...repositories,
     sessionReferences,
-    documentSource,
+    documentReadSource: createDemoDocumentReadSource(documents, repositories.catalogue),
     taskSources: createDemoTaskSources(repositories.catalogue),
   };
 }
+
 export type DemoRuntime = ReturnType<typeof createDemoRuntime>;
 
 /** Registers every demo-only route (`/api/demo/**`), each owned by its feature module. */
@@ -84,5 +89,5 @@ export function registerDemoRoutes<RawServer extends RawServerBase>(
     references: demo.sessionReferences,
     documentPaths: documents.pathsFor,
   });
-  registerDemoDocumentRoutes(app, documents, demo.catalogue, demo.documentSource);
+  registerDemoDocumentRoutes(app, documents, demo.catalogue);
 }

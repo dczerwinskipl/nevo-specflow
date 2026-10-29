@@ -5,7 +5,9 @@ import './app.css';
 import { App } from './App';
 
 const root = document.getElementById('root');
-if (!root) throw new Error('Missing #root application mount');
+if (!root) {
+  throw new Error('Missing #root application mount');
+}
 
 createRoot(root).render(
   <StrictMode>

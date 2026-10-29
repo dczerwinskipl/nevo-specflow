@@ -14,9 +14,18 @@ export interface ResumeSessionSectionProps {
 }
 
 function sessionFacts({ taskCount, age }: SessionSummary): CompactFacts {
-  if (taskCount && age) return [taskCount, age];
-  if (taskCount) return [taskCount];
-  if (age) return [age];
+  if (taskCount && age) {
+    return [taskCount, age];
+  }
+
+  if (taskCount) {
+    return [taskCount];
+  }
+
+  if (age) {
+    return [age];
+  }
+
   return [];
 }
 

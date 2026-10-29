@@ -26,7 +26,10 @@ class ScriptedUi implements RuntimeSetupUi {
 
   confirm(): Promise<boolean> {
     const value = this.confirmations.shift();
-    if (value === undefined) throw new Error('Missing scripted confirmation.');
+    if (value === undefined) {
+      throw new Error('Missing scripted confirmation.');
+    }
+
     return Promise.resolve(value);
   }
 
@@ -40,12 +43,15 @@ class ScriptedUi implements RuntimeSetupUi {
     this.selectChoiceLabels.push(choices.map((choice) => choice.label));
 
     const token = this.selections.shift();
-    if (!token) throw new Error('Missing scripted selection.');
+    if (!token) {
+      throw new Error('Missing scripted selection.');
+    }
 
     if (token === '<default>') {
       if (initialValue === undefined) {
         throw new Error('Script requested a missing default selection.');
       }
+
       return Promise.resolve(initialValue);
     }
 
@@ -61,19 +67,26 @@ class ScriptedUi implements RuntimeSetupUi {
     if (!matchingChoice) {
       throw new Error(`Scripted selection '${token}' is not available.`);
     }
+
     return Promise.resolve(matchingChoice.value);
   }
 
   input(message: string, defaultValue?: string): Promise<string> {
     this.inputMessages.push(message);
     const value = this.inputs.shift();
-    if (value === undefined) throw new Error('Missing scripted input.');
+    if (value === undefined) {
+      throw new Error('Missing scripted input.');
+    }
+
     return Promise.resolve(value === '<default>' ? (defaultValue ?? '') : value);
   }
 
   secret(): Promise<string> {
     const value = this.secrets.shift();
-    if (value === undefined) throw new Error('Missing scripted secret.');
+    if (value === undefined) {
+      throw new Error('Missing scripted secret.');
+    }
+
     return Promise.resolve(value);
   }
 

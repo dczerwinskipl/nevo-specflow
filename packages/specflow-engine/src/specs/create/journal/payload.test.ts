@@ -27,6 +27,7 @@ async function fixture(): Promise<ResolvedProjectHome> {
   const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'specflow-payload-')));
   roots.push(stateRoot);
   await mkdir(join(stateRoot, CREATE_JOURNAL_RELATIVE_DIR), { recursive: true });
+
   return { project: { stateRoot } } as unknown as ResolvedProjectHome;
 }
 

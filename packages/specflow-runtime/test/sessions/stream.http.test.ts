@@ -13,15 +13,23 @@ import { passwordConfig } from '../auth/support/config';
 const activity = vi.hoisted(() => ({ events: 0, identity: 0 }));
 vi.mock('../../src/features/sessions/persistence/store', async (original) => {
   const actual = await original<typeof import('../../src/features/sessions/persistence/store')>();
+
   return {
     ...actual,
     async openSessionStore(...args: Parameters<typeof actual.openSessionStore>) {
       const store = await actual.openSessionStore(...args);
+
       return {
         ...store,
         call(command: Parameters<typeof store.call>[0]) {
-          if (command.op === 'events') activity.events++;
-          if (command.op === 'identity') activity.identity++;
+          if (command.op === 'events') {
+            activity.events++;
+          }
+
+          if (command.op === 'identity') {
+            activity.identity++;
+          }
+
           return store.call(command);
         },
       };
@@ -33,10 +41,15 @@ let app: FastifyInstance | undefined;
 let directory = '';
 const controllers: AbortController[] = [];
 afterEach(async () => {
-  for (const controller of controllers.splice(0)) controller.abort();
+  for (const controller of controllers.splice(0)) {
+    controller.abort();
+  }
+
   await app?.close();
   app = undefined;
-  if (directory) await rm(directory, { recursive: true, force: true });
+  if (directory) {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 async function setup() {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-stream-'));
@@ -77,8 +90,10 @@ async function setup() {
   expect(created.statusCode).toBe(201);
   const sessionId = created.json<{ sessionId: string }>().sessionId;
   const origin = await app.listen({ host: '127.0.0.1', port: 0 });
+
   return { store, authId, cookie, sessionId, origin, reopen };
 }
+
 describe('live Session stream authorization and replay', () => {
   it('keeps 32 idle sockets event-driven while revalidating authorization', async () => {
     const { store, cookie, sessionId, origin } = await setup();
@@ -185,7 +200,10 @@ describe('live Session stream authorization and replay', () => {
     await vi.waitFor(
       async () => {
         const value: unknown = (await reader.read()).value;
-        if (value instanceof Uint8Array) text += new TextDecoder().decode(value);
+        if (value instanceof Uint8Array) {
+          text += new TextDecoder().decode(value);
+        }
+
         expect(text).toContain('"outcome":"completed"');
       },
       { timeout: 3000 },
@@ -213,6 +231,7 @@ describe('live Session stream authorization and replay', () => {
     } finally {
       clearTimeout(deadline);
     }
+
     expect(
       (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } })).statusCode,
     ).toBe(401);

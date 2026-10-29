@@ -27,6 +27,7 @@ function resolvedColorToken(variable: string) {
   document.body.append(probe);
   const color = getComputedStyle(probe).color;
   probe.remove();
+
   return color;
 }
 
@@ -82,14 +83,17 @@ export const BothSides: Story = {
     await userEvent.click(input);
     await settleColorTransition();
     const group = input.closest('.input-group');
-    if (!(group instanceof HTMLElement))
+    if (!(group instanceof HTMLElement)) {
       throw new Error('InputGroup surface should wrap its control.');
+    }
+
     const action = canvas.getByRole('button', { name: 'Clear search' });
     const groupRect = group.getBoundingClientRect();
     const actionRect = action.getBoundingClientRect();
     if (actionRect.width !== 24 || actionRect.height !== 24) {
       throw new Error('InputGroup icon action should use the compact 24px IconButton.');
     }
+
     const contentInset =
       groupRect.right -
       actionRect.right -
@@ -97,9 +101,11 @@ export const BothSides: Story = {
     if (Math.round(contentInset) !== 8) {
       throw new Error('InputGroup action should retain an 8px trailing inset.');
     }
+
     if (getComputedStyle(group).borderTopColor !== resolvedColorToken('--color-focus-ring')) {
       throw new Error('InputGroup should own the focused border.');
     }
+
     if (getComputedStyle(input).outlineStyle !== 'none') {
       throw new Error('Nested TextInput should not draw a second focus outline.');
     }

@@ -122,6 +122,7 @@ export const DesignCapture: Story = {
                 <NevoBrandLogo key={`${appearance}-${size}-${type}`} {...common} type="mark" />
               );
             }
+
             if (type === 'signature') {
               return (
                 <NevoBrandLogo
@@ -134,6 +135,7 @@ export const DesignCapture: Story = {
                 />
               );
             }
+
             return (
               <NevoBrandLogo
                 key={`${appearance}-${size}-${type}`}

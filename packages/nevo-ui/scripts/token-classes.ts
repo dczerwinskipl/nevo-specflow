@@ -31,6 +31,7 @@ export function collectThemeTokens(css: string): Set<string> {
       tokens.add(declaration[1]!);
     }
   }
+
   return tokens;
 }
 
@@ -65,6 +66,7 @@ function resolveToken(prefix: string, value: string, tokens: Set<string>): strin
       : prefix === 'bg'
         ? [`--color-${value}`, `--background-image-${value}`]
         : [`--color-${value}`];
+
   return candidates.some((candidate) => tokens.has(candidate)) ? undefined : candidates[0];
 }
 
@@ -79,8 +81,11 @@ export function findUndefinedTokenClasses(
     for (const match of text.matchAll(colorPattern)) {
       const [className, prefix, value] = match as unknown as [string, string, string];
       const missing = resolveToken(prefix, value, tokens);
-      if (missing) violations.push({ file, line: index + 1, className, token: missing });
+      if (missing) {
+        violations.push({ file, line: index + 1, className, token: missing });
+      }
     }
+
     for (const match of text.matchAll(spacingPattern)) {
       const [className, , value] = match as unknown as [string, string, string];
       const candidates = [`--spacing-${value}`, `--container-${value}`];
@@ -89,15 +94,22 @@ export function findUndefinedTokenClasses(
       }
     }
   });
+
   return violations;
 }
 
 async function* sourceFiles(directory: string): AsyncGenerator<string> {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+    if (entry.name === 'node_modules' || entry.name === 'dist') {
+      continue;
+    }
+
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) yield* sourceFiles(path);
-    else if (/\.(?:tsx?|mts)$/.test(entry.name) && !entry.name.endsWith('.d.ts')) yield path;
+    if (entry.isDirectory()) {
+      yield* sourceFiles(path);
+    } else if (/\.(?:tsx?|mts)$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
+      yield path;
+    }
   }
 }
 
@@ -113,6 +125,7 @@ export async function loadNevoThemeTokens(packageDirectory: string): Promise<Set
       tokens.add(token);
     }
   }
+
   return tokens;
 }
 
@@ -130,6 +143,7 @@ export async function scanDirectories(
       );
     }
   }
+
   return violations;
 }
 
@@ -152,8 +166,11 @@ if (isMain) {
       `${violation.file}:${violation.line}  ${violation.className}  (missing ${violation.token})`,
     );
   }
+
   console.log(
     `${violations.length} undefined design-token class${violations.length === 1 ? '' : 'es'} found.`,
   );
-  if (strict && violations.length) process.exitCode = 1;
+  if (strict && violations.length) {
+    process.exitCode = 1;
+  }
 }

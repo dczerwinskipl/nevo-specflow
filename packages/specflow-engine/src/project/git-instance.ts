@@ -33,6 +33,7 @@ export async function claimGitInstance(commonDir: string, projectId: string): Pr
         'Git instance was previously claimed; explicit recovery is required.',
       );
     }
+
     throw error;
   }
 
@@ -42,6 +43,7 @@ export async function claimGitInstance(commonDir: string, projectId: string): Pr
   } finally {
     await handle.close();
   }
+
   return instanceId;
 }
 
@@ -57,6 +59,7 @@ export async function verifyGitInstance(
     if (!stat.isFile() || stat.isSymbolicLink()) {
       throw new Error('Git instance sentinel must be a regular file.');
     }
+
     parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
   } catch {
     throw new ProjectHomeError(
@@ -64,6 +67,7 @@ export async function verifyGitInstance(
       'Git instance evidence is missing, corrupt or redirected; explicit recovery is required.',
     );
   }
+
   if (
     !isRecord(parsed) ||
     parsed.version !== 1 ||

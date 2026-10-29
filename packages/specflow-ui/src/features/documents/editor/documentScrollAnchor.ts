@@ -15,6 +15,7 @@ export const clamp01 = (value: number) =>
 
 export function ratioOf(scrollTop: number, scrollHeight: number, clientHeight: number) {
   const room = scrollHeight - clientHeight;
+
   return room > 0 ? clamp01(scrollTop / room) : 0;
 }
 
@@ -22,6 +23,7 @@ export function ratioOf(scrollTop: number, scrollHeight: number, clientHeight: n
 export function clampAnchor(anchor: ScrollAnchor, lineCount: number): ScrollAnchor {
   const line =
     anchor.line === undefined ? undefined : Math.min(Math.max(1, anchor.line), lineCount);
+
   return {
     line,
     offset: anchor.line !== undefined && anchor.line > lineCount ? 0 : clamp01(anchor.offset),
@@ -42,7 +44,12 @@ export interface MappedBlock {
 /** The block crossing the top edge of the view: the last one starting at or above it. */
 export function blockAtTop(blocks: readonly MappedBlock[]): MappedBlock | undefined {
   let found: MappedBlock | undefined;
-  for (const block of blocks) if (block.top <= 1) found = block;
+  for (const block of blocks) {
+    if (block.top <= 1) {
+      found = block;
+    }
+  }
+
   return found ?? blocks[0];
 }
 
@@ -52,10 +59,14 @@ export function anchorFromBlocks(
   ratio: number,
 ): ScrollAnchor | undefined {
   const block = blockAtTop(blocks);
-  if (!block) return undefined;
+  if (!block) {
+    return undefined;
+  }
+
   const through = block.height > 0 ? clamp01(-block.top / block.height) : 0;
   const position = block.line + through * block.span;
   const line = Math.floor(position);
+
   return { line, offset: clamp01(position - line), ratio };
 }
 
@@ -66,10 +77,19 @@ export function blockForLine(
   offset: number,
 ): { block: MappedBlock; through: number } | undefined {
   let block: MappedBlock | undefined;
-  for (const candidate of blocks) if (candidate.line <= line) block = candidate;
+  for (const candidate of blocks) {
+    if (candidate.line <= line) {
+      block = candidate;
+    }
+  }
+
   block ??= blocks[0];
-  if (!block) return undefined;
+  if (!block) {
+    return undefined;
+  }
+
   const through = clamp01((line + offset - block.line) / Math.max(1, block.span));
+
   return { block, through };
 }
 
@@ -95,27 +115,40 @@ export function trackUserScroll(
     performance.now() < quietUntil && performance.now() - lastGesture > GESTURE_WINDOW_MS;
   const flush = () => {
     const anchor = read();
-    if (anchor) save(anchor);
+    if (anchor) {
+      save(anchor);
+    }
   };
+
   const onResize = () => (quietUntil = performance.now() + RESIZE_QUIET_MS);
   // Leading edge saves at once (a resize right after a scroll must not lose it); the trailing
   // frame catches the rest of a scroll burst without measuring on every event.
   const onGesture = () => (lastGesture = performance.now());
   const onScroll = () => {
-    if (quiet()) return;
-    if (frame) return;
+    if (quiet()) {
+      return;
+    }
+
+    if (frame) {
+      return;
+    }
+
     flush();
     // The trailing read runs after the editor's own measure pass, so estimated heights are settled.
     frame = requestAnimationFrame(() => {
       frame = 0;
-      if (!quiet()) flush();
+      if (!quiet()) {
+        flush();
+      }
     });
   };
+
   scroller.addEventListener('scroll', onScroll, { passive: true });
   scroller.addEventListener('wheel', onGesture, { passive: true });
   scroller.addEventListener('touchmove', onGesture, { passive: true });
   window.addEventListener('resize', onResize);
   window.visualViewport?.addEventListener('resize', onResize);
+
   return () => {
     scroller.removeEventListener('scroll', onScroll);
     scroller.removeEventListener('wheel', onGesture);
@@ -126,26 +159,63 @@ export function trackUserScroll(
   };
 }
 
-/** Marks a restore as ours: it stops as soon as the user scrolls or presses a key. */
-export function restoreWhileIdle(scroller: HTMLElement, apply: () => void, frames = 3): () => void {
+/** The longest a restore keeps re-applying a position the layout has not settled on (frames). */
+export const RESTORE_MAX_FRAMES = 30;
+
+/** Two anchors name the same place: the same line and (almost) the same offset, else the same ratio. */
+export function sameAnchor(read: ScrollAnchor | undefined, target: ScrollAnchor): boolean {
+  if (!read) {
+    return false;
+  }
+
+  if (target.line === undefined) {
+    return Math.abs(read.ratio - target.ratio) < 0.01;
+  }
+
+  return read.line === target.line && Math.abs(read.offset - target.offset) < 0.05;
+}
+
+/**
+ * Restores a position as ours, and stops as soon as the user scrolls or presses a key. `apply`
+ * runs once per frame until the view reads back the target (`settled`) on two frames in a row: a
+ * layout still being measured (estimated line heights of the editor, a preview still rendering)
+ * moves the target after each apply, and a fixed number of frames is not enough on a busy machine.
+ * It gives up after `maxFrames` when the target cannot be reached (the end of a short document).
+ */
+export function restoreWhileIdle(
+  scroller: HTMLElement,
+  apply: () => void,
+  settled: () => boolean,
+  maxFrames = RESTORE_MAX_FRAMES,
+): () => void {
   let cancelled = false;
+  let handle = 0;
   const stop = () => (cancelled = true);
-  for (const name of INPUT_EVENTS)
+  for (const name of INPUT_EVENTS) {
     scroller.addEventListener(name, stop, { passive: true, once: true });
-  const handles: number[] = [];
-  const step = (remaining: number) => {
-    handles.push(
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        apply();
-        if (remaining > 1) step(remaining - 1);
-      }),
-    );
+  }
+
+  const step = (remaining: number, stable: number) => {
+    handle = requestAnimationFrame(() => {
+      if (cancelled) {
+        return;
+      }
+
+      apply();
+      const next = settled() ? stable + 1 : 0;
+      if (next < 2 && remaining > 1) {
+        step(remaining - 1, next);
+      }
+    });
   };
-  step(frames);
+
+  step(maxFrames, 0);
+
   return () => {
     cancelled = true;
-    for (const handle of handles) cancelAnimationFrame(handle);
-    for (const name of INPUT_EVENTS) scroller.removeEventListener(name, stop);
+    cancelAnimationFrame(handle);
+    for (const name of INPUT_EVENTS) {
+      scroller.removeEventListener(name, stop);
+    }
   };
 }

@@ -36,8 +36,10 @@ function operation(
     verifyInput: () =>
       options.beforeInput ? options.beforeInput(_signal) : options.initialize!({ models: [] }),
   });
+
   return { done: Promise.resolve(), respond: () => Promise.resolve({ deliveredKeys: [] }) };
 }
+
 vi.mock('../../src/features/sessions/providers/claude/operation', () => ({
   createClaudeOperation: (...args: Parameters<typeof operation>) => operation(...args),
 }));
@@ -106,9 +108,13 @@ it.each(['claude', 'codex'] as const)(
       );
       const entry = native.operations.at(-1)!;
       await entry.launch(signal);
-      if (dispatch) await entry.dispatch!();
+      if (dispatch) {
+        await entry.dispatch!();
+      }
+
       return entry;
     }
+
     const old = await launch();
     login = 'login-b';
     expect((await driver.refresh!(signal)).readiness).toBe('ready');

@@ -11,6 +11,11 @@ import {
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
+import type { CommitCommandContext } from './commit/command';
+import { createCommitCommand } from './commit/command';
+import { createDefinitionsCommand } from './definitions/command';
+import { printDefinitionsMissingHint } from './definitions/startup-hint';
+import type { DocumentsCommandContext } from './documents/command';
 import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli';
 import { createProjectInspectCommand } from './project/inspect-command';
 import { createSpecsCommand } from './specs/command';
@@ -23,7 +28,11 @@ export interface ProgramIO {
   readonly signal?: AbortSignal;
   readonly startRuntime?: RuntimeCommandContext['start'];
   readonly readPasswordFromStdin?: AuthCommandContext['readPasswordFromStdin'];
+  /** Reads all of standard input (a document body given with --stdin). */
+  readonly readStdin?: () => Promise<string>;
   readonly cwd?: string;
+  readonly documentsApi?: DocumentsCommandContext['api'];
+  readonly commitApi?: CommitCommandContext['api'];
   readonly initUi?: RuntimeSetupUi;
   readonly initializeProject?: ProjectInitCommandContext['initialize'];
 }
@@ -36,7 +45,9 @@ export function createProgram(io: ProgramIO): Command {
       writeOut: (s) => io.stdout(s.replace(/\n$/, '')),
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),
     })
-    .showHelpAfterError();
+    .showHelpAfterError()
+    // `commit` and `commit status` take the same options: each belongs to the command it is written after.
+    .enablePositionalOptions();
 
   program.addCommand(
     createProjectInitCommand({
@@ -48,7 +59,24 @@ export function createProgram(io: ProgramIO): Command {
   );
 
   program.addCommand(createProjectInspectCommand({ cwd: io.cwd ?? '.', stdout: io.stdout }));
-  program.addCommand(createSpecsCommand({ cwd: io.cwd ?? '.', stdout: io.stdout }));
+  program.addCommand(
+    createSpecsCommand({
+      cwd: io.cwd ?? '.',
+      stdout: io.stdout,
+      stderr: io.stderr,
+      ...(io.readStdin ? { readStdin: io.readStdin } : {}),
+      ...(io.documentsApi ? { api: io.documentsApi } : {}),
+    }),
+  );
+  program.addCommand(createDefinitionsCommand({ cwd: io.cwd ?? '.', stdout: io.stdout }));
+  program.addCommand(
+    createCommitCommand({
+      cwd: io.cwd ?? '.',
+      stdout: io.stdout,
+      stderr: io.stderr,
+      ...(io.commitApi ? { api: io.commitApi } : {}),
+    }),
+  );
 
   program.addCommand(
     createAuthCommand({
@@ -60,7 +88,16 @@ export function createProgram(io: ProgramIO): Command {
   program.addCommand(
     createStartCommand({
       stdout: io.stdout,
-      start: io.startRuntime ?? ((options) => startProjectRuntime(io.cwd ?? '.', {}, options)),
+      start:
+        io.startRuntime ??
+        (async (options) => {
+          const handle = await startProjectRuntime(io.cwd ?? '.', {}, options);
+          if (!options.demo) {
+            await printDefinitionsMissingHint(io.cwd ?? '.', io.stdout);
+          }
+
+          return handle;
+        }),
       ...(io.signal ? { signal: io.signal } : {}),
     }),
   );
@@ -69,8 +106,11 @@ export function createProgram(io: ProgramIO): Command {
   // thrown like the top-level ones instead of ending the process.
   const overrideExit = (command: Command): void => {
     command.exitOverride();
-    for (const child of command.commands) overrideExit(child);
+    for (const child of command.commands) {
+      overrideExit(child);
+    }
   };
+
   overrideExit(program);
 
   return program;

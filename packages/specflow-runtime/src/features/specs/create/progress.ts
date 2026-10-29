@@ -40,29 +40,44 @@ export function startCreateProgress(
 
   const enter = (step: SpecificationCreateStep) => {
     for (const earlier of steps) {
-      if (earlier === step) break;
+      if (earlier === step) {
+        break;
+      }
+
       reporter.step(earlier, 'done');
     }
+
     reporter.step(step, 'running');
   };
+
   enter('reserving');
 
   return {
     onStage({ stage }) {
       // Completion is published with its typed result by complete().
-      if (stage === 'completed') return;
-      if (stage === 'recovery-required') {
-        reporter.recoveryRequired();
+      if (stage === 'completed') {
         return;
       }
+
+      if (stage === 'recovery-required') {
+        reporter.recoveryRequired();
+
+        return;
+      }
+
       // The same stage -> step mapping the journal listing uses; an unknown stage moves nothing.
       const step = createStepForStage(stage, target, commits);
-      if (step && steps.includes(step)) enter(step);
+      if (step && steps.includes(step)) {
+        enter(step);
+      }
     },
     complete: (result) => reporter.complete(result),
     fail(code) {
-      if (code !== undefined && RECOVERY_CODES.has(code)) reporter.recoveryRequired();
-      else reporter.fail(code ?? 'INTERNAL_ERROR');
+      if (code !== undefined && RECOVERY_CODES.has(code)) {
+        reporter.recoveryRequired();
+      } else {
+        reporter.fail(code ?? 'INTERNAL_ERROR');
+      }
     },
   };
 }

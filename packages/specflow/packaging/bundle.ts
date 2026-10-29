@@ -19,6 +19,8 @@ export interface BundleInput {
   readonly cwd?: string;
   /** built SpecFlow UI directory; defaults to the workspace package dist output. */
   readonly uiSourceDir?: string;
+  /** shipped default definitions (seed files); defaults to the Engine package `definitions` folder. */
+  readonly definitionsSourceDir?: string;
 }
 
 export interface BundledThirdPartyPackage {
@@ -79,6 +81,11 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     dirname(outfile),
   );
 
+  copyProductDefinitionSeeds(
+    input.definitionsSourceDir ?? resolve(cwd, '..', 'specflow-engine', 'definitions'),
+    dirname(outfile),
+  );
+
   return {
     outfile,
     thirdPartyPackages: [
@@ -98,15 +105,21 @@ function discoverThirdPartyPackages(
   for (const input of inputs) {
     const absolute = isAbsolute(input) ? input : resolve(cwd, input);
     const markerIndex = absolute.lastIndexOf(marker);
-    if (markerIndex < 0) continue;
+    if (markerIndex < 0) {
+      continue;
+    }
 
     const packageRelative = absolute.slice(markerIndex + marker.length);
     const segments = packageRelative.split(sep);
     const first = segments[0];
-    if (!first) continue;
+    if (!first) {
+      continue;
+    }
 
     const name = first.startsWith('@') ? `${first}/${segments[1] ?? ''}` : first;
-    if (!name || name.endsWith('/') || name.startsWith('@nevo/')) continue;
+    if (!name || name.endsWith('/') || name.startsWith('@nevo/')) {
+      continue;
+    }
 
     const rootSegments = name.split('/');
     const root = join(absolute.slice(0, markerIndex + marker.length), ...rootSegments);
@@ -127,6 +140,22 @@ function copyProductUiAssets(source: string, outputDir: string): void {
   }
 
   const destination = join(outputDir, 'ui');
+  rmSync(destination, { recursive: true, force: true });
+  cpSync(source, destination, { recursive: true });
+}
+
+/**
+ * The default definitions are data files next to the bundle (`definitions/` beside `bin.js`), found
+ * at run time relative to the bundle; they are never compiled into it.
+ */
+function copyProductDefinitionSeeds(source: string, outputDir: string): void {
+  if (!existsSync(join(source, 'document-type'))) {
+    throw new Error(
+      `The default definitions are missing at ${source}. They ship in the Engine package and are needed before bundling the product.`,
+    );
+  }
+
+  const destination = join(outputDir, 'definitions');
   rmSync(destination, { recursive: true, force: true });
   cpSync(source, destination, { recursive: true });
 }

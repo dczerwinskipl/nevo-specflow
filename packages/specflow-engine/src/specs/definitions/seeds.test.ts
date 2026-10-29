@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import goldenFixtures from '../archetypes/fixtures/overview-golden.json';
+import { toArchetypeCatalogue } from '../archetypes/projection';
 import { renderTemplate, templateValues } from '../archetypes/template-renderer';
 import { createDefaultDefinitionRegistry } from './kinds';
 import { loadDefinitions, type LoadResult } from './loader';
@@ -36,6 +37,24 @@ beforeAll(async () => {
 });
 
 describe('seed files', () => {
+  it('give the shipped document types Design System icons, and the API catalogue carries them', () => {
+    const icons = Object.fromEntries(
+      toArchetypeCatalogue(project).documentTypes.map((type) => [type.id, type.icon]),
+    );
+    // Only names of the nevo-ui icon registry; `note` has none (the UI shows its default).
+    expect(icons).toEqual({
+      architecture: 'workflow',
+      backend: 'database',
+      behaviour: 'list-checks',
+      decisions: 'circle-check',
+      note: undefined,
+      overview: 'info',
+      research: 'file-search',
+      'user-story': 'users',
+      ux: 'eye',
+    });
+  });
+
   it('load without a single problem', () => {
     expect(loaded.problems).toEqual([]);
     expect(project.catalogue.documentTypes).toHaveLength(9);
@@ -67,7 +86,7 @@ describe('seed files', () => {
   it('pin the revision of the shipped catalogue', () => {
     // Recompute (and re-pin) only when the shipped definitions change on purpose.
     expect(project.catalogue.revision).toBe(
-      '528e58fe38ca9ee305c80f0131a9ad02473cbc99edb7bd325caec7115dfcdbfe',
+      '6c58e65f8d87391638a4b77d532aa79884bfa5a27bdd2d65cc282042a34f3de3',
     );
   });
 });

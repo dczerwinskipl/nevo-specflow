@@ -56,6 +56,13 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 500
+    },
+    "icon": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "description": "Name of a Design System icon (kebab-case); an unknown name falls back in the UI."
     }
   },
   "additionalProperties": false

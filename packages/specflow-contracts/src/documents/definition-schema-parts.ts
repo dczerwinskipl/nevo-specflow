@@ -33,6 +33,21 @@ export const instructionsText = () =>
   });
 
 export const catalogueId = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
+
+/**
+ * The icon of a document type: the name of an icon in the Design System's registry, which the UI owns.
+ * Only the shape is checked here (kebab-case, at most {@link DEFINITION_ICON_MAX_LENGTH} characters);
+ * an unknown name is valid, and the UI falls back to its default icon.
+ */
+export const DEFINITION_ICON_PATTERN = '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$';
+export const DEFINITION_ICON_MAX_LENGTH = 64;
+export const iconName = () =>
+  Type.String({
+    minLength: 1,
+    maxLength: DEFINITION_ICON_MAX_LENGTH,
+    pattern: DEFINITION_ICON_PATTERN,
+    description: 'Name of a Design System icon (kebab-case); an unknown name falls back in the UI.',
+  });
 export const templateId = () => Type.String({ pattern: DOCUMENT_ID_PATTERN });
 
 /** UTF-8 byte length of a string (this neutral package has no `TextEncoder` or `Buffer` typings). */

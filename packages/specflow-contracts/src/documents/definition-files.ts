@@ -7,6 +7,7 @@ import {
   DEFINITION_TEMPLATE_MAX_BYTES,
   byteLimitNote,
   catalogueId,
+  iconName,
   instructionsText,
   shortText,
   templateId,
@@ -60,6 +61,8 @@ export const DocumentTypeDefinitionFileSchema = Type.Object(
     defaultFilename: Type.Optional(
       Type.String({ minLength: 1, maxLength: DOCUMENT_PATH_MAX_LENGTH }),
     ),
+    /** Optional icon of the type in the document tree (a Design System icon name). */
+    icon: Type.Optional(iconName()),
   },
   { additionalProperties: false },
 );

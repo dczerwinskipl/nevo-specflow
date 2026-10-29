@@ -29,6 +29,7 @@ export function toArchetypeCatalogue(
       useWhen: type.useWhen,
       instructions: type.instructions,
       ...(type.defaultFilename !== undefined ? { defaultFilename: type.defaultFilename } : {}),
+      ...(type.icon !== undefined ? { icon: type.icon } : {}),
     })),
     archetypes: catalogue.archetypes.map((archetype) => ({
       id: archetype.id,

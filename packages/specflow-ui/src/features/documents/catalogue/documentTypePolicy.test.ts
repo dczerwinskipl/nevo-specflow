@@ -239,7 +239,7 @@ describe('the glyph of a document row', () => {
     ...catalogue,
     documentTypes: catalogue.documentTypes.map((type) =>
       type.id === 'ux'
-        ? { ...type, icon: 'eye' }
+        ? { ...type, icon: 'panels-top-left' }
         : type.id === 'decisions'
           ? { ...type, icon: 'no-such-glyph' }
           : type,
@@ -247,7 +247,9 @@ describe('the glyph of a document row', () => {
   };
 
   it("is the type's registry icon, else the content format", () => {
-    expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'ux'))).toBe('eye');
+    expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'ux'))).toBe(
+      'panels-top-left',
+    );
     // An unknown name and a type without an icon fall back to the format.
     expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'decisions'))).toBe(
       'file',

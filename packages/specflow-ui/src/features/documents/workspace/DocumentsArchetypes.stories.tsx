@@ -51,10 +51,10 @@ const type = (id: string, title: string, defaultFilename?: string, icon?: string
 const catalogue: ArchetypeCatalogue = {
   revision: 'catalogue-1',
   documentTypes: [
-    type('overview', 'Overview', 'overview.md', 'info'),
-    type('ux', 'UX', 'ux.md', 'eye'),
-    type('decisions', 'Decisions', 'decisions.md', 'circle-check'),
-    type('backend', 'Backend', 'backend.md', 'database'),
+    type('overview', 'Overview', 'overview.md', 'book-open'),
+    type('ux', 'UX', 'ux.md', 'panels-top-left'),
+    type('decisions', 'Decisions', 'decisions.md', 'file-check'),
+    type('backend', 'Backend', 'backend.md', 'server'),
     type('note', 'Note'),
   ],
   archetypes: [

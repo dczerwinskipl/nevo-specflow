@@ -83,8 +83,8 @@ export function FolderNode({
  * One document row: one glyph slot, the name and its actions. The glyph is the file's format
  * (`documentRowGlyph`); the type is in the row's tooltip (hover and keyboard focus) and in its
  * accessible name, and on touch in the row menu and the document header. The main file (the
- * protected overview) has a slightly stronger name, its glyph in the folders' chevron column and its
- * name on the folders' name column, a little room below it, and a tooltip that says why it leads.
+ * protected overview) has a slightly stronger name, its glyph in the folders' chevron column with the
+ * name right after it, a little room below it, and a tooltip that says why it leads.
  * A dangling entry (the registry lists a file
  * that is not on disk) keeps its place with the warning glyph and `File missing`.
  */
@@ -126,8 +126,8 @@ export function DocumentNode({
   const details = [typeLine, main ? t('documents.tree.mainNote') : undefined].filter(
     (line): line is string => line !== undefined,
   );
-  // Beside folders the main file lines up with them: its glyph in the chevron column, its name on
-  // the folder names' column. In a flat main folder every file starts at the row edge anyway.
+  // Beside folders the main file starts like a folder: its glyph in the chevron column, its name
+  // right after it. In a flat main folder every file starts at the row edge anyway.
   const alignedWithFolders = main && !flat && !missing;
   return (
     <li className={cn(treeNodeClassName, main && 'mb-2')}>
@@ -147,13 +147,11 @@ export function DocumentNode({
                   {missing ? (
                     <Icon name="triangle-alert" className={treeAttentionGlyphClassName} />
                   ) : alignedWithFolders ? (
-                    <>
-                      <span className={treeGlyphSlotClassName}>
-                        <Icon name={glyph} />
-                      </span>
-                      {/* Holds the folder icon's column, so the name starts with the folder names. */}
-                      <span aria-hidden className={treeGlyphSlotClassName} />
-                    </>
+                    // As if it were a folder's chevron: the name follows right after it, where a
+                    // folder's own icon starts.
+                    <span className={treeGlyphSlotClassName}>
+                      <Icon name={glyph} />
+                    </span>
                   ) : (
                     <Icon name={glyph} />
                   )}

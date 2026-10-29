@@ -47,6 +47,13 @@ describe('Icon', () => {
       'image',
       'file-binary',
       'filter',
+      'book-open',
+      'network',
+      'server',
+      'list-ordered',
+      'file-check',
+      'book-user',
+      'panels-top-left',
     ] as const;
     for (const name of actions) {
       expect(renderToStaticMarkup(<Icon name={name} />)).toContain('<svg');

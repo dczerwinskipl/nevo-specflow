@@ -52,6 +52,13 @@ import {
   Image,
   FileDigit,
   ListFilter,
+  BookOpen,
+  Network,
+  Server,
+  ListOrdered,
+  FileCheck,
+  BookUser,
+  PanelsTopLeft,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -119,6 +126,14 @@ export const iconRegistry = {
   'file-binary': FileDigit,
   // Narrows a list to chosen values.
   filter: ListFilter,
+  // Document types (the glyph a type definition names).
+  'book-open': BookOpen,
+  network: Network,
+  server: Server,
+  'list-ordered': ListOrdered,
+  'file-check': FileCheck,
+  'book-user': BookUser,
+  'panels-top-left': PanelsTopLeft,
 } satisfies Record<IconName, LucideIcon>;
 
 /**

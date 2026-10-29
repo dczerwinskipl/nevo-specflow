@@ -662,11 +662,12 @@ async function verifyNestedExplorer(
   );
   await expect(top).toEqual(['specification.md', 'empty-folder', 'guides']);
   // Chevron + folder icon + name columns align across levels.
-  // The main file lines up with the folders: its glyph in the chevron column, its name with theirs.
+  // The main file starts like a folder: its glyph in the chevron column, its name right after it,
+  // where a folder's own icon starts.
   await expect(Math.abs(iconLeft(/^specification\.md/) - iconLeft(/^guides$/, 0))).toBeLessThan(1);
   const nameLeft = (name: RegExp) =>
     canvas.getByRole('button', { name }).querySelector('.truncate')!.getBoundingClientRect().left;
-  await expect(Math.abs(nameLeft(/^specification\.md/) - nameLeft(/^guides$/))).toBeLessThan(1);
+  await expect(Math.abs(nameLeft(/^specification\.md/) - iconLeft(/^guides$/, 1))).toBeLessThan(1);
   await expect(Math.abs(iconLeft(/^overview\.md/) - iconLeft(/^onboarding$/, 1))).toBeLessThan(1);
   // The deepest long name keeps more than half of its row.
   const long = canvas.getByRole('button', { name: /^a-very-long-descriptive/ });

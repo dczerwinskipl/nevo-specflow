@@ -51,6 +51,13 @@ export const iconNames = [
   'image',
   'file-binary',
   'filter',
+  'book-open',
+  'network',
+  'server',
+  'list-ordered',
+  'file-check',
+  'book-user',
+  'panels-top-left',
 ] as const;
 
 /** `lg` and `xl` are illustration sizes (empty screens), drawn with a lighter stroke. */

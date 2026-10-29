@@ -117,8 +117,8 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
  ──────────────────────────────────        divider (only when the region above exists)
  SPECIFICATION DOCUMENTS            (o)   root section header (no chevron); small spinner while an operation runs long
  [Search files                ] [filter]   search by name or path; type filter (multiple choice), only with 2+ types
-   overview.md                             main file first: glyph in the folders' chevron column, name on
-                                           their name column, slightly stronger, a little room below
+   overview.md                             main file first: its type icon in the folders' chevron column,
+                                           the name right after it, slightly stronger, room below
  v architecture
      login-flow.md                         tooltip: UX
      sequence.png                          image glyph; tooltip: Note

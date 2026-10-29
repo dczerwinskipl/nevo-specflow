@@ -27,6 +27,11 @@ export interface DocumentTreeLevelContext {
   closed: readonly string[];
   /** A filter is active: every folder that holds a match is shown open. */
   expandAll?: boolean;
+  /**
+   * The whole tree's main folder has no folders. Decided on the unfiltered tree, so a filter that
+   * leaves no folder does not move the files sideways.
+   */
+  flatRoot?: boolean;
   /** Empty folders the user opened. */
   openedEmpty: readonly string[];
   entry?: InlineEntry;
@@ -61,7 +66,8 @@ export function DocumentTreeLevel({
   if (!folders.length && !documents.length && !showEntry) return null;
   // A top level without folders is a flat list: its files have no folder icon column to line up
   // with, so they start at the row edge instead of looking nested.
-  const flat = top && !folders.length && !(showEntry && entry?.kind === 'folder');
+  const flat =
+    top && (context.flatRoot ?? !folders.length) && !(showEntry && entry?.kind === 'folder');
   // The specification's main file (the protected overview) leads its level, before the folders.
   const main = documents.filter((doc) => !doc.dangling && doc.protected);
   const rest = main.length ? documents.filter((doc) => !main.includes(doc)) : documents;

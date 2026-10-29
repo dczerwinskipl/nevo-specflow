@@ -119,12 +119,14 @@ export function DocumentNode({
   const name = lastSegment(path);
   const missing = label?.kind === 'missing';
   const type = label?.kind === 'type' ? label.text : undefined;
+  // The tooltip says it as the row menu does ("Type: UX").
+  const typeLine = type ? t('documents.tree.typeOf', { type }) : undefined;
   return (
     <li className={treeNodeClassName}>
       <div className={treeRowClassName}>
         {editor ?? (
           <>
-            <TruncatedTooltip name={name} detail={type}>
+            <TruncatedTooltip name={name} detail={typeLine}>
               {(labelRef) => (
                 <button
                   type="button"

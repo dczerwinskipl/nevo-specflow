@@ -1153,7 +1153,7 @@
         "revisionConflict": "The document or folder changed meanwhile. Close the action and start it again: the documents were refreshed.",
         "requestConflict": "This request was already recorded with a different result. Try the action again.",
         "default": "Unable to make the change. Check the name and path; the draft is kept.",
-        "caseOnlyRename": "Renaming only the letter case is not supported on this file system.",
+        "caseOnlyRename": "Renaming only the letter case is not supported on this file system. Rename it to a different name first, then to the one you want.",
         "pathInvalid": "This name or path cannot be used. Choose another name.",
         "alreadyClassified": "This file already has a type. The documents were refreshed.",
         "manifestDirty": "specification.yaml has uncommitted changes. Commit or discard them, then try again.",
@@ -1171,7 +1171,7 @@
         "characters": "The name cannot contain the characters \\ / : * ? \" < > |",
         "control": "The name cannot contain control characters.",
         "tooLong": "The name can be at most 200 characters long.",
-        "other": "Enter a different name.",
+        "dotsOnly": "A name cannot be only dots.",
         "dot": "The name cannot start with a dot.",
         "reserved": "The name is reserved by the system.",
         "trailing": "The name cannot end with a dot or a space.",
@@ -1214,7 +1214,11 @@
         "hiddenMissing_one": "The filters hide {{count}} missing file.",
         "hiddenMissing_few": "The filters hide {{count}} missing files.",
         "hiddenMissing_many": "The filters hide {{count}} missing files.",
-        "hiddenMissing_other": "The filters hide {{count}} missing files."
+        "hiddenMissing_other": "The filters hide {{count}} missing files.",
+        "shown_one": "Showing {{count}} of {{total}} files",
+        "shown_few": "Showing {{count}} of {{total}} files",
+        "shown_many": "Showing {{count}} of {{total}} files",
+        "shown_other": "Showing {{count}} of {{total}} files"
       }
     },
     "tabs": {

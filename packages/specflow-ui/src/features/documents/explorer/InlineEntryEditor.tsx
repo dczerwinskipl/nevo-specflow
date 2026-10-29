@@ -97,7 +97,8 @@ export function InlineEntryEditor({
           align="start"
           sideOffset={4}
           aria-labelledby={errorId}
-          className="max-w-72 px-3 py-2"
+          // Never wider than the field it belongs to (the tree pane).
+          className="w-(--radix-popover-trigger-width) px-3 py-2"
           // The field keeps focus: the message is read through `aria-describedby` and the alert.
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}

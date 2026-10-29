@@ -102,7 +102,7 @@ export function entryNameError(
   if (/[\\/:*?"<>|]/.test(name)) return message('documents.tree.nameError.characters');
   if (hasControlCharacter(name)) return message('documents.tree.nameError.control');
   if (name.length > 200) return message('documents.tree.nameError.tooLong');
-  if (name === '.' || name === '..') return message('documents.tree.nameError.other');
+  if (name === '.' || name === '..') return message('documents.tree.nameError.dotsOnly');
   if (name.startsWith('.')) return message('documents.tree.nameError.dot');
   if (isReservedName(name)) return message('documents.tree.nameError.reserved');
   if (/[. ]$/.test(name)) return message('documents.tree.nameError.trailing');

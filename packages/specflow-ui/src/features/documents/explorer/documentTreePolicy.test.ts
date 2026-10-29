@@ -93,7 +93,7 @@ describe('inline entry names', () => {
       'Nazwa może mieć maksymalnie 200 znaków.',
     );
     expect(entryNameError('abc.', 'folder')).toBe('Nazwa nie może kończyć się kropką ani spacją.');
-    expect(entryNameError('..', 'folder')).toBe('Wpisz inną nazwę.');
+    expect(entryNameError('..', 'folder')).toBe('Nazwa nie może składać się z samych kropek.');
     expect(entryNameError('a.pdf', 'document')).toBe('Obsługiwane formaty: .md, .txt.');
     expect(entryNameError('a.pdf', 'folder')).toBeUndefined();
   });

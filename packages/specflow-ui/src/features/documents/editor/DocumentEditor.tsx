@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, InlineNote, MarkdownDocument, ScrollArea } from '@nevo/ui';
+import { Alert, Button, InlineNote, MarkdownDocument, ScrollArea, Typography } from '@nevo/ui';
 import { useMessage } from '../../../i18n/message';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
-import { readOnlyLine, reasonFragment, reasonRemedy } from '../catalogue/documentTypePolicy';
+import {
+  readOnlyLine,
+  reasonFragment,
+  reasonRemedy,
+  typeTitle,
+} from '../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentKindOf, documentViewOf } from '../content-kinds/documentContentKinds';
 import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
 import { refusalReason } from '../explorer/useDocumentOperations';
@@ -175,6 +181,7 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
     [editorRoot],
   );
   const width = useWidth(root);
+  const catalogue = useDocumentCatalogue();
   // The source editor keeps at least 960 px beside the guidance column, so it is a column there only
   // from the two-column threshold; otherwise the guidance opens as a sheet. The preview reports its
   // own room (it measures its panel), images and files have none.
@@ -194,8 +201,24 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
     return () => reportSourcePane(undefined);
   }, [sourcePane, reportSourcePane]);
   const guidance = session.guidanceShown === 'column' ? session.guidance : undefined;
+  // The type of a registered document, as one quiet line at the head of the document: on touch the
+  // row tooltip is not reachable, and the tree may not be on screen.
+  const typeLine =
+    document.classification === 'registered' && document.type
+      ? t('documents.tree.typeOf', { type: typeTitle(catalogue.data, document.type) })
+      : undefined;
   return (
     <div ref={rootRef} className="flex h-full min-h-0 w-full flex-col">
+      {typeLine && (
+        <Typography
+          as="p"
+          variant="body-sm"
+          data-document-type=""
+          className="m-0 shrink-0 truncate px-4 pt-2 text-content-muted"
+        >
+          {typeLine}
+        </Typography>
+      )}
       <SaveRefusal session={session} />
       {view === 'image' ? (
         <DocumentImageView

@@ -9,8 +9,12 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   TextInput,
 } from '@nevo/ui';
+
+/** A choice row: at least 40 px high where the pointer is coarse (touch). */
+const choiceRow = 'pointer-coarse:min-h-10 pointer-coarse:items-center';
 import { NO_TYPE, activeFilterCount, type TreeFilter } from './treeFilter';
 
 /**
@@ -23,11 +27,14 @@ export function TreeFilterBar({
   types,
   typeTitle,
   showReset = true,
+  status,
   onChange,
 }: {
   filter: TreeFilter;
   /** False while the no-results state offers the reset itself. */
   showReset?: boolean;
+  /** How much of the tree a filter shows ("Showing 1 of 7 files"). */
+  status?: string;
   /** The type ids present in the tree (`NO_TYPE` for unclassified files). */
   types: readonly string[];
   typeTitle: (typeId: string) => string;
@@ -102,21 +109,38 @@ export function TreeFilterBar({
                 <legend id={groupId} className="mb-1 p-0 text-label-sm text-content-primary">
                   {t('documents.tree.filter.types')}
                 </legend>
-                {types.map((type) => (
-                  <CheckboxField
-                    key={type || 'none'}
-                    label={type === NO_TYPE ? t('documents.tree.filter.noType') : typeTitle(type)}
-                    checked={filter.types.includes(type)}
-                    onCheckedChange={(checked) => toggle(type, checked === true)}
-                  />
-                ))}
+                {types
+                  .filter((type) => type !== NO_TYPE)
+                  .map((type) => (
+                    <CheckboxField
+                      key={type}
+                      fieldClassName={choiceRow}
+                      label={typeTitle(type)}
+                      checked={filter.types.includes(type)}
+                      onCheckedChange={(checked) => toggle(type, checked === true)}
+                    />
+                  ))}
+                {types.includes(NO_TYPE) && (
+                  <>
+                    <Separator />
+                    <CheckboxField
+                      fieldClassName={choiceRow}
+                      label={t('documents.tree.filter.noType')}
+                      checked={filter.types.includes(NO_TYPE)}
+                      onCheckedChange={(checked) => toggle(NO_TYPE, checked === true)}
+                    />
+                  </>
+                )}
               </fieldset>
             </PopoverContent>
           </Popover>
         )}
       </div>
       {showReset && active > 0 && (
-        <div className="flex justify-end">
+        <div className="flex min-w-0 items-center justify-between gap-2 pl-2">
+          <span role="status" className="min-w-0 truncate text-body-sm text-content-muted">
+            {status}
+          </span>
           <Button variant="ghost" size="sm" onClick={() => onChange({ term: '', types: [] })}>
             {t('documents.tree.filter.reset', { count: active })}
           </Button>

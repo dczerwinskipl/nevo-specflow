@@ -324,7 +324,7 @@ export function DocumentsExplorer({
   }));
 
   return (
-    <TooltipProvider delayDuration={400}>
+    <TooltipProvider delayDuration={300}>
       <div className="grid min-w-0 gap-1" aria-busy={busy || undefined}>
         {/* The root of the tree is a section header (no chevron, never collapses). */}
         <div className={treeSectionHeaderClassName}>
@@ -344,6 +344,14 @@ export function DocumentsExplorer({
             types={treeTypes(allRows)}
             typeTitle={typeName}
             showReset={!(filtering && filtered.matches === 0)}
+            status={
+              filtering && filtered.matches > 0
+                ? t('documents.tree.filter.shown', {
+                    count: filtered.matches,
+                    total: allRows.documents.length,
+                  })
+                : undefined
+            }
             onChange={setFilter}
           />
         )}
@@ -375,6 +383,7 @@ export function DocumentsExplorer({
             active,
             locked: busy || unknown,
             expandAll: filtering,
+            flatRoot: !allRows.folders.some((folder) => folder.path !== ''),
             closed,
             openedEmpty,
             entry: inline.entry,

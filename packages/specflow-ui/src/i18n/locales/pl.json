@@ -1153,7 +1153,7 @@
         "revisionConflict": "Dokument lub folder zmienił się w międzyczasie. Zamknij akcję i rozpocznij ją ponownie: dokumenty zostały odświeżone.",
         "requestConflict": "To żądanie ma już zapisany inny wynik. Spróbuj wykonać akcję ponownie.",
         "default": "Nie udało się wykonać zmiany. Sprawdź nazwę i ścieżkę; szkic pozostaje zachowany.",
-        "caseOnlyRename": "Zmiana samej wielkości liter nie jest obsługiwana na tym systemie plików.",
+        "caseOnlyRename": "Zmiana samej wielkości liter nie jest obsługiwana na tym systemie plików. Zmień najpierw na inną nazwę, potem na docelową.",
         "pathInvalid": "Tej nazwy lub ścieżki nie można użyć. Wybierz inną nazwę.",
         "alreadyClassified": "Ten plik ma już typ. Dokumenty zostały odświeżone.",
         "manifestDirty": "Plik specification.yaml ma niezacommitowane zmiany. Zacommituj je lub odrzuć i spróbuj ponownie.",
@@ -1171,7 +1171,7 @@
         "characters": "Nazwa nie może zawierać znaków \\ / : * ? \" < > |",
         "control": "Nazwa nie może zawierać znaków sterujących.",
         "tooLong": "Nazwa może mieć maksymalnie 200 znaków.",
-        "other": "Wpisz inną nazwę.",
+        "dotsOnly": "Nazwa nie może składać się z samych kropek.",
         "dot": "Nazwa nie może zaczynać się od kropki.",
         "reserved": "Ta nazwa jest zarezerwowana przez system.",
         "trailing": "Nazwa nie może kończyć się kropką ani spacją.",
@@ -1214,7 +1214,11 @@
         "hiddenMissing_one": "Filtry ukrywają {{count}} brakujący plik.",
         "hiddenMissing_few": "Filtry ukrywają {{count}} brakujące pliki.",
         "hiddenMissing_many": "Filtry ukrywają {{count}} brakujących plików.",
-        "hiddenMissing_other": "Filtry ukrywają {{count}} brakującego pliku."
+        "hiddenMissing_other": "Filtry ukrywają {{count}} brakującego pliku.",
+        "shown_one": "Pokazano {{count}} z {{total}} plików",
+        "shown_few": "Pokazano {{count}} z {{total}} plików",
+        "shown_many": "Pokazano {{count}} z {{total}} plików",
+        "shown_other": "Pokazano {{count}} z {{total}} plików"
       }
     },
     "tabs": {

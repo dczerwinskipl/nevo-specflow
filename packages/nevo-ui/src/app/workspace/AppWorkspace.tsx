@@ -15,12 +15,18 @@ import {
 import { IconButton } from '../../components/actions/IconButton';
 import { ScrollArea } from '../../components/layout/ScrollArea';
 import { DrawerTrigger } from '../../components/overlays/Drawer';
+import {
+  ItemTabs,
+  getItemTabId,
+  getItemTabPanelId,
+  type ItemTab,
+} from '../../components/navigation/ItemTabs';
 import { workspaceSurfaceClassName } from '../../design-system/brandEnvironment';
 import { cn } from '../../lib';
 import { useAppWorkspace } from '../shell/AppShell';
 import { AppContentScrollProvider } from './AppContent';
 import { useOptionalWorkspace } from './WorkspaceContext';
-import type { WorkspaceTransition } from './WorkspaceContext';
+import type { SecondaryTabsState, WorkspaceTransition } from './WorkspaceContext';
 import {
   capPrimaryWidth,
   resolveSlotMaxWidth,
@@ -39,6 +45,9 @@ import {
 import {
   CompactWorkspaceActions,
   WorkspaceHeader,
+  getWorkspaceHeaderActions,
+  getWorkspaceHeaderLabels,
+  getWorkspaceHeaderMenu,
   type WorkspaceHeaderAction,
   type WorkspaceHeaderActionDirect,
   type WorkspaceHeaderActionGroup,
@@ -47,6 +56,55 @@ import {
   type WorkspaceHeaderDensity,
   type WorkspaceHeaderProps,
 } from './WorkspaceHeader';
+
+/**
+ * Identifies the Secondary root-tab strip's own `ItemTabs` instance (`getItemTabId`/
+ * `getItemTabPanelId` namespace). `AppWorkspace` renders at most one Secondary region, so a fixed
+ * scope is sufficient; it never collides with a product's own `ItemTabs` usage elsewhere.
+ */
+const SECONDARY_TABS_SCOPE = 'workspace-secondary-tabs';
+
+/**
+ * Composes the Secondary root-tab strip (contract workspace-dynamic-split.md §4.1, reusing
+ * item-tabs.md's Content tabs host pattern verbatim) into an already-resolved surface's header,
+ * replacing only its identity content. The header's own actions/menu/labels are preserved exactly
+ * by reading them back off the original header — the same content-blind extraction `WorkspaceHeader`
+ * already exposes for `CompactWorkspaceActions` — so nothing about what a tab's content means is
+ * ever inspected here.
+ */
+function withSecondaryTabStrip(
+  surface: AppWorkspaceSurface,
+  tabs: SecondaryTabsState,
+  activateTab: (id: string) => Promise<boolean>,
+  closeTab: (id: string) => Promise<boolean>,
+): AppWorkspaceSurface {
+  const items: readonly ItemTab[] = tabs.tabs.map((tab) => ({
+    id: tab.id,
+    label: tab.title,
+    closable: tab.closable,
+  }));
+
+  return {
+    ...surface,
+    header: (
+      <WorkspaceHeader
+        title=""
+        actions={getWorkspaceHeaderActions(surface.header)}
+        labels={getWorkspaceHeaderLabels(surface.header)}
+        menu={getWorkspaceHeaderMenu(surface.header)}
+        identityContent={
+          <ItemTabs
+            activeId={tabs.activeTabId}
+            items={items}
+            onActivate={(id) => void activateTab(id)}
+            onClose={(id) => void closeTab(id)}
+            scope={SECONDARY_TABS_SCOPE}
+          />
+        }
+      />
+    ),
+  };
+}
 
 export { WorkspaceHeaderIdentity } from './WorkspaceHeader';
 
@@ -302,6 +360,8 @@ function RuntimeSurfaceRegion({
   stackedVisual,
   surface,
   surfaceName,
+  tabPanelId,
+  tabPanelLabelledBy,
   trailingAction,
   surfaceRef,
   tabIndex,
@@ -318,6 +378,14 @@ function RuntimeSurfaceRegion({
   stackedVisual: boolean;
   surface: AppWorkspaceSurface;
   surfaceName: 'primary' | 'secondary';
+  /**
+   * Set only while the Secondary root-tab strip (2+ tabs) is shown: ties the active tab's
+   * `aria-controls` (set by `ItemTabs` itself) to this content region, matching item-tabs.md's
+   * a11y contract without mounting more than the one active tab's content this architecture ever
+   * mounts (see `AppWorkspace.stories.tsx`'s tab-strip stories).
+   */
+  tabPanelId?: string;
+  tabPanelLabelledBy?: string;
   trailingAction?: ReactNode;
   surfaceRef?: Ref<HTMLDivElement>;
   tabIndex?: number;
@@ -380,7 +448,14 @@ function RuntimeSurfaceRegion({
                 {trailingAction}
               </div>
             ) : null}
-            <div className="min-h-0 flex-1 overflow-clip">{surface.content}</div>
+            <div
+              aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
+              className="min-h-0 flex-1 overflow-clip"
+              id={tabPanelId}
+              role={tabPanelId ? 'tabpanel' : undefined}
+            >
+              {surface.content}
+            </div>
           </SurfaceBoundary>
         </div>
       </div>
@@ -626,7 +701,9 @@ function AppWorkspaceRoot({
   const runtimeSecondary = workspace?.secondary ?? null;
   const defaultSecondary = staticSurfaces.defaultSecondary;
   const defaultSecondaryOpen = defaultSecondary?.open ?? false;
-  const secondaryPresentation: WorkspaceSecondaryPresentation | undefined = runtimeSecondary
+  const secondaryTabsState = workspace?.tabs;
+  const showSecondaryTabStrip = Boolean(secondaryTabsState && secondaryTabsState.tabs.length >= 2);
+  const secondaryPresentationBase: WorkspaceSecondaryPresentation | undefined = runtimeSecondary
     ? {
         surface: runtimeSecondary.surface,
         key: `runtime-${runtimeSecondary.instanceKey}`,
@@ -645,6 +722,29 @@ function AppWorkspaceRoot({
             ? () => defaultSecondary.onOpenChange?.(false)
             : undefined,
         }
+      : undefined;
+  // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
+  // §4.1); with 0 or 1, `surface` passes through completely unchanged, so that baseline stays
+  // pixel/DOM-identical to today.
+  const secondaryPresentation: WorkspaceSecondaryPresentation | undefined =
+    secondaryPresentationBase && showSecondaryTabStrip && workspace && secondaryTabsState
+      ? {
+          ...secondaryPresentationBase,
+          surface: withSecondaryTabStrip(
+            secondaryPresentationBase.surface,
+            secondaryTabsState,
+            workspace.activateTab,
+            workspace.closeTab,
+          ),
+        }
+      : secondaryPresentationBase;
+  const secondaryTabPanelId =
+    showSecondaryTabStrip && secondaryTabsState?.activeTabId
+      ? getItemTabPanelId(SECONDARY_TABS_SCOPE, secondaryTabsState.activeTabId)
+      : undefined;
+  const secondaryTabPanelLabelledBy =
+    showSecondaryTabStrip && secondaryTabsState?.activeTabId
+      ? getItemTabId(SECONDARY_TABS_SCOPE, secondaryTabsState.activeTabId)
       : undefined;
   const outgoingSecondary = workspace?.transition.outgoing;
   const outgoingSecondaryPresentation = outgoingSecondary
@@ -768,6 +868,8 @@ function AppWorkspaceRoot({
           surfaceName="secondary"
           surfaceRef={secondaryRegionRef}
           tabIndex={state.mode === 'stacked' ? -1 : undefined}
+          tabPanelId={secondaryTabPanelId}
+          tabPanelLabelledBy={secondaryTabPanelLabelledBy}
           trailingAction={secondaryCloseAction}
         />
       ) : null}

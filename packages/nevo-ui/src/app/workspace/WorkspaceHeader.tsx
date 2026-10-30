@@ -612,18 +612,40 @@ export function isWorkspaceHeaderElement(
   return isValidElement(node) && node.type === WorkspaceHeader;
 }
 
+interface WorkspaceHeaderActionProps {
+  actions?: readonly WorkspaceHeaderAction[];
+  labels?: Partial<WorkspaceHeaderLabels>;
+  menu?: WorkspaceHeaderMenu;
+}
+
+/**
+ * Either header shape a surface's `header: ReactNode` may be: the default `WorkspaceHeader`, or
+ * `WorkspaceHeaderFrame` directly (what `HeaderOutlet` renders for a screen definition's own
+ * `header` component). Both carry the same `actions`/`labels`/`menu`, so every content-blind
+ * extraction below (`getWorkspaceHeaderActions` and friends, already relied on by
+ * `CompactWorkspaceActions` and by `AppWorkspace`'s Secondary root-tab strip) must recognize both,
+ * not just the default one.
+ */
+function isWorkspaceHeaderActionElement(
+  node: ReactNode,
+): node is ReactElement<WorkspaceHeaderActionProps> {
+  return (
+    isValidElement(node) && (node.type === WorkspaceHeader || node.type === WorkspaceHeaderFrame)
+  );
+}
+
 export function getWorkspaceHeaderActions(node: ReactNode): readonly WorkspaceHeaderAction[] {
-  return isWorkspaceHeaderElement(node) ? (node.props.actions ?? []) : [];
+  return isWorkspaceHeaderActionElement(node) ? (node.props.actions ?? []) : [];
 }
 
 export function getWorkspaceHeaderMenu(node: ReactNode): WorkspaceHeaderMenu {
-  return (isWorkspaceHeaderElement(node) ? node.props.menu : undefined) ?? 'default';
+  return (isWorkspaceHeaderActionElement(node) ? node.props.menu : undefined) ?? 'default';
 }
 
 export function getWorkspaceHeaderLabels(node: ReactNode): WorkspaceHeaderLabels {
   return {
     ...defaultWorkspaceHeaderLabels,
-    ...(isWorkspaceHeaderElement(node) ? node.props.labels : undefined),
+    ...(isWorkspaceHeaderActionElement(node) ? node.props.labels : undefined),
   };
 }
 

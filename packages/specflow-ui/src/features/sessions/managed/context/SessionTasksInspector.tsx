@@ -140,6 +140,10 @@ export function createSessionTasksInspector(tasks: SessionContextTaskRef[]) {
     ...tasksStack,
     id: 'managed-session-task-detail',
     initial: 'task',
+    // Each distinct Task opens as its own independent tab (W01-W04's `openTab`), rather than every
+    // Task sharing one tab slot; the Tasks list itself has no `taskId`, so it still shares a single
+    // "list" instance.
+    instanceId: (params) => params.taskId ?? 'list',
   });
 
   return { tasksStack, taskStack };

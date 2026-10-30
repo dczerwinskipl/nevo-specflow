@@ -17,6 +17,7 @@ import {
   TextArea,
   Typography,
   WorkspaceHeader,
+  useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
   useWorkspaceCapabilities,
   cn,
@@ -270,6 +271,16 @@ export function ManagedSession({
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
   const [contextOpen, setContextOpen] = useState(true);
+  // Scoped W01-W04 adoption (demonstrated via Related Tasks only, see `SessionContext`'s
+  // `openRelatedTask`): registers Context as the pinned Secondary tab only on the split-capable
+  // (wide) layout where it is the default declarative Secondary. `supportsSplit` gates it off on
+  // the narrow/mobile layout, where Context is instead a runtime flow pushed via `navigation.open`
+  // (SessionContext's `openStack` fallback) and must stay exactly as it behaves today — registering
+  // the pinned tab there too would make that runtime flow's tab count reach 2 and spuriously show
+  // the root-tab strip on narrow layouts.
+  useRegisterPinnedSecondaryTab(
+    supportsSplit && contextOpen ? { title: t('sessions.context.title') } : null,
+  );
   const feed = useMemo(
     () => createSessionFeed(api, sessionId, owner, browserStorage()),
     [api, sessionId, owner],
@@ -346,7 +357,7 @@ export function ManagedSession({
   };
 
   return (
-    <AppWorkspace scroll="content" fit="available" split="primary" labels={labels}>
+    <AppWorkspace scroll="content" fit="available" split="dynamic" labels={labels}>
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader

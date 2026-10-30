@@ -65,6 +65,23 @@ export function SessionContext({
     void openSecondary(inspectors.taskStack, { sessionId, taskId: task.id });
   }
 
+  /**
+   * Related Tasks' own open handler (W01-W04 adoption, scoped to this one entry point):
+   * unchanged narrow/mobile fallback (`openStack` present — pushes onto Context's own runtime
+   * flow, exactly like `openTask` above), but on the wide/pinned-tab desktop case (`openStack`
+   * absent, Context is the default declarative Secondary) the Task opens as its own independent
+   * root tab beside the pinned Context tab instead of replacing it.
+   */
+  function openRelatedTask(task: SessionContextTaskRef) {
+    if (openStack) {
+      void openStack(inspectors.taskStack, { sessionId, taskId: task.id });
+
+      return;
+    }
+
+    void navigation.openTab(inspectors.taskStack, { sessionId, taskId: task.id });
+  }
+
   if (value.status === 'unavailable') {
     return (
       <AppContent className="h-full w-full">
@@ -134,7 +151,7 @@ export function SessionContext({
               <ul className="grid gap-1">
                 {value.relatedTasks.map((task) => (
                   <li key={task.id}>
-                    <TaskLink task={task} onOpen={openTask} />
+                    <TaskLink task={task} onOpen={openRelatedTask} />
                   </li>
                 ))}
               </ul>

@@ -1,0 +1,122 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { inspectAntigravityInstallation, prepareAntigravityProfile } from './installation';
+
+const roots: string[] = [];
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+async function fixture() {
+  const root = await mkdtemp(join(tmpdir(), 'specflow-agy-installation-'));
+  roots.push(root);
+  const workspace = join(root, 'workspace');
+  const homeRoot = join(root, 'private');
+  const executable = join(root, 'controlled-agy.exe');
+  await mkdir(workspace);
+  await writeFile(executable, 'controlled executable identity, never executed');
+  let accountScope = 'synthetic-account-one';
+  let authenticationFingerprint = 'synthetic-access-one';
+  const inspect = () =>
+    inspectAntigravityInstallation(
+      { workspace, homeRoot, executable, signal: new AbortController().signal },
+      {
+        platform: 'win32',
+        architecture: 'x64',
+        host: { PATH: '/synthetic/path', GOOGLE_API_KEY: 'synthetic-key', HOME: root },
+        account: () =>
+          Promise.resolve({
+            accountScope,
+            authenticationFingerprint,
+            source: 'windows-keyring',
+            authenticationMode: 'consumer',
+          }),
+      },
+    );
+
+  return {
+    root,
+    workspace,
+    homeRoot,
+    executable,
+    inspect,
+    rotateToken() {
+      authenticationFingerprint = 'synthetic-access-two';
+    },
+    switchAccount() {
+      accountScope = 'synthetic-account-two';
+    },
+  };
+}
+
+describe('Antigravity private native profile', () => {
+  it('retains native history across token rotation and separates another account', async () => {
+    const test = await fixture();
+    const first = await test.inspect();
+    const profile = await prepareAntigravityProfile(first);
+    const history = join(profile.home, '.gemini', 'antigravity-cli', 'native-history');
+    await writeFile(history, 'native context');
+    test.rotateToken();
+    const rotated = await test.inspect();
+    expect(rotated.fingerprint).toBe(first.fingerprint);
+    expect(rotated.authenticationFingerprint).not.toBe(first.authenticationFingerprint);
+    expect((await prepareAntigravityProfile(rotated)).home).toBe(profile.home);
+    expect(await readFile(history, 'utf8')).toBe('native context');
+    test.switchAccount();
+    expect((await prepareAntigravityProfile(await test.inspect())).home).not.toBe(profile.home);
+    expect(profile.environment.values.GOOGLE_API_KEY).toBeUndefined();
+    expect(profile.environment.values.HOME).toBe(profile.home);
+  });
+
+  it('rejects workspace hooks before preparing a native profile', async () => {
+    const test = await fixture();
+    await mkdir(join(test.workspace, '.agents'));
+    await writeFile(join(test.workspace, '.agents', 'hooks.json'), '{}');
+    await expect(test.inspect()).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  });
+
+  it('detects executable changes without executing the fixture', async () => {
+    const test = await fixture();
+    const first = await test.inspect();
+    await writeFile(test.executable, 'different controlled executable');
+    expect((await test.inspect()).fingerprint).not.toBe(first.fingerprint);
+  });
+
+  it('rejects a mismatched private profile binding', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    const profile = await prepareAntigravityProfile(installation);
+    await writeFile(join(profile.home, '.specflow-profile.json'), '{}');
+    await expect(prepareAntigravityProfile(installation)).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+  });
+
+  it('rejects a linked configuration parent before touching its target', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    const home = join(test.homeRoot, 'discovery');
+    const target = join(test.root, 'global-configuration');
+    await mkdir(home, { recursive: true });
+    await mkdir(target);
+    await writeFile(join(target, 'sentinel'), 'untouched');
+    await symlink(target, join(home, '.gemini'), process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(prepareAntigravityProfile(installation, { home })).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    await expect(readFile(join(target, 'config', 'hooks.json'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    expect(await readFile(join(target, 'sentinel'), 'utf8')).toBe('untouched');
+  });
+
+  it('rejects a private home inside the admitted workspace before writing', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    await expect(
+      prepareAntigravityProfile({ ...installation, homeRoot: test.workspace }),
+    ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  });
+});

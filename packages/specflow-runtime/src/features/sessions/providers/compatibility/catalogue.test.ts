@@ -15,6 +15,29 @@ const prerequisites = {
   executionMode: 'read-only',
 };
 
+it('classifies Antigravity without granting execution before its independent gates', () => {
+  const compatibility = classifyProviderInstallation({
+    providerId: 'antigravity',
+    platform: 'win32',
+    architecture: 'x64',
+    sha256: 'b'.repeat(64),
+  });
+  expect(compatibility.classification).toBe('provisional');
+  expect(admitProvider(compatibility, { ...prerequisites, securityVerified: false }).allowed).toBe(
+    false,
+  );
+  expect(
+    admitProvider(compatibility, {
+      ...prerequisites,
+      executionMode: 'workspace-write',
+      managedEffectsAvailable: false,
+    }).allowed,
+  ).toBe(false);
+  expect(
+    classifyProviderInstallation({ ...installation, providerId: 'toString' }).classification,
+  ).toBe('unsupported');
+});
+
 it('admits the trusted bundled fingerprint only with independent security/authentication gates', () => {
   const compatibility = classifyProviderInstallation(installation);
   expect(compatibility.classification).toBe('tested');

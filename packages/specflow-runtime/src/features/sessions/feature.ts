@@ -10,6 +10,7 @@ import { registerSessionRoutes } from './http/routes';
 import { SessionError } from './errors';
 import { createClaudeDriver } from './providers/claude/driver';
 import { createCodexDriver } from './providers/codex/driver';
+import { createAntigravityDriver } from './providers/antigravity/driver';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -37,7 +38,12 @@ export function createSessionsFeature(
 
       const claude = options.config?.providers.claude;
       const codex = options.config?.providers.codex;
-      if (enabled && (claude?.enabled || codex?.enabled) && !options.storage?.workspace) {
+      const antigravity = options.config?.providers.antigravity;
+      if (
+        enabled &&
+        (claude?.enabled || codex?.enabled || antigravity?.enabled) &&
+        !options.storage?.workspace
+      ) {
         throw new SessionError(
           'SESSION_STORE_UNAVAILABLE',
           'Verified workspace context is required for native providers.',
@@ -87,6 +93,25 @@ export function createSessionsFeature(
         );
       }
 
+      if (enabled && antigravity?.enabled) {
+        drivers.push(
+          createAntigravityDriver({
+            workspace: options.storage!.workspace!,
+            temporaryRoot: join(options.storage!.directory, 'provider-temporary'),
+            homeRoot: join(
+              homedir(),
+              '.nevo',
+              'runtime',
+              'providers',
+              'antigravity',
+              createHash('sha256').update(options.storage!.projectId).digest('hex'),
+            ),
+            executable: antigravity.executable,
+            managedWrites: effects !== undefined,
+          }),
+        );
+      }
+
       const store = enabled ? await openSessionStore(options.storage!) : undefined;
       const coordinator = store
         ? createSessionCoordinator(
@@ -95,7 +120,8 @@ export function createSessionsFeature(
             options.storage!.projectId,
             options.config?.providers.mock.enabled === true ||
               claude?.enabled === true ||
-              codex?.enabled === true,
+              codex?.enabled === true ||
+              antigravity?.enabled === true,
             options.storage?.workspace
               ? {
                   kind: 'read-only',
@@ -117,7 +143,7 @@ export function createSessionsFeature(
         await coordinator.recoverEffects();
       }
 
-      if (coordinator && (claude?.enabled || codex?.enabled)) {
+      if (coordinator && (claude?.enabled || codex?.enabled || antigravity?.enabled)) {
         await coordinator.providers();
       }
 

@@ -11,23 +11,20 @@ import {
 import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import type { EmitFact, Invocation } from '../driver';
 import { SessionError } from '../../errors';
+import type { DriverFact } from '../../persistence/protocol';
+import {
+  prepareAntigravityPermission,
+  validateAntigravityHookBinding,
+  type AntigravityPermissionContext,
+} from './permissions';
 import {
   antigravityQuestionSchema,
   prepareAntigravityQuestion,
   antigravityQuestionAnswer,
 } from './questions';
 
-export const AntigravityBridgeLimits = {
-  requests: 256,
-  interactions: 64,
-  pendingQuestions: 4,
-  concurrentRequests: 8,
-  requestBytes: 64 * 1024,
-  receiveMs: 5000,
-  deliveryMs: 5000,
-  cleanupMs: 5000,
-  setupMs: 10000,
-} as const;
+import { AntigravityBridgeLimits } from './bridge-limits';
+export { AntigravityBridgeLimits } from './bridge-limits';
 const serverName = 'specflow-interactions';
 const toolName = 'ask_user';
 type RpcId = string | number;
@@ -47,13 +44,15 @@ function deferred<T>() {
 
 interface PendingQuestion {
   key: string;
-  question: ReturnType<typeof prepareAntigravityQuestion>;
+  question: Extract<DriverFact, { kind: 'interaction' }>['interaction'];
+  revalidate?: () => Promise<void>;
   response: ServerResponse;
   answer: ReturnType<typeof deferred<string>>;
   delivery: ReturnType<typeof deferred<{ deliveredKeys: readonly string[] }>>;
   state: 'pending' | 'responding' | 'delivered' | 'expired';
   responseFingerprint?: string;
   deliveryTimer?: ReturnType<typeof setTimeout>;
+  humanTimer?: ReturnType<typeof setTimeout>;
 }
 
 /** Invocation-private transport, not a Session driver or a second lifecycle owner.
@@ -62,6 +61,7 @@ export async function createAntigravityQuestionBridge(options: {
   invocation: Pick<Invocation, 'sessionId' | 'turnId' | 'invocationId'>;
   emit: EmitFact;
   signal: AbortSignal;
+  permissionContext?: () => AntigravityPermissionContext | undefined;
 }) {
   options.signal.throwIfAborted();
   const binding = Object.freeze({ ...options.invocation });
@@ -73,6 +73,11 @@ export async function createAntigravityQuestionBridge(options: {
   const pending = new Map<string, PendingQuestion>();
   const wireRequests = new Map<RpcId, ServerResponse>();
   const seenRequests = new Set<RpcId>();
+  const nativeSteps = new Set<number>();
+  let idle = deferred<void>();
+  let nativeIdle = false;
+  let hookGeneration = 0;
+  let lastStop: { execution: number; generation: number } | undefined;
   const done = deferred<void>();
   let active = false;
   let closed = false;
@@ -96,6 +101,7 @@ export async function createAntigravityQuestionBridge(options: {
 
     entry.state = 'expired';
     clearTimeout(entry.deliveryTimer);
+    clearTimeout(entry.humanTimer);
     entry.answer.reject(expired());
     entry.delivery.reject(expired());
     await options.emit({ kind: 'interaction-expired', key: entry.key });
@@ -104,6 +110,14 @@ export async function createAntigravityQuestionBridge(options: {
   function fail(error: unknown) {
     done.reject(error);
     void close().catch(() => undefined);
+  }
+
+  function nativeBusy() {
+    hookGeneration++;
+    if (nativeIdle) {
+      nativeIdle = false;
+      idle = deferred<void>();
+    }
   }
 
   rpc.setRequestHandler(ListToolsRequestSchema, () => ({
@@ -153,6 +167,7 @@ export async function createAntigravityQuestionBridge(options: {
       delivery: deferred<{ deliveredKeys: readonly string[] }>(),
       state: 'pending',
     };
+    nativeBusy();
     pending.set(entry.key, entry);
     const onAbort = () => {
       void expire(entry).catch(fail);
@@ -221,7 +236,7 @@ export async function createAntigravityQuestionBridge(options: {
     const credential = Buffer.from(request.headers.authorization ?? '');
     if (
       closed ||
-      request.url !== '/mcp' ||
+      !['/mcp', '/hooks/pre-tool-use', '/hooks/stop'].includes(request.url ?? '') ||
       request.headers.host !== host ||
       request.headers.origin !== undefined ||
       credential.length !== authorization.length ||
@@ -309,6 +324,12 @@ export async function createAntigravityQuestionBridge(options: {
       return;
     }
 
+    if (request.url !== '/mcp') {
+      await handleHook(request.url!, envelope, response);
+
+      return;
+    }
+
     const id = envelope.id;
     if (id !== undefined) {
       if (
@@ -340,10 +361,177 @@ export async function createAntigravityQuestionBridge(options: {
     await transport.handleRequest(request, response, envelope);
   }
 
+  function hookJson(response: ServerResponse, value: object) {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify(value));
+  }
+
+  async function handleHook(
+    route: string,
+    envelope: Record<string, unknown>,
+    response: ServerResponse,
+  ) {
+    const selectedContext = options.permissionContext?.();
+    if (!active || closed || !selectedContext) {
+      hookJson(response, { decision: 'deny' });
+
+      return;
+    }
+
+    const context = Object.freeze({ ...selectedContext });
+    const assertCurrent = () => {
+      const current = options.permissionContext?.();
+      if (
+        !active ||
+        closed ||
+        options.signal.aborted ||
+        response.destroyed ||
+        current?.nativeSessionId !== context.nativeSessionId ||
+        current.workspace !== context.workspace ||
+        current.writable !== context.writable ||
+        current.commandsAllowed !== context.commandsAllowed
+      ) {
+        throw expired();
+      }
+    };
+
+    try {
+      const bound = validateAntigravityHookBinding(envelope, context);
+      if (route === '/hooks/stop') {
+        if (
+          typeof bound.fullyIdle !== 'boolean' ||
+          !Number.isSafeInteger(bound.executionNum) ||
+          (bound.executionNum as number) < 0 ||
+          typeof bound.terminationReason !== 'string'
+        ) {
+          throw new Error('Invalid native stop evidence.');
+        }
+
+        const execution = bound.executionNum as number;
+        if (
+          lastStop &&
+          (execution < lastStop.execution ||
+            (execution === lastStop.execution && hookGeneration !== lastStop.generation))
+        ) {
+          throw new Error('Stale native stop evidence.');
+        }
+
+        if (
+          [...pending.values()].some(
+            (entry) => entry.state === 'pending' || entry.state === 'responding',
+          )
+        ) {
+          throw new Error('Native stop conflicts with unresolved interactions.');
+        }
+
+        lastStop = { execution, generation: hookGeneration };
+        if (bound.fullyIdle) {
+          nativeIdle = true;
+          idle.resolve();
+        } else if (nativeIdle) {
+          nativeIdle = false;
+          idle = deferred<void>();
+        }
+
+        hookJson(response, { decision: 'stop' });
+
+        return;
+      }
+
+      const permission = await prepareAntigravityPermission(envelope, context);
+      assertCurrent();
+      if (
+        nativeSteps.has(permission.step) ||
+        nativeSteps.size >= AntigravityBridgeLimits.requests
+      ) {
+        throw new Error('Duplicate or excessive native hook.');
+      }
+
+      nativeSteps.add(permission.step);
+      nativeBusy();
+
+      if (!permission.interaction) {
+        await permission.revalidate();
+        assertCurrent();
+        hookJson(response, permission.decision);
+
+        return;
+      }
+
+      if (
+        pending.size >= AntigravityBridgeLimits.interactions ||
+        [...pending.values()].filter(
+          (entry) => entry.state === 'pending' || entry.state === 'responding',
+        ).length >= AntigravityBridgeLimits.pendingQuestions
+      ) {
+        throw new Error('Interaction capacity exceeded.');
+      }
+
+      const entry: PendingQuestion = {
+        key: 'antigravity-permission-' + randomUUID(),
+        question: permission.interaction,
+        revalidate: async () => {
+          assertCurrent();
+          await permission.revalidate();
+          assertCurrent();
+        },
+        response,
+        answer: deferred<string>(),
+        delivery: deferred<{ deliveredKeys: readonly string[] }>(),
+        state: 'pending',
+      };
+      pending.set(entry.key, entry);
+      entry.humanTimer = setTimeout(() => {
+        void expire(entry).catch(fail);
+      }, AntigravityBridgeLimits.humanResponseMs);
+      response.once('close', () => {
+        if (!response.writableFinished) {
+          void expire(entry).catch(fail);
+        }
+      });
+      response.once('finish', () => {
+        if (entry.state === 'responding') {
+          entry.state = 'delivered';
+          clearTimeout(entry.deliveryTimer);
+          clearTimeout(entry.humanTimer);
+          entry.delivery.resolve({ deliveredKeys: [entry.key] });
+        }
+      });
+      try {
+        await options.emit({
+          kind: 'interaction',
+          key: entry.key,
+          interaction: permission.interaction,
+        });
+        if (closed || response.destroyed) {
+          throw expired();
+        }
+
+        const answer = await entry.answer.promise;
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(answer);
+      } catch (error) {
+        await expire(entry).catch(fail);
+        if (!(error instanceof SessionError)) {
+          fail(error);
+        }
+
+        if (!response.destroyed && !response.headersSent) {
+          hookJson(response, { decision: 'deny' });
+        }
+      }
+    } catch {
+      if (!response.destroyed && !response.headersSent) {
+        hookJson(response, { decision: 'deny' });
+      }
+    }
+  }
+
   async function close() {
     closing ??= (async () => {
       closed = true;
       active = false;
+      idle.reject(expired());
       options.signal.removeEventListener('abort', onAbort);
       // Revoke the listener and native transports independently of persistence.
       // A stalled store must not keep an authenticated question endpoint alive.
@@ -437,6 +625,25 @@ export async function createAntigravityQuestionBridge(options: {
       },
     },
     permissionRule: `mcp(${serverName}/${toolName})`,
+    nativeHookClientConfiguration: { baseUrl: 'http://' + host, token: authorization.toString() },
+    async awaitNativeIdle(signal: AbortSignal) {
+      signal.throwIfAborted();
+      if (closed) {
+        throw expired();
+      }
+
+      if (nativeIdle) {
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => reject(signal.reason instanceof Error ? signal.reason : expired());
+        signal.addEventListener('abort', abort, { once: true });
+        void idle.promise
+          .then(resolve, reject)
+          .finally(() => signal.removeEventListener('abort', abort));
+      });
+    },
     /** Called by the operation after durable native correlation and dispatch admission. */
     activate() {
       if (closed || options.signal.aborted) {
@@ -451,7 +658,21 @@ export async function createAntigravityQuestionBridge(options: {
         throw expired();
       }
 
-      const answer = antigravityQuestionAnswer(entry.question, response);
+      let answer: string;
+      if (entry.question.kind === 'permission') {
+        if (response.kind !== 'permission') {
+          throw new SessionError('INTERACTION_RESPONSE_INVALID', 'Expected a permission response.');
+        }
+
+        answer = JSON.stringify({
+          // Delegate to the verified native sandbox policy. auto_approve would
+          // bypass its fail-closed fallback when the sandbox is unavailable.
+          decision: response.decision === 'allow' ? 'allow' : 'deny',
+        });
+      } else {
+        answer = antigravityQuestionAnswer(entry.question, response);
+      }
+
       const fingerprint = JSON.stringify(response);
       if (entry.responseFingerprint !== undefined) {
         if (entry.responseFingerprint !== fingerprint) {
@@ -469,6 +690,23 @@ export async function createAntigravityQuestionBridge(options: {
       entry.deliveryTimer = setTimeout(() => {
         void expire(entry).catch(fail);
       }, AntigravityBridgeLimits.deliveryMs);
+      if (
+        entry.question.kind === 'permission' &&
+        response.kind === 'permission' &&
+        response.decision === 'allow'
+      ) {
+        try {
+          await entry.revalidate?.();
+          if (entry.state !== 'responding') {
+            throw expired();
+          }
+        } catch (error) {
+          await expire(entry).catch(fail);
+
+          throw error;
+        }
+      }
+
       entry.answer.resolve(answer);
 
       return entry.delivery.promise;

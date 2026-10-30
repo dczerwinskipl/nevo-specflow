@@ -3,6 +3,11 @@ import { Value } from 'typebox/value';
 
 const closed = { additionalProperties: false } as const;
 const label = Type.String({ minLength: 1, maxLength: 128 });
+const protocolProfiles = new Map([
+  ['claude', 'claude-stream-json-v1'],
+  ['codex', 'codex-app-server-v2'],
+  ['antigravity', 'antigravity-stream-json-v1'],
+]);
 export const CompatibilityRecordSchema = Type.Object(
   {
     providerId: label,
@@ -84,12 +89,7 @@ export function classifyProviderInstallation(
   installation: ProviderInstallationIdentity,
   trustedRecords: readonly ImmutableRecord[] = [bundledClaudeBuild],
 ): ProviderCompatibility {
-  const profile =
-    installation.providerId === 'claude'
-      ? 'claude-stream-json-v1'
-      : installation.providerId === 'codex'
-        ? 'codex-app-server-v2'
-        : undefined;
+  const profile = protocolProfiles.get(installation.providerId);
   if (!profile || installation.platform !== 'win32' || installation.architecture !== 'x64') {
     return {
       classification: 'unsupported',

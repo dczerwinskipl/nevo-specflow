@@ -45,6 +45,11 @@ Both flags default to false. Local overrides and unknown provider keys are rejec
 Start the existing product server and open `/sessions/new`; created chats use `/sessions/:sessionId`.
 The explicitly labelled mock performs no external effects. The optional Claude adapter uses this
 same API; see [Claude enablement and supported installations](../../ideas/specflow-runtime/claude-provider.md).
+The optional Windows x64 Antigravity consumer CLI adapter uses the same routes:
+set `sessions.providers.antigravity.enabled: true` (and optionally its absolute
+`executable` path). It uses the existing native keyring login, private per-Session
+configuration and Engine-managed write admission. See
+[Antigravity implementation and acceptance limits](../../ideas/specflow-runtime/antigravity-provider.md).
 Imported Nevo history and writable Engine execution remain outside this foundation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
 

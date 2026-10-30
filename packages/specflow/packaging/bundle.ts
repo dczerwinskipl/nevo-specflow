@@ -76,6 +76,21 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     logLevel: 'silent',
   });
 
+  // Native hook subprocesses use a fixed installed entry beside the product CLI.
+  await build({
+    absWorkingDir: cwd,
+    entryPoints: [
+      fileURLToPath(new URL('../../specflow-runtime/src/antigravity-hook.ts', import.meta.url)),
+    ],
+    outfile: join(dirname(outfile), 'antigravity-hook.js'),
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node24',
+    packages: 'bundle',
+    logLevel: 'silent',
+  });
+
   copyProductUiAssets(
     input.uiSourceDir ?? resolve(cwd, '..', 'specflow-ui', 'dist'),
     dirname(outfile),

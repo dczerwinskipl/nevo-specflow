@@ -178,6 +178,18 @@ function installedManifest(): Record<string, unknown> {
 }
 
 describe('packaged @nevo/specflow — isolated tarball install', () => {
+  it('runs the installed native hook helper and denies missing private configuration', () => {
+    const helper = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'antigravity-hook.js');
+    const output = execFileSync(process.execPath, [helper, 'pre-tool-use'], {
+      cwd: prefix,
+      env: {},
+      input: '{}',
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    expect(JSON.parse(output)).toEqual({ decision: 'deny' });
+  });
+
   it.runIf(process.platform === 'win32')(
     'loads the installed Windows Job Object binding without workspace dependencies',
     () => {
@@ -246,6 +258,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         'package/THIRD_PARTY_NOTICES.txt',
         'package/dist/bin.js',
         'package/dist/session-worker.js',
+        'package/dist/antigravity-hook.js',
         'package/dist/native/koffi/index.cjs',
         'package/dist/native/@koromix/koffi-win32-x64/win32_x64/koffi.node',
         'package/dist/native/@koromix/koffi-win32-arm64/win32_arm64/koffi.node',
@@ -266,6 +279,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
           path === 'package/package.json' ||
           path === 'package/dist/bin.js' ||
           path === 'package/dist/session-worker.js' ||
+          path === 'package/dist/antigravity-hook.js' ||
           path.startsWith('package/dist/native/') ||
           path.startsWith('package/dist/ui/') ||
           path.startsWith('package/dist/definitions/'),

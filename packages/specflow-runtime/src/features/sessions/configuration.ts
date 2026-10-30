@@ -8,6 +8,7 @@ export interface SessionsFeatureConfig {
     mock: { enabled: boolean };
     claude?: { enabled: boolean; executable?: string };
     codex?: { enabled: boolean; executable?: string };
+    antigravity?: { enabled: boolean; executable?: string };
   };
 }
 export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfig {
@@ -19,7 +20,29 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
   onlyKeys(sessions, new Set(['enabled', 'providers']), 'sessions');
   const providers =
     sessions.providers === undefined ? {} : record(sessions.providers, 'sessions.providers');
-  onlyKeys(providers, new Set(['mock', 'claude', 'codex']), 'sessions.providers');
+  onlyKeys(providers, new Set(['mock', 'claude', 'codex', 'antigravity']), 'sessions.providers');
+  const antigravity =
+    providers.antigravity === undefined
+      ? undefined
+      : record(providers.antigravity, 'sessions.providers.antigravity');
+  if (antigravity) {
+    onlyKeys(antigravity, new Set(['enabled', 'executable']), 'sessions.providers.antigravity');
+    if (antigravity.enabled !== undefined && typeof antigravity.enabled !== 'boolean') {
+      throw new RuntimeConfigError('sessions.providers.antigravity.enabled must be boolean.');
+    }
+
+    if (
+      antigravity.executable !== undefined &&
+      (typeof antigravity.executable !== 'string' ||
+        !isAbsolute(antigravity.executable) ||
+        antigravity.executable.includes('\0'))
+    ) {
+      throw new RuntimeConfigError(
+        'sessions.providers.antigravity.executable must be an absolute native executable path.',
+      );
+    }
+  }
+
   const codex =
     providers.codex === undefined ? undefined : record(providers.codex, 'sessions.providers.codex');
   if (codex) {
@@ -78,6 +101,16 @@ export function parseSessionsFeatureConfig(value: unknown): SessionsFeatureConfi
     enabled: sessions.enabled === true,
     providers: {
       mock: { enabled: mock.enabled === true },
+      ...(antigravity
+        ? {
+            antigravity: {
+              enabled: antigravity.enabled === true,
+              ...(typeof antigravity.executable === 'string'
+                ? { executable: antigravity.executable }
+                : {}),
+            },
+          }
+        : {}),
       ...(codex
         ? {
             codex: {

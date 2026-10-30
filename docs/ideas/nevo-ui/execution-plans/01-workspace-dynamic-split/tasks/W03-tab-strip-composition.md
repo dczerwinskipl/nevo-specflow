@@ -50,13 +50,20 @@ one-tab case is pixel-identical to today's single default Secondary.
 
 ## Acceptance
 
-- With exactly one open tab (the pinned one), Secondary's header renders exactly as it does today
-  (no strip, no switcher button, no layout shift versus current behavior) — this is a pixel/DOM
-  regression check, not just a logical one.
+**Revised 2026-10-30 after external review (Finding 2):** the pinned tab is not guaranteed to
+exist (contract §3, §9 item 2 — a workspace with no declarative `AppWorkspace.Secondary` has none
+until `open`/`openTab` creates one). "Exactly one open tab" below means whichever single entry is
+present — the pinned one, or, in a workspace with no declarative Secondary, the sole `open()`/
+`openTab()`-opened tab — not specifically the pinned one.
+
+- With exactly one open tab, Secondary's header renders exactly as it does today for that case (no
+  strip, no switcher button, no layout shift versus current behavior) — this is a pixel/DOM
+  regression check, not just a logical one, and must hold whether or not that one tab is pinned.
 - With two or more open tabs, `ItemTabs` renders in the Secondary header's content slot, left of
-  header actions, using each tab's title (pinned tab's declared title, opened tabs' stack
-  `title`); activating a tab calls `activateTab`; the pinned tab shows no close affordance (via
-  W01's `closable: false`).
+  header actions, using each tab's title (the pinned tab's declared title when one exists, every
+  other tab's stack `title`); activating a tab calls `activateTab`; the pinned tab, when present,
+  shows no close affordance (via W01's `closable: false`) — every other tab (the legacy `open()`
+  slot or an `openTab()` entry) is closable.
 - Below `ItemTabs`' switcher threshold, the strip collapses to its existing switcher button
   behavior unmodified.
 - Switching tabs via the strip does not remount either tab's content, does not reset either tab's
@@ -68,10 +75,12 @@ one-tab case is pixel-identical to today's single default Secondary.
 
 Storybook interaction stories: "open a second root tab -> strip appears, pinned tab has no close
 control"; "close down to the pinned tab -> strip disappears, header matches the single-Secondary
-baseline exactly"; "activate an existing tab via strip -> no remount" (assert via a mount-counter
-or stable DOM node identity, not just visual state). Axe/a11y check on the strip inside the
-Secondary header context specifically (header height/action-budget interaction, not just
-`ItemTabs` in isolation, which `item-tabs.md` already covers).
+baseline exactly"; "no declarative Secondary, two `openTab` tabs open, close one -> strip
+disappears, remaining tab's header matches the single-Secondary baseline exactly, with no pinned
+tab present"; "activate an existing tab via strip -> no remount" (assert via a mount-counter or
+stable DOM node identity, not just visual state). Axe/a11y check on the strip inside the Secondary
+header context specifically (header height/action-budget interaction, not just `ItemTabs` in
+isolation, which `item-tabs.md` already covers).
 
 Report actual PASS/FAIL/SKIP. Independent review (`nevo-agents:reviewer`) at the parent plan's W07
 gate; no solo gate required for this task alone.

@@ -25,18 +25,30 @@ independent review gates. This is the plan's whole-delivery acceptance gate.
 ## Goal and ownership
 
 Prove the complete auto/manual transition table end-to-end across W01-W06's combined
-implementation, audit (without modifying) every `packages/specflow-ui` consumer relying on today's
-single-flow `open()` semantics — found by re-scanning the package for this pattern at audit time,
-not by trusting the fixed two-file list the contract's §8 recorded when it was written — and
-promote the contract document's and the composition-gaps analysis's status lines from "specified,
-implementation pending" to "implemented" once everything passes.
+implementation, **re-confirm** (without modifying) every `packages/specflow-ui` consumer of
+`open()`/`openTab()` — found by re-scanning the package for the pattern at audit time, not by
+trusting any fixed file list recorded earlier — and promote the contract document's and the
+composition-gaps analysis's status lines from "specified, implementation pending" to "implemented"
+once everything passes.
 
-**Known at audit time (do not treat as exhaustive):** an independent review of a parallel Full
-Session redesign (2026-10-30) found a third consumer of the same pattern, added after the contract
-was written — `packages/specflow-ui/src/features/sessions/managed/context/SessionTasksInspector.tsx`
-(two fixed stack ids opened via `navigation.open` purely to land on a different initial page). The
-contract's §8 and this task's acceptance below are updated accordingly; re-scan regardless, since
-more may land before W07 executes.
+**Revised 2026-10-30 after external review (Finding 3):** this task is no longer the _first_ line
+of defense against a consumer regression — W02 already performed this audit as its own exit
+criterion once the contract's §4.1 `open`/`openTab` split made `open` behavior-unchanged (contract
+§8, §9 item 3). This task's audit is now a **re-confirmation at the end of the whole plan**
+(catching any regression introduced by W03-W06, or any consumer added or changed in the interim),
+not the first discovery of whether `open`'s generalization was safe. It additionally surfaces,
+without acting on them, any consumer that might benefit from migrating to the new `openTab` for a
+genuinely new multi-tab capability (a product decision for the feature owner).
+
+**Known at audit time (do not treat as exhaustive):** confirmed-compatible as of this contract
+revision (2026-10-30): `packages/specflow-ui/src/features/sessions/managed/ManagedSession.tsx`,
+`.../sessions/context/SessionContextPanel.tsx`,
+`.../sessions/managed/context/SessionTasksInspector.tsx` (added 2026-10-30, two fixed stack ids
+opened via `navigation.open` purely to land on a different initial page), and
+`.../tasks/workspace/TaskWorkspace.tsx`'s `taskWorkspaceMaterialStack`/`taskWorkspaceHistoryStack`
+usage (found during this same revision's code review). The contract's §8 and this task's
+acceptance below are updated accordingly; re-scan regardless, since more may land before W07
+executes, and W02's audit result should not simply be copied forward unverified.
 
 - Kind/profile: integration / nevo-agents:implementer-ui.
 - Owner paths: `packages/nevo-ui/src/app/workspace/**` (new end-to-end contract stories only,
@@ -60,21 +72,27 @@ more may land before W07 executes.
 ## Acceptance
 
 - One or more Storybook contract stories exercise the full accepted sequence from V10 §7.2 as a
-  single connected scenario: enter split with only Context-equivalent pinned tab open (narrow) ->
-  open a second root tab (auto 50/50) -> switch tabs (no resize) -> open a dependent detail inside
-  a tab's local stack (no resize) -> drag the splitter (manual wins) -> open/close further tabs
-  (manual preserved) -> swap sides (everything preserved) -> close Secondary -> reopen (restored)
-  -> shrink width below the dynamic minimums (falls back to existing stacked/narrow) -> widen back
-  (restores clamped ratio).
+  single connected scenario: enter split with only one tab open (the pinned one, or — in a
+  workspace with none, contract §4.1/§9 item 2 — the sole `open`/`openTab` tab) (narrow) -> open a
+  second root tab via `openTab` (auto 50/50) -> switch tabs (no resize) -> open a dependent detail
+  inside a tab's local stack (no resize) -> drag the splitter (manual wins) -> open/close further
+  tabs (manual preserved) -> swap sides (everything preserved) -> close Secondary -> reopen
+  (restored) -> shrink width below the dynamic minimums (falls back to existing stacked/narrow) ->
+  widen back (restores clamped ratio). Include one story with no `AppWorkspace.Secondary` declared
+  at all, driven purely by `open`/`openTab`, to prove contract §4.1/§9 item 2's optional-pinned-tab
+  case renders and tears down correctly (Secondary absent when the last tab closes).
 - Every row of the contract's §5 table is traceable to a passing test or story from W01-W06 or
   this task; any row without coverage is a blocking gap, not a note for later.
-- Every `packages/specflow-ui` consumer of the single-flow `open()` pattern — found by re-scanning
-  the package (grep for `navigation.open`/`defineSecondaryStack` fixed-id usage), not just the
-  files already named in the contract's §8 (`ManagedSession.tsx`, `SessionContextPanel.tsx`,
-  `context/SessionTasksInspector.tsx` as of 2026-10-30) — is inspected against the generalized
-  `open` semantics and the actual outcome (behavior-compatible vs. behavior-changed) is recorded
-  factually per file; this task does not modify any of them — a behavior change found here is
-  reported to the feature owner as follow-up, not silently fixed.
+- Every `packages/specflow-ui` consumer of `open()`/`openTab()` — found by re-scanning the package
+  (grep for `navigation.open`/`navigation.openTab`/`defineSecondaryStack` fixed-id usage), not just
+  the files already confirmed in the contract's §8 as of this revision (`ManagedSession.tsx`,
+  `SessionContextPanel.tsx`, `SessionTasksInspector.tsx`, `TaskWorkspace.tsx`) — is re-inspected
+  against the (unchanged) `open` semantics and the (new, opt-in) `openTab` semantics, and the
+  actual outcome (behavior-compatible vs. behavior-changed vs. an `openTab`-migration candidate
+  worth flagging to the feature owner) is recorded factually per file; this task does not modify
+  any of them — a behavior change found here is reported to the feature owner as follow-up, not
+  silently fixed. This re-confirms W02's own exit-criterion audit rather than performing it for the
+  first time (Finding 3) — report explicitly whether this audit's result matches W02's.
 - `useOpenedItems`/`ItemTabs` existing (pre-W01) Storybook/unit suites still pass unmodified.
 - Only after the above passes: update the contract document's §1 status line and the
   composition-gaps document's §5.4 status line from "specified, implementation pending" to
@@ -90,7 +108,11 @@ named files, and any intentional deviation from the contract discovered during e
 
 Independent review (`nevo-agents:reviewer`) at this task's gate is the plan's whole-delivery
 review; a failed gate blocks promoting either status line and blocks any dependent product work
-(for example a Full Session redesign) from treating this capability as available.
+(for example a Full Session redesign) from treating this capability as available. Because W02
+already gated on the consumer audit, a failure here specifically on the audit (as opposed to the
+transition-table coverage) indicates either a regression introduced by W03-W06 or a new consumer
+added since W02 — treat it with the same severity as a transition-table failure, not as a lesser
+finding.
 
 ## Out of scope
 

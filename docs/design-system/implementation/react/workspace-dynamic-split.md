@@ -45,6 +45,18 @@ make; nothing here should be read as a description of current behavior. Current 
 exactly what [the Secondary navigation contract](secondary-navigation.md) and `workspaceSizing.ts`
 describe until those deltas land.
 
+**Revised 2026-10-30 after external review** (independent of this repository's own review
+process, which had already passed this document once): the review read this contract, the W01-W07
+task breakdown, and the actual current `AppWorkspace`/`WorkspaceContext` source, and found four
+problems in the contract itself — root-tab identity conflated "which stack" with "which specific
+opened instance" (§4.1, §8), the pinned tab was specified as unconditionally present even though
+`AppWorkspace` correctly supports a Secondary with no declarative content at all (§3, §9), the
+single-flow-consumer compatibility audit was scheduled only at the end of the plan instead of at
+the task that actually changes the risky behavior, and the execution plan's file-independence claim
+for its "parallel-safe" task pairs was wrong. All four are addressed below; each change is marked
+where it revises a prior decision rather than silently overwriting it. No implementation exists yet
+for any of W01-W07, so there is no code to reconcile — this is a pre-implementation spec fix.
+
 This document does not decide product behavior. It generalizes existing design-system mechanics
 (`AppWorkspace`, `AppWorkspaceProvider`/`WorkspaceContext`, `secondaryNavigationModel`,
 `workspaceSizing`, `useOpenedItems`/`ItemTabs`) to carry the already-accepted Workspace V2
@@ -90,14 +102,27 @@ changes, independent of route/URL.
    [§5.2](../../../ideas/specflow-ui/design-system-component-composition-gaps.md#52-p0--default-context-secondary-cannot-currently-be-dismissed-persistently)).
    Generalizes unchanged to "the whole tab region is shown or hidden"; tabs/flows/sizing survive
    while hidden (section 9.2 — this is a required behavior change from today's `close` semantics).
-2. **Root tabs** — an ordered set, one entry per independently revisitable root: the pinned entry
-   (today's declarative `AppWorkspace.Secondary` content) plus zero or more opened entries (today's
-   single runtime flow, now plural). Each entry has:
-   - a stable `id` (the pinned entry's id is fixed by the host; an opened entry's id is its
-     `SecondaryStackDefinition.id`, exactly as today);
-   - `closable: boolean` (`false` only for the pinned entry);
+2. **Root tabs** — an ordered set, one entry per independently revisitable root. **Revised
+   2026-10-30 after external review:** the set is composed from up to three independent sources,
+   all optional except that at least one must be present for Secondary to show anything:
+   - **The pinned entry** — today's declarative `AppWorkspace.Secondary` content, present only
+     when `AppWorkspace.Secondary` is rendered with `open !== false` (§9 item 2; see §4.1 for the
+     no-pinned-tab case, which is real and already supported by today's `AppWorkspace`).
+   - **The legacy `open()` slot** — at most one entry, present once `open()` has been called and
+     not yet closed, regardless of which `SecondaryStackDefinition` was passed to it (§4.1).
+   - **`openTab()`-opened entries** — zero or more, one per distinct computed **tab instance id**
+     (§4.1).
+
+   Each entry has:
+   - a stable **tab instance id** (`id`), distinct from its **definition id**
+     (`SecondaryStackDefinition.id`, which stack/root _kind_ this is — used for display/debugging
+     and, for `openTab()`, as part of deriving the instance id; never used alone as the tab's
+     identity — see §4.1 for why conflating the two was the P1 bug this revision fixes);
+   - `closable: boolean` (`false` only for the pinned entry; the legacy slot and every `openTab()`
+     entry are closable);
    - its own local navigation flow: current page, local back/forward stack, scroll, focus —
      exactly today's per-flow state, one instance per tab instead of one instance total.
+
 3. **Active tab id** — which root tab is currently shown. Switching tabs changes only this value.
 4. **Sizing mode** — `'auto' | 'manual'`, scoped to the workspace, independent of which tabs are
    open.
@@ -118,8 +143,26 @@ Session/product runtime fact (new message, new Work, new Turn).
 
 ### 4.1 Root tabs
 
-`useSecondaryNavigation()` keeps its existing shape and gains tab-set fields, mirroring
-`useOpenedItems`'s shape so a reader already familiar with `ItemTabs` recognizes it immediately:
+**Revised 2026-10-30 after external review (Finding 1, P1/blocking):** the original draft of this
+section identified a root tab only by `definition.id` and specified that re-`open()`-ing an already
+open id activates it **unchanged**, ignoring the new `params`. That is wrong for the consumer
+pattern this document itself records in §8: a product that calls `open(workStack, { turnId })` with
+a fixed `workStack.id` once per inspected Turn needs the _second_ call (Turn B) to actually show
+Turn B's data, not silently reactivate Turn A's stale tab. The root cause was conflating two
+different things a product might want from one `open`-shaped call:
+
+1. **One tab for this definition, always showing the latest params** (today's actual behavior:
+   `ManagedSession.tsx`'s per-Turn Work flow, `SessionContextPanel.tsx`'s/`SessionTasksInspector
+.tsx`'s fixed-id "different initial page of the same screen" trick, `taskWorkspaceMaterialStack`
+   in `TaskWorkspace.tsx` — confirmed by reading these files, see §8).
+2. **One tab per distinct entity, all independently open and revisitable at once** (a genuinely new
+   capability — e.g. Work-for-Turn-A and Work-for-Turn-B open as two separate tabs simultaneously).
+
+A single `open(definition, params)` cannot be both "replace this slot's params" and "leave this
+instance's params untouched" depending on the caller's intent, so this revision splits it into two
+methods that share the same tab-set state and the same `definitionId`/`tabInstanceId` distinction,
+and gives the implementer (and any future consumer, including the Full Session screen) an explicit,
+named choice between the two operations instead of one overloaded one:
 
 ```ts
 interface SecondaryTabsState {
@@ -127,9 +170,37 @@ interface SecondaryTabsState {
   activeTabId: string | null;
 }
 
+interface SecondaryStackDefinition<TRoot, TData, TPages> /* existing, extended */ {
+  id: string; // definition id — "which stack/root kind", unchanged meaning
+  /**
+   * Opt-in: derives a tab's identity from its open params, so distinct params produce distinct,
+   * independently-open tabs under `openTab`. Omit for a definition that only ever wants a single
+   * tab (the common case today). Has no effect on `open` (see below) — `open` never multiplies.
+   */
+  instanceId?: (params: TRoot) => string;
+  // ...existing initial/screens/useData fields, unchanged
+}
+
 interface WorkspaceContextValue /* existing, extended */ {
   // existing: secondary, secondaryDepth, canGoBack, transition, back, close, canLeaveScope
+  /**
+   * Unchanged signature AND unchanged observable behavior from today: always creates-or-replaces
+   * the single "legacy open slot" tab, regardless of which `definition` is passed and regardless
+   * of `definition.instanceId` (which `open` never consults) — this is deliberately today's
+   * discard-the-prior-flow-and-start-this-one semantics, now expressed as one tab in the
+   * generalized tab set instead of the sole flow. Existing callers observe zero behavior change
+   * (section 8).
+   */
   open: <TRoot extends object, TData, TPages extends object>(
+    definition: SecondaryStackDefinition<TRoot, TData, TPages>,
+    params: TRoot,
+  ) => Promise<boolean>;
+  /**
+   * New. Opens or activates a tab keyed by `tabInstanceId` (below), the generalized "one tab per
+   * independently revisitable root" operation the rest of this section describes. Use this, not
+   * `open`, for a product that wants multiple simultaneous tabs of the same definition.
+   */
+  openTab: <TRoot extends object, TData, TPages extends object>(
     definition: SecondaryStackDefinition<TRoot, TData, TPages>,
     params: TRoot,
   ) => Promise<boolean>;
@@ -140,35 +211,61 @@ interface WorkspaceContextValue /* existing, extended */ {
 }
 ```
 
-- `open(definition, params)` keeps its exact current signature. Its semantics change from
-  "discard the prior flow and start this one" to **"open or activate the tab whose id is
-  `definition.id`"**: if that tab is not open, create it at its registered initial page and
-  activate it; if it is already open, activate it and leave its existing flow (page, local stack,
-  scroll, focus) untouched — this is `useOpenedItems.open`'s existing rule
+- **`tabInstanceId` derivation (used by `openTab` only):** when `definition.instanceId` is
+  provided, `tabInstanceId` is `definition.id` joined with `definition.instanceId(params)` (for
+  example `"work:turn-42"`); when it is omitted, `tabInstanceId` is just `definition.id`. Omitting
+  `instanceId` on the definition means `openTab` behaves like a single named tab for that
+  definition (create once, then activate unchanged on every later call with that id) — still a
+  strict generalization, just not a multiplying one. Providing `instanceId` (e.g. `(params) =>
+params.turnId`) makes every distinct derived value its own tab.
+- **`open(definition, params)`** keeps its exact current signature **and its exact current
+  observable behavior**: it always targets one reserved slot (not keyed by `definition.id` or any
+  derived instance id) that is shared across every `open` call regardless of which definition is
+  passed, exactly like today's single nullable flow. Calling it when the slot is empty creates a
+  tab there at the registered initial page and activates it (now a `closable: true` entry in the
+  tab set, so it participates in the tab strip/sizing like any other tab). Calling it again —
+  with the same or a different definition, same or different params — **replaces** that slot's
+  entry: discards its local stack/scroll/focus and starts fresh at the new definition's initial
+  page with the new params, then activates it. This is deliberately NOT "activate unchanged";
+  that rule belongs to `openTab` below. Because the slot is global and replace-on-every-call, this
+  is the operation that preserves §8's recorded consumer patterns byte-for-byte (see §8).
+- **`openTab(definition, params)`** is the generalized, multi-tab-capable operation: compute
+  `tabInstanceId` as above; if no tab with that id is open, create one at its registered initial
+  page and activate it; if one is already open, activate it and leave its existing flow (page,
+  local stack, scroll, focus) untouched — this is `useOpenedItems.open`'s existing rule
   ("[o]pening an item whose id is already open activates it instead of adding another"; "[a]n
-  existing item keeps its stored value") applied to flows instead of generic items. This is a
-  breaking semantic change from today's single-flow `open` (section 8).
+  existing item keeps its stored value") applied to flows instead of generic items, now correctly
+  scoped to a method whose whole contract is "the instance id is the full identity," unlike `open`.
+  This is additive: no existing caller uses it, so it changes nothing for `packages/specflow-ui`
+  until a consumer deliberately adopts it.
 - `activateTab(id)` switches the active tab without touching any flow. Unknown ids are ignored,
-  mirroring `useOpenedItems.activate`.
+  mirroring `useOpenedItems.activate`. Operates uniformly over pinned/legacy-slot/`openTab` entries.
 - `closeTab(id)` closes one tab (consulting its own leave guard via the same mechanism
   `useSecondaryLeaveGuard` already registers per entry). Closing the pinned tab is refused
   (`closable: false`), matching how `useOpenedItems` would need a "closable" extension it does not
-  have today (see 9.1). Closing the active tab activates its right neighbor, else its left one
+  have today (see 9.1). Closing the legacy `open()` slot or an `openTab` entry behaves identically
+  (both are `closable: true`): the active tab's right neighbor activates, else its left one
   (reuses `useOpenedItems`'s existing neighbor rule verbatim); closing the last remaining tab closes
-  the whole Secondary region, exactly like today's `back`-at-root behavior.
+  the whole Secondary region if there is no pinned tab (§3, §4.2), else leaves only the pinned tab
+  active, exactly like today's `back`-at-root behavior.
 - `useSecondaryStack<TPages>()` is unchanged: it is already scoped to "the flow that mounted this
   screen," which continues to mean "this tab's flow," not the whole workspace.
 - `AppWorkspace.Secondary`'s declarative children keep defining the pinned tab's static content and
   keep their existing `open`/`onOpenChange` props for the whole-region open/closed state (item 1 of
-  section 3). No new required prop on `AppWorkspace.Secondary`.
+  section 3). No new required prop on `AppWorkspace.Secondary`. **Revised 2026-10-30 (Finding 2):**
+  `AppWorkspace.Secondary` remains fully optional, exactly as today — a workspace with no
+  `AppWorkspace.Secondary` child and no `open`/`openTab` call simply has no Secondary at all
+  (confirmed against `AppWorkspace.tsx`'s `resolveComposedWorkspace`/`AppWorkspaceRoot`, which
+  already treats `defaultSecondary` as optional and `secondaryPresentation` as possibly `undefined`
+  — see §9 item 2 for the exact code this generalizes).
 - The tab strip itself is rendered by `AppWorkspace` inside the existing Secondary header region
   using `ItemTabs`, following the already-specified
   [Content tabs host pattern](item-tabs.md#content-tabs-host-pattern-not-implemented-in-nevo-ui):
   `AppWorkspace` is the blind host; each tab supplies `label`/`title` from its stack definition (or
   the pinned content's declared title) and no close affordance when `closable: false`. The tab
-  strip MUST NOT render at all when exactly one tab (the pinned one) is open — this is the existing
-  "only pinned Context open" case and must look identical to today's single default Secondary, not
-  a one-tab strip.
+  strip MUST NOT render at all when exactly one tab is open, whether that one tab is the pinned one
+  (today's "only pinned Context open" case, pixel-identical to today's single default Secondary) or
+  the sole `open()`/`openTab()`-opened tab in a workspace with no pinned tab at all (§4.2).
 
 ### 4.2 Sizing and side
 
@@ -202,7 +299,11 @@ interface CommonAppWorkspaceProps /* existing, extended */ {
   ```ts
   interface DynamicSplitInput {
     availableWidth: number | undefined;
-    openTabCount: number; // tabs.tabs.length from 4.1; pinned tab counts as one
+    // tabs.tabs.length from 4.1: pinned tab (if present) + legacy open() slot (if present) +
+    // openTab() entries. A workspace with no pinned tab and nothing opened has openTabCount 0,
+    // in which case the resolver is moot — AppWorkspace does not render Secondary at all (§4.1,
+    // §9 item 2; revised 2026-10-30, Finding 2 — the pinned tab is not guaranteed to exist).
+    openTabCount: number;
     mode: 'auto' | 'manual';
     manualRatio: number | null; // Secondary's share, 0-1, when mode is 'manual'
     previousOpenTabCount: number; // to detect "a tab was just opened" vs "switched/closed"
@@ -251,21 +352,22 @@ This restates
 [V10 §7.2](../../../ideas/specflow-ui/components/session-chat-v10-design.md#72-automanual-transition-rules)
 as the resolver's exact behavior. Each row is a MUST unless marked otherwise.
 
-| Trigger                                                                                               | Required `AppWorkspace`/resolver behavior                                                                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Enter split-capable workspace, only the pinned tab open                                               | `layout: 'split'`, `mode: 'auto'`, narrow default Secondary width (≈330px, tunable)                                                                                                                        |
-| `open()` creates a brand-new 2nd root tab (not re-activating an existing one) while `mode === 'auto'` | Switch to 50/50 once: `secondaryRatio` becomes 0.5 for this render and stays 'auto'                                                                                                                        |
-| `activateTab()` among already-open tabs                                                               | No resize: `secondaryRatio`/`mode` unchanged; only `activeTabId` changes                                                                                                                                   |
-| Push/pop inside a tab's local stack (dependent Task/event/ToolAction detail)                          | No resize: the resolver never receives this as input (section 6)                                                                                                                                           |
-| `closeTab()` reduces open tabs to just the pinned one, while `mode === 'auto'`                        | `mode` stays `'auto'`, ratio returns to the narrow default                                                                                                                                                 |
-| User drags `WorkspaceSplitter`                                                                        | `mode` becomes `'manual'`; `manualRatio` is set to the dragged value and now wins                                                                                                                          |
-| In `mode === 'manual'`, any `open()`/`activateTab()`/`closeTab()`                                     | `manualRatio` is preserved; no automatic 50/50                                                                                                                                                             |
-| `secondarySide` changes                                                                               | `secondaryRatio`, `mode`, `tabs`, `activeTabId`, and every tab's local stack/scroll/focus are all preserved; only layout order changes                                                                     |
-| Secondary explicitly closed (whole region)                                                            | Region hidden; `tabs`, `activeTabId`, `mode`, and `manualRatio`/auto ratio are retained, not discarded (section 9.2)                                                                                       |
-| Secondary explicitly reopened                                                                         | Restores the exact `mode`/ratio/tabs/`activeTabId` it had when closed, clamped to section 4.2's current valid range                                                                                        |
-| `availableWidth` can no longer fit the current ratio's panes even after clamping                      | Fall back to the existing stacked/narrow model via the existing path; `manualRatio`/`mode` are preserved unrendered, not discarded                                                                         |
-| `availableWidth` becomes split-capable again                                                          | Restore the preserved `mode`/ratio, clamped to the current valid range, not reset to the auto default                                                                                                      |
-| Live Session/product update (new Turn, new Work, new message)                                         | MUST NOT appear in `DynamicSplitInput` at all; it cannot resize, switch tabs, or reopen a closed Secondary because the resolver and the tab-set have no input through which such an event could reach them |
+| Trigger                                                                                                                                                                                                                                | Required `AppWorkspace`/resolver behavior                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enter split-capable workspace, only one tab open (the pinned one, or — with no pinned tab, §4.1 — the sole `open()`/`openTab()` tab)                                                                                                   | `layout: 'split'`, `mode: 'auto'`, narrow default Secondary width (≈330px, tunable)                                                                                                                        |
+| `open()` replaces its slot's content while that slot was already the only non-pinned tab (tab count unchanged), or `openTab()` creates a brand-new tab (tab count +1, not re-activating an existing instance), while `mode === 'auto'` | Replace-in-place (tab count unchanged): no resize. Brand-new tab (tab count +1): switch to 50/50 once — `secondaryRatio` becomes 0.5 for this render and stays `'auto'`                                    |
+| `activateTab()` among already-open tabs, or `openTab()` re-activating an already-open instance unchanged                                                                                                                               | No resize: `secondaryRatio`/`mode` unchanged; only `activeTabId` changes                                                                                                                                   |
+| Push/pop inside a tab's local stack (dependent Task/event/ToolAction detail)                                                                                                                                                           | No resize: the resolver never receives this as input (section 6)                                                                                                                                           |
+| `closeTab()` reduces open tabs to just the pinned one (if one exists), while `mode === 'auto'`                                                                                                                                         | `mode` stays `'auto'`, ratio returns to the narrow default                                                                                                                                                 |
+| `closeTab()` closes the last remaining tab in a workspace with no pinned tab                                                                                                                                                           | Secondary has none; `layout`/`secondaryRatio`/`mode` become moot until a tab opens again (§4.1, §9 item 2)                                                                                                 |
+| User drags `WorkspaceSplitter`                                                                                                                                                                                                         | `mode` becomes `'manual'`; `manualRatio` is set to the dragged value and now wins                                                                                                                          |
+| In `mode === 'manual'`, any `open()`/`openTab()`/`activateTab()`/`closeTab()`                                                                                                                                                          | `manualRatio` is preserved; no automatic 50/50                                                                                                                                                             |
+| `secondarySide` changes                                                                                                                                                                                                                | `secondaryRatio`, `mode`, `tabs`, `activeTabId`, and every tab's local stack/scroll/focus are all preserved; only layout order changes                                                                     |
+| Secondary explicitly closed (whole region)                                                                                                                                                                                             | Region hidden; `tabs`, `activeTabId`, `mode`, and `manualRatio`/auto ratio are retained, not discarded (section 9.2)                                                                                       |
+| Secondary explicitly reopened                                                                                                                                                                                                          | Restores the exact `mode`/ratio/tabs/`activeTabId` it had when closed, clamped to section 4.2's current valid range                                                                                        |
+| `availableWidth` can no longer fit the current ratio's panes even after clamping                                                                                                                                                       | Fall back to the existing stacked/narrow model via the existing path; `manualRatio`/`mode` are preserved unrendered, not discarded                                                                         |
+| `availableWidth` becomes split-capable again                                                                                                                                                                                           | Restore the preserved `mode`/ratio, clamped to the current valid range, not reset to the auto default                                                                                                      |
+| Live Session/product update (new Turn, new Work, new message)                                                                                                                                                                          | MUST NOT appear in `DynamicSplitInput` at all; it cannot resize, switch tabs, or reopen a closed Secondary because the resolver and the tab-set have no input through which such an event could reach them |
 
 Two rows are intentionally **not** a single frozen MUST, per
 [V10 §10.2](../../../ideas/specflow-ui/full-session-screen-structure.md#102-desktop-geometry)
@@ -286,8 +388,8 @@ These are explicit exclusions, not omissions to revisit casually:
   field through which this information could flow.
 - Live/streaming product updates (a new message, Work item, Turn, or interaction) MUST NOT resize
   the workspace, MUST NOT change `activeTabId`, and MUST NOT reopen a Secondary the user explicitly
-  closed. Only `open`, `activateTab`, `closeTab`, splitter drag, and `secondarySide` changes are
-  legitimate triggers for any of owned-state items 1, 3, 4, 5, 6 in section 3.
+  closed. Only `open`, `openTab`, `activateTab`, `closeTab`, splitter drag, and `secondarySide`
+  changes are legitimate triggers for any of owned-state items 1, 3, 4, 5, 6 in section 3.
 - `secondarySide` and manual-ratio drag MUST NOT change the Session/product route, provider,
   current Turn, Composer draft, any tab's identity, or any tab's local stack — these are pure
   layout operations (restated from V10 §7.3, which is already a product-level non-goal; this
@@ -335,52 +437,90 @@ A real interactive control, not a styled `Separator`:
 
 ## 8. Compatibility notes for existing single-flow consumers
 
-Today, `open(stack, params)` always discards the prior flow (section 4.1). At least these patterns
-in `packages/specflow-ui` rely on that today and will observe a behavior change once `open`'s
-semantics generalize to "open-or-activate a tab". This list is evidence captured at the time this
-document was written, not a closed set — W07 MUST re-scan `packages/specflow-ui` for the pattern
-rather than trust it as exhaustive, since consumers may be added before W07 executes (one already
-was, see the third entry below, added 2026-10-30 during a parallel Full Session redesign pass):
+**Revised 2026-10-30 after external review (Finding 1 and Finding 3):** the original draft of this
+section assumed `open`'s semantics themselves would generalize to "open-or-activate a tab keyed by
+`definition.id`", which — per §4.1's revision — was the P1 bug: it would have broken every listed
+consumer, not preserved them. With §4.1's split (`open` keeps its exact current behavior; `openTab`
+is the new, additive, multi-tab-capable method), every consumer below is **behavior-compatible by
+construction**, not by luck: none of them call a method whose behavior changed. This section now
+records that confirmed-compatible status per consumer and, where relevant, whether the consumer
+_could_ opt into `openTab` later for a genuinely new capability — a product decision for the
+feature owner, not something this document decides. This list is evidence captured at the time this
+document was written, not a closed set — W02's audit (moved earlier per Finding 3 below) and W07's
+final audit MUST each re-scan `packages/specflow-ui` for the pattern rather than trust it as
+exhaustive, since consumers may be added before either executes (two already were since this
+document's first version: `SessionTasksInspector.tsx`, and `TaskWorkspace.tsx`'s
+`taskWorkspaceMaterialStack`/`taskWorkspaceHistoryStack`, confirmed by reading the file during this
+revision):
 
 - `packages/specflow-ui/src/features/sessions/managed/ManagedSession.tsx` calls
-  `navigation.open(workStack, { sessionId, turnId })` once per inspected Turn's Work. Today, opening
-  a second Turn's Work discards the first; under this contract it instead opens a second tab unless
-  `workStack`'s `id` is turn-invariant (today it is a fixed `'work'`-style id, so distinct Turns
-  reuse the same tab id and continue to replace each other — but this must be verified, not
-  assumed, once the generalization lands).
-- `packages/specflow-ui/src/features/sessions/context/SessionContextPanel.tsx` (the demo-era
-  Context panel this entry originally described, with its three stack ids
-  `demo-session-documents`/`demo-session-project`/`demo-session-instructions`) has been **deleted**:
-  the Full Session route reconciliation pass (2026-10-30) retired the nested
-  `/specs/:specId/sessions/:sessionId` placeholder it backed, in favor of the canonical
-  `/sessions/:sessionId` route (`ManagedSession`/`context/SessionContext.tsx` — see the next entry).
-  It is no longer a known consumer; there is nothing left for W07 to revisit here.
+  `navigation.open(workStack, { sessionId, turnId })` once per inspected Turn's Work, with a fixed
+  `workStack.id`. **Compatible, unchanged behavior**: `open`'s legacy slot is global and
+  replace-on-every-call regardless of id or params, so Turn B's `open()` still replaces Turn A's,
+  exactly as today. _Product option, not required:_ if the feature owner later wants Work-for-Turn-A
+  and Work-for-Turn-B open as two independent, simultaneous tabs, that is a deliberate migration to
+  `openTab(workStack, { sessionId, turnId })` with `workStack.instanceId = (params) => params
+.turnId` added to the definition — a product decision outside this document's scope.
+- `packages/specflow-ui/src/features/sessions/context/SessionContextPanel.tsx` defines three
+  separate stack _ids_ (`demo-session-documents`, `demo-session-project`,
+  `demo-session-instructions`) purely so that opening each one discards the others and lands on a
+  different initial page of the same screen set. **Compatible, unchanged behavior**: because `open`
+  never keys its slot by `definition.id`, calling `open` with any of these three definitions still
+  replaces the same single legacy slot the other two also target — the "opening one discards the
+  others" behavior this consumer relies on is preserved exactly, with no migration needed. (This
+  file is the demo-era Context panel; a parallel Full Session redesign pass is expected to supersede
+  it with `context/SessionContext.tsx` — see the next entry — so it may become moot independently of
+  this compatibility finding.)
 - `packages/specflow-ui/src/features/sessions/managed/context/SessionTasksInspector.tsx` (added
   2026-10-30) defines two fixed stack ids (`managed-session-tasks`, `managed-session-task-detail`)
-  for the same reason the former demo-era `SessionContextPanel.tsx` did (see above, now deleted) —
-  landing on a different initial page of the same Tasks inspector via `navigation.open`, not
-  actually wanting two independent tabs. Same consequence, same disposition: revisit under the
-  generalized `open`, not solved here.
+  for the identical reason as `SessionContextPanel.tsx` above. **Compatible, unchanged behavior**,
+  same reasoning: all `open` calls share the one global legacy slot regardless of definition id.
+- `packages/specflow-ui/src/features/tasks/workspace/TaskWorkspace.tsx` calls
+  `navigation.open(taskWorkspaceMaterialStack, { taskId, id })` with a fixed `id` varying per
+  Material clicked, and `navigation.open(taskWorkspaceHistoryStack, { taskId })` from a different
+  call site in the same flow (found during this revision's code review, not in the document's
+  original consumer list). **Compatible, unchanged behavior**, same reasoning: both calls target the
+  one shared legacy slot, so opening a second Material (or History) still replaces the first exactly
+  as today.
 
-This document does not change `packages/specflow-ui`. It records this as a known consequence so
-the implementer and reviewer of section 9's tasks do not treat current green tests on these files
-as proof that the generalized `open` is behavior-compatible by accident.
+This document does not change `packages/specflow-ui`. It records this as a confirmed-compatible
+status, re-verified at W02 and again at W07 (Finding 3 below), so neither task treats this
+reasoning as a substitute for actually re-scanning the package.
 
 ## 9. Gaps to close in nevo-ui
 
 Concrete deltas required to make the above real, in dependency order. Each maps to one task in the
 [implementation task breakdown](../../../ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/README.md).
+**Revised 2026-10-30 after external review:** items 2 and 3 below are rewritten for Finding 1
+(`open`/`openTab` split) and Finding 2 (optional pinned tab); item 3's audit is additionally called
+out as an exit criterion of its own task rather than deferred, per Finding 3 (see
+[W02](../../../ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W02-secondary-root-tab-state.md)
+and
+[W07](../../../ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W07-verification-and-compatibility-audit.md)).
 
 1. **`useOpenedItems` needs an optional `closable` per item** (default `true`); `close`,
    `requestClose`, and `closeAll` must skip non-closable items. This is a small, backward-compatible
    extension — existing `ItemTabs` consumers that never pass `closable: false` are unaffected.
 2. **`WorkspaceContext`'s single nullable `flow` becomes a tab-keyed collection** built on the
-   extended `useOpenedItems`, with the pinned entry's content sourced from `AppWorkspace.Secondary`'s
-   declarative children instead of being a separate `defaultSecondary` code path mutually exclusive
-   with the runtime flow.
-3. **Closing the Secondary region must stop discarding the flow.** Today's `navigate('close', ...)`
+   extended `useOpenedItems`, holding: the pinned entry (only when `AppWorkspace.Secondary`'s
+   declarative children are present and `open !== false` — **not guaranteed to exist**, confirmed
+   against `AppWorkspace.tsx`'s `resolveComposedWorkspace`/`AppWorkspaceRoot`, where
+   `defaultSecondary` is already optional and `secondaryPresentation` already resolves to
+   `undefined` when there is neither a declarative Secondary nor a runtime one — Finding 2); the
+   legacy `open()` slot, implemented as a single reserved tab-collection key that every `open` call
+   targets regardless of `definition.id`, preserving today's discard-and-replace behavior exactly
+   (Finding 1); and `openTab()`-opened entries, keyed by the `definitionId`/`instanceId`-derived
+   `tabInstanceId` from §4.1, each genuinely independent. `open` and `openTab` are two distinct
+   public methods sharing this one collection, not two states of one method.
+3. **Closing the Secondary region must stop discarding tabs.** Today's `navigate('close', ...)`
    calls `publish(null, ...)`, which drops `flowRef.current` entirely. Tabs/flows must survive while
-   hidden so reopening restores them (section 5, "Secondary explicitly reopened").
+   hidden so reopening restores them (section 5, "Secondary explicitly reopened") — this applies
+   uniformly to the pinned entry (if any), the legacy slot, and every `openTab()` entry.
+   **Audit exit criterion (Finding 3):** before this task's own review gate, confirm — by re-scanning
+   `packages/specflow-ui` for `navigation.open`/`defineSecondaryStack` fixed-id usage, not just
+   trusting §8's recorded list — that every existing caller of `open` is unaffected by this change,
+   per §8's compatibility notes; a behavior-changed finding here blocks this task's gate and is
+   reported to the feature owner, it is not deferred to W07 to discover first.
 4. **`resolveDynamicWorkspaceSplit` in `workspaceSizing.ts`**, table-driven tests covering every row
    of section 5, and the new `WORKSPACE_DYNAMIC_*` minimum-width constants.
 5. **`AppWorkspace` wiring for `split="dynamic"`**: consumes the resolver, exposes
@@ -392,7 +532,7 @@ Concrete deltas required to make the above real, in dependency order. Each maps 
    border side), verified not to remount any region.
 8. **Tab strip composition** inside the Secondary header via `ItemTabs`, following
    [item-tabs.md](item-tabs.md#content-tabs-host-pattern-not-implemented-in-nevo-ui)'s pattern,
-   hidden entirely when only the pinned tab is open.
+   hidden entirely when only one tab (pinned or otherwise, §4.1) is open.
 
 None of this is implemented yet; see the linked task breakdown for sequencing, ownership, and the
 verification profile each item must satisfy before it can be marked implemented in this document

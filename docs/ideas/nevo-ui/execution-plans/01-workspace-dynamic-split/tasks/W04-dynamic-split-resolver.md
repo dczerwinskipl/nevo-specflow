@@ -58,14 +58,19 @@ panes cannot fit even after clamping.
   others — in particular, no parameter through which an active tab id, a local-stack page, or a
   product event could be passed. This is checked by type signature, not just by test cases.
 - Every row of §5's transition table has a corresponding test case using this function directly
-  (table-driven test naming each row), including: entering split with only the pinned tab; a
-  brand-new 2nd tab opened while `auto` (one-time 50/50); switching among open tabs (no resize,
-  i.e. this function is not even called on `activateTab`, or is called with unchanged inputs and
-  asserted to return unchanged output); closing down to the pinned tab while `auto` (returns to
-  narrow default); entering `manual` and having it preserved across further tab opens/closes;
-  width dropping below the fit threshold for the current ratio (returns `layout: 'stacked'`,
-  preserving `manualRatio`/`mode` as an opaque "last known" value for restoration); width
-  returning (restores clamped ratio, not the auto default, when a manual ratio exists).
+  (table-driven test naming each row), including: entering split with only one tab open (the
+  pinned one, or — contract §3/§9 item 2, Finding 2 — in a workspace with no pinned tab, the sole
+  `open()`/`openTab()` tab); `openTab()` opening a brand-new 2nd tab while `auto` (one-time 50/50),
+  distinct from `open()` replacing its one slot in place while tab count stays the same (no
+  resize, contract §4.1 Finding 1 — these are two different triggers, not one); switching among
+  open tabs (no resize, i.e. this function is not even called on `activateTab`, or is called with
+  unchanged inputs and asserted to return unchanged output); closing down to just the pinned tab
+  (when one exists) while `auto` (returns to narrow default), and closing the last tab entirely in
+  a workspace with no pinned tab (Secondary has none); entering `manual` and having it preserved
+  across further tab opens/closes; width dropping below the fit threshold for the current ratio
+  (returns `layout: 'stacked'`, preserving `manualRatio`/`mode` as an opaque "last known" value for
+  restoration); width returning (restores clamped ratio, not the auto default, when a manual ratio
+  exists).
 - New `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH`/`WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH` constants
   (or equivalently named) are defined beside the existing sizing constants, with their values
   documented as tunable defaults, not frozen contracts — matching the contract's §4.2 language
@@ -79,9 +84,10 @@ panes cannot fit even after clamping.
   `AppWorkspaceRoot`/`useWorkspaceLayoutState`) — no duplicate stacked rendering is introduced.
 - Live/product-event non-resize is structurally true (not just test-asserted): nothing in
   `AppWorkspace`'s dynamic-split wiring subscribes to Session/product state; the only inputs that
-  can change `secondaryRatio`/`mode` are `activateTab`'s tab-count side effects (via W02),
-  `closeTab`, splitter drag (W05, stubbed/no-op until W05 lands), and `availableWidth` changes
-  from the existing `ResizeObserver`-driven measurement.
+  can change `secondaryRatio`/`mode` are `open`/`openTab`/`activateTab`'s tab-count side effects
+  (via W02 — `open`'s slot-replace never changes tab count, only `openTab`'s brand-new-instance
+  case does), `closeTab`, splitter drag (W05, stubbed/no-op until W05 lands), and `availableWidth`
+  changes from the existing `ResizeObserver`-driven measurement.
 
 ## Verification and review
 

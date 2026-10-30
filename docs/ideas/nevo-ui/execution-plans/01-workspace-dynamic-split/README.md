@@ -35,13 +35,16 @@ product documents it cites.
 
 ## Scope and result
 
-A product workspace can opt a split-capable `AppWorkspace` into `split="dynamic"` and get: a
-pinned non-closable root tab plus any number of independently opened root tabs in Secondary, each
-with its own local back/detail stack; an auto/manual width split that resizes exactly on the
-transitions the contract's table specifies and never otherwise; a real accessible splitter; and a
-left/right side swap that preserves every piece of that state. Nothing here changes
-`packages/specflow-ui`; Full Session (or any other consumer) adopts this capability as separate,
-later, product-owned work.
+A product workspace can opt a split-capable `AppWorkspace` into `split="dynamic"` and get: an
+optional pinned non-closable root tab (present only when a declarative `AppWorkspace.Secondary` is
+given, contract §3/§9 item 2 — a workspace with no declarative Secondary simply has none until
+something opens one) plus any number of independently opened root tabs in Secondary via the new
+`openTab()`, each with its own local back/detail stack, alongside the existing `open()` kept
+behavior-unchanged for today's single-flow consumers (contract §4.1); an auto/manual width split
+that resizes exactly on the transitions the contract's table specifies and never otherwise; a real
+accessible splitter; and a left/right side swap that preserves every piece of that state. Nothing
+here changes `packages/specflow-ui`; Full Session (or any other consumer) adopts this capability
+as separate, later, product-owned work.
 
 ## Task graph
 
@@ -58,11 +61,30 @@ later, product-owned work.
 Profiles mean `nevo-agents:implementer-ui`. Independent review uses `nevo-agents:reviewer`.
 These are planning metadata, not invented workflow manifest keys.
 
-`W01 -> W02 -> (W03, W04) -> (W05, W06) -> W07` is acyclic. `W03` and `W04` are the only
-parallel-safe pair after `W02` (independent files: `ItemTabs`/header composition vs.
-`workspaceSizing.ts`). `W05`/`W06` are parallel-safe after `W04` for the same reason (a new
-component vs. existing layout-order wiring), but both must land before `W07`'s end-to-end
-contract stories can pass.
+`W01 -> W02 -> (W03, W04) -> (W05, W06) -> W07` is acyclic.
+
+**Revised 2026-10-30 after external review (Finding 4):** the claim that `W03`/`W04` and `W05`/
+`W06` are safely parallel because they touch independent files is **false as stated** and is
+corrected here rather than repeated. Checking each task's own "Owner paths" (not re-asserting the
+original claim):
+
+- `W03`'s owner paths include `packages/nevo-ui/src/app/workspace/AppWorkspace.tsx` ("header
+  content slot only"); `W04`'s owner paths include the _same file_ ("sizing branch only"). They
+  are not file-independent — they are branch/region-independent within one shared file, which is a
+  real but weaker property: it avoids a logical conflict in the common case, but a naive parallel
+  merge can still produce textual conflicts in `AppWorkspace.tsx`, and nothing mechanical enforces
+  that the two edited regions stay disjoint as the file evolves.
+- `W05`'s owner paths include `AppWorkspace.tsx` ("render-site wiring only"); `W06`'s owner paths
+  include the same file ("layout-order branch"). Same situation: branch-independent, not
+  file-independent.
+
+**Recommendation:** do not treat either pair as safe to run unsupervised in the same working tree.
+Give each task in a pair its own worktree with its owner-path boundary stated up front (as the
+task files already do), land one, rebase/integrate the other onto it before its own review gate,
+and resolve any textual overlap in `AppWorkspace.tsx` as an integration step rather than assuming
+it cannot occur. `W07`'s end-to-end contract stories remain the point where both members of each
+pair must already be integrated and passing together, not where their file-level independence is
+first tested.
 
 ## Review and verification
 
@@ -73,6 +95,16 @@ dependent work at a failed gate. Each task reports changed owners, PASS/FAIL/SKI
 intentional deviation from the contract (which must then update the contract document, not just
 the task). Source-owned tests/stories stay co-located in `packages/nevo-ui/src/app/workspace/`
 and `packages/nevo-ui/src/components/navigation/ItemTabs/`, matching existing file placement.
+
+**Revised 2026-10-30 after external review (Finding 3):** W02's gate now also includes a
+`packages/specflow-ui` consumer-compatibility audit as an exit criterion (contract §9 item 3), not
+deferred to W07 as the plan originally scheduled it. This is possible because the contract's §4.1
+revision (Finding 1) splits the old single generalized `open()` into an unchanged `open()` plus a
+new, additive `openTab()` — so the audit at W02 is confirming "nothing changed for `open()`
+callers" rather than discovering it for the first time at the very end of the plan. W07 still
+re-runs the same audit as a whole-plan re-confirmation (catching any regression from W03-W06 or any
+consumer added in the interim), so the plan keeps a true end-to-end gate; it is simply no longer
+the _first_ check of this specific risk.
 
 ## Out of scope for this plan
 

@@ -244,7 +244,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
     expect(journal.version).toBe(2);
     expect(journal?.stage).toBe('reserved');
-    expect(journal?.target.branch).toBe('feature/pinned-git-reservation');
+    expect(journal?.target.branch).toBe('feature/nevo-1-pinned-git-reservation');
     expect(journal?.target.baseCommit).toBe(originalHead);
     const configPath = join(root, '.nevo/config.yaml');
     await writeFile(
@@ -808,12 +808,12 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
 
   it('answers a taken default-pattern branch with the conflict path and keeps the branch', async () => {
     const { root, engine } = await project();
-    git(root, 'branch', 'feature/taken-branch');
-    const before = git(root, 'rev-parse', 'feature/taken-branch');
+    git(root, 'branch', 'feature/nevo-1-taken-branch');
+    const before = git(root, 'rev-parse', 'feature/nevo-1-taken-branch');
     const failure = await createSpecification(engine, linked('Taken branch')).catch(
       (error: unknown) => error as { code?: string },
     );
     expect(String((failure as { code?: string }).code)).toMatch(/CONFLICT|BRANCH_ALREADY_EXISTS/u);
-    expect(git(root, 'rev-parse', 'feature/taken-branch')).toBe(before);
+    expect(git(root, 'rev-parse', 'feature/nevo-1-taken-branch')).toBe(before);
   }, 300000);
 });

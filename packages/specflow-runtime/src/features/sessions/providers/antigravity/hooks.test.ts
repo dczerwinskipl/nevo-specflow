@@ -277,6 +277,31 @@ describe('controlled native hook HTTP/helper boundary', () => {
     });
   });
 
+  it('accepts a final idle Stop after native background continuation within the same execution number', async () => {
+    const f = await fixture();
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 0,
+      terminationReason: 'NO_TOOL_CALL',
+      fullyIdle: false,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(
+      f.post('pre-tool-use', {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        stepIdx: 1,
+        toolCall: { name: 'list_dir', args: { DirectoryPath: f.workspace } },
+      }),
+    ).resolves.toEqual({ decision: 'allow' });
+    await expect(f.post('stop', { ...stop, fullyIdle: true })).resolves.toEqual({
+      decision: 'stop',
+    });
+    await f.bridge.awaitNativeIdle(new AbortController().signal);
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+  });
+
   it('denies untrusted client configuration and oversized helper input without external network calls', async () => {
     const f = await fixture();
     await writeFile(

@@ -4380,14 +4380,14 @@
     {
       "id": "ideas.specflow-runtime.antigravity-provider",
       "type": "engineering",
-      "title": "Antigravity Session provider discovery and admission prerequisites",
+      "title": "Antigravity managed Session provider",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/antigravity-provider.md",
       "read_when": [
-        "implementing the Antigravity Session adapter",
-        "checking native context allocation, cancellation and sandbox prerequisites"
+        "implementing or reviewing the Antigravity Session adapter",
+        "checking account binding, interactive tools and process settlement"
       ],
-      "summary": "Verified installed CLI surface, primary protocol evidence, and explicit gaps that must be closed before advertising managed Antigravity execution.",
+      "summary": "Native Antigravity protocol, private configuration, account affinity and interactive bridge implementation, with separate controlled and native evidence.",
       "related": [
         "ideas.specflow-runtime.provider-migration-plan",
         "ideas.specflow-runtime.provider-process-boundary",

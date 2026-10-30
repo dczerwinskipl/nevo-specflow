@@ -77,7 +77,7 @@ export async function createAntigravityQuestionBridge(options: {
   let idle = deferred<void>();
   let nativeIdle = false;
   let hookGeneration = 0;
-  let lastStop: { execution: number; generation: number } | undefined;
+  let lastStop: { execution: number; generation: number; fullyIdle: boolean } | undefined;
   const done = deferred<void>();
   let active = false;
   let closed = false;
@@ -169,6 +169,9 @@ export async function createAntigravityQuestionBridge(options: {
     };
     nativeBusy();
     pending.set(entry.key, entry);
+    entry.humanTimer = setTimeout(() => {
+      void expire(entry).catch(fail);
+    }, AntigravityBridgeLimits.humanResponseMs);
     const onAbort = () => {
       void expire(entry).catch(fail);
     };
@@ -186,6 +189,7 @@ export async function createAntigravityQuestionBridge(options: {
 
       entry.state = 'delivered';
       clearTimeout(entry.deliveryTimer);
+      clearTimeout(entry.humanTimer);
       entry.delivery.resolve({ deliveredKeys: [entry.key] });
     });
     try {
@@ -411,7 +415,9 @@ export async function createAntigravityQuestionBridge(options: {
         if (
           lastStop &&
           (execution < lastStop.execution ||
-            (execution === lastStop.execution && hookGeneration !== lastStop.generation))
+            (execution === lastStop.execution &&
+              lastStop.fullyIdle &&
+              (hookGeneration !== lastStop.generation || !bound.fullyIdle)))
         ) {
           throw new Error('Stale native stop evidence.');
         }
@@ -424,7 +430,7 @@ export async function createAntigravityQuestionBridge(options: {
           throw new Error('Native stop conflicts with unresolved interactions.');
         }
 
-        lastStop = { execution, generation: hookGeneration };
+        lastStop = { execution, generation: hookGeneration, fullyIdle: bound.fullyIdle };
         if (bound.fullyIdle) {
           nativeIdle = true;
           idle.resolve();

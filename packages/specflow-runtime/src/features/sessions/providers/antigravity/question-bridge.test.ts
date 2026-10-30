@@ -78,6 +78,29 @@ async function fixture(active = true, emit?: (fact: DriverFact) => Promise<void>
 }
 
 describe('invocation-private Antigravity question transport', () => {
+  it('expires an unanswered MCP question after the bounded human response lifetime', async () => {
+    const f = await fixture();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const native = f.call(1);
+      const question = await f.question();
+      await vi.advanceTimersByTimeAsync(AntigravityBridgeLimits.humanResponseMs);
+      expect((await reply(await native)).error).toBeDefined();
+      expect(f.facts.filter((fact) => fact.kind === 'interaction-expired')).toEqual([
+        { kind: 'interaction-expired', key: question.key },
+      ]);
+      await expect(
+        f.bridge.respond(question.key, {
+          requestId: randomUUID(),
+          kind: 'question',
+          answer: { optionIds: [], text: 'Too late' },
+        }),
+      ).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('advertises only ask_user and does not activate question admission during initialization', async () => {
     const f = await fixture(false);
     expect(f.bridge.permissionRule).toBe('mcp(specflow-interactions/ask_user)');

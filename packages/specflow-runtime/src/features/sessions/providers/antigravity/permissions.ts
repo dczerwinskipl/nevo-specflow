@@ -76,6 +76,17 @@ async function physicalInRoot(
     throw new Error('Native tool requires an absolute workspace path.');
   }
 
+  if (
+    process.platform === 'win32' &&
+    relative(workspace, resolve(target))
+      .split(sep)
+      .some((part) => /[ .]$|:/.test(part))
+  ) {
+    // NTFS alternate streams and Win32 trailing-dot/space aliases must not
+    // bypass the physical target and active-configuration path checks.
+    throw new Error('Unsupported native Windows path alias.');
+  }
+
   const root = await realpath(workspace);
   if (!inside(root, resolve(target))) {
     throw new Error('Native tool target is outside the workspace.');
@@ -173,9 +184,20 @@ export async function prepareAntigravityPermission(
     view_file: {
       path: 'AbsolutePath',
       writable: false,
-      fields: ['AbsolutePath', 'StartLine', 'EndLine', 'IncludeSummaryOfOtherLines'],
+      fields: [
+        'AbsolutePath',
+        'ContentOffset',
+        'StartLine',
+        'EndLine',
+        'toolSummary',
+        'toolAction',
+      ],
     },
-    list_dir: { path: 'DirectoryPath', writable: false, fields: ['DirectoryPath'] },
+    list_dir: {
+      path: 'DirectoryPath',
+      writable: false,
+      fields: ['DirectoryPath', 'toolSummary', 'toolAction'],
+    },
     find_by_name: {
       path: 'SearchDirectory',
       writable: false,
@@ -187,12 +209,23 @@ export async function prepareAntigravityPermission(
         'Extensions',
         'FullPath',
         'MaxDepth',
+        'toolSummary',
+        'toolAction',
       ],
     },
     grep_search: {
       path: 'SearchPath',
       writable: false,
-      fields: ['SearchPath', 'Query', 'IsRegex', 'CaseInsensitive', 'Includes', 'MatchPerLine'],
+      fields: [
+        'SearchPath',
+        'Query',
+        'IsRegex',
+        'CaseInsensitive',
+        'Includes',
+        'MatchPerLine',
+        'toolSummary',
+        'toolAction',
+      ],
     },
     write_to_file: {
       path: 'TargetFile',

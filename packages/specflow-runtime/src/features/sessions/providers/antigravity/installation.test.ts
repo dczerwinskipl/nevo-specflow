@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { inspectAntigravityInstallation, prepareAntigravityProfile } from './installation';
 
 const roots: string[] = [];
@@ -56,6 +56,7 @@ describe('Antigravity private native profile', () => {
     const test = await fixture();
     const first = await test.inspect();
     const profile = await prepareAntigravityProfile(first);
+    expect(basename(profile.home)).toMatch(/^account-[A-Za-z0-9_-]{43}$/);
     const history = join(profile.home, '.gemini', 'antigravity-cli', 'native-history');
     await writeFile(history, 'native context');
     test.rotateToken();
@@ -117,6 +118,16 @@ describe('Antigravity private native profile', () => {
     const installation = await test.inspect();
     await expect(
       prepareAntigravityProfile({ ...installation, homeRoot: test.workspace }),
+    ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  });
+
+  it('rejects profiles exceeding the native Windows HOME limit before creating them', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    await expect(
+      prepareAntigravityProfile(installation, {
+        home: join(installation.homeRoot, 'x'.repeat(240)),
+      }),
     ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
   });
 });

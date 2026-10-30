@@ -21,7 +21,8 @@ import { antigravityHooks } from './hook-launcher';
 import { AntigravityProtocolError, type AntigravityInit } from './protocol';
 
 const cacheMs = 30000;
-const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+// Keep all 256 identity bits while avoiding the native Windows HOME length limit.
+const digest = (value: string) => createHash('sha256').update(value).digest('base64url');
 
 export function createAntigravityDriver(
   options: {

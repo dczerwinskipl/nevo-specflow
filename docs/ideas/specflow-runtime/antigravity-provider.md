@@ -74,6 +74,11 @@ Sessions from overwriting each other's invocation transport. Discovery uses a
 separate disposable profile and sends no user event. Private directories and
 configuration targets reject symlink redirection before child writes. Profile
 markers bind account and physical workspace; token rotation preserves history.
+Directory identities use full SHA-256 encoded as base64url to keep native Windows
+HOME below 260 UTF-16 code units. Longer homes are rejected before directory
+creation. A 261-character profile reproduced initialization timeout before any
+user input; the shorter representation passed the full Runtime correlation and
+dispatch barriers in a manually instrumented check that prevented model input.
 
 Workspace `.agents` hooks, MCP configuration, plugins, sidecars and project
 customizations are rejected rather than deleted. Native global user configuration
@@ -146,6 +151,11 @@ Evidence types remain separate:
   same PowerShell command targeting an owned sibling was denied by Windows and
   produced no file. A command may exit zero despite a nonterminating write error;
   this is not proof that its requested effects succeeded.
+- A controlled native command created a workspace hook configuration, followed
+  by a native file write in the same Turn. The new workspace hook did not run;
+  the original private hook remained active. The next invocation rejects that
+  workspace configuration. This is observed behavior of the recorded build,
+  not a guarantee that arbitrary future native plugins cannot reload dynamically.
 
 Observed Windows x64 CLI SHA-256:
 `fbbfb3f15c7628252c5e12765683c688ba05ee122b853cadeb0bbfd4e13ca25b`.

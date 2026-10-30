@@ -149,10 +149,11 @@ export async function prepareAntigravityProfile(
     hooks?: Record<string, unknown>;
   } = {},
 ) {
-  const suffix = createHash('sha256').update(installation.accountScope).digest('hex');
+  const suffix = createHash('sha256').update(installation.accountScope).digest('base64url');
   const home = options.home ?? join(installation.homeRoot, 'account-' + suffix);
   if (
     !isAbsolute(home) ||
+    home.length >= 260 ||
     !inside(resolve(installation.homeRoot), resolve(home)) ||
     resolve(home) === resolve(installation.homeRoot)
   ) {

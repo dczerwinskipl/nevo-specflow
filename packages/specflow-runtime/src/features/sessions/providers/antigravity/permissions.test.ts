@@ -34,6 +34,33 @@ async function fixture() {
 }
 
 describe('native Antigravity hook policy', () => {
+  it('admits the installed native read schema with metadata and content offset', async () => {
+    const f = await fixture();
+    const result = await prepareAntigravityPermission(
+      f.hook('view_file', {
+        AbsolutePath: join(f.workspace, 'file.txt'),
+        ContentOffset: 0,
+        StartLine: 1,
+        EndLine: 10,
+        toolSummary: 'Read the requested file',
+        toolAction: 'read',
+      }),
+      f.context,
+    );
+    expect(result.decision).toEqual({ decision: 'allow' });
+    await result.revalidate();
+    await expect(
+      prepareAntigravityPermission(
+        f.hook('view_file', {
+          AbsolutePath: join(f.outside, 'file.txt'),
+          toolSummary: 'Read',
+          toolAction: 'read',
+        }),
+        f.context,
+      ),
+    ).rejects.toThrow();
+  });
+
   it('allows only the exact Runtime question MCP tool without duplicating canonical admission', async () => {
     const f = await fixture();
     const args = {
@@ -141,6 +168,25 @@ describe('native Antigravity hook policy', () => {
       ).rejects.toThrow('active execution configuration');
     }
   });
+
+  it.skipIf(process.platform !== 'win32')(
+    'rejects NTFS aliases and alternate streams before native file mutation',
+    async () => {
+      const f = await fixture();
+      for (const suffix of [
+        '.agents./hooks.json',
+        '.agents /hooks.json',
+        '.agents/hooks.json::$DATA',
+      ]) {
+        await expect(
+          prepareAntigravityPermission(
+            f.hook('write_to_file', { TargetFile: join(f.workspace, suffix) }),
+            f.context,
+          ),
+        ).rejects.toThrow();
+      }
+    },
+  );
 
   it('rejects outside, symlink escape, uncorrelated, readonly and unknown execution', async () => {
     const f = await fixture();

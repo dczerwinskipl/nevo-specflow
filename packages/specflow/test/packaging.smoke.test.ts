@@ -8,7 +8,8 @@
 // root (which carries `packageManager`) so Corepack never downloads "latest".
 
 import { execFileSync, spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { createServer as createHttpServer } from 'node:http';
 import { once } from 'node:events';
 import {
   mkdirSync,
@@ -178,6 +179,78 @@ function installedManifest(): Record<string, unknown> {
 }
 
 describe('packaged @nevo/specflow — isolated tarball install', () => {
+  it('delivers one authenticated hook through the installed standalone helper', async () => {
+    const token = 'Bearer ' + randomBytes(32).toString('base64url');
+    let accepted = 0;
+    const server = createHttpServer((request, response) => {
+      if (
+        request.method !== 'POST' ||
+        request.url !== '/hooks/pre-tool-use' ||
+        request.headers.authorization !== token
+      ) {
+        response.writeHead(403).end();
+
+        return;
+      }
+
+      request.resume();
+      request.once('end', () => {
+        accepted++;
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ decision: 'allow' }));
+      });
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        throw new Error('Controlled hook listener unavailable.');
+      }
+
+      const configurationPath = join(prefix, 'controlled-hook.json');
+      writeFileSync(
+        configurationPath,
+        JSON.stringify({ baseUrl: 'http://127.0.0.1:' + address.port, token }),
+        { mode: 0o600 },
+      );
+      const helper = join(
+        prefix,
+        'node_modules',
+        '@nevo',
+        'specflow',
+        'dist',
+        'antigravity-hook.js',
+      );
+      const child = spawn(process.execPath, [helper, 'pre-tool-use'], {
+        cwd: prefix,
+        env: { NEVO_ANTIGRAVITY_HOOK_CONFIG: configurationPath },
+        windowsHide: true,
+        signal: AbortSignal.timeout(10000),
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      let output = '';
+      let errors = '';
+      child.stdout.setEncoding('utf8').on('data', (piece: string) => {
+        output += piece;
+      });
+      child.stderr.setEncoding('utf8').on('data', (piece: string) => {
+        errors += piece;
+      });
+      child.stdin.end(JSON.stringify({ fixture: 'controlled hook input' }));
+      await once(child, 'close');
+      expect(child.exitCode).toBe(0);
+      expect(errors).toBe('');
+      expect(JSON.parse(output)).toEqual({ decision: 'allow' });
+      expect(accepted).toBe(1);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
   it('runs the installed native hook helper and denies missing private configuration', () => {
     const helper = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'antigravity-hook.js');
     const output = execFileSync(process.execPath, [helper, 'pre-tool-use'], {

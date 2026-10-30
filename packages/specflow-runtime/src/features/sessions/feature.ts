@@ -104,7 +104,7 @@ export function createSessionsFeature(
               'runtime',
               'providers',
               'antigravity',
-              createHash('sha256').update(options.storage!.projectId).digest('hex'),
+              createHash('sha256').update(options.storage!.projectId).digest('base64url'),
             ),
             executable: antigravity.executable,
             managedWrites: effects !== undefined,

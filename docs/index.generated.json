@@ -5877,6 +5877,40 @@
       ]
     },
     {
+      "id": "reference.api.session-telemetry",
+      "type": "reference",
+      "title": "Proposed Session telemetry HTTP and live update contract",
+      "status": "draft",
+      "file": "docs/reference/api/session-telemetry.md",
+      "read_when": [
+        "designing provider telemetry producers and Session telemetry readers",
+        "implementing live UI consumption of token usage, costs, limits and context size"
+      ],
+      "summary": "Proposed bounded Session telemetry snapshot, explicit refresh and existing-stream invalidation contract, with provider provenance, freshness and partial availability.",
+      "related": [
+        "reference.api.sessions",
+        "ideas.specflow-runtime.ai-adapters.usage-accounting",
+        "ideas.specflow-runtime.session-v10-backend-readiness"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "usage",
+        "cost",
+        "limits",
+        "context",
+        "sse"
+      ]
+    },
+    {
       "id": "reference.api.sessions",
       "type": "reference",
       "title": "Managed Sessions HTTP and read-model contract",

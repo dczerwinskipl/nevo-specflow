@@ -207,7 +207,9 @@ Claude cache-creation counters are not represented either.
 
 The proposed read-only extension is one Session telemetry response containing
 distinct `usage`, `cost`, `limits` and `context` objects. This is a design proposal,
-not an implemented endpoint. Keep Turn detail available and offer Session rollups
+not an implemented endpoint. The exact proposed HTTP/read/event contract lives in
+[Session telemetry API](../../../reference/api/session-telemetry.md).
+Keep Turn detail available and offer Session rollups
 without loading transcript content or replaying every history page. Account quota
 may be composed into this response only through account-scoped authorization;
 it must not become a Session-owned quota ledger or expose native account identity.

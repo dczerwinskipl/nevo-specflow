@@ -99,11 +99,12 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       tree: tree.data,
       documentId,
       openTabs: openTabCount,
-      split: supportsSplit,
     });
-    // Replaces the entry: Back leaves the screen instead of returning to an empty document area.
     if (start) {
-      void show(start, { replace: true });
+      // Split: replaces the entry, so Back leaves the screen instead of returning to an empty
+      // document area. Stacked: pushes it, so Back returns to the tree, the visit's useful first
+      // view there.
+      void show(start, { replace: supportsSplit });
     }
   }, [tree.data, measured, supportsSplit, documentId, openTabCount, show]);
   const rootActions = documentRootActions(

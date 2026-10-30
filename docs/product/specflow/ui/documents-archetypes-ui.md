@@ -261,11 +261,12 @@ operation returns it, it is shown as the protected-document reason.
 ### 3.7 Opening the main file, idle document area
 
 **Opening the main file.** A visit to Documents with nothing chosen (no document in the route, no open
-tab) opens the main file (the protected `overview`) by itself, on the two-pane layout only; on a stacked
-(Narrow) layout the tree stays the first view. It happens once per visit: once the reader closes it,
-the idle area below stays (also after the last tab closes or the tree is read again) until the next visit
-to Documents. A route with a document is never overridden, drafts are not touched, and without a main
-file nothing opens.
+tab) opens the main file (the protected `overview`) by itself, on every layout. On the two-pane layout
+the navigation entry is replaced, so Back leaves the screen instead of returning to an empty document
+area; on a stacked (Narrow) layout it is pushed instead, so Back returns to the tree. It happens once
+per visit: once the reader closes it, the idle area below stays (also after the last tab closes or the
+tree is read again) until the next visit to Documents. A route with a document is never overridden,
+drafts are not touched, and without a main file nothing opens.
 
 **Idle document area.** `DocumentsEmptyState` is the shared empty screen (the design-system `EmptyState`, centred in the
 area, the same one as the empty Specifications list): the title "No document open", the line "Choose a

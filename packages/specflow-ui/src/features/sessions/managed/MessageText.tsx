@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, MarkdownDocument } from '@nevo/ui';
 import type { ContentRef, TextPreview } from '@nevo/specflow-contracts/sessions';
+import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from './api';
 
 export function ReadableText({
@@ -42,6 +43,7 @@ function RevisionText({
   markdown: boolean;
 }) {
   const { t } = useTranslation();
+  const markdownLabels = useMarkdownLabels();
   const [page, setPage] = useState<{ text: string; offset: number; nextOffset?: number }>();
   const [previous, setPrevious] = useState<number[]>([]),
     [busy, setBusy] = useState(false),
@@ -82,7 +84,7 @@ function RevisionText({
   return (
     <div className="grid min-w-0 gap-2">
       {markdown ? (
-        <MarkdownDocument source={text} />
+        <MarkdownDocument source={text} labels={markdownLabels} headingOffset={1} />
       ) : (
         <p className="whitespace-pre-wrap break-words text-body-md">{text}</p>
       )}

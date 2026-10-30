@@ -8,10 +8,23 @@ import {
   Typography,
   defineSecondaryStack,
   useSecondaryNavigation,
+  useSecondaryStack,
+  type SecondaryStackDefinition,
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
 import { createSessionTasksInspector } from './SessionTasksInspector';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
+
+/** Same shape as `useSecondaryNavigation().open` and the stack-push overload of a flow's own
+ * `navTo` — whichever is passed in, it starts the target stack somewhere in the Secondary. */
+type OpenSecondaryStack = <
+  TRoot extends object,
+  TData,
+  TPages extends { [K in keyof TPages]: object },
+>(
+  stack: SecondaryStackDefinition<TRoot, TData, TPages>,
+  params: TRoot,
+) => Promise<boolean>;
 
 /**
  * Full Session Context Secondary (full-session-screen-structure.md §7).
@@ -24,21 +37,32 @@ import type { SessionContextTaskRef, SessionContextViewModel } from './sessionCo
 export function SessionContext({
   sessionId,
   value,
+  openStack,
 }: {
   sessionId: string;
   value: SessionContextViewModel;
+  /**
+   * How "Related Tasks" / a Task link opens from here. Defaults to `useSecondaryNavigation().open`,
+   * which starts a brand-new Secondary flow — correct when Context is the default, always-mounted
+   * Secondary (wide/split layouts; see `ManagedSession`), since there is no enclosing flow to push
+   * onto there. The narrow runtime Context flow (`createSessionContextStack` below) instead passes
+   * that flow's own `navTo`, which pushes Tasks/Task onto Context's OWN stack, so Back returns to
+   * Context first instead of skipping it (the bug this prop exists to avoid).
+   */
+  openStack?: OpenSecondaryStack;
 }) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
+  const openSecondary = openStack ?? navigation.open;
   const allTasks = useMemo(() => collectTasks(value), [value]);
   const inspectors = useMemo(() => createSessionTasksInspector(allTasks), [allTasks]);
 
   function openTasksList() {
-    void navigation.open(inspectors.tasksStack, { sessionId });
+    void openSecondary(inspectors.tasksStack, { sessionId });
   }
 
   function openTask(task: SessionContextTaskRef) {
-    void navigation.open(inspectors.taskStack, { sessionId, taskId: task.id });
+    void openSecondary(inspectors.taskStack, { sessionId, taskId: task.id });
   }
 
   if (value.status === 'unavailable') {
@@ -190,10 +214,10 @@ function TaskLink({
  * auto-pushed (full-session-screen-structure.md §3.3); a header action opens it as a pushed local
  * detail instead, the same fallback the retired demo-era `SessionContextPanel` used to have.
  *
- * Known V1 simplification: because this renders Context as a *runtime* Secondary flow (there is
- * no default/static Secondary on narrow), opening a Task from inside it starts a new flow rather
- * than pushing onto this one, so Back returns directly to the Session rather than to Context first.
- * The split/Wide path (the primary validation target for this pass) does not have this limitation.
+ * Context here is a *runtime* Secondary flow (there is no default/static Secondary on narrow), so
+ * `ContextScreen` below passes this flow's own `navTo` as `openStack`: opening a Task from inside
+ * Context pushes onto this SAME flow's Back stack instead of starting a second, parallel one, so
+ * Back returns to Context first instead of skipping it straight to the Session.
  */
 export function createSessionContextStack(sessionId: string, value: SessionContextViewModel) {
   return defineSecondaryStack<
@@ -209,10 +233,25 @@ export function createSessionContextStack(sessionId: string, value: SessionConte
         get title() {
           return translateNow('sessions.context.title');
         },
-        component: ({ data }) => <SessionContext sessionId={data.sessionId} value={data.value} />,
+        component: ({ data }) => <ContextScreen sessionId={data.sessionId} value={data.value} />,
       },
     },
   });
+}
+
+/** Wraps `SessionContext` with the Context flow's own `navTo`, so Related Tasks/Task push onto
+ * this flow's stack rather than opening a second, parallel one (see `createSessionContextStack`). */
+function ContextScreen({
+  sessionId,
+  value,
+}: {
+  sessionId: string;
+  value: SessionContextViewModel;
+}) {
+  const stack = useSecondaryStack<{ context: Record<string, never> }>();
+  const openStack: OpenSecondaryStack = (target, params) => stack.navTo(target, params);
+
+  return <SessionContext sessionId={sessionId} value={value} openStack={openStack} />;
 }
 
 function collectTasks(value: SessionContextViewModel): SessionContextTaskRef[] {

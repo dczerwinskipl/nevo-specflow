@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, MarkdownDocument } from '@nevo/ui';
+import { Button, MarkdownDocument, Spinner } from '@nevo/ui';
 import type { ContentRef, TextPreview } from '@nevo/specflow-contracts/sessions';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from './api';
@@ -31,6 +31,16 @@ export function ReadableText({
   );
 }
 
+/**
+ * A `TextPreview` with `complete: false` is a transport limit (the initial preview is capped,
+ * per the real API, to a couple of KiB), not something to surface to the user: it is not the
+ * agent choosing to paginate its answer. So this stitches every remaining page into one
+ * continuous string and renders the full answer as a single block — no "previous/next/read
+ * more" controls. Fetching is sequential (each page's `nextOffset` drives the next request,
+ * per the ContentPage contract) and progressive: each page is appended to the rendered text as
+ * it arrives, so a long answer grows in place instead of leaving the user looking at nothing
+ * while every page loads.
+ */
 function RevisionText({
   api,
   sessionId,
@@ -44,18 +54,21 @@ function RevisionText({
 }) {
   const { t } = useTranslation();
   const markdownLabels = useMarkdownLabels();
-  const [page, setPage] = useState<{ text: string; offset: number; nextOffset?: number }>();
-  const [previous, setPrevious] = useState<number[]>([]),
-    [busy, setBusy] = useState(false),
-    [failed, setFailed] = useState(false);
+  // Text fetched beyond the initial preview, appended page by page as the auto-fetch progresses.
+  const [rest, setRest] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   const lifetime = useRef<AbortController | undefined>(undefined);
+  // The offset the fetch sequence last attempted; a retry resumes there instead of from scratch.
+  const resumeFrom = useRef(0);
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
 
     return () => controller.abort();
   }, []);
-  async function load(offset: number, ref: ContentRef) {
+
+  async function fetchRest(ref: ContentRef) {
     const controller = lifetime.current;
     if (!controller || controller.signal.aborted) {
       return;
@@ -64,9 +77,16 @@ function RevisionText({
     setBusy(true);
     setFailed(false);
     try {
-      const result = await api.content(sessionId, ref, offset, controller.signal);
-      if (!controller.signal.aborted) {
-        setPage(result);
+      let offset: number | undefined = resumeFrom.current;
+      while (offset !== undefined) {
+        resumeFrom.current = offset;
+        const result = await api.content(sessionId, ref, offset, controller.signal);
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setRest((text) => text + result.text);
+        offset = result.nextOffset;
       }
     } catch {
       if (!controller.signal.aborted) {
@@ -79,7 +99,16 @@ function RevisionText({
     }
   }
 
-  const text = page?.text ?? value.text;
+  useEffect(() => {
+    if (!value.complete && value.content) {
+      void fetchRest(value.content);
+    }
+    // One automatic fetch sequence per revision: `ReadableText` remounts this component (via its
+    // `key`) whenever sessionId/contentId/revision changes, so there is nothing else to react to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const text = value.text + rest;
 
   return (
     <div className="grid min-w-0 gap-2">
@@ -88,53 +117,29 @@ function RevisionText({
       ) : (
         <p className="whitespace-pre-wrap break-words text-body-md">{text}</p>
       )}
-      {!value.complete && !page && (
-        <p className="text-body-sm text-content-muted">{t('managedSession.partial')}</p>
+      {(busy || failed) && (
+        <span className="flex flex-wrap items-center gap-2">
+          {busy && <Spinner size="sm" label={t('common.loading')} />}
+          {failed && (
+            <>
+              <span role="alert" className="text-body-sm text-content-muted">
+                {t('managedSession.failed')}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (value.content) {
+                    void fetchRest(value.content);
+                  }
+                }}
+              >
+                {t('common.retry')}
+              </Button>
+            </>
+          )}
+        </span>
       )}
-      <div className="flex flex-wrap gap-2">
-        {!page && !value.complete && value.content && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void load(0, value.content)}
-          >
-            {t('managedSession.readMore')}
-          </Button>
-        )}
-        {!!previous.length && value.content && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              const offset = previous.at(-1)!;
-              setPrevious(previous.slice(0, -1));
-              void load(offset, value.content!);
-            }}
-          >
-            {t('managedSession.previous')}
-          </Button>
-        )}
-        {page?.nextOffset !== undefined && value.content && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setPrevious([...previous, page.offset].slice(-256));
-              void load(page.nextOffset!, value.content!);
-            }}
-          >
-            {t('managedSession.next')}
-          </Button>
-        )}
-        {failed && (
-          <span role="alert" className="text-body-sm text-content-muted">
-            {t('managedSession.failed')}
-          </span>
-        )}
-      </div>
     </div>
   );
 }

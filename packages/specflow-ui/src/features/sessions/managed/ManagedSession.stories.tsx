@@ -49,8 +49,15 @@ export const Tail: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByLabelText('Wiadomość')).toBeEnabled();
-    await userEvent.click(canvas.getByRole('button', { name: 'Czytaj dalej' }));
-    await expect(await canvas.findByText(/Dalszy fragment dużej wiadomości/)).toBeVisible();
+    // The large answer's remaining pages are fetched and stitched in automatically: no
+    // "read more"/"previous"/"next" controls are ever rendered, and the full text appears as
+    // one continuous block once the fetch sequence completes.
+    await expect(
+      await canvas.findByText(/jedna całość\.$/, undefined, { timeout: 5000 }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText(/Czytaj dalej|Poprzedni fragment|Następny fragment/),
+    ).toBeNull();
   },
 };
 export const WaitingForQuestion: Story = {

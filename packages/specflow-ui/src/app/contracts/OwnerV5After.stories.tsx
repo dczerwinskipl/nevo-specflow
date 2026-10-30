@@ -19,6 +19,11 @@ const meta = {
 } satisfies Meta<typeof ConnectedApplication>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+/** Distinct from `ConnectedConsistency.stories.tsx`'s own Managed Session route id, so the two
+ * suites' browser `sessionStorage`-backed composer drafts (keyed by owner+sessionId) never
+ * collide; `ConnectedApplication`'s mocked `managedSessionsApi` returns the same fixed snapshot
+ * regardless of the requested id. */
+const ownerV5ManagedSessionId = '00000000-0000-4000-8000-0000000000d2';
 async function frame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
@@ -265,10 +270,20 @@ export const OverviewTablet: Story = {
     }
   },
 };
+/**
+ * Full Session is canonical at the top-level `/sessions/:sessionId` route (`ManagedSession`) since
+ * 669302f8; the old nested `/specs/:specId/sessions/:sessionId` placeholder now only redirects
+ * there (dropping its `collection` search param) rather than rendering the deleted `SessionScreen`.
+ * `ConnectedApplication`'s services mock a fixed Managed Sessions snapshot so this route renders
+ * real content. The composer's accessible name is the real `managedSession.message` string
+ * ("Wiadomość"), not the retired demo copy. At these tablet widths the screen's default
+ * split-capable Secondary (Context) is open, same as a real visit here today, so the screenshots
+ * are left showing it rather than closing it first.
+ */
 export const SessionTablet: Story = {
-  args: { path: '/specs/api-integration/sessions/session?collection=current' },
+  args: { path: `/sessions/${ownerV5ManagedSessionId}` },
   play: async ({ canvas }) => {
-    await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' });
+    await canvas.findByRole('textbox', { name: 'Wiadomość' });
     for (const width of [839, 840, 1024, 1180]) {
       await shot('session-tablet', width);
     }

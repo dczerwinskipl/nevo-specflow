@@ -24,6 +24,10 @@ import { builtInUiModuleRegistry } from '../ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { createWorkspaceIntegrationApi } from '../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../test-support/specs/overview/api';
+import {
+  fixtureApi as managedSessionFixtureApi,
+  sessionFixture as managedSessionFixture,
+} from '../../features/sessions/managed/managedSession.stories-support';
 import { catalogue } from '../../features/specs/creation/options/creationCatalogue.stories-support';
 import {
   createdSpecFixture,
@@ -36,9 +40,17 @@ import {
   waitForDocumentActions,
 } from '../../features/documents/editor/documentHeaderActions.stories-support';
 
+/**
+ * The id this contract suite's own Managed Session stories navigate to. Distinct from
+ * `managedSession.stories-support`'s own `fixtureSessionId` (used by the component-level Full
+ * Session stories) so the two suites' browser `sessionStorage`-backed composer drafts (keyed by
+ * owner+sessionId, see `features/sessions/managed/feed.ts`) never collide; the mock snapshot
+ * content itself ignores the requested id and is the same either way.
+ */
+const connectedManagedSessionId = '00000000-0000-4000-8000-0000000000c1';
 const createResponseControl = { fail: () => undefined as void };
 export { createResponseControl };
-const historyControl = { back: () => undefined as void };
+const historyControl = { back: () => undefined as void, forward: () => undefined as void };
 /** Lets a story make a document disappear from the Runtime behind the open tabs back. */
 const tabsControl = { removeExternally: (_id: string) => undefined as void };
 function Connected({
@@ -49,6 +61,7 @@ function Connected({
   longFilename = false,
   threeDocuments = false,
   historyFromOverview = false,
+  previousPath,
   browserWindow,
   createOutcome = 'success',
 }: {
@@ -57,6 +70,10 @@ function Connected({
   threeDocuments?: boolean;
   longFilename?: boolean;
   historyFromOverview?: boolean;
+  /** The entry `historyFromOverview` pushes before `path`; defaults to the Specifications
+   * overview (the original use), but a story may override it (e.g. a Document) so that
+   * `historyControl.back()`/`.forward()` moves between two specific routes of its own choosing. */
+  previousPath?: string;
   browserWindow?: Window;
   createOutcome?: 'success' | 'failure' | 'unknown' | 'pending' | 'deferred-failure';
   catalogueState?: 'ready' | 'loading' | 'error';
@@ -184,6 +201,11 @@ function Connected({
     const services = createSpecFlowAppServices({
       authStore: auth,
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
+      // The canonical Full Session route (`/sessions/:sessionId`, ManagedSession) is top-level and
+      // unrelated to this fixture's demo Specification/documents graph; a fixed, realistic
+      // Managed-Sessions snapshot lets contract stories navigate there and see real content instead
+      // of an error/not-found state.
+      managedSessionsApi: managedSessionFixtureApi(managedSessionFixture()),
       specsOverviewApi: {
         getOverview: async (collection, signal) => {
           const data = await overview.getOverview(collection, signal);
@@ -324,7 +346,9 @@ function Connected({
       history.flush();
     } else {
       history = createMemoryHistory({
-        initialEntries: historyFromOverview ? ['/?collection=archive', path] : [path],
+        initialEntries: historyFromOverview
+          ? [previousPath ?? '/?collection=archive', path]
+          : [path],
       });
     }
 
@@ -343,17 +367,20 @@ function Connected({
     longFilename,
     threeDocuments,
     historyFromOverview,
+    previousPath,
     browserWindow,
     createOutcome,
   ]);
   useEffect(() => {
     if (historyFromOverview) {
       historyControl.back = () => setup.router.history.back();
+      historyControl.forward = () => setup.router.history.forward();
     }
 
     return () => {
       if (historyFromOverview) {
         historyControl.back = () => undefined;
+        historyControl.forward = () => undefined;
       }
     };
   }, [setup, historyFromOverview]);
@@ -964,23 +991,48 @@ export const HashAnchorClearsTheFloatingRow: Story = {
     );
   },
 };
+/**
+ * The demo-era Full Session screen this story used to exercise (`SessionScreen.tsx`, its
+ * `SessionContextPanel.tsx` document browser and "Otwórz w Documents" action, and the
+ * `sessions.demo.*` copy) was deleted as dead code in 669302f8: Full Session is now canonical at
+ * the top-level `/sessions/:sessionId` route (`ManagedSession`, real feed/API), which carries no
+ * Specification/document association to browse from, and nothing in the app still records a
+ * Session "return" for a Document to link back through (`useRememberSessionReturn` has had no
+ * caller since that same commit). There is therefore no UI path left that reaches a Document from
+ * a Session and back via a link the way this story originally clicked through.
+ *
+ * What is still genuinely meaningful — and still worth a contract test — is that the composer
+ * draft outlives a real SPA navigation away from and back to this screen. This retargets the
+ * story at the canonical route (a fixed Managed Sessions snapshot via `managedSessionsApi`) and
+ * exercises that round trip with real router history (the same `historyControl` plumbing this
+ * file already uses for `HistoryPopPreservesConfiguration`) instead of the removed UI affordance.
+ */
 export const SessionContextRoundTrip: Story = {
-  args: { path: '/specs/api-integration/sessions/session?collection=archive' },
+  args: {
+    path: `/sessions/${connectedManagedSessionId}`,
+    previousPath: '/specs/api-integration/documents/spec?collection=archive',
+    historyFromOverview: true,
+  },
   play: async ({ canvas, userEvent }) => {
     await viewport(1440, 900);
-    const composer = await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' });
+    const composer = await canvas.findByRole('textbox', { name: 'Wiadomość' });
     await userEvent.type(composer, 'Zachowany szkic wiadomości');
-    await userEvent.click(canvas.getByRole('button', { name: /Dokumenty Pliki/ }));
-    await userEvent.click(canvas.getByRole('button', { name: /Specification specification.md/ }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Otwórz w Documents' }));
-    // The document opens in Preview by default.
-    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
-    await canvas.findByRole('textbox', { name: 'Treść specification.md' });
-    await userEvent.click(canvas.getByRole('link', { name: 'Sesja Spec Writera' }));
-    await expect(
-      await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' }),
-    ).toHaveValue('Zachowany szkic wiadomości');
-    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
+    // Away: a real router-history navigation to a Document (not a link inside the Session screen,
+    // which has none to Documents - see the note above).
+    historyControl.back();
+    await waitForDocumentActions(canvas);
+    // Back: real router-history navigation returns to the exact same Session route.
+    historyControl.forward();
+    await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue(
+      'Zachowany szkic wiadomości',
+    );
+    // The redirect that replaced the old nested `/specs/:specId/sessions/:sessionId` route drops
+    // its `collection` search param (see `sessionDetailRoute` in features/sessions/routes.tsx),
+    // and the canonical route is top-level, not nested under a Specification: there is no
+    // `collection` left to assert survived. Assert the actual post-navigation route instead.
+    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
+      `/sessions/${connectedManagedSessionId}`,
+    );
     await settleViewport();
     await viewport(390);
     await settleViewport(390, 844);

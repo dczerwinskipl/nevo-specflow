@@ -52,6 +52,21 @@ It is **not** the complete Work timeline.
 Raw provider protocol, raw tool input/output, every ToolAction, and older full history live below the
 Work inspector/detail layers.
 
+### Accepted V10 UX direction and Composer coordination
+
+Owner accepted the [V10 Conversation + Composer UX direction](session-chat-v10-design.md),
+with [desktop](../examples/session-chat-v10/desktop.html) and
+[mobile](../examples/session-chat-v10/mobile.html) **synthetic mockups**. The chat remains
+an ordinary conversation, with Copy/Quote on the message, one truthful current-activity
+row and an optional small Work summary. Commentary history and tools are inspected
+separately. Product workflow annotations open exact events, not Tasks list.
+
+The mobile Composer diamond/square icons and toolbar wrapping are **not accepted**.
+Use DS MessageComposer/menus/icons/tokens; do not copy mock SVG/HTML. Provider capability
+and upload gaps remain described in [Composer design](session-composer-design.md).
+If older illustrations elsewhere in this draft conflict with V10, V10's accepted behavior
+is the target, not those provisional renderings.
+
 ## 2. Component ownership
 
 This is a **SpecFlow product composition**, not a generic design-system Chat component.

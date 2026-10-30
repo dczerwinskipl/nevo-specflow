@@ -1,0 +1,3239 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Nevo SpecFlow — Session Context / Desktop Prototype</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0c121a;
+        --outer: #111923;
+        --pane: #131d28;
+        --panel: #17222f;
+        --slight: #1b2938;
+        --line: #293745;
+        --fg: #e7edf3;
+        --muted: #99a9b8;
+        --faint: #75899a;
+        --blue: #8bb8ef;
+        --bluebg: #24374c;
+        --amber: #d7b277;
+        --red: #e19c9c;
+        --green: #98c6ad;
+        --sb: 330px;
+        --nav: 218px;
+        --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: var(--font);
+        font-size: 13px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+        border: 0;
+        background: none;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 2px;
+      }
+      button:hover {
+        color: #fff;
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.4;
+      }
+      svg {
+        flex: 0 0 auto;
+      }
+      #app {
+        height: calc(100dvh - 45px);
+        min-height: 560px;
+        display: flex;
+        flex-direction: column;
+      }
+      .topline {
+        height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 18px;
+        background: #0b1119;
+        border-bottom: 1px solid #1e2d3b;
+      }
+      .topline .logo {
+        font-weight: 760;
+        letter-spacing: -0.5px;
+        font-size: 15px;
+      }
+      .topline .logo span {
+        color: #91b6e7;
+        font-weight: 450;
+      }
+      .env {
+        color: var(--faint);
+        font-size: 11px;
+        border-left: 1px solid var(--line);
+        padding-left: 12px;
+      }
+      .topspacer {
+        flex: 1;
+      }
+      .topline .note {
+        font-size: 11px;
+        color: #aebdcc;
+      }
+      .topline .tiny-tag {
+        font-size: 10px;
+        padding: 4px 7px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: var(--nav) minmax(0, 1fr);
+        flex: 1;
+        min-height: 0;
+        padding: 7px;
+        gap: 7px;
+      }
+      .sidebar {
+        border: 1px solid #273541;
+        background: #131c26;
+        border-radius: 12px;
+        padding: 14px 9px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .side-head {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--faint);
+        margin: 9px 10px 8px;
+        font-weight: 700;
+      }
+      .sidebutton {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #aebac8;
+        border-radius: 7px;
+        padding: 10px;
+        min-height: 37px;
+        text-align: left;
+        width: 100%;
+        font-size: 12px;
+      }
+      .sidebutton.active {
+        color: #dce9f6;
+        background: #25394d;
+      }
+      .sidebutton:hover {
+        background: #243141;
+      }
+      .sideseparator {
+        margin: 13px 7px;
+        border-top: 1px solid var(--line);
+      }
+      .switcher {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 10px;
+        margin: 8px 4px 3px;
+        background: #1a2532;
+      }
+      .switcher strong {
+        font-size: 12px;
+      }
+      .switcher small {
+        display: block;
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 5px;
+      }
+      .sidefooter {
+        margin-top: auto;
+        border-top: 1px solid var(--line);
+        padding: 12px 9px;
+        color: #acbaca;
+      }
+      .sidefooter small {
+        color: var(--faint);
+      }
+      .workspace {
+        min-width: 0;
+        min-height: 0;
+        border: 1px solid #2b3b48;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #111a24;
+      }
+      .wshead {
+        height: 64px;
+        flex: 0 0 auto;
+        padding: 11px 17px;
+        border-bottom: 1px solid #2b3947;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .wsheading {
+        min-width: 0;
+      }
+      .crumb {
+        color: var(--muted);
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 5px;
+      }
+      .wsheading h1 {
+        font-size: 16px;
+        font-weight: 650;
+        letter-spacing: -0.2px;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wsactions {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .subbtn {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #bbc9d6;
+        border: 1px solid #374655;
+        border-radius: 7px;
+        font-size: 11px;
+        padding: 7px 9px;
+        white-space: nowrap;
+      }
+      .subbtn:hover {
+        background: #243444;
+      }
+      .subbtn.emphasis {
+        background: #26394e;
+        color: #d9eafa;
+        border-color: #496585;
+      }
+      .session-meta {
+        height: 40px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line);
+        background: #111b26;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .session-meta strong {
+        font-weight: 550;
+        color: var(--fg);
+      }
+      .split {
+        display: grid;
+        grid-template-columns: minmax(370px, 1fr) 6px var(--sb);
+        min-height: 0;
+        flex: 1;
+      }
+      .split.closed {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .split.flipped {
+        grid-template-columns: var(--sb) 6px minmax(370px, 1fr);
+      }
+      .split.flipped .inspector {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .split.flipped .handle {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .split.flipped .conversation {
+        grid-column: 3;
+        grid-row: 1;
+      }
+      .split.closed .handle,
+      .split.closed .inspector {
+        display: none;
+      }
+      .conversation {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        background: #111a24;
+      }
+      .convo-scroll {
+        flex: 1;
+        overflow: auto;
+        min-height: 0;
+        overscroll-behavior: contain;
+      }
+      .convo-inner {
+        width: min(100%, 750px);
+        margin: auto;
+        padding: 26px 28px 28px;
+      }
+      .turn {
+        margin: 0 0 26px;
+        line-height: 1.65;
+      }
+      .usermsg {
+        margin-left: auto;
+        width: fit-content;
+        max-width: 82%;
+        border: 1px solid #3c4c5b;
+        background: #253342;
+        border-radius: 10px;
+        padding: 11px 14px;
+        color: #e1e9f1;
+        font-size: 13px;
+      }
+      .paragraph {
+        font-size: 13px;
+        max-width: 65ch;
+        margin: 0 0 12px;
+      }
+      .comment {
+        color: #a8b9c8;
+        font-size: 12px;
+        margin: 14px 0;
+      }
+      .workburst {
+        padding: 7px 0;
+        font-size: 11px;
+        color: #9eafc0;
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        border-radius: 6px;
+        text-align: left;
+      }
+      .workburst:hover {
+        color: #c2d9f0;
+      }
+      .codechip {
+        border: 1px solid #405365;
+        background: #1e3041;
+        color: #bed9f5;
+        border-radius: 5px;
+        padding: 3px 7px;
+        margin-right: 4px;
+        font-size: 11px;
+      }
+      .convo-divider {
+        height: 1px;
+        background: #253443;
+        margin: 24px 0;
+      }
+      .author {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0 0 7px;
+        font-weight: 600;
+        font-size: 11px;
+        color: #d2e0ed;
+      }
+      .author .circle {
+        width: 23px;
+        height: 23px;
+        border-radius: 6px;
+        border: 1px solid #405063;
+        display: grid;
+        place-items: center;
+        background: #213244;
+      }
+      .activity {
+        margin: 0 22px;
+        padding: 8px 12px;
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        font-size: 11px;
+        color: #adc2d6;
+        border-top: 1px solid #293747;
+      }
+      .activity .livering {
+        width: 8px;
+        height: 8px;
+        border: 2px solid #9fbfe8;
+        border-radius: 50%;
+      }
+      .composer-wrap {
+        flex: 0 0 auto;
+        padding: 7px 20px 17px;
+      }
+      .composer {
+        width: min(100%, 750px);
+        margin: auto;
+        border: 1px solid #425367;
+        border-radius: 11px;
+        background: #1b2734;
+        overflow: hidden;
+      }
+      .composer textarea {
+        resize: none;
+        display: block;
+        width: 100%;
+        height: 71px;
+        border: 0;
+        background: transparent;
+        outline: 0;
+        color: #e5edf5;
+        padding: 14px 16px;
+        font-size: 13px;
+      }
+      .composer textarea::placeholder {
+        color: #91a2b2;
+      }
+      .composer-foot {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        border-top: 1px solid #324354;
+      }
+      .smallbtn {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        color: #adbdcd;
+        padding: 6px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+      }
+      .smallbtn:hover {
+        background: #2a3b4d;
+      }
+      .send {
+        margin-left: auto;
+        border-radius: 7px;
+        background: #4c80ae;
+        padding: 6px 8px;
+        display: flex;
+        color: #fff;
+      }
+      .handle {
+        background: #192632;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: ew-resize;
+        border-left: 1px solid #354757;
+        border-right: 1px solid #354757;
+        touch-action: none;
+      }
+      .handle span {
+        width: 2px;
+        height: 32px;
+        border-left: 1px solid #718499;
+        border-right: 1px solid #718499;
+        opacity: 0.6;
+      }
+      .handle:hover,
+      .handle.dragging {
+        background: #355274;
+      }
+      .inspector {
+        min-width: 0;
+        min-height: 0;
+        background: #141e29;
+        display: flex;
+        flex-direction: column;
+        container-type: inline-size;
+      }
+      .tabbar {
+        min-height: 47px;
+        display: flex;
+        align-items: stretch;
+        flex: 0 0 auto;
+        border-bottom: 1px solid #354454;
+        gap: 1px;
+        overflow: hidden;
+        background: #16212c;
+      }
+      .tab-scroll {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: thin;
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 13px;
+        min-width: max-content;
+        border-right: 1px solid #2c3c4b;
+        color: #9fadc0;
+        font-size: 11px;
+        position: relative;
+      }
+      .tab:hover {
+        background: #213142;
+      }
+      .tab.active {
+        color: #e4ecf5;
+        background: #1d2b39;
+      }
+      .tab.active:after {
+        content: '';
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        position: absolute;
+        background: #8bb8ef;
+      }
+      .tab .close {
+        padding: 2px;
+        color: #8295a8;
+      }
+      .tab .close:hover {
+        color: #fff;
+      }
+      .inspector-head-options {
+        border-left: 1px solid #354454;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+      }
+      .inspector-scroll {
+        overflow: auto;
+        flex: 1;
+        min-height: 0;
+        scrollbar-color: #46576a transparent;
+      }
+      .context-top {
+        padding: 17px 20px 13px;
+        border-bottom: 1px solid #2c3a48;
+      }
+      .context-top-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .context-top h2 {
+        font-size: 15px;
+        letter-spacing: -0.2px;
+        margin: 0;
+      }
+      .context-top p {
+        margin: 6px 0 0;
+        color: #95a9bb;
+        font-size: 11px;
+      }
+      .context-body {
+        display: block;
+        min-height: 100%;
+        align-items: stretch;
+      }
+      .contextnav {
+        display: none;
+        width: 155px;
+        flex: 0 0 auto;
+        border-right: 1px solid var(--line);
+        padding: 12px 8px;
+        position: sticky;
+        top: 0;
+        align-self: flex-start;
+        max-height: calc(100dvh - 180px);
+        overflow: auto;
+      }
+      .contextnav button {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 8px;
+        border-radius: 6px;
+        padding: 9px;
+        text-align: left;
+        color: #a5b7c6;
+        font-size: 11px;
+      }
+      .contextnav button.active {
+        background: #293a4d;
+        color: #e2edfb;
+      }
+      .ctxchips {
+        display: flex;
+        gap: 5px;
+        padding: 11px 14px 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .ctxchips button {
+        border: 1px solid #384858;
+        border-radius: 7px;
+        padding: 7px 10px;
+        color: #a9b8c8;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .ctxchips button.active {
+        color: #d8e9fd;
+        background: #29425b;
+        border-color: #4e6d8d;
+      }
+      .ctxcontent {
+        width: 100%;
+        padding: 14px 17px 26px;
+        min-width: 0;
+      }
+      .ctxcontent h3 {
+        font-size: 12px;
+        margin: 0 0 6px;
+        font-weight: 670;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .faint {
+        color: var(--faint);
+      }
+      .label {
+        font-size: 10px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #9eb0bf;
+        font-weight: 700;
+        margin: 19px 0 9px;
+      }
+      .label:first-child {
+        margin-top: 0;
+      }
+      .small {
+        font-size: 11px;
+      }
+      .status {
+        font-size: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+      }
+      .status.running {
+        color: #a1c4ec;
+      }
+      .status.attention {
+        color: var(--amber);
+      }
+      .status.danger {
+        color: var(--red);
+      }
+      .status.success {
+        color: var(--green);
+      }
+      .status.neutral {
+        color: var(--muted);
+      }
+      .doti {
+        width: 6px;
+        height: 6px;
+        display: inline-block;
+        background: #8ea2b4;
+        border-radius: 50%;
+      }
+      .doti.active {
+        background: #8ab8ed;
+      }
+      .doti.warn {
+        background: #d7b277;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid #293747;
+        min-width: 0;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .row .main {
+        flex: 1;
+        min-width: 0;
+      }
+      .row .title {
+        font-size: 12px;
+        color: #dce6ee;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row .sub {
+        font-size: 10px;
+        color: #91a4b5;
+        margin-top: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row .icon {
+        color: #a0b3c7;
+      }
+      .row .right {
+        margin-left: auto;
+        flex: 0 0 auto;
+      }
+      .linkrow {
+        width: 100%;
+        text-align: left;
+      }
+      .linkrow:hover {
+        background: #1c2b39;
+        box-shadow:
+          8px 0 #1c2b39,
+          -8px 0 #1c2b39;
+      }
+      .compact-summary {
+        margin-bottom: 15px;
+      }
+      .focus {
+        border-left: 2px solid #91b9e9;
+        padding: 10px 0 11px 13px;
+        margin: 8px 0 18px;
+        background: linear-gradient(90deg, #1e3040, transparent 77%);
+      }
+      .focus strong {
+        font-size: 13px;
+      }
+      .focus p {
+        font-size: 11px;
+        color: #a6b8c9;
+        margin: 7px 0 0;
+        line-height: 1.65;
+      }
+      .notice {
+        border: 1px solid #715941;
+        background: #2d2927;
+        border-radius: 7px;
+        padding: 11px 12px;
+        font-size: 11px;
+        line-height: 1.5;
+        color: #ebd4ad;
+        margin: 10px 0;
+      }
+      .notice strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 12px 0 17px;
+      }
+      .stat .value {
+        font-size: 19px;
+        font-weight: 680;
+        letter-spacing: -0.5px;
+      }
+      .stat .desc {
+        font-size: 10px;
+        color: #94a6b7;
+        margin-top: 4px;
+      }
+      .section-cta {
+        color: #9ec5ed;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 0;
+      }
+      .section-cta:hover {
+        color: #c4deff;
+      }
+      .divider {
+        height: 1px;
+        background: var(--line);
+        margin: 16px 0;
+      }
+      .ctx-meta {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .pill {
+        border: 1px solid #394c5f;
+        border-radius: 5px;
+        color: #b0c0d0;
+        padding: 4px 7px;
+        font-size: 10px;
+        display: inline-block;
+      }
+      .pill.strong {
+        background: #253b52;
+        color: #d2e3fa;
+      }
+      .count {
+        border-radius: 5px;
+        background: #253649;
+        color: #b9d0e8;
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+      .searchrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #3b4d5d;
+        border-radius: 7px;
+        padding: 0 9px;
+        background: #1b2836;
+        min-height: 36px;
+      }
+      .searchrow input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        padding: 8px 0;
+        font-size: 12px;
+      }
+      .searchrow svg {
+        color: #a4b7c9;
+      }
+      .filterbar {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        margin: 11px 0 8px;
+      }
+      .filterbar button {
+        border: 1px solid #394b5e;
+        color: #a6b8c8;
+        border-radius: 6px;
+        padding: 6px 9px;
+        font-size: 10px;
+      }
+      .filterbar button.active {
+        background: #29425c;
+        border-color: #4d7298;
+        color: #d4e9ff;
+      }
+      .pagination {
+        border: 1px solid #3d5268;
+        border-radius: 7px;
+        padding: 9px 12px;
+        font-size: 11px;
+        color: #a5c7ed;
+        width: 100%;
+        margin: 12px 0;
+      }
+      .pagination:hover {
+        background: #1c3043;
+      }
+      .history-line {
+        position: relative;
+        margin-left: 8px;
+        padding: 0 0 20px 21px;
+        border-left: 1px solid #334655;
+      }
+      .history-line:last-child {
+        border-left-color: transparent;
+      }
+      .history-line:before {
+        content: '';
+        position: absolute;
+        top: 4px;
+        left: -4px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #607d98;
+      }
+      .history-line.rejected:before {
+        background: #c1857c;
+      }
+      .history-line.active:before {
+        background: #8db6e4;
+      }
+      .history-line .when {
+        font-size: 10px;
+        color: #869bb0;
+        margin-bottom: 5px;
+      }
+      .history-line .event {
+        font-size: 12px;
+        color: #d9e3eb;
+        line-height: 1.45;
+      }
+      .history-line .detail {
+        font-size: 11px;
+        color: #99adbc;
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+      .artifact-type {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #8fa9bf;
+      }
+      .content-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        font-size: 14px;
+        font-weight: 650;
+      }
+      .document {
+        padding: 22px 26px;
+        font-size: 13px;
+        line-height: 1.65;
+        color: #cfdde9;
+      }
+      .document h2 {
+        font-size: 18px;
+        margin: 15px 0 13px;
+        letter-spacing: -0.3px;
+      }
+      .document h3 {
+        font-size: 14px;
+        margin: 22px 0 8px;
+      }
+      .document p {
+        color: #bac9d7;
+      }
+      .codeblock {
+        border: 1px solid #344555;
+        border-radius: 7px;
+        background: #0c151e;
+        padding: 14px;
+        font:
+          11px/1.8 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        color: #bcd3e5;
+        white-space: pre;
+        overflow: auto;
+      }
+      .difftop {
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        color: #9fb5c7;
+        margin: 0 0 12px;
+      }
+      .diffline {
+        font:
+          11px/1.65 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        white-space: pre;
+        padding: 2px 8px;
+      }
+      .diffline.add {
+        color: #abdbc0;
+        background: #1d392c;
+      }
+      .diffline.del {
+        color: #e6aaa4;
+        background: #3c2426;
+      }
+      .diffline.neu {
+        color: #8d9faf;
+      }
+      .diffview {
+        overflow: auto;
+        border: 1px solid #3c4c59;
+        border-radius: 7px;
+        background: #101920;
+      }
+      .brief-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 11px;
+      }
+      .kv span {
+        color: #98acbd;
+      }
+      .instructions {
+        white-space: pre-line;
+        color: #bacad8;
+        line-height: 1.8;
+        font-size: 12px;
+      }
+      .empty {
+        padding: 30px 12px;
+        color: #9bafc0;
+        text-align: center;
+        line-height: 1.7;
+      }
+      .screenmode {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        color: #9bb0c0;
+        font-size: 10px;
+      }
+      .utility {
+        padding: 3px 5px;
+        border-radius: 4px;
+      }
+      .utility:hover {
+        background: #2a4054;
+      }
+      @container (min-width:620px) {
+        .ctxcontent {
+          padding: 21px 28px 28px;
+        }
+        .ctxcontent > .cols {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 24px;
+        }
+        .ctxcontent h3 {
+          font-size: 13px;
+        }
+        .focus {
+          margin-top: 12px;
+        }
+        .stats {
+          gap: 20px;
+        }
+      }
+      @media (max-width: 1150px) {
+        :root {
+          --nav: 178px;
+        }
+        .sidebutton {
+          font-size: 11px;
+        }
+        .shell {
+          gap: 5px;
+          padding: 5px;
+        }
+        .wshead {
+          height: 60px;
+        }
+        .session-meta {
+          gap: 10px;
+        }
+      }
+
+      .split.expanded {
+        grid-template-columns: 0 minmax(0, 1fr);
+      }
+      .split.expanded .conversation,
+      .split.expanded .handle {
+        display: none;
+      }
+      .split.expanded .inspector {
+        grid-column: 2;
+        border-left: 0;
+      }
+      .split.expanded.flipped .inspector {
+        grid-column: 2;
+      }
+      .row .title,
+      .row .sub {
+        display: block;
+      }
+
+      /* V2: individual Inspector workspaces are tabs; strongly-linked detail uses a local stack. */
+      .ns-stack-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 18px;
+        border-bottom: 1px solid var(--line);
+        background: #192633;
+        min-width: 0;
+      }
+      .ns-stack-back {
+        border: 1px solid #405469;
+        background: #25394b;
+        border-radius: 7px;
+        padding: 5px 9px;
+        color: #c1d8ed;
+        white-space: nowrap;
+        font-size: 11px;
+      }
+      .ns-stack-path {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        overflow: hidden;
+        white-space: nowrap;
+        font-size: 11px;
+        color: #93abbd;
+      }
+      .ns-stack-path b {
+        font-weight: 600;
+        color: #e0ebf6;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ns-stack-hint {
+        margin-left: auto;
+        font-size: 10px;
+        color: #899fb0;
+      }
+      .ns-context-note {
+        border-top: 1px solid var(--line);
+        color: #90a8ba;
+        padding: 12px 18px;
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .ns-context-note strong {
+        color: #c0d6e9;
+        font-weight: 600;
+      }
+      .ns-layout-hint {
+        font-size: 10px;
+        color: #9bb3c9;
+        white-space: nowrap;
+      }
+      .ns-tab-pin {
+        opacity: 0.65;
+      }
+      .ns-view-list .ctxcontent {
+        width: 100%;
+      }
+      .ns-view-list .context-top {
+        background: #182532;
+      }
+
+      /* Composer exploration V1 — scoped, provisional; Workspace V2 remains accepted independently */
+      .composer-wrap,
+      .composerwrap {
+        position: relative;
+        z-index: 5;
+      }
+      .cx-attach {
+        display: flex;
+        gap: 7px;
+        padding: 10px 11px 3px;
+        flex-wrap: wrap;
+        max-height: 126px;
+        overflow: auto;
+      }
+      .cx-attach:empty {
+        display: none;
+      }
+      .cx-asset {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        max-width: 235px;
+        padding: 5px 7px;
+        border-radius: 7px;
+        border: 1px solid #43566b;
+        background: #243446;
+        color: #d7e5f3;
+        font-size: 11px;
+      }
+      .cx-asset img {
+        width: 29px;
+        height: 29px;
+        object-fit: cover;
+        border-radius: 5px;
+      }
+      .cx-asset .cx-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cx-asset .cx-remove {
+        border: 0;
+        background: transparent;
+        color: #9eb2c8;
+        font-size: 17px;
+        line-height: 1;
+        padding: 1px 4px;
+      }
+      .cx-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .cx-pill,
+      .cx-add {
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        color: #c1d1df;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        white-space: nowrap;
+        font-size: 11px;
+        padding: 6px 7px;
+        min-height: 30px;
+      }
+      .cx-pill {
+        border-color: #384c60;
+        background: #253648;
+      }
+      .cx-pill:hover,
+      .cx-add:hover {
+        background: #344b62;
+      }
+      .cx-pill:focus-visible,
+      .cx-add:focus-visible,
+      .cx-pop button:focus-visible {
+        outline: 2px solid #9cbdf1;
+        outline-offset: 2px;
+      }
+      .cx-pill[hidden] {
+        display: none;
+      }
+      .cx-pill[disabled] {
+        opacity: 0.57;
+        cursor: default;
+      }
+      .cx-add {
+        font-size: 22px;
+        font-weight: 400;
+        line-height: 1;
+        width: 30px;
+        border-color: #384c60;
+        background: #213143;
+      }
+      .cx-toolbar .cx-space {
+        flex: 1;
+        min-width: 4px;
+      }
+      .cx-toolbar .cx-send {
+        margin-left: 1px;
+      }
+      .cx-toolbar .cx-subtitle {
+        color: #9daebf;
+        font-size: 10px;
+      }
+      .cx-hidden {
+        display: none !important;
+      }
+      .cx-pop {
+        position: absolute;
+        z-index: 80;
+        bottom: calc(100% - 6px);
+        left: 18px;
+        width: min(365px, calc(100% - 36px));
+        max-height: min(340px, 50dvh);
+        overflow: auto;
+        background: #1e2c3b;
+        border: 1px solid #4a6075;
+        box-shadow: 0 18px 50px #000a;
+        border-radius: 12px;
+        padding: 7px;
+      }
+      .cx-pop[hidden] {
+        display: none;
+      }
+      .cx-pop.align-right {
+        left: auto;
+        right: 18px;
+      }
+      .cx-pop h4 {
+        margin: 7px 9px 6px;
+        color: #9eb3c7;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      .cx-pop button {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        padding: 10px 9px;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        border-radius: 7px;
+        color: #e4edf5;
+        font-size: 12px;
+      }
+      .cx-pop button:not([disabled]):hover {
+        background: #31485c;
+      }
+      .cx-pop button[disabled] {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+      .cx-pop small {
+        display: block;
+        color: #a5b6c6;
+        font-size: 10px;
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .cx-pop .cx-check {
+        margin-left: auto;
+        color: #9fc6f7;
+      }
+      .cx-pop .cx-help {
+        padding: 8px 9px;
+        color: #9eb0c1;
+        font-size: 10px;
+        line-height: 1.5;
+        border-top: 1px solid #3c4e60;
+      }
+      .cx-pop .cx-efforts {
+        display: flex;
+        gap: 5px;
+        padding: 5px 9px;
+      }
+      .cx-pop .cx-efforts button {
+        justify-content: center;
+        width: auto;
+        flex: 1;
+        border: 1px solid #43576d;
+        padding: 7px;
+      }
+      .cx-pop .cx-efforts button.selected {
+        border-color: #89b3dd;
+        background: #294461;
+      }
+      .composer .cx-toolbar button.send {
+        margin-left: 1px;
+      }
+      .composer .cx-attach + textarea {
+        min-height: 62px;
+      }
+      .composer textarea {
+        max-height: 210px;
+      }
+      @media (max-width: 850px) {
+        .cx-toolbar {
+          row-gap: 7px;
+        }
+        .cx-pill {
+          font-size: 10px;
+          padding: 6px 6px;
+        }
+        .cx-pop {
+          max-height: 50dvh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topline">
+        <span class="logo">nevo <span>SpecFlow</span></span
+        ><span class="env">UX exploration / Session Context</span><span class="topspacer"></span
+        ><span class="note">Dane demonstracyjne</span><span class="tiny-tag">DESKTOP · V2</span>
+      </header>
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="side-head">Nawigacja</div>
+          <button class="sidebutton">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M16 2H6a2 2 0 0 0-2 2v13" />
+              <rect x="8" y="7" width="12" height="15" rx="2" />
+            </svg>
+            Specyfikacje
+          </button>
+          <div class="sideseparator"></div>
+          <div class="switcher">
+            <strong>Stabilizacja Runtime</strong><small>Spec: AI-0042 · feature/recovery</small>
+          </div>
+          <button class="sidebutton">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M9 3v18" />
+              <path d="M13 8h4M13 12h4M13 16h4" />
+            </svg>
+            Przegląd</button
+          ><button class="sidebutton active">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            Sesje</button
+          ><button class="sidebutton">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 5h12M9 12h12M9 19h12M3 5h.01M3 12h.01M3 19h.01" />
+            </svg>
+            Zadania</button
+          ><button class="sidebutton">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="4" y="2" width="16" height="20" rx="2" />
+              <path d="M8 7h8M8 11h8M8 15h6" />
+            </svg>
+            Dokumenty</button
+          ><button class="sidebutton">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="6" cy="3" r="2" />
+              <path d="M6 5v12" />
+              <circle cx="6" cy="19" r="2" />
+              <circle cx="18" cy="6" r="2" />
+              <path d="M6 11h8a4 4 0 0 0 4-4" />
+            </svg>
+            Repozytorium
+          </button>
+          <div class="sidefooter">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21a8 8 0 0 1 16 0" />
+            </svg>
+            <span style="margin-left: 9px; font-size: 12px">Developer</span><br /><small
+              >Przestrzeń projektu</small
+            >
+          </div>
+        </aside>
+        <section class="workspace">
+          <header class="wshead">
+            <div class="wsheading">
+              <div class="crumb">
+                Specyfikacje
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+                Stabilizacja Runtime
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+                Sesje
+              </div>
+              <h1 id="sessionTitle">Stabilizacja Runtime · batch review #42</h1>
+            </div>
+            <div class="wsactions">
+              <button class="subbtn" id="scenarioLong" data-action="scenarioLong">
+                Długa sesja</button
+              ><button class="subbtn" id="scenarioNew" data-action="scenarioNew">Nowa sesja</button
+              ><button
+                class="subbtn"
+                data-action="swapSides"
+                title="Przenieś inspektor na lewą lub prawą stronę"
+              >
+                ⇄ Strona</button
+              ><button class="subbtn" id="panelToggle" data-action="panelToggle">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M5 5l14 14M19 5 5 19" />
+                </svg>
+                Ukryj kontekst
+              </button>
+            </div>
+          </header>
+          <div class="session-meta" id="sessionMeta"></div>
+          <div class="split" id="split">
+            <section class="conversation">
+              <div class="convo-scroll" id="convoScroll"></div>
+              <div class="activity" id="liveStatus"></div>
+              <div class="composer-wrap">
+                <div class="composer">
+                  <div class="cx-attach" id="cxAttach" aria-label="Załączniki"></div>
+                  <textarea
+                    id="composer"
+                    aria-label="Wiadomość"
+                    placeholder="Odpowiedz agentowi..."
+                  ></textarea>
+                  <div class="composer-foot cx-toolbar">
+                    <button
+                      type="button"
+                      class="cx-add"
+                      aria-label="Dodaj załącznik"
+                      title="Dodaj załącznik"
+                      data-cx="open"
+                      data-menu="attach"
+                    >
+                      +</button
+                    ><button
+                      type="button"
+                      class="cx-pill"
+                      data-cx="open"
+                      data-menu="intent"
+                      id="cxIntent"
+                      aria-label="Tryb pracy"
+                    >
+                      Agent ▾</button
+                    ><button
+                      type="button"
+                      class="cx-pill"
+                      data-cx="open"
+                      data-menu="approval"
+                      id="cxApproval"
+                      aria-label="Zatwierdzanie operacji"
+                    >
+                      Kontrolowany ▾</button
+                    ><span class="cx-space"></span
+                    ><button
+                      type="button"
+                      class="cx-pill"
+                      data-cx="open"
+                      data-menu="model"
+                      id="cxModel"
+                      aria-label="Model i effort"
+                    >
+                      Model · High ▾</button
+                    ><span id="modeLabel" class="cx-hidden">Codex · Agent</span
+                    ><span
+                      id="sendFeedback"
+                      style="color: #a9c5df; font-size: 10px; max-width: 130px"
+                    ></span
+                    ><button class="send cx-send" data-action="composerSend" aria-label="Wyślij">
+                      <svg
+                        aria-hidden="true"
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M12 19V5M5 12l7-7 7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="cx-pop"
+                  id="cxPop"
+                  hidden
+                  role="dialog"
+                  aria-label="Opcje composera"
+                ></div>
+                <input id="cxImageInput" type="file" accept="image/*" multiple hidden /><input
+                  id="cxFileInput"
+                  type="file"
+                  multiple
+                  hidden
+                /><input
+                  id="cxCameraInput"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                />
+              </div>
+            </section>
+            <div
+              class="handle"
+              id="handle"
+              role="separator"
+              title="Przeciągnij, aby zmienić szerokość paneli"
+              aria-label="Zmień szerokość paneli"
+            >
+              <span></span>
+            </div>
+            <section class="inspector" id="inspector">
+              <div class="tabbar" id="tabsbar"></div>
+              <div class="inspector-scroll" id="insBody"></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div
+      style="
+        background: #0b1119;
+        color: #91a4b6;
+        font:
+          11px/1.4 -apple-system,
+          Segoe UI,
+          Arial,
+          sans-serif;
+        min-height: 35px;
+        border-top: 1px solid #243443;
+        padding: 8px 18px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      "
+    >
+      <div style="display: flex; align-items: center; gap: 7px; flex-wrap: wrap">
+        <span>Szerokość inspektora:</span
+        ><button class="subbtn" id="sizeAuto" data-action="sizeAuto">Auto (1 karta / 2+)</button
+        ><button class="subbtn" id="sizeCompact" data-action="sizeCompact">Wąski</button
+        ><button class="subbtn" id="sizeBalanced" data-action="sizeBalanced">50/50</button
+        ><button class="subbtn" id="sizeWide" data-action="sizeWide">Duży</button
+        ><span style="color: #aec2d6">lub przeciągnij separator</span>
+      </div>
+      <div><span id="widthMode">Auto</span> · <span id="widthMetric">330 px</span></div>
+    </div>
+    <script>
+      // Synthetic product-design fixture. No data here represents live runtime state.
+      const TASKS = [
+        {
+          id: 'TASK-02',
+          name: 'Bezpieczne admission i writer claims',
+          status: 'review',
+          attempts: 3,
+          role: 'reviewer',
+          active: true,
+        },
+        {
+          id: 'TASK-03',
+          name: 'Recovery po SIGKILL / orphaned Turn',
+          status: 'review',
+          attempts: 4,
+          role: 'reviewer',
+          active: true,
+        },
+        {
+          id: 'TASK-04',
+          name: 'Idempotencja dispatch i CAS',
+          status: 'review',
+          attempts: 2,
+          role: 'reviewer',
+          active: true,
+        },
+        {
+          id: 'TASK-05',
+          name: 'Historia rewizji i retry',
+          status: 'changes',
+          attempts: 3,
+          role: 'implementer',
+        },
+        {
+          id: 'TASK-06',
+          name: 'Statusy providerów',
+          status: 'done',
+          attempts: 2,
+          role: 'implementer',
+        },
+        { id: 'TASK-07', name: 'Uzgodnienie zachowania UI', status: 'ready', attempts: 0 },
+        { id: 'TASK-08', name: 'E2E dla wielozadaniowego review', status: 'done', attempts: 1 },
+        { id: 'TASK-09', name: 'Polityka cleanup worktree', status: 'waiting', attempts: 0 },
+        { id: 'TASK-10', name: 'Kontrakty verification evidence', status: 'done', attempts: 2 },
+      ];
+      const ROOT_FILES = [
+        ['src/runtime/sessions/lifecycle/coordinator.ts', 'modified', 'code', 'TASK-03'],
+        ['src/runtime/sessions/persistence/worker.ts', 'modified', 'code', 'TASK-03'],
+        ['src/engine/execution/admission.ts', 'modified', 'code', 'TASK-02'],
+        ['src/engine/execution/claims.ts', 'modified', 'code', 'TASK-02'],
+        ['src/runtime/sessions/providers/codex/operation.ts', 'modified', 'code', 'TASK-04'],
+        ['src/runtime/sessions/providers/claude/operation.ts', 'modified', 'code', 'TASK-04'],
+        ['src/engine/execution/recovery.ts', 'modified', 'code', 'TASK-03'],
+        ['src/runtime/sessions/providers/codex/questions.ts', 'modified', 'code', 'TASK-04'],
+        ['docs/specs/backend.md', 'modified', 'document', 'TASK-05'],
+        ['docs/specs/behaviour.md', 'modified', 'document', 'TASK-05'],
+        ['docs/specs/overview.md', 'read', 'document', 'TASK-02'],
+        ['docs/review/review-batch-42.md', 'created', 'document', 'TASK-02'],
+        ['docs/verification/recovery-tests.md', 'created', 'document', 'TASK-03'],
+        ['tests/runtime/restart.spec.ts', 'modified', 'code', 'TASK-03'],
+        ['tests/engine/claims.spec.ts', 'modified', 'code', 'TASK-02'],
+      ];
+      const FOLDERS = [
+        'src/runtime/sessions',
+        'src/engine/execution',
+        'src/runtime/sessions/providers',
+        'tests/runtime',
+        'tests/engine',
+        'packages/specflow-ui',
+        'docs/specs',
+        'docs/review',
+        'tools/specs',
+      ];
+      const FILES = Array.from({ length: 146 }, (_, i) => {
+        const fixed = ROOT_FILES[i];
+        if (fixed)
+          return {
+            id: 'file-' + i,
+            path: fixed[0],
+            action: fixed[1],
+            kind: fixed[2],
+            task: fixed[3],
+            operations: ((i * 3) % 19) + 1,
+          };
+        const base = FOLDERS[i % FOLDERS.length],
+          mod = [
+            'read-model',
+            'recovery',
+            'session',
+            'claims',
+            'workflow',
+            'contract',
+            'adapter',
+            'guard',
+            'projection',
+            'transport',
+            'spec-utils',
+          ][i % 11],
+          ext = i % 13 === 0 ? 'md' : 'ts';
+        return {
+          id: 'file-' + i,
+          path: `${base}/${mod}-${String(i + 1).padStart(3, '0')}.${ext}`,
+          action: i < 59 ? 'modified' : i < 85 ? 'created' : 'read',
+          kind: ext === 'md' ? 'document' : 'code',
+          task: TASKS[i % TASKS.length].id,
+          operations: ((i * 7) % 31) + 1,
+        };
+      });
+      const ARTIFACTS = [
+        {
+          id: 'ar-1',
+          kind: 'review',
+          title: 'Raport review · batch #42',
+          detail: 'TASK-02, TASK-03, TASK-04 · 2 poprawki wymagane',
+          date: '29.10 · 14:24',
+          tasks: ['TASK-02', 'TASK-03', 'TASK-04'],
+          source: 'Review #2',
+          status: 'attention',
+        },
+        {
+          id: 'ar-2',
+          kind: 'handover',
+          title: 'Przekazanie: Implementer → Reviewer',
+          detail: 'Zakres, zmiany, ryzyka i otwarte kwestie',
+          date: '29.10 · 13:40',
+          tasks: ['TASK-02', 'TASK-03', 'TASK-04'],
+          source: 'Transition #7',
+          status: 'current',
+        },
+        {
+          id: 'ar-3',
+          kind: 'verification',
+          title: 'Weryfikacja recovery (Linux / Windows)',
+          detail: '327 PASS · 1 FAIL · 4 SKIP',
+          date: '29.10 · 12:54',
+          tasks: ['TASK-03'],
+          source: 'Test run #18',
+          status: 'attention',
+        },
+        {
+          id: 'ar-4',
+          kind: 'changes',
+          title: 'Change set · 41 plików',
+          detail: '+1 279 / −408 · rev 9df1a6a',
+          date: '29.10 · 12:30',
+          tasks: ['TASK-02', 'TASK-03', 'TASK-04'],
+          source: 'Execution #14',
+          status: 'normal',
+        },
+        {
+          id: 'ar-5',
+          kind: 'review',
+          title: 'Review TASK-03 · próba 1',
+          detail: 'Odrzucono · 3 problemy z recovery',
+          date: '27.10 · 18:20',
+          tasks: ['TASK-03'],
+          source: 'Review #1',
+          status: 'rejected',
+        },
+        {
+          id: 'ar-6',
+          kind: 'handover',
+          title: 'Przekazanie Reviewer → Refiner',
+          detail: 'Powód odrzucenia i instrukcje poprawy',
+          date: '27.10 · 18:22',
+          tasks: ['TASK-03'],
+          source: 'Transition #6',
+          status: 'normal',
+        },
+        {
+          id: 'ar-7',
+          kind: 'review',
+          title: 'Review TASK-02 · próba 1',
+          detail: 'Odrzucono · niespójne claim ownership',
+          date: '26.10 · 11:50',
+          tasks: ['TASK-02'],
+          source: 'Review #1',
+          status: 'rejected',
+        },
+        {
+          id: 'ar-8',
+          kind: 'verification',
+          title: 'Testy CI · Windows x64',
+          detail: 'Pipeline pass · 74 testy',
+          date: '28.10 · 21:13',
+          tasks: ['TASK-04'],
+          source: 'CI run #119',
+          status: 'normal',
+        },
+        {
+          id: 'ar-9',
+          kind: 'report',
+          title: 'Notatki architektoniczne admission',
+          detail: 'Decyzje o kolejności blokad i CAS',
+          date: '26.10 · 10:12',
+          tasks: ['TASK-02'],
+          source: 'Writer work',
+          status: 'normal',
+        },
+        {
+          id: 'ar-10',
+          kind: 'changes',
+          title: 'Diff bazowy sprzed re-review',
+          detail: 'Snapshot kodu użyty przez review #2',
+          date: '29.10 · 13:42',
+          tasks: ['TASK-03'],
+          source: 'Revision 9df1a6a',
+          status: 'normal',
+        },
+        {
+          id: 'ar-11',
+          kind: 'decision',
+          title: 'Decyzja: nie ponawiać unknown Turn',
+          detail: 'Zatwierdzona przez właściciela',
+          date: '25.10 · 16:05',
+          tasks: ['TASK-03'],
+          source: 'Owner',
+          status: 'normal',
+        },
+        {
+          id: 'ar-12',
+          kind: 'report',
+          title: 'Podsumowanie prac Refiner #3',
+          detail: 'Zamknięto 2/3 ustaleń; 1 blocker',
+          date: '28.10 · 22:05',
+          tasks: ['TASK-03'],
+          source: 'Refiner',
+          status: 'normal',
+        },
+      ];
+      const TRANSITIONS = [
+        {
+          id: 'ho-7',
+          when: '29.10 · 13:40',
+          from: 'Implementer',
+          to: 'Reviewer',
+          kind: 'outgoing',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          title: 'Review po poprawkach',
+          notes:
+            'Zweryfikuj rozliczanie writer claims i recovery po przerwanym Turn. Nie ponawiaj unknown dispatch.',
+          session: 'Sesja review #42',
+          artifact: 'ar-2',
+        },
+        {
+          id: 'ho-6',
+          when: '27.10 · 18:22',
+          from: 'Reviewer',
+          to: 'Refiner',
+          kind: 'incoming',
+          scope: ['TASK-03'],
+          title: 'Poprawki po odrzuconym review',
+          notes: 'Usuń automatyczny replay, dodaj test SIGKILL i rozróżnij uncertain outcome.',
+          session: 'Sesja refiner #11',
+          artifact: 'ar-6',
+        },
+        {
+          id: 'ho-5',
+          when: '27.10 · 18:20',
+          from: 'Reviewer',
+          to: 'Implementer',
+          kind: 'outgoing',
+          scope: ['TASK-02'],
+          title: 'Przekazanie uwag',
+          notes: '3 uwagi architektoniczne po review #1.',
+          session: 'Implementacja #9',
+          artifact: 'ar-7',
+        },
+        {
+          id: 'ho-4',
+          when: '26.10 · 09:30',
+          from: 'Planner',
+          to: 'Implementer',
+          kind: 'incoming',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          title: 'Start batch implementacji',
+          notes: 'Wejściowy zakres wraz z kryteriami akceptacji.',
+          session: 'Implementacja #9',
+          artifact: null,
+        },
+        {
+          id: 'ho-3',
+          when: '25.10 · 17:40',
+          from: 'Spec Writer',
+          to: 'Planner',
+          kind: 'incoming',
+          scope: ['TASK-02', 'TASK-03'],
+          title: 'Zatwierdzony kierunek',
+          notes: 'Plan z kontekstem specyfikacji i wymaganymi gate.',
+          session: 'Planowanie #6',
+          artifact: null,
+        },
+      ];
+      const HISTORY = [
+        {
+          id: 'ev-13',
+          time: '29.10 · 14:30',
+          type: 'run',
+          title: 'Reviewer analizuje batch #42',
+          detail: 'TASK-02, TASK-03, TASK-04 · obecna aktywność',
+          status: 'active',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+        },
+        {
+          id: 'ev-12',
+          time: '29.10 · 13:40',
+          type: 'handover',
+          title: 'Przekazanie Implementer → Reviewer',
+          detail: 'Nowa sesja review; przekazano evidence z wykonania',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          ref: 'ho-7',
+        },
+        {
+          id: 'ev-11',
+          time: '29.10 · 12:54',
+          type: 'verify',
+          title: 'Weryfikacja recovery: 1 nieudany test',
+          detail: 'Wynik nie blokuje odczytu, ale wymaga przeglądu',
+          status: 'warning',
+          scope: ['TASK-03'],
+          ref: 'ar-3',
+        },
+        {
+          id: 'ev-10',
+          time: '28.10 · 22:05',
+          type: 'run',
+          title: 'Implementacja próba 3 (TASK-03)',
+          detail: 'Refiner naprawił 2 z 3 ustaleń',
+          status: 'done',
+          scope: ['TASK-03'],
+          ref: 'ar-12',
+        },
+        {
+          id: 'ev-9',
+          time: '27.10 · 18:22',
+          type: 'handover',
+          title: 'Reviewer → Refiner',
+          detail: 'Nowa sesja, zachowano przyczynę odrzucenia',
+          status: 'done',
+          scope: ['TASK-03'],
+          ref: 'ho-6',
+        },
+        {
+          id: 'ev-8',
+          time: '27.10 · 18:20',
+          type: 'rejected',
+          title: 'Review próba 1 odrzucona',
+          detail: 'TASK-03 · potrzebne zmiany w recovery',
+          status: 'rejected',
+          scope: ['TASK-03'],
+          ref: 'ar-5',
+        },
+        {
+          id: 'ev-7',
+          time: '27.10 · 10:14',
+          type: 'run',
+          title: 'Implementacja próba 2 (TASK-03)',
+          detail: 'Zakończono wykonanie, nie zamknięto taska',
+          status: 'done',
+          scope: ['TASK-03'],
+        },
+        {
+          id: 'ev-6',
+          time: '26.10 · 18:30',
+          type: 'rejected',
+          title: 'Review TASK-02: odrzucono',
+          detail: 'Brak spójnej ochrony claim ownership',
+          status: 'rejected',
+          scope: ['TASK-02'],
+          ref: 'ar-7',
+        },
+        {
+          id: 'ev-5',
+          time: '26.10 · 09:30',
+          type: 'handover',
+          title: 'Planner → Implementer',
+          detail: 'Pierwsza sesja wykonania w tym scope',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          ref: 'ho-4',
+        },
+        {
+          id: 'ev-4',
+          time: '25.10 · 16:05',
+          type: 'decision',
+          title: 'Owner: retry unknown nie jest dozwolony',
+          detail: 'Zapisano decyzję architektoniczną',
+          status: 'done',
+          scope: ['TASK-03'],
+          ref: 'ar-11',
+        },
+        {
+          id: 'ev-3',
+          time: '24.10 · 14:10',
+          type: 'run',
+          title: 'Implementacja próba 1 (TASK-03)',
+          detail: 'Pierwszy zakres kodu i testów',
+          status: 'done',
+          scope: ['TASK-03'],
+        },
+        {
+          id: 'ev-2',
+          time: '24.10 · 10:12',
+          type: 'handover',
+          title: 'Spec Writer → Planner',
+          detail: 'Podział zakresu na zadania',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03'],
+          ref: 'ho-3',
+        },
+        {
+          id: 'ev-1',
+          time: '23.10 · 09:20',
+          type: 'run',
+          title: 'Rozpoczęcie pracy nad specyfikacją',
+          detail: 'Instrukcje i initial task context',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03'],
+        },
+      ];
+      const ICONS = {
+        context:
+          '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M13 8h4M13 12h4M13 16h4"/>',
+        file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+        files:
+          '<path d="M16 2H6a2 2 0 0 0-2 2v13"/><rect x="8" y="7" width="12" height="15" rx="2"/>',
+        branch:
+          '<circle cx="6" cy="3" r="2"/><path d="M6 5v12"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 11h8a4 4 0 0 0 4-4"/>',
+        archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v12h14V8M10 12h4"/>',
+        clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        search: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+        x: '<path d="M5 5l14 14M19 5 5 19"/>',
+        chevron: '<path d="m9 18 6-6-6-6"/>',
+        down: '<path d="m6 9 6 6 6-6"/>',
+        back: '<path d="m14 18-6-6 6-6"/>',
+        arrow: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+        check: '<path d="m4 12 5 5L20 6"/>',
+        alert:
+          '<path d="M12 9v4M12 17h.01"/><path d="m10 3-8 14a2 2 0 0 0 2 3h16a2 2 0 0 0 2-3L14 3a2 2 0 0 0-4 0z"/>',
+        swap: '<path d="m7 7-4 4 4 4M3 11h14M17 17l4-4-4-4M21 13H7"/>',
+        layers: '<path d="m12 2 9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/>',
+        play: '<path d="m8 5 12 7-12 7z"/>',
+        stop: '<rect x="4" y="4" width="16" height="16" rx="3"/>',
+        sliders:
+          '<path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="17" r="2"/>',
+        more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+        terminal:
+          '<rect x="2" y="3" width="20" height="18" rx="2"/><path d="m6 9 3 3-3 3M11 16h5"/>',
+        user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+        document:
+          '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h6"/>',
+        git: '<circle cx="7" cy="6" r="2"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/><path d="M7 8v8M17 16c0-5-10-5-10-10"/>',
+        rows: '<path d="M4 5h16M4 12h16M4 19h16"/>',
+        external: '<path d="M13 3h8v8M21 3l-10 10"/><path d="M20 13v7H4V4h7"/>',
+        filter: '<path d="M3 5h18M7 12h10M10 19h4"/>',
+        bolt: '<path d="m14 2-9 11h7l-2 9 9-12h-7z"/>',
+        pin: '<path d="m8 3 8 0 1 6 3 3v2H4v-2l3-3zM12 14v8"/>',
+        maximize: '<path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/>',
+        minimize: '<path d="M3 9h6V3M21 9h-6V3M3 15h6v6M21 15h-6v6"/>',
+        book: '<path d="M3 19V5a2 2 0 0 1 2-2h5a3 3 0 0 1 2 2 3 3 0 0 1 2-2h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6a3 3 0 0 0-3 0H5a2 2 0 0 1-2-2zM12 5v15"/>',
+        clipboard:
+          '<rect x="4" y="5" width="16" height="17" rx="2"/><path d="M9 5a3 3 0 0 1 6 0M8 13l3 3 5-5"/>',
+        info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+        handover: '<path d="M2 9h12m-4-4 4 4-4 4M22 15H10m4-4-4 4 4 4"/>',
+        diff: '<path d="M6 4v16M18 4v16M2 12h8M14 12h8"/>',
+        calendar:
+          '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',
+        list: '<path d="M9 5h12M9 12h12M9 19h12M3 5h.01M3 12h.01M3 19h.01"/>',
+      };
+      function ico(name, size = 17) {
+        return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.file}</svg>`;
+      }
+      function escapeHTML(t) {
+        return String(t).replace(
+          /[&<>"']/g,
+          (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[x],
+        );
+      }
+      function statusBadge(status) {
+        const o = {
+          review: ['running', 'W review'],
+          changes: ['attention', 'Do poprawek'],
+          done: ['success', 'Zakończone'],
+          ready: ['neutral', 'Gotowe'],
+          waiting: ['neutral', 'Oczekuje'],
+          active: ['running', 'W toku'],
+          rejected: ['danger', 'Odrzucono'],
+          current: ['running', 'Bieżące'],
+          attention: ['attention', 'Wymaga uwagi'],
+          normal: ['neutral', ''],
+          modified: ['running', 'Zmieniono'],
+          created: ['success', 'Utworzono'],
+          read: ['neutral', 'Odczytano'],
+        };
+        const v = o[status] || o.normal;
+        return `<span class="status ${v[0]}">${v[1] || escapeHTML(status)}</span>`;
+      }
+      function dot(kind) {
+        return `<span class="doti ${kind || ''}"></span>`;
+      }
+    </script>
+    <script>
+      (function () {
+        const $ = (s, base = document) => base.querySelector(s);
+        const app = $('#app');
+        const st = {
+          scenario: 'long',
+          activeTab: 'context',
+          tabs: [{ key: 'context', kind: 'context', id: 'context', label: 'Kontekst' }],
+          ctx: 'summary',
+          fileQuery: '',
+          fileFilter: 'all',
+          taskFilter: 'all',
+          fileLimit: 36,
+          histLimit: 8,
+          artifactQuery: '',
+          handQuery: '',
+          size: 'auto',
+          manual: undefined,
+          insOpen: true,
+          expanded: false,
+          fileView: 'preview',
+          draft: '',
+          callout: false,
+          flipped: false,
+        };
+        const REF = {
+          context: 'Kontekst',
+          summary: 'Przegląd',
+          tasks: 'Zadania',
+          files: 'Pliki',
+          history: 'Historia',
+          handovers: 'Przekazania',
+          artifacts: 'Artefakty',
+          instructions: 'Instrukcje',
+          environment: 'Środowisko',
+        };
+        const NAV = [
+          ['summary', 'Przegląd', 'context'],
+          ['tasks', 'Zadania', 'list'],
+          ['files', 'Pliki', 'files'],
+          ['history', 'Historia', 'clock'],
+          ['handovers', 'Przekazania', 'handover'],
+          ['artifacts', 'Artefakty', 'archive'],
+          ['instructions', 'Instrukcje', 'book'],
+          ['environment', 'Środowisko', 'branch'],
+        ];
+        const split = $('#split'),
+          panel = $('#inspector'),
+          body = $('#insBody'),
+          tabsbar = $('#tabsbar'),
+          title = $('#sessionTitle'),
+          meta = $('#sessionMeta');
+        function scenarioTasks() {
+          return st.scenario === 'new'
+            ? [
+                {
+                  id: 'TASK-11',
+                  name: 'Dodać obsługę widoków sesji',
+                  status: 'ready',
+                  attempts: 0,
+                },
+                {
+                  id: 'TASK-12',
+                  name: 'Przygotować kontrakty evidence',
+                  status: 'waiting',
+                  attempts: 0,
+                },
+              ]
+            : TASKS;
+        }
+        function heading(label, more) {
+          return `<div class="label">${escapeHTML(label)}</div>${more || ''}`;
+        }
+        function plainrow(icon, title, description, on, side = '') {
+          return `<button class="row linkrow" data-action="${on}" style="display:flex"><span class="icon">${ico(icon, 16)}</span><span class="main"><span class="title">${escapeHTML(title)}</span>${description ? `<span class="sub">${escapeHTML(description)}</span>` : ''}</span>${side ? `<span class="right">${side}</span>` : ico('chevron', 14)}</button>`;
+        }
+        function active() {
+          return st.tabs.find((t) => t.key === st.activeTab) || st.tabs[0];
+        }
+        function sectionTab(key) {
+          const id = 'section:' + key;
+          let tab = st.tabs.find((t) => t.key === id);
+          if (!tab) {
+            tab = { key: id, kind: 'section', id: key, label: REF[key], stack: [] };
+            st.tabs.push(tab);
+          }
+          st.activeTab = id;
+          st.insOpen = true;
+          render();
+        }
+        function makeDetail(kind, id, label) {
+          // Independent documents, reports and Work can be revisited as tabs.
+          // A Task, its attempts, nested feedback and ToolActions remain in a local stack.
+          if (kind === 'task' || kind === 'attempt' || kind === 'handover' || kind === 'tool') {
+            if (kind === 'task' && active().kind === 'context') {
+              sectionTab('tasks');
+            } else if (kind === 'attempt' && active().kind === 'context') {
+              sectionTab('history');
+            } else if (kind === 'handover' && active().kind === 'context') {
+              sectionTab('handovers');
+            }
+            const tab = active();
+            if (!tab.stack) tab.stack = [];
+            tab.stack.push({ kind, id, label });
+            st.insOpen = true;
+            render();
+            return;
+          }
+          const key = kind + ':' + id;
+          let tab = st.tabs.find((t) => t.key === key);
+          if (!tab) {
+            tab = { key, kind, id, label, stack: [] };
+            st.tabs.push(tab);
+          }
+          st.activeTab = key;
+          st.insOpen = true;
+          st.expanded = false;
+          st.fileView = 'preview';
+          render();
+        }
+        function contextChange(v) {
+          if (v === 'summary') {
+            st.activeTab = 'context';
+            st.insOpen = true;
+            render();
+          } else sectionTab(v);
+        }
+        function popLocal() {
+          const t = active();
+          if (t.stack?.length) {
+            t.stack.pop();
+            render();
+          }
+        }
+
+        function applySize() {
+          const container = split.getBoundingClientRect().width;
+          if (!container) return;
+          // Opening the SECOND tab changes to 50/50 ONCE. Switching tabs does not resize.
+          let preferred = st.tabs.length > 1 ? container * 0.5 : 330;
+          if (st.size === 'compact') preferred = 330;
+          else if (st.size === 'balanced') preferred = container * 0.5;
+          else if (st.size === 'wide') preferred = container * 0.64;
+          else if (st.size === 'manual') preferred = st.manual ?? 330;
+          preferred = Math.round(Math.max(275, Math.min(preferred, container - 372)));
+          split.style.setProperty('--sb', preferred + 'px');
+          $('#widthMetric').textContent = preferred + ' px';
+        }
+        function openState() {
+          split.classList.toggle('closed', !st.insOpen);
+          split.classList.toggle('expanded', st.expanded);
+          split.classList.toggle('flipped', st.flipped);
+          $('#panelToggle').innerHTML = st.insOpen
+            ? `${ico('x', 14)} Ukryj inspektor`
+            : `${ico('context', 14)} Pokaż inspektor`;
+          if (st.insOpen && !st.expanded) applySize();
+          $('#widthMode').textContent =
+            st.size === 'auto'
+              ? st.tabs.length > 1
+                ? 'Auto · 50/50'
+                : 'Auto · wąski'
+              : st.size === 'manual'
+                ? 'Ręcznie'
+                : st.size === 'balanced'
+                  ? '50/50'
+                  : st.size === 'wide'
+                    ? 'Duży podgląd'
+                    : 'Wąski';
+        }
+        function contextContent(key = 'summary') {
+          const content =
+            {
+              summary,
+              tasks: taskList,
+              files: filesList,
+              history: historyList,
+              handovers: handoverList,
+              artifacts: artifactList,
+              instructions: instructionsView,
+              environment,
+            }[key]?.() || summary();
+          const intro =
+            key === 'summary'
+              ? 'Punkt wejścia do danych sesji. Wybór sekcji tworzy zakładkę; szczegóły pozostają w jej własnym stosie.'
+              : key === 'tasks'
+                ? 'Zadanie → próba → zdarzenie pozostają w jednej zakładce.'
+                : key === 'history'
+                  ? 'Historia wykonania i prób. Zdarzenia mają jawny kontekst zadania.'
+                  : 'Niezależny widok roboczy. Przełączanie zakładek nie zmienia szerokości paneli.';
+          return `<div class="context-top"><div class="context-top-title"><h2>${REF[key] || 'Kontekst'}</h2>${key === 'summary' ? `<span class="pill">${st.scenario === 'new' ? 'Nowa' : 'Długa sesja'}</span>` : ''}</div><p>${intro}</p></div><div class="context-body"><div class="ctxcontent">${content}</div></div>`;
+        }
+        function summary() {
+          if (st.scenario === 'new')
+            return `<div class="label">PRZEKAZANY KONTEKST</div><div class="focus"><strong>Reviewer · przygotowanie</strong><p>Nowa sesja otrzymała instrukcje i 2 zadania. Nie wykonano jeszcze Turn ani operacji na plikach.</p></div><div class="ctx-meta"><span class="pill strong">Claude Code · Plan</span><span class="pill">feature/session-ui</span></div><div class="divider"></div>${plainrow('book', 'Instrukcje dla Reviewera', 'Rola, kryteria jakości i zakres', 'ctx:instructions')}${plainrow('list', 'Zadania do oceny', 'TASK-11 oraz TASK-12', 'ctx:tasks')}${plainrow('files', 'Pliki', 'Brak potwierdzonych odczytów lub zmian', 'ctx:files')}<div class="notice" style="border-color:#40536a;background:#1b2a39;color:#c0d6ea"><strong>Sesja nie ma jeszcze historii</strong>To nie oznacza, że nie ma kontekstu. Zakres pracy i instrukcje są dostępne przed pierwszą wiadomością.</div>`;
+          return `<div class="label">AKTUALNA PRACA</div><div class="focus"><div class="ctx-meta" style="margin-bottom:6px">${dot('active')} <span class="status running">Review w toku</span> <span class="pill">Batch #42</span></div><strong>Reviewer · 3 zadania</strong><p>TASK-02 · TASK-03 · TASK-04<br>Weryfikacja recovery, claims i idempotencji dispatch.</p><button class="section-cta" data-ctx="tasks">Zobacz zakres wykonania ${ico('chevron', 13)}</button></div><div class="notice"><strong>1 element wymaga uwagi</strong>Test restart/recovery nie przeszedł. Wynik review pozostaje niezatwierdzony.</div><div class="stats"><div class="stat"><div class="value">146</div><div class="desc">pliki w historii</div></div><div class="stat"><div class="value">13</div><div class="desc">zdarzeń workflow</div></div><div class="stat"><div class="value">12</div><div class="desc">artefaktów</div></div></div><div class="cols"><div><div class="label">ZAKRES I PLIKI</div>${plainrow('list', 'Zadania i próby', '9 powiązanych · 3 w bieżącym batchu', 'ctx:tasks')}${plainrow('files', 'Odczyty i zmiany', '59 zmienionych · 26 nowych · 61 odczytanych', 'ctx:files')}${plainrow('clock', 'Historia pracy', '13 zdarzeń · odrzucone próby', 'ctx:history')}${plainrow('handover', 'Przekazania', '5 przejść · różne role i sesje', 'ctx:handovers')}</div><div><div class="label">EVIDENCE I KONFIGURACJA</div>${plainrow('archive', 'Artefakty', 'Review, handover, testy, decyzje', 'ctx:artifacts')}${plainrow('book', 'Instrukcje', 'Rola, zadania, kryteria', 'ctx:instructions')}${plainrow('branch', 'Środowisko', 'feature/recovery · verified worktree', 'ctx:environment')}${plainrow('terminal', 'Przebieg Work', 'Historia narzędzi tego Turn', 'open:work')}</div></div>`;
+        }
+        function taskList() {
+          let arr = scenarioTasks().filter(
+            (t) => st.taskFilter === 'all' || t.status === st.taskFilter,
+          );
+          return `<div class="label">${st.scenario === 'long' ? 'AKTUALNY BATCH · 3 ZADANIA' : 'ZAKRES WEJŚCIOWY'}</div>${st.scenario === 'long' ? `<div class="focus"><strong>Review #42 · 3 zadania</strong><p>Wspólny przebieg wykonania nie oznacza wspólnego werdyktu. Każde zadanie ma oddzielny wynik.</p></div>` : ''}<div class="filterbar">${[
+            ['all', 'Wszystkie'],
+            ['review', 'W review'],
+            ['changes', 'Do poprawek'],
+            ['done', 'Zakończone'],
+            ['ready', 'Gotowe'],
+          ]
+            .map(
+              ([k, l]) =>
+                `<button class="${st.taskFilter === k ? 'active' : ''}" data-task-filter="${k}">${l}</button>`,
+            )
+            .join(
+              '',
+            )}</div>${arr.map((t) => `<button class="row linkrow" data-open="task:${t.id}">${ico('list', 16)}<span class="main"><span class="title">${escapeHTML(t.id)} · ${escapeHTML(t.name)}</span><span class="sub">${t.attempts ? `${t.attempts} prób w historii` : 'Nie rozpoczęto'}${t.active ? ' · w bieżącym batchu' : ''}</span></span>${statusBadge(t.status)}${ico('chevron', 14)}</button>`).join('')}<p class="small muted" style="margin-top:16px">Widok zawiera historyczne powiązania, nie dowodzi, że każde zadanie jest aktualnie wykonywane. Bieżący zakres pochodzi z execution scope.</p>`;
+        }
+        function filesList() {
+          if (st.scenario === 'new')
+            return `<div class="empty">${ico('files', 28)}<p>Brak potwierdzonych odczytów lub modyfikacji.<br>Dokumenty specyfikacji istnieją niezależnie od sesji.</p><button class="subbtn" data-ctx="instructions">Pokaż przekazane instrukcje</button></div>`;
+          let arr = FILES.filter((f) => {
+            let q = st.fileQuery.trim().toLowerCase();
+            return (
+              (!q || f.path.toLowerCase().includes(q) || f.task.toLowerCase().includes(q)) &&
+              (st.fileFilter === 'all' || st.fileFilter === f.action)
+            );
+          });
+          let counts = {
+            all: FILES.length,
+            modified: FILES.filter((f) => f.action === 'modified').length,
+            created: FILES.filter((f) => f.action === 'created').length,
+            read: FILES.filter((f) => f.action === 'read').length,
+          };
+          return `<div class="label">REFERENCJE PLIKÓW · ${FILES.length}</div><div class="searchrow">${ico('search', 15)}<input id="fileSearch" type="search" value="${escapeHTML(st.fileQuery)}" placeholder="Ścieżka lub TASK-03" aria-label="Wyszukaj pliki"></div><div class="filterbar">${[
+            ['all', 'Wszystkie'],
+            ['modified', 'Zmienione'],
+            ['created', 'Nowe'],
+            ['read', 'Odczytane'],
+          ]
+            .map(
+              ([k, l]) =>
+                `<button class="${st.fileFilter === k ? 'active' : ''}" data-file-filter="${k}">${l} · ${counts[k]}</button>`,
+            )
+            .join(
+              '',
+            )}</div><div class="small muted" style="padding:5px 0 12px">${arr.length} wyników · pokazano ${Math.min(st.fileLimit, arr.length)}. Filtr nie rozpoznaje historii na podstawie nazwy pliku.</div>${arr
+            .slice(0, st.fileLimit)
+            .map(
+              (f) =>
+                `<button class="row linkrow" data-open="file:${f.id}">${ico(f.kind === 'document' ? 'document' : 'file', 16)}<span class="main"><span class="title" title="${escapeHTML(f.path)}">${escapeHTML(f.path.split('/').at(-1))}</span><span class="sub" title="${escapeHTML(f.path)}">${escapeHTML(f.path)} · ${f.task}</span></span>${statusBadge(f.action)}${ico('chevron', 13)}</button>`,
+            )
+            .join(
+              '',
+            )}${arr.length > st.fileLimit ? `<button class="pagination" data-action="moreFiles">Pokaż kolejne ${Math.min(36, arr.length - st.fileLimit)} · pozostało ${arr.length - st.fileLimit}</button>` : ''}${!arr.length ? '<div class="empty">Brak wyników. Wyczyść filtry lub zmień zapytanie.</div>' : ''}`;
+        }
+        function historyList() {
+          if (st.scenario === 'new')
+            return `<div class="empty">${ico('clock', 27)}<p>Brak prób, review, przekazań i zakończonych kroków.<br>Historia zacznie się po pierwszym wykonaniu.</p></div>`;
+          return `<div class="label">HISTORIA WORKFLOW · 13 ZDARZEŃ</div><p class="small muted" style="line-height:1.65">To chronologia pracy i przejść, a nie pełny zapis tool calli. Zdarzenia mogą pochodzić z innych sesji.</p><div style="margin-top:20px">${HISTORY.slice(
+            0,
+            st.histLimit,
+          )
+            .map(
+              (h) =>
+                `<div class="history-line ${h.status === 'rejected' ? 'rejected' : h.status === 'active' ? 'active' : ''}"><div class="when">${h.time} · ${h.scope.join(', ')}</div><div class="event">${escapeHTML(h.title)}</div><div class="detail">${escapeHTML(h.detail)}</div><button class="section-cta" data-open="attempt:${h.id}">Zobacz szczegóły ${ico('chevron', 12)}</button></div>`,
+            )
+            .join(
+              '',
+            )}</div>${st.histLimit < HISTORY.length ? `<button class="pagination" data-action="moreHistory">Załaduj starsze zdarzenia · ${HISTORY.length - st.histLimit} pozostało</button>` : ''}`;
+        }
+        function handoverList() {
+          if (st.scenario === 'new')
+            return `<div class="label">KONTEKST STARTOWY</div><div class="focus"><strong>Instrukcje bez przekazania</strong><p>Sesja uruchomiona z kontekstu zadania. Nie ma poprzedniej sesji ani handover.</p></div>`;
+          return `<div class="label">POWIĄZANIA MIĘDZY SESJAMI · 5</div><p class="small muted" style="line-height:1.65">Przekazanie może uruchamiać nową sesję lub ponownie używać istniejącej. Nie przenosi automatycznie prawa do zapisu ani nie kończy workflow.</p>${TRANSITIONS.map((h) => `<button class="row linkrow" data-open="handover:${h.id}">${ico('handover', 17)}<span class="main"><span class="title">${h.from} → ${h.to}</span><span class="sub">${h.title} · ${h.when}</span></span>${ico('chevron', 14)}</button>`).join('')}`;
+        }
+        function artifactList() {
+          if (st.scenario === 'new')
+            return `<div class="empty">${ico('archive', 26)}<p>Brak artefaktów wykonania.<br>Instrukcje wejściowe nie są artefaktami wynikowymi.</p></div>`;
+          let arr = ARTIFACTS.filter(
+            (a) =>
+              !st.artifactQuery ||
+              [a.title, a.detail, a.kind, ...a.tasks]
+                .join(' ')
+                .toLowerCase()
+                .includes(st.artifactQuery.toLowerCase()),
+          );
+          return `<div class="label">WYNIKI I DOWODY PRACY · ${ARTIFACTS.length}</div><p class="small muted" style="line-height:1.6">Artefakt = trwały wynik lub dowód mający źródło, zakres i rewizję. Nie każda wiadomość agenta nim jest.</p><div class="searchrow" style="margin-top:13px">${ico('search', 15)}<input type="search" id="artifactSearch" placeholder="Szukaj raportu, review, zadania" value="${escapeHTML(st.artifactQuery)}"></div>${arr.map((a) => `<button class="row linkrow" data-open="artifact:${a.id}">${ico(a.kind === 'handover' ? 'handover' : a.kind === 'verification' ? 'check' : a.kind === 'changes' ? 'diff' : a.kind === 'decision' ? 'clipboard' : 'archive', 17)}<span class="main"><span class="title">${escapeHTML(a.title)}</span><span class="sub">${escapeHTML(a.detail)} · ${a.date}</span></span>${a.status === 'rejected' ? statusBadge('rejected') : a.status === 'attention' ? statusBadge('attention') : ico('chevron', 14)}</button>`).join('')}${!arr.length ? '<div class="empty">Brak pasujących artefaktów.</div>' : ''}`;
+        }
+        function instructionsView() {
+          return `<div class="label">INSTRUKCJE PRZEKAZANE AGENTOWI</div><div class="focus"><strong>${st.scenario === 'long' ? 'Reviewer · batch #42' : 'Reviewer · nowa sesja'}</strong><p>${st.scenario === 'long' ? 'Bieżąca rola jest częścią execution context, a nie niezmienną cechą sesji.' : 'Przygotowanie do pierwszego review, bez historii operacji.'}</p></div><div class="label">ROLA</div><div class="instructions">Weryfikuj kontrakty, bezpieczeństwo operacji Git oraz dowody testowe. Zgłaszaj wyłącznie konkretne problemy wraz z warunkiem ich wystąpienia.</div><div class="label">ZAKRES</div>${(st.scenario === 'new' ? ['TASK-11', 'TASK-12'] : ['TASK-02', 'TASK-03', 'TASK-04']).map((id) => plainrow('list', id, TASKS.find((t) => t.id === id)?.name || 'Nowe zadanie', 'open:task:' + id)).join('')}<div class="label">KRYTERIA I OGRANICZENIA</div><div class="instructions">• Nie uznawaj zakończenia Turn za ukończenie zadania.
+• Nie ponawiaj unknown dispatch bez pozytywnego dowodu.
+• Przestrzegaj aktualnego trybu agenta i writer claims.
+• Każdy wynik review ma wskazać osobny werdykt dla każdego zadania.</div><div class="label">ŹRÓDŁO INSTRUKCJI</div><div class="small muted">Profil agenta + manifest specyfikacji + wybrany kontekst zadania. Wymaga jawnej projekcji i wersjonowania dla odtwarzania historycznych instrukcji.</div>`;
+        }
+        function environment() {
+          return `<div class="label">KONTEKST WYKONANIA</div>${[
+            ['Projekt', 'Nevo SpecFlow'],
+            ['Specification', 'Stabilizacja Runtime AI'],
+            ['Workspace', 'ws-recovery-02'],
+            ['Gałąź', st.scenario === 'new' ? 'feature/session-ui' : 'feature/recovery'],
+            ['Checkout', 'Managed worktree'],
+            ['Provider', st.scenario === 'new' ? 'Claude Code' : 'Codex'],
+            ['Native mode', st.scenario === 'new' ? 'Plan' : 'Agent'],
+            ['Current Turn', st.scenario === 'new' ? 'Nie rozpoczęto' : 'Review batch #42'],
+            ['Przeniesienie', 'Brak automatycznego claim transfer'],
+          ]
+            .map(
+              ([k, v]) =>
+                `<div class="kv"><span>${k}</span><strong style="font-size:11px;text-align:right">${v}</strong></div>`,
+            )
+            .join(
+              '',
+            )}<div class="notice" style="border-color:#435872;background:#1d2c3b;color:#afc8dc;margin-top:21px"><strong>Tożsamość wykonania</strong>Historyczne pliki i Git evidence muszą wskazywać workspace/revision z chwili operacji. Sam bieżący branch nie wystarcza.</div>`;
+        }
+        function fileDetail(id) {
+          let f = FILES.find((x) => x.id === id) || FILES[0];
+          let code = f.path.endsWith('.md')
+            ? '# Dokumentacja\n\n## Zakres\n\nOpis kontraktu i wymagań weryfikacji.\n\n## Evidence\n\n- testy recovery\n- retry idempotentny\n- brak niejawnego replay'
+            : `export async function reconcileTurn(input: Turn) {\n  const result = await inspectWriterClaim(input);\n\n  if (result.status === 'unknown') {\n    return requireRecovery(result);\n  }\n\n  return settleIfProven(result);\n}`;
+          return `<div class="context-top"><h2 title="${escapeHTML(f.path)}">${escapeHTML(f.path.split('/').at(-1))}</h2><p>${escapeHTML(f.path)} · ${f.task}</p></div><div class="ctxcontent"><div class="ctx-meta">${statusBadge(f.action)} <span class="pill">${f.kind === 'document' ? 'Dokument specyfikacji' : 'Kod repozytorium'}</span><span class="pill">${f.operations} zdarzeń</span></div><div class="filterbar"><button class="${st.fileView === 'preview' ? 'active' : ''}" data-file-view="preview">Podgląd</button><button class="${st.fileView === 'diff' ? 'active' : ''}" data-file-view="diff">Diff</button><button class="${st.fileView === 'history' ? 'active' : ''}" data-file-view="history">Historia pliku</button></div>${
+            st.fileView === 'preview'
+              ? `<div class="codeblock">${escapeHTML(code)}</div><p class="small muted" style="line-height:1.6">Pokazano aktualną wersję. Historyczny Work powinien odsyłać do rewizji wykonania, jeśli taka jest dostępna.</p>`
+              : st.fileView === 'diff'
+                ? `<div class="difftop"><span>Podstawa: rev 40d7</span><span>Docelowa: rev 9df1</span><span>+48 / −12</span></div><div class="diffview"><div class="diffline neu">@@ -42,7 +42,11 @@ reconcileTurn</div><div class="diffline del">- return retryInvocation(turn);</div><div class="diffline add">+ if (result.status === 'unknown') {</div><div class="diffline add">+   return requireRecovery(result);</div><div class="diffline add">+ }</div><div class="diffline neu">  return settleIfProven(result);</div></div><p class="small muted">To poglądowy diff. Docelowy kontrakt musi dostarczyć rewizje i źródło zmiany.</p>`
+                : `<div class="label">POWIĄZANE WYKONANIA</div>${HISTORY.slice(0, 6)
+                    .map((h) => plainrow('clock', h.title, h.time, 'open:attempt:' + h.id))
+                    .join('')}`
+          }</div>`;
+        }
+        function artifactDetail(id) {
+          let a = ARTIFACTS.find((x) => x.id === id) || ARTIFACTS[0];
+          return `<div class="context-top"><h2>${escapeHTML(a.title)}</h2><p>${a.source} · ${a.date}</p></div><div class="ctxcontent"><div class="ctx-meta"><span class="pill strong">${escapeHTML(a.kind)}</span>${a.tasks.map((x) => `<span class="pill">${x}</span>`).join('')}</div><div class="label">PODSUMOWANIE</div><div class="focus"><strong>${escapeHTML(a.detail)}</strong><p>Autor i provenance: ${escapeHTML(a.source)}. Artefakt jest powiązany z ${a.tasks.length} zadaniami bez kopiowania treści.</p></div><div class="label">EVIDENCE</div>${a.kind === 'review' ? `<div class="notice"><strong>${a.status === 'rejected' ? 'Review odrzucone' : 'Weryfikacja nie jest zakończona'}</strong>Zalecane poprawki: retry unknown, ownership claim i odtwarzanie historii.</div>` : a.kind === 'handover' ? `<p class="small muted" style="line-height:1.7">Zakres wykonania, ryzyka, rekomendowany kolejny krok oraz odniesienia do konkretnych zmian, instrukcji i plików.</p>` : `<p class="small muted">Szczegóły wyniku i powiązane dane są dostępne na żądanie; nie pobieramy całych raportów na starcie.</p>`}<div class="label">POWIĄZANE ZADANIA</div>${a.tasks.map((id) => plainrow('list', id, TASKS.find((t) => t.id === id)?.name || 'Zadanie', 'open:task:' + id)).join('')}<div class="label">REWIZJA I TOŻSAMOŚĆ</div><div class="kv"><span>Artifact ID</span><span>${a.id}</span></div><div class="kv"><span>Źródło</span><span>${escapeHTML(a.source)}</span></div><div class="kv"><span>Trwała referencja</span><span>Wymagana w docelowym API</span></div></div>`;
+        }
+        function taskDetail(id) {
+          let t = TASKS.find((t) => t.id === id) || {
+            id,
+            name: 'Projekt widoku sesji',
+            status: 'ready',
+            attempts: 0,
+          };
+          let arr = HISTORY.filter((h) => h.scope.includes(id));
+          return `<div class="context-top"><h2>${id} · ${escapeHTML(t.name)}</h2><p>${t.attempts} historycznych prób · ${t.active ? 'w aktualnym batchu' : 'zadanie powiązane'}</p></div><div class="ctxcontent"><div class="ctx-meta">${statusBadge(t.status)} <span class="pill">${id}</span></div><div class="label">ZADANIE</div><p class="small muted" style="line-height:1.7">Zapewnić prawidłową implementację i sprawdzalny wynik. Każdy attempt zachowuje własny status; nie myl zakończenia Turn z zakończeniem workflow.</p><div class="label">HISTORIA PRÓB</div>${arr.length ? arr.map((h) => plainrow(h.status === 'rejected' ? 'alert' : 'clock', h.title, h.time + ' · ' + h.detail, 'open:attempt:' + h.id)).join('') : '<p class="small muted">Nie rozpoczęto wykonania.</p>'}<div class="label">WSPÓLNE ARTEFAKTY</div>${ARTIFACTS.filter(
+            (a) => a.tasks.includes(id),
+          )
+            .slice(0, 5)
+            .map((a) => plainrow('archive', a.title, a.detail, 'open:artifact:' + a.id))
+            .join('')}</div>`;
+        }
+        function attemptDetail(id) {
+          let h = HISTORY.find((h) => h.id === id) || HISTORY[0];
+          return `<div class="context-top"><h2>${escapeHTML(h.title)}</h2><p>${h.time} · ${h.scope.join(', ')}</p></div><div class="ctxcontent"><div class="label">WYNIK ZDARZENIA</div><div class="focus"><strong>${h.status === 'rejected' ? 'Odrzucono' : h.status === 'active' ? 'W toku' : h.status === 'warning' ? 'Wymaga uwagi' : 'Zakończone zdarzenie'}</strong><p>${escapeHTML(h.detail)}</p></div><div class="label">POWIĄZANIA</div>${h.scope.map((id) => plainrow('list', id, TASKS.find((t) => t.id === id)?.name || 'Zadanie', 'open:task:' + id)).join('')}${h.ref ? plainrow('archive', 'Powiązany dokument / evidence', h.ref, 'open:' + (h.ref.startsWith('ho-') ? 'handover' : 'artifact') + ':' + h.ref) : ''}<div class="notice" style="background:#1b2c3b;border-color:#435872;color:#b4cadc"><strong>Ważne rozróżnienie</strong>W historii workflow zachowujemy step/attempt, rezultat i przejście. Osobna historia Turn/Work pokazuje przebieg narzędzi w sesji.</div></div>`;
+        }
+        function handoverDetail(id) {
+          let h = TRANSITIONS.find((x) => x.id === id) || TRANSITIONS[0];
+          return `<div class="context-top"><h2>${h.from} → ${h.to}</h2><p>${h.when} · ${escapeHTML(h.session)}</p></div><div class="ctxcontent"><div class="label">PRZEKAZANY KONTEKST</div><div class="focus"><strong>${escapeHTML(h.title)}</strong><p>${escapeHTML(h.notes)}</p></div><div class="label">DANE PRZEKAZANIA</div>${[
+            ['Z roli', h.from],
+            ['Do roli', h.to],
+            ['Zadania', h.scope.join(', ')],
+            ['Poprzednik', h.session],
+            ['Status', 'Zakończone przekazanie'],
+          ]
+            .map(
+              ([k, v]) =>
+                `<div class="kv"><span>${k}</span><strong>${escapeHTML(v)}</strong></div>`,
+            )
+            .join(
+              '',
+            )}<div class="label">POWIĄZANIA</div>${h.scope.map((id) => plainrow('list', id, TASKS.find((t) => t.id === id)?.name || 'Zadanie', 'open:task:' + id)).join('')}${h.artifact ? plainrow('archive', 'Artefakt przekazania', 'Wynik z przypiętymi referencjami', 'open:artifact:' + h.artifact) : ''}<p class="small muted" style="margin-top:18px;line-height:1.65">Przekazanie nie przejmuje automatycznie writer claim ani nie przesuwa zadania. To osobne operacje workflow.</p></div>`;
+        }
+        function workDetail() {
+          return `<div class="context-top"><h2>Work · bieżący Turn</h2><p>Ostatnia aktywność agenta (to nie historia workflow)</p></div><div class="ctxcontent"><div class="label">AKTUALNY PRZEBIEG</div>${[
+            ['Odczytano 4 pliki', '4 działania · completed', 'check'],
+            ['Przeszukano repozytorium', '2 działania · completed', 'search'],
+            ['Uruchomiono pnpm test', '1 działanie · active', 'terminal'],
+            ['Odpowiedź Reviewera', 'Commentary · streaming', 'document'],
+          ]
+            .map(([a, b, c]) => plainrow(c, a, b, 'open:tool:' + c))
+            .join(
+              '',
+            )}<p class="small muted">L1 summary → L2 Work → L3 ToolAction. Raw input/output dopiero po wybraniu działania.</p></div>`;
+        }
+        function toolDetail(id) {
+          return `<div class="context-top"><h2>ToolAction · ${id}</h2><p>Techniczny detal Work</p></div><div class="ctxcontent"><div class="label">KOMENDA / INPUT</div><div class="codeblock">pnpm test --filter specflow-runtime</div><div class="label">OUTPUT</div><div class="codeblock">Starting test suites...\n✔ 122 tests passed\n⟳ recovery test running...</div><p class="small muted">Surowy output może być duży, powinien mieć limit, stronicowanie i redakcję sekretów.</p></div>`;
+        }
+        function detailContent(t) {
+          if (t.kind === 'file') return fileDetail(t.id);
+          if (t.kind === 'artifact') return artifactDetail(t.id);
+          if (t.kind === 'task') return taskDetail(t.id);
+          if (t.kind === 'attempt') return attemptDetail(t.id);
+          if (t.kind === 'handover') return handoverDetail(t.id);
+          if (t.kind === 'work') return workDetail();
+          if (t.kind === 'tool') return toolDetail(t.id);
+          return contextContent();
+        }
+        function inspectorContent() {
+          let tab = active(),
+            path = tab.stack || [],
+            item = path.length ? path[path.length - 1] : tab;
+          const content =
+            item.kind === 'context'
+              ? contextContent('summary')
+              : item.kind === 'section'
+                ? contextContent(item.id)
+                : detailContent(item);
+          if (!path.length) return content;
+          const pathNames = [tab.label, ...path.map((p) => p.label)];
+          return (
+            `<div class="ns-stack-head"><button class="ns-stack-back" data-action="stackBack">${ico('back', 14)} Wstecz</button><div class="ns-stack-path">${pathNames.map((p, i) => (i === pathNames.length - 1 ? `<b>${escapeHTML(p)}</b>` : `<span>${escapeHTML(p)} › </span>`)).join('')}</div></div>` +
+            content
+          );
+        }
+        function renderTabs() {
+          tabsbar.innerHTML = `<div class="tab-scroll">${st.tabs.map((t) => `<button class="tab ${st.activeTab === t.key ? 'active' : ''}" data-tab="${escapeHTML(t.key)}" title="${escapeHTML(t.label)}">${ico(t.kind === 'context' ? 'context' : t.kind === 'section' ? { tasks: 'list', files: 'files', history: 'clock', handovers: 'handover', artifacts: 'archive', instructions: 'book', environment: 'branch' }[t.id] : t.kind === 'file' ? 'file' : t.kind === 'artifact' ? 'archive' : t.kind === 'work' ? 'terminal' : 'clock', 14)}<span>${escapeHTML(t.label)}</span>${t.kind === 'context' ? `<span class="ns-tab-pin">${ico('pin', 12)}</span>` : `<span class="close" data-close-tab="${escapeHTML(t.key)}">×</span>`}</button>`).join('')}</div><div class="inspector-head-options"><button class="utility" data-action="expand" title="${st.expanded ? 'Przywróć podział' : 'Rozszerz inspektor'}">${ico(st.expanded ? 'minimize' : 'maximize', 15)}</button></div>`;
+        }
+        function renderConversation() {
+          let snew = st.scenario === 'new';
+          title.textContent = snew
+            ? 'Przegląd nowego UX sesji'
+            : 'Stabilizacja Runtime · batch review #42';
+          meta.innerHTML = snew
+            ? `${ico('book', 14)} <span>SpecFlow / Session UI</span> <strong>Reviewer</strong> <span class="status neutral">Gotowa · brak Turn</span>`
+            : `${ico('book', 14)} <span>Stabilizacja Runtime</span> <strong>Reviewer · TASK-02, TASK-03, TASK-04</strong> <span class="status running">● Pracuje</span>`;
+          $('#convoScroll').innerHTML = snew
+            ? `<div class="convo-inner"><div class="author"><span class="circle">${ico('book', 14)}</span> Kontekst wejściowy</div><p class="paragraph" style="color:#b9cbda">Jesteś w nowo utworzonej sesji Reviewera. System przekazał profil agenta, zadania i instrukcje wykonania. Brak jeszcze odpowiedzi i historii narzędzi.</p><button class="workburst" data-ctx="instructions">${ico('book', 14)} Sprawdź instrukcje i zakres ${ico('chevron', 13)}</button><div class="convo-divider"></div><div class="author"><span class="circle">${ico('user', 14)}</span> Nowa rozmowa</div><p class="paragraph" style="color:var(--muted)">Zadaj pierwsze pytanie albo rozpocznij pracę.</p></div>`
+            : `<div class="convo-inner"><div class="turn"><div class="usermsg">Sprawdź TASK-02, TASK-03 i TASK-04 po kolejnej iteracji. Zweryfikuj recovery oraz idempotencję; dla każdego zadania przygotuj oddzielny werdykt.</div></div><div class="turn"><div class="author"><span class="circle">${ico('bolt', 14)}</span> Reviewer · Codex</div><p class="comment">Analizuję zmiany w mechanizmie writer claims oraz dowody po ostatnim odrzuceniu review.</p><button class="workburst" data-open="work:current">${ico('terminal', 14)} Odczytano 4 pliki · 2 wyszukiwania · 2 komendy ${ico('chevron', 13)}</button><p class="paragraph">W historii TASK-03 widać dwie wcześniejsze próby. Poprzedni review zakwestionował zachowanie przy niepewnym wyniku dispatch, a obecna zmiana dodaje jawne recovery.</p><button class="codechip" data-open="file:file-0">coordinator.ts</button><button class="codechip" data-open="file:file-2">admission.ts</button></div><div class="turn"><div class="author"><span class="circle">${ico('bolt', 14)}</span> Reviewer · bieżąca analiza</div><p class="comment">Uruchamiam zestaw testów z restartem Runtime i przypadkami SIGKILL.</p><button class="workburst" data-open="work:current">${ico('terminal', 14)} Uruchomiono pnpm test · 1 aktywna operacja ${ico('chevron', 13)}</button></div></div>`;
+          $('#liveStatus').innerHTML = snew
+            ? `${ico('check', 14)} Gotowa na pierwszą wiadomość`
+            : `${ico('bolt', 14)} Testy recovery w toku · otwórz Work po szczegóły`;
+          $('#composer').placeholder = snew
+            ? 'Napisz pierwszą wiadomość...'
+            : 'Odpowiedz agentowi...';
+          $('#modeLabel').textContent = snew ? 'Claude Code · Plan' : 'Codex · Agent';
+        }
+        function render() {
+          renderConversation();
+          renderTabs();
+          body.innerHTML = inspectorContent();
+          openState();
+          $('#scenarioLong').classList.toggle('emphasis', st.scenario === 'long');
+          $('#scenarioNew').classList.toggle('emphasis', st.scenario === 'new');
+          $('#sizeAuto').classList.toggle('emphasis', st.size === 'auto');
+          $('#sizeCompact').classList.toggle('emphasis', st.size === 'compact');
+          $('#sizeBalanced').classList.toggle('emphasis', st.size === 'balanced');
+          $('#sizeWide').classList.toggle('emphasis', st.size === 'wide');
+        }
+        app.addEventListener('click', (e) => {
+          let close = e.target.closest('[data-close-tab]');
+          if (close) {
+            e.stopPropagation();
+            let key = close.dataset.closeTab;
+            st.tabs = st.tabs.filter((t) => t.key !== key);
+            if (st.activeTab === key) st.activeTab = st.tabs.at(-1)?.key || 'context';
+            render();
+            return;
+          }
+          let t = e.target.closest('[data-tab]');
+          if (t) {
+            st.activeTab = t.dataset.tab;
+            render();
+            return;
+          }
+          let nav = e.target.closest('[data-ctx]');
+          if (nav) {
+            contextChange(nav.dataset.ctx);
+            return;
+          }
+          let taskfilter = e.target.closest('[data-task-filter]');
+          if (taskfilter) {
+            st.taskFilter = taskfilter.dataset.taskFilter;
+            render();
+            return;
+          }
+          let filefilter = e.target.closest('[data-file-filter]');
+          if (filefilter) {
+            st.fileFilter = filefilter.dataset.fileFilter;
+            st.fileLimit = 36;
+            render();
+            return;
+          }
+          let fview = e.target.closest('[data-file-view]');
+          if (fview) {
+            st.fileView = fview.dataset.fileView;
+            render();
+            return;
+          }
+          let open = e.target.closest('[data-open]');
+          if (open) {
+            let [kind, id] = open.dataset.open.split(':');
+            let label = '';
+            if (kind === 'file') {
+              label = (FILES.find((f) => f.id === id)?.path || 'Plik').split('/').at(-1);
+            } else if (kind === 'task') label = id;
+            else if (kind === 'attempt')
+              label = HISTORY.find((h) => h.id === id)?.title || 'Zdarzenie';
+            else if (kind === 'handover') label = 'Przekazanie';
+            else if (kind === 'artifact')
+              label = (ARTIFACTS.find((a) => a.id === id)?.title || 'Artefakt').slice(0, 27);
+            else if (kind === 'work') label = 'Work';
+            else if (kind === 'tool') label = 'ToolAction';
+            makeDetail(kind, id, label);
+            return;
+          }
+          let a = e.target.closest('[data-action]');
+          if (!a) return;
+          if (a.dataset.action.startsWith('ctx:')) {
+            contextChange(a.dataset.action.slice(4));
+            return;
+          }
+          if (a.dataset.action.startsWith('open:')) {
+            let [, kind, id] = a.dataset.action.split(':');
+            makeDetail(
+              kind,
+              id,
+              kind === 'task'
+                ? id
+                : kind === 'artifact'
+                  ? ARTIFACTS.find((x) => x.id === id)?.title || id
+                  : kind === 'attempt'
+                    ? HISTORY.find((h) => h.id === id)?.title || 'Zdarzenie'
+                    : kind === 'file'
+                      ? (FILES.find((x) => x.id === id)?.path || id).split('/').at(-1)
+                      : kind === 'tool'
+                        ? 'ToolAction'
+                        : 'Work',
+            );
+            return;
+          }
+          switch (a.dataset.action) {
+            case 'scenarioLong':
+            case 'scenarioNew':
+              st.scenario = a.dataset.action === 'scenarioLong' ? 'long' : 'new';
+              st.activeTab = 'context';
+              st.tabs = [
+                { key: 'context', kind: 'context', id: 'context', label: 'Kontekst', stack: [] },
+              ];
+              st.size = 'auto';
+              st.manual = undefined;
+              st.fileFilter = 'all';
+              st.fileLimit = 36;
+              st.histLimit = 8;
+              render();
+              break;
+            case 'panelToggle':
+              st.insOpen = !st.insOpen;
+              if (!st.insOpen) st.expanded = false;
+              render();
+              break;
+            case 'sizeAuto':
+              st.size = 'auto';
+              st.expanded = false;
+              render();
+              break;
+            case 'sizeCompact':
+              st.size = 'compact';
+              st.expanded = false;
+              render();
+              break;
+            case 'sizeBalanced':
+              st.size = 'balanced';
+              st.expanded = false;
+              render();
+              break;
+            case 'sizeWide':
+              st.size = 'wide';
+              st.expanded = false;
+              render();
+              break;
+            case 'expand':
+              st.expanded = !st.expanded;
+              st.insOpen = true;
+              render();
+              break;
+            case 'moreFiles':
+              st.fileLimit += 36;
+              body.innerHTML = inspectorContent();
+              break;
+            case 'moreHistory':
+              st.histLimit += 5;
+              body.innerHTML = inspectorContent();
+              break;
+            case 'composerSend':
+              if ($('#composer').value.trim()) {
+                st.callout = true;
+                $('#sendFeedback').textContent = 'Makieta: wysyłanie nie wywołuje agenta.';
+              }
+              break;
+            case 'tabContext':
+              st.activeTab = 'context';
+              render();
+              break;
+            case 'stackBack':
+              popLocal();
+              break;
+            case 'swapSides':
+              st.flipped = !st.flipped;
+              render();
+              break;
+          }
+        });
+        app.addEventListener('input', (e) => {
+          if (e.target.id === 'fileSearch') {
+            let pos = e.target.selectionStart;
+            st.fileQuery = e.target.value;
+            st.fileLimit = 36;
+            let y = body.scrollTop;
+            body.innerHTML = inspectorContent();
+            body.scrollTop = y;
+            const a = $('#fileSearch');
+            if (a) {
+              a.focus();
+              a.setSelectionRange(pos, pos);
+            }
+          }
+          if (e.target.id === 'artifactSearch') {
+            let pos = e.target.selectionStart;
+            st.artifactQuery = e.target.value;
+            let y = body.scrollTop;
+            body.innerHTML = inspectorContent();
+            body.scrollTop = y;
+            const a = $('#artifactSearch');
+            if (a) {
+              a.focus();
+              a.setSelectionRange(pos, pos);
+            }
+          }
+        });
+        let dragging = false;
+        $('#handle').addEventListener('pointerdown', (e) => {
+          dragging = true;
+          $('#handle').setPointerCapture(e.pointerId);
+          $('#handle').classList.add('dragging');
+          st.size = 'manual';
+          e.preventDefault();
+        });
+        $('#handle').addEventListener('pointermove', (e) => {
+          if (!dragging) return;
+          let box = split.getBoundingClientRect(),
+            left = e.clientX - box.left;
+          st.manual = Math.max(278, Math.min(box.width - left - 6, box.width - 392));
+          applySize();
+          $('#widthMode').textContent = 'Ręcznie';
+        });
+        $('#handle').addEventListener('pointerup', () => {
+          dragging = false;
+          $('#handle').classList.remove('dragging');
+        });
+        $('#handle').addEventListener('pointercancel', () => {
+          dragging = false;
+          $('#handle').classList.remove('dragging');
+        });
+        window.addEventListener('resize', () => {
+          if (st.insOpen) applySize();
+        });
+        render();
+      })();
+    </script>
+    <script>
+      /* Composer concept demo only. No network upload, permissions, provider execution or send. */
+      (function () {
+        const root = document.getElementById('cxAttach');
+        if (!root) return;
+        const host = root.closest('.composer-wrap,.composerwrap');
+        const pop = document.getElementById('cxPop');
+        const mobile = !!document.getElementById('mobile');
+        const demo = {
+          provider: 'codex',
+          intent: 'agent',
+          approval: 'standard',
+          model: 'default',
+          effort: 'High',
+          open: null,
+          attachments: [
+            { id: 'sample-screenshot', name: 'screen-recovery.png', kind: 'image', demo: true },
+          ],
+        };
+        const CAT = {
+          codex: {
+            label: 'Codex',
+            intents: [
+              { id: 'agent', name: 'Agent', desc: 'Działania w ograniczonym workspace.' },
+              { id: 'plan', name: 'Plan', desc: 'Przygotuj plan bez zapisu do repo.' },
+              {
+                id: 'ask',
+                name: 'Ask',
+                desc: 'Wymaga certyfikacji trybu read-only.',
+                disabled: true,
+              },
+            ],
+            approvals: [
+              {
+                id: 'standard',
+                name: 'Kontrolowany',
+                desc: 'Natywne on-request + workspace sandbox.',
+              },
+            ],
+            models: [
+              { id: 'default', name: 'Domyślny model', efforts: ['Low', 'Medium', 'High'] },
+              { id: 'alternate', name: 'Alternatywny', efforts: ['Medium', 'High'] },
+            ],
+          },
+          claude: {
+            label: 'Claude Code',
+            intents: [
+              { id: 'agent', name: 'Agent', desc: 'Praca z dopuszczonymi narzędziami.' },
+              { id: 'plan', name: 'Plan', desc: 'Natywny plan bez modyfikacji.' },
+              {
+                id: 'ask',
+                name: 'Ask',
+                desc: 'Wymaga osobnej certyfikacji odpowiedzi read-only.',
+                disabled: true,
+              },
+            ],
+            approvals: [
+              { id: 'manual', name: 'Manual', desc: 'Natywne zapytania o operacje.' },
+              {
+                id: 'acceptEdits',
+                name: 'Accept Edits',
+                desc: 'Automatycznie akceptuje edycje, nie wszystkie komendy.',
+              },
+              {
+                id: 'auto',
+                name: 'Auto',
+                desc: 'Automatyzacja z oceną ryzyka; dostępność zależy od CLI.',
+                disabled: true,
+              },
+              {
+                id: 'dontAsk',
+                name: "Don't Ask",
+                desc: 'Odmowa niedozwolonych operacji; semantyka natywna.',
+              },
+            ],
+            models: [
+              { id: 'default', name: 'Model domyślny', efforts: ['Medium', 'High'] },
+              { id: 'alternate', name: 'Inny model', efforts: ['Low', 'Medium', 'High'] },
+            ],
+          },
+        };
+        const $ = (q) => document.querySelector(q);
+        const esc = (x) =>
+          String(x).replace(
+            /[&<>"']/g,
+            (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s],
+          );
+        function catalogue() {
+          return CAT[demo.provider];
+        }
+        function selection() {
+          return catalogue().intents.find((x) => x.id === demo.intent);
+        }
+        function activePolicy() {
+          return (
+            catalogue().approvals.find((x) => x.id === demo.approval) || catalogue().approvals[0]
+          );
+        }
+        function model() {
+          return catalogue().models.find((x) => x.id === demo.model) || catalogue().models[0];
+        }
+        function renderToolbar() {
+          const isAgent = demo.intent === 'agent';
+          $('#cxIntent').textContent = (selection()?.name || 'Agent') + ' ▾';
+          const a = $('#cxApproval');
+          a.hidden = !isAgent;
+          a.textContent = activePolicy().name + (catalogue().approvals.length > 1 ? ' ▾' : '');
+          a.disabled = catalogue().approvals.length === 1;
+          a.title = a.disabled ? activePolicy().desc : 'Zatwierdzanie operacji (presety providera)';
+          $('#cxModel').textContent = model().name + ' · ' + demo.effort + ' ▾';
+        }
+        function showAttachments() {
+          root.innerHTML = demo.attachments
+            .map(
+              (a) =>
+                '<div class="cx-asset">' +
+                (a.url
+                  ? '<img alt="" src="' + esc(a.url) + '">'
+                  : '<span aria-hidden="true">' +
+                    (a.kind === 'image' ? '▧' : a.kind === 'ref' ? '⌁' : '▤') +
+                    '</span>') +
+                '<span class="cx-name" title="' +
+                esc(a.name) +
+                '">' +
+                esc(a.name) +
+                '</span><button type="button" class="cx-remove" data-cx="remove" data-id="' +
+                esc(a.id) +
+                '" aria-label="Usuń ' +
+                esc(a.name) +
+                '">×</button></div>',
+            )
+            .join('');
+        }
+        function menuEntry(title, sub, cmd, value, checked, disabled) {
+          return (
+            '<button type="button" data-cx="' +
+            cmd +
+            '" data-value="' +
+            esc(value || '') +
+            '" ' +
+            (disabled ? 'disabled' : '') +
+            '><span><strong>' +
+            esc(title) +
+            '</strong>' +
+            (sub ? '<small>' + esc(sub) + '</small>' : '') +
+            '</span>' +
+            (checked ? '<span class="cx-check">✓</span>' : '') +
+            '</button>'
+          );
+        }
+        function close() {
+          demo.open = null;
+          pop.hidden = true;
+        }
+        function renderMenu(menu) {
+          demo.open = menu;
+          pop.hidden = false;
+          pop.classList.toggle('align-right', menu === 'model');
+          let inner = '';
+          if (menu === 'attach') {
+            inner = '<h4>Dodaj do wiadomości</h4>';
+            if (mobile)
+              inner += menuEntry(
+                'Zrób zdjęcie',
+                'Otwórz aparat, jeśli urządzenie na to pozwala',
+                'takeCamera',
+                '',
+              );
+            inner += menuEntry('Wybierz zdjęcia', 'Obrazy z urządzenia', 'pickImage', '');
+            inner += menuEntry('Dodaj plik', 'Plik lokalny do przesłania', 'pickFile', '');
+            inner += menuEntry(
+              mobile ? 'Plik z projektu' : 'Plik z repozytorium',
+              'Dodaj referencję do istniejącego pliku',
+              'addRepo',
+              '',
+            );
+            inner +=
+              '<div class="cx-help">Makieta: pliki pozostają lokalnie w przeglądarce; nic nie jest wysyłane do agenta.</div>';
+          } else if (menu === 'intent') {
+            inner = '<h4>Tryb pracy · ' + esc(catalogue().label) + '</h4>';
+            inner += catalogue()
+              .intents.map((x) =>
+                menuEntry(x.name, x.desc, 'intent', x.id, x.id === demo.intent, x.disabled),
+              )
+              .join('');
+            inner +=
+              '<div class="cx-help">Ask / Plan / Agent są dostępne tylko po potwierdzeniu semantyki i ograniczeń adaptera.</div>';
+          } else if (menu === 'approval') {
+            inner = '<h4>Polityka operacji · ' + esc(catalogue().label) + '</h4>';
+            inner += catalogue()
+              .approvals.map((x) =>
+                menuEntry(x.name, x.desc, 'approval', x.id, x.id === demo.approval, x.disabled),
+              )
+              .join('');
+            inner +=
+              '<div class="cx-help">To nie są decyzje dotyczące zamykania zadań ani akceptacji review w Engine.</div>';
+          } else if (menu === 'model') {
+            inner = '<h4>Model · ' + esc(catalogue().label) + '</h4>';
+            inner += catalogue()
+              .models.map((x) =>
+                menuEntry(
+                  x.name,
+                  'Poziomy effort: ' + x.efforts.join(', '),
+                  'model',
+                  x.id,
+                  x.id === demo.model,
+                  false,
+                ),
+              )
+              .join('');
+            inner += '<h4>Effort</h4><div class="cx-efforts">';
+            inner += model()
+              .efforts.map(
+                (e) =>
+                  '<button type="button" data-cx="effort" data-value="' +
+                  esc(e) +
+                  '" class="' +
+                  (demo.effort === e ? 'selected' : '') +
+                  '">' +
+                  esc(e) +
+                  '</button>',
+              )
+              .join('');
+            inner +=
+              '</div><div class="cx-help">Nazwy modeli są przykładowe. Docelowo lista pochodzi z katalogu providera i zależy od wersji CLI.</div>';
+          }
+          pop.innerHTML = inner;
+        }
+        function addFile(file) {
+          if (!file) return;
+          const kind = file.type.startsWith('image/') ? 'image' : 'file';
+          const url = kind === 'image' ? URL.createObjectURL(file) : undefined;
+          demo.attachments.push({
+            id: 'local-' + Math.random().toString(36).slice(2),
+            name: file.name,
+            kind,
+            url,
+          });
+          showAttachments();
+          close();
+        }
+        function onInput(e) {
+          Array.from(e.target.files || []).forEach(addFile);
+          e.target.value = '';
+        }
+        function notify() {
+          const node = $('#sendFeedback') || $('#toast');
+          if (node) node.textContent = 'Makieta: bez wysyłania do agenta.';
+        }
+        host.addEventListener('click', (e) => {
+          const t = e.target.closest('[data-cx]');
+          if (!t) return;
+          e.stopPropagation();
+          const cmd = t.dataset.cx,
+            v = t.dataset.value;
+          if (cmd === 'open') {
+            demo.open === t.dataset.menu ? close() : renderMenu(t.dataset.menu);
+            return;
+          }
+          if (cmd === 'remove') {
+            const i = demo.attachments.findIndex((a) => a.id === t.dataset.id);
+            if (i >= 0) {
+              const [a] = demo.attachments.splice(i, 1);
+              if (a.url) URL.revokeObjectURL(a.url);
+            }
+            showAttachments();
+            return;
+          }
+          if (cmd === 'intent') {
+            demo.intent = v;
+            if (v === 'plan') demo.approval = 'standard';
+            else demo.approval = catalogue().approvals[0].id;
+            renderToolbar();
+            close();
+            return;
+          }
+          if (cmd === 'approval') {
+            demo.approval = v;
+            renderToolbar();
+            close();
+            return;
+          }
+          if (cmd === 'model') {
+            demo.model = v;
+            demo.effort = model().efforts.at(-1);
+            renderToolbar();
+            renderMenu('model');
+            return;
+          }
+          if (cmd === 'effort') {
+            demo.effort = v;
+            renderToolbar();
+            close();
+            return;
+          }
+          if (cmd === 'pickImage') {
+            $('#cxImageInput').click();
+            close();
+            return;
+          }
+          if (cmd === 'pickFile') {
+            $('#cxFileInput').click();
+            close();
+            return;
+          }
+          if (cmd === 'takeCamera') {
+            $('#cxCameraInput').click();
+            close();
+            return;
+          }
+          if (cmd === 'addRepo') {
+            demo.attachments.push({
+              id: 'repo-' + Math.random().toString(36).slice(2),
+              name: 'src/features/recovery.ts',
+              kind: 'ref',
+            });
+            showAttachments();
+            close();
+            return;
+          }
+        });
+        $('#cxImageInput').addEventListener('change', onInput);
+        $('#cxFileInput').addEventListener('change', onInput);
+        $('#cxCameraInput').addEventListener('change', onInput);
+        document.addEventListener('click', (e) => {
+          if (!host.contains(e.target)) close();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && demo.open) {
+            close();
+            e.stopPropagation();
+          }
+        });
+        const hidden = $('#modeLabel') || $('#model');
+        function providerChanged() {
+          const next = (hidden.textContent || '').includes('Claude') ? 'claude' : 'codex';
+          if (next !== demo.provider) {
+            demo.provider = next;
+            demo.intent = next === 'claude' ? 'plan' : 'agent';
+            demo.approval = catalogue().approvals[0].id;
+            demo.model = 'default';
+            demo.effort = model().efforts.at(-1);
+            demo.attachments.forEach((a) => {
+              if (a.url) URL.revokeObjectURL(a.url);
+            });
+            demo.attachments =
+              next === 'claude'
+                ? []
+                : [
+                    {
+                      id: 'sample-screenshot',
+                      name: 'screen-recovery.png',
+                      kind: 'image',
+                      demo: true,
+                    },
+                  ];
+            showAttachments();
+            close();
+          }
+          renderToolbar();
+        }
+        new MutationObserver(providerChanged).observe(hidden, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
+        providerChanged();
+        showAttachments();
+      })();
+    </script>
+  </body>
+</html>

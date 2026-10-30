@@ -1408,6 +1408,29 @@
       "loadingContext": "Loading the context…",
       "contextUnavailable": "The context is unavailable.",
       "cannotShow": "This file cannot be shown here. Open it in Documents."
+    },
+    "context": {
+      "title": "Context",
+      "unavailable": "Context is not available for this session yet.",
+      "empty": "No additional context for this Turn.",
+      "executionScope": "Current execution",
+      "generic": "Generic / Spec-level",
+      "batch": "{{count}} Tasks",
+      "attention": "Attention / next actions",
+      "attentionTone": {
+        "attention": "Requires attention",
+        "info": "For your information",
+        "neutral": "Note"
+      },
+      "relatedTasks": "Related Tasks",
+      "openTasks": "Open Tasks",
+      "tasksTitle": "Tasks",
+      "taskTitle": "Task",
+      "tasks": {
+        "empty": "No related Tasks.",
+        "unavailable": "This Task is no longer available.",
+        "detailNote": "Task evidence and actions are reachable from its own Full Task page."
+      }
     }
   },
   "apiErrors": {

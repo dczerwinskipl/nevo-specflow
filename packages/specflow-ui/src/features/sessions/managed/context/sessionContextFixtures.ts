@@ -1,0 +1,152 @@
+import { unavailableSessionContext } from './sessionContextTypes';
+import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
+
+/** Product-owned mock fixtures. Not backend payloads — see `sessionContextTypes.ts`. */
+
+const specA = { id: 'spec-a', key: 'SPEC-A', title: 'Workflow admission hardening' };
+
+const task02: SessionContextTaskRef = {
+  id: 'task-02',
+  key: 'TASK-02',
+  title: 'Document the admission guard',
+};
+const task03: SessionContextTaskRef = {
+  id: 'task-03',
+  key: 'TASK-03',
+  title: 'Deterministic admission',
+};
+const task04: SessionContextTaskRef = {
+  id: 'task-04',
+  key: 'TASK-04',
+  title: 'Recovery transition tests',
+};
+const task05: SessionContextTaskRef = {
+  id: 'task-05',
+  key: 'TASK-05',
+  title: 'Update the readiness policy snapshot',
+};
+
+/** State A — generic/spec-level Session (full-session-screen-structure.md §12). */
+export function genericSpecLevelContext(): SessionContextViewModel {
+  return {
+    status: 'ready',
+    specification: specA,
+    executionScope: { kind: 'generic' },
+    relatedTasks: [task02, task03],
+  };
+}
+
+/** State B — single-Task execution (§13). */
+export function singleTaskContext(): SessionContextViewModel {
+  return {
+    status: 'ready',
+    specification: specA,
+    executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
+    relatedTasks: [task02],
+  };
+}
+
+/** State C — Task-batch execution (§14), designed enough not to visibly break (not this pass's
+ * primary validation target). */
+export function batchContext(): SessionContextViewModel {
+  return {
+    status: 'ready',
+    specification: specA,
+    executionScope: { kind: 'batch', role: 'Reviewer', tasks: [task02, task03, task04] },
+    relatedTasks: [task05],
+  };
+}
+
+/** State D — Session requires human interaction (§15): Context orients without duplicating the
+ * actionable controls, which remain in Primary. */
+export function pendingInteractionContext(): SessionContextViewModel {
+  return {
+    status: 'ready',
+    specification: specA,
+    executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
+    attention: [
+      {
+        id: 'session-interaction',
+        tone: 'attention',
+        summary: 'Agent needs your input in the conversation.',
+        readOnly: true,
+      },
+    ],
+  };
+}
+
+/** State G — waiting without human action (§18): same shape as the generic Session; Context
+ * must not invent a next human action merely because the Turn is waiting. */
+export function waitingWithoutAttentionContext(): SessionContextViewModel {
+  return singleTaskContext();
+}
+
+/** State H — terminal failure/cancellation/interruption (§19): Turn outcome and Task/workflow
+ * consequence stay separate facts. */
+export function terminalOutcomeContext(): SessionContextViewModel {
+  return {
+    status: 'ready',
+    specification: specA,
+    executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
+    attention: [
+      {
+        id: 'task-03-attention',
+        tone: 'attention',
+        summary: 'Still active — no recovery required yet.',
+        task: task03,
+      },
+    ],
+  };
+}
+
+/** State I — unavailable/unknown Session state (§20): the projection itself could not be read. */
+export function unavailableContext(): SessionContextViewModel {
+  return unavailableSessionContext;
+}
+
+/** Graceful full omission: every optional section absent (owner decision 2 — a missing group must
+ * never crash or show a broken UI, including before any optional section has ever shipped). */
+export function emptyContext(): SessionContextViewModel {
+  return { status: 'ready' };
+}
+
+/** Stress fixture: long titles, a longer related-Task list, mixed attention tones. */
+export function stressContext(): SessionContextViewModel {
+  return {
+    status: 'ready',
+    specification: {
+      id: 'spec-long',
+      key: 'SPEC-LONG',
+      title:
+        'Cross-module authorization and recovery hardening for the deterministic workflow engine',
+    },
+    executionScope: {
+      kind: 'batch',
+      role: 'Reviewer',
+      tasks: [
+        task02,
+        task03,
+        {
+          id: 'task-long',
+          key: 'TASK-99',
+          title:
+            'Reconcile the readiness policy with the recovery transition table across every provider adapter',
+        },
+      ],
+    },
+    attention: [
+      {
+        id: 'a1',
+        tone: 'attention',
+        summary: 'Agent needs your input in the conversation.',
+        readOnly: true,
+      },
+      { id: 'a2', tone: 'info', summary: 'TASK-05 requires owner review.', task: task05 },
+    ],
+    relatedTasks: [
+      task04,
+      task05,
+      { id: 'task-06', key: 'TASK-06', title: 'Archive the migration notes' },
+    ],
+  };
+}

@@ -28,6 +28,7 @@ related:
   - ideas.specflow-ui.full-session-screen-structure
   - design-system.principles.system-boundary
   - design-system.implementation.react.component-guidelines
+  - design-system.implementation.react.workspace-dynamic-split
   - product.specflow.ui.interaction-model
   - product.specflow.ui.ai-session-ux
   - ideas.developer-workspace.code-inspection-and-editing
@@ -597,8 +598,14 @@ composition/override point; SpecFlow supplies the product-aware resolver.
 
 ## 5.4 P1 — Workspace V2 dynamic auto/manual split and tab-root ownership (new)
 
-**Implementation status: missing shared Design System contract.** V2's accepted geometry
-cannot be implemented by selecting a static AppWorkspace split preset per active inspector.
+**Implementation status: specified, implementation pending.** The shared Design System contract
+now exists —
+[Workspace dynamic split and Secondary root tabs](../../design-system/implementation/react/workspace-dynamic-split.md)
+— covering owned state, the public API built on the existing `AppWorkspace`/Secondary
+composition, the full auto/manual transition table, explicit non-goals and the accessible
+splitter contract. No code in `packages/nevo-ui/src` implements it yet; V2's accepted geometry
+still cannot be produced by selecting a static AppWorkspace split preset per active inspector
+until that contract's implementation tasks land.
 
 - Only pinned Context open -> narrow Secondary (~330px when viable).
 - User opens a second **independent root tab** -> 50/50 once in automatic mode.
@@ -615,7 +622,10 @@ workspace composition, not by one Session feature. Pointer/keyboard/touch operat
 and minimum viable pane widths must follow Design System conventions.
 
 See [V10 dynamic split behavior](components/session-chat-v10-design.md#7-dynamic-workspace-split-shared-design-system-capability-gap)
-and [Workspace V2 section 10](full-session-screen-structure.md#102-desktop-geometry).
+and [Workspace V2 section 10](full-session-screen-structure.md#102-desktop-geometry) for the
+accepted product behavior, and
+[the Design System contract](../../design-system/implementation/react/workspace-dynamic-split.md)
+for its decision-complete specification and implementation task breakdown.
 The prototype's width buttons are test controls, not an approved production toolbar.
 
 ## 5.5 P1 — Session Composer icon-only mobile density (known acceptance exception)
@@ -651,7 +661,9 @@ implement the accepted V2 interaction contract by themselves. The former proposa
 change split size based on selected Work/File/Task detail would break V2: **a detail or tab
 switch must not resize the workspace**.
 
-The desired shared behavior is recorded in §5.4 and the V10 dynamic split specification.
+The desired shared behavior is recorded in §5.4 and the V10 dynamic split specification, and is
+now specified at decision-complete detail in
+[Workspace dynamic split and Secondary root tabs](../../design-system/implementation/react/workspace-dynamic-split.md).
 Keep each independent root tab's detail stack and focus; geometry derives only from the
 auto/manual layout state, tab-root count and physical pane-width constraints. Do not add
 per-Work/per-File implicit sizing hints as a substitute. Desktop full-width inspection,

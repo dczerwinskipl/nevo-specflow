@@ -5,15 +5,22 @@ import {
   AppContent,
   AppWorkspace,
   Button,
+  Spinner,
+  StatusIndicator,
   TextArea,
   Typography,
   WorkspaceHeader,
   useSecondaryNavigation,
+  useWorkspaceCapabilities,
+  cn,
 } from '@nevo/ui';
-import type { Interaction } from '@nevo/specflow-contracts/sessions';
+import type { ConversationEntry, Interaction } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed } from './feed';
 import { ReadableText } from './MessageText';
 import { createWorkInspector } from './WorkInspector';
+import { SessionContext, createSessionContextStack } from './context/SessionContext';
+import { unavailableSessionContext } from './context/sessionContextTypes';
+import type { SessionContextViewModel } from './context/sessionContextTypes';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
 
@@ -101,16 +108,124 @@ function InteractionPrompt({
   );
 }
 
+/**
+ * One conversation entry, rendered per its semantic role (session-conversation-ui-spec.md §4-5).
+ * V10 rule: do not prefix every entry with a repeated "Ty"/"Asystent" speaker label — the kind
+ * stays available to assistive tech (`sr-only`) but visual role comes from alignment/surface/
+ * typography/Markdown instead of a visible caption on every row.
+ */
+function EntryRow({
+  entry,
+  api,
+  sessionId,
+  outcomeLabels,
+  onInspect,
+}: {
+  entry: ConversationEntry;
+  api: ManagedSessionsApi;
+  sessionId: string;
+  outcomeLabels: Record<string, string>;
+  onInspect: () => void;
+}) {
+  const { t } = useTranslation();
+  const kindLabel = t(`managedSession.entry.${entry.kind}`);
+  const srLabel = <span className="sr-only">{kindLabel}</span>;
+
+  if (entry.kind === 'request') {
+    return (
+      <article data-entry-id={entry.id} className="grid justify-end">
+        {srLabel}
+        <div className="max-w-content-standard rounded-composite bg-surface-subtle px-4 py-3">
+          <ReadableText api={api} sessionId={sessionId} value={entry.text} />
+        </div>
+      </article>
+    );
+  }
+
+  if (entry.kind === 'answer') {
+    return (
+      <article data-entry-id={entry.id} className="grid min-w-0 gap-1">
+        {srLabel}
+        <ReadableText api={api} sessionId={sessionId} value={entry.text} markdown />
+      </article>
+    );
+  }
+
+  if (entry.kind === 'commentary') {
+    return (
+      <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-secondary">
+        {srLabel}
+        <ReadableText api={api} sessionId={sessionId} value={entry.text} />
+      </article>
+    );
+  }
+
+  if (entry.kind === 'work-summary') {
+    return (
+      <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
+        {srLabel}
+        <div className="flex flex-wrap items-center gap-2">
+          <ReadableText api={api} sessionId={sessionId} value={entry.text} />
+          <Button size="sm" variant="ghost" onClick={onInspect}>
+            {t('managedSession.inspect')}
+          </Button>
+        </div>
+      </article>
+    );
+  }
+
+  // 'outcome': no celebratory chrome on completion; a quiet semantic marker on failure/cancel.
+  const tone =
+    entry.text.text === 'failed'
+      ? 'danger'
+      : entry.text.text === 'completed'
+        ? undefined
+        : 'neutral';
+
+  return (
+    <article
+      data-entry-id={entry.id}
+      className={cn(
+        'grid min-w-0 gap-1',
+        entry.text.text === 'failed' ? 'text-content-error' : 'text-content-secondary',
+      )}
+    >
+      {srLabel}
+      <div className="flex flex-wrap items-center gap-2">
+        {tone && <StatusIndicator tone={tone} aria-label={kindLabel} decorative={false} />}
+        <ReadableText
+          api={api}
+          sessionId={sessionId}
+          value={{ ...entry.text, text: outcomeLabels[entry.text.text] ?? entry.text.text }}
+        />
+        <Button size="sm" variant="ghost" onClick={onInspect}>
+          {t('managedSession.inspect')}
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 export function ManagedSession({
   sessionId,
   owner,
   api,
+  sessionContext = unavailableSessionContext,
 }: {
   sessionId: string;
   owner: string;
   api: ManagedSessionsApi;
+  /**
+   * Context Secondary content (full-session-screen-structure.md §7). Optional because the real
+   * managed-Sessions contract has no Specification/Task association projection yet: the default
+   * is an honest "unavailable" Context, not a fabricated empty one. Callers with a real/mock
+   * projection (Storybook fixtures today) pass it explicitly.
+   */
+  sessionContext?: SessionContextViewModel;
 }) {
   const { t } = useTranslation();
+  const { supportsSplit } = useWorkspaceCapabilities();
+  const [contextOpen, setContextOpen] = useState(true);
   const feed = useMemo(
     () => createSessionFeed(api, sessionId, owner, browserStorage()),
     [api, sessionId, owner],
@@ -158,7 +273,36 @@ export function ManagedSession({
   return (
     <AppWorkspace scroll="content" fit="available" split="primary" labels={labels}>
       <AppWorkspace.Primary
-        header={<WorkspaceHeader title={snapshot?.session.title ?? t('managedSession.title')} />}
+        header={
+          <WorkspaceHeader
+            title={snapshot?.session.title ?? t('managedSession.title')}
+            actions={
+              !supportsSplit
+                ? [
+                    {
+                      id: 'context',
+                      label: t('sessions.context.title'),
+                      icon: 'file',
+                      onPress: () =>
+                        void navigation.open(
+                          createSessionContextStack(sessionId, sessionContext),
+                          {},
+                        ),
+                    },
+                  ]
+                : !contextOpen
+                  ? [
+                      {
+                        id: 'context',
+                        label: t('sessions.context.title'),
+                        icon: 'file',
+                        onPress: () => setContextOpen(true),
+                      },
+                    ]
+                  : undefined
+            }
+          />
+        }
       >
         <AppContent className="flex h-full min-h-0 w-full flex-col">
           {!snapshot ? (
@@ -188,7 +332,9 @@ export function ManagedSession({
                     ? t('managedSession.mockNote')
                     : snapshot.session.providerId}
                 </p>
-                <span role="status" className="text-body-sm">
+                <span role="status" className="flex items-center gap-1.5 text-body-sm">
+                  {state.connection === 'connected' &&
+                    snapshot.currentActivity?.kind === 'waiting' && <Spinner size="sm" />}
                   {state.connection === 'connected'
                     ? (snapshot.currentActivity?.label ??
                       t(`managedSession.${snapshot.session.readiness}`))
@@ -227,35 +373,16 @@ export function ManagedSession({
                     </p>
                   )}
                   {snapshot.entries.map((entry) => (
-                    <article key={entry.id} data-entry-id={entry.id} className="grid min-w-0 gap-2">
-                      <Typography variant="label-sm" className="text-content-muted">
-                        {t(`managedSession.entry.${entry.kind}`)}
-                      </Typography>
-                      <ReadableText
-                        key={entry.text.content?.contentId ?? entry.id}
-                        api={api}
-                        sessionId={sessionId}
-                        value={
-                          entry.kind === 'outcome'
-                            ? {
-                                ...entry.text,
-                                text: outcomeLabels[entry.text.text] ?? entry.text.text,
-                              }
-                            : entry.text
-                        }
-                      />
-                      {(entry.kind === 'work-summary' || entry.kind === 'outcome') && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            void navigation.open(workStack, { sessionId, turnId: entry.turnId })
-                          }
-                        >
-                          {t('managedSession.inspect')}
-                        </Button>
-                      )}
-                    </article>
+                    <EntryRow
+                      key={entry.id}
+                      entry={entry}
+                      api={api}
+                      sessionId={sessionId}
+                      outcomeLabels={outcomeLabels}
+                      onInspect={() =>
+                        void navigation.open(workStack, { sessionId, turnId: entry.turnId })
+                      }
+                    />
                   ))}
                 </div>
               </div>
@@ -303,7 +430,7 @@ export function ManagedSession({
                   rows={3}
                   value={state.draft}
                   onChange={(event) => feed.setDraft(event.target.value)}
-                  disabled={!!state.pending}
+                  disabled={!!state.pending || snapshot.session.readiness === 'unavailable'}
                 />
                 <div className="flex flex-wrap justify-end gap-2">
                   {snapshot.session.capabilities.cancel && (
@@ -331,6 +458,18 @@ export function ManagedSession({
           )}
         </AppContent>
       </AppWorkspace.Primary>
+      {/* Context is the default split-capable Secondary (full-session-screen-structure.md §3.1,
+          §3.4): open by default, stays closed once the user explicitly closes it, and is restored
+          by the Primary "Context" action — on narrow layouts it opens the Context Secondary stack;
+          on split-capable layouts it reappears whenever Context is closed, so there is always a
+          way back in regardless of `supportsSplit` (§24.2). */}
+      <AppWorkspace.Secondary
+        open={contextOpen}
+        onOpenChange={setContextOpen}
+        header={<WorkspaceHeader title={t('sessions.context.title')} />}
+      >
+        <SessionContext sessionId={sessionId} value={sessionContext} />
+      </AppWorkspace.Secondary>
     </AppWorkspace>
   );
 }

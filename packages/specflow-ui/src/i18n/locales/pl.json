@@ -1408,6 +1408,29 @@
       "loadingContext": "Wczytywanie kontekstu…",
       "contextUnavailable": "Kontekst jest niedostępny.",
       "cannotShow": "Tego pliku nie można tu wyświetlić. Otwórz go w Dokumentach."
+    },
+    "context": {
+      "title": "Kontekst",
+      "unavailable": "Kontekst nie jest jeszcze dostępny dla tej sesji.",
+      "empty": "Brak dodatkowego kontekstu dla tej tury.",
+      "executionScope": "Aktualne wykonanie",
+      "generic": "Ogólne / na poziomie specyfikacji",
+      "batch": "{{count}} zadań",
+      "attention": "Uwaga / dalsze działania",
+      "attentionTone": {
+        "attention": "Wymaga uwagi",
+        "info": "Do Twojej wiadomości",
+        "neutral": "Informacja"
+      },
+      "relatedTasks": "Powiązane zadania",
+      "openTasks": "Otwórz zadania",
+      "tasksTitle": "Zadania",
+      "taskTitle": "Zadanie",
+      "tasks": {
+        "empty": "Brak powiązanych zadań.",
+        "unavailable": "To zadanie jest już niedostępne.",
+        "detailNote": "Dowody i działania dla zadania są dostępne na jego własnej stronie zadania."
+      }
     }
   },
   "apiErrors": {

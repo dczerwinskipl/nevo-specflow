@@ -11,6 +11,7 @@ summary: >
   Product-neutral in-memory Secondary screen catalogues and lifecycle, distinct from route navigation.
 related:
   - design-system.principles.system-boundary
+  - design-system.implementation.react.workspace-dynamic-split
   - product.specflow.ui.interaction-model
 ---
 
@@ -24,7 +25,7 @@ Product routes remain owned by the application router. This is not the global na
 - `AppWorkspace.Primary` renders the main work surface.
 - `AppWorkspace.Secondary` is the optional declarative base shown on split-capable layouts.
 - A runtime Secondary flow temporarily takes precedence over the declarative base.
-- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately.
+- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately. **This single-flow model is specified to generalize to multiple independently open root tabs** — see [Workspace dynamic split and Secondary root tabs](workspace-dynamic-split.md), not yet implemented.
 - Feature code defines available pages in `defineSecondaryStack`, usually in a separate module.
 - A page descriptor contains a page name, small page-specific identifiers and an instance key. Do not store React elements or cached domain snapshots in navigation state.
 - `useData(rootParams)` resolves current data **once per mounted entry** in a stable host; the header and content consume the same result. A refresh updates rendered props without a navigation transition.

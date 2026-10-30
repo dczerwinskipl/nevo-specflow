@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@nevo/ui';
+import { Button, MarkdownDocument } from '@nevo/ui';
 import type { ContentRef, TextPreview } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 
@@ -8,25 +8,38 @@ export function ReadableText({
   api,
   sessionId,
   value,
+  markdown = false,
 }: {
   api: ManagedSessionsApi;
   sessionId: string;
   value: TextPreview;
+  /** Session Chat V10: the agent's final answer is borderless-first Markdown, not plain text. */
+  markdown?: boolean;
 }) {
   // Loaded pages, pagination and in-flight reads all belong to one immutable revision.
   const identity = JSON.stringify([sessionId, value.content?.contentId, value.content?.revision]);
 
-  return <RevisionText key={identity} api={api} sessionId={sessionId} value={value} />;
+  return (
+    <RevisionText
+      key={identity}
+      api={api}
+      sessionId={sessionId}
+      value={value}
+      markdown={markdown}
+    />
+  );
 }
 
 function RevisionText({
   api,
   sessionId,
   value,
+  markdown,
 }: {
   api: ManagedSessionsApi;
   sessionId: string;
   value: TextPreview;
+  markdown: boolean;
 }) {
   const { t } = useTranslation();
   const [page, setPage] = useState<{ text: string; offset: number; nextOffset?: number }>();
@@ -64,9 +77,15 @@ function RevisionText({
     }
   }
 
+  const text = page?.text ?? value.text;
+
   return (
     <div className="grid min-w-0 gap-2">
-      <p className="whitespace-pre-wrap break-words text-body-md">{page?.text ?? value.text}</p>
+      {markdown ? (
+        <MarkdownDocument source={text} />
+      ) : (
+        <p className="whitespace-pre-wrap break-words text-body-md">{text}</p>
+      )}
       {!value.complete && !page && (
         <p className="text-body-sm text-content-muted">{t('managedSession.partial')}</p>
       )}

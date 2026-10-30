@@ -6,6 +6,7 @@ import {
   AppContent,
   AppWorkspace,
   Button,
+  MessageComposer,
   Select,
   SelectContent,
   SelectItem,
@@ -321,6 +322,22 @@ export function ManagedSession({
   }
 
   const snapshot = state.snapshot;
+  // Mirrors the Send button's own disabled condition so MessageComposer's Enter-to-submit path
+  // (which bypasses the button's `disabled` attribute entirely) cannot start a Turn the capability
+  // gate, an empty draft, or an in-flight command would otherwise block.
+  const canSend =
+    !!snapshot &&
+    !state.commandBusy &&
+    (!!state.pending || snapshot.session.capabilities.start) &&
+    (!!state.pending || !!state.draft.trim());
+  const handleComposerSubmit = () => {
+    if (!canSend) {
+      return;
+    }
+
+    void feed.send();
+  };
+
   const outcomeLabels: Record<string, string> = {
     completed: t('managedSession.outcome.completed'),
     failed: t('managedSession.outcome.failed'),
@@ -483,60 +500,64 @@ export function ManagedSession({
                 <label htmlFor="managed-message" className="text-body-sm">
                   {t('managedSession.message')}
                 </label>
-                <TextArea
-                  id="managed-message"
-                  rows={3}
-                  value={state.draft}
-                  onChange={(event) => feed.setDraft(event.target.value)}
-                  disabled={!!state.pending || snapshot.session.readiness === 'unavailable'}
-                />
-                <div className="flex flex-wrap justify-end gap-2">
-                  {modelItems.length > 0 && (
-                    <>
-                      <label htmlFor="managed-model" className="sr-only">
-                        {t('managedSession.model.label')}
-                      </label>
-                      <Select
-                        disabled={state.commandBusy || !!state.pending}
-                        value={selectedModelKey}
-                        onValueChange={(key) => {
-                          const next = decodeModelKey(key);
-                          feed.setModel(next.modelId, next.effort);
-                        }}
-                      >
-                        <SelectTrigger id="managed-model" className="w-auto max-w-56 sm:max-w-72">
-                          <SelectValue placeholder={t('managedSession.model.placeholder')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {modelItems.map((item) => (
-                            <SelectItem key={item.key} value={item.key}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </>
-                  )}
-                  {snapshot.session.capabilities.cancel && (
-                    <Button
-                      variant="secondary"
-                      disabled={state.commandBusy}
-                      onClick={() => void feed.cancel()}
-                    >
-                      {t('managedSession.cancel')}
-                    </Button>
-                  )}
-                  <Button
-                    disabled={
-                      state.commandBusy ||
-                      (!state.pending && !snapshot.session.capabilities.start) ||
-                      (!state.pending && !state.draft.trim())
-                    }
-                    onClick={() => void feed.send()}
-                  >
-                    {t(state.pending ? 'managedSession.retrySend' : 'managedSession.send')}
-                  </Button>
-                </div>
+                <MessageComposer onSubmit={handleComposerSubmit} presentation="standalone">
+                  <MessageComposer.Editor
+                    id="managed-message"
+                    minRows={1}
+                    value={state.draft}
+                    onChange={(event) => feed.setDraft(event.target.value)}
+                    disabled={!!state.pending || snapshot.session.readiness === 'unavailable'}
+                  />
+                  <MessageComposer.Toolbar>
+                    {/* No left-side cluster yet: attachments/intent/operation-policy entries
+                        (session-composer-design.md §6) remain out of scope. The action group is
+                        pushed to the end of the toolbar's own flex row via `ml-auto` so it keeps
+                        matching the right-aligned layout this screen already had. */}
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                      {modelItems.length > 0 && (
+                        <>
+                          <label htmlFor="managed-model" className="sr-only">
+                            {t('managedSession.model.label')}
+                          </label>
+                          <Select
+                            disabled={state.commandBusy || !!state.pending}
+                            value={selectedModelKey}
+                            onValueChange={(key) => {
+                              const next = decodeModelKey(key);
+                              feed.setModel(next.modelId, next.effort);
+                            }}
+                          >
+                            <SelectTrigger
+                              id="managed-model"
+                              className="w-auto max-w-56 sm:max-w-72"
+                            >
+                              <SelectValue placeholder={t('managedSession.model.placeholder')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {modelItems.map((item) => (
+                                <SelectItem key={item.key} value={item.key}>
+                                  {item.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+                      {snapshot.session.capabilities.cancel && (
+                        <Button
+                          variant="secondary"
+                          disabled={state.commandBusy}
+                          onClick={() => void feed.cancel()}
+                        >
+                          {t('managedSession.cancel')}
+                        </Button>
+                      )}
+                      <Button disabled={!canSend} type="submit">
+                        {t(state.pending ? 'managedSession.retrySend' : 'managedSession.send')}
+                      </Button>
+                    </div>
+                  </MessageComposer.Toolbar>
+                </MessageComposer>
               </div>
             </>
           )}

@@ -1,35 +1,43 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, MarkdownDocument, Spinner } from '@nevo/ui';
 import type { ContentRef, TextPreview } from '@nevo/specflow-contracts/sessions';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from './api';
 
-export function ReadableText({
-  api,
-  sessionId,
-  value,
-  markdown = false,
-}: {
-  api: ManagedSessionsApi;
-  sessionId: string;
-  value: TextPreview;
-  /** Session Chat V10: the agent's final answer is borderless-first Markdown, not plain text. */
-  markdown?: boolean;
-}) {
+/** Imperative handle exposed by {@link ReadableText}: the one owner of the message's fully
+ * resolved text (initial preview plus every auto-stitched page), for actions that need the whole
+ * authored message rather than just the capped initial preview — e.g. the Copy message action in
+ * `ManagedSession`'s `EntryRow` (session-chat-v10-design.md §2). */
+export interface ReadableTextHandle {
+  /** Writes the full resolved text to the clipboard. Resolves to whether it succeeded. */
+  copy: () => Promise<boolean>;
+}
+
+export const ReadableText = forwardRef<
+  ReadableTextHandle,
+  {
+    api: ManagedSessionsApi;
+    sessionId: string;
+    value: TextPreview;
+    /** Session Chat V10: the agent's final answer is borderless-first Markdown, not plain text. */
+    markdown?: boolean;
+  }
+>(function ReadableText({ api, sessionId, value, markdown = false }, ref) {
   // Loaded pages, pagination and in-flight reads all belong to one immutable revision.
   const identity = JSON.stringify([sessionId, value.content?.contentId, value.content?.revision]);
 
   return (
     <RevisionText
       key={identity}
+      ref={ref}
       api={api}
       sessionId={sessionId}
       value={value}
       markdown={markdown}
     />
   );
-}
+});
 
 /**
  * A `TextPreview` with `complete: false` is a transport limit (the initial preview is capped,
@@ -41,17 +49,15 @@ export function ReadableText({
  * it arrives, so a long answer grows in place instead of leaving the user looking at nothing
  * while every page loads.
  */
-function RevisionText({
-  api,
-  sessionId,
-  value,
-  markdown,
-}: {
-  api: ManagedSessionsApi;
-  sessionId: string;
-  value: TextPreview;
-  markdown: boolean;
-}) {
+const RevisionText = forwardRef<
+  ReadableTextHandle,
+  {
+    api: ManagedSessionsApi;
+    sessionId: string;
+    value: TextPreview;
+    markdown: boolean;
+  }
+>(function RevisionText({ api, sessionId, value, markdown }, ref) {
   const { t } = useTranslation();
   const markdownLabels = useMarkdownLabels();
   // Text fetched beyond the initial preview, appended page by page as the auto-fetch progresses.
@@ -109,6 +115,31 @@ function RevisionText({
   }, []);
 
   const text = value.text + rest;
+  // The Copy message action (session-chat-v10-design.md §2) acts on this exact resolved text —
+  // whatever has been stitched in so far — not the capped initial preview alone. Recreated
+  // whenever `text` grows so a copy started mid-fetch still gets the latest available content.
+  useImperativeHandle(
+    ref,
+    () => ({
+      copy: async () => {
+        try {
+          // `navigator.clipboard` is missing outside secure contexts and may be refused: say so
+          // instead of reporting a copy that did not happen (same convention as
+          // `CreateFailurePanel`/`TaskDetailDisclosure`'s own copy actions).
+          if (!navigator.clipboard?.writeText) {
+            throw new Error('Clipboard is unavailable');
+          }
+
+          await navigator.clipboard.writeText(text);
+
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    }),
+    [text],
+  );
 
   return (
     <div className="grid min-w-0 gap-2">
@@ -142,4 +173,4 @@ function RevisionText({
       )}
     </div>
   );
-}
+});

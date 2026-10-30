@@ -1,20 +1,20 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Send, SlidersHorizontal, Square } from 'lucide-react';
+import { Check, Copy, Send, SlidersHorizontal, Square } from 'lucide-react';
 import {
   Alert,
   AppContent,
   AppWorkspace,
   Button,
-  Icon,
   IconButton,
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
   MessageComposer,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Spinner,
   StatusIndicator,
   TextArea,
@@ -35,7 +35,7 @@ import type {
   ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed } from './feed';
-import { ReadableText } from './MessageText';
+import { ReadableText, type ReadableTextHandle } from './MessageText';
 import { createWorkInspector } from './WorkInspector';
 import { SessionContext, createSessionContextStack } from './context/SessionContext';
 import { unavailableSessionContext } from './context/sessionContextTypes';
@@ -66,22 +66,33 @@ function decodeModelKey(key: string): { modelId: string; effort?: string } {
  * Flattens the matched provider's models/efforts into one "Model · Effort" picker, per the
  * composer design's single combined selector. Honors the catalogue's own modelOverride/
  * effortOverride capability flags rather than assuming every listed model is overridable.
+ *
+ * Each item also carries an optional `description` — the model's full set of available efforts
+ * (the Menu picker's own second line, matching the accepted mockup's richer item presentation,
+ * session-chat-v10 §"Model — następny Turn") — omitted for a model with a single effort (or none),
+ * where it would not add anything the label does not already say.
  */
-function modelPickerItems(provider: ProviderDescriptor | undefined) {
+function modelPickerItems(provider: ProviderDescriptor | undefined, t: TFunction) {
   if (!provider?.capabilities.modelOverride || !provider.models.length) {
     return [];
   }
 
   const withEffort = provider.capabilities.effortOverride;
 
-  return provider.models.flatMap((model) =>
-    withEffort && model.efforts.length
+  return provider.models.flatMap((model) => {
+    const description =
+      withEffort && model.efforts.length > 1
+        ? t('managedSession.model.availableEfforts', { list: model.efforts.join(', ') })
+        : undefined;
+
+    return withEffort && model.efforts.length
       ? model.efforts.map((effort) => ({
           key: encodeModelKey(model.modelId, effort),
           label: model.title + ' · ' + effort,
+          description,
         }))
-      : [{ key: encodeModelKey(model.modelId), label: model.title }],
-  );
+      : [{ key: encodeModelKey(model.modelId), label: model.title, description: undefined }];
+  });
 }
 
 function InteractionPrompt({
@@ -161,6 +172,65 @@ function InteractionPrompt({
 }
 
 /**
+ * Copy action for a specific authored message (session-chat-v10-design.md §2: "Copy and Quote
+ * belong to their specific authored message"). Desktop reveals it only on hover/focus of the
+ * message (the `group/message` on its `EntryRow` article below); coarse pointers always show it,
+ * since hover does not exist on touch — the same `pointer-fine:opacity-0` /
+ * `pointer-fine:group-hover/<name>:opacity-100` convention `treeRowActionClassName` already
+ * establishes for a trailing row action in this Design System (`treeRecipes.ts`).
+ *
+ * Quote (quoting a message into the composer draft) is deferred: session-chat-v10-design.md only
+ * says Copy and Quote "belong to" the message, without deciding whether Quote replaces or appends
+ * to an existing draft, its exact quoted format, or focus handling afterward — material product
+ * decisions, not implementation detail, so they are left to a follow-up rather than guessed here.
+ */
+function MessageCopyAction({ onCopy }: { onCopy: () => Promise<boolean> }) {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(resetTimer.current), []);
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <TooltipProvider delayDuration={400}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              aria-label={t('managedSession.copy.action')}
+              className={cn(
+                'shrink-0',
+                'pointer-fine:opacity-0',
+                'pointer-fine:group-hover/message:opacity-100',
+                'pointer-fine:group-focus-within/message:opacity-100',
+                'pointer-fine:focus-visible:opacity-100',
+              )}
+              icon={status === 'copied' ? Check : Copy}
+              size="xs"
+              variant="ghost"
+              onClick={() => {
+                clearTimeout(resetTimer.current);
+                void onCopy().then((ok) => {
+                  setStatus(ok ? 'copied' : 'failed');
+                  resetTimer.current = setTimeout(() => setStatus('idle'), 2000);
+                });
+              }}
+            />
+          </TooltipTrigger>
+          <TooltipContent>{t('managedSession.copy.action')}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <span role="status" aria-live="polite" className="sr-only">
+        {status === 'copied'
+          ? t('managedSession.copy.copied')
+          : status === 'failed'
+            ? t('managedSession.copy.failed')
+            : ''}
+      </span>
+    </span>
+  );
+}
+
+/**
  * One conversation entry, rendered per its semantic role (session-conversation-ui-spec.md §4-5).
  * V10 rule: do not prefix every entry with a repeated "Ty"/"Asystent" speaker label — the kind
  * stays available to assistive tech (`sr-only`) but visual role comes from alignment/surface/
@@ -182,13 +252,18 @@ function EntryRow({
   const { t } = useTranslation();
   const kindLabel = t(`managedSession.entry.${entry.kind}`);
   const srLabel = <span className="sr-only">{kindLabel}</span>;
+  const textRef = useRef<ReadableTextHandle>(null);
+  const handleCopy = () => textRef.current?.copy() ?? Promise.resolve(false);
 
   if (entry.kind === 'request') {
     return (
-      <article data-entry-id={entry.id} className="grid justify-end">
+      <article data-entry-id={entry.id} className="group/message grid justify-end gap-1">
         {srLabel}
         <div className="max-w-content-standard rounded-composite bg-surface-subtle px-4 py-3">
-          <ReadableText api={api} sessionId={sessionId} value={entry.text} />
+          <ReadableText ref={textRef} api={api} sessionId={sessionId} value={entry.text} />
+        </div>
+        <div className="flex justify-end">
+          <MessageCopyAction onCopy={handleCopy} />
         </div>
       </article>
     );
@@ -196,9 +271,10 @@ function EntryRow({
 
   if (entry.kind === 'answer') {
     return (
-      <article data-entry-id={entry.id} className="grid min-w-0 gap-1">
+      <article data-entry-id={entry.id} className="group/message grid min-w-0 gap-1">
         {srLabel}
-        <ReadableText api={api} sessionId={sessionId} value={entry.text} markdown />
+        <ReadableText ref={textRef} api={api} sessionId={sessionId} value={entry.text} markdown />
+        <MessageCopyAction onCopy={handleCopy} />
       </article>
     );
   }
@@ -313,16 +389,52 @@ export function ManagedSession({
       node.scrollTop = node.scrollHeight;
     }
   }, [state.snapshot?.entries, state.away]);
+  // Scroll-triggered auto-loading of older history (owner feedback #5), replacing the old manual
+  // "Load older messages" button: `maybeLoadOlder` (declared below, a hoisted function
+  // declaration) is called both from the scroller's own `onScroll` handler (interactive scroll)
+  // and from this effect, which re-checks after every entries/busy/error change — so a page that
+  // was just prepended and still leaves the scroller at/near the top keeps loading until
+  // `history.hasOlder` is false, and a short conversation that never overflows (so the user has
+  // no scrollbar to drive) still gets its older history pulled in once mounted. Runs after the
+  // anchor-restoring effect above (same commit, later in declaration order), so it reads the
+  // scroll position that effect just restored, not a stale one.
+  useLayoutEffect(() => {
+    const node = scroller.current;
+    if (node) {
+      maybeLoadOlder(node);
+    }
+    // `maybeLoadOlder` is a hoisted function declaration (defined below, deliberately so it is
+    // also reachable from this effect) that closes over the same `state.snapshot`/`historyBusy`/
+    // `historyError` already listed: it has a new identity every render but no behavior beyond
+    // what those listed values already determine, so adding it here would only make the effect
+    // re-run on every unrelated render instead of just these.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    state.snapshot?.entries,
+    state.snapshot?.history.hasOlder,
+    state.historyBusy,
+    state.historyError,
+  ]);
   // The Composer floats over the scrollable conversation (owner feedback #1) instead of sitting
   // in normal flow below it. Its rendered height varies (auto-growing textarea, responsive
-  // toolbar, the "jump to latest" pill appearing/disappearing), so it is measured rather than
-  // given a fixed padding value, mirroring the ref+ResizeObserver measurement WorkspaceHeader's
-  // own `useNarrowHeader` uses for a similar "respond to a real rendered size" need. The message
-  // list reserves exactly that much bottom space so the last message is never hidden behind it.
-  const composerOverlay = useRef<HTMLDivElement>(null);
+  // toolbar, the "jump to latest" pill and the pending-interaction card appearing/disappearing),
+  // so it is measured rather than given a fixed padding value, mirroring the ref+ResizeObserver
+  // measurement WorkspaceHeader's own `useNarrowHeader` uses for a similar "respond to a real
+  // rendered size" need. The message list reserves exactly that much bottom space so the last
+  // message is never hidden behind it.
+  //
+  // A callback ref (not `useRef` + a `[]`-dependency effect) owns attachment: the overlay only
+  // exists in the DOM once `snapshot` is loaded (it sits in the `!snapshot ? ... : (...)` branch
+  // below), which is typically still `undefined` on the very first render/layout-effect pass. A
+  // one-shot effect would find `composerOverlay.current` null then, observe nothing, and never
+  // run again once the overlay actually mounts — the real bug this fixes, not merely a timing
+  // nit: `ResizeObserver` was never attached to begin with, so `composerHeight` stayed `0` and
+  // `paddingBottom` stayed unset for the lifetime of the component. The callback ref instead fires
+  // exactly when the node mounts/unmounts, however late that is, so the observer always attaches.
+  const [composerOverlayNode, setComposerOverlayNode] = useState<HTMLDivElement | null>(null);
   const [composerHeight, setComposerHeight] = useState(0);
   useLayoutEffect(() => {
-    const node = composerOverlay.current;
+    const node = composerOverlayNode;
     if (!node) {
       return undefined;
     }
@@ -337,7 +449,41 @@ export function ManagedSession({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, []);
+  }, [composerOverlayNode]);
+  // Final safety net, independent of the `away`/anchor bookkeeping above: whichever scroll
+  // position that logic picked, it was computed from the scroller's geometry at that moment —
+  // and the overlay's own height (`composerHeight`) typically arrives one render later (its
+  // `ResizeObserver` cannot report a size before the node has ever painted), on a short
+  // conversation the browser clamps any attempted scroll to 0 until the reserved padding actually
+  // makes the content tall enough to need scrolling, and loading older history while "away" skips
+  // the scroll-to-bottom branch entirely by design. Any one of those can leave a visible entry's
+  // own box extending past the overlay's top edge; this explicitly measures for exactly that and
+  // nudges `scrollTop` down by the overlap, never past the scroller's own maximum. It is the
+  // directly-enforced version of "the last message is never hidden behind the floating overlay",
+  // not an emergent property of the scroll-math above.
+  useLayoutEffect(() => {
+    const node = scroller.current;
+    const overlay = composerOverlayNode;
+    if (!node || !overlay) {
+      return;
+    }
+
+    const nodeRect = node.getBoundingClientRect();
+    const overlayTop = overlay.getBoundingClientRect().top;
+    let overlap = 0;
+    for (const entry of node.querySelectorAll<HTMLElement>('[data-entry-id]')) {
+      const rect = entry.getBoundingClientRect();
+      const inVisibleWindow =
+        rect.height > 0 && rect.bottom > nodeRect.top && rect.top < nodeRect.bottom;
+      if (inVisibleWindow) {
+        overlap = Math.max(overlap, rect.bottom - overlayTop);
+      }
+    }
+
+    if (overlap > 0) {
+      node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, node.scrollTop + overlap);
+    }
+  }, [composerHeight, state.snapshot?.entries, state.historyBusy, composerOverlayNode]);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
@@ -348,20 +494,34 @@ export function ManagedSession({
   const provider = providers.data?.items.find(
     (item) => item.providerId === state.snapshot?.session.providerId,
   );
-  const modelItems = useMemo(() => modelPickerItems(provider), [provider]);
+  const modelItems = useMemo(() => modelPickerItems(provider, t), [provider, t]);
   const selectedModelId = state.modelOverride ?? state.snapshot?.session.modelId;
   const selectedEffort = state.modelOverride
     ? state.effortOverride
     : state.snapshot?.session.effort;
-  // Always a defined string so Select stays controlled from its first render (never undefined),
-  // even before the Session's current model/effort is known.
+  // Always a defined string so MenuRadioGroup stays controlled from its first render (never
+  // undefined), even before the Session's current model/effort is known.
   const selectedModelKey = selectedModelId ? encodeModelKey(selectedModelId, selectedEffort) : '';
+  const selectedModelLabel = modelItems.find((item) => item.key === selectedModelKey)?.label;
   function older() {
     if (scroller.current) {
       anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
     }
 
     void feed.older();
+  }
+
+  // "Near the top" per owner feedback #5: not literally scrollTop === 0, a threshold reached
+  // shortly before it so the next page is ready before the user hits the physical edge.
+  const NEAR_TOP_PX = 200;
+  function maybeLoadOlder(node: HTMLDivElement) {
+    if (!state.snapshot?.history.hasOlder || state.historyBusy || state.historyError) {
+      return;
+    }
+
+    if (node.scrollTop < NEAR_TOP_PX) {
+      older();
+    }
   }
 
   const snapshot = state.snapshot;
@@ -409,6 +569,11 @@ export function ManagedSession({
                       id: 'context',
                       label: t('sessions.context.title'),
                       icon: 'file',
+                      // Directly tappable on narrow instead of buried in the generic "More
+                      // actions" overflow (full-session-screen-structure.md §21.1's `[Context]`
+                      // pill); `'always'` wins the single narrow direct slot regardless of this
+                      // header's own measured width.
+                      direct: 'always',
                       onPress: () =>
                         void navigation.open(
                           createSessionContextStack(sessionId, sessionContext),
@@ -480,18 +645,25 @@ export function ManagedSession({
               <div className="relative min-h-0 flex-1">
                 <div
                   ref={scroller}
+                  data-session-scroller="true"
                   className="absolute inset-0 overflow-y-auto overscroll-contain"
                   style={{ paddingBottom: composerHeight || undefined }}
                   onScroll={(event) => {
                     const node = event.currentTarget;
                     feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > 80);
+                    maybeLoadOlder(node);
                   }}
                 >
                   <div className="mx-auto grid w-full max-w-content-standard gap-5 px-5 py-5">
-                    {snapshot.history.hasOlder && (
-                      <Button disabled={state.historyBusy} variant="ghost" onClick={older}>
-                        {t('managedSession.older')}
-                      </Button>
+                    {/* Auto-loads on scroll near the top instead of a manual button (owner
+                        feedback #5, `maybeLoadOlder`); this is just its busy indicator. */}
+                    {state.historyBusy && (
+                      <p role="status" className="flex items-center justify-center gap-2 py-1">
+                        <Spinner size="sm" />
+                        <span className="text-body-sm text-content-muted">
+                          {t('managedSession.loadingOlder')}
+                        </span>
+                      </p>
                     )}
                     {state.historyError && (
                       <Alert tone="attention" title={t('managedSession.historyFailed')}>
@@ -520,7 +692,8 @@ export function ManagedSession({
                   </div>
                 </div>
                 <div
-                  ref={composerOverlay}
+                  ref={setComposerOverlayNode}
+                  data-composer-overlay="true"
                   className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 px-4 pb-4 pt-3 sm:px-5 sm:pb-5"
                 >
                   {(state.hasNew || state.away) && (
@@ -581,52 +754,77 @@ export function ManagedSession({
                             keeps matching the right-aligned layout this screen already had. */}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                           {modelItems.length > 0 && (
-                            <>
-                              <label htmlFor="managed-model" className="sr-only">
-                                {t('managedSession.model.label')}
-                              </label>
-                              <Select
-                                disabled={state.commandBusy || !!state.pending}
-                                value={selectedModelKey}
-                                onValueChange={(key) => {
-                                  const next = decodeModelKey(key);
-                                  feed.setModel(next.modelId, next.effort);
-                                }}
-                              >
-                                {/* `supportsSplit` is the same measured-width signal this screen
-                                    already uses for the Context header action: on the narrow/
-                                    mobile layout there is no room for the "Model · effort" text,
-                                    so the trigger collapses to an icon; split-capable (wide)
-                                    layouts keep showing the selected value as text. */}
-                                <SelectTrigger
-                                  id="managed-model"
-                                  className={cn(
-                                    'w-auto',
-                                    supportsSplit
-                                      ? 'max-w-56 gap-1.5 sm:max-w-72'
-                                      : 'justify-center gap-0 px-0',
-                                  )}
-                                >
-                                  <Icon
-                                    className={cn('text-content-muted', supportsSplit && '-ml-0.5')}
-                                    name={SlidersHorizontal}
+                            <Menu>
+                              {/* The Design System's `Select` has no compact size variant (hardcoded
+                                  to `h-control-height-default`) and no per-option description, so it
+                                  cannot show the richer "title + available efforts" presentation the
+                                  accepted mockup calls for (session-chat-v10 §"Model — następny
+                                  Turn"). `Menu` + `MenuRadioItem` (the same checkmark single-choice
+                                  primitive `LocaleMenu` already uses) does, via its `description`
+                                  prop (shared `Select`/`Combobox` option anatomy, see Menu.tsx). */}
+                              {/* `supportsSplit` is the same measured-width signal this screen
+                                  already uses for the Context header action: on the narrow/mobile
+                                  layout there is no room for the "Model · effort" text, so the
+                                  trigger collapses to an icon-only `IconButton` (item 2's compact
+                                  sizing); split-capable (wide) layouts keep showing the selected
+                                  value as visible text next to the icon. */}
+                              <MenuTrigger asChild>
+                                {supportsSplit ? (
+                                  <Button
+                                    className="max-w-56 sm:max-w-72"
+                                    disabled={state.commandBusy || !!state.pending}
+                                    id="managed-model"
+                                    labelOverflow="truncate"
+                                    leadingIcon={SlidersHorizontal}
                                     size="sm"
-                                  />
-                                  {supportsSplit && (
-                                    <SelectValue
-                                      placeholder={t('managedSession.model.placeholder')}
-                                    />
-                                  )}
-                                </SelectTrigger>
-                                <SelectContent>
+                                    variant="ghost"
+                                  >
+                                    {selectedModelLabel ?? t('managedSession.model.placeholder')}
+                                  </Button>
+                                ) : (
+                                  <TooltipProvider delayDuration={400}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <IconButton
+                                          aria-label={
+                                            selectedModelLabel ??
+                                            t('managedSession.model.placeholder')
+                                          }
+                                          disabled={state.commandBusy || !!state.pending}
+                                          icon={SlidersHorizontal}
+                                          id="managed-model"
+                                          size="sm"
+                                          variant="ghost"
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {selectedModelLabel ??
+                                          t('managedSession.model.placeholder')}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </MenuTrigger>
+                              <MenuContent align="end" aria-label={t('managedSession.model.label')}>
+                                <MenuRadioGroup
+                                  value={selectedModelKey}
+                                  onValueChange={(key) => {
+                                    const next = decodeModelKey(key);
+                                    feed.setModel(next.modelId, next.effort);
+                                  }}
+                                >
                                   {modelItems.map((item) => (
-                                    <SelectItem key={item.key} value={item.key}>
+                                    <MenuRadioItem
+                                      key={item.key}
+                                      description={item.description}
+                                      value={item.key}
+                                    >
                                       {item.label}
-                                    </SelectItem>
+                                    </MenuRadioItem>
                                   ))}
-                                </SelectContent>
-                              </Select>
-                            </>
+                                </MenuRadioGroup>
+                              </MenuContent>
+                            </Menu>
                           )}
                           <TooltipProvider delayDuration={400}>
                             <Tooltip>
@@ -635,6 +833,7 @@ export function ManagedSession({
                                   aria-label={t(sendActionLabelKey)}
                                   disabled={canCancel ? state.commandBusy : !canSend}
                                   icon={canCancel ? Square : Send}
+                                  size="sm"
                                   type={canCancel ? 'button' : 'submit'}
                                   variant={canCancel ? 'secondary' : 'primary'}
                                   onClick={canCancel ? () => void feed.cancel() : undefined}

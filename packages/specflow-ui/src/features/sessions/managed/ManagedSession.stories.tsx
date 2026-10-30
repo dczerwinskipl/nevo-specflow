@@ -60,6 +60,46 @@ export const Tail: Story = {
     ).toBeNull();
   },
 };
+/** Item 4: Copy acts on each authored message's own full resolved text — `MessageText.tsx`'s
+ * auto-stitched content, not just the capped initial preview `ReadableText` starts with. */
+export const CopyMessage: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/jedna całość\.$/, undefined, { timeout: 5000 }),
+    ).toBeVisible();
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const writeText = fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    try {
+      const [requestCopy, answerCopy] = canvas.getAllByRole('button', {
+        name: 'Kopiuj wiadomość',
+      });
+      if (!requestCopy || !answerCopy) {
+        throw new Error('Expected a Copy action on the request and the answer message.');
+      }
+
+      await userEvent.click(answerCopy);
+      await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+      const copiedAnswer = writeText.mock.calls[0]?.[0] as string;
+      await expect(copiedAnswer.startsWith('To jest krótki podgląd dużej odpowiedzi.')).toBe(true);
+      await expect(copiedAnswer.endsWith('jedna całość.')).toBe(true);
+      await canvas.findByText('Skopiowano');
+
+      writeText.mockClear();
+      await userEvent.click(requestCopy);
+      await waitFor(() =>
+        expect(writeText).toHaveBeenCalledWith(sessionFixture().entries[0]!.text.text),
+      );
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(navigator, 'clipboard', descriptor);
+      } else {
+        Reflect.deleteProperty(navigator, 'clipboard');
+      }
+    }
+  },
+};
 export const WaitingForQuestion: Story = {
   args: { api: fixtureApi(sessionFixture(true)) },
   play: async ({ canvasElement }) => {
@@ -74,25 +114,56 @@ export const WaitingForQuestion: Story = {
     await expect(canvas.queryByRole('button', { name: 'Wyślij' })).not.toBeInTheDocument();
   },
 };
+// Owner feedback #5: older history auto-loads (no manual button) once the scroller is at/near
+// the top — these two short fixtures never overflow, so that is true as soon as they mount, the
+// same condition a short conversation hits in the real app with more history above it.
 export const HistoryFailure: Story = {
   args: { api: fixtureApi(sessionFixture(), true) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Wczytaj starsze wiadomości' }),
-    );
+    await expect(canvas.queryByRole('button', { name: 'Wczytaj starsze wiadomości' })).toBeNull();
     await expect(
       await canvas.findByText('Nie udało się wczytać starszych wiadomości.'),
     ).toBeVisible();
+    // The manual-retry affordance survives the switch to auto-loading (still needed once it has
+    // actually failed — auto-loading must not just silently retry forever).
+    await userEvent.click(canvas.getByRole('button', { name: 'Spróbuj ponownie' }));
     await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
   },
 };
+/**
+ * `fixtureApi`'s `snapshot()` always reports the same static `history.hasOlder: true` — realistic
+ * for the first load, but "Return to latest" (`feed.latest()`) re-fetches that same snapshot from
+ * scratch, which would otherwise make auto-loading (item 5) legitimately start right over, racing
+ * this story's own assertion that the older entry is gone. A real backend would not keep claiming
+ * unlimited history forever, so this wrapper reflects that the older page was already exhausted
+ * once fetched, same as it would be across a real reconnect.
+ */
+function historyReturnApi() {
+  const base = fixtureApi(sessionFixture());
+  let exhausted = false;
+
+  return {
+    ...base,
+    snapshot: async (...args: Parameters<typeof base.snapshot>) => {
+      const fresh = await base.snapshot(...args);
+
+      return exhausted ? { ...fresh, history: { hasOlder: false } } : fresh;
+    },
+    history: async (...args: Parameters<typeof base.history>) => {
+      const page = await base.history(...args);
+      exhausted = true;
+
+      return page;
+    },
+  };
+}
+
 export const HistoryReturn: Story = {
+  args: { api: historyReturnApi() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Wczytaj starsze wiadomości' }),
-    );
+    await expect(canvas.queryByRole('button', { name: 'Wczytaj starsze wiadomości' })).toBeNull();
     await expect(await canvas.findByText('Starsza wiadomość')).toBeVisible();
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Wróć do najnowszych wiadomości' }),
@@ -178,15 +249,32 @@ export const QuotaFailure: Story = {
   },
 };
 
-function optionByLabel(text: string) {
-  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
-    (node) => node.textContent?.includes(text),
-  );
+/** Finds the specific "Standard · high" `menuitemradio` by its own label line, not the full
+ * accessible name (which also includes that model's "available efforts" description — identical
+ * on every one of its effort rows, so matching on it alone would not disambiguate low vs. high). */
+function modelOptionByLabel(menu: HTMLElement, label: string) {
+  const option = within(menu)
+    .getAllByRole('menuitemradio')
+    .find((item) => within(item).queryByText(label));
   if (!option) {
-    throw new Error(`Option "${text}" should exist.`);
+    throw new Error(`Option "${label}" should exist.`);
   }
 
   return option;
+}
+
+async function openModelMenu(canvasElement: HTMLElement, triggerName: string) {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByRole('button', { name: triggerName }));
+
+  return waitFor(() => {
+    const menu = document.querySelector<HTMLElement>('[role="menu"]');
+    if (!menu) {
+      throw new Error('The model/effort menu should open.');
+    }
+
+    return menu;
+  });
 }
 
 const modelApi = {
@@ -198,14 +286,10 @@ export const SelectModelEffort: Story = {
   play: async ({ canvasElement }) => {
     modelApi.start.mockClear();
     const canvas = within(canvasElement);
-    const trigger = await canvas.findByRole('combobox', {
-      name: 'Model i poziom wysiłku dla następnej wiadomości',
-    });
-    trigger.focus();
-    await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(document.querySelector('[role="listbox"]')).not.toBeNull());
-    await userEvent.click(optionByLabel('Standard · high'));
-    await waitFor(() => expect(document.querySelector('[role="listbox"]')).toBeNull());
+    const menu = await openModelMenu(canvasElement, 'Wybierz model');
+    await userEvent.click(modelOptionByLabel(menu, 'Standard · high'));
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
+    await expect(await canvas.findByRole('button', { name: 'Standard · high' })).toBeVisible();
     await userEvent.type(canvas.getByLabelText('Wiadomość'), 'Testowa wiadomość');
     await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
     await waitFor(() => expect(modelApi.start).toHaveBeenCalledOnce());
@@ -213,6 +297,27 @@ export const SelectModelEffort: Story = {
       modelId: 'mock-standard',
       effort: 'high',
     });
+  },
+};
+
+/** The Menu's richer per-item presentation (item 3): each effort row of a multi-effort model also
+ * shows a description line listing every effort that model supports. */
+export const ModelMenuShowsAvailableEfforts: Story = {
+  args: { owner: 'model-description-story', api: fixtureApi(sessionFixture()) },
+  play: async ({ canvasElement }) => {
+    const menu = await openModelMenu(canvasElement, 'Wybierz model');
+    // `waitFor` (not a bare assertion) absorbs the Menu's own open fade-in transition — right
+    // after it appears in the DOM its content is still mid-animation (`opacity: 0` on
+    // `MenuContent` itself), so an immediate `toBeVisible()` would be a false negative, not a
+    // real regression.
+    await waitFor(async () => {
+      const high = modelOptionByLabel(menu, 'Standard · high');
+      await expect(within(high).getByText('Dostępne poziomy wysiłku: low, high')).toBeVisible();
+    });
+    const fast = modelOptionByLabel(menu, 'Fast');
+    await expect(within(fast).queryByText(/Dostępne poziomy wysiłku/)).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
   },
 };
 
@@ -233,6 +338,6 @@ export const NoModelOverrideCapability: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByLabelText('Wiadomość')).toBeEnabled();
-    await expect(canvas.queryByRole('combobox')).not.toBeInTheDocument();
+    await expect(canvasElement.querySelector('#managed-model')).toBeNull();
   },
 };

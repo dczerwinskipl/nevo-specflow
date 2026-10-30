@@ -350,6 +350,7 @@ jobs:
           src/features/sessions/providers/process
           src/features/sessions/providers/claude
           src/features/sessions/providers/codex
+          src/features/sessions/providers/antigravity
           src/features/sessions/providers/compatibility
           src/features/sessions/lifecycle
           src/features/sessions/persistence

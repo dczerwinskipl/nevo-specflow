@@ -1,9 +1,23 @@
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { runAntigravityHook } from './features/sessions';
 
+function invokedAsMain() {
+  if (!process.argv[1]) {
+    return false;
+  }
+
+  try {
+    // Installed pnpm entry paths may traverse a package symlink, while Node's
+    // import.meta.url identifies the physical file. Compare physical identities.
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
 // Import-safe package entry: build surface validation imports every export.
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (invokedAsMain()) {
   const hook = process.argv[2];
   let decision: 'allow' | 'auto_approve' | 'deny' | 'stop';
   try {

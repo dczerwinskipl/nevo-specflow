@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { prepareAntigravityPermission } from './permissions';
@@ -11,7 +11,8 @@ afterEach(async () => {
   );
 });
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'specflow-hook-policy-'));
+  // Match installation discovery's physical workspace, including macOS /var aliases.
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-hook-policy-')));
   directories.push(root);
   const workspace = join(root, 'workspace');
   const outside = join(root, 'outside');

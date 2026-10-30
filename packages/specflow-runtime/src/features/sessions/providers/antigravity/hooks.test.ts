@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, rename, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rename, realpath, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DriverFact } from '../../persistence/protocol';
@@ -17,7 +17,8 @@ afterEach(async () => {
   }
 });
 async function fixture(active = true) {
-  const root = await mkdtemp(join(tmpdir(), 'specflow-native-hook-'));
+  // Match installation discovery's physical workspace, including macOS /var aliases.
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-native-hook-')));
   cleanups.push(() => rm(root, { recursive: true, force: true }));
   const workspace = join(root, 'workspace');
   await mkdir(workspace);

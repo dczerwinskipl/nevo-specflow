@@ -17,7 +17,7 @@ import type { SessionContextTaskRef } from './sessionContextTypes';
  * `AppWorkspace` does not yet support several independent root tabs open at once beside the
  * pinned Context tab (design-system-component-composition-gaps.md §5.4) — that shared split/tab
  * capability is a separate, parallel design-system track. Today this composition reuses the real
- * default-Secondary + runtime-stack mechanism already used by `WorkInspector`/`SessionContextPanel`:
+ * default-Secondary + runtime-stack mechanism already used by `WorkInspector`:
  * opening Tasks temporarily replaces Context in the one Secondary, and Back/Close returns to the
  * default Context. That already gives the required V1 semantics (an independently revisitable
  * Task list with its own local stack; Back walks Task -> list -> Context) and should switch to the

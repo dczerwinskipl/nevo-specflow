@@ -1,13 +1,11 @@
 import { useRuntimeMode } from '../../app/useRuntimeMode';
-import { createRoute } from '@tanstack/react-router';
+import { createRoute, redirect } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { SpecificationAggregatePage } from '../specs';
 import { specificationRoute } from '../specs/routes';
 import { parseSpecificationCollection } from '../../app/router/search';
 
-import { AppWorkspaceProvider } from '@nevo/ui';
 import { SessionsView } from './views/SessionsView';
-import { SessionScreen } from './screens/SessionScreen';
 
 export const sessionsRoute = createRoute({
   getParentRoute: () => specificationRoute,
@@ -46,14 +44,9 @@ function SessionsRouteScreen() {
               : undefined
           }
           onOpenSession={
-            demo
-              ? (sessionId) =>
-                  void navigate({
-                    to: '/specs/$specId/sessions/$sessionId',
-                    params: { specId, sessionId },
-                    search: { collection },
-                  })
-              : undefined
+            // Full Session is canonical at the top-level `/sessions/:sessionId` route regardless of
+            // Runtime mode (see sessionDetailRoute below, which now only redirects there).
+            (sessionId) => void navigate({ to: '/sessions/$sessionId', params: { sessionId } })
           }
         />
       )}
@@ -61,33 +54,20 @@ function SessionsRouteScreen() {
   );
 }
 
+/**
+ * Retired demo-era placeholder: Full Session is canonical at the top-level `/sessions/:sessionId`
+ * route (ManagedSession, real feed/API). This nested route now only redirects there so old
+ * links/bookmarks keep working, instead of rendering the superseded `SessionScreen`.
+ */
 export const sessionDetailRoute = createRoute({
   getParentRoute: () => specificationRoute,
   path: 'sessions/$sessionId',
-  component: Session,
+  beforeLoad: ({ params }) =>
+    redirect({
+      to: '/sessions/$sessionId',
+      params: { sessionId: params.sessionId },
+      replace: true,
+    }),
 });
-
-function Session() {
-  const { specId, sessionId } = sessionDetailRoute.useParams();
-  const navigate = sessionDetailRoute.useNavigate();
-  const { collection } = sessionDetailRoute.useSearch();
-
-  return (
-    <AppWorkspaceProvider>
-      <SessionScreen
-        key={sessionId}
-        specId={specId}
-        sessionId={sessionId}
-        onBack={() =>
-          void navigate({
-            to: '/specs/$specId/sessions',
-            params: { specId },
-            search: { collection },
-          })
-        }
-      />
-    </AppWorkspaceProvider>
-  );
-}
 
 export const sessionsAppRoutes = [sessionsRoute, sessionDetailRoute] as const;

@@ -348,22 +348,19 @@ was, see the third entry below, added 2026-10-30 during a parallel Full Session 
   `workStack`'s `id` is turn-invariant (today it is a fixed `'work'`-style id, so distinct Turns
   reuse the same tab id and continue to replace each other — but this must be verified, not
   assumed, once the generalization lands).
-- `packages/specflow-ui/src/features/sessions/context/SessionContextPanel.tsx` defines three
-  separate stack _ids_ (`demo-session-documents`, `demo-session-project`,
-  `demo-session-instructions`) purely so that opening each one discards the others and lands on a
-  different initial page of the same screen set. Under this contract those three opens would
-  instead create three independent tabs (since their ids differ), which is very likely not the
-  intended V2 behavior for this consumer and should be revisited by the feature owner once this
-  capability lands — not solved speculatively here, since it is product-owned feature code outside
-  this document's scope. (This file is the demo-era Context panel; a parallel Full Session redesign
-  pass is expected to supersede it with `context/SessionContext.tsx` — see the next entry — so this
-  consequence may become moot rather than need fixing; W07 verifies which is actually true at audit
-  time instead of assuming either.)
+- `packages/specflow-ui/src/features/sessions/context/SessionContextPanel.tsx` (the demo-era
+  Context panel this entry originally described, with its three stack ids
+  `demo-session-documents`/`demo-session-project`/`demo-session-instructions`) has been **deleted**:
+  the Full Session route reconciliation pass (2026-10-30) retired the nested
+  `/specs/:specId/sessions/:sessionId` placeholder it backed, in favor of the canonical
+  `/sessions/:sessionId` route (`ManagedSession`/`context/SessionContext.tsx` — see the next entry).
+  It is no longer a known consumer; there is nothing left for W07 to revisit here.
 - `packages/specflow-ui/src/features/sessions/managed/context/SessionTasksInspector.tsx` (added
   2026-10-30) defines two fixed stack ids (`managed-session-tasks`, `managed-session-task-detail`)
-  for the identical reason as `SessionContextPanel.tsx` above — landing on a different initial page
-  of the same Tasks inspector via `navigation.open`, not actually wanting two independent tabs.
-  Same consequence, same disposition: revisit under the generalized `open`, not solved here.
+  for the same reason the former demo-era `SessionContextPanel.tsx` did (see above, now deleted) —
+  landing on a different initial page of the same Tasks inspector via `navigation.open`, not
+  actually wanting two independent tabs. Same consequence, same disposition: revisit under the
+  generalized `open`, not solved here.
 
 This document does not change `packages/specflow-ui`. It records this as a known consequence so
 the implementer and reviewer of section 9's tasks do not treat current green tests on these files

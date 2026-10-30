@@ -82,7 +82,6 @@ describe('message catalogues', () => {
       'documents.tabs.typeAndPath',
       'common.pullRequestNumber',
       'playground.title',
-      'sessions.demo.writer',
       'specification.changesSourcePr',
       // A shell command, the same in every language.
       'create.archetype.installCommand',

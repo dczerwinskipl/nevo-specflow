@@ -188,7 +188,7 @@ function TaskLink({
 /**
  * Narrow fallback: on layouts that cannot show Primary + Secondary side by side, Context is not
  * auto-pushed (full-session-screen-structure.md §3.3); a header action opens it as a pushed local
- * detail instead, exactly like `SessionContextPanel`'s own `!supportsSplit` fallback.
+ * detail instead, the same fallback the retired demo-era `SessionContextPanel` used to have.
  *
  * Known V1 simplification: because this renders Context as a *runtime* Secondary flow (there is
  * no default/static Secondary on narrow), opening a Task from inside it starts a new flow rather

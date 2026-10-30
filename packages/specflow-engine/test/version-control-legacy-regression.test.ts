@@ -204,15 +204,15 @@ describe('VC06 legacy real-Git regression coverage through WorktreePort', () => 
 
   it('a taken default-pattern branch yields the conflict path and never overwrites', async () => {
     const { root, worktrees } = await fixture();
-    git(root, 'branch', 'feature/taken-slug');
-    const before = git(root, 'rev-parse', 'feature/taken-slug');
+    git(root, 'branch', 'feature/nevo-1-taken-slug');
+    const before = git(root, 'rev-parse', 'feature/nevo-1-taken-slug');
     const { shortId, baseRefOverride, targetPath } = request(root);
     await expect(
-      worktrees.plan({ shortId, baseRefOverride, targetPath, slug: 'taken-slug' }),
+      worktrees.plan({ shortId, baseRefOverride, targetPath, slug: 'taken-slug', key: 'nevo-1' }),
     ).rejects.toMatchObject({
       code: 'BRANCH_ALREADY_EXISTS',
     });
-    expect(git(root, 'rev-parse', 'feature/taken-slug')).toBe(before);
+    expect(git(root, 'rev-parse', 'feature/nevo-1-taken-slug')).toBe(before);
   });
 
   it('rejects a child branch when its parent ref exists without side effects', async () => {

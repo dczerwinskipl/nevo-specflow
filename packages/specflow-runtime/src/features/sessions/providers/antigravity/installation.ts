@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { SessionError } from '../../errors';
 import { projectProviderEnvironment } from '../process';
@@ -31,6 +31,70 @@ async function absent(path: string) {
   }
 
   unavailable();
+}
+
+/** The CLI creates this inert default project after a Turn. Additional projects
+ * or project resources can alter execution configuration and remain unsupported. */
+async function validateNativeProjects(directory: string) {
+  let stat;
+  try {
+    stat = await lstat(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return;
+    }
+
+    throw error;
+  }
+
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    unavailable();
+  }
+
+  const entries = await readdir(directory);
+  if (entries.length > 1 || entries.some((entry) => entry !== 'default-cli-project.json')) {
+    unavailable();
+  }
+
+  if (!entries.length) {
+    return;
+  }
+
+  const path = join(directory, 'default-cli-project.json');
+  const file = await lstat(path);
+  if (!file.isFile() || file.isSymbolicLink() || file.size > 4096) {
+    unavailable();
+  }
+
+  const text = await readFile(path, 'utf8');
+  if (Buffer.byteLength(text) > 4096) {
+    unavailable();
+  }
+
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    unavailable();
+  }
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    unavailable();
+  }
+
+  const project = value as Record<string, unknown>;
+  if (
+    Object.keys(project).sort().join(',') !== 'id,name,projectResources' ||
+    project.id !== 'default-cli-project' ||
+    typeof project.name !== 'string' ||
+    Buffer.byteLength(project.name) > 256 ||
+    !project.projectResources ||
+    typeof project.projectResources !== 'object' ||
+    Array.isArray(project.projectResources) ||
+    Object.keys(project.projectResources).length !== 0
+  ) {
+    unavailable();
+  }
 }
 
 async function outsideWorkspace(workspace: string, target: string) {
@@ -218,9 +282,11 @@ export async function prepareAntigravityProfile(
     }
   }
 
-  for (const path of ['plugins', 'sidecars', 'projects']) {
+  for (const path of ['plugins', 'sidecars']) {
     await absent(join(config, path));
   }
+
+  await validateNativeProjects(join(config, 'projects'));
 
   // This adapter binds the exact consumer keyring source. A native fallback
   // file or cached keyring failure must not select a different authentication

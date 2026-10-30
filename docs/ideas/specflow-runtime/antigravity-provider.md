@@ -74,6 +74,10 @@ Sessions from overwriting each other's invocation transport. Discovery uses a
 separate disposable profile and sends no user event. Private directories and
 configuration targets reject symlink redirection before child writes. Profile
 markers bind account and physical workspace; token rotation preserves history.
+The CLI-created `default-cli-project.json` is accepted only with closed metadata
+keys, the exact default ID and empty project resources. Additional projects,
+resources, malformed files and symlinks remain unavailable; legitimate native
+bookkeeping must not prevent the next Turn.
 Directory identities use full SHA-256 encoded as base64url to keep native Windows
 HOME below 260 UTF-16 code units. Longer homes are rejected before directory
 creation. A 261-character profile reproduced initialization timeout before any
@@ -142,6 +146,13 @@ Evidence types remain separate:
 - Manual production-driver no-input discovery succeeded with the existing native
   keyring login: 13 models, native Agent/Plan and account affinity. No user frame
   or inference prompt was sent. This does not prove semantic continuation.
+- Manual Runtime HTTP acceptance with the existing native consumer login passed:
+  a minimal explicit integration-test prompt produced the requested marker and
+  completed; after closing/reopening Runtime, a second minimal prompt recovered
+  that marker from native conversation context and completed. Earlier attempts
+  exposed the Windows HOME limit, inert default project metadata and a native
+  resume `system_message` step; each now has controlled regression coverage.
+  The earlier uncertain invocation was not automatically replayed or released.
 - Manual native CLI tests used a synthetic loopback model backend, synthetic key
   and disposable private configuration, outside all test runners and CI. They
   verified actual hook allow/deny, malformed/error/timeout denial, exact native MCP
@@ -178,8 +189,8 @@ these remain uncertain rather than being promoted to success.
 
 Remaining acceptance is reported on the final implementation commit: full Runtime
 and process verification, installed helper packaging, independent review, and a
-separately reported minimal real-model conversation/resume when account access
-allows. No automated paid acceptance or retry is permitted. No UI redesign,
+separately recorded native evidence above. No automated paid acceptance or retry
+is permitted. No UI redesign,
 historical import or backward compatibility belongs to this feature.
 
 Primary sources: [headless protocol](https://antigravity.google/docs/cli/headless/),

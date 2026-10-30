@@ -52,6 +52,39 @@ async function fixture() {
 }
 
 describe('Antigravity private native profile', () => {
+  it('retains the inert CLI-created project but rejects executable resources and other projects', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    const profile = await prepareAntigravityProfile(installation);
+    const projects = join(profile.home, '.gemini', 'config', 'projects');
+    await mkdir(projects);
+    const file = join(projects, 'default-cli-project.json');
+    const project = {
+      id: 'default-cli-project',
+      name: 'Native default project',
+      projectResources: {},
+    };
+    await writeFile(file, JSON.stringify(project));
+    expect((await prepareAntigravityProfile(installation)).home).toBe(profile.home);
+    await writeFile(file, '{invalid');
+    await expect(prepareAntigravityProfile(installation)).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    await writeFile(file, JSON.stringify({ ...project, unexpected: true }));
+    await expect(prepareAntigravityProfile(installation)).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    await writeFile(file, JSON.stringify({ ...project, projectResources: { hooks: {} } }));
+    await expect(prepareAntigravityProfile(installation)).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    await writeFile(file, JSON.stringify(project));
+    await writeFile(join(projects, 'external-project.json'), '{}');
+    await expect(prepareAntigravityProfile(installation)).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+  });
+
   it('retains native history across token rotation and separates another account', async () => {
     const test = await fixture();
     const first = await test.inspect();

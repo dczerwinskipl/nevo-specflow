@@ -88,6 +88,12 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     format: 'esm',
     target: 'node24',
     packages: 'bundle',
+    banner: {
+      js: [
+        "import { createRequire as __nevoCreateRequire } from 'node:module';",
+        'const require = __nevoCreateRequire(import.meta.url);',
+      ].join('\n'),
+    },
     logLevel: 'silent',
   });
 

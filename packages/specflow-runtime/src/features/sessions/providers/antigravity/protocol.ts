@@ -280,6 +280,9 @@ export function createAntigravityProtocol(
           'agent_response',
           'tool',
           'checkpoint',
+          // Native continuation emits a structural system step before the next
+          // answer. It grants no tool authority and is not a terminal result.
+          'system_message',
           'reasoning',
           'thinking',
           'error_message',

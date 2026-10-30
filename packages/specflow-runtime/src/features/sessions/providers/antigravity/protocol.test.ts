@@ -25,6 +25,22 @@ function fixture() {
 }
 
 describe('Antigravity native stream protocol', () => {
+  it('accepts the structural native resume step without fabricating text or completion', async () => {
+    const f = fixture();
+    await f.protocol.frame(f.step(2, { step_type: 'user_input' }));
+    await f.protocol.frame(f.step(3, { step_type: 'system_message', duration_seconds: 0.02 }));
+    expect(f.protocol.terminal).toBe(false);
+    expect(f.facts).toEqual([]);
+    await f.protocol.frame(
+      f.step(4, { step_type: 'agent_response', text_delta: 'Short resumed answer' }),
+    );
+    await f.protocol.frame(f.result({ response: 'Short resumed answer' }));
+    expect(f.facts.filter((fact) => fact.kind === 'text')).toEqual([
+      { kind: 'text', key: 'answer', channel: 'answer', text: 'Short resumed answer' },
+    ]);
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+
   it('rejects a changed native tool identity within the same step', async () => {
     const { facts, protocol, step } = fixture();
     await protocol.frame(step(4, { step_type: 'tool', state: 'ACTIVE', tool_name: 'view_file' }));

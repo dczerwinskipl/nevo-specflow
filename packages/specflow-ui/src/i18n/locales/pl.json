@@ -1493,13 +1493,20 @@
     "message": "Wiadomość",
     "model": {
       "label": "Model i poziom wysiłku dla następnej wiadomości",
-      "placeholder": "Wybierz model"
+      "placeholder": "Wybierz model",
+      "availableEfforts": "Dostępne poziomy wysiłku: {{list}}"
     },
     "send": "Wyślij",
     "retrySend": "Ponów wysyłanie",
     "cancel": "Zatrzymaj",
     "older": "Wczytaj starsze wiadomości",
+    "loadingOlder": "Wczytywanie starszych wiadomości…",
     "latest": "Wróć do najnowszych wiadomości",
+    "copy": {
+      "action": "Kopiuj wiadomość",
+      "copied": "Skopiowano",
+      "failed": "Nie udało się skopiować"
+    },
     "empty": "Rozpocznij rozmowę.",
     "inspect": "Zobacz pracę",
     "work": "Praca",
@@ -1541,6 +1548,28 @@
       "cancelled": "Zatrzymano",
       "interrupted": "Przerwano",
       "expired": "Wygasło"
+    },
+    "workInspector": {
+      "startOfTurn": "Początek tury",
+      "filterLabel": "Filtruj pracę według typu",
+      "filterAll": "Wszystkie",
+      "search": "Szukaj w historii pracy",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "thinking": "Myślenie",
+      "toolBurst_one": "{{count}} działanie narzędzia",
+      "toolBurst_few": "{{count}} działania narzędzia",
+      "toolBurst_many": "{{count}} działań narzędzia",
+      "toolBurst_other": "{{count}} działania narzędzia",
+      "operationsCount_one": "{{count}} operacja",
+      "operationsCount_few": "{{count}} operacje",
+      "operationsCount_many": "{{count}} operacji",
+      "operationsCount_other": "{{count}} operacje",
+      "loadOlder": "Wczytaj starszą historię pracy",
+      "noMatches": "Żadna pozycja nie odpowiada tym filtrom.",
+      "emptyTurn": "Brak jeszcze historii pracy dla tej tury.",
+      "noActions": "Jeszcze brak działań narzędzia.",
+      "input": "Dane wejściowe",
+      "output": "Dane wyjściowe"
     }
   }
 }

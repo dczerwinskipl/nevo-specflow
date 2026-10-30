@@ -1493,13 +1493,20 @@
     "message": "Message",
     "model": {
       "label": "Model and effort for the next message",
-      "placeholder": "Select model"
+      "placeholder": "Select model",
+      "availableEfforts": "Available efforts: {{list}}"
     },
     "send": "Send",
     "retrySend": "Retry sending",
     "cancel": "Stop",
     "older": "Load older messages",
+    "loadingOlder": "Loading older messages…",
     "latest": "Return to latest messages",
+    "copy": {
+      "action": "Copy message",
+      "copied": "Copied",
+      "failed": "Could not copy"
+    },
     "empty": "Start a conversation.",
     "inspect": "Inspect Work",
     "work": "Work",
@@ -1541,6 +1548,28 @@
       "cancelled": "Cancelled",
       "interrupted": "Interrupted",
       "expired": "Expired"
+    },
+    "workInspector": {
+      "startOfTurn": "Start of Turn",
+      "filterLabel": "Filter Work by type",
+      "filterAll": "All",
+      "search": "Search Work",
+      "clearSearch": "Clear search",
+      "thinking": "Thinking",
+      "toolBurst_one": "{{count}} tool action",
+      "toolBurst_few": "{{count}} tool actions",
+      "toolBurst_many": "{{count}} tool actions",
+      "toolBurst_other": "{{count}} tool actions",
+      "operationsCount_one": "{{count}} operation",
+      "operationsCount_few": "{{count}} operations",
+      "operationsCount_many": "{{count}} operations",
+      "operationsCount_other": "{{count}} operations",
+      "loadOlder": "Load older Work",
+      "noMatches": "No Work matches these filters.",
+      "emptyTurn": "No Work yet for this Turn.",
+      "noActions": "No tool actions yet.",
+      "input": "Input",
+      "output": "Output"
     }
   }
 }

@@ -20,10 +20,16 @@ const EXEMPT = new Set<string>([
   // The Runtime demo keeps its own fixture catalogue; it is not a product source and imports nothing
   // from the Engine catalogue.
   'packages/specflow-runtime/src/demo/catalogue.ts',
+  // The copy `nevo-specflow definitions install` writes into a demo project; by design the same
+  // texts and templates as the seeds, verified against them by its own `definitions.test.ts`.
+  'packages/specflow-runtime/src/demo/definitions.ts',
+  // Demo-only document seeds: quotes a document type and two archetype ids for unrelated demo
+  // Specifications, not the shipped catalogue.
+  'packages/specflow-runtime/src/features/documents/demo/seed-files.ts',
 ]);
 
 const SOURCE_FILE = /\.(?:ts|tsx|mts|cts|js|mjs|cjs)$/u;
-const TEST_FILE = /(?:\.test\.|\.spec\.|\.stories\.|test-support\.)/u;
+const TEST_FILE = /(?:\.test\.|\.spec\.|\.stories\.|test-support\.|stories-support\.)/u;
 const SKIPPED_DIRECTORIES = new Set([
   'node_modules',
   'dist',

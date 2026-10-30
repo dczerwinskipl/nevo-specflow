@@ -75,10 +75,24 @@ Therefore:
 - [Specification and Task information hierarchy](spec-task-information-hierarchy.md)
 - [Specification and Task screen structure](spec-task-screen-structure.md)
 - [Full Session screen structure](full-session-screen-structure.md)
+- [Session Chat V10 — accepted UX direction and implementation boundary](components/session-chat-v10-design.md)
+- [Session Composer capability proposal and adapter gaps](components/session-composer-design.md)
+- [Accepted Session Workspace V2 examples — desktop](examples/session-workspace-v2/desktop.html)
+- [Accepted Session Workspace V2 examples — mobile](examples/session-workspace-v2/mobile.html)
+- [Accepted Session Chat V10 mock — desktop](examples/session-chat-v10/desktop.html)
+- [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
 - [Design-system and composition gaps](design-system-component-composition-gaps.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)
 - [Large UI component specifications](components/README.md)
+
+Workspace V2 layout/navigation and Session Chat V10 conversation/composer/Work inspection
+are now **accepted UX directions**, but their standalone HTML remains illustrative,
+synthetic and **not production code or API evidence**. Exact visual styling, Context body,
+provider-specific capability fixtures, and notably **mobile Composer iconography** (unclear
+square/diamond symbols and toolbar overflow) are **not accepted**. Use Nevo UI Design
+System components and icons, not the mock's CSS/SVGs. See the V10 design document for
+the dynamic auto/manual split contract and outstanding shared Design System gap.
 
 ## Related idea package
 

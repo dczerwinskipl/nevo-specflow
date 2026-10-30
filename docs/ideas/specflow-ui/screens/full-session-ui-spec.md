@@ -37,6 +37,23 @@ It owns:
 
 It is not a provider transcript and not a raw tool console.
 
+### 1.1 Accepted navigation boundary (Workspace V2)
+
+The owner has approved **Workspace/navigation V2**, as described in
+[Full Session screen structure §1.1 and §10](../full-session-screen-structure.md).
+Interactive examples: [Desktop](../examples/session-workspace-v2/desktop.html) and
+[Mobile](../examples/session-workspace-v2/mobile.html). They use synthetic data and are UX
+references, not feature/API availability or authorization to implement their chat content.
+**Session Chat V10 conversation, live Turn and Work timeline and Composer interaction are also
+owner-approved as UX direction**: [Desktop](../examples/session-chat-v10/desktop.html),
+[Mobile](../examples/session-chat-v10/mobile.html), with the
+[V10 design/dynamic split contract](../components/session-chat-v10-design.md).
+This is not approval of mock HTML/CSS/SVGs, exact component visuals, Context fixture details,
+provider-capability promises, new API shapes or Runtime implementation. The **mobile Composer
+icons and overflow are explicitly rejected**; production must use recognizable Nevo UI Design
+System components, icons, tokens and responsive rules. The shared AppWorkspace still needs the
+V2 dynamic auto/manual resizing behavior.
+
 ## 2. User use cases
 
 - Continue a Session conversation.
@@ -307,9 +324,12 @@ Primary:
 
 Secondary:
 
-1. Context by default on split-capable entry;
-2. user-selected detail such as Task, Handover, artifact/review/verification, expanded Work/ToolAction,
-   or future File preview.
+1. Context is a pinned home **tab** by default on split-capable entry;
+2. a Context summary opens/reselects an independent root tab (Tasks, History, Files, Work, etc.);
+3. dependent details use the active tab's local stack (e.g. Task -> attempt -> rejected review);
+4. independently addressable files and shared artifacts may have their own tabs.
+
+Only one Secondary region exists. Tab activation does not alter its width or stack implicitly.
 
 Normal live activity never auto-switches Secondary.
 
@@ -353,24 +373,34 @@ Context is a normal inspector surface, not a stack of cards.
 
 ### Secondary
 
-- Context is the default split-capable content.
-- Explicit user clicks replace it with more specific inspection detail.
+- Context is a pinned home tab, not a duplicate section navigation menu.
+- Context summaries open/reselect independent root tabs. Each tab owns a local detail/Back stack.
+- Selecting a Task/attempt/event or Work/ToolAction pushes dependent detail within that tab.
+- File tabs can remain open independently; shared evidence reports can open as separate tabs.
+- Secondary is initially narrow when only Context is open; a second tab defaults to 50/50.
+- Switching tabs never automatically changes the width; manual drag ratio takes precedence.
+- Side swap changes physical placement, not navigation ownership.
 
 ### Detail targets
 
-- Task;
-- Handover/artifact/review/verification;
-- expanded Work item/ToolAction;
-- future File preview.
+- Task detail -> step/attempt/feedback in the Tasks tab stack;
+- Work -> ToolAction in the Work tab stack;
+- independently opened file and shared report tabs;
+- Handover/artifact details with clear source and shared identity.
 
-One Secondary only. There is no required permanent Context/Work root switcher.
+The Workspace V2 navigation and Session Chat V10 interaction direction are approved;
+**fixture contents and exact visual components are not production contracts**. In particular,
+mobile Composer iconography/overflow is not accepted and must use the shared Design System.
+See [V10 UX and auto/manual split specification](../components/session-chat-v10-design.md).
+One Secondary only, no third pane.
 
 ## 9. Responsive contract
 
 Wide:
 
 - persistent nav;
-- Full Session can show Conversation | Context;
+- Full Session shows Conversation | pinned Context by default, with optional independent tabs;
+- only Context => narrow Secondary; second tab => default 50/50; manual resize and swap supported by design;
 - existing-Session quick conversation may use Floating Session.
 
 Compact:
@@ -382,6 +412,7 @@ Compact:
 Narrow:
 
 - Conversation first;
+- Context and tab roots open via header-level navigation and local drill-in, **not bottom tabs**;
 - Context/detail is pushed locally on explicit user action;
 - browser/system Back should pop local pushed detail before router navigation where technically
   integrated;
@@ -391,16 +422,20 @@ Narrow:
 
 ### Context/detail drill-down
 
-Context -> Task/Handover/artifact/etc. -> Back through local stack -> Context.
+Context pinned home -> select “Tasks” => activate/open Tasks root tab -> select TASK-03 =>
+push Task detail into the Tasks stack -> select rejected attempt => push attempt detail ->
+Back returns to TASK-03. Tab switching preserves each stack and current split geometry.
 
 ### Work drill-down
 
-Click compact Work burst in Conversation -> expanded Work detail in Secondary -> ToolAction -> Back.
+Click a compact Work burst in Conversation -> open/reselect Work tab -> ToolAction
+detail is pushed in its local stack -> Back to Work.
 
 ### Future File
 
-When file preview exists: click file reference -> File detail -> Back. Until then, do not render fake
-preview/Open-in-IDE controls.
+Click file reference -> open/reselect independent file tab; multiple files persist. This is a
+planned capability until revision-aware preview/reference contracts exist. Do not render fake
+production preview/Open-in-IDE actions.
 
 ### Pending interaction
 
@@ -592,8 +627,11 @@ Do not create one generic design-system Chat component around Session domain sem
 - continue/resume;
 - recovery;
 - unavailable;
-- Context -> Task/Handover;
-- compact Work burst -> ToolAction detail;
+- Context -> Tasks tab -> Task detail -> attempt/event in tab-local stack;
+- compact Work burst -> Work tab -> ToolAction detail;
+- multiple file tabs and switching without layout jump;
+- 50/50 default at second tab, manual splitter, side swap;
+- mobile header/Back without bottom tabs;
 - default Context closed/restored;
 - Compact direct Full Session entry;
 - Narrow detail push and local Back.
@@ -608,6 +646,8 @@ Do not create one generic design-system Chat component around Session domain sem
 - incoming activity does not steal Secondary focus;
 - current execution is distinct from related Tasks and batch remains batch-shaped;
 - Context close is respected;
+- pinned Context plus independent tabs/locally nested stacks preserve provenance;
+- switching tabs never resets the selected split size;
 - raw tool spam stays below normal conversation level;
 - compact Work is user-opened into detail;
 - one Secondary only;

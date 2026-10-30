@@ -73,6 +73,33 @@ The Session is a work interface, not a provider transcript and not a raw tool lo
 
 ---
 
+### 1.1 Accepted Workspace V2 direction — 2026-10-29
+
+**Owner-approved Workspace/navigation (V2).** The following HTML files are interactive,
+standalone UX references with synthetic data, not production components or API promises:
+
+- [Desktop: Session Workspace V2](examples/session-workspace-v2/desktop.html)
+- [Mobile: Session Workspace V2](examples/session-workspace-v2/mobile.html)
+
+Approved: one Session Conversation Primary plus one Secondary; Context as a pinned home tab;
+Context summaries open independently revisitable root tabs, while dependent details remain in each
+tab's local Back stack; files can be independently open tabs; responsive desktop sizing and
+panel-side swap; mobile drill-in via header/Back without bottom tabs. See §10 for exact behavior.
+
+**Subsequently approved (2026-10-30):** Session Chat V10 interaction and information
+hierarchy: [desktop](examples/session-chat-v10/desktop.html),
+[mobile](examples/session-chat-v10/mobile.html), and the
+[accepted V10 design direction](components/session-chat-v10-design.md). The chat is a normal
+conversation; commentary structures the separate Work timeline; live activity is concise;
+workflow events link to exact details; Composer options stay inside its frame.
+**Not approved as implementation:** mock CSS, fixture data, provider capabilities, Context row
+and evidence layouts, exact component visuals or final API shapes. In particular mobile
+Composer's diamond/square icons and overflowing/wrapping controls must be replaced with
+semantically meaningful Nevo UI Design System components/icons. Example content including large file collections, multiple
+attempts, handovers and artifacts illustrates required scenarios, not settled screen design or
+implemented Runtime contracts. Designs may anticipate missing backend capabilities, but those
+must be identified for delivery rather than silently represented as available.
+
 ## 2. Canonical facts the UI can rely on
 
 ### 2.1 Current contract
@@ -465,38 +492,35 @@ Related Tasks
 
 A Task can be historically/contextually related without being active in the current Turn.
 
-### 7.4 Task selection inside Context
+### 7.4 Context to tabs; Task to local stack
 
-Selecting a Task from Context can replace Context with Task detail inside the same Secondary
-surface.
+The Context home is a **pinned Secondary tab**. Context itself does not duplicate the tab row with
+a second horizontal set of section buttons or repeat the full section lists in a competing menu.
+Its concise, clickable content summaries open/reselect **root tabs** such as Tasks, Files/Changes,
+History, Handovers, Artifacts, Instructions or Environment when useful.
+
+A Task selection from a Tasks tab pushes Task detail onto **that tab's local stack**.
+An attempt, review event, rejection and feedback opened from that Task push deeper on the same stack:
 
 ```text
-Conversation | Context
-                 -> TASK-03
-
-Conversation | Task detail
-                 <- Context
+Context [pinned] | Tasks [tab: task list -> TASK-03 -> review attempt 1 -> feedback]
+                 | Files [tab: file list]
+                 | backend.md [independent file tab]
 ```
 
-This is inspector drill-down, not a third workspace pane and not a nested Full Session.
-
-The local return path should preserve Session Primary.
+Switching tabs preserves their local stack, scroll and selection. Back returns to the direct parent
+inside the active tab. Do not spawn an independent tab for a task-bound event and lose provenance.
+History events opened in History also retain explicit Task/attempt context and a local return path.
 
 ### 7.5 Handover / artifact selection
 
-The same rule applies to decision evidence:
+When a handover, report, or evidence object is an independently addressable or shared resource
+(e.g. one review report covering several Tasks), a separate document/artifact tab is appropriate,
+with the original object identity and links back to every relevant Task. Details bound to a
+specific Task execution or attempt belong in its local stack. This distinction is a Workspace
+navigation decision; the exact canonical Handover and artifact contracts still need integration.
 
-```text
-Context
-  -> Handover detail
-  -> Artifact/review detail
-  -> verification detail
-```
-
-Do not create a third simultaneous pane.
-
-The canonical Handover/artifact contracts are still migration gaps, so this section defines
-navigation shape, not persisted fields.
+Do not create a third simultaneous workspace pane.
 
 ---
 
@@ -524,18 +548,9 @@ L4 Action details      selected ToolAction/detail
 
 ### 8.3 Entry
 
-Compact Work bursts remain in conversation chronology. Clicking one opens the corresponding expanded
-Work/history view in Secondary.
-
-```text
-Conversation
-  "1 task | 2 search | 4 commands"
-        -> click
-Conversation | expanded Work detail
-```
-
-Commentary remains readable prose in the main chronology and is not converted into a technical event
-card merely to fit Work inspection.
+Compact Work bursts remain in Conversation chronology. Explicit inspection opens/reselects a
+dedicated Work root tab inside the **same** Secondary; ToolAction details push onto its local stack.
+Current activity/live updates must never steal focus or change the active tab.
 
 ### 8.4 Drill-down
 
@@ -557,62 +572,72 @@ not auto-open Work inspection or reset/replace the detail the user is currently 
 
 ## 9. File detail in Secondary
 
-File preview is a **future capability**, not part of the current UI implementation contract.
+An independently inspected file can open as its own Secondary tab, so several files may remain open
+alongside Context and other work areas. A file tab may show read-only Markdown/code, a revision-aware
+preview or a diff when that capability exists. Open in IDE is an optional future escalation.
 
-When that capability lands, a file reference from Commentary, Work, Task/context evidence, or an
-artifact should open file inspection in the same Secondary slot. A future **Open in IDE** action may
-then escalate from that preview.
+The proposed UI can demonstrate these cases with synthetic data, but the current managed Session
+API does **not** provide a complete semantic file-reference, historic revision or diff contract.
+Until a reliable backend is implemented, no production surface should pretend a file was read,
+changed or is previewable. A mention, a read, an edit and an open user tab are different facts.
 
-Until file inspection exists:
+No file capability may introduce a third simultaneous pane.
 
-- do not render a fake file preview;
-- do not render an Open in IDE affordance that cannot work;
-- preserve file/reference identity so the interaction can be added later without changing the
-  surrounding Session/Task information hierarchy.
+## 10. Secondary navigation model — owner-approved Workspace V2
 
-No future file capability may introduce a third simultaneous pane.
+### 10.1 Root tabs versus local stacks
 
-## 10. Secondary navigation model
+On split-capable Full Session entry, **Context is a pinned home tab** in Secondary. The user opens
+or reactivates another root tab by selecting a Context summary or explicit Session reference.
+Examples of independent roots: Tasks, Files/Changes, History, Handovers, Artifacts, Instructions,
+Environment, Work inspection, independently opened files and shared reports.
 
-### 10.1 Base and detail targets
+A root tab is for an independently revisitable working surface; a local stack is for dependent
+details. Task -> attempt -> rejected review -> feedback stays inside the Tasks tab. Work ->
+ToolAction stays inside the Work tab. A local detail must reveal its Task/attempt provenance.
+Switching tabs preserves each tab's stack; Back pops inside the active tab before returning to
+its root. Closing a tab does not close or reset the whole Session. Context remains pinned.
 
-On split-capable Full Session entry, **Context** is the default Secondary content.
+Do not add a second horizontal section-selector bar alongside these tabs, or a second navigation
+tree inside Context duplicating all sections. Long lists (e.g. many Tasks or 100+ files) belong in
+their own tabs with search/filter/progressive loading, not eagerly expanded Context content.
 
-Explicit user actions may replace it with a more specific detail:
+### 10.2 Desktop geometry
 
-- Task;
-- Handover;
-- artifact/review/verification;
-- expanded Work / ToolAction;
-- future File preview;
-- another product detail that supports the current Session.
+- **Only Context open:** default narrow Secondary, conceptually around 330px where room permits.
+- **Second root tab opened:** default **50/50 Conversation/Secondary**, retained while switching
+  among existing tabs. Do not resize based on active content or tab type.
+- **Manual splitter:** user can adjust widths. Manual choice has priority and must not be reset
+  by tab activation. Minimum viable widths and persistence scope are implementation details.
+- **Swap sides:** user can place Secondary on the other side of Primary without changing ownership,
+  tabs or stacks.
+- **Full-width inspection:** may be offered for very wide diff/code surfaces, but must not create
+  a separate navigation authority or silently reflow on ordinary tab switching.
+- When closing tabs returns to only pinned Context, default narrow sizing may be restored unless
+  the user's manual setting intentionally remains in force.
 
-There is no required permanent Context/Work tab pair.
+Preset controls in the prototype are **exploration affordances** and are not necessarily final UI.
+The [V10 design contract](components/session-chat-v10-design.md#7-dynamic-workspace-split-shared-design-system-capability-gap)
+now spells out auto/manual transitions, available-width constraints, restoring manual sizes,
+side swap and narrow return behavior; the shared Design System lacks that complete contract.
+The Design System's current AppWorkspace has preset split modes but does not yet provide all V2
+behaviors (manual splitter, tab-root state ownership and side swapping). Implementers must assess
+a coherent extension rather than inventing local, conflicting workspace engines.
 
-### 10.2 Return behavior
+### 10.3 Mobile
 
-Examples:
+Mobile/Narrow uses one visible surface at a time; no bottom tab bar. Conversation opens first.
+Context and root destinations open on explicit action, and details drill down via the header and
+Back. A header-level opened-item switcher may support multiple open files. The event title and
+its parent Task/attempt remain clear. Navigation must preserve Conversation composer draft and
+scroll when returning.
 
-```text
-Context -> Task -> Handover -> Back -> Task -> Back -> Context
-Context -> Work detail -> ToolAction -> Back -> Work detail -> Back -> Context
-Context -> future File preview -> Back -> Context
-```
+### 10.4 Closing, Back and URL
 
-A local inspector stack preserves one Session Primary and one Secondary while increasing
-specificity.
-
-Normal live Session updates never change the current Secondary target automatically.
-
-### 10.3 Closing Secondary
-
-On split layouts, closing Secondary leaves Conversation Primary.
-
-On narrow, the same local detail becomes the visible pushed surface. The product UI Back pops deeper
-detail first, then closes Secondary and returns to Conversation.
-
-Browser/system Back on Narrow should be integrated so an active local pushed-detail stack gets the
-first opportunity to pop before router navigation. This must not make Secondary part of the URL.
+One Session Primary and one Secondary. Secondary tab/stack state is local UI state, not a new
+routable URL and not a third pane. Session route remains independently addressable. Normal live
+events never switch tabs or push/pop stacks. On mobile, system/browser Back should pop local
+details first where technically integrated and return to Conversation before leaving the Session.
 
 ## 11. Floating Session
 
@@ -1060,7 +1085,7 @@ Still deferred:
 
 - exact Conversation rendering primitives;
 - exact local inspector stack API;
-- exact split ratios and resizing;
+- exact resize implementation, width limits, and persisted manual-size policy (the V2 narrow/50:50 behavior is accepted);
 - exact Session URL;
 - exact canonical Handover/artifact references in the new Runtime;
 - exact composer behavior for every provider capability combination;
@@ -1089,7 +1114,7 @@ Before global component/composition gap analysis, verify:
 10. Compact Work summaries preserve chronology; clicking them can open deeper Work inspection.
 11. Raw tool details stay below the normal conversation level.
 12. Context separates current execution Tasks from merely related Tasks.
-13. Task/Handover/artifact/Work/future File details reuse one Secondary/local stack; no third pane.
+13. Context is pinned as a root Secondary tab; independent work areas/files may open tabs and dependent events use tab-local stacks; no third pane.
 14. File preview and Open in IDE remain absent until their capability exists.
 15. Floating Session is Wide-only and never required before Full Session.
 16. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
@@ -1098,7 +1123,7 @@ Before global component/composition gap analysis, verify:
 18. Unknown/unavailable Session state preserves history while action availability follows
     authoritative readiness.
 19. Unsupported Session capabilities do not produce fake controls.
-20. Browser/system Back on Narrow can pop local pushed detail before leaving the routed surface,
+20. Narrow uses header/Back rather than bottom tabs; browser/system Back can pop local pushed detail before leaving the routed surface,
     without encoding Secondary in the URL.
 
 The resulting design-system/component mapping is captured in

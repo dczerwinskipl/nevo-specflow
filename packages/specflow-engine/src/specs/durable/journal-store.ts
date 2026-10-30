@@ -159,7 +159,10 @@ export interface JournalListing<T> {
 
 /**
  * Strict listing used by admission. Unsupported files are returned separately and never throw or
- * claim; a corrupt current-format journal still fails closed.
+ * claim; a corrupt current-format journal still fails closed. A name this lists but that is gone by
+ * the time its file is read is not corruption: another process settled or retired it between the
+ * two steps (several processes list and settle the same directory independently), so it is simply
+ * left out, the same as `readJournal` already treats a missing-by-id read as no journal.
  */
 export async function listJournalsDetailed<T>(
   context: ResolvedProjectHome,
@@ -196,7 +199,7 @@ export async function listJournalsDetailed<T>(
     validateJournalOperationId(kind, operationId);
     const read = await readJournalFile(context, kind, operationId);
     if (read.kind === 'missing') {
-      throw kind.errors.invalid();
+      continue;
     }
 
     if (read.kind === 'unsupported') {

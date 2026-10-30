@@ -4695,6 +4695,78 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.components.session-chat-v10-design",
+      "type": "product",
+      "title": "Session Chat V10 — accepted UX direction and Workspace split behavior",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/session-chat-v10-design.md",
+      "read_when": [
+        "designing or implementing Full Session Conversation, Composer and Work",
+        "composing from the Nevo UI Design System",
+        "specifying split sizing or source-aware Back navigation"
+      ],
+      "summary": "Owner-accepted V10 UX behavior (not implementation) layered on accepted Workspace V2. Mockup iconography and provider fixtures are not production contracts.",
+      "related": [
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.components.session-composer-design",
+        "ideas.specflow-ui.navigation-route-model",
+        "ideas.specflow-ui.design-system-component-composition-gaps",
+        "reference.api.sessions",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "session",
+        "conversation",
+        "composer",
+        "commentary",
+        "work",
+        "timeline",
+        "secondary",
+        "responsive"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components.session-composer-design",
+      "type": "product",
+      "title": "AI Session Composer — capabilities for accepted V10 interaction",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/session-composer-design.md",
+      "read_when": [
+        "designing or implementing Session Composer",
+        "mapping provider-native execution modes and approvals to UI choices",
+        "adding attachments and model-specific capabilities"
+      ],
+      "summary": "Composer capability resolution for accepted V10 interaction direction. A stable provider per Session, optional model/effort/intent/policy overrides per next Turn, attachment-first composer layout, and provider-declared certified presets. Mobile iconography and mock styling are not production designs.",
+      "related": [
+        "ideas.specflow-ui.components.session-conversation",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "reference.api.sessions",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "sessions",
+        "composer",
+        "providers",
+        "modes",
+        "approvals",
+        "attachments",
+        "mobile",
+        "capabilities"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.components.session-conversation",
       "type": "product",
       "title": "Session conversation UI spec",
@@ -4922,6 +4994,33 @@
         "task",
         "session",
         "migration"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.examples.session-chat-v10",
+      "type": "product",
+      "title": "Session Chat V10 interactive UX examples",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/examples/session-chat-v10/README.md",
+      "read_when": [
+        "reviewing Session Chat V10 desktop or mobile interaction examples"
+      ],
+      "summary": "Standalone desktop and mobile HTML fixtures for the accepted Session Chat V10 UX direction. Synthetic content is illustrative and must not be used as a Runtime contract.",
+      "related": [
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.full-session-screen-structure"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "session",
+        "conversation",
+        "composer",
+        "work",
+        "prototype"
       ]
     },
     {

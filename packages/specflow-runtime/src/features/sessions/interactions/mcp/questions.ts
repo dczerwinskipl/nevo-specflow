@@ -6,10 +6,14 @@ import {
 } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact } from '../../persistence/protocol';
 import { SessionError } from '../../errors';
-import { validateDriverFact } from '../facts';
+import { validateDriverFact } from '../../providers/facts';
 
 const closed = { additionalProperties: false } as const;
-export const antigravityQuestionSchema = Type.Object(
+export const McpQuestionEndpoint = {
+  serverName: 'specflow-interactions',
+  toolName: 'ask_user',
+} as const;
+export const mcpQuestionSchema = Type.Object(
   {
     question: Type.String({ minLength: 1, maxLength: 8192 }),
     options: Type.Optional(
@@ -33,9 +37,9 @@ type Question = Extract<DriverFact, { kind: 'interaction' }>['interaction'] & {
   kind: 'question';
 };
 
-export function prepareAntigravityQuestion(input: unknown): Question {
-  if (!Value.Check(antigravityQuestionSchema, input) || !input.question.trim()) {
-    throw new SessionError('SESSION_INPUT_INVALID', 'Invalid Antigravity question.');
+export function prepareMcpQuestion(input: unknown): Question {
+  if (!Value.Check(mcpQuestionSchema, input) || !input.question.trim()) {
+    throw new SessionError('SESSION_INPUT_INVALID', 'Invalid MCP question.');
   }
 
   const allowText = input.allowText ?? true;
@@ -47,7 +51,7 @@ export function prepareAntigravityQuestion(input: unknown): Question {
     (options && maxSelections! > options.length) ||
     options?.some((option) => !option.label.trim())
   ) {
-    throw new SessionError('SESSION_INPUT_INVALID', 'Invalid Antigravity question choices.');
+    throw new SessionError('SESSION_INPUT_INVALID', 'Invalid MCP question choices.');
   }
 
   const question: Question = {
@@ -63,7 +67,7 @@ export function prepareAntigravityQuestion(input: unknown): Question {
 
 /** Called only after canonical response admission; rechecks the native mapping
  * without creating another admission journal or interpreting an answer as permission. */
-export function antigravityQuestionAnswer(question: Question, response: RespondInteraction) {
+export function mcpQuestionAnswer(question: Question, response: RespondInteraction) {
   if (!Value.Check(RespondInteractionSchema, response) || response.kind !== 'question') {
     throw new SessionError('INTERACTION_RESPONSE_INVALID', 'Expected a question answer.');
   }

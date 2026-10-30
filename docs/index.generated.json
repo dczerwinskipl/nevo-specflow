@@ -4625,6 +4625,41 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-v10-backend-readiness",
+      "type": "engineering",
+      "title": "Session migration remainder and V10 backend readiness",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-v10-backend-readiness.md",
+      "read_when": [
+        "implementing Session Workspace V2 or Session Chat V10 against real Runtime APIs",
+        "checking which old Nevo Session functionality remains to migrate",
+        "planning bounded Work inspection and product association follow-ups"
+      ],
+      "summary": "Evidence-based remaining legacy functionality and backend capability gaps for accepted Workspace V2 and Chat V10, without promoting prototype fixtures to APIs.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.components.session-composer-design",
+        "reference.api.sessions",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "migration",
+        "work",
+        "context",
+        "providers",
+        "composer"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.spec-creation",
       "type": "product",
       "title": "Specification creation vertical slice",

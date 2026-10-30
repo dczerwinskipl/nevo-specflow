@@ -1,4 +1,4 @@
-export const AntigravityBridgeLimits = {
+export const McpQuestionTransportLimits = {
   requests: 256,
   interactions: 64,
   pendingQuestions: 4,

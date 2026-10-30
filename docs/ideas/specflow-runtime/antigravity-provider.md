@@ -91,6 +91,20 @@ registered, with the exact `mcp(specflow-interactions/ask_user)` permission.
 
 ## Interactive questions and permissions
 
+The shared implementation is owned by Sessions `interactions/mcp/`: MCP/HTTP,
+`ask_user` schema, per-Invocation authentication, limits, canonical interaction
+delivery, expiry and cleanup. It imports no Antigravity policy. The Antigravity
+bridge owns only native configuration/permission registration, hook decisions,
+native correlation and Stop/idle evidence. Hook extensions share the same bounded
+invocation transport and delivery ledger; SQLite remains the canonical owner.
+Claude and Codex retain their native question protocols and do not use MCP merely
+for uniformity.
+
+This transport binds only to loopback with an OS-assigned port. Runtime and CLI
+must share the network namespace; a Runtime/CLI split across Docker/host namespaces
+needs a separately designed execution transport. A configurable public bind host
+or global cross-Session MCP server is not a fallback.
+
 The invocation-private Streamable HTTP MCP server uses a random bearer credential,
 bounded requests and waiters, canonical interaction facts and existing response
 idempotency. Setup may precede dispatch; question admission requires activation

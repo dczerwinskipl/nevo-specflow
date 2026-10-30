@@ -211,6 +211,7 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 | `ideas.specflow-runtime.provider-manual-checks` | [Short manual provider checks outside automated tests](ideas/specflow-runtime/provider-manual-checks.md) | draft | Optional short native-provider checks with explicit test prompts, no embedded credentials and no dependency from automated tests or CI on a subscription. |
 | `ideas.specflow-runtime.provider-migration-plan` | [Real provider migration after the independent Session foundation](ideas/specflow-runtime/provider-migration-plan.md) | draft | Bounded follow-on deliveries for Claude, Codex and Antigravity against the fixed Session driver contract, with explicit Engine prerequisites for writable execution. |
 | `ideas.specflow-runtime.session-review-follow-up` | [PR 98 Session architecture review follow-up](ideas/specflow-runtime/session-review-follow-up.md) | draft | Tracks reproduced defects, safe recovery boundaries, Windows ownership blockers, measured SSE activity, compatibility staging and final verification requirements. |
+| `ideas.specflow-runtime.session-v10-backend-readiness` | [Session migration remainder and V10 backend readiness](ideas/specflow-runtime/session-v10-backend-readiness.md) | draft | Evidence-based remaining legacy functionality and backend capability gaps for accepted Workspace V2 and Chat V10, without promoting prototype fixtures to APIs. |
 
 ## Product
 

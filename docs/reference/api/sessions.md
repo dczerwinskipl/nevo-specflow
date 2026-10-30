@@ -169,19 +169,20 @@ allocates a new interactionId and expires the old one; a stale form cannot answe
 
 ## Routes and commands
 
-| Route                                                             | Request                              | Success                       |
-| ----------------------------------------------------------------- | ------------------------------------ | ----------------------------- |
-| GET /api/session-providers                                        | none                                 | {items: ProviderDescriptor[]} |
-| POST /api/sessions                                                | CreateSession                        | 201 {sessionId}               |
-| GET /api/sessions/:sessionId                                      | none                                 | 200 Snapshot (tail)           |
-| GET /api/sessions/:sessionId/history                              | before cursor, optional limit        | 200 HistoryPage               |
-| GET /api/sessions/:sessionId/turns/:turnId/work                   | optional before cursor and limit     | 200 WorkPage                  |
-| GET /api/sessions/:sessionId/work/:workId/actions                 | optional before cursor and limit     | 200 ActionPage                |
-| GET /api/sessions/:sessionId/content/:contentId                   | revision, optional offset/limitBytes | 200 ContentPage               |
-| POST /api/sessions/:sessionId/turns                               | StartTurn                            | 202 {turnId}                  |
-| POST /api/sessions/:sessionId/turns/:turnId/cancel                | {requestId}                          | 202 {turnId}                  |
-| POST /api/sessions/:sessionId/interactions/:interactionId/respond | Respond                              | 202 {turnId, interactionId}   |
-| GET /api/sessions/:sessionId/events                               | optional after sequence              | text/event-stream             |
+| Route                                                             | Request                              | Success                           |
+| ----------------------------------------------------------------- | ------------------------------------ | --------------------------------- |
+| GET /api/session-providers                                        | none                                 | {items: ProviderDescriptor[]}     |
+| POST /api/sessions                                                | CreateSession                        | 201 {sessionId}                   |
+| GET /api/sessions/:sessionId                                      | none                                 | 200 Snapshot (tail)               |
+| GET /api/sessions/:sessionId/history                              | before cursor, optional limit        | 200 HistoryPage                   |
+| GET /api/sessions/:sessionId/turns/:turnId/work                   | optional before cursor and limit     | 200 WorkPage                      |
+| GET /api/sessions/:sessionId/work/:workId/actions                 | optional before cursor and limit     | 200 ActionPage                    |
+| GET /api/sessions/:sessionId/content/:contentId                   | revision, optional offset/limitBytes | 200 ContentPage                   |
+| POST /api/sessions/:sessionId/turns                               | StartTurn                            | 202 {turnId}                      |
+| POST /api/sessions/:sessionId/turns/:turnId/cancel                | {requestId}                          | 202 {turnId}                      |
+| POST /api/sessions/:sessionId/turns/:turnId/reconcile             | {requestId}                          | 200 {turnId, outcome, reconciled} |
+| POST /api/sessions/:sessionId/interactions/:interactionId/respond | Respond                              | 202 {turnId, interactionId}       |
+| GET /api/sessions/:sessionId/events                               | optional after sequence              | text/event-stream                 |
 
 No core spec/task prefix, GET-all-transcript endpoint, attach/import, deletion, list-all count,
 force-recovery or workflow finish endpoint. A new conversation launcher obtains its new ID
@@ -194,12 +195,15 @@ type CreateSession = {
   providerId: string; // bounded identifier 1..128 characters
   modelId?: string; // 1..256 characters
   mode: 'read-only' | 'workspace-write';
+  providerModeId?: string;
   effort?: string; // 1..64 characters
   title?: string;
 };
 type StartTurn = {
   requestId: string;
   message: string; // nonblank, <=128 KiB
+  mode?: 'read-only' | 'workspace-write';
+  providerModeId?: string;
   modelId?: string;
   effort?: string;
 };
@@ -212,8 +216,19 @@ Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs 
 text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs and is checked
 before durable response admission. Empty answer invalid unless the question explicitly offers an empty
 option (through its ID). Denied permission resolves the interaction; it does not automatically
-fail the Turn. Start inherits pinned Session mode; this foundation exposes no mode-changing command.
-Unsupported model/effort overrides fail CAPABILITY_UNSUPPORTED, never silently ignore.
+fail the Turn. Start may override mode, native providerModeId, model and effort for that Turn;
+the Session's provider remains fixed and its defaults are not rewritten. Unspecified selections
+inherit the Session defaults. Runtime validates the effective native combination and write
+authorization before admission; a running Turn is never reconfigured. Unsupported choices are
+rejected with MODEL_UNSUPPORTED or CAPABILITY_UNSUPPORTED, never silently ignored.
+Snapshot `capabilities.start` and default-mode readiness describe the Session defaults,
+not every possible override. A selection-aware Composer needs Session-scoped admission
+capabilities; project-scoped catalogue authorization alone is not authoritative for an
+existing Session. See [the V10 backend readiness audit](../../ideas/specflow-runtime/session-v10-backend-readiness.md).
+
+Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
+caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
+Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
 
 Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel. Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
 Session allocate does not launch the provider. Enforce requestId semantics from the storage design

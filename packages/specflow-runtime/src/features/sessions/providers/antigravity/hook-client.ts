@@ -1,5 +1,5 @@
 import { lstat, readFile } from 'node:fs/promises';
-import { AntigravityBridgeLimits } from './bridge-limits';
+import { McpQuestionTransportLimits } from '../../interactions/mcp/limits';
 
 /** Fixed helper transport only. No arguments from tool input enter a shell command. */
 export async function runAntigravityHook(options: {
@@ -12,7 +12,7 @@ export async function runAntigravityHook(options: {
     options.signal.throwIfAborted();
     if (
       !['pre-tool-use', 'stop'].includes(options.hook) ||
-      options.input.byteLength > AntigravityBridgeLimits.requestBytes
+      options.input.byteLength > McpQuestionTransportLimits.requestBytes
     ) {
       throw new Error('Invalid hook request.');
     }
@@ -64,7 +64,7 @@ export async function runAntigravityHook(options: {
       signal: AbortSignal.any([
         options.signal,
         AbortSignal.timeout(
-          AntigravityBridgeLimits.humanResponseMs + AntigravityBridgeLimits.deliveryMs,
+          McpQuestionTransportLimits.humanResponseMs + McpQuestionTransportLimits.deliveryMs,
         ),
       ]),
     });

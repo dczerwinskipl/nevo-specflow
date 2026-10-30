@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { antigravityQuestionAnswer, prepareAntigravityQuestion } from './questions';
+import { mcpQuestionAnswer, prepareMcpQuestion } from './questions';
 
-describe('Antigravity question mapping', () => {
+describe('MCP question mapping', () => {
   it('keeps multi-choice answers structured and preserves literal user text', () => {
-    const question = prepareAntigravityQuestion({
+    const question = prepareMcpQuestion({
       question: 'Pick scopes',
       allowText: true,
       maxSelections: 2,
@@ -15,7 +15,7 @@ describe('Antigravity question mapping', () => {
     });
     expect(
       JSON.parse(
-        antigravityQuestionAnswer(question, {
+        mcpQuestionAnswer(question, {
           requestId: randomUUID(),
           kind: 'question',
           answer: { optionIds: ['b', 'a'], text: '/literal user answer' },
@@ -36,10 +36,10 @@ describe('Antigravity question mapping', () => {
       { question: 'Pick', maxSelections: 2 },
       { question: 'Pick', maxSelections: 2, options: [{ id: 'a', label: 'A' }] },
     ]) {
-      expect(() => prepareAntigravityQuestion(input)).toThrow();
+      expect(() => prepareMcpQuestion(input)).toThrow();
     }
 
-    const question = prepareAntigravityQuestion({
+    const question = prepareMcpQuestion({
       question: 'Pick',
       allowText: false,
       options: [{ id: 'a', label: 'A' }],
@@ -51,12 +51,12 @@ describe('Antigravity question mapping', () => {
       { optionIds: ['a'], text: 'Unexpected text' },
     ]) {
       expect(() =>
-        antigravityQuestionAnswer(question, { requestId: randomUUID(), kind: 'question', answer }),
+        mcpQuestionAnswer(question, { requestId: randomUUID(), kind: 'question', answer }),
       ).toThrow();
     }
 
     expect(() =>
-      antigravityQuestionAnswer(question, {
+      mcpQuestionAnswer(question, {
         requestId: randomUUID(),
         kind: 'permission',
         decision: 'allow',

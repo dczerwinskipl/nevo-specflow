@@ -2,7 +2,7 @@ import { realpath, lstat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { validateDriverFact } from '../facts';
 import type { DriverFact } from '../../persistence/protocol';
-import { prepareAntigravityQuestion } from './questions';
+import { prepareMcpQuestion, McpQuestionEndpoint } from '../../interactions/mcp/questions';
 
 export interface AntigravityPermissionContext {
   nativeSessionId: string;
@@ -162,8 +162,8 @@ export async function prepareAntigravityPermission(
     if (
       fields.length !== expected.length ||
       !fields.every((key) => expected.includes(key)) ||
-      args.ServerName !== 'specflow-interactions' ||
-      args.ToolName !== 'ask_user' ||
+      args.ServerName !== McpQuestionEndpoint.serverName ||
+      args.ToolName !== McpQuestionEndpoint.toolName ||
       typeof args.toolAction !== 'string' ||
       typeof args.toolSummary !== 'string'
     ) {
@@ -171,7 +171,7 @@ export async function prepareAntigravityPermission(
     }
 
     // Validation only: canonical admission remains in the authenticated MCP call.
-    prepareAntigravityQuestion(args.Arguments);
+    prepareMcpQuestion(args.Arguments);
 
     return { step, decision: { decision: 'allow' }, revalidate: () => Promise.resolve() };
   }

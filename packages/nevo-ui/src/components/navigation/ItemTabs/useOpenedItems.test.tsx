@@ -72,6 +72,61 @@ describe('useOpenedItems', () => {
     expect(result.current.activeId).toBeNull();
   });
 
+  describe('closable', () => {
+    const closableEntry = (id: string, closable: boolean): Entry & { closable: boolean } => ({
+      id,
+      closable,
+    });
+
+    it('defaults to closable (true) when omitted', () => {
+      const { result } = setup({ initialItems: [entry('a')] });
+      act(() => result.current.close('a'));
+      expect(result.current.items).toHaveLength(0);
+    });
+
+    it('close skips a closable: false item', () => {
+      const { result } = setup({
+        initialItems: [closableEntry('a', false), entry('b')],
+        initialActiveId: 'a',
+      });
+      act(() => result.current.close('a'));
+      expect(ids(result.current.items)).toEqual(['a', 'b']);
+      expect(result.current.activeId).toBe('a');
+    });
+
+    it('requestClose resolves false for a closable: false item without consulting canClose', async () => {
+      const canClose = vi.fn(() => Promise.resolve(true));
+      const { result } = setup({ initialItems: [closableEntry('a', false)], canClose });
+      let closed = true;
+      await act(async () => {
+        closed = await result.current.requestClose('a');
+      });
+      expect(closed).toBe(false);
+      expect(canClose).not.toHaveBeenCalled();
+      expect(ids(result.current.items)).toEqual(['a']);
+    });
+
+    it('closeAll closes only the closable items in a mixed set', () => {
+      const { result } = setup({
+        initialItems: [closableEntry('a', false), entry('b'), entry('c')],
+        initialActiveId: 'b',
+      });
+      act(() => result.current.closeAll());
+      expect(ids(result.current.items)).toEqual(['a']);
+      expect(result.current.activeId).toBe('a');
+    });
+
+    it('closeAll keeps a closable: false active item active', () => {
+      const { result } = setup({
+        initialItems: [entry('a'), closableEntry('b', false)],
+        initialActiveId: 'b',
+      });
+      act(() => result.current.closeAll());
+      expect(ids(result.current.items)).toEqual(['b']);
+      expect(result.current.activeId).toBe('b');
+    });
+  });
+
   it('keeps the active item when another one closes', () => {
     const { result } = setup({ initialItems: [entry('a'), entry('b')], initialActiveId: 'a' });
     act(() => result.current.close('b'));

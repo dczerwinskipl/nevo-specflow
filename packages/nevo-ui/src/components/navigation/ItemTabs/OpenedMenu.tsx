@@ -41,7 +41,7 @@ export function OpenedMenuBody({
           <MenuItem
             onSelect={() => onActivate(item.id)}
             onKeyDown={(event) => {
-              if (event.key === 'Delete') {
+              if (event.key === 'Delete' && item.closable !== false) {
                 onClose(item.id);
               }
             }}
@@ -83,20 +83,22 @@ export function OpenedMenuBody({
               {/*
                * A button inside a menuitem is nested-interactive, so this x is a pointer-only,
                * aria-hidden affordance; the keyboard path is Delete on the highlighted row.
-               * 44px on coarse pointers.
+               * 44px on coarse pointers. Omitted for a non-closable item: there is no close path.
                */}
-              <span
-                aria-hidden="true"
-                title={labels.menuClose}
-                className="grid size-6 shrink-0 place-items-center rounded-control-inline text-content-muted hover:bg-surface-selected pointer-coarse:size-11"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  event.preventDefault();
-                  onClose(item.id);
-                }}
-              >
-                <Icon name="close" size="sm" />
-              </span>
+              {item.closable !== false ? (
+                <span
+                  aria-hidden="true"
+                  title={labels.menuClose}
+                  className="grid size-6 shrink-0 place-items-center rounded-control-inline text-content-muted hover:bg-surface-selected pointer-coarse:size-11"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    onClose(item.id);
+                  }}
+                >
+                  <Icon name="close" size="sm" />
+                </span>
+              ) : null}
             </span>
           </MenuItem>
           {/*
@@ -105,14 +107,17 @@ export function OpenedMenuBody({
            * assistive technology reaches it as a normal menu item right after its row. The item
            * recipe's min-height, padding and relative position outrank a plain sr-only and left a
            * 29 px gap under every row, so the hidden state overrides them under the same variant.
+           * Omitted entirely for a non-closable item: there is no close row to offer.
            */}
-          <MenuItem
-            leadingIcon="close"
-            className="not-data-[highlighted]:sr-only not-data-[highlighted]:absolute not-data-[highlighted]:min-h-0 not-data-[highlighted]:p-0"
-            onSelect={() => onClose(item.id)}
-          >
-            {labels.close(item.label)}
-          </MenuItem>
+          {item.closable !== false ? (
+            <MenuItem
+              leadingIcon="close"
+              className="not-data-[highlighted]:sr-only not-data-[highlighted]:absolute not-data-[highlighted]:min-h-0 not-data-[highlighted]:p-0"
+              onSelect={() => onClose(item.id)}
+            >
+              {labels.close(item.label)}
+            </MenuItem>
+          ) : null}
         </Fragment>
       ))}
       <MenuSeparator />

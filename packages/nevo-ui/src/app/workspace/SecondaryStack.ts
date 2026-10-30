@@ -46,6 +46,13 @@ export interface SecondaryStackDefinition<
 > {
   id: string;
   initial: keyof TPages & string;
+  /**
+   * Opt-in: derives a tab's identity from its open params for `useSecondaryNavigation().openTab`,
+   * so distinct params produce distinct, independently-open tabs. Omit for a definition that only
+   * ever wants a single tab (the common case today, and the only case `open` ever uses — `open`
+   * never consults this field).
+   */
+  instanceId?: (params: TRoot) => string;
   useData: (params: TRoot) => SecondaryData<TData>;
   screens: SecondaryScreenMap<TData, TPages>;
 }

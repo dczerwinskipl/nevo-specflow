@@ -139,6 +139,8 @@ export async function inspectAntigravityInstallation(
     unavailable();
   }
 
+  await outsideWorkspace(options.workspace, options.homeRoot);
+
   const host = dependencies.host ?? process.env;
   const local = host.LOCALAPPDATA;
   const executable = options.executable ?? (local ? join(local, 'agy', 'bin', 'agy.exe') : '');

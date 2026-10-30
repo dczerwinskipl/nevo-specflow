@@ -340,7 +340,9 @@ export function createAntigravityDriver(
             }
 
             const temporary = await createInvocationScope(
-              options.temporaryRoot,
+              // Hook credentials must not become files the provider can discover
+              // through ordinary in-workspace file tools.
+              options.homeRoot,
               invocation.invocationId,
             );
             let launched = false;

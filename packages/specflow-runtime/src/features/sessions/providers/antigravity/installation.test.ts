@@ -19,9 +19,9 @@ async function fixture() {
   await writeFile(executable, 'controlled executable identity, never executed');
   let accountScope = 'synthetic-account-one';
   let authenticationFingerprint = 'synthetic-access-one';
-  const inspect = () =>
+  const inspect = (overrides: Partial<Parameters<typeof inspectAntigravityInstallation>[0]> = {}) =>
     inspectAntigravityInstallation(
-      { workspace, homeRoot, executable, signal: new AbortController().signal },
+      { workspace, homeRoot, executable, signal: new AbortController().signal, ...overrides },
       {
         platform: 'win32',
         architecture: 'x64',
@@ -52,6 +52,13 @@ async function fixture() {
 }
 
 describe('Antigravity private native profile', () => {
+  it('rejects a private root inside the workspace during discovery', async () => {
+    const test = await fixture();
+    await expect(test.inspect({ homeRoot: join(test.workspace, 'private') })).rejects.toMatchObject(
+      { code: 'PROVIDER_UNAVAILABLE' },
+    );
+  });
+
   it('retains the inert CLI-created project but rejects executable resources and other projects', async () => {
     const test = await fixture();
     const installation = await test.inspect();

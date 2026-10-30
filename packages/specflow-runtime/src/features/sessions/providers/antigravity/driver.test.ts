@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { createAntigravityDriver } from './driver';
 import { inspectAntigravityInstallation } from './installation';
 import { SessionError } from '../../errors';
@@ -373,6 +373,8 @@ describe('controlled Antigravity driver invocation composition', () => {
         '\n',
     ]);
     expect(test.options().args).not.toContain(test.invocation.request.message);
+    const hookFile = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
+    expect(relative(test.workspace, hookFile).split(sep)[0]).toBe('..');
     expect(test.options().args).not.toContain('--conversation');
     expect(test.facts.find((fact) => fact.kind === 'correlation')).toMatchObject({
       providerSessionId: test.nativeId,

@@ -1,11 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Send, SlidersHorizontal, Square } from 'lucide-react';
 import {
   Alert,
   AppContent,
   AppWorkspace,
   Button,
+  Icon,
+  IconButton,
   MessageComposer,
   Select,
   SelectContent,
@@ -15,6 +18,10 @@ import {
   Spinner,
   StatusIndicator,
   TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
   Typography,
   WorkspaceHeader,
   useRegisterPinnedSecondaryTab,
@@ -306,6 +313,31 @@ export function ManagedSession({
       node.scrollTop = node.scrollHeight;
     }
   }, [state.snapshot?.entries, state.away]);
+  // The Composer floats over the scrollable conversation (owner feedback #1) instead of sitting
+  // in normal flow below it. Its rendered height varies (auto-growing textarea, responsive
+  // toolbar, the "jump to latest" pill appearing/disappearing), so it is measured rather than
+  // given a fixed padding value, mirroring the ref+ResizeObserver measurement WorkspaceHeader's
+  // own `useNarrowHeader` uses for a similar "respond to a real rendered size" need. The message
+  // list reserves exactly that much bottom space so the last message is never hidden behind it.
+  const composerOverlay = useRef<HTMLDivElement>(null);
+  const [composerHeight, setComposerHeight] = useState(0);
+  useLayoutEffect(() => {
+    const node = composerOverlay.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const update = () => setComposerHeight(node.getBoundingClientRect().height);
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
@@ -341,6 +373,14 @@ export function ManagedSession({
     !state.commandBusy &&
     (!!state.pending || snapshot.session.capabilities.start) &&
     (!!state.pending || !!state.draft.trim());
+  // The composer shows one adaptive Send/Stop action (owner feedback #2), not two simultaneous
+  // buttons: Stop only while a Turn is actually running and cancellable, Send/Retry otherwise.
+  const canCancel = !!snapshot?.session.capabilities.cancel && !!snapshot?.activeTurn;
+  const sendActionLabelKey = canCancel
+    ? 'managedSession.cancel'
+    : state.pending
+      ? 'managedSession.retrySend'
+      : 'managedSession.send';
   const handleComposerSubmit = () => {
     if (!canSend) {
       return;
@@ -432,143 +472,182 @@ export function ManagedSession({
                   </Button>
                 )}
               </div>
-              <div
-                ref={scroller}
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-                onScroll={(event) => {
-                  const node = event.currentTarget;
-                  feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > 80);
-                }}
-              >
-                <div className="mx-auto grid w-full max-w-content-standard gap-5 px-5 py-5">
-                  {snapshot.history.hasOlder && (
-                    <Button disabled={state.historyBusy} variant="ghost" onClick={older}>
-                      {t('managedSession.older')}
+              {/* The Composer floats over the conversation (owner feedback #1) instead of sitting
+                  in normal flow below it: this wrapper is the shared positioning context, the
+                  scroller fills it and reserves `composerHeight` of bottom padding so the last
+                  message is never hidden, and the overlay anchors to its bottom edge, growing
+                  upward with the composer's own measured height. */}
+              <div className="relative min-h-0 flex-1">
+                <div
+                  ref={scroller}
+                  className="absolute inset-0 overflow-y-auto overscroll-contain"
+                  style={{ paddingBottom: composerHeight || undefined }}
+                  onScroll={(event) => {
+                    const node = event.currentTarget;
+                    feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > 80);
+                  }}
+                >
+                  <div className="mx-auto grid w-full max-w-content-standard gap-5 px-5 py-5">
+                    {snapshot.history.hasOlder && (
+                      <Button disabled={state.historyBusy} variant="ghost" onClick={older}>
+                        {t('managedSession.older')}
+                      </Button>
+                    )}
+                    {state.historyError && (
+                      <Alert tone="attention" title={t('managedSession.historyFailed')}>
+                        <Button size="sm" onClick={older}>
+                          {t('common.retry')}
+                        </Button>
+                      </Alert>
+                    )}
+                    {!snapshot.entries.length && (
+                      <p className="py-8 text-body-md text-content-muted">
+                        {t('managedSession.empty')}
+                      </p>
+                    )}
+                    {snapshot.entries.map((entry) => (
+                      <EntryRow
+                        key={entry.id}
+                        entry={entry}
+                        api={api}
+                        sessionId={sessionId}
+                        outcomeLabels={outcomeLabels}
+                        onInspect={() =>
+                          void navigation.open(workStack, { sessionId, turnId: entry.turnId })
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div
+                  ref={composerOverlay}
+                  className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 px-4 pb-4 pt-3 sm:px-5 sm:pb-5"
+                >
+                  {(state.hasNew || state.away) && (
+                    <Button className="shadow-xl" variant="secondary" onClick={() => feed.latest()}>
+                      {t('managedSession.latest')}
                     </Button>
                   )}
-                  {state.historyError && (
-                    <Alert tone="attention" title={t('managedSession.historyFailed')}>
-                      <Button size="sm" onClick={older}>
-                        {t('common.retry')}
-                      </Button>
-                    </Alert>
-                  )}
-                  {!snapshot.entries.length && (
-                    <p className="py-8 text-body-md text-content-muted">
-                      {t('managedSession.empty')}
-                    </p>
-                  )}
-                  {snapshot.entries.map((entry) => (
-                    <EntryRow
-                      key={entry.id}
-                      entry={entry}
-                      api={api}
-                      sessionId={sessionId}
-                      outcomeLabels={outcomeLabels}
-                      onInspect={() =>
-                        void navigation.open(workStack, { sessionId, turnId: entry.turnId })
-                      }
-                    />
-                  ))}
+                  <div className="grid w-full max-w-content-standard gap-3">
+                    {snapshot.interaction && (
+                      <InteractionPrompt
+                        key={snapshot.interaction.interactionId}
+                        interaction={snapshot.interaction}
+                        busy={state.commandBusy || !snapshot.session.capabilities.manage}
+                        onRespond={(answer, optionId, allow) => {
+                          const i = snapshot.interaction!;
+                          void feed.respond(
+                            i.interactionId,
+                            i.kind === 'permission'
+                              ? {
+                                  requestId: crypto.randomUUID(),
+                                  kind: 'permission',
+                                  decision: allow ? 'allow' : 'deny',
+                                }
+                              : {
+                                  requestId: crypto.randomUUID(),
+                                  kind: 'question',
+                                  answer: {
+                                    optionIds: optionId ? [optionId] : [],
+                                    ...(answer ? { text: answer } : {}),
+                                  },
+                                },
+                          );
+                        }}
+                      />
+                    )}
+                    {state.commandError && (
+                      <Alert tone="attention" title={t('managedSession.commandFailed')} />
+                    )}
+                    <label htmlFor="managed-message" className="text-body-sm">
+                      {t('managedSession.message')}
+                    </label>
+                    <MessageComposer
+                      className="shadow-2xl"
+                      onSubmit={handleComposerSubmit}
+                      presentation="standalone"
+                    >
+                      <MessageComposer.Editor
+                        id="managed-message"
+                        minRows={1}
+                        value={state.draft}
+                        onChange={(event) => feed.setDraft(event.target.value)}
+                        disabled={!!state.pending || snapshot.session.readiness === 'unavailable'}
+                      />
+                      <MessageComposer.Toolbar>
+                        {/* No left-side cluster yet: attachments/intent/operation-policy entries
+                            (session-composer-design.md §6) remain out of scope. The action group
+                            is pushed to the end of the toolbar's own flex row via `ml-auto` so it
+                            keeps matching the right-aligned layout this screen already had. */}
+                        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                          {modelItems.length > 0 && (
+                            <>
+                              <label htmlFor="managed-model" className="sr-only">
+                                {t('managedSession.model.label')}
+                              </label>
+                              <Select
+                                disabled={state.commandBusy || !!state.pending}
+                                value={selectedModelKey}
+                                onValueChange={(key) => {
+                                  const next = decodeModelKey(key);
+                                  feed.setModel(next.modelId, next.effort);
+                                }}
+                              >
+                                {/* `supportsSplit` is the same measured-width signal this screen
+                                    already uses for the Context header action: on the narrow/
+                                    mobile layout there is no room for the "Model · effort" text,
+                                    so the trigger collapses to an icon; split-capable (wide)
+                                    layouts keep showing the selected value as text. */}
+                                <SelectTrigger
+                                  id="managed-model"
+                                  className={cn(
+                                    'w-auto',
+                                    supportsSplit
+                                      ? 'max-w-56 gap-1.5 sm:max-w-72'
+                                      : 'justify-center gap-0 px-0',
+                                  )}
+                                >
+                                  <Icon
+                                    className={cn('text-content-muted', supportsSplit && '-ml-0.5')}
+                                    name={SlidersHorizontal}
+                                    size="sm"
+                                  />
+                                  {supportsSplit && (
+                                    <SelectValue
+                                      placeholder={t('managedSession.model.placeholder')}
+                                    />
+                                  )}
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {modelItems.map((item) => (
+                                    <SelectItem key={item.key} value={item.key}>
+                                      {item.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </>
+                          )}
+                          <TooltipProvider delayDuration={400}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <IconButton
+                                  aria-label={t(sendActionLabelKey)}
+                                  disabled={canCancel ? state.commandBusy : !canSend}
+                                  icon={canCancel ? Square : Send}
+                                  type={canCancel ? 'button' : 'submit'}
+                                  variant={canCancel ? 'secondary' : 'primary'}
+                                  onClick={canCancel ? () => void feed.cancel() : undefined}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>{t(sendActionLabelKey)}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </MessageComposer.Toolbar>
+                    </MessageComposer>
+                  </div>
                 </div>
-              </div>
-              {(state.hasNew || state.away) && (
-                <Button variant="ghost" onClick={() => feed.latest()}>
-                  {t('managedSession.latest')}
-                </Button>
-              )}
-              <div className="mx-auto grid w-full max-w-content-standard shrink-0 gap-3 p-5">
-                {snapshot.interaction && (
-                  <InteractionPrompt
-                    key={snapshot.interaction.interactionId}
-                    interaction={snapshot.interaction}
-                    busy={state.commandBusy || !snapshot.session.capabilities.manage}
-                    onRespond={(answer, optionId, allow) => {
-                      const i = snapshot.interaction!;
-                      void feed.respond(
-                        i.interactionId,
-                        i.kind === 'permission'
-                          ? {
-                              requestId: crypto.randomUUID(),
-                              kind: 'permission',
-                              decision: allow ? 'allow' : 'deny',
-                            }
-                          : {
-                              requestId: crypto.randomUUID(),
-                              kind: 'question',
-                              answer: {
-                                optionIds: optionId ? [optionId] : [],
-                                ...(answer ? { text: answer } : {}),
-                              },
-                            },
-                      );
-                    }}
-                  />
-                )}
-                {state.commandError && (
-                  <Alert tone="attention" title={t('managedSession.commandFailed')} />
-                )}
-                <label htmlFor="managed-message" className="text-body-sm">
-                  {t('managedSession.message')}
-                </label>
-                <MessageComposer onSubmit={handleComposerSubmit} presentation="standalone">
-                  <MessageComposer.Editor
-                    id="managed-message"
-                    minRows={1}
-                    value={state.draft}
-                    onChange={(event) => feed.setDraft(event.target.value)}
-                    disabled={!!state.pending || snapshot.session.readiness === 'unavailable'}
-                  />
-                  <MessageComposer.Toolbar>
-                    {/* No left-side cluster yet: attachments/intent/operation-policy entries
-                        (session-composer-design.md §6) remain out of scope. The action group is
-                        pushed to the end of the toolbar's own flex row via `ml-auto` so it keeps
-                        matching the right-aligned layout this screen already had. */}
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      {modelItems.length > 0 && (
-                        <>
-                          <label htmlFor="managed-model" className="sr-only">
-                            {t('managedSession.model.label')}
-                          </label>
-                          <Select
-                            disabled={state.commandBusy || !!state.pending}
-                            value={selectedModelKey}
-                            onValueChange={(key) => {
-                              const next = decodeModelKey(key);
-                              feed.setModel(next.modelId, next.effort);
-                            }}
-                          >
-                            <SelectTrigger
-                              id="managed-model"
-                              className="w-auto max-w-56 sm:max-w-72"
-                            >
-                              <SelectValue placeholder={t('managedSession.model.placeholder')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {modelItems.map((item) => (
-                                <SelectItem key={item.key} value={item.key}>
-                                  {item.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
-                      {snapshot.session.capabilities.cancel && (
-                        <Button
-                          variant="secondary"
-                          disabled={state.commandBusy}
-                          onClick={() => void feed.cancel()}
-                        >
-                          {t('managedSession.cancel')}
-                        </Button>
-                      )}
-                      <Button disabled={!canSend} type="submit">
-                        {t(state.pending ? 'managedSession.retrySend' : 'managedSession.send')}
-                      </Button>
-                    </div>
-                  </MessageComposer.Toolbar>
-                </MessageComposer>
               </div>
             </>
           )}

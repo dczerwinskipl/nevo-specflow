@@ -60,7 +60,11 @@ export const WaitingForQuestion: Story = {
     await expect(
       await canvas.findByText('Którą część rozwiązania sprawdzić w następnej kolejności?'),
     ).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeDisabled();
+    // One adaptive Send/Stop action (not two simultaneous buttons): while the Turn is active and
+    // waiting on this interaction, the composer shows the single button as Stop, not a disabled
+    // Send — the structured response above is how the user answers.
+    await expect(canvas.getByRole('button', { name: 'Zatrzymaj' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Wyślij' })).not.toBeInTheDocument();
   },
 };
 export const HistoryFailure: Story = {

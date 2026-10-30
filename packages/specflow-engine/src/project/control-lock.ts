@@ -111,11 +111,52 @@ export async function inspectProjectControlLock(
  * One deterministic, OS-process exclusive lock per verified Project Home.
  * Exclusive file creation admits exactly one process. Files left after process
  * death are never removed by timeout; explicit lock recovery is a later gate.
+ *
+ * The physical proof pinned before acquisition (see {@link attemptProjectControlLock}) goes stale
+ * whenever anything legitimately touches the Git/worktree structure while this call waits or holds
+ * the lock, including an unrelated operation's own worktree — `CONTROL_LOCK_INVALID_HOME` is this
+ * call's signal to recapture and try again, the same as lock contention itself retries, and within
+ * the same overall budget. `action` runs only after the recaptured proof is confirmed current, so a
+ * retry here never invokes it twice.
  */
 export async function withProjectControlLock<T>(
   context: ResolvedProjectHome,
   action: () => Promise<T>,
   options: ProjectControlLockOptions = {},
+): Promise<T> {
+  const waitMs = options.waitMs ?? 5000;
+  const retryMs = options.retryMs ?? 25;
+  if (
+    !Number.isSafeInteger(waitMs) ||
+    !Number.isSafeInteger(retryMs) ||
+    waitMs < 0 ||
+    retryMs < 1
+  ) {
+    throw new ProjectControlLockError('CONTROL_LOCK_INVALID_HOME', 'Invalid lock wait settings.');
+  }
+
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    try {
+      return await attemptProjectControlLock(context, action, deadline, retryMs);
+    } catch (error) {
+      if (
+        !(error instanceof ProjectControlLockError) ||
+        error.code !== 'CONTROL_LOCK_INVALID_HOME' ||
+        Date.now() >= deadline
+      ) {
+        throw error;
+      }
+      // The proof went stale between attempts; loop back to recapture it fresh.
+    }
+  }
+}
+
+async function attemptProjectControlLock<T>(
+  context: ResolvedProjectHome,
+  action: () => Promise<T>,
+  deadline: number,
+  retryMs: number,
 ): Promise<T> {
   await assertCurrentProjectHome(context);
   // The expensive Git-based authority check is outside the lock.
@@ -141,18 +182,6 @@ export async function withProjectControlLock<T>(
     pid: process.pid,
     createdAt: new Date().toISOString(),
   };
-  const waitMs = options.waitMs ?? 5000;
-  const retryMs = options.retryMs ?? 25;
-  if (
-    !Number.isSafeInteger(waitMs) ||
-    !Number.isSafeInteger(retryMs) ||
-    waitMs < 0 ||
-    retryMs < 1
-  ) {
-    throw new ProjectControlLockError('CONTROL_LOCK_INVALID_HOME', 'Invalid lock wait settings.');
-  }
-
-  const deadline = Date.now() + waitMs;
   const measuring = lockTimingChannel.hasSubscribers;
   const startedAt = measuring ? performance.now() : 0;
   let acquiredAt = 0;

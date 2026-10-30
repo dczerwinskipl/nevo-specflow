@@ -1,0 +1,2562 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Nevo SpecFlow — Session Context / Mobile V2</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b121a;
+        --surface: #141f2a;
+        --surface2: #1b2937;
+        --line: #2e3d4c;
+        --text: #e6edf3;
+        --muted: #9bacbb;
+        --sub: #879cac;
+        --accent: #9dc3f0;
+        --orange: #dfb37d;
+        --red: #e4a3a4;
+        --green: #a2ceba;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #0b1119;
+        color: var(--text);
+        font:
+          13px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Arial,
+          sans-serif;
+      }
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: 2px solid #8ab8f4;
+        outline-offset: 2px;
+      }
+      svg {
+        flex-shrink: 0;
+      }
+      #mobile {
+        max-width: 430px;
+        width: 100%;
+        height: min(100dvh, 930px);
+        min-height: 630px;
+        margin: auto;
+        background: #101923;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #283847;
+        box-shadow: 0 12px 50px #0005;
+        overflow: hidden;
+      }
+      .microhead {
+        height: 47px;
+        padding: 0 15px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        flex: 0 0 auto;
+      }
+      .microhead .brand {
+        font-size: 13px;
+        font-weight: 780;
+        letter-spacing: -0.4px;
+      }
+      .microhead .brand em {
+        font-weight: 450;
+        font-style: normal;
+        color: #9cbce8;
+      }
+      .microhead .right {
+        margin-left: auto;
+        display: flex;
+        gap: 4px;
+      }
+      .btnicon {
+        display: grid;
+        place-items: center;
+        width: 33px;
+        height: 33px;
+        border-radius: 8px;
+        color: #b8cada;
+      }
+      .btnicon:active {
+        background: #26394a;
+      }
+      .screen {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: #151f2b;
+        border: 1px solid #2c3d4e;
+        border-radius: 19px 19px 0 0;
+        overflow: hidden;
+      }
+      .screenhead {
+        padding: 15px 15px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #2b3b4a;
+        flex: 0 0 auto;
+        min-height: 67px;
+      }
+      .screenhead .titlewrap {
+        flex: 1;
+        min-width: 0;
+      }
+      .screenhead h1 {
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: -0.3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 0 0 3px;
+      }
+      .screenhead .hint {
+        font-size: 11px;
+        color: #99aebc;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .screenhead .iconbtn {
+        color: #aec0d0;
+        display: grid;
+        place-items: center;
+        padding: 5px;
+        border-radius: 6px;
+      }
+      .screenhead .iconbtn:active {
+        background: #293b4c;
+      }
+      .body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-color: #405165 transparent;
+      }
+      .full {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        flex: 1;
+      }
+      .context-layout .sectionbar {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: #151f2b;
+        border-bottom: 1px solid #2c3b49;
+        display: flex;
+        overflow: auto;
+        scrollbar-width: none;
+        gap: 5px;
+        padding: 10px 12px;
+      }
+      .sectionbar button {
+        white-space: nowrap;
+        border: 1px solid #3b4b5c;
+        padding: 7px 11px;
+        border-radius: 8px;
+        color: #adbfcc;
+        font-size: 11px;
+      }
+      .sectionbar button.active {
+        color: #deefff;
+        border-color: #55799c;
+        background: #293f55;
+      }
+      .content {
+        padding: 17px 16px 30px;
+      }
+      .label {
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9eafc0;
+        margin: 18px 0 9px;
+      }
+      .label:first-child {
+        margin-top: 0;
+      }
+      .focus {
+        border-left: 2px solid #96bff0;
+        padding: 9px 12px;
+        background: linear-gradient(90deg, #223344, transparent);
+        margin-bottom: 16px;
+      }
+      .focus strong {
+        font-size: 13px;
+      }
+      .focus p {
+        font-size: 11px;
+        color: #aebecb;
+        line-height: 1.65;
+        margin: 6px 0 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .subtle {
+        color: var(--sub);
+      }
+      .small {
+        font-size: 11px;
+      }
+      .status {
+        font-size: 10px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .status.running {
+        color: var(--accent);
+      }
+      .status.attention {
+        color: var(--orange);
+      }
+      .status.danger {
+        color: var(--red);
+      }
+      .status.success {
+        color: var(--green);
+      }
+      .pill {
+        display: inline-block;
+        font-size: 10px;
+        border: 1px solid #455466;
+        color: #b3c4d1;
+        padding: 3px 7px;
+        border-radius: 5px;
+      }
+      .pill.blue {
+        color: #c3dafa;
+        background: #253a50;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 8px 0;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        width: 100%;
+        text-align: left;
+        min-height: 52px;
+        border-bottom: 1px solid #2d3e4d;
+        padding: 10px 0;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .row > svg:first-child {
+        color: #a5b8ca;
+      }
+      .row .main {
+        flex: 1;
+        min-width: 0;
+      }
+      .row .text {
+        display: block;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row .desc {
+        display: block;
+        color: #94a9b8;
+        font-size: 10px;
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row .right {
+        flex-shrink: 0;
+      }
+      .row:active {
+        background: #213144;
+      }
+      .count {
+        color: #b9d2ed;
+        background: #293f55;
+        border-radius: 5px;
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 15px 0 18px;
+      }
+      .stat strong {
+        font-size: 21px;
+        font-weight: 700;
+      }
+      .stat small {
+        display: block;
+        font-size: 10px;
+        color: #99afbf;
+      }
+      .rule {
+        height: 1px;
+        background: #30404d;
+        margin: 17px 0;
+      }
+      .alert {
+        padding: 11px 13px;
+        border: 1px solid #66523e;
+        border-radius: 9px;
+        color: #e8d2b6;
+        background: #2c2927;
+        font-size: 11px;
+        line-height: 1.55;
+        margin: 14px 0;
+      }
+      .alert b {
+        display: block;
+        margin-bottom: 4px;
+      }
+      .searchbox {
+        height: 40px;
+        border: 1px solid #455767;
+        border-radius: 9px;
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        padding: 0 10px;
+        background: #1b2a39;
+      }
+      .searchbox svg {
+        color: #a8bccd;
+      }
+      .searchbox input {
+        background: none;
+        border: 0;
+        outline: 0;
+        flex: 1;
+        min-width: 0;
+        font-size: 12px;
+      }
+      .filterchips {
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        padding: 11px 0 5px;
+        scrollbar-width: none;
+      }
+      .filterchips button {
+        border: 1px solid #415264;
+        border-radius: 7px;
+        padding: 6px 9px;
+        white-space: nowrap;
+        color: #b5c4d2;
+        font-size: 10px;
+      }
+      .filterchips button.active {
+        background: #2b4360;
+        border-color: #6085a5;
+        color: #e1f0ff;
+      }
+      .resultcount {
+        font-size: 11px;
+        color: #90a5b5;
+        padding: 8px 0;
+      }
+      .load {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #42566c;
+        border-radius: 8px;
+        margin: 16px 0;
+        color: #c0d9f7;
+        font-size: 11px;
+      }
+      .event {
+        margin-left: 7px;
+        padding: 0 0 23px 20px;
+        border-left: 1px solid #3b4b5d;
+        position: relative;
+      }
+      .event:before {
+        position: absolute;
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #7d9ab8;
+        left: -4px;
+        top: 5px;
+      }
+      .event.rejected:before {
+        background: #bf8680;
+      }
+      .event.active:before {
+        background: #95bfe9;
+      }
+      .event .when {
+        color: #879dac;
+        font-size: 10px;
+      }
+      .event .headline {
+        font-size: 12px;
+        margin: 6px 0;
+      }
+      .event .detail {
+        font-size: 11px;
+        color: #9bb0c1;
+        line-height: 1.6;
+      }
+      .textbutton {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #abd1fa;
+        font-size: 11px;
+        padding: 7px 0;
+      }
+      .document {
+        font-size: 13px;
+        line-height: 1.75;
+        color: #c1d2de;
+      }
+      .document h2 {
+        font-size: 18px;
+        line-height: 1.3;
+        margin: 18px 0 10px;
+      }
+      .code {
+        background: #101a24;
+        border: 1px solid #364a5b;
+        border-radius: 8px;
+        padding: 13px;
+        font:
+          11px/1.7 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow: auto;
+        white-space: pre;
+      }
+      .diff {
+        background: #111b25;
+        border: 1px solid #384958;
+        border-radius: 8px;
+        overflow: auto;
+      }
+      .diff div {
+        font:
+          11px/1.5 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        white-space: pre;
+        padding: 4px 10px;
+      }
+      .diff .add {
+        background: #203c2f;
+        color: #c1e4d0;
+      }
+      .diff .del {
+        background: #3b2628;
+        color: #e0a5a5;
+      }
+      .diff .muted {
+        color: #94a6b7;
+      }
+      .segmented {
+        display: flex;
+        border: 1px solid #3f5265;
+        background: #1c2b3b;
+        border-radius: 8px;
+        padding: 3px;
+        gap: 3px;
+        margin: 12px 0;
+      }
+      .segmented button {
+        flex: 1;
+        color: #a8bac8;
+        padding: 8px 3px;
+        border-radius: 5px;
+        font-size: 11px;
+      }
+      .segmented button.active {
+        background: #324963;
+        color: #eff5fc;
+      }
+      .detailhead {
+        padding: 12px 16px 0;
+      }
+      .detailhead h2 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .detailhead p {
+        font-size: 11px;
+        color: #9aafc0;
+        margin: 5px 0;
+      }
+      .tasksteps {
+        font-size: 11px;
+        color: #a5b8c9;
+        line-height: 1.8;
+      }
+      .kv {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        justify-content: space-between;
+        border-bottom: 1px solid #2b3e4b;
+        padding: 10px 0;
+        font-size: 11px;
+      }
+      .kv span {
+        color: #9aafc1;
+      }
+      .kv strong {
+        text-align: right;
+        font-weight: 550;
+        max-width: 58%;
+      }
+      .convo {
+        padding: 18px 17px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .message-you {
+        padding: 11px 13px;
+        border: 1px solid #3c5163;
+        background: #223346;
+        border-radius: 11px;
+        align-self: flex-end;
+        max-width: 87%;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .assistant-message {
+        font-size: 12px;
+        line-height: 1.75;
+      }
+      .assistant-message p {
+        margin: 0 0 12px;
+      }
+      .agentlabel {
+        color: #a9c3df;
+        font-size: 11px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .workref {
+        border: 0;
+        border-bottom: 1px solid #314153;
+        background: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #a9bdcf;
+        padding: 8px 0;
+        font-size: 11px;
+        width: 100%;
+        text-align: left;
+        margin: 3px 0;
+      }
+      .filelink {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid #3b5870;
+        color: #b7d7f9;
+        background: #21364b;
+        border-radius: 6px;
+        padding: 4px 7px;
+        font-size: 11px;
+      }
+      .live {
+        padding: 8px 14px;
+        border-top: 1px solid #314353;
+        color: #b3c8d9;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .composerwrap {
+        padding: 9px 12px 15px;
+        background: #111b26;
+        flex-shrink: 0;
+      }
+      .composer {
+        background: #1d2b3b;
+        border: 1px solid #45596b;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .composer textarea {
+        resize: none;
+        border: 0;
+        outline: 0;
+        background: none;
+        width: 100%;
+        min-height: 55px;
+        height: 58px;
+        padding: 10px 13px;
+        color: #e8eff6;
+        font-size: 12px;
+      }
+      .composer textarea::placeholder {
+        color: #8ea5b8;
+      }
+      .composerbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid #334658;
+        padding: 6px 9px;
+        color: #a3b8c8;
+        font-size: 11px;
+      }
+      .composerbar button {
+        background: #4e81ae;
+        border-radius: 7px;
+        color: #fff;
+        padding: 5px 7px;
+      }
+      .mobiletabs {
+        border-top: 1px solid #2e4150;
+        background: #101b26;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        gap: 5px;
+        padding: 6px 9px;
+        flex: 0 0 auto;
+        min-height: 52px;
+      }
+      .mobiletabs button {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #a8b9ca;
+        border-radius: 7px;
+        padding: 7px;
+        font-size: 10px;
+      }
+      .mobiletabs button.active {
+        color: #cde4ff;
+        background: #283b50;
+      }
+      .dropdown {
+        position: absolute;
+        z-index: 10;
+        right: 12px;
+        top: 103px;
+        border: 1px solid #42556b;
+        background: #223243;
+        border-radius: 10px;
+        box-shadow: 0 18px 36px #0009;
+        width: min(310px, calc(100% - 24px));
+        padding: 7px;
+        max-height: 55vh;
+        overflow: auto;
+      }
+      .dropdown button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 10px 9px;
+        border-radius: 7px;
+        text-align: left;
+        color: #d1dfeb;
+        font-size: 11px;
+      }
+      .dropdown button:active {
+        background: #374a60;
+      }
+      .dropdown .item-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+      .dropdown .remove {
+        margin-left: auto;
+        color: #afc0cf;
+        display: grid;
+        place-items: center;
+        padding: 4px;
+      }
+      .dropdown .selected {
+        background: #304862;
+      }
+      .empty {
+        padding: 35px 5px;
+        text-align: center;
+        color: #a5b7c7;
+        line-height: 1.7;
+        font-size: 12px;
+      }
+      .caption {
+        font-size: 10px;
+        color: #879caa;
+        line-height: 1.65;
+        margin: 8px 0;
+      }
+      .bottom-debug {
+        height: 44px;
+        background: #0b1119;
+        border-top: 1px solid #283949;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 5px 8px;
+        flex: 0 0 auto;
+      }
+      .bottom-debug button {
+        border: 1px solid #384a5d;
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 10px;
+        color: #b8c8d5;
+      }
+      .bottom-debug button.selected {
+        background: #29445e;
+        color: #e1f0ff;
+        border-color: #5b7b9d;
+      }
+      @media (min-width: 480px) {
+        body {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100dvh;
+          padding: 14px;
+        }
+        #mobile {
+          height: min(880px, calc(100dvh - 28px));
+          border-radius: 24px;
+          box-shadow: 0 18px 80px #000b;
+        }
+      }
+
+      /* V2 mobile: no bottom tabs or horizontal section switcher. Native back + header switcher only. */
+      .mobiletabs,
+      .sectionbar {
+        display: none !important;
+      }
+      .screen {
+        border-radius: 19px 19px 0 0;
+      }
+      .screenhead {
+        background: #162331;
+      }
+      .stackhint {
+        padding: 10px 16px;
+        background: #1a2a39;
+        border-bottom: 1px solid #334654;
+        color: #a5bdce;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+      .stackhint strong {
+        color: #d6e6f3;
+        font-weight: 550;
+      }
+
+      /* Composer exploration V1 — scoped, provisional; Workspace V2 remains accepted independently */
+      .composer-wrap,
+      .composerwrap {
+        position: relative;
+        z-index: 5;
+      }
+      .cx-attach {
+        display: flex;
+        gap: 7px;
+        padding: 10px 11px 3px;
+        flex-wrap: wrap;
+        max-height: 126px;
+        overflow: auto;
+      }
+      .cx-attach:empty {
+        display: none;
+      }
+      .cx-asset {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        max-width: 235px;
+        padding: 5px 7px;
+        border-radius: 7px;
+        border: 1px solid #43566b;
+        background: #243446;
+        color: #d7e5f3;
+        font-size: 11px;
+      }
+      .cx-asset img {
+        width: 29px;
+        height: 29px;
+        object-fit: cover;
+        border-radius: 5px;
+      }
+      .cx-asset .cx-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cx-asset .cx-remove {
+        border: 0;
+        background: transparent;
+        color: #9eb2c8;
+        font-size: 17px;
+        line-height: 1;
+        padding: 1px 4px;
+      }
+      .cx-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .cx-pill,
+      .cx-add {
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        color: #c1d1df;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        white-space: nowrap;
+        font-size: 11px;
+        padding: 6px 7px;
+        min-height: 30px;
+      }
+      .cx-pill {
+        border-color: #384c60;
+        background: #253648;
+      }
+      .cx-pill:hover,
+      .cx-add:hover {
+        background: #344b62;
+      }
+      .cx-pill:focus-visible,
+      .cx-add:focus-visible,
+      .cx-pop button:focus-visible {
+        outline: 2px solid #9cbdf1;
+        outline-offset: 2px;
+      }
+      .cx-pill[hidden] {
+        display: none;
+      }
+      .cx-pill[disabled] {
+        opacity: 0.57;
+        cursor: default;
+      }
+      .cx-add {
+        font-size: 22px;
+        font-weight: 400;
+        line-height: 1;
+        width: 30px;
+        border-color: #384c60;
+        background: #213143;
+      }
+      .cx-toolbar .cx-space {
+        flex: 1;
+        min-width: 4px;
+      }
+      .cx-toolbar .cx-send {
+        margin-left: 1px;
+      }
+      .cx-toolbar .cx-subtitle {
+        color: #9daebf;
+        font-size: 10px;
+      }
+      .cx-hidden {
+        display: none !important;
+      }
+      .cx-pop {
+        position: absolute;
+        z-index: 80;
+        bottom: calc(100% - 6px);
+        left: 18px;
+        width: min(365px, calc(100% - 36px));
+        max-height: min(340px, 50dvh);
+        overflow: auto;
+        background: #1e2c3b;
+        border: 1px solid #4a6075;
+        box-shadow: 0 18px 50px #000a;
+        border-radius: 12px;
+        padding: 7px;
+      }
+      .cx-pop[hidden] {
+        display: none;
+      }
+      .cx-pop.align-right {
+        left: auto;
+        right: 18px;
+      }
+      .cx-pop h4 {
+        margin: 7px 9px 6px;
+        color: #9eb3c7;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      .cx-pop button {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        padding: 10px 9px;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        border-radius: 7px;
+        color: #e4edf5;
+        font-size: 12px;
+      }
+      .cx-pop button:not([disabled]):hover {
+        background: #31485c;
+      }
+      .cx-pop button[disabled] {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+      .cx-pop small {
+        display: block;
+        color: #a5b6c6;
+        font-size: 10px;
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .cx-pop .cx-check {
+        margin-left: auto;
+        color: #9fc6f7;
+      }
+      .cx-pop .cx-help {
+        padding: 8px 9px;
+        color: #9eb0c1;
+        font-size: 10px;
+        line-height: 1.5;
+        border-top: 1px solid #3c4e60;
+      }
+      .cx-pop .cx-efforts {
+        display: flex;
+        gap: 5px;
+        padding: 5px 9px;
+      }
+      .cx-pop .cx-efforts button {
+        justify-content: center;
+        width: auto;
+        flex: 1;
+        border: 1px solid #43576d;
+        padding: 7px;
+      }
+      .cx-pop .cx-efforts button.selected {
+        border-color: #89b3dd;
+        background: #294461;
+      }
+      .composerbar.cx-toolbar .cx-pill,
+      .composerbar.cx-toolbar .cx-add {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #384c60;
+        background: #253648;
+        color: #c1d1df;
+        border-radius: 7px;
+        padding: 6px 7px;
+      }
+      .composerbar.cx-toolbar .cx-add {
+        width: 30px;
+        background: #213143;
+        font-size: 22px;
+        padding: 3px;
+      }
+      .composerbar.cx-toolbar .cx-send {
+        display: grid;
+        place-items: center;
+        background: #3e6c9f;
+        color: #fff;
+        border: 0;
+      }
+      .composer .cx-toolbar button.send {
+        margin-left: 1px;
+      }
+      .composer .cx-attach + textarea {
+        min-height: 62px;
+      }
+      .composer textarea {
+        max-height: 210px;
+      }
+      @media (max-width: 850px) {
+        .cx-toolbar {
+          row-gap: 7px;
+        }
+        .cx-pill {
+          font-size: 10px;
+          padding: 6px 6px;
+        }
+        .cx-pop {
+          max-height: 50dvh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mobile" style="position: relative">
+      <header class="microhead">
+        <button class="btnicon" aria-label="Nawigacja" id="appMenu">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 5h16M4 12h16M4 19h16" />
+          </svg></button
+        ><span class="brand">nevo <em>SpecFlow</em></span>
+        <div class="right">
+          <span class="pill" style="font-size: 9px">UX V2</span
+          ><button class="btnicon">
+            <svg
+              aria-hidden="true"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21a8 8 0 0 1 16 0" />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <div class="screen">
+        <header class="screenhead">
+          <button
+            class="iconbtn"
+            id="backBtn"
+            aria-label="Wróć lub otwórz kontekst"
+            data-action="back"
+          ></button>
+          <div class="titlewrap">
+            <h1 id="screenTitle">Review recovery #42</h1>
+            <div class="hint" id="screenHint">Reviewer · 3 zadania</div>
+          </div>
+          <button class="iconbtn" id="tabBtn" aria-label="Otwarte pliki" data-action="tabs"></button
+          ><button
+            class="iconbtn"
+            id="menuBtn"
+            aria-label="Dodatkowe akcje"
+            data-action="menu"
+          ></button>
+        </header>
+        <div class="full">
+          <main class="body context-layout" id="contentBody"></main>
+          <div class="live" id="live"></div>
+          <div id="conversationFooter" class="composerwrap">
+            <div class="composer">
+              <div class="cx-attach" id="cxAttach" aria-label="Załączniki"></div>
+              <textarea
+                id="composer"
+                placeholder="Odpowiedz agentowi..."
+                aria-label="Wiadomość"
+              ></textarea>
+              <div class="composerbar cx-toolbar">
+                <button
+                  type="button"
+                  class="cx-add"
+                  aria-label="Dodaj załącznik"
+                  title="Dodaj załącznik"
+                  data-cx="open"
+                  data-menu="attach"
+                >
+                  +</button
+                ><button
+                  type="button"
+                  class="cx-pill"
+                  data-cx="open"
+                  data-menu="intent"
+                  id="cxIntent"
+                  aria-label="Tryb pracy"
+                >
+                  Agent ▾</button
+                ><button
+                  type="button"
+                  class="cx-pill"
+                  data-cx="open"
+                  data-menu="approval"
+                  id="cxApproval"
+                  aria-label="Zatwierdzanie operacji"
+                >
+                  Kontrolowany ▾</button
+                ><span class="cx-space"></span
+                ><button
+                  type="button"
+                  class="cx-pill"
+                  data-cx="open"
+                  data-menu="model"
+                  id="cxModel"
+                  aria-label="Model i effort"
+                >
+                  Model · High ▾</button
+                ><span id="model" class="cx-hidden">Codex · Agent</span
+                ><button data-action="send" aria-label="Wyślij">
+                  <svg
+                    aria-hidden="true"
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="cx-pop" id="cxPop" hidden role="dialog" aria-label="Opcje composera"></div>
+            <input id="cxImageInput" type="file" accept="image/*" multiple hidden /><input
+              id="cxFileInput"
+              type="file"
+              multiple
+              hidden
+            /><input id="cxCameraInput" type="file" accept="image/*" capture="environment" hidden />
+          </div>
+        </div>
+      </div>
+      <div class="dropdown" id="tabDrop" style="display: none"></div>
+      <div
+        id="toast"
+        style="
+          position: absolute;
+          bottom: 46px;
+          right: 0;
+          left: 0;
+          text-align: center;
+          color: #b0cee8;
+          font-size: 10px;
+          pointer-events: none;
+          background: #111a24b0;
+        "
+      ></div>
+    </div>
+    <script>
+      // Synthetic product-design fixture. No data here represents live runtime state.
+      const TASKS = [
+        {
+          id: 'TASK-02',
+          name: 'Bezpieczne admission i writer claims',
+          status: 'review',
+          attempts: 3,
+          role: 'reviewer',
+          active: true,
+        },
+        {
+          id: 'TASK-03',
+          name: 'Recovery po SIGKILL / orphaned Turn',
+          status: 'review',
+          attempts: 4,
+          role: 'reviewer',
+          active: true,
+        },
+        {
+          id: 'TASK-04',
+          name: 'Idempotencja dispatch i CAS',
+          status: 'review',
+          attempts: 2,
+          role: 'reviewer',
+          active: true,
+        },
+        {
+          id: 'TASK-05',
+          name: 'Historia rewizji i retry',
+          status: 'changes',
+          attempts: 3,
+          role: 'implementer',
+        },
+        {
+          id: 'TASK-06',
+          name: 'Statusy providerów',
+          status: 'done',
+          attempts: 2,
+          role: 'implementer',
+        },
+        { id: 'TASK-07', name: 'Uzgodnienie zachowania UI', status: 'ready', attempts: 0 },
+        { id: 'TASK-08', name: 'E2E dla wielozadaniowego review', status: 'done', attempts: 1 },
+        { id: 'TASK-09', name: 'Polityka cleanup worktree', status: 'waiting', attempts: 0 },
+        { id: 'TASK-10', name: 'Kontrakty verification evidence', status: 'done', attempts: 2 },
+      ];
+      const ROOT_FILES = [
+        ['src/runtime/sessions/lifecycle/coordinator.ts', 'modified', 'code', 'TASK-03'],
+        ['src/runtime/sessions/persistence/worker.ts', 'modified', 'code', 'TASK-03'],
+        ['src/engine/execution/admission.ts', 'modified', 'code', 'TASK-02'],
+        ['src/engine/execution/claims.ts', 'modified', 'code', 'TASK-02'],
+        ['src/runtime/sessions/providers/codex/operation.ts', 'modified', 'code', 'TASK-04'],
+        ['src/runtime/sessions/providers/claude/operation.ts', 'modified', 'code', 'TASK-04'],
+        ['src/engine/execution/recovery.ts', 'modified', 'code', 'TASK-03'],
+        ['src/runtime/sessions/providers/codex/questions.ts', 'modified', 'code', 'TASK-04'],
+        ['docs/specs/backend.md', 'modified', 'document', 'TASK-05'],
+        ['docs/specs/behaviour.md', 'modified', 'document', 'TASK-05'],
+        ['docs/specs/overview.md', 'read', 'document', 'TASK-02'],
+        ['docs/review/review-batch-42.md', 'created', 'document', 'TASK-02'],
+        ['docs/verification/recovery-tests.md', 'created', 'document', 'TASK-03'],
+        ['tests/runtime/restart.spec.ts', 'modified', 'code', 'TASK-03'],
+        ['tests/engine/claims.spec.ts', 'modified', 'code', 'TASK-02'],
+      ];
+      const FOLDERS = [
+        'src/runtime/sessions',
+        'src/engine/execution',
+        'src/runtime/sessions/providers',
+        'tests/runtime',
+        'tests/engine',
+        'packages/specflow-ui',
+        'docs/specs',
+        'docs/review',
+        'tools/specs',
+      ];
+      const FILES = Array.from({ length: 146 }, (_, i) => {
+        const fixed = ROOT_FILES[i];
+        if (fixed)
+          return {
+            id: 'file-' + i,
+            path: fixed[0],
+            action: fixed[1],
+            kind: fixed[2],
+            task: fixed[3],
+            operations: ((i * 3) % 19) + 1,
+          };
+        const base = FOLDERS[i % FOLDERS.length],
+          mod = [
+            'read-model',
+            'recovery',
+            'session',
+            'claims',
+            'workflow',
+            'contract',
+            'adapter',
+            'guard',
+            'projection',
+            'transport',
+            'spec-utils',
+          ][i % 11],
+          ext = i % 13 === 0 ? 'md' : 'ts';
+        return {
+          id: 'file-' + i,
+          path: `${base}/${mod}-${String(i + 1).padStart(3, '0')}.${ext}`,
+          action: i < 59 ? 'modified' : i < 85 ? 'created' : 'read',
+          kind: ext === 'md' ? 'document' : 'code',
+          task: TASKS[i % TASKS.length].id,
+          operations: ((i * 7) % 31) + 1,
+        };
+      });
+      const ARTIFACTS = [
+        {
+          id: 'ar-1',
+          kind: 'review',
+          title: 'Raport review · batch #42',
+          detail: 'TASK-02, TASK-03, TASK-04 · 2 poprawki wymagane',
+          date: '29.10 · 14:24',
+          tasks: ['TASK-02', 'TASK-03', 'TASK-04'],
+          source: 'Review #2',
+          status: 'attention',
+        },
+        {
+          id: 'ar-2',
+          kind: 'handover',
+          title: 'Przekazanie: Implementer → Reviewer',
+          detail: 'Zakres, zmiany, ryzyka i otwarte kwestie',
+          date: '29.10 · 13:40',
+          tasks: ['TASK-02', 'TASK-03', 'TASK-04'],
+          source: 'Transition #7',
+          status: 'current',
+        },
+        {
+          id: 'ar-3',
+          kind: 'verification',
+          title: 'Weryfikacja recovery (Linux / Windows)',
+          detail: '327 PASS · 1 FAIL · 4 SKIP',
+          date: '29.10 · 12:54',
+          tasks: ['TASK-03'],
+          source: 'Test run #18',
+          status: 'attention',
+        },
+        {
+          id: 'ar-4',
+          kind: 'changes',
+          title: 'Change set · 41 plików',
+          detail: '+1 279 / −408 · rev 9df1a6a',
+          date: '29.10 · 12:30',
+          tasks: ['TASK-02', 'TASK-03', 'TASK-04'],
+          source: 'Execution #14',
+          status: 'normal',
+        },
+        {
+          id: 'ar-5',
+          kind: 'review',
+          title: 'Review TASK-03 · próba 1',
+          detail: 'Odrzucono · 3 problemy z recovery',
+          date: '27.10 · 18:20',
+          tasks: ['TASK-03'],
+          source: 'Review #1',
+          status: 'rejected',
+        },
+        {
+          id: 'ar-6',
+          kind: 'handover',
+          title: 'Przekazanie Reviewer → Refiner',
+          detail: 'Powód odrzucenia i instrukcje poprawy',
+          date: '27.10 · 18:22',
+          tasks: ['TASK-03'],
+          source: 'Transition #6',
+          status: 'normal',
+        },
+        {
+          id: 'ar-7',
+          kind: 'review',
+          title: 'Review TASK-02 · próba 1',
+          detail: 'Odrzucono · niespójne claim ownership',
+          date: '26.10 · 11:50',
+          tasks: ['TASK-02'],
+          source: 'Review #1',
+          status: 'rejected',
+        },
+        {
+          id: 'ar-8',
+          kind: 'verification',
+          title: 'Testy CI · Windows x64',
+          detail: 'Pipeline pass · 74 testy',
+          date: '28.10 · 21:13',
+          tasks: ['TASK-04'],
+          source: 'CI run #119',
+          status: 'normal',
+        },
+        {
+          id: 'ar-9',
+          kind: 'report',
+          title: 'Notatki architektoniczne admission',
+          detail: 'Decyzje o kolejności blokad i CAS',
+          date: '26.10 · 10:12',
+          tasks: ['TASK-02'],
+          source: 'Writer work',
+          status: 'normal',
+        },
+        {
+          id: 'ar-10',
+          kind: 'changes',
+          title: 'Diff bazowy sprzed re-review',
+          detail: 'Snapshot kodu użyty przez review #2',
+          date: '29.10 · 13:42',
+          tasks: ['TASK-03'],
+          source: 'Revision 9df1a6a',
+          status: 'normal',
+        },
+        {
+          id: 'ar-11',
+          kind: 'decision',
+          title: 'Decyzja: nie ponawiać unknown Turn',
+          detail: 'Zatwierdzona przez właściciela',
+          date: '25.10 · 16:05',
+          tasks: ['TASK-03'],
+          source: 'Owner',
+          status: 'normal',
+        },
+        {
+          id: 'ar-12',
+          kind: 'report',
+          title: 'Podsumowanie prac Refiner #3',
+          detail: 'Zamknięto 2/3 ustaleń; 1 blocker',
+          date: '28.10 · 22:05',
+          tasks: ['TASK-03'],
+          source: 'Refiner',
+          status: 'normal',
+        },
+      ];
+      const TRANSITIONS = [
+        {
+          id: 'ho-7',
+          when: '29.10 · 13:40',
+          from: 'Implementer',
+          to: 'Reviewer',
+          kind: 'outgoing',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          title: 'Review po poprawkach',
+          notes:
+            'Zweryfikuj rozliczanie writer claims i recovery po przerwanym Turn. Nie ponawiaj unknown dispatch.',
+          session: 'Sesja review #42',
+          artifact: 'ar-2',
+        },
+        {
+          id: 'ho-6',
+          when: '27.10 · 18:22',
+          from: 'Reviewer',
+          to: 'Refiner',
+          kind: 'incoming',
+          scope: ['TASK-03'],
+          title: 'Poprawki po odrzuconym review',
+          notes: 'Usuń automatyczny replay, dodaj test SIGKILL i rozróżnij uncertain outcome.',
+          session: 'Sesja refiner #11',
+          artifact: 'ar-6',
+        },
+        {
+          id: 'ho-5',
+          when: '27.10 · 18:20',
+          from: 'Reviewer',
+          to: 'Implementer',
+          kind: 'outgoing',
+          scope: ['TASK-02'],
+          title: 'Przekazanie uwag',
+          notes: '3 uwagi architektoniczne po review #1.',
+          session: 'Implementacja #9',
+          artifact: 'ar-7',
+        },
+        {
+          id: 'ho-4',
+          when: '26.10 · 09:30',
+          from: 'Planner',
+          to: 'Implementer',
+          kind: 'incoming',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          title: 'Start batch implementacji',
+          notes: 'Wejściowy zakres wraz z kryteriami akceptacji.',
+          session: 'Implementacja #9',
+          artifact: null,
+        },
+        {
+          id: 'ho-3',
+          when: '25.10 · 17:40',
+          from: 'Spec Writer',
+          to: 'Planner',
+          kind: 'incoming',
+          scope: ['TASK-02', 'TASK-03'],
+          title: 'Zatwierdzony kierunek',
+          notes: 'Plan z kontekstem specyfikacji i wymaganymi gate.',
+          session: 'Planowanie #6',
+          artifact: null,
+        },
+      ];
+      const HISTORY = [
+        {
+          id: 'ev-13',
+          time: '29.10 · 14:30',
+          type: 'run',
+          title: 'Reviewer analizuje batch #42',
+          detail: 'TASK-02, TASK-03, TASK-04 · obecna aktywność',
+          status: 'active',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+        },
+        {
+          id: 'ev-12',
+          time: '29.10 · 13:40',
+          type: 'handover',
+          title: 'Przekazanie Implementer → Reviewer',
+          detail: 'Nowa sesja review; przekazano evidence z wykonania',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          ref: 'ho-7',
+        },
+        {
+          id: 'ev-11',
+          time: '29.10 · 12:54',
+          type: 'verify',
+          title: 'Weryfikacja recovery: 1 nieudany test',
+          detail: 'Wynik nie blokuje odczytu, ale wymaga przeglądu',
+          status: 'warning',
+          scope: ['TASK-03'],
+          ref: 'ar-3',
+        },
+        {
+          id: 'ev-10',
+          time: '28.10 · 22:05',
+          type: 'run',
+          title: 'Implementacja próba 3 (TASK-03)',
+          detail: 'Refiner naprawił 2 z 3 ustaleń',
+          status: 'done',
+          scope: ['TASK-03'],
+          ref: 'ar-12',
+        },
+        {
+          id: 'ev-9',
+          time: '27.10 · 18:22',
+          type: 'handover',
+          title: 'Reviewer → Refiner',
+          detail: 'Nowa sesja, zachowano przyczynę odrzucenia',
+          status: 'done',
+          scope: ['TASK-03'],
+          ref: 'ho-6',
+        },
+        {
+          id: 'ev-8',
+          time: '27.10 · 18:20',
+          type: 'rejected',
+          title: 'Review próba 1 odrzucona',
+          detail: 'TASK-03 · potrzebne zmiany w recovery',
+          status: 'rejected',
+          scope: ['TASK-03'],
+          ref: 'ar-5',
+        },
+        {
+          id: 'ev-7',
+          time: '27.10 · 10:14',
+          type: 'run',
+          title: 'Implementacja próba 2 (TASK-03)',
+          detail: 'Zakończono wykonanie, nie zamknięto taska',
+          status: 'done',
+          scope: ['TASK-03'],
+        },
+        {
+          id: 'ev-6',
+          time: '26.10 · 18:30',
+          type: 'rejected',
+          title: 'Review TASK-02: odrzucono',
+          detail: 'Brak spójnej ochrony claim ownership',
+          status: 'rejected',
+          scope: ['TASK-02'],
+          ref: 'ar-7',
+        },
+        {
+          id: 'ev-5',
+          time: '26.10 · 09:30',
+          type: 'handover',
+          title: 'Planner → Implementer',
+          detail: 'Pierwsza sesja wykonania w tym scope',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03', 'TASK-04'],
+          ref: 'ho-4',
+        },
+        {
+          id: 'ev-4',
+          time: '25.10 · 16:05',
+          type: 'decision',
+          title: 'Owner: retry unknown nie jest dozwolony',
+          detail: 'Zapisano decyzję architektoniczną',
+          status: 'done',
+          scope: ['TASK-03'],
+          ref: 'ar-11',
+        },
+        {
+          id: 'ev-3',
+          time: '24.10 · 14:10',
+          type: 'run',
+          title: 'Implementacja próba 1 (TASK-03)',
+          detail: 'Pierwszy zakres kodu i testów',
+          status: 'done',
+          scope: ['TASK-03'],
+        },
+        {
+          id: 'ev-2',
+          time: '24.10 · 10:12',
+          type: 'handover',
+          title: 'Spec Writer → Planner',
+          detail: 'Podział zakresu na zadania',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03'],
+          ref: 'ho-3',
+        },
+        {
+          id: 'ev-1',
+          time: '23.10 · 09:20',
+          type: 'run',
+          title: 'Rozpoczęcie pracy nad specyfikacją',
+          detail: 'Instrukcje i initial task context',
+          status: 'done',
+          scope: ['TASK-02', 'TASK-03'],
+        },
+      ];
+      const ICONS = {
+        context:
+          '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M13 8h4M13 12h4M13 16h4"/>',
+        file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+        files:
+          '<path d="M16 2H6a2 2 0 0 0-2 2v13"/><rect x="8" y="7" width="12" height="15" rx="2"/>',
+        branch:
+          '<circle cx="6" cy="3" r="2"/><path d="M6 5v12"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 11h8a4 4 0 0 0 4-4"/>',
+        archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v12h14V8M10 12h4"/>',
+        clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        search: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+        x: '<path d="M5 5l14 14M19 5 5 19"/>',
+        chevron: '<path d="m9 18 6-6-6-6"/>',
+        down: '<path d="m6 9 6 6 6-6"/>',
+        back: '<path d="m14 18-6-6 6-6"/>',
+        arrow: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+        check: '<path d="m4 12 5 5L20 6"/>',
+        alert:
+          '<path d="M12 9v4M12 17h.01"/><path d="m10 3-8 14a2 2 0 0 0 2 3h16a2 2 0 0 0 2-3L14 3a2 2 0 0 0-4 0z"/>',
+        swap: '<path d="m7 7-4 4 4 4M3 11h14M17 17l4-4-4-4M21 13H7"/>',
+        layers: '<path d="m12 2 9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/>',
+        play: '<path d="m8 5 12 7-12 7z"/>',
+        stop: '<rect x="4" y="4" width="16" height="16" rx="3"/>',
+        sliders:
+          '<path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="17" r="2"/>',
+        more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+        terminal:
+          '<rect x="2" y="3" width="20" height="18" rx="2"/><path d="m6 9 3 3-3 3M11 16h5"/>',
+        user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+        document:
+          '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h6"/>',
+        git: '<circle cx="7" cy="6" r="2"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/><path d="M7 8v8M17 16c0-5-10-5-10-10"/>',
+        rows: '<path d="M4 5h16M4 12h16M4 19h16"/>',
+        external: '<path d="M13 3h8v8M21 3l-10 10"/><path d="M20 13v7H4V4h7"/>',
+        filter: '<path d="M3 5h18M7 12h10M10 19h4"/>',
+        bolt: '<path d="m14 2-9 11h7l-2 9 9-12h-7z"/>',
+        pin: '<path d="m8 3 8 0 1 6 3 3v2H4v-2l3-3zM12 14v8"/>',
+        maximize: '<path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/>',
+        minimize: '<path d="M3 9h6V3M21 9h-6V3M3 15h6v6M21 15h-6v6"/>',
+        book: '<path d="M3 19V5a2 2 0 0 1 2-2h5a3 3 0 0 1 2 2 3 3 0 0 1 2-2h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6a3 3 0 0 0-3 0H5a2 2 0 0 1-2-2zM12 5v15"/>',
+        clipboard:
+          '<rect x="4" y="5" width="16" height="17" rx="2"/><path d="M9 5a3 3 0 0 1 6 0M8 13l3 3 5-5"/>',
+        info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+        handover: '<path d="M2 9h12m-4-4 4 4-4 4M22 15H10m4-4-4 4 4 4"/>',
+        diff: '<path d="M6 4v16M18 4v16M2 12h8M14 12h8"/>',
+        calendar:
+          '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>',
+        list: '<path d="M9 5h12M9 12h12M9 19h12M3 5h.01M3 12h.01M3 19h.01"/>',
+      };
+      function ico(name, size = 17) {
+        return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.file}</svg>`;
+      }
+      function escapeHTML(t) {
+        return String(t).replace(
+          /[&<>"']/g,
+          (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[x],
+        );
+      }
+      function statusBadge(status) {
+        const o = {
+          review: ['running', 'W review'],
+          changes: ['attention', 'Do poprawek'],
+          done: ['success', 'Zakończone'],
+          ready: ['neutral', 'Gotowe'],
+          waiting: ['neutral', 'Oczekuje'],
+          active: ['running', 'W toku'],
+          rejected: ['danger', 'Odrzucono'],
+          current: ['running', 'Bieżące'],
+          attention: ['attention', 'Wymaga uwagi'],
+          normal: ['neutral', ''],
+          modified: ['running', 'Zmieniono'],
+          created: ['success', 'Utworzono'],
+          read: ['neutral', 'Odczytano'],
+        };
+        const v = o[status] || o.normal;
+        return `<span class="status ${v[0]}">${v[1] || escapeHTML(status)}</span>`;
+      }
+      function dot(kind) {
+        return `<span class="doti ${kind || ''}"></span>`;
+      }
+    </script>
+    <script>
+      (function () {
+        const $ = (s, base = document) => base.querySelector(s),
+          app = $('#mobile');
+        const st = {
+          scenario: 'long',
+          screen: 'conversation',
+          section: 'summary',
+          stack: [],
+          opened: [],
+          selected: null,
+          dropdown: false,
+          filter: 'all',
+          query: '',
+          limit: 28,
+          historyLimit: 7,
+          artifactQuery: '',
+          fileMode: 'preview',
+          draft: '',
+          toast: '',
+        };
+        const NAV = [
+          ['summary', 'Przegląd'],
+          ['tasks', 'Zadania'],
+          ['files', 'Pliki'],
+          ['history', 'Historia'],
+          ['handovers', 'Przekazania'],
+          ['artifacts', 'Artefakty'],
+          ['instructions', 'Instrukcje'],
+          ['environment', 'Środowisko'],
+        ];
+        const titles = {
+          summary: 'Kontekst',
+          tasks: 'Zadania',
+          files: 'Pliki',
+          history: 'Historia',
+          handovers: 'Przekazania',
+          artifacts: 'Artefakty',
+          instructions: 'Instrukcje',
+          environment: 'Środowisko',
+        };
+        function basic(icon, t, sub, command, side = '') {
+          return `<button type="button" class="row" data-nav="${command}">${ico(icon, 17)}<span class="main"><span class="text">${escapeHTML(t)}</span>${sub ? `<span class="desc">${escapeHTML(sub)}</span>` : ''}</span><span class="right">${side || ico('chevron', 15)}</span></button>`;
+        }
+        function navScreen(kind, id, label) {
+          st.stack.push({ screen: st.screen, section: st.section, selected: st.selected });
+          st.screen = 'detail';
+          st.selected = { kind, id, label };
+          st.fileMode = 'preview';
+          if (kind === 'file' && !st.opened.some((t) => t.id === id && t.kind === kind))
+            st.opened.push({ kind, id, label });
+          render();
+        }
+        function back() {
+          if (st.stack.length) {
+            const last = st.stack.pop();
+            st.screen = last.screen;
+            st.section = last.section;
+            st.selected = last.selected;
+          } else if (st.screen !== 'conversation') {
+            st.screen = 'conversation';
+            st.selected = null;
+          } else st.toast = 'To tylko prototyp widoku sesji.';
+          render();
+        }
+        function context(section) {
+          const target = section || 'summary';
+          if (st.screen === 'conversation') {
+            st.stack.push({ screen: 'conversation', section: st.section, selected: null });
+            st.screen = 'context';
+            st.section = 'summary';
+            st.selected = null;
+          }
+          if (target !== 'summary' && (st.section !== target || st.screen !== 'context')) {
+            st.stack.push({ screen: st.screen, section: st.section, selected: st.selected });
+            st.screen = 'context';
+            st.section = target;
+            st.selected = null;
+          } else if (target === 'summary') {
+            st.screen = 'context';
+            st.section = 'summary';
+            st.selected = null;
+            // Context return is an explicit root action, not a duplicated navigation bar.
+            st.stack = [{ screen: 'conversation', section: 'summary', selected: null }];
+          }
+          st.dropdown = false;
+          render();
+        }
+        function switchSession(s) {
+          st.scenario = s;
+          st.screen = 'conversation';
+          st.section = 'summary';
+          st.selected = null;
+          st.stack = [];
+          st.dropdown = false;
+          st.filter = 'all';
+          st.query = '';
+          st.limit = 28;
+          st.historyLimit = 7;
+          st.opened = [];
+          render();
+        }
+        function renderHeader() {
+          let name = st.scenario === 'new' ? 'Nowy review UX' : 'Review recovery #42';
+          let detail =
+            st.screen === 'conversation'
+              ? 'Sesja AI · ' + (st.scenario === 'new' ? 'Gotowa' : 'W toku')
+              : st.screen === 'context'
+                ? 'Kontekst sesji'
+                : 'Inspekcja';
+          $('#screenTitle').textContent =
+            st.screen === 'conversation'
+              ? name
+              : st.screen === 'context'
+                ? titles[st.section] || 'Kontekst'
+                : st.selected?.label || 'Szczegóły';
+          $('#screenHint').textContent =
+            st.screen === 'conversation'
+              ? st.scenario === 'new'
+                ? 'Reviewer · Claude Code'
+                : 'Reviewer · 3 zadania'
+              : st.screen === 'context'
+                ? st.section === 'summary'
+                  ? 'Kontekst sesji'
+                  : 'Kontekst › ' + titles[st.section]
+                : st.stack.length > 0
+                  ? st.stack
+                      .map((x) => x.selected?.label || titles[x.section] || 'Sesja')
+                      .slice(-2)
+                      .join(' › ')
+                  : detail;
+          $('#backBtn').innerHTML =
+            st.screen === 'conversation' ? ico('context', 20) : ico('back', 21);
+          $('#backBtn').title = st.screen === 'conversation' ? 'Otwórz kontekst' : 'Wstecz';
+          $('#tabBtn').style.display = st.opened.length ? 'grid' : 'none';
+          $('#tabBtn').innerHTML = ico('layers', 20);
+          $('#tabBtn').title = `Otwarte pliki: ${st.opened.length}`;
+          $('#menuBtn').innerHTML = ico('more', 19);
+        }
+        function summary() {
+          if (st.scenario === 'new')
+            return `<div class="label">PRZED PIERWSZYM TURN</div><div class="focus"><strong>Reviewer · 2 zadania do oceny</strong><p>Instrukcje, rola i zakres są już dostępne. Nie powstały jeszcze żadne Work, review ani artefakty.</p></div><div class="chips"><span class="pill blue">Claude Code · Plan</span><span class="pill">feature/session-ui</span></div><div class="label">PRZEKAZANY KONTEKST</div>${basic('book', 'Instrukcje agenta', 'Profil i kryteria review', 'context:instructions')}${basic('list', 'Zadania do weryfikacji', 'TASK-11 · TASK-12', 'context:tasks')}${basic('files', 'Pliki w sesji', 'Brak potwierdzonych operacji', 'context:files')}<div class="alert" style="border-color:#425e75;background:#203044;color:#c4dbf0"><b>Nowa sesja nie jest pusta</b>Brak historii nie oznacza braku kontekstu startowego.</div>`;
+          return `<div class="label">AKTUALNA PRACA</div><div class="focus"><div class="status running" style="margin-bottom:6px">● Review w toku · batch #42</div><strong>Reviewer · 3 zadania</strong><p>TASK-02, TASK-03, TASK-04. Sprawdzanie writer claims i obsługi przerwanych operacji.</p></div><div class="alert"><b>Wymaga uwagi</b>1 nieudany test recovery. Nie przesądzaj wyniku całego Turn.</div><div class="stats"><div class="stat"><strong>146</strong><small>plików</small></div><div class="stat"><strong>13</strong><small>zdarzeń</small></div><div class="stat"><strong>12</strong><small>artefaktów</small></div></div><div class="label">ZAKRES I MATERIAŁY</div>${basic('list', 'Zadania i próby', '9 powiązanych · 3 w aktywnym batchu', 'context:tasks')}${basic('files', 'Pliki i zmiany', '59 zmienionych · 26 nowych · 61 odczytanych', 'context:files')}${basic('clock', 'Historia wykonania', 'Odrzucone próby i kolejność przejść', 'context:history')}${basic('handover', 'Przekazania', '5 przejść · Reviewer / Refiner / Implementer', 'context:handovers')}<div class="label">WYNIKI I KONFIGURACJA</div>${basic('archive', 'Artefakty', 'Review, handover, testy, decyzje', 'context:artifacts')}${basic('book', 'Instrukcje agenta', 'Rola, zasady i zakres', 'context:instructions')}${basic('branch', 'Środowisko', 'feature/recovery · managed worktree', 'context:environment')}`;
+        }
+        function tasks() {
+          let a =
+            st.scenario === 'new'
+              ? [
+                  { id: 'TASK-11', name: 'Dopracować ekran sesji', attempts: 0, status: 'ready' },
+                  { id: 'TASK-12', name: 'Kontrakty evidence', attempts: 0, status: 'waiting' },
+                ]
+              : TASKS;
+          return `<div class="label">${st.scenario === 'new' ? 'ZAKRES STARTOWY' : 'ZADANIA HISTORYCZNE I BIEŻĄCE'}</div>${st.scenario === 'long' ? '<div class="focus"><strong>Batch #42 · TASK-02, TASK-03, TASK-04</strong><p>Wspólny przegląd; osobny werdykt i osobna historia prób dla każdego Task.</p></div>' : ''}${a.map((t) => basic('list', t.id + ' · ' + t.name, (t.attempts || 0) + ' prób · ' + (t.active ? 'w bieżącym batchu' : 'powiązane'), `detail:task:${t.id}`, statusBadge(t.status))).join('')}<div class="caption">Historyczne powiązanie ≠ aktualna wykonywana praca.</div>`;
+        }
+        function files() {
+          if (st.scenario === 'new')
+            return `<div class="empty">${ico('files', 30)}<p>Brak plików odczytanych lub zmodyfikowanych podczas tej sesji.</p><div class="caption">Dokumenty specyfikacji i instrukcje istnieją niezależnie od historii operacji agenta.</div></div>`;
+          let all = FILES.filter(
+            (f) =>
+              (!st.query ||
+                [f.path, f.task].join(' ').toLowerCase().includes(st.query.toLowerCase())) &&
+              (st.filter === 'all' || f.action === st.filter),
+          );
+          const counts = { all: FILES.length, modified: 59, created: 26, read: 61 };
+          return `<div class="label">146 REFERENCJI DO PLIKÓW</div><div class="searchbox">${ico('search', 16)}<input type="search" id="mobileFileSearch" placeholder="Nazwa, ścieżka, zadanie" value="${escapeHTML(st.query)}" autocomplete="off"></div><div class="filterchips">${[
+            ['all', 'Wszystkie'],
+            ['modified', 'Zmienione'],
+            ['created', 'Nowe'],
+            ['read', 'Odczytane'],
+          ]
+            .map(
+              ([k, v]) =>
+                `<button data-filter="${k}" class="${st.filter === k ? 'active' : ''}">${v} · ${counts[k]}</button>`,
+            )
+            .join(
+              '',
+            )}</div><div class="resultcount">${all.length} wyników · wyświetlono ${Math.min(st.limit, all.length)}</div>${all
+            .slice(0, st.limit)
+            .map((f) =>
+              basic(
+                f.kind === 'document' ? 'document' : 'file',
+                f.path.split('/').at(-1),
+                f.path + ' · ' + f.task,
+                `detail:file:${f.id}`,
+                statusBadge(f.action),
+              ),
+            )
+            .join(
+              '',
+            )}${st.limit < all.length ? `<button class="load" data-action="loadFiles">Pokaż kolejne ${Math.min(28, all.length - st.limit)} · zostało ${all.length - st.limit}</button>` : ''}${!all.length ? '<div class="empty">Brak wyników.</div>' : ''}`;
+        }
+        function history() {
+          if (st.scenario === 'new')
+            return `<div class="empty">${ico('clock', 30)}<p>Nie ma jeszcze prób, review ani przekazań.</p></div>`;
+          return `<div class="label">HISTORIA WORKFLOW · 13 ZDARZEŃ</div><p class="small muted">Zdarzenia obejmują powiązane zadania i sesje. Nie są tym samym, co lista ToolAction.</p><div style="margin-top:20px">${HISTORY.slice(
+            0,
+            st.historyLimit,
+          )
+            .map(
+              (h) =>
+                `<div class="event ${h.status === 'rejected' ? 'rejected' : h.status === 'active' ? 'active' : ''}"><div class="when">${h.time} · ${h.scope.join(', ')}</div><div class="headline">${escapeHTML(h.title)}</div><div class="detail">${escapeHTML(h.detail)}</div><button class="textbutton" data-nav="detail:attempt:${h.id}">Zobacz zdarzenie ${ico('chevron', 13)}</button></div>`,
+            )
+            .join(
+              '',
+            )}</div>${st.historyLimit < HISTORY.length ? `<button class="load" data-action="loadHistory">Załaduj starsze · ${HISTORY.length - st.historyLimit} pozostało</button>` : ''}`;
+        }
+        function handovers() {
+          if (st.scenario === 'new')
+            return '<div class="empty">Brak historycznych przekazań dla nowej sesji. Istnieje tylko kontekst startowy.</div>';
+          return `<div class="label">PRZEKAZANIA MIĘDZY ROLAMI</div><p class="small muted">Przekazanie przekazuje kontekst i referencje. Nie przenosi automatycznie writer claim.</p>${TRANSITIONS.map((h) => basic('handover', h.from + ' → ' + h.to, h.title + ' · ' + h.when, `detail:handover:${h.id}`)).join('')}`;
+        }
+        function artifacts() {
+          if (st.scenario === 'new')
+            return `<div class="empty">Brak artefaktów wynikowych. Instrukcje wejściowe nie są artefaktami wykonania.</div>`;
+          let arr = ARTIFACTS.filter(
+            (a) =>
+              !st.artifactQuery ||
+              [a.title, a.detail, ...a.tasks]
+                .join(' ')
+                .toLowerCase()
+                .includes(st.artifactQuery.toLowerCase()),
+          );
+          return `<div class="label">TRWAŁE WYNIKI · ${ARTIFACTS.length}</div><p class="small muted">Review, handover, raport testów, change set, decyzja. Każdy ma źródło i powiązane zadania.</p><div class="searchbox" style="margin-top:13px">${ico('search', 16)}<input id="mobileArtifactSearch" type="search" value="${escapeHTML(st.artifactQuery)}" placeholder="Szukaj artefaktu"></div>${arr.map((a) => basic(a.kind === 'handover' ? 'handover' : a.kind === 'verification' ? 'check' : a.kind === 'changes' ? 'diff' : 'archive', a.title, a.detail, `detail:artifact:${a.id}`, a.status === 'rejected' ? statusBadge('rejected') : a.status === 'attention' ? statusBadge('attention') : ico('chevron', 14))).join('')}`;
+        }
+        function instructions() {
+          return `<div class="label">INSTRUKCJE WEJŚCIOWE</div><div class="focus"><strong>Rola: Reviewer</strong><p>Instrukcje pochodzą z profilu i kontekstu zadania; nie są historyczną odpowiedzią agenta.</p></div><div class="label">CEL</div><p class="document">Przeprowadź niezależny przegląd poprawności workflow, niezawodności Git i recovery. Każde zadanie w batchu otrzymuje odrębny wynik.</p><div class="label">KRYTERIA</div><div class="tasksteps">• Nie uznawaj Turn terminal za workflow complete.<br>• Nie ponawiaj unknown dispatch.<br>• Zidentyfikuj konkretne błędy i sprawdzalne warunki.<br>• W review zbiorczym zachowaj per-Task verdicts.</div><div class="label">ZADANIA</div>${(st.scenario === 'new' ? ['TASK-11', 'TASK-12'] : ['TASK-02', 'TASK-03', 'TASK-04']).map((x) => basic('list', x, 'Kontekst zadania', `detail:task:${x}`)).join('')}<div class="caption">Do projektu backendu: zachować wersję instrukcji i provenance, aby historyczny Turn był odtwarzalny.</div>`;
+        }
+        function environment() {
+          return `<div class="label">ŚRODOWISKO</div>${[
+            ['Project', 'Nevo SpecFlow'],
+            ['Specification', st.scenario === 'new' ? 'Session UI' : 'Stabilizacja Runtime'],
+            ['Workspace', 'ws-recovery-02'],
+            ['Branch', st.scenario === 'new' ? 'feature/session-ui' : 'feature/recovery'],
+            ['Mode', st.scenario === 'new' ? 'Claude · Plan' : 'Codex · Agent'],
+            ['Worktree', 'Managed'],
+            ['Recovery', 'Nie przenosi się przez handover'],
+          ]
+            .map(([k, v]) => `<div class="kv"><span>${k}</span><strong>${v}</strong></div>`)
+            .join(
+              '',
+            )}<div class="alert" style="background:#1f3040;border-color:#405b76;color:#c4d6e9"><b>Provenance jest ważne</b>Historyczne pliki mogą pochodzić z wcześniejszej rewizji i workspace. Bieżący katalog nie zastępuje oryginalnej tożsamości wykonania.</div>`;
+        }
+        function contextBody() {
+          let view = {
+            summary,
+            tasks,
+            files,
+            history,
+            handovers,
+            artifacts,
+            instructions,
+            environment,
+          };
+          return `<div class="content">${(view[st.section] || summary)()}</div>`;
+        }
+        function conversation() {
+          let fresh = st.scenario === 'new';
+          return `<div class="convo">${fresh ? `<div class="assistant-message"><div class="agentlabel">${ico('info', 15)} Kontekst sesji</div><p>Reviewer ma przypisany zakres TASK-11 i TASK-12 oraz instrukcje. Nie rozpoczęto jeszcze żadnego Turn.</p><button class="workref" data-nav="context:instructions">${ico('book', 15)} Przeczytaj instrukcje ${ico('chevron', 14)}</button></div>` : `<div class="message-you">Sprawdź ponownie implementację recovery dla TASK-02, TASK-03 i TASK-04.</div><div class="assistant-message"><div class="agentlabel">${ico('bolt', 15)} Reviewer · Codex</div><p style="color:#b5c8d7">Sprawdzam zmiany w writer claims i przypadki przerwanego procesu.</p><button class="workref" data-nav="detail:work:current">${ico('terminal', 15)} 8 operacji · 4 odczyty · 2 komendy ${ico('chevron', 14)}</button><p>Wcześniejsze review TASK-03 odrzucono. Sprawdzam, czy aktualne zmiany eliminują niejawny retry.</p><button class="filelink" data-nav="detail:file:file-0">${ico('file', 13)} coordinator.ts</button></div><div class="assistant-message"><div class="agentlabel">${ico('bolt', 15)} Reviewer · bieżąca analiza</div><p>Uruchamiam testy restartu Runtime i recovery po SIGKILL.</p><button class="workref" data-nav="detail:work:current">${ico('terminal', 15)} pnpm test · w toku ${ico('chevron', 14)}</button></div>`}</div>`;
+        }
+        function mobileDetail() {
+          let t = st.selected,
+            id = t?.id;
+          switch (t?.kind) {
+            case 'file': {
+              let f = FILES.find((x) => x.id === id) || FILES[0];
+              let txt = f.path.endsWith('md')
+                ? '# Backend\n\n## Recovery\n\nOpis kontraktów i warunków weryfikacji.'
+                : `export async function reconcileTurn(turn) {\n  const evidence = inspect(turn);\n  if (evidence.state === 'unknown') {\n    return requireRecovery(evidence);\n  }\n  return settle(evidence);\n}`;
+              return `<div class="content"><div class="detailhead" style="padding:0"><h2>${escapeHTML(f.path.split('/').at(-1))}</h2><p style="overflow-wrap:anywhere">${escapeHTML(f.path)} · ${f.task}</p></div><div class="chips"><span class="pill">${f.action}</span><span class="pill blue">${f.operations} powiązań</span></div><div class="segmented">${[
+                ['preview', 'Podgląd'],
+                ['diff', 'Diff'],
+                ['history', 'Historia'],
+              ]
+                .map(
+                  ([k, l]) =>
+                    `<button class="${st.fileMode === k ? 'active' : ''}" data-filemode="${k}">${l}</button>`,
+                )
+                .join('')}</div>${
+                st.fileMode === 'preview'
+                  ? `<div class="code">${escapeHTML(txt)}</div>`
+                  : st.fileMode === 'diff'
+                    ? `<div class="diff"><div class="muted">@@ reconcileTurn</div><div class="del">- return retry(turn);</div><div class="add">+ if (evidence.state === 'unknown') {</div><div class="add">+   return requireRecovery(evidence);</div><div class="add">+ }</div><div class="muted">  return settle(evidence);</div></div>`
+                    : HISTORY.slice(0, 4)
+                        .map((h) => basic('clock', h.title, h.time, `detail:attempt:${h.id}`))
+                        .join('')
+              }<div class="caption">Sztuczne dane podglądu. Docelowo potrzebne pewne rewizje i autoryzowany file source.</div></div>`;
+            }
+            case 'task': {
+              let task = TASKS.find((a) => a.id === id) || {
+                id,
+                name: 'Nowe zadanie',
+                attempts: 0,
+                status: 'ready',
+              };
+              return `<div class="content"><div class="label">TASK</div><h2 style="font-size:17px;line-height:1.35;margin:0 0 10px">${id} · ${escapeHTML(task.name)}</h2>${statusBadge(task.status)}<div class="label">PRÓBY I ZDARZENIA</div>${
+                HISTORY.filter((h) => h.scope.includes(id))
+                  .map((h) => basic('clock', h.title, h.time, `detail:attempt:${h.id}`))
+                  .join('') || '<p class="small muted">Brak historycznych prób.</p>'
+              }<div class="label">POWIĄZANE ARTEFAKTY</div>${ARTIFACTS.filter((a) =>
+                a.tasks.includes(id),
+              )
+                .slice(0, 4)
+                .map((a) => basic('archive', a.title, a.detail, `detail:artifact:${a.id}`))
+                .join('')}</div>`;
+            }
+            case 'artifact': {
+              let a = ARTIFACTS.find((x) => x.id === id) || ARTIFACTS[0];
+              return `<div class="content"><div class="label">${a.kind.toUpperCase()} · ${a.date}</div><h2 style="font-size:17px;line-height:1.35">${escapeHTML(a.title)}</h2><div class="focus"><strong>${escapeHTML(a.detail)}</strong><p>Źródło: ${escapeHTML(a.source)}. Powiązany z ${a.tasks.length} zadaniami.</p></div><div class="label">DOWÓD / USTALENIA</div>${a.status === 'rejected' || a.status === 'attention' ? '<div class="alert"><b>Wynik wymaga działania lub ponownej weryfikacji</b>Przed zmianą stanu workflow sprawdź szczegóły i obowiązujący kontrakt.</div>' : '<p class="small muted">Artefakt powstał w konkretnym wykonaniu i posiada źródło oraz zakres.</p>'}<div class="label">ZADANIA</div>${a.tasks.map((task) => basic('list', task, TASKS.find((x) => x.id === task)?.name || '', `detail:task:${task}`)).join('')}<div class="caption">Treść raportu pobierana na żądanie; zachować unikalne artifact ID i rewizję.</div></div>`;
+            }
+            case 'handover': {
+              let h = TRANSITIONS.find((x) => x.id === id) || TRANSITIONS[0];
+              return `<div class="content"><div class="label">PRZEKAZANIE · ${h.when}</div><h2 style="font-size:18px">${h.from} → ${h.to}</h2><div class="focus"><strong>${escapeHTML(h.title)}</strong><p>${escapeHTML(h.notes)}</p></div>${[
+                ['Źródło', h.from],
+                ['Cel', h.to],
+                ['Sesja', h.session],
+                ['Zadania', h.scope.join(', ')],
+              ]
+                .map(([k, v]) => `<div class="kv"><span>${k}</span><strong>${v}</strong></div>`)
+                .join(
+                  '',
+                )}<div class="label">ZAKRES</div>${h.scope.map((x) => basic('list', x, 'Powiązane zadanie', `detail:task:${x}`)).join('')}<div class="caption">Przekazanie to kontekst i referencje, nie automatyczne przekazanie writer claim.</div></div>`;
+            }
+            case 'attempt': {
+              let h = HISTORY.find((x) => x.id === id) || HISTORY[0];
+              return `<div class="content"><div class="label">ZDARZENIE · ${h.time}</div><h2 style="font-size:17px">${escapeHTML(h.title)}</h2><div class="focus"><strong>${h.status === 'rejected' ? 'Odrzucono' : h.status === 'active' ? 'W toku' : h.status === 'warning' ? 'Wymaga uwagi' : 'Zakończono'}</strong><p>${escapeHTML(h.detail)}</p></div><div class="label">ZAKRES</div>${h.scope.map((x) => basic('list', x, 'Zadanie', `detail:task:${x}`)).join('')}${h.ref ? basic('archive', 'Powiązany artefakt / przekazanie', h.ref, `detail:${h.ref.startsWith('ho-') ? 'handover' : 'artifact'}:${h.ref}`) : ''}<div class="caption">Historia prób / transition wymaga stabilnych step+attempt+result. Historia Turn/Work jest osobną osią.</div></div>`;
+            }
+            case 'work':
+              return `<div class="content"><div class="label">WORK · BIEŻĄCY TURN</div>${[
+                ['Odczyt 4 plików', 'completed'],
+                ['Przeszukanie repository', 'completed'],
+                ['pnpm test', 'active'],
+              ]
+                .map(([a, b]) => basic('terminal', a, b, 'detail:tool:cmd'))
+                .join(
+                  '',
+                )}<div class="caption">Pogrupowane Work L2. Tap otwiera ToolAction L4.</div></div>`;
+            case 'tool':
+              return `<div class="content"><div class="label">TOOLACTION · COMMAND</div><div class="code">pnpm test --filter specflow-runtime</div><div class="label">OUTPUT</div><div class="code">Starting...\n122 tests pass\nRecovery test running</div><p class="caption">Raw output jest stronicowany i redagowany przed wyświetleniem.</p></div>`;
+            default:
+              return '<div class="empty">Brak szczegółów.</div>';
+          }
+        }
+        function render() {
+          renderHeader();
+          $('#contentBody').innerHTML =
+            st.screen === 'conversation'
+              ? conversation()
+              : st.screen === 'context'
+                ? contextBody()
+                : mobileDetail();
+          $('#contentBody').scrollTop = 0;
+          $('#conversationFooter').style.display = st.screen === 'conversation' ? 'block' : 'none';
+          $('#live').style.display = st.screen === 'conversation' ? 'flex' : 'none';
+          $('#live').innerHTML =
+            ico(st.scenario === 'new' ? 'check' : 'bolt', 14) +
+            (st.scenario === 'new'
+              ? 'Sesja gotowa do pierwszej wiadomości'
+              : 'Review · uruchamianie testów');
+          $('#composer').placeholder =
+            st.scenario === 'new' ? 'Napisz pierwszą wiadomość...' : 'Odpowiedz agentowi...';
+          $('#model').textContent = st.scenario === 'new' ? 'Claude Code · Plan' : 'Codex · Agent';
+          $('#tabDrop').style.display = st.dropdown ? 'block' : 'none';
+          if (st.dropdown) {
+            $('#tabDrop').innerHTML =
+              `<div style="padding:8px;color:#8fa9bd;font-size:10px">OTWARTE PLIKI · ${st.opened.length}</div>${st.opened.map((i) => `<button data-openfile="${i.kind}:${i.id}">${ico('file', 16)} <span class="item-name">${escapeHTML(i.label)}</span><span class="remove" data-removefile="${i.id}">×</span></button>`).join('')}<button data-nav="context:summary">${ico('context', 16)} <span>Wróć do kontekstu</span></button><div style="border-top:1px solid #40566a;margin:6px 0;padding:7px;color:#93a9bc;font-size:10px">SCENARIUSZ MAKIE­TY</div><button data-action="scenarioLong">Długa sesja ${st.scenario === 'long' ? '✓' : ''}</button><button data-action="scenarioNew">Nowa sesja ${st.scenario === 'new' ? '✓' : ''}</button>`;
+          }
+        }
+        app.addEventListener('click', (e) => {
+          let del = e.target.closest('[data-removefile]');
+          if (del) {
+            e.stopPropagation();
+            st.opened = st.opened.filter((x) => x.id !== del.dataset.removefile);
+            st.dropdown = false;
+            render();
+            return;
+          }
+          let of = e.target.closest('[data-openfile]');
+          if (of) {
+            let [kind, id] = of.dataset.openfile.split(':');
+            let match = st.opened.find((x) => x.id === id);
+            st.dropdown = false;
+            navScreen(kind, id, match?.label || id);
+            return;
+          }
+          let sec = e.target.closest('[data-section]');
+          if (sec) {
+            context(sec.dataset.section);
+            return;
+          }
+          let filter = e.target.closest('[data-filter]');
+          if (filter) {
+            st.filter = filter.dataset.filter;
+            st.limit = 28;
+            render();
+            return;
+          }
+          let mode = e.target.closest('[data-filemode]');
+          if (mode) {
+            st.fileMode = mode.dataset.filemode;
+            render();
+            return;
+          }
+          let n = e.target.closest('[data-nav]');
+          if (n) {
+            let val = n.dataset.nav;
+            if (val === 'conversation') {
+              st.screen = 'conversation';
+              st.dropdown = false;
+              render();
+              return;
+            }
+            if (val === 'back') {
+              back();
+              return;
+            }
+            if (val.startsWith('context:')) {
+              context(val.split(':')[1]);
+              return;
+            }
+            if (val.startsWith('detail:')) {
+              let [, kind, id] = val.split(':');
+              let label =
+                kind === 'file'
+                  ? (FILES.find((f) => f.id === id)?.path || id).split('/').at(-1)
+                  : kind === 'task'
+                    ? id
+                    : kind === 'artifact'
+                      ? ARTIFACTS.find((a) => a.id === id)?.title || id
+                      : kind === 'handover'
+                        ? TRANSITIONS.find((h) => h.id === id)?.title || 'Przekazanie'
+                        : kind === 'attempt'
+                          ? HISTORY.find((h) => h.id === id)?.title || 'Zdarzenie'
+                          : kind === 'work'
+                            ? 'Work'
+                            : 'ToolAction';
+              navScreen(kind, id, label);
+              return;
+            }
+          }
+          let a = e.target.closest('[data-action]');
+          if (!a) return;
+          switch (a.dataset.action) {
+            case 'back':
+              if (st.screen === 'conversation') context('summary');
+              else back();
+              break;
+            case 'tabs':
+              st.dropdown = !st.dropdown;
+              render();
+              break;
+            case 'menu':
+              st.dropdown = !st.dropdown;
+              render();
+              break;
+            case 'scenarioLong':
+              switchSession('long');
+              break;
+            case 'scenarioNew':
+              switchSession('new');
+              break;
+            case 'loadFiles':
+              st.limit += 28;
+              $('#contentBody').innerHTML = contextBody();
+              break;
+            case 'loadHistory':
+              st.historyLimit += 6;
+              $('#contentBody').innerHTML = contextBody();
+              break;
+            case 'send':
+              $('#toast').textContent = 'Makieta — nie wysyła wiadomości.';
+              break;
+          }
+        });
+        app.addEventListener('input', (e) => {
+          let field = e.target;
+          if (field.id === 'mobileFileSearch' || field.id === 'mobileArtifactSearch') {
+            let v = field.value,
+              position = field.selectionStart,
+              scroll = $('#contentBody').scrollTop;
+            if (field.id === 'mobileFileSearch') {
+              st.query = v;
+              st.limit = 28;
+            } else st.artifactQuery = v;
+            $('#contentBody').innerHTML = contextBody();
+            $('#contentBody').scrollTop = scroll;
+            let f = $('#' + field.id);
+            if (f) {
+              f.focus();
+              f.setSelectionRange(position, position);
+            }
+          }
+        });
+        render();
+      })();
+    </script>
+    <script>
+      /* Composer concept demo only. No network upload, permissions, provider execution or send. */
+      (function () {
+        const root = document.getElementById('cxAttach');
+        if (!root) return;
+        const host = root.closest('.composer-wrap,.composerwrap');
+        const pop = document.getElementById('cxPop');
+        const mobile = !!document.getElementById('mobile');
+        const demo = {
+          provider: 'codex',
+          intent: 'agent',
+          approval: 'standard',
+          model: 'default',
+          effort: 'High',
+          open: null,
+          attachments: [
+            { id: 'sample-screenshot', name: 'screen-recovery.png', kind: 'image', demo: true },
+          ],
+        };
+        const CAT = {
+          codex: {
+            label: 'Codex',
+            intents: [
+              { id: 'agent', name: 'Agent', desc: 'Działania w ograniczonym workspace.' },
+              { id: 'plan', name: 'Plan', desc: 'Przygotuj plan bez zapisu do repo.' },
+              {
+                id: 'ask',
+                name: 'Ask',
+                desc: 'Wymaga certyfikacji trybu read-only.',
+                disabled: true,
+              },
+            ],
+            approvals: [
+              {
+                id: 'standard',
+                name: 'Kontrolowany',
+                desc: 'Natywne on-request + workspace sandbox.',
+              },
+            ],
+            models: [
+              { id: 'default', name: 'Domyślny model', efforts: ['Low', 'Medium', 'High'] },
+              { id: 'alternate', name: 'Alternatywny', efforts: ['Medium', 'High'] },
+            ],
+          },
+          claude: {
+            label: 'Claude Code',
+            intents: [
+              { id: 'agent', name: 'Agent', desc: 'Praca z dopuszczonymi narzędziami.' },
+              { id: 'plan', name: 'Plan', desc: 'Natywny plan bez modyfikacji.' },
+              {
+                id: 'ask',
+                name: 'Ask',
+                desc: 'Wymaga osobnej certyfikacji odpowiedzi read-only.',
+                disabled: true,
+              },
+            ],
+            approvals: [
+              { id: 'manual', name: 'Manual', desc: 'Natywne zapytania o operacje.' },
+              {
+                id: 'acceptEdits',
+                name: 'Accept Edits',
+                desc: 'Automatycznie akceptuje edycje, nie wszystkie komendy.',
+              },
+              {
+                id: 'auto',
+                name: 'Auto',
+                desc: 'Automatyzacja z oceną ryzyka; dostępność zależy od CLI.',
+                disabled: true,
+              },
+              {
+                id: 'dontAsk',
+                name: "Don't Ask",
+                desc: 'Odmowa niedozwolonych operacji; semantyka natywna.',
+              },
+            ],
+            models: [
+              { id: 'default', name: 'Model domyślny', efforts: ['Medium', 'High'] },
+              { id: 'alternate', name: 'Inny model', efforts: ['Low', 'Medium', 'High'] },
+            ],
+          },
+        };
+        const $ = (q) => document.querySelector(q);
+        const esc = (x) =>
+          String(x).replace(
+            /[&<>"']/g,
+            (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s],
+          );
+        function catalogue() {
+          return CAT[demo.provider];
+        }
+        function selection() {
+          return catalogue().intents.find((x) => x.id === demo.intent);
+        }
+        function activePolicy() {
+          return (
+            catalogue().approvals.find((x) => x.id === demo.approval) || catalogue().approvals[0]
+          );
+        }
+        function model() {
+          return catalogue().models.find((x) => x.id === demo.model) || catalogue().models[0];
+        }
+        function renderToolbar() {
+          const isAgent = demo.intent === 'agent';
+          $('#cxIntent').textContent = (selection()?.name || 'Agent') + ' ▾';
+          const a = $('#cxApproval');
+          a.hidden = !isAgent;
+          a.textContent = activePolicy().name + (catalogue().approvals.length > 1 ? ' ▾' : '');
+          a.disabled = catalogue().approvals.length === 1;
+          a.title = a.disabled ? activePolicy().desc : 'Zatwierdzanie operacji (presety providera)';
+          $('#cxModel').textContent = model().name + ' · ' + demo.effort + ' ▾';
+        }
+        function showAttachments() {
+          root.innerHTML = demo.attachments
+            .map(
+              (a) =>
+                '<div class="cx-asset">' +
+                (a.url
+                  ? '<img alt="" src="' + esc(a.url) + '">'
+                  : '<span aria-hidden="true">' +
+                    (a.kind === 'image' ? '▧' : a.kind === 'ref' ? '⌁' : '▤') +
+                    '</span>') +
+                '<span class="cx-name" title="' +
+                esc(a.name) +
+                '">' +
+                esc(a.name) +
+                '</span><button type="button" class="cx-remove" data-cx="remove" data-id="' +
+                esc(a.id) +
+                '" aria-label="Usuń ' +
+                esc(a.name) +
+                '">×</button></div>',
+            )
+            .join('');
+        }
+        function menuEntry(title, sub, cmd, value, checked, disabled) {
+          return (
+            '<button type="button" data-cx="' +
+            cmd +
+            '" data-value="' +
+            esc(value || '') +
+            '" ' +
+            (disabled ? 'disabled' : '') +
+            '><span><strong>' +
+            esc(title) +
+            '</strong>' +
+            (sub ? '<small>' + esc(sub) + '</small>' : '') +
+            '</span>' +
+            (checked ? '<span class="cx-check">✓</span>' : '') +
+            '</button>'
+          );
+        }
+        function close() {
+          demo.open = null;
+          pop.hidden = true;
+        }
+        function renderMenu(menu) {
+          demo.open = menu;
+          pop.hidden = false;
+          pop.classList.toggle('align-right', menu === 'model');
+          let inner = '';
+          if (menu === 'attach') {
+            inner = '<h4>Dodaj do wiadomości</h4>';
+            if (mobile)
+              inner += menuEntry(
+                'Zrób zdjęcie',
+                'Otwórz aparat, jeśli urządzenie na to pozwala',
+                'takeCamera',
+                '',
+              );
+            inner += menuEntry('Wybierz zdjęcia', 'Obrazy z urządzenia', 'pickImage', '');
+            inner += menuEntry('Dodaj plik', 'Plik lokalny do przesłania', 'pickFile', '');
+            inner += menuEntry(
+              mobile ? 'Plik z projektu' : 'Plik z repozytorium',
+              'Dodaj referencję do istniejącego pliku',
+              'addRepo',
+              '',
+            );
+            inner +=
+              '<div class="cx-help">Makieta: pliki pozostają lokalnie w przeglądarce; nic nie jest wysyłane do agenta.</div>';
+          } else if (menu === 'intent') {
+            inner = '<h4>Tryb pracy · ' + esc(catalogue().label) + '</h4>';
+            inner += catalogue()
+              .intents.map((x) =>
+                menuEntry(x.name, x.desc, 'intent', x.id, x.id === demo.intent, x.disabled),
+              )
+              .join('');
+            inner +=
+              '<div class="cx-help">Ask / Plan / Agent są dostępne tylko po potwierdzeniu semantyki i ograniczeń adaptera.</div>';
+          } else if (menu === 'approval') {
+            inner = '<h4>Polityka operacji · ' + esc(catalogue().label) + '</h4>';
+            inner += catalogue()
+              .approvals.map((x) =>
+                menuEntry(x.name, x.desc, 'approval', x.id, x.id === demo.approval, x.disabled),
+              )
+              .join('');
+            inner +=
+              '<div class="cx-help">To nie są decyzje dotyczące zamykania zadań ani akceptacji review w Engine.</div>';
+          } else if (menu === 'model') {
+            inner = '<h4>Model · ' + esc(catalogue().label) + '</h4>';
+            inner += catalogue()
+              .models.map((x) =>
+                menuEntry(
+                  x.name,
+                  'Poziomy effort: ' + x.efforts.join(', '),
+                  'model',
+                  x.id,
+                  x.id === demo.model,
+                  false,
+                ),
+              )
+              .join('');
+            inner += '<h4>Effort</h4><div class="cx-efforts">';
+            inner += model()
+              .efforts.map(
+                (e) =>
+                  '<button type="button" data-cx="effort" data-value="' +
+                  esc(e) +
+                  '" class="' +
+                  (demo.effort === e ? 'selected' : '') +
+                  '">' +
+                  esc(e) +
+                  '</button>',
+              )
+              .join('');
+            inner +=
+              '</div><div class="cx-help">Nazwy modeli są przykładowe. Docelowo lista pochodzi z katalogu providera i zależy od wersji CLI.</div>';
+          }
+          pop.innerHTML = inner;
+        }
+        function addFile(file) {
+          if (!file) return;
+          const kind = file.type.startsWith('image/') ? 'image' : 'file';
+          const url = kind === 'image' ? URL.createObjectURL(file) : undefined;
+          demo.attachments.push({
+            id: 'local-' + Math.random().toString(36).slice(2),
+            name: file.name,
+            kind,
+            url,
+          });
+          showAttachments();
+          close();
+        }
+        function onInput(e) {
+          Array.from(e.target.files || []).forEach(addFile);
+          e.target.value = '';
+        }
+        function notify() {
+          const node = $('#sendFeedback') || $('#toast');
+          if (node) node.textContent = 'Makieta: bez wysyłania do agenta.';
+        }
+        host.addEventListener('click', (e) => {
+          const t = e.target.closest('[data-cx]');
+          if (!t) return;
+          e.stopPropagation();
+          const cmd = t.dataset.cx,
+            v = t.dataset.value;
+          if (cmd === 'open') {
+            demo.open === t.dataset.menu ? close() : renderMenu(t.dataset.menu);
+            return;
+          }
+          if (cmd === 'remove') {
+            const i = demo.attachments.findIndex((a) => a.id === t.dataset.id);
+            if (i >= 0) {
+              const [a] = demo.attachments.splice(i, 1);
+              if (a.url) URL.revokeObjectURL(a.url);
+            }
+            showAttachments();
+            return;
+          }
+          if (cmd === 'intent') {
+            demo.intent = v;
+            if (v === 'plan') demo.approval = 'standard';
+            else demo.approval = catalogue().approvals[0].id;
+            renderToolbar();
+            close();
+            return;
+          }
+          if (cmd === 'approval') {
+            demo.approval = v;
+            renderToolbar();
+            close();
+            return;
+          }
+          if (cmd === 'model') {
+            demo.model = v;
+            demo.effort = model().efforts.at(-1);
+            renderToolbar();
+            renderMenu('model');
+            return;
+          }
+          if (cmd === 'effort') {
+            demo.effort = v;
+            renderToolbar();
+            close();
+            return;
+          }
+          if (cmd === 'pickImage') {
+            $('#cxImageInput').click();
+            close();
+            return;
+          }
+          if (cmd === 'pickFile') {
+            $('#cxFileInput').click();
+            close();
+            return;
+          }
+          if (cmd === 'takeCamera') {
+            $('#cxCameraInput').click();
+            close();
+            return;
+          }
+          if (cmd === 'addRepo') {
+            demo.attachments.push({
+              id: 'repo-' + Math.random().toString(36).slice(2),
+              name: 'src/features/recovery.ts',
+              kind: 'ref',
+            });
+            showAttachments();
+            close();
+            return;
+          }
+        });
+        $('#cxImageInput').addEventListener('change', onInput);
+        $('#cxFileInput').addEventListener('change', onInput);
+        $('#cxCameraInput').addEventListener('change', onInput);
+        document.addEventListener('click', (e) => {
+          if (!host.contains(e.target)) close();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && demo.open) {
+            close();
+            e.stopPropagation();
+          }
+        });
+        const hidden = $('#modeLabel') || $('#model');
+        function providerChanged() {
+          const next = (hidden.textContent || '').includes('Claude') ? 'claude' : 'codex';
+          if (next !== demo.provider) {
+            demo.provider = next;
+            demo.intent = next === 'claude' ? 'plan' : 'agent';
+            demo.approval = catalogue().approvals[0].id;
+            demo.model = 'default';
+            demo.effort = model().efforts.at(-1);
+            demo.attachments.forEach((a) => {
+              if (a.url) URL.revokeObjectURL(a.url);
+            });
+            demo.attachments =
+              next === 'claude'
+                ? []
+                : [
+                    {
+                      id: 'sample-screenshot',
+                      name: 'screen-recovery.png',
+                      kind: 'image',
+                      demo: true,
+                    },
+                  ];
+            showAttachments();
+            close();
+          }
+          renderToolbar();
+        }
+        new MutationObserver(providerChanged).observe(hidden, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
+        providerChanged();
+        showAttachments();
+      })();
+    </script>
+  </body>
+</html>

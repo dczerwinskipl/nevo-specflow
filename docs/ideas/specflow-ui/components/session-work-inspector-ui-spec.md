@@ -35,6 +35,16 @@ related:
 
 ## 1. Responsibility
 
+**Owner-approved V10 grouping direction:** [V10 Work UX](session-chat-v10-design.md)
+with [desktop](../examples/session-chat-v10/desktop.html) and
+[mobile](../examples/session-chat-v10/mobile.html) standalone synthetic examples.
+A Commentary item forms a Markdown section and groups following operations until the next
+Commentary; Thinking is a separately labelled, optional reasoning _summary_ inside the
+section; search/filters preserve its Commentary context. Paginate 100+ Work entries.
+Exact Work detail and ToolAction are local stack children; chat-origin mobile Back
+returns directly from the Work root to Conversation. Do not reproduce mock icon/CSS/JS
+or treat provider output fixtures as implemented API capabilities.
+
 Work inspection answers:
 
 > What did the agent/runtime actually do?

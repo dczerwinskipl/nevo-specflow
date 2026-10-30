@@ -595,6 +595,40 @@ composition/override point; SpecFlow supplies the product-aware resolver.
 
 ---
 
+## 5.4 P1 — Workspace V2 dynamic auto/manual split and tab-root ownership (new)
+
+**Implementation status: missing shared Design System contract.** V2's accepted geometry
+cannot be implemented by selecting a static AppWorkspace split preset per active inspector.
+
+- Only pinned Context open -> narrow Secondary (~330px when viable).
+- User opens a second **independent root tab** -> 50/50 once in automatic mode.
+- Switching existing tabs or opening dependent Task/attempt/ToolAction details must not resize.
+- Manual drag wins over later automatic tab-count changes; side swapping preserves ratio/state.
+- Auto mode returns to narrow when only Context remains. Closing Secondary remains explicit.
+- When pane widths become infeasible, use the existing stacked/narrow workspace model,
+  preserve the user's preferred manual ratio and restore when split becomes viable.
+- Split decisions use **actual AppWorkspace available width**, not global viewport width.
+- Tab-local stacks, scroll, focus, Conversation draft and source-aware Back survive resizing.
+
+This requires a reusable resize/separator and auto/manual sizing state owned by the shared
+workspace composition, not by one Session feature. Pointer/keyboard/touch operation, focus
+and minimum viable pane widths must follow Design System conventions.
+
+See [V10 dynamic split behavior](components/session-chat-v10-design.md#7-dynamic-workspace-split-shared-design-system-capability-gap)
+and [Workspace V2 section 10](full-session-screen-structure.md#102-desktop-geometry).
+The prototype's width buttons are test controls, not an approved production toolbar.
+
+## 5.5 P1 — Session Composer icon-only mobile density (known acceptance exception)
+
+The V10 UX direction is accepted **except** its mobile Composer square/diamond symbols and
+overflowing second-row glyphs. They are non-semantic mock SVGs, not approved DS icons.
+Use existing MessageComposer, Menu, IconButton, Tooltip, accessible labels, grouped
+configuration options, DS touch targets and responsive spacing. Do not copy mock HTML.
+Verify 390px, smaller supported widths, text scaling and soft keyboard. Work intent,
+operation approval, model and effort must be individually understandable.
+
+---
+
 # 6. Product/foundation decisions exposed by the current components
 
 ## 6.1 Resolved — Floating Session is Wide-only
@@ -610,25 +644,18 @@ That now matches the product contract:
 This is no longer a design-system gap. Do not broaden generic floating-window support merely for
 SpecFlow parity.
 
-## 6.2 P2 — Secondary presentation/sizing by detail kind
+## 6.2 P1 — sizing is governed by tab roots and manual override, not detail kind
 
-Current `AppWorkspace` supports root-level split modes:
+Current AppWorkspace provides split presets primary, balanced, and secondary. They do not
+implement the accepted V2 interaction contract by themselves. The former proposal to
+change split size based on selected Work/File/Task detail would break V2: **a detail or tab
+switch must not resize the workspace**.
 
-- primary;
-- balanced;
-- secondary.
-
-That is enough to prototype:
-
-- Context -> primary-emphasis;
-- Work -> balanced/primary-emphasis;
-- File -> balanced/secondary-emphasis.
-
-A runtime Secondary entry does not currently carry its own presentation/sizing hint.
-
-Do not extend the API yet. Let the Full Session composition control `split` from selected inspector
-state first. Add a generic Secondary presentation hint only if multiple consumers demonstrate the
-same behavior and the root-controlled approach becomes awkward.
+The desired shared behavior is recorded in §5.4 and the V10 dynamic split specification.
+Keep each independent root tab's detail stack and focus; geometry derives only from the
+auto/manual layout state, tab-root count and physical pane-width constraints. Do not add
+per-Work/per-File implicit sizing hints as a substitute. Desktop full-width inspection,
+if later supported, is an explicit user action, not a consequence of selecting a tab.
 
 ---
 

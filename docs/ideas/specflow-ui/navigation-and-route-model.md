@@ -206,28 +206,44 @@ implementations in multiple dialogs:
 
 Exact visual composition and optional advanced fields remain product-design details.
 
-## 8. Full Session navigation
+## 8. Full Session navigation — Workspace V2 accepted
 
-Full Session is a first-class routable product surface but not a global sidebar destination.
+Full Session is a first-class routable product surface, not a global sidebar destination.
+See [Full Session Workspace V2](full-session-screen-structure.md#101-root-tabs-versus-local-stacks)
+and [owner-approved Session Chat V10](components/session-chat-v10-design.md)
+and its [desktop](examples/session-workspace-v2/desktop.html) /
+[mobile](examples/session-workspace-v2/mobile.html) interactive examples.
 
-On split-capable entry with no user-selected inspection detail:
+With split-capable entry, Conversation Primary is shown beside **Context as a pinned home tab**
+in Secondary. Context summaries open/reselect independent root tabs, such as Tasks, Files, History,
+Handovers, Work or independently addressable artifacts; Task-bound attempts/events and
+Work-bound ToolActions drill into the active root tab's own local stack. A file may have an
+independent tab. Context does not duplicate all section navigation as another button row.
+Tabs preserve local detail state and do not become new product routes.
 
-```text
-Conversation Primary | Context Secondary
-```
+Only Context open defaults to narrow Secondary. Opening a second root tab defaults to 50/50.
+Tab switching does not change the ratio. Manual resize retains priority; optional side swapping
+does not alter navigation ownership. Exact implementation of resizing and breakpoint constraints
+is still future work for the shared Workspace primitives.
 
-Context may be closed and should remain closed until explicitly reopened.
+On Narrow, enter Conversation first. Use header-level navigation and local Back for Context,
+tab roots and detail; **no bottom tab strip**. Source provenance (Task/attempt) stays visible.
+Live Session activity never auto-opens tabs or takes over inspection. Pending Session interaction
+remains available in Conversation Primary.
 
-Secondary is one local inspection surface. User actions can replace Context with a more specific
-detail, for example Task, Handover, artifact, verification, Work detail, command/search group, or
-future File preview. Back walks this local detail stack.
+**Origin-aware detail launch (accepted V10):** clicking an event annotation in chat opens
+that exact event/attempt, not a generic Tasks list. On mobile the next Back returns
+directly to Conversation; if the user follows the event's related Task, Back unwinds
+Task -> event -> Conversation. Opening the same event from the Tasks root returns along
+that root's local stack instead. Work from chat opens the owning Turn's Work root,
+with item/ToolAction drill-in in the local stack. Preserve draft, scroll and source origin.
 
-Normal Session activity must never auto-switch Secondary. A pending human interaction is surfaced in
-Primary and may offer an explicit action to open additional detail; it does not forcibly steal the
-user's current inspector.
-
-On narrow layouts, Conversation is the Full Session entry. Context and inspection details are pushed
-local surfaces opened by explicit user actions.
+The accepted dynamic split is based on **number of open independent root tabs** and an
+auto/manual geometry preference, not on selected tab or dependent detail kind. Context-only
+defaults narrow, opening a second root defaults 50/50; manual drag overrides auto until
+changed. On narrow screens, one header-driven surface and Back replace the split.
+The shared DS AppWorkspace still needs this behavior (see
+[V10 split contract](components/session-chat-v10-design.md#7-dynamic-workspace-split-shared-design-system-capability-gap)).
 
 ## 9. Full Session return context
 
@@ -259,8 +275,8 @@ Routable state includes, as appropriate:
 Local state includes:
 
 - selected Task Preview Secondary;
-- Context/detail inspector stack;
-- Handover/artifact/Work/File detail opened in Secondary;
+- pinned Context tab and independently open Secondary tabs, each with a local detail stack;
+- Handover/artifact/Work/File inspection state within tabs and tab-local stacks;
 - Floating Session position/size/minimized order;
 - transient disclosure, hover, and focus state.
 

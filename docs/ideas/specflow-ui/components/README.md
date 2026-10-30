@@ -64,13 +64,18 @@ Each state/example SHOULD include:
 
 Do not create visual fixtures from hand-wavy labels without a corresponding state payload.
 
+The [accepted Session Chat V10 UX direction](session-chat-v10-design.md) is the current
+conversation/Composer/Work presentation reference. Its HTML examples are synthetic;
+mobile Composer iconography is explicitly unapproved and must use Design System components.
+
 ## Index
 
-| Large composition             | Responsibility                                                                                          | Status                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Session conversation          | User/assistant conversation, Commentary, compact Work summary, current activity, interaction, composer. | [Session conversation UI spec](session-conversation-ui-spec.md)           |
-| Session Work inspector        | Expanded Work timeline, individual Work item and ToolAction detail, every tool kind.                    | [Session Work inspector UI spec](session-work-inspector-ui-spec.md)       |
-| Task decision/evidence        | Task state + reason + evidence + action.                                                                | [Task decision/evidence UI spec](task-decision-evidence-ui-spec.md)       |
-| Spec steering item/collection | Attention/ready/working/issue summaries and direct context targets.                                     | [Spec steering UI spec](spec-steering-ui-spec.md)                         |
-| Settings catalog renderer     | Dynamic backend-owned Settings descriptors -> linear Settings UI.                                       | [Settings catalog renderer UI spec](settings-catalog-renderer-ui-spec.md) |
-| File/diff inspector           | File preview, diff inspection, IDE escalation.                                                          | Deferred to developer-workspace capability                                |
+| Large composition             | Responsibility                                                                                   | Status                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Session conversation          | User/assistant conversation, Commentary, compact Work summary, current activity and interaction. | [Session conversation UI spec](session-conversation-ui-spec.md)           |
+| Session Composer              | Approved V10 authoring interaction; mobile icons and provider capabilities remain to resolve.    | [Composer capabilities](session-composer-design.md)                       |
+| Session Work inspector        | Commentary-grouped Work, Thinking summaries, exact Work and ToolAction details.                  | [Session Work inspector UI spec](session-work-inspector-ui-spec.md)       |
+| Task decision/evidence        | Task state + reason + evidence + action.                                                         | [Task decision/evidence UI spec](task-decision-evidence-ui-spec.md)       |
+| Spec steering item/collection | Attention/ready/working/issue summaries and direct context targets.                              | [Spec steering UI spec](spec-steering-ui-spec.md)                         |
+| Settings catalog renderer     | Dynamic backend-owned Settings descriptors -> linear Settings UI.                                | [Settings catalog renderer UI spec](settings-catalog-renderer-ui-spec.md) |
+| File/diff inspector           | File preview, diff inspection, IDE escalation.                                                   | Deferred to developer-workspace capability                                |

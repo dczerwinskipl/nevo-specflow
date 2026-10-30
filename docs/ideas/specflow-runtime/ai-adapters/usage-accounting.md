@@ -195,5 +195,61 @@ defines compatible units/windows.
 
 ## Migration note
 
+### Implementation checkpoint and requested telemetry follow-up
+
+At PR #107, the worker already handles deduplicated `delta`, `turn-total` and
+`session-cumulative` token samples and persists cumulative baselines. Claude maps
+authoritative result input/output/cache-read counts; Codex and Antigravity map
+cumulative native counters, including numeric reasoning counts where supplied.
+This does not provide complete billing or context accounting. Legacy Nevo's
+optional `usage.cost` is not yet represented in the new canonical Turn contract.
+Claude cache-creation counters are not represented either.
+
+The proposed read-only extension is one Session telemetry response containing
+distinct `usage`, `cost`, `limits` and `context` objects. This is a design proposal,
+not an implemented endpoint. Keep Turn detail available and offer Session rollups
+without loading transcript content or replaying every history page. Account quota
+may be composed into this response only through account-scoped authorization;
+it must not become a Session-owned quota ledger or expose native account identity.
+
+Each group needs explicit availability (available/partial/unavailable), a bounded
+reason, provenance, observation time and freshness. Missing data is not zero.
+Capability metadata must distinguish unsupported fields from temporarily stale
+observations. Requests may read cached observations; explicit refresh must be
+bounded, rate-limited and coalesced, never perform inference or replay a Turn.
+
+- `usage`: input, output, cache-read/cache-write and reasoning counters, with
+  accounting basis and coverage. Cached/reasoning counts may overlap other totals;
+  do not present their sum as total tokens without a verified provider definition.
+- `cost`: currency and precise decimal amount, scope and provider-reported versus
+  estimated basis. A provider's API-equivalent cost is not necessarily a charge
+  under a subscription. Do not add estimated pricing until model/pricing version,
+  token dimensions and subscription semantics have an explicit contract.
+- `limits`: provider-exposed account/model windows, used/remaining in their native
+  units, reset time and optional credits. They are not derived from Session usage;
+  zero credit balance alone does not establish unavailable subscription access.
+- `context`: latest provider-reported occupied tokens, effective capacity and
+  compaction observation for the exact native context/model. Separate this gauge
+  from cumulative consumption. Optional non-overlapping components can cover
+  instructions/tools, conversation, tool results, attachments and provider state
+  only when the provider supplies attributable evidence. Include an unknown or
+  unclassified remainder; never fabricate a category split from transcript bytes.
+
+Provider source audit: Codex currently reads `account/rateLimits/read` during
+probing but does not project its windows; its usage parser consumes `total` and
+does not project current context occupancy. Claude currently ignores
+`rate_limit_event` and does not map reported monetary fields. Antigravity's
+current parser maps token counters only. Observing these surfaces is not proof
+of the semantics of every version: add bounded fixtures and validate the exact
+source fields before enabling a dimension. No unknown CLI or real subscription
+may be invoked by automated telemetry tests.
+
+Deliver in stages: explicit telemetry contracts and token/cost observation;
+account-limit adapters/cache; then current-context capacity/breakdown where native
+evidence exists. Regression cases include restart/replay, missing baselines,
+compaction/reset, model/account change, stale credentials/events, unavailable
+dimensions and read authorization. This is a separate capability from the MCP
+transport extraction; do not claim it shipped with PR #107.
+
 Add this while canonical usage is still being migrated. Once persisted historical totals exist,
 changing from "sum every event" to basis-aware accounting becomes much harder.

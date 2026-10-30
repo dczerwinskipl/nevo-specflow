@@ -96,6 +96,13 @@ activity, not invented intent or exposure of private model internals.
 | Model modalities/context-capacity metadata                           | Legacy has advisory metadata and batch context-capacity snapshots. Current model descriptors expose IDs/titles/efforts only. Restore richer traits only with trustworthy adapter provenance; metadata alone is not an image-upload implementation. |
 | Antigravity effort selection                                         | Intentionally unavailable until native discovery supplies supported values. Legacy's arbitrary --effort forwarding is not safety evidence.                                                                                                         |
 
+Usage migration is also incomplete: legacy canonical Turn usage retained optional
+`cost` (including Antigravity mappings). Current canonical Turn usage contains
+input/output/cache-read/reasoning token counters only. Dollar costs, account quota
+windows and current native context occupancy/breakdown have no public production
+projection. A successful token mapping does not imply these are implemented.
+See [usage accounting and telemetry follow-up](ai-adapters/usage-accounting.md).
+
 Not proven lost functionality: no legacy attachment upload pipeline was found in
 the inspected Session dispatch, which sends message/prompt strings. Cursor in V10
 is a prototype fixture, not evidence of an old adapter to migrate. Quota reset

@@ -6,20 +6,22 @@ import { randomUUID } from 'node:crypto';
 import { createInvocationScope, launchOwnedProcess, projectProviderEnvironment } from '../process';
 import { antigravityHooks } from './hook-launcher';
 
+const launchDeadlineMs = 10000;
+const settlementBudgetMs = 5000;
+
 describe('Antigravity fixed hook launcher', () => {
-  it.runIf(process.platform === 'win32')(
-    'forwards UTF-8 through the Windows launcher and explicitly denies helper startup failure',
-    async () => {
+  it.runIf(process.platform === 'win32').each([true, false])(
+    'forwards UTF-8 through the Windows launcher or denies startup failure (helper available: %s)',
+    async (available) => {
       const root = await mkdtemp(join(tmpdir(), "specflow-hook path's-"));
       try {
-        for (const available of [true, false]) {
-          const invocationId = randomUUID();
-          const scope = await createInvocationScope(root, invocationId);
-          const helper = join(scope.directory, "controlled helper's.cjs");
-          if (available) {
-            await writeFile(
-              helper,
-              `
+        const invocationId = randomUUID();
+        const scope = await createInvocationScope(root, invocationId);
+        const helper = join(scope.directory, "controlled helper's.cjs");
+        if (available) {
+          await writeFile(
+            helper,
+            `
 let input = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', chunk => { input += chunk; });
@@ -28,47 +30,48 @@ process.stdin.on('end', () => {
   process.stdout.write(JSON.stringify({decision: valid ? 'allow' : 'deny'}));
 });
 `,
-            );
+          );
+        }
+
+        const systemRoot = process.env.SystemRoot ?? process.env.SYSTEMROOT!;
+        const command = antigravityHooks({ systemRoot, node: process.execPath, helper })[
+          'specflow-managed-invocation'
+        ].PreToolUse[0]!.hooks[0]!.command;
+        const owner = await launchOwnedProcess({
+          invocationId,
+          scope,
+          executable: join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+          args: [
+            '-NoProfile',
+            '-NonInteractive',
+            '-EncodedCommand',
+            command.split(' -EncodedCommand ')[1]!,
+          ],
+          cwd: root,
+          environment: projectProviderEnvironment({ host: process.env }),
+          signal: AbortSignal.timeout(launchDeadlineMs),
+        });
+        try {
+          await owner.write(JSON.stringify({ text: 'Zażółć — test' }));
+          await owner.endInput();
+          const lines: string[] = [];
+          for await (const line of owner.lines()) {
+            lines.push(line);
           }
 
-          const systemRoot = process.env.SystemRoot ?? process.env.SYSTEMROOT!;
-          const command = antigravityHooks({ systemRoot, node: process.execPath, helper })[
-            'specflow-managed-invocation'
-          ].PreToolUse[0]!.hooks[0]!.command;
-          const owner = await launchOwnedProcess({
-            invocationId,
-            scope,
-            executable: join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
-            args: [
-              '-NoProfile',
-              '-NonInteractive',
-              '-EncodedCommand',
-              command.split(' -EncodedCommand ')[1]!,
-            ],
-            cwd: root,
-            environment: projectProviderEnvironment({ host: process.env }),
-            signal: AbortSignal.timeout(10000),
-          });
-          try {
-            await owner.write(JSON.stringify({ text: 'Zażółć — test' }));
-            await owner.endInput();
-            const lines: string[] = [];
-            for await (const line of owner.lines()) {
-              lines.push(line);
-            }
-
-            expect(lines.map((line): unknown => JSON.parse(line))).toEqual([
-              { decision: available ? 'allow' : 'deny' },
-            ]);
-            expect((await owner.done).code).toBe(0);
-          } finally {
-            expect((await owner.dispose()).process.state).toBe('stopped');
-          }
+          expect(lines.map((line): unknown => JSON.parse(line))).toEqual([
+            { decision: available ? 'allow' : 'deny' },
+          ]);
+          expect((await owner.done).code).toBe(0);
+        } finally {
+          expect((await owner.dispose()).process.state).toBe('stopped');
         }
       } finally {
         await rm(root, { recursive: true, force: true });
       }
     },
+    // Let the bounded operation abort and settle before the test harness interrupts cleanup.
+    launchDeadlineMs + settlementBudgetMs,
   );
 
   it('encodes trusted paths literally and carries native input only through bounded stdin', () => {

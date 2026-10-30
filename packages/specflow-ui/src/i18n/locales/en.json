@@ -1495,6 +1495,10 @@
     "answer": "Your answer",
     "respond": "Respond",
     "message": "Message",
+    "model": {
+      "label": "Model and effort for the next message",
+      "placeholder": "Select model"
+    },
     "send": "Send",
     "retrySend": "Retry sending",
     "cancel": "Stop",

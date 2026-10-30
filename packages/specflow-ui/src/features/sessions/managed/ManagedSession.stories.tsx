@@ -5,7 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { ManagedSession } from './ManagedSession';
-import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
+import {
+  fixtureApi,
+  fixtureSessionId,
+  providerFixture,
+  sessionFixture,
+} from './managedSession.stories-support';
 
 function Environment({ children }: { children: React.ReactNode }) {
   const [query] = useState(
@@ -159,5 +164,64 @@ export const QuotaFailure: Story = {
       await canvas.findByText('Claude quota or rate limit prevented the operation.'),
     ).toBeVisible();
     await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
+  },
+};
+
+function optionByLabel(text: string) {
+  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
+    (node) => node.textContent?.includes(text),
+  );
+  if (!option) {
+    throw new Error(`Option "${text}" should exist.`);
+  }
+
+  return option;
+}
+
+const modelApi = {
+  ...fixtureApi(sessionFixture()),
+  start: fn().mockResolvedValue({ turnId: 'turn' }),
+};
+export const SelectModelEffort: Story = {
+  args: { owner: 'model-story', api: modelApi },
+  play: async ({ canvasElement }) => {
+    modelApi.start.mockClear();
+    const canvas = within(canvasElement);
+    const trigger = await canvas.findByRole('combobox', {
+      name: 'Model i poziom wysiłku dla następnej wiadomości',
+    });
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(document.querySelector('[role="listbox"]')).not.toBeNull());
+    await userEvent.click(optionByLabel('Standard · high'));
+    await waitFor(() => expect(document.querySelector('[role="listbox"]')).toBeNull());
+    await userEvent.type(canvas.getByLabelText('Wiadomość'), 'Testowa wiadomość');
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await waitFor(() => expect(modelApi.start).toHaveBeenCalledOnce());
+    await expect(modelApi.start.mock.calls[0]?.[1]).toMatchObject({
+      modelId: 'mock-standard',
+      effort: 'high',
+    });
+  },
+};
+
+const noOverrideApi = {
+  ...fixtureApi(sessionFixture()),
+  providers: () =>
+    Promise.resolve({
+      items: [
+        {
+          ...providerFixture(),
+          capabilities: { ...providerFixture().capabilities, modelOverride: false },
+        },
+      ],
+    }),
+};
+export const NoModelOverrideCapability: Story = {
+  args: { owner: 'no-override-story', api: noOverrideApi },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByLabelText('Wiadomość')).toBeEnabled();
+    await expect(canvas.queryByRole('combobox')).not.toBeInTheDocument();
   },
 };

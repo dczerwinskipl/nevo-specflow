@@ -319,6 +319,50 @@ describe('Session feed operation lifetime', () => {
     await sent;
     expect(feed.getSnapshot().draft).toBe('New text');
   });
+  it('threads the selected next-Turn model/effort override into StartTurn', async () => {
+    const { storage, api } = setup();
+    const start = vi.fn<ManagedSessionsApi['start']>().mockResolvedValue({ turnId: 'turn' });
+    api.start = start;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Explicit next-Turn request');
+    feed.setModel('model-a', 'high');
+    await feed.send();
+    expect(start.mock.calls[0]![1]).toMatchObject({ modelId: 'model-a', effort: 'high' });
+  });
+  it('omits model/effort overrides from StartTurn when the picker was never touched', async () => {
+    const { storage, api } = setup();
+    const start = vi.fn<ManagedSessionsApi['start']>().mockResolvedValue({ turnId: 'turn' });
+    api.start = start;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Inherit the pinned Session model');
+    await feed.send();
+    expect(start.mock.calls[0]![1]).not.toHaveProperty('modelId');
+    expect(start.mock.calls[0]![1]).not.toHaveProperty('effort');
+  });
+  it('clears a previously selected model/effort override once deselected', () => {
+    const { storage, api } = setup();
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setModel('model-a', 'high');
+    expect(feed.getSnapshot()).toMatchObject({ modelOverride: 'model-a', effortOverride: 'high' });
+    feed.setModel(undefined, undefined);
+    expect(feed.getSnapshot().modelOverride).toBeUndefined();
+    expect(feed.getSnapshot().effortOverride).toBeUndefined();
+  });
+  it('surfaces a rejected (CAPABILITY_UNSUPPORTED) model/effort override through the existing command error path', async () => {
+    const { storage, api } = setup();
+    const start = vi.fn<ManagedSessionsApi['start']>().mockRejectedValue(
+      Object.assign(new Error('Unsupported model/effort override'), {
+        code: 'CAPABILITY_UNSUPPORTED',
+      }),
+    );
+    api.start = start;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Try an unsupported override');
+    feed.setModel('model-a', 'ultra');
+    await feed.send();
+    expect(feed.getSnapshot()).toMatchObject({ commandBusy: false, commandError: true });
+    expect(feed.getSnapshot().pending).toMatchObject({ modelId: 'model-a', effort: 'ultra' });
+  });
   it('disconnects the latest retry connection when its owner unmounts', async () => {
     const { storage, api } = setup();
     const signals: AbortSignal[] = [];

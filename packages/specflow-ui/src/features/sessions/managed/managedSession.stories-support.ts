@@ -1,4 +1,4 @@
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import type { ProviderDescriptor, SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 
 export const fixtureSessionId = '00000000-0000-4000-8000-000000000001';
@@ -81,10 +81,32 @@ export function sessionFixture(waiting = false): SessionSnapshot {
   };
 }
 
+/** Matches sessionFixture's providerId so the next-Turn model/effort picker has data to render. */
+export function providerFixture(): ProviderDescriptor {
+  return {
+    providerId: 'mock',
+    title: 'Controlled test provider',
+    readiness: 'ready',
+    capabilities: {
+      questions: true,
+      permissions: true,
+      cancel: true,
+      resume: true,
+      modelOverride: true,
+      effortOverride: true,
+    },
+    models: [
+      { modelId: 'mock-standard', title: 'Standard', efforts: ['low', 'high'] },
+      { modelId: 'mock-fast', title: 'Fast', efforts: [] },
+    ],
+    modes: ['read-only', 'workspace-write'],
+  };
+}
+
 /** Isolated presentation adapter: never imported by a production route. */
 export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
   return {
-    providers: () => Promise.resolve({ items: [] }),
+    providers: () => Promise.resolve({ items: [providerFixture()] }),
     create: () => Promise.resolve({ sessionId: fixtureSessionId }),
     snapshot: () => Promise.resolve(snapshot),
     history: () =>

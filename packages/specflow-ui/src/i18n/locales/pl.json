@@ -1495,6 +1495,10 @@
     "answer": "Twoja odpowiedź",
     "respond": "Odpowiedz",
     "message": "Wiadomość",
+    "model": {
+      "label": "Model i poziom wysiłku dla następnej wiadomości",
+      "placeholder": "Wybierz model"
+    },
     "send": "Wyślij",
     "retrySend": "Ponów wysyłanie",
     "cancel": "Zatrzymaj",

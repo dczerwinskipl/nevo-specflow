@@ -1,10 +1,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
   AppContent,
   AppWorkspace,
   Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Spinner,
   StatusIndicator,
   TextArea,
@@ -14,7 +20,11 @@ import {
   useWorkspaceCapabilities,
   cn,
 } from '@nevo/ui';
-import type { ConversationEntry, Interaction } from '@nevo/specflow-contracts/sessions';
+import type {
+  ConversationEntry,
+  Interaction,
+  ProviderDescriptor,
+} from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed } from './feed';
 import { ReadableText } from './MessageText';
 import { createWorkInspector } from './WorkInspector';
@@ -30,6 +40,39 @@ function browserStorage() {
   } catch {
     return undefined;
   }
+}
+
+/** Opaque Select value encoding a model+effort pair; modelId/effort are not guaranteed separator-safe. */
+function encodeModelKey(modelId: string, effort?: string) {
+  return JSON.stringify(effort ? [modelId, effort] : [modelId]);
+}
+
+function decodeModelKey(key: string): { modelId: string; effort?: string } {
+  const [modelId, effort] = JSON.parse(key) as [string, string?];
+
+  return effort ? { modelId, effort } : { modelId };
+}
+
+/**
+ * Flattens the matched provider's models/efforts into one "Model · Effort" picker, per the
+ * composer design's single combined selector. Honors the catalogue's own modelOverride/
+ * effortOverride capability flags rather than assuming every listed model is overridable.
+ */
+function modelPickerItems(provider: ProviderDescriptor | undefined) {
+  if (!provider?.capabilities.modelOverride || !provider.models.length) {
+    return [];
+  }
+
+  const withEffort = provider.capabilities.effortOverride;
+
+  return provider.models.flatMap((model) =>
+    withEffort && model.efforts.length
+      ? model.efforts.map((effort) => ({
+          key: encodeModelKey(model.modelId, effort),
+          label: model.title + ' · ' + effort,
+        }))
+      : [{ key: encodeModelKey(model.modelId), label: model.title }],
+  );
 }
 
 function InteractionPrompt({
@@ -254,6 +297,21 @@ export function ManagedSession({
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
+  const providers = useQuery({
+    queryKey: ['managed-session-providers', owner],
+    queryFn: ({ signal }) => api.providers(signal),
+  });
+  const provider = providers.data?.items.find(
+    (item) => item.providerId === state.snapshot?.session.providerId,
+  );
+  const modelItems = useMemo(() => modelPickerItems(provider), [provider]);
+  const selectedModelId = state.modelOverride ?? state.snapshot?.session.modelId;
+  const selectedEffort = state.modelOverride
+    ? state.effortOverride
+    : state.snapshot?.session.effort;
+  // Always a defined string so Select stays controlled from its first render (never undefined),
+  // even before the Session's current model/effort is known.
+  const selectedModelKey = selectedModelId ? encodeModelKey(selectedModelId, selectedEffort) : '';
   function older() {
     if (scroller.current) {
       anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
@@ -433,6 +491,32 @@ export function ManagedSession({
                   disabled={!!state.pending || snapshot.session.readiness === 'unavailable'}
                 />
                 <div className="flex flex-wrap justify-end gap-2">
+                  {modelItems.length > 0 && (
+                    <>
+                      <label htmlFor="managed-model" className="sr-only">
+                        {t('managedSession.model.label')}
+                      </label>
+                      <Select
+                        disabled={state.commandBusy || !!state.pending}
+                        value={selectedModelKey}
+                        onValueChange={(key) => {
+                          const next = decodeModelKey(key);
+                          feed.setModel(next.modelId, next.effort);
+                        }}
+                      >
+                        <SelectTrigger id="managed-model" className="w-auto max-w-56 sm:max-w-72">
+                          <SelectValue placeholder={t('managedSession.model.placeholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {modelItems.map((item) => (
+                            <SelectItem key={item.key} value={item.key}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
                   {snapshot.session.capabilities.cancel && (
                     <Button
                       variant="secondary"

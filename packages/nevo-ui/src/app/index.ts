@@ -30,6 +30,8 @@ export {
   useSecondaryNavigation,
   useSecondaryStack,
   useSecondaryLeaveGuard,
+  useRegisterPinnedSecondaryTab,
+  type PinnedSecondaryTabInput,
 } from './workspace/WorkspaceContext';
 export {
   defineSecondaryStack,

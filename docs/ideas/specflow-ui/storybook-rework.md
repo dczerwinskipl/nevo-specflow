@@ -72,64 +72,138 @@ Not proposed:
 - Turning Storybook into a second product application, configuration framework or runtime simulator.
 - Editing normative documentation in this idea-only PR.
 
-## 3. Target ownership and navigation
+## 3. Uniform Storybook tree: one default entry per subject
 
-Use a catalog organized by **what someone wants to inspect**, not by which test case was added.
+The visible tree is a **product catalog**, not a test report or mirror of source
+directories. A user should open a screen, see a valid representative default state,
+then change its meaningful parameters using Controls.
 
-    Nevo UI
-      Foundations / Layout / Actions / Forms / Navigation / Data / ...
-        Button / Playground
-        Menu / Playground
-        ...
+**Canonical human-facing title depth: \`<Owner>/<Kind or Category>/<Subject>\`.**
+Each subject has one obvious primary \`Default\` story, which is also its interactive
+playground (no duplicate \`Default\` and \`Playground\` entries).
+
     SpecFlow
       Brand
+        Nevo Mark
+          Default
       Components
-        Operations / Operational Row
-        Tasks / Requirement Row
-        Tasks / Task Hints
-        Sessions / Message Item
-        Sessions / Question Interaction
-        Documents / Document Tree Item
+        Task Hints
+          Default
+        Operational Row
+          Default
+        Session Message
+          Default
       Features
-        Tasks / Task Details
-        Sessions / Conversation
-        Specifications / Overview
-        Documents / Explorer
-        Creation / Workspace Selection
+        Workspace Selection
+          Default
+        Document Explorer
+          Default
       Screens
-        Task Workbench / Playground
-        Specification Workspace / Playground
-        Managed Session / Playground
-        Specs Overview / Playground
-        Create Specification / Playground
+        Create Specification
+          Default
+        Managed Session
+          Default
+        Specification Workspace
+          Default
+        Specs Overview
+          Default
+        Task Workbench
+          Default
+    Nevo UI
+      Actions
+        Button
+          Default
+      Forms
+        Select
+          Default
+      Navigation
+        Tabs
+          Default
     Examples
-      CRM / Playground
+      CRM
+        Default
 
-The names above are **illustrative ownership candidates**, not assertions that each component
-exists as an independent production API. Inspect real component boundaries before extracting one.
+The names are **candidate catalog subjects**, not assertions that every
+production component exists today. Inspect current owners before extracting
+or publicly exporting anything. SpecFlow Components are product-owned;
+Nevo UI primitives remain in the Design System.
 
-**Owner hierarchy:**
-- **Nevo UI / Component**: reusable, product-agnostic primitive or pattern, with real
-  component props, variants and accessible behavior.
-- **SpecFlow / Component**: reusable *within the product*, an identifiable visual/interaction
-  boundary (e.g., Task requirement, Session event, document row, status/action composition).
-  A component may remain feature-private.
-- **SpecFlow / Feature**: coherent product subsection with owned data/model and several
-  cooperating components, often more stateful than a single component.
-- **SpecFlow / Screen**: composed route/page with app shell, navigation, responsive topology and
-  API seams. It exists to inspect composition, not enumerate the Cartesian product of all states.
-- **Contract / Integration / Capture**: **profiles**, not primary product categories. Keep
-  colocated with owners in the source; use filtering and metadata to keep them out of the
-  human-facing default tree. Historical test-only title paths can remain temporarily stable.
+### 3.1 Hierarchy and default entry rules
 
-A component story can mock the **presentational boundary** even when its actual product owner
-uses routing/query providers. Reuse typed production view-models or adapters at the appropriate
-seam. Do not import production components from Storybook or let a production component pick a
-test fixture as a fallback.
+1. **Stable depth, stable vocabulary.** SpecFlow titles follow
+   \`SpecFlow/<Brand|Components|Features|Screens>/<Subject>\`.
+   Do not place some screens under \`Screens/Tasks/...\` and other screens
+   directly under \`Screens\`; a deep source path does not require a deep
+   sidebar path. Stop exposing ad hoc top-level \`Shared\`, \`Sessions\`,
+   \`Review\`, \`Contracts\`, \`Navigation\` and mock categories alongside
+   the canonical kinds.
+2. **One useful \`Default\` per subject.** Opening it should render a normal
+   valid state with representative deterministic data, without first requiring
+   the user to pick another story or connect to a live backend.
+3. **Controls change variants and state.** Use real props, \`args\`,
+   \`argTypes\` and small typed adapters for composite screens. Depending on
+   the actual screen, controls might include \`variant\`/\`scenario\`,
+   \`state\`, \`readOnly\`, \`contentDensity\`, \`locale\` or \`panelMode\`.
+   These are examples, **not compulsory universal props**. Do not add fake
+   Storybook-only props to production APIs. Keep invalid state combinations
+   unavailable or explicitly modeled as negative test fixtures.
+4. **Use viewport controls for browser breakpoints.** A narrow *container*
+   is a separate valid story-level parameter when it represents a real
+   component configuration. Width, locale, loading or long content should
+   not create another sidebar nesting level or a Cartesian product of exports.
+5. **Tests are hidden by default.** Assertions in \`play\`, keyboard/focus
+   contracts, geometry, recovery/routing integrations, design capture, and
+   snapshot-only visual baselines belong to the same owners and stay runnable,
+   but must not occupy the *normal human-facing* sidebar. Use the existing
+   Storybook tag filters, correct inherited tags and preserve test IDs.
+   Physical test source remains colocated; hiding is not deletion.
+6. **Extra visible stories require a meaningful difference in artifact**, not
+   another value of a prop. A deliberately separate composition/demo may
+   justify one; say why. Do not let test cases create new sections.
+7. **A screen, feature and component each own distinct boundaries.** A controlled
+   Task Hints component story is not a duplicate of the Task Workbench screen
+   Default if it isolates a real product-owned presentation contract.
 
-The presence of a design-system primitive does **not** mean the SpecFlow composition is redundant:
-a real Task Requirement Row can have its own story, but a SpecFlow-specific copy of every Button
-size should not.
+### 3.2 What belongs in the visible tree?
+
+**Good:**
+\`SpecFlow/Screens/Task Workbench → Default\` with Controls for scenario,
+page state, preview and dense content; \`SpecFlow/Components/Task Hints → Default\`
+for the isolated component. Tests for copying a reference, keyboard focus,
+responsive geometry and navigation are attached to their owner but default-hidden.
+
+**Bad:**
+\`SpecFlow/Screens/Task Workbench → HumanWithGates / RichPreview /
+NarrowPanel / PageError / TerminalPreview\`; \`SpecFlow/Screens/Editor mode
+(mock)/Wide/Markdown/Edit\` alongside \`SpecFlow/Features/Tasks/Hints\` and
+\`SpecFlow/Contracts/Creation consistency baseline\`. These mix product
+level, state dimensions, widths and test intent into the navigation hierarchy.
+
+**Bad:**
+An empty \`Default\` which forces a visitor to search for \`ReadyDesktop\`,
+\`LoadingDesktop\`, \`LoadingMobile\`, etc. The starting story must already
+show a meaningful normal state.
+
+### 3.3 Default catalog versus automated test corpus
+
+The visible catalog and automated test corpus are **two projections of the
+same co-located source**, not two implementations. Hidden contract stories
+can still have many explicit exports and stable IDs, including browser
+interaction tests. Do not remove tests merely to shorten navigation.
+
+Current \`tools/storybook/.storybook/main.ts\` already excludes
+\`contract\`, \`integration\`, \`capture\` in its default tag filter. The
+rework must reclassify remaining assertion-bearing stories instead of
+presenting them as showcases. Pure \`visual\` snapshot fixtures should
+**also be default-hidden** in the target catalog, since they are test
+artifacts rather than user destinations. This differs from current
+authoritative guidelines, where Visual is visible, and therefore requires
+a deliberate approved change to the guideline and host tag configuration
+during implementation. A visually useful alternative can remain a visible
+Showcase only when it has independent inspection value.
+
+Do not strip \`play\`, disable snapshots or break test references to
+implement hiding. Preserve behavior and accepted Chromatic baselines.
 
 ## 4. Story types: distinct purpose, distinct maintenance rules
 
@@ -160,7 +234,7 @@ and ability to inspect an important product boundary.
 ## 5. Interactive fixtures: args first, meaningful state axes
 
 For product component stories:
-- Default to one **Playground** with typed args for the real component's useful inputs, plus
+- Default to one **Default** story serving as the interactive playground, with typed args for the real component's useful inputs, plus
   small representative examples where they genuinely explain a distinct shape.
 - Prefer selects, toggles, numeric controls and text inputs over an export per value.
 - Express coherent scenario presets with typed factories. An enum-like scenario is fine
@@ -201,7 +275,7 @@ the production API. Example (illustrative TypeScript):
     } satisfies Meta<typeof TaskWorkbenchStoryHost>;
 
     export default meta;
-    export const Playground: Story = {};
+    export const Default: Story = {};
     export const HumanReviewVisual: Story = {
       args: { task: 'human-gates' },
       tags: ['visual'],
@@ -217,7 +291,7 @@ these exact enum values into production.
 **Good example A: Task Hints component.**
 The existing Tasks/Hints story owns a real TaskHints component and typed hints data.
 It has MixedReferences, Empty, and a ReferenceAndCopy interaction contract. Improve it by
-making the default Playground obvious and controlling content/density without forcing
+providing a clear `Default` story with Controls and controlling content/density without forcing
 every edge case into its sidebar. Keep the copy/focus test under Contract.
 
 **Good example B: Operation row.**
@@ -250,8 +324,7 @@ validation combination.
 **Bad: Screen as Cartesian product.**
 Task Workbench currently exposes 63 stories; task kind, preview, narrow panel, content density,
 error/loading and history are represented by many exports. The user has to search for the
-right story before touching Controls. **Better:** one functional playground, a few curated
-visual states, hidden behavior contracts, reusable fixture builders.
+right story before touching Controls. **Better:** one visible `Default` with Controls, hidden visual baselines and behavior contracts, reusable fixture builders.
 
 **Bad: A screen is used to test a small component.**
 A menu grouping, tree row, long label or requirement badge is exercised only through an
@@ -463,9 +536,10 @@ owner, title/ID, profile, visibility, play, Chromatic and current test reference
 Capture branch/commit, inventory timestamp and existing accepted snapshot IDs.
 Repeat after merging parallel PRs.
 
-**Phase 1: Classification without coverage loss.**
-Repair metadata and inherited tags, mark tests as Contract/Integration, keep deterministic
-fixture behavior, and check Chromium/Chromatic before renaming exported stories or titles.
+**Phase 1: Classification and tree normalization without coverage loss.**
+Repair metadata and inherited tags, mark tests as Contract/Integration, normalize the
+`SpecFlow/<Kind>/<Subject> → Default` hierarchy, keep deterministic fixture behavior,
+and check Chromium/Chromatic before renaming exports or titles.
 This phase should make the default tree materially more usable without pretending that
 components already have good playgrounds.
 
@@ -496,13 +570,15 @@ new authoring discipline, but compare its incoming stories against the new model
 ## 10. Definition of done
 
 The rework is successful when:
-- SpecFlow's default sidebar is a usable **component and feature catalog** with selected
-  screen playgrounds; it is not primarily a list of task/screen permutations.
+- SpecFlow's default sidebar follows a **uniform kind/subject/Default hierarchy**.
+  Opening any screen shows a normal state with useful Controls, not a list of
+  permutations or assertions.
 - Core product-specific visual parts have focused inspectable stories; new features follow
   the same ownership model.
 - Key screen playgrounds offer meaningful typed Controls and deterministic presets.
-- Contract/Integration/Capture stories remain runnable and filterable without cluttering
-  default navigation.
+- Contract/Integration/Capture stories and snapshot-only Visual fixtures remain runnable
+  and filterable, but do not clutter default navigation; visual visibility migration
+  requires updating approved guidelines and preserving baseline IDs.
 - Full existing meaningful behavior/visual coverage is accounted for, including any
   necessary story ID and Chromatic baseline migration.
 - Storybook builds, relevant browser/a11y tests and quality checks pass.
@@ -517,13 +593,14 @@ preserved behavioral confidence.
 
 1. Which SpecFlow presentation boundaries genuinely deserve component stories, given
    current feature ownership? Begin with Task, Session, Operations and Documents.
-2. Which expensive connected stories remain as intentionally visible screen playgrounds?
+2. Which connected stories remain as visible screen `Default` entries, and which genuinely need an extra visible showcase?
 3. Which accepted Chromatic baselines depend on existing story IDs and cannot be renamed
    in the first migration wave?
-4. Which legacy violations will get immediate blocking checks versus a ratcheted warning?
-5. Should outdated product mocks remain accessible only through a hidden Mock/Capture
-   profile or be retired once the production screen is verified?
-6. Should the inventory be a generated artifact in CI, an on-demand report, or both?
+4. Should `visual` become default-hidden in the Storybook host, with only separately justified human showcases visible?
+5. Which legacy violations will get immediate blocking checks versus a ratcheted warning?
+6. Should outdated product mocks be retained under hidden Capture/Contract
+   profiles or retired after verifying the real screen?
+7. Should the inventory be a generated artifact in CI, an on-demand report, or both?
    Avoid committing noisy generated changes on unrelated UI PRs.
 
 ## References

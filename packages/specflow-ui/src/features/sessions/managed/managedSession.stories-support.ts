@@ -109,6 +109,38 @@ export function providerFixture(): ProviderDescriptor {
   };
 }
 
+/**
+ * Item 1 follow-up regression support: `fixtureApi`'s own `content()` resolves every page on an
+ * already-queued microtask, so the three fragments stitch in back-to-back within a single
+ * animation frame — too fast for a test to actually sample the growth window the owner reported
+ * (ManagedSession.tsx's overlap-correction racing MessageText.tsx's auto-stitch). This variant
+ * paces each page behind a real macrotask delay instead, so a test can await one fragment,
+ * sample the DOM mid-sequence, then let the next fragment land.
+ */
+export function staggeredContentApi(snapshot: SessionSnapshot, delayMs = 120): ManagedSessionsApi {
+  return {
+    ...fixtureApi(snapshot),
+    content: (_sessionId, _ref, offset) => {
+      const index = Math.min(offset, contentFragments.length - 1);
+
+      return new Promise((resolve) => {
+        setTimeout(
+          () =>
+            resolve({
+              contentId,
+              revision: '1000000',
+              offset: index,
+              nextOffset: index + 1 < contentFragments.length ? index + 1 : undefined,
+              complete: index + 1 >= contentFragments.length,
+              text: contentFragments[index]!,
+            }),
+          delayMs,
+        );
+      });
+    },
+  };
+}
+
 /** Isolated presentation adapter: never imported by a production route. */
 export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
   return {

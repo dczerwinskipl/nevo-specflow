@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -246,12 +254,15 @@ function EntryRow({
   sessionId,
   outcomeLabels,
   onInspect,
+  onGrow,
 }: {
   entry: ConversationEntry;
   api: ManagedSessionsApi;
   sessionId: string;
   outcomeLabels: Record<string, string>;
   onInspect: () => void;
+  /** Forwarded to every `ReadableText` below — see its own doc comment in `MessageText.tsx`. */
+  onGrow: () => void;
 }) {
   const { t } = useTranslation();
   const kindLabel = t(`managedSession.entry.${entry.kind}`);
@@ -264,7 +275,13 @@ function EntryRow({
       <article data-entry-id={entry.id} className="group/message grid justify-end gap-1">
         {srLabel}
         <div className="max-w-content-standard rounded-composite bg-surface-subtle px-4 py-3">
-          <ReadableText ref={textRef} api={api} sessionId={sessionId} value={entry.text} />
+          <ReadableText
+            ref={textRef}
+            api={api}
+            sessionId={sessionId}
+            value={entry.text}
+            onGrow={onGrow}
+          />
         </div>
         <div className="flex justify-end">
           <MessageCopyAction onCopy={handleCopy} />
@@ -277,7 +294,14 @@ function EntryRow({
     return (
       <article data-entry-id={entry.id} className="group/message grid min-w-0 gap-1">
         {srLabel}
-        <ReadableText ref={textRef} api={api} sessionId={sessionId} value={entry.text} markdown />
+        <ReadableText
+          ref={textRef}
+          api={api}
+          sessionId={sessionId}
+          value={entry.text}
+          markdown
+          onGrow={onGrow}
+        />
         <MessageCopyAction onCopy={handleCopy} />
       </article>
     );
@@ -287,7 +311,7 @@ function EntryRow({
     return (
       <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-secondary">
         {srLabel}
-        <ReadableText api={api} sessionId={sessionId} value={entry.text} />
+        <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
       </article>
     );
   }
@@ -297,7 +321,7 @@ function EntryRow({
       <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
         {srLabel}
         <div className="flex flex-wrap items-center gap-2">
-          <ReadableText api={api} sessionId={sessionId} value={entry.text} />
+          <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
           <Button size="sm" variant="ghost" onClick={onInspect}>
             {t('managedSession.inspect')}
           </Button>
@@ -338,6 +362,7 @@ function EntryRow({
           api={api}
           sessionId={sessionId}
           value={{ ...entry.text, text: outcomeLabels[entry.text.text] ?? entry.text.text }}
+          onGrow={onGrow}
         />
         <Button size="sm" variant="ghost" onClick={onInspect}>
           {t('managedSession.inspect')}
@@ -446,65 +471,20 @@ export function ManagedSession({
   // exactly when the node mounts/unmounts, however late that is, so the observer always attaches.
   const [composerOverlayNode, setComposerOverlayNode] = useState<HTMLDivElement | null>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  useLayoutEffect(() => {
-    const node = composerOverlayNode;
-    if (!node) {
-      return undefined;
-    }
-
-    const update = () => setComposerHeight(node.getBoundingClientRect().height);
-    update();
-    if (typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
-
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, [composerOverlayNode]);
-  // A conversation entry can grow *after* this component's own re-render triggers run out: a
-  // `ConversationEntry`'s large answer is stitched in progressively, page by page, entirely
-  // inside `MessageText.tsx`'s own local `rest` state (deliberately — see its comment), which is
-  // invisible to this component's `state.snapshot?.entries` dependency. Observing the entries
-  // wrapper's own rendered height (not just the overlay's) closes that gap: the safety-net effect
-  // below re-measures and re-nudges scroll every time ANY entry's box actually changes size, not
-  // only when the feed's own snapshot/entries list changes. Confirmed live (owner audit): without
-  // this, a story whose answer keeps growing after the composer overlay/padding settle ends up
-  // permanently under-scrolled, with the grown paragraph's tail rendering behind the overlay.
-  const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
-  const [contentHeight, setContentHeight] = useState(0);
-  useLayoutEffect(() => {
-    const node = contentNode;
-    if (!node) {
-      return undefined;
-    }
-
-    const update = () => setContentHeight(node.getBoundingClientRect().height);
-    update();
-    if (typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
-
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, [contentNode]);
-  // Final safety net, independent of the `away`/anchor bookkeeping above: whichever scroll
-  // position that logic picked, it was computed from the scroller's geometry at that moment —
-  // and the overlay's own height (`composerHeight`) typically arrives one render later (its
-  // `ResizeObserver` cannot report a size before the node has ever painted), on a short
-  // conversation the browser clamps any attempted scroll to 0 until the reserved padding actually
-  // makes the content tall enough to need scrolling, and loading older history while "away" skips
-  // the scroll-to-bottom branch entirely by design. Any one of those can leave a visible entry's
-  // own box extending past the overlay's top edge; this explicitly measures for exactly that and
-  // nudges `scrollTop` down by the overlap, never past the scroller's own maximum. It is the
-  // directly-enforced version of "the last message is never hidden behind the floating overlay",
-  // not an emergent property of the scroll-math above. `contentHeight` (see above) is the
-  // dependency that makes this re-run as a message keeps growing after mount, not just when the
-  // overlay or the entry list identity changes.
-  useLayoutEffect(() => {
+  // Measures and corrects in one synchronous pass. Called directly — not merely from a
+  // `useLayoutEffect` keyed on state some other callback sets — from three places below: each
+  // `ResizeObserver` callback (itself guaranteed to run before the browser's next paint of the
+  // same frame, per spec), and `MessageText.tsx`'s own `onGrow` (guaranteed to run in the exact
+  // commit that grew a message's text, via its `useLayoutEffect`, since that is the one growth
+  // path a `ResizeObserver` is not a tight enough guarantee for — see `onGrow`'s doc comment in
+  // `MessageText.tsx`). A `useLayoutEffect` here keyed on `composerHeight`/`contentHeight` state a
+  // `ResizeObserver` callback sets would instead run a whole extra commit later than the resize
+  // itself, i.e. after a paint had already happened once with the grown, not-yet-corrected
+  // content — exactly the race the owner reported (item 1 follow-up): `MessageText.tsx`'s
+  // auto-stitch mechanism can grow a message's box several times in quick succession, and each
+  // grow briefly painted overlapping the floating interaction card before that delayed correction
+  // caught up.
+  const correctOverlap = useCallback(() => {
     const node = scroller.current;
     const overlay = composerOverlayNode;
     if (!node || !overlay) {
@@ -526,13 +506,90 @@ export function ManagedSession({
     if (overlap > 0) {
       node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, node.scrollTop + overlap);
     }
-  }, [
-    composerHeight,
-    contentHeight,
-    state.snapshot?.entries,
-    state.historyBusy,
-    composerOverlayNode,
-  ]);
+  }, [composerOverlayNode]);
+  useLayoutEffect(() => {
+    const node = composerOverlayNode;
+    if (!node) {
+      return undefined;
+    }
+
+    const update = () => {
+      const height = node.getBoundingClientRect().height;
+      setComposerHeight(height);
+      // Applied to the scroller's padding imperatively, right here, instead of waiting for the
+      // `composerHeight` state write above to reach render on some *later* commit: `correctOverlap`
+      // below clamps its scroll nudge to the scroller's current `scrollHeight - clientHeight`, and
+      // that is itself computed from however much bottom padding is actually in the DOM right now.
+      // Without this, the very first measurement after the overlay mounts (and any later one where
+      // the overlay's own height changes, e.g. the interaction card appearing) would measure and
+      // correct against a scroller that has not reserved the new space yet, under-clamp the nudge,
+      // and let the browser paint one overlapping frame before the `composerHeight` re-render
+      // catches up — the same race as the `MessageText.tsx` growth case, just on the overlay's own
+      // height instead of the content's.
+      if (scroller.current) {
+        scroller.current.style.paddingBottom = height ? `${height}px` : '';
+      }
+
+      correctOverlap();
+    };
+
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [composerOverlayNode, correctOverlap]);
+  // A conversation entry can grow *after* this component's own re-render triggers run out: a
+  // `ConversationEntry`'s large answer is stitched in progressively, page by page, entirely
+  // inside `MessageText.tsx`'s own local `rest` state (deliberately — see its comment), which is
+  // invisible to this component's `state.snapshot?.entries` dependency. `MessageText.tsx`'s own
+  // `onGrow` callback (passed to `EntryRow` below as `correctOverlap` itself) is the primary,
+  // tight-to-the-mutation path for exactly that growth now; this `ResizeObserver` on the entries
+  // wrapper's own rendered height is the backstop for any OTHER box-size change in this subtree
+  // `onGrow` would not itself be called for (e.g. a width-driven text reflow, not a `text` value
+  // change). Confirmed live (owner audit): without some form of this, a story whose answer keeps
+  // growing after the composer overlay/padding settle ends up permanently under-scrolled, with
+  // the grown paragraph's tail rendering behind the overlay.
+  const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  useLayoutEffect(() => {
+    const node = contentNode;
+    if (!node) {
+      return undefined;
+    }
+
+    const update = () => {
+      setContentHeight(node.getBoundingClientRect().height);
+      correctOverlap();
+    };
+
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [contentNode, correctOverlap]);
+  // Final safety net, independent of the `away`/anchor bookkeeping above and of the two
+  // `ResizeObserver`s' own direct `correctOverlap()` calls: this re-runs the same correction for
+  // triggers that are not themselves a resize (loading older history while "away" skips the
+  // scroll-to-bottom branch entirely by design, and a short conversation's first layout can clamp
+  // an attempted scroll to 0 until the reserved padding actually makes the content tall enough to
+  // need scrolling). `composerHeight`/`contentHeight` keep this re-running once per settled
+  // measurement too, as a harmless redundant check — the `ResizeObserver` callbacks already
+  // corrected ahead of paint for the fast-growth case; this effect is the slower-but-exhaustive
+  // backstop for everything else, never the only thing standing between a grown message and the
+  // floating overlay.
+  useLayoutEffect(() => {
+    correctOverlap();
+  }, [composerHeight, contentHeight, state.snapshot?.entries, state.historyBusy, correctOverlap]);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
@@ -739,6 +796,7 @@ export function ManagedSession({
                         onInspect={() =>
                           void navigation.open(workStack, { sessionId, turnId: entry.turnId })
                         }
+                        onGrow={correctOverlap}
                       />
                     ))}
                   </div>

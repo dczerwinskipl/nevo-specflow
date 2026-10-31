@@ -11,6 +11,7 @@ import {
   fixtureSessionId,
   providerFixture,
   sessionFixture,
+  staggeredContentApi,
 } from './managedSession.stories-support';
 
 const NARROW_VIEWPORT = { viewport: { value: 'mobile1', isRotated: false } };
@@ -47,6 +48,68 @@ async function verifyNoEntryOverlapsComposer(canvasElement: HTMLElement) {
       }
     }
   });
+}
+
+/**
+ * Item 1 follow-up regression: a single, non-retrying read of the same overlap condition
+ * `verifyNoEntryOverlapsComposer` checks, for sampling the growth window itself. The original
+ * `waitFor`-based check above only proves the overlap is gone by the time it finally stops
+ * throwing — exactly the settled end-state that already passed once before this slipped through:
+ * a transient overlap mid-growth, corrected again a frame later, would retry right past it.
+ */
+function entryOverlapsComposerNow(canvasElement: HTMLElement) {
+  const scroller = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');
+  const overlay = canvasElement.querySelector<HTMLElement>('[data-composer-overlay]');
+  if (!scroller || !overlay) {
+    return false;
+  }
+
+  const scrollerRect = scroller.getBoundingClientRect();
+  const overlayTop = overlay.getBoundingClientRect().top;
+
+  return Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-entry-id]')).some(
+    (entry) => {
+      const rect = entry.getBoundingClientRect();
+      const insideVisibleWindow =
+        rect.height > 0 && rect.bottom > scrollerRect.top && rect.top < scrollerRect.bottom;
+
+      return insideVisibleWindow && rect.bottom > overlayTop;
+    },
+  );
+}
+
+/**
+ * Waits past one fully rendered frame, so a just-landed `ResizeObserver` correction has had the
+ * chance it needs to actually apply before this samples the DOM. A single `requestAnimationFrame`
+ * is not enough: per spec, a frame runs rAF callbacks *before* delivering `ResizeObserver`
+ * notifications (then paints) — so sampling from inside a single rAF callback would inspect a
+ * transient mid-frame state the browser itself corrects a moment later and never actually paints.
+ * Waiting for a *second* rAF to start guarantees the first frame's resize-observer-and-paint steps
+ * already ran, so this samples only states a viewer could actually see.
+ */
+function nextFrame() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+/**
+ * Repeatedly samples the overlap condition, frame by frame, for `durationMs` — across the whole
+ * mount-to-settle sequence, not only its final state — and fails on the first frame where an
+ * entry overlaps the floating composer overlay. Exercises exactly the race this regression is
+ * for: `MessageText.tsx`'s auto-stitch keeps growing an answer's box over several renders, and
+ * `ManagedSession.tsx`'s overlap-correction must land before the *next* paint each time, not
+ * merely by the time the fetch sequence as a whole finishes.
+ */
+async function sampleNoOverlapDuringGrowth(canvasElement: HTMLElement, durationMs: number) {
+  const deadline = Date.now() + durationMs;
+  while (Date.now() < deadline) {
+    if (entryOverlapsComposerNow(canvasElement)) {
+      throw new Error('An entry overlapped the floating composer overlay mid-growth.');
+    }
+
+    await nextFrame();
+  }
 }
 
 function Environment({ children }: { children: React.ReactNode }) {
@@ -159,6 +222,33 @@ export const WaitingForQuestion: Story = {
     await expect(canvas.getByLabelText('Twoja odpowiedź')).toHaveAttribute('spellcheck', 'false');
   },
 };
+/**
+ * Item 1 follow-up regression (see `sampleNoOverlapDuringGrowth`): paces the large answer's
+ * remaining pages behind a real delay (`staggeredContentApi`) instead of `fixtureApi`'s
+ * same-microtask pages, so the mount-to-settle sequence actually spans multiple animation
+ * frames — the window the owner observed the floating interaction card briefly overlap the
+ * still-growing paragraph in, before `ManagedSession.tsx`'s overlap-correction caught up.
+ */
+export const GrowingAnswerNeverOverlapsComposer: Story = {
+  args: { owner: 'growth-story', api: staggeredContentApi(sessionFixture(true)) },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await settleViewport(390, 844);
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Którą część rozwiązania sprawdzić w następnej kolejności?'),
+    ).toBeVisible();
+    // Samples the full sequence, not just the end: the three staggered fragments (360ms total at
+    // 120ms each) keep the paragraph growing throughout, and every sampled frame must already be
+    // clear of the overlay, not merely the frame after the fetch sequence completes.
+    await sampleNoOverlapDuringGrowth(canvasElement, 600);
+    await expect(
+      await canvas.findByText(/jedna całość\.$/, undefined, { timeout: 5000 }),
+    ).toBeVisible();
+    await verifyNoEntryOverlapsComposer(canvasElement);
+  },
+};
+
 // Owner feedback #5: older history auto-loads (no manual button) once the scroller is at/near
 // the top — these two short fixtures never overflow, so that is true as soon as they mount, the
 // same condition a short conversation hits in the real app with more history above it.

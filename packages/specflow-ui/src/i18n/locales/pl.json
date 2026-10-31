@@ -1395,6 +1395,26 @@
         "empty": "Brak powiązanych zadań.",
         "unavailable": "To zadanie jest już niedostępne.",
         "detailNote": "Dowody i działania dla zadania są dostępne na jego własnej stronie zadania."
+      },
+      "sessionDetails": {
+        "title": "Szczegóły sesji",
+        "refreshing": "Odświeżanie…",
+        "inputTokens": "{{value}} wejściowych",
+        "outputTokens": "{{value}} wyjściowych",
+        "cacheReadTokens": "{{value}} odczyt pamięci podręcznej",
+        "cacheWriteTokens": "{{value}} zapis pamięci podręcznej",
+        "reasoningTokens": "{{value}} rozumowania",
+        "costEstimatedSuffix": "szacowane",
+        "costApiEquivalentSuffix": "równowartość API",
+        "costUnconfirmedSuffix": "niepotwierdzone",
+        "contextOccupancy": "{{value}}% kontekstu wykorzystane",
+        "contextOccupancyAria": "Wykorzystanie okna kontekstu",
+        "rateLimitWindow": "okno {{window}}",
+        "rateLimitUsed": "wykorzystano {{value}}%",
+        "rateLimitUsedOfLimit": "{{used}} z {{limit}} {{unit}}",
+        "moreLimitWindows": "+{{value}} więcej",
+        "stale": "Nieaktualne",
+        "staleExplanation": "Zaobserwowano wcześniej i jeszcze nie potwierdzono jako aktualne. Dane mogą być nieaktualne."
       }
     }
   },

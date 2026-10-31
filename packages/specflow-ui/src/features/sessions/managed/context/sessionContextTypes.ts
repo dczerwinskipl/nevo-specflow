@@ -13,6 +13,8 @@
  * its consumers.
  */
 
+import type { TelemetrySnapshot } from './sessionTelemetry';
+
 export interface SessionContextTaskRef {
   id: string;
   /** Short stable key, e.g. "TASK-03". */
@@ -46,6 +48,12 @@ export interface SessionContextViewModel {
   executionScope?: SessionContextExecutionScope;
   attention?: SessionContextAttentionItem[];
   relatedTasks?: SessionContextTaskRef[];
+  /**
+   * Low-emphasis "Session details" (§7.2/§23): token usage, cost, context occupancy, rate
+   * limits. Demo data against the not-yet-merged PR #107 contract — see `sessionTelemetry.ts`.
+   * Absent/fully-`unavailable` telemetry renders nothing, same as the other optional sections.
+   */
+  telemetry?: TelemetrySnapshot;
 }
 
 /**

@@ -1,3 +1,8 @@
+import {
+  fullTelemetrySnapshot,
+  partialAntigravityTelemetrySnapshot,
+  staleTelemetrySnapshot,
+} from './sessionTelemetry';
 import { unavailableSessionContext } from './sessionContextTypes';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
 
@@ -26,23 +31,29 @@ const task05: SessionContextTaskRef = {
   title: 'Update the readiness policy snapshot',
 };
 
-/** State A — generic/spec-level Session (full-session-screen-structure.md §12). */
+/** State A — generic/spec-level Session (full-session-screen-structure.md §12). Also carries a
+ * full/available telemetry snapshot (§23/PR #107 demo data) to exercise `SessionTelemetrySection`
+ * with every dimension present. */
 export function genericSpecLevelContext(): SessionContextViewModel {
   return {
     status: 'ready',
     specification: specA,
     executionScope: { kind: 'generic' },
     relatedTasks: [task02, task03],
+    telemetry: fullTelemetrySnapshot,
   };
 }
 
-/** State B — single-Task execution (§13). */
+/** State B — single-Task execution (§13). Also carries a partial telemetry snapshot reflecting
+ * Antigravity's own documented constraint: usage/limits are observed but cost has no proven
+ * currency and stays `unavailable` rather than guessed at. */
 export function singleTaskContext(): SessionContextViewModel {
   return {
     status: 'ready',
     specification: specA,
     executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
     relatedTasks: [task02],
+    telemetry: partialAntigravityTelemetrySnapshot,
   };
 }
 
@@ -99,6 +110,9 @@ export function terminalOutcomeContext(): SessionContextViewModel {
         task: task03,
       },
     ],
+    // Stale telemetry (§23/PR #107 demo data): observed before this outcome settled and not yet
+    // reconfirmed, so every telemetry line must show the subtle "stale" cue, not read as live.
+    telemetry: staleTelemetrySnapshot,
   };
 }
 

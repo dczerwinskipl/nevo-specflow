@@ -14,6 +14,8 @@ import {
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
 import { createSessionTasksInspector } from './SessionTasksInspector';
+import { SessionTelemetrySection } from './SessionTelemetrySection';
+import { isTelemetryVisible } from './sessionTelemetry';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
 
 /** Same shape as `useSecondaryNavigation().open` and the stack-push overload of a flow's own
@@ -30,10 +32,13 @@ type OpenSecondaryStack = <
 /**
  * Full Session Context Secondary (full-session-screen-structure.md §7).
  *
- * Structural order follows §7.2: Current execution, Attention/next actions, Related Tasks.
- * Every section is independently optional (owner decision 2 — a missing group must never crash
- * or show a broken UI); `Session details`/`Evidence` are deliberately out of this pass's scope
- * (owner decision 2) and are simply absent rather than stubbed.
+ * Structural order follows §7.2: Current execution, Attention/next actions, Related Tasks, and —
+ * now that PR #107 documents the telemetry contract (§23) — a low-emphasis Session details
+ * section carrying token usage/cost/context occupancy/rate limits (`SessionTelemetrySection`).
+ * `Evidence` and the rest of Session details (mode/capabilities/provider/model) remain
+ * deliberately out of this pass's scope (owner decision 2) and are simply absent rather than
+ * stubbed. Every section — telemetry included — is independently optional (owner decision 2 — a
+ * missing group must never crash or show a broken UI).
  */
 export function SessionContext({
   sessionId,
@@ -98,7 +103,10 @@ export function SessionContext({
   }
 
   const hasAnySection =
-    !!value.executionScope || !!value.attention?.length || !!value.relatedTasks?.length;
+    !!value.executionScope ||
+    !!value.attention?.length ||
+    !!value.relatedTasks?.length ||
+    isTelemetryVisible(value.telemetry);
 
   if (!hasAnySection) {
     return (
@@ -173,6 +181,7 @@ export function SessionContext({
               </ul>
             </section>
           )}
+          <SessionTelemetrySection telemetry={value.telemetry} />
         </div>
       </AppWorkspaceBody>
     </AppContent>

@@ -1395,6 +1395,26 @@
         "empty": "No related Tasks.",
         "unavailable": "This Task is no longer available.",
         "detailNote": "Task evidence and actions are reachable from its own Full Task page."
+      },
+      "sessionDetails": {
+        "title": "Session details",
+        "refreshing": "Refreshing…",
+        "inputTokens": "{{value}} input",
+        "outputTokens": "{{value}} output",
+        "cacheReadTokens": "{{value}} cache read",
+        "cacheWriteTokens": "{{value}} cache write",
+        "reasoningTokens": "{{value}} reasoning",
+        "costEstimatedSuffix": "estimated",
+        "costApiEquivalentSuffix": "API-equivalent",
+        "costUnconfirmedSuffix": "unconfirmed",
+        "contextOccupancy": "{{value}}% of context used",
+        "contextOccupancyAria": "Context window occupancy",
+        "rateLimitWindow": "{{window}} window",
+        "rateLimitUsed": "{{value}}% used",
+        "rateLimitUsedOfLimit": "{{used}}/{{limit}} {{unit}}",
+        "moreLimitWindows": "+{{value}} more",
+        "stale": "Stale",
+        "staleExplanation": "Observed earlier and not yet confirmed current. May be out of date."
       }
     }
   },

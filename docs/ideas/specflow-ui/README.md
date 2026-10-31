@@ -82,6 +82,8 @@ Therefore:
 - [Accepted Session Chat V10 mock — desktop](examples/session-chat-v10/desktop.html)
 - [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
 - [Design-system and composition gaps](design-system-component-composition-gaps.md)
+- [Storybook Rework — component-first catalog, story profiles, and agent/CI safeguards](storybook-rework.md)
+- [Storybook Rework — dated inventory and repeatable migration audit](storybook-rework-inventory.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)
 - [Large UI component specifications](components/README.md)

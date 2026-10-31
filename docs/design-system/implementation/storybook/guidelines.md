@@ -4,9 +4,11 @@ type: engineering
 title: Storybook guidelines
 status: current
 read_when:
-  - creating or editing a Storybook story
+  - creating, editing, or reviewing Storybook stories and their fixtures or Controls
+  - restructuring Storybook navigation, visibility, tags, or component and screen story coverage
+  - reviewing UI changes that affect Storybook tests, component showcases, or visual baselines
+  - configuring Storybook, Chromatic, Figma capture, or accessibility verification
   - verifying a UI component visually or with interaction tests
-  - building deterministic UI fixtures
 summary: >
   The shared Storybook host, owner-based story hierarchy, co-location, deterministic
   fixtures, accessibility checks, and the required desktop/mobile verification workflow.

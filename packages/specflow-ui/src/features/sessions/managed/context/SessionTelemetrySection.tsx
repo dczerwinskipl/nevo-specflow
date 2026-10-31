@@ -3,12 +3,14 @@ import { useId, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Badge,
+  Collapsible,
   Progress,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
   Typography,
+  cn,
 } from '@nevo/ui';
 import type {
   LimitWindow,
@@ -30,11 +32,31 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * placeholder/zero. When every dimension is unavailable this whole section renders nothing, the
  * same "missing data hides the section" rule the rest of `SessionContext` already follows.
  *
- * Visual redesign (live review — "Statystyki to jedna czcionka i goły tekst"): every limit-type
- * value (context occupancy, each rate-limit window) now renders through the DS `Progress` bar
- * with a label/value pair, not bare joined sentences. Plain counts (token usage, cost) keep a
- * sentence but gain the same label/value Typography split as the bar rows, so the whole section
- * reads as one consistent hierarchy instead of one undifferentiated font.
+ * Hierarchy rebuild (live owner review, mobile mock + rationale — see this task's handoff):
+ * - Cost and token usage are aggregated top-level stat cells (big number over a muted caption),
+ *   not inline label+value sentences — `StatCell`.
+ * - The full cache-read/cache-write/reasoning token breakdown is real information but does not
+ *   permanently occupy space: it sits behind a collapsed-by-default `Collapsible` ("Pozostałe
+ *   statystyki tokenów"), expanded on demand.
+ * - Context-window occupancy and provider rate limits are NOT the same kind of percentage (one is
+ *   "how full is the model's context window", the other is "how much of a provider quota window
+ *   is used") and must not read as one undifferentiated list of bars — they are two separate
+ *   `<section>`s ("Zużycie sesji" / "Limity dostawcy"), each with its own heading.
+ * - The two rate-limit windows most relevant to the user (ranked by usage, same as before) render
+ *   side by side as two columns, since a 5h and a 7d budget are directly comparable to each other,
+ *   rather than as two full-width stacked rows.
+ *
+ * Every percentage shown here is unambiguously a "how much is USED" figure, never "how much is
+ * left": `limitWindowPercentage`/`formatContextOccupancy` both compute `used / limit` (or, for
+ * `unit: 'percent'`, read `LimitWindow.used` directly — the schema has no `remaining`-as-percent
+ * reading), and the visible value text spells that out ("43% zajęte" / "43% used", "47%
+ * wykorzystane" / "47% used") instead of a bare, directionless "43%".
+ *
+ * "Zużycie sesji" is explicitly session-scoped (`usageScope` caption): `TelemetrySnapshot.usage`/
+ * `.cost` already carry an optional sibling `turn` reading next to `session` (see
+ * `sessionTelemetry.ts`), but no fixture populates it and nothing else in this UI reads it yet.
+ * This section still only ever reads `.session` — same as before this pass — labelled honestly as
+ * such rather than inventing a Turn/Session split the data/product has not decided on.
  */
 export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySnapshot }) {
   const { t, i18n } = useTranslation();
@@ -44,86 +66,138 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
   }
 
   const snapshot = telemetry!;
-  const usageLine = formatTokenUsage(snapshot.usage.session, t, i18n.language);
-  const costLine = formatCost(snapshot.cost.session, t, i18n.language);
+  const costStat = formatCostStat(snapshot.cost.session, t, i18n.language);
+  const tokensStat = formatTokensStat(snapshot.usage.session, i18n.language);
+  const tokenBreakdown = formatTokenBreakdown(snapshot.usage.session, t, i18n.language);
   const contextStat = formatContextOccupancy(snapshot.context);
   const limits = formatLimitWindows(snapshot.limits, t, i18n.language);
 
-  if (!usageLine && !costLine && !contextStat && !limits) {
+  const hasUsageSection = !!costStat || !!tokensStat || !!contextStat || !!tokenBreakdown;
+  if (!hasUsageSection && !limits) {
     return null;
   }
 
   return (
-    <section className="grid gap-2">
-      <div className="flex items-center gap-2">
-        <Typography variant="section-label" className="text-content-muted">
-          {t('sessions.context.sessionDetails.title')}
-        </Typography>
-        {snapshot.refresh.state === 'running' && (
-          <Typography variant="label-sm" className="text-content-muted">
-            {t('sessions.context.sessionDetails.refreshing')}
+    <div className="grid gap-6">
+      {hasUsageSection && (
+        <section className="grid gap-3">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <Typography variant="section-label" className="text-content-muted">
+              {t('sessions.context.sessionDetails.usageTitle')}
+            </Typography>
+            <Typography variant="label-sm" className="text-content-muted">
+              {t('sessions.context.sessionDetails.usageScope')}
+            </Typography>
+            {snapshot.refresh.state === 'running' && (
+              <Typography variant="label-sm" className="text-content-muted">
+                {t('sessions.context.sessionDetails.refreshing')}
+              </Typography>
+            )}
+          </div>
+          {(costStat ?? tokensStat) && (
+            <div className="grid grid-cols-2 gap-4">
+              {costStat && (
+                <StatCell
+                  value={costStat.text}
+                  caption={t('sessions.context.sessionDetails.costLabel')}
+                  note={costStat.note}
+                  stale={costStat.stale}
+                />
+              )}
+              {tokensStat && (
+                <StatCell
+                  value={tokensStat.text}
+                  caption={t('sessions.context.sessionDetails.tokensStatLabel')}
+                  stale={tokensStat.stale}
+                />
+              )}
+            </div>
+          )}
+          {contextStat && (
+            <LimitRow
+              label={t('sessions.context.sessionDetails.contextWindowTitle')}
+              percentage={contextStat.percentage}
+              valueText={t('sessions.context.sessionDetails.contextOccupancyValue', {
+                value: new Intl.NumberFormat(i18n.language).format(contextStat.percentage),
+              })}
+              stale={contextStat.stale}
+            />
+          )}
+          {tokenBreakdown && (
+            <Collapsible>
+              <Collapsible.Trigger>
+                {t('sessions.context.sessionDetails.tokenBreakdownLabel')}
+              </Collapsible.Trigger>
+              <Collapsible.Content>
+                <div className="flex items-center gap-1.5">
+                  <Typography variant="body-sm" className="text-content-secondary">
+                    {tokenBreakdown.text}
+                  </Typography>
+                  {tokenBreakdown.stale && <StaleMark />}
+                </div>
+              </Collapsible.Content>
+            </Collapsible>
+          )}
+        </section>
+      )}
+      {limits && (
+        <section className="grid gap-2">
+          <Typography variant="section-label" className="text-content-muted">
+            {t('sessions.context.sessionDetails.limitsTitle')}
           </Typography>
-        )}
-      </div>
-      <div className="grid gap-3">
-        {usageLine && (
-          <StatRow
-            label={t('sessions.context.sessionDetails.usageLabel')}
-            value={usageLine.text}
-            stale={usageLine.stale}
-          />
-        )}
-        {costLine && (
-          <StatRow
-            label={t('sessions.context.sessionDetails.costLabel')}
-            value={costLine.text}
-            stale={costLine.stale}
-          />
-        )}
-        {contextStat && (
-          <LimitRow
-            label={t('sessions.context.sessionDetails.contextOccupancyAria')}
-            percentage={contextStat.percentage}
-            valueText={t('sessions.context.sessionDetails.percentValue', {
-              value: new Intl.NumberFormat(i18n.language).format(contextStat.percentage),
-            })}
-            stale={contextStat.stale}
-          />
-        )}
-        {limits?.windows.map((window) => (
-          <LimitRow
-            key={window.id}
-            label={window.label}
-            percentage={window.percentage}
-            valueText={window.valueText}
-            stale={window.stale}
-          />
-        ))}
-        {limits && limits.extra > 0 && (
-          <Typography variant="body-sm" className="text-content-muted">
-            {t('sessions.context.sessionDetails.moreLimitWindows', { value: limits.extra })}
-          </Typography>
-        )}
-      </div>
-    </section>
+          <div
+            className={cn('grid gap-3', limits.windows.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}
+          >
+            {limits.windows.map((window) => (
+              <LimitRow
+                key={window.id}
+                label={window.label}
+                percentage={window.percentage}
+                valueText={window.valueText}
+                stale={window.stale}
+              />
+            ))}
+          </div>
+          {limits.extra > 0 && (
+            <Typography variant="body-sm" className="text-content-muted">
+              {t('sessions.context.sessionDetails.moreLimitWindows', { value: limits.extra })}
+            </Typography>
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 
-/** A plain count/sentence dimension (token usage, cost): a muted `label-sm` caption over the
- * `body-sm` value, the same label/value split every bar row below also uses, instead of one
- * undifferentiated sentence. */
-function StatRow({ label, value, stale }: { label: string; value: string; stale: boolean }) {
+/** A top-level aggregate stat (cost, token usage): a large bold number over a small muted
+ * caption, never inline label+value text — the owner's explicit correction to the previous "one
+ * undifferentiated font" telemetry read. `note` is a second, smaller muted line for a caveat that
+ * belongs with the number itself (cost basis/meaning), not a separate sentence. */
+function StatCell({
+  value,
+  caption,
+  note,
+  stale,
+}: {
+  value: string;
+  caption: string;
+  note?: string;
+  stale: boolean;
+}) {
   return (
     <div className="grid gap-0.5">
-      <Typography variant="label-sm" className="text-content-muted">
-        {label}
-      </Typography>
       <div className="flex items-center gap-1.5">
-        <Typography variant="body-sm" className="text-content-secondary">
-          {value}
-        </Typography>
+        <Typography variant="title-lg">{value}</Typography>
         {stale && <StaleMark />}
       </div>
+      <Typography variant="label-sm" className="text-content-muted">
+        {caption}
+      </Typography>
+      {note && (
+        <Typography variant="label-sm" className="text-content-muted">
+          {note}
+        </Typography>
+      )}
     </div>
   );
 }
@@ -238,7 +312,38 @@ interface FormattedLine {
   stale: boolean;
 }
 
-function formatTokenUsage(
+/** Big-number stat cell for input/output tokens — locale-compact notation (`12.4K`/`12,4 tys.`),
+ * never the full joined breakdown sentence (that moved to `formatTokenBreakdown`, behind the
+ * collapsed disclosure). `undefined` when neither figure was observed at all. */
+function formatTokensStat(reading: Reading<TokenUsage>, locale: string): FormattedLine | undefined {
+  if (reading.status === 'unavailable' || !reading.value) {
+    return undefined;
+  }
+
+  const { inputTokens, outputTokens } = reading.value;
+  if (inputTokens === undefined && outputTokens === undefined) {
+    return undefined;
+  }
+
+  const format = (amount: number | undefined) =>
+    amount === undefined
+      ? '—'
+      : new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(
+          amount,
+        );
+
+  return {
+    text: `${format(inputTokens)} / ${format(outputTokens)}`,
+    stale: reading.freshness === 'stale',
+  };
+}
+
+/** The detailed token breakdown (cache reads/writes, reasoning) that now lives behind the
+ * collapsed "Pozostałe statystyki tokenów" disclosure instead of permanently occupying space next
+ * to the input/output stat cell. `undefined` when none of these three dimensions were observed —
+ * the disclosure itself then does not render at all, same "missing data hides the row" rule as
+ * every other dimension here. */
+function formatTokenBreakdown(
   reading: Reading<TokenUsage>,
   t: TFunction,
   locale: string,
@@ -258,8 +363,6 @@ function formatTokenUsage(
     }
   };
 
-  push(value.inputTokens, 'sessions.context.sessionDetails.inputTokens');
-  push(value.outputTokens, 'sessions.context.sessionDetails.outputTokens');
   push(value.cacheReadTokens, 'sessions.context.sessionDetails.cacheReadTokens');
   push(value.cacheWriteTokens, 'sessions.context.sessionDetails.cacheWriteTokens');
   push(value.reasoningTokens, 'sessions.context.sessionDetails.reasoningTokens');
@@ -271,11 +374,17 @@ function formatTokenUsage(
   return { text: parts.join(' · '), stale: reading.freshness === 'stale' };
 }
 
-function formatCost(
+interface CostStat {
+  text: string;
+  note?: string;
+  stale: boolean;
+}
+
+function formatCostStat(
   reading: Reading<MoneyUsage>,
   t: TFunction,
   locale: string,
-): FormattedLine | undefined {
+): CostStat | undefined {
   if (reading.status === 'unavailable' || !reading.value) {
     return undefined;
   }
@@ -304,11 +413,16 @@ function formatCost(
     notes.push(t('sessions.context.sessionDetails.costUnconfirmedSuffix'));
   }
 
-  const text = notes.length > 0 ? `${formattedAmount} (${notes.join(', ')})` : formattedAmount;
-
-  return { text, stale: reading.freshness === 'stale' };
+  return {
+    text: formattedAmount,
+    note: notes.length > 0 ? notes.join(', ') : undefined,
+    stale: reading.freshness === 'stale',
+  };
 }
 
+/** `occupiedTokens / capacityTokens`: unambiguously "how much of the model's context window is
+ * USED", never "how much is left" — the value text built from this (`contextOccupancyValue`)
+ * spells that out explicitly rather than showing a bare, directionless percentage. */
 function formatContextOccupancy(
   reading: TelemetrySnapshot['context'],
 ): { percentage: number; stale: boolean } | undefined {
@@ -334,7 +448,10 @@ function formatContextOccupancy(
 /** `undefined` when a window's usage cannot be expressed as a percentage (missing `used`, or
  * missing `limit` for a non-`percent` unit) — such a window is still shown, just without a
  * computed ratio (and therefore without a `Progress` bar — never a fake/zero one), and never
- * sorted ahead of one that does have a real percentage. */
+ * sorted ahead of one that does have a real percentage. Always a "used" fraction: for
+ * `unit: 'percent'` the schema's only percent-shaped field is `used` itself (there is no
+ * `remaining`-as-percent reading), and for every other unit this is explicitly `used / limit`,
+ * never `remaining / limit`. */
 function limitWindowPercentage(window: LimitWindow): number | undefined {
   if (window.unit === 'percent') {
     const used = Number(window.used);
@@ -355,20 +472,26 @@ function limitWindowPercentage(window: LimitWindow): number | undefined {
   return (used / limit) * 100;
 }
 
-function formatWindowDuration(seconds: number | undefined): string | undefined {
+/** A full-word duration label ("5 godzin" / "7 dni") for the common hour/day-aligned provider
+ * windows the owner's mock names directly, instead of the previous abbreviated "okno 5h". Falls
+ * back to the old abbreviated/generic wording for a window that isn't an exact hour or day
+ * multiple (a rarer case the mock does not cover). */
+function formatLimitWindowLabel(seconds: number | undefined, t: TFunction): string | undefined {
   if (seconds === undefined || seconds <= 0) {
     return undefined;
   }
 
   if (seconds % 86400 === 0) {
-    return `${seconds / 86400}d`;
+    return t('sessions.context.sessionDetails.rateLimitWindowDays', { count: seconds / 86400 });
   }
 
   if (seconds % 3600 === 0) {
-    return `${seconds / 3600}h`;
+    return t('sessions.context.sessionDetails.rateLimitWindowHours', { count: seconds / 3600 });
   }
 
-  return `${Math.round(seconds / 60)}m`;
+  return t('sessions.context.sessionDetails.rateLimitWindow', {
+    window: `${Math.round(seconds / 60)}m`,
+  });
 }
 
 interface LimitRowData {
@@ -398,13 +521,10 @@ function formatLimitWindows(
   const stale = reading.freshness === 'stale';
 
   const rowsData = shown.map(({ window, percentage }): LimitRowData => {
-    const duration = formatWindowDuration(window.windowSeconds);
-    const label = duration
-      ? t('sessions.context.sessionDetails.rateLimitWindow', { window: duration })
-      : window.windowId;
+    const label = formatLimitWindowLabel(window.windowSeconds, t) ?? window.windowId;
     const valueText =
       percentage !== undefined
-        ? t('sessions.context.sessionDetails.percentValue', {
+        ? t('sessions.context.sessionDetails.rateLimitUsedPercent', {
             value: new Intl.NumberFormat(locale).format(Math.round(percentage)),
           })
         : window.used !== undefined && window.limit !== undefined

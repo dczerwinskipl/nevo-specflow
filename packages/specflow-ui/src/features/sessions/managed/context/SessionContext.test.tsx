@@ -189,6 +189,44 @@ describe('Related Tasks summary row', () => {
   });
 });
 
+describe('navigation skeleton (other root tabs)', () => {
+  it('opens a real Secondary tab with a clearly-labelled placeholder screen for each of the six remaining subjects', async () => {
+    const value: SessionContextViewModel = { status: 'ready' };
+    await renderContextWithRelatedTasks(value);
+
+    clickButtonByText('Files / Changes');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const openTabs = screen.getByLabelText('open-tabs');
+    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
+    expect(within(openTabs).getByText('Files / Changes')).toBeTruthy();
+    // A real, navigable tab — not faked content: an honestly-labelled "not implemented yet"
+    // placeholder, same shared screen every one of the six subjects uses today.
+    expect(screen.getByText('This section is not implemented yet.')).toBeTruthy();
+  });
+
+  it("opens each remaining subject as its OWN independent tab, never reusing another subject's tab", async () => {
+    const value: SessionContextViewModel = { status: 'ready' };
+    await renderContextWithRelatedTasks(value);
+
+    clickButtonByText('History');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    clickButtonByText('Environment');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const openTabs = screen.getByLabelText('open-tabs');
+    expect(openTabs.querySelectorAll('li')).toHaveLength(2);
+    expect(within(openTabs).getByText('History')).toBeTruthy();
+    expect(within(openTabs).getByText('Environment')).toBeTruthy();
+  });
+});
+
 describe('sparse Context states', () => {
   function renderContext(value: SessionContextViewModel) {
     return render(
@@ -215,12 +253,22 @@ describe('sparse Context states', () => {
     expect(scrollContent?.className).toMatch(/min-h-full/);
   });
 
-  it('frames a Context with every section absent as the same deliberate EmptyState', () => {
+  it('shows the inline "no additional context" note alongside the always-present navigation skeleton, not a full-pane EmptyState, once every dynamic section is absent', () => {
+    // Part 2 (owner-greenlit navigation skeleton): a Context with every dynamic section
+    // (execution/attention/related Tasks/telemetry) absent is no longer treated as literally
+    // empty — `OtherAreasSection`'s six root-tab rows are a fixed entry point, not
+    // session-derived content, so they are always there once Context is `ready`.
     const { container } = renderContext({ status: 'ready' });
 
-    const empty = container.querySelector('[data-empty-state="pane"]');
-    expect(empty).toBeTruthy();
-    expect(empty?.textContent).toContain('No additional context');
+    expect(container.querySelector('[data-empty-state="pane"]')).toBeNull();
+    expect(screen.getByText('No additional context for this Turn.')).toBeTruthy();
+    expect(screen.getByText('Other areas')).toBeTruthy();
+    expect(screen.getByText('Files / Changes')).toBeTruthy();
+    expect(screen.getByText('History')).toBeTruthy();
+    expect(screen.getByText('Handovers')).toBeTruthy();
+    expect(screen.getByText('Artifacts')).toBeTruthy();
+    expect(screen.getByText('Instructions')).toBeTruthy();
+    expect(screen.getByText('Environment')).toBeTruthy();
   });
 
   it('renders a short-but-real Context without artificial vertical centering', () => {

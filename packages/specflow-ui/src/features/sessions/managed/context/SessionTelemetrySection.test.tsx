@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionTelemetrySection } from './SessionTelemetrySection';
@@ -22,50 +22,84 @@ function renderSection(telemetry?: TelemetrySnapshot) {
 }
 
 describe('SessionTelemetrySection', () => {
-  it('renders every available dimension for a full telemetry snapshot, as labelled bars/values', () => {
+  it('renders cost/tokens as big-number stat cells, scoped to the whole session', () => {
+    renderSection(fullTelemetrySnapshot);
+
+    expect(screen.getByText('Session usage')).toBeTruthy();
+    expect(screen.getByText('for the whole session')).toBeTruthy();
+    // Cost stat cell: big number + "Cost" caption, no estimate/unconfirmed caveat for a
+    // provider-reported + billed reading.
+    expect(screen.getByText('$0.47')).toBeTruthy();
+    expect(screen.getByText('Cost')).toBeTruthy();
+    // Tokens stat cell: compact input/output figures, not the full joined sentence.
+    expect(screen.getByText('12.4K / 3.2K')).toBeTruthy();
+    expect(screen.getByText('Input / output tokens')).toBeTruthy();
+  });
+
+  it('keeps the cache/reasoning token breakdown behind a collapsed-by-default disclosure', () => {
     const { container } = renderSection(fullTelemetrySnapshot);
 
-    expect(screen.getByText('Session details')).toBeTruthy();
-    // Token usage: a label distinct from its value, only the dimensions actually present.
-    expect(screen.getByText('Token usage')).toBeTruthy();
-    expect(
-      screen.getByText('12,400 input · 3,200 output · 8,100 cache read · 640 reasoning'),
-    ).toBeTruthy();
-    // Cost: provider-reported + billed -> no estimate/unconfirmed caveat.
-    expect(screen.getByText('Cost')).toBeTruthy();
-    expect(screen.getByText('$0.47')).toBeTruthy();
-    // Context occupancy: 86,000 / 200,000 -> 43%, rendered as a labelled Progress bar + value.
-    expect(screen.getByText('Context window occupancy')).toBeTruthy();
-    expect(screen.getByText('43%')).toBeTruthy();
-    const bars = container.querySelectorAll('[role="progressbar"]');
-    expect(bars.length).toBeGreaterThanOrEqual(1);
-    // Rate limits: both windows fit (<= 2), so no "+N more", most-used window ranked first, each
-    // its own labelled bar.
-    expect(screen.getByText('5h window')).toBeTruthy();
-    expect(screen.getByText('42%')).toBeTruthy();
-    expect(screen.getByText('7d window')).toBeTruthy();
-    expect(screen.getByText('13%')).toBeTruthy();
+    const trigger = screen.getByText('Additional token stats');
+    expect(trigger).toBeTruthy();
+    // The panel starts collapsed (`hidden`), carrying the cache-read/reasoning breakdown that
+    // used to always be shown inline next to the token stat cell.
+    expect(container.querySelector('[hidden]')).toBeTruthy();
+    expect(screen.getByText('8,100 cache read · 640 reasoning')).toBeTruthy();
+
+    const button = trigger.closest('button');
+    if (!button) {
+      throw new Error('Expected the token-breakdown trigger to be a button.');
+    }
+
+    fireEvent.click(button);
+
+    expect(container.querySelector('[hidden]')).toBeNull();
+  });
+
+  it('separates context-window occupancy from provider rate limits into two sections, both unambiguous "used" percentages', () => {
+    const { container } = renderSection(fullTelemetrySnapshot);
+
+    expect(screen.getByText('Model context window')).toBeTruthy();
+    expect(screen.getByText('43% occupied')).toBeTruthy();
+
+    expect(screen.getByText('Provider limits')).toBeTruthy();
+    // Fixture windows are exactly 5h/7d — rendered as full words, not abbreviated.
+    expect(screen.getByText('5 hours')).toBeTruthy();
+    expect(screen.getByText('42% used')).toBeTruthy();
+    expect(screen.getByText('7 days')).toBeTruthy();
+    expect(screen.getByText('13% used')).toBeTruthy();
     expect(screen.queryByText(/\+\d+ more/)).toBeNull();
-    // Nothing here is stale.
-    expect(screen.queryByText('Stale')).toBeNull();
+
+    const bars = container.querySelectorAll('[role="progressbar"]');
+    expect(bars.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('lays the two rate-limit windows out as two columns, not stacked full-width rows', () => {
+    const { container } = renderSection(fullTelemetrySnapshot);
+
+    const limitsHeading = screen.getByText('Provider limits');
+    const limitsGrid = limitsHeading.parentElement?.querySelector('.grid-cols-2');
+    expect(limitsGrid).toBeTruthy();
+    expect(limitsGrid?.children.length).toBe(2);
+    expect(container).toBeTruthy();
   });
 
   it('shows only the available dimensions for partial telemetry, never a placeholder for cost', () => {
-    const { container } = renderSection(partialAntigravityTelemetrySnapshot);
+    renderSection(partialAntigravityTelemetrySnapshot);
 
-    // Usage is partial but present.
-    expect(screen.getByText('5,600 input · 1,150 output')).toBeTruthy();
+    // Tokens stat cell still renders from the partial reading.
+    expect(screen.getByText('5.6K / 1.2K')).toBeTruthy();
     // Cost is unavailable (Antigravity: no proven currency) — never shown as $0 or any amount,
     // and the "Cost" label itself is absent along with it.
     expect(screen.queryByText('Cost')).toBeNull();
     expect(screen.queryByText(/\$/)).toBeNull();
-    // Limits observed as a direct percent-unit window, rendered as its own Progress bar.
-    expect(screen.getByText('5h window')).toBeTruthy();
-    expect(screen.getByText('42%')).toBeTruthy();
-    // Context is unavailable on this fixture, so no occupancy label/bar at all — only the one
-    // rate-limit bar above exists, not two.
-    expect(screen.queryByText('Context window occupancy')).toBeNull();
-    expect(container.querySelectorAll('[role="progressbar"]').length).toBe(1);
+    // Limits observed as a direct percent-unit window, rendered as its own Progress bar, alone
+    // (single column, not forced into a 2-up grid for one item).
+    expect(screen.getByText('42% used')).toBeTruthy();
+    // Context is unavailable on this fixture, so no occupancy section at all.
+    expect(screen.queryByText('Model context window')).toBeNull();
+    // No token breakdown disclosure either: this fixture has no cache/reasoning figures.
+    expect(screen.queryByText('Additional token stats')).toBeNull();
   });
 
   it('colors a limit bar by usage threshold: default below 70%, attention 70-90%, danger above 90%', () => {
@@ -108,10 +142,12 @@ describe('SessionTelemetrySection', () => {
   it('marks stale readings with a muted "Stale" cue instead of presenting them as live', () => {
     renderSection(staleTelemetrySnapshot);
 
-    // Every one of usage/cost/context/limits is stale on this fixture.
+    // Every one of cost/context/limits is stale on this fixture (usage's own stat cell has no
+    // separate stale mark distinct from the one already covering cost/tokens together).
     const staleMarks = screen.getAllByText('Stale');
-    expect(staleMarks.length).toBeGreaterThanOrEqual(4);
+    expect(staleMarks.length).toBeGreaterThanOrEqual(3);
     // Cost is `estimated`/`api-equivalent` on this fixture — must say so, not read as billed.
-    expect(screen.getByText(/\$1\.08 \(estimated, API-equivalent\)/)).toBeTruthy();
+    expect(screen.getByText('$1.08')).toBeTruthy();
+    expect(screen.getByText('estimated, API-equivalent')).toBeTruthy();
   });
 });

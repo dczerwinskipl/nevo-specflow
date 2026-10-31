@@ -16,6 +16,7 @@ import {
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
 import { OperationalRow } from '../../../../shared/operational-list';
+import { placeholderRootTabs, type PlaceholderRootTab } from './SessionContextPlaceholderTabs';
 import { createSessionTasksInspector } from './SessionTasksInspector';
 import { SessionTelemetrySection } from './SessionTelemetrySection';
 import { isTelemetryVisible } from './sessionTelemetry';
@@ -35,13 +36,18 @@ type OpenSecondaryStack = <
 /**
  * Full Session Context Secondary (full-session-screen-structure.md §7).
  *
- * Structural order follows §7.2: Current execution, Attention/next actions, Related Tasks, and —
- * now that PR #107 documents the telemetry contract (§23) — a low-emphasis Session details
- * section carrying token usage/cost/context occupancy/rate limits (`SessionTelemetrySection`).
- * `Evidence` and the rest of Session details (mode/capabilities/provider/model) remain
- * deliberately out of this pass's scope (owner decision 2) and are simply absent rather than
- * stubbed. Every section — telemetry included — is independently optional (owner decision 2 — a
- * missing group must never crash or show a broken UI).
+ * Structural order follows §7.2: Current execution, Attention/next actions, Related Tasks, the
+ * §7.4 navigation skeleton into Context's other root-tab subjects (`OtherAreasSection` — owner
+ * greenlit this pass, see `SessionContextPlaceholderTabs.tsx`), and — now that PR #107 documents
+ * the telemetry contract (§23) — a low-emphasis Session details section carrying token usage/cost/
+ * context occupancy/rate limits (`SessionTelemetrySection`). `Evidence` and the rest of Session
+ * details (mode/capabilities/provider/model) remain deliberately out of this pass's scope (owner
+ * decision 2) and are simply absent rather than stubbed.
+ *
+ * Every DYNAMIC section (execution/attention/related Tasks/telemetry) is independently optional
+ * (owner decision 2 — a missing group must never crash or show a broken UI). `OtherAreasSection`
+ * is not one of those — it is a fixed navigation entry point, always present once Context is
+ * `ready`, so "every dynamic section absent" no longer means a literally empty Context.
  */
 export function SessionContext({
   sessionId,
@@ -117,6 +123,23 @@ export function SessionContext({
     openTasksList();
   }
 
+  /**
+   * Navigation-skeleton rows for Context's other originally-planned root tabs
+   * (full-session-screen-structure.md §7.4 — see `SessionContextPlaceholderTabs.tsx`'s module
+   * comment). Same open mechanism as Tasks: `openStack` on the narrow runtime flow, `openTab` on
+   * the wide/split-capable default Secondary.
+   */
+  function openPlaceholderTab(tab: PlaceholderRootTab) {
+    const params = { sessionId };
+    if (openStack) {
+      void openStack(tab.stack, params);
+
+      return;
+    }
+
+    void navigation.openTab(tab.stack, params);
+  }
+
   if (value.status === 'unavailable') {
     return (
       <AppContent className="h-full w-full">
@@ -131,21 +154,19 @@ export function SessionContext({
     );
   }
 
+  /**
+   * No longer gates a full-pane `EmptyState` on its own (live-review Part 2 correction): Context
+   * now always offers the `OtherAreasSection` navigation skeleton once it is `ready`, so a Session
+   * with every DYNAMIC section (execution/attention/related Tasks/telemetry) absent is never
+   * actually empty — there is still real, clickable content below. `hasAnySection` only decides
+   * whether the inline "no additional context" note shows alongside that skeleton, not whether
+   * anything renders at all.
+   */
   const hasAnySection =
     !!value.executionScope ||
     !!value.attention?.length ||
     !!value.relatedTasks?.length ||
     isTelemetryVisible(value.telemetry);
-
-  if (!hasAnySection) {
-    return (
-      <AppContent className="h-full w-full">
-        <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
-          <EmptyState variant="pane" title={t('sessions.context.empty')} />
-        </AppWorkspaceBody>
-      </AppContent>
-    );
-  }
 
   return (
     <AppContent className="h-full w-full">
@@ -218,10 +239,56 @@ export function SessionContext({
               </InformationList>
             </section>
           )}
+          {!hasAnySection && (
+            <Typography variant="body-sm" className="text-content-secondary">
+              {t('sessions.context.empty')}
+            </Typography>
+          )}
+          <OtherAreasSection onOpen={openPlaceholderTab} />
           <SessionTelemetrySection telemetry={value.telemetry} />
         </div>
       </AppWorkspaceBody>
     </AppContent>
+  );
+}
+
+/**
+ * Navigation skeleton (full-session-screen-structure.md §7.4, owner-greenlit): one clickable row
+ * per remaining root-tab subject besides Tasks, built from the same real `OperationalRow` list
+ * pattern. Every row opens a real Secondary tab (see `SessionContextPlaceholderTabs.tsx`) — a
+ * minimal shared "not yet implemented" placeholder screen where no real one exists yet — so the
+ * navigation mechanics (Context -> tab -> tab strip -> close/reopen) are genuinely exercised, not
+ * faked. Always present once Context itself is `ready` (independent of `hasAnySection`'s dynamic
+ * sections above): it is a fixed entry point into the other subjects, not session-derived content
+ * that can legitimately be absent.
+ */
+function OtherAreasSection({ onOpen }: { onOpen: (tab: PlaceholderRootTab) => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <section className="grid gap-1">
+      <Typography variant="section-label">
+        {t('sessions.context.placeholders.sectionTitle')}
+      </Typography>
+      <InformationList>
+        {placeholderRootTabs.map((tab) => (
+          <OperationalRow
+            key={tab.id}
+            leading={<Icon name={tab.icon} size="sm" className="text-content-muted" />}
+            primary={t(tab.titleKey)}
+            onPrimaryClick={() => onOpen(tab)}
+            trailing={
+              <Icon
+                name="chevron-right"
+                size="sm"
+                className="text-content-muted"
+                aria-hidden="true"
+              />
+            }
+          />
+        ))}
+      </InformationList>
+    </section>
   );
 }
 

@@ -100,6 +100,25 @@ async function openWork(canvasElement: HTMLElement) {
   await userEvent.click(canvas.getByText('Zobacz pracę'));
 }
 
+/** The type filter is a `Menu` (WorkInspector.tsx's `WorkFilterBar`), never a `SegmentedControl`:
+ * its content is portaled to `document.body`, exactly like the Composer's model picker Menu in
+ * `ManagedSession.stories.tsx` (`openModelMenu`) — so it is found via `[role="menu"]`, not a
+ * `canvas`-scoped query. */
+async function selectFilterKind(canvasElement: HTMLElement, triggerName: string, kindName: string) {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByRole('button', { name: triggerName }));
+  const menu = await waitFor(() => {
+    const element = document.querySelector<HTMLElement>('[role="menu"]');
+    if (!element) {
+      throw new Error('The Work type-filter menu should open.');
+    }
+
+    return element;
+  });
+  await userEvent.click(within(menu).getByRole('menuitemradio', { name: kindName }));
+  await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument());
+}
+
 export const CommentaryGroupingAndThinking: Story = {
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
@@ -156,7 +175,7 @@ export const TypeFilterPreservesCommentaryContext: Story = {
     await canvas.findByText('Checking the implementation and locating the admission path…');
     await expect(canvas.getByText('Myślenie')).toBeVisible();
 
-    await userEvent.click(canvas.getByText('Narzędzie'));
+    await selectFilterKind(canvasElement, 'Wszystkie', 'Narzędzie');
     await waitFor(() => expect(canvas.queryByText('Myślenie')).not.toBeInTheDocument());
     // The Commentary heading that groups the remaining tool rows is never stripped away.
     await expect(

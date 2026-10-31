@@ -153,6 +153,15 @@ function clickTrigger(label: string) {
   fireEvent.click(trigger);
 }
 
+/** The type filter is a `Menu` (never a `SegmentedControl` — see WorkInspector.tsx's
+ * WorkFilterBar): its trigger only opens on Enter/Space or a pointer press, never a plain click
+ * event, matching the real `@radix-ui/react-dropdown-menu` Trigger contract. */
+function selectFilterKind(currentLabel: string, kindLabel: string) {
+  const trigger = screen.getByRole('button', { name: currentLabel });
+  fireEvent.keyDown(trigger, { key: 'Enter' });
+  fireEvent.click(screen.getByRole('menuitemradio', { name: kindLabel }));
+}
+
 describe('WorkInspector Work screen', () => {
   it('groups operations under their Commentary, defaulting leading operations to Start of Turn', async () => {
     const leading = work({
@@ -220,7 +229,7 @@ describe('WorkInspector Work screen', () => {
     await screen.findByText('Checking options…');
     expect(screen.getByText('Thinking')).toBeTruthy();
 
-    clickTrigger('Tool');
+    selectFilterKind('All', 'Tool');
     await waitFor(() => expect(screen.queryByText('Thinking')).toBeNull());
     // The Commentary that heads the chapter stays visible for context (never stripped away).
     expect(screen.getByText('Checking options…')).toBeTruthy();

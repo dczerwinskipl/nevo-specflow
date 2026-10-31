@@ -11,8 +11,12 @@ import {
   Icon,
   IconButton,
   InputGroup,
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
   ScrollArea,
-  SegmentedControl,
   Spinner,
   StatusIndicator,
   TextInput,
@@ -95,6 +99,14 @@ interface WorkFilterState {
   search: string;
 }
 
+/** The type filter is a compact `Menu` trigger — never a `SegmentedControl` — because its five
+ * options (Wszystkie/Postęp/Rozumowanie/Narzędzie/Odpowiedź użytkownika) do not fit the Secondary
+ * panel's real minimum width (`WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH`, 330px): a `SegmentedControl`
+ * there visibly overflows/overlaps. This follows the same "Menu instead of a thing that doesn't
+ * fit" precedent already used for the Composer's model picker in `ManagedSession.tsx` — a `Button`
+ * showing the current selection as its visible label, expanding into a `MenuRadioGroup` on demand —
+ * and `Menu` is itself one of the components session-chat-v10-design.md §4 names as pre-approved
+ * for this exact screen. */
 function WorkFilterBar({
   filter,
   onChange,
@@ -103,23 +115,41 @@ function WorkFilterBar({
   onChange: (next: WorkFilterState) => void;
 }) {
   const { t } = useTranslation();
+  const kindLabel =
+    filter.kind === 'all'
+      ? t('managedSession.workInspector.filterAll')
+      : t(`managedSession.workKind.${filter.kind}`);
 
   return (
-    <div className="grid min-w-0 gap-2">
-      <SegmentedControl
-        aria-label={t('managedSession.workInspector.filterLabel')}
-        value={filter.kind}
-        onValueChange={(value) => onChange({ ...filter, kind: value as WorkFilterKind })}
-      >
-        {workFilterKinds.map((kind) => (
-          <SegmentedControl.Item key={kind} value={kind}>
-            {kind === 'all'
-              ? t('managedSession.workInspector.filterAll')
-              : t(`managedSession.workKind.${kind}`)}
-          </SegmentedControl.Item>
-        ))}
-      </SegmentedControl>
-      <InputGroup className="min-w-0">
+    <div className="flex min-w-0 items-center gap-2">
+      <Menu>
+        <MenuTrigger asChild>
+          <Button
+            className="max-w-28 shrink-0 sm:max-w-36"
+            labelOverflow="truncate"
+            leadingIcon="filter"
+            size="sm"
+            variant="secondary"
+          >
+            {kindLabel}
+          </Button>
+        </MenuTrigger>
+        <MenuContent align="start" aria-label={t('managedSession.workInspector.filterLabel')}>
+          <MenuRadioGroup
+            value={filter.kind}
+            onValueChange={(value) => onChange({ ...filter, kind: value as WorkFilterKind })}
+          >
+            {workFilterKinds.map((kind) => (
+              <MenuRadioItem key={kind} value={kind}>
+                {kind === 'all'
+                  ? t('managedSession.workInspector.filterAll')
+                  : t(`managedSession.workKind.${kind}`)}
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+      <InputGroup className="min-w-0 flex-1">
         <InputGroup.Addon>
           <Icon name="search" size="sm" />
         </InputGroup.Addon>
@@ -146,44 +176,10 @@ function WorkFilterBar({
   );
 }
 
-/** A reasoning summary: separately labeled "Thinking" and optionally collapsible — never styled
- * like a tool action or presented as Commentary (session-chat-v10-design.md §4). */
-function ReasoningEntryRow({ item, data }: { item: WorkSummary; data: Data }) {
-  const { t } = useTranslation();
-
-  return (
-    <Collapsible>
-      <Collapsible.Trigger>
-        <span className="italic text-content-muted">
-          {t('managedSession.workInspector.thinking')}
-        </span>
-      </Collapsible.Trigger>
-      <Collapsible.Content>
-        <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
-      </Collapsible.Content>
-    </Collapsible>
-  );
-}
-
-function InteractionEntryRow({ item }: { item: WorkSummary }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex min-w-0 items-center gap-2 text-body-sm">
-      <StatusIndicator
-        tone={stateTone(item.state)}
-        decorative={false}
-        aria-label={t(`managedSession.workState.${item.state}`)}
-      />
-      <span className="text-content-secondary">{t('managedSession.workKind.interaction')}</span>
-      <span className="text-content-muted">· {t(`managedSession.workState.${item.state}`)}</span>
-    </div>
-  );
-}
-
-/** A compact tool row. Clicking a Work item with child ToolActions opens that exact Work's
- * ToolActionSummary detail (ToolAction stays the tool's own child, never a top-level row). */
-function ToolEntryRow({
+/** A plain compact row for a tool item nested inside a `ToolBurstTimelineItem`'s own disclosure
+ * (never a second independent Timeline: the burst's members are deliberately de-emphasized detail
+ * inside one Timeline.Item's content, not additional chronology markers on the main rail). */
+function CompactToolRow({
   item,
   onOpenActions,
 }: {
@@ -217,10 +213,84 @@ function ToolEntryRow({
   );
 }
 
-/** Two or more consecutive happy-path tool items, compacted into one collapsible row
- * (session-work-inspector-ui-spec.md §6.2/§6.3). Collapsed by default: the point is to not
- * clutter L2 with a long run of uneventful successful tool calls. */
-function ToolBurstRow({
+/** A reasoning summary as its own `Timeline.Item`: separately labeled "Thinking" and optionally
+ * collapsible — never styled like a tool action or presented as Commentary
+ * (session-chat-v10-design.md §4). The marker sits on the one connected chronology rail; the
+ * disclosure (collapsed by default) lives entirely in the Content — only its container changed
+ * from a bare row to a Timeline.Item. */
+function ReasoningTimelineItem({ item, data }: { item: WorkSummary; data: Data }) {
+  const { t } = useTranslation();
+
+  return (
+    <Timeline.Item>
+      <Timeline.Marker tone={stateTone(item.state)} />
+      <Timeline.Content title="">
+        <Collapsible>
+          <Collapsible.Trigger>
+            <span className="italic text-content-muted">
+              {t('managedSession.workInspector.thinking')}
+            </span>
+          </Collapsible.Trigger>
+          <Collapsible.Content>
+            <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
+          </Collapsible.Content>
+        </Collapsible>
+      </Timeline.Content>
+    </Timeline.Item>
+  );
+}
+
+function InteractionTimelineItem({ item }: { item: WorkSummary }) {
+  const { t } = useTranslation();
+
+  return (
+    <Timeline.Item>
+      <Timeline.Marker active={item.state === 'active'} tone={stateTone(item.state)} />
+      <Timeline.Content
+        meta={t(`managedSession.workState.${item.state}`)}
+        title={t('managedSession.workKind.interaction')}
+      />
+    </Timeline.Item>
+  );
+}
+
+/** A compact tool row as its own `Timeline.Item`. Clicking a Work item with child ToolActions
+ * opens that exact Work's ToolActionSummary detail (ToolAction stays the tool's own child, never a
+ * top-level row). The state is carried as visible `meta` text — never only the marker's color —
+ * because `Timeline.Marker` is decorative (`aria-hidden`) by the real component's own contract. */
+function ToolTimelineItem({
+  item,
+  onOpenActions,
+}: {
+  item: WorkSummary;
+  onOpenActions: (workId: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Timeline.Item>
+      <Timeline.Marker active={item.state === 'active'} tone={stateTone(item.state)} />
+      <Timeline.Content meta={t(`managedSession.workState.${item.state}`)} title={item.title.text}>
+        {!!item.actionCount && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-auto w-fit justify-start px-0"
+            onClick={() => onOpenActions(item.workId)}
+          >
+            {t('managedSession.actions')}
+          </Button>
+        )}
+      </Timeline.Content>
+    </Timeline.Item>
+  );
+}
+
+/** Two or more consecutive happy-path tool items, compacted into one `Timeline.Item` carrying a
+ * collapsible disclosure (session-work-inspector-ui-spec.md §6.2/§6.3): a single marker on the
+ * chronology rail, collapsed by default, so a long run of uneventful successful tool calls never
+ * forces its own string of rail markers. */
+function ToolBurstTimelineItem({
   burst,
   onOpenActions,
 }: {
@@ -230,20 +300,25 @@ function ToolBurstRow({
   const { t } = useTranslation();
 
   return (
-    <Collapsible>
-      <Collapsible.Trigger>
-        {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
-      </Collapsible.Trigger>
-      <Collapsible.Content>
-        <ul className="grid gap-1.5">
-          {burst.items.map((item) => (
-            <li key={item.workId}>
-              <ToolEntryRow item={item} onOpenActions={onOpenActions} />
-            </li>
-          ))}
-        </ul>
-      </Collapsible.Content>
-    </Collapsible>
+    <Timeline.Item>
+      <Timeline.Marker tone="success" />
+      <Timeline.Content title="">
+        <Collapsible>
+          <Collapsible.Trigger>
+            {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
+          </Collapsible.Trigger>
+          <Collapsible.Content>
+            <ul className="grid gap-1.5">
+              {burst.items.map((item) => (
+                <li key={item.workId}>
+                  <CompactToolRow item={item} onOpenActions={onOpenActions} />
+                </li>
+              ))}
+            </ul>
+          </Collapsible.Content>
+        </Collapsible>
+      </Timeline.Content>
+    </Timeline.Item>
   );
 }
 
@@ -257,25 +332,27 @@ function WorkChapterEntryRow({
   onOpenActions: (workId: string) => void;
 }) {
   if (entry.type === 'burst') {
-    return <ToolBurstRow burst={entry} onOpenActions={onOpenActions} />;
+    return <ToolBurstTimelineItem burst={entry} onOpenActions={onOpenActions} />;
   }
 
   const { item } = entry;
   if (item.kind === 'reasoning') {
-    return <ReasoningEntryRow item={item} data={data} />;
+    return <ReasoningTimelineItem item={item} data={data} />;
   }
 
   if (item.kind === 'interaction') {
-    return <InteractionEntryRow item={item} />;
+    return <InteractionTimelineItem item={item} />;
   }
 
-  return <ToolEntryRow item={item} onOpenActions={onOpenActions} />;
+  return <ToolTimelineItem item={item} onOpenActions={onOpenActions} />;
 }
 
 /** One Commentary-headed phase: the Commentary itself is a readable Markdown heading — never the
  * collapse trigger, so a link inside it stays a normal link — and its operations are a
- * subordinate, independently collapsible list (session-chat-v10-design.md §4). The leading
- * "Start of Turn" chapter uses a neutral label instead of a Commentary heading. */
+ * subordinate, independently collapsible real `Timeline` (compact `size="sm"`, the same DS
+ * component the L4 ToolAction detail already uses) — never a second, ad-hoc nested
+ * Collapsible/indented-list tree (session-chat-v10-design.md §4). The leading "Start of Turn"
+ * chapter uses a neutral label instead of a Commentary heading. */
 function WorkChapterSection({
   chapter,
   data,
@@ -287,6 +364,9 @@ function WorkChapterSection({
 }) {
   const { t } = useTranslation();
   const entries = useMemo(() => groupChapterEntries(chapter.items), [chapter.items]);
+  const operationsLabel = t('managedSession.workInspector.operationsCount', {
+    count: entries.length,
+  });
 
   return (
     <section className="grid min-w-0 gap-2 border-b border-border-subtle pb-4 last:border-b-0 last:pb-0">
@@ -304,17 +384,18 @@ function WorkChapterSection({
       )}
       {entries.length > 0 && (
         <Collapsible defaultExpanded>
-          <Collapsible.Trigger>
-            {t('managedSession.workInspector.operationsCount', { count: entries.length })}
-          </Collapsible.Trigger>
+          <Collapsible.Trigger>{operationsLabel}</Collapsible.Trigger>
           <Collapsible.Content>
-            <ul className="grid gap-1.5">
+            <Timeline aria-label={operationsLabel} size="sm">
               {entries.map((entry) => (
-                <li key={entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId}>
-                  <WorkChapterEntryRow entry={entry} data={data} onOpenActions={onOpenActions} />
-                </li>
+                <WorkChapterEntryRow
+                  key={entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId}
+                  data={data}
+                  entry={entry}
+                  onOpenActions={onOpenActions}
+                />
               ))}
-            </ul>
+            </Timeline>
           </Collapsible.Content>
         </Collapsible>
       )}

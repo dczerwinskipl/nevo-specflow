@@ -4633,6 +4633,7 @@
       "status": "draft",
       "file": "docs/ideas/specflow-ui/storybook-rework.md",
       "read_when": [
+        "standardizing Storybook tree depth and providing one interactive Default story per screen",
         "evaluating or planning a Storybook catalog rework for a selected package or feature",
         "reducing screen scenario clutter and increasing component-level playground coverage",
         "deciding which stories need Controls, contract tags, visual snapshots, or integration tests",
@@ -4670,6 +4671,7 @@
       "status": "draft",
       "file": "docs/ideas/specflow-ui/storybook-rework-inventory.md",
       "read_when": [
+        "auditing uneven Storybook sidebar hierarchy and missing visible Default controls",
         "inventorying Storybook stories and product component showcase gaps before restructuring",
         "planning migration from numerous screen variants to interactive component and feature stories",
         "comparing Storybook changes across the working branch and incoming UI pull requests",

@@ -122,24 +122,24 @@ rather than mechanically moving directories.
 ## 1.1 Sidebar hierarchy and default-entry audit
 
 Counts alone conceal the structural problem: current visible titles mix
-different depths and categories (for example \`SpecFlow/Screens/Task Workbench\`,
-\`SpecFlow/Features/Tasks/Hints\`, \`SpecFlow/Shared/Operations Panel\`,
-\`SpecFlow/Contracts/Creation consistency baseline\` and
-\`SpecFlow/Review/Owner V5 after\`). A person browsing product screens
+different depths and categories (for example `SpecFlow/Screens/Task Workbench`,
+`SpecFlow/Features/Tasks/Hints`, `SpecFlow/Shared/Operations Panel`,
+`SpecFlow/Contracts/Creation consistency baseline` and
+`SpecFlow/Review/Owner V5 after`). A person browsing product screens
 cannot predict which category/depth contains the item.
 
 **Proposed consistent visible interface:**
 
 | Purpose | Title path | Default entry | Control strategy |
 | --- | --- | --- | --- |
-| Screen | \`SpecFlow/Screens/Task Workbench\` | \`Default\` | Task scenario, page state, primary/preview, density |
-| Screen | \`SpecFlow/Screens/Specs Overview\` | \`Default\` | Collection, data state, list density, locale |
-| Screen | \`SpecFlow/Screens/Managed Session\` | \`Default\` | Canonical Session state, context visibility, message fixture |
-| Screen | \`SpecFlow/Screens/Create Specification\` | \`Default\` | Creation mode, workspace options, validation preset |
-| Feature | \`SpecFlow/Features/Workspace Selection\` | \`Default\` | Real workspace/branch/base selection state |
-| Component | \`SpecFlow/Components/Task Hints\` | \`Default\` | Hints count/type, long references, empty state |
-| Component | \`SpecFlow/Components/Operational Row\` | \`Default\` | Selection, status, content length, actions |
-| DS component | \`Nevo UI/Actions/Button\` | \`Default\` | Existing supported variants, sizes, icons |
+| Screen | `SpecFlow/Screens/Task Workbench` | `Default` | Task scenario, page state, primary/preview, density |
+| Screen | `SpecFlow/Screens/Specs Overview` | `Default` | Collection, data state, list density, locale |
+| Screen | `SpecFlow/Screens/Managed Session` | `Default` | Canonical Session state, context visibility, message fixture |
+| Screen | `SpecFlow/Screens/Create Specification` | `Default` | Creation mode, workspace options, validation preset |
+| Feature | `SpecFlow/Features/Workspace Selection` | `Default` | Real workspace/branch/base selection state |
+| Component | `SpecFlow/Components/Task Hints` | `Default` | Hints count/type, long references, empty state |
+| Component | `SpecFlow/Components/Operational Row` | `Default` | Selection, status, content length, actions |
+| DS component | `Nevo UI/Actions/Button` | `Default` | Existing supported variants, sizes, icons |
 
 Titles and controls in this table are **target candidates**; verify actual production
 boundaries and supported state combinations before implementation. Do not create
@@ -148,20 +148,20 @@ meaningful screen inputs while using the real production presentation model.
 
 The default-visible tree should **not** contain one branch per assert, error
 test, viewport, locale, read-only combination, revision, Chromatic baseline,
-or historical review. Keep these cases in the runnable corpus with \`contract\`,
-\`integration\`, \`capture\` (and, after approving the proposed visibility
-change, snapshot-only \`visual\`) tags. Hidden stories can remain colocated
+or historical review. Keep these cases in the runnable corpus with `contract`,
+`integration`, `capture` (and, after approving the proposed visibility
+change, snapshot-only `visual`) tags. Hidden stories can remain colocated
 under the same owner's title; source/test coverage is not deleted.
 
 **Required audit metrics for each affected story family** (not available from
 this source-only snapshot; derive from built Storybook metadata):
 
-- Raw title depth versus canonical \`Owner/Kind/Subject\` depth.
+- Raw title depth versus canonical `Owner/Kind/Subject` depth.
 - Number of default-visible entries per subject; whether exactly one useful
-  \`Default\` is present.
+  `Default` is present.
 - Available, meaningful Controls/args and whether normal defaults render
   without network dependencies.
-- Number of visible assertion-bearing \`play\` stories and other test-only
+- Number of visible assertion-bearing `play` stories and other test-only
   variants leaking into the main navigation.
 - Number of hidden Contract/Integration/Capture/Visual stories and whether
   test execution/Chromatic/IDs remain intact.

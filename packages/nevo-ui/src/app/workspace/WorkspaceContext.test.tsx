@@ -424,6 +424,29 @@ describe('W02: Secondary root-tab state', () => {
     expect(activeTab()).toBe(pinnedId);
   });
 
+  it('with a pinned tab AND a remaining runtime neighbour, closeTab activates the neighbour, not the pinned tab', async () => {
+    mountTabs({ pinned: true });
+    await click('openTab a');
+    await click('openTab b');
+    const [pinnedId, idA, idB] = tabIds();
+    expect(activeTab()).toBe(idB);
+
+    // B has no right neighbour, so the rule falls back to its left neighbour (A) — the pinned tab
+    // is NOT a shortcut taken merely because one exists; it is only the last-resort fallback.
+    await click(`closeTab ${idB}`);
+    expect(tabIds()).toEqual([pinnedId, idA]);
+    expect(activeTab()).toBe(idA);
+
+    // Re-open a right neighbour and close the (now) middle tab: its right neighbour wins over
+    // both its left neighbour and the pinned tab.
+    await click('openTab b');
+    const [, , idB2] = tabIds();
+    await click(`activate ${idA}`);
+    await click(`closeTab ${idA}`);
+    expect(tabIds()).toEqual([pinnedId, idB2]);
+    expect(activeTab()).toBe(idB2); // Right neighbour of A, not the pinned tab.
+  });
+
   it('closeTab activates the right neighbour, else the left one (useOpenedItems rule)', async () => {
     mountTabs();
     await click('openTab a');

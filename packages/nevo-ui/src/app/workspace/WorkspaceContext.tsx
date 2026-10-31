@@ -733,9 +733,10 @@ export function AppWorkspaceProvider({
       const wasActive = snapshot.activeTabId === tabId;
       let activeTabId = snapshot.activeTabId;
       if (wasActive) {
-        activeTabId = pinnedTabRef.current
-          ? PINNED_TAB_ID
-          : (order[Math.min(closedIndex, order.length - 1)] ?? null);
+        // Right neighbour, else left (useOpenedItems's rule, verbatim); only when no runtime tab
+        // remains at all does the pinned tab become the fallback (contract §4.1/§5).
+        const neighborTabId = order[Math.min(closedIndex, order.length - 1)] ?? null;
+        activeTabId = neighborTabId ?? (pinnedTabRef.current ? PINNED_TAB_ID : null);
       }
 
       const nextSnapshot: TabsSnapshot = { ...snapshot, order, byId, activeTabId };

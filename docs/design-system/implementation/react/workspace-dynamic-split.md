@@ -46,11 +46,14 @@ proved the full section 5 transition table end-to-end as one connected Storybook
 `NoPinnedTabDynamicSplitContract`), re-confirmed every `packages/specflow-ui` single-flow consumer
 is behavior-compatible, and found `packages/specflow-ui/src/features/sessions/managed/
 ManagedSession.tsx` already adopting `split="dynamic"` and `openTab` in production. W07's report
-records one open finding for independent review: `WorkspaceContext.tsx`'s `closeTab()` neighbour
-selection activates the pinned tab whenever one exists, rather than the right-then-left runtime
-neighbour section 4.1 describes, when another runtime tab remains open — undiscovered by W02's own
-tests. Current behavior now matches this document except for that one point, tracked for reconciliation
-rather than silently matched to the text.
+had flagged one finding for independent review: `WorkspaceContext.tsx`'s `closeTab()` neighbour
+selection activated the pinned tab whenever one existed, rather than the right-then-left runtime
+neighbour section 4.1 describes, when another runtime tab remained open — undiscovered by W02's own
+tests. That finding has since been fixed (`applyCloseTab` now applies the right-neighbour ->
+left-neighbour rule first, falling back to the pinned tab only when no runtime tab remains at all)
+and covered by a dedicated `WorkspaceContext.test.tsx` case plus the
+`FullConnectedScenarioContract` story asserting it directly; current behavior matches this document
+in full.
 
 **Revised 2026-10-30 after external review** (independent of this repository's own review
 process, which had already passed this document once): the review read this contract, the W01-W07

@@ -966,17 +966,21 @@ export const FullConnectedScenarioContract: Story = {
       Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
       'Step 6: closeTab() while manual must preserve the manual ratio.',
     );
-    // closeTab()'s own neighbour-selection may re-activate the pinned tab rather than Item A when
-    // a pinned tab exists (see this task's report); explicitly re-activate Item A so the rest of
-    // this scenario keeps exercising a runtime (non-pinned) tab, as intended.
-    await activateRootTab(canvasElement, userEvent, 'Item A');
+    // closeTab()'s neighbour-selection rule (right neighbour, else left) must win over the pinned
+    // tab: Item B (the closed, active tab) had no right neighbour, so closing it activates its
+    // left neighbour, Item A, directly — the pinned tab is only the fallback when no runtime tab
+    // remains at all (contract §4.1/§5). No explicit re-activation should be needed.
     await waitFor(
       () => document.querySelector('[data-scenario-detail-page="Item A"]'),
-      'Step 6: Item A should still be reachable, still on its pushed detail page.',
+      'Step 6: closing Item B should re-activate Item A (its left neighbour), still on its pushed detail page.',
+    );
+    assert(
+      tabStripSummary(canvasElement).activeLabel.includes('Item A'),
+      'Step 6: Item A, not the pinned tab, must be the active tab after closing its right neighbour Item B.',
     );
     assert(
       Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
-      'Step 6: activateTab() while manual must not resize either.',
+      'Step 6: the neighbour re-activation that follows closeTab() while manual must not resize either.',
     );
 
     // Step 7: swap sides — everything the resolver/tab-set own survives unchanged.

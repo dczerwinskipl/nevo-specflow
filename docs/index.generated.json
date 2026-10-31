@@ -2097,9 +2097,11 @@
       "status": "current",
       "file": "docs/design-system/implementation/storybook/guidelines.md",
       "read_when": [
-        "creating or editing a Storybook story",
-        "verifying a UI component visually or with interaction tests",
-        "building deterministic UI fixtures"
+        "creating, editing, or reviewing Storybook stories and their fixtures or Controls",
+        "restructuring Storybook navigation, visibility, tags, or component and screen story coverage",
+        "reviewing UI changes that affect Storybook tests, component showcases, or visual baselines",
+        "configuring Storybook, Chromatic, Figma capture, or accessibility verification",
+        "verifying a UI component visually or with interaction tests"
       ],
       "summary": "The shared Storybook host, owner-based story hierarchy, co-location, deterministic fixtures, accessibility checks, and the required desktop/mobile verification workflow.",
       "related": [
@@ -4631,10 +4633,10 @@
       "status": "draft",
       "file": "docs/ideas/specflow-ui/storybook-rework.md",
       "read_when": [
-        "planning Storybook reorganization or UI test infrastructure",
-        "evaluating whether a new UI story should be a playground, fixture, visual baseline, or test",
-        "reviewing agents' UI implementation and Storybook output",
-        "designing enforcement to prevent new story catalog clutter"
+        "evaluating or planning a Storybook catalog rework for a selected package or feature",
+        "reducing screen scenario clutter and increasing component-level playground coverage",
+        "deciding which stories need Controls, contract tags, visual snapshots, or integration tests",
+        "designing long-term Storybook authoring and review safeguards for incoming UI changes"
       ],
       "summary": "Non-authoritative proposal to rework SpecFlow Storybook from a screen-scenario dump into a component-first interactive workbench, while retaining automated contracts and introducing incremental CI and agent-level authoring safeguards.",
       "related": [
@@ -4668,9 +4670,10 @@
       "status": "draft",
       "file": "docs/ideas/specflow-ui/storybook-rework-inventory.md",
       "read_when": [
-        "auditing Storybook source and deciding what to consolidate or preserve",
-        "planning a Storybook cleanup for an explicitly chosen UI scope",
-        "reviewing incoming PRs that introduce UI components, stories, or fixture infrastructure"
+        "inventorying Storybook stories and product component showcase gaps before restructuring",
+        "planning migration from numerous screen variants to interactive component and feature stories",
+        "comparing Storybook changes across the working branch and incoming UI pull requests",
+        "checking which contract, Chromatic, Figma, or story ID dependencies a cleanup must preserve"
       ],
       "summary": "Dated, non-authoritative inventory of SpecFlow/Nevo UI Storybook groups, component-story gaps, problematic screen scenario families, and a repeatable method for refreshing the inventory as concurrent PRs arrive.",
       "related": [

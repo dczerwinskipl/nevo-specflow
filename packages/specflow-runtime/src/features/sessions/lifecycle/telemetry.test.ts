@@ -130,6 +130,23 @@ function fixture(
 }
 
 describe('Session telemetry refresh lifecycle', () => {
+  it('retires previous account observations on a confirmed external switch without rebinding or querying limits', async () => {
+    const f = fixture();
+    f.binding.mockResolvedValue({
+      accountScope: 'changed-account',
+      credentialGeneration: 'changed-login',
+    });
+    await expect(f.request()).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    expect(f.commands).toContainEqual(
+      expect.objectContaining({
+        op: 'telemetry-observation-fence',
+        scope: 'changed-account',
+        generation: 'changed-login',
+      }),
+    );
+    expect(f.commands.some((command) => command.op === 'telemetry-refresh-admit')).toBe(false);
+    expect(f.refresh).not.toHaveBeenCalled();
+  });
   it('serves concurrent snapshots without expiry writes, migration work or provider reads', async () => {
     const f = fixture();
     await f.service.snapshot(randomUUID());

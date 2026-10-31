@@ -225,6 +225,16 @@ export function createSessionTelemetryService(
       const binding = await within(() => provider.binding(signal), signal);
       signal.throwIfAborted();
       if (info.nativeScope && info.nativeScope !== binding.accountScope) {
+        // A confirmed external account switch retires the old gauges and fences
+        // any unfinished publication. Do not rebind the native Session, issue a
+        // request on the new account or leave old limits looking current.
+        await store.call({
+          op: 'telemetry-observation-fence',
+          sessionId,
+          scope: binding.accountScope,
+          generation: binding.credentialGeneration,
+        });
+
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Session provider account binding changed.');
       }
 

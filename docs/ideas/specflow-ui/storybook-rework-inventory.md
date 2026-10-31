@@ -24,10 +24,10 @@ related:
 # Storybook Rework: baseline inventory and migration map
 
 > **Evidence snapshot, not a stable requirement or future inventory.**
-> Examined GitHub default branch \`main\` on 2026-10-31 using repository code search and
+> Examined GitHub default branch `main` on 2026-10-31 using repository code search and
 > individual .stories.tsx files. New or changed stories on open PRs are excluded from the
-> counts below. This was *not* a built \`index.json\`/Storybook runtime inventory.
-> Counts are source-level, explicitly typed \`export const …: Story =\` declarations and
+> counts below. This was *not* a built `index.json`/Storybook runtime inventory.
+> Counts are source-level, explicitly typed `export const …: Story =` declarations and
 > can miss aliases, nonstandard exports or dynamic indexing. Before any cleanup, rebuild
 > a complete runtime story index at the selected working branch/revision.
 
@@ -35,9 +35,9 @@ related:
 
 | Owner | Story files found | Exported typed stories | Interpretation |
 | --- | ---: | ---: | --- |
-| \`packages/specflow-ui\` | 46 | 650 | Product screens, contracts, features, mocks and relatively few component stories |
-| \`packages/nevo-ui\` | 96 | 526 | DS components and app mechanics, including hidden contracts and Figma captures |
-| \`examples/crm\` | 1 | 6 | Independent consumer example |
+| `packages/specflow-ui` | 46 | 650 | Product screens, contracts, features, mocks and relatively few component stories |
+| `packages/nevo-ui` | 96 | 526 | DS components and app mechanics, including hidden contracts and Figma captures |
+| `examples/crm` | 1 | 6 | Independent consumer example |
 | **Total** | **143** | **1,182** | Source-level count; includes tests, captures, mocks and showcase stories |
 
 The navigation problem cannot be measured by total count alone:
@@ -51,9 +51,9 @@ and how many screen-level stories are redundant parameter combinations**.
 | --- | ---: | ---: | --- |
 | Brand | 2 | 15 | Reasonable product-brand showcase, inspect redundant presets |
 | Screens | 13 | 305 | Biggest visible scenario-combination source |
-| Contracts | 14 | 164 | Mostly legitimate, but some duplicate connected screen infrastructure |
+| Contracts | 14 | 168 | Mostly legitimate, but some duplicate connected screen infrastructure |
 | Components | 2 | 18 | Strikingly small product component catalog |
-| Features | 9 | 104 | Some real feature units, some test-only UI assemblies |
+| Features | 9 | 101 | Some real feature units, some test-only UI assemblies |
 | Shared | 2 | 20 | Operational primitives need clearer ownership/visibility |
 | Navigation | 1 | 1 | Not an owner category in current target hierarchy |
 | Review | 2 | 21 | Historical review artefacts should be explicitly profiled |
@@ -61,7 +61,7 @@ and how many screen-level stories are redundant parameter combinations**.
 | **Total** | **46** | **650** | Categories reflect current source titles, not proposed tree |
 
 Key signal: **13 Screen files expose 305 stories while only two files live under
-\`SpecFlow/Components\` (18 stories).** This does not prove the product has only two
+`SpecFlow/Components` (18 stories).** This does not prove the product has only two
 reusable components. It proves the Storybook *catalog* under-represents them.
 Some real product components are under Features/Shared/Sessions; review owner boundaries
 rather than mechanically moving directories.
@@ -89,32 +89,32 @@ rather than mechanically moving directories.
 
 ### Specific technical findings in source
 
-- \`FullTaskWorkspace.stories.tsx\`: 63 exports; root \`tags: ['visual']\`,
-  \`args\` for scenario/stress/preview/narrowPanel, no explicit \`argTypes\` for them.
+- `FullTaskWorkspace.stories.tsx`: 63 exports; root `tags: ['visual']`,
+  `args` for scenario/stress/preview/narrowPanel, no explicit `argTypes` for them.
   It already has a suitable adapter seam. Do not replace production Task data with
   a new framework.
-- \`SpecsOverview.stories.tsx\`: 44 exports. Many differ by presentation/collection
+- `SpecsOverview.stories.tsx`: 44 exports. Many differ by presentation/collection
   state, locale, or content density; fixture includes real shell/router/query
   infrastructure. Separate suitable presentational subparts before reducing screens.
-- \`WorkspacePlaceSection.stories.tsx\`: 66 exports and many \`play\` tests.
+- `WorkspacePlaceSection.stories.tsx`: 66 exports and many `play` tests.
   Not all tests should become Controls. Keep deterministic contract coverage while
   offering a useful controlled feature playground.
-- \`ManagedSession.stories.tsx\`: at baseline 8 stories exercising the connected
+- `ManagedSession.stories.tsx`: at baseline 8 stories exercising the connected
   session surface and interaction functions, not an adequate catalog for discrete
   Session UI elements. Review incoming branch work before deciding new owner structure.
-- \`TaskHints.stories.tsx\`: real \`TaskHints\` component, controlled \`hints\` input,
+- `TaskHints.stories.tsx`: real `TaskHints` component, controlled `hints` input,
   and a browser test for long references/copy/focus. A good seed for component-first.
-- \`OperationalRow.stories.tsx\`: renders a 30-row combined collection and checks
-  geometry/selection. The owned \`OperationalRow\` would benefit from a smaller
+- `OperationalRow.stories.tsx`: renders a 30-row combined collection and checks
+  geometry/selection. The owned `OperationalRow` would benefit from a smaller
   interactive showcase; keep the dense composition as contract evidence.
-- \`ConsistencyBaseline.stories.tsx\` and \`OwnerV5After.stories.tsx\`: import fixtures
-  or registration artifacts from neighboring \`.stories.tsx\` files. Evaluate moving
+- `ConsistencyBaseline.stories.tsx` and `OwnerV5After.stories.tsx`: import fixtures
+  or registration artifacts from neighboring `.stories.tsx` files. Evaluate moving
   reusable test presentation hosts into owner-local story-support modules.
-- \`tools/storybook/.storybook/main.ts\`: \`capture\`, \`contract\`, \`integration\`
+- `tools/storybook/.storybook/main.ts`: `capture`, `contract`, `integration`
   default to excluded in the tag filter; the mechanism already exists.
-- \`tools/storybook/.storybook/preview.ts\`: global \`chromatic.disableSnapshot = true\`;
-  \`visual\` must explicitly opt in to create an actual baseline.
-- \`Nevo UI/Actions/Button\`: good example of Playground, explicit \`argTypes\`,
+- `tools/storybook/.storybook/preview.ts`: global `chromatic.disableSnapshot = true`;
+  `visual` must explicitly opt in to create an actual baseline.
+- `Nevo UI/Actions/Button`: good example of Playground, explicit `argTypes`,
   a separate capture matrix, and a contract. Reuse the approach, not a copy of UI.
 
 ## 2. Full identified SpecFlow ownership list
@@ -122,54 +122,54 @@ rather than mechanically moving directories.
 A working audit can start from this exact baseline, but must refresh it against the
 target branch before acting.
 
-| Source location relative to \`packages/specflow-ui/src/\` | Stories | Current title family |
+| Source location relative to `packages/specflow-ui/src/` | Stories | Current title family |
 | --- | ---: | --- |
-| \`brand/nevo/NevoMark.stories.tsx\` | 9 | Brand / Nevo Mark |
-| \`brand/nevo/NevoBrandLogo.stories.tsx\` | 6 | Brand / Nevo Logo |
-| \`app/errors/ErrorViews.stories.tsx\` | 5 | Screens / Error Views |
-| \`app/useCachedQueryState.stories.tsx\` | 1 | Contracts / Cache observer |
-| \`auth/RuntimeUnavailableScreen.stories.tsx\` | 4 | Screens / Runtime Unavailable |
-| \`app/loading/LoadingPresentation.stories.tsx\` | 13 | Components / Loading presentation |
-| \`features/tasks/pages/FullTaskView.stories.tsx\` | 2 | Contracts / Standalone full task navigation |
-| \`app/contracts/ConsistencyBaseline.stories.tsx\` | 3 | Contracts / Creation consistency baseline |
-| \`app/navigation/useSessionDisclosure.stories.tsx\` | 1 | Contracts / Session navigation disclosure |
-| \`auth/LoginScreen.stories.tsx\` | 16 | Screens / Login |
-| \`features/tasks/detail/hints/TaskHints.stories.tsx\` | 3 | Features / Tasks / Hints |
-| \`shared/operations/panel/OperationsPanel.stories.tsx\` | 16 | Shared / Operations Panel |
-| \`app/navigation/WorkspaceRouteLeaveGuard.stories.tsx\` | 1 | Navigation / Workspace route leave guard |
-| \`features/specs/overview/rows/SpecListRow.stories.tsx\` | 2 | Features / Specification Row |
-| \`app/contracts/OwnerV5Review.stories.tsx\` | 4 | Review / Owner V5 independent responsive review |
-| \`features/tasks/workspace/TaskSessionDemo.stories.tsx\` | 2 | Screens / Task Session Demo |
-| \`features/sessions/shared/SessionProviderIcon.stories.tsx\` | 1 | Sessions / Provider Identity |
-| \`shared/operations/progress/OperationProgress.stories.tsx\` | 4 | Shared / Operation Progress |
-| \`mocks/editor-mode/EditorMode.stories.tsx\` | 23 | Screens / Editor mode (mock) |
-| \`mocks/documents-archetypes/DocumentsArchetypes.stories.tsx\` | 26 | Screens / Documents archetypes (mock) |
-| \`features/documents/editor/MarkdownSourceEditor.stories.tsx\` | 1 | Contracts / Markdown source editor |
-| \`features/specs/workspace/SpecificationWorkspace.stories.tsx\` | 2 | Features / Specification / Overview after Create |
-| \`features/tasks/detail/history/TaskHistoryDetails.stories.tsx\` | 2 | Features / Tasks / Historical details |
-| \`app/SpecFlowShell.stories.tsx\` | 39 | Screens / Application Shell |
-| \`features/documents/description/restoreScrollPosition.stories.tsx\` | 1 | Contracts / Restore Scroll Position |
-| \`features/specs/workspace/specificationSecondaryStack.stories.tsx\` | 2 | Features / Specification / Pending Task Preview |
-| \`features/specs/SpecificationStandaloneNavigation.stories.tsx\` | 5 | Contracts / Standalone specification navigation |
-| \`features/specs/workspace/SpecificationWorkSectionOutlet.stories.tsx\` | 1 | Features / Work Section Recovery |
-| \`features/documents/content/DocumentContent.stories.tsx\` | 5 | Features / Documents / Content lifecycle |
-| \`shared/operational-list/OperationalRow.stories.tsx\` | 5 | Components / Operational List |
-| \`features/sessions/managed/ManagedSession.stories.tsx\` | 8 | Screens / Managed Session |
-| \`features/specs/creation/options/ArchetypeSection.stories.tsx\` | 5 | Contracts / Create archetype selection |
-| \`features/specs/overview/SpecsOverview.stories.tsx\` | 44 | Screens / Specs Overview |
-| \`features/documents/editor/DocumentEditor.stories.tsx\` | 12 | Contracts / Demo Markdown editor V4 |
-| \`app/contracts/ConnectedConsistency.stories.tsx\` | 26 | Contracts / Connected creation consistency |
-| \`app/contracts/OwnerV5After.stories.tsx\` | 17 | Review / Owner V5 after |
-| \`features/tasks/workspace/TaskWorkspace.stories.tsx\` | 23 | Screens / Task Workspace |
-| \`features/specs/creation/progress/CreateOperationPage.stories.tsx\` | 18 | Features / Specification Creation / Progress Page |
-| \`features/tasks/pages/FullTaskWorkspace.stories.tsx\` | 63 | Screens / Task Workbench |
-| \`features/specs/SpecificationSurface.stories.tsx\` | 28 | Screens / Specification Workspace |
-| \`features/documents/workspace/DocumentsArchetypes.stories.tsx\` | 24 | Screens / Documents / Archetype states |
-| \`features/documents/explorer/DocumentsExplorer.stories.tsx\` | 14 | Contracts / Documents owner V4 |
-| \`features/documents/editor/DocumentScroll.contract.stories.tsx\` | 27 | Contracts / Document edit-preview and position |
-| \`features/specs/creation/CreateSpecificationScreen.stories.tsx\` | 52 | Contracts / Creation Demo |
-| \`features/documents/explorer/DocumentsExplorer.contract.stories.tsx\` | 18 | Contracts / Document tree explorer |
-| \`features/specs/creation/workspace/WorkspacePlaceSection.stories.tsx\` | 66 | Features / Specification Creation / Workspace Section |
+| `brand/nevo/NevoMark.stories.tsx` | 9 | Brand / Nevo Mark |
+| `brand/nevo/NevoBrandLogo.stories.tsx` | 6 | Brand / Nevo Logo |
+| `app/errors/ErrorViews.stories.tsx` | 5 | Screens / Error Views |
+| `app/useCachedQueryState.stories.tsx` | 1 | Contracts / Cache observer |
+| `auth/RuntimeUnavailableScreen.stories.tsx` | 4 | Screens / Runtime Unavailable |
+| `app/loading/LoadingPresentation.stories.tsx` | 13 | Components / Loading presentation |
+| `features/tasks/pages/FullTaskView.stories.tsx` | 2 | Contracts / Standalone full task navigation |
+| `app/contracts/ConsistencyBaseline.stories.tsx` | 3 | Contracts / Creation consistency baseline |
+| `app/navigation/useSessionDisclosure.stories.tsx` | 1 | Contracts / Session navigation disclosure |
+| `auth/LoginScreen.stories.tsx` | 16 | Screens / Login |
+| `features/tasks/detail/hints/TaskHints.stories.tsx` | 3 | Features / Tasks / Hints |
+| `shared/operations/panel/OperationsPanel.stories.tsx` | 16 | Shared / Operations Panel |
+| `app/navigation/WorkspaceRouteLeaveGuard.stories.tsx` | 1 | Navigation / Workspace route leave guard |
+| `features/specs/overview/rows/SpecListRow.stories.tsx` | 2 | Features / Specification Row |
+| `app/contracts/OwnerV5Review.stories.tsx` | 4 | Review / Owner V5 independent responsive review |
+| `features/tasks/workspace/TaskSessionDemo.stories.tsx` | 2 | Screens / Task Session Demo |
+| `features/sessions/shared/SessionProviderIcon.stories.tsx` | 1 | Sessions / Provider Identity |
+| `shared/operations/progress/OperationProgress.stories.tsx` | 4 | Shared / Operation Progress |
+| `mocks/editor-mode/EditorMode.stories.tsx` | 23 | Screens / Editor mode (mock) |
+| `mocks/documents-archetypes/DocumentsArchetypes.stories.tsx` | 26 | Screens / Documents archetypes (mock) |
+| `features/documents/editor/MarkdownSourceEditor.stories.tsx` | 1 | Contracts / Markdown source editor |
+| `features/specs/workspace/SpecificationWorkspace.stories.tsx` | 2 | Features / Specification / Overview after Create |
+| `features/tasks/detail/history/TaskHistoryDetails.stories.tsx` | 2 | Features / Tasks / Historical details |
+| `app/SpecFlowShell.stories.tsx` | 39 | Screens / Application Shell |
+| `features/documents/description/restoreScrollPosition.stories.tsx` | 1 | Contracts / Restore Scroll Position |
+| `features/specs/workspace/specificationSecondaryStack.stories.tsx` | 2 | Features / Specification / Pending Task Preview |
+| `features/specs/SpecificationStandaloneNavigation.stories.tsx` | 5 | Contracts / Standalone specification navigation |
+| `features/specs/workspace/SpecificationWorkSectionOutlet.stories.tsx` | 1 | Features / Work Section Recovery |
+| `features/documents/content/DocumentContent.stories.tsx` | 5 | Features / Documents / Content lifecycle |
+| `shared/operational-list/OperationalRow.stories.tsx` | 5 | Components / Operational List |
+| `features/sessions/managed/ManagedSession.stories.tsx` | 8 | Screens / Managed Session |
+| `features/specs/creation/options/ArchetypeSection.stories.tsx` | 5 | Contracts / Create archetype selection |
+| `features/specs/overview/SpecsOverview.stories.tsx` | 44 | Screens / Specs Overview |
+| `features/documents/editor/DocumentEditor.stories.tsx` | 12 | Contracts / Demo Markdown editor V4 |
+| `app/contracts/ConnectedConsistency.stories.tsx` | 26 | Contracts / Connected creation consistency |
+| `app/contracts/OwnerV5After.stories.tsx` | 17 | Review / Owner V5 after |
+| `features/tasks/workspace/TaskWorkspace.stories.tsx` | 23 | Screens / Task Workspace |
+| `features/specs/creation/progress/CreateOperationPage.stories.tsx` | 18 | Features / Specification Creation / Progress Page |
+| `features/tasks/pages/FullTaskWorkspace.stories.tsx` | 63 | Screens / Task Workbench |
+| `features/specs/SpecificationSurface.stories.tsx` | 28 | Screens / Specification Workspace |
+| `features/documents/workspace/DocumentsArchetypes.stories.tsx` | 24 | Screens / Documents / Archetype states |
+| `features/documents/explorer/DocumentsExplorer.stories.tsx` | 14 | Contracts / Documents owner V4 |
+| `features/documents/editor/DocumentScroll.contract.stories.tsx` | 27 | Contracts / Document edit-preview and position |
+| `features/specs/creation/CreateSpecificationScreen.stories.tsx` | 52 | Contracts / Creation Demo |
+| `features/documents/explorer/DocumentsExplorer.contract.stories.tsx` | 18 | Contracts / Document tree explorer |
+| `features/specs/creation/workspace/WorkspacePlaceSection.stories.tsx` | 66 | Features / Specification Creation / Workspace Section |
 
 This list represents **story file paths**, not a proposed navigation tree. Existing
 title paths sometimes disagree with code ownership; that is part of the cleanup.
@@ -230,12 +230,12 @@ SpecFlow-owned test requirements.
 At inventory time, **PR #112** (Full Session screen redesign) was open and
 introduced/changed multiple Storybook files, including:
 
-- \`ManagedSession.interactions.stories.tsx\`
-- \`ManagedSession.states.stories.tsx\`
-- \`MessageText.stories.tsx\`
-- \`ModelEffortPicker.stories.tsx\`
-- \`WorkInspector.stories.tsx\`
-- \`ManagedSession.stories.tsx\`
+- `ManagedSession.interactions.stories.tsx`
+- `ManagedSession.states.stories.tsx`
+- `MessageText.stories.tsx`
+- `ModelEffortPicker.stories.tsx`
+- `WorkInspector.stories.tsx`
+- `ManagedSession.stories.tsx`
 - Nevo UI Workspace and ItemTabs stories.
 
 This may **improve the product component coverage** cited above. Do not
@@ -265,7 +265,7 @@ selection/installation of a new special agent.
    acceptance, use its promoted canonical rules instead.
 3. Discover actual default branch and chosen work branch HEAD. Inspect relevant
    open PRs for changed story paths and likely incoming conflicts.
-4. Enumerate \`*.stories.*\` from repository source and generate the actual
+4. Enumerate `*.stories.*` from repository source and generate the actual
    Storybook index for the current working tree. Distinguish:
    - file count, story export count, runtime indexed story count;
    - owner/title/story ID, tags, visibility, play, Chromatic snapshot inclusion;
@@ -292,7 +292,7 @@ decisions when repository evidence does not resolve a material ambiguity.
 
 A UI Reviewer must consult the **current Storybook authoring policy** when the
 reviewed diff:
-- adds, removes, renames or changes a \`.stories.*\` file or related fixtures;
+- adds, removes, renames or changes a `.stories.*` file or related fixtures;
 - changes Storybook host config, docs guidance, test runner, a11y, Chromatic,
   Figma capture, story metadata/IDs, or story filtering;
 - changes a UI component/feature in a way that changes the expected owner
@@ -324,7 +324,7 @@ the story index/visibility. This conditional distinction is intentional.
 Do not create a dedicated Storybook agent. When this proposal is accepted:
 
 1. Promote approved authoring/visibility/profile and component-first rules to
-   \`docs/design-system/implementation/storybook/guidelines.md\` (single source of truth).
+   `docs/design-system/implementation/storybook/guidelines.md` (single source of truth).
 2. Add a **short routing trigger** in the canonical UI Implementer profile:
    "Storybook cleanup/rework" means autonomous discovery + fresh inventory +
    component-first migration. The role already loads Storybook guidelines.
@@ -333,7 +333,7 @@ Do not create a dedicated Storybook agent. When this proposal is accepted:
    then applies the focused checklist, not a universal gate on unrelated reviews.
 4. Adjust general Implementer routing only if it can receive Storybook cleanup
    without delegation to UI Implementer.
-5. Regenerate agent skill outputs for \`.agents\` and \`.claude\` using the
+5. Regenerate agent skill outputs for `.agents` and `.claude` using the
    repository's canonical agent build. Do not hand-edit generated SKILL.md copies.
 6. Add tests for the trigger/routing contract and a changed-files incremental
    policy checker; avoid false positives from unrelated changes and legacy debt.
@@ -364,7 +364,7 @@ to prevent new technical debt while existing branches are landing.
 - [Storybook Rework proposal](storybook-rework.md)
 - [Docs inventory guidance](../README.md)
 - [PR #112](https://github.com/dczerwinskipl/nevo-specflow/pull/112)
-- \`tools/storybook/.storybook/main.ts\`, \`preview.ts\`
-- \`packages/specflow-ui/src/features/tasks/pages/FullTaskWorkspace.stories.tsx\`
-- \`packages/specflow-ui/src/features/specs/overview/SpecsOverview.stories.tsx\`
-- \`packages/specflow-ui/src/features/specs/creation/workspace/WorkspacePlaceSection.stories.tsx\`
+- `tools/storybook/.storybook/main.ts`, `preview.ts`
+- `packages/specflow-ui/src/features/tasks/pages/FullTaskWorkspace.stories.tsx`
+- `packages/specflow-ui/src/features/specs/overview/SpecsOverview.stories.tsx`
+- `packages/specflow-ui/src/features/specs/creation/workspace/WorkspacePlaceSection.stories.tsx`

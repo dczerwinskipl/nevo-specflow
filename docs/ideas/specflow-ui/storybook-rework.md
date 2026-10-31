@@ -333,15 +333,15 @@ an unconditional full-repository audit on every small UI change. If the user
 says only "Task stories", the audit begins with the Task owner and its dependencies.
 
 **Current canonical agent integration points (verified in repository):**
-- \`.nevo/agents/definitions/implementer-ui.yaml\` already requires
-  \`design-system.implementation.storybook.guidelines\` and includes a conditional
-  \`storybook\` instruction reference.
-- \`.nevo/agents/instructions/storybook.md\` is the existing instruction fragment
+- `.nevo/agents/definitions/implementer-ui.yaml` already requires
+  `design-system.implementation.storybook.guidelines` and includes a conditional
+  `storybook` instruction reference.
+- `.nevo/agents/instructions/storybook.md` is the existing instruction fragment
   where the cleanup task trigger can be expressed without changing agent identity.
-- \`.nevo/agents/definitions/implementer.yaml\` should receive an equivalent
+- `.nevo/agents/definitions/implementer.yaml` should receive an equivalent
   conditional route only if general Implementer is allowed to own this task.
-- \`.agents/skills/**\` and \`.claude/skills/**\` are generated outputs.
-  Modify canonical sources, then run \`pnpm agents:build\`/\`pnpm agents:check\`.
+- `.agents/skills/**` and `.claude/skills/**` are generated outputs.
+  Modify canonical sources, then run `pnpm agents:build`/`pnpm agents:check`.
 
 ### 8.3 Minimum required behavior for UI implementation agents
 
@@ -366,7 +366,7 @@ Agents must not use "smallest change" as a justification to skip relevant test c
 ### 8.4 Conditional Storybook review in the existing Reviewer
 
 The Reviewer profile currently does **not** include Storybook in its global
-\`knowledge.required\` list, unlike UI Implementer. Keep that distinction.
+`knowledge.required` list, unlike UI Implementer. Keep that distinction.
 
 At review start, the reviewer scans the diff and relevant UI ownership:
 - **Load the current Storybook guidelines** when the diff touches stories,
@@ -383,8 +383,8 @@ At review start, the reviewer scans the diff and relevant UI ownership:
 
 When triggered, the step is **required within the applicable review, optional
 outside it**. It can be implemented using an instruction entry in
-\`.nevo/agents/definitions/reviewer.yaml\`, with a suitable \`applies.when\`
-and \`delivery: auto\`. This should reference an owner-maintained instruction
+`.nevo/agents/definitions/reviewer.yaml`, with a suitable `applies.when`
+and `delivery: auto`. This should reference an owner-maintained instruction
 fragment containing only a **load/inspect trigger and review questions**,
 not a duplicate of the authoritative guidelines. The profile's global
 required knowledge list stays lean. Verify that rendered agent outputs include

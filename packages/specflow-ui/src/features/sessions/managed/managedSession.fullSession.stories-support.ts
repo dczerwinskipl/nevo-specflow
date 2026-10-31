@@ -142,3 +142,52 @@ export function unavailableSnapshot(): SessionSnapshot {
 
   return snapshot;
 }
+
+/** Item 7 — long-conversation stress fixture, closing a real verification gap: every other
+ * fixture in this file is short enough that the floating composer's scroll-padding/overlap
+ * -correction mechanism (`ManagedSession`'s `composerHeight`/`contentHeight` effects) never
+ * actually has to do real work — the conversation already fits without scrolling, so a passing
+ * geometry assertion there would be true vacuously, not because the mechanism was exercised.
+ * This fixture has no older history (`hasOlder: false`, unlike `sessionFixture`), so the only
+ * thing driving the scroller's height is this many real entries — many more request/answer pairs
+ * than the viewport can show at once, so `scrollHeight > clientHeight` by a meaningful margin and
+ * the last message can only be reached by actually scrolling to the bottom. */
+export function longConversationSnapshot(): SessionSnapshot {
+  const snapshot = base();
+  const pairs = 30;
+  for (let i = 1; i <= pairs; i += 1) {
+    snapshot.entries.push(
+      {
+        id: `request-${i}`,
+        turnId,
+        ordinal: i * 2,
+        revision: 1,
+        kind: 'request',
+        createdAt: '2026-10-29T09:00:00Z',
+        text: {
+          text: `Wiadomość nr ${i} — pytanie testowe sprawdzające przewijanie listy konwersacji.`,
+          complete: true,
+        },
+      },
+      {
+        id: `answer-${i}`,
+        turnId,
+        ordinal: i * 2 + 1,
+        revision: 1,
+        kind: 'answer',
+        createdAt: '2026-10-29T09:00:01Z',
+        text: {
+          text: `Wiadomość nr ${i} — treść odpowiedzi do przetestowania przewijania listy konwersacji.`,
+          complete: true,
+        },
+      },
+    );
+  }
+
+  return snapshot;
+}
+
+/** The long conversation's own final answer text (item 7): asserted visible, unclipped, after
+ * scrolling to the true bottom. */
+export const longConversationLastMessage =
+  'Wiadomość nr 30 — treść odpowiedzi do przetestowania przewijania listy konwersacji.';

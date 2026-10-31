@@ -4,6 +4,7 @@ import { expect, userEvent, within, fn, waitFor } from 'storybook/test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
 import {
   fixtureApi,
@@ -11,6 +12,42 @@ import {
   providerFixture,
   sessionFixture,
 } from './managedSession.stories-support';
+
+const NARROW_VIEWPORT = { viewport: { value: 'mobile1', isRotated: false } };
+
+/**
+ * Item 1 regression: confirmed live (owner audit, DOM measurement at 390px) that "Cancel Turn"
+ * and "Waiting For Question" specifically — both pairing the full interaction-response card with
+ * the large, auto-stitching answer from `sessionFixture(true)` — render the pending-interaction
+ * card/composer overlay directly on top of that answer's paragraph. Root cause: `MessageText.tsx`
+ * stitches the answer's remaining pages into the paragraph via its own local state, after the
+ * overlap-correction effect in `ManagedSession.tsx` has already run once, so the paragraph keeps
+ * growing after the last scroll correction. No entry actually inside the scroller's own visible,
+ * clipped viewport may render behind the floating overlay's screen-space rectangle (mirrors
+ * `verifyComposerOverlayPadding` in `ManagedSession.fullSession.stories.tsx`).
+ */
+async function verifyNoEntryOverlapsComposer(canvasElement: HTMLElement) {
+  await waitFor(() => {
+    const scroller = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');
+    const overlay = canvasElement.querySelector<HTMLElement>('[data-composer-overlay]');
+    if (!scroller || !overlay) {
+      throw new Error('Expected the message scroller and the floating composer overlay.');
+    }
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const overlayTop = overlay.getBoundingClientRect().top;
+    for (const entry of canvasElement.querySelectorAll<HTMLElement>('[data-entry-id]')) {
+      const rect = entry.getBoundingClientRect();
+      const insideVisibleWindow =
+        rect.height > 0 && rect.bottom > scrollerRect.top && rect.top < scrollerRect.bottom;
+      if (insideVisibleWindow && rect.bottom > overlayTop) {
+        throw new Error(
+          `Entry "${entry.dataset.entryId}" renders behind the floating composer overlay.`,
+        );
+      }
+    }
+  });
+}
 
 function Environment({ children }: { children: React.ReactNode }) {
   const [query] = useState(
@@ -102,7 +139,9 @@ export const CopyMessage: Story = {
 };
 export const WaitingForQuestion: Story = {
   args: { api: fixtureApi(sessionFixture(true)) },
+  globals: NARROW_VIEWPORT,
   play: async ({ canvasElement }) => {
+    await settleViewport(390, 844);
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText('Którą część rozwiązania sprawdzić w następnej kolejności?'),
@@ -112,6 +151,12 @@ export const WaitingForQuestion: Story = {
     // Send — the structured response above is how the user answers.
     await expect(canvas.getByRole('button', { name: 'Zatrzymaj' })).toBeEnabled();
     await expect(canvas.queryByRole('button', { name: 'Wyślij' })).not.toBeInTheDocument();
+    // Item 1 regression: at 390px, the large auto-stitching answer must never end up rendered
+    // behind the pending-interaction card/composer overlay.
+    await verifyNoEntryOverlapsComposer(canvasElement);
+    // Item 6 regression: the structured interaction-response field is not free prose, so native
+    // spellcheck stays off (no red squiggly underlines on a structured response field).
+    await expect(canvas.getByLabelText('Twoja odpowiedź')).toHaveAttribute('spellcheck', 'false');
   },
 };
 // Owner feedback #5: older history auto-loads (no manual button) once the scroller is at/near
@@ -192,11 +237,16 @@ export const AnswerQuestion: Story = {
 const cancelApi = { ...fixtureApi(sessionFixture(true)), cancel: fn().mockResolvedValue({}) };
 export const CancelTurn: Story = {
   args: { owner: 'cancel-story', api: cancelApi },
+  globals: NARROW_VIEWPORT,
   play: async ({ canvasElement }) => {
+    await settleViewport(390, 844);
     cancelApi.cancel.mockClear();
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Zatrzymaj' }));
     await waitFor(() => expect(cancelApi.cancel).toHaveBeenCalledOnce());
+    // Item 1 regression: at 390px, the large auto-stitching answer must never end up rendered
+    // behind the pending-interaction card/composer overlay.
+    await verifyNoEntryOverlapsComposer(canvasElement);
   },
 };
 
@@ -221,13 +271,16 @@ export const UnsupportedMultipleChoice: Story = {
 };
 
 const quota = sessionFixture();
+// Fixture copy stays Polish throughout the story, matching every surrounding label (owner audit:
+// this entry was the one English string left over in an otherwise-localized story).
+const quotaFailureText = 'Limit zapytań Claude lub ograniczenie szybkości uniemożliwiło operację.';
 quota.entries.push({
   ...quota.entries[0]!,
   id: 'quota',
   ordinal: 3,
   kind: 'commentary',
   text: {
-    text: 'Claude quota or rate limit prevented the operation.',
+    text: quotaFailureText,
     complete: true,
   },
 });
@@ -242,9 +295,7 @@ export const QuotaFailure: Story = {
   args: { owner: 'quota-story', api: fixtureApi(quota) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText('Claude quota or rate limit prevented the operation.'),
-    ).toBeVisible();
+    await expect(await canvas.findByText(quotaFailureText)).toBeVisible();
     await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
   },
 };

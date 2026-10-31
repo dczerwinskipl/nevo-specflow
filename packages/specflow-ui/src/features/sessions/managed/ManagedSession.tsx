@@ -155,8 +155,12 @@ function InteractionPrompt({
               <label htmlFor="managed-answer" className="text-body-sm">
                 {t('managedSession.answer')}
               </label>
+              {/* A structured interaction response, not free prose — the main message composer
+                  below keeps native spellcheck; this one does not need the red squiggly
+                  underlines (owner audit). */}
               <TextArea
                 id="managed-answer"
+                spellCheck={false}
                 value={answer}
                 onChange={(event) => setAnswer(event.target.value)}
               />
@@ -320,7 +324,16 @@ function EntryRow({
     >
       {srLabel}
       <div className="flex flex-wrap items-center gap-2">
-        {tone && <StatusIndicator tone={tone} aria-label={kindLabel} decorative={false} />}
+        {/* The icon's accessible name names the specific outcome ("Niepowodzenie"/"Zatrzymano"/
+            "Przerwano"), not the generic entry-kind label ("Wynik tury") every outcome entry
+            shared before — the same resolved label the adjacent text already renders. */}
+        {tone && (
+          <StatusIndicator
+            tone={tone}
+            aria-label={outcomeLabels[entry.text.text] ?? kindLabel}
+            decorative={false}
+          />
+        )}
         <ReadableText
           api={api}
           sessionId={sessionId}
@@ -450,6 +463,34 @@ export function ManagedSession({
 
     return () => observer.disconnect();
   }, [composerOverlayNode]);
+  // A conversation entry can grow *after* this component's own re-render triggers run out: a
+  // `ConversationEntry`'s large answer is stitched in progressively, page by page, entirely
+  // inside `MessageText.tsx`'s own local `rest` state (deliberately — see its comment), which is
+  // invisible to this component's `state.snapshot?.entries` dependency. Observing the entries
+  // wrapper's own rendered height (not just the overlay's) closes that gap: the safety-net effect
+  // below re-measures and re-nudges scroll every time ANY entry's box actually changes size, not
+  // only when the feed's own snapshot/entries list changes. Confirmed live (owner audit): without
+  // this, a story whose answer keeps growing after the composer overlay/padding settle ends up
+  // permanently under-scrolled, with the grown paragraph's tail rendering behind the overlay.
+  const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  useLayoutEffect(() => {
+    const node = contentNode;
+    if (!node) {
+      return undefined;
+    }
+
+    const update = () => setContentHeight(node.getBoundingClientRect().height);
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [contentNode]);
   // Final safety net, independent of the `away`/anchor bookkeeping above: whichever scroll
   // position that logic picked, it was computed from the scroller's geometry at that moment —
   // and the overlay's own height (`composerHeight`) typically arrives one render later (its
@@ -460,7 +501,9 @@ export function ManagedSession({
   // own box extending past the overlay's top edge; this explicitly measures for exactly that and
   // nudges `scrollTop` down by the overlap, never past the scroller's own maximum. It is the
   // directly-enforced version of "the last message is never hidden behind the floating overlay",
-  // not an emergent property of the scroll-math above.
+  // not an emergent property of the scroll-math above. `contentHeight` (see above) is the
+  // dependency that makes this re-run as a message keeps growing after mount, not just when the
+  // overlay or the entry list identity changes.
   useLayoutEffect(() => {
     const node = scroller.current;
     const overlay = composerOverlayNode;
@@ -483,7 +526,13 @@ export function ManagedSession({
     if (overlap > 0) {
       node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, node.scrollTop + overlap);
     }
-  }, [composerHeight, state.snapshot?.entries, state.historyBusy, composerOverlayNode]);
+  }, [
+    composerHeight,
+    contentHeight,
+    state.snapshot?.entries,
+    state.historyBusy,
+    composerOverlayNode,
+  ]);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
@@ -654,7 +703,10 @@ export function ManagedSession({
                     maybeLoadOlder(node);
                   }}
                 >
-                  <div className="mx-auto grid w-full max-w-content-standard gap-5 px-5 py-5">
+                  <div
+                    ref={setContentNode}
+                    className="mx-auto grid w-full max-w-content-standard gap-5 px-5 py-5"
+                  >
                     {/* Auto-loads on scroll near the top instead of a manual button (owner
                         feedback #5, `maybeLoadOlder`); this is just its busy indicator. */}
                     {state.historyBusy && (
@@ -835,7 +887,13 @@ export function ManagedSession({
                                   icon={canCancel ? Square : Send}
                                   size="sm"
                                   type={canCancel ? 'button' : 'submit'}
-                                  variant={canCancel ? 'secondary' : 'primary'}
+                                  // Bold `primary` only while Send is actually actionable: the
+                                  // disabled `opacity-50` treatment alone reads too close to
+                                  // "primary" at full saturation (owner audit — the composer's
+                                  // disabled textarea visibly mutes, the Send icon button did
+                                  // not), so the disabled Send case falls back to the same muted
+                                  // `secondary` treatment Stop/Cancel already uses.
+                                  variant={canCancel || !canSend ? 'secondary' : 'primary'}
                                   onClick={canCancel ? () => void feed.cancel() : undefined}
                                 />
                               </TooltipTrigger>

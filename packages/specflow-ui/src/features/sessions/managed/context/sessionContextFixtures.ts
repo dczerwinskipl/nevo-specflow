@@ -82,7 +82,10 @@ export function waitingWithoutAttentionContext(): SessionContextViewModel {
 }
 
 /** State H — terminal failure/cancellation/interruption (§19): Turn outcome and Task/workflow
- * consequence stay separate facts. */
+ * consequence stay separate facts. The Task's own summary says no recovery action is needed yet
+ * (Task-level consequence, independent of the Turn's own failure), so its tone must read as
+ * informational, not as a "needs attention" warning the text itself contradicts (owner audit) —
+ * the fix is the icon/tone, the copy's own meaning is unchanged. */
 export function terminalOutcomeContext(): SessionContextViewModel {
   return {
     status: 'ready',
@@ -91,7 +94,7 @@ export function terminalOutcomeContext(): SessionContextViewModel {
     attention: [
       {
         id: 'task-03-attention',
-        tone: 'attention',
+        tone: 'info',
         summary: 'Still active — no recovery required yet.',
         task: task03,
       },

@@ -9,6 +9,8 @@ import { ManagedSession } from './ManagedSession';
 import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
 import {
   genericSpecLevelSnapshot,
+  longConversationLastMessage,
+  longConversationSnapshot,
   singleTaskSnapshot,
   terminalFailureSnapshot,
   unavailableSnapshot,
@@ -203,6 +205,55 @@ export const PendingInteractionNarrow: Story = {
   },
 };
 
+/**
+ * Item 7 (test coverage gap): no other story has enough messages to force real scrolling, so the
+ * floating composer's scroll-padding/overlap-correction fix was "inconclusive, not confirmed" for
+ * a genuinely long conversation (owner audit). This exercises the real condition: confirms the
+ * fixture actually overflows by a meaningful margin (not a vacuous pass), scrolls to the true
+ * bottom the way a user would, then asserts via `verifyComposerOverlayPadding` that no entry
+ * — specifically the very last message — renders behind the floating overlay.
+ */
+export const LongConversationScroll: Story = {
+  args: {
+    api: fixtureApi(longConversationSnapshot()),
+    sessionContext: genericSpecLevelContext(),
+  },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await settleViewport(390, 844);
+    const scroller = await waitFor(() => {
+      const node = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');
+      if (!node) {
+        throw new Error('Expected the message scroller.');
+      }
+
+      return node;
+    });
+
+    // Confirms this fixture genuinely stresses the mechanism: a short conversation could "pass"
+    // the overlap check vacuously, simply because nothing ever needed to scroll.
+    await waitFor(() => {
+      const overflow = scroller.scrollHeight - scroller.clientHeight;
+      if (!(overflow > 400)) {
+        throw new Error(
+          `Expected the long conversation to overflow by a meaningful margin, got ${overflow}px ` +
+            `(scrollHeight ${scroller.scrollHeight}, clientHeight ${scroller.clientHeight}).`,
+        );
+      }
+    });
+
+    // Scrolls to the true bottom, the same action a user takes — not just whatever position the
+    // mount-time auto-scroll/auto-load-older bookkeeping happened to settle on.
+    scroller.scrollTop = scroller.scrollHeight;
+    scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
+
+    await verifyComposerOverlayPadding(canvasElement);
+
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(longConversationLastMessage)).toBeVisible();
+  },
+};
+
 export const WaitingWithoutAttention: Story = {
   args: {
     api: fixtureApi(waitingWithoutAttentionSnapshot()),
@@ -218,7 +269,37 @@ export const TerminalFailure: Story = {
     sessionContext: terminalOutcomeContext(),
   },
   globals: WIDE_VIEWPORT,
-  play: ({ canvasElement }) => verifyContextReopens(canvasElement),
+  play: async ({ canvasElement }) => {
+    await verifyContextReopens(canvasElement);
+    const canvas = within(canvasElement);
+    // Item 2 regression: the Task's "Still active — no recovery required yet." attention item
+    // means no action is needed, so its icon/tone must read as informational ("Do Twojej
+    // wiadomości"), not as a contradictory "needs attention" warning.
+    const attentionItem = (
+      await canvas.findByText('Still active — no recovery required yet.')
+    ).closest('li');
+    if (!attentionItem) {
+      throw new Error('Expected the attention item list entry.');
+    }
+
+    await expect(
+      within(attentionItem).getByRole('img', { name: 'Do Twojej wiadomości' }),
+    ).toBeInTheDocument();
+    await expect(
+      within(attentionItem).queryByRole('img', { name: 'Wymaga uwagi' }),
+    ).not.toBeInTheDocument();
+
+    // Item 4 regression: the outcome entry's icon names the specific outcome, not the generic
+    // entry-kind label every outcome used to share.
+    const outcomeEntry = canvasElement.querySelector('[data-entry-id="outcome-1"]');
+    if (!outcomeEntry) {
+      throw new Error('Expected the terminal outcome entry.');
+    }
+
+    await expect(
+      within(outcomeEntry as HTMLElement).getByRole('img', { name: 'Niepowodzenie' }),
+    ).toBeInTheDocument();
+  },
 };
 
 export const Unavailable: Story = {
@@ -227,7 +308,17 @@ export const Unavailable: Story = {
     sessionContext: unavailableContext(),
   },
   globals: WIDE_VIEWPORT,
-  play: ({ canvasElement }) => verifyContextReopens(canvasElement),
+  play: async ({ canvasElement }) => {
+    await verifyContextReopens(canvasElement);
+    const canvas = within(canvasElement);
+    // Item 3 regression: the Send icon button must visually read as disabled too, matching the
+    // already-disabled composer textarea — not stay rendered in the bold `primary` treatment an
+    // actionable Send normally gets.
+    const sendButton = canvas.getByRole('button', { name: 'Wyślij' });
+    await expect(sendButton).toBeDisabled();
+    await expect(sendButton.className).not.toMatch(/bg-action-primary\b/);
+    await expect(sendButton.className).toMatch(/bg-action-secondary\b/);
+  },
 };
 
 function queryDirectTab(canvasElement: HTMLElement, label: string) {

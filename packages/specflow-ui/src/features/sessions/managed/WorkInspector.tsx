@@ -5,6 +5,7 @@ import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/se
 import {
   Alert,
   AppContent,
+  Badge,
   Button,
   Collapsible,
   EmptyState,
@@ -32,21 +33,34 @@ import { ReadableText } from './MessageText';
 import {
   buildWorkChapters,
   filterWorkChapters,
+  formatWorkDuration,
   groupChapterEntries,
   mergeToolActions,
   mergeWorkItems,
   workFilterKinds,
+  workItemDurationMs,
   type ChapterEntry,
   type ToolBurstEntry,
   type WorkChapter,
   type WorkFilterKind,
 } from './workGrouping';
+import type { WorkCounts } from './workCounts';
 
 interface Root {
   sessionId: string;
   turnId: string;
 }
-type Data = Root & { api: ManagedSessionsApi; feed: SessionFeed; owner: string };
+type Data = Root & {
+  api: ManagedSessionsApi;
+  feed: SessionFeed;
+  owner: string;
+  /** Storybook-controllable A/B switch (owner live-comparison, see WorkInspector.stories.tsx):
+   * whether a chapter's operations Timeline renders directly/visibly, or starts collapsed behind
+   * a compact "N operacje" summary that expands it on click. Defaults to expanded — closest to
+   * the accepted V10 mockup, where operations render directly under Commentary with no extra
+   * toggle. */
+  operationsDefaultExpanded: boolean;
+};
 interface Pages {
   work: Record<string, never>;
   actions: { workId: string };
@@ -155,14 +169,17 @@ function useAutoLoadOlder({
   return maybeLoadOlder;
 }
 
-/** The type filter is a compact `Menu` trigger — never a `SegmentedControl` — because its five
- * options (Wszystkie/Postęp/Rozumowanie/Narzędzie/Odpowiedź użytkownika) do not fit the Secondary
- * panel's real minimum width (`WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH`, 330px): a `SegmentedControl`
- * there visibly overflows/overlaps. This follows the same "Menu instead of a thing that doesn't
- * fit" precedent already used for the Composer's model picker in `ManagedSession.tsx` — a `Button`
- * showing the current selection as its visible label, expanding into a `MenuRadioGroup` on demand —
- * and `Menu` is itself one of the components session-chat-v10-design.md §4 names as pre-approved
- * for this exact screen. */
+/** The type filter is a compact icon-only `IconButton` opening the same `Menu`/`MenuRadioGroup`
+ * selection surface as before — never a `SegmentedControl` (its five options do not fit the
+ * Secondary panel's real minimum width, `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` 330px) and, per
+ * live owner review, never a `Button` showing the current selection as a visible text label
+ * either (found "ugly/weak" next to the V10 mockup's own pill-filter row, which the owner also
+ * rejected for this screen). The trigger shows only the `filter` glyph — the same one already
+ * used for this exact affordance elsewhere (`Icon`'s curated `filter` entry) — plus a small
+ * decorative `StatusIndicator` dot (the DS's existing "something is active" pattern; `IconButton`
+ * itself has no built-in badge/indicator slot) when the active filter is not "Wszystkie"/all. The
+ * dot is `aria-hidden`: the accessible name carries the active kind instead, via the button's own
+ * `aria-label`, so the state is never conveyed by colour alone. */
 function WorkFilterBar({
   filter,
   onChange,
@@ -171,25 +188,29 @@ function WorkFilterBar({
   onChange: (next: WorkFilterState) => void;
 }) {
   const { t } = useTranslation();
-  const kindLabel =
+  const isFiltered = filter.kind !== 'all';
+  const triggerLabel =
     filter.kind === 'all'
-      ? t('managedSession.workInspector.filterAll')
-      : t(`managedSession.workKind.${filter.kind}`);
+      ? t('managedSession.workInspector.filterLabel')
+      : t('managedSession.workInspector.filterActive', {
+          kind: t(`managedSession.workKind.${filter.kind}`),
+        });
 
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Menu>
-        <MenuTrigger asChild>
-          <Button
-            className="max-w-28 shrink-0 sm:max-w-36"
-            labelOverflow="truncate"
-            leadingIcon="filter"
-            size="sm"
-            variant="secondary"
-          >
-            {kindLabel}
-          </Button>
-        </MenuTrigger>
+        <span className="relative inline-flex shrink-0">
+          <MenuTrigger asChild>
+            <IconButton aria-label={triggerLabel} icon="filter" size="sm" variant="secondary" />
+          </MenuTrigger>
+          {isFiltered && (
+            <StatusIndicator
+              tone="info"
+              size="sm"
+              className="pointer-events-none absolute -right-0.5 -top-0.5 ring-2 ring-surface-default"
+            />
+          )}
+        </span>
         <MenuContent align="start" aria-label={t('managedSession.workInspector.filterLabel')}>
           <MenuRadioGroup
             value={filter.kind}
@@ -243,6 +264,7 @@ function CompactToolRow({
   onOpenActions: (workId: string) => void;
 }) {
   const { t } = useTranslation();
+  const duration = useWorkDurationLabel(item);
 
   return (
     <div className="flex min-w-0 items-start gap-2 text-body-sm">
@@ -253,7 +275,14 @@ function CompactToolRow({
         className="mt-1"
       />
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <span className="min-w-0 truncate text-content-secondary">{item.title.text}</span>
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="min-w-0 truncate text-content-secondary">{item.title.text}</span>
+          {duration && (
+            <span className="shrink-0 text-body-sm text-content-muted tabular-nums">
+              {duration}
+            </span>
+          )}
+        </span>
         {!!item.actionCount && (
           <Button
             size="sm"
@@ -269,13 +298,26 @@ function CompactToolRow({
   );
 }
 
+/** Localized elapsed-time text for a settled Work item, or `undefined` for one still running
+ * (queued/active/waiting) or with an unparsable timestamp — never fabricated (session-
+ * work-inspector-ui-spec.md §2: the real contract has no separate `durationMs` field, so this is
+ * computed only from the canonical `createdAt`/`updatedAt` every `WorkSummary` already has). */
+function useWorkDurationLabel(item: WorkSummary): string | undefined {
+  const { i18n } = useTranslation();
+  const ms = workItemDurationMs(item);
+
+  return ms === undefined ? undefined : formatWorkDuration(ms, i18n.language);
+}
+
 /** A reasoning summary as its own `Timeline.Item`: separately labeled "Thinking" and optionally
  * collapsible — never styled like a tool action or presented as Commentary
- * (session-chat-v10-design.md §4). The marker sits on the one connected chronology rail; the
- * disclosure (collapsed by default) lives entirely in the Content — only its container changed
- * from a bare row to a Timeline.Item. */
+ * (session-chat-v10-design.md §4). Every non-Commentary Work item — Reasoning included — gets the
+ * exact same `Timeline.Item`/`Timeline.Marker` treatment on the chapter's rail (owner decision,
+ * see session-work-inspector-ui-spec.md §2); only Reasoning's own disclosure, unchanged from
+ * before, lives inside its Content. */
 function ReasoningTimelineItem({ item, data }: { item: WorkSummary; data: Data }) {
   const { t } = useTranslation();
+  const duration = useWorkDurationLabel(item);
 
   return (
     <Timeline.Item>
@@ -283,8 +325,15 @@ function ReasoningTimelineItem({ item, data }: { item: WorkSummary; data: Data }
       <Timeline.Content title="">
         <Collapsible>
           <Collapsible.Trigger>
-            <span className="italic text-content-muted">
-              {t('managedSession.workInspector.thinking')}
+            <span className="flex min-w-0 items-baseline gap-2">
+              <span className="italic text-content-muted">
+                {t('managedSession.workInspector.thinking')}
+              </span>
+              {duration && (
+                <span className="shrink-0 text-body-sm text-content-muted tabular-nums">
+                  {duration}
+                </span>
+              )}
             </span>
           </Collapsible.Trigger>
           <Collapsible.Content>
@@ -298,12 +347,14 @@ function ReasoningTimelineItem({ item, data }: { item: WorkSummary; data: Data }
 
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
+  const duration = useWorkDurationLabel(item);
 
   return (
     <Timeline.Item>
       <Timeline.Marker active={item.state === 'active'} tone={stateTone(item.state)} />
       <Timeline.Content
         meta={t(`managedSession.workState.${item.state}`)}
+        time={duration}
         title={t('managedSession.workKind.interaction')}
       />
     </Timeline.Item>
@@ -322,11 +373,16 @@ function ToolTimelineItem({
   onOpenActions: (workId: string) => void;
 }) {
   const { t } = useTranslation();
+  const duration = useWorkDurationLabel(item);
 
   return (
     <Timeline.Item>
       <Timeline.Marker active={item.state === 'active'} tone={stateTone(item.state)} />
-      <Timeline.Content meta={t(`managedSession.workState.${item.state}`)} title={item.title.text}>
+      <Timeline.Content
+        meta={t(`managedSession.workState.${item.state}`)}
+        time={duration}
+        title={item.title.text}
+      >
         {!!item.actionCount && (
           <Button
             size="sm"
@@ -403,59 +459,185 @@ function WorkChapterEntryRow({
   return <ToolTimelineItem item={item} onOpenActions={onOpenActions} />;
 }
 
-/** One Commentary-headed phase: the Commentary itself is a readable Markdown heading — never the
- * collapse trigger, so a link inside it stays a normal link — and its operations are a
- * subordinate, independently collapsible real `Timeline` (compact `size="sm"`, the same DS
- * component the L4 ToolAction detail already uses) — never a second, ad-hoc nested
- * Collapsible/indented-list tree (session-chat-v10-design.md §4). The leading "Start of Turn"
- * chapter uses a neutral label instead of a Commentary heading. */
+/** Commentary as a compact, collapsed-by-default divider BETWEEN chapters — never a
+ * `Timeline.Item` itself (owner decision on live review, see session-work-inspector-ui-spec.md
+ * §2: Commentary is the narrative heading between two chapters' Timelines, not another
+ * chronology entry on a rail). The trigger shows an icon, the Commentary's own preview text and
+ * the chapter's operation count; expanding it reveals the full Commentary Markdown — the
+ * Commentary text itself is never the trigger element, so a link inside it stays a normal link
+ * once expanded. The full Markdown render is only mounted once actually expanded (controlled
+ * `Collapsible`, not its default uncontrolled state): a complete `TextPreview.text` already
+ * equals the trigger's own preview text, so eagerly mounting it too would duplicate the same text
+ * in the DOM while collapsed, and — at session-chat-v10-design.md §4's 100+ Work item scale —
+ * would mean parsing Markdown for every chapter's Commentary up front instead of on demand. */
+function WorkChapterCommentary({
+  commentary,
+  operationsCount,
+  data,
+}: {
+  commentary: WorkSummary;
+  operationsCount: number;
+  data: Data;
+}) {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const operationsLabel = t('managedSession.workInspector.operationsCount', {
+    count: operationsCount,
+  });
+
+  return (
+    <Collapsible isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
+      <Collapsible.Trigger>
+        <span className="flex min-w-0 items-center gap-2">
+          <Icon name="chat" size="sm" className="shrink-0 text-content-muted" />
+          <span className="min-w-0 flex-1 truncate text-content-primary">
+            {commentary.title.text}
+          </span>
+          {operationsCount > 0 && (
+            <span className="shrink-0 text-body-sm text-content-muted">{operationsLabel}</span>
+          )}
+        </span>
+      </Collapsible.Trigger>
+      <Collapsible.Content>
+        {isExpanded && (
+          <ReadableText
+            api={data.api}
+            sessionId={data.sessionId}
+            value={commentary.title}
+            markdown
+          />
+        )}
+      </Collapsible.Content>
+    </Collapsible>
+  );
+}
+
+/** A chapter's operations as one flat `Timeline` (compact `size="sm"`) — never nested inside a
+ * second Collapsible wrapper by default, since that read as a chevron-nested tree on live review.
+ * `defaultExpanded` (Storybook-controllable, see WorkInspector.stories.tsx) keeps the owner's
+ * open A/B question real instead of guessed: `true` renders the Timeline directly/visibly,
+ * `false` restores the previous "N operacje" Collapsible trigger in front of it, for a live
+ * side-by-side comparison. */
+function WorkChapterOperationsTimeline({
+  entries,
+  data,
+  onOpenActions,
+  operationsCount,
+  defaultExpanded,
+}: {
+  entries: readonly ChapterEntry[];
+  data: Data;
+  onOpenActions: (workId: string) => void;
+  operationsCount: number;
+  defaultExpanded: boolean;
+}) {
+  const { t } = useTranslation();
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const operationsLabel = t('managedSession.workInspector.operationsCount', {
+    count: operationsCount,
+  });
+  const timeline = (
+    <Timeline aria-label={operationsLabel} size="sm">
+      {entries.map((entry) => (
+        <WorkChapterEntryRow
+          key={entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId}
+          data={data}
+          entry={entry}
+          onOpenActions={onOpenActions}
+        />
+      ))}
+    </Timeline>
+  );
+
+  if (defaultExpanded) {
+    return timeline;
+  }
+
+  return (
+    <Collapsible>
+      <Collapsible.Trigger>{operationsLabel}</Collapsible.Trigger>
+      <Collapsible.Content>{timeline}</Collapsible.Content>
+    </Collapsible>
+  );
+}
+
+/** One Commentary-headed phase: `<timeline> <comment> <timeline> …` — each chapter gets its own
+ * Timeline instance (the rail resets at every Commentary boundary; it never spans across one),
+ * with Commentary rendered as the compact divider above it, never as part of the rail itself
+ * (owner decision, see session-work-inspector-ui-spec.md §2). The leading "Start of Turn" chapter
+ * uses a neutral label instead of a Commentary heading — there is no prose to collapse there. */
 function WorkChapterSection({
   chapter,
   data,
   onOpenActions,
+  operationsDefaultExpanded,
 }: {
   chapter: WorkChapter;
   data: Data;
   onOpenActions: (workId: string) => void;
+  operationsDefaultExpanded: boolean;
 }) {
   const { t } = useTranslation();
   const entries = useMemo(() => groupChapterEntries(chapter.items), [chapter.items]);
-  const operationsLabel = t('managedSession.workInspector.operationsCount', {
-    count: entries.length,
-  });
 
   return (
     <section className="grid min-w-0 gap-2 border-b border-border-subtle pb-4 last:border-b-0 last:pb-0">
       {chapter.commentary ? (
-        <ReadableText
-          api={data.api}
-          sessionId={data.sessionId}
-          value={chapter.commentary.title}
-          markdown
+        <WorkChapterCommentary
+          commentary={chapter.commentary}
+          operationsCount={chapter.items.length}
+          data={data}
         />
       ) : (
         <Typography as="h3" variant="label-sm" className="text-content-secondary">
           {t('managedSession.workInspector.startOfTurn')}
         </Typography>
       )}
-      {entries.length > 0 && (
-        <Collapsible defaultExpanded>
-          <Collapsible.Trigger>{operationsLabel}</Collapsible.Trigger>
-          <Collapsible.Content>
-            <Timeline aria-label={operationsLabel} size="sm">
-              {entries.map((entry) => (
-                <WorkChapterEntryRow
-                  key={entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId}
-                  data={data}
-                  entry={entry}
-                  onOpenActions={onOpenActions}
-                />
-              ))}
-            </Timeline>
-          </Collapsible.Content>
-        </Collapsible>
-      )}
+      <WorkChapterOperationsTimeline
+        entries={entries}
+        data={data}
+        onOpenActions={onOpenActions}
+        operationsCount={chapter.items.length}
+        defaultExpanded={operationsDefaultExpanded}
+      />
     </section>
+  );
+}
+
+/** The persistent Work summary row (session-chat-v10-design.md §3, mockup's "144 elementy
+ * przebiegu · 1 w toku" / "48 odczytów · 24 zapisy · …" counts row): rendered only when the
+ * proposed `counts` projection is present — hidden entirely otherwise, never computed from
+ * `items.length` (which is only ever a bounded page, not the Turn's true total). `byKind` uses
+ * only the real canonical Work kinds; there is no server-provided reads/writes/commands/search
+ * sub-kind to break tool counts down further (workGrouping.ts's own header comment). */
+function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
+  const { t } = useTranslation();
+  const byKindLabels = [
+    t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
+    t('managedSession.workInspector.counts.commentary', { count: counts.byKind.commentary }),
+    t('managedSession.workInspector.counts.reasoning', { count: counts.byKind.reasoning }),
+    t('managedSession.workInspector.counts.interaction', { count: counts.byKind.interaction }),
+  ];
+
+  return (
+    <div className="grid gap-0.5">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <Typography as="span" variant="label-sm" className="text-content-primary">
+          {t('managedSession.workInspector.counts.total', { count: counts.total })}
+        </Typography>
+        {counts.inProgress > 0 && (
+          <Badge tone="info" size="compact">
+            {t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress })}
+          </Badge>
+        )}
+      </div>
+      <Typography as="p" variant="body-sm" className="text-content-muted">
+        {byKindLabels.join(' · ')}
+      </Typography>
+    </div>
   );
 }
 
@@ -469,6 +651,12 @@ function Work({ data }: { data: Data }) {
   const [olderBusy, setOlderBusy] = useState(false);
   const [olderError, setOlderError] = useState(false);
   const [filter, setFilter] = useState<WorkFilterState>({ kind: 'all', search: '' });
+  // The proposed, not-yet-backend-implemented `WorkPage.counts` aggregate (workCounts.ts,
+  // docs/reference/api/sessions.md "Proposed Work aggregate counts"): kept as separate state,
+  // updated from every tail refresh and older-page fetch, rather than ever derived from `items`
+  // — this hides the whole summary row when the field is absent instead of faking it from
+  // `items.length` (session-chat-v10-design.md §3).
+  const [counts, setCounts] = useState<WorkCounts | undefined>(undefined);
   const scroller = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
 
@@ -488,6 +676,7 @@ function Work({ data }: { data: Data }) {
 
     setItems((previous) => mergeWorkItems(previous, query.data.items));
     setHistory(query.data.history);
+    setCounts(query.data.counts);
   }, [query.data]);
 
   // Restores the viewport anchor after an older page is prepended (session-work-inspector-ui-
@@ -518,6 +707,7 @@ function Work({ data }: { data: Data }) {
       const page = await data.api.work(data.sessionId, data.turnId, history.before);
       setItems((previous) => mergeWorkItems(previous, page.items));
       setHistory(page.history);
+      setCounts(page.counts);
     } catch {
       anchor.current = undefined;
       setOlderError(true);
@@ -564,6 +754,7 @@ function Work({ data }: { data: Data }) {
           )}
           {!query.isPending && !query.isError && (
             <>
+              {counts && <WorkCountsSummary counts={counts} />}
               <WorkFilterBar filter={filter} onChange={setFilter} />
               {/* Auto-loads on scroll near the top instead of a manual button (live-review fix
                   #3, `useAutoLoadOlder`); this is just its busy indicator. */}
@@ -594,6 +785,7 @@ function Work({ data }: { data: Data }) {
                       chapter={chapter}
                       data={data}
                       onOpenActions={openActions}
+                      operationsDefaultExpanded={data.operationsDefaultExpanded}
                     />
                   ))}
                 </div>
@@ -770,11 +962,28 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
   );
 }
 
-export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, owner: string) {
+export interface WorkInspectorOptions {
+  /** See `Data['operationsDefaultExpanded']`. Defaults to `true` (closest to the accepted V10
+   * mockup); exposed as a Storybook control on `WorkInspector.stories.tsx` so the owner can
+   * compare both states live rather than from another round of text description. */
+  operationsDefaultExpanded?: boolean;
+}
+
+export function createWorkInspector(
+  api: ManagedSessionsApi,
+  feed: SessionFeed,
+  owner: string,
+  options: WorkInspectorOptions = {},
+) {
+  const operationsDefaultExpanded = options.operationsDefaultExpanded ?? true;
+
   return defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',
     initial: 'work',
-    useData: (params) => ({ status: 'ready', data: { ...params, api, feed, owner } }),
+    useData: (params) => ({
+      status: 'ready',
+      data: { ...params, api, feed, owner, operationsDefaultExpanded },
+    }),
     screens: {
       work: {
         get title() {

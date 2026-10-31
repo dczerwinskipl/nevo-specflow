@@ -164,6 +164,52 @@ export function groupChapterEntries(items: readonly WorkSummary[]): ChapterEntry
   return entries;
 }
 
+const terminalWorkStates: ReadonlySet<WorkSummary['state']> = new Set([
+  'completed',
+  'failed',
+  'cancelled',
+  'interrupted',
+  'expired',
+]);
+
+/**
+ * Elapsed time for one settled Work item, computed only from its own canonical `createdAt`/
+ * `updatedAt` (never fabricated, never a separate `durationMs` field — the real contract has
+ * none). `undefined` for a still-running item (queued/active/waiting has no final duration yet)
+ * or an unparsable timestamp.
+ */
+export function workItemDurationMs(item: WorkSummary): number | undefined {
+  if (!terminalWorkStates.has(item.state)) {
+    return undefined;
+  }
+
+  const start = Date.parse(item.createdAt);
+  const end = Date.parse(item.updatedAt);
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return undefined;
+  }
+
+  return end - start;
+}
+
+/** Localized "180 ms" / "8.4 s" text for {@link workItemDurationMs}'s result. */
+export function formatWorkDuration(ms: number, locale: string): string {
+  if (ms < 1000) {
+    return new Intl.NumberFormat(locale, {
+      style: 'unit',
+      unit: 'millisecond',
+      unitDisplay: 'short',
+    }).format(Math.round(ms));
+  }
+
+  return new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: 'second',
+    unitDisplay: 'short',
+    maximumFractionDigits: 1,
+  }).format(ms / 1000);
+}
+
 /**
  * Merges a newly fetched Work page into the already-accumulated, ascending item list: upserts by
  * `workId` (a later revision wins — Realtime settlement only ever refreshes the tail window, per

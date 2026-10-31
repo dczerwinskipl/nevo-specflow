@@ -93,18 +93,51 @@ SessionWorkInspector
 Use Typography, MarkdownDocument, Collapsible, Button/IconButton, StatusIndicator,
 code/preformatted surface, ScrollArea, and semantic tokens.
 
-### Strong rule
+### Strong rule — superseded for L2 by an explicit product-owner decision (2026-10-31)
 
-**Conversation is not Timeline. L2 Work log is also not a generic Timeline by default.**
+**Conversation is not Timeline.** That part stands unchanged.
 
-L2 must preserve Commentary as readable prose and visually group the tool burst that follows it.
-A permanent rail + icon on every row makes Commentary look like another technical event and adds too
-much chrome.
+The original text below argued against a generic Timeline for L2 by default. The product owner
+has since reviewed the real `WorkInspector` component live in Storybook, side by side with the
+accepted V10 mockup (`../examples/session-chat-v10/desktop.html`), and explicitly overruled that
+default for L2: **L2 now uses the real DS `Timeline`/`Timeline.Item`/`Timeline.Marker`/
+`Timeline.Content` component for its operations**, implemented as `<timeline> <comment>
+<timeline> <comment> …` — one Timeline instance per Commentary-headed chapter, resetting at each
+Commentary boundary rather than spanning across it.
 
-Generic Timeline is appropriate at L3, where the user explicitly asks for the exact chronological
-inspection list.
+The original worry — Commentary ending up on the rail and reading as just another technical event
+row — is addressed by **keeping Commentary off the Timeline entirely**: it is never a
+`Timeline.Item`. Commentary renders as a compact, collapsed-by-default divider _between_ chapters'
+Timelines (icon + preview text + operation count, expanding to the full Commentary Markdown on
+demand) — closer in spirit to the mockup's narrative separator than to a rail entry, but lighter
+than the mockup's always-expanded full prose. Reasoning ("Thinking") gets no special-casing
+relative to tool operations beyond its own existing collapsible disclosure: every non-Commentary
+Work item shares the same `Timeline.Item`/`Timeline.Marker` treatment on its chapter's rail.
+
+Whether a chapter's operations-Timeline itself renders already-expanded (closest to the mockup,
+which has no extra toggle at all) or starts collapsed behind a compact "N operacje" summary
+(closer to the previously shipped `Collapsible` wrapper) was still open at implementation time;
+`WorkInspector.tsx` exposes it as `WorkInspectorOptions.operationsDefaultExpanded`
+(Storybook-controllable, defaulting to expanded) specifically so the owner can compare both live
+rather than decide from another round of text description.
+
+Generic Timeline remains the strong default at L3 (§7 below), where the user explicitly asks for
+the exact chronological inspection list — that guidance is unaffected.
 
 Tool/domain semantics stay in SpecFlow code.
+
+Original text, superseded for L2 as above and kept only for history:
+
+> **Conversation is not Timeline. L2 Work log is also not a generic Timeline by default.**
+>
+> L2 must preserve Commentary as readable prose and visually group the tool burst that follows it.
+> A permanent rail + icon on every row makes Commentary look like another technical event and adds
+> too much chrome.
+>
+> Generic Timeline is appropriate at L3, where the user explicitly asks for the exact chronological
+> inspection list.
+>
+> Tool/domain semantics stay in SpecFlow code.
 
 ## 3. Canonical tool payload
 

@@ -50,14 +50,24 @@ function Environment({ children }: { children: ReactNode }) {
   );
 }
 
-function WorkInspectorHost({ api }: { api: ManagedSessionsApi }) {
+function WorkInspectorHost({
+  api,
+  operationsDefaultExpanded,
+}: {
+  api: ManagedSessionsApi;
+  /** Storybook Control for the owner's live A/B comparison (WorkInspector.tsx's
+   * `WorkInspectorOptions.operationsDefaultExpanded`): expanded renders each chapter's
+   * operations Timeline directly/visibly; collapsed restores a "N operacje" Collapsible trigger
+   * in front of it. */
+  operationsDefaultExpanded?: boolean;
+}) {
   const feed = useMemo(
     () => createSessionFeed(api, fixtureSessionId, 'work-inspector-story'),
     [api],
   );
   const workStack = useMemo(
-    () => createWorkInspector(api, feed, 'work-inspector-story'),
-    [api, feed],
+    () => createWorkInspector(api, feed, 'work-inspector-story', { operationsDefaultExpanded }),
+    [api, feed, operationsDefaultExpanded],
   );
   const navigation = useSecondaryNavigation();
 
@@ -91,6 +101,13 @@ const meta = {
   title: 'SpecFlow/Components/Work Inspector',
   component: WorkInspectorHost,
   parameters: { layout: 'fullscreen' },
+  argTypes: {
+    operationsDefaultExpanded: {
+      control: 'boolean',
+      description:
+        'A/B compare: each chapter’s operations Timeline rendered directly (expanded) vs. collapsed behind a "N operacje" summary trigger.',
+    },
+  },
   decorators: [
     (Story) => (
       <Environment>
@@ -132,10 +149,12 @@ function assertSearchInputFits(search: HTMLInputElement) {
   }
 }
 
-/** The type filter is a `Menu` (WorkInspector.tsx's `WorkFilterBar`), never a `SegmentedControl`:
- * its content is portaled to `document.body`, exactly like the Composer's model picker Menu in
+/** The type filter is an icon-only `IconButton` opening a `Menu` (WorkInspector.tsx's
+ * `WorkFilterBar`), never a `SegmentedControl` or a text-label `Button`: its content is portaled
+ * to `document.body`, exactly like the Composer's model picker Menu in
  * `ManagedSession.interactions.stories.tsx` (`openModelMenu`) — so it is found via
- * `[role="menu"]`, not a `canvas`-scoped query. */
+ * `[role="menu"]`, not a `canvas`-scoped query. `triggerName` is the trigger's accessible name
+ * (`aria-label`), not visible text. */
 async function selectFilterKind(canvasElement: HTMLElement, triggerName: string, kindName: string) {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByRole('button', { name: triggerName }));
@@ -151,11 +170,14 @@ async function selectFilterKind(canvasElement: HTMLElement, triggerName: string,
   await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument());
 }
 
-/** The default, representative state of `WorkInspector`: the Commentary-grouped (L2) timeline
- * with a collapsible Reasoning ("Thinking") row and a tool drill-in — the single visible entry
- * point for this component. Its `play` is a demonstration walk-through of the component's own key
- * states, not a hidden contract suite (Storybook catalog rework, §4 table). The dedicated
- * filtering/search/scale regression checks below are tagged `integration` (they exercise the real
+/** The default, representative state of `WorkInspector`: the Work panel already open on a
+ * Commentary-grouped (L2) timeline, a representative chapter visible, nothing mid-interaction —
+ * the single visible entry point for this component. Its `play` is a light, demonstration-only
+ * confirmation that this canonical state actually renders, not a hidden contract suite (Storybook
+ * catalog rework, §4 table): that behavioral coverage (grouping, the collapsible "Thinking"
+ * summary, filtering/search preserving Commentary context, isolated failures, the ToolAction
+ * drill-in) already lives in `WorkInspector.test.tsx`. The dedicated filtering/search/scale
+ * regression checks below are tagged `integration` (they exercise the real
  * `AppWorkspace`/navigation stack this component is mounted through) and stay out of the default
  * sidebar. */
 export const Default: Story = {
@@ -163,42 +185,50 @@ export const Default: Story = {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
     }),
+    operationsDefaultExpanded: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
 
-    // Leading tool operations before any Commentary default to "Start of Turn".
-    await expect(await canvas.findByText('Początek tury')).toBeVisible();
+    // A representative chapter — Commentary, its grouped operations, a collapsed "Thinking"
+    // summary — is visible as soon as Work opens; nothing requires interaction to appear.
+    await expect(
+      await canvas.findByText('Checking the implementation and locating the admission path…'),
+    ).toBeVisible();
+    // The leading Start of Turn item is a standalone row, never folded into a burst — so it is
+    // the one guaranteed to be immediately visible, unlike the three happy-path reads/searches
+    // right after Commentary, which compact into their own collapsed-by-default burst row.
     await expect(canvas.getByText('Read file session.ts')).toBeVisible();
+    await expect(canvas.getByText('Myślenie')).toBeVisible();
+  },
+};
 
-    // The Commentary itself is a readable Markdown heading for the phase that follows it.
+/**
+ * The owner's live A/B comparison for the per-chapter operations Timeline (see
+ * `WorkInspectorOptions.operationsDefaultExpanded`): identical fixture to `Default`, but each
+ * chapter's operations stay collapsed behind a compact "N operacje" summary trigger instead of
+ * rendering directly. Also exposed as a Storybook Control on every story in this file so the
+ * owner can flip it live rather than only comparing two fixed stories.
+ */
+export const CollapsedOperations: Story = {
+  args: {
+    api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
+      [actionsWorkId]: mixedWorkTimelineActions(),
+    }),
+    operationsDefaultExpanded: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await openWork(canvasElement);
+
     await expect(
-      canvas.getByText('Checking the implementation and locating the admission path…'),
+      await canvas.findByText('Checking the implementation and locating the admission path…'),
     ).toBeVisible();
-
-    // Reasoning is a distinct, separately labeled, collapsible "Thinking" summary — collapsed by
-    // default, never styled like a tool row or presented as Commentary.
-    const thinkingTrigger = canvas.getByText('Myślenie').closest('button');
-    if (!thinkingTrigger) {
-      throw new Error('Expected "Myślenie" to be a disclosure trigger.');
-    }
-
-    await expect(thinkingTrigger).toHaveAttribute('aria-expanded', 'false');
-    await userEvent.click(thinkingTrigger);
-    await expect(
-      await canvas.findByText(
-        'Two approaches could fix this; the narrower one risks missing a related case.',
-      ),
-    ).toBeVisible();
-
-    // A failed command stays its own isolated row — it never disappears into a successful group.
-    await expect(canvas.getByText('Run command pnpm test')).toBeVisible();
-
-    // Selecting a tool Work item with child ToolActions opens that exact Work's detail.
-    await userEvent.click(canvas.getByText('Działania narzędzia'));
-    await expect(await canvas.findByText('Edit · admission.mjs')).toBeVisible();
-    await expect(canvas.getByText('Execute · pnpm test')).toBeVisible();
+    // Operations stay behind their own collapsed summary trigger until expanded — the
+    // Collapsible keeps its panel mounted (height-animated, not removed), so this must assert
+    // non-visibility rather than absence from the DOM.
+    await expect(canvas.getByText('Read file session.ts')).not.toBeVisible();
   },
 };
 
@@ -219,7 +249,7 @@ export const TypeFilterPreservesCommentaryContext: Story = {
     // never collapse to max-content.
     assertSearchInputFits(canvas.getByPlaceholderText<HTMLInputElement>('Szukaj w historii pracy'));
 
-    await selectFilterKind(canvasElement, 'Wszystkie', 'Narzędzie');
+    await selectFilterKind(canvasElement, 'Filtruj pracę według typu', 'Narzędzie');
     await waitFor(() => expect(canvas.queryByText('Myślenie')).not.toBeInTheDocument());
     // The Commentary heading that groups the remaining tool rows is never stripped away.
     await expect(

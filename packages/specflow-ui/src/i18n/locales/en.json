@@ -1572,6 +1572,7 @@
     "workInspector": {
       "startOfTurn": "Start of Turn",
       "filterLabel": "Filter Work by type",
+      "filterActive": "Filter Work by type (active filter: {{kind}})",
       "filterAll": "All",
       "search": "Search Work",
       "clearSearch": "Clear search",
@@ -1584,12 +1585,32 @@
       "operationsCount_few": "{{count}} operations",
       "operationsCount_many": "{{count}} operations",
       "operationsCount_other": "{{count}} operations",
+      "analysisSuffix": "analysis",
       "loadingOlder": "Loading older Work…",
       "noMatches": "No Work matches these filters.",
       "emptyTurn": "No Work yet for this Turn.",
       "noActions": "No tool actions yet.",
       "input": "Input",
-      "output": "Output"
+      "output": "Output",
+      "counts": {
+        "total_one": "{{count}} work item",
+        "total_few": "{{count}} work items",
+        "total_many": "{{count}} work items",
+        "total_other": "{{count}} work items",
+        "inProgress": "{{count}} in progress",
+        "commentary_one": "{{count}} commentary",
+        "commentary_few": "{{count}} commentary items",
+        "commentary_many": "{{count}} commentary items",
+        "commentary_other": "{{count}} commentary items",
+        "reasoning_one": "{{count}} analysis",
+        "reasoning_few": "{{count}} analyses",
+        "reasoning_many": "{{count}} analyses",
+        "reasoning_other": "{{count}} analyses",
+        "interaction_one": "{{count}} user response",
+        "interaction_few": "{{count}} user responses",
+        "interaction_many": "{{count}} user responses",
+        "interaction_other": "{{count}} user responses"
+      }
     }
   }
 }

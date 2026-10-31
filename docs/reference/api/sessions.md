@@ -262,6 +262,38 @@ input?:ContentRef, output?:ContentRef, error?:{code,message}, createdAt, updated
 state uses the Work state vocabulary. Error message <=2 KiB. Only tool Work owns actions.
 Work/action limits match HistoryPage. Exact Work identity/kind is immutable; no raw SDK objects.
 
+### Proposed Work aggregate counts (not implemented)
+
+Not part of the contract above — `WorkPage` today exposes only the bounded `items` page, with no
+server-side aggregate. The Work (L2) UI summary row described in session-chat-v10-design.md §3 (a
+total count, an in-progress count, and a per-kind breakdown) must come from a bounded server
+projection, never from scanning only the client's currently loaded page, which is a tail/page
+window and never the Turn's true total. This follows the same "contract ahead of backend
+capability" documentation pattern already used elsewhere for a capability under active
+development in another branch (for example the Session telemetry contract): written here,
+explicitly flagged as proposed, and implemented today only as a local, product-owned fixture/demo
+mirror (`workCounts.ts` under `specflow-ui`'s managed Session feature) until the real projection
+exists.
+
+Illustrative additive shape:
+
+```ts
+type WorkCounts = {
+  total: number; // Turn-wide, not this page's items.length
+  inProgress: number; // Work currently in the 'active' state
+  byKind: Record<WorkKind, number>; // commentary | reasoning | interaction | tool only — there is
+  // no finer server-side read/write/command/search sub-kind
+};
+type WorkPage = {
+  // ...existing fields above...
+  counts?: WorkCounts; // proposed; omitted until the real backend projection exists
+};
+```
+
+Do not block the first Work (L2) summary-row UI on this. The UI MUST hide the whole summary row
+when `counts` is absent — never derive it from `items.length`, which would misrepresent the Turn's
+true totals whenever older pages are not yet loaded.
+
 ContentPage = {contentId, revision, offset, text, nextOffset?, complete}.
 revision is required and immutable. offset defaults 0; limitBytes defaults/max 64 KiB.
 Offsets count UTF-8 bytes and must be valid character boundaries; invalid/out-of-range -> 400.

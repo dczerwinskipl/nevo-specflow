@@ -4,9 +4,11 @@ import {
   START_OF_TURN_CHAPTER_ID,
   buildWorkChapters,
   filterWorkChapters,
+  formatWorkDuration,
   groupChapterEntries,
   mergeToolActions,
   mergeWorkItems,
+  workItemDurationMs,
 } from './workGrouping';
 
 let seq = 0;
@@ -202,6 +204,44 @@ describe('groupChapterEntries', () => {
       { type: 'single', item: ok1 },
       { type: 'single', item: active },
     ]);
+  });
+});
+
+describe('workItemDurationMs', () => {
+  it('computes elapsed time for a settled item from its own createdAt/updatedAt', () => {
+    const item = tool({
+      state: 'completed',
+      createdAt: '2026-10-30T10:00:00.000Z',
+      updatedAt: '2026-10-30T10:00:00.180Z',
+    });
+
+    expect(workItemDurationMs(item)).toBe(180);
+  });
+
+  it('is undefined for a still-running item — there is no final duration yet', () => {
+    const item = tool({ state: 'active' });
+
+    expect(workItemDurationMs(item)).toBeUndefined();
+  });
+
+  it('is undefined when updatedAt precedes createdAt (never a negative duration)', () => {
+    const item = tool({
+      state: 'completed',
+      createdAt: '2026-10-30T10:00:01.000Z',
+      updatedAt: '2026-10-30T10:00:00.000Z',
+    });
+
+    expect(workItemDurationMs(item)).toBeUndefined();
+  });
+});
+
+describe('formatWorkDuration', () => {
+  it('formats sub-second durations in milliseconds', () => {
+    expect(formatWorkDuration(180, 'en')).toMatch(/180\s*ms/);
+  });
+
+  it('formats durations of a second or more in seconds', () => {
+    expect(formatWorkDuration(8400, 'en')).toMatch(/8\.4\s*s/);
   });
 });
 

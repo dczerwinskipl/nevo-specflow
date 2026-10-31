@@ -1572,6 +1572,7 @@
     "workInspector": {
       "startOfTurn": "Początek tury",
       "filterLabel": "Filtruj pracę według typu",
+      "filterActive": "Filtruj pracę według typu (aktywny filtr: {{kind}})",
       "filterAll": "Wszystkie",
       "search": "Szukaj w historii pracy",
       "clearSearch": "Wyczyść wyszukiwanie",
@@ -1584,12 +1585,32 @@
       "operationsCount_few": "{{count}} operacje",
       "operationsCount_many": "{{count}} operacji",
       "operationsCount_other": "{{count}} operacje",
+      "analysisSuffix": "analiza",
       "loadingOlder": "Wczytywanie starszej historii pracy…",
       "noMatches": "Żadna pozycja nie odpowiada tym filtrom.",
       "emptyTurn": "Brak jeszcze historii pracy dla tej tury.",
       "noActions": "Jeszcze brak działań narzędzia.",
       "input": "Dane wejściowe",
-      "output": "Dane wyjściowe"
+      "output": "Dane wyjściowe",
+      "counts": {
+        "total_one": "{{count}} element przebiegu",
+        "total_few": "{{count}} elementy przebiegu",
+        "total_many": "{{count}} elementów przebiegu",
+        "total_other": "{{count}} elementy przebiegu",
+        "inProgress": "{{count}} w toku",
+        "commentary_one": "{{count}} komentarz",
+        "commentary_few": "{{count}} komentarze",
+        "commentary_many": "{{count}} komentarzy",
+        "commentary_other": "{{count}} komentarze",
+        "reasoning_one": "{{count}} analiza",
+        "reasoning_few": "{{count}} analizy",
+        "reasoning_many": "{{count}} analiz",
+        "reasoning_other": "{{count}} analizy",
+        "interaction_one": "{{count}} odpowiedź użytkownika",
+        "interaction_few": "{{count}} odpowiedzi użytkownika",
+        "interaction_many": "{{count}} odpowiedzi użytkownika",
+        "interaction_other": "{{count}} odpowiedzi użytkownika"
+      }
     }
   }
 }

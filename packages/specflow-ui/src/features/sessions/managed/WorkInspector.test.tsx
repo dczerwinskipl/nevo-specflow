@@ -195,9 +195,11 @@ function clickTrigger(label: string) {
   fireEvent.click(trigger);
 }
 
-/** The type filter is a `Menu` (never a `SegmentedControl` — see WorkInspector.tsx's
- * WorkFilterBar): its trigger only opens on Enter/Space or a pointer press, never a plain click
- * event, matching the real `@radix-ui/react-dropdown-menu` Trigger contract. */
+/** The type filter is an icon-only `IconButton` opening a `Menu` (never a `SegmentedControl`,
+ * never a text-label `Button` either — see WorkInspector.tsx's WorkFilterBar): its trigger only
+ * opens on Enter/Space or a pointer press, never a plain click event, matching the real
+ * `@radix-ui/react-dropdown-menu` Trigger contract. `currentLabel` is the trigger's accessible
+ * name (`aria-label`), not visible text — the trigger shows only the filter glyph. */
 function selectFilterKind(currentLabel: string, kindLabel: string) {
   const trigger = screen.getByRole('button', { name: currentLabel });
   fireEvent.keyDown(trigger, { key: 'Enter' });
@@ -271,7 +273,7 @@ describe('WorkInspector Work screen', () => {
     await screen.findByText('Checking options…');
     expect(screen.getByText('Thinking')).toBeTruthy();
 
-    selectFilterKind('All', 'Tool');
+    selectFilterKind('Filter Work by type', 'Tool');
     await waitFor(() => expect(screen.queryByText('Thinking')).toBeNull());
     // The Commentary that heads the chapter stays visible for context (never stripped away).
     expect(screen.getByText('Checking options…')).toBeTruthy();

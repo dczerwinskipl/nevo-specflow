@@ -79,9 +79,9 @@ The visible tree is a **product catalog**, not a test report or mirror of source
 directories. A user should open a screen, see a valid representative default state,
 then change its meaningful parameters using Controls.
 
-**Canonical human-facing title depth: \`<Owner>/<Kind or Category>/<Subject>\`.**
-Each subject has one obvious primary \`Default\` story, which is also its interactive
-playground (no duplicate \`Default\` and \`Playground\` entries).
+**Canonical human-facing title depth: `<Owner>/<Kind or Category>/<Subject>`.**
+Each subject has one obvious primary `Default` story, which is also its interactive
+playground (no duplicate `Default` and `Playground` entries).
 
     SpecFlow
       Brand
@@ -132,19 +132,19 @@ Nevo UI primitives remain in the Design System.
 ### 3.1 Hierarchy and default entry rules
 
 1. **Stable depth, stable vocabulary.** SpecFlow titles follow
-   \`SpecFlow/<Brand|Components|Features|Screens>/<Subject>\`.
-   Do not place some screens under \`Screens/Tasks/...\` and other screens
-   directly under \`Screens\`; a deep source path does not require a deep
-   sidebar path. Stop exposing ad hoc top-level \`Shared\`, \`Sessions\`,
-   \`Review\`, \`Contracts\`, \`Navigation\` and mock categories alongside
+   `SpecFlow/<Brand|Components|Features|Screens>/<Subject>`.
+   Do not place some screens under `Screens/Tasks/...` and other screens
+   directly under `Screens`; a deep source path does not require a deep
+   sidebar path. Stop exposing ad hoc top-level `Shared`, `Sessions`,
+   `Review`, `Contracts`, `Navigation` and mock categories alongside
    the canonical kinds.
-2. **One useful \`Default\` per subject.** Opening it should render a normal
+2. **One useful `Default` per subject.** Opening it should render a normal
    valid state with representative deterministic data, without first requiring
    the user to pick another story or connect to a live backend.
-3. **Controls change variants and state.** Use real props, \`args\`,
-   \`argTypes\` and small typed adapters for composite screens. Depending on
-   the actual screen, controls might include \`variant\`/\`scenario\`,
-   \`state\`, \`readOnly\`, \`contentDensity\`, \`locale\` or \`panelMode\`.
+3. **Controls change variants and state.** Use real props, `args`,
+   `argTypes` and small typed adapters for composite screens. Depending on
+   the actual screen, controls might include `variant`/`scenario`,
+   `state`, `readOnly`, `contentDensity`, `locale` or `panelMode`.
    These are examples, **not compulsory universal props**. Do not add fake
    Storybook-only props to production APIs. Keep invalid state combinations
    unavailable or explicitly modeled as negative test fixtures.
@@ -152,7 +152,7 @@ Nevo UI primitives remain in the Design System.
    is a separate valid story-level parameter when it represents a real
    component configuration. Width, locale, loading or long content should
    not create another sidebar nesting level or a Cartesian product of exports.
-5. **Tests are hidden by default.** Assertions in \`play\`, keyboard/focus
+5. **Tests are hidden by default.** Assertions in `play`, keyboard/focus
    contracts, geometry, recovery/routing integrations, design capture, and
    snapshot-only visual baselines belong to the same owners and stay runnable,
    but must not occupy the *normal human-facing* sidebar. Use the existing
@@ -168,21 +168,21 @@ Nevo UI primitives remain in the Design System.
 ### 3.2 What belongs in the visible tree?
 
 **Good:**
-\`SpecFlow/Screens/Task Workbench → Default\` with Controls for scenario,
-page state, preview and dense content; \`SpecFlow/Components/Task Hints → Default\`
+`SpecFlow/Screens/Task Workbench → Default` with Controls for scenario,
+page state, preview and dense content; `SpecFlow/Components/Task Hints → Default`
 for the isolated component. Tests for copying a reference, keyboard focus,
 responsive geometry and navigation are attached to their owner but default-hidden.
 
 **Bad:**
-\`SpecFlow/Screens/Task Workbench → HumanWithGates / RichPreview /
-NarrowPanel / PageError / TerminalPreview\`; \`SpecFlow/Screens/Editor mode
-(mock)/Wide/Markdown/Edit\` alongside \`SpecFlow/Features/Tasks/Hints\` and
-\`SpecFlow/Contracts/Creation consistency baseline\`. These mix product
+`SpecFlow/Screens/Task Workbench → HumanWithGates / RichPreview /
+NarrowPanel / PageError / TerminalPreview`; `SpecFlow/Screens/Editor mode
+(mock)/Wide/Markdown/Edit` alongside `SpecFlow/Features/Tasks/Hints` and
+`SpecFlow/Contracts/Creation consistency baseline`. These mix product
 level, state dimensions, widths and test intent into the navigation hierarchy.
 
 **Bad:**
-An empty \`Default\` which forces a visitor to search for \`ReadyDesktop\`,
-\`LoadingDesktop\`, \`LoadingMobile\`, etc. The starting story must already
+An empty `Default` which forces a visitor to search for `ReadyDesktop`,
+`LoadingDesktop`, `LoadingMobile`, etc. The starting story must already
 show a meaningful normal state.
 
 ### 3.3 Default catalog versus automated test corpus
@@ -192,10 +192,10 @@ same co-located source**, not two implementations. Hidden contract stories
 can still have many explicit exports and stable IDs, including browser
 interaction tests. Do not remove tests merely to shorten navigation.
 
-Current \`tools/storybook/.storybook/main.ts\` already excludes
-\`contract\`, \`integration\`, \`capture\` in its default tag filter. The
+Current `tools/storybook/.storybook/main.ts` already excludes
+`contract`, `integration`, `capture` in its default tag filter. The
 rework must reclassify remaining assertion-bearing stories instead of
-presenting them as showcases. Pure \`visual\` snapshot fixtures should
+presenting them as showcases. Pure `visual` snapshot fixtures should
 **also be default-hidden** in the target catalog, since they are test
 artifacts rather than user destinations. This differs from current
 authoritative guidelines, where Visual is visible, and therefore requires
@@ -203,7 +203,7 @@ a deliberate approved change to the guideline and host tag configuration
 during implementation. A visually useful alternative can remain a visible
 Showcase only when it has independent inspection value.
 
-Do not strip \`play\`, disable snapshots or break test references to
+Do not strip `play`, disable snapshots or break test references to
 implement hiding. Preserve behavior and accepted Chromatic baselines.
 
 ## 4. Story types: distinct purpose, distinct maintenance rules

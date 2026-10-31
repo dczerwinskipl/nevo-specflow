@@ -315,14 +315,44 @@ export const LongConversationScroll: Story = {
   },
 };
 
+/**
+ * The Secondary workspace region, scoped away from Primary (the composer's own "Attach"/"Choose
+ * work mode"/"Choose model" buttons are ALSO `[aria-haspopup="menu"]` triggers — an unscoped
+ * `canvasElement.querySelector('[aria-haspopup="menu"]')` matches the first of those instead of
+ * the root-tab switcher, since Primary renders before Secondary in DOM order). Falls back to
+ * `canvasElement` itself if the Secondary region isn't mounted (the narrow runtime Context flow
+ * has no declarative Secondary at all).
+ */
+function secondaryRegionOf(canvasElement: HTMLElement) {
+  return (
+    canvasElement.querySelector<HTMLElement>('[data-workspace-surface="secondary"]') ??
+    canvasElement
+  );
+}
+
+/**
+ * Strips React's own per-mount `useId()` ids (and the `aria-*` attributes that reference them —
+ * `Progress`'s `aria-labelledby`, `Collapsible`'s `aria-controls`/`aria-labelledby`) before an
+ * `outerHTML` snapshot comparison. These ids (`_r_7_`, `react-aria-_r_9_`, …) are real React
+ * internals, not a stable part of the rendered contract: closing the Tasks tab and returning to
+ * Context remounts `SessionTelemetrySection`'s `Progress`/`Collapsible` instances, so React hands
+ * out fresh ids the second time even though the DOM is otherwise byte-for-byte the same. Comparing
+ * raw `outerHTML` without normalizing them made this "back to baseline" check fail on every run,
+ * regardless of any actual regression.
+ */
+function normalizeAutoIds(html: string) {
+  return html.replace(/\b(id|aria-labelledby|aria-controls|aria-describedby)="[^"]*"/g, '$1="_"');
+}
+
 function queryDirectTab(canvasElement: HTMLElement, label: string) {
-  return [...canvasElement.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) =>
-    tab.textContent?.includes(label),
+  return [...secondaryRegionOf(canvasElement).querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (tab) => tab.textContent?.includes(label),
   );
 }
 
 async function openSwitcherMenu(canvasElement: HTMLElement) {
-  const switcherButton = canvasElement.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  const switcherButton =
+    secondaryRegionOf(canvasElement).querySelector<HTMLElement>('[aria-haspopup="menu"]');
   if (!switcherButton) {
     throw new Error('Expected the Secondary root-tab strip or its switcher button.');
   }
@@ -402,9 +432,11 @@ async function closeRootTab(canvasElement: HTMLElement, label: string) {
 }
 
 function hasRootTabStrip(canvasElement: HTMLElement) {
+  const secondary = secondaryRegionOf(canvasElement);
+
   return (
-    canvasElement.querySelector('[role="tab"]') !== null ||
-    canvasElement.querySelector('[aria-haspopup="menu"]') !== null
+    secondary.querySelector('[role="tab"]') !== null ||
+    secondary.querySelector('[aria-haspopup="menu"]') !== null
   );
 }
 
@@ -447,7 +479,7 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     await expect(hasRootTabStrip(canvasElement)).toBe(false);
     const secondaryRegion = () =>
       canvasElement.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
-    const baselineSecondaryHTML = secondaryRegion()?.outerHTML;
+    const baselineSecondaryHTML = normalizeAutoIds(secondaryRegion()?.outerHTML ?? '');
     await expect(baselineSecondaryHTML).toBeTruthy();
 
     // Click the Related Tasks summary row — this fixture has 2 related Tasks (TASK-02, TASK-03),
@@ -467,10 +499,17 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
 
     // Select TASK-02 from the list: Task detail becomes this SAME tab's content — the core
     // correction. No independent "TASK-02 ..." tab appears alongside it.
-    const taskRow = canvas.getByText('Document the admission guard').closest('button');
-    if (!taskRow) {
-      throw new Error('The Task row inside the Tasks tab should render as a button.');
-    }
+    // `findByText` above only guarantees the text node is in the document, not that the row's
+    // interactive `<button>` wrapper has finished its own render pass — wait for it explicitly
+    // instead of asserting synchronously right after, which raced on a cold run.
+    const taskRow = await waitFor(() => {
+      const row = canvas.getByText('Document the admission guard').closest('button');
+      if (!row) {
+        throw new Error('The Task row inside the Tasks tab should render as a button.');
+      }
+
+      return row;
+    });
 
     await userEvent.click(taskRow);
 
@@ -490,6 +529,8 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     // disappears, back to the single-pinned-tab baseline.
     await closeRootTab(canvasElement, 'Zadania');
     await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(false));
-    await waitFor(() => expect(secondaryRegion()?.outerHTML).toBe(baselineSecondaryHTML));
+    await waitFor(() =>
+      expect(normalizeAutoIds(secondaryRegion()?.outerHTML ?? '')).toBe(baselineSecondaryHTML),
+    );
   },
 };

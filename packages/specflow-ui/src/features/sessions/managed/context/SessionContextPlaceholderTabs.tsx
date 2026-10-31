@@ -27,6 +27,18 @@ export interface PlaceholderRootTab {
   id: string;
   icon: IconName;
   titleKey: MessageKey;
+  /**
+   * Which subsection this row sits under (live owner review, second pass — see this task's
+   * handoff): the owner's reference mock groups a subset of these six rows under a small
+   * "RESULTS & RESOURCES"-style subsection label instead of one flat list, but only shows that one
+   * group (the screenshot may simply not have scrolled further, not necessarily meaning "no other
+   * groups exist"). `results` holds the rows that are produced/attached OUTPUT of the session
+   * (Files/Changes, Handovers, Artifacts); `reference` holds the rows that are background/setup
+   * material about how the session ran (History, Instructions, Environment). This split is this
+   * pass's own interpretation, not confirmed by the owner — flagged in the task report for them to
+   * confirm or adjust, same as the grouping headers themselves.
+   */
+  group: 'results' | 'reference';
   stack: ReturnType<typeof definePlaceholderStack>;
 }
 
@@ -79,36 +91,42 @@ export const placeholderRootTabs: PlaceholderRootTab[] = [
     id: 'files',
     icon: 'branch',
     titleKey: 'sessions.context.placeholders.files',
+    group: 'results',
     stack: definePlaceholderStack('files', 'sessions.context.placeholders.files'),
   },
   {
     id: 'history',
     icon: 'clock',
     titleKey: 'sessions.context.placeholders.history',
+    group: 'reference',
     stack: definePlaceholderStack('history', 'sessions.context.placeholders.history'),
   },
   {
     id: 'handovers',
     icon: 'arrow-right',
     titleKey: 'sessions.context.placeholders.handovers',
+    group: 'results',
     stack: definePlaceholderStack('handovers', 'sessions.context.placeholders.handovers'),
   },
   {
     id: 'artifacts',
     icon: 'archive',
     titleKey: 'sessions.context.placeholders.artifacts',
+    group: 'results',
     stack: definePlaceholderStack('artifacts', 'sessions.context.placeholders.artifacts'),
   },
   {
     id: 'instructions',
     icon: 'book-open',
     titleKey: 'sessions.context.placeholders.instructions',
+    group: 'reference',
     stack: definePlaceholderStack('instructions', 'sessions.context.placeholders.instructions'),
   },
   {
     id: 'environment',
     icon: 'server',
     titleKey: 'sessions.context.placeholders.environment',
+    group: 'reference',
     stack: definePlaceholderStack('environment', 'sessions.context.placeholders.environment'),
   },
 ];

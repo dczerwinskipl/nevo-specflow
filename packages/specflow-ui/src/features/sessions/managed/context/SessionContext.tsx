@@ -14,7 +14,7 @@ import {
   useSecondaryStack,
   type SecondaryStackDefinition,
 } from '@nevo/ui';
-import { translateNow } from '../../../../i18n/message';
+import { translateNow, type MessageKey } from '../../../../i18n/message';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { placeholderRootTabs, type PlaceholderRootTab } from './SessionContextPlaceholderTabs';
 import { createSessionTasksInspector } from './SessionTasksInspector';
@@ -36,23 +36,34 @@ type OpenSecondaryStack = <
 /**
  * Full Session Context Secondary (full-session-screen-structure.md §7).
  *
- * Structural order follows §7.2: Current execution, Attention/next actions, Related Tasks, the
- * §7.4 navigation skeleton into Context's other root-tab subjects (`OtherAreasSection` — owner
- * greenlit this pass, see `SessionContextPlaceholderTabs.tsx`), and — now that PR #107 documents
- * the telemetry contract (§23) — a low-emphasis Session details section carrying token usage/cost/
- * context occupancy/rate limits (`SessionTelemetrySection`). `Evidence` and the rest of Session
- * details (mode/capabilities/provider/model) remain deliberately out of this pass's scope (owner
- * decision 2) and are simply absent rather than stubbed.
+ * Structural order, top to bottom (live owner review, second pass — translated from the owner's
+ * own mock + rationale; see this task's handoff for the exact source):
+ * 1. Specification (`SpecificationEntry`) — one navigational row into the Specification this
+ *    session belongs to, when the (product-owned, not-yet-backend) view model carries one.
+ * 2. Current execution, Attention/next actions, Related Tasks (§7.2, unchanged by this pass).
+ * 3. The §7.4 navigation skeleton into Context's other root-tab subjects (`OtherAreasSection` —
+ *    owner greenlit the navigation mechanics in the first pass; this pass only adds the grouping
+ *    headers within it, see `SessionContextPlaceholderTabs.tsx`).
+ * 4. `SessionTelemetrySection` (§23/PR #107) — ALWAYS last, visually separated from the rows above
+ *    by its own section break, never folded into the same list.
+ *
+ * `Evidence` and the rest of Session details (mode/capabilities/provider/model) remain
+ * deliberately out of this pass's scope (owner decision 2) and are simply absent rather than
+ * stubbed.
  *
  * Every DYNAMIC section (execution/attention/related Tasks/telemetry) is independently optional
  * (owner decision 2 — a missing group must never crash or show a broken UI). `OtherAreasSection`
  * is not one of those — it is a fixed navigation entry point, always present once Context is
- * `ready`, so "every dynamic section absent" no longer means a literally empty Context.
+ * `ready`, so "every dynamic section absent" no longer means a literally empty Context. The
+ * Specification row IS data-driven like the dynamic sections (omitted when `value.specification`
+ * or `onOpenSpecification` is absent), since unlike `OtherAreasSection` it has no "not implemented
+ * yet" placeholder destination to fall back to.
  */
 export function SessionContext({
   sessionId,
   value,
   openStack,
+  onOpenSpecification,
 }: {
   sessionId: string;
   value: SessionContextViewModel;
@@ -66,6 +77,21 @@ export function SessionContext({
    * "legacy open" slot `useSecondaryNavigation().open` reserves for other features.
    */
   openStack?: OpenSecondaryStack;
+  /**
+   * Opens the Specification this session belongs to (live owner review, second pass): a real,
+   * cross-feature route navigation (`/specs/$specId`, the same destination
+   * `productNavigationModel.ts`'s "Overview" entry and `SessionRecoveryNotice.tsx` already use —
+   * see `useNavigate`/`useApplicationCollection` there), not a Secondary tab/stack like Tasks or
+   * the placeholder subjects below. `SessionContext` itself stays router-agnostic (it is mounted,
+   * unrouted, by both `SessionContext.stories.tsx` and `SessionContext.test.tsx`) and simply hands
+   * the real `{id, key, title}` off to this optional callback; the caller (`ManagedSession`'s route
+   * composition, out of this task's file scope) is responsible for wiring it to the real
+   * navigation. Omitted (or `value.specification` absent): the row simply doesn't render — same
+   * "missing data/capability hides the row" rule as every other optional piece of Context.
+   */
+  onOpenSpecification?: (
+    specification: NonNullable<SessionContextViewModel['specification']>,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
@@ -163,6 +189,7 @@ export function SessionContext({
    * anything renders at all.
    */
   const hasAnySection =
+    (!!value.specification && !!onOpenSpecification) ||
     !!value.executionScope ||
     !!value.attention?.length ||
     !!value.relatedTasks?.length ||
@@ -177,6 +204,29 @@ export function SessionContext({
             own scroll-architecture contribution to the same complaint). Starts at the top and
             simply scrolls once content overflows, like an ordinary panel. */}
         <div className="grid w-full gap-6">
+          {value.specification && onOpenSpecification && (
+            <section className="grid gap-1">
+              <Typography variant="section-label">
+                {t('sessions.context.specification.sectionTitle')}
+              </Typography>
+              <InformationList>
+                <OperationalRow
+                  leading={<Icon name="workflow" size="sm" className="text-content-muted" />}
+                  primary={value.specification.title}
+                  compactFacts={[{ text: value.specification.key, mono: true }]}
+                  onPrimaryClick={() => onOpenSpecification(value.specification!)}
+                  trailing={
+                    <Icon
+                      name="chevron-right"
+                      size="sm"
+                      className="text-content-muted"
+                      aria-hidden="true"
+                    />
+                  }
+                />
+              </InformationList>
+            </section>
+          )}
           {value.executionScope && (
             <section className="grid gap-1">
               <Typography variant="section-label">
@@ -262,32 +312,57 @@ export function SessionContext({
  * sections above): it is a fixed entry point into the other subjects, not session-derived content
  * that can legitimately be absent.
  */
+/**
+ * Grouped into "Results & resources" (Files/Changes, Handovers, Artifacts — output the session
+ * produced) and "History & reference" (History, Instructions, Environment — background/setup
+ * material), each under its own small subsection label, rather than one flat six-row list (live
+ * owner review, second pass): the owner's reference mock shows exactly this visual pattern — a
+ * subsection label above a cluster of related rows — for a "RESULTS & RESOURCES" group, though it
+ * only shows that one group (unclear whether the screenshot simply didn't scroll further, or the
+ * mock intends only two rows total; see this task's handoff). All six rows from the first pass are
+ * kept — none dropped — and this split is this pass's own interpretation, flagged for the owner to
+ * confirm or adjust (`PlaceholderRootTab.group`, `SessionContextPlaceholderTabs.tsx`).
+ */
 function OtherAreasSection({ onOpen }: { onOpen: (tab: PlaceholderRootTab) => void }) {
   const { t } = useTranslation();
+  const results = placeholderRootTabs.filter((tab) => tab.group === 'results');
+  const reference = placeholderRootTabs.filter((tab) => tab.group === 'reference');
+
+  function group(titleKey: MessageKey, tabs: PlaceholderRootTab[]) {
+    return (
+      <div className="grid gap-1">
+        <Typography variant="label-sm" className="text-content-muted">
+          {t(titleKey)}
+        </Typography>
+        <InformationList>
+          {tabs.map((tab) => (
+            <OperationalRow
+              key={tab.id}
+              leading={<Icon name={tab.icon} size="sm" className="text-content-muted" />}
+              primary={t(tab.titleKey)}
+              onPrimaryClick={() => onOpen(tab)}
+              trailing={
+                <Icon
+                  name="chevron-right"
+                  size="sm"
+                  className="text-content-muted"
+                  aria-hidden="true"
+                />
+              }
+            />
+          ))}
+        </InformationList>
+      </div>
+    );
+  }
 
   return (
-    <section className="grid gap-1">
+    <section className="grid gap-3">
       <Typography variant="section-label">
         {t('sessions.context.placeholders.sectionTitle')}
       </Typography>
-      <InformationList>
-        {placeholderRootTabs.map((tab) => (
-          <OperationalRow
-            key={tab.id}
-            leading={<Icon name={tab.icon} size="sm" className="text-content-muted" />}
-            primary={t(tab.titleKey)}
-            onPrimaryClick={() => onOpen(tab)}
-            trailing={
-              <Icon
-                name="chevron-right"
-                size="sm"
-                className="text-content-muted"
-                aria-hidden="true"
-              />
-            }
-          />
-        ))}
-      </InformationList>
+      {group('sessions.context.placeholders.resultsGroupTitle', results)}
+      {group('sessions.context.placeholders.referenceGroupTitle', reference)}
     </section>
   );
 }

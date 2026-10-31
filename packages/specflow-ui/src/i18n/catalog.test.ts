@@ -85,6 +85,8 @@ describe('message catalogues', () => {
       'specification.changesSourcePr',
       // A shell command, the same in every language.
       'create.archetype.installCommand',
+      // "Model" is the same word in Polish; nothing else in the string is translatable.
+      'sessions.context.sessionDetails.contextWindowScopeModelOnly',
     ]);
     const identical = plKeys.filter(
       (key) =>

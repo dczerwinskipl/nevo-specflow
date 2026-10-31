@@ -74,6 +74,23 @@ describe('SessionTelemetrySection', () => {
     expect(bars.length).toBeGreaterThanOrEqual(3);
   });
 
+  it('attributes context-window occupancy to the actual Turn/model it measures, not the section\'s ambient "whole session" caption (live owner review, second pass)', () => {
+    // `fullTelemetrySnapshot.context.value` carries both `turnId: 'turn-37'` and
+    // `modelId: 'claude-sonnet-5'` — real, already-observed data (unlike `usage.turn`/`cost.turn`,
+    // which no fixture populates), so the row can name its actual scope instead of silently
+    // reading as part of "Session usage" / "for the whole session" above it.
+    renderSection(fullTelemetrySnapshot);
+
+    expect(screen.getByText('For Turn turn-37 · claude-sonnet-5')).toBeTruthy();
+  });
+
+  it('falls back to naming just the Turn when the reading has no model id', () => {
+    // `staleTelemetrySnapshot.context.value` carries `turnId: 'turn-20'` but no `modelId`.
+    renderSection(staleTelemetrySnapshot);
+
+    expect(screen.getByText('For Turn turn-20')).toBeTruthy();
+  });
+
   it('lays the two rate-limit windows out as two columns, not stacked full-width rows', () => {
     const { container } = renderSection(fullTelemetrySnapshot);
 

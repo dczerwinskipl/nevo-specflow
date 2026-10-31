@@ -271,6 +271,28 @@ describe('sparse Context states', () => {
     expect(screen.getByText('Environment')).toBeTruthy();
   });
 
+  it('groups the six navigation-skeleton rows under two subsection labels instead of one flat list (live owner review, second pass)', () => {
+    const { container } = renderContext({ status: 'ready' });
+
+    expect(screen.getByText('Results & resources')).toBeTruthy();
+    expect(screen.getByText('History & reference')).toBeTruthy();
+
+    // Files/Changes, Handovers and Artifacts (produced/attached output) sit under "Results &
+    // resources"; History, Instructions and Environment (background/setup material) sit under
+    // "History & reference" — this pass's own grouping interpretation, not every six-row order
+    // the owner's reference mock could imply.
+    const resultsGroup = screen.getByText('Results & resources').closest('div');
+    const referenceGroup = screen.getByText('History & reference').closest('div');
+    expect(resultsGroup?.textContent).toContain('Files / Changes');
+    expect(resultsGroup?.textContent).toContain('Handovers');
+    expect(resultsGroup?.textContent).toContain('Artifacts');
+    expect(resultsGroup?.textContent).not.toContain('History');
+    expect(referenceGroup?.textContent).toContain('History');
+    expect(referenceGroup?.textContent).toContain('Instructions');
+    expect(referenceGroup?.textContent).toContain('Environment');
+    expect(container.textContent).toContain('Other areas');
+  });
+
   it('renders a short-but-real Context without artificial vertical centering', () => {
     const { container } = renderContext({
       status: 'ready',
@@ -289,5 +311,55 @@ describe('sparse Context states', () => {
     const scrollContent = container.querySelector('.scroll-area-content');
     expect(scrollContent?.className).toMatch(/\bflex\b/);
     expect(scrollContent?.className).toMatch(/min-h-full/);
+  });
+});
+
+describe('Specification entry', () => {
+  const specification = { id: 'spec-a', key: 'SPEC-A', title: 'Workflow admission hardening' };
+
+  function renderContext(
+    value: SessionContextViewModel,
+    onOpenSpecification?: (spec: NonNullable<SessionContextViewModel['specification']>) => void,
+  ) {
+    return render(
+      <StoryLocalization locale="en">
+        <AppWorkspaceProvider>
+          <SessionContext
+            sessionId={sessionId}
+            value={value}
+            onOpenSpecification={onOpenSpecification}
+          />
+        </AppWorkspaceProvider>
+      </StoryLocalization>,
+    );
+  }
+
+  it('renders a navigational Specification row when the view model carries one and a handler is wired, and opens it with the real specification reference on click', () => {
+    const onOpenSpecification = vi.fn();
+    renderContext({ status: 'ready', specification }, onOpenSpecification);
+
+    expect(screen.getByText('Specification')).toBeTruthy();
+    expect(screen.getByText('Workflow admission hardening')).toBeTruthy();
+    expect(screen.getByText('SPEC-A')).toBeTruthy();
+
+    clickButtonByText('Workflow admission hardening');
+
+    expect(onOpenSpecification).toHaveBeenCalledWith(specification);
+  });
+
+  it('omits the Specification row entirely when no handler is wired, even though the view model carries a specification reference', () => {
+    // No real navigation destination to offer without a wired handler (unlike the placeholder
+    // root-tab rows, which always have at least the shared "not implemented yet" screen to fall
+    // back to) — a row that looks clickable but does nothing would be worse than no row.
+    renderContext({ status: 'ready', specification });
+
+    expect(screen.queryByText('Specification')).toBeNull();
+    expect(screen.queryByText('Workflow admission hardening')).toBeNull();
+  });
+
+  it('omits the Specification row when the view model carries no specification reference, even with a handler wired', () => {
+    renderContext({ status: 'ready' }, vi.fn());
+
+    expect(screen.queryByText('Specification')).toBeNull();
   });
 });

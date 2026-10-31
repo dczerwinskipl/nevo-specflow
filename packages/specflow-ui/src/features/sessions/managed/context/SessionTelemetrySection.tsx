@@ -57,6 +57,14 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * `sessionTelemetry.ts`), but no fixture populates it and nothing else in this UI reads it yet.
  * This section still only ever reads `.session` — same as before this pass — labelled honestly as
  * such rather than inventing a Turn/Session split the data/product has not decided on.
+ *
+ * Correctness fix (live owner review, second pass): unlike cost/tokens, "Model context window" is
+ * NOT a session aggregate — architecturally, a model's context window is scoped to one Turn/model
+ * invocation. It still renders inside the "Zużycie sesji" section (there is nowhere better for a
+ * single always-visible row), but `LimitRow`'s `scopeCaption` now names the actual Turn/model it
+ * measures (`formatContextWindowScope`, reading `ContextUsage.turnId`/`.modelId` — already real,
+ * already populated data, unlike `usage.turn`/`cost.turn` above) instead of silently inheriting
+ * the section's "for the whole session" claim.
  */
 export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySnapshot }) {
   const { t, i18n } = useTranslation();
@@ -121,6 +129,7 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
                 value: new Intl.NumberFormat(i18n.language).format(contextStat.percentage),
               })}
               stale={contextStat.stale}
+              scopeCaption={formatContextWindowScope(contextStat.turnId, contextStat.modelId, t)}
             />
           )}
           {tokenBreakdown && (
@@ -208,17 +217,27 @@ function StatCell({
  * story already establishes for this component, with the fill colour stepped by usage threshold
  * (see `progressTone`). Falls back to a plain value line — never a bar — when no percentage can
  * be honestly computed (graceful degradation; see `limitWindowPercentage`).
+ *
+ * `scopeCaption` (context-window occupancy only, see `formatContextWindowScope`): this row sits
+ * inside a section captioned "Zużycie sesji" / "for the whole session" (`usageScope`), which is
+ * accurate for the cost/token stat cells next to it but NOT for context-window occupancy — a
+ * model's context window is architecturally scoped to one Turn/model invocation, never summed
+ * across a Session. Rather than inventing a Session-wide number that doesn't exist, this small
+ * sub-caption names the actual Turn/model the percentage is for, so the row doesn't silently
+ * inherit the ambient "whole session" claim it sits under.
  */
 function LimitRow({
   label,
   percentage,
   valueText,
   stale,
+  scopeCaption,
 }: {
   label: string;
   percentage?: number;
   valueText?: string;
   stale: boolean;
+  scopeCaption?: string;
 }) {
   const labelId = useId();
 
@@ -230,6 +249,11 @@ function LimitRow({
         </Typography>
         {stale && <StaleMark />}
       </div>
+      {scopeCaption && (
+        <Typography variant="label-sm" className="text-content-muted">
+          {scopeCaption}
+        </Typography>
+      )}
       {percentage !== undefined ? (
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <Progress
@@ -422,15 +446,18 @@ function formatCostStat(
 
 /** `occupiedTokens / capacityTokens`: unambiguously "how much of the model's context window is
  * USED", never "how much is left" — the value text built from this (`contextOccupancyValue`)
- * spells that out explicitly rather than showing a bare, directionless percentage. */
+ * spells that out explicitly rather than showing a bare, directionless percentage. Also carries
+ * `turnId`/`modelId` straight through from `ContextUsage` (already real, observed data — see
+ * `formatContextWindowScope`), so the caller can attribute the percentage to the Turn/model it
+ * actually measures instead of leaving that implicit. */
 function formatContextOccupancy(
   reading: TelemetrySnapshot['context'],
-): { percentage: number; stale: boolean } | undefined {
+): { percentage: number; stale: boolean; turnId?: string; modelId?: string } | undefined {
   if (reading.status === 'unavailable' || !reading.value) {
     return undefined;
   }
 
-  const { occupiedTokens, capacityTokens } = reading.value;
+  const { occupiedTokens, capacityTokens, turnId, modelId } = reading.value;
   if (
     occupiedTokens === undefined ||
     capacityTokens === undefined ||
@@ -442,7 +469,45 @@ function formatContextOccupancy(
 
   const percentage = Math.min(100, Math.round((occupiedTokens / capacityTokens) * 100));
 
-  return { percentage, stale: reading.freshness === 'stale' };
+  return { percentage, stale: reading.freshness === 'stale', turnId, modelId };
+}
+
+/**
+ * Correctness fix (live owner review, second pass): "Model context window" sits inside a section
+ * explicitly captioned "for the whole session" (`usageScope`), but a model's context window is
+ * architecturally scoped to ONE Turn/model invocation, never summed or meaningful across a whole
+ * Session — unlike cost/token usage next to it, which genuinely ARE session aggregates. Labelling
+ * the row "for the whole session" by ambient proximity would be a real (if implicit) scope claim
+ * this data cannot back up.
+ *
+ * This does NOT require new data: `ContextUsage.turnId`/`.modelId` are already part of the
+ * documented contract and already populated by the demo fixtures (unlike `usage.turn`/`cost.turn`,
+ * which no fixture populates — that gap is real and stays unfixed). When at least one of
+ * `turnId`/`modelId` is present, this names it explicitly instead of leaving the row to silently
+ * inherit the section's "whole session" caption. `undefined` when the reading carries neither (the
+ * row's own label, "Model context window", makes no explicit Session-wide claim on its own, so
+ * omitting the caption here is honest, not misleading — it just can't say MORE than that). */
+function formatContextWindowScope(
+  turnId: string | undefined,
+  modelId: string | undefined,
+  t: TFunction,
+): string | undefined {
+  if (turnId && modelId) {
+    return t('sessions.context.sessionDetails.contextWindowScopeTurnAndModel', {
+      turn: turnId,
+      model: modelId,
+    });
+  }
+
+  if (turnId) {
+    return t('sessions.context.sessionDetails.contextWindowScopeTurnOnly', { turn: turnId });
+  }
+
+  if (modelId) {
+    return t('sessions.context.sessionDetails.contextWindowScopeModelOnly', { model: modelId });
+  }
+
+  return undefined;
 }
 
 /** `undefined` when a window's usage cannot be expressed as a percentage (missing `used`, or

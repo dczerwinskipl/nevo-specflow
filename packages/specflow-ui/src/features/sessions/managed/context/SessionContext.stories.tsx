@@ -43,7 +43,19 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
         <AppShell navigation={<div className="p-4">SpecFlow</div>}>
           <AppWorkspace fit="available" split="dynamic">
             <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
-              <SessionContext sessionId={sessionId} value={value} />
+              {/* `onOpenSpecification` here is a story-only stand-in for the real
+                  `useNavigate({ to: '/specs/$specId' })` call (see `SessionContext.tsx`'s own
+                  prop doc) — this harness has no Router mounted (same as `SessionContext.test.tsx`
+                  and every other story here), so it just logs instead of navigating. Exercises the
+                  row's real click wiring and the real `value.specification` data without that
+                  dependency. */}
+              <SessionContext
+                sessionId={sessionId}
+                value={value}
+                onOpenSpecification={(specification) =>
+                  console.info('Open Specification', specification)
+                }
+              />
             </AppWorkspace.Primary>
           </AppWorkspace>
         </AppShell>

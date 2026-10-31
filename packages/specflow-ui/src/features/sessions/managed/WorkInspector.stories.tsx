@@ -134,8 +134,8 @@ function assertSearchInputFits(search: HTMLInputElement) {
 
 /** The type filter is a `Menu` (WorkInspector.tsx's `WorkFilterBar`), never a `SegmentedControl`:
  * its content is portaled to `document.body`, exactly like the Composer's model picker Menu in
- * `ManagedSession.stories.tsx` (`openModelMenu`) — so it is found via `[role="menu"]`, not a
- * `canvas`-scoped query. */
+ * `ManagedSession.interactions.stories.tsx` (`openModelMenu`) — so it is found via
+ * `[role="menu"]`, not a `canvas`-scoped query. */
 async function selectFilterKind(canvasElement: HTMLElement, triggerName: string, kindName: string) {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByRole('button', { name: triggerName }));

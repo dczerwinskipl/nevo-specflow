@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import { useId, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Badge,
@@ -28,6 +29,12 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * meaningful sub-values even when `available`/`partial`) simply omits its own line, never a
  * placeholder/zero. When every dimension is unavailable this whole section renders nothing, the
  * same "missing data hides the section" rule the rest of `SessionContext` already follows.
+ *
+ * Visual redesign (live review — "Statystyki to jedna czcionka i goły tekst"): every limit-type
+ * value (context occupancy, each rate-limit window) now renders through the DS `Progress` bar
+ * with a label/value pair, not bare joined sentences. Plain counts (token usage, cost) keep a
+ * sentence but gain the same label/value Typography split as the bar rows, so the whole section
+ * reads as one consistent hierarchy instead of one undifferentiated font.
  */
 export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySnapshot }) {
   const { t, i18n } = useTranslation();
@@ -39,15 +46,15 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
   const snapshot = telemetry!;
   const usageLine = formatTokenUsage(snapshot.usage.session, t, i18n.language);
   const costLine = formatCost(snapshot.cost.session, t, i18n.language);
-  const contextLine = formatContextOccupancy(snapshot.context, t, i18n.language);
-  const limitsLine = formatLimits(snapshot.limits, t, i18n.language);
+  const contextStat = formatContextOccupancy(snapshot.context);
+  const limits = formatLimitWindows(snapshot.limits, t, i18n.language);
 
-  if (!usageLine && !costLine && !contextLine && !limitsLine) {
+  if (!usageLine && !costLine && !contextStat && !limits) {
     return null;
   }
 
   return (
-    <section className="grid gap-1.5">
+    <section className="grid gap-2">
       <div className="flex items-center gap-2">
         <Typography variant="section-label" className="text-content-muted">
           {t('sessions.context.sessionDetails.title')}
@@ -58,34 +65,155 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
           </Typography>
         )}
       </div>
-      <div className="grid gap-1 text-label-sm text-content-muted">
-        {usageLine && <TelemetryLine content={usageLine.text} stale={usageLine.stale} />}
-        {costLine && <TelemetryLine content={costLine.text} stale={costLine.stale} />}
-        {contextLine && (
-          <div className="grid gap-1">
-            <TelemetryLine content={contextLine.text} stale={contextLine.stale} />
-            <Progress
-              size="compact"
-              value={contextLine.occupied}
-              max={contextLine.capacity}
-              aria-label={t('sessions.context.sessionDetails.contextOccupancyAria')}
-              className="max-w-40"
-            />
-          </div>
+      <div className="grid gap-3">
+        {usageLine && (
+          <StatRow
+            label={t('sessions.context.sessionDetails.usageLabel')}
+            value={usageLine.text}
+            stale={usageLine.stale}
+          />
         )}
-        {limitsLine && <TelemetryLine content={limitsLine.text} stale={limitsLine.stale} />}
+        {costLine && (
+          <StatRow
+            label={t('sessions.context.sessionDetails.costLabel')}
+            value={costLine.text}
+            stale={costLine.stale}
+          />
+        )}
+        {contextStat && (
+          <LimitRow
+            label={t('sessions.context.sessionDetails.contextOccupancyAria')}
+            percentage={contextStat.percentage}
+            valueText={t('sessions.context.sessionDetails.percentValue', {
+              value: new Intl.NumberFormat(i18n.language).format(contextStat.percentage),
+            })}
+            stale={contextStat.stale}
+          />
+        )}
+        {limits?.windows.map((window) => (
+          <LimitRow
+            key={window.id}
+            label={window.label}
+            percentage={window.percentage}
+            valueText={window.valueText}
+            stale={window.stale}
+          />
+        ))}
+        {limits && limits.extra > 0 && (
+          <Typography variant="body-sm" className="text-content-muted">
+            {t('sessions.context.sessionDetails.moreLimitWindows', { value: limits.extra })}
+          </Typography>
+        )}
       </div>
     </section>
   );
 }
 
-function TelemetryLine({ content, stale }: { content: string; stale: boolean }) {
+/** A plain count/sentence dimension (token usage, cost): a muted `label-sm` caption over the
+ * `body-sm` value, the same label/value split every bar row below also uses, instead of one
+ * undifferentiated sentence. */
+function StatRow({ label, value, stale }: { label: string; value: string; stale: boolean }) {
   return (
-    <p className="flex items-center gap-1.5">
-      <span>{content}</span>
-      {stale && <StaleMark />}
-    </p>
+    <div className="grid gap-0.5">
+      <Typography variant="label-sm" className="text-content-muted">
+        {label}
+      </Typography>
+      <div className="flex items-center gap-1.5">
+        <Typography variant="body-sm" className="text-content-secondary">
+          {value}
+        </Typography>
+        {stale && <StaleMark />}
+      </div>
+    </div>
   );
+}
+
+/**
+ * A limit-type value (context-window occupancy, a rate-limit window): the canonical DS `Progress`
+ * composition (label + bar + value), the same grammar `Progress.stories.tsx`'s `WithMetadata`
+ * story already establishes for this component, with the fill colour stepped by usage threshold
+ * (see `progressTone`). Falls back to a plain value line — never a bar — when no percentage can
+ * be honestly computed (graceful degradation; see `limitWindowPercentage`).
+ */
+function LimitRow({
+  label,
+  percentage,
+  valueText,
+  stale,
+}: {
+  label: string;
+  percentage?: number;
+  valueText?: string;
+  stale: boolean;
+}) {
+  const labelId = useId();
+
+  return (
+    <div className="grid gap-1">
+      <div className="flex items-center gap-1.5">
+        <Typography id={labelId} variant="label-sm" className="text-content-muted">
+          {label}
+        </Typography>
+        {stale && <StaleMark />}
+      </div>
+      {percentage !== undefined ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <Progress
+            size="compact"
+            value={percentage}
+            max={100}
+            aria-labelledby={labelId}
+            style={progressFillStyle(progressTone(percentage))}
+          />
+          {valueText && (
+            <Typography variant="code-md" className="text-content-muted">
+              {valueText}
+            </Typography>
+          )}
+        </div>
+      ) : (
+        valueText && (
+          <Typography variant="body-sm" className="text-content-secondary">
+            {valueText}
+          </Typography>
+        )
+      )}
+    </div>
+  );
+}
+
+/**
+ * Usage threshold tiers (owner-decision default — see module header: `Reading`/`LimitWindow` have
+ * no server-provided tone/threshold field today, so this is a hardcoded client-side cutoff, not a
+ * value read from the telemetry contract. Revisit once PR #107 or a successor documents one).
+ */
+type ProgressTone = 'default' | 'attention' | 'danger';
+
+function progressTone(percentage: number): ProgressTone {
+  if (percentage >= 90) {
+    return 'danger';
+  }
+
+  if (percentage >= 70) {
+    return 'attention';
+  }
+
+  return 'default';
+}
+
+/** `Progress`'s fill colour is the themeable `--color-progress-fill` CSS custom property
+ * (`design-system.css`); overriding it on this one instance reuses the DS's existing
+ * warning/danger convention (`StatusIndicator`'s `bg-status-attention`/`bg-status-danger`) without
+ * modifying the shared `Progress` component, which has no `tone`/variant prop of its own. */
+function progressFillStyle(tone: ProgressTone): CSSProperties | undefined {
+  if (tone === 'default') {
+    return undefined;
+  }
+
+  return {
+    '--color-progress-fill':
+      tone === 'danger' ? 'var(--color-status-danger)' : 'var(--color-status-attention)',
+  } as CSSProperties;
 }
 
 function StaleMark() {
@@ -183,9 +311,7 @@ function formatCost(
 
 function formatContextOccupancy(
   reading: TelemetrySnapshot['context'],
-  t: TFunction,
-  locale: string,
-): (FormattedLine & { occupied: number; capacity: number }) | undefined {
+): { percentage: number; stale: boolean } | undefined {
   if (reading.status === 'unavailable' || !reading.value) {
     return undefined;
   }
@@ -201,21 +327,14 @@ function formatContextOccupancy(
   }
 
   const percentage = Math.min(100, Math.round((occupiedTokens / capacityTokens) * 100));
-  const text = t('sessions.context.sessionDetails.contextOccupancy', {
-    value: new Intl.NumberFormat(locale).format(percentage),
-  });
 
-  return {
-    text,
-    stale: reading.freshness === 'stale',
-    occupied: occupiedTokens,
-    capacity: capacityTokens,
-  };
+  return { percentage, stale: reading.freshness === 'stale' };
 }
 
 /** `undefined` when a window's usage cannot be expressed as a percentage (missing `used`, or
  * missing `limit` for a non-`percent` unit) — such a window is still shown, just without a
- * computed ratio, and never sorted ahead of one that does have a real percentage. */
+ * computed ratio (and therefore without a `Progress` bar — never a fake/zero one), and never
+ * sorted ahead of one that does have a real percentage. */
 function limitWindowPercentage(window: LimitWindow): number | undefined {
   if (window.unit === 'percent') {
     const used = Number(window.used);
@@ -252,11 +371,19 @@ function formatWindowDuration(seconds: number | undefined): string | undefined {
   return `${Math.round(seconds / 60)}m`;
 }
 
-function formatLimits(
+interface LimitRowData {
+  id: string;
+  label: string;
+  percentage?: number;
+  valueText?: string;
+  stale: boolean;
+}
+
+function formatLimitWindows(
   reading: TelemetrySnapshot['limits'],
   t: TFunction,
   locale: string,
-): FormattedLine | undefined {
+): { windows: LimitRowData[]; extra: number } | undefined {
   if (reading.status === 'unavailable' || !reading.value?.windows.length) {
     return undefined;
   }
@@ -268,15 +395,16 @@ function formatLimits(
 
   const shown = ranked.slice(0, 2);
   const extra = ranked.length - shown.length;
+  const stale = reading.freshness === 'stale';
 
-  const parts = shown.map(({ window, percentage }) => {
+  const rowsData = shown.map(({ window, percentage }): LimitRowData => {
     const duration = formatWindowDuration(window.windowSeconds);
     const label = duration
       ? t('sessions.context.sessionDetails.rateLimitWindow', { window: duration })
       : window.windowId;
-    const usedText =
+    const valueText =
       percentage !== undefined
-        ? t('sessions.context.sessionDetails.rateLimitUsed', {
+        ? t('sessions.context.sessionDetails.percentValue', {
             value: new Intl.NumberFormat(locale).format(Math.round(percentage)),
           })
         : window.used !== undefined && window.limit !== undefined
@@ -287,13 +415,8 @@ function formatLimits(
             })
           : undefined;
 
-    return usedText ? `${label}: ${usedText}` : label;
+    return { id: window.windowId, label, percentage, valueText, stale };
   });
 
-  const text =
-    extra > 0
-      ? `${parts.join(' · ')} · ${t('sessions.context.sessionDetails.moreLimitWindows', { value: extra })}`
-      : parts.join(' · ');
-
-  return { text, stale: reading.freshness === 'stale' };
+  return { windows: rowsData, extra };
 }

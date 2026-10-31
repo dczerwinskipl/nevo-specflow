@@ -22,37 +22,75 @@ function renderSection(telemetry?: TelemetrySnapshot) {
 }
 
 describe('SessionTelemetrySection', () => {
-  it('renders every available dimension for a full telemetry snapshot', () => {
+  it('renders every available dimension for a full telemetry snapshot, as labelled bars/values', () => {
     const { container } = renderSection(fullTelemetrySnapshot);
 
     expect(screen.getByText('Session details')).toBeTruthy();
-    // Token usage: only the dimensions actually present on the fixture.
+    // Token usage: a label distinct from its value, only the dimensions actually present.
+    expect(screen.getByText('Token usage')).toBeTruthy();
     expect(
       screen.getByText('12,400 input · 3,200 output · 8,100 cache read · 640 reasoning'),
     ).toBeTruthy();
     // Cost: provider-reported + billed -> no estimate/unconfirmed caveat.
+    expect(screen.getByText('Cost')).toBeTruthy();
     expect(screen.getByText('$0.47')).toBeTruthy();
-    // Context occupancy: 86,000 / 200,000 -> 43%.
-    expect(screen.getByText('43% of context used')).toBeTruthy();
-    expect(container.querySelector('[role="progressbar"]')).toBeTruthy();
-    // Rate limits: both windows fit (<= 2), so no "+N more", most-used window ranked first.
-    expect(screen.getByText(/5h window: 42% used/)).toBeTruthy();
+    // Context occupancy: 86,000 / 200,000 -> 43%, rendered as a labelled Progress bar + value.
+    expect(screen.getByText('Context window occupancy')).toBeTruthy();
+    expect(screen.getByText('43%')).toBeTruthy();
+    const bars = container.querySelectorAll('[role="progressbar"]');
+    expect(bars.length).toBeGreaterThanOrEqual(1);
+    // Rate limits: both windows fit (<= 2), so no "+N more", most-used window ranked first, each
+    // its own labelled bar.
+    expect(screen.getByText('5h window')).toBeTruthy();
+    expect(screen.getByText('42%')).toBeTruthy();
+    expect(screen.getByText('7d window')).toBeTruthy();
+    expect(screen.getByText('13%')).toBeTruthy();
+    expect(screen.queryByText(/\+\d+ more/)).toBeNull();
     // Nothing here is stale.
     expect(screen.queryByText('Stale')).toBeNull();
   });
 
   it('shows only the available dimensions for partial telemetry, never a placeholder for cost', () => {
-    renderSection(partialAntigravityTelemetrySnapshot);
+    const { container } = renderSection(partialAntigravityTelemetrySnapshot);
 
     // Usage is partial but present.
     expect(screen.getByText('5,600 input · 1,150 output')).toBeTruthy();
-    // Cost is unavailable (Antigravity: no proven currency) — never shown as $0 or any amount.
+    // Cost is unavailable (Antigravity: no proven currency) — never shown as $0 or any amount,
+    // and the "Cost" label itself is absent along with it.
+    expect(screen.queryByText('Cost')).toBeNull();
     expect(screen.queryByText(/\$/)).toBeNull();
-    // Limits observed as a direct percent-unit window.
-    expect(screen.getByText(/5h window: 42% used/)).toBeTruthy();
-    // Context is unavailable on this fixture, so no occupancy line/progress bar at all.
-    expect(screen.queryByText(/of context used/)).toBeNull();
-    expect(document.querySelector('[role="progressbar"]')).toBeNull();
+    // Limits observed as a direct percent-unit window, rendered as its own Progress bar.
+    expect(screen.getByText('5h window')).toBeTruthy();
+    expect(screen.getByText('42%')).toBeTruthy();
+    // Context is unavailable on this fixture, so no occupancy label/bar at all — only the one
+    // rate-limit bar above exists, not two.
+    expect(screen.queryByText('Context window occupancy')).toBeNull();
+    expect(container.querySelectorAll('[role="progressbar"]').length).toBe(1);
+  });
+
+  it('colors a limit bar by usage threshold: default below 70%, attention 70-90%, danger above 90%', () => {
+    // Stale fixture: context 178,000/200,000 = 89% (attention tier), rate-limit window
+    // 390,000/400,000 = 97.5% -> rounds to 98% (danger tier). No server-provided threshold exists
+    // on `Reading`/`LimitWindow` today, so this exercises the hardcoded client-side cutoff.
+    const { container } = renderSection(staleTelemetrySnapshot);
+
+    const bars = Array.from(container.querySelectorAll<HTMLElement>('[role="progressbar"]'));
+    expect(bars.length).toBe(2);
+    const [contextBar, limitBar] = bars;
+    expect(contextBar?.style.getPropertyValue('--color-progress-fill')).toBe(
+      'var(--color-status-attention)',
+    );
+    expect(limitBar?.style.getPropertyValue('--color-progress-fill')).toBe(
+      'var(--color-status-danger)',
+    );
+
+    // The full-snapshot fixture's dimensions (43%/42%/13%) are all below 70% — no override, the
+    // bar keeps the DS default fill colour.
+    cleanup();
+    const { container: defaultContainer } = renderSection(fullTelemetrySnapshot);
+    for (const bar of defaultContainer.querySelectorAll<HTMLElement>('[role="progressbar"]')) {
+      expect(bar.style.getPropertyValue('--color-progress-fill')).toBe('');
+    }
   });
 
   it('renders nothing at all when every telemetry dimension is unavailable', () => {

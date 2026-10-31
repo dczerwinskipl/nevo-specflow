@@ -1388,7 +1388,6 @@
         "neutral": "Note"
       },
       "relatedTasks": "Related Tasks",
-      "openTasks": "Open Tasks",
       "tasksTitle": "Tasks",
       "taskTitle": "Task",
       "tasks": {
@@ -1399,6 +1398,8 @@
       "sessionDetails": {
         "title": "Session details",
         "refreshing": "Refreshing…",
+        "usageLabel": "Token usage",
+        "costLabel": "Cost",
         "inputTokens": "{{value}} input",
         "outputTokens": "{{value}} output",
         "cacheReadTokens": "{{value}} cache read",
@@ -1407,11 +1408,10 @@
         "costEstimatedSuffix": "estimated",
         "costApiEquivalentSuffix": "API-equivalent",
         "costUnconfirmedSuffix": "unconfirmed",
-        "contextOccupancy": "{{value}}% of context used",
         "contextOccupancyAria": "Context window occupancy",
         "rateLimitWindow": "{{window}} window",
-        "rateLimitUsed": "{{value}}% used",
         "rateLimitUsedOfLimit": "{{used}}/{{limit}} {{unit}}",
+        "percentValue": "{{value}}%",
         "moreLimitWindows": "+{{value}} more",
         "stale": "Stale",
         "staleExplanation": "Observed earlier and not yet confirmed current. May be out of date."
@@ -1515,6 +1515,30 @@
       "label": "Model and effort for the next message",
       "placeholder": "Select model",
       "availableEfforts": "Available efforts: {{list}}"
+    },
+    "intent": {
+      "label": "Work mode — next Turn",
+      "placeholder": "Select work mode",
+      "preset": {
+        "ask": "Ask",
+        "plan": "Plan",
+        "agent": "Agent"
+      }
+    },
+    "policy": {
+      "label": "Operation approval — select approval policy",
+      "placeholder": "Select approval policy",
+      "option": {
+        "askEachTime": "Ask for every operation",
+        "acceptEdits": "Approve edits automatically",
+        "acceptEditsDescription": "Workspace file reads and edits proceed without confirmation; other operations still ask."
+      }
+    },
+    "attach": {
+      "action": "Attach a file",
+      "list": "Attachments",
+      "remove": "Remove {{name}}",
+      "note": "Local mock: attachments are not sent to any provider."
     },
     "send": "Send",
     "retrySend": "Retry sending",

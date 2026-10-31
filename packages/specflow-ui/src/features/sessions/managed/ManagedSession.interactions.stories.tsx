@@ -409,17 +409,28 @@ function hasRootTabStrip(canvasElement: HTMLElement) {
 }
 
 /**
- * Scoped W01-W04 adoption (coordinator demo ahead of W05/W06/W07): clicking a Related Task opens
- * it as its own independent root tab, coexisting with the pinned Context tab, instead of today's
- * "replaces Context entirely" behavior — `SessionContext`'s `openRelatedTask` on the wide/
- * pinned-tab desktop path. Exercises the full sequence end-to-end: Context open (pinned tab, no
- * strip visible) -> click a Related Task -> strip appears with 2 tabs (Context pinned/
- * non-closable, Task closable) -> Task detail content visible -> click back to the Context tab
- * via the strip -> Context still shown with its state intact -> close the Task tab -> strip
- * disappears, back to a single-pinned-tab baseline that is DOM-identical to before (W03's own
- * regression-check standard, `verifyContextReopens`'s sibling check in the `States` group).
+ * Corrected per full-session-screen-structure.md §7.4/§10.1 — read in full before touching this
+ * story again: "Its concise, clickable content summaries open/reselect root tabs such as
+ * Tasks... A Task selection from a Tasks tab pushes Task detail onto that tab's local stack... Do
+ * not spawn an independent tab for a task-bound event and lose provenance", and §10.1's own
+ * "Work -> ToolAction stays inside the Work tab" example (the tab's identity never renames itself
+ * to whichever detail is open inside it).
+ *
+ * Previously named `RelatedTaskOpensAsIndependentTab` and asserted the OPPOSITE of the above — a
+ * confirmed bug (`SessionContext`'s `openRelatedTask` used to call `navigation.openTab` with a
+ * per-Task `instanceId`, giving each related Task its own independent tab and losing its
+ * Tasks-tab provenance). Renamed to match the corrected behavior:
+ * Context open (pinned tab, no strip visible) -> click the Related Tasks summary row (this
+ * fixture has 2 related Tasks, so it opens the ONE Tasks tab on its list, not a direct Task) ->
+ * strip appears with 2 tabs (Context pinned/non-closable, Tasks closable) -> select a Task from
+ * the list -> Task detail is now the Tasks tab's own content (pushed onto its local stack,
+ * `stack.navTo('task', ...)` in `SessionTasksInspector.tsx`'s `TaskList`) — still exactly 2 tabs,
+ * no third one appears for the Task -> click back to the Context tab via the strip -> Context
+ * still shown with its state intact -> close the Tasks tab -> strip disappears, back to a
+ * single-pinned-tab baseline that is DOM-identical to before (W03's own regression-check
+ * standard, `verifyContextReopens`'s sibling check in the `States` group).
  */
-export const RelatedTaskOpensAsIndependentTab: Story = {
+export const RelatedTaskPushesOntoSharedTasksTab: Story = {
   tags: ['integration'],
   args: {
     owner: 'full-session-story',
@@ -439,34 +450,45 @@ export const RelatedTaskOpensAsIndependentTab: Story = {
     const baselineSecondaryHTML = secondaryRegion()?.outerHTML;
     await expect(baselineSecondaryHTML).toBeTruthy();
 
-    // Click a Related Task: it opens as its own tab, coexisting with the pinned Context tab.
-    const relatedTaskLink = canvas.getByText('Document the admission guard').closest('button');
-    if (!relatedTaskLink) {
-      throw new Error('The Related Tasks link should render as a button.');
+    // Click the Related Tasks summary row — this fixture has 2 related Tasks (TASK-02, TASK-03),
+    // so it opens the shared Tasks tab on its list (`openRelatedTasksEntry`'s >1 branch), not a
+    // direct per-Task tab.
+    const relatedTasksRow = canvas.getByText('2 zadań').closest('button');
+    if (!relatedTasksRow) {
+      throw new Error('The Related Tasks summary row should render as a button.');
     }
 
-    await userEvent.click(relatedTaskLink);
+    await userEvent.click(relatedTasksRow);
 
-    // Task detail content is visible, and Context's own content is backgrounded (only one tab's
-    // content is ever mounted at a time) — proof the Task opened and became the active tab.
+    await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(true));
+    await expect(canvas.queryByText('Powiązane zadania')).not.toBeInTheDocument();
+    await expect(await canvas.findByText('Document the admission guard')).toBeVisible();
+    await expect(canvas.getByText('Deterministic admission')).toBeVisible();
+
+    // Select TASK-02 from the list: Task detail becomes this SAME tab's content — the core
+    // correction. No independent "TASK-02 ..." tab appears alongside it.
+    const taskRow = canvas.getByText('Document the admission guard').closest('button');
+    if (!taskRow) {
+      throw new Error('The Task row inside the Tasks tab should render as a button.');
+    }
+
+    await userEvent.click(taskRow);
+
     await expect(
       await canvas.findByRole('heading', { name: 'Document the admission guard' }),
     ).toBeVisible();
     await expect(canvas.getByText('TASK-02')).toBeVisible();
-    await expect(canvas.queryByText('Powiązane zadania')).not.toBeInTheDocument();
-    await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(true));
+    await expect(queryDirectTab(canvasElement, 'Document the admission guard')).toBeUndefined();
 
     // Click back to the Context tab via the strip (asserting it has no close control along the
     // way — the pinned tab, contract §3): Context is shown again with its state intact.
     await activateRootTab(canvasElement, 'Kontekst', true);
     await waitFor(() => expect(canvas.getByText('Powiązane zadania')).toBeVisible());
-    await expect(canvas.getByText('Document the admission guard')).toBeVisible();
 
-    // Close the Task tab — named after the real Task (`tabLabel`), never the generic "Zadanie"
-    // screen title (live-review finding: a Task tab must be told apart from another Task's tab by
-    // name, not just by which one is active) — and the strip disappears, back to the
-    // single-pinned-tab baseline.
-    await closeRootTab(canvasElement, 'TASK-02 Document the admission guard');
+    // Close the Tasks tab — labelled "Zadania" throughout (never renamed to the Task that was open
+    // inside it, per §10.1's "Work -> ToolAction stays inside the Work tab" rule) — and the strip
+    // disappears, back to the single-pinned-tab baseline.
+    await closeRootTab(canvasElement, 'Zadania');
     await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(false));
     await waitFor(() => expect(secondaryRegion()?.outerHTML).toBe(baselineSecondaryHTML));
   },

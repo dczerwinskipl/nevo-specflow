@@ -5,6 +5,8 @@ import {
   AppWorkspaceBody,
   Button,
   EmptyState,
+  Icon,
+  InformationList,
   StatusIndicator,
   Typography,
   defineSecondaryStack,
@@ -13,6 +15,7 @@ import {
   type SecondaryStackDefinition,
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
+import { OperationalRow } from '../../../../shared/operational-list';
 import { createSessionTasksInspector } from './SessionTasksInspector';
 import { SessionTelemetrySection } from './SessionTelemetrySection';
 import { isTelemetryVisible } from './sessionTelemetry';
@@ -48,44 +51,70 @@ export function SessionContext({
   sessionId: string;
   value: SessionContextViewModel;
   /**
-   * How "Related Tasks" / a Task link opens from here. Defaults to `useSecondaryNavigation().open`,
-   * which starts a brand-new Secondary flow — correct when Context is the default, always-mounted
-   * Secondary (wide/split layouts; see `ManagedSession`), since there is no enclosing flow to push
-   * onto there. The narrow runtime Context flow (`createSessionContextStack` below) instead passes
-   * that flow's own `navTo`, which pushes Tasks/Task onto Context's OWN stack, so Back returns to
-   * Context first instead of skipping it (the bug this prop exists to avoid).
+   * How Tasks opens from here. On the narrow runtime Context flow (`createSessionContextStack`
+   * below) this is that flow's own `navTo`, which pushes the Tasks tab's initial screen onto
+   * Context's OWN stack — narrow has no tabs at all (full-session-screen-structure.md §10.3), so
+   * this is a plain, correct push/pop, unchanged by the correction below. Omitted on the
+   * wide/split-capable default Secondary (see `ManagedSession`), where Tasks instead opens as its
+   * own root tab via `navigation.openTab` (see `openTasksTab` below) — never the single shared
+   * "legacy open" slot `useSecondaryNavigation().open` reserves for other features.
    */
   openStack?: OpenSecondaryStack;
 }) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
-  const openSecondary = openStack ?? navigation.open;
   const allTasks = useMemo(() => collectTasks(value), [value]);
   const inspectors = useMemo(() => createSessionTasksInspector(allTasks), [allTasks]);
 
-  function openTasksList() {
-    void openSecondary(inspectors.tasksStack, { sessionId });
-  }
-
-  function openTask(task: SessionContextTaskRef) {
-    void openSecondary(inspectors.taskStack, { sessionId, taskId: task.id });
-  }
-
   /**
-   * Related Tasks' own open handler (W01-W04 adoption, scoped to this one entry point):
-   * unchanged narrow/mobile fallback (`openStack` present — pushes onto Context's own runtime
-   * flow, exactly like `openTask` above), but on the wide/pinned-tab desktop case (`openStack`
-   * absent, Context is the default declarative Secondary) the Task opens as its own independent
-   * root tab beside the pinned Context tab instead of replacing it.
+   * Opens/reselects the ONE "Tasks" root tab (full-session-screen-structure.md §7.4/§10.1 — see
+   * `SessionTasksInspector.tsx`'s module comment for the full contract and its
+   * `tasksStack`/`taskDeepLinkStack` mechanism). `stack` is `inspectors.tasksStack` for the plain
+   * list, or `inspectors.taskDeepLinkStack` (same tab id, different `initial` screen) to start a
+   * FRESH tab straight on a specific Task instead of forcing the list first — still exactly one
+   * tab either way, never one per Task (the confirmed bug this replaces: Related Tasks used to
+   * call `navigation.openTab` with a per-Task `instanceId`, giving each related Task its own
+   * independent tab and losing its Tasks-tab provenance).
    */
-  function openRelatedTask(task: SessionContextTaskRef) {
+  function openTasksTab(stack: typeof inspectors.tasksStack, taskId?: string) {
+    const params = { sessionId, taskId };
     if (openStack) {
-      void openStack(inspectors.taskStack, { sessionId, taskId: task.id });
+      void openStack(stack, params);
 
       return;
     }
 
-    void navigation.openTab(inspectors.taskStack, { sessionId, taskId: task.id });
+    void navigation.openTab(stack, params);
+  }
+
+  function openTasksList() {
+    openTasksTab(inspectors.tasksStack);
+  }
+
+  /** Opens a specific Task directly (current-execution Task, Attention's task reference, or a
+   * Related Tasks summary with exactly one entry) — still the single Tasks tab, deep-linked
+   * straight to that Task's detail when the tab does not exist yet (see `openTasksTab`). */
+  function openTask(task: SessionContextTaskRef) {
+    openTasksTab(inspectors.taskDeepLinkStack, task.id);
+  }
+
+  /**
+   * Related Tasks' single summary row (owner correction, live review): Context is a navigational
+   * entry point, not a place that lists every related Task inline — it shows one row naming how
+   * many related Tasks exist and leads further. With exactly one related Task the row goes
+   * straight to it (`openTask`). With more than one, it reuses the existing Tasks list screen
+   * (`inspectors.tasksStack`, previously reachable only via a separate "Open Tasks" button) as
+   * that dedicated subject view — no new list screen invented for this fix.
+   */
+  function openRelatedTasksEntry() {
+    const relatedTasks = value.relatedTasks;
+    if (relatedTasks?.length === 1) {
+      openTask(relatedTasks[0]!);
+
+      return;
+    }
+
+    openTasksList();
   }
 
   if (value.status === 'unavailable') {
@@ -121,11 +150,12 @@ export function SessionContext({
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
-        {/* `m-auto`, inside the full-height flex column above, centres a short Context (one or two
-            small sections) within the tall mobile panel instead of leaving it pinned to the top of
-            a mostly-blank viewport; a Context long enough to overflow computes its auto margins to
-            `0` and simply starts at the top as before, so this never fights normal scrolling. */}
-        <div className="m-auto grid w-full gap-6">
+        {/* No vertical `m-auto` centering here (confirmed live-review bug — a short Context read
+            as oddly centred in a tall panel instead of starting at the top like every other
+            scrolled surface; this div previously centred itself, compounding `ManagedSession`'s
+            own scroll-architecture contribution to the same complaint). Starts at the top and
+            simply scrolls once content overflows, like an ordinary panel. */}
+        <div className="grid w-full gap-6">
           {value.executionScope && (
             <section className="grid gap-1">
               <Typography variant="section-label">
@@ -149,13 +179,16 @@ export function SessionContext({
                     {item.task && !item.readOnly ? (
                       <Button
                         variant="ghost"
-                        className="h-auto justify-start whitespace-normal text-left text-body-sm"
+                        size="sm"
+                        className="h-auto justify-start whitespace-normal text-left"
                         onClick={() => openTask(item.task!)}
                       >
                         {item.summary}
                       </Button>
                     ) : (
-                      <p className="text-body-sm text-content-secondary">{item.summary}</p>
+                      <Typography variant="body-sm" className="text-content-secondary">
+                        {item.summary}
+                      </Typography>
                     )}
                   </li>
                 ))}
@@ -164,21 +197,25 @@ export function SessionContext({
           )}
           {!!value.relatedTasks?.length && (
             <section className="grid gap-1">
-              <div className="flex items-center justify-between gap-2">
-                <Typography variant="section-label">
-                  {t('sessions.context.relatedTasks')}
-                </Typography>
-                <Button size="sm" variant="ghost" onClick={openTasksList}>
-                  {t('sessions.context.openTasks')}
-                </Button>
-              </div>
-              <ul className="grid gap-1">
-                {value.relatedTasks.map((task) => (
-                  <li key={task.id}>
-                    <TaskLink task={task} onOpen={openRelatedTask} />
-                  </li>
-                ))}
-              </ul>
+              <Typography variant="section-label">{t('sessions.context.relatedTasks')}</Typography>
+              {/* One navigational summary row, not the individual Task list (live-review
+                  correction): Context is an entry point into its subjects, it does not dump every
+                  related Task inline. */}
+              <InformationList>
+                <OperationalRow
+                  leading={<Icon name="list-checks" size="sm" className="text-content-muted" />}
+                  primary={t('sessions.context.batch', { count: value.relatedTasks.length })}
+                  onPrimaryClick={openRelatedTasksEntry}
+                  trailing={
+                    <Icon
+                      name="chevron-right"
+                      size="sm"
+                      className="text-content-muted"
+                      aria-hidden="true"
+                    />
+                  }
+                />
+              </InformationList>
             </section>
           )}
           <SessionTelemetrySection telemetry={value.telemetry} />
@@ -198,14 +235,20 @@ function ExecutionScope({
   const { t } = useTranslation();
 
   if (scope.kind === 'generic') {
-    return <p className="text-body-sm text-content-secondary">{t('sessions.context.generic')}</p>;
+    return (
+      <Typography variant="body-sm" className="text-content-secondary">
+        {t('sessions.context.generic')}
+      </Typography>
+    );
   }
 
   if (scope.kind === 'single-task') {
     return (
       <div className="grid gap-1">
         {scope.role && <Typography variant="title-sm">{scope.role}</Typography>}
-        <TaskLink task={scope.task} onOpen={onOpenTask} />
+        <InformationList>
+          <TaskLink task={scope.task} onOpen={onOpenTask} />
+        </InformationList>
       </div>
     );
   }
@@ -213,20 +256,23 @@ function ExecutionScope({
   return (
     <div className="grid gap-1">
       {scope.role && <Typography variant="title-sm">{scope.role}</Typography>}
-      <p className="text-body-sm text-content-secondary">
+      <Typography variant="body-sm" className="text-content-secondary">
         {t('sessions.context.batch', { count: scope.tasks.length })}
-      </p>
-      <ul className="grid gap-1">
+      </Typography>
+      <InformationList>
         {scope.tasks.map((task) => (
-          <li key={task.id}>
-            <TaskLink task={task} onOpen={onOpenTask} />
-          </li>
+          <TaskLink key={task.id} task={task} onOpen={onOpenTask} />
         ))}
-      </ul>
+      </InformationList>
     </div>
   );
 }
 
+/** A Task reference row (current-execution Task, or the single related-Tasks summary's direct
+ * target): the real `OperationalRow` list-row pattern (icon, title, trailing chevron) already
+ * used across Tasks/Sessions, not bespoke stacked text in a `Button` — so it visibly affords
+ * "this leads further" like every other operational list row in the product (live-review
+ * finding). */
 function TaskLink({
   task,
   onOpen,
@@ -235,19 +281,16 @@ function TaskLink({
   onOpen: (task: SessionContextTaskRef) => void;
 }) {
   return (
-    <Button
-      variant="ghost"
-      className="h-auto w-full justify-start whitespace-normal text-left"
-      onClick={() => onOpen(task)}
-    >
-      <span className="grid gap-0.5">
-        <Typography variant="label-sm" className="text-content-muted">
-          {task.key}
-        </Typography>
-        <span className="text-body-sm text-content-primary">{task.title}</span>
-        {task.note && <span className="text-body-sm text-content-secondary">{task.note}</span>}
-      </span>
-    </Button>
+    <OperationalRow
+      leading={<Icon name="list-checks" size="sm" className="text-content-muted" />}
+      primary={task.title}
+      compactFacts={[{ text: task.key, mono: true }]}
+      supporting={task.note}
+      onPrimaryClick={() => onOpen(task)}
+      trailing={
+        <Icon name="chevron-right" size="sm" className="text-content-muted" aria-hidden="true" />
+      }
+    />
   );
 }
 

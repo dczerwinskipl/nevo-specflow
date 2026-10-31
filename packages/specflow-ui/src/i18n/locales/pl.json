@@ -1388,7 +1388,6 @@
         "neutral": "Informacja"
       },
       "relatedTasks": "Powiązane zadania",
-      "openTasks": "Otwórz zadania",
       "tasksTitle": "Zadania",
       "taskTitle": "Zadanie",
       "tasks": {
@@ -1399,6 +1398,8 @@
       "sessionDetails": {
         "title": "Szczegóły sesji",
         "refreshing": "Odświeżanie…",
+        "usageLabel": "Wykorzystanie tokenów",
+        "costLabel": "Koszt",
         "inputTokens": "{{value}} wejściowych",
         "outputTokens": "{{value}} wyjściowych",
         "cacheReadTokens": "{{value}} odczyt pamięci podręcznej",
@@ -1407,11 +1408,10 @@
         "costEstimatedSuffix": "szacowane",
         "costApiEquivalentSuffix": "równowartość API",
         "costUnconfirmedSuffix": "niepotwierdzone",
-        "contextOccupancy": "{{value}}% kontekstu wykorzystane",
         "contextOccupancyAria": "Wykorzystanie okna kontekstu",
         "rateLimitWindow": "okno {{window}}",
-        "rateLimitUsed": "wykorzystano {{value}}%",
         "rateLimitUsedOfLimit": "{{used}} z {{limit}} {{unit}}",
+        "percentValue": "{{value}}%",
         "moreLimitWindows": "+{{value}} więcej",
         "stale": "Nieaktualne",
         "staleExplanation": "Zaobserwowano wcześniej i jeszcze nie potwierdzono jako aktualne. Dane mogą być nieaktualne."
@@ -1515,6 +1515,30 @@
       "label": "Model i poziom wysiłku dla następnej wiadomości",
       "placeholder": "Wybierz model",
       "availableEfforts": "Dostępne poziomy wysiłku: {{list}}"
+    },
+    "intent": {
+      "label": "Tryb pracy — następny Turn",
+      "placeholder": "Wybierz tryb pracy",
+      "preset": {
+        "ask": "Zapytaj",
+        "plan": "Plan",
+        "agent": "Agent"
+      }
+    },
+    "policy": {
+      "label": "Zgody na operacje — wybierz politykę zatwierdzania",
+      "placeholder": "Wybierz politykę zatwierdzania",
+      "option": {
+        "askEachTime": "Pytaj o każdą operację",
+        "acceptEdits": "Zatwierdzaj edycje automatycznie",
+        "acceptEditsDescription": "Odczyty i edycje plików w workspace bez potwierdzenia; inne operacje nadal pytają."
+      }
+    },
+    "attach": {
+      "action": "Dołącz plik",
+      "list": "Załączniki",
+      "remove": "Usuń {{name}}",
+      "note": "Makieta lokalna: załączniki nie są wysyłane do żadnego dostawcy."
     },
     "send": "Wyślij",
     "retrySend": "Ponów wysyłanie",

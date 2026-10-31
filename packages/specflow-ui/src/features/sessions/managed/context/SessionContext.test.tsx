@@ -54,10 +54,10 @@ function TabTitles() {
   );
 }
 
-function clickTaskLink(key: string) {
-  const trigger = screen.getByText(key).closest('button');
+function clickButtonByText(text: string) {
+  const trigger = screen.getByText(text).closest('button');
   if (!trigger) {
-    throw new Error(`Expected "${key}" to be inside a TaskLink button.`);
+    throw new Error(`Expected "${text}" to be inside a clickable row.`);
   }
 
   fireEvent.click(trigger);
@@ -84,8 +84,8 @@ async function renderContextWithRelatedTasks(value: SessionContextViewModel) {
   });
 }
 
-describe('Related Tasks -> openTab tab labels', () => {
-  it('names each opened Task tab after the real Task, not the generic "Task" screen title', async () => {
+describe('Related Tasks summary row', () => {
+  it('renders one navigational summary row — never the individual Task list — on Context itself', async () => {
     const value: SessionContextViewModel = {
       status: 'ready',
       executionScope: { kind: 'generic' },
@@ -94,23 +94,98 @@ describe('Related Tasks -> openTab tab labels', () => {
 
     await renderContextWithRelatedTasks(value);
 
-    clickTaskLink('TASK-02');
-    await act(async () => {
-      await Promise.resolve();
-    });
-    clickTaskLink('TASK-03');
+    // Context is an entry point into its subjects, not a dump of every related Task inline
+    // (live-review correction): a count-based summary row, never an individual Task's title.
+    expect(screen.getByText('2 Tasks')).toBeTruthy();
+    expect(screen.queryByText('Document the admission guard')).toBeNull();
+    expect(screen.queryByText('Deterministic admission')).toBeNull();
+  });
+
+  it('opens a single related Task directly, inside the one stably-labelled Tasks tab', async () => {
+    const value: SessionContextViewModel = {
+      status: 'ready',
+      executionScope: { kind: 'generic' },
+      relatedTasks: [task02],
+    };
+
+    await renderContextWithRelatedTasks(value);
+
+    clickButtonByText('1 Tasks');
     await act(async () => {
       await Promise.resolve();
     });
 
+    // Exactly one new tab, stably labelled "Tasks" — full-session-screen-structure.md §10.1's own
+    // "Work -> ToolAction stays inside the Work tab" rule: the tab's identity never renames itself
+    // to whichever Task happens to be open inside it (that would flip between "Tasks" and the
+    // generic "Task" screen title depending on navigation depth, not name the tab consistently).
     const openTabs = screen.getByLabelText('open-tabs');
-    // Two distinct tabs, each carrying its own Task's identity — never the same generic label
-    // twice (the live-review finding: "Zadanie (2)"/"Praca (2)" could not tell two instances of
-    // the same stack apart).
-    expect(within(openTabs).getByText('TASK-02 Document the admission guard')).toBeTruthy();
-    expect(within(openTabs).getByText('TASK-03 Deterministic admission')).toBeTruthy();
-    // Neither tab fell back to the active page's generic, undifferentiated screen title.
-    expect(within(openTabs).queryByText('Task')).toBeNull();
+    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
+    expect(within(openTabs).getByText('Tasks')).toBeTruthy();
+    // Deep-linked straight to that one Task's own detail, not forced through the list first — the
+    // real Task identity is still clear, just in the tab's content (`TaskDetail`'s own heading)
+    // rather than the tab strip.
+    expect(
+      await screen.findByRole('heading', { name: 'Document the admission guard' }),
+    ).toBeTruthy();
+  });
+
+  it('opens the shared Tasks list — not a direct per-Task tab — when more than one Task is related', async () => {
+    const value: SessionContextViewModel = {
+      status: 'ready',
+      executionScope: { kind: 'generic' },
+      relatedTasks: [task02, task03],
+    };
+
+    await renderContextWithRelatedTasks(value);
+
+    clickButtonByText('2 Tasks');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Reuses the existing Tasks list screen as the dedicated subject view (previously reachable
+    // only via a separate "Open Tasks" button) — no new list screen invented for this fix.
+    const openTabs = screen.getByLabelText('open-tabs');
+    expect(within(openTabs).getByText('Tasks')).toBeTruthy();
+  });
+
+  it('reuses one Tasks tab across different entry points instead of one tab per Task (full-session-screen-structure.md §7.4/§10.1)', async () => {
+    // A confirmed bug this corrects: Related Tasks used to open each Task as its own independent
+    // root tab via a per-Task `instanceId` ("Do not spawn an independent tab for a task-bound
+    // event and lose provenance" — §7.4). The current-execution Task (single-task scope) and a
+    // Related Tasks entry must land in the SAME "Tasks" tab, never two.
+    const value: SessionContextViewModel = {
+      status: 'ready',
+      executionScope: { kind: 'single-task', task: task02 },
+      relatedTasks: [task03],
+    };
+
+    await renderContextWithRelatedTasks(value);
+
+    // Opens the current-execution Task first: a fresh Tasks tab, deep-linked straight to TASK-02.
+    clickButtonByText('Document the admission guard');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let openTabs = screen.getByLabelText('open-tabs');
+    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
+    expect(within(openTabs).getByText('Tasks')).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Document the admission guard' }),
+    ).toBeTruthy();
+
+    // Opening the single related Task (TASK-03) activates the SAME existing tab rather than
+    // creating a second one — `openTab`'s documented "already open: activate it, leaving its flow
+    // untouched" behavior, so the tab keeps showing TASK-02, not TASK-03.
+    clickButtonByText('1 Tasks');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    openTabs = screen.getByLabelText('open-tabs');
+    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
   });
 });
 
@@ -148,16 +223,21 @@ describe('sparse Context states', () => {
     expect(empty?.textContent).toContain('No additional context');
   });
 
-  it('vertically centres a short-but-real Context instead of leaving it pinned to the top of a tall blank panel', () => {
+  it('renders a short-but-real Context without artificial vertical centering', () => {
     const { container } = renderContext({
       status: 'ready',
       executionScope: { kind: 'generic' },
     });
 
-    const centered = container.querySelector('.m-auto');
-    expect(centered).toBeTruthy();
-    expect(centered?.textContent).toContain('Generic / Spec-level');
-    // Its own scrolled ancestor has the definite full height the `m-auto` centring needs.
+    // Confirmed live-review bug: an `m-auto` wrapper centred short Context content vertically
+    // inside the tall panel instead of starting at the top like every other scrolled surface —
+    // this is one of the two contributors the owner traced the "wyśrodkowane w pionie" complaint
+    // to (the other is `ManagedSession`'s own scroll architecture). A regression test previously
+    // asserted the centring itself as correct behavior; this asserts its absence instead.
+    expect(container.querySelector('.m-auto')).toBeNull();
+    expect(container.textContent).toContain('Generic / Spec-level');
+    // Its own scrolled ancestor still has the definite full height ordinary top-anchored content
+    // needs to scroll correctly once it overflows.
     const scrollContent = container.querySelector('.scroll-area-content');
     expect(scrollContent?.className).toMatch(/\bflex\b/);
     expect(scrollContent?.className).toMatch(/min-h-full/);

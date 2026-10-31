@@ -25,6 +25,8 @@ export function antigravityHooks(options: { systemRoot: string; node: string; he
   }
 
   const literal = (value: string) => "'" + value.replaceAll("'", "''") + "'";
+  const argument = (value: string) =>
+    '"' + value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/g, '$1$1') + '"';
   function command(hook: 'pre-tool-use' | 'stop') {
     const script = `
 $ErrorActionPreference = 'Stop'
@@ -40,11 +42,74 @@ while (($count = [Console]::In.Read($buffer, 0, $buffer.Length)) -gt 0) {
 }
 $json = $inputText.ToString()
 if ([Text.Encoding]::UTF8.GetByteCount($json) -gt 65536) { throw 'Input limit' }
-$result = $json | & ${literal(options.node)} ${literal(options.helper)} ${literal(hook)} 2>$null
-if ($LASTEXITCODE -ne 0) { throw 'Helper unavailable' }
-[Console]::Out.WriteLine($result)
+$start = [Diagnostics.ProcessStartInfo]::new()
+$start.FileName = ${literal(options.node)}
+$start.Arguments = ${literal(argument(options.helper) + ' ' + argument(hook))}
+$start.UseShellExecute = $false
+$start.CreateNoWindow = $true
+$start.RedirectStandardInput = $true
+$start.RedirectStandardOutput = $true
+$start.RedirectStandardError = $true
+$helperProcess = [Diagnostics.Process]::new()
+$helperProcess.StartInfo = $start
+if (-not $helperProcess.Start()) { throw 'Helper unavailable' }
+# PowerShell 5 native pipelines can wait indefinitely on redirected handles.
+# Read both native byte streams directly; no PowerShell pipeline owns this child.
+$outputBytes = [byte[]]::new(4097)
+$errorBytes = [byte[]]::new(4097)
+$outputCount = 0
+$errorCount = 0
+$outputRead = $helperProcess.StandardOutput.BaseStream.ReadAsync($outputBytes, 0, $outputBytes.Length)
+$errorRead = $helperProcess.StandardError.BaseStream.ReadAsync($errorBytes, 0, $errorBytes.Length)
+$clock = [Diagnostics.Stopwatch]::StartNew()
+$budget = ${hook === 'stop' ? 9000 : 1805000}
+$bytes = [Text.Encoding]::UTF8.GetBytes($json)
+$inputWrite = $helperProcess.StandardInput.BaseStream.WriteAsync($bytes, 0, $bytes.Length)
+while ($null -ne $inputWrite -or $null -ne $outputRead -or $null -ne $errorRead) {
+  $remaining = $budget - $clock.ElapsedMilliseconds
+  if ($remaining -le 0) { throw 'Helper timeout' }
+  $reads = [Collections.Generic.List[Threading.Tasks.Task]]::new()
+  if ($null -ne $inputWrite) { $reads.Add($inputWrite) }
+  if ($null -ne $outputRead) { $reads.Add($outputRead) }
+  if ($null -ne $errorRead) { $reads.Add($errorRead) }
+  if ([Threading.Tasks.Task]::WaitAny($reads.ToArray(), [int]$remaining) -lt 0) { throw 'Helper timeout' }
+  if ($null -ne $inputWrite -and $inputWrite.IsCompleted) {
+    $inputWrite.Wait()
+    $helperProcess.StandardInput.Close()
+    $inputWrite = $null
+  }
+  if ($null -ne $outputRead -and $outputRead.IsCompleted) {
+    $count = $outputRead.Result
+    $outputCount += $count
+    if ($outputCount -gt 4096) { throw 'Helper output limit' }
+    if ($count -eq 0) { $outputRead = $null }
+    else { $outputRead = $helperProcess.StandardOutput.BaseStream.ReadAsync($outputBytes, $outputCount, $outputBytes.Length - $outputCount) }
+  }
+  if ($null -ne $errorRead -and $errorRead.IsCompleted) {
+    $count = $errorRead.Result
+    $errorCount += $count
+    if ($errorCount -gt 4096) { throw 'Helper error limit' }
+    if ($count -eq 0) { $errorRead = $null }
+    else { $errorRead = $helperProcess.StandardError.BaseStream.ReadAsync($errorBytes, $errorCount, $errorBytes.Length - $errorCount) }
+  }
+}
+$remaining = $budget - $clock.ElapsedMilliseconds
+if ($remaining -le 0 -or -not $helperProcess.WaitForExit([int]$remaining)) { throw 'Helper timeout' }
+if ($helperProcess.ExitCode -ne 0) { throw 'Helper unavailable' }
+$utf8 = [Text.UTF8Encoding]::new($false, $true)
+[Console]::Out.WriteLine($utf8.GetString($outputBytes, 0, $outputCount))
 } catch {
+  if ($null -ne $helperProcess) {
+    try {
+      if (-not $helperProcess.HasExited) {
+        $helperProcess.Kill()
+        if (-not $helperProcess.WaitForExit(1000)) { exit 1 }
+      }
+    } catch { exit 1 }
+  }
   [Console]::Out.WriteLine('{"decision":"deny"}')
+} finally {
+  if ($null -ne $helperProcess) { $helperProcess.Dispose() }
 }
 `;
 

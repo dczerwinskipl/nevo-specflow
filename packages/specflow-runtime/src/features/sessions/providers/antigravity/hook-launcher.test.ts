@@ -38,26 +38,6 @@ process.stdin.on('end', () => {
         const command = antigravityHooks({ systemRoot, node: process.execPath, helper })[
           'specflow-managed-invocation'
         ].PreToolUse[0]!.hooks[0]!.command;
-        // Only this synthetic process gets phase markers. A CI failure must
-        // distinguish native startup, redirected input and helper execution.
-        let script = Buffer.from(command.split(' -EncodedCommand ')[1]!, 'base64').toString(
-          'utf16le',
-        );
-        for (const [needle, phase] of [
-          ["$ErrorActionPreference = 'Stop'", 'started'],
-          ['[Console]::InputEncoding = $OutputEncoding', 'input-encoding'],
-          ['$buffer =', 'input-read'],
-          ['$json =', 'input-eof'],
-          ['$result =', 'helper-start'],
-          ['if ($LASTEXITCODE', 'helper-exit'],
-          ['[Console]::Out.WriteLine($result)', 'output'],
-        ]) {
-          script = script.replace(
-            needle!,
-            `[Console]::Error.WriteLine('HOOK_PHASE:${phase}')\n` + needle,
-          );
-        }
-
         const diagnostics = createDiagnosticStore({
           enabled: true,
           maxInvocationBytes: 4096,
@@ -72,7 +52,7 @@ process.stdin.on('end', () => {
             '-NoProfile',
             '-NonInteractive',
             '-EncodedCommand',
-            Buffer.from(script, 'utf16le').toString('base64'),
+            command.split(' -EncodedCommand ')[1]!,
           ],
           cwd: root,
           environment: projectProviderEnvironment({ host: process.env }),
@@ -110,6 +90,61 @@ process.stdin.on('end', () => {
     launchDeadlineMs + settlementBudgetMs,
   );
 
+  it.runIf(process.platform === 'win32').each(['stdout', 'stderr', 'blocked-input'] as const)(
+    'denies and stops an oversized or stalled helper: %s',
+    async (failure) => {
+      const root = await mkdtemp(join(tmpdir(), "specflow-hook failure's-"));
+      try {
+        const invocationId = randomUUID();
+        const scope = await createInvocationScope(root, invocationId);
+        const helper = join(scope.directory, "controlled failure's.cjs");
+        const script =
+          failure === 'blocked-input'
+            ? 'setInterval(() => undefined, 1000);'
+            : `process.${failure}.write(Buffer.alloc(65536, 120)); setInterval(() => undefined, 1000);`;
+        await writeFile(helper, script);
+        const systemRoot = process.env.SystemRoot ?? process.env.SYSTEMROOT!;
+        const command = antigravityHooks({ systemRoot, node: process.execPath, helper })[
+          'specflow-managed-invocation'
+        ].Stop[0]!.command;
+        const owner = await launchOwnedProcess({
+          invocationId,
+          scope,
+          executable: join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+          args: [
+            '-NoProfile',
+            '-NonInteractive',
+            '-EncodedCommand',
+            command.split(' -EncodedCommand ')[1]!,
+          ],
+          cwd: root,
+          environment: projectProviderEnvironment({ host: process.env }),
+          signal: AbortSignal.timeout(12000),
+        });
+        try {
+          // Exceeds a native pipe buffer: a helper that never reads must not
+          // block the launcher before its own Stop deadline is observed.
+          await owner.write(JSON.stringify({ text: 'x'.repeat(60000) }));
+          await owner.endInput();
+          const lines: string[] = [];
+          for await (const line of owner.lines()) {
+            lines.push(line);
+          }
+
+          expect(lines.map((line): unknown => JSON.parse(line))).toEqual([{ decision: 'deny' }]);
+          expect((await owner.done).code).toBe(0);
+          const stopped = await owner.dispose();
+          expect(stopped.process).toEqual({ state: 'stopped', reason: 'group-exited' });
+        } finally {
+          expect((await owner.dispose()).process.state).toBe('stopped');
+        }
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+    17000,
+  );
+
   it('encodes trusted paths literally and carries native input only through bounded stdin', () => {
     const hooks = antigravityHooks({
       systemRoot: resolve('Windows'),
@@ -122,14 +157,17 @@ process.stdin.on('end', () => {
     const script = Buffer.from(encoded, 'base64').toString('utf16le');
     expect(pre.matcher).toBe('*');
     expect(script).toContain("directory''s");
-    expect(script).toContain("'pre-tool-use'");
+    expect(script).toContain('"pre-tool-use"');
     expect(script).toContain('UTF8.GetByteCount($json) -gt 65536');
     expect(script).toContain('"decision":"deny"');
+    expect(script).toContain('$start.UseShellExecute = $false');
+    expect(script).toContain('BaseStream.WriteAsync');
+    expect(script).not.toContain('$json | &');
     const stop = Buffer.from(
       hooks.Stop[0]!.command.split(' -EncodedCommand ')[1]!,
       'base64',
     ).toString('utf16le');
-    expect(stop).toContain("'stop'");
+    expect(stop).toContain('"stop"');
   });
 
   it('rejects ambiguous system launcher paths and control characters', () => {
@@ -147,5 +185,27 @@ process.stdin.on('end', () => {
         helper: resolve('helper'),
       }),
     ).toThrow();
+  });
+
+  it('escapes Windows argument quotes and terminal backslashes independently of PowerShell literals', () => {
+    const helper = resolve('controlled helper') + '\\';
+    const command = antigravityHooks({
+      systemRoot: resolve('Windows'),
+      node: resolve('node'),
+      helper,
+    })['specflow-managed-invocation'].PreToolUse[0]!.hooks[0]!.command;
+    const script = Buffer.from(command.split(' -EncodedCommand ')[1]!, 'base64').toString(
+      'utf16le',
+    );
+    expect(script).toContain(String.raw`controlled helper\\" "pre-tool-use"`);
+    const quotedHelper = resolve('controlled"helper');
+    const quoted = antigravityHooks({
+      systemRoot: resolve('Windows'),
+      node: resolve('node'),
+      helper: quotedHelper,
+    })['specflow-managed-invocation'].PreToolUse[0]!.hooks[0]!.command;
+    expect(
+      Buffer.from(quoted.split(' -EncodedCommand ')[1]!, 'base64').toString('utf16le'),
+    ).toContain(String.raw`controlled\"helper`);
   });
 });

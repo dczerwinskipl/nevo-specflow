@@ -12,7 +12,7 @@ summary: >
   Decision-complete contract for Secondary root tabs and the auto/manual dynamic split: owned
   state, the public API surface built on top of the existing AppWorkspace/Secondary composition,
   the auto/manual transition table, explicit non-goals, and the accessible splitter contract.
-  Specified; implementation is pending (see section 9).
+  Implemented (W01-W07); see section 1 for the closing evidence and one open reconciliation point.
 related:
   - design-system.implementation.react.secondary-navigation
   - design-system.implementation.react.item-tabs
@@ -39,11 +39,18 @@ Task, Spec, or any other product/workflow concept: this capability is pure layou
 belongs in Nevo UI per
 [the system-boundary rule](../../principles/system-boundary.md).
 
-**Status is `draft`: specified, implementation pending.** No code in `packages/nevo-ui/src` has
-been changed to match this document yet. Section 9 lists the concrete deltas an implementer must
-make; nothing here should be read as a description of current behavior. Current behavior remains
-exactly what [the Secondary navigation contract](secondary-navigation.md) and `workspaceSizing.ts`
-describe until those deltas land.
+**Status: implemented** (2026-10-31). W01-W06 landed every gap in section 9, and
+[W07](../../../ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W07-verification-and-compatibility-audit.md)
+proved the full section 5 transition table end-to-end as one connected Storybook scenario
+(`AppWorkspaceDynamicSplit.contract.stories.tsx`'s `FullConnectedScenarioContract` and
+`NoPinnedTabDynamicSplitContract`), re-confirmed every `packages/specflow-ui` single-flow consumer
+is behavior-compatible, and found `packages/specflow-ui/src/features/sessions/managed/
+ManagedSession.tsx` already adopting `split="dynamic"` and `openTab` in production. W07's report
+records one open finding for independent review: `WorkspaceContext.tsx`'s `closeTab()` neighbour
+selection activates the pinned tab whenever one exists, rather than the right-then-left runtime
+neighbour section 4.1 describes, when another runtime tab remains open — undiscovered by W02's own
+tests. Current behavior now matches this document except for that one point, tracked for reconciliation
+rather than silently matched to the text.
 
 **Revised 2026-10-30 after external review** (independent of this repository's own review
 process, which had already passed this document once): the review read this contract, the W01-W07
@@ -534,6 +541,6 @@ and
    [item-tabs.md](item-tabs.md#content-tabs-host-pattern-not-implemented-in-nevo-ui)'s pattern,
    hidden entirely when only one tab (pinned or otherwise, §4.1) is open.
 
-None of this is implemented yet; see the linked task breakdown for sequencing, ownership, and the
-verification profile each item must satisfy before it can be marked implemented in this document
-and in the composition-gaps analysis.
+All of this landed across W01-W06, verified end-to-end by W07 (section 1); see the linked task
+breakdown for the sequencing, ownership, and verification profile each item satisfied before being
+marked implemented here and in the composition-gaps analysis.

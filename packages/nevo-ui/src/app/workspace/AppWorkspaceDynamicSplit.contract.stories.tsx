@@ -9,6 +9,7 @@ import {
   AppWorkspaceProvider,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
+  useSecondaryStack,
 } from './WorkspaceContext';
 import { WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH } from './workspaceSizing';
 
@@ -717,6 +718,481 @@ export const SwapSidesPreservesTabsAndRatioContract: Story = {
       orderAfterSwap.indexOf(secondaryAfterSwap) < orderAfterSwap.indexOf(splitterAfterSwap) &&
         orderAfterSwap.indexOf(splitterAfterSwap) < orderAfterSwap.indexOf(primaryAfterSwap),
       'Secondary, then WorkspaceSplitter, then Primary must render in that order once swapped to the start side.',
+    );
+  },
+};
+
+// ---------------------------------------------------------------------------------------------
+// W07 — the full §5 transition table proven as ONE connected scenario, not the isolated
+// per-trigger assertions above. Width is driven by a resizable wrapper (same technique as
+// `WorkspaceHeader.stories.tsx`'s `ResizableHeader`) rather than a Storybook `viewport` global, so
+// a single `play` function can shrink below, then widen back above, the dynamic minimums — a
+// fixed per-story viewport cannot change mid-scenario. Every step reuses the exact same production
+// API surface (`openTab`/`open`/`activateTab`/`closeTab`, `navTo`, the splitter, the header's
+// close affordance, `secondarySide`) as the isolated stories above; nothing here is a new code
+// path, only a new connected sequence through existing ones.
+// ---------------------------------------------------------------------------------------------
+
+interface ScenarioPages {
+  summary: Record<never, never>;
+  detail: Record<never, never>;
+}
+
+function scenarioStack(id: string, label: string) {
+  return defineSecondaryStack<Record<never, never>, string, ScenarioPages>({
+    id,
+    initial: 'summary',
+    useData: () => ({ status: 'ready', data: label }),
+    screens: {
+      summary: {
+        title: label,
+        component: () => {
+          const nav = useSecondaryStack<ScenarioPages>();
+
+          return (
+            <div className="p-4" data-scenario-page={label}>
+              <Typography variant="body-sm">{label}</Typography>
+              <Button onClick={() => void nav.navTo('detail')} size="sm">
+                Open {label} detail
+              </Button>
+            </div>
+          );
+        },
+      },
+      detail: {
+        title: `${label} detail`,
+        component: () => (
+          <div className="p-4" data-scenario-detail-page={label}>
+            <Typography variant="body-sm">{label} detail</Typography>
+          </div>
+        ),
+      },
+    },
+  });
+}
+
+const scenarioItemA = scenarioStack('w07-scenario-item-a', 'Item A');
+const scenarioItemB = scenarioStack('w07-scenario-item-b', 'Item B');
+
+function ScenarioPrimaryContent({ onSwapSides }: { onSwapSides: () => void }) {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <div className="grid gap-2 p-4">
+      <Typography variant="body-sm">Primary conversation</Typography>
+      <Button onClick={() => void navigation.openTab(scenarioItemA, {})} size="sm">
+        Open Item A
+      </Button>
+      <Button onClick={() => void navigation.openTab(scenarioItemB, {})} size="sm">
+        Open Item B
+      </Button>
+      <Button onClick={onSwapSides} size="sm">
+        Swap sides
+      </Button>
+    </div>
+  );
+}
+
+function ScenarioFixture({ width }: { width: number }) {
+  const [contextOpen, setContextOpen] = useState(true);
+  const [mode, setMode] = useState<'auto' | 'manual'>('auto');
+  const [side, setSide] = useState<'start' | 'end'>('end');
+  useRegisterPinnedSecondaryTab(contextOpen ? { title: 'Context' } : null);
+
+  return (
+    <div data-resizable-width style={{ width, maxWidth: '100%', height: 800 }}>
+      <AppShell
+        data-dynamic-split-mode={mode}
+        data-dynamic-split-shell="true"
+        data-dynamic-split-side={side}
+        navigation={<Navigation />}
+        style={{ height: '100%', width: '100%' }}
+      >
+        <AppWorkspace
+          fit="available"
+          onSecondaryRatioChange={(_ratio, nextMode) => setMode(nextMode)}
+          onSecondarySideChange={setSide}
+          secondarySide={side}
+          split="dynamic"
+        >
+          <AppWorkspace.Primary header={<WorkspaceHeader title="Conversation" />}>
+            <ScenarioPrimaryContent
+              onSwapSides={() => setSide((current) => (current === 'end' ? 'start' : 'end'))}
+            />
+          </AppWorkspace.Primary>
+          <AppWorkspace.Secondary
+            header={<WorkspaceHeader title="Context" />}
+            onOpenChange={setContextOpen}
+            open={contextOpen}
+          >
+            <div className="p-4">
+              <Typography variant="body-sm">Pinned context content</Typography>
+            </div>
+          </AppWorkspace.Secondary>
+        </AppWorkspace>
+      </AppShell>
+    </div>
+  );
+}
+
+function ScenarioContract() {
+  const [width, setWidth] = useState(1280);
+
+  return (
+    <AppWorkspaceProvider>
+      <div className="flex gap-2 p-2">
+        <button data-testid="scenario-shrink" onClick={() => setWidth(700)} type="button">
+          Shrink below dynamic minimums
+        </button>
+        <button data-testid="scenario-widen" onClick={() => setWidth(1280)} type="button">
+          Widen back
+        </button>
+      </div>
+      <ScenarioFixture width={width} />
+    </AppWorkspaceProvider>
+  );
+}
+
+export const FullConnectedScenarioContract: Story = {
+  tags: ['contract', '!autodocs'],
+  render: () => <ScenarioContract />,
+  play: async ({ canvasElement, canvas, userEvent }) => {
+    await settle();
+
+    // Step 1: enter split with only the pinned tab open (narrow default).
+    const { shell, layout, primary } = regions(canvasElement);
+    assert(primary, 'A split-capable dynamic workspace renders Primary.');
+    assert(layout.dataset.layout === 'split', 'Step 1: entering split starts in split layout.');
+    assert(
+      shell.dataset.dynamicSplitMode === 'auto',
+      'Step 1: a dynamic split starts in auto mode.',
+    );
+    const narrowWidth = secondaryWidthPx(canvasElement);
+    assert(
+      Math.abs(narrowWidth - WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH) <= 1.5,
+      `Step 1: only the pinned tab open uses the narrow default (${narrowWidth}).`,
+    );
+
+    // Step 2: open a second root tab via openTab -> auto 50/50, once.
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => (secondaryWidthPx(canvasElement) > narrowWidth + 40 ? true : null),
+      'Step 2: opening a brand-new 2nd tab must switch to 50/50.',
+    );
+    const fiftyFiftyWidth = secondaryWidthPx(canvasElement);
+
+    // Step 3: switch tabs (no resize).
+    await activateRootTab(canvasElement, userEvent, 'Context');
+    await waitFor(
+      () => (document.querySelector('[data-scenario-page="Item A"]') === null ? true : null),
+      'Step 3: switching to Context should show its own content.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - fiftyFiftyWidth) <= 1.5,
+      'Step 3: activateTab() switching among open tabs must not resize.',
+    );
+    await activateRootTab(canvasElement, userEvent, 'Item A');
+    await waitFor(
+      () => document.querySelector('[data-scenario-page="Item A"]'),
+      'Step 3: switching back to Item A should show its own content.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - fiftyFiftyWidth) <= 1.5,
+      'Step 3: switching back must not resize either.',
+    );
+
+    // Step 4: open a dependent detail inside Item A's local stack (no resize).
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A detail' }));
+    await waitFor(
+      () => document.querySelector('[data-scenario-detail-page="Item A"]'),
+      'Step 4: pushing a dependent detail should navigate to it.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - fiftyFiftyWidth) <= 1.5,
+      'Step 4: a push/pop inside a tab’s local stack must not resize (the resolver never sees it).',
+    );
+
+    // Step 5: drag the splitter -> manual wins.
+    const splitterBeforeDrag = workspaceSplitter(canvasElement);
+    const dragRect = splitterBeforeDrag.getBoundingClientRect();
+    const dragStartX = dragRect.left + dragRect.width / 2;
+    const dragClientY = dragRect.top + dragRect.height / 2;
+    dispatchPointer(splitterBeforeDrag, 'pointerdown', {
+      pointerId: 11,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: dragStartX,
+      clientY: dragClientY,
+    });
+    dispatchPointer(splitterBeforeDrag, 'pointermove', {
+      pointerId: 11,
+      pointerType: 'mouse',
+      clientX: dragStartX - 100,
+      clientY: dragClientY,
+    });
+    dispatchPointer(splitterBeforeDrag, 'pointerup', {
+      pointerId: 11,
+      pointerType: 'mouse',
+      clientX: dragStartX - 100,
+      clientY: dragClientY,
+    });
+    await settle();
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      'Step 5: dragging must commit mode: "manual".',
+    );
+    const manualWidth = secondaryWidthPx(canvasElement);
+    assert(
+      manualWidth > fiftyFiftyWidth + 40,
+      `Step 5: dragging left must grow Secondary (before ${fiftyFiftyWidth}, after ${manualWidth}).`,
+    );
+
+    // Step 6: open/close further tabs — manual ratio preserved throughout.
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item B' }));
+    await waitFor(
+      () => document.querySelector('[data-scenario-page="Item B"]'),
+      'Step 6: Item B should open and become active.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
+      'Step 6: opening a brand-new tab while manual must not trigger an automatic 50/50.',
+    );
+    await closeRootTab(canvasElement, userEvent, 'Item B');
+    await waitFor(
+      () => (tabStripSummary(canvasElement).tabCount === 2 ? true : null),
+      'Step 6: closing Item B should leave exactly the pinned tab and Item A open.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
+      'Step 6: closeTab() while manual must preserve the manual ratio.',
+    );
+    // closeTab()'s own neighbour-selection may re-activate the pinned tab rather than Item A when
+    // a pinned tab exists (see this task's report); explicitly re-activate Item A so the rest of
+    // this scenario keeps exercising a runtime (non-pinned) tab, as intended.
+    await activateRootTab(canvasElement, userEvent, 'Item A');
+    await waitFor(
+      () => document.querySelector('[data-scenario-detail-page="Item A"]'),
+      'Step 6: Item A should still be reachable, still on its pushed detail page.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
+      'Step 6: activateTab() while manual must not resize either.',
+    );
+
+    // Step 7: swap sides — everything the resolver/tab-set own survives unchanged.
+    assert(
+      shell.dataset.dynamicSplitSide === 'end',
+      'Step 7: Secondary starts on the default end side.',
+    );
+    const summaryBeforeSwap = tabStripSummary(canvasElement);
+    const { primary: primaryBeforeSwap, secondary: secondaryBeforeSwap } = regions(canvasElement);
+    assert(
+      primaryBeforeSwap && secondaryBeforeSwap,
+      'Secondary renders split beside Primary before the swap.',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Swap sides' }));
+    await settle();
+    assert(shell.dataset.dynamicSplitSide === 'start', 'Step 7: the side flips to "start".');
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      'Step 7: mode must survive the swap unchanged.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
+      'Step 7: secondaryRatio must survive the swap unchanged.',
+    );
+    const summaryAfterSwap = tabStripSummary(canvasElement);
+    assert(
+      summaryAfterSwap.activeLabel === summaryBeforeSwap.activeLabel &&
+        summaryAfterSwap.tabCount === summaryBeforeSwap.tabCount,
+      'Step 7: tabs/activeTabId must survive the swap unchanged.',
+    );
+
+    // Step 8: close Secondary (the whole region) -> reopen (restored). With a pinned tab still
+    // registered and open, closing the active *runtime* tab's own flow (contract §9 item 3's
+    // `isOpen: false`) falls back to showing the pinned entry instead of leaving Secondary fully
+    // empty (that fully-empty case, with no pinned tab at all, is `NoPinnedTabDynamicSplitContract`
+    // below) — but the tab set, `activeTabId`, `mode` and the manual ratio are all still retained
+    // unseen, exactly as §5 requires, which is what this step actually verifies.
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    await waitFor(
+      () => (document.querySelector('[data-scenario-detail-page="Item A"]') === null ? true : null),
+      'Step 8: closing the whole region should stop rendering the active runtime tab’s content.',
+    );
+    assert(
+      canvasElement.textContent?.includes('Pinned context content'),
+      'Step 8: closing the active runtime tab’s region falls back to the pinned tab’s own content.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
+      'Step 8: the manual ratio must be retained, not discarded, while the region is closed.',
+    );
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      'Step 8: mode must be retained, not discarded, while the region is closed.',
+    );
+    // Reopen by re-activating the exact tab that was open when closed (tab count/identity
+    // unchanged — the "reopened" row, not a brand-new-tab 50/50 switch).
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => document.querySelector('[data-scenario-detail-page="Item A"]'),
+      'Step 8: reopening should restore Item A as the active tab.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
+      'Step 8: reopening must restore the exact manual ratio it had when closed.',
+    );
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      'Step 8: reopening must restore "manual" mode.',
+    );
+
+    // Step 9: shrink below the dynamic minimums -> falls back to the existing stacked/narrow path.
+    await userEvent.click(canvas.getByTestId('scenario-shrink'));
+    await waitFor(
+      () => (regions(canvasElement).layout.dataset.layout === 'stacked' ? true : null),
+      'Step 9: a width that cannot fit both dynamic minimums must fall back to stacked.',
+    );
+
+    // Step 10: widen back -> restores the clamped manual ratio, not the auto default.
+    await userEvent.click(canvas.getByTestId('scenario-widen'));
+    await waitFor(
+      () => (regions(canvasElement).layout.dataset.layout === 'split' ? true : null),
+      'Step 10: widening back above the dynamic minimums must re-enter split.',
+    );
+    const widthAfterWiden = secondaryWidthPx(canvasElement);
+    assert(
+      Math.abs(widthAfterWiden - manualWidth) <= 1.5,
+      `Step 10: widening back to the same width must restore the same clamped manual ratio (before ${manualWidth}, after ${widthAfterWiden}).`,
+    );
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      'Step 10: widening back must not reset mode to "auto".',
+    );
+  },
+};
+
+// A dynamic split with no `AppWorkspace.Secondary` declared at all (contract §4.1/§9 item 2):
+// Secondary's whole existence is driven purely by `openTab`/`open`, including tearing down to
+// nothing when the last tab closes and coming back when one opens again.
+const soloItemA = scenarioStack('w07-solo-item-a', 'Item A');
+const soloItemB = scenarioStack('w07-solo-item-b', 'Item B');
+
+function NoPinnedTabDynamicSplitFixture() {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <AppShell data-no-pinned-dynamic-shell="true" navigation={<Navigation />}>
+      <AppWorkspace fit="available" split="dynamic">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Conversation" />}>
+          <div className="grid gap-2 p-4">
+            <Button onClick={() => void navigation.openTab(soloItemA, {})} size="sm">
+              Open Item A
+            </Button>
+            <Button onClick={() => void navigation.openTab(soloItemB, {})} size="sm">
+              Open Item B
+            </Button>
+          </div>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+function NoPinnedTabDynamicSplitContractFixture() {
+  return (
+    <AppWorkspaceProvider>
+      <NoPinnedTabDynamicSplitFixture />
+    </AppWorkspaceProvider>
+  );
+}
+
+export const NoPinnedTabDynamicSplitContract: Story = {
+  globals: { viewport: { value: 'w1280', isRotated: false } },
+  tags: ['contract', '!autodocs'],
+  render: () => <NoPinnedTabDynamicSplitContractFixture />,
+  play: async ({ canvasElement, canvas, userEvent }) => {
+    await settle();
+    const shell = canvasElement.querySelector<HTMLElement>('[data-no-pinned-dynamic-shell]');
+    assert(shell, 'The fixture should expose its application shell.');
+    assert(
+      shell.querySelector('[data-workspace-surface="secondary"]') === null,
+      'With nothing open and no pinned tab, Secondary must not render at all.',
+    );
+
+    // Sole tab (open()/openTab()-only case): narrow default, no strip (contract §4.1 last bullet).
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => shell.querySelector('[data-workspace-surface="secondary"]'),
+      'Opening the sole tab should render Secondary.',
+    );
+    assert(
+      shell.querySelector('[role="tablist"]') === null,
+      'A single openTab()-opened tab with no pinned tab must render no strip.',
+    );
+    const narrowWidth = secondaryWidthPx(canvasElement);
+    assert(
+      Math.abs(narrowWidth - WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH) <= 1.5,
+      'The sole tab also uses the narrow default, not 50/50.',
+    );
+
+    // A second tab -> the strip (or its narrow-width switcher collapse, item-tabs.md) appears and
+    // both are closable; also switches to 50/50.
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item B' }));
+    await waitFor(
+      () =>
+        shell.querySelector('[role="tab"]') || shell.querySelector('[aria-haspopup="menu"]')
+          ? true
+          : null,
+      'Two openTab()-opened tabs with no pinned tab should render the strip.',
+    );
+    assert(
+      tabStripSummary(canvasElement).tabCount === 2,
+      'Both openTab()-opened tabs should be open, with no pinned tab synthesized.',
+    );
+    await waitFor(
+      () => (secondaryWidthPx(canvasElement) > narrowWidth + 40 ? true : null),
+      'A brand-new 2nd tab must switch to 50/50 even with no pinned tab.',
+    );
+
+    // Closing back down to the sole tab removes the strip and restores the narrow default.
+    await closeRootTab(canvasElement, userEvent, 'Item B');
+    await waitFor(
+      () =>
+        shell.querySelector('[role="tablist"]') === null &&
+        shell.querySelector('[aria-haspopup="menu"]') === null
+          ? true
+          : null,
+      'Closing back down to one tab should remove the strip.',
+    );
+    await waitFor(
+      () => (Math.abs(secondaryWidthPx(canvasElement) - narrowWidth) <= 1.5 ? true : null),
+      'Closing back down to the sole tab should restore the narrow default.',
+    );
+
+    // Closing the whole region (the ordinary Secondary header close action — with only one tab
+    // open, no strip/switcher renders at all, §4.1 last bullet, so there is no per-tab "x" here)
+    // hides Secondary entirely: with no pinned tab to fall back to, `hasSecondary` becomes false
+    // and nothing renders (contract §4.1/§9 item 2). The tab itself is retained, hidden, not
+    // discarded (§5 "Secondary explicitly closed"), distinct from `closeTab()` actually removing
+    // the last tab (§5's other row, covered directly in workspaceSizing.test.ts/WorkspaceContext
+    // .test.tsx) — both leave `openTabCount<=1`, so the narrow-default math below holds either way.
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    await waitFor(
+      () => shell.querySelector('[data-workspace-surface="secondary"]') === null,
+      'Closing the whole region with no pinned tab must leave Secondary absent, not an empty shell.',
+    );
+
+    // Reopening (openTab re-activates the same retained-but-hidden tab) brings it back at the
+    // narrow default.
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => shell.querySelector('[data-workspace-surface="secondary"]'),
+      'Opening a tab again should bring Secondary back.',
+    );
+    assert(
+      Math.abs(secondaryWidthPx(canvasElement) - narrowWidth) <= 1.5,
+      'Coming back from nothing re-enters at the narrow default, exactly like the very first entry.',
     );
   },
 };

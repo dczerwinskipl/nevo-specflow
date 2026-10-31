@@ -598,14 +598,16 @@ composition/override point; SpecFlow supplies the product-aware resolver.
 
 ## 5.4 P1 — Workspace V2 dynamic auto/manual split and tab-root ownership (new)
 
-**Implementation status: specified, implementation pending.** The shared Design System contract
-now exists —
+**Implementation status: implemented** (2026-10-31, W01-W07 of
+[the execution plan](../nevo-ui/execution-plans/01-workspace-dynamic-split/README.md); closing
+evidence in
+[the contract's §1](../../design-system/implementation/react/workspace-dynamic-split.md#1-status-and-scope)).
+The shared Design System contract —
 [Workspace dynamic split and Secondary root tabs](../../design-system/implementation/react/workspace-dynamic-split.md)
-— covering owned state, the public API built on the existing `AppWorkspace`/Secondary
+— covers owned state, the public API built on the existing `AppWorkspace`/Secondary
 composition, the full auto/manual transition table, explicit non-goals and the accessible
-splitter contract. No code in `packages/nevo-ui/src` implements it yet; V2's accepted geometry
-still cannot be produced by selecting a static AppWorkspace split preset per active inspector
-until that contract's implementation tasks land.
+splitter contract, and `packages/nevo-ui/src` now implements it; V2's accepted geometry can be
+produced via `split="dynamic"` instead of a static AppWorkspace split preset per active inspector.
 
 - Only pinned Context open -> narrow Secondary (~330px when viable).
 - User opens a second **independent root tab** -> 50/50 once in automatic mode.

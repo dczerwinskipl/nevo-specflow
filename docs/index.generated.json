@@ -2126,7 +2126,7 @@
         "adding a draggable splitter or a left/right swap to AppWorkspace",
         "implementing a screen that needs the Workspace V2 auto/manual split behavior"
       ],
-      "summary": "Decision-complete contract for Secondary root tabs and the auto/manual dynamic split: owned state, the public API surface built on top of the existing AppWorkspace/Secondary composition, the auto/manual transition table, explicit non-goals, and the accessible splitter contract. Specified; implementation is pending (see section 9).",
+      "summary": "Decision-complete contract for Secondary root tabs and the auto/manual dynamic split: owned state, the public API surface built on top of the existing AppWorkspace/Secondary composition, the auto/manual transition table, explicit non-goals, and the accessible splitter contract. Implemented (W01-W07); see section 1 for the closing evidence and one open reconciliation point.",
       "related": [
         "design-system.implementation.react.secondary-navigation",
         "design-system.implementation.react.item-tabs",

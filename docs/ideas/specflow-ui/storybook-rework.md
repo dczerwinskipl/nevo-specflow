@@ -210,13 +210,13 @@ implement hiding. Preserve behavior and accepted Chromatic baselines.
 
 The existing five-profile model is a good basis. The visibility column below describes the **proposed target**, not necessarily current host configuration:
 
-| Profile               | Primary job                                      | Normal visibility             | Interaction assertions                              | Chromatic       |
-| --------------------- | ------------------------------------------------ | ----------------------------- | --------------------------------------------------- | --------------- |
-| Showcase / Default    | Human inspection, Controls, component states     | Visible                       | Optional demonstration, not a hidden contract suite | Off             |
-| Visual                | Curated stable appearance baseline               | Hidden by default (proposed)  | No assertion-bearing play                           | Explicit opt-in |
-| Contract              | Behavior, a11y, focus, geometry, edge conditions | Hidden by default             | Yes where relevant                                  | Off             |
-| Integration           | Router, provider, connected feature cooperation  | Hidden by default             | Yes where relevant                                  | Off             |
-| Capture               | Design-system/Figma fixture                      | Hidden by default             | No assertion-bearing play                           | Off             |
+| Profile            | Primary job                                      | Normal visibility            | Interaction assertions                              | Chromatic       |
+| ------------------ | ------------------------------------------------ | ---------------------------- | --------------------------------------------------- | --------------- |
+| Showcase / Default | Human inspection, Controls, component states     | Visible                      | Optional demonstration, not a hidden contract suite | Off             |
+| Visual             | Curated stable appearance baseline               | Hidden by default (proposed) | No assertion-bearing play                           | Explicit opt-in |
+| Contract           | Behavior, a11y, focus, geometry, edge conditions | Hidden by default            | Yes where relevant                                  | Off             |
+| Integration        | Router, provider, connected feature cooperation  | Hidden by default            | Yes where relevant                                  | Off             |
+| Capture            | Design-system/Figma fixture                      | Hidden by default            | No assertion-bearing play                           | Off             |
 
 **Review inherited tags.** The Task Workbench meta currently declares Visual for its entire
 family and overrides a subset with Contract. A new export can accidentally inherit Visual.

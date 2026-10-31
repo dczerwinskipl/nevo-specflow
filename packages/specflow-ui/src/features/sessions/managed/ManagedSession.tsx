@@ -793,6 +793,49 @@ function ManagedSessionConversation({
                     />
                   ))}
                 </div>
+                {/* "Jump to latest": a genuinely independent floating control (owner audit, live
+                    on a real phone: "ten przycisk żeby przesunąć na dół najlepiej jakby też był
+                    floating") — deliberately a SIBLING of `composerOverlayNode` below, never a
+                    flow child inside it. It used to render as the overlay's own first child,
+                    which meant its own appear/disappear toggle changed that single node's
+                    measured height — the exact node `composerOverlayNode`'s `ResizeObserver`
+                    (below) watches to drive `pinToBottomIfNotAway`'s scroll correction. Traced
+                    live-code sequence that produced the reported jump: scroll up -> `away`
+                    settles `true` -> this control renders -> the then-shared overlay node grows
+                    by the control's own height -> `ResizeObserver` fires -> `pinToBottomIfNotAway`
+                    reads the overlay's now-higher (because taller) top edge against the visible
+                    entries and/or (split/desktop) snaps straight to `scrollHeight` -> that
+                    `scrollTop` correction can land close enough to the true bottom that the next
+                    `scroll` event settles `away` back to `false` -> the control disappears again
+                    -> net effect: appear, self-correcting jump, vanish. Floating entirely outside
+                    `composerOverlayNode` means its own render can never feed that loop: it is not
+                    inside the observed node, and it is not a `[data-entry-id]` message either, so
+                    `pinToBottomIfNotAway`'s overlap scan does not see it. Positioned to land in
+                    the same place as before (just above the composer): `sticky` on split/desktop
+                    (bounded to this component's own local scroll container, exactly like the
+                    overlay itself, per that element's own doc comment below) and `fixed` on
+                    stacked/mobile (anchored to the true viewport, like the overlay), each offset
+                    by the overlay's own live-measured `composerHeight` plus a small gap, so it
+                    tracks the composer's actual current height without needing to live inside it. */}
+                {(state.hasNew || state.away) && (
+                  <div
+                    className={cn(
+                      'z-20',
+                      supportsSplit
+                        ? 'sticky self-center'
+                        : 'fixed inset-x-0 flex justify-center px-4',
+                    )}
+                    style={{
+                      bottom: supportsSplit
+                        ? `calc(var(--workspace-overlay-bottom, 0.75rem) + ${composerHeight}px + 0.5rem)`
+                        : `calc(${composerHeight}px + 0.5rem)`,
+                    }}
+                  >
+                    <Button className="shadow-xl" variant="secondary" onClick={() => feed.latest()}>
+                      {t('managedSession.latest')}
+                    </Button>
+                  </div>
+                )}
                 <div
                   ref={setComposerOverlayNode}
                   data-composer-overlay="true"
@@ -847,11 +890,6 @@ function ManagedSessionConversation({
                         }
                   }
                 >
-                  {(state.hasNew || state.away) && (
-                    <Button className="shadow-xl" variant="secondary" onClick={() => feed.latest()}>
-                      {t('managedSession.latest')}
-                    </Button>
-                  )}
                   <div className="grid w-full max-w-content-standard gap-3">
                     {snapshot.interaction && (
                       <InteractionPrompt

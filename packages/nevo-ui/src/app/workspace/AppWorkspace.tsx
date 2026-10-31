@@ -753,8 +753,25 @@ function MobileRuntimeSurfaceRegion({
       return;
     }
 
+    // Real mobile Chrome/Safari toolbar collapse (triggered by scrolling) resizes the VISUAL
+    // viewport live, but that change does not reliably propagate into a genuine CSS layout
+    // reflow of `viewport`'s own box on every engine: `viewport` is sized via `h-full`
+    // percentage cascaded from the app shell's own `h-dvh` root, which the UA recomputes
+    // immediately at the CSS level, but `ResizeObserver` only fires if/when that recomputation
+    // actually changes `viewport`'s rendered box — a multi-ancestor percentage chain some real
+    // devices do not reflow promptly on a toolbar-only change (owner audit, real Android phone:
+    // "Composer - tło nie dosięga" persisted after `635648d9` pinned the overlay to a literal
+    // `bottom: 0`, which only ever reads *this* variable for its own max-height, not its
+    // position — the live-ness of the variable itself was the remaining gap).
+    // `window.visualViewport` is the API purpose-built to report the current, authoritative
+    // visible height directly, independent of any element's own layout box; its own `resize`
+    // event fires reliably on both toolbar collapse/expand and on-screen-keyboard changes. Read
+    // it first when available, and listen to it as a second, more direct trigger alongside the
+    // `ResizeObserver` below (kept as the fallback path for environments without it).
+    const visualViewport = typeof window === 'undefined' ? undefined : window.visualViewport;
     const updateMetrics = () => {
-      root.style.setProperty('--mobile-workspace-viewport-height', `${viewport.clientHeight}px`);
+      const height = visualViewport?.height ?? viewport.clientHeight;
+      root.style.setProperty('--mobile-workspace-viewport-height', `${height}px`);
       root.style.setProperty(
         '--mobile-workspace-header-height',
         `${headerRef.current?.offsetHeight ?? 0}px`,
@@ -768,9 +785,13 @@ function MobileRuntimeSurfaceRegion({
       resizeObserver.observe(headerRef.current);
     }
 
+    visualViewport?.addEventListener('resize', updateMetrics);
     updateMetrics();
 
-    return () => resizeObserver.disconnect();
+    return () => {
+      resizeObserver.disconnect();
+      visualViewport?.removeEventListener('resize', updateMetrics);
+    };
   }, [updateHeaderCovered]);
 
   useLayoutEffect(() => {

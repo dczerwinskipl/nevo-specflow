@@ -1,8 +1,10 @@
 import {
   Children,
+  createContext,
   Fragment,
   isValidElement,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -114,6 +116,29 @@ function withSecondaryTabStrip(
 }
 
 export { WorkspaceHeaderIdentity } from './WorkspaceHeader';
+
+/**
+ * The DOM element currently owning Primary's page-level scroll under `scroll="workspace"`'s
+ * stacked (mobile) rendering — the `ScrollArea` viewport `MobileRuntimeSurfaceRegion` already
+ * owns for the collapsing-header/floating-navigation pattern. `null` whenever there is no such
+ * ambient scroll owner: a split/desktop layout (where `RuntimeSurfaceRegion`'s plain-div branch
+ * renders no scroll affordance of its own — a consumer owns scrolling itself there, exactly as it
+ * always has) or `scroll="content"` (the consumer owns scrolling on every layout). A consumer
+ * that needs imperative access to the ambient scroll element (auto-scroll-to-bottom, near-top
+ * infinite-load, away-from-bottom detection) for Primary content reads this via
+ * `useWorkspacePrimaryScroll()` instead of trying to own a scroll ref of its own on mobile.
+ */
+const WorkspacePrimaryScrollContext = createContext<HTMLElement | null>(null);
+
+/**
+ * Primary's current ambient page scroll element (see `WorkspacePrimaryScrollContext`), or `null`
+ * when Primary has no workspace-owned scroll viewport — a split/desktop layout, or a workspace
+ * rendered with `scroll="content"`. Updates whenever the layout switches between stacked and
+ * split (the element unmounts/remounts with `MobileRuntimeSurfaceRegion` itself).
+ */
+export function useWorkspacePrimaryScroll(): HTMLElement | null {
+  return useContext(WorkspacePrimaryScrollContext);
+}
 
 export interface AppWorkspaceLabels {
   backToPrimary: string;
@@ -536,6 +561,7 @@ function RuntimeSurfaceRegion({
   maxWidth,
   mobileRuntime,
   onMobileMotionComplete,
+  onScrollElementChange,
   stackedVisual,
   surface,
   surfaceName,
@@ -561,6 +587,9 @@ function RuntimeSurfaceRegion({
   fitAvailable?: boolean;
   mobileRuntime?: MobileWorkspaceSurfaceRuntime;
   onMobileMotionComplete?: (event: AnimationEvent<HTMLElement>) => void;
+  /** See `WorkspacePrimaryScrollContext`. Only meaningful while `stackedVisual` is true; ignored
+   * by the split/desktop branch below, which never owns a scroll element of its own. */
+  onScrollElementChange?: (element: HTMLElement | null) => void;
   stackedVisual: boolean;
   surface: AppWorkspaceSurface;
   surfaceName: 'primary' | 'secondary';
@@ -593,6 +622,7 @@ function RuntimeSurfaceRegion({
         leadingAction={leadingAction}
         maxWidth={maxWidth}
         onMotionComplete={onMobileMotionComplete}
+        onScrollElementChange={onScrollElementChange}
         runtime={mobileRuntime}
         surface={surface}
         surfaceRef={surfaceRef}
@@ -657,6 +687,7 @@ function MobileRuntimeSurfaceRegion({
   leadingAction,
   maxWidth,
   onMotionComplete,
+  onScrollElementChange,
   runtime,
   surface,
   surfaceRef,
@@ -669,6 +700,7 @@ function MobileRuntimeSurfaceRegion({
   leadingAction?: ReactNode;
   maxWidth?: number;
   onMotionComplete?: (event: AnimationEvent<HTMLElement>) => void;
+  onScrollElementChange?: (element: HTMLElement | null) => void;
   runtime: MobileWorkspaceSurfaceRuntime;
   surface: AppWorkspaceSurface;
   surfaceRef?: Ref<HTMLDivElement>;
@@ -677,6 +709,18 @@ function MobileRuntimeSurfaceRegion({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  // Reports the actual scroll-owning element to `WorkspacePrimaryScrollContext` (only ever wired
+  // for Primary, see `AppWorkspaceRoot` below) exactly when this content-not-owning-its-own-scroll
+  // branch mounts/unmounts the real `ScrollArea` viewport — never for `contentOwnsScroll`, which
+  // has no such element at all. React invokes a callback ref with `null` on unmount, so switching
+  // back to split/desktop (unmounting this component) already clears it without extra cleanup.
+  const setScrollElement = useCallback(
+    (node: HTMLDivElement | null) => {
+      viewportRef.current = node;
+      onScrollElementChange?.(node);
+    },
+    [onScrollElementChange],
+  );
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerCovered, setHeaderCovered] = useState(false);
   const headerCoveredRef = useRef(false);
@@ -806,7 +850,7 @@ function MobileRuntimeSurfaceRegion({
             onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
             startEdge={headerCovered ? 'auto' : 'hidden'}
             viewportClassName="mobile-workspace-scroll"
-            viewportRef={viewportRef}
+            viewportRef={setScrollElement}
           >
             <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
               <div
@@ -975,6 +1019,11 @@ function AppWorkspaceRoot({
     transition: state.mode === 'stacked' ? workspace?.transition : undefined,
   });
   const secondaryRegionRef = useRef<HTMLDivElement>(null);
+  // Primary's own ambient scroll element (see `WorkspacePrimaryScrollContext`): owned here, not by
+  // `RuntimeSurfaceRegion`/`MobileRuntimeSurfaceRegion` themselves, so it survives Primary's own
+  // mode transitions (stacked <-> split) as ordinary React state rather than a ref no one outside
+  // this component could read.
+  const [primaryScrollElement, setPrimaryScrollElement] = useState<HTMLElement | null>(null);
   const labels = { ...defaultAppWorkspaceLabels, ...labelsProp };
   const primaryNavigationAction =
     navigationMode === 'drawer' ? <NavigationAction label={labels.openNavigation} /> : undefined;
@@ -1055,6 +1104,7 @@ function AppWorkspaceRoot({
       maxWidth={state.primaryMaxWidth}
       mobileRuntime={state.mode === 'stacked' ? mobileRuntime.primary : undefined}
       onMobileMotionComplete={mobileRuntime.completeMotion}
+      onScrollElementChange={setPrimaryScrollElement}
       stackedVisual={state.mode === 'stacked'}
       surface={staticSurfaces.primary}
       surfaceName="primary"
@@ -1114,47 +1164,49 @@ function AppWorkspaceRoot({
   const splitSecondaryStart = state.mode === 'split' && secondarySide === 'start';
 
   return (
-    <div
-      className={cn(
-        'group/workspace relative flex h-full max-w-full items-stretch overflow-hidden',
-        state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
-      )}
-      data-layout={state.mode}
-      data-workspace-fit={resolvedFit}
-      style={{ width: resolvedFit === 'content' ? 'max-content' : '100%' }}
-    >
-      {splitSecondaryStart ? (
-        <>
-          {secondaryElement}
-          {splitterElement}
-          {primaryElement}
-        </>
-      ) : (
-        <>
-          {primaryElement}
-          {splitterElement}
-          {secondaryElement}
-        </>
-      )}
+    <WorkspacePrimaryScrollContext.Provider value={primaryScrollElement}>
+      <div
+        className={cn(
+          'group/workspace relative flex h-full max-w-full items-stretch overflow-hidden',
+          state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
+        )}
+        data-layout={state.mode}
+        data-workspace-fit={resolvedFit}
+        style={{ width: resolvedFit === 'content' ? 'max-content' : '100%' }}
+      >
+        {splitSecondaryStart ? (
+          <>
+            {secondaryElement}
+            {splitterElement}
+            {primaryElement}
+          </>
+        ) : (
+          <>
+            {primaryElement}
+            {splitterElement}
+            {secondaryElement}
+          </>
+        )}
 
-      {state.mode === 'stacked' &&
-      mobileRuntime.outgoingSecondary.mounted &&
-      outgoingSecondaryPresentation ? (
-        <RuntimeSurfaceRegion
-          contentOwnsScroll={scroll === 'content'}
-          instanceKey={outgoingSecondaryPresentation.key}
-          key={`outgoing-${outgoingSecondaryPresentation.key}`}
-          leadingAction={outgoingBackAction}
-          maxWidth={undefined}
-          mobileRuntime={mobileRuntime.outgoingSecondary}
-          onMobileMotionComplete={mobileRuntime.completeMotion}
-          stackedVisual
-          surface={outgoingSecondaryPresentation.surface}
-          surfaceName="secondary"
-          trailingAction={outgoingCloseAction}
-        />
-      ) : null}
-    </div>
+        {state.mode === 'stacked' &&
+        mobileRuntime.outgoingSecondary.mounted &&
+        outgoingSecondaryPresentation ? (
+          <RuntimeSurfaceRegion
+            contentOwnsScroll={scroll === 'content'}
+            instanceKey={outgoingSecondaryPresentation.key}
+            key={`outgoing-${outgoingSecondaryPresentation.key}`}
+            leadingAction={outgoingBackAction}
+            maxWidth={undefined}
+            mobileRuntime={mobileRuntime.outgoingSecondary}
+            onMobileMotionComplete={mobileRuntime.completeMotion}
+            stackedVisual
+            surface={outgoingSecondaryPresentation.surface}
+            surfaceName="secondary"
+            trailingAction={outgoingCloseAction}
+          />
+        ) : null}
+      </div>
+    </WorkspacePrimaryScrollContext.Provider>
   );
 }
 

@@ -10,10 +10,6 @@ import {
   MenuRadioGroup,
   MenuRadioItem,
   MenuTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
 } from '@nevo/ui';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 
@@ -119,21 +115,19 @@ export function ModelEffortPicker({
           `Select`/`Combobox` option anatomy, see Menu.tsx). */}
       <MenuTrigger asChild>
         {compact ? (
-          <TooltipProvider delayDuration={400}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label={triggerLabel}
-                  disabled={disabled}
-                  icon={SlidersHorizontal}
-                  id="managed-model"
-                  size="sm"
-                  variant="ghost"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{triggerLabel}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          // Bare `IconButton`, not also wrapped in `Tooltip`/`TooltipTrigger` (confirmed live,
+          // owner audit on a real phone): two nested Radix `asChild` triggers cloning onto the
+          // same element silently ate the open-on-tap interaction. `title` gives desktop mouse
+          // users the same hover hint; `aria-label` already covers assistive tech.
+          <IconButton
+            aria-label={triggerLabel}
+            disabled={disabled}
+            icon={SlidersHorizontal}
+            id="managed-model"
+            size="sm"
+            title={triggerLabel}
+            variant="ghost"
+          />
         ) : (
           <Button
             className="max-w-56 sm:max-w-72"

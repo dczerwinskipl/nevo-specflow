@@ -14,6 +14,7 @@ export {
   AppWorkspaceSlots,
   WorkspaceHeader,
   WorkspaceHeaderIdentity,
+  useWorkspacePrimaryScroll,
   type AppWorkspaceProps,
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,

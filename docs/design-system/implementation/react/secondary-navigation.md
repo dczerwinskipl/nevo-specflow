@@ -310,6 +310,46 @@ The properties do not exist in split/desktop mode or in `scroll="content"` works
 overlay. `AppWorkspaceScroll.contract.stories.tsx` verifies 390 and 320 (including `#tasks-heading`
 through `location.hash`) and a safe-area override.
 
+### Reaching Primary's ambient scroll element, and the bottom safe area
+
+A Primary that needs imperative access to its own scroll position under the default
+`scroll="workspace"` — auto-scroll-to-bottom on new content, near-top infinite-load of older
+history, away-from-bottom ("jump to latest") detection, or reserving space for its own
+bottom-floating control — cannot keep a local scroll ref the way a `scroll="content"` consumer
+does: in stacked (mobile) mode the scroll viewport is the `ScrollArea` `AppWorkspace` itself owns
+for the collapsing-header pattern above, not an element the consumer renders.
+`useWorkspacePrimaryScroll()` (exported from `@nevo/ui`) returns that element, or `null` when there
+is none to read:
+
+- Stacked/mobile: the live `.mobile-workspace-scroll` viewport element, the same node the collapsing
+  header above measures. Updates (including back to `null`) whenever the layout transitions in or
+  out of stacked mode, following `MobileRuntimeSurfaceRegion`'s own mount/unmount.
+- Split/desktop: always `null` — `RuntimeSurfaceRegion`'s split branch renders no scroll affordance
+  of its own (unchanged by `scroll`), so the consumer still owns and renders its own scroll
+  container there, exactly as it always has.
+
+A consumer that owns a bottom-floating control (a Composer) alongside this needs two different
+techniques depending on which of the above applies, not one portable CSS rule: on split/desktop,
+where the consumer's own scroll container is a plain single-level box, `position: sticky` on that
+control (as the container's own last flow child) reserves its own space and sticks correctly. On
+stacked/mobile, `MobileRuntimeSurfaceRegion` interposes clipping wrappers between Primary's content
+and the real scroll viewport (for the rounded sheet surface and the slide transition), so a plain
+`position: sticky` there sticks to the nearest clipping ancestor instead of the real viewport and
+does not visually anchor; `position: fixed` is required instead (it escapes those ancestors unless
+one is mid-transition-`transform`, in which case it correctly slides with the surface), and since
+`position: fixed` reserves no space of its own, the consumer must still measure the control's
+rendered height and apply it as real bottom padding on its own scrollable content.
+
+`--workspace-overlay-bottom` (set on `.mobile-workspace-scroll-area`, `AppWorkspace.css`) is the
+bottom-edge counterpart to `--workspace-overlay-top` above: `max(0.75rem, env(safe-area-inset-bottom))`,
+read by a fixed/sticky bottom control as its own `bottom` offset so it clears the home-indicator/
+gesture-bar safe area the same way the floating navigation row clears the status bar. It carries no
+`scroll-padding-bottom`/inset counterpart — unlike the top row, which is a `nevo-ui`-owned overlay
+over consumer content, a bottom control is the consumer's own element, so the consumer reserves its
+own space (see above) rather than `AppWorkspace.css` doing it generically. A split/desktop consumer,
+which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable with its own fallback
+(`var(--workspace-overlay-bottom, 0.75rem)`).
+
 ### Header actions
 
 `WorkspaceHeader` (and the Secondary header, through the same `WorkspaceHeaderFrame`) takes

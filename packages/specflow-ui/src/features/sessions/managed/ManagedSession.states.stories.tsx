@@ -5,6 +5,7 @@ import { ManagedSession } from './ManagedSession';
 import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
 import {
   genericSpecLevelSnapshot,
+  richDefaultApi,
   singleTaskSnapshot,
   terminalFailureSnapshot,
   unavailableSnapshot,
@@ -94,15 +95,17 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The default, representative state of the composed screen: a generic/spec-level Session with
- * Context open and no action pending. The single visible entry point for this group — every
- * other export below is a hidden `contract` regression check for one specific state, not a
- * showcase to browse. Deliberately has no `play`: its demonstration value is the rendered state
- * itself, and `GenericSpecLevel` below already owns the geometry assertion for this exact
- * fixture. */
+/** The default, representative state of the composed screen (owner feedback: "Default ma dawać
+ * podgląd default stanu, czyli długa sesja, powiązana z taskami, z workiem, etc.") — a long,
+ * multi-turn Session with older history, linked Related Tasks visible in Context, and a populated
+ * Work timeline reachable via "Zobacz pracę" (`richDefaultApi`,
+ * `managedSession.fullSession.stories-support.ts`), not the sparse 2-entry fixture this used
+ * before. The single visible entry point for this group — every other export below is a hidden
+ * `contract` regression check for one specific state, not a showcase to browse. Deliberately has
+ * no `play`: its demonstration value is the rendered state itself. */
 export const Default: Story = {
   args: {
-    api: fixtureApi(genericSpecLevelSnapshot()),
+    api: richDefaultApi(),
     sessionContext: genericSpecLevelContext(),
   },
   globals: WIDE_VIEWPORT,

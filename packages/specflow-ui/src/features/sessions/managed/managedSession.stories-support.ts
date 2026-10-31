@@ -87,10 +87,17 @@ export function sessionFixture(waiting = false): SessionSnapshot {
   };
 }
 
-/** Matches sessionFixture's providerId so the next-Turn model/effort picker has data to render. */
-export function providerFixture(): ProviderDescriptor {
+/**
+ * Matches a session's `providerId` so the next-Turn model/effort picker has data to render.
+ * Defaults to `sessionFixture`'s own `'mock'`; `fixtureApi` passes the actual snapshot's
+ * `providerId` instead, so a fixture built on `base()`/`genericSpecLevelSnapshot()` (providerId
+ * `'claude-code'`, see `managedSession.fullSession.stories-support.ts`) also gets a matching
+ * provider — before this, `ModelEffortPicker` silently rendered nothing for every one of those
+ * stories, since no item in `providers().items` ever matched that session's own `providerId`.
+ */
+export function providerFixture(providerId = 'mock'): ProviderDescriptor {
   return {
-    providerId: 'mock',
+    providerId,
     title: 'Controlled test provider',
     readiness: 'ready',
     capabilities: {
@@ -144,7 +151,7 @@ export function staggeredContentApi(snapshot: SessionSnapshot, delayMs = 120): M
 /** Isolated presentation adapter: never imported by a production route. */
 export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
   return {
-    providers: () => Promise.resolve({ items: [providerFixture()] }),
+    providers: () => Promise.resolve({ items: [providerFixture(snapshot.session.providerId)] }),
     create: () => Promise.resolve({ sessionId: fixtureSessionId }),
     snapshot: () => Promise.resolve(snapshot),
     history: () =>

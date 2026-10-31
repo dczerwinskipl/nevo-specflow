@@ -154,8 +154,14 @@ export function WorkspaceSplitter({
       aria-valuenow={Math.round(secondaryRatio * 100)}
       className={cn(
         hitAreaClassName,
-        'z-10 w-px shrink-0 cursor-col-resize touch-none self-stretch bg-border-subtle outline-none',
+        'z-10 w-px shrink-0 cursor-col-resize touch-none self-stretch bg-border-subtle',
         'select-none hover:bg-border-strong',
+        // No `outline-none` here (unlike the button-based DS precedents this pattern is copied
+        // from): on a plain focusable `<div>`, `outline-none`'s unconditional `--tw-outline-style:
+        // none` wins the cascade for that custom property regardless of `:focus-visible`, which
+        // silently defeats `focus-visible:outline-2` below (verified live — a `<button>` is not
+        // affected, a `<div>` is). Omitting it is safe: nothing else sets `outline-style` outside
+        // the `:focus-visible` rules, so a plain pointer focus still renders no outline at all.
         'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
         fastColorTransitionClassName,
         className,

@@ -102,6 +102,12 @@ describe('WorkspaceSplitter', () => {
     const splitter = getSplitter();
     expect(splitter.className).toMatch(/focus-visible:outline-2/);
     expect(splitter.className).toMatch(/focus-visible:outline-focus-ring/);
+    // On a plain focusable <div> (unlike the button-based DS precedents this idiom is copied
+    // from), an unconditional `outline-none` class silently defeats `focus-visible:outline-2`:
+    // Tailwind's generated rule for `outline-none` sets `--tw-outline-style: none` with no
+    // `:focus-visible` gate, which the focus-visible outline-width rule reads via `var()`, so the
+    // ring never renders (verified live in a real browser). Guard against reintroducing it.
+    expect(splitter.className).not.toMatch(/(^|\s)outline-none(\s|$)/);
   });
 
   it('sets touch-action: none and a 44px-equivalent hit area for coarse pointers', () => {

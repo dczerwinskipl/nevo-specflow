@@ -8,20 +8,14 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, Send, SlidersHorizontal, Square } from 'lucide-react';
+import { Check, Copy, Send, Square } from 'lucide-react';
 import {
   Alert,
   AppContent,
   AppWorkspace,
   Button,
   IconButton,
-  Menu,
-  MenuContent,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
   MessageComposer,
   Spinner,
   StatusIndicator,
@@ -37,13 +31,10 @@ import {
   useWorkspaceCapabilities,
   cn,
 } from '@nevo/ui';
-import type {
-  ConversationEntry,
-  Interaction,
-  ProviderDescriptor,
-} from '@nevo/specflow-contracts/sessions';
+import type { ConversationEntry, Interaction } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
+import { ModelEffortPicker } from './ModelEffortPicker';
 import { createWorkInspector } from './WorkInspector';
 import { SessionContext, createSessionContextStack } from './context/SessionContext';
 import { unavailableSessionContext } from './context/sessionContextTypes';
@@ -57,50 +48,6 @@ function browserStorage() {
   } catch {
     return undefined;
   }
-}
-
-/** Opaque Select value encoding a model+effort pair; modelId/effort are not guaranteed separator-safe. */
-function encodeModelKey(modelId: string, effort?: string) {
-  return JSON.stringify(effort ? [modelId, effort] : [modelId]);
-}
-
-function decodeModelKey(key: string): { modelId: string; effort?: string } {
-  const [modelId, effort] = JSON.parse(key) as [string, string?];
-
-  return effort ? { modelId, effort } : { modelId };
-}
-
-/**
- * Flattens the matched provider's models/efforts into one "Model · Effort" picker, per the
- * composer design's single combined selector. Honors the catalogue's own modelOverride/
- * effortOverride capability flags rather than assuming every listed model is overridable.
- *
- * Each item also carries an optional `description` — the model's full set of available efforts
- * (the Menu picker's own second line, matching the accepted mockup's richer item presentation,
- * session-chat-v10 §"Model — następny Turn") — omitted for a model with a single effort (or none),
- * where it would not add anything the label does not already say.
- */
-function modelPickerItems(provider: ProviderDescriptor | undefined, t: TFunction) {
-  if (!provider?.capabilities.modelOverride || !provider.models.length) {
-    return [];
-  }
-
-  const withEffort = provider.capabilities.effortOverride;
-
-  return provider.models.flatMap((model) => {
-    const description =
-      withEffort && model.efforts.length > 1
-        ? t('managedSession.model.availableEfforts', { list: model.efforts.join(', ') })
-        : undefined;
-
-    return withEffort && model.efforts.length
-      ? model.efforts.map((effort) => ({
-          key: encodeModelKey(model.modelId, effort),
-          label: model.title + ' · ' + effort,
-          description,
-        }))
-      : [{ key: encodeModelKey(model.modelId), label: model.title, description: undefined }];
-  });
 }
 
 function InteractionPrompt({
@@ -600,15 +547,10 @@ export function ManagedSession({
   const provider = providers.data?.items.find(
     (item) => item.providerId === state.snapshot?.session.providerId,
   );
-  const modelItems = useMemo(() => modelPickerItems(provider, t), [provider, t]);
   const selectedModelId = state.modelOverride ?? state.snapshot?.session.modelId;
   const selectedEffort = state.modelOverride
     ? state.effortOverride
     : state.snapshot?.session.effort;
-  // Always a defined string so MenuRadioGroup stays controlled from its first render (never
-  // undefined), even before the Session's current model/effort is known.
-  const selectedModelKey = selectedModelId ? encodeModelKey(selectedModelId, selectedEffort) : '';
-  const selectedModelLabel = modelItems.find((item) => item.key === selectedModelKey)?.label;
   function older() {
     if (scroller.current) {
       anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
@@ -863,79 +805,17 @@ export function ManagedSession({
                             is pushed to the end of the toolbar's own flex row via `ml-auto` so it
                             keeps matching the right-aligned layout this screen already had. */}
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                          {modelItems.length > 0 && (
-                            <Menu>
-                              {/* The Design System's `Select` has no compact size variant (hardcoded
-                                  to `h-control-height-default`) and no per-option description, so it
-                                  cannot show the richer "title + available efforts" presentation the
-                                  accepted mockup calls for (session-chat-v10 §"Model — następny
-                                  Turn"). `Menu` + `MenuRadioItem` (the same checkmark single-choice
-                                  primitive `LocaleMenu` already uses) does, via its `description`
-                                  prop (shared `Select`/`Combobox` option anatomy, see Menu.tsx). */}
-                              {/* `supportsSplit` is the same measured-width signal this screen
-                                  already uses for the Context header action: on the narrow/mobile
-                                  layout there is no room for the "Model · effort" text, so the
-                                  trigger collapses to an icon-only `IconButton` (item 2's compact
-                                  sizing); split-capable (wide) layouts keep showing the selected
-                                  value as visible text next to the icon. */}
-                              <MenuTrigger asChild>
-                                {supportsSplit ? (
-                                  <Button
-                                    className="max-w-56 sm:max-w-72"
-                                    disabled={state.commandBusy || !!state.pending}
-                                    id="managed-model"
-                                    labelOverflow="truncate"
-                                    leadingIcon={SlidersHorizontal}
-                                    size="sm"
-                                    variant="ghost"
-                                  >
-                                    {selectedModelLabel ?? t('managedSession.model.placeholder')}
-                                  </Button>
-                                ) : (
-                                  <TooltipProvider delayDuration={400}>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <IconButton
-                                          aria-label={
-                                            selectedModelLabel ??
-                                            t('managedSession.model.placeholder')
-                                          }
-                                          disabled={state.commandBusy || !!state.pending}
-                                          icon={SlidersHorizontal}
-                                          id="managed-model"
-                                          size="sm"
-                                          variant="ghost"
-                                        />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        {selectedModelLabel ??
-                                          t('managedSession.model.placeholder')}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                              </MenuTrigger>
-                              <MenuContent align="end" aria-label={t('managedSession.model.label')}>
-                                <MenuRadioGroup
-                                  value={selectedModelKey}
-                                  onValueChange={(key) => {
-                                    const next = decodeModelKey(key);
-                                    feed.setModel(next.modelId, next.effort);
-                                  }}
-                                >
-                                  {modelItems.map((item) => (
-                                    <MenuRadioItem
-                                      key={item.key}
-                                      description={item.description}
-                                      value={item.key}
-                                    >
-                                      {item.label}
-                                    </MenuRadioItem>
-                                  ))}
-                                </MenuRadioGroup>
-                              </MenuContent>
-                            </Menu>
-                          )}
+                          <ModelEffortPicker
+                            provider={provider}
+                            value={
+                              selectedModelId
+                                ? { modelId: selectedModelId, effort: selectedEffort }
+                                : undefined
+                            }
+                            onChange={(modelId, effort) => feed.setModel(modelId, effort)}
+                            disabled={state.commandBusy || !!state.pending}
+                            compact={!supportsSplit}
+                          />
                           <TooltipProvider delayDuration={400}>
                             <Tooltip>
                               <TooltipTrigger asChild>

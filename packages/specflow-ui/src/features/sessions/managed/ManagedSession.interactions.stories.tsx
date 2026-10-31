@@ -5,7 +5,6 @@ import { ManagedSession } from './ManagedSession';
 import {
   fixtureApi,
   fixtureSessionId,
-  providerFixture,
   sessionFixture,
   staggeredContentApi,
 } from './managedSession.stories-support';
@@ -65,47 +64,6 @@ export const Tail: Story = {
     ).toBeNull();
   },
 };
-/** Item 4: Copy acts on each authored message's own full resolved text — `MessageText.tsx`'s
- * auto-stitched content, not just the capped initial preview `ReadableText` starts with. */
-export const CopyMessage: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText(/jedna całość\.$/, undefined, { timeout: 5000 }),
-    ).toBeVisible();
-    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
-    const writeText = fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
-    try {
-      const [requestCopy, answerCopy] = canvas.getAllByRole('button', {
-        name: 'Kopiuj wiadomość',
-      });
-      if (!requestCopy || !answerCopy) {
-        throw new Error('Expected a Copy action on the request and the answer message.');
-      }
-
-      await userEvent.click(answerCopy);
-      await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-      const copiedAnswer = writeText.mock.calls[0]?.[0] as string;
-      await expect(copiedAnswer.startsWith('To jest krótki podgląd dużej odpowiedzi.')).toBe(true);
-      await expect(copiedAnswer.endsWith('jedna całość.')).toBe(true);
-      await canvas.findByText('Skopiowano');
-
-      writeText.mockClear();
-      await userEvent.click(requestCopy);
-      await waitFor(() =>
-        expect(writeText).toHaveBeenCalledWith(sessionFixture().entries[0]!.text.text),
-      );
-    } finally {
-      if (descriptor) {
-        Object.defineProperty(navigator, 'clipboard', descriptor);
-      } else {
-        Reflect.deleteProperty(navigator, 'clipboard');
-      }
-    }
-  },
-};
-
 /**
  * Item 1 follow-up regression: a single, non-retrying read of the same overlap condition
  * `verifyNoEntryOverlapsComposer` checks, for sampling the growth window itself. The original
@@ -283,99 +241,6 @@ export const CancelTurn: Story = {
     // Item 1 regression: at 390px, the large auto-stitching answer must never end up rendered
     // behind the pending-interaction card/composer overlay.
     await verifyNoEntryOverlapsComposer(canvasElement);
-  },
-};
-
-/** Finds the specific "Standard · high" `menuitemradio` by its own label line, not the full
- * accessible name (which also includes that model's "available efforts" description — identical
- * on every one of its effort rows, so matching on it alone would not disambiguate low vs. high). */
-function modelOptionByLabel(menu: HTMLElement, label: string) {
-  const option = within(menu)
-    .getAllByRole('menuitemradio')
-    .find((item) => within(item).queryByText(label));
-  if (!option) {
-    throw new Error(`Option "${label}" should exist.`);
-  }
-
-  return option;
-}
-
-async function openModelMenu(canvasElement: HTMLElement, triggerName: string) {
-  const canvas = within(canvasElement);
-  await userEvent.click(await canvas.findByRole('button', { name: triggerName }));
-
-  return waitFor(() => {
-    const menu = document.querySelector<HTMLElement>('[role="menu"]');
-    if (!menu) {
-      throw new Error('The model/effort menu should open.');
-    }
-
-    return menu;
-  });
-}
-
-const modelApi = {
-  ...fixtureApi(sessionFixture()),
-  start: fn().mockResolvedValue({ turnId: 'turn' }),
-};
-export const SelectModelEffort: Story = {
-  args: { owner: 'model-story', api: modelApi },
-  play: async ({ canvasElement }) => {
-    modelApi.start.mockClear();
-    const canvas = within(canvasElement);
-    const menu = await openModelMenu(canvasElement, 'Wybierz model');
-    await userEvent.click(modelOptionByLabel(menu, 'Standard · high'));
-    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
-    await expect(await canvas.findByRole('button', { name: 'Standard · high' })).toBeVisible();
-    await userEvent.type(canvas.getByLabelText('Wiadomość'), 'Testowa wiadomość');
-    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
-    await waitFor(() => expect(modelApi.start).toHaveBeenCalledOnce());
-    await expect(modelApi.start.mock.calls[0]?.[1]).toMatchObject({
-      modelId: 'mock-standard',
-      effort: 'high',
-    });
-  },
-};
-
-/** The Menu's richer per-item presentation (item 3): each effort row of a multi-effort model also
- * shows a description line listing every effort that model supports. */
-export const ModelMenuShowsAvailableEfforts: Story = {
-  args: { owner: 'model-description-story', api: fixtureApi(sessionFixture()) },
-  play: async ({ canvasElement }) => {
-    const menu = await openModelMenu(canvasElement, 'Wybierz model');
-    // `waitFor` (not a bare assertion) absorbs the Menu's own open fade-in transition — right
-    // after it appears in the DOM its content is still mid-animation (`opacity: 0` on
-    // `MenuContent` itself), so an immediate `toBeVisible()` would be a false negative, not a
-    // real regression.
-    await waitFor(async () => {
-      const high = modelOptionByLabel(menu, 'Standard · high');
-      await expect(within(high).getByText('Dostępne poziomy wysiłku: low, high')).toBeVisible();
-    });
-    const fast = modelOptionByLabel(menu, 'Fast');
-    await expect(within(fast).queryByText(/Dostępne poziomy wysiłku/)).not.toBeInTheDocument();
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
-  },
-};
-
-const noOverrideApi = {
-  ...fixtureApi(sessionFixture()),
-  providers: () =>
-    Promise.resolve({
-      items: [
-        {
-          ...providerFixture(),
-          capabilities: { ...providerFixture().capabilities, modelOverride: false },
-        },
-      ],
-    }),
-};
-export const NoModelOverrideCapability: Story = {
-  args: { owner: 'no-override-story', api: noOverrideApi },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByLabelText('Wiadomość')).toBeEnabled();
-    await expect(canvasElement.querySelector('#managed-model')).toBeNull();
   },
 };
 

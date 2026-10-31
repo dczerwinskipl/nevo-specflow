@@ -166,7 +166,9 @@ export function WorkspaceSplitter({
       aria-valuenow={Math.round(secondaryRatio * 100)}
       className={cn(
         hitAreaClassName,
-        'z-10 w-px shrink-0 cursor-col-resize touch-none self-stretch bg-border-subtle',
+        // `group` lets the always-visible grip (below) react to hover/active/focus-visible on this
+        // element itself, without the grip needing its own pointer/focus handling.
+        'group z-10 w-px shrink-0 cursor-col-resize touch-none self-stretch bg-border-subtle',
         'select-none hover:bg-border-strong',
         // No `outline-none` here (unlike the button-based DS precedents this pattern is copied
         // from): on a plain focusable `<div>`, `outline-none`'s unconditional `--tw-outline-style:
@@ -189,6 +191,27 @@ export function WorkspaceSplitter({
       onPointerUp={endDrag}
       role="separator"
       tabIndex={0}
-    />
+    >
+      {/*
+       * Persistent drag-grip affordance: the owner's live Storybook review found that the splitter
+       * being draggable had no visual sign of it (the 1px line above reads as a static divider).
+       * This small pill is visible at rest — not just on hover/focus — so a user can tell the
+       * boundary is interactive without discovering it by accident. No equivalent grip/handle
+       * visual exists elsewhere in this DS (checked DataTable's column-resize handle and the
+       * tree/list drag affordances — both are hover-only), so this introduces the pattern rather
+       * than reusing one; it stays local to this component rather than becoming a shared primitive
+       * since nothing else needs it yet. Purely decorative (`aria-hidden`) and non-interactive
+       * (`pointer-events-none`) — it never changes the hit area, keyboard, or ARIA contract above.
+       */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2',
+          'rounded-full bg-border-strong',
+          'group-hover:bg-content-secondary group-focus-visible:bg-focus-ring group-active:bg-content-secondary',
+          fastColorTransitionClassName,
+        )}
+      />
+    </div>
   );
 }

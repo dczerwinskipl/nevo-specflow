@@ -25,4 +25,4 @@ const meta = {
 } satisfies Meta<typeof SessionProviderIcon>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Artwork: Story = {};
+export const Default: Story = {};

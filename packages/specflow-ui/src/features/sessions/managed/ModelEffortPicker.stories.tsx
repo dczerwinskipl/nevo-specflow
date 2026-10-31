@@ -55,7 +55,7 @@ function ModelEffortPickerHarness({
 const handleChange = fn();
 
 const meta = {
-  title: 'SpecFlow/Screens/Managed Session/Components/ModelEffortPicker',
+  title: 'SpecFlow/Components/ModelEffortPicker',
   component: ModelEffortPickerHarness,
   decorators: [
     (Story) => (

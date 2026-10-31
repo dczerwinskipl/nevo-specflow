@@ -66,7 +66,7 @@ function ReadableTextHarness({ value, markdown }: { value: TextPreview; markdown
 }
 
 const meta = {
-  title: 'SpecFlow/Screens/Managed Session/Components/MessageText',
+  title: 'SpecFlow/Components/MessageText',
   component: ReadableTextHarness,
   decorators: [
     (Story) => (

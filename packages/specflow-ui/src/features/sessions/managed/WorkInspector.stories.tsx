@@ -88,7 +88,7 @@ function WorkInspectorHost({ api }: { api: ManagedSessionsApi }) {
 }
 
 const meta = {
-  title: 'SpecFlow/Screens/Managed Session/Work inspector',
+  title: 'SpecFlow/Components/Work Inspector',
   component: WorkInspectorHost,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -151,7 +151,14 @@ async function selectFilterKind(canvasElement: HTMLElement, triggerName: string,
   await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument());
 }
 
-export const CommentaryGroupingAndThinking: Story = {
+/** The default, representative state of `WorkInspector`: the Commentary-grouped (L2) timeline
+ * with a collapsible Reasoning ("Thinking") row and a tool drill-in — the single visible entry
+ * point for this component. Its `play` is a demonstration walk-through of the component's own key
+ * states, not a hidden contract suite (Storybook catalog rework, §4 table). The dedicated
+ * filtering/search/scale regression checks below are tagged `integration` (they exercise the real
+ * `AppWorkspace`/navigation stack this component is mounted through) and stay out of the default
+ * sidebar. */
+export const Default: Story = {
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
@@ -196,6 +203,7 @@ export const CommentaryGroupingAndThinking: Story = {
 };
 
 export const TypeFilterPreservesCommentaryContext: Story = {
+  tags: ['integration'],
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
@@ -231,6 +239,7 @@ export const TypeFilterPreservesCommentaryContext: Story = {
 };
 
 export const SearchPreservesCommentaryContext: Story = {
+  tags: ['integration'],
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
@@ -256,6 +265,7 @@ export const SearchPreservesCommentaryContext: Story = {
 };
 
 export const ProgressiveLoadingAtScale: Story = {
+  tags: ['integration'],
   args: {
     // The design doc's own "144 synthetic Work items" scalability scenario.
     api: createWorkInspectorFixtureApi(largeWorkTimelineItems(144)),

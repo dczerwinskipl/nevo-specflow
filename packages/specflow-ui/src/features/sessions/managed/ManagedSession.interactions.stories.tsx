@@ -24,18 +24,21 @@ import {
 } from './managedSession.storyHelpers.stories-support';
 
 /**
- * `SpecFlow/Contracts/Managed Session interactions`: regression/behavior checks that drive a
- * specific user action, flow, or race on top of the `States` the screen can be in
- * (`SpecFlow/Screens/Managed Session/States`, `ManagedSession.states.stories.tsx`) — a click, a
- * keyboard action, a scroll, or a timed sequence — rather than a state a user simply lands on.
- * Filed under `Contracts` (matching this repo's existing convention for behavior-verification
- * stories, e.g. `SpecFlow/Contracts/Cache observer`) so these don't compete with `States` for
- * attention when browsing what the screen actually looks like. `WorkInspector.stories.tsx` is its
- * own, separately organized group and is untouched.
+ * `SpecFlow/Screens/Managed Session`: regression/behavior checks that drive a specific user
+ * action, flow, or race on top of the states the screen can be in
+ * (`ManagedSession.states.stories.tsx`, same title) — a click, a keyboard action, a scroll, or a
+ * timed sequence — rather than a state a user simply lands on. Filed under the same canonical
+ * `SpecFlow/Screens/Managed Session` title as the states group (Storybook catalog rework, §3.1
+ * rule 1: no ad hoc top-level `Contracts`/`Sessions` categories) and tagged `contract`/
+ * `integration` per story so they stay out of the default sidebar instead of competing with the
+ * screen's single visible `Default` for attention — hidden, not deleted: tags only affect
+ * visibility, every `play` function here is already part of the Chromium suite via Storybook's
+ * own `play-fn` tag regardless of this tag. `WorkInspector.stories.tsx` is its own, separately
+ * organized group and is untouched.
  */
 
 const meta = {
-  title: 'SpecFlow/Contracts/Managed Session interactions',
+  title: 'SpecFlow/Screens/Managed Session',
   component: ManagedSession,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -51,6 +54,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Tail: Story = {
+  tags: ['contract'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByLabelText('Wiadomość')).toBeEnabled();
@@ -135,6 +139,7 @@ async function sampleNoOverlapDuringGrowth(canvasElement: HTMLElement, durationM
  * still-growing paragraph in, before `ManagedSession.tsx`'s overlap-correction caught up.
  */
 export const GrowingAnswerNeverOverlapsComposer: Story = {
+  tags: ['contract'],
   args: { owner: 'growth-story', api: staggeredContentApi(sessionFixture(true)) },
   globals: NARROW_VIEWPORT,
   play: async ({ canvasElement }) => {
@@ -163,6 +168,7 @@ export const GrowingAnswerNeverOverlapsComposer: Story = {
 // the top — these two short fixtures never overflow, so that is true as soon as they mount, the
 // same condition a short conversation hits in the real app with more history above it.
 export const HistoryFailure: Story = {
+  tags: ['contract'],
   args: { api: fixtureApi(sessionFixture(), true) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -205,6 +211,7 @@ function historyReturnApi() {
 }
 
 export const HistoryReturn: Story = {
+  tags: ['contract'],
   args: { api: historyReturnApi() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -219,6 +226,7 @@ export const HistoryReturn: Story = {
 
 const answerApi = { ...fixtureApi(sessionFixture(true)), respond: fn().mockResolvedValue({}) };
 export const AnswerQuestion: Story = {
+  tags: ['contract'],
   args: { owner: 'answer-story', api: answerApi },
   play: async ({ canvasElement }) => {
     answerApi.respond.mockClear();
@@ -236,6 +244,7 @@ export const AnswerQuestion: Story = {
 
 const cancelApi = { ...fixtureApi(sessionFixture(true)), cancel: fn().mockResolvedValue({}) };
 export const CancelTurn: Story = {
+  tags: ['contract'],
   args: { owner: 'cancel-story', api: cancelApi },
   globals: NARROW_VIEWPORT,
   play: async ({ canvasElement }) => {
@@ -264,6 +273,7 @@ export const CancelTurn: Story = {
  * — specifically the very last message — renders behind the floating overlay.
  */
 export const LongConversationScroll: Story = {
+  tags: ['contract'],
   args: {
     owner: 'full-session-story',
     api: fixtureApi(longConversationSnapshot()),
@@ -410,6 +420,7 @@ function hasRootTabStrip(canvasElement: HTMLElement) {
  * regression-check standard, `verifyContextReopens`'s sibling check in the `States` group).
  */
 export const RelatedTaskOpensAsIndependentTab: Story = {
+  tags: ['integration'],
   args: {
     owner: 'full-session-story',
     api: fixtureApi(genericSpecLevelSnapshot()),

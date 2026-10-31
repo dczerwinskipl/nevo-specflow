@@ -28,14 +28,23 @@ import {
 } from './managedSession.storyHelpers.stories-support';
 
 /**
- * `SpecFlow/Screens/Managed Session/States`: the visual/informational states a user would land
- * on — a generic/spec-level Session (§12), a single-Task execution (§13), a pending interaction
- * (§15), waiting-without-attention (§18), a terminal failure/cancel/interrupt (§19), and an
- * unavailable Session (§20), plus the narrower-fixture states (`WaitingForQuestion`,
+ * `SpecFlow/Screens/Managed Session`: the composed Full Session screen. `Default` below is the
+ * single visible entry point — a representative generic/spec-level Session with Context open,
+ * with no assertion attached, so opening the group always shows a normal, meaningful state
+ * without picking another story first (Storybook catalog rework, §3.1 rule 2).
+ *
+ * Every other export in this file reproduces one specific informational state a user would
+ * land on — a generic/spec-level Session (§12), a single-Task execution (§13), a pending
+ * interaction (§15), waiting-without-attention (§18), a terminal failure/cancel/interrupt (§19),
+ * and an unavailable Session (§20), plus the narrower-fixture states (`WaitingForQuestion`,
  * `QuotaFailure`, `UnsupportedMultipleChoice`) that predate the Full Session Context mock view
- * model. Stories that instead drive a specific user action/flow/regression live in
- * `ManagedSession.interactions.stories.tsx`. `WorkInspector.stories.tsx` is its own, separately
- * organized group and is untouched.
+ * model — each paired with a geometry/behavior regression assertion for that exact state. They
+ * are tagged `contract` so they stay out of the default sidebar (hidden, not deleted: tags only
+ * affect visibility, a `play` function is already part of the Chromium suite via Storybook's own
+ * `play-fn` tag regardless of this tag) while remaining runnable and reachable through the tag
+ * filter or a direct story link. Stories that instead drive a specific user action/flow/regression
+ * on top of these states live in `ManagedSession.interactions.stories.tsx`, under the same title.
+ * `WorkInspector.stories.tsx` is its own, separately organized group and is untouched.
  *
  * Most of these stories compose the real `ManagedSession` screen (Primary conversation + Context
  * Secondary) from a representative canonical `SessionSnapshot` plus a product-owned Context mock
@@ -66,7 +75,7 @@ async function verifyContextReopens(canvasElement: HTMLElement) {
 }
 
 const meta = {
-  title: 'SpecFlow/Screens/Managed Session/States',
+  title: 'SpecFlow/Screens/Managed Session',
   component: ManagedSession,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -85,7 +94,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** The default, representative state of the composed screen: a generic/spec-level Session with
+ * Context open and no action pending. The single visible entry point for this group — every
+ * other export below is a hidden `contract` regression check for one specific state, not a
+ * showcase to browse. Deliberately has no `play`: its demonstration value is the rendered state
+ * itself, and `GenericSpecLevel` below already owns the geometry assertion for this exact
+ * fixture. */
+export const Default: Story = {
+  args: {
+    api: fixtureApi(genericSpecLevelSnapshot()),
+    sessionContext: genericSpecLevelContext(),
+  },
+  globals: WIDE_VIEWPORT,
+};
+
 export const GenericSpecLevel: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(genericSpecLevelSnapshot()),
     sessionContext: genericSpecLevelContext(),
@@ -95,6 +119,7 @@ export const GenericSpecLevel: Story = {
 };
 
 export const SingleTaskExecution: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(singleTaskSnapshot()),
     sessionContext: singleTaskContext(),
@@ -104,6 +129,7 @@ export const SingleTaskExecution: Story = {
 };
 
 export const PendingInteraction: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(sessionFixture(true)),
     sessionContext: pendingInteractionContext(),
@@ -118,6 +144,7 @@ export const PendingInteraction: Story = {
 /** Same state at the narrow width the audit specifically flagged as visibly broken: the
  * interaction card + composer overlay rendering directly on top of the assistant's answer. */
 export const PendingInteractionNarrow: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(sessionFixture(true)),
     sessionContext: pendingInteractionContext(),
@@ -144,6 +171,7 @@ export const PendingInteractionNarrow: Story = {
  * structured interaction-response field (item 6). Kept distinct rather than merged: no other
  * story in this group exercises either assertion. */
 export const WaitingForQuestion: Story = {
+  tags: ['contract'],
   args: { owner: 'story', api: fixtureApi(sessionFixture(true)) },
   globals: NARROW_VIEWPORT,
   play: async ({ canvasElement }) => {
@@ -173,6 +201,7 @@ export const WaitingForQuestion: Story = {
 };
 
 export const WaitingWithoutAttention: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(waitingWithoutAttentionSnapshot()),
     sessionContext: waitingWithoutAttentionContext(),
@@ -182,6 +211,7 @@ export const WaitingWithoutAttention: Story = {
 };
 
 export const TerminalFailure: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(terminalFailureSnapshot()),
     sessionContext: terminalOutcomeContext(),
@@ -246,6 +276,7 @@ quota.entries.push({
  * Full-Session-fixture terminal/cancelled Turn — the message composer stays enabled here because
  * the Session itself is not done, only the one operation quota blocked. */
 export const QuotaFailure: Story = {
+  tags: ['contract'],
   args: { owner: 'quota-story', api: fixtureApi(quota) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -255,6 +286,7 @@ export const QuotaFailure: Story = {
 };
 
 export const Unavailable: Story = {
+  tags: ['contract'],
   args: {
     api: fixtureApi(unavailableSnapshot()),
     sessionContext: unavailableContext(),
@@ -279,6 +311,7 @@ if (multiple.interaction?.kind === 'question') {
 }
 
 export const UnsupportedMultipleChoice: Story = {
+  tags: ['contract'],
   args: { owner: 'multi-story', api: fixtureApi(multiple) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

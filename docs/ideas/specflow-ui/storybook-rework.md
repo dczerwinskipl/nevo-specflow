@@ -207,12 +207,12 @@ implement hiding. Preserve behavior and accepted Chromatic baselines.
 
 ## 4. Story types: distinct purpose, distinct maintenance rules
 
-The existing five-profile model is a good basis. Keep its semantics, strengthen classification:
+The existing five-profile model is a good basis. The visibility column below describes the **proposed target**, not necessarily current host configuration:
 
 | Profile               | Primary job                                      | Normal visibility             | Interaction assertions                              | Chromatic       |
 | --------------------- | ------------------------------------------------ | ----------------------------- | --------------------------------------------------- | --------------- |
-| Showcase / Playground | Human inspection, Controls, component states     | Visible                       | Optional demonstration, not a hidden contract suite | Off             |
-| Visual                | Curated stable appearance baseline               | Visible when genuinely useful | No assertion-bearing play                           | Explicit opt-in |
+| Showcase / Default    | Human inspection, Controls, component states     | Visible                       | Optional demonstration, not a hidden contract suite | Off             |
+| Visual                | Curated stable appearance baseline               | Hidden by default (proposed)  | No assertion-bearing play                           | Explicit opt-in |
 | Contract              | Behavior, a11y, focus, geometry, edge conditions | Hidden by default             | Yes where relevant                                  | Off             |
 | Integration           | Router, provider, connected feature cooperation  | Hidden by default             | Yes where relevant                                  | Off             |
 | Capture               | Design-system/Figma fixture                      | Hidden by default             | No assertion-bearing play                           | Off             |
@@ -235,7 +235,7 @@ and ability to inspect an important product boundary.
 
 For product component stories:
 - Default to one **Default** story serving as the interactive playground, with typed args for the real component's useful inputs, plus
-  small representative examples where they genuinely explain a distinct shape.
+  small representative examples only where they genuinely explain a distinct artifact.
 - Prefer selects, toggles, numeric controls and text inputs over an export per value.
 - Express coherent scenario presets with typed factories. An enum-like scenario is fine
   when data and behavior must change together; it must not hide unrelated test switches
@@ -489,7 +489,8 @@ Storybook metadata with the current baseline. Start as a report, then promote re
 checks to errors. Suggested deterministic checks:
 
 **Candidates for blocking errors once validated:**
-- Invalid/missing owner path or ambiguous duplicate title/story IDs on newly changed stories.
+- Invalid/missing owner path, duplicate title/story IDs, or newly introduced noncanonical
+  human-facing tree depth/category without an accepted exception.
 - Invalid tag combinations (especially Contract/Integration/Capture inheriting live Visual).
 - Capture with assertion-bearing play; Visual with assertion-bearing play.
 - Visual story without explicit snapshot configuration, or accidental visual inheritance.
@@ -498,10 +499,13 @@ checks to errors. Suggested deterministic checks:
 - Broken story registration/build or missing test coverage after migration.
 
 **Initially advisory, human-reviewed:**
-- New Screen family with many visible scenario variants but no meaningful playground.
+- New Screen/Feature/Component family missing a representative visible `Default`, or with
+  redundant visible scenarios that belong in its Controls.
 - A changed product component with no focused component story.
-- Many new exports differing only in args/viewport/text length.
-- A complex playground with no useful controls or impossible state combinations.
+- Many *visible* exports differing only in args/viewport/text length; hidden regression
+  variants may still be appropriate.
+- A `Default` that is empty, broken, needs live backend data or has no useful controls;
+  a complex adapter exposing impossible state combinations.
 - Unusually large story file/fixture or repeated helpers.
 
 Do not hard-fail based merely on file length, export count, lack of argTypes, a filename,

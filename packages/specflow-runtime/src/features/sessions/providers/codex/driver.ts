@@ -13,6 +13,7 @@ import { codexMode, codexModes } from './modes';
 import { CodexRpcError } from './rpc';
 import { createCodexOperation } from './operation';
 import { createProviderAuthentication } from '../authentication';
+import { readCodexLimits } from './telemetry';
 
 export function createCodexDriver(
   options: {
@@ -25,6 +26,7 @@ export function createCodexDriver(
   dependencies: {
     inspect?: (signal: AbortSignal) => ReturnType<typeof inspectCodexInstallation>;
     probe?: typeof probeCodex;
+    readLimits?: typeof readCodexLimits;
   } = {},
 ): SessionDriver {
   const inspect =
@@ -273,6 +275,63 @@ export function createCodexDriver(
   }
 
   return {
+    telemetryGroups: ['usage', 'limits', 'context'],
+    telemetry: {
+      refreshableGroups: ['limits'],
+      async binding(signal) {
+        const current = await inspect(AbortSignal.any([signal, AbortSignal.timeout(10000)]));
+        requireAuthentication(current.authenticationFingerprint);
+
+        return {
+          accountScope: current.accountScope,
+          credentialGeneration: current.authenticationFingerprint,
+        };
+      },
+      async refresh(request, signal) {
+        const bounded = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
+        if (request.groups.length !== 1 || request.groups[0] !== 'limits') {
+          throw new SessionError(
+            'CAPABILITY_UNSUPPORTED',
+            'Only Codex account limits support a read-only refresh.',
+          );
+        }
+
+        const installation = await inspect(bounded);
+        const matches = (current: typeof installation) =>
+          current.accountScope === request.binding.accountScope &&
+          current.authenticationFingerprint === request.binding.credentialGeneration;
+        if (!matches(installation)) {
+          throw new SessionError('PROVIDER_UNAVAILABLE', 'Codex account binding changed.');
+        }
+
+        requireAuthentication(installation.authenticationFingerprint);
+        const windows = await (dependencies.readLimits ?? readCodexLimits)({
+          ...installation,
+          workspace: options.workspace,
+          temporaryRoot: options.temporaryRoot,
+          signal: bounded,
+        });
+        const current = await inspect(bounded);
+        bounded.throwIfAborted();
+        if (!matches(current) || current.fingerprint !== installation.fingerprint) {
+          throw new SessionError(
+            'PROVIDER_UNAVAILABLE',
+            'Codex changed during account telemetry refresh.',
+          );
+        }
+
+        requireAuthentication(current.authenticationFingerprint);
+
+        return [
+          {
+            kind: 'measurement',
+            metric: 'limits',
+            sampleId: 'codex-account-limits',
+            value: { windows },
+          },
+        ];
+      },
+    },
     nativeContextMode: 'provider-assigned',
     supportsManagedWrites: options.managedWrites === true,
     describe: () => structuredClone(descriptor),

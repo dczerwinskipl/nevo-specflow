@@ -249,6 +249,7 @@ export function createAntigravityDriver(
   }
 
   return {
+    telemetryGroups: ['usage'],
     nativeContextMode: 'provider-assigned',
     supportsManagedWrites: options.managedWrites === true,
     describe: () => structuredClone(descriptor),

@@ -21,9 +21,8 @@ related:
 
 # Managed Sessions API
 
-Proposed independent telemetry reads, refresh and live invalidation are specified
-in [Session telemetry API](session-telemetry.md). Those routes/event extensions are
-not implemented by the current API; they do not depend on Task/Spec/Workflow.
+Independent telemetry reads, refresh and live invalidation are specified in
+[Session telemetry API](session-telemetry.md). They do not depend on Task/Spec/Workflow.
 
 Plan 04 foundation contract, implemented on `feature/managed-sessions-foundation` in PR #98.
 This document remains draft pending independent review. Schemas/types live in

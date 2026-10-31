@@ -242,6 +242,7 @@ const turnFields = {
         inputTokens: Type.Optional(SessionSequenceSchema),
         outputTokens: Type.Optional(SessionSequenceSchema),
         cachedTokens: Type.Optional(SessionSequenceSchema),
+        cacheWriteTokens: Type.Optional(SessionSequenceSchema),
         reasoningTokens: Type.Optional(SessionSequenceSchema),
       },
       closed,
@@ -321,6 +322,14 @@ export const LiveProjectionSchema = Type.Object(
 );
 const event = { sessionId: SessionIdSchema, eventSeq: SessionSequenceSchema };
 export const SessionChangeSchema = Type.Union([
+  Type.Object(
+    {
+      ...event,
+      kind: Type.Literal('telemetry'),
+      changes: Type.Object({ telemetryRevision: SessionSequenceSchema }, closed),
+    },
+    closed,
+  ),
   Type.Object(
     {
       ...event,

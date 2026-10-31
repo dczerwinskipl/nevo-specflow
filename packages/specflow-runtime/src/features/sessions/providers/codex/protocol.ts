@@ -30,6 +30,7 @@ export function createCodexProtocol(
   freshContext = false,
   workspace?: string,
   writable = false,
+  telemetryContext?: { turnId: string; modelId: string },
 ) {
   identifier(threadId);
   const active = new Map<string, string>();
@@ -395,7 +396,8 @@ export function createCodexProtocol(
       }
 
       if (method === 'thread/tokenUsage/updated') {
-        const counters = rpcObject(rpcObject(params.tokenUsage).total);
+        const nativeUsage = rpcObject(params.tokenUsage);
+        const counters = rpcObject(nativeUsage.total);
         const output: Extract<DriverFact, { kind: 'usage' }>['counters'] = {};
         for (const [key, source] of [
           ['inputTokens', 'inputTokens'],
@@ -430,6 +432,40 @@ export function createCodexProtocol(
             counters: output,
           });
           lastUsageHash = hash;
+        }
+
+        // Native TokenUsage::tokens_in_context_window uses last.totalTokens;
+        // cumulative total is lifetime consumption and must not become occupancy.
+        const last = nativeUsage.last == null ? undefined : rpcObject(nativeUsage.last);
+        const occupied = last?.totalTokens;
+        const capacity = nativeUsage.modelContextWindow;
+        for (const count of [occupied, capacity]) {
+          if (
+            count != null &&
+            (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0)
+          ) {
+            throw new CodexRpcError('protocol');
+          }
+        }
+
+        if (occupied != null || capacity != null) {
+          await emit({
+            kind: 'measurement',
+            metric: 'context',
+            sampleId: 'native-context:' + ++usageOrdinal,
+            value: {
+              contextGeneration: createHash('sha256')
+                .update(JSON.stringify([threadId, telemetryContext?.modelId]))
+                .digest('hex'),
+              ...(telemetryContext ?? {}),
+              ...(occupied != null
+                ? {
+                    occupiedTokens: occupied as number,
+                    ...(capacity != null ? { capacityTokens: capacity as number } : {}),
+                  }
+                : { capacityTokens: capacity as number }),
+            },
+          });
         }
 
         return;

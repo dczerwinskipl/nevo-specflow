@@ -15,8 +15,10 @@ import type { StoredSession, StoredTurn, StoreCommand, DriverFact } from './prot
 import type { StoreDatabase } from './database';
 import { transitionWork } from '../lifecycle/reducer';
 import { decode, fail, stable, prefix } from './encoding';
+import type { createSessionTelemetry } from './telemetry';
 
 interface FactDependencies extends Pick<StoreDatabase, 'get' | 'run'> {
+  telemetry: ReturnType<typeof createSessionTelemetry>;
   now(this: void): string;
   session(this: void, id: string): StoredSession;
   turn(this: void, id: string, sessionId: string): StoredTurn;
@@ -58,6 +60,7 @@ export function createProviderFacts({
   body,
   preview,
   entry,
+  telemetry,
 }: FactDependencies) {
   function applyFact(c: Extract<StoreCommand, { op: 'fact' }>, effectVerified = false): boolean {
     const s = session(c.sessionId),
@@ -363,7 +366,12 @@ export function createProviderFacts({
           ...basis('delta'),
           ...basis('turn-total'),
         };
+        telemetry.usage(s, t, f);
       }
+    }
+
+    if (f.kind === 'measurement') {
+      telemetry.measurement(s, t, f);
     }
 
     if (f.kind === 'text') {

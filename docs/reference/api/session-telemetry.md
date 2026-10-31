@@ -1,7 +1,7 @@
 ---
 id: reference.api.session-telemetry
 type: reference
-title: Proposed Session telemetry HTTP and live update contract
+title: Session telemetry HTTP and live update contract
 status: draft
 scope: specflow
 areas: [ai, runtime, server, security, ui]
@@ -10,7 +10,7 @@ read_when:
   - designing provider telemetry producers and Session telemetry readers
   - implementing live UI consumption of token usage, costs, limits and context size
 summary: >
-  Proposed bounded Session telemetry snapshot, explicit refresh and existing-stream
+  Bounded Session telemetry snapshot, explicit refresh and existing-stream
   invalidation contract, with provider provenance, freshness and partial availability.
 related:
   - reference.api.sessions
@@ -18,11 +18,11 @@ related:
   - ideas.specflow-runtime.session-v10-backend-readiness
 ---
 
-# Proposed Session telemetry API
+# Session telemetry API
 
-**Proposal only; not implemented.** This document owns the proposed wire contract.
-The existing Sessions API remains unchanged until coordinated schema/server/client
-implementation. No UI implementation, Task/Specification/Workflow integration,
+Implemented backend on the current feature branch; independent final validation
+is reported in the PR. This document owns the wire contract. No UI implementation,
+Task/Specification/Workflow integration,
 provider inference, pricing service or credential broker is in this proposal.
 
 ## Resources and operations
@@ -270,9 +270,17 @@ exception to existing Sessions `no-store`, not a global cache-policy replacement
 
 ## Implementation readiness and acceptance
 
-The snapshot/event/refresh behavior above is defined for planning. Implementation
-also depends on the explicit Auth capability and access-generation projection;
-these must be delivered through Auth's owner before exposing account observations.
+The snapshot, explicit refresh, SSE invalidation, access generation and account-limit
+permission are implemented. Built-in admin has the new account-limit permission;
+developer/viewer do not acquire it implicitly. Trusted local mode retains its
+existing all-capabilities behavior. No frontend adapter/rendering was changed.
+
+| Source      | Implemented observations                                                                                                              | Explicit refresh                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Claude      | Existing Turn tokens, cache writes, cumulative estimated USD with fresh-context baseline and native five-hour/seven-day limit windows | None; observations arrive through the active invocation            |
+| Codex       | Existing cumulative tokens, native latest context occupancy/capacity and opaque generation                                            | Read-only account-limit windows, no thread/Turn creation or resume |
+| Antigravity | Existing cumulative tokens/reasoning/cache-read counters                                                                              | None; bare cost has no proven currency and remains unavailable     |
+
 Native source mappings remain a per-provider prerequisite: verify monetary units,
 token overlap, usage basis, context meaning and limit windows using controlled
 fixtures before enabling each field. Missing support is a valid unavailable result,
@@ -286,3 +294,13 @@ reconnect/resync, slow readers and terminal flush. Test 32 idle clients: zero
 outbox polling and no per-client provider reads, one bounded shared account read
 per interval only when supported and authorized. No test uses real subscriptions,
 credentials or paid inference. No UI implementation belongs to this delivery.
+
+SQLite schema 1 migrates atomically to additive schema 2. Existing normalized Turn
+summaries migrate asynchronously in batches of at most 100 rows, followed by
+bounded Session publication. Reads do not scan transcripts. Legacy aggregates are
+unavailable with `BASELINE_MISSING` until their baseline is ready, and imported
+v1 usage remains partial because old records lack coverage provenance. Existing
+empty Sessions and newly created Sessions establish a complete baseline without
+fabricated historical measurements. Interrupted refresh state is recovered as
+failed/idle without replaying provider work. Observed money is never inferred
+from an unqualified legacy numeric amount.

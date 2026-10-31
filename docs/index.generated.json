@@ -4625,6 +4625,35 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-telemetry-delivery",
+      "type": "engineering",
+      "title": "Session telemetry backend delivery plan",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-telemetry-delivery.md",
+      "read_when": [
+        "implementing or reviewing the Session telemetry API delivery"
+      ],
+      "summary": "Dependency-complete backend implementation and verification plan for live Session telemetry, without UI or Task/Specification/Workflow dependencies.",
+      "related": [
+        "reference.api.session-telemetry",
+        "ideas.specflow-runtime.ai-adapters.usage-accounting"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "planning",
+        "implementation"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.session-v10-backend-readiness",
       "type": "engineering",
       "title": "Session migration remainder and V10 backend readiness",
@@ -5879,14 +5908,14 @@
     {
       "id": "reference.api.session-telemetry",
       "type": "reference",
-      "title": "Proposed Session telemetry HTTP and live update contract",
+      "title": "Session telemetry HTTP and live update contract",
       "status": "draft",
       "file": "docs/reference/api/session-telemetry.md",
       "read_when": [
         "designing provider telemetry producers and Session telemetry readers",
         "implementing live UI consumption of token usage, costs, limits and context size"
       ],
-      "summary": "Proposed bounded Session telemetry snapshot, explicit refresh and existing-stream invalidation contract, with provider provenance, freshness and partial availability.",
+      "summary": "Bounded Session telemetry snapshot, explicit refresh and existing-stream invalidation contract, with provider provenance, freshness and partial availability.",
       "related": [
         "reference.api.sessions",
         "ideas.specflow-runtime.ai-adapters.usage-accounting",

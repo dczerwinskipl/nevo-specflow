@@ -3,8 +3,27 @@ import type {
   StartTurn,
   ProviderDescriptor,
   RespondInteraction,
+  TelemetryGroup,
 } from '@nevo/specflow-contracts/sessions';
-import type { DriverFact } from '../persistence/protocol';
+import type { DriverFact, MeasurementFact } from '../persistence/protocol';
+
+export interface ProviderTelemetryBinding {
+  accountScope: string;
+  credentialGeneration: string;
+}
+export interface ProviderTelemetry {
+  readonly refreshableGroups: readonly TelemetryGroup[];
+  /** Read-only identity checks, bounded with refresh by the caller's shared deadline. */
+  binding(signal: AbortSignal): Promise<ProviderTelemetryBinding>;
+  /** No prompt, thread start/resume, authentication repair or model mutation. */
+  refresh(
+    request: {
+      groups: readonly TelemetryGroup[];
+      binding: ProviderTelemetryBinding;
+    },
+    signal: AbortSignal,
+  ): Promise<MeasurementFact[]>;
+}
 
 export interface Invocation {
   sessionId: string;
@@ -40,6 +59,8 @@ export interface ProviderOperation {
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
 }
 export interface SessionDriver {
+  readonly telemetryGroups?: readonly TelemetryGroup[];
+  readonly telemetry?: ProviderTelemetry;
   /** Some native protocols allocate the persistent context during thread/start.
    * Its identity must be durably correlated before any user input is dispatched. */
   readonly nativeContextMode?: 'reserved' | 'provider-assigned';

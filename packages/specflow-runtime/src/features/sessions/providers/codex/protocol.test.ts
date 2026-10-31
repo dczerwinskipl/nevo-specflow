@@ -38,6 +38,37 @@ function fixture() {
   return { facts, protocol, send, start, item, finish };
 }
 
+it('maps the latest native context gauge independently of cumulative usage and compaction', async () => {
+  const f = fixture();
+  await f.start();
+  for (const occupied of [400, 100]) {
+    await f.send('thread/tokenUsage/updated', {
+      tokenUsage: {
+        total: { inputTokens: 9000 },
+        last: { totalTokens: occupied },
+        modelContextWindow: 2000,
+      },
+    });
+  }
+
+  const context = f.facts.filter(
+    (fact) => fact.kind === 'measurement' && fact.metric === 'context',
+  );
+  expect(context.map((fact) => fact.value)).toEqual([
+    { contextGeneration: expect.any(String) as string, occupiedTokens: 400, capacityTokens: 2000 },
+    { contextGeneration: expect.any(String) as string, occupiedTokens: 100, capacityTokens: 2000 },
+  ]);
+  expect(JSON.stringify(context)).not.toContain('native-thread');
+  expect(f.facts.filter((fact) => fact.kind === 'usage')).toHaveLength(2);
+});
+
+it('does not invent context occupancy from lifetime totals or missing last usage', async () => {
+  const f = fixture();
+  await f.start();
+  await f.send('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 9000 } } });
+  expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([]);
+});
+
 describe('Codex authoritative native item normalization', () => {
   it('keeps phase-aware commentary/partial/final text separate and never repeats deltas', async () => {
     const f = fixture();

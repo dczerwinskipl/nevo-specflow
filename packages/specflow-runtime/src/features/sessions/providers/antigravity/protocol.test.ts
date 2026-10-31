@@ -25,6 +25,11 @@ function fixture() {
 }
 
 describe('Antigravity native stream protocol', () => {
+  it('does not infer a monetary currency or context gauge from bare native cost/usage', async () => {
+    const f = fixture();
+    await f.protocol.frame(f.result({ cost: 0.25, usage: { input_tokens: 100 } }));
+    expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([]);
+  });
   it('accepts the structural native resume step without fabricating text or completion', async () => {
     const f = fixture();
     await f.protocol.frame(f.step(2, { step_type: 'user_input' }));

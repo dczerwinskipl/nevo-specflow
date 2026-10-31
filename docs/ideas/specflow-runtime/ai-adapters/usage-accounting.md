@@ -197,17 +197,17 @@ defines compatible units/windows.
 
 ### Implementation checkpoint and requested telemetry follow-up
 
-At PR #107, the worker already handles deduplicated `delta`, `turn-total` and
+Before the telemetry extension in PR #107, the worker already handled deduplicated `delta`, `turn-total` and
 `session-cumulative` token samples and persists cumulative baselines. Claude maps
 authoritative result input/output/cache-read counts; Codex and Antigravity map
 cumulative native counters, including numeric reasoning counts where supplied.
-This does not provide complete billing or context accounting. Legacy Nevo's
-optional `usage.cost` is not yet represented in the new canonical Turn contract.
-Claude cache-creation counters are not represented either.
+The initial migration did not provide billing or context accounting and omitted
+legacy optional `usage.cost` and Claude cache-creation counters. The telemetry
+extension now persists precise, scoped monetary samples and cache writes without
+changing a Turn's legacy usage object into a billing ledger.
 
-The proposed read-only extension is one Session telemetry response containing
-distinct `usage`, `cost`, `limits` and `context` objects. This is a design proposal,
-not an implemented endpoint. The exact proposed HTTP/read/event contract lives in
+The implemented read-only extension is one Session telemetry response containing
+distinct `usage`, `cost`, `limits` and `context` objects. The HTTP/read/event contract lives in
 [Session telemetry API](../../../reference/api/session-telemetry.md).
 Keep Turn detail available and offer Session rollups
 without loading transcript content or replaying every history page. Account quota
@@ -237,11 +237,12 @@ bounded, rate-limited and coalesced, never perform inference or replay a Turn.
   only when the provider supplies attributable evidence. Include an unknown or
   unclassified remainder; never fabricate a category split from transcript bytes.
 
-Provider source audit: Codex currently reads `account/rateLimits/read` during
-probing but does not project its windows; its usage parser consumes `total` and
-does not project current context occupancy. Claude currently ignores
-`rate_limit_event` and does not map reported monetary fields. Antigravity's
-current parser maps token counters only. Observing these surfaces is not proof
+Provider source audit: Codex projects `account/rateLimits/read` windows through a
+bounded read-only source and distinguishes `tokenUsage.total` consumption from
+`last.totalTokens` context occupancy. Claude maps cumulative `total_cost_usd`,
+cache writes and verified account-window `rate_limit_event` observations.
+Antigravity's parser maps token counters only; unqualified numeric cost is not USD
+evidence. Observing these surfaces is not proof
 of the semantics of every version: add bounded fixtures and validate the exact
 source fields before enabling a dimension. No unknown CLI or real subscription
 may be invoked by automated telemetry tests.
@@ -251,7 +252,8 @@ account-limit adapters/cache; then current-context capacity/breakdown where nati
 evidence exists. Regression cases include restart/replay, missing baselines,
 compaction/reset, model/account change, stale credentials/events, unavailable
 dimensions and read authorization. This is a separate capability from the MCP
-transport extraction; do not claim it shipped with PR #107.
+transport extraction. The backend extension is delivered in PR #107 following
+the owner's explicit authorization; its final verification is recorded there.
 
 Add this while canonical usage is still being migrated. Once persisted historical totals exist,
 changing from "sum every event" to basis-aware accounting becomes much harder.

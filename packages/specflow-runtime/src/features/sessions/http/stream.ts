@@ -7,6 +7,7 @@ import { SessionError } from '../errors';
 import { createStreamWakeup } from './wakeup';
 import { authorizeSession } from './authorization';
 import { effectiveEvent } from './projection';
+import { telemetryAccess } from './telemetry';
 
 export function createSessionStreams<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
@@ -54,6 +55,15 @@ export function createSessionStreams<RawServer extends RawServerBase>(
       }
 
       const controller = new AbortController();
+      const scope = await coordinator.store.call<{ projectId: string; sessionId: string }>({
+        op: 'identity',
+        sessionId: sid,
+      });
+      const initialAccess = telemetryAccess(request, scope).accessRevision;
+      const unwatchTelemetry = coordinator.telemetry.watch(
+        sid,
+        () => telemetryAccess(request, scope).permissions['view-provider-limits'],
+      );
       const wakeup = createStreamWakeup((listener) => coordinator.store.subscribe(sid, listener));
       streams.add(controller);
       perActor.set(principal, (perActor.get(principal) ?? 0) + 1);
@@ -75,6 +85,10 @@ export function createSessionStreams<RawServer extends RawServerBase>(
         while (!controller.signal.aborted) {
           request.authz = request.authz.refresh();
           await authorizeSession(request, coordinator, sid);
+          if (telemetryAccess(request, scope).accessRevision !== initialAccess) {
+            break;
+          }
+
           if (Date.now() - heartbeat >= 15000) {
             raw.write(': heartbeat\n\n');
             heartbeat = Date.now();
@@ -125,6 +139,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
       } catch {
         /* Auth revocation, disconnect and shutdown close the stream without more data. */
       } finally {
+        unwatchTelemetry();
         wakeup.close();
         streams.delete(controller);
         const left = (perActor.get(principal) ?? 1) - 1;

@@ -301,6 +301,7 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
     developer,
     admin: [
       ...developer,
+      SessionCapabilities.capabilities.ViewProviderLimits,
       SettingsCapabilities.capabilities.View,
       SettingsCapabilities.capabilities.Manage,
       ProjectGitCapabilities.capabilities.Integrate,

@@ -27,6 +27,16 @@ function fixture(options: { write?: boolean; managed?: boolean; modes?: string[]
       boundary: { readOnly: true, write: options.write !== false },
     }),
   );
+  const readLimits = vi.fn(() =>
+    Promise.resolve([
+      {
+        windowId: 'synthetic-window',
+        scope: 'account' as const,
+        unit: 'percent' as const,
+        used: '25',
+      },
+    ]),
+  );
   const driver = createCodexDriver(
     {
       workspace: resolve('workspace'),
@@ -34,13 +44,14 @@ function fixture(options: { write?: boolean; managed?: boolean; modes?: string[]
       homeRoot: resolve('private-native-home'),
       managedWrites: options.managed !== false,
     },
-    { inspect, probe },
+    { inspect, probe, readLimits },
   );
 
   return {
     driver,
     probe,
     inspect,
+    readLimits,
     update() {
       fingerprint = 'b'.repeat(64);
     },
@@ -48,6 +59,51 @@ function fixture(options: { write?: boolean; managed?: boolean; modes?: string[]
 }
 
 const signal = () => new AbortController().signal;
+it('refreshes only read-only limits under the exact inspected account and credential generation', async () => {
+  const f = fixture();
+  const telemetry = f.driver.telemetry!;
+  const binding = await telemetry.binding(signal());
+  expect(binding).toEqual({
+    accountScope: 'account-scope',
+    credentialGeneration: 'synthetic-login',
+  });
+  expect(await telemetry.refresh({ groups: ['limits'], binding }, signal())).toEqual([
+    {
+      kind: 'measurement',
+      metric: 'limits',
+      sampleId: 'codex-account-limits',
+      value: {
+        windows: [{ windowId: 'synthetic-window', scope: 'account', unit: 'percent', used: '25' }],
+      },
+    },
+  ]);
+  expect(f.probe).not.toHaveBeenCalled();
+  await expect(telemetry.refresh({ groups: ['context'], binding }, signal())).rejects.toMatchObject(
+    { code: 'CAPABILITY_UNSUPPORTED' },
+  );
+  await expect(
+    telemetry.refresh(
+      { groups: ['limits'], binding: { ...binding, credentialGeneration: 'old-login' } },
+      signal(),
+    ),
+  ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  expect(f.readLimits).toHaveBeenCalledOnce();
+});
+
+it('discards a late account observation when the installation changes during the read', async () => {
+  const f = fixture();
+  const telemetry = f.driver.telemetry!;
+  const binding = await telemetry.binding(signal());
+  f.readLimits.mockImplementationOnce(() => {
+    f.update();
+
+    return Promise.resolve([]);
+  });
+  await expect(telemetry.refresh({ groups: ['limits'], binding }, signal())).rejects.toMatchObject({
+    code: 'PROVIDER_UNAVAILABLE',
+  });
+});
+
 it('admits an unpinned future version provisionally with native Agent as its default', async () => {
   const f = fixture();
   const descriptor = await f.driver.refresh!(signal());

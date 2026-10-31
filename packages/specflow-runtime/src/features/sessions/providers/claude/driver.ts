@@ -368,6 +368,7 @@ export function createClaudeDriver(
   }
 
   return {
+    telemetryGroups: ['usage', 'cost', 'limits'],
     supportsManagedWrites: options.managedWrites === true,
     describe: () => structuredClone(descriptor),
     refresh,

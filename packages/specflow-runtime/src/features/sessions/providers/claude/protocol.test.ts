@@ -4,7 +4,7 @@ import { validateDriverFact } from '../facts';
 import { createClaudeProtocol } from './protocol';
 
 const sessionId = 'b6d81fa6-d1fc-4841-8241-bc1ae33cbb1f';
-function fixture(allowedTools?: readonly string[]) {
+function fixture(allowedTools?: readonly string[], freshContext = false) {
   const facts: DriverFact[] = [];
   const protocol = createClaudeProtocol(
     (fact) => {
@@ -15,6 +15,7 @@ function fixture(allowedTools?: readonly string[]) {
     },
     sessionId,
     allowedTools,
+    freshContext,
   );
   const accept = (frame: unknown) => protocol.accept(JSON.stringify(frame));
   const assistant = (id: string, content: unknown[]) =>
@@ -37,6 +38,108 @@ function fixture(allowedTools?: readonly string[]) {
 }
 
 describe('Claude full-message protocol', () => {
+  it('maps documented Claude account quota fractions without inferring consumption from status', async () => {
+    const f = fixture();
+    for (const rateLimitType of ['five_hour', 'seven_day']) {
+      await f.accept({
+        type: 'rate_limit_event',
+        uuid: rateLimitType,
+        session_id: sessionId,
+        rate_limit_info: {
+          status: 'allowed_warning',
+          utilization: 0.563,
+          rateLimitType,
+          resetsAt: 1730947200,
+          privateLabel: 'never published',
+        },
+      });
+    }
+
+    const samples = f.facts.filter(
+      (fact) => fact.kind === 'measurement' && fact.metric === 'limits',
+    );
+    expect(samples.every((sample) => sample.windowUpdate === true)).toBe(true);
+    expect(samples.map((sample) => sample.value.windows[0])).toEqual([
+      {
+        windowId: expect.any(String) as string,
+        scope: 'account',
+        unit: 'percent',
+        used: '56.3',
+        windowSeconds: 18000,
+        resetsAt: '2024-11-07T02:40:00.000Z',
+      },
+      {
+        windowId: expect.any(String) as string,
+        scope: 'account',
+        unit: 'percent',
+        used: '56.3',
+        windowSeconds: 604800,
+        resetsAt: '2024-11-07T02:40:00.000Z',
+      },
+    ]);
+    expect(samples[0]!.value.windows[0]!.windowId).not.toBe(samples[1]!.value.windows[0]!.windowId);
+    expect(JSON.stringify(samples)).not.toMatch(/never published|session_id/);
+    expect(f.protocol.terminal).toBe(false);
+  });
+
+  it('leaves unsupported or incomplete Claude quota events unavailable', async () => {
+    const f = fixture();
+    for (const info of [
+      { status: 'rejected', rateLimitType: 'five_hour' },
+      { status: 'allowed', utilization: 0 },
+      { status: 'allowed', utilization: -0.1, rateLimitType: 'five_hour' },
+      { status: 'allowed', utilization: 1.01, rateLimitType: 'five_hour' },
+      { status: 'allowed', utilization: 0.5, rateLimitType: 'unknown' },
+      { status: 'allowed', utilization: 0.5, rateLimitType: 'seven_day_opus' },
+      { status: 'allowed', utilization: 0.5, rateLimitType: 'overage' },
+      { status: 'allowed', utilization: 0.5, rateLimitType: 'five_hour', resetsAt: 1730947200000 },
+    ]) {
+      await f.accept({ type: 'rate_limit_event', rate_limit_info: info, session_id: sessionId });
+    }
+
+    await f.accept({
+      type: 'rate_limit_event',
+      rateLimitInfo: { status: 'allowed', utilization: 0.5, rateLimitType: 'five_hour' },
+      session_id: sessionId,
+    });
+    expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([]);
+  });
+  it('preserves native cumulative USD cost and cache creation without inferring a resumed baseline', async () => {
+    const f = fixture();
+    await f.result({ total_cost_usd: 1e-7, usage: { cache_creation_input_tokens: 12 } });
+    expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([
+      {
+        kind: 'measurement',
+        metric: 'cost',
+        sampleId: 'claude-result-cost',
+        basis: 'session-cumulative',
+        value: {
+          currency: 'USD',
+          amount: '0.0000001',
+          basis: 'provider-reported',
+          meaning: 'api-equivalent',
+        },
+      },
+    ]);
+    expect(f.facts.find((fact) => fact.kind === 'usage')).toMatchObject({
+      counters: { cacheWriteTokens: 12 },
+    });
+    const fresh = fixture(undefined, true);
+    await fresh.result({ total_cost_usd: 0.25 });
+    expect(
+      fresh.facts.filter((fact) => fact.kind === 'measurement').map((fact) => fact.value),
+    ).toEqual([
+      { currency: 'USD', amount: '0', basis: 'provider-reported', meaning: 'api-equivalent' },
+      { currency: 'USD', amount: '0.25', basis: 'provider-reported', meaning: 'api-equivalent' },
+    ]);
+  });
+
+  it.each([-1, Infinity, '0.1', 0.0000000000001])(
+    'rejects invalid or unrepresentable native money: %s',
+    async (total_cost_usd) => {
+      await expect(fixture().result({ total_cost_usd })).rejects.toThrow('supported protocol');
+    },
+  );
   it('accepts foreground tool progress with internal IDs without changing tool state or usage', async () => {
     const f = fixture(['Bash']);
     await f.assistant('command', [

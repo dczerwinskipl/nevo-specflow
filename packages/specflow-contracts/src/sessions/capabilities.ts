@@ -7,5 +7,6 @@ export const SessionCapabilities = defineResource({
     View: 'view',
     Manage: 'manage',
     ExecuteWrite: 'execute-write',
+    ViewProviderLimits: 'view-provider-limits',
   },
 });

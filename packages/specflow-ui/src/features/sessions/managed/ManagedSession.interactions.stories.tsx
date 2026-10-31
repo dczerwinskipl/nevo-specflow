@@ -24,14 +24,18 @@ import {
 } from './managedSession.storyHelpers.stories-support';
 
 /**
- * `SpecFlow/Screens/Managed Session/Interactions`: stories that drive a specific user action,
- * flow, or regression on top of the `States` the screen can be in (`ManagedSession.states.stories.tsx`)
- * — a click, a keyboard action, a scroll, or a timed sequence — rather than a state a user simply
- * lands on. `WorkInspector.stories.tsx` is its own, separately organized group and is untouched.
+ * `SpecFlow/Contracts/Managed Session interactions`: regression/behavior checks that drive a
+ * specific user action, flow, or race on top of the `States` the screen can be in
+ * (`SpecFlow/Screens/Managed Session/States`, `ManagedSession.states.stories.tsx`) — a click, a
+ * keyboard action, a scroll, or a timed sequence — rather than a state a user simply lands on.
+ * Filed under `Contracts` (matching this repo's existing convention for behavior-verification
+ * stories, e.g. `SpecFlow/Contracts/Cache observer`) so these don't compete with `States` for
+ * attention when browsing what the screen actually looks like. `WorkInspector.stories.tsx` is its
+ * own, separately organized group and is untouched.
  */
 
 const meta = {
-  title: 'SpecFlow/Screens/Managed Session/Interactions',
+  title: 'SpecFlow/Contracts/Managed Session interactions',
   component: ManagedSession,
   parameters: { layout: 'fullscreen' },
   decorators: [

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SessionProviderIcon } from './SessionProviderIcon';
 
 const meta = {
-  title: 'SpecFlow/Sessions/Provider Identity',
+  title: 'SpecFlow/Components/Session Provider Identity',
   component: SessionProviderIcon,
   render: () => (
     <div className="grid gap-4 p-4 text-content-primary">

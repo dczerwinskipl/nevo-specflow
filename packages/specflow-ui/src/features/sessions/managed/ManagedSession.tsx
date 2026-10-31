@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
   Typography,
   WorkspaceHeader,
+  appBackgroundClassName,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
   useWorkspaceCapabilities,
@@ -45,12 +46,8 @@ import type {
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
 import { ModelEffortPicker } from './ModelEffortPicker';
-import { ComposerIntentPicker, ComposerOperationPolicyPicker } from './ComposerPresetPicker';
-import {
-  demoComposerOptions,
-  type ComposerIntent,
-  type ComposerOperationPolicyId,
-} from './composerOptions';
+import { ComposerModePicker, type ComposerModeValue } from './ComposerPresetPicker';
+import { demoComposerOptions } from './composerOptions';
 import { createWorkInspector } from './WorkInspector';
 import { SessionContext, createSessionContextStack } from './context/SessionContext';
 import { unavailableSessionContext } from './context/sessionContextTypes';
@@ -502,14 +499,34 @@ function ManagedSessionConversation({
       return undefined;
     }
 
+    // Debounced, not recomputed on every tick (owner audit, live on a real phone: a slow manual
+    // scroll gesture fires many intermediate `scroll` events, and committing `away` from each one
+    // made the "jump to latest" pill flicker in/out mid-gesture as the 80px threshold was crossed
+    // and re-crossed by hand-jitter alone). `AWAY_SETTLE_MS` only *delays* when the computed value
+    // reaches `feed` — it still recomputes from the latest geometry each time, so the pill never
+    // shows a stale verdict, only a slightly late one, settling in once scrolling pauses rather
+    // than chasing every intermediate position.
+    const AWAY_SETTLE_MS = 200;
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
-      feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > 80);
       maybeLoadOlder(node);
+      if (settleTimer !== undefined) {
+        clearTimeout(settleTimer);
+      }
+
+      settleTimer = setTimeout(() => {
+        feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > 80);
+      }, AWAY_SETTLE_MS);
     };
 
     node.addEventListener('scroll', handleScroll, { passive: true });
 
-    return () => node.removeEventListener('scroll', handleScroll);
+    return () => {
+      node.removeEventListener('scroll', handleScroll);
+      if (settleTimer !== undefined) {
+        clearTimeout(settleTimer);
+      }
+    };
     // Same closure note as the effect above: `maybeLoadOlder`/`feed` are recreated every render
     // with no behavior beyond the listed primitives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -680,14 +697,10 @@ function ManagedSessionConversation({
     () => demoComposerOptions(state.snapshot?.session.providerId),
     [state.snapshot?.session.providerId],
   );
-  const [intentPresetId, setIntentPresetId] = useState<ComposerIntent | undefined>(undefined);
-  const selectedPreset = composerOptions.presets.find((preset) => preset.intent === intentPresetId);
-  const operationPolicies = selectedPreset
-    ? (composerOptions.operationPoliciesByPreset[selectedPreset.intent] ?? [])
-    : [];
-  const [operationPolicyId, setOperationPolicyId] = useState<ComposerOperationPolicyId | undefined>(
-    undefined,
-  );
+  // One combined intent + operation-policy choice (owner audit, round five: the same "flatten the
+  // dependent sub-choice into the parent's own list" trick `ModelEffortPicker` uses for Model →
+  // effort, applied to intent → operation policy — see `ComposerModePicker`'s own doc comment).
+  const [composerMode, setComposerMode] = useState<ComposerModeValue | undefined>(undefined);
   const handleAttachmentsSelected = (
     files: FileList | null,
     inputRef: typeof fileAttachmentInputRef,
@@ -799,15 +812,35 @@ function ManagedSessionConversation({
                   // header via the same CSS custom properties that header already measures itself
                   // (`AppWorkspace.css`) — not a separately computed height relationship of this
                   // component's own.
+                  //
+                  // Stacked/mobile only: owner audit, live on a real phone ("Composer - tło nie
+                  // dosięga") — `bottom: var(--workspace-overlay-bottom, …)` previously floated
+                  // the *entire* overlay (including the zone its own background should fill) up
+                  // off the true viewport/safe-area edge, the same treatment the top floating-nav
+                  // pill intentionally uses; unlike that pill, the Composer is meant to read as a
+                  // solid bar docked to the edge (mockup's own `.composerwrap`), not a floating
+                  // card with transparent margin around it. It now pins to the real `bottom: 0`
+                  // with its own `appBackgroundClassName` background filling all the way down, and
+                  // reserves the safe-area clearance as `padding-bottom` *inside* that background
+                  // instead of lifting the whole element away from the edge — so nothing scrolling
+                  // underneath can ever show through the gap. Split/desktop keeps the unchanged
+                  // floating-above-the-edge treatment: it is a `sticky` child of its own local
+                  // scroll container, which already shares that container's opaque background, so
+                  // there is no transparent zone for content to show through underneath it.
                   className={cn(
-                    'z-10 flex flex-col items-center gap-2 px-4 pb-4 pt-3 sm:px-5 sm:pb-5',
-                    supportsSplit ? 'sticky' : 'fixed inset-x-0 z-20 overflow-y-auto',
+                    'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
+                    supportsSplit
+                      ? 'sticky pb-4 sm:pb-5'
+                      : cn('fixed inset-x-0 bottom-0 z-20 overflow-y-auto', appBackgroundClassName),
                   )}
                   style={
                     supportsSplit
                       ? { bottom: 'var(--workspace-overlay-bottom, 0.75rem)' }
                       : {
-                          bottom: 'var(--workspace-overlay-bottom, 0.75rem)',
+                          // The same breathing room `pb-4` gave before, now stacked on top of the
+                          // safe-area clearance instead of replacing it — see the className comment
+                          // above for why this moved from a `bottom` offset to `padding-bottom`.
+                          paddingBottom: 'calc(1rem + var(--workspace-overlay-bottom, 0.75rem))',
                           maxHeight:
                             'calc(var(--mobile-workspace-viewport-height, 100dvh) - ' +
                             'var(--mobile-workspace-header-height, 3.5rem) - 1rem)',
@@ -921,7 +954,7 @@ function ManagedSessionConversation({
                               directly (owner audit): the mockup's own "+" affordance is itself a
                               menu trigger (desktop.html's `c3-plus`/`data-cmp="attach"`), and a
                               bare `IconButton` here — not also wrapped in `Tooltip`/
-                              `TooltipTrigger`, see `ComposerIntentPicker`'s doc comment — avoids
+                              `TooltipTrigger`, see `ComposerModePicker`'s doc comment — avoids
                               the same nested-`asChild` tap bug. */}
                           <Menu>
                             <MenuTrigger asChild>
@@ -951,17 +984,10 @@ function ManagedSessionConversation({
                               </MenuItem>
                             </MenuContent>
                           </Menu>
-                          <ComposerIntentPicker
-                            presets={composerOptions.presets}
-                            value={intentPresetId}
-                            onChange={setIntentPresetId}
-                            disabled={state.commandBusy || !!state.pending}
-                            compact={!supportsSplit}
-                          />
-                          <ComposerOperationPolicyPicker
-                            policies={operationPolicies}
-                            value={operationPolicyId}
-                            onChange={setOperationPolicyId}
+                          <ComposerModePicker
+                            options={composerOptions}
+                            value={composerMode}
+                            onChange={setComposerMode}
                             disabled={state.commandBusy || !!state.pending}
                             compact={!supportsSplit}
                           />

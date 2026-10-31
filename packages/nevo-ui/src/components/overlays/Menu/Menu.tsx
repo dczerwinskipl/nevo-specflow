@@ -16,7 +16,11 @@ import {
   floatingSeparatorClassName,
 } from '../../../design-system/floatingRecipes';
 import { cn } from '../../../lib';
-import { optionDescriptionClassName, optionLabelClassName } from '../../forms/shared/optionRecipes';
+import {
+  optionDescriptionClassName,
+  optionLabelClassName,
+  optionLabelWrappingClassName,
+} from '../../forms/shared/optionRecipes';
 import { Icon, type IconGlyph } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 
@@ -231,9 +235,17 @@ export const MenuRadioItem = forwardRef<
       </span>
       {description ? (
         <span className="grid min-w-0 flex-1 gap-0.5 py-0.5">
+          {/* A heading above a description reads as a title, not a single-line value (unlike the
+              plain, no-description branch below, which stays `optionLabelClassName`'s single-line
+              truncating recipe): owner audit, live — a long option's own title (e.g. "Zatwierdzaj
+              edycje automatycznie") was being cut to an ellipsis by that same single-line recipe
+              even though its full second-line description sat right underneath, uncut. The
+              wrapping variant (`optionLabelWrappingClassName`, the same one branch/workspace
+              pickers use to keep a long value fully readable) lets the title wrap onto a second
+              line instead of truncating, so nothing in either line is ever lost. */}
           <Typography
             as="span"
-            className={cn(optionLabelClassName, 'block')}
+            className={cn(optionLabelWrappingClassName, 'block')}
             {...designSlot('MenuRadioItem', 'label')}
             variant="body-sm"
           >

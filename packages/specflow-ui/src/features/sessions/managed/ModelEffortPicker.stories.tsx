@@ -105,11 +105,20 @@ export const Placeholder: Story = {};
 export const SelectModelEffort: Story = {
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
-    const canvas = within(canvasElement);
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
     await userEvent.click(modelOptionByLabel(menu, 'Standard · high'));
     await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
-    await expect(await canvas.findByRole('button', { name: 'Standard · high' })).toBeVisible();
+    // Not `findByRole('button', { name: 'Standard · high' })` (owner audit, round four: the
+    // trigger's label is now two separate nodes — the model title text node, then the effort's
+    // OWN nested `<span>`, for its distinct lighter weight — and the accessible-name algorithm
+    // inserts its own inter-element separator between them, which does not reliably collapse back
+    // to the single-space `textContent` string an exact-name role query expects; `textContent`
+    // itself is unambiguous and is what every other assertion in this file already checks for a
+    // rich, multi-node label, see `CompactTrigger*`). The query targets the known `id` instead.
+    const trigger = within(canvasElement).getByRole('button', { name: /Standard/ });
+    await expect(trigger).toBeVisible();
+    await expect(trigger.id).toBe('managed-model');
+    await expect(trigger.textContent).toBe('Standard · high');
     await waitFor(() => expect(handleChange).toHaveBeenCalledOnce());
     await expect(handleChange).toHaveBeenCalledWith('mock-standard', 'high');
   },
@@ -152,17 +161,64 @@ export const NoModelOverrideCapability: Story = {
   },
 };
 
-/** The narrow/mobile presentation (`compact`): the trigger collapses to an icon-only button, with
- * the selected model/effort available only as its accessible name/tooltip. */
+/** The narrow/mobile presentation (`compact`): the trigger narrows, but keeps showing the
+ * selected model/effort as visible truncating text next to its icon — never collapses to an
+ * icon-only button (owner audit, round two: a real user could not find this picker at all when it
+ * did, and reference screenshots of ChatGPT/Codex's own compact composer toolbar confirm a short
+ * text label next to the icon is the expected pattern, not an unlabeled glyph). */
 export const CompactTrigger: Story = {
   args: {
     compact: true,
     initialValue: { modelId: 'mock-standard', effort: 'low' },
   },
   play: async ({ canvasElement }) => {
-    await expect(
-      canvasElement.querySelector<HTMLButtonElement>('#managed-model[aria-label]'),
-    ).not.toBeNull();
-    await expect(canvasElement.querySelector('#managed-model')?.textContent).toBe('');
+    const trigger = canvasElement.querySelector<HTMLButtonElement>('#managed-model');
+    await expect(trigger).not.toBeNull();
+    await expect(trigger?.textContent).toBe('Standard · low');
+  },
+};
+
+/**
+ * Owner audit, round three: this app's own `ProviderDescriptor.models[].title` is not guaranteed
+ * to be a short, brand-dropped form the way the reference screenshots' in-app labels were (e.g.
+ * "Claude Sonnet 5", not "Sonnet 5") — proves the compact trigger degrades a realistically long
+ * real title to readable, ellipsis-truncated text instead of overflowing the toolbar or falling
+ * back to an unlabeled icon, not just the short "Standard"/"Fast" placeholders this file's own
+ * fixture otherwise uses everywhere else.
+ */
+export const CompactTriggerLongModelName: Story = {
+  args: {
+    compact: true,
+    provider: {
+      ...providerFixture(),
+      models: [
+        { modelId: 'mock-long', title: 'Claude Sonnet 5 Extended Thinking', efforts: ['high'] },
+      ],
+    },
+    initialValue: { modelId: 'mock-long', effort: 'high' },
+  },
+  play: async ({ canvasElement }) => {
+    const trigger = canvasElement.querySelector<HTMLButtonElement>('#managed-model');
+    await expect(trigger).not.toBeNull();
+    // The full label is still the trigger's accessible name/title (never lost) — only its
+    // *rendered* text is visually clipped by `max-w`/`truncate`, confirmed below by the label
+    // element's own scrollWidth exceeding its clientWidth (an ellipsis is a visual-only effect;
+    // `textContent` always reports the untruncated string).
+    await expect(trigger?.textContent).toBe('Claude Sonnet 5 Extended Thinking · high');
+    // The label is `Button`'s own `data-design-slot="label"` span — not simply the last `span`
+    // child: the effort now renders as its OWN nested span inside that label span (for its
+    // lighter weight/secondary color), so a bare last-`span` lookup would instead match either
+    // that nested effort span or the trailing chevron's wrapping span, depending on which came
+    // last in document order.
+    const label = trigger?.querySelector('[data-design-slot="label"]');
+    await waitFor(() => {
+      if (!label || label.scrollWidth <= label.clientWidth) {
+        throw new Error('The long model label should be visually truncated, not overflow.');
+      }
+    });
+    // The cap is an inline `style.maxWidth` (see `ModelEffortPicker.tsx`'s own doc comment: a
+    // `max-w-*` className has no guaranteed precedence here over `truncate`'s own `max-w-full`,
+    // since `cn` is plain `clsx`, not `tailwind-merge`) — 192px for a compact trigger.
+    await expect(trigger?.getBoundingClientRect().width).toBeLessThanOrEqual(192);
   },
 };

@@ -466,8 +466,11 @@ export const RelatedTaskOpensAsIndependentTab: Story = {
     await waitFor(() => expect(canvas.getByText('Powiązane zadania')).toBeVisible());
     await expect(canvas.getByText('Document the admission guard')).toBeVisible();
 
-    // Close the Task tab: the strip disappears, back to the single-pinned-tab baseline.
-    await closeRootTab(canvasElement, 'Zadanie');
+    // Close the Task tab — named after the real Task (`tabLabel`), never the generic "Zadanie"
+    // screen title (live-review finding: a Task tab must be told apart from another Task's tab by
+    // name, not just by which one is active) — and the strip disappears, back to the
+    // single-pinned-tab baseline.
+    await closeRootTab(canvasElement, 'TASK-02 Document the admission guard');
     await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(false));
     await waitFor(() => expect(secondaryRegion()?.outerHTML).toBe(baselineSecondaryHTML));
   },

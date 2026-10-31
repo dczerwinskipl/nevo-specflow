@@ -541,13 +541,21 @@ function Work({ data }: { data: Data }) {
 
   return (
     <AppContent className="h-full w-full">
+      {/* `contentClassName`'s `flex min-h-full flex-col` gives the scrolled content a definite,
+          full-height column: `EmptyState`'s own `variant="pane"` (`flex-1 min-h-full ...
+          justify-center`) then actually has remaining space (below the filter bar) to fill and
+          self-centre within, and the real-results wrapper's `m-auto` centres a short visible Work
+          log the same way — both instead of collapsing to intrinsic height at the top of an
+          otherwise-blank, full-viewport mobile drill-in panel (live-review finding). A Work log
+          long enough to overflow computes `m-auto`'s margins to `0` and starts under the filter
+          bar as before, so this never fights normal scrolling. */}
       <ScrollArea
         viewportRef={scroller}
         className="min-h-0 w-full flex-1"
-        contentClassName="p-4"
+        contentClassName="flex min-h-full flex-col p-4"
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
-        <div className="grid gap-4">
+        <div className="flex w-full flex-1 flex-col gap-4">
           {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
           {query.isError && (
             <Alert tone="attention" title={t('managedSession.failed')}>
@@ -579,14 +587,16 @@ function Work({ data }: { data: Data }) {
               ) : visibleChapters.length === 0 ? (
                 <EmptyState variant="pane" title={t('managedSession.workInspector.noMatches')} />
               ) : (
-                visibleChapters.map((chapter) => (
-                  <WorkChapterSection
-                    key={chapter.id}
-                    chapter={chapter}
-                    data={data}
-                    onOpenActions={openActions}
-                  />
-                ))
+                <div className="m-auto grid w-full gap-4">
+                  {visibleChapters.map((chapter) => (
+                    <WorkChapterSection
+                      key={chapter.id}
+                      chapter={chapter}
+                      data={data}
+                      onOpenActions={openActions}
+                    />
+                  ))}
+                </div>
               )}
             </>
           )}
@@ -666,13 +676,18 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
 
   return (
     <AppContent className="h-full w-full">
+      {/* Same full-height-centring treatment as `Work` above: `EmptyState` fills and self-centres
+          via its own `flex-1`, and the real Actions Timeline's `m-auto` wrapper centres a short
+          drill-in (a Work item with only one or two actions) instead of leaving it pinned to the
+          top of an otherwise-blank, full-viewport mobile panel (live-review finding) — a Timeline
+          long enough to overflow computes `m-auto`'s margins to `0` and is unaffected. */}
       <ScrollArea
         viewportRef={scroller}
         className="min-h-0 w-full flex-1"
-        contentClassName="p-4"
+        contentClassName="flex min-h-full flex-col p-4"
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
-        <div className="grid gap-4">
+        <div className="flex w-full flex-1 flex-col gap-4">
           {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
           {query.isError && (
             <Alert tone="attention" title={t('managedSession.failed')}>
@@ -703,47 +718,49 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
               ) : (
                 // L3/L4 exact chronology: the generic Timeline is the right default here, unlike
                 // the Commentary-grouped L2 Work log above (session-work-inspector-ui-spec.md §2).
-                <Timeline size="sm" aria-label={t('managedSession.actions')}>
-                  {items.map((item) => (
-                    <Timeline.Item key={item.actionId}>
-                      <Timeline.Marker tone={stateTone(item.state)} />
-                      <Timeline.Content title={t(`managedSession.workState.${item.state}`)}>
-                        <div className="grid min-w-0 gap-2">
-                          <ReadableText
-                            api={data.api}
-                            sessionId={data.sessionId}
-                            value={item.title}
-                          />
-                          {item.input && (
-                            <div className="grid min-w-0 gap-1">
-                              <Typography variant="label-sm" className="text-content-muted">
-                                {t('managedSession.workInspector.input')}
-                              </Typography>
-                              <ReadableText
-                                api={data.api}
-                                sessionId={data.sessionId}
-                                value={{ text: '', complete: false, content: item.input }}
-                              />
-                            </div>
-                          )}
-                          {item.output && (
-                            <div className="grid min-w-0 gap-1">
-                              <Typography variant="label-sm" className="text-content-muted">
-                                {t('managedSession.workInspector.output')}
-                              </Typography>
-                              <ReadableText
-                                api={data.api}
-                                sessionId={data.sessionId}
-                                value={{ text: '', complete: false, content: item.output }}
-                              />
-                            </div>
-                          )}
-                          {item.error && <Alert tone="attention" title={item.error.message} />}
-                        </div>
-                      </Timeline.Content>
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
+                <div className="m-auto w-full">
+                  <Timeline size="sm" aria-label={t('managedSession.actions')}>
+                    {items.map((item) => (
+                      <Timeline.Item key={item.actionId}>
+                        <Timeline.Marker tone={stateTone(item.state)} />
+                        <Timeline.Content title={t(`managedSession.workState.${item.state}`)}>
+                          <div className="grid min-w-0 gap-2">
+                            <ReadableText
+                              api={data.api}
+                              sessionId={data.sessionId}
+                              value={item.title}
+                            />
+                            {item.input && (
+                              <div className="grid min-w-0 gap-1">
+                                <Typography variant="label-sm" className="text-content-muted">
+                                  {t('managedSession.workInspector.input')}
+                                </Typography>
+                                <ReadableText
+                                  api={data.api}
+                                  sessionId={data.sessionId}
+                                  value={{ text: '', complete: false, content: item.input }}
+                                />
+                              </div>
+                            )}
+                            {item.output && (
+                              <div className="grid min-w-0 gap-1">
+                                <Typography variant="label-sm" className="text-content-muted">
+                                  {t('managedSession.workInspector.output')}
+                                </Typography>
+                                <ReadableText
+                                  api={data.api}
+                                  sessionId={data.sessionId}
+                                  value={{ text: '', complete: false, content: item.output }}
+                                />
+                              </div>
+                            )}
+                            {item.error && <Alert tone="attention" title={item.error.message} />}
+                          </div>
+                        </Timeline.Content>
+                      </Timeline.Item>
+                    ))}
+                  </Timeline>
+                </div>
               )}
             </>
           )}

@@ -4,6 +4,7 @@ import {
   AppContent,
   AppWorkspaceBody,
   Button,
+  EmptyState,
   StatusIndicator,
   Typography,
   defineSecondaryStack,
@@ -85,8 +86,12 @@ export function SessionContext({
   if (value.status === 'unavailable') {
     return (
       <AppContent className="h-full w-full">
-        <AppWorkspaceBody scroll="area">
-          <p className="text-body-sm text-content-muted">{t('sessions.context.unavailable')}</p>
+        {/* `contentClassName` gives the scrolled content a definite, full-height flex column so
+            `EmptyState`'s own `variant="pane"` (`min-h-full flex-1 ... justify-center`) actually has
+            something to fill and centre within, instead of collapsing to its own intrinsic height
+            at the top of an otherwise-blank, full-viewport mobile panel (live-review finding). */}
+        <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
+          <EmptyState variant="pane" title={t('sessions.context.unavailable')} />
         </AppWorkspaceBody>
       </AppContent>
     );
@@ -95,13 +100,24 @@ export function SessionContext({
   const hasAnySection =
     !!value.executionScope || !!value.attention?.length || !!value.relatedTasks?.length;
 
+  if (!hasAnySection) {
+    return (
+      <AppContent className="h-full w-full">
+        <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
+          <EmptyState variant="pane" title={t('sessions.context.empty')} />
+        </AppWorkspaceBody>
+      </AppContent>
+    );
+  }
+
   return (
     <AppContent className="h-full w-full">
-      <AppWorkspaceBody scroll="area">
-        <div className="grid gap-6">
-          {!hasAnySection && (
-            <p className="text-body-sm text-content-muted">{t('sessions.context.empty')}</p>
-          )}
+      <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
+        {/* `m-auto`, inside the full-height flex column above, centres a short Context (one or two
+            small sections) within the tall mobile panel instead of leaving it pinned to the top of
+            a mostly-blank viewport; a Context long enough to overflow computes its auto margins to
+            `0` and simply starts at the top as before, so this never fights normal scrolling. */}
+        <div className="m-auto grid w-full gap-6">
           {value.executionScope && (
             <section className="grid gap-1">
               <Typography variant="section-label">

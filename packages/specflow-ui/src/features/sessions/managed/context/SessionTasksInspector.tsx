@@ -47,7 +47,11 @@ function TaskList({ data }: { data: Data }) {
   if (!data.tasks.length) {
     return (
       <AppContent className="h-full w-full">
-        <AppWorkspaceBody scroll="area">
+        {/* `contentClassName` gives the scrolled content a definite, full-height flex column so
+            `EmptyState`'s own `variant="pane"` (`min-h-full flex-1 ... justify-center`) actually has
+            something to fill and centre within, instead of collapsing to its own intrinsic height
+            at the top of an otherwise-blank, full-viewport mobile panel. */}
+        <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
           <EmptyState variant="pane" title={t('sessions.context.tasks.empty')} />
         </AppWorkspaceBody>
       </AppContent>
@@ -56,8 +60,10 @@ function TaskList({ data }: { data: Data }) {
 
   return (
     <AppContent className="h-full w-full">
-      <AppWorkspaceBody scroll="area">
-        <ul className="grid gap-1">
+      <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
+        {/* `m-auto` centres a short Task list within the tall mobile panel; a list long enough to
+            overflow computes its auto margins to `0` and starts at the top as before. */}
+        <ul className="m-auto grid w-full gap-1">
           {data.tasks.map((task) => (
             <li key={task.id}>
               <Button
@@ -87,11 +93,15 @@ function TaskDetail({ data, params }: { data: Data; params: { taskId?: string } 
 
   return (
     <AppContent className="h-full w-full">
-      <AppWorkspaceBody scroll="area">
+      <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
         {!task ? (
           <EmptyState variant="pane" title={t('sessions.context.tasks.unavailable')} />
         ) : (
-          <div className="grid gap-2">
+          // `m-auto`, inside the full-height flex column above, centres this short Task detail
+          // within the tall mobile drill-in panel instead of leaving it pinned to the top of an
+          // otherwise-blank viewport (live-review finding); longer detail content simply overflows
+          // from the top as before, unaffected.
+          <div className="m-auto grid w-full gap-2">
             <Typography variant="label-sm" className="text-content-muted">
               {task.key}
             </Typography>
@@ -144,6 +154,15 @@ export function createSessionTasksInspector(tasks: SessionContextTaskRef[]) {
     // Task sharing one tab slot; the Tasks list itself has no `taskId`, so it still shares a single
     // "list" instance.
     instanceId: (params) => params.taskId ?? 'list',
+    // Without this, every Task tab shows the same static per-screen `title` ("Task"), so two Tasks
+    // opened side by side (W01-W04's `openTab`) are indistinguishable in the tab strip/switcher
+    // (live-review finding). `rootParams` is available synchronously the instant the tab opens, so
+    // this names the real Task immediately rather than waiting on `useData`.
+    tabLabel: (params) => {
+      const task = tasks.find((candidate) => candidate.id === params.taskId);
+
+      return task ? `${task.key} ${task.title}` : translateNow('sessions.context.taskTitle');
+    },
   });
 
   return { tasksStack, taskStack };

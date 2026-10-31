@@ -351,3 +351,119 @@ describe('WorkInspector Work screen', () => {
     expect(calls).toEqual([undefined, '3', '2', '1', '0']);
   });
 });
+
+describe('WorkInspector sparse-state framing', () => {
+  it('frames an empty Turn as a deliberate, full-height-centred EmptyState, not a bare top-pinned line', async () => {
+    const { api } = fixtureApi([]);
+
+    const { container } = render(
+      <StoryLocalization locale="en">
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <AppWorkspaceProvider>
+            <AppShell navigation={<div>Nav</div>}>
+              <Host api={api} />
+            </AppShell>
+          </AppWorkspaceProvider>
+        </QueryClientProvider>
+      </StoryLocalization>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByText('Open Work'));
+      await Promise.resolve();
+    });
+    await screen.findByText('No Work yet for this Turn.');
+
+    const empty = container.querySelector('[data-empty-state="pane"]');
+    expect(empty).toBeTruthy();
+    // The scrolled content must be a definite-height flex column, otherwise `EmptyState`'s own
+    // `flex-1 min-h-full ... justify-center` has nothing to fill/centre within and silently
+    // collapses to the top of an otherwise-blank, full-viewport mobile drill-in panel
+    // (live-review finding).
+    const scrollContent = empty?.closest('.scroll-area-content');
+    expect(scrollContent?.className).toMatch(/\bflex\b/);
+    expect(scrollContent?.className).toMatch(/min-h-full/);
+  });
+
+  it('vertically centres a short (one-item) visible Work log instead of leaving it pinned under the filter bar in a tall blank panel', async () => {
+    const lone = work({ kind: 'tool', title: { text: 'Run a single step', complete: true } });
+    const { api } = fixtureApi([lone]);
+
+    render(
+      <StoryLocalization locale="en">
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <AppWorkspaceProvider>
+            <AppShell navigation={<div>Nav</div>}>
+              <Host api={api} />
+            </AppShell>
+          </AppWorkspaceProvider>
+        </QueryClientProvider>
+      </StoryLocalization>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByText('Open Work'));
+      await Promise.resolve();
+    });
+
+    const row = await screen.findByText('Run a single step');
+    const centered = row.closest('.m-auto');
+    expect(centered).toBeTruthy();
+  });
+
+  it('vertically centres a short (one-action) drill-in instead of leaving it pinned under nothing in a tall blank panel', async () => {
+    const tool = work({
+      kind: 'tool',
+      title: { text: 'Run a single step', complete: true },
+      actionCount: 1,
+    });
+    const { api: workApi } = fixtureApi([tool]);
+    const api: ManagedSessionsApi = {
+      ...workApi,
+      actions: () =>
+        Promise.resolve({
+          sessionId,
+          eventSeq: 1,
+          workId: tool.workId,
+          items: [
+            {
+              actionId: 'action-1',
+              ordinal: 1,
+              revision: 1,
+              state: 'completed',
+              title: { text: 'Read one file', complete: true },
+              createdAt: '2026-10-30T10:00:00Z',
+              updatedAt: '2026-10-30T10:00:00Z',
+            },
+          ],
+          history: { hasOlder: false },
+        }),
+    };
+
+    render(
+      <StoryLocalization locale="en">
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <AppWorkspaceProvider>
+            <AppShell navigation={<div>Nav</div>}>
+              <Host api={api} />
+            </AppShell>
+          </AppWorkspaceProvider>
+        </QueryClientProvider>
+      </StoryLocalization>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByText('Open Work'));
+      await Promise.resolve();
+    });
+    await screen.findByText('Run a single step');
+    clickTrigger('Tool actions');
+
+    const action = await screen.findByText('Read one file');
+    const centered = action.closest('.m-auto');
+    expect(centered).toBeTruthy();
+  });
+});

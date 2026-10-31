@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { createInvocationScope, launchOwnedProcess, projectProviderEnvironment } from '../process';
 import { antigravityHooks } from './hook-launcher';
+import { createDiagnosticStore } from '../process/diagnostics';
 
 const launchDeadlineMs = 10000;
 const settlementBudgetMs = 5000;
@@ -37,6 +38,32 @@ process.stdin.on('end', () => {
         const command = antigravityHooks({ systemRoot, node: process.execPath, helper })[
           'specflow-managed-invocation'
         ].PreToolUse[0]!.hooks[0]!.command;
+        // Only this synthetic process gets phase markers. A CI failure must
+        // distinguish native startup, redirected input and helper execution.
+        let script = Buffer.from(command.split(' -EncodedCommand ')[1]!, 'base64').toString(
+          'utf16le',
+        );
+        for (const [needle, phase] of [
+          ["$ErrorActionPreference = 'Stop'", 'started'],
+          ['[Console]::InputEncoding = $OutputEncoding', 'input-encoding'],
+          ['$buffer =', 'input-read'],
+          ['$json =', 'input-eof'],
+          ['$result =', 'helper-start'],
+          ['if ($LASTEXITCODE', 'helper-exit'],
+          ['[Console]::Out.WriteLine($result)', 'output'],
+        ]) {
+          script = script.replace(
+            needle!,
+            `[Console]::Error.WriteLine('HOOK_PHASE:${phase}')\n` + needle,
+          );
+        }
+
+        const diagnostics = createDiagnosticStore({
+          enabled: true,
+          maxInvocationBytes: 4096,
+          maxTotalBytes: 4096,
+        });
+        let phase = 'launch';
         const owner = await launchOwnedProcess({
           invocationId,
           scope,
@@ -45,15 +72,19 @@ process.stdin.on('end', () => {
             '-NoProfile',
             '-NonInteractive',
             '-EncodedCommand',
-            command.split(' -EncodedCommand ')[1]!,
+            Buffer.from(script, 'utf16le').toString('base64'),
           ],
           cwd: root,
           environment: projectProviderEnvironment({ host: process.env }),
           signal: AbortSignal.timeout(launchDeadlineMs),
+          diagnostics,
         });
         try {
+          phase = 'write';
           await owner.write(JSON.stringify({ text: 'Zażółć — test' }));
+          phase = 'end-input';
           await owner.endInput();
+          phase = 'read-output';
           const lines: string[] = [];
           for await (const line of owner.lines()) {
             lines.push(line);
@@ -63,6 +94,11 @@ process.stdin.on('end', () => {
             { decision: available ? 'allow' : 'deny' },
           ]);
           expect((await owner.done).code).toBe(0);
+        } catch (error) {
+          throw new Error(
+            `Controlled hook launcher failed during ${phase}: ${diagnostics.read(invocationId)?.text ?? 'no native phase observed'}`,
+            { cause: error },
+          );
         } finally {
           expect((await owner.dispose()).process.state).toBe('stopped');
         }

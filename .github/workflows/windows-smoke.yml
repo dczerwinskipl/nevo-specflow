@@ -37,6 +37,11 @@ on:
         description: "Optional exact repository commit SHA to verify"
         required: false
         type: string
+      session_hooks:
+        description: "Run only controlled Session hook launcher diagnostics (no provider account)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: windows-smoke-${{ github.event_name }}-${{ github.ref }}
@@ -67,4 +72,8 @@ jobs:
       - name: Build Runtime workspace dependencies
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime^... --filter=@nevo/specflow^...
       - name: Run Windows smoke tests
+        if: ${{ !inputs.session_hooks }}
         run: node tools/ci-windows-smoke.mjs
+      - name: Controlled Session hook launcher
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.session_hooks }}
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run src/features/sessions/providers/antigravity/hook-launcher.test.ts --maxWorkers=1 --no-file-parallelism

@@ -8,8 +8,11 @@ import {
   SessionChangeSchema,
 } from './model';
 import { ProviderCatalogueSchema } from './commands';
+import { RefreshTelemetryReceiptSchema, validateTelemetrySnapshot } from './telemetry';
 
 export const sessionValidators = {
+  telemetry: validateTelemetrySnapshot,
+  refreshTelemetryReceipt: (value: unknown) => Value.Check(RefreshTelemetryReceiptSchema, value),
   snapshot: (value: unknown) => Value.Check(SessionSnapshotSchema, value),
   history: (value: unknown) => Value.Check(HistoryPageSchema, value),
   work: (value: unknown) => Value.Check(WorkPageSchema, value),

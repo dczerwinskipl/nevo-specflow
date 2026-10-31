@@ -35,6 +35,33 @@ async function setup() {
 }
 
 describe('owned provider process', () => {
+  it('drains a native result after graceful EOF without treating EOF as cancellation', async () => {
+    const input = await setup();
+    running = await launchOwnedProcess({
+      ...input,
+      args: [
+        '-e',
+        `
+        let received = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', chunk => { received += chunk; });
+        process.stdin.on('end', () => {
+          process.stdout.write(JSON.stringify({ result: received.trim() }) + '\\n');
+        });
+      `,
+      ],
+    });
+    const reader = running.lines();
+    await running.write('fixture-input\n');
+    await running.endInput();
+    expect((await reader.next()).value).toBe(JSON.stringify({ result: 'fixture-input' }));
+    expect((await reader.next()).done).toBe(true);
+    expect((await running.done).code).toBe(0);
+    expect((await running.dispose()).process.state).toBe('stopped');
+    await running.endInput();
+    await expect(running.write('second-input')).rejects.toThrow();
+  });
+
   it.runIf(process.platform === 'win32')(
     'does not run provider Node preloads outside the owned job',
     async () => {

@@ -236,10 +236,57 @@ export async function launchOwnedProcess(options: {
 
   let consumed = false,
     writing = false;
+  let inputClosing: Promise<void> | undefined;
 
   return {
     done,
     dispose,
+    /** Graceful EOF drains the current native Turn; it is not cancellation. */
+    endInput() {
+      if (inputClosing) {
+        return inputClosing;
+      }
+
+      if (disposal || options.signal.aborted) {
+        return Promise.reject(
+          new ProviderProcessError('CANCELLED', 'Provider operation is stopping.'),
+        );
+      }
+
+      if (writing) {
+        return Promise.reject(new ProviderProcessError('BUSY', 'Provider input is backpressured.'));
+      }
+
+      inputClosing = new Promise<void>((resolve, reject) => {
+        const stream = child.stdin!;
+        let finished = false;
+        const finish = (error?: Error) => {
+          if (finished) {
+            return;
+          }
+
+          finished = true;
+          stream.removeListener('error', onError);
+          stream.removeListener('close', onClose);
+          if (error) {
+            reject(
+              new ProviderProcessError('PROTOCOL_FAILED', 'Provider input stream is unavailable.'),
+            );
+          } else {
+            resolve();
+          }
+        };
+
+        const onError = () => finish(new Error('input-error'));
+        const onClose = () =>
+          finish(stream.writableFinished ? undefined : new Error('input-closed'));
+        stream.once('error', onError);
+        stream.once('close', onClose);
+        stream.end(() => finish());
+      });
+
+      return inputClosing;
+    },
     async write(message: string) {
       if (disposal || options.signal.aborted) {
         throw new ProviderProcessError('CANCELLED', 'Provider operation is stopping.');
@@ -247,6 +294,10 @@ export async function launchOwnedProcess(options: {
 
       if (writing) {
         throw new ProviderProcessError('BUSY', 'Provider input is backpressured.');
+      }
+
+      if (inputClosing) {
+        throw new ProviderProcessError('INPUT_INVALID', 'Provider input has already ended.');
       }
 
       if (Buffer.byteLength(message) > 1024 * 1024) {

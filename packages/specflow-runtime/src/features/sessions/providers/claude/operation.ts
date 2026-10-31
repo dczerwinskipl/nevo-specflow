@@ -123,6 +123,7 @@ export function createClaudeOperation(
     publish,
     context.nativeSessionId,
     toolsForClaudeMode(claudeMode(invocation.selection)),
+    !context.resume,
   );
   async function outcome(fact: Extract<DriverFact, { kind: 'outcome' }>) {
     // Safe adapter messages must survive reload through the normal bounded conversation,

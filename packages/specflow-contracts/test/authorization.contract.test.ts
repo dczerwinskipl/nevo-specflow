@@ -21,6 +21,7 @@ describe('SpecFlow authorization contracts', () => {
       View: 'session.view',
       Manage: 'session.manage',
       ExecuteWrite: 'session.execute-write',
+      ViewProviderLimits: 'session.view-provider-limits',
     });
     expect(SettingsCapabilities.capabilities).toEqual({
       View: 'settings.view',

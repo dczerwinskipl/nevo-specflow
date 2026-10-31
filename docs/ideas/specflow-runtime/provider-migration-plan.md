@@ -32,6 +32,13 @@ CLI sign-in/recheck. Antigravity execution, continuous credential renewal during
 an active Turn, ConnectedConsistency stability and broader UX are separate
 follow-ups. They do not block acceptance of the delivered Claude/Codex scope.
 
+Current migration audit after integrating main `3c0967fa`: P4 now has an executable
+Antigravity adapter in PR #107, including private MCP questions, permissions and
+native continuation evidence. P5 product associations and the E3/E5 workflow/batch
+integration remain separate work. See [the migration remainder and V10 backend
+readiness audit](session-v10-backend-readiness.md) before treating historical
+checkpoints below as the current implementation inventory.
+
 ## Work packages
 
 Owner follow-up after architecture acceptance: read-only is a test stage, not the product default.

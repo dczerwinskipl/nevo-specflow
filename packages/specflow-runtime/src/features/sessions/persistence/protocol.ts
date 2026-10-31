@@ -8,9 +8,39 @@ import type {
   TurnSummary,
   TurnOutcome,
   SessionChange,
+  RefreshTelemetry,
+  TelemetryGroup,
+  TelemetryContextUsage,
+  TelemetryLimitWindow,
 } from '@nevo/specflow-contracts/sessions';
 
+export type MeasurementFact =
+  | {
+      kind: 'measurement';
+      sampleId: string;
+      metric: 'cost';
+      basis: 'delta' | 'turn-total' | 'session-cumulative';
+      /** Establishes accounting origin without claiming measured Turn spend. */
+      baseline?: true;
+      value: {
+        currency: 'USD';
+        amount: string;
+        basis: 'provider-reported';
+        meaning: 'api-equivalent' | 'billed' | 'unknown';
+      };
+    }
+  | { kind: 'measurement'; sampleId: string; metric: 'context'; value: TelemetryContextUsage }
+  | {
+      kind: 'measurement';
+      sampleId: string;
+      metric: 'limits';
+      /** Native push updates only these windows; full read snapshots omit this flag. */
+      windowUpdate?: true;
+      value: { windows: TelemetryLimitWindow[] };
+    };
+
 export type DriverFact =
+  | MeasurementFact
   | { kind: 'interaction-expired'; key: string }
   | { kind: 'correlation'; providerSessionId: string }
   | { kind: 'work-open'; key: string; workKind: WorkSummary['kind']; title: string }
@@ -21,6 +51,7 @@ export type DriverFact =
       kind: 'usage';
       sampleId: string;
       basis: 'delta' | 'turn-total' | 'session-cumulative';
+      baseline?: true;
       counters: NonNullable<TurnSummary['usage']>;
     }
   | { kind: 'progress'; activity: 'waiting' | 'responding'; label: string }
@@ -106,6 +137,29 @@ export type StoreCommand =
       input: RespondInteraction;
     }
   | { op: 'snapshot'; sessionId: string; actor: string }
+  | { op: 'telemetry'; sessionId: string; expectedScope?: string }
+  | { op: 'telemetry-source'; sessionId: string }
+  | { op: 'telemetry-migrate' }
+  | { op: 'telemetry-refresh-admit'; sessionId: string; actor: string; input: RefreshTelemetry }
+  | { op: 'telemetry-refresh-replay'; sessionId: string; actor: string; input: RefreshTelemetry }
+  | {
+      op: 'telemetry-refresh-state';
+      sessionId: string;
+      state: 'queued' | 'running' | 'idle';
+      groups: TelemetryGroup[];
+      failed?: boolean;
+      expectedGeneration?: string;
+    }
+  | {
+      op: 'telemetry-observations';
+      sessionId: string;
+      measurements: Extract<DriverFact, { kind: 'measurement' }>[];
+      expectedScope?: string;
+      expectedGeneration?: string;
+      observedAt?: string;
+    }
+  | { op: 'telemetry-observation-fence'; sessionId: string; scope: string; generation: string }
+  | { op: 'telemetry-expire'; sessionId: string }
   | { op: 'identity'; sessionId: string }
   | { op: 'history'; sessionId: string; actor: string; before: string; limit: number }
   | { op: 'work'; sessionId: string; turnId: string; actor: string; before?: string; limit: number }

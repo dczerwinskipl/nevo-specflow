@@ -5,6 +5,9 @@ import {
   WorkStateSchema,
   TurnOutcomeSchema,
   utf8Bytes,
+  TelemetryContextUsageSchema,
+  TelemetryLimitWindowSchema,
+  validateTelemetryContextUsage,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import type { DriverFact } from '../persistence/protocol';
@@ -14,7 +17,13 @@ const key = Type.String({ minLength: 1, maxLength: 256 });
 const text = (maxLength: number) => Type.String({ maxLength });
 const counter = Type.Optional(Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER }));
 const counters = Type.Object(
-  { inputTokens: counter, outputTokens: counter, cachedTokens: counter, reasoningTokens: counter },
+  {
+    inputTokens: counter,
+    outputTokens: counter,
+    cachedTokens: counter,
+    cacheWriteTokens: counter,
+    reasoningTokens: counter,
+  },
   closed,
 );
 const question = Type.Object(
@@ -40,6 +49,51 @@ const permission = Type.Object(
   closed,
 );
 const schema = Type.Union([
+  Type.Object(
+    {
+      kind: Type.Literal('measurement'),
+      sampleId: key,
+      metric: Type.Literal('cost'),
+      baseline: Type.Optional(Type.Literal(true)),
+      basis: Type.Union(
+        ['delta', 'turn-total', 'session-cumulative'].map((value) => Type.Literal(value)),
+      ),
+      value: Type.Object(
+        {
+          currency: Type.Literal('USD'),
+          amount: Type.String({ pattern: '^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$' }),
+          basis: Type.Literal('provider-reported'),
+          meaning: Type.Union(
+            ['api-equivalent', 'billed', 'unknown'].map((value) => Type.Literal(value)),
+          ),
+        },
+        closed,
+      ),
+    },
+    closed,
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('measurement'),
+      sampleId: key,
+      metric: Type.Literal('context'),
+      value: TelemetryContextUsageSchema,
+    },
+    closed,
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('measurement'),
+      sampleId: key,
+      metric: Type.Literal('limits'),
+      windowUpdate: Type.Optional(Type.Literal(true)),
+      value: Type.Object(
+        { windows: Type.Array(TelemetryLimitWindowSchema, { maxItems: 16 }) },
+        closed,
+      ),
+    },
+    closed,
+  ),
   Type.Object({ kind: Type.Literal('interaction-expired'), key }, closed),
   Type.Object({ kind: Type.Literal('correlation'), providerSessionId: key }, closed),
   Type.Object(
@@ -89,6 +143,7 @@ const schema = Type.Union([
   Type.Object(
     {
       kind: Type.Literal('usage'),
+      baseline: Type.Optional(Type.Literal(true)),
       sampleId: key,
       basis: Type.Union([
         Type.Literal('delta'),
@@ -106,6 +161,43 @@ export function validateDriverFact(fact: DriverFact): void {
       'SESSION_INPUT_INVALID',
       'Provider fact violates the canonical protocol.',
     );
+  }
+
+  if (
+    (fact.kind === 'usage' || (fact.kind === 'measurement' && fact.metric === 'cost')) &&
+    fact.baseline
+  ) {
+    const zero =
+      fact.kind === 'usage'
+        ? Object.values(fact.counters).every((count) => count === 0)
+        : /^0(?:\.0+)?$/.test(fact.value.amount);
+    if (fact.basis !== 'session-cumulative' || !zero) {
+      throw new SessionError(
+        'SESSION_INPUT_INVALID',
+        'Provider baseline must establish a zero cumulative origin.',
+      );
+    }
+  }
+
+  if (fact.kind === 'measurement') {
+    if (
+      (fact.metric === 'context' && !validateTelemetryContextUsage(fact.value)) ||
+      (fact.metric === 'limits' &&
+        new Set(fact.value.windows.map((window) => window.windowId)).size !==
+          fact.value.windows.length)
+    ) {
+      throw new SessionError(
+        'SESSION_INPUT_INVALID',
+        'Provider measurement violates the canonical protocol.',
+      );
+    }
+
+    if (utf8Bytes(JSON.stringify(fact)) > 24576) {
+      throw new SessionError(
+        'SESSION_PAYLOAD_TOO_LARGE',
+        'Provider measurement exceeds its byte budget.',
+      );
+    }
   }
 
   function bounded(value: string, bytes: number) {

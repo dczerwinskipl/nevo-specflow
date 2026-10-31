@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
 import { claudeReadTools } from './modes';
+import { nativeDecimal } from '../decimal';
 
 type ObjectValue = Record<string, unknown>;
 export class ClaudeProtocolError extends Error {
@@ -34,6 +35,20 @@ function string(value: unknown): string {
   return value;
 }
 
+function monetaryAmount(value: unknown): string {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new ClaudeProtocolError();
+  }
+
+  const amount = nativeDecimal(value);
+
+  if (!/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,12})?$/.test(amount)) {
+    throw new ClaudeProtocolError();
+  }
+
+  return amount;
+}
+
 function blocks(message: unknown): ObjectValue[] {
   const content = object(message).content;
   if (!Array.isArray(content) || content.length > 256) {
@@ -51,6 +66,7 @@ export function createClaudeProtocol(
   emit: EmitFact,
   expectedSessionId: string,
   allowedTools: readonly string[] = claudeReadTools,
+  freshContext = false,
 ) {
   identifier(expectedSessionId);
   const seen = new Map<string, string>();
@@ -60,6 +76,7 @@ export function createClaudeProtocol(
   let terminal = false;
   let busy = false;
   let ordinal = 0;
+  let limitOrdinal = 0;
   let pending: { key: string; text: string; messageId: string } | undefined;
   async function text(
     key: string,
@@ -124,6 +141,78 @@ export function createClaudeProtocol(
     }
 
     if (frame.type === 'rate_limit_event') {
+      // The official SDK parser reads rate_limit_info (snake case), with
+      // utilization as a consumed fraction and resetsAt as Unix seconds.
+      // Status alone supplies neither a numeric amount nor a known window.
+      if (frame.rate_limit_info === undefined) {
+        return;
+      }
+
+      const info = object(frame.rate_limit_info);
+      const windowSeconds =
+        info.rateLimitType === 'five_hour'
+          ? 18000
+          : info.rateLimitType === 'seven_day'
+            ? 604800
+            : undefined;
+      if (
+        !windowSeconds ||
+        !['allowed', 'allowed_warning', 'rejected'].includes(String(info.status)) ||
+        typeof info.utilization !== 'number' ||
+        !Number.isFinite(info.utilization) ||
+        info.utilization < 0 ||
+        info.utilization > 1
+      ) {
+        return;
+      }
+
+      let fraction: string;
+      try {
+        fraction = monetaryAmount(info.utilization);
+      } catch {
+        return;
+      }
+
+      const [whole, decimals = ''] = fraction.split('.');
+      const tail = decimals.slice(2).replace(/0+$/, '');
+      const used =
+        String(Number(whole) * 100 + Number(decimals.slice(0, 2).padEnd(2, '0'))) +
+        (tail ? '.' + tail : '');
+      let resetsAt: string | undefined;
+      if (info.resetsAt !== undefined) {
+        if (
+          typeof info.resetsAt !== 'number' ||
+          !Number.isSafeInteger(info.resetsAt) ||
+          info.resetsAt < 0 ||
+          info.resetsAt > 253402300799
+        ) {
+          return;
+        }
+
+        resetsAt = new Date(info.resetsAt * 1000).toISOString();
+      }
+
+      await emit({
+        kind: 'measurement',
+        metric: 'limits',
+        sampleId: 'claude-rate-limit:' + ++limitOrdinal,
+        windowUpdate: true,
+        value: {
+          windows: [
+            {
+              windowId: createHash('sha256')
+                .update('claude:' + String(info.rateLimitType))
+                .digest('hex'),
+              scope: 'account',
+              unit: 'percent',
+              used,
+              windowSeconds,
+              ...(resetsAt ? { resetsAt } : {}),
+            },
+          ],
+        },
+      });
+
       return;
     }
 
@@ -322,6 +411,7 @@ export function createClaudeProtocol(
         ['input_tokens', 'inputTokens'],
         ['output_tokens', 'outputTokens'],
         ['cache_read_input_tokens', 'cachedTokens'],
+        ['cache_creation_input_tokens', 'cacheWriteTokens'],
       ] as const) {
         const value = native[key];
         if (value !== undefined) {
@@ -334,6 +424,47 @@ export function createClaudeProtocol(
       }
 
       await emit({ kind: 'usage', sampleId: 'claude-result', basis: 'turn-total', counters });
+    }
+
+    if (frame.total_cost_usd !== undefined) {
+      // Native result cost restores earlier spend on resume. It is an API cost
+      // estimate reported by Claude, not a subscription billing statement.
+      // Optional telemetry must not invalidate the authoritative Turn result.
+      // Money is exact-only: unsupported precision is omitted, never silently
+      // truncated or rounded into the durable monetary ledger.
+      let amount: string | undefined;
+      try {
+        amount = monetaryAmount(frame.total_cost_usd);
+      } catch {
+        amount = undefined;
+      }
+
+      if (amount !== undefined) {
+        const value = {
+          currency: 'USD' as const,
+          amount,
+          basis: 'provider-reported' as const,
+          meaning: 'api-equivalent' as const,
+        };
+        if (freshContext) {
+          await emit({
+            kind: 'measurement',
+            sampleId: 'claude-cost-baseline',
+            baseline: true,
+            metric: 'cost',
+            basis: 'session-cumulative',
+            value: { ...value, amount: '0' },
+          });
+        }
+
+        await emit({
+          kind: 'measurement',
+          sampleId: 'claude-result-cost',
+          metric: 'cost',
+          basis: 'session-cumulative',
+          value,
+        });
+      }
     }
 
     await emit(

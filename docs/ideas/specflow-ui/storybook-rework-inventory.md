@@ -349,10 +349,10 @@ full-app integration tests.
 **Third**: Application Shell, editor/document mocks, remaining Screen families,
 and Nevo UI's large story groups only where review shows real clutter.
 
-**Finally**: agent triggers, checks/ratchet, accepted reviewer guidance,
+**Finally**: documentation discovery metadata, checks/ratchet, reviewer guidance,
 obsolete fixture cleanup, and a generated/re-runnable inventory command.
 
-The trigger and review rules can be promoted earlier than the wholesale migration
+The documentation discovery improvements and review guidance can be promoted earlier than the wholesale migration
 to prevent new technical debt while existing branches are landing.
 
 ## 10. Evidence links

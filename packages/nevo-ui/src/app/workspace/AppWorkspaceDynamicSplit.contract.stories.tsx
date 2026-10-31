@@ -92,13 +92,24 @@ function DynamicSplitPrimaryContent() {
 
 function DynamicSplitFixture() {
   const [contextOpen, setContextOpen] = useState(true);
+  // W05: tracked only so stories can assert on the resolver's own `mode` (uncontrolled
+  // `secondaryRatio`/`onSecondaryRatioChange` still owns the actual value; this is read-only).
+  const [mode, setMode] = useState<'auto' | 'manual'>('auto');
   // A declarative Secondary host still registers its pinned tab explicitly (same pattern as
   // W03's own fixtures — see `useRegisterPinnedSecondaryTab`'s doc comment).
   useRegisterPinnedSecondaryTab(contextOpen ? { title: 'Context' } : null);
 
   return (
-    <AppShell data-dynamic-split-shell="true" navigation={<Navigation />}>
-      <AppWorkspace fit="available" split="dynamic">
+    <AppShell
+      data-dynamic-split-mode={mode}
+      data-dynamic-split-shell="true"
+      navigation={<Navigation />}
+    >
+      <AppWorkspace
+        fit="available"
+        onSecondaryRatioChange={(_ratio, nextMode) => setMode(nextMode)}
+        split="dynamic"
+      >
         <AppWorkspace.Primary header={<WorkspaceHeader title="Conversation" />}>
           <DynamicSplitPrimaryContent />
         </AppWorkspace.Primary>
@@ -432,5 +443,140 @@ export const EntersSplitAboveDynamicMinimumContract: Story = {
     const { layout, secondary } = regions(canvasElement);
     assert(layout.dataset.layout === 'split', 'Above the combined minimum resolves to split.');
     assert(secondary, 'Secondary renders split beside Primary.');
+  },
+};
+
+// W05 — `WorkspaceSplitter` wired into this `AppWorkspace`: pointer/touch drag committing
+// `mode: 'manual'` (contract §4.3/§5/§7). `DynamicSplitFixture` reports the resolver's own `mode`
+// on the shell (`data-dynamic-split-mode`) purely so these stories can assert on it; it does not
+// change the fixture's rendered sizing for the stories above.
+
+function workspaceSplitter(canvasElement: HTMLElement): HTMLElement {
+  const splitter = canvasElement.querySelector<HTMLElement>('[data-workspace-splitter="true"]');
+  assert(splitter, "A dynamic split in 'split' layout renders WorkspaceSplitter.");
+
+  return splitter;
+}
+
+function secondaryWidthPx(canvasElement: HTMLElement): number {
+  const secondary = canvasElement.querySelector<HTMLElement>(
+    '[data-workspace-surface="secondary"]',
+  );
+  assert(secondary, 'Secondary renders split beside Primary.');
+
+  return secondary.getBoundingClientRect().width;
+}
+
+function dispatchPointer(target: Element, type: string, init: PointerEventInit) {
+  target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }));
+}
+
+export const PointerDragEntersManualContract: Story = {
+  globals: { viewport: { value: 'w1280', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await settle();
+    const { shell } = regions(canvasElement);
+    assert(shell.dataset.dynamicSplitMode === 'auto', 'A dynamic split starts in auto mode.');
+
+    const splitter = workspaceSplitter(canvasElement);
+    assert(
+      splitter.getAttribute('aria-valuenow') !== null,
+      'WorkspaceSplitter reports a live aria-valuenow.',
+    );
+    const widthBeforeDrag = secondaryWidthPx(canvasElement);
+
+    const rect = splitter.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2;
+    const clientY = rect.top + rect.height / 2;
+    // Dragging left (pointerdown -> pointermove -> pointerup, not HTML5 drag-and-drop) grows
+    // Secondary's share and must commit mode: 'manual' (contract §5 "User drags WorkspaceSplitter").
+    dispatchPointer(splitter, 'pointerdown', {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: startX,
+      clientY,
+    });
+    dispatchPointer(splitter, 'pointermove', {
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX: startX - 120,
+      clientY,
+    });
+    dispatchPointer(splitter, 'pointerup', {
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX: startX - 120,
+      clientY,
+    });
+    await settle();
+
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      "Dragging WorkspaceSplitter must commit mode: 'manual'.",
+    );
+    const widthAfterDrag = secondaryWidthPx(canvasElement);
+    assert(
+      widthAfterDrag > widthBeforeDrag + 40,
+      `Dragging the splitter left must grow Secondary (before ${widthBeforeDrag}, after ${widthAfterDrag}).`,
+    );
+  },
+};
+
+export const TouchDragDoesNotScrollContract: Story = {
+  globals: { viewport: { value: 'w1280', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await settle();
+    const splitter = workspaceSplitter(canvasElement);
+    assert(
+      getComputedStyle(splitter).touchAction === 'none',
+      'The splitter hit area must disable the browser touch-scroll gesture (contract §7).',
+    );
+
+    const { layout } = regions(canvasElement);
+    const widthBeforeDrag = secondaryWidthPx(canvasElement);
+    const scrollTopBefore = layout.scrollTop;
+    const windowScrollYBefore = window.scrollY;
+
+    const rect = splitter.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2;
+    // A touch drag moves substantially in Y too (as a real finger would): it must resize the
+    // split without scrolling the page or the workspace's own ancestors. Entering split with only
+    // the pinned tab open starts at Secondary's own minimum ratio (the narrow default, §4.2/§5), so
+    // the drag moves left (growing Secondary) rather than right, which would otherwise floor-clamp
+    // immediately and never move.
+    dispatchPointer(splitter, 'pointerdown', {
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: startX,
+      clientY: rect.top + 10,
+    });
+    dispatchPointer(splitter, 'pointermove', {
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: startX - 150,
+      clientY: rect.top + 400,
+    });
+    dispatchPointer(splitter, 'pointerup', {
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: startX - 150,
+      clientY: rect.top + 400,
+    });
+    await settle();
+
+    const widthAfterDrag = secondaryWidthPx(canvasElement);
+    assert(
+      widthAfterDrag > widthBeforeDrag + 40,
+      `A touch drag left must grow Secondary (before ${widthBeforeDrag}, after ${widthAfterDrag}).`,
+    );
+    assert(
+      layout.scrollTop === scrollTopBefore,
+      'A touch drag on the splitter must not scroll the workspace.',
+    );
+    assert(
+      window.scrollY === windowScrollYBefore,
+      'A touch drag on the splitter must not scroll the page.',
+    );
   },
 };

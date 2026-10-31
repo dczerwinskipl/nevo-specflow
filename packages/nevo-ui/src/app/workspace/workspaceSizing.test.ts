@@ -6,6 +6,7 @@ import {
   APP_SHELL_GAP,
   APP_WORKSPACE_EDGE_BORDER,
   capPrimaryWidth,
+  resolveDynamicSplitRatioBounds,
   resolveDynamicWorkspaceSplit,
   resolveSlotMaxWidth,
   resolveWorkspaceContentWidth,
@@ -18,6 +19,7 @@ import {
   WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH,
   WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH,
   WORKSPACE_SPLIT_MIN_WIDTH,
+  WORKSPACE_SPLITTER_KEYBOARD_STEP_PX,
   WORKSPACE_WIDE_DOMINANCE_MIN_WIDTH,
   type DynamicSplitInput,
 } from './workspaceSizing';
@@ -362,5 +364,45 @@ describe('resolveDynamicWorkspaceSplit', () => {
 
       expect(result.layout).toBe('stacked');
     });
+  });
+});
+
+describe('resolveDynamicSplitRatioBounds', () => {
+  it('shares its exact bounds with resolveDynamicWorkspaceSplit’s own clamping (no second reimplementation)', () => {
+    const availableWidth = 1200;
+    const bounds = resolveDynamicSplitRatioBounds(availableWidth);
+
+    const belowMin = resolveDynamicWorkspaceSplit({
+      availableWidth,
+      openTabCount: 2,
+      mode: 'manual',
+      manualRatio: bounds.min - 0.2,
+      previousOpenTabCount: 2,
+    });
+    const aboveMax = resolveDynamicWorkspaceSplit({
+      availableWidth,
+      openTabCount: 2,
+      mode: 'manual',
+      manualRatio: bounds.max + 0.2,
+      previousOpenTabCount: 2,
+    });
+
+    expect(belowMin.secondaryRatio).toBeCloseTo(bounds.min);
+    expect(aboveMax.secondaryRatio).toBeCloseTo(bounds.max);
+  });
+
+  it('derives min/max directly from the dynamic minimum-width constants', () => {
+    const availableWidth = 1000;
+
+    expect(resolveDynamicSplitRatioBounds(availableWidth)).toEqual({
+      min: WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH / availableWidth,
+      max: 1 - WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH / availableWidth,
+    });
+  });
+});
+
+describe('WORKSPACE_SPLITTER_KEYBOARD_STEP_PX', () => {
+  it('is a tunable default matching the contract’s "24px-equivalent" example', () => {
+    expect(WORKSPACE_SPLITTER_KEYBOARD_STEP_PX).toBe(24);
   });
 });

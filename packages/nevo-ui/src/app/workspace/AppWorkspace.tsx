@@ -30,14 +30,19 @@ import { useOptionalWorkspace } from './WorkspaceContext';
 import type { SecondaryTabsState, WorkspaceTransition } from './WorkspaceContext';
 import {
   capPrimaryWidth,
+  resolveDynamicSplitRatioBounds,
   resolveDynamicWorkspaceSplit,
   resolveSlotMaxWidth,
   resolveWorkspaceFit,
   resolveWorkspaceSplit,
   supportsRuntimeWorkspaceSplit,
+  WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH,
+  WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH,
   type AppWorkspaceFit,
   type AppWorkspaceSplitMode,
+  type DynamicSplitRatioBounds,
 } from './workspaceSizing';
+import { WorkspaceSplitter } from './WorkspaceSplitter';
 import type { AppWorkspaceSurface } from './workspaceSurface';
 import {
   useMobileWorkspaceTransition,
@@ -114,6 +119,8 @@ export interface AppWorkspaceLabels {
   backToPrimary: string;
   closeSecondary: string;
   openNavigation: string;
+  /** `WorkspaceSplitter`'s accessible name (workspace-dynamic-split.md §7). */
+  resizeSecondary: string;
 }
 
 export interface AppWorkspaceRegionProps {
@@ -188,6 +195,7 @@ const defaultAppWorkspaceLabels: AppWorkspaceLabels = {
   backToPrimary: 'Back',
   closeSecondary: 'Close secondary content',
   openNavigation: 'Open navigation',
+  resizeSecondary: 'Resize secondary panel',
 };
 
 interface WorkspaceSecondaryPresentation {
@@ -209,11 +217,21 @@ function SurfaceBoundary({
   return surface.wrap ? surface.wrap(children) : children;
 }
 
+/** `WorkspaceSplitter` wiring for the current render, present only under `split="dynamic"` in `'split'` layout (contract §4.3). */
+interface WorkspaceSplitterState {
+  secondaryRatio: number;
+  minSecondaryRatio: number;
+  maxSecondaryRatio: number;
+  availableWidth: number;
+  onSecondaryRatioChange: (ratio: number) => void;
+}
+
 interface WorkspaceLayoutState {
   mode: 'split' | 'stacked';
   showSecondary: boolean;
   primaryMaxWidth?: number;
   secondaryMaxWidth?: number;
+  splitter?: WorkspaceSplitterState;
 }
 
 function AppWorkspacePrimary(_props: AppWorkspaceRegionProps) {
@@ -295,12 +313,12 @@ function resolveComposedWorkspace(children: ReactNode): {
 /**
  * `split="dynamic"`'s sizing branch (workspace-dynamic-split.md §4.2), consuming
  * `resolveDynamicWorkspaceSplit`. `mode`/`manualRatio` are the resolver's own owned state
- * (contract §3 items 4-5); neither is a controllable prop today because entering `'manual'`
- * requires a drag on `WorkspaceSplitter` (§4.3, W05 — out of this task's scope, which this
- * function's `mode`/`manualRatio` output feeds but does not implement), so `AppWorkspace` always
- * starts, and stays, in `'auto'` mode for now. This is deliberately **not** a second stacked
- * rendering path: it only decides `layout`/`secondaryRatio`; the existing
- * `supportsRuntimeWorkspaceSplit`/`state.mode === 'stacked'` path still renders the result.
+ * (contract §3 items 4-5), held here as real React state: `AppWorkspace` starts in `'auto'` mode
+ * and enters `'manual'` the first time `setManualRatio` is called — by `WorkspaceSplitter`'s
+ * pointer/touch drag or keyboard adjustment (§4.3/§7, wired by `useWorkspaceLayoutState` below).
+ * This is deliberately **not** a second stacked rendering path: it only decides
+ * `layout`/`secondaryRatio`; the existing `supportsRuntimeWorkspaceSplit`/`state.mode === 'stacked'`
+ * path still renders the result.
  *
  * Live/product-event non-resize is structural here, not merely tested: the only values this
  * function reads are `availableWidth` (from the existing `ResizeObserver`-driven measurement) and
@@ -313,9 +331,14 @@ function useDynamicWorkspaceSplit(
   secondaryRatioProp: number | undefined,
   onSecondaryRatioChange: ((ratio: number, mode: 'auto' | 'manual') => void) | undefined,
   enabled: boolean,
-): { layout: 'split' | 'stacked'; secondaryRatio: number } {
-  const mode: 'auto' | 'manual' = 'auto';
-  const manualRatio: number | null = null;
+): {
+  layout: 'split' | 'stacked';
+  secondaryRatio: number;
+  bounds?: DynamicSplitRatioBounds;
+  setManualRatio: (ratio: number) => void;
+} {
+  const [mode, setMode] = useState<'auto' | 'manual'>('auto');
+  const [manualRatio, setManualRatioState] = useState<number | null>(null);
 
   const previousOpenTabCountRef = useRef(openTabCount);
   const result = resolveDynamicWorkspaceSplit({
@@ -325,6 +348,11 @@ function useDynamicWorkspaceSplit(
     manualRatio,
     previousOpenTabCount: previousOpenTabCountRef.current,
   });
+  const bounds =
+    availableWidth !== undefined &&
+    availableWidth >= WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH + WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH
+      ? resolveDynamicSplitRatioBounds(availableWidth)
+      : undefined;
 
   useEffect(() => {
     previousOpenTabCountRef.current = openTabCount;
@@ -336,9 +364,20 @@ function useDynamicWorkspaceSplit(
     }
   }, [enabled, onSecondaryRatioChange, result.secondaryRatio, result.mode]);
 
+  // A drag/keyboard adjustment always enters 'manual' (contract §5/§7), regardless of whether the
+  // rendered ratio is uncontrolled (this state wins) or controlled (the product's own
+  // `secondaryRatioProp` wins instead — it must echo this value back via `onSecondaryRatioChange`
+  // above, the same controlled-prop convention as every other `AppWorkspace` value prop).
+  const setManualRatio = useCallback((ratio: number) => {
+    setMode('manual');
+    setManualRatioState(ratio);
+  }, []);
+
   return {
     layout: result.layout,
     secondaryRatio: secondaryRatioProp ?? result.secondaryRatio,
+    bounds,
+    setManualRatio,
   };
 }
 
@@ -386,16 +425,28 @@ function useWorkspaceLayoutState(
       primaryMaxPx,
     );
 
+    const splitter: WorkspaceSplitterState | undefined =
+      dynamicSplit.layout === 'split' && dynamicSplit.bounds && contentWidth !== undefined
+        ? {
+            secondaryRatio: dynamicSplit.secondaryRatio,
+            minSecondaryRatio: dynamicSplit.bounds.min,
+            maxSecondaryRatio: dynamicSplit.bounds.max,
+            availableWidth: contentWidth,
+            onSecondaryRatioChange: dynamicSplit.setManualRatio,
+          }
+        : undefined;
+
     return {
       // The resolver owns this decision entirely for `dynamic` (contract §4.2's own two
       // minimum-width constants, independent of the generic `WORKSPACE_SPLIT_MIN_WIDTH` the
       // fixed presets use below): `dynamic` may split at a narrower width than the fixed presets
-      // do, and may also fall back to stacked at a wide width once a manual ratio (W05) makes the
+      // do, and may also fall back to stacked at a wide width once a manual ratio (§5) makes the
       // current ratio's panes infeasible even after clamping — neither is the generic check.
       mode: dynamicSplit.layout === 'split' ? 'split' : 'stacked',
       showSecondary,
       primaryMaxWidth: widths.primary,
       secondaryMaxWidth: widths.secondary,
+      splitter,
     };
   }
 
@@ -976,11 +1027,24 @@ function AppWorkspaceRoot({
         surfaceName="primary"
       />
 
+      {state.mode === 'split' && state.splitter ? (
+        <WorkspaceSplitter
+          availableWidth={state.splitter.availableWidth}
+          label={labels.resizeSecondary}
+          maxSecondaryRatio={state.splitter.maxSecondaryRatio}
+          minSecondaryRatio={state.splitter.minSecondaryRatio}
+          onSecondaryRatioChange={state.splitter.onSecondaryRatioChange}
+          secondaryRatio={state.splitter.secondaryRatio}
+        />
+      ) : null}
+
       {state.showSecondary && secondaryPresentation ? (
         <RuntimeSurfaceRegion
           contentOwnsScroll={scroll === 'content'}
           compactNavigationAction={compactSecondaryCloseAction}
-          divider={state.mode === 'split'}
+          // `WorkspaceSplitter` is itself the visual division between Primary and Secondary for a
+          // dynamic split (contract §4.3): the generic `border-l` divider would otherwise double it.
+          divider={state.mode === 'split' && !state.splitter}
           instanceKey={secondaryPresentation.key}
           key={secondaryPresentation.key}
           leadingAction={secondaryBackAction}

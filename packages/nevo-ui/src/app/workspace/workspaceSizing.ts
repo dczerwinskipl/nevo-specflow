@@ -176,6 +176,33 @@ export const WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH = 330;
 export const WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH = 400;
 
 /**
+ * `WorkspaceSplitter`'s keyboard step (contract §7: "Left/Right arrow adjust the ratio by a fixed
+ * step (for example 24px-equivalent)"). A tunable default, same status as the two constants above.
+ */
+export const WORKSPACE_SPLITTER_KEYBOARD_STEP_PX = 24;
+
+/** The valid `secondaryRatio` range for `availableWidth` (contract §4.2), shared by the resolver below and by `AppWorkspace`'s `WorkspaceSplitter` wiring (Home/End, §7). */
+export interface DynamicSplitRatioBounds {
+  min: number;
+  max: number;
+}
+
+/**
+ * Pure bounds computation, factored out of `resolveDynamicWorkspaceSplit` so `WorkspaceSplitter`'s
+ * keyboard Home/End (contract §7) and the resolver's own clamping read the exact same range instead
+ * of two independent reimplementations. Only meaningful when `availableWidth` can fit both dynamic
+ * minimums at all (the caller already knows this from `resolveDynamicWorkspaceSplit`'s own `fits`
+ * check, or the equivalent `availableWidth >= WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH +
+ * WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH` test).
+ */
+export function resolveDynamicSplitRatioBounds(availableWidth: number): DynamicSplitRatioBounds {
+  return {
+    min: WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH / availableWidth,
+    max: 1 - WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH / availableWidth,
+  };
+}
+
+/**
  * Pure input to `resolveDynamicWorkspaceSplit` (contract §4.2). Exactly these five fields —
  * deliberately no active-tab id, no local-stack/page identity or depth, and no Session/product
  * event field. This is the structural enforcement of contract §6's non-goals: there is no field
@@ -270,12 +297,11 @@ export function resolveDynamicWorkspaceSplit(
     return { layout: 'stacked', secondaryRatio: rawRatio, mode };
   }
 
-  const minSecondaryRatio = WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH / availableWidth;
-  const maxSecondaryRatio = 1 - WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH / availableWidth;
+  const bounds = resolveDynamicSplitRatioBounds(availableWidth);
 
   return {
     layout: 'split',
-    secondaryRatio: clampRatio(rawRatio, minSecondaryRatio, maxSecondaryRatio),
+    secondaryRatio: clampRatio(rawRatio, bounds.min, bounds.max),
     mode,
   };
 }

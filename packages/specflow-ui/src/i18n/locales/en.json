@@ -1564,7 +1564,7 @@
       "operationsCount_few": "{{count}} operations",
       "operationsCount_many": "{{count}} operations",
       "operationsCount_other": "{{count}} operations",
-      "loadOlder": "Load older Work",
+      "loadingOlder": "Loading older Work…",
       "noMatches": "No Work matches these filters.",
       "emptyTurn": "No Work yet for this Turn.",
       "noActions": "No tool actions yet.",

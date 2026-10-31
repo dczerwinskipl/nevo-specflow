@@ -61,8 +61,15 @@ function WorkInspectorHost({ api }: { api: ManagedSessionsApi }) {
   );
   const navigation = useSecondaryNavigation();
 
+  // `fit="available"` + `split="dynamic"` mirror `ManagedSession.tsx`'s real `<AppWorkspace>`
+  // usage. Without them this harness defaulted to `fit="content"` + the fixed `split="primary"`
+  // 75/25 preset, which — unlike `dynamic`'s `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` (330px) floor
+  // — gives the Secondary drill-in panel only ~25% of the content width (≈293px at 1440px),
+  // collapsing the toolbar row and clipping the search field well below what the real app ever
+  // renders (`WorkFilterBar`'s own filter-Menu-not-SegmentedControl choice is explicitly sized
+  // against that same 330px floor).
   return (
-    <AppWorkspace split="primary">
+    <AppWorkspace fit="available" split="dynamic">
       <AppWorkspace.Primary header={<WorkspaceHeader title="Sesja" />}>
         <button
           type="button"
@@ -98,6 +105,31 @@ type Story = StoryObj<typeof meta>;
 async function openWork(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   await userEvent.click(canvas.getByText('Zobacz pracę'));
+}
+
+/**
+ * Regression for the collapsed-search-field bug (session-work-inspector-ui-spec.md / live-review
+ * fix): a `w-max` (max-content) ancestor collapsed the drill-in panel's toolbar row to ~260px, so
+ * the search `<TextInput>` shrank to ~118px and its own placeholder rendered cut off mid-word.
+ * `clientWidth` alone would not catch that regression (a narrow box with a narrow placeholder both
+ * "render"), so this checks the input is wide enough to lay the placeholder out without overflow —
+ * `scrollWidth` is the text's required width, `clientWidth` the box actually got.
+ */
+function assertSearchInputFits(search: HTMLInputElement) {
+  if (search.scrollWidth > search.clientWidth) {
+    throw new Error(
+      `The Work search placeholder needs ${search.scrollWidth}px but only got ${search.clientWidth}px — it is being clipped (window ${window.innerWidth}px).`,
+    );
+  }
+
+  const panel = search.closest('[data-workspace-surface="secondary"]');
+  const panelWidth = panel?.getBoundingClientRect().width;
+
+  if (panelWidth !== undefined && !(search.clientWidth / panelWidth >= 0.3)) {
+    throw new Error(
+      `Expected the search field to take a reasonable share of the drill-in panel's width, found ${search.clientWidth}px of ${panelWidth}px (window ${window.innerWidth}px).`,
+    );
+  }
 }
 
 /** The type filter is a `Menu` (WorkInspector.tsx's `WorkFilterBar`), never a `SegmentedControl`:
@@ -175,6 +207,10 @@ export const TypeFilterPreservesCommentaryContext: Story = {
     await canvas.findByText('Checking the implementation and locating the admission path…');
     await expect(canvas.getByText('Myślenie')).toBeVisible();
 
+    // The toolbar row (type-filter Menu + search) must size against the panel's available width,
+    // never collapse to max-content.
+    assertSearchInputFits(canvas.getByPlaceholderText<HTMLInputElement>('Szukaj w historii pracy'));
+
     await selectFilterKind(canvasElement, 'Wszystkie', 'Narzędzie');
     await waitFor(() => expect(canvas.queryByText('Myślenie')).not.toBeInTheDocument());
     // The Commentary heading that groups the remaining tool rows is never stripped away.
@@ -205,7 +241,8 @@ export const SearchPreservesCommentaryContext: Story = {
     await openWork(canvasElement);
     await canvas.findByText('Początek tury');
 
-    const search = canvas.getByPlaceholderText('Szukaj w historii pracy');
+    const search = canvas.getByPlaceholderText<HTMLInputElement>('Szukaj w historii pracy');
+    assertSearchInputFits(search);
     await userEvent.type(search, 'pnpm');
 
     // The unrelated Start of Turn chapter (no matching child) disappears entirely...
@@ -227,17 +264,42 @@ export const ProgressiveLoadingAtScale: Story = {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
 
-    // Only the newest bounded page is mounted up front — the earliest phase is nowhere in the DOM.
+    // Only a bounded window is mounted up front (never an eager walk of the whole 144-item
+    // history) — the earliest phase is nowhere in the DOM yet.
     await canvas.findAllByText(/narrowing the admission failure…/);
     const initialCount = canvas.getAllByText(/narrowing the admission failure…/).length;
     await expect(canvas.queryByText(/Phase 0: narrowing/)).not.toBeInTheDocument();
 
-    // Loading older content progressively adds more chapters without discarding the ones
-    // already rendered (never an eager walk of the whole 144-item history).
-    await userEvent.click(canvas.getByText('Wczytaj starszą historię pracy'));
-    await waitFor(async () => {
-      const nextCount = canvas.getAllByText(/narrowing the admission failure…/).length;
-      await expect(nextCount).toBeGreaterThan(initialCount);
-    });
+    const viewport = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"] .scroll-area-viewport',
+    );
+    if (!viewport) {
+      throw new Error('Expected the Work scroller viewport to be mounted.');
+    }
+
+    // Auto-loads on scroll near the top instead of a manual button (live-review fix #3,
+    // `useAutoLoadOlder` in WorkInspector.tsx). Each successful page prepend restores the scroll
+    // anchor over the content the user was already viewing, which pushes `scrollTop` back away
+    // from the near-top threshold — exactly like `ManagedSession.tsx`'s own conversation scroller
+    // — so this keeps re-driving the scroller back to the top itself, the same way a user actually
+    // holding the scrollbar at the top edge would, until the oldest page is reached.
+    await waitFor(
+      async () => {
+        viewport.scrollTop = 0;
+        viewport.dispatchEvent(new Event('scroll', { bubbles: true }));
+        await expect(canvas.queryByText(/Phase 0: narrowing/)).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
+
+    // The already-rendered tail content survives every merge — it is never discarded or refetched.
+    const finalCount = canvas.getAllByText(/narrowing the admission failure…/).length;
+    await expect(finalCount).toBeGreaterThan(initialCount);
+
+    // Once exhausted (`history.hasOlder: false`), further "near the top" scroll events load
+    // nothing more — the busy indicator settles and no error appears.
+    viewport.scrollTop = 0;
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }));
+    await waitFor(() => expect(canvas.queryByText(/Phase 0: narrowing/)).toBeInTheDocument());
   },
 };

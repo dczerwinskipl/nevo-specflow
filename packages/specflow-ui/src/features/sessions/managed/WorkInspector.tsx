@@ -99,6 +99,62 @@ interface WorkFilterState {
   search: string;
 }
 
+// "Near the top" per the same owner feedback (#5) `ManagedSession.tsx`'s conversation scroller
+// already applies: not literally `scrollTop === 0`, a threshold reached shortly before it so the
+// next page is ready before the user hits the physical edge.
+const NEAR_TOP_PX = 200;
+
+/** Scroll-triggered auto-loading of older Work/ToolAction pages, replacing the old manual
+ * "Load older" button (session-work-inspector-ui-spec.md, live-review fix #3) with the same
+ * mechanism `ManagedSession.tsx`'s own conversation scroller uses for older messages:
+ * `maybeLoadOlder` is called both from the scroller's own `onScroll` handler (interactive scroll)
+ * and from a `useLayoutEffect` that re-checks after every items/busy/error change, so a page that
+ * was just prepended and still leaves the scroller near the top keeps loading until
+ * `history.hasOlder` is false, and a short Work/Actions list that never overflows (no scrollbar to
+ * drive) still pages in its older history once mounted. Stops entirely on `error` — the caller
+ * keeps a manual Retry action instead of looping a failing request. */
+function useAutoLoadOlder({
+  scroller,
+  hasOlder,
+  busy,
+  error,
+  loadOlder,
+  itemsVersion,
+}: {
+  scroller: { current: HTMLDivElement | null };
+  hasOlder: boolean;
+  busy: boolean;
+  error: boolean;
+  loadOlder: () => void | Promise<void>;
+  itemsVersion: unknown;
+}) {
+  function maybeLoadOlder(node: HTMLDivElement) {
+    if (!hasOlder || busy || error) {
+      return;
+    }
+
+    if (node.scrollTop < NEAR_TOP_PX) {
+      void loadOlder();
+    }
+  }
+
+  // Runs after the anchor-restoring effect declared above it in each screen (same commit, later
+  // in declaration order), so it reads the scroll position that effect just restored, not a stale
+  // one.
+  useLayoutEffect(() => {
+    const node = scroller.current;
+    if (node) {
+      maybeLoadOlder(node);
+    }
+    // `hasOlder`/`busy`/`error` are already listed; `loadOlder` and `scroller` are stable-enough
+    // closures (a new `loadOlder` identity per render carries no behavior the listed values don't
+    // already determine) and re-adding them would only re-run this on every unrelated render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsVersion, hasOlder, busy, error]);
+
+  return maybeLoadOlder;
+}
+
 /** The type filter is a compact `Menu` trigger — never a `SegmentedControl` — because its five
  * options (Wszystkie/Postęp/Rozumowanie/Narzędzie/Odpowiedź użytkownika) do not fit the Secondary
  * panel's real minimum width (`WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH`, 330px): a `SegmentedControl`
@@ -470,13 +526,27 @@ function Work({ data }: { data: Data }) {
     }
   }
 
+  const maybeLoadOlder = useAutoLoadOlder({
+    scroller,
+    hasOlder: history.hasOlder,
+    busy: olderBusy,
+    error: olderError,
+    loadOlder,
+    itemsVersion: items,
+  });
+
   const chapters = useMemo(() => buildWorkChapters(items), [items]);
   const visibleChapters = useMemo(() => filterWorkChapters(chapters, filter), [chapters, filter]);
   const openActions = (workId: string) => void navigation.navTo('actions', { workId });
 
   return (
     <AppContent className="h-full w-full">
-      <ScrollArea viewportRef={scroller} className="min-h-0 w-full flex-1" contentClassName="p-4">
+      <ScrollArea
+        viewportRef={scroller}
+        className="min-h-0 w-full flex-1"
+        contentClassName="p-4"
+        onScroll={(event) => maybeLoadOlder(event.currentTarget)}
+      >
         <div className="grid gap-4">
           {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
           {query.isError && (
@@ -487,18 +557,15 @@ function Work({ data }: { data: Data }) {
           {!query.isPending && !query.isError && (
             <>
               <WorkFilterBar filter={filter} onChange={setFilter} />
-              {history.hasOlder && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={olderBusy}
-                    onClick={() => void loadOlder()}
-                  >
-                    {t('managedSession.workInspector.loadOlder')}
-                  </Button>
-                  {olderBusy && <Spinner size="sm" label={t('common.loading')} />}
-                </div>
+              {/* Auto-loads on scroll near the top instead of a manual button (live-review fix
+                  #3, `useAutoLoadOlder`); this is just its busy indicator. */}
+              {olderBusy && (
+                <p role="status" className="flex items-center justify-center gap-2 py-1">
+                  <Spinner size="sm" />
+                  <span className="text-body-sm text-content-muted">
+                    {t('managedSession.workInspector.loadingOlder')}
+                  </span>
+                </p>
               )}
               {olderError && (
                 <Alert tone="attention" title={t('managedSession.failed')}>
@@ -588,9 +655,23 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
     }
   }
 
+  const maybeLoadOlder = useAutoLoadOlder({
+    scroller,
+    hasOlder: history.hasOlder,
+    busy: olderBusy,
+    error: olderError,
+    loadOlder,
+    itemsVersion: items,
+  });
+
   return (
     <AppContent className="h-full w-full">
-      <ScrollArea viewportRef={scroller} className="min-h-0 w-full flex-1" contentClassName="p-4">
+      <ScrollArea
+        viewportRef={scroller}
+        className="min-h-0 w-full flex-1"
+        contentClassName="p-4"
+        onScroll={(event) => maybeLoadOlder(event.currentTarget)}
+      >
         <div className="grid gap-4">
           {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
           {query.isError && (
@@ -600,18 +681,15 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
           )}
           {!query.isPending && !query.isError && (
             <>
-              {history.hasOlder && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={olderBusy}
-                    onClick={() => void loadOlder()}
-                  >
-                    {t('managedSession.workInspector.loadOlder')}
-                  </Button>
-                  {olderBusy && <Spinner size="sm" label={t('common.loading')} />}
-                </div>
+              {/* Auto-loads on scroll near the top instead of a manual button (live-review fix
+                  #3, `useAutoLoadOlder`); this is just its busy indicator. */}
+              {olderBusy && (
+                <p role="status" className="flex items-center justify-center gap-2 py-1">
+                  <Spinner size="sm" />
+                  <span className="text-body-sm text-content-muted">
+                    {t('managedSession.workInspector.loadingOlder')}
+                  </span>
+                </p>
               )}
               {olderError && (
                 <Alert tone="attention" title={t('managedSession.failed')}>

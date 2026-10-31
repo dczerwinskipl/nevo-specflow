@@ -16,6 +16,18 @@ import type { ManagedSessionsApi } from './api';
 import { createSessionFeed } from './feed';
 import { createWorkInspector } from './WorkInspector';
 
+// jsdom never computes real layout, so every element's `scrollTop` would otherwise default to
+// (and stay) 0 — indistinguishable from "scrolled to the top". Left alone, that would make the
+// auto-load-on-scroll-near-top mount check in WorkInspector.tsx's `useAutoLoadOlder` cascade
+// through every page the instant any test with `history.hasOlder: true` opens the Work/Actions
+// screen, regardless of what that test is trying to isolate. A real, per-element value — away
+// from the near-top threshold by default, exactly like a Turn that opened already showing its
+// newest/tail content — lets a test instead explicitly drive "the user is scrolled to/held at the
+// top" via `fireEvent.scroll(viewport, { target: { scrollTop: 0 } })`, the same way it would in an
+// actually-overflowing browser list.
+const scrollTopValues = new WeakMap<HTMLElement, number>();
+let originalScrollTop: PropertyDescriptor | undefined;
+
 beforeEach(() => {
   vi.stubGlobal(
     'ResizeObserver',
@@ -28,10 +40,24 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = () => undefined;
   Element.prototype.scrollTo = () => undefined;
   window.scrollTo = () => undefined;
+
+  originalScrollTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTop');
+  Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return scrollTopValues.get(this) ?? 1000;
+    },
+    set(this: HTMLElement, value: number) {
+      scrollTopValues.set(this, value);
+    },
+  });
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  if (originalScrollTop) {
+    Object.defineProperty(HTMLElement.prototype, 'scrollTop', originalScrollTop);
+  }
 });
 
 const sessionId = '00000000-0000-4000-8000-000000000001';
@@ -142,6 +168,22 @@ async function openWork(api: ManagedSessionsApi) {
     fireEvent.click(screen.getByText('Open Work'));
     await Promise.resolve();
   });
+}
+
+/** This test environment's stubbed `ResizeObserver` never reports a measured width, so
+ * `AppWorkspace` always renders through its mobile "stacked" runtime here — which wraps the
+ * Secondary panel in its own outer `ScrollArea` (`mobile-workspace-scroll-area`) in addition to
+ * `WorkInspector.tsx`'s own inner one, so more than one `.scroll-area-viewport` exists in the DOM.
+ * Resolving from an element already known to be inside the Work list's own scroller (rather than
+ * `document.querySelector('.scroll-area-viewport')`, which would silently grab the outer one and
+ * never trigger `WorkInspector.tsx`'s `maybeLoadOlder`) reaches the right one regardless. */
+function workScroller(withinNode: Element): HTMLElement {
+  const viewport = withinNode.closest<HTMLElement>('.scroll-area-viewport');
+  if (!viewport) {
+    throw new Error('Expected the Work scroller viewport to be mounted.');
+  }
+
+  return viewport;
 }
 
 function clickTrigger(label: string) {
@@ -260,7 +302,7 @@ describe('WorkInspector Work screen', () => {
     expect(screen.queryByText('Read file unrelated.mjs')).toBeNull();
   });
 
-  it('fetches only one bounded tail page up front and loads older pages progressively on request', async () => {
+  function ninetyPhaseItems(): WorkSummary[] {
     // 90 Commentary/tool pairs = 180 items; 40 per page -> 5 pages (the synthetic-scalability
     // scenario session-chat-v10-design.md §4 calls out, here with a bounded real page size).
     const items: WorkSummary[] = [];
@@ -271,20 +313,41 @@ describe('WorkInspector Work screen', () => {
       );
     }
 
-    const { api, calls } = fixtureApi(items, 40);
+    return items;
+  }
+
+  it('fetches only one bounded tail page up front, then auto-loads older pages on scroll near the top until there is nothing left, then stops', async () => {
+    const { api, calls } = fixtureApi(ninetyPhaseItems(), 40);
 
     await openWork(api);
     // The tail page (phases 80-89) is visible...
-    await screen.findByText('Phase 85…');
+    const tail = await screen.findByText('Phase 85…');
     // ...but nothing from an older, not-yet-fetched page has been rendered.
     expect(screen.queryByText('Phase 70…')).toBeNull();
-    // Only the newest (tail) page was requested — not an eager walk of the whole 180-item history.
+    // Only the newest (tail) page was requested — not an eager walk of the whole 180-item history
+    // (the scroller opened away from the near-top threshold, the realistic default for a Turn that
+    // opened showing its newest/tail content — see the file-level `scrollTop` stub above).
     expect(calls).toEqual([undefined]);
 
-    fireEvent.click(screen.getByText('Load older Work'));
-    await screen.findByText('Phase 70…');
-    expect(calls).toEqual([undefined, '3']);
-    // The already-rendered tail content survives the merge — it is not discarded or refetched.
+    // Scrolling the Work list to, and staying at, its top edge — replacing the old manual "Load
+    // older Work" button — keeps loading further pages automatically: each merge re-triggers
+    // `maybeLoadOlder` (`WorkInspector.tsx`'s `useAutoLoadOlder`) without the user scrolling again,
+    // until the oldest page (`history.hasOlder: false`) is reached.
+    const viewport = workScroller(tail);
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    // A generous timeout: this cascades through four sequential fetch-then-merge round trips
+    // (each its own React commit), which can run well past the default 1000ms under a loaded,
+    // highly parallel full-suite run even though every fixture promise resolves immediately.
+    await screen.findByText('Phase 0…', {}, { timeout: 5000 });
+    expect(calls).toEqual([undefined, '3', '2', '1', '0']);
+    // The already-rendered tail (and every page merged along the way) survives — it is never
+    // discarded or refetched.
     expect(screen.getByText('Phase 85…')).toBeTruthy();
+    expect(screen.getByText('Phase 40…')).toBeTruthy();
+
+    // Once exhausted, a further "near the top" scroll requests nothing more.
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    await Promise.resolve();
+    expect(calls).toEqual([undefined, '3', '2', '1', '0']);
   });
 });

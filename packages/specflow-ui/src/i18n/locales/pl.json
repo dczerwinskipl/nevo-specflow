@@ -1564,7 +1564,7 @@
       "operationsCount_few": "{{count}} operacje",
       "operationsCount_many": "{{count}} operacji",
       "operationsCount_other": "{{count}} operacje",
-      "loadOlder": "Wczytaj starszą historię pracy",
+      "loadingOlder": "Wczytywanie starszej historii pracy…",
       "noMatches": "Żadna pozycja nie odpowiada tym filtrom.",
       "emptyTurn": "Brak jeszcze historii pracy dla tej tury.",
       "noActions": "Jeszcze brak działań narzędzia.",

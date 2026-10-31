@@ -1,6 +1,7 @@
 import { realpath, lstat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { validateDriverFact } from '../facts';
+import { validateAntigravityFileArguments } from './tool-arguments';
 import type { DriverFact } from '../../persistence/protocol';
 import { prepareMcpQuestion, McpQuestionEndpoint } from '../../interactions/mcp/questions';
 
@@ -180,105 +181,19 @@ export async function prepareAntigravityPermission(
   let directory = false;
   let writable = false;
   let interaction: Permission | undefined;
-  const fileTools: Record<string, { path: string; writable: boolean; fields: string[] }> = {
-    view_file: {
-      path: 'AbsolutePath',
-      writable: false,
-      fields: [
-        'AbsolutePath',
-        'ContentOffset',
-        'StartLine',
-        'EndLine',
-        'toolSummary',
-        'toolAction',
-      ],
-    },
-    list_dir: {
-      path: 'DirectoryPath',
-      writable: false,
-      fields: ['DirectoryPath', 'toolSummary', 'toolAction'],
-    },
-    find_by_name: {
-      path: 'SearchDirectory',
-      writable: false,
-      fields: [
-        'SearchDirectory',
-        'Pattern',
-        'Type',
-        'Excludes',
-        'Extensions',
-        'FullPath',
-        'MaxDepth',
-        'toolSummary',
-        'toolAction',
-      ],
-    },
-    grep_search: {
-      path: 'SearchPath',
-      writable: false,
-      fields: [
-        'SearchPath',
-        'Query',
-        'IsRegex',
-        'CaseInsensitive',
-        'Includes',
-        'MatchPerLine',
-        'toolSummary',
-        'toolAction',
-      ],
-    },
-    write_to_file: {
-      path: 'TargetFile',
-      writable: true,
-      fields: [
-        'TargetFile',
-        'Overwrite',
-        'CodeContent',
-        'Description',
-        'toolSummary',
-        'toolAction',
-        'Append',
-        'ArtifactMetadata',
-      ],
-    },
-    replace_file_content: {
-      path: 'TargetFile',
-      writable: true,
-      fields: [
-        'TargetFile',
-        'Instruction',
-        'Description',
-        'AllowMultiple',
-        'TargetContent',
-        'ReplacementContent',
-        'StartLine',
-        'EndLine',
-        'TargetLintErrorIds',
-        'toolSummary',
-        'toolAction',
-      ],
-    },
-    multi_replace_file_content: {
-      path: 'TargetFile',
-      writable: true,
-      fields: [
-        'TargetFile',
-        'Instruction',
-        'Description',
-        'ReplacementChunks',
-        'TargetLintErrorIds',
-        'ArtifactMetadata',
-        'toolSummary',
-        'toolAction',
-      ],
-    },
+  const fileTools: Record<string, { path: string; writable: boolean }> = {
+    view_file: { path: 'AbsolutePath', writable: false },
+    list_dir: { path: 'DirectoryPath', writable: false },
+    find_by_name: { path: 'SearchDirectory', writable: false },
+    grep_search: { path: 'SearchPath', writable: false },
+    write_to_file: { path: 'TargetFile', writable: true },
+    replace_file_content: { path: 'TargetFile', writable: true },
+    multi_replace_file_content: { path: 'TargetFile', writable: true },
   };
-  const file = typeof tool.name === 'string' ? fileTools[tool.name] : undefined;
-  if (
-    file &&
-    (!file.writable || context.writable) &&
-    fields.every((key) => file.fields.includes(key))
-  ) {
+  const name = typeof tool.name === 'string' ? tool.name : '';
+  const file = Object.hasOwn(fileTools, name) ? fileTools[name] : undefined;
+  if (file && (!file.writable || context.writable)) {
+    validateAntigravityFileArguments(name, args);
     target = args[file.path];
     writable = file.writable;
     if (file.writable && typeof target === 'string') {
@@ -322,7 +237,14 @@ export async function prepareAntigravityPermission(
     interaction = {
       kind: 'permission',
       prompt: 'Allow this native command once?',
-      actionSummary: JSON.stringify({ tool: tool.name, args }),
+      actionSummary: JSON.stringify({
+        operation: 'command',
+        command: args.CommandLine,
+        cwd:
+          typeof args.Cwd === 'string' ? relative(context.workspace, args.Cwd) || '.' : undefined,
+        authority: 'workspace-write',
+        approval: 'once',
+      }),
     };
     validateDriverFact({ kind: 'interaction', key: 'validation', interaction });
   } else {

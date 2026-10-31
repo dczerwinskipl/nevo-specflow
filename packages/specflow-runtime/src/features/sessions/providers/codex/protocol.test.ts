@@ -69,6 +69,39 @@ it('does not invent context occupancy from lifetime totals or missing last usage
   expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([]);
 });
 
+it('changes the local context epoch only after confirmed compaction and fences protocol restarts', async () => {
+  const f = fixture();
+  await f.start();
+  const sample = () =>
+    f.send('thread/tokenUsage/updated', {
+      tokenUsage: { total: { inputTokens: 9000 }, last: { totalTokens: 100 } },
+    });
+  await sample();
+  await f.send('item/started', { item: { id: 'compact-1', type: 'contextCompaction' } });
+  await sample();
+  await f.send('item/completed', { item: { id: 'compact-1', type: 'contextCompaction' } });
+  await sample();
+  // Replayed completion must not advance a second time.
+  await f.send('item/completed', { item: { id: 'compact-1', type: 'contextCompaction' } });
+  await sample();
+  const epochs = f.facts.flatMap((fact) =>
+    fact.kind === 'measurement' && fact.metric === 'context' ? [fact.value.contextGeneration] : [],
+  );
+  expect(epochs[0]).toBe(epochs[1]);
+  expect(epochs[2]).not.toBe(epochs[1]);
+  expect(epochs[3]).toBe(epochs[2]);
+  const other = fixture();
+  await other.start();
+  await other.send('thread/tokenUsage/updated', {
+    tokenUsage: { total: { inputTokens: 9000 }, last: { totalTokens: 100 } },
+  });
+  const observed = other.facts.find(
+    (fact) => fact.kind === 'measurement' && fact.metric === 'context',
+  );
+  expect(observed).toBeDefined();
+  expect(JSON.stringify(observed)).not.toContain(epochs[0]);
+});
+
 it('marks only the synthetic origin when a fresh native invocation stops before any measured usage', async () => {
   const f = fixture();
   await f.start();

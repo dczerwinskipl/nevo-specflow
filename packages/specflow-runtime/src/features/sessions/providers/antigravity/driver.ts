@@ -301,13 +301,7 @@ export function createAntigravityDriver(
       }
 
       return createAntigravityOperation(
-        {
-          ...invocation,
-          beforeDispatch: async () => {
-            await invocation.beforeDispatch?.();
-            await revalidate(signal);
-          },
-        },
+        invocation,
         async (fact) => {
           if (
             fact.kind === 'lost' ||
@@ -325,6 +319,11 @@ export function createAntigravityDriver(
         },
         signal,
         {
+          async beforeDispatch(operationSignal) {
+            await invocation.beforeDispatch?.();
+            operationSignal.throwIfAborted();
+            await revalidate(operationSignal);
+          },
           async beforeInput(init, operationSignal) {
             validateInit(init);
             await revalidate(operationSignal);

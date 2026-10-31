@@ -418,7 +418,12 @@ export function createSessionTelemetry(
         value: f.value,
       };
       if (f.metric === 'context') {
-        data.context = reading as TelemetryReading<TelemetryContextUsage>;
+        // A native occupancy gauge is an observation, not a perpetual claim
+        // that the external context remains unchanged after EOF or Runtime exit.
+        data.context = {
+          ...reading,
+          staleAt: new Date(Date.parse(reading.observedAt) + 60_000).toISOString(),
+        } as TelemetryReading<TelemetryContextUsage>;
         const scope = get('SELECT scope FROM provider_contexts WHERE session=?', sid)?.scope;
         data.contextScope = typeof scope === 'string' ? scope : undefined;
       } else {

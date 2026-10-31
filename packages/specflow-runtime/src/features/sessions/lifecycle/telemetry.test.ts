@@ -37,13 +37,20 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-function fixture() {
+function fixture(
+  migrationFailure = false,
+  refreshableGroups: ('limits' | 'context')[] = ['limits'],
+) {
   const commands: StoreCommand[] = [];
   const snapshots: Omit<TelemetrySnapshot, 'accessRevision'>[] = [];
   const subscriptions = new Map<string, Set<() => void>>();
   const store: SessionStore = {
     call<T>(command: StoreCommand): Promise<T> {
       commands.push(command);
+      if (command.op === 'telemetry-migrate' && migrationFailure) {
+        return Promise.reject(new Error('Private migration diagnostic not for the DTO.'));
+      }
+
       let result: unknown;
       if (command.op === 'telemetry-migrate') {
         result = { done: true };
@@ -109,7 +116,7 @@ function fixture() {
   const driver = {
     ...createMockDriver(),
     contextScope: () => 'account',
-    telemetry: { refreshableGroups: ['limits' as const], binding, refresh },
+    telemetry: { refreshableGroups, binding, refresh },
   };
   const service = createSessionTelemetryService(store, () => driver);
   services.push(service);
@@ -123,12 +130,58 @@ function fixture() {
 }
 
 describe('Session telemetry refresh lifecycle', () => {
+  it('serves concurrent snapshots without expiry writes, migration work or provider reads', async () => {
+    const f = fixture();
+    await f.service.snapshot(randomUUID());
+    f.commands.length = 0;
+    await Promise.all(Array.from({ length: 32 }, () => f.service.snapshot(randomUUID())));
+    expect(f.commands).toHaveLength(64);
+    expect(
+      f.commands.every(
+        (command) => command.op === 'telemetry' || command.op === 'telemetry-source',
+      ),
+    ).toBe(true);
+    expect(f.refresh).not.toHaveBeenCalled();
+    expect(f.binding).not.toHaveBeenCalled();
+  });
+
+  it('exposes failed migration promptly without leaking its diagnostic or waiting for shutdown', async () => {
+    const f = fixture(true);
+    await vi.waitFor(() => expect(f.service.migrationStatus()).toBe('failed'));
+    const value = await f.service.snapshot(randomUUID());
+    expect(value.migration).toEqual({ status: 'failed' });
+    expect(JSON.stringify(value)).not.toContain('Private migration diagnostic');
+    services.splice(services.indexOf(f.service), 1);
+    await expect(f.service.close()).rejects.toThrow('Private migration diagnostic');
+  });
   it('reads snapshots without native discovery, refresh or prompt dispatch', async () => {
     const f = fixture();
     await f.service.snapshot(randomUUID());
     expect(f.binding).not.toHaveBeenCalled();
     expect(f.refresh).not.toHaveBeenCalled();
     expect(f.commands.some((command) => command.op === 'telemetry-refresh-admit')).toBe(false);
+  });
+  it('rejects context refresh before account binding even if a future driver advertises it', async () => {
+    const f = fixture(false, ['context']);
+    // This scheduler has account-only affinity; advertising another group cannot
+    // accidentally share native-context data across Sessions on that account.
+    await expect(
+      f.service.refresh(randomUUID(), 'actor', {
+        requestId: randomUUID(),
+        groups: ['context'],
+      }),
+    ).rejects.toMatchObject({ code: 'CAPABILITY_UNSUPPORTED' });
+    expect(f.binding).not.toHaveBeenCalled();
+    expect(f.refresh).not.toHaveBeenCalled();
+  });
+
+  it('allows passive account monitoring with ViewProviderLimits without Manage', async () => {
+    const f = fixture();
+    const permissions = { view: true, limits: true, manage: false };
+    const unwatch = f.service.watch(randomUUID(), () => permissions.view && permissions.limits);
+    await vi.waitFor(() => expect(f.refresh).toHaveBeenCalledOnce());
+    expect(permissions.manage).toBe(false);
+    unwatch();
   });
 
   it('keeps scoped limits and telemetry revision at the same committed read boundary', async () => {

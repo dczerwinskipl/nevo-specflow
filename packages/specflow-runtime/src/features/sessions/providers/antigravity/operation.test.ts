@@ -10,6 +10,7 @@ function fixture(
     disposition?: 'stopped' | 'unknown';
     resume?: boolean;
     beforeInput?: () => Promise<void>;
+    dispatchValidation?: (signal: AbortSignal) => Promise<void>;
     nativeIdle?: (signal: AbortSignal) => Promise<void>;
     withoutInteractions?: boolean;
     nativeExitCode?: number;
@@ -70,7 +71,7 @@ function fixture(
       return Promise.resolve();
     }),
     async *lines() {
-      while (!ended) {
+      while (!ended || frames.length) {
         if (!frames.length) {
           await new Promise<void>((resolve) => {
             wake = resolve;
@@ -132,6 +133,7 @@ function fixture(
           ...(!options.withoutInteractions ? { interactions: bridge } : {}),
         }),
       beforeInput,
+      beforeDispatch: options.dispatchValidation,
     },
   );
   const init = (id = nativeId) =>
@@ -165,6 +167,87 @@ function fixture(
 }
 
 describe('Antigravity operation lifecycle', () => {
+  it('passes the initialization deadline to dispatch validation and bounds an ignored abort', async () => {
+    vi.useFakeTimers();
+    const stalled = Promise.withResolvers<void>();
+    let validationSignal: AbortSignal | undefined;
+    try {
+      const f = fixture({
+        dispatchValidation: (signal) => {
+          validationSignal = signal;
+
+          return stalled.promise;
+        },
+      });
+      f.init();
+      await vi.waitFor(() => expect(validationSignal).toBeDefined());
+      await vi.advanceTimersByTimeAsync(10000);
+      await f.operation.done;
+      expect(validationSignal?.aborted).toBe(true);
+      expect(f.writes).toEqual([]);
+      expect(await f.operation.settlement).toMatchObject({
+        source: 'not-started',
+        process: 'stopped',
+      });
+      stalled.resolve();
+      await Promise.resolve();
+      expect(f.writes).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('bounds a stalled dispatch revalidation and never writes user input after expiry', async () => {
+    const f = fixture();
+    const stalled = Promise.withResolvers<void>();
+    f.beforeDispatch.mockImplementation(() => stalled.promise);
+    f.init();
+    await vi.waitFor(() => expect(f.beforeDispatch).toHaveBeenCalledOnce());
+    vi.useFakeTimers();
+    try {
+      // The initialization deadline was scheduled before fake timers: use the
+      // operation cancellation path here, with a deliberately uncooperative port.
+      f.controller.abort('user-cancel');
+      await f.operation.done;
+      expect(f.writes).toEqual([]);
+      expect(await f.operation.settlement).toMatchObject({ source: 'not-started' });
+      stalled.resolve();
+      await Promise.resolve();
+      expect(f.writes).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('drains post-result output without publishing extra execution facts', async () => {
+    const f = fixture();
+    f.init();
+    await f.ready();
+    f.result();
+    // Exceeds ordinary pipe capacity; a native producer can require these reads
+    // before it can exit. Trailing diagnostics need not be protocol frames.
+    for (let index = 0; index < 64; index++) {
+      f.push({ event: 'diagnostic', value: 'x'.repeat(8192) });
+    }
+
+    await f.operation.done;
+    expect(await f.operation.settlement).toMatchObject({ source: 'native-result' });
+    expect(f.facts.filter((fact) => fact.kind === 'outcome')).toHaveLength(1);
+  });
+
+  it('rejects unbounded post-result output rather than accepting success', async () => {
+    const f = fixture();
+    f.init();
+    await f.ready();
+    f.result();
+    for (let index = 0; index < 5; index++) {
+      f.push({ event: 'diagnostic', value: 'x'.repeat(1024 * 1024) });
+    }
+
+    await f.operation.done;
+    expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
+    expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+  });
+
   it('drains native input and waits for positive idle before publishing the result', async () => {
     const idle = Promise.withResolvers<void>();
     const f = fixture({ nativeIdle: () => idle.promise });

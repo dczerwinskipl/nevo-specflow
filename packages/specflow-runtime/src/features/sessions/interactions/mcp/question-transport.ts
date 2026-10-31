@@ -27,7 +27,7 @@ export interface TransportInteraction {
   interaction: Extract<DriverFact, { kind: 'interaction' }>['interaction'];
   response: ServerResponse;
   signal?: AbortSignal;
-  revalidate?: () => Promise<void>;
+  revalidate?: (signal: AbortSignal) => Promise<void>;
   encodeResponse: (response: RespondInteraction) => string;
 }
 type RpcId = string | number;
@@ -49,7 +49,8 @@ interface PendingInteraction {
   key: string;
   interaction: Extract<DriverFact, { kind: 'interaction' }>['interaction'];
   encodeResponse: (response: RespondInteraction) => string;
-  revalidate?: () => Promise<void>;
+  revalidate?: (signal: AbortSignal) => Promise<void>;
+  validation: AbortController;
   response: ServerResponse;
   answer: ReturnType<typeof deferred<string>>;
   delivery: ReturnType<typeof deferred<{ deliveredKeys: readonly string[] }>>;
@@ -114,6 +115,7 @@ export async function createMcpQuestionTransport(options: {
     }
 
     entry.state = 'expired';
+    entry.validation.abort(expired());
     clearTimeout(entry.deliveryTimer);
     clearTimeout(entry.humanTimer);
     entry.answer.reject(expired());
@@ -159,6 +161,7 @@ export async function createMcpQuestionTransport(options: {
     }
 
     const entry: PendingInteraction = {
+      validation: new AbortController(),
       key: request.keyPrefix + '-' + randomUUID(),
       interaction: request.interaction,
       encodeResponse: request.encodeResponse,
@@ -379,6 +382,18 @@ export async function createMcpQuestionTransport(options: {
       return;
     }
 
+    // One transport owns exactly one MCP session for one Invocation. Replacing
+    // the session would lose correlation with pending canonical interactions.
+    // End the Invocation rather than silently replaying restarted client IDs.
+    if (envelope.method === 'initialize' && transport.sessionId !== undefined) {
+      response.once('finish', () => {
+        void close().catch(fail);
+      });
+      deny(response, 409);
+
+      return;
+    }
+
     const id = envelope.id;
     if (id !== undefined) {
       if (
@@ -547,12 +562,12 @@ export async function createMcpQuestionTransport(options: {
         response.decision === 'allow'
       ) {
         try {
-          await entry.revalidate?.();
+          await Promise.race([entry.revalidate?.(entry.validation.signal), entry.delivery.promise]);
           if (entry.state !== 'responding') {
             throw expired();
           }
         } catch (error) {
-          await expire(entry).catch(fail);
+          void expire(entry).catch(fail);
 
           throw error;
         }

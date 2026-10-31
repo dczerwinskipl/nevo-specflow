@@ -1,16 +1,17 @@
 import type { ServerResponse } from 'node:http';
 import type { EmitFact, Invocation } from '../driver';
 import { SessionError } from '../../errors';
-import {
-  createMcpQuestionTransport,
-  McpQuestionTransportLimits,
-} from '../../interactions/mcp/question-transport';
+import { createMcpQuestionTransport } from '../../interactions/mcp/question-transport';
 import { McpQuestionEndpoint } from '../../interactions/mcp/questions';
 import {
   prepareAntigravityPermission,
   validateAntigravityHookBinding,
   type AntigravityPermissionContext,
 } from './permissions';
+
+// Native tool steps and JSON-RPC requests have independent capacity budgets.
+// Bound the per-invocation replay ledger consistently with the native parser.
+export const AntigravityHookLimits = { nativeHookCalls: 1024 } as const;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -140,7 +141,7 @@ export async function createAntigravityQuestionBridge(options: {
       assertCurrent();
       if (
         nativeSteps.has(permission.step) ||
-        nativeSteps.size >= McpQuestionTransportLimits.requests
+        nativeSteps.size >= AntigravityHookLimits.nativeHookCalls
       ) {
         throw new Error('Duplicate or excessive native hook.');
       }
@@ -161,9 +162,11 @@ export async function createAntigravityQuestionBridge(options: {
           keyPrefix: 'antigravity-permission',
           interaction: permission.interaction,
           response,
-          revalidate: async () => {
+          revalidate: async (signal) => {
+            signal.throwIfAborted();
             assertCurrent();
             await permission.revalidate();
+            signal.throwIfAborted();
             assertCurrent();
           },
           encodeResponse(answer) {

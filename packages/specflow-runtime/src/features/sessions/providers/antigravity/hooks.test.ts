@@ -82,6 +82,19 @@ async function fixture(active = true) {
 }
 
 describe('controlled native hook HTTP/helper boundary', () => {
+  it('does not consume the MCP request budget for native file hooks', async () => {
+    const f = await fixture();
+    for (let stepIdx = 0; stepIdx <= 256; stepIdx++) {
+      await expect(
+        f.post('pre-tool-use', {
+          ...f.body(stepIdx),
+          toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+        }),
+      ).resolves.toEqual({ decision: 'allow' });
+    }
+
+    expect(f.facts.filter((fact) => fact.kind === 'interaction')).toEqual([]);
+  });
   it('allows the exact native MCP wrapper then admits its question exactly once through the SDK bridge', async () => {
     const f = await fixture();
     await expect(

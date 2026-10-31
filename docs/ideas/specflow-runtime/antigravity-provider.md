@@ -120,6 +120,13 @@ allow arbitrary MCP, resource, browser, scheduling, messaging or other unknown
 native tools. Hook metadata must identify the admitted native conversation and
 exactly one normalized workspace. Immutable native step and argument identity
 prevent replay or changed-operation grants.
+The current native hook contract exposes a trajectory `stepIdx`, not a verified
+tool-call identifier. Reuse is conservatively denied, including a changed call
+or retry at the same index; no previous approval is replayed. Native acceptance
+must still establish whether multi-tool steps require a richer correlation.
+The native-hook ledger has its own 1024-call budget, independent of JSON-RPC
+request IDs and HTTP admission. One invocation accepts one initialized MCP
+session; attempted reinitialization closes it rather than replaying client IDs.
 
 The native permission profile is `proceed-in-sandbox`, including for Agent and
 Plan. In-workspace native file operations retain Agent auto-edit behavior. Physical
@@ -128,6 +135,19 @@ and customization-control-path writes are denied. Command execution requires
 an exact canonical once-only permission, physical CWD validation and a verified
 native policy that cannot authorize unsandboxed fallback. Bypass, daemon,
 background/reused-terminal and unknown argument variants are rejected.
+Supported file-tool arguments have explicit type and range checks. Unverified
+artifact/lint metadata is rejected rather than passed through. Public command
+permissions contain the exact command, a workspace-relative CWD and canonical
+authority/once-only approval; native metadata remains private. A command may
+itself contain explicit paths that the user must see before approving it.
+
+These Node path checks are additional admission filters, not atomic filesystem
+containment. They cannot close a junction/symlink race after the final grant.
+File tools deny customization writes, but an approved native command can change
+repository configuration files. The current active private configuration and
+subsequent-invocation admission checks are separate from repository immutability;
+this adapter does not claim immutable repository configuration for a whole Turn.
+Job Objects provide process ownership, not a filesystem sandbox.
 
 The fixed Windows hook launcher encodes only trusted executable paths and hook
 role. Native tool input travels through bounded UTF-8 stdin, never shell-code

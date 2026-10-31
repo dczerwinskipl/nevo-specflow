@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { inspectAntigravityInstallation, prepareAntigravityProfile } from './installation';
@@ -169,5 +169,15 @@ describe('Antigravity private native profile', () => {
         home: join(installation.homeRoot, 'x'.repeat(240)),
       }),
     ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  });
+  it('accounts for generated configuration and atomic temporary filenames before creating HOME', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    const home = join(installation.homeRoot, 'x'.repeat(220 - installation.homeRoot.length));
+    expect(home.length).toBeLessThan(260);
+    await expect(prepareAntigravityProfile(installation, { home })).rejects.toMatchObject({
+      code: 'PROVIDER_UNAVAILABLE',
+    });
+    await expect(lstat(home)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

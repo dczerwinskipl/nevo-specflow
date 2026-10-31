@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
@@ -42,6 +42,9 @@ export function createCodexProtocol(
   let usageOrdinal = 0;
   let lastUsageHash = '';
   let usageBaseline = false;
+  // Observation epochs are local to this protocol lifetime. Restart must not
+  // claim continuity of compaction state that the native API did not supply.
+  let contextEpoch = randomUUID();
   async function text(
     key: string,
     channel: Extract<DriverFact, { kind: 'text' }>['channel'],
@@ -283,6 +286,10 @@ export function createCodexProtocol(
         }
 
         active.delete(id);
+        if (kind === 'contextCompaction') {
+          contextEpoch = randomUUID();
+        }
+
         if (kind === 'agentMessage') {
           const value = textValue(item.text);
           if (
@@ -456,7 +463,7 @@ export function createCodexProtocol(
             sampleId: 'native-context:' + ++usageOrdinal,
             value: {
               contextGeneration: createHash('sha256')
-                .update(JSON.stringify([threadId, telemetryContext?.modelId]))
+                .update(JSON.stringify([threadId, telemetryContext?.modelId, contextEpoch]))
                 .digest('hex'),
               ...(telemetryContext ?? {}),
               ...(occupied != null

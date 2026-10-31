@@ -597,6 +597,45 @@ describe('materialized Session telemetry', () => {
     expect(f.telemetry.read(f.s).usage.session.observedAt).toBe('2026-10-31T12:00:00.000Z');
   });
 
+  it('expires context observations after one minute even across reopen without new input', () => {
+    const f = fixture();
+    f.telemetry.create(f.s);
+    const t = f.turn(1);
+    f.telemetry.start(f.s, t);
+    f.run(
+      'INSERT INTO provider_contexts VALUES(?,?,?,?,?,?)',
+      f.s.snapshot.session.sessionId,
+      'native',
+      'workspace',
+      1,
+      1,
+      'account-a',
+    );
+    f.telemetry.measurement(f.s, t, {
+      kind: 'measurement',
+      metric: 'context',
+      sampleId: 'context',
+      value: { contextGeneration: 'context-a', occupiedTokens: 50 },
+    });
+    expect(f.telemetry.read(f.s, 'account-a').context).toMatchObject({
+      freshness: 'fresh',
+      staleAt: '2026-10-31T12:01:00.000Z',
+    });
+    const before = f.events.length;
+    f.setTime('2026-10-31T12:01:00.000Z');
+    f.reopen();
+    expect(f.telemetry.read(f.s, 'account-a').context).toMatchObject({
+      freshness: 'stale',
+      value: { occupiedTokens: 50 },
+    });
+    // The read projects freshness without emitting an outbox write.
+    expect(f.events).toHaveLength(before);
+    f.telemetry.expire(f.s);
+    expect(f.events).toHaveLength(before + 1);
+    f.telemetry.expire(f.s);
+    expect(f.events).toHaveLength(before + 1);
+  });
+
   it('hides a context gauge after account change or absent verified scope while retaining usage', () => {
     const f = fixture();
     f.telemetry.create(f.s);

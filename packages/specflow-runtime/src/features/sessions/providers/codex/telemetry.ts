@@ -6,6 +6,22 @@ import { SessionError } from '../../errors';
 import { codexArguments, type inspectCodexInstallation } from './installation';
 import { codexMetadata, initializeCodex } from './connection';
 import { createCodexRpc, CodexRpcError, rpcObject } from './rpc';
+import { nativeDecimal } from '../decimal';
+
+/** Percentages use a documented 10^-12 percentage-point resolution, rounding
+ * upward so quantization cannot understate used quota or turn tiny usage into 0. */
+function percentage(value: number): string {
+  const [whole, fraction = ''] = nativeDecimal(value).split('.');
+  if (fraction.length <= 12) {
+    return nativeDecimal(value);
+  }
+
+  const units =
+    BigInt(whole! + fraction.slice(0, 12)) + (/[1-9]/.test(fraction.slice(12)) ? 1n : 0n);
+  const digits = units.toString().padStart(13, '0');
+
+  return digits.slice(0, -12) + '.' + digits.slice(-12);
+}
 
 /** Native account/rateLimits/read reports percentage windows, not token budgets.
  * Bucket labels/identities remain private; opaque hashes identify stable windows. */
@@ -50,7 +66,7 @@ export function codexLimitWindows(value: unknown): TelemetryLimitWindow[] {
           .digest('hex'),
         scope: 'account',
         unit: 'percent',
-        used: String(native.usedPercent),
+        used: percentage(native.usedPercent),
       };
       if (native.windowDurationMins != null) {
         if (

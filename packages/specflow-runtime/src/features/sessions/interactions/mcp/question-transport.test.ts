@@ -11,12 +11,40 @@ afterEach(async () => {
   bridges.clear();
 });
 
-async function fixture(active = true, emit?: (fact: DriverFact) => Promise<void>) {
+async function fixture(
+  active = true,
+  emit?: (fact: DriverFact) => Promise<void>,
+  revalidate?: (signal: AbortSignal) => Promise<void>,
+) {
   const facts: DriverFact[] = [];
   const controller = new AbortController();
-  const bridge = await createMcpQuestionTransport({
+  const bridge: Bridge = await createMcpQuestionTransport({
     invocation: { sessionId: randomUUID(), turnId: randomUUID(), invocationId: randomUUID() },
     signal: controller.signal,
+    routes: revalidate
+      ? {
+          '/permission': async (_envelope, response) => {
+            try {
+              const answer = await bridge.requestInteraction({
+                keyPrefix: 'permission',
+                interaction: {
+                  kind: 'permission',
+                  prompt: 'Allow?',
+                  actionSummary: 'Controlled command',
+                },
+                response,
+                revalidate,
+                encodeResponse: () => JSON.stringify({ decision: 'allow' }),
+              });
+              response.writeHead(200, { 'content-type': 'application/json' });
+              response.end(answer);
+            } catch {
+              response.writeHead(403);
+              response.end();
+            }
+          },
+        }
+      : undefined,
     emit: (fact) => {
       facts.push(fact);
 
@@ -77,10 +105,69 @@ async function fixture(active = true, emit?: (fact: DriverFact) => Promise<void>
     return facts.filter((fact) => fact.kind === 'interaction')[index]!;
   };
 
-  return { bridge, controller, facts, config, headers, post, call, question };
+  const permission = () =>
+    fetch(bridge.endpoint.baseUrl + '/permission', {
+      method: 'POST',
+      headers,
+      body: '{}',
+    });
+
+  return { bridge, controller, facts, config, headers, post, call, question, permission };
 }
 
 describe('invocation-private MCP question transport', () => {
+  it('rejects a replacement MCP session and closes the Invocation instead of reusing request IDs', async () => {
+    const f = await fixture();
+    const response = await f.post(
+      {
+        jsonrpc: '2.0',
+        id: 0,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-06-18',
+          capabilities: {},
+          clientInfo: { name: 'reconnect', version: '1' },
+        },
+      },
+      { headers: { 'mcp-session-id': '' } },
+    );
+    expect(response.status).toBe(409);
+    await f.bridge.done;
+    expect(f.bridge.closed).toBe(true);
+  });
+
+  it('bounds stalled permission revalidation, aborts it and never retransmits after timeout', async () => {
+    let validationSignal: AbortSignal | undefined;
+    const stalled = Promise.withResolvers<void>();
+    const f = await fixture(true, undefined, (signal) => {
+      validationSignal = signal;
+
+      return stalled.promise;
+    });
+    const native = f.permission();
+    const interaction = await f.question();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const answer = {
+        requestId: randomUUID(),
+        kind: 'permission' as const,
+        decision: 'allow' as const,
+      };
+      const responding = f.bridge.respond(interaction.key, answer);
+      const failed = expect(responding).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
+      await vi.advanceTimersByTimeAsync(McpQuestionTransportLimits.deliveryMs);
+      await failed;
+      expect(validationSignal?.aborted).toBe(true);
+      await expect(f.bridge.respond(interaction.key, answer)).rejects.toMatchObject({
+        code: 'INTERACTION_EXPIRED',
+      });
+      stalled.resolve();
+      expect((await native).status).toBe(403);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('expires an unanswered MCP question after the bounded human response lifetime', async () => {
     const f = await fixture();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });

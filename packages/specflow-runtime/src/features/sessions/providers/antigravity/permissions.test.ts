@@ -129,7 +129,15 @@ describe('native Antigravity hook policy', () => {
     };
     const result = await prepareAntigravityPermission(f.hook('run_command', args), f.context);
     expect(result.interaction?.kind).toBe('permission');
-    expect(JSON.parse(result.interaction!.actionSummary)).toEqual({ tool: 'run_command', args });
+    expect(JSON.parse(result.interaction!.actionSummary)).toEqual({
+      operation: 'command',
+      command: 'echo controlled',
+      cwd: '.',
+      authority: 'workspace-write',
+      approval: 'once',
+    });
+    expect(result.interaction!.actionSummary).not.toContain(f.workspace);
+    expect(result.interaction!.actionSummary).not.toMatch(/CommandLine|Cwd|toolSummary|WaitMs/);
     await result.revalidate();
   });
 
@@ -221,7 +229,10 @@ describe('native Antigravity hook policy', () => {
     );
     await expect(
       prepareAntigravityPermission(
-        f.hook('write_to_file', { TargetFile: join(target, 'file.txt') }),
+        f.hook('write_to_file', {
+          TargetFile: join(target, 'file.txt'),
+          CodeContent: 'controlled',
+        }),
         f.context,
       ),
     ).rejects.toThrow('symbolic link');

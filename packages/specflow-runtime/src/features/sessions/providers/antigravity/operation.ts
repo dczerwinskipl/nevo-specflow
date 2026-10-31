@@ -29,12 +29,14 @@ export interface AntigravityInteractions {
 }
 
 const settlementMs = 5000;
+const shutdownOutputBytes = 4 * 1024 * 1024;
 
 export interface AntigravityOperationOptions {
   launch(
     signal: AbortSignal,
   ): Promise<{ owner: AntigravityProcess; interactions?: AntigravityInteractions }>;
   beforeInput(init: AntigravityInit, signal: AbortSignal): Promise<void>;
+  beforeDispatch?(signal: AbortSignal): Promise<void>;
 }
 
 /** One native invocation. CLI outcomes and stopped-tree receipts remain separate;
@@ -128,10 +130,15 @@ export function createAntigravityOperation(
 
       // Validate the selected account and effective native policy before binding
       // this context durably to the canonical Session.
-      await options.beforeInput(init, controller.signal);
+      await Promise.race([options.beforeInput(init, controller.signal), aborted.promise]);
       controller.signal.throwIfAborted();
       await emit({ kind: 'correlation', providerSessionId: init.conversationId });
-      await invocation.beforeDispatch!();
+      await Promise.race([
+        options.beforeDispatch
+          ? options.beforeDispatch(controller.signal)
+          : invocation.beforeDispatch!(),
+        aborted.promise,
+      ]);
       controller.signal.throwIfAborted();
       interactions?.activate();
       const protocol = createAntigravityProtocol(publish, init.conversationId, !context.resume);
@@ -166,6 +173,24 @@ export function createAntigravityOperation(
       // EOF requests graceful draining, not cancellation. Keep the output iterator
       // alive: returning it would dispose the process before natural completion.
       timeout(settlementMs, 'settlement');
+      // The CLI may flush diagnostics or additional frames while shutting down.
+      // Drain them without parsing/publishing further execution facts. Both time
+      // and total output remain bounded, even when the producer never reaches EOF.
+      const drain = (async () => {
+        let bytes = 0;
+        for (;;) {
+          const next = await reader.next();
+          if (next.done) {
+            return;
+          }
+
+          bytes += Buffer.byteLength(next.value) + 1;
+          if (bytes > shutdownOutputBytes) {
+            throw new AntigravityProtocolError();
+          }
+        }
+      })();
+      void drain.catch(() => undefined);
       const graceful = (async () => {
         await owner.endInput();
         controller.signal.throwIfAborted();
@@ -174,6 +199,7 @@ export function createAntigravityOperation(
         }
 
         await Promise.all([
+          drain,
           interactions.awaitNativeIdle(controller.signal),
           owner.done.then((exit) => {
             if (

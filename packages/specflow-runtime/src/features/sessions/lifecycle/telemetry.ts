@@ -68,10 +68,13 @@ export function createSessionTelemetryService(
   >();
   const shutdown = new AbortController();
   let stopped = false;
+  let migrationStatus: 'running' | 'completed' | 'failed' = 'running';
   const migration = (async () => {
     while (!stopped) {
       try {
         if ((await store.call<{ done: boolean }>({ op: 'telemetry-migrate' })).done) {
+          migrationStatus = 'completed';
+
           return;
         }
 
@@ -89,13 +92,15 @@ export function createSessionTelemetryService(
       }
     }
   })();
-  // Reads remain BASELINE_MISSING if migration fails. close() still reports the failure.
-  void migration.catch(() => undefined);
+  // Failures are visible during normal operation, not only at close(). Never
+  // publish raw SQLite errors or private filesystem paths in this diagnostic.
+  void migration.catch(() => {
+    migrationStatus = 'failed';
+  });
 
   const source = (sessionId: string) => store.call<Source>({ op: 'telemetry-source', sessionId });
 
   async function snapshot(sessionId: string): Promise<Omit<TelemetrySnapshot, 'accessRevision'>> {
-    await store.call({ op: 'telemetry-expire', sessionId });
     const info = await source(sessionId);
     const driver = driverFor(info.providerId);
     const result = await store.call<Omit<TelemetrySnapshot, 'accessRevision'>>({
@@ -125,9 +130,9 @@ export function createSessionTelemetryService(
     const supported =
       driver?.describe().readiness === 'ready' ? (driver.telemetry?.refreshableGroups ?? []) : [];
     result.limits.refreshable = supported.includes('limits');
-    result.context.refreshable = supported.includes('context');
+    result.context.refreshable = false;
 
-    return result;
+    return { ...result, migration: { status: migrationStatus } };
   }
 
   async function within<T>(run: () => Promise<T>, signal: AbortSignal): Promise<T> {
@@ -196,7 +201,10 @@ export function createSessionTelemetryService(
       const driver = driverFor(info.providerId);
       const provider = driver?.telemetry;
       for (const group of input.groups) {
-        if (!provider?.refreshableGroups.includes(group)) {
+        // Shared refresh jobs currently have account affinity only. Context and
+        // Turn observations require a different binding; do not admit them into
+        // this account-scoped cache even if a future driver advertises them.
+        if (group !== 'limits' || !provider?.refreshableGroups.includes(group)) {
           throw new SessionError('CAPABILITY_UNSUPPORTED', 'Telemetry group cannot be refreshed.', {
             capability: group,
           });
@@ -521,6 +529,7 @@ export function createSessionTelemetryService(
   }
 
   return {
+    migrationStatus: () => migrationStatus,
     snapshot,
     refresh: (sessionId: string, actor: string, input: RefreshTelemetry) =>
       refresh(sessionId, actor, input),

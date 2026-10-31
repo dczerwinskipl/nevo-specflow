@@ -79,6 +79,7 @@ type TelemetrySnapshot = {
   };
   limits: Reading<{ windows: LimitWindow[] }>;
   context: Reading<ContextUsage>;
+  migration?: { status: 'running' | 'completed' | 'failed' };
   refresh: {
     state: 'idle' | 'queued' | 'running';
     groups: ('usage' | 'cost' | 'limits' | 'context')[];
@@ -202,12 +203,22 @@ against an active native context just to populate a gauge. Unsupported live
 sources remain unavailable; terminal-only sources remain terminal-only.
 
 Each adapter declares observation expiry; account observations have a maximum
-fresh lifetime of 60 seconds. Current-context freshness is invalidated on new
+fresh lifetime of 60 seconds. Context observations also expire after 60 seconds,
+including after a terminal Turn or Runtime restart. They describe the last
+observed occupancy, not a continuing connection to the external native context.
+Current-context freshness is invalidated on new
 input/native context or model change until a matching observation arrives.
 Historical settled usage/cost need no TTL; their coverage/revision remains explicit.
 Schedule a persisted freshness invalidation at `staleAt`, so a silent provider does
 not leave the UI looking fresh. Refreshing an identical observation can update
 its observation/expiry timestamp; identical GETs cannot manufacture a newer revision.
+GET projects expiry from persisted timestamps without a write transaction. The
+existing subscribed expiry timer publishes committed invalidations for live
+consumers. With no subscribers, no expiry write is needed for correct GETs.
+Changing a native account outside Runtime is detected by the next identity check,
+not by GET. Until then readings retain their original observation time and expire
+within 60 seconds; stale data is historical evidence, not a claim about the new
+account. A confirmed scope change retires the old account/context observation.
 
 ### Explicit refresh
 
@@ -232,6 +243,9 @@ the same request ID/body per actor/Session for 24 hours; changed body is 409
 per-request receipts without exposing another actor's request ID. Expose shared
 queued/running state in GET; completion/failure commits a revision and wakes SSE.
 No separate job-polling endpoint is required.
+The current shared scheduler admits only account-scoped `limits`. A future context
+refresh MUST introduce native-context affinity before it can use shared work;
+advertising `context` in a driver alone cannot enable account-scoped coalescence.
 
 Observe the provider/account refresh interval; 429 with `Retry-After` for a new
 request exceeding it. Bound work to 10 seconds and at most one in-flight native
@@ -242,13 +256,30 @@ workspace, resume/replay a Turn, change models or repair authentication.
 ## Authorization, persistence and bounds
 
 Session View controls stored usage/cost/context reads; Session Manage is additionally
-required to trigger refresh. Account limits also require a proposed separate
+required to trigger an explicit refresh. Account limits also require the separate
 `session.view-provider-limits` capability at the trusted project/Session scope.
-That permission is a new Auth contract dependency, not an existing capability.
+View plus this capability authorizes passive, shared, read-only native monitoring
+while SSE is subscribed, even without Manage. It does not authorize inference,
+authentication repair or a manually scheduled POST. Manage governs that explicit
+command; a user may view monitored observations while `refreshable` is false.
 Without it, return `limits` unavailable with `NOT_AUTHORIZED`, no cached amount,
 timestamps or window IDs. Reject requested limit refresh without it. Auth policy
 changes invalidate actor-visible validators and reproject before further payloads.
 GET/SSE use the same checker and revocation behavior as the existing Session API.
+
+The HTTP snapshot includes a safe `migration.status` diagnostic during normal
+operation. A failed background migration remains observable as `failed` while
+historical aggregates retain `BASELINE_MISSING`; raw SQLite messages and paths
+never enter this field. Restart retries from the durable migration checkpoint.
+
+Native monetary numbers are exact-only within the canonical 12-decimal contract.
+Invalid or unrepresentable optional Claude cost is omitted without rejecting an
+otherwise authoritative Turn result, and is never silently rounded into the
+ledger. Native Codex percentages use a resolution of 10^-12 percentage points,
+rounding upward; valid tiny usage cannot become a fabricated zero. Codex context
+generations identify local observation epochs: confirmed compaction changes the
+epoch, duplicate completion does not, and a new protocol lifetime starts a new
+epoch rather than claiming continuity across an unobserved restart.
 
 Keep canonical usage/cost and replay/freshness publication in the existing SQLite
 owner/transaction coordinator. Keep the shared provider-limit cache in the provider

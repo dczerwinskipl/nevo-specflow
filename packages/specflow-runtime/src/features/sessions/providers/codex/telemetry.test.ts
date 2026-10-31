@@ -119,12 +119,22 @@ describe('Codex native account telemetry normalization', () => {
     expect(JSON.stringify(windows)).not.toMatch(/private|secret|credits/);
   });
 
-  it.each([-1, 101, NaN, '20', 1e-13])(
+  it.each([-1, 101, NaN, '20'])(
     'rejects invalid native percentages instead of clamping: %s',
     (usedPercent) => {
       expect(() => codexLimitWindows({ rateLimits: { primary: { usedPercent } } })).toThrow();
     },
   );
+  it.each([
+    [1e-13, '0.000000000001'],
+    [1e-7, '0.0000001'],
+    [0.1234567890123, '0.123456789013'],
+    [99.99999999999999, '100.000000000000'],
+  ])('normalizes finite percentage %s with conservative decimal resolution', (native, expected) => {
+    expect(codexLimitWindows({ rateLimits: { primary: { usedPercent: native } } })[0]?.used).toBe(
+      expected,
+    );
+  });
   it('keeps absent windows unavailable and rejects unbounded window collections', () => {
     expect(() => codexLimitWindows({ rateLimits: { primary: null, secondary: null } })).toThrow(
       'not reported',

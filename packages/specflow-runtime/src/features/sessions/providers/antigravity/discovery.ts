@@ -5,7 +5,7 @@ import { SessionError } from '../../errors';
 export const antigravityModes = [
   { modeId: 'accept-edits', nativeMode: 'accept-edits', title: 'Agent', mode: 'workspace-write' },
   // Native Plan is a planning instruction, not a filesystem permission boundary.
-  { modeId: 'plan', nativeMode: 'plan', title: 'Plan', mode: 'workspace-write' },
+  { modeId: 'plan', nativeMode: 'plan', title: 'Plan (workspace write)', mode: 'workspace-write' },
 ] as const;
 
 export function antigravityMode(selection: Invocation['selection']) {

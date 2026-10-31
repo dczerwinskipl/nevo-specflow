@@ -48,3 +48,38 @@ Readiness: ready for implementation of the defined bounded projection and refres
 flow. Any additional native dimension needs verified source semantics, not an
 invented estimate or UI fixture. Implementation/CI outcomes are recorded in the
 feature PR; this plan alone does not certify completion.
+
+## Deep review follow-up (2026-10-31)
+
+Review baseline: `cfbcf8c9`. Antigravity execution and telemetry retain separate
+acceptance gates; passing projection tests does not certify native isolation.
+
+Implemented follow-up covers review items 2–7, 11–14, 16–19, 21–22: bounded
+dispatch revalidation, bounded post-result drain, compaction observation epochs,
+separate native-hook capacity, canonical command summaries, typed file arguments,
+explicit writable Plan label, generated Windows path budget, read-only GET,
+context TTL, optional money isolation, conservative percentage quantization,
+account-only refresh, visible migration failure, single MCP session policy and
+cancellable bounded response revalidation. Native execution acceptance remains
+separate from these controlled-process regressions.
+
+Items 8–10 and 20/26 have explicit policy/limitations in the provider/API documents:
+path admission is not atomic native containment; approved commands may change
+repository configuration; reused native step IDs are denied; external account
+changes are noticed on identity checks with bounded freshness between them;
+ViewProviderLimits authorizes passive read-only monitoring without Manage.
+Those policy statements are not claims that native race/retry controls passed.
+
+Still open before Antigravity acceptance: item 1/30 execution-restriction evidence
+for unclassified installations, effective inventory verification, native
+multi-tool/retry correlation and post-grant junction controls. Do not treat the
+no-input initialization handshake or `securityVerified: true` as evidence that
+these controls passed. The owner has been asked to confirm the proposed
+no-inference local negative-control path without reintroducing hash pinning.
+
+Safe Codex bucket classification (15), full 32-reader/write latency measurement
+(38), installed native Credential Manager acceptance (40), and the existing CI
+failures remain separately reported until verified. Organizational refactors
+(24–25), additional budget factoring (23/27) and broader capability vocabulary
+(28) are not being substituted for correctness fixes. No mechanical module split,
+additional PR, paid automated test or UI work is introduced by this follow-up.

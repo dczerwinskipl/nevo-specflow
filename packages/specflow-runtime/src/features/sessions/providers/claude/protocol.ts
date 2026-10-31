@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
 import { claudeReadTools } from './modes';
+import { nativeDecimal } from '../decimal';
 
 type ObjectValue = Record<string, unknown>;
 export class ClaudeProtocolError extends Error {
@@ -39,19 +40,7 @@ function monetaryAmount(value: unknown): string {
     throw new ClaudeProtocolError();
   }
 
-  let amount = String(value);
-  if (amount.includes('e')) {
-    const [mantissa, exponent] = amount.split('e');
-    const [whole, fraction = ''] = mantissa!.split('.');
-    const digits = whole! + fraction;
-    const point = whole!.length + Number(exponent);
-    amount =
-      point <= 0
-        ? '0.' + '0'.repeat(-point) + digits
-        : point >= digits.length
-          ? digits + '0'.repeat(point - digits.length)
-          : digits.slice(0, point) + '.' + digits.slice(point);
-  }
+  const amount = nativeDecimal(value);
 
   if (!/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,12})?$/.test(amount)) {
     throw new ClaudeProtocolError();
@@ -440,31 +429,42 @@ export function createClaudeProtocol(
     if (frame.total_cost_usd !== undefined) {
       // Native result cost restores earlier spend on resume. It is an API cost
       // estimate reported by Claude, not a subscription billing statement.
-      const amount = monetaryAmount(frame.total_cost_usd);
-      const value = {
-        currency: 'USD' as const,
-        amount,
-        basis: 'provider-reported' as const,
-        meaning: 'api-equivalent' as const,
-      };
-      if (freshContext) {
-        await emit({
-          kind: 'measurement',
-          sampleId: 'claude-cost-baseline',
-          baseline: true,
-          metric: 'cost',
-          basis: 'session-cumulative',
-          value: { ...value, amount: '0' },
-        });
+      // Optional telemetry must not invalidate the authoritative Turn result.
+      // Money is exact-only: unsupported precision is omitted, never silently
+      // truncated or rounded into the durable monetary ledger.
+      let amount: string | undefined;
+      try {
+        amount = monetaryAmount(frame.total_cost_usd);
+      } catch {
+        amount = undefined;
       }
 
-      await emit({
-        kind: 'measurement',
-        sampleId: 'claude-result-cost',
-        metric: 'cost',
-        basis: 'session-cumulative',
-        value,
-      });
+      if (amount !== undefined) {
+        const value = {
+          currency: 'USD' as const,
+          amount,
+          basis: 'provider-reported' as const,
+          meaning: 'api-equivalent' as const,
+        };
+        if (freshContext) {
+          await emit({
+            kind: 'measurement',
+            sampleId: 'claude-cost-baseline',
+            baseline: true,
+            metric: 'cost',
+            basis: 'session-cumulative',
+            value: { ...value, amount: '0' },
+          });
+        }
+
+        await emit({
+          kind: 'measurement',
+          sampleId: 'claude-result-cost',
+          metric: 'cost',
+          basis: 'session-cumulative',
+          value,
+        });
+      }
     }
 
     await emit(

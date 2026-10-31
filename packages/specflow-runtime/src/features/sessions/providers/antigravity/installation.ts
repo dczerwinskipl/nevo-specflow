@@ -219,7 +219,9 @@ export async function prepareAntigravityProfile(
   const home = options.home ?? join(installation.homeRoot, 'account-' + suffix);
   if (
     !isAbsolute(home) ||
-    home.length >= 260 ||
+    // Include the longest generated configuration name and atomic-write UUID,
+    // not just HOME. Reject before mkdir/write on legacy Win32 path profiles.
+    join(home, '.gemini', 'antigravity-cli', 'settings.json').length + 37 >= 260 ||
     !inside(resolve(installation.homeRoot), resolve(home)) ||
     resolve(home) === resolve(installation.homeRoot)
   ) {

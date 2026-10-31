@@ -199,6 +199,18 @@ export const TelemetrySnapshotSchema = Type.Object(
     cost: usageReadings(TelemetryMoneyUsageSchema),
     limits: telemetryReading(TelemetryLimitsUsageSchema),
     context: telemetryReading(TelemetryContextUsageSchema),
+    migration: Type.Optional(
+      Type.Object(
+        {
+          status: Type.Union([
+            Type.Literal('running'),
+            Type.Literal('completed'),
+            Type.Literal('failed'),
+          ]),
+        },
+        closed,
+      ),
+    ),
     refresh: Type.Object(
       {
         state: Type.Union([Type.Literal('idle'), Type.Literal('queued'), Type.Literal('running')]),

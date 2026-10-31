@@ -138,10 +138,13 @@ describe('Claude full-message protocol', () => {
     ]);
   });
 
-  it.each([-1, Infinity, '0.1', 0.0000000000001])(
-    'rejects invalid or unrepresentable native money: %s',
+  it.each([-1, Infinity, '0.1', 1e-13, 0.1234567890123])(
+    'omits invalid or unrepresentable optional money without losing the result: %s',
     async (total_cost_usd) => {
-      await expect(fixture().result({ total_cost_usd })).rejects.toThrow('supported protocol');
+      const f = fixture();
+      await f.result({ total_cost_usd });
+      expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([]);
+      expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
     },
   );
   it('accepts foreground tool progress with internal IDs without changing tool state or usage', async () => {

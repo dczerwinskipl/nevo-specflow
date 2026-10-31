@@ -33,12 +33,12 @@ related:
 
 ## 1. Verified source baseline
 
-| Owner | Story files found | Exported typed stories | Interpretation |
-| --- | ---: | ---: | --- |
-| `packages/specflow-ui` | 46 | 650 | Product screens, contracts, features, mocks and relatively few component stories |
-| `packages/nevo-ui` | 96 | 526 | DS components and app mechanics, including hidden contracts and Figma captures |
-| `examples/crm` | 1 | 6 | Independent consumer example |
-| **Total** | **143** | **1,182** | Source-level count; includes tests, captures, mocks and showcase stories |
+| Owner                  | Story files found | Exported typed stories | Interpretation                                                                   |
+| ---------------------- | ----------------: | ---------------------: | -------------------------------------------------------------------------------- |
+| `packages/specflow-ui` |                46 |                    650 | Product screens, contracts, features, mocks and relatively few component stories |
+| `packages/nevo-ui`     |                96 |                    526 | DS components and app mechanics, including hidden contracts and Figma captures   |
+| `examples/crm`         |                 1 |                      6 | Independent consumer example                                                     |
+| **Total**              |           **143** |              **1,182** | Source-level count; includes tests, captures, mocks and showcase stories         |
 
 The navigation problem cannot be measured by total count alone:
 hidden contract stories are valid and may need to grow. The relevant numbers are
@@ -47,18 +47,18 @@ and how many screen-level stories are redundant parameter combinations**.
 
 ### SpecFlow by title area
 
-| Title area | Files | Stories | Assessment |
-| --- | ---: | ---: | --- |
-| Brand | 2 | 15 | Reasonable product-brand showcase, inspect redundant presets |
-| Screens | 13 | 305 | Biggest visible scenario-combination source |
-| Contracts | 14 | 168 | Mostly legitimate, but some duplicate connected screen infrastructure |
-| Components | 2 | 18 | Strikingly small product component catalog |
-| Features | 9 | 101 | Some real feature units, some test-only UI assemblies |
-| Shared | 2 | 20 | Operational primitives need clearer ownership/visibility |
-| Navigation | 1 | 1 | Not an owner category in current target hierarchy |
-| Review | 2 | 21 | Historical review artefacts should be explicitly profiled |
-| Sessions | 1 | 1 | Managed Session screen does not compensate for a component catalog gap |
-| **Total** | **46** | **650** | Categories reflect current source titles, not proposed tree |
+| Title area |  Files | Stories | Assessment                                                             |
+| ---------- | -----: | ------: | ---------------------------------------------------------------------- |
+| Brand      |      2 |      15 | Reasonable product-brand showcase, inspect redundant presets           |
+| Screens    |     13 |     305 | Biggest visible scenario-combination source                            |
+| Contracts  |     14 |     168 | Mostly legitimate, but some duplicate connected screen infrastructure  |
+| Components |      2 |      18 | Strikingly small product component catalog                             |
+| Features   |      9 |     101 | Some real feature units, some test-only UI assemblies                  |
+| Shared     |      2 |      20 | Operational primitives need clearer ownership/visibility               |
+| Navigation |      1 |       1 | Not an owner category in current target hierarchy                      |
+| Review     |      2 |      21 | Historical review artefacts should be explicitly profiled              |
+| Sessions   |      1 |       1 | Managed Session screen does not compensate for a component catalog gap |
+| **Total**  | **46** | **650** | Categories reflect current source titles, not proposed tree            |
 
 Key signal: **13 Screen files expose 305 stories while only two files live under
 `SpecFlow/Components` (18 stories).** This does not prove the product has only two
@@ -68,24 +68,24 @@ rather than mechanically moving directories.
 
 ### High-impact SpecFlow families
 
-| Existing story group | Stories | Principal problem | Migration recommendation |
-| --- | ---: | --- | --- |
-| Features / Specification Creation / Workspace Section | 66 | Many browser assertions presented as feature variations | Keep 66 validations where needed, classify Contract/Integration, add meaningful Workspace Selection feature playground |
-| Screens / Task Workbench | 63 | Many combinations of scenario, state, presentation, stress and width | Central controlled Playground, small explicit visual set, hidden contracts |
-| Contracts / Creation Demo | 52 | Large interaction suite; not inherently bad | Preserve automated coverage; review shared fixtures and overlaps |
-| Screens / Specs Overview | 44 | State/list/status/locale and responsive permutations | Controlled overview and smaller row/attention components; retain routing contracts |
-| Screens / Application Shell | 39 | Auth/nav/refresh/regression mixed with showcase | One composed shell playground; hidden routes/auth interactions |
-| Screens / Specification Workspace | 28 | Navigation and pending-state sequences as exports | Screen playground + feature-owned component stories + integration contracts |
-| Contracts / Document edit-preview and position | 27 | Complex editor behavior contracts | Keep hidden; preserve real editor lifecycle integration |
-| Screens / Documents archetypes (mock) | 26 | Wide/compact/mobile variants for historical mock | Tag as design/review fixture; consolidate controls and retire only if obsolete |
-| Screens / Task Workspace | 23 | State names and long/preview/narrow permutations | Feature or screen playground with real component stories below |
-| Screens / Editor mode (mock) | 23 | Width and mode combinations in navigation | Use controlled mock/preset and viewport; keep geometry checks |
-| Review / Owner V5 after | 17 | Mixed Contract/Integration/Visual tags at meta level | Split responsibilities, preserve only meaningful accepted baselines |
-| Screens / Login | 16 | Mostly state variants, some interactions | Playground + hidden login/auth behavior contracts |
-| Shared / Operations Panel | 16 | Tests expressed as named stories | Focused operation item/panel showcase + hidden behavior |
-| Components / Loading presentation | 13 | Dense variants | Keep component focus; assess Controls and test separation |
-| Screens / Managed Session | 8 | Full session tests rather than smaller session building blocks | Component stories for message/turn/interaction/composer; composed screen remains |
-| Features / Tasks / Hints | 3 | Good real component owner, but limited editing Controls | Improve to interactive Playground; keep focused copy/focus contract |
+| Existing story group                                  | Stories | Principal problem                                                    | Migration recommendation                                                                                               |
+| ----------------------------------------------------- | ------: | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Features / Specification Creation / Workspace Section |      66 | Many browser assertions presented as feature variations              | Keep 66 validations where needed, classify Contract/Integration, add meaningful Workspace Selection feature playground |
+| Screens / Task Workbench                              |      63 | Many combinations of scenario, state, presentation, stress and width | Central controlled Playground, small explicit visual set, hidden contracts                                             |
+| Contracts / Creation Demo                             |      52 | Large interaction suite; not inherently bad                          | Preserve automated coverage; review shared fixtures and overlaps                                                       |
+| Screens / Specs Overview                              |      44 | State/list/status/locale and responsive permutations                 | Controlled overview and smaller row/attention components; retain routing contracts                                     |
+| Screens / Application Shell                           |      39 | Auth/nav/refresh/regression mixed with showcase                      | One composed shell playground; hidden routes/auth interactions                                                         |
+| Screens / Specification Workspace                     |      28 | Navigation and pending-state sequences as exports                    | Screen playground + feature-owned component stories + integration contracts                                            |
+| Contracts / Document edit-preview and position        |      27 | Complex editor behavior contracts                                    | Keep hidden; preserve real editor lifecycle integration                                                                |
+| Screens / Documents archetypes (mock)                 |      26 | Wide/compact/mobile variants for historical mock                     | Tag as design/review fixture; consolidate controls and retire only if obsolete                                         |
+| Screens / Task Workspace                              |      23 | State names and long/preview/narrow permutations                     | Feature or screen playground with real component stories below                                                         |
+| Screens / Editor mode (mock)                          |      23 | Width and mode combinations in navigation                            | Use controlled mock/preset and viewport; keep geometry checks                                                          |
+| Review / Owner V5 after                               |      17 | Mixed Contract/Integration/Visual tags at meta level                 | Split responsibilities, preserve only meaningful accepted baselines                                                    |
+| Screens / Login                                       |      16 | Mostly state variants, some interactions                             | Playground + hidden login/auth behavior contracts                                                                      |
+| Shared / Operations Panel                             |      16 | Tests expressed as named stories                                     | Focused operation item/panel showcase + hidden behavior                                                                |
+| Components / Loading presentation                     |      13 | Dense variants                                                       | Keep component focus; assess Controls and test separation                                                              |
+| Screens / Managed Session                             |       8 | Full session tests rather than smaller session building blocks       | Component stories for message/turn/interaction/composer; composed screen remains                                       |
+| Features / Tasks / Hints                              |       3 | Good real component owner, but limited editing Controls              | Improve to interactive Playground; keep focused copy/focus contract                                                    |
 
 ### Specific technical findings in source
 
@@ -122,54 +122,54 @@ rather than mechanically moving directories.
 A working audit can start from this exact baseline, but must refresh it against the
 target branch before acting.
 
-| Source location relative to `packages/specflow-ui/src/` | Stories | Current title family |
-| --- | ---: | --- |
-| `brand/nevo/NevoMark.stories.tsx` | 9 | Brand / Nevo Mark |
-| `brand/nevo/NevoBrandLogo.stories.tsx` | 6 | Brand / Nevo Logo |
-| `app/errors/ErrorViews.stories.tsx` | 5 | Screens / Error Views |
-| `app/useCachedQueryState.stories.tsx` | 1 | Contracts / Cache observer |
-| `auth/RuntimeUnavailableScreen.stories.tsx` | 4 | Screens / Runtime Unavailable |
-| `app/loading/LoadingPresentation.stories.tsx` | 13 | Components / Loading presentation |
-| `features/tasks/pages/FullTaskView.stories.tsx` | 2 | Contracts / Standalone full task navigation |
-| `app/contracts/ConsistencyBaseline.stories.tsx` | 3 | Contracts / Creation consistency baseline |
-| `app/navigation/useSessionDisclosure.stories.tsx` | 1 | Contracts / Session navigation disclosure |
-| `auth/LoginScreen.stories.tsx` | 16 | Screens / Login |
-| `features/tasks/detail/hints/TaskHints.stories.tsx` | 3 | Features / Tasks / Hints |
-| `shared/operations/panel/OperationsPanel.stories.tsx` | 16 | Shared / Operations Panel |
-| `app/navigation/WorkspaceRouteLeaveGuard.stories.tsx` | 1 | Navigation / Workspace route leave guard |
-| `features/specs/overview/rows/SpecListRow.stories.tsx` | 2 | Features / Specification Row |
-| `app/contracts/OwnerV5Review.stories.tsx` | 4 | Review / Owner V5 independent responsive review |
-| `features/tasks/workspace/TaskSessionDemo.stories.tsx` | 2 | Screens / Task Session Demo |
-| `features/sessions/shared/SessionProviderIcon.stories.tsx` | 1 | Sessions / Provider Identity |
-| `shared/operations/progress/OperationProgress.stories.tsx` | 4 | Shared / Operation Progress |
-| `mocks/editor-mode/EditorMode.stories.tsx` | 23 | Screens / Editor mode (mock) |
-| `mocks/documents-archetypes/DocumentsArchetypes.stories.tsx` | 26 | Screens / Documents archetypes (mock) |
-| `features/documents/editor/MarkdownSourceEditor.stories.tsx` | 1 | Contracts / Markdown source editor |
-| `features/specs/workspace/SpecificationWorkspace.stories.tsx` | 2 | Features / Specification / Overview after Create |
-| `features/tasks/detail/history/TaskHistoryDetails.stories.tsx` | 2 | Features / Tasks / Historical details |
-| `app/SpecFlowShell.stories.tsx` | 39 | Screens / Application Shell |
-| `features/documents/description/restoreScrollPosition.stories.tsx` | 1 | Contracts / Restore Scroll Position |
-| `features/specs/workspace/specificationSecondaryStack.stories.tsx` | 2 | Features / Specification / Pending Task Preview |
-| `features/specs/SpecificationStandaloneNavigation.stories.tsx` | 5 | Contracts / Standalone specification navigation |
-| `features/specs/workspace/SpecificationWorkSectionOutlet.stories.tsx` | 1 | Features / Work Section Recovery |
-| `features/documents/content/DocumentContent.stories.tsx` | 5 | Features / Documents / Content lifecycle |
-| `shared/operational-list/OperationalRow.stories.tsx` | 5 | Components / Operational List |
-| `features/sessions/managed/ManagedSession.stories.tsx` | 8 | Screens / Managed Session |
-| `features/specs/creation/options/ArchetypeSection.stories.tsx` | 5 | Contracts / Create archetype selection |
-| `features/specs/overview/SpecsOverview.stories.tsx` | 44 | Screens / Specs Overview |
-| `features/documents/editor/DocumentEditor.stories.tsx` | 12 | Contracts / Demo Markdown editor V4 |
-| `app/contracts/ConnectedConsistency.stories.tsx` | 26 | Contracts / Connected creation consistency |
-| `app/contracts/OwnerV5After.stories.tsx` | 17 | Review / Owner V5 after |
-| `features/tasks/workspace/TaskWorkspace.stories.tsx` | 23 | Screens / Task Workspace |
-| `features/specs/creation/progress/CreateOperationPage.stories.tsx` | 18 | Features / Specification Creation / Progress Page |
-| `features/tasks/pages/FullTaskWorkspace.stories.tsx` | 63 | Screens / Task Workbench |
-| `features/specs/SpecificationSurface.stories.tsx` | 28 | Screens / Specification Workspace |
-| `features/documents/workspace/DocumentsArchetypes.stories.tsx` | 24 | Screens / Documents / Archetype states |
-| `features/documents/explorer/DocumentsExplorer.stories.tsx` | 14 | Contracts / Documents owner V4 |
-| `features/documents/editor/DocumentScroll.contract.stories.tsx` | 27 | Contracts / Document edit-preview and position |
-| `features/specs/creation/CreateSpecificationScreen.stories.tsx` | 52 | Contracts / Creation Demo |
-| `features/documents/explorer/DocumentsExplorer.contract.stories.tsx` | 18 | Contracts / Document tree explorer |
-| `features/specs/creation/workspace/WorkspacePlaceSection.stories.tsx` | 66 | Features / Specification Creation / Workspace Section |
+| Source location relative to `packages/specflow-ui/src/`               | Stories | Current title family                                  |
+| --------------------------------------------------------------------- | ------: | ----------------------------------------------------- |
+| `brand/nevo/NevoMark.stories.tsx`                                     |       9 | Brand / Nevo Mark                                     |
+| `brand/nevo/NevoBrandLogo.stories.tsx`                                |       6 | Brand / Nevo Logo                                     |
+| `app/errors/ErrorViews.stories.tsx`                                   |       5 | Screens / Error Views                                 |
+| `app/useCachedQueryState.stories.tsx`                                 |       1 | Contracts / Cache observer                            |
+| `auth/RuntimeUnavailableScreen.stories.tsx`                           |       4 | Screens / Runtime Unavailable                         |
+| `app/loading/LoadingPresentation.stories.tsx`                         |      13 | Components / Loading presentation                     |
+| `features/tasks/pages/FullTaskView.stories.tsx`                       |       2 | Contracts / Standalone full task navigation           |
+| `app/contracts/ConsistencyBaseline.stories.tsx`                       |       3 | Contracts / Creation consistency baseline             |
+| `app/navigation/useSessionDisclosure.stories.tsx`                     |       1 | Contracts / Session navigation disclosure             |
+| `auth/LoginScreen.stories.tsx`                                        |      16 | Screens / Login                                       |
+| `features/tasks/detail/hints/TaskHints.stories.tsx`                   |       3 | Features / Tasks / Hints                              |
+| `shared/operations/panel/OperationsPanel.stories.tsx`                 |      16 | Shared / Operations Panel                             |
+| `app/navigation/WorkspaceRouteLeaveGuard.stories.tsx`                 |       1 | Navigation / Workspace route leave guard              |
+| `features/specs/overview/rows/SpecListRow.stories.tsx`                |       2 | Features / Specification Row                          |
+| `app/contracts/OwnerV5Review.stories.tsx`                             |       4 | Review / Owner V5 independent responsive review       |
+| `features/tasks/workspace/TaskSessionDemo.stories.tsx`                |       2 | Screens / Task Session Demo                           |
+| `features/sessions/shared/SessionProviderIcon.stories.tsx`            |       1 | Sessions / Provider Identity                          |
+| `shared/operations/progress/OperationProgress.stories.tsx`            |       4 | Shared / Operation Progress                           |
+| `mocks/editor-mode/EditorMode.stories.tsx`                            |      23 | Screens / Editor mode (mock)                          |
+| `mocks/documents-archetypes/DocumentsArchetypes.stories.tsx`          |      26 | Screens / Documents archetypes (mock)                 |
+| `features/documents/editor/MarkdownSourceEditor.stories.tsx`          |       1 | Contracts / Markdown source editor                    |
+| `features/specs/workspace/SpecificationWorkspace.stories.tsx`         |       2 | Features / Specification / Overview after Create      |
+| `features/tasks/detail/history/TaskHistoryDetails.stories.tsx`        |       2 | Features / Tasks / Historical details                 |
+| `app/SpecFlowShell.stories.tsx`                                       |      39 | Screens / Application Shell                           |
+| `features/documents/description/restoreScrollPosition.stories.tsx`    |       1 | Contracts / Restore Scroll Position                   |
+| `features/specs/workspace/specificationSecondaryStack.stories.tsx`    |       2 | Features / Specification / Pending Task Preview       |
+| `features/specs/SpecificationStandaloneNavigation.stories.tsx`        |       5 | Contracts / Standalone specification navigation       |
+| `features/specs/workspace/SpecificationWorkSectionOutlet.stories.tsx` |       1 | Features / Work Section Recovery                      |
+| `features/documents/content/DocumentContent.stories.tsx`              |       5 | Features / Documents / Content lifecycle              |
+| `shared/operational-list/OperationalRow.stories.tsx`                  |       5 | Components / Operational List                         |
+| `features/sessions/managed/ManagedSession.stories.tsx`                |       8 | Screens / Managed Session                             |
+| `features/specs/creation/options/ArchetypeSection.stories.tsx`        |       5 | Contracts / Create archetype selection                |
+| `features/specs/overview/SpecsOverview.stories.tsx`                   |      44 | Screens / Specs Overview                              |
+| `features/documents/editor/DocumentEditor.stories.tsx`                |      12 | Contracts / Demo Markdown editor V4                   |
+| `app/contracts/ConnectedConsistency.stories.tsx`                      |      26 | Contracts / Connected creation consistency            |
+| `app/contracts/OwnerV5After.stories.tsx`                              |      17 | Review / Owner V5 after                               |
+| `features/tasks/workspace/TaskWorkspace.stories.tsx`                  |      23 | Screens / Task Workspace                              |
+| `features/specs/creation/progress/CreateOperationPage.stories.tsx`    |      18 | Features / Specification Creation / Progress Page     |
+| `features/tasks/pages/FullTaskWorkspace.stories.tsx`                  |      63 | Screens / Task Workbench                              |
+| `features/specs/SpecificationSurface.stories.tsx`                     |      28 | Screens / Specification Workspace                     |
+| `features/documents/workspace/DocumentsArchetypes.stories.tsx`        |      24 | Screens / Documents / Archetype states                |
+| `features/documents/explorer/DocumentsExplorer.stories.tsx`           |      14 | Contracts / Documents owner V4                        |
+| `features/documents/editor/DocumentScroll.contract.stories.tsx`       |      27 | Contracts / Document edit-preview and position        |
+| `features/specs/creation/CreateSpecificationScreen.stories.tsx`       |      52 | Contracts / Creation Demo                             |
+| `features/documents/explorer/DocumentsExplorer.contract.stories.tsx`  |      18 | Contracts / Document tree explorer                    |
+| `features/specs/creation/workspace/WorkspacePlaceSection.stories.tsx` |      66 | Features / Specification Creation / Workspace Section |
 
 This list represents **story file paths**, not a proposed navigation tree. Existing
 title paths sometimes disagree with code ownership; that is part of the cleanup.
@@ -179,14 +179,14 @@ title paths sometimes disagree with code ownership; that is part of the cleanup.
 A separate **production-component ownership scan** is required. Candidates below
 are ownership questions, **not claims that each named component already exists**:
 
-| Product area | Components/compositions to search for | Why a screen story is insufficient |
-| --- | --- | --- |
-| Tasks | Requirement item, gate/status, resource reference, task header, historical attempt row, step details, action menu | Layout and behavior of one element are obscured inside dozens of full-task variants |
-| Sessions | Message/event item, markdown body, tool/work presentation, context item, interaction/question, composer controls, pending status | Screen-wide Session fixtures conflate provider/UI state, focus and composition |
-| Documents | Explorer tree row, document identity/actions, editor status, read-only/unavailable content | Need to inspect one item with long name, type/icon, selection and context menu |
-| Specifications | Overview/list row, attention indicator, task preview, item navigation | List/screen stories repeat whole application state instead of inspecting one row |
-| Creation | Workspace choice, base/branch selector, archetype choice, validation/status explanation, progress item | Full create flow is too heavy for tuning local states and controls |
-| Operations | Operation row, progress state, action affordance, panel header | Existing fixtures are largely composed lists and test interactions |
+| Product area   | Components/compositions to search for                                                                                            | Why a screen story is insufficient                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Tasks          | Requirement item, gate/status, resource reference, task header, historical attempt row, step details, action menu                | Layout and behavior of one element are obscured inside dozens of full-task variants |
+| Sessions       | Message/event item, markdown body, tool/work presentation, context item, interaction/question, composer controls, pending status | Screen-wide Session fixtures conflate provider/UI state, focus and composition      |
+| Documents      | Explorer tree row, document identity/actions, editor status, read-only/unavailable content                                       | Need to inspect one item with long name, type/icon, selection and context menu      |
+| Specifications | Overview/list row, attention indicator, task preview, item navigation                                                            | List/screen stories repeat whole application state instead of inspecting one row    |
+| Creation       | Workspace choice, base/branch selector, archetype choice, validation/status explanation, progress item                           | Full create flow is too heavy for tuning local states and controls                  |
+| Operations     | Operation row, progress state, action affordance, panel header                                                                   | Existing fixtures are largely composed lists and test interactions                  |
 
 For every candidate:
 1. locate actual production subview/model and existing DS dependencies;
@@ -199,22 +199,22 @@ For every candidate:
 
 The 96 identified Nevo UI files distribute across:
 
-| Title area | Source files |
-| --- | ---: |
-| Foundations | 7 |
-| Layout | 8 |
-| Workspace | 6 |
-| Design System | 1 |
-| Forms | 22 |
-| Actions | 4 |
-| Surfaces | 3 |
-| Feedback | 11 |
-| Overlays | 8 |
-| Navigation | 12 |
-| Internal | 3 |
-| Content | 7 |
-| Data | 3 |
-| Patterns | 1 |
+| Title area    | Source files |
+| ------------- | -----------: |
+| Foundations   |            7 |
+| Layout        |            8 |
+| Workspace     |            6 |
+| Design System |            1 |
+| Forms         |           22 |
+| Actions       |            4 |
+| Surfaces      |            3 |
+| Feedback      |           11 |
+| Overlays      |            8 |
+| Navigation    |           12 |
+| Internal      |            3 |
+| Content       |            7 |
+| Data          |            3 |
+| Patterns      |            1 |
 
 Nevo UI is **not equally broken**. Many genuine component showcases and
 Controls already exist. Audit its large families (Workspace/Fit 24 stories,

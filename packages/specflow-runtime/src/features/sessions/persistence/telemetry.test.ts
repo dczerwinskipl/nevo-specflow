@@ -316,6 +316,93 @@ describe('materialized Session telemetry', () => {
     });
   });
 
+  it('initializes synthetic baselines without inventing observed usage or spend', () => {
+    const f = fixture();
+    f.telemetry.create(f.s);
+    const first = f.turn(1, { inputTokens: 0 });
+    f.telemetry.start(f.s, first);
+    f.telemetry.usage(f.s, first, {
+      kind: 'usage',
+      sampleId: 'baseline',
+      basis: 'session-cumulative',
+      baseline: true,
+      counters: { inputTokens: 0 },
+    });
+    f.telemetry.measurement(f.s, first, {
+      ...dollars('baseline', '0', 'session-cumulative'),
+      baseline: true,
+    } as Extract<DriverFact, { kind: 'measurement'; metric: 'cost' }>);
+    expect(f.telemetry.read(f.s).usage.session.status).toBe('unavailable');
+    expect(f.telemetry.read(f.s).cost.session.status).toBe('unavailable');
+    f.telemetry.terminal(f.s, first);
+    const second = f.turn(2, { inputTokens: 20 });
+    f.telemetry.start(f.s, second);
+    f.telemetry.usage(f.s, second, {
+      kind: 'usage',
+      sampleId: 'after-lost-result',
+      basis: 'session-cumulative',
+      counters: { inputTokens: 20 },
+    });
+    f.telemetry.measurement(f.s, second, dollars('after-lost-result', '5', 'session-cumulative'));
+    expect(f.telemetry.read(f.s).usage.turn?.reading.status).toBe('unavailable');
+    expect(f.telemetry.read(f.s).cost.turn?.reading.status).toBe('unavailable');
+  });
+
+  it('does not attribute cumulative spend across a Turn missing native samples', () => {
+    const f = fixture();
+    f.telemetry.create(f.s);
+    const first = f.turn(1);
+    f.telemetry.start(f.s, first);
+    const usage = (
+      turn: StoredTurn,
+      sampleId: string,
+      inputTokens: number,
+      summaryTokens: number,
+    ) => {
+      turn.summary.usage = { inputTokens: summaryTokens };
+      f.telemetry.usage(f.s, turn, {
+        kind: 'usage',
+        sampleId,
+        basis: 'session-cumulative',
+        counters: { inputTokens },
+      });
+    };
+
+    usage(first, 'fresh', 0, 0);
+    usage(first, 'one', 10, 10);
+    f.telemetry.measurement(f.s, first, dollars('fresh', '0', 'session-cumulative'));
+    f.telemetry.measurement(f.s, first, dollars('one', '1', 'session-cumulative'));
+    f.telemetry.terminal(f.s, first);
+    const missing = f.turn(2);
+    f.telemetry.start(f.s, missing);
+    f.telemetry.terminal(f.s, missing);
+    f.reopen();
+    const third = f.turn(3);
+    f.telemetry.start(f.s, third);
+    usage(third, 'three', 30, 20);
+    f.telemetry.measurement(f.s, third, dollars('three', '6', 'session-cumulative'));
+    expect(f.telemetry.read(f.s).usage.turn?.reading.status).toBe('unavailable');
+    expect(f.telemetry.read(f.s).cost.turn?.reading.status).toBe('unavailable');
+    usage(third, 'four', 35, 25);
+    f.telemetry.measurement(f.s, third, dollars('four', '7', 'session-cumulative'));
+    expect(f.telemetry.read(f.s).usage.turn?.reading).toMatchObject({
+      status: 'partial',
+      value: { inputTokens: 5, coverage: { complete: false } },
+    });
+    expect(f.telemetry.read(f.s).cost.turn?.reading).toMatchObject({
+      status: 'partial',
+      value: { amount: '1', coverage: { complete: false } },
+    });
+    expect(f.telemetry.read(f.s).usage.session).toMatchObject({
+      status: 'partial',
+      value: { inputTokens: 15 },
+    });
+    expect(f.telemetry.read(f.s).cost.session).toMatchObject({
+      status: 'partial',
+      value: { amount: '2' },
+    });
+  });
+
   it('initializes empty legacy Sessions after migration without inventing historical Turns', () => {
     const f = fixture();
     while (!f.telemetry.migrate().done) {
@@ -508,6 +595,45 @@ describe('materialized Session telemetry', () => {
       reason: 'NOT_OBSERVED',
     });
     expect(f.telemetry.read(f.s).usage.session.observedAt).toBe('2026-10-31T12:00:00.000Z');
+  });
+
+  it('hides a context gauge after account change or absent verified scope while retaining usage', () => {
+    const f = fixture();
+    f.telemetry.create(f.s);
+    const t = f.turn(1, { inputTokens: 10 });
+    f.telemetry.start(f.s, t);
+    f.run(
+      'INSERT INTO provider_contexts VALUES(?,?,?,?,?,?)',
+      f.s.snapshot.session.sessionId,
+      'native',
+      'workspace',
+      1,
+      1,
+      'account-a',
+    );
+    f.telemetry.usage(f.s, t, {
+      kind: 'usage',
+      sampleId: 'u',
+      basis: 'turn-total',
+      counters: { inputTokens: 10 },
+    });
+    f.telemetry.measurement(f.s, t, {
+      kind: 'measurement',
+      metric: 'context',
+      sampleId: 'context-a',
+      value: { contextGeneration: 'context-a', occupiedTokens: 50 },
+    });
+    expect(f.telemetry.read(f.s, 'account-a').context).toMatchObject({
+      status: 'available',
+      value: { occupiedTokens: 50 },
+    });
+    expect(f.telemetry.read(f.s).context.status).toBe('unavailable');
+    expect(f.telemetry.read(f.s, 'account-b').context.status).toBe('unavailable');
+    f.telemetry.observationFence(f.s, 'account-b', 'credential-b');
+    expect(f.telemetry.read(f.s, 'account-a').context.status).toBe('unavailable');
+    expect(f.telemetry.read(f.s, 'account-b').usage.session).toMatchObject({
+      value: { inputTokens: 10 },
+    });
   });
 
   it('publishes terminal telemetry and restores bounded aggregates and refresh receipts through the Worker', async () => {

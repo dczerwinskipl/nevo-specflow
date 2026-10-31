@@ -290,7 +290,13 @@ export function createProviderFacts({
 
     if (f.kind === 'usage') {
       const hash = createHash('sha256')
-        .update(stable({ basis: f.basis, counters: f.counters }))
+        .update(
+          stable({
+            basis: f.basis,
+            counters: f.counters,
+            ...(f.baseline ? { baseline: true } : {}),
+          }),
+        )
         .digest('hex');
       const existing = get(
         'SELECT hash FROM usage_samples WHERE invocation=? AND sample=?',

@@ -353,7 +353,7 @@ export async function runSessionWorker(): Promise<void> {
 
     saveTurn(s.snapshot.session.sessionId, t);
     refreshAttention(s, t);
-    telemetry.terminal(s);
+    telemetry.terminal(s, t);
     emit(s, 'turn', { turn: t.summary, projection: projection(s) });
     entry(s, t.summary.turnId, 'outcome', {
       text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,

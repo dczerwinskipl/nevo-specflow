@@ -3,6 +3,40 @@ import type { DriverFact } from '../persistence/protocol';
 import { validateDriverFact } from './facts';
 
 describe('provider fact boundary', () => {
+  it('accepts explicit zero cumulative origins but rejects nonzero, noncumulative or false baselines', () => {
+    const baseline: DriverFact = {
+      kind: 'usage',
+      sampleId: 'arbitrary-key',
+      basis: 'session-cumulative',
+      baseline: true,
+      counters: { inputTokens: 0 },
+    };
+    expect(() => validateDriverFact(baseline)).not.toThrow();
+    expect(() => validateDriverFact({ ...baseline, counters: { inputTokens: 1 } })).toThrow(
+      'zero cumulative origin',
+    );
+    expect(() => validateDriverFact({ ...baseline, basis: 'turn-total' })).toThrow(
+      'zero cumulative origin',
+    );
+    expect(() =>
+      validateDriverFact({ ...baseline, baseline: false } as unknown as DriverFact),
+    ).toThrow('protocol');
+    expect(() =>
+      validateDriverFact({
+        kind: 'measurement',
+        sampleId: 'cost-origin',
+        metric: 'cost',
+        basis: 'session-cumulative',
+        baseline: true,
+        value: {
+          currency: 'USD',
+          amount: '0',
+          basis: 'provider-reported',
+          meaning: 'api-equivalent',
+        },
+      }),
+    ).not.toThrow();
+  });
   it('validates measurement precision, disjoint context breakdown and private-field exclusion', () => {
     const cost = {
       kind: 'measurement',

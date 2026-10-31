@@ -146,6 +146,7 @@ export function createCodexProtocol(
           await emit({
             kind: 'usage',
             sampleId: 'native-baseline',
+            baseline: true,
             basis: 'session-cumulative',
             counters: { inputTokens: 0, outputTokens: 0, cachedTokens: 0, reasoningTokens: 0 },
           });

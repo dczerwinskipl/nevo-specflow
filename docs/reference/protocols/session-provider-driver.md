@@ -47,6 +47,11 @@ process/transport resources and translating protocol evidence. This contract doe
 - reconcile(invocationEvidence, signal): optional; return authoritative facts/settlement or unknown,
   never redispatch or fabricate a terminal answer.
 - dispose(signal): clean resources exactly once; release partial-start acquisitions on failure.
+- telemetryGroups: optional passive declaration of observed usage/cost/limits/context groups.
+  The optional telemetry source exposes refreshableGroups, bounded binding(signal) and
+  refresh({groups,binding},signal) for read-only observations. It cannot send prompts,
+  start/resume a thread, repair credentials or change a model. See
+  [Session telemetry](../api/session-telemetry.md) for snapshots and refresh delivery.
 
 Invocation = {sessionId, turnId, invocationId, ownerEpoch, providerSessionRef?, request,
 selection, executionContext}. executionContext is an opaque adapter input from trusted composition.
@@ -62,23 +67,31 @@ Every fact carries invocationId and an invocation-local monotonically increasing
 Runtime deduplicates identical sequence/fingerprint, rejects changed duplicates and fences all
 facts by owner epoch, active invocation and terminal state before canonical mutation.
 
-| Fact        | Required neutral input / interpretation                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------- |
-| correlation | provider, opaque providerSessionId; late delivery cannot rebind a settled/replaced invocation                   |
-| work-open   | native key, Work kind, optional parent native key for ToolAction, safe title; Runtime allocates identity/order  |
-| text        | native content key, channel commentary/reasoning/answer/tool-input/tool-output, bounded UTF-8 chunk             |
-| work-update | native key, neutral queued/active/waiting/completed/failed/cancelled/interrupted state, safe bounded metadata   |
-| interaction | native key, typed question/permission from API, recoveryPolicy live-operation or reconstructable                |
-| usage       | sampleId, basis delta/turn-total/session-cumulative, nonnegative counters; no inferred price                    |
-| progress    | positive semantic activity/liveness evidence, distinct from a decorative thinking flag                          |
-| outcome     | completed/failed/cancelled/interrupted, structured error if relevant, optional final answer reference           |
-| lost        | operation liveness/correlation cannot be established; Runtime enters unknown if settlement is unproven          |
-| settled     | evidence that owned process/transport and its allowed effects have stopped; not necessarily workflow completion |
+| Fact        | Required neutral input / interpretation                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| correlation | provider, opaque providerSessionId; late delivery cannot rebind a settled/replaced invocation                                                                                |
+| work-open   | native key, Work kind, optional parent native key for ToolAction, safe title; Runtime allocates identity/order                                                               |
+| text        | native content key, channel commentary/reasoning/answer/tool-input/tool-output, bounded UTF-8 chunk                                                                          |
+| work-update | native key, neutral queued/active/waiting/completed/failed/cancelled/interrupted state, safe bounded metadata                                                                |
+| interaction | native key, typed question/permission from API, recoveryPolicy live-operation or reconstructable                                                                             |
+| usage       | sampleId, basis delta/turn-total/session-cumulative, nonnegative counters; no inferred price                                                                                 |
+| measurement | sampleId, metric cost/context/limits and strict neutral value; money has explicit currency/scope/basis; limits may declare windowUpdate for bounded per-window native pushes |
+| progress    | positive semantic activity/liveness evidence, distinct from a decorative thinking flag                                                                                       |
+| outcome     | completed/failed/cancelled/interrupted, structured error if relevant, optional final answer reference                                                                        |
+| lost        | operation liveness/correlation cannot be established; Runtime enters unknown if settlement is unproven                                                                       |
+| settled     | evidence that owned process/transport and its allowed effects have stopped; not necessarily workflow completion                                                              |
 
 Text chunks <=16 KiB; metadata <=8 KiB per fact; interactions follow API limits. Normalize larger
 native frames incrementally in the driver without holding the full transcript/output. No raw
 payload in these facts. Runtime assigns its eventSeq/Work order, never trusts provider timestamps
 as ordering. Adapter correlation maps are bounded by active resources and released on settlement.
+
+Usage and monetary session-cumulative facts may declare `baseline:true` only for
+a verified fresh native zero origin. This initializes attribution without claiming
+observed Turn consumption. A missing intervening Turn measurement invalidates
+cumulative attribution: the next sample rebases, rather than assigning several
+Turns' consumption to the latest Turn. Context gauges are tied to the verified
+native account/context/model, while historical usage remains independently readable.
 
 For reconstructable interactions, the driver must persist the minimum private continuation
 evidence and prove reconstruction before advertising the capability. The mock uses live-operation

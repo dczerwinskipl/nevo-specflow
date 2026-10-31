@@ -126,6 +126,10 @@ describe('Claude full-message protocol', () => {
     });
     const fresh = fixture(undefined, true);
     await fresh.result({ total_cost_usd: 0.25 });
+    const costFacts = fresh.facts.filter(
+      (fact) => fact.kind === 'measurement' && fact.metric === 'cost',
+    );
+    expect(costFacts.map((fact) => fact.baseline)).toEqual([true, undefined]);
     expect(
       fresh.facts.filter((fact) => fact.kind === 'measurement').map((fact) => fact.value),
     ).toEqual([

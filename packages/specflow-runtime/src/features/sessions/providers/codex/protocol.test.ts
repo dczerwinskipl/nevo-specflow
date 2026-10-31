@@ -69,6 +69,22 @@ it('does not invent context occupancy from lifetime totals or missing last usage
   expect(f.facts.filter((fact) => fact.kind === 'measurement')).toEqual([]);
 });
 
+it('marks only the synthetic origin when a fresh native invocation stops before any measured usage', async () => {
+  const f = fixture();
+  await f.start();
+  await f.protocol.end();
+  expect(f.facts.filter((fact) => fact.kind === 'usage')).toEqual([
+    {
+      kind: 'usage',
+      sampleId: 'native-baseline',
+      baseline: true,
+      basis: 'session-cumulative',
+      counters: { inputTokens: 0, outputTokens: 0, cachedTokens: 0, reasoningTokens: 0 },
+    },
+  ]);
+  expect(f.facts.at(-1)?.kind).toBe('lost');
+});
+
 describe('Codex authoritative native item normalization', () => {
   it('keeps phase-aware commentary/partial/final text separate and never repeats deltas', async () => {
     const f = fixture();

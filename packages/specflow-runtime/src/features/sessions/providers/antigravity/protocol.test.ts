@@ -304,10 +304,13 @@ describe('Antigravity native stream protocol', () => {
       if (fresh) {
         expect(usage[0]).toMatchObject({
           sampleId: 'antigravity-baseline',
+          baseline: true,
           basis: 'session-cumulative',
           counters: { inputTokens: 0 },
         });
       }
+
+      expect(usage.at(-1)?.baseline).toBeUndefined();
     }
   });
 

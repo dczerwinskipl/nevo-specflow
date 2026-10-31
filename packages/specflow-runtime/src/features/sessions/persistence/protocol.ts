@@ -20,6 +20,8 @@ export type MeasurementFact =
       sampleId: string;
       metric: 'cost';
       basis: 'delta' | 'turn-total' | 'session-cumulative';
+      /** Establishes accounting origin without claiming measured Turn spend. */
+      baseline?: true;
       value: {
         currency: 'USD';
         amount: string;
@@ -49,6 +51,7 @@ export type DriverFact =
       kind: 'usage';
       sampleId: string;
       basis: 'delta' | 'turn-total' | 'session-cumulative';
+      baseline?: true;
       counters: NonNullable<TurnSummary['usage']>;
     }
   | { kind: 'progress'; activity: 'waiting' | 'responding'; label: string }

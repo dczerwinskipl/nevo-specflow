@@ -200,6 +200,7 @@ export function createAntigravityProtocol(
             await emit({
               kind: 'usage',
               sampleId: 'antigravity-baseline',
+              baseline: true,
               basis: 'session-cumulative',
               counters: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 },
             });

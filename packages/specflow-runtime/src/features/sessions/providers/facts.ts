@@ -54,6 +54,7 @@ const schema = Type.Union([
       kind: Type.Literal('measurement'),
       sampleId: key,
       metric: Type.Literal('cost'),
+      baseline: Type.Optional(Type.Literal(true)),
       basis: Type.Union(
         ['delta', 'turn-total', 'session-cumulative'].map((value) => Type.Literal(value)),
       ),
@@ -142,6 +143,7 @@ const schema = Type.Union([
   Type.Object(
     {
       kind: Type.Literal('usage'),
+      baseline: Type.Optional(Type.Literal(true)),
       sampleId: key,
       basis: Type.Union([
         Type.Literal('delta'),
@@ -159,6 +161,22 @@ export function validateDriverFact(fact: DriverFact): void {
       'SESSION_INPUT_INVALID',
       'Provider fact violates the canonical protocol.',
     );
+  }
+
+  if (
+    (fact.kind === 'usage' || (fact.kind === 'measurement' && fact.metric === 'cost')) &&
+    fact.baseline
+  ) {
+    const zero =
+      fact.kind === 'usage'
+        ? Object.values(fact.counters).every((count) => count === 0)
+        : /^0(?:\.0+)?$/.test(fact.value.amount);
+    if (fact.basis !== 'session-cumulative' || !zero) {
+      throw new SessionError(
+        'SESSION_INPUT_INVALID',
+        'Provider baseline must establish a zero cumulative origin.',
+      );
+    }
   }
 
   if (fact.kind === 'measurement') {

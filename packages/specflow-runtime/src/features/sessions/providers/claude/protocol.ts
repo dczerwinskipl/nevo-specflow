@@ -451,6 +451,7 @@ export function createClaudeProtocol(
         await emit({
           kind: 'measurement',
           sampleId: 'claude-cost-baseline',
+          baseline: true,
           metric: 'cost',
           basis: 'session-cumulative',
           value: { ...value, amount: '0' },

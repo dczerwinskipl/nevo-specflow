@@ -44,6 +44,7 @@ interface Ledger {
   costAt?: string;
   latest?: TurnLedger;
   context?: TelemetryReading<TelemetryContextUsage>;
+  contextScope?: string;
   limits?: TelemetryReading<TelemetryLimitsUsage>;
   limitsScope?: string;
   limitsGeneration?: string;
@@ -236,22 +237,32 @@ export function createSessionTelemetry(
   }
 
   function usage(s: StoredSession, t: StoredTurn, f: Extract<DriverFact, { kind: 'usage' }>) {
+    if (f.baseline) {
+      const sid = s.snapshot.session.sessionId;
+      run(
+        'INSERT OR REPLACE INTO telemetry_baselines VALUES(?,?,?)',
+        sid,
+        'usage',
+        JSON.stringify(f.counters),
+      );
+      run('DELETE FROM telemetry_baselines WHERE session=? AND metric=?', sid, 'usage-turn');
+
+      return;
+    }
+
     const old =
       readJson<TurnLedger>('SELECT data FROM telemetry_turns WHERE turn=?', t.summary.turnId) ??
       ledger(t);
     const counters = t.summary.usage as Record<string, number> | undefined;
-    const next: Tokens = {};
-    for (const key of tokenKeys) {
-      const value = counters?.[key === 'cacheReadTokens' ? 'cachedTokens' : key] ?? counters?.[key];
-      if (value !== undefined) {
-        next[key] = safe(value);
+    const next: Tokens = f.basis === 'session-cumulative' ? { ...old.usage } : {};
+    if (f.basis !== 'session-cumulative') {
+      for (const key of tokenKeys) {
+        const value =
+          counters?.[key === 'cacheReadTokens' ? 'cachedTokens' : key] ?? counters?.[key];
+        if (value !== undefined) {
+          next[key] = safe(value);
+        }
       }
-    }
-
-    // A first cumulative sample establishes a baseline, not a zero-valued Turn.
-    if (Object.keys(next).length) {
-      old.usage = next;
-      old.usageAt = now();
     }
 
     if (f.basis === 'session-cumulative') {
@@ -270,12 +281,39 @@ export function createSessionTelemetry(
         old.usageIncomplete = true;
       }
 
+      for (const key of tokenKeys) {
+        const sourceKey = key === 'cacheReadTokens' ? 'cachedTokens' : key;
+        const value = f.counters[sourceKey];
+        if (
+          value !== undefined &&
+          baseline?.[sourceKey] !== undefined &&
+          value >= baseline[sourceKey]
+        ) {
+          next[key] = safe((next[key] ?? 0) + value - baseline[sourceKey]);
+        } else if (value === 0 && baseline === undefined) {
+          next[key] = 0;
+        }
+      }
+
       run(
         'INSERT OR REPLACE INTO telemetry_baselines VALUES(?,?,?)',
         s.snapshot.session.sessionId,
         'usage',
         JSON.stringify(f.counters),
       );
+      run(
+        'INSERT OR REPLACE INTO telemetry_baselines VALUES(?,?,?)',
+        s.snapshot.session.sessionId,
+        'usage-turn',
+        JSON.stringify(t.summary.turnId),
+      );
+    }
+
+    // Canonical usage can span an unobserved Turn; telemetry only attributes the
+    // native cumulative differences whose continuation baseline remains valid.
+    if (Object.keys(next).length) {
+      old.usage = next;
+      old.usageAt = now();
     }
 
     update(s, old);
@@ -357,6 +395,18 @@ export function createSessionTelemetry(
       f.sampleId,
       hash,
     );
+    if (f.metric === 'cost' && f.baseline) {
+      run(
+        'INSERT OR REPLACE INTO telemetry_baselines VALUES(?,?,?)',
+        sid,
+        'cost',
+        JSON.stringify(f.value),
+      );
+      run('DELETE FROM telemetry_baselines WHERE session=? AND metric=?', sid, 'cost-turn');
+
+      return;
+    }
+
     if (f.metric !== 'cost') {
       const data = load(sid);
       const reading = {
@@ -369,6 +419,8 @@ export function createSessionTelemetry(
       };
       if (f.metric === 'context') {
         data.context = reading as TelemetryReading<TelemetryContextUsage>;
+        const scope = get('SELECT scope FROM provider_contexts WHERE session=?', sid)?.scope;
+        data.contextScope = typeof scope === 'string' ? scope : undefined;
       } else {
         const scope = get('SELECT scope FROM provider_contexts WHERE session=?', sid)?.scope;
         limitsObservation(
@@ -432,6 +484,12 @@ export function createSessionTelemetry(
         sid,
         'cost',
         JSON.stringify(value),
+      );
+      run(
+        'INSERT OR REPLACE INTO telemetry_baselines VALUES(?,?,?)',
+        sid,
+        'cost-turn',
+        JSON.stringify(t.summary.turnId),
       );
     }
 
@@ -557,7 +615,10 @@ export function createSessionTelemetry(
             }
           : {}),
       },
-      context: projectGauge(data.context),
+      context:
+        expectedScope === undefined || data.contextScope !== expectedScope
+          ? unavailable('NOT_OBSERVED')
+          : projectGauge(data.context),
       limits:
         expectedScope === undefined || data.limitsScope !== expectedScope
           ? unavailable('NOT_OBSERVED')
@@ -672,7 +733,24 @@ export function createSessionTelemetry(
     return { done: false };
   }
 
-  function terminal(s: StoredSession) {
+  function terminal(s: StoredSession, t: StoredTurn) {
+    const sid = s.snapshot.session.sessionId;
+    for (const metric of ['usage', 'cost']) {
+      const supplyingTurn = readJson<string>(
+        'SELECT data FROM telemetry_baselines WHERE session=? AND metric=?',
+        sid,
+        metric + '-turn',
+      );
+      if (supplyingTurn !== t.summary.turnId) {
+        run(
+          'DELETE FROM telemetry_baselines WHERE session=? AND metric IN (?,?)',
+          sid,
+          metric,
+          metric + '-turn',
+        );
+      }
+    }
+
     // Measurements are already durable before terminal publication, in this transaction path.
     const data = load(s.snapshot.session.sessionId);
     save(s, data);
@@ -768,6 +846,7 @@ export function createSessionTelemetry(
       };
       if (f.metric === 'context') {
         data.context = reading as TelemetryReading<TelemetryContextUsage>;
+        data.contextScope = expectedScope;
       } else {
         limitsObservation(data, f, observedAt, expectedScope, expectedGeneration);
       }
@@ -787,6 +866,10 @@ export function createSessionTelemetry(
     }
 
     data.observationFence = { scope, generation };
+    if (data.contextScope !== scope) {
+      data.context = unavailable('NOT_OBSERVED');
+    }
+
     if (data.limitsScope !== scope || data.limitsGeneration !== generation) {
       data.limits = unavailable('NOT_OBSERVED');
     }

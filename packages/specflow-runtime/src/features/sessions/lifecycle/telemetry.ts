@@ -16,6 +16,14 @@ const REFRESH_TIMEOUT_MS = 10000;
 const MAX_BINDINGS = 64;
 const MAX_WATCHES = 32;
 
+function isPermitted(check: () => boolean): boolean {
+  try {
+    return check();
+  } catch {
+    return false;
+  }
+}
+
 export class TelemetryRateLimited extends Error {
   readonly retryAfterSeconds: number;
   constructor(retryAfterSeconds: number) {
@@ -434,7 +442,7 @@ export function createSessionTelemetryService(
       // Transcript/tool commits share the wake-up channel. Coalesce them rather than
       // rereading telemetry on every token, and stop work when the final viewer leaves.
       await delay(500, undefined, { signal: shutdown.signal });
-      if (watches.get(sessionId) !== watch || ![...watch.consumers].some((allowed) => allowed())) {
+      if (watches.get(sessionId) !== watch || ![...watch.consumers].some(isPermitted)) {
         return;
       }
 
@@ -469,7 +477,7 @@ export function createSessionTelemetryService(
           return;
         }
 
-        if (![...watches.get(sessionId)!.consumers].some((allowed) => allowed())) {
+        if (![...watches.get(sessionId)!.consumers].some(isPermitted)) {
           return;
         }
 

@@ -169,10 +169,8 @@ describe('Session telemetry HTTP', () => {
         cacheWriteTokens: 10,
       });
       expect(observed(snapshot.cost.session)).toMatchObject({ amount: '0.0123', currency: 'USD' });
-      expect(observed(snapshot.context)).toMatchObject({
-        occupiedTokens: 200,
-        capacityTokens: 1000,
-      });
+      // The no-effects mock has no verified native account/context binding.
+      expect(snapshot.context).toMatchObject({ status: 'unavailable', reason: 'NOT_OBSERVED' });
       expect(snapshot.usage.turn?.turnId).toBe(result.json<{ turnId: string }>().turnId);
     });
   });

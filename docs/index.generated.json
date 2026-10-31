@@ -4625,6 +4625,76 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.storybook-rework",
+      "type": "engineering",
+      "title": "Storybook Rework — component-first catalog and sustainable story authoring",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/storybook-rework.md",
+      "read_when": [
+        "planning Storybook reorganization or UI test infrastructure",
+        "evaluating whether a new UI story should be a playground, fixture, visual baseline, or test",
+        "reviewing agents' UI implementation and Storybook output",
+        "designing enforcement to prevent new story catalog clutter"
+      ],
+      "summary": "Non-authoritative proposal to rework SpecFlow Storybook from a screen-scenario dump into a component-first interactive workbench, while retaining automated contracts and introducing incremental CI and agent-level authoring safeguards.",
+      "related": [
+        "ideas.readme",
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.storybook-rework-inventory",
+        "design-system.implementation.storybook.guidelines",
+        "engineering.shared.testing",
+        "design-system.implementation.react.component-guidelines"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs",
+        "testing",
+        "tooling"
+      ],
+      "tags": [
+        "storybook",
+        "design-system",
+        "components",
+        "testing",
+        "developer-experience",
+        "agents"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.storybook-rework-inventory",
+      "type": "engineering",
+      "title": "Storybook Rework — baseline inventory and migration map",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/storybook-rework-inventory.md",
+      "read_when": [
+        "auditing Storybook source and deciding what to consolidate or preserve",
+        "planning a Storybook cleanup for an explicitly chosen UI scope",
+        "reviewing incoming PRs that introduce UI components, stories, or fixture infrastructure"
+      ],
+      "summary": "Dated, non-authoritative inventory of SpecFlow/Nevo UI Storybook groups, component-story gaps, problematic screen scenario families, and a repeatable method for refreshing the inventory as concurrent PRs arrive.",
+      "related": [
+        "ideas.readme",
+        "ideas.specflow-ui.storybook-rework",
+        "design-system.implementation.storybook.guidelines",
+        "engineering.shared.testing"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs",
+        "testing",
+        "tooling"
+      ],
+      "tags": [
+        "storybook",
+        "inventory",
+        "migration",
+        "testing",
+        "design-system"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.spec-creation",
       "type": "product",
       "title": "Specification creation vertical slice",

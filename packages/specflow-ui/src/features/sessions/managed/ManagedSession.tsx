@@ -30,6 +30,7 @@ import {
   useSecondaryNavigation,
   useWorkspaceCapabilities,
   cn,
+  type WorkspaceHeaderAction,
 } from '@nevo/ui';
 import type { ConversationEntry, Interaction } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed } from './feed';
@@ -66,6 +67,7 @@ function InteractionPrompt({
   return (
     <section
       aria-label={t('managedSession.responseRequired')}
+      data-interaction-prompt="true"
       className="grid max-h-[40dvh] gap-3 overflow-y-auto rounded-control border border-border-subtle p-4"
     >
       <Typography as="h2" variant="title-sm">
@@ -604,42 +606,79 @@ export function ManagedSession({
     interrupted: t('managedSession.outcome.interrupted'),
   };
 
+  // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (owner audit:
+  // the previous dedicated, bordered status/provider row read as a second header competing with
+  // this one for space, especially on narrow widths — the same space pressure implicated in the
+  // floating-overlay overlap this pass also fixes) instead of a standalone row in the conversation
+  // flow. Nothing it showed is dropped: the connection/activity text and the mock-provider safety
+  // note both still render, just as the header's own muted subtitle; `role="status"` keeps the
+  // same live-region announcement the old row's `<span role="status">` gave screen reader users.
+  const activityLabel = snapshot
+    ? state.connection === 'connected'
+      ? (snapshot.currentActivity?.label ?? t(`managedSession.${snapshot.session.readiness}`))
+      : t(`managedSession.${state.connection}`)
+    : undefined;
+  const isWaitingOnProvider =
+    !!snapshot && state.connection === 'connected' && snapshot.currentActivity?.kind === 'waiting';
+  // The raw provider id ("claude-code", "codex", …) is not shown on its own anymore (owner audit:
+  // "tragiczne designowo" — not meaningful to a user who already sees the active model via the
+  // composer's own Model picker). Only the mock-provider safety caveat survives, since it carries
+  // real operational meaning ("nothing you do here persists"), not mere identity.
+  const mockNote =
+    snapshot?.session.providerId === 'mock' ? t('managedSession.mockNote') : undefined;
+  // Activity first, mock-note second: `WorkspaceHeaderIdentity`'s subtitle is a single truncated
+  // line, so if space runs out on a narrow header the less operationally urgent mock-provider
+  // caveat is what gets clipped, never the "is the agent working/stuck" signal.
+  const headerSubtitle =
+    activityLabel || mockNote ? (
+      <span role="status">
+        {activityLabel && mockNote ? `${activityLabel} · ${mockNote}` : (activityLabel ?? mockNote)}
+      </span>
+    ) : undefined;
+  const contextAction: WorkspaceHeaderAction | undefined = !supportsSplit
+    ? {
+        id: 'context',
+        label: t('sessions.context.title'),
+        icon: 'file',
+        // Directly tappable on narrow instead of buried in the generic "More actions" overflow
+        // (full-session-screen-structure.md §21.1's `[Context]` pill); `'always'` wins the single
+        // narrow direct slot regardless of this header's own measured width.
+        direct: 'always',
+        onPress: () =>
+          void navigation.open(createSessionContextStack(sessionId, sessionContext), {}),
+      }
+    : !contextOpen
+      ? {
+          id: 'context',
+          label: t('sessions.context.title'),
+          icon: 'file',
+          onPress: () => setContextOpen(true),
+        }
+      : undefined;
+  // Replaces the old status row's own Retry button (`state.connection === 'error'`), which this
+  // pass removes along with the rest of that row.
+  const retryConnectionAction: WorkspaceHeaderAction | undefined =
+    snapshot && state.connection === 'error'
+      ? {
+          id: 'retry-connection',
+          label: t('common.retry'),
+          icon: 'refresh',
+          onPress: () => feed.connect(),
+        }
+      : undefined;
+  const headerActions = [contextAction, retryConnectionAction].filter(
+    Boolean,
+  ) as WorkspaceHeaderAction[];
+
   return (
     <AppWorkspace scroll="content" fit="available" split="dynamic" labels={labels}>
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader
             title={snapshot?.session.title ?? t('managedSession.title')}
-            actions={
-              !supportsSplit
-                ? [
-                    {
-                      id: 'context',
-                      label: t('sessions.context.title'),
-                      icon: 'file',
-                      // Directly tappable on narrow instead of buried in the generic "More
-                      // actions" overflow (full-session-screen-structure.md §21.1's `[Context]`
-                      // pill); `'always'` wins the single narrow direct slot regardless of this
-                      // header's own measured width.
-                      direct: 'always',
-                      onPress: () =>
-                        void navigation.open(
-                          createSessionContextStack(sessionId, sessionContext),
-                          {},
-                        ),
-                    },
-                  ]
-                : !contextOpen
-                  ? [
-                      {
-                        id: 'context',
-                        label: t('sessions.context.title'),
-                        icon: 'file',
-                        onPress: () => setContextOpen(true),
-                      },
-                    ]
-                  : undefined
-            }
+            subtitle={headerSubtitle}
+            status={isWaitingOnProvider ? <Spinner size="sm" /> : undefined}
+            actions={headerActions}
           />
         }
       >
@@ -665,26 +704,6 @@ export function ManagedSession({
                   </Button>
                 </Alert>
               )}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle px-5 py-3">
-                <p className="text-body-sm text-content-muted">
-                  {snapshot.session.providerId === 'mock'
-                    ? t('managedSession.mockNote')
-                    : snapshot.session.providerId}
-                </p>
-                <span role="status" className="flex items-center gap-1.5 text-body-sm">
-                  {state.connection === 'connected' &&
-                    snapshot.currentActivity?.kind === 'waiting' && <Spinner size="sm" />}
-                  {state.connection === 'connected'
-                    ? (snapshot.currentActivity?.label ??
-                      t(`managedSession.${snapshot.session.readiness}`))
-                    : t(`managedSession.${state.connection}`)}
-                </span>
-                {state.connection === 'error' && (
-                  <Button size="sm" onClick={() => feed.connect()}>
-                    {t('common.retry')}
-                  </Button>
-                )}
-              </div>
               {/* The Composer floats over the conversation (owner feedback #1) instead of sitting
                   in normal flow below it: this wrapper is the shared positioning context, the
                   scroller fills it and reserves `composerHeight` of bottom padding so the last
@@ -746,7 +765,20 @@ export function ManagedSession({
                 <div
                   ref={setComposerOverlayNode}
                   data-composer-overlay="true"
-                  className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 px-4 pb-4 pt-3 sm:px-5 sm:pb-5"
+                  // Root cause of the status-line/`InteractionPrompt` overlap (owner audit, 320–390px):
+                  // this overlay is anchored by `bottom-0` only, with no `top`/height ceiling, so its
+                  // natural content height (the pending-interaction card, up to its own `max-h-[40dvh]`,
+                  // plus the composer, the "jump to latest" pill and any command-error Alert) grew
+                  // taller than the `relative min-h-0 flex-1` positioning container above whenever the
+                  // viewport was short — and an absolutely positioned, bottom-anchored box with no cap
+                  // simply extends upward past its container's own top edge in that case, covering
+                  // whatever sits above it in normal flow (the status-line row, now the header's own
+                  // subtitle). `max-h-full` (100% of that same positioning container) plus its own
+                  // `overflow-y-auto` guarantee the overlay can never grow past the container's top: once
+                  // its content would need more room than is available, it scrolls internally instead of
+                  // bleeding upward, so the two can never occupy the same screen space at any viewport
+                  // width.
+                  className="absolute inset-x-0 bottom-0 flex max-h-full flex-col items-center gap-2 overflow-y-auto px-4 pb-4 pt-3 sm:px-5 sm:pb-5"
                 >
                   {(state.hasNew || state.away) && (
                     <Button className="shadow-xl" variant="secondary" onClick={() => feed.latest()}>

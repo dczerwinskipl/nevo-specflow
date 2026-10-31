@@ -20,6 +20,7 @@ import {
   WIDE_VIEWPORT,
   verifyComposerOverlayPadding,
   verifyNoEntryOverlapsComposer,
+  verifyNoHeaderOverlapsInteractionPrompt,
 } from './managedSession.storyHelpers.stories-support';
 
 /**
@@ -150,6 +151,11 @@ export const GrowingAnswerNeverOverlapsComposer: Story = {
       await canvas.findByText(/jedna całość\.$/, undefined, { timeout: 5000 }),
     ).toBeVisible();
     await verifyNoEntryOverlapsComposer(canvasElement);
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): checked at both
+    // widths the audit specifically measured.
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
+    await settleViewport(320, 568);
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
   },
 };
 
@@ -241,6 +247,11 @@ export const CancelTurn: Story = {
     // Item 1 regression: at 390px, the large auto-stitching answer must never end up rendered
     // behind the pending-interaction card/composer overlay.
     await verifyNoEntryOverlapsComposer(canvasElement);
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): checked at both
+    // widths the audit specifically measured.
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
+    await settleViewport(320, 568);
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
   },
 };
 

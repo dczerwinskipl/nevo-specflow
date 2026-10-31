@@ -79,6 +79,47 @@ export async function verifyNoEntryOverlapsComposer(canvasElement: HTMLElement) 
  * reserved padding must actually cover the overlay's measured height, and no conversation entry
  * may render behind the overlay's own screen-space rectangle.
  */
+/**
+ * Narrow-viewport regression (owner audit, live DOM measurement at 320px): the status-line row
+ * that used to sit in its own bordered bar between the header and the conversation rendered
+ * directly on top of `InteractionPrompt`'s own "Wymagana odpowiedź" heading — two different
+ * elements, both legible on their own, visually overlapping into illegible stacked text. Root
+ * cause (`ManagedSession.tsx`'s `data-composer-overlay` element): bottom-anchored with no
+ * `top`/height ceiling, its natural content height (pending-interaction card + composer + any
+ * alert/pill) could exceed the space available below the header on a short viewport, and an
+ * absolutely positioned box with no cap simply extends upward past its container's top edge in
+ * that case — covering whatever renders above it in normal flow. The fix folds the former status
+ * row into the real page header's own `status`/`subtitle` slots and caps the overlay to its
+ * positioning container's height (`max-h-full` + `overflow-y-auto`, scrolling internally instead
+ * of bleeding upward), so this asserts the geometric invariant directly: whenever a pending
+ * interaction renders, its card must never start above the header's own bottom edge, at any
+ * viewport width. Confirmed live (manual DOM override removing the cap) that this check fails
+ * the moment the overlay's height ceiling is removed — the same mechanism the original bug hit.
+ */
+export async function verifyNoHeaderOverlapsInteractionPrompt(canvasElement: HTMLElement) {
+  await waitFor(() => {
+    const header = canvasElement.querySelector<HTMLElement>('[data-workspace-header]');
+    if (!header) {
+      throw new Error('Expected the Primary workspace header.');
+    }
+
+    const prompt = canvasElement.querySelector<HTMLElement>('[data-interaction-prompt]');
+    if (!prompt) {
+      // No pending interaction rendered — nothing to check.
+      return;
+    }
+
+    const headerBottom = header.getBoundingClientRect().bottom;
+    const promptRect = prompt.getBoundingClientRect();
+    if (promptRect.height > 0 && promptRect.top < headerBottom - 0.5) {
+      throw new Error(
+        `InteractionPrompt (top ${promptRect.top}px) renders above the header's own bottom edge ` +
+          `(${headerBottom}px) — the floating composer overlay has bled upward over the header.`,
+      );
+    }
+  });
+}
+
 export async function verifyComposerOverlayPadding(canvasElement: HTMLElement) {
   const scroller = await waitFor(() => {
     const node = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');

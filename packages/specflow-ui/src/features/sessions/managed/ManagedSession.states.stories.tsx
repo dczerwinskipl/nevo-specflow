@@ -24,6 +24,7 @@ import {
   WIDE_VIEWPORT,
   verifyComposerOverlayPadding,
   verifyNoEntryOverlapsComposer,
+  verifyNoHeaderOverlapsInteractionPrompt,
 } from './managedSession.storyHelpers.stories-support';
 
 /**
@@ -128,6 +129,11 @@ export const PendingInteractionNarrow: Story = {
     // first, the same `settleViewport` convention other geometry-sensitive stories already use.
     await settleViewport(390, 844);
     await verifyComposerOverlayPadding(canvasElement);
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): checked at both
+    // widths the audit specifically measured.
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
+    await settleViewport(320, 568);
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
   },
 };
 
@@ -157,6 +163,12 @@ export const WaitingForQuestion: Story = {
     // Item 6 regression: the structured interaction-response field is not free prose, so native
     // spellcheck stays off (no red squiggly underlines on a structured response field).
     await expect(canvas.getByLabelText('Twoja odpowiedź')).toHaveAttribute('spellcheck', 'false');
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): the exact state
+    // and widths the audit reproduced live — two "Wymagana odpowiedź" headings rendering on top of
+    // each other. Checked at both widths the audit specifically measured.
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
+    await settleViewport(320, 568);
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
   },
 };
 
@@ -278,5 +290,13 @@ export const UnsupportedMultipleChoice: Story = {
     ).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Odpowiedz' })).not.toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Zatrzymaj' })).toBeEnabled();
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): this story also
+    // renders `snapshot.interaction` (an unsupported multi-select question), so it is one of the
+    // states the audit flagged as likely affected even though it has no dedicated narrow viewport
+    // of its own yet.
+    await settleViewport(390, 844);
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
+    await settleViewport(320, 568);
+    await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
   },
 };

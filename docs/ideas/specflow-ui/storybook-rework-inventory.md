@@ -118,6 +118,59 @@ rather than mechanically moving directories.
 - `Nevo UI/Actions/Button`: good example of Playground, explicit `argTypes`,
   a separate capture matrix, and a contract. Reuse the approach, not a copy of UI.
 
+## 1.1 Sidebar hierarchy and default-entry audit
+
+Counts alone conceal the structural problem: current visible titles mix
+different depths and categories (for example \`SpecFlow/Screens/Task Workbench\`,
+\`SpecFlow/Features/Tasks/Hints\`, \`SpecFlow/Shared/Operations Panel\`,
+\`SpecFlow/Contracts/Creation consistency baseline\` and
+\`SpecFlow/Review/Owner V5 after\`). A person browsing product screens
+cannot predict which category/depth contains the item.
+
+**Proposed consistent visible interface:**
+
+| Purpose | Title path | Default entry | Control strategy |
+| --- | --- | --- | --- |
+| Screen | \`SpecFlow/Screens/Task Workbench\` | \`Default\` | Task scenario, page state, primary/preview, density |
+| Screen | \`SpecFlow/Screens/Specs Overview\` | \`Default\` | Collection, data state, list density, locale |
+| Screen | \`SpecFlow/Screens/Managed Session\` | \`Default\` | Canonical Session state, context visibility, message fixture |
+| Screen | \`SpecFlow/Screens/Create Specification\` | \`Default\` | Creation mode, workspace options, validation preset |
+| Feature | \`SpecFlow/Features/Workspace Selection\` | \`Default\` | Real workspace/branch/base selection state |
+| Component | \`SpecFlow/Components/Task Hints\` | \`Default\` | Hints count/type, long references, empty state |
+| Component | \`SpecFlow/Components/Operational Row\` | \`Default\` | Selection, status, content length, actions |
+| DS component | \`Nevo UI/Actions/Button\` | \`Default\` | Existing supported variants, sizes, icons |
+
+Titles and controls in this table are **target candidates**; verify actual production
+boundaries and supported state combinations before implementation. Do not create
+fake production props to fit this shape. A story-level adapter can expose
+meaningful screen inputs while using the real production presentation model.
+
+The default-visible tree should **not** contain one branch per assert, error
+test, viewport, locale, read-only combination, revision, Chromatic baseline,
+or historical review. Keep these cases in the runnable corpus with \`contract\`,
+\`integration\`, \`capture\` (and, after approving the proposed visibility
+change, snapshot-only \`visual\`) tags. Hidden stories can remain colocated
+under the same owner's title; source/test coverage is not deleted.
+
+**Required audit metrics for each affected story family** (not available from
+this source-only snapshot; derive from built Storybook metadata):
+
+- Raw title depth versus canonical \`Owner/Kind/Subject\` depth.
+- Number of default-visible entries per subject; whether exactly one useful
+  \`Default\` is present.
+- Available, meaningful Controls/args and whether normal defaults render
+  without network dependencies.
+- Number of visible assertion-bearing \`play\` stories and other test-only
+  variants leaking into the main navigation.
+- Number of hidden Contract/Integration/Capture/Visual stories and whether
+  test execution/Chromatic/IDs remain intact.
+- Number of distinct *real component-owned* showcases versus full-screen
+  fixture permutations.
+
+**No success metric based on raw export count.** A Screen may still have
+dozens of hidden contracts; what matters to the user is a navigable,
+uniform tree and useful Default with Controls.
+
 ## 2. Full identified SpecFlow ownership list
 
 A working audit can start from this exact baseline, but must refresh it against the
@@ -268,17 +321,19 @@ scope justifies it.
 4. Enumerate `*.stories.*` from source and generate the actual Storybook index
    for the selected working tree. Distinguish:
    - file count, exported story count and runtime-indexed story count;
-   - component/feature/screen owner, title and story ID;
+   - component/feature/screen owner, title depth, story ID and visible `Default`;
    - tags, default visibility, Controls, `play`, Chromatic and Figma capture;
    - screenshot, CI and regression references.
 5. Compare screen-heavy catalog families with the *actual production component
-   boundaries* and their existing stories. Inspect representative rendered
+   boundaries*, existing `Default` entries, and real available Controls.
+   Inspect representative rendered
    component and screen examples.
-6. Decide **keep / hide / consolidate / component playground / retire** per
+6. Decide **keep / hide / consolidate into Default controls / component story / retire** per
    affected owner, with evidence and explicit exceptions.
 7. Implement in focused, dependency-complete slices. Preserve behavior, automated
    test cases, IDs and accepted snapshots unless migration is deliberate.
-8. Verify the built catalog, rendered sidebar and Controls, browser/a11y tests and
+8. Verify the built **uniform tree**, the visible `Default` states and Controls,
+   browser/a11y tests and
    any relevant visual baselines. Report before/after visibility and coverage.
 
 Every future inventory must be regenerated. The numbers in this document describe
@@ -339,7 +394,8 @@ and discoverable owning documentation**, not from the exact wording of a request
 
 ## 9. Scope-based migration order
 
-**First**: root tag/profile correctness, Task Workbench, Specs Overview,
+**First**: normalize visible tree depth and `Default` entry naming, repair
+root tag/profile visibility, then Task Workbench, Specs Overview,
 WorkspacePlaceSection and Session stories arriving from #112.
 
 **Second**: feature-owned component playgrounds in Tasks, Sessions,

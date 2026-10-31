@@ -130,16 +130,16 @@ cannot predict which category/depth contains the item.
 
 **Proposed consistent visible interface:**
 
-| Purpose | Title path | Default entry | Control strategy |
-| --- | --- | --- | --- |
-| Screen | `SpecFlow/Screens/Task Workbench` | `Default` | Task scenario, page state, primary/preview, density |
-| Screen | `SpecFlow/Screens/Specs Overview` | `Default` | Collection, data state, list density, locale |
-| Screen | `SpecFlow/Screens/Managed Session` | `Default` | Canonical Session state, context visibility, message fixture |
-| Screen | `SpecFlow/Screens/Create Specification` | `Default` | Creation mode, workspace options, validation preset |
-| Feature | `SpecFlow/Features/Workspace Selection` | `Default` | Real workspace/branch/base selection state |
-| Component | `SpecFlow/Components/Task Hints` | `Default` | Hints count/type, long references, empty state |
-| Component | `SpecFlow/Components/Operational Row` | `Default` | Selection, status, content length, actions |
-| DS component | `Nevo UI/Actions/Button` | `Default` | Existing supported variants, sizes, icons |
+| Purpose      | Title path                              | Default entry | Control strategy                                             |
+| ------------ | --------------------------------------- | ------------- | ------------------------------------------------------------ |
+| Screen       | `SpecFlow/Screens/Task Workbench`       | `Default`     | Task scenario, page state, primary/preview, density          |
+| Screen       | `SpecFlow/Screens/Specs Overview`       | `Default`     | Collection, data state, list density, locale                 |
+| Screen       | `SpecFlow/Screens/Managed Session`      | `Default`     | Canonical Session state, context visibility, message fixture |
+| Screen       | `SpecFlow/Screens/Create Specification` | `Default`     | Creation mode, workspace options, validation preset          |
+| Feature      | `SpecFlow/Features/Workspace Selection` | `Default`     | Real workspace/branch/base selection state                   |
+| Component    | `SpecFlow/Components/Task Hints`        | `Default`     | Hints count/type, long references, empty state               |
+| Component    | `SpecFlow/Components/Operational Row`   | `Default`     | Selection, status, content length, actions                   |
+| DS component | `Nevo UI/Actions/Button`                | `Default`     | Existing supported variants, sizes, icons                    |
 
 Titles and controls in this table are **target candidates**; verify actual production
 boundaries and supported state combinations before implementation. Do not create

@@ -7,6 +7,7 @@ scope: specflow
 areas: [ui, docs, testing, tooling]
 tags: [storybook, design-system, components, testing, developer-experience, agents]
 read_when:
+  - standardizing Storybook tree depth and providing one interactive Default story per screen
   - evaluating or planning a Storybook catalog rework for a selected package or feature
   - reducing screen scenario clutter and increasing component-level playground coverage
   - deciding which stories need Controls, contract tags, visual snapshots, or integration tests

@@ -132,8 +132,8 @@ The native permission profile is `proceed-in-sandbox`, including for Agent and
 Plan. In-workspace native file operations retain Agent auto-edit behavior. Physical
 paths are checked before admission and immediately before grant; outside-root
 and customization-control-path writes are denied. Command execution requires
-an exact canonical once-only permission, physical CWD validation and a verified
-native policy that cannot authorize unsandboxed fallback. Bypass, daemon,
+an exact canonical once-only permission, physical CWD validation and the selected
+native `proceed-in-sandbox` policy. Runtime never requests an explicit sandbox bypass. Bypass, daemon,
 background/reused-terminal and unknown argument variants are rejected.
 Supported file-tool arguments have explicit type and range checks. Unverified
 artifact/lint metadata is rejected rather than passed through. Public command
@@ -233,3 +233,22 @@ Primary sources: [headless protocol](https://antigravity.google/docs/cli/headles
 [authentication](https://antigravity.google/docs/install/),
 [sandbox](https://antigravity.google/docs/sandbox/), and
 [settings schema](https://antigravity.google/schemas/v1/settings.json).
+
+## Execution policy and routine CLI updates
+
+The owner reaffirmed optimistic compatibility after the 2026-10-31 deep review.
+Required native API inventory, permission mode, workspace and account binding
+are checked; hooks accept only declared tools with supported handlers/schemas.
+Additional tools in a compatible minor do not disable the installation. There
+is no per-hash security certification or mandatory negative-control run on every
+update. Unpaid initialization, configured hooks, actual native hook execution
+and OS containment remain distinct evidence; readiness is not a sandbox proof.
+Native enforcement relies on the supported CLI contract, with observed failures
+blocking the affected operation. Known unsupported API/version ranges can be
+rejected; an unlisted compatible build remains provisional and executable.
+
+Manual no-input verification of the updated inventory checks succeeded on
+2026-10-31: the real local CLI reported the required native file/command/MCP APIs
+among its inventory, discovery returned 13 models and readiness `ready`. No user
+frame, inference prompt, native tool execution or model request was sent. This
+confirms detection/configuration compatibility, not OS sandbox enforcement.

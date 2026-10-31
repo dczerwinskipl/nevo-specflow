@@ -26,6 +26,17 @@ async function fixture(active = true) {
   const context = {
     nativeSessionId: 'controlled-native-id',
     workspace,
+    nativeTools: [
+      'view_file',
+      'list_dir',
+      'find_by_name',
+      'grep_search',
+      'write_to_file',
+      'replace_file_content',
+      'multi_replace_file_content',
+      'run_command',
+      'call_mcp_tool',
+    ],
     writable: true,
     commandsAllowed: true,
   };

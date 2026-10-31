@@ -147,7 +147,7 @@ export function createCodexDriver(
               configured: true,
               authenticated: true,
               protocolVerified: supported,
-              securityVerified: enforcement,
+              executionPolicyChecked: enforcement,
               executionMode: mode.mode,
               managedEffectsAvailable: options.managedWrites,
             });

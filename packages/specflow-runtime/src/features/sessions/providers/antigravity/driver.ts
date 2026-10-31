@@ -94,11 +94,20 @@ export function createAntigravityDriver(
     }
   }
 
-  function validateInit(init: AntigravityInit) {
+  function validateInit(init: AntigravityInit, questions = false) {
     const normalize = (path: string) => resolve(path).toLowerCase();
+    // Require the APIs used by this adapter, rather than a tested binary/hash.
+    // Additional tools do not disable a compatible update: the hook still
+    // denies operations without explicitly supported handlers and schemas.
+    const requiredTools = ['view_file', 'write_to_file', 'run_command'];
+    if (questions) {
+      requiredTools.push('call_mcp_tool');
+    }
+
     if (
       normalize(init.cwd) !== normalize(options.workspace) ||
-      init.permissionMode !== 'proceed-in-sandbox'
+      init.permissionMode !== 'proceed-in-sandbox' ||
+      !requiredTools.every((tool) => init.tools.includes(tool))
     ) {
       throw new AntigravityProtocolError();
     }
@@ -161,7 +170,7 @@ export function createAntigravityDriver(
           configured: true,
           authenticated: true,
           protocolVerified: true,
-          securityVerified: true,
+          executionPolicyChecked: true,
           executionMode: 'workspace-write',
           managedEffectsAvailable: options.managedWrites,
         });
@@ -282,6 +291,7 @@ export function createAntigravityDriver(
 
       let installation: AntigravityInstallation | undefined;
       let nativeSessionId: string | undefined;
+      let nativeTools: readonly string[] = [];
       let dispatchAuthentication: string | undefined;
       async function revalidate(operationSignal: AbortSignal) {
         const current = await inspect(operationSignal);
@@ -325,9 +335,10 @@ export function createAntigravityDriver(
             await revalidate(operationSignal);
           },
           async beforeInput(init, operationSignal) {
-            validateInit(init);
+            validateInit(init, true);
             await revalidate(operationSignal);
             nativeSessionId = init.conversationId;
+            nativeTools = Object.freeze([...init.tools]);
           },
           async launch(operationSignal) {
             installation = await ready(operationSignal);
@@ -359,10 +370,11 @@ export function createAntigravityDriver(
                   nativeSessionId
                     ? {
                         nativeSessionId,
+                        nativeTools,
                         workspace: options.workspace,
                         writable: true,
-                        // A canonical approval delegates to native proceed-in-sandbox
-                        // policy; it never auto-approves an unsandboxed fallback.
+                        // A canonical approval delegates to native proceed-in-sandbox.
+                        // Runtime does not request sandbox bypass; enforcement is native.
                         commandsAllowed: true,
                       }
                     : undefined,

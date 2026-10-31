@@ -203,7 +203,7 @@ export function createClaudeDriver(
                       const admitted = admitProvider(compatible, {
                         configured: true,
                         authenticated: true,
-                        securityVerified: true,
+                        executionPolicyChecked: true,
                         protocolVerified: true,
                         executionMode: mode.mode,
                         managedEffectsAvailable: options.managedWrites,
@@ -255,7 +255,7 @@ export function createClaudeDriver(
           const admission = admitProvider(compatibility, {
             configured: true,
             authenticated: true,
-            securityVerified: true,
+            executionPolicyChecked: true,
             protocolVerified: true,
             executionMode: 'read-only',
           });

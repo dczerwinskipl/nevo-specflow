@@ -10,10 +10,34 @@ const installation = { ...bundledClaudeBuild };
 const prerequisites = {
   configured: true,
   authenticated: true,
-  securityVerified: true,
+  executionPolicyChecked: true,
   protocolVerified: true,
   executionMode: 'read-only',
 };
+
+it.each(['2.0.0', '2.1.0', '2.2.0', '2.3.17'])(
+  'does not require a catalogue update or certificate for compatible Antigravity %s',
+  (version) => {
+    const compatibility = classifyProviderInstallation(
+      {
+        providerId: 'antigravity',
+        platform: 'win32',
+        architecture: 'x64',
+        version,
+        sha256: 'f'.repeat(64),
+      },
+      [],
+    );
+    expect(compatibility.classification).toBe('provisional');
+    expect(
+      admitProvider(compatibility, {
+        ...prerequisites,
+        executionMode: 'workspace-write',
+        managedEffectsAvailable: true,
+      }).allowed,
+    ).toBe(true);
+  },
+);
 
 it('classifies Antigravity without granting execution before its independent gates', () => {
   const compatibility = classifyProviderInstallation({
@@ -23,9 +47,9 @@ it('classifies Antigravity without granting execution before its independent gat
     sha256: 'b'.repeat(64),
   });
   expect(compatibility.classification).toBe('provisional');
-  expect(admitProvider(compatibility, { ...prerequisites, securityVerified: false }).allowed).toBe(
-    false,
-  );
+  expect(
+    admitProvider(compatibility, { ...prerequisites, executionPolicyChecked: false }).allowed,
+  ).toBe(false);
   expect(
     admitProvider(compatibility, {
       ...prerequisites,
@@ -45,7 +69,7 @@ it('admits the trusted bundled fingerprint only with independent security/authen
   for (const gate of [
     'configured',
     'authenticated',
-    'securityVerified',
+    'executionPolicyChecked',
     'protocolVerified',
   ] as const) {
     expect(admitProvider(compatibility, { ...prerequisites, [gate]: false }).allowed).toBe(false);
@@ -74,7 +98,7 @@ it('rejects revoked, unknown profile/platform and mismatched version evidence', 
   expect(classifyProviderInstallation(installation, [revoked]).classification).toBe('unsupported');
   const changedProfile = { ...bundledClaudeBuild, protocolProfile: 'unimplemented-v2' };
   expect(classifyProviderInstallation(installation, [changedProfile]).classification).toBe(
-    'unsupported',
+    'provisional',
   );
   expect(classifyProviderInstallation({ ...installation, version: '2.1.999' }).classification).toBe(
     'provisional',
@@ -94,5 +118,20 @@ it('validates closed evidence records without granting external metadata trust',
   expect(
     classifyProviderInstallation(installation, [bundledClaudeBuild, bundledClaudeBuild])
       .classification,
+  ).toBe('provisional');
+});
+
+it('does not turn broken diagnostic certification metadata into a denylist', () => {
+  const invalidCertificate = { ...bundledClaudeBuild, command: 'not-executable-metadata' };
+  const compatibility = classifyProviderInstallation(installation, [invalidCertificate]);
+  expect(compatibility.classification).toBe('provisional');
+  expect(admitProvider(compatibility, prerequisites).allowed).toBe(true);
+  const knownBroken = {
+    ...bundledClaudeBuild,
+    classification: 'unsupported' as const,
+    revoked: true,
+  };
+  expect(
+    classifyProviderInstallation(installation, [invalidCertificate, knownBroken]).classification,
   ).toBe('unsupported');
 });

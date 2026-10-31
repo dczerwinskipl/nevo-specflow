@@ -65,7 +65,7 @@ async function fixture(managedWrites = true, launch?: typeof launchOwnedProcess)
         conversationId: 'fixture-native',
         cwd: workspace,
         permissionMode: 'proceed-in-sandbox',
-        tools: ['view_file'],
+        tools: ['view_file', 'write_to_file', 'run_command', 'call_mcp_tool'],
       },
     }),
   );
@@ -95,6 +95,37 @@ async function fixture(managedWrites = true, launch?: typeof launchOwnedProcess)
 }
 
 describe('Antigravity driver discovery and admission', () => {
+  it('checks the required APIs while tolerating added tools in a compatible update', async () => {
+    const test = await fixture();
+    const original = test.probe.getMockImplementation()!;
+    test.probe.mockImplementationOnce(async () => {
+      const result = await original();
+      result.initialization.tools.push('future_optional_tool');
+
+      return result;
+    });
+    expect(await test.refresh()).toMatchObject({
+      readiness: 'ready',
+      compatibility: { classification: 'provisional' },
+    });
+  });
+
+  it.each(['view_file', 'write_to_file', 'run_command'])(
+    'rejects a native installation missing required API %s rather than an unlisted hash',
+    async (missing) => {
+      const test = await fixture();
+      const original = test.probe.getMockImplementation()!;
+      test.probe.mockImplementationOnce(async () => {
+        const result = await original();
+        result.initialization.tools = result.initialization.tools.filter(
+          (tool) => tool !== missing,
+        );
+
+        return result;
+      });
+      expect(await test.refresh()).toMatchObject({ readiness: 'unavailable' });
+    },
+  );
   it('exposes native Agent and Plan only after managed admission', async () => {
     const test = await fixture();
     expect(await test.refresh()).toMatchObject({
@@ -247,7 +278,11 @@ async function invocationFixture(resume = false, beforeResult?: Promise<void>) {
           yield JSON.stringify({
             event: 'init',
             conversation_id: nativeId,
-            init: { cwd: options.cwd, permission_mode: 'proceed-in-sandbox', tools: ['view_file'] },
+            init: {
+              cwd: options.cwd,
+              permission_mode: 'proceed-in-sandbox',
+              tools: ['view_file', 'write_to_file', 'run_command', 'call_mcp_tool'],
+            },
           });
           await input.promise;
           await beforeResult;

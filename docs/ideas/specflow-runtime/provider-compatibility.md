@@ -25,6 +25,17 @@ Unknown versions and hashes are allowed when the implemented protocol and the re
 checks pass. A catalogue entry, signature service or new SpecFlow release is not required for every
 CLI update. This decision supersedes the previous mandatory exact-hash certification design.
 
+The owner reaffirmed this on 2026-10-31 after the PR107 deep review. Neither a
+missing certificate nor a mandatory per-update negative-control run may become
+an indirect hash pin. Compatible minor/patch updates must keep working without
+a SpecFlow release. Known API introduction/removal boundaries can define a
+minimum version or a specific incompatible range; do not use the installed
+version as an arbitrary minimum or assume every untested release is incompatible.
+The illustrative `2.0.0` API floor in the discussion is not a recorded Antigravity
+minimum and MUST NOT be shipped as one. Where version metadata is absent, required
+API/protocol checks remain authoritative. Future version-to-handler profiles are
+possible when actual incompatible APIs need them, not a prerequisite now.
+
 ## Classification and admission
 
 - Tested: the exact build/version has recorded integration evidence for the implemented profile,
@@ -38,6 +49,13 @@ CLI update. This decision supersedes the previous mandatory exact-hash certifica
 
 Both Tested and Provisional pass the same configuration, authentication, policy, environment,
 read-only and supported model/effort gates. Writable effects still require Engine admission.
+The internal admission field is `executionPolicyChecked`: it means the adapter
+validated its supported native configuration/policy contract. It is not a generic
+`securityVerified` attestation. Configuration checks, effective reported tools,
+hook protocol implementation, and observed OS containment are different evidence.
+A no-input handshake proves neither native hook execution nor OS isolation.
+Native negative controls remain valuable acceptance/regression evidence, but
+passing them for every new fingerprint is not an availability requirement.
 Missing version metadata leaves the build provisional; never infer Tested from a successful handshake.
 An unsupported requested mode does not disable another supported mode globally.
 
@@ -85,7 +103,9 @@ Actual refusal of those restrictions/profile blocks execution; no hash-only refu
 The closed record schema stores diagnostic tested fingerprints, version/profile/scenario evidence,
 authentication/execution modes and locally known incompatible/revoked builds. Known incompatibility
 wins over optimistic classification. An absent entry or offline catalogue service never disables a
-locally compatible build. Invalid local evidence fails explicitly rather than granting Tested.
+locally compatible build. Invalid or ambiguous diagnostic certification evidence
+cannot grant Tested and leaves the build provisional; it does not create a new
+incompatibility. A valid explicit known-incompatible/revoked record still wins.
 
 Remote signing/distribution/cache/anti-rollback is optional future quality infrastructure, not an MVP
 prerequisite or a source of executable code, command arguments or protocol parsers. A genuinely new

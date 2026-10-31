@@ -88,6 +88,7 @@ export async function createAntigravityQuestionBridge(options: {
         options.signal.aborted ||
         response.destroyed ||
         current?.nativeSessionId !== context.nativeSessionId ||
+        current.nativeTools !== context.nativeTools ||
         current.workspace !== context.workspace ||
         current.writable !== context.writable ||
         current.commandsAllowed !== context.commandsAllowed
@@ -177,7 +178,7 @@ export async function createAntigravityQuestionBridge(options: {
               );
             }
 
-            // Native allow retains proceed-in-sandbox denial when containment is unavailable.
+            // Delegate only to the selected native policy, without a bypass override.
             return JSON.stringify({ decision: answer.decision === 'allow' ? 'allow' : 'deny' });
           },
         });

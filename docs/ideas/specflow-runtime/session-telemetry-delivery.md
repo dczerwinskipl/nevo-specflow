@@ -70,12 +70,15 @@ changes are noticed on identity checks with bounded freshness between them;
 ViewProviderLimits authorizes passive read-only monitoring without Manage.
 Those policy statements are not claims that native race/retry controls passed.
 
-Still open before Antigravity acceptance: item 1/30 execution-restriction evidence
-for unclassified installations, effective inventory verification, native
-multi-tool/retry correlation and post-grant junction controls. Do not treat the
-no-input initialization handshake or `securityVerified: true` as evidence that
-these controls passed. The owner has been asked to confirm the proposed
-no-inference local negative-control path without reintroducing hash pinning.
+Owner decision on item 1/30: compatible CLI updates remain available without
+per-build certificates, known hashes, or a mandatory negative-control run after
+each update. The misleading generic security attestation is replaced with an
+explicit native execution-policy check. Effective required API inventory is
+validated and hook requests are fenced to the invocation's declared tools;
+additional unknown tools remain denied without disabling a compatible minor.
+Native containment/multi-tool/retry/junction controls remain acceptance evidence
+to collect, not a hidden certification prerequisite for routine CLI updates.
+See the owner decision in `ideas.specflow-runtime.provider-compatibility`.
 
 Safe Codex bucket classification (15), full 32-reader/write latency measurement
 (38), installed native Credential Manager acceptance (40), and the existing CI

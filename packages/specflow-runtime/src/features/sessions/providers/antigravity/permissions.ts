@@ -7,6 +7,7 @@ import { prepareMcpQuestion, McpQuestionEndpoint } from '../../interactions/mcp/
 
 export interface AntigravityPermissionContext {
   nativeSessionId: string;
+  nativeTools: readonly string[];
   workspace: string;
   writable: boolean;
   commandsAllowed?: boolean;
@@ -155,6 +156,10 @@ export async function prepareAntigravityPermission(
   }
 
   const tool = record(body.toolCall);
+  if (typeof tool.name !== 'string' || !context.nativeTools.includes(tool.name)) {
+    throw new Error('Native tool was not declared by initialization.');
+  }
+
   const args = record(tool.args);
   const fields = Object.keys(args);
   const step = body.stepIdx as number;

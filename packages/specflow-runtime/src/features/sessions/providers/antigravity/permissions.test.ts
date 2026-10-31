@@ -21,6 +21,17 @@ async function fixture() {
   const context = {
     nativeSessionId: 'native-controlled',
     workspace,
+    nativeTools: [
+      'view_file',
+      'list_dir',
+      'find_by_name',
+      'grep_search',
+      'write_to_file',
+      'replace_file_content',
+      'multi_replace_file_content',
+      'run_command',
+      'call_mcp_tool',
+    ],
     writable: true,
     commandsAllowed: true,
   };
@@ -35,6 +46,15 @@ async function fixture() {
 }
 
 describe('native Antigravity hook policy', () => {
+  it('does not grant a supported handler if the invocation did not declare its tool', async () => {
+    const f = await fixture();
+    await expect(
+      prepareAntigravityPermission(
+        f.hook('write_to_file', { TargetFile: join(f.workspace, 'a'), CodeContent: 'x' }),
+        { ...f.context, nativeTools: ['view_file'] },
+      ),
+    ).rejects.toThrow('not declared');
+  });
   it('admits the installed native read schema with metadata and content offset', async () => {
     const f = await fixture();
     const result = await prepareAntigravityPermission(

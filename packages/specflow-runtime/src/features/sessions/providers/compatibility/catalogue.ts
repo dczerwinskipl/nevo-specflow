@@ -104,20 +104,29 @@ export function classifyProviderInstallation(
       record.architecture === installation.architecture &&
       record.sha256 === installation.sha256,
   );
+  if (
+    matching.some(
+      (record) =>
+        validCompatibilityRecord(record) &&
+        (record.revoked || record.classification === 'unsupported'),
+    )
+  ) {
+    return { classification: 'unsupported', reason: 'Provider build is known to be incompatible.' };
+  }
+
   if (matching.length > 1 || matching.some((record) => !validCompatibilityRecord(record))) {
-    return { classification: 'unsupported', reason: 'Compatibility evidence is invalid.' };
+    return {
+      classification: 'provisional',
+      reason: 'Diagnostic tested-build evidence is invalid.',
+    };
   }
 
   const record = matching[0];
   if (record) {
-    if (
-      record.revoked ||
-      record.classification !== 'tested' ||
-      record.protocolProfile !== profile
-    ) {
+    if (record.protocolProfile !== profile) {
       return {
-        classification: 'unsupported',
-        reason: 'Provider build is revoked or incompatible.',
+        classification: 'provisional',
+        reason: 'Tested evidence does not cover the implemented protocol profile.',
       };
     }
 

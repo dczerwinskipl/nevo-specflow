@@ -46,6 +46,28 @@ export interface SecondaryStackDefinition<
 > {
   id: string;
   initial: keyof TPages & string;
+  /**
+   * Opt-in: derives a tab's identity from its open params for `useSecondaryNavigation().openTab`,
+   * so distinct params produce distinct, independently-open tabs. Omit for a definition that only
+   * ever wants a single tab (the common case today, and the only case `open` ever uses — `open`
+   * never consults this field).
+   */
+  instanceId?: (params: TRoot) => string;
+  /**
+   * Opt-in: the Secondary root-tab strip's label for this stack's tabs (`ItemTab.label`, shown in
+   * both the tab strip and the narrow-width switcher button — item-tabs.md's "Switcher ... one
+   * button `name (N)`" is this value, not a generic category name). Computed from the stack's own
+   * root params the instant a tab opens — synchronously, unlike `useData`'s (possibly async)
+   * result, so the tab never has to show a placeholder before it can carry the opened entity's own
+   * name. Use this whenever two tabs of the same stack (`instanceId`-keyed `openTab` instances, or
+   * a stack replaced-in-place by `open` across different entities) must be told apart by name, not
+   * just by which one is active.
+   *
+   * Omit to fall back to the active page's own per-screen `title` (today's behavior, unchanged for
+   * every caller that does not set this field) — adequate only when every tab of this stack is
+   * always the same single instance, since `title` cannot vary by which entity is open.
+   */
+  tabLabel?: (rootParams: TRoot) => string;
   useData: (params: TRoot) => SecondaryData<TData>;
   screens: SecondaryScreenMap<TData, TPages>;
 }

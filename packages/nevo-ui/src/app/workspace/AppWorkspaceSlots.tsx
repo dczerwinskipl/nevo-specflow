@@ -6,7 +6,7 @@ import {
   resolveSlotMaxWidth,
   resolveWorkspaceSplit,
   type AppWorkspaceShare,
-  type AppWorkspaceSplitMode,
+  type FixedAppWorkspaceSplitMode,
 } from './workspaceSizing';
 
 export interface AppWorkspaceSlot {
@@ -16,7 +16,8 @@ export interface AppWorkspaceSlot {
 export interface AppWorkspaceSlotsProps {
   primary: AppWorkspaceSlot;
   secondary?: AppWorkspaceSlot;
-  split?: AppWorkspaceSplitMode;
+  /** `'dynamic'` is `AppWorkspace`'s runtime auto/manual split (workspace-dynamic-split.md §4.2); these static, Figma-captured slots have no resizing/tab engine to drive it, so it is not a valid value here. */
+  split?: FixedAppWorkspaceSplitMode;
 }
 
 function StaticWorkspaceSlotRegion({

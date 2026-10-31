@@ -274,6 +274,29 @@
       ]
     },
     {
+      "id": "ideas.nevo-ui",
+      "type": "hub",
+      "title": "Nevo UI implementation ideas",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/README.md",
+      "read_when": [
+        "planning or picking up implementation work for a reusable Nevo UI capability"
+      ],
+      "summary": "Non-authoritative implementation backlog for reusable Nevo UI (design-system) capabilities, separate from the SpecFlow product backlog under ideas/specflow-ui.",
+      "related": [
+        "ideas.readme",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "design-system",
+        "execution-plan"
+      ]
+    },
+    {
       "id": "ideas.readme",
       "type": "hub",
       "title": "Implementation ideas",
@@ -2066,6 +2089,7 @@
       "summary": "Product-neutral contract of the ItemTabs strip and the useOpenedItems state, and the Content tabs host pattern in which a blind host renders content that declares its own views and actions.",
       "related": [
         "design-system.implementation.react.secondary-navigation",
+        "design-system.implementation.react.workspace-dynamic-split",
         "design-system.principles.ui-ux-guidelines",
         "design-system.principles.layout-and-containment",
         "design-system.implementation.react.component-authoring-contract",
@@ -2087,8 +2111,34 @@
       "summary": "Product-neutral in-memory Secondary screen catalogues and lifecycle, distinct from route navigation.",
       "related": [
         "design-system.principles.system-boundary",
+        "design-system.implementation.react.workspace-dynamic-split",
         "product.specflow.ui.interaction-model"
       ]
+    },
+    {
+      "id": "design-system.implementation.react.workspace-dynamic-split",
+      "type": "engineering",
+      "title": "Workspace dynamic split and Secondary root tabs",
+      "status": "draft",
+      "file": "docs/design-system/implementation/react/workspace-dynamic-split.md",
+      "read_when": [
+        "adding more than one independently revisitable root area to a Secondary inspector",
+        "adding a draggable splitter or a left/right swap to AppWorkspace",
+        "implementing a screen that needs the Workspace V2 auto/manual split behavior"
+      ],
+      "summary": "Decision-complete contract for Secondary root tabs and the auto/manual dynamic split: owned state, the public API surface built on top of the existing AppWorkspace/Secondary composition, the auto/manual transition table, explicit non-goals, and the accessible splitter contract. Implemented (W01-W07); see section 1 for the closing evidence and one open reconciliation point.",
+      "related": [
+        "design-system.implementation.react.secondary-navigation",
+        "design-system.implementation.react.item-tabs",
+        "design-system.implementation.react.component-authoring-contract",
+        "design-system.principles.system-boundary",
+        "design-system.principles.ui-ux-guidelines",
+        "architecture.principles.normative-language",
+        "ideas.specflow-ui.design-system-component-composition-gaps",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.full-session-screen-structure"
+      ],
+      "scope": "nevo-ui"
     },
     {
       "id": "design-system.implementation.storybook.guidelines",
@@ -2569,6 +2619,218 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01",
+      "type": "engineering",
+      "title": "Temporary execution plan 01 — Workspace dynamic split",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/README.md",
+      "read_when": [
+        "implementing Secondary root tabs or the auto/manual dynamic split in packages/nevo-ui",
+        "selecting the next dependency-complete task for this capability"
+      ],
+      "summary": "Implementation-ready decomposition of Secondary root tabs, the auto/manual dynamic split resolver, the accessible splitter and the side swap, all confined to packages/nevo-ui.",
+      "related": [
+        "design-system.implementation.react.workspace-dynamic-split",
+        "design-system.implementation.react.secondary-navigation",
+        "design-system.implementation.react.item-tabs",
+        "ideas.specflow-ui.design-system-component-composition-gaps",
+        "ideas.nevo-ui"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-plan",
+        "temporary",
+        "workspace",
+        "secondary",
+        "tabs",
+        "resize",
+        "design-system"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-01",
+      "type": "engineering",
+      "title": "W01 — Closable item-set extension",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W01-closable-item-set-extension.md",
+      "read_when": [
+        "implementing W01 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete task to add an optional non-closable item to useOpenedItems/ItemTabs, the first prerequisite for a pinned Secondary root tab.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split",
+        "design-system.implementation.react.item-tabs"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-02",
+      "type": "engineering",
+      "title": "W02 — Secondary root-tab state",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W02-secondary-root-tab-state.md",
+      "read_when": [
+        "implementing W02 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete task to generalize WorkspaceContext's single Secondary flow into a tab-keyed collection, with open() activating-or-creating a tab and close surviving hide/reopen.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split",
+        "design-system.implementation.react.secondary-navigation"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-03",
+      "type": "engineering",
+      "title": "W03 — Tab strip composition",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W03-tab-strip-composition.md",
+      "read_when": [
+        "implementing W03 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete task to render Secondary's root tabs via ItemTabs inside the existing Secondary header, hidden entirely while only the pinned tab is open.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split",
+        "design-system.implementation.react.item-tabs"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-04",
+      "type": "engineering",
+      "title": "W04 — Dynamic split resolver",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W04-dynamic-split-resolver.md",
+      "read_when": [
+        "implementing W04 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete task to add the pure auto/manual sizing resolver to workspaceSizing.ts and wire AppWorkspace's split=\"dynamic\" mode, including the width-infeasible stacked fallback.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-05",
+      "type": "engineering",
+      "title": "W05 — Accessible splitter",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W05-accessible-splitter.md",
+      "read_when": [
+        "implementing W05 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete task to build the new interactive WorkspaceSplitter primitive (keyboard, pointer and touch resize, ARIA window-splitter pattern) and wire it into AppWorkspace.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-06",
+      "type": "engineering",
+      "title": "W06 — Side swap",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W06-side-swap.md",
+      "read_when": [
+        "implementing W06 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete task to add secondarySide/onSecondarySideChange to AppWorkspace, swapping Primary/Secondary layout order while preserving every piece of sizing and tab state.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.nevo-ui.execution-plans.plan-01.task-07",
+      "type": "engineering",
+      "title": "W07 — Verification and consumer-compatibility audit",
+      "status": "draft",
+      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W07-verification-and-compatibility-audit.md",
+      "read_when": [
+        "implementing W07 for the workspace dynamic split plan"
+      ],
+      "summary": "Dependency-complete acceptance task proving the full §5 transition table end-to-end, auditing the recorded consumer-compatibility consequences, and promoting the contract/gaps-doc status.",
+      "related": [
+        "ideas.nevo-ui.execution-plans.plan-01",
+        "design-system.implementation.react.workspace-dynamic-split",
+        "ideas.specflow-ui.design-system-component-composition-gaps"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation"
       ]
     },
     {
@@ -4978,6 +5240,7 @@
         "ideas.specflow-ui.full-session-screen-structure",
         "design-system.principles.system-boundary",
         "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.react.workspace-dynamic-split",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.ai-session-ux",
         "ideas.developer-workspace.code-inspection-and-editing"

@@ -468,6 +468,84 @@ describe('ItemTabs', () => {
     });
   });
 
+  describe('closable: false', () => {
+    it('renders no close x for a non-closable item, keeping it otherwise identical', () => {
+      renderTabs({
+        items: [makeItem('a', { closable: false }), makeItem('b')],
+        activeId: 'a',
+      });
+      expect(screen.queryByRole('button', { name: 'Close a.md' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Close b.md' })).toBeTruthy();
+      // Otherwise identical: still a normal, selected, labelled tab.
+      const tab = screen.getByRole('tab', { name: 'a.md' });
+      expect(tab.getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('stays fully keyboard reachable and activatable, but Delete does not close it', () => {
+      const { onClose, onActivate } = renderTabs({
+        items: [makeItem('a', { closable: false }), makeItem('b')],
+        activeId: 'b',
+      });
+      const tabs = screen.getAllByRole('tab');
+      tabs[0]?.focus();
+      expect(document.activeElement).toBe(tabs[0]);
+      fireEvent.keyDown(tabs[0]!, { key: 'Delete' });
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.click(tabs[0]!);
+      expect(onActivate).toHaveBeenCalledWith('a');
+    });
+
+    it('does not close on middle-click for a non-closable item', () => {
+      const { onClose } = renderTabs({
+        items: [makeItem('a', { closable: false }), makeItem('b')],
+      });
+      const tab = screen.getByRole('tab', { name: 'a.md' });
+      fireEvent(tab, new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('omits the "Close <label>" row from the Opened menu for a non-closable item', async () => {
+      containerWidth = 700;
+      renderTabs({ items: [makeItem('a', { closable: false }), ...makeItems(8)] });
+      fireEvent.pointerDown(screen.getByRole('button', { name: /^Opened items/ }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      const menu = await screen.findByRole('menu');
+      expect(within(menu).queryByRole('menuitem', { name: 'Close a.md' })).toBeNull();
+      expect(within(menu).getByRole('menuitem', { name: 'Close item-0.md' })).toBeTruthy();
+      // The row itself (activate, label, description) is still present.
+      expect(within(menu).getByRole('menuitem', { name: /^a\.md/ })).toBeTruthy();
+    });
+
+    it('works through useOpenedItems: requestClose refuses, the row stays open', async () => {
+      function Host() {
+        const opened = useOpenedItems<ItemTab>({
+          initialItems: [makeItem('a', { closable: false }), makeItem('b')],
+        });
+
+        return (
+          <ItemTabs
+            items={opened.items}
+            activeId={opened.activeId}
+            onActivate={opened.activate}
+            onClose={(id) => void opened.requestClose(id)}
+            scope="t"
+          />
+        );
+      }
+
+      render(<Host />);
+      expect(screen.queryByRole('button', { name: 'Close a.md' })).toBeNull();
+      const tab = screen.getByRole('tab', { name: 'a.md' });
+      tab.focus();
+      fireEvent.keyDown(tab, { key: 'Delete' });
+      await act(async () => {});
+      expect(screen.getAllByRole('tab')).toHaveLength(2);
+    });
+  });
+
   describe('labels', () => {
     it('replaces every generated string', () => {
       renderTabs({

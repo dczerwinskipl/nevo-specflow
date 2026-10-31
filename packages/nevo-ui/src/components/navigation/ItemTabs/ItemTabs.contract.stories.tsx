@@ -114,6 +114,62 @@ export const GuardedCloseContract: Story = {
   },
 };
 
+const nonClosableItems: readonly ItemTab[] = [
+  createItemTab('pinned.md', { closable: false }),
+  ...manyItems,
+];
+
+export const NonClosableContract: Story = {
+  render: () => (
+    <div className="w-[760px]">
+      <ItemTabsHost items={nonClosableItems} activeId={nonClosableItems[0]?.id ?? null} />
+    </div>
+  ),
+  // The open menu is an overlay layered over page content; axe cannot resolve its background.
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    assert(
+      canvas.queryByRole('button', { name: 'Close pinned.md' }) === null,
+      'A non-closable tab has no close x.',
+    );
+    const pinned = canvas.getByRole('tab', { name: 'pinned.md' });
+    pinned.focus();
+    assert(document.activeElement === pinned, 'A non-closable tab is still focusable.');
+    await userEvent.keyboard('{Delete}');
+    assert(
+      canvas.getAllByRole('tab').some((tab) => tab.dataset.itemId === 'pinned.md'),
+      'Delete does not close a non-closable tab.',
+    );
+    pinned.dispatchEvent(
+      new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }),
+    );
+    assert(
+      canvas.getAllByRole('tab').some((tab) => tab.dataset.itemId === 'pinned.md'),
+      'Middle-click does not close a non-closable tab.',
+    );
+    await userEvent.click(pinned);
+    assert(pinned.getAttribute('aria-selected') === 'true', 'It activates normally.');
+
+    await userEvent.click(
+      await waitFor(
+        () => canvas.queryByRole('button', { name: /^Opened items/ }),
+        'The strip overflows into the Opened menu.',
+      ),
+    );
+    const menu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"]'),
+      'The Opened menu opens.',
+    );
+    assert(
+      [...menu.querySelectorAll('[role="menuitem"]')].every(
+        (row) => row.textContent !== 'Close pinned.md',
+      ),
+      'The Opened menu has no Close row for the non-closable tab.',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
 export const OverflowContract: Story = {
   render: () => (
     <div className="w-[760px]">

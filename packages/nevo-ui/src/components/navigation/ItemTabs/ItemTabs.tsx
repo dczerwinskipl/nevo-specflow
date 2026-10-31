@@ -169,7 +169,9 @@ function Tab({
             onAuxClick={(event) => {
               if (event.button === 1) {
                 event.preventDefault();
-                onClose(item.id);
+                if (item.closable !== false) {
+                  onClose(item.id);
+                }
               }
             }}
             onFocus={() => onFocusChange(item.id)}
@@ -192,7 +194,9 @@ function Tab({
         </TooltipTrigger>
         <TooltipContent>
           <span className="block">{item.description ?? item.label}</span>
-          <span className="block text-content-muted">{labels.closeHint}</span>
+          {item.closable !== false ? (
+            <span className="block text-content-muted">{labels.closeHint}</span>
+          ) : null}
         </TooltipContent>
       </Tooltip>
     </div>
@@ -221,23 +225,25 @@ function CloseSlot({
 }) {
   return (
     <div className="pointer-events-none relative h-full shrink-0" style={{ width }}>
-      <span className="absolute right-1 top-1/2 size-6 -translate-y-1/2">
-        <button
-          type="button"
-          aria-label={labels.close(item.label)}
-          tabIndex={-1}
-          onClick={() => onClose(item.id)}
-          onPointerEnter={() => onHover(item.id)}
-          onPointerLeave={() => onHover(null)}
-          className={cn(
-            hitAreaClassName,
-            'pointer-events-auto grid size-6 cursor-pointer place-items-center rounded-control-inline text-content-muted hover:bg-surface-selected hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring',
-            shown ? 'opacity-100' : 'opacity-0 pointer-coarse:opacity-100',
-          )}
-        >
-          <Icon name="close" size="sm" />
-        </button>
-      </span>
+      {item.closable !== false ? (
+        <span className="absolute right-1 top-1/2 size-6 -translate-y-1/2">
+          <button
+            type="button"
+            aria-label={labels.close(item.label)}
+            tabIndex={-1}
+            onClick={() => onClose(item.id)}
+            onPointerEnter={() => onHover(item.id)}
+            onPointerLeave={() => onHover(null)}
+            className={cn(
+              hitAreaClassName,
+              'pointer-events-auto grid size-6 cursor-pointer place-items-center rounded-control-inline text-content-muted hover:bg-surface-selected hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring',
+              shown ? 'opacity-100' : 'opacity-0 pointer-coarse:opacity-100',
+            )}
+          >
+            <Icon name="close" size="sm" />
+          </button>
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -341,7 +347,8 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     if (event.key === 'Delete') {
       event.preventDefault();
       const id = target.dataset.itemId;
-      if (id) {
+      const closable = items.find((item) => item.id === id)?.closable !== false;
+      if (id && closable) {
         onClose(id);
       }
 

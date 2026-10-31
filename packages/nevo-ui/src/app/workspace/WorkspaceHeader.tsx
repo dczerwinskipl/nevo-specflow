@@ -502,27 +502,46 @@ export function WorkspaceHeaderIdentity({
 /**
  * Narrow is the MEASURED width of the header frame (not a CSS-only query): which actions are direct
  * decides which are in the menu, and menus portal outside any container query.
+ *
+ * The `ResizeObserver` callback is coalesced through `requestAnimationFrame` (same pattern as
+ * `ScrollArea`'s `scheduleUpdate`): a continuous drag-resize fires one notification per pixel, and
+ * without coalescing each one commits its own synchronous state update, so a burst of them can
+ * commit faster than the browser can paint between them — visibly lagging behind the real width
+ * until the backlog drains. Collapsing a burst to at most one `measure()` per frame, always reading
+ * the latest layout at flush time, bounds that lag to a single frame regardless of notification rate.
  */
 function useNarrowHeader() {
   const ref = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) {
+    if (!element || typeof ResizeObserver === 'undefined') {
       return undefined;
     }
 
     const update = () =>
       setNarrow(element.getBoundingClientRect().width < WORKSPACE_HEADER_NARROW_MAX_WIDTH);
     update();
-    if (typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
 
-    const observer = new ResizeObserver(update);
+    let frame: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        update();
+      });
+    });
     observer.observe(element);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    };
   }, []);
 
   return { ref, narrow };
@@ -612,18 +631,40 @@ export function isWorkspaceHeaderElement(
   return isValidElement(node) && node.type === WorkspaceHeader;
 }
 
+interface WorkspaceHeaderActionProps {
+  actions?: readonly WorkspaceHeaderAction[];
+  labels?: Partial<WorkspaceHeaderLabels>;
+  menu?: WorkspaceHeaderMenu;
+}
+
+/**
+ * Either header shape a surface's `header: ReactNode` may be: the default `WorkspaceHeader`, or
+ * `WorkspaceHeaderFrame` directly (what `HeaderOutlet` renders for a screen definition's own
+ * `header` component). Both carry the same `actions`/`labels`/`menu`, so every content-blind
+ * extraction below (`getWorkspaceHeaderActions` and friends, already relied on by
+ * `CompactWorkspaceActions` and by `AppWorkspace`'s Secondary root-tab strip) must recognize both,
+ * not just the default one.
+ */
+function isWorkspaceHeaderActionElement(
+  node: ReactNode,
+): node is ReactElement<WorkspaceHeaderActionProps> {
+  return (
+    isValidElement(node) && (node.type === WorkspaceHeader || node.type === WorkspaceHeaderFrame)
+  );
+}
+
 export function getWorkspaceHeaderActions(node: ReactNode): readonly WorkspaceHeaderAction[] {
-  return isWorkspaceHeaderElement(node) ? (node.props.actions ?? []) : [];
+  return isWorkspaceHeaderActionElement(node) ? (node.props.actions ?? []) : [];
 }
 
 export function getWorkspaceHeaderMenu(node: ReactNode): WorkspaceHeaderMenu {
-  return (isWorkspaceHeaderElement(node) ? node.props.menu : undefined) ?? 'default';
+  return (isWorkspaceHeaderActionElement(node) ? node.props.menu : undefined) ?? 'default';
 }
 
 export function getWorkspaceHeaderLabels(node: ReactNode): WorkspaceHeaderLabels {
   return {
     ...defaultWorkspaceHeaderLabels,
-    ...(isWorkspaceHeaderElement(node) ? node.props.labels : undefined),
+    ...(isWorkspaceHeaderActionElement(node) ? node.props.labels : undefined),
   };
 }
 

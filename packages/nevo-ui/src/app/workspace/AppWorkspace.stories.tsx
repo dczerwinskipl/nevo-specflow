@@ -10,7 +10,13 @@ import {
   AppWorkspaceHeader,
   AppWorkspaceSlots,
 } from './AppWorkspace';
-import { AppWorkspaceProvider, useSecondaryNavigation } from './WorkspaceContext';
+import {
+  AppWorkspaceProvider,
+  useRegisterPinnedSecondaryTab,
+  useSecondaryNavigation,
+  useSecondaryStack,
+} from './WorkspaceContext';
+import { WorkspaceHeader } from './WorkspaceHeader';
 import { defineSecondaryStack } from './SecondaryStack';
 
 function Region({ label }: { label: string }) {
@@ -593,6 +599,301 @@ export const RuntimeFitContract: Story = {
     assert(
       workspace.scrollWidth <= workspace.clientWidth + 1,
       'Content-driven runtime surfaces must remain inside the fitted workspace frame.',
+    );
+  },
+};
+
+// --- W03: Secondary root-tab strip composition --------------------------------------------------
+// Fixtures and interaction stories for workspace-dynamic-split.md §4.1's tab strip: absent with one
+// open tab (pixel/DOM-identical to today's single Secondary), present with ItemTabs at two or more.
+
+interface TabStripPages {
+  summary: Record<never, never>;
+  detail: Record<never, never>;
+}
+
+function tabStripItemStack(id: string, label: string) {
+  return defineSecondaryStack<Record<never, never>, string, TabStripPages>({
+    id,
+    initial: 'summary',
+    useData: () => ({ status: 'ready', data: label }),
+    screens: {
+      summary: {
+        title: label,
+        component: ({ data }) => {
+          const stack = useSecondaryStack<TabStripPages>();
+
+          return (
+            <div className="grid gap-2 p-4" data-item-page={`${label}:summary`}>
+              <Typography variant="body-sm">{`${data} summary`}</Typography>
+              <Button onClick={() => void stack.navTo('detail')} size="sm" variant="secondary">
+                Push detail
+              </Button>
+            </div>
+          );
+        },
+      },
+      detail: {
+        title: `${label} detail`,
+        component: ({ data }) => (
+          <div className="p-4" data-item-page={`${label}:detail`}>
+            <Typography variant="body-sm">{`${data} detail`}</Typography>
+          </div>
+        ),
+      },
+    },
+  });
+}
+
+const tabStripItemA = tabStripItemStack('tab-strip-item-a', 'Item A');
+const tabStripItemB = tabStripItemStack('tab-strip-item-b', 'Item B');
+
+function TabStripPrimaryContent() {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <div className="grid gap-2 p-4">
+      <Typography variant="body-sm">Primary conversation</Typography>
+      <Button onClick={() => void navigation.openTab(tabStripItemA, {})} size="sm">
+        Open Item A
+      </Button>
+      <Button onClick={() => void navigation.openTab(tabStripItemB, {})} size="sm">
+        Open Item B
+      </Button>
+    </div>
+  );
+}
+
+function PinnedTabStripFixture() {
+  const [contextOpen, setContextOpen] = useState(true);
+  // `AppWorkspace.Secondary` only defines the pinned tab's static content (contract §4.1); a
+  // declarative Secondary host still registers it explicitly, exactly as any other product using
+  // this pattern would (see `useRegisterPinnedSecondaryTab`'s own doc comment).
+  useRegisterPinnedSecondaryTab(contextOpen ? { title: 'Context' } : null);
+
+  return (
+    <AppShell
+      data-tab-strip-shell="true"
+      navigation={<Region label="Navigation" />}
+      style={{ height: 600, width: 1400 }}
+    >
+      <AppWorkspace fit="available" split="secondary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Conversation" />}>
+          <TabStripPrimaryContent />
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary
+          header={<WorkspaceHeader title="Context" />}
+          open={contextOpen}
+          onOpenChange={setContextOpen}
+        >
+          <div className="p-4">
+            <Typography variant="body-sm">Pinned context content</Typography>
+          </div>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+function PinnedTabStripContract() {
+  return (
+    <AppWorkspaceProvider>
+      <PinnedTabStripFixture />
+    </AppWorkspaceProvider>
+  );
+}
+
+function NoPinnedTabStripFixture() {
+  return (
+    <AppShell
+      data-tab-strip-shell="true"
+      navigation={<Region label="Navigation" />}
+      style={{ height: 600, width: 1400 }}
+    >
+      <AppWorkspace fit="available" split="secondary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Conversation" />}>
+          <TabStripPrimaryContent />
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+function NoPinnedTabStripContract() {
+  return (
+    <AppWorkspaceProvider>
+      <NoPinnedTabStripFixture />
+    </AppWorkspaceProvider>
+  );
+}
+
+function secondaryHeader(shell: HTMLElement) {
+  return shell.querySelector<HTMLElement>(
+    '[data-workspace-surface="secondary"] [data-workspace-header="true"]',
+  );
+}
+
+export const RootTabStripAppearsContract: Story = {
+  render: () => <PinnedTabStripContract />,
+  tags: ['contract', '!autodocs'],
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const shell = canvasElement.querySelector<HTMLElement>('[data-tab-strip-shell]');
+    assert(shell, 'The fixture should expose its application shell.');
+
+    assert(
+      shell.querySelector('[role="tablist"]') === null,
+      'With only the pinned tab open, no strip should render at all.',
+    );
+    assert(
+      secondaryHeader(shell)?.textContent?.includes('Context'),
+      "The pinned tab's own header should render exactly as today's single Secondary.",
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => shell.querySelector('[role="tablist"]'),
+      'Opening a second root tab should render the tab strip.',
+    );
+
+    const tabs = Array.from(shell.querySelectorAll<HTMLElement>('[role="tab"]'));
+    assert(
+      tabs.length === 2 &&
+        tabs
+          .map((tab) => tab.textContent)
+          .join('|')
+          .includes('Context'),
+      'The strip should list exactly the pinned tab and the newly opened one.',
+    );
+    assert(
+      tabs
+        .find((tab) => tab.getAttribute('aria-selected') === 'true')
+        ?.textContent?.includes('Item A'),
+      'The newly opened tab should become the active one.',
+    );
+    assert(
+      canvas.queryByRole('button', { name: 'Close Context' }) === null,
+      "The pinned tab must offer no close affordance (W01's closable: false).",
+    );
+    assert(
+      canvas.queryByRole('button', { name: 'Close Item A' }) !== null,
+      'A non-pinned tab must remain closable.',
+    );
+  },
+};
+
+export const RootTabStripClosesToBaselineContract: Story = {
+  render: () => <PinnedTabStripContract />,
+  tags: ['contract', '!autodocs'],
+  parameters: {
+    // Covered by RootTabStripAppearsContract while the strip is visible; this story's own
+    // regression check is DOM/markup equality against the pre-strip baseline, asserted below.
+    a11y: { test: 'off' },
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const shell = canvasElement.querySelector<HTMLElement>('[data-tab-strip-shell]');
+    assert(shell, 'The fixture should expose its application shell.');
+    const baseline = secondaryHeader(shell)?.outerHTML;
+    assert(baseline, 'The single-tab baseline should render a Secondary header.');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => shell.querySelector('[role="tablist"]'),
+      'Opening a second root tab should render the tab strip.',
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Close Item A' }));
+    await waitFor(
+      () => shell.querySelector('[role="tablist"]') === null,
+      'Closing back down to the pinned tab should remove the strip.',
+    );
+    assert(
+      secondaryHeader(shell)?.outerHTML === baseline,
+      "Closing back down to the pinned tab should restore today's single-Secondary header exactly, byte for byte.",
+    );
+  },
+};
+
+export const RootTabStripNoPinnedTabContract: Story = {
+  render: () => <NoPinnedTabStripContract />,
+  tags: ['contract', '!autodocs'],
+  parameters: {
+    a11y: { test: 'off' },
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const shell = canvasElement.querySelector<HTMLElement>('[data-tab-strip-shell]');
+    assert(shell, 'The fixture should expose its application shell.');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    assert(
+      shell.querySelector('[role="tablist"]') === null,
+      'A workspace with no pinned tab and one opened tab must still show no strip.',
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item B' }));
+    await waitFor(
+      () => shell.querySelectorAll('[role="tab"]').length === 2,
+      'Two openTab()-opened tabs with no pinned tab should render the strip.',
+    );
+    assert(
+      canvas.queryByRole('button', { name: 'Close Item A' }) !== null &&
+        canvas.queryByRole('button', { name: 'Close Item B' }) !== null,
+      'With no pinned tab, every tab is closable.',
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Close Item B' }));
+    await waitFor(
+      () => shell.querySelector('[role="tablist"]') === null,
+      'Closing back down to the one remaining openTab() tab should remove the strip, with no pinned tab synthesized in its place.',
+    );
+    assert(
+      canvas.queryByText('Item A summary'),
+      'The remaining openTab() tab should stay active and visible.',
+    );
+  },
+};
+
+export const RootTabStripActivateRemountsContract: Story = {
+  render: () => <PinnedTabStripContract />,
+  tags: ['contract', '!autodocs'],
+  parameters: {
+    a11y: { test: 'off' },
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const shell = canvasElement.querySelector<HTMLElement>('[data-tab-strip-shell]');
+    assert(shell, 'The fixture should expose its application shell.');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
+    await waitFor(
+      () => canvas.queryByText('Item A summary'),
+      'Item A should open to its summary page.',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Push detail' }));
+    await waitFor(
+      () => shell.querySelector('[data-item-page="Item A:detail"]'),
+      "Pushing inside Item A's own stack should navigate to its detail page.",
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open Item B' }));
+    await waitFor(
+      () => canvas.queryByText('Item B summary'),
+      'Opening a brand-new tab should activate it at its own initial page.',
+    );
+    assert(
+      shell.querySelector('[data-item-page="Item A:detail"]') === null,
+      "Item A's content is not mounted while backgrounded (this architecture renders only the active tab).",
+    );
+
+    const itemATab = canvas.getAllByRole('tab').find((tab) => tab.textContent?.includes('Item A'));
+    assert(itemATab, 'Item A should still be listed in the strip while backgrounded.');
+    await userEvent.click(itemATab);
+
+    await waitFor(
+      () => shell.querySelector('[data-item-page="Item A:detail"]'),
+      'Activating Item A via the strip must remount it back onto its stored detail page, not reset to its initial summary page.',
+    );
+    assert(
+      shell.querySelector('[data-item-page="Item A:summary"]') === null,
+      'Item A must not have been reset to its initial page by the switch.',
     );
   },
 };

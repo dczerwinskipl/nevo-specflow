@@ -18,6 +18,10 @@ export interface FeedState {
   away: boolean;
   hasNew: boolean;
   draft: string;
+  /** Next-Turn model override; omitted inherits the Session's current model. */
+  modelOverride?: string;
+  /** Next-Turn effort override; omitted inherits the Session's current effort. */
+  effortOverride?: string;
   pending?: StartTurn;
 }
 interface BrowserStorage {
@@ -208,7 +212,14 @@ export function createSessionFeed(
       return;
     }
 
-    const request = state.pending ?? { requestId: crypto.randomUUID(), message: state.draft };
+    const request =
+      state.pending ??
+      ({
+        requestId: crypto.randomUUID(),
+        message: state.draft,
+        ...(state.modelOverride ? { modelId: state.modelOverride } : {}),
+        ...(state.effortOverride ? { effort: state.effortOverride } : {}),
+      } satisfies StartTurn);
     if (!request.message.trim()) {
       return;
     }
@@ -303,6 +314,23 @@ export function createSessionFeed(
     setDraft(draft: string) {
       save(':draft', draft);
       notify({ ...state, draft });
+    },
+    /** Selects the next Turn's model/effort override; absent values inherit the Session's current pair. */
+    setModel(modelId: string | undefined, effort: string | undefined) {
+      const next: FeedState = { ...state };
+      if (modelId) {
+        next.modelOverride = modelId;
+      } else {
+        delete next.modelOverride;
+      }
+
+      if (effort) {
+        next.effortOverride = effort;
+      } else {
+        delete next.effortOverride;
+      }
+
+      notify(next);
     },
     setAway(away: boolean) {
       if (state.away !== away) {

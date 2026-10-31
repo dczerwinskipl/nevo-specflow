@@ -13,6 +13,7 @@ summary: >
   host pattern in which a blind host renders content that declares its own views and actions.
 related:
   - design-system.implementation.react.secondary-navigation
+  - design-system.implementation.react.workspace-dynamic-split
   - design-system.principles.ui-ux-guidelines
   - design-system.principles.layout-and-containment
   - design-system.implementation.react.component-authoring-contract
@@ -121,3 +122,8 @@ Secondary stack screens pass `menu` through their definition; see
 
 1. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
    header height would remove that coupling.
+2. The Content tabs host pattern above has its first concrete consumer specified in
+   [Workspace dynamic split and Secondary root tabs](workspace-dynamic-split.md): Secondary root
+   tabs reuse `useOpenedItems`/`ItemTabs` directly, with one addition this document does not yet
+   have — an optional non-closable (`closable: false`) item, needed for a pinned root tab. That
+   document's §9 tracks the `useOpenedItems` extension as its first implementation gap.

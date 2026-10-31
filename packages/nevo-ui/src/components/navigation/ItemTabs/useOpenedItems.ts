@@ -3,6 +3,12 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 export interface OpenedItem {
   /** Stable identity. Opening an item whose id is already open activates it instead. */
   id: string;
+  /**
+   * Whether the item can be closed. Defaults to `true` when omitted. A `false` item is skipped by
+   * `close`, `requestClose` (which resolves `false` without consulting `canClose` — there is
+   * nothing to guard) and `closeAll`.
+   */
+  closable?: boolean;
 }
 
 export interface UseOpenedItemsOptions<T extends OpenedItem> {
@@ -94,7 +100,7 @@ function openIn<T extends OpenedItem>(snapshot: Snapshot<T>, item: T): Snapshot<
 
 function closeIn<T extends OpenedItem>(snapshot: Snapshot<T>, id: string): Snapshot<T> {
   const index = snapshot.items.findIndex((item) => item.id === id);
-  if (index < 0) {
+  if (index < 0 || snapshot.items[index]?.closable === false) {
     return snapshot;
   }
 
@@ -163,7 +169,15 @@ export function useOpenedItems<T extends OpenedItem>({
   );
   const close = useCallback((id: string) => update((snapshot) => closeIn(snapshot, id)), [update]);
   const closeAll = useCallback(
-    () => update((snapshot) => ({ ...snapshot, items: [], activeId: null })),
+    () =>
+      update((snapshot) => {
+        const items = snapshot.items.filter((item) => item.closable === false);
+        const activeId = items.some((item) => item.id === snapshot.activeId)
+          ? snapshot.activeId
+          : (items[0]?.id ?? null);
+
+        return { ...snapshot, items, activeId };
+      }),
     [update],
   );
   const replace = useCallback(
@@ -191,6 +205,12 @@ export function useOpenedItems<T extends OpenedItem>({
     const running = inFlight.current.get(key);
     if (running) {
       return running;
+    }
+
+    // Non-closable items have nothing to guard: refuse unconditionally, without calling `canClose`.
+    const target = current.items.find((item) => item.id === id);
+    if (target && target.closable === false) {
+      return Promise.resolve(false);
     }
 
     const run = (async () => {

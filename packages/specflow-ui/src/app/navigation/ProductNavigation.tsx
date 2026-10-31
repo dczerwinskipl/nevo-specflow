@@ -236,10 +236,11 @@ export function ProductNavigation({
                                 renderEntryLink={
                                   demo
                                     ? (sessionId, className, children) => (
+                                        // Full Session is canonical at the top-level route regardless
+                                        // of Runtime mode; see sessionDetailRoute's redirect.
                                         <Link
-                                          to="/specs/$specId/sessions/$sessionId"
-                                          params={{ specId, sessionId }}
-                                          search={{ collection }}
+                                          to="/sessions/$sessionId"
+                                          params={{ sessionId }}
                                           className={className}
                                         >
                                           {children}

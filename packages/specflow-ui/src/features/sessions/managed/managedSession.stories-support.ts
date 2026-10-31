@@ -1,10 +1,16 @@
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import type { ProviderDescriptor, SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 
 export const fixtureSessionId = '00000000-0000-4000-8000-000000000001';
 const turnId = '00000000-0000-4000-8000-000000000002';
 const workId = '00000000-0000-4000-8000-000000000003';
 const contentId = '00000000-0000-4000-8000-000000000004';
+/** The large answer's remaining pages, fetched and stitched together automatically by the UI. */
+const contentFragments = [
+  'Dalszy fragment dużej wiadomości — pobrany automatycznie. ',
+  'Druga część tej samej odpowiedzi, dociągnięta w tle bez udziału użytkownika. ',
+  'Trzecia i ostatnia część — od teraz widoczna razem z resztą jako jedna całość.',
+];
 export function sessionFixture(waiting = false): SessionSnapshot {
   return {
     session: {
@@ -81,10 +87,71 @@ export function sessionFixture(waiting = false): SessionSnapshot {
   };
 }
 
+/**
+ * Matches a session's `providerId` so the next-Turn model/effort picker has data to render.
+ * Defaults to `sessionFixture`'s own `'mock'`; `fixtureApi` passes the actual snapshot's
+ * `providerId` instead, so a fixture built on `base()`/`genericSpecLevelSnapshot()` (providerId
+ * `'claude-code'`, see `managedSession.fullSession.stories-support.ts`) also gets a matching
+ * provider — before this, `ModelEffortPicker` silently rendered nothing for every one of those
+ * stories, since no item in `providers().items` ever matched that session's own `providerId`.
+ */
+export function providerFixture(providerId = 'mock'): ProviderDescriptor {
+  return {
+    providerId,
+    title: 'Controlled test provider',
+    readiness: 'ready',
+    capabilities: {
+      questions: true,
+      permissions: true,
+      cancel: true,
+      resume: true,
+      modelOverride: true,
+      effortOverride: true,
+    },
+    models: [
+      { modelId: 'mock-standard', title: 'Standard', efforts: ['low', 'high'] },
+      { modelId: 'mock-fast', title: 'Fast', efforts: [] },
+    ],
+    modes: ['read-only', 'workspace-write'],
+  };
+}
+
+/**
+ * Item 1 follow-up regression support: `fixtureApi`'s own `content()` resolves every page on an
+ * already-queued microtask, so the three fragments stitch in back-to-back within a single
+ * animation frame — too fast for a test to actually sample the growth window the owner reported
+ * (ManagedSession.tsx's overlap-correction racing MessageText.tsx's auto-stitch). This variant
+ * paces each page behind a real macrotask delay instead, so a test can await one fragment,
+ * sample the DOM mid-sequence, then let the next fragment land.
+ */
+export function staggeredContentApi(snapshot: SessionSnapshot, delayMs = 120): ManagedSessionsApi {
+  return {
+    ...fixtureApi(snapshot),
+    content: (_sessionId, _ref, offset) => {
+      const index = Math.min(offset, contentFragments.length - 1);
+
+      return new Promise((resolve) => {
+        setTimeout(
+          () =>
+            resolve({
+              contentId,
+              revision: '1000000',
+              offset: index,
+              nextOffset: index + 1 < contentFragments.length ? index + 1 : undefined,
+              complete: index + 1 >= contentFragments.length,
+              text: contentFragments[index]!,
+            }),
+          delayMs,
+        );
+      });
+    },
+  };
+}
+
 /** Isolated presentation adapter: never imported by a production route. */
 export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
   return {
-    providers: () => Promise.resolve({ items: [] }),
+    providers: () => Promise.resolve({ items: [providerFixture(snapshot.session.providerId)] }),
     create: () => Promise.resolve({ sessionId: fixtureSessionId }),
     snapshot: () => Promise.resolve(snapshot),
     history: () =>
@@ -106,15 +173,20 @@ export function fixtureApi(snapshot: SessionSnapshot, historyError = false): Man
             ],
             history: { hasOlder: false },
           }),
-    content: () =>
-      Promise.resolve({
+    // Three sequential pages the UI stitches into one answer: offset is just this fake server's
+    // own page index (an opaque cursor the client only ever echoes back), not a byte count.
+    content: (_sessionId, _ref, offset) => {
+      const index = Math.min(offset, contentFragments.length - 1);
+
+      return Promise.resolve({
         contentId,
         revision: '1000000',
-        offset: 0,
-        nextOffset: 65536,
-        complete: false,
-        text: 'Dalszy fragment dużej wiadomości — pobrany na żądanie.',
-      }),
+        offset: index,
+        nextOffset: index + 1 < contentFragments.length ? index + 1 : undefined,
+        complete: index + 1 >= contentFragments.length,
+        text: contentFragments[index]!,
+      });
+    },
     work: () =>
       Promise.resolve({
         sessionId: fixtureSessionId,

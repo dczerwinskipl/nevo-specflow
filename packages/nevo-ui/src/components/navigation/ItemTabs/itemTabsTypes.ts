@@ -12,6 +12,12 @@ export interface ItemTab {
   /** Shows the attention badge on the icon (left, always visible). */
   dirty?: boolean;
   state?: 'ready' | 'loading' | 'missing';
+  /**
+   * Whether this item offers a close affordance. Defaults to `true` when omitted. A `false` item
+   * renders no close `x`, no Delete-key close, no middle-click close, and no "Close <label>" row
+   * in the Opened menu; it otherwise looks and behaves exactly like a closable item.
+   */
+  closable?: boolean;
 }
 
 export interface ItemTabsLabels {

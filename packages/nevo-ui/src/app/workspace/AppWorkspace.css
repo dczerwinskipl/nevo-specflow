@@ -46,10 +46,27 @@
  * (--workspace-overlay-inset-top = row top + control height + gap). The viewport turns the zone into
  * scroll-padding-top, so hash anchors, scrollIntoView and focus scrolling never land under it.
  * Descendants may read --workspace-overlay-inset-top (e.g. for scroll-margin-top).
+ *
+ * --workspace-overlay-bottom is the bottom-edge counterpart: the safe-area-aware offset a
+ * product's own bottom-floating element (for example a Composer pinned over the scroll viewport
+ * on mobile with `position: fixed`, or a `position: sticky` footer on split/desktop, where the
+ * consumer owns its own scroll container) reads as its own `bottom` so it clears the home-
+ * indicator/gesture-bar safe area the same way the top row clears the status bar. Unlike
+ * `--workspace-overlay-inset-top`, nothing here sets `scroll-padding-bottom` for a consumer: a
+ * fixed-position element reserves no space of its own, so the consumer still measures its actual
+ * rendered height and reserves that much space itself (padding-bottom on its own scroll content);
+ * a `position: sticky` element already reserves its own space in the flow and needs nothing extra.
+ * Scoped to `.mobile-workspace-scroll-area` only (its value is irrelevant off that element) so a
+ * split/desktop consumer, which has no such ancestor, falls back to its own
+ * `var(--workspace-overlay-bottom, <value>)` default instead of inheriting a stale one.
  */
 .mobile-workspace-scroll-area,
 .mobile-floating-navigation {
   --workspace-overlay-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.mobile-workspace-scroll-area {
+  --workspace-overlay-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 .mobile-workspace-scroll-area {

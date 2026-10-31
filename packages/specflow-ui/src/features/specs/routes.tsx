@@ -229,8 +229,6 @@ function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
   const { collection } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
-  // Session detail exists only where the Runtime serves it (demo mode); otherwise rows stay inert.
-  const sessionDetail = useRuntimeMode() === 'demo';
 
   return (
     <SpecificationSurface
@@ -267,14 +265,10 @@ function SpecificationRouteScreen() {
         })
       }
       onOpenSession={
-        sessionDetail
-          ? (sessionId) =>
-              void navigate({
-                to: '/specs/$specId/sessions/$sessionId',
-                params: { specId, sessionId },
-                search: { collection },
-              })
-          : undefined
+        // Full Session is canonical at the top-level `/sessions/:sessionId` route (real feed/API,
+        // ManagedSession) regardless of Runtime mode; the nested `/specs/:specId/sessions/:sessionId`
+        // placeholder now only redirects there for old links (see sessionDetailRoute).
+        (sessionId) => void navigate({ to: '/sessions/$sessionId', params: { sessionId } })
       }
       onOpenSessions={() =>
         void navigate({ to: '/specs/$specId/sessions', params: { specId }, search: { collection } })

@@ -14,6 +14,7 @@ export {
   AppWorkspaceSlots,
   WorkspaceHeader,
   WorkspaceHeaderIdentity,
+  useWorkspacePrimaryScroll,
   type AppWorkspaceProps,
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,
@@ -30,6 +31,8 @@ export {
   useSecondaryNavigation,
   useSecondaryStack,
   useSecondaryLeaveGuard,
+  useRegisterPinnedSecondaryTab,
+  type PinnedSecondaryTabInput,
 } from './workspace/WorkspaceContext';
 export {
   defineSecondaryStack,

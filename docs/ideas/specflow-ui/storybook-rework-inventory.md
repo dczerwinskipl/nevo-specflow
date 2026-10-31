@@ -7,9 +7,10 @@ scope: specflow
 areas: [ui, docs, testing, tooling]
 tags: [storybook, inventory, migration, testing, design-system]
 read_when:
-  - auditing Storybook source and deciding what to consolidate or preserve
-  - planning a Storybook cleanup for an explicitly chosen UI scope
-  - reviewing incoming PRs that introduce UI components, stories, or fixture infrastructure
+  - inventorying Storybook stories and product component showcase gaps before restructuring
+  - planning migration from numerous screen variants to interactive component and feature stories
+  - comparing Storybook changes across the working branch and incoming UI pull requests
+  - checking which contract, Chromatic, Figma, or story ID dependencies a cleanup must preserve
 summary: >
   Dated, non-authoritative inventory of SpecFlow/Nevo UI Storybook groups,
   component-story gaps, problematic screen scenario families, and a repeatable
@@ -246,99 +247,95 @@ with the proposed profiles and Controls, then rebuild the inventory.
 Other branches will continue to arrive. Never assume this file remains
 accurate after merge, rebase, branch-switch, or a new UI PR.
 
-## 6. Repeatable inventory procedure for future agents
+## 6. Repeatable inventory procedure for future maintainers
 
-**Task trigger:** an ordinary implementation request such as
-"posprzątaj Storybooka", "Storybook cleanup/rework", "uporządkuj stories",
-"odchudź sidebar", "zrób playgroundy", with an optional scope, is enough.
-Use the **existing UI implementer/general implementer**. Do not require
-selection/installation of a new special agent.
+**Use when the work requires a Storybook inventory, consolidation, or catalog rework.**
+The existing repository documentation discovery process should identify the
+authoritative guidelines from the task's subject and the `read_when` metadata.
+It is not a phrase-matching or named-agent activation rule. A developer, implementer,
+reviewer or other responsible agent can use this procedure when their assigned
+scope justifies it.
 
-**Required autonomous flow:**
+**Autonomous workflow for a substantive catalog change:**
 
-1. Resolve requested scope from the user message (package, feature, component,
-   story group, all Storybook); avoid gratuitous clarification when the scope
-   is evident or can be safely bounded.
-2. Load **current authoritative Storybook guidelines** and applicable design
-   system/testing/architecture docs. Load the Storybook Rework idea/inventory
-   **only if still active and deliberately chosen for migration**; after
-   acceptance, use its promoted canonical rules instead.
-3. Discover actual default branch and chosen work branch HEAD. Inspect relevant
-   open PRs for changed story paths and likely incoming conflicts.
-4. Enumerate `*.stories.*` from repository source and generate the actual
-   Storybook index for the current working tree. Distinguish:
-   - file count, story export count, runtime indexed story count;
-   - owner/title/story ID, tags, visibility, play, Chromatic snapshot inclusion;
-   - screenshot/Chromatic/CI references, Figma capture dependencies;
-   - links to existing component APIs and fixture support.
-5. Group by owner and profile, not just filenames. Find Screen/Feature-heavy
-   clusters and real component story gaps. Sample actual rendering and Controls
-   for each materially impacted family.
-6. Propose an evidence-based **keep / hide / consolidate / extract component
-   story / archive** decision per affected group; justify retained exceptions.
-7. Implement in dependency-complete slices, preserving behavior and IDs where
-   possible. Verify build, relevant browser/a11y contracts and visual baselines;
-   for Storybook rework, check the actual rendered sidebar/Controls, not only
-   TypeScript and unit tests.
-8. Report scope, before/after default-visible surface, number and type of
-   contracts preserved, unresolved conflicts, and verification actually run.
-   Do not present an incomplete source grep as the runtime inventory.
+1. Determine the actual scope from the work being performed (a package, feature,
+   component, story collection or the full catalog).
+2. Discover and read **current authoritative Storybook guidelines** plus relevant
+   Design System and testing contracts. Read this idea/inventory deliberately as
+   proposal and historical evidence where applicable, not as superior policy.
+3. Identify the worktree branch and revision, then inspect incoming PRs/branches
+   affecting the same owner to avoid rebuilding soon-to-be-replaced stories.
+4. Enumerate `*.stories.*` from source and generate the actual Storybook index
+   for the selected working tree. Distinguish:
+   - file count, exported story count and runtime-indexed story count;
+   - component/feature/screen owner, title and story ID;
+   - tags, default visibility, Controls, `play`, Chromatic and Figma capture;
+   - screenshot, CI and regression references.
+5. Compare screen-heavy catalog families with the *actual production component
+   boundaries* and their existing stories. Inspect representative rendered
+   component and screen examples.
+6. Decide **keep / hide / consolidate / component playground / retire** per
+   affected owner, with evidence and explicit exceptions.
+7. Implement in focused, dependency-complete slices. Preserve behavior, automated
+   test cases, IDs and accepted snapshots unless migration is deliberate.
+8. Verify the built catalog, rendered sidebar and Controls, browser/a11y tests and
+   any relevant visual baselines. Report before/after visibility and coverage.
 
-A future agent must **perform this analysis itself**, not treat the dated table
-above as implementation instructions. It should only request missing product
-decisions when repository evidence does not resolve a material ambiguity.
+Every future inventory must be regenerated. The numbers in this document describe
+only the captured baseline, not an instruction to optimize against a fixed count.
 
-## 7. Conditional trigger for ordinary UI review
+## 7. Storybook knowledge during review
 
-A UI Reviewer must consult the **current Storybook authoring policy** when the
-reviewed diff:
-- adds, removes, renames or changes a `.stories.*` file or related fixtures;
-- changes Storybook host config, docs guidance, test runner, a11y, Chromatic,
-  Figma capture, story metadata/IDs, or story filtering;
-- changes a UI component/feature in a way that changes the expected owner
-  showcase/interaction/visual coverage, even if a story file is missing.
+**Read the current Storybook guidelines when review scope touches Storybook or its
+required coverage.** This includes changed stories, fixtures, decorators, Controls,
+story tags/IDs, host configuration, browser testing, accessibility, Chromatic,
+Figma capture, or material UI changes whose component stories should be reviewed.
 
-The reviewer should first **scan the diff and applicable UI ownership** to decide
-whether this condition holds. For unrelated backend/infrastructure-only changes,
-there is no Storybook-specific checklist and no mandatory Storybook policy load.
-For a purely local UI adjustment, inspect the existing relevant story and its
-coverage proportionally; do not force a catalog-wide inventory.
+That is an ordinary, **conditional knowledge-discovery decision** driven by
+the diff and affected ownership. An unrelated backend review does not need to
+load Storybook guidance. A narrowly scoped UI change may need only a targeted
+story check, while broad Storybook restructuring needs a fresh inventory.
 
-When triggered, reviewer checks:
-- Is a **component-level inspectable surface** missing while only full-screen
-  combinations were added?
-- Are new visible stories duplicates of controllable args/presets?
-- Are profile tags, default visibility, play, Chromatic and Figma capture
-  semantics appropriate?
-- Are fixtures deterministic and are shared test helpers correctly owned?
-- Was functional coverage preserved across renames/hiding/consolidation?
-- Did the author verify actually rendered behavior at relevant widths?
+When applicable, review:
+- Can a changed SpecFlow component be inspected on its own, or was only another
+  full-screen state story added?
+- Are multiple visible stories better expressed as one controlled showcase?
+- Do tags, default visibility, interaction tests, snapshot and capture roles fit?
+- Are fixtures deterministic, correctly owned and safely isolated?
+- Are test coverage and stable story IDs maintained?
+- Is rendered and responsive verification supported by evidence?
 
-The reviewer **does not need to regenerate a complete repository inventory**
-for each small story change. Full inventory is required for a Storybook rework,
-broad catalog refactoring or when the reviewed change materially alters
-the story index/visibility. This conditional distinction is intentional.
+Do not treat the **idea inventory** as mandatory reading for every UI review;
+the current guideline is the authoritative owner until approved changes are promoted.
 
-## 8. How this becomes policy, not only an idea
+## 8. Making this discoverable over time
 
-Do not create a dedicated Storybook agent. When this proposal is accepted:
+The repository already supports document discovery using YAML metadata,
+including `read_when`, `summary`, `related`, `scope`, `areas`, and `tags`.
+Use that mechanism instead of special-casing Storybook in agent identities
+or matching a list of cleanup phrases.
 
-1. Promote approved authoring/visibility/profile and component-first rules to
-   `docs/design-system/implementation/storybook/guidelines.md` (single source of truth).
-2. Add a **short routing trigger** in the canonical UI Implementer profile:
-   "Storybook cleanup/rework" means autonomous discovery + fresh inventory +
-   component-first migration. The role already loads Storybook guidelines.
-3. Add a **conditional Storybook review trigger** in the canonical Reviewer profile
-   (or common reviewer source). It loads the Storybook policy **only when relevant**,
-   then applies the focused checklist, not a universal gate on unrelated reviews.
-4. Adjust general Implementer routing only if it can receive Storybook cleanup
-   without delegation to UI Implementer.
-5. Regenerate agent skill outputs for `.agents` and `.claude` using the
-   repository's canonical agent build. Do not hand-edit generated SKILL.md copies.
-6. Add tests for the trigger/routing contract and a changed-files incremental
-   policy checker; avoid false positives from unrelated changes and legacy debt.
-7. Keep this idea and inventory as non-authoritative historical evidence after
-   migration; avoid a second parallel rulebook.
+On approval of this proposal:
+
+1. Promote accepted component-first, profiles, Controls and verification rules
+   into `docs/design-system/implementation/storybook/guidelines.md`.
+2. Ensure the **authoritative guideline's `read_when`** covers authoring,
+   reorganizing, component-level coverage, Storybook-related reviews,
+   fixtures, and visual/interaction regression.
+3. Keep rework proposal metadata descriptive for **design/migration tasks**;
+   keep this inventory metadata descriptive for **fresh audit and evidence
+   comparison**. Both remain intentionally non-authoritative.
+4. Continue using the existing repository knowledge-discovery rules and
+   `pnpm docs:find`/`pnpm docs:get`. Default `pnpm docs:context` excludes
+   `docs/ideas/**`, so load idea documents only when evaluating the proposal.
+5. Introduce CI checks for objective, newly introduced violations with
+   baseline exceptions. CI should inspect changed stories, not assume every
+   PR requires a full catalog audit.
+6. Do not add a Storybook-specific agent, profile selection rule, new command
+   trigger, duplicate SKILL.md checklist or forced global reviewer prerequisite.
+
+Future maintainer/agent behavior should follow from the **nature of the task
+and discoverable owning documentation**, not from the exact wording of a request.
 
 ## 9. Scope-based migration order
 

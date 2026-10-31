@@ -7,10 +7,10 @@ scope: specflow
 areas: [ui, docs, testing, tooling]
 tags: [storybook, design-system, components, testing, developer-experience, agents]
 read_when:
-  - planning Storybook reorganization or UI test infrastructure
-  - evaluating whether a new UI story should be a playground, fixture, visual baseline, or test
-  - reviewing agents' UI implementation and Storybook output
-  - designing enforcement to prevent new story catalog clutter
+  - evaluating or planning a Storybook catalog rework for a selected package or feature
+  - reducing screen scenario clutter and increasing component-level playground coverage
+  - deciding which stories need Controls, contract tags, visual snapshots, or integration tests
+  - designing long-term Storybook authoring and review safeguards for incoming UI changes
 summary: >
   Non-authoritative proposal to rework SpecFlow Storybook from a screen-scenario dump into a
   component-first interactive workbench, while retaining automated contracts and introducing
@@ -294,58 +294,62 @@ only genuinely shared decorators/providers.
 **This is a first-class deliverable, not an optional follow-up.** Without a guardrail,
 concurrent branches and implementation agents will immediately repopulate the catalog.
 
-### 8.1 One authority; no competing prompt policy
+### 8.1 Discover relevant documentation by responsibility
 
-After the proposal is accepted, promote the approved rules into the current
-design-system/implementation/storybook/guidelines document (and the existing agents/instructions
-routing if necessary). That becomes the single authoritative source. This idea remains evidence,
-not a permanent instruction file. Avoid copying long, slightly different rule sets into
-UX designer, implementer, reviewer and PR templates.
+This is **documentation discovery, not a keyword trigger or a role-selection rule**.
+Do not tie this proposal to a particular request phrase or to UI Implementer.
+Whichever existing agent or contributor owns a Storybook-related task should identify
+the affected subsystem and consult the applicable current rules. An ordinary code
+review should load them when its changes affect Storybook authoring or coverage,
+but unrelated changes should not incur a Storybook-specific review.
 
-Agent profiles should **load or discover the same canonical document**, possibly with a
-short role-specific checklist, instead of each maintaining its own Storybook doctrine.
-Ensure generated agent instructions and source definitions remain in sync.
+The repository already indexes authored documentation with `read_when`, `summary`,
+`related`, `scope`, `areas`, and `tags`. Use those fields to make it discoverable:
 
-### 8.2 Natural-language cleanup trigger for the existing UI Implementer
+- **Authoritative rules:** extend the `read_when` metadata of
+  `design-system.implementation.storybook.guidelines` to include catalog restructuring,
+  component/feature story coverage, fixtures and Controls, and review of Storybook-related
+  changes. This document owns the approved authoring and verification policy.
+- **Rework proposal:** keep `ideas.specflow-ui.storybook-rework` discoverable when
+  evaluating migration direction, catalog organization and hardening.
+- **Evidence inventory:** keep `ideas.specflow-ui.storybook-rework-inventory` discoverable
+  for a scoped audit, branch comparison and migration planning.
 
-A future request such as **"posprzątaj Storybooka"**, "Storybook rework",
-"uporządkuj stories" or "odchudź sidebar", optionally scoped to one feature/package,
-is enough to activate the existing UI Implementer workflow. **Do not create a
-Storybook-specialist agent or make the owner supply an inventory first.**
+A normal authoring/review task resolves current guidance using the repository's
+existing `pnpm docs:find` discovery or exact `pnpm docs:get` IDs. The rework
+proposal and dated inventory live under `docs/ideas/**`: default
+`pnpm docs:context` **excludes ideas**. They must be loaded deliberately when
+evaluating or undertaking the rework, and **must not override the current guideline**.
 
-The implementer must autonomously:
-1. Resolve scope from the instruction, find current authoritative Storybook rules and
-   the selected work branch; intentionally load this idea only while it remains relevant.
-2. Rebuild a *fresh* inventory, examining actual story exports/index, tags, visibility,
-   components, Controls, Chromatic/Figma dependencies and CI tests. Compare incoming
-   branches/PRs where they affect that scope. The dated companion inventory is a
-   seed, never a substitute for current discovery.
-3. Group evidence by real component/feature/screen owner and decide which entries to
-   **keep, hide, consolidate, make interactive, or retire**. Identify missing
-   component-level stories instead of merely pruning the sidebar.
-4. Choose proportional dependency-complete slices, implement them, run targeted checks
-   and inspect Storybook's actual rendered navigation and Controls.
-5. Handover the before/after visible inventory, preserved tests/snapshots/IDs,
-   any intentionally deferred scope and any unresolved verification/conflicts.
+No extra agent, new role, command classifier, hardcoded phrase list, or duplicate
+rules copied into skill files is proposed. If an agent fails to discover relevant
+documentation, diagnose the existing knowledge-discovery process rather than adding
+a Storybook-specific activation mechanism.
 
-This is an **implementation intent trigger**, not a request for a new role or
-an unconditional full-repository audit on every small UI change. If the user
-says only "Task stories", the audit begins with the Task owner and its dependencies.
+### 8.2 Autonomous inventory for Storybook restructuring
 
-**Current canonical agent integration points (verified in repository):**
-- `.nevo/agents/definitions/implementer-ui.yaml` already requires
-  `design-system.implementation.storybook.guidelines` and includes a conditional
-  `storybook` instruction reference.
-- `.nevo/agents/instructions/storybook.md` is the existing instruction fragment
-  where the cleanup task trigger can be expressed without changing agent identity.
-- `.nevo/agents/definitions/implementer.yaml` should receive an equivalent
-  conditional route only if general Implementer is allowed to own this task.
-- `.agents/skills/**` and `.claude/skills/**` are generated outputs.
-  Modify canonical sources, then run `pnpm agents:build`/`pnpm agents:check`.
+When the **actual scope** calls for substantial Storybook cleanup, reorganization
+or migration, the responsible agent should independently:
 
-### 8.3 Minimum required behavior for UI implementation agents
+1. Identify the owner boundaries and selected working branch. Read the applicable
+   current guideline and, if relevant, this proposal and its inventory evidence.
+2. Produce a **fresh** scoped inventory from current sources and the built Storybook
+   index: owners, existing component playgrounds, visible stories, tags, Controls,
+   tests, snapshots and IDs.
+3. Check relevant incoming branches and PRs. The dated baseline in the companion
+   inventory is only a starting point.
+4. Decide which cases to keep, hide, consolidate, expose through Controls, move to
+   component-level presentation fixtures or retire, while preserving contracts.
+5. Apply the decisions proportionally, verify the resulting sidebar and interactions
+   in the browser, and report coverage/ID changes and unresolved issues.
 
-When a change affects UI, the implementing agent should:
+This behavior follows from the **nature and scope of the task**, not from how
+someone words the request or which agent profile receives it. A local story edit
+does not require a full repository-wide audit.
+
+### 8.3 Checks when implementing Storybook-related UI work
+
+When the assigned work affects Storybook stories, fixtures or their component-level coverage, the responsible implementer should:
 1. Find the affected owner, existing Nevo UI pattern and current relevant component/feature/
    screen story **before creating new stories**.
 2. State what changed in component API/presentation, and whether the current Storybook surface
@@ -363,35 +367,29 @@ When a change affects UI, the implementing agent should:
 Small CSS changes need proportional discovery; they do not require rebuilding a whole catalog.
 Agents must not use "smallest change" as a justification to skip relevant test coverage.
 
-### 8.4 Conditional Storybook review in the existing Reviewer
+### 8.4 Relevant documentation during code review
 
-The Reviewer profile currently does **not** include Storybook in its global
-`knowledge.required` list, unlike UI Implementer. Keep that distinction.
+Reviewers first inspect the changed files, behavior and relevant UI ownership.
+Load `design-system.implementation.storybook.guidelines` when the review involves:
 
-At review start, the reviewer scans the diff and relevant UI ownership:
-- **Load the current Storybook guidelines** when the diff touches stories,
-  Storybook fixtures/support, configuration, story profile/IDs, capture, visual
-  baselines, or Storybook test infrastructure.
-- Also load them when UI work materially changes an owned component/feature
-  and its required inspection/testing surface needs evaluation, even if the
-  author failed to edit the story. This condition must be based on evidence,
-  not invoked for every CSS line automatically.
-- Otherwise, for unrelated backend or other changes, skip Storybook-specific
-  knowledge and checklist. For an isolated visual adjustment, apply only the
-  proportionate story inspection required by ordinary UI review, not a
-  whole-catalog inventory.
+- new or changed `.stories.*` files, story fixtures, scenario builders, Controls,
+  decorators, story metadata/IDs or test-only presentation adapters;
+- Storybook host configuration, runner, accessibility checks, Chromatic baseline,
+  Figma capture or story navigation/filtering;
+- substantive product UI component/feature changes whose corresponding
+  Storybook showcase or verification coverage needs to be evaluated, even when
+  the author did not change a story file.
 
-When triggered, the step is **required within the applicable review, optional
-outside it**. It can be implemented using an instruction entry in
-`.nevo/agents/definitions/reviewer.yaml`, with a suitable `applies.when`
-and `delivery: auto`. This should reference an owner-maintained instruction
-fragment containing only a **load/inspect trigger and review questions**,
-not a duplicate of the authoritative guidelines. The profile's global
-required knowledge list stays lean. Verify that rendered agent outputs include
-the conditional route and test both applicable and non-applicable changes.
+Do **not** require this additional subject-specific reading for an unrelated
+backend/infrastructure diff. For a narrowly scoped UI adjustment, apply only
+relevant story checks; a complete catalog inventory belongs to actual catalog
+rework and similarly broad changes.
 
-A full fresh inventory is required for a Storybook rework or broad story-index
-change, **not** for every PR changing one component.
+This is an application of existing **document discovery and proportional review**.
+It does not depend on adding `storybook` to every reviewer's global required
+knowledge list or installing a special instruction trigger. Agents may resolve
+the guideline through `docs:find` or an exact known document ID; the proposal
+itself is optional and non-authoritative until explicitly evaluated.
 
 ### 8.5 Reviewer responsibility
 
@@ -408,8 +406,8 @@ Review agents should explicitly ask:
 - Which claims are verified by an actual rendered pass, and which are proposals?
 
 A reviewer should provide concrete file/story findings, not a numeric quota or generic
-"Storybook cleanup needed" comment. Agents should challenge violations even when the
-request concerns only one screenshot.
+"Storybook cleanup needed" comment. Reviewers should challenge concrete violations when the reviewed scope makes
+Storybook guidance relevant, even when the request concerns only one screenshot.
 
 ### 8.6 Lightweight automated guardrail (proposed)
 
@@ -450,7 +448,7 @@ to every small PR. Keep browser, a11y and visual regression in their established
 - A new UI feature PR must demonstrate the *appropriate inspection surface*, not just
   that a giant screen fixture renders.
 - A new story's purpose, owner, profile and whether it is visible are inspectable in review.
-- The existing UI Implementer treats a scoped natural-language Storybook cleanup request as an autonomous inventory/migration task; the existing Reviewer loads Storybook rules conditionally for relevant diffs. Both reference the same current authoritative rules.
+- The canonical Storybook guideline and related rework ideas have discoverable `read_when` metadata; the responsible agent performs a fresh inventory when the work requires catalog restructuring, and reviewers consult the same guideline for relevant Storybook/coverage changes. No role-specific or phrase-specific trigger is required.
 - A regression fixture needed by Chromium or Chromatic stays runnable after being hidden
   or moved; story ID changes are explicit.
 - New PRs cannot silently introduce a family of visually indistinguishable visible

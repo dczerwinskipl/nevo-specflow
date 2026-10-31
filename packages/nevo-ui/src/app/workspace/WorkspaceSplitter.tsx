@@ -26,6 +26,15 @@ export interface WorkspaceSplitterProps {
   onSecondaryRatioChange: (ratio: number) => void;
   /** Accessible name (contract §7), sourced from `AppWorkspaceLabels.resizeSecondary`. */
   label: string;
+  /**
+   * Which side of Primary Secondary renders on (workspace-dynamic-split.md §4.2/§4.3, W06).
+   * Default `'end'` (Secondary after Primary, this component's original/only behavior). Flips the
+   * sign of every pointer/touch delta and keyboard step so dragging/pressing a given direction
+   * always has the same real-world effect ("drag the boundary left/right") regardless of which
+   * side Secondary is currently on — the ratio this component reports is always Secondary's own
+   * share, never which side owns it.
+   */
+  secondarySide?: 'start' | 'end';
   className?: string;
 }
 
@@ -62,9 +71,14 @@ export function WorkspaceSplitter({
   availableWidth,
   onSecondaryRatioChange,
   label,
+  secondarySide = 'end',
   className,
 }: WorkspaceSplitterProps) {
   const dragRef = useRef<DragState | null>(null);
+  // Secondary sits to the right of the splitter by default (`'end'`): moving the pointer/boundary
+  // right shrinks Secondary's share, left grows it — `sign` is -1. Swapped (`'start'`, Secondary to
+  // the left of the splitter): the same rightward motion now grows Secondary instead — `sign` is +1.
+  const sign = secondarySide === 'start' ? 1 : -1;
 
   const clamp = (ratio: number) => clampRatio(ratio, minSecondaryRatio, maxSecondaryRatio);
 
@@ -96,10 +110,8 @@ export function WorkspaceSplitter({
       return;
     }
 
-    // Secondary sits to the right of the splitter (contract §6/§4.2 — no side-swap in this task):
-    // moving the pointer right shrinks Secondary's share, left grows it.
     const deltaRatio = (event.clientX - drag.startClientX) / availableWidth;
-    onSecondaryRatioChange(clamp(drag.startRatio - deltaRatio));
+    onSecondaryRatioChange(clamp(drag.startRatio + sign * deltaRatio));
   };
 
   const endDrag = (event: PointerEvent<HTMLDivElement>) => {
@@ -125,11 +137,11 @@ export function WorkspaceSplitter({
     switch (event.key) {
       case 'ArrowLeft':
         event.preventDefault();
-        onSecondaryRatioChange(clamp(secondaryRatio + stepRatio));
+        onSecondaryRatioChange(clamp(secondaryRatio - sign * stepRatio));
         break;
       case 'ArrowRight':
         event.preventDefault();
-        onSecondaryRatioChange(clamp(secondaryRatio - stepRatio));
+        onSecondaryRatioChange(clamp(secondaryRatio + sign * stepRatio));
         break;
       case 'Home':
         event.preventDefault();

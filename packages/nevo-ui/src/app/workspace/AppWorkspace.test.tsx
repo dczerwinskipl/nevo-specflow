@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -248,5 +249,165 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
 
     expect(document.querySelector('[data-item-page="Item A:detail"]')).not.toBeNull();
     expect(document.querySelector('[data-item-page="Item A:summary"]')).toBeNull();
+  });
+});
+
+describe('AppWorkspace secondarySide (workspace-dynamic-split.md §4.2 last bullet, W06)', () => {
+  // Each region's content captures a mount-only id (the `useState` initializer runs exactly once
+  // per mount lifecycle, unlike a counter incremented in the component body, which would also tick
+  // on an ordinary re-render and falsely look like a remount). A true remount across the swap would
+  // produce a new id; a stable id proves React reused the same instance (contract: "MUST NOT
+  // remount Primary, any tab, or any tab's content").
+  let nextMountId = 0;
+  let mountIds: Record<string, number>;
+
+  function PrimaryContent() {
+    const [id] = useState(() => ++nextMountId);
+    mountIds.primary = id;
+
+    return <div>Primary content</div>;
+  }
+
+  function SecondaryContent() {
+    const [id] = useState(() => ++nextMountId);
+    mountIds.secondary = id;
+
+    return <div>Secondary content</div>;
+  }
+
+  function SwapHost({ initialSide = 'end' }: { initialSide?: 'start' | 'end' } = {}) {
+    const [side, setSide] = useState<'start' | 'end'>(initialSide);
+
+    return (
+      <AppWorkspace secondarySide={side} split="balanced">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
+          <PrimaryContent />
+          <button onClick={() => setSide(side === 'end' ? 'start' : 'end')} type="button">
+            Swap sides
+          </button>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header={<WorkspaceHeader title="Secondary" />}>
+          <SecondaryContent />
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    );
+  }
+
+  function mountSwapHost(props?: { initialSide?: 'start' | 'end' }) {
+    mountIds = {};
+
+    return render(
+      <AppShell navigation={<div>Nav</div>}>
+        <SwapHost {...props} />
+      </AppShell>,
+    );
+  }
+
+  function surfaceOrder() {
+    return [...document.querySelectorAll('[data-workspace-surface]')].map((el) =>
+      el.getAttribute('data-workspace-surface'),
+    );
+  }
+
+  function dividerClasses(surfaceName: 'primary' | 'secondary') {
+    const el = document.querySelector(`[data-workspace-surface="${surfaceName}"]`);
+
+    return el?.className.split(/\s+/) ?? [];
+  }
+
+  beforeEach(() => {
+    nextMountId = 0;
+    // Needed unconditionally (AppShell's measurement, ScrollArea, and the stacked mobile runtime
+    // all observe an element) regardless of which nested scenario below also mocks the measured
+    // width itself.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+  });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  describe('in a split layout (fixed preset, not split="dynamic" — the swap is not gated to it)', () => {
+    beforeEach(() => {
+      // A split-capable width (> WORKSPACE_SPLIT_MIN_WIDTH) so `balanced` resolves `state.mode ===
+      // 'split'`, where secondarySide has its only visible effect.
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+        width: 1400,
+        height: 56,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        toJSON: () => ({}),
+      }));
+    });
+
+    it("defaults to Secondary after Primary, divider on Secondary's leading edge", () => {
+      mountSwapHost();
+
+      expect(surfaceOrder()).toEqual(['primary', 'secondary']);
+      expect(dividerClasses('secondary')).toContain('border-l');
+      expect(dividerClasses('secondary')).not.toContain('border-r');
+    });
+
+    it('swapping to the start side reorders the DOM and flips the divider, without remounting either region', async () => {
+      mountSwapHost();
+      const idsBefore = { ...mountIds };
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Swap sides' }));
+        await Promise.resolve();
+      });
+
+      expect(surfaceOrder()).toEqual(['secondary', 'primary']);
+      expect(dividerClasses('secondary')).toContain('border-r');
+      expect(dividerClasses('secondary')).not.toContain('border-l');
+      // Stable identity across the swap: neither region's content remounted (a remount would mint
+      // a new id from the shared `nextMountId` counter).
+      expect(mountIds).toEqual(idsBefore);
+    });
+
+    it('swapping back to the end side restores the original order and divider', async () => {
+      mountSwapHost({ initialSide: 'start' });
+      expect(surfaceOrder()).toEqual(['secondary', 'primary']);
+      const idsBefore = { ...mountIds };
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Swap sides' }));
+        await Promise.resolve();
+      });
+
+      expect(surfaceOrder()).toEqual(['primary', 'secondary']);
+      expect(dividerClasses('secondary')).toContain('border-l');
+      expect(mountIds).toEqual(idsBefore);
+    });
+  });
+
+  it("has no visible effect in a stacked layout (jsdom's unmeasured width renders stacked by default)", async () => {
+    mountSwapHost({ initialSide: 'start' });
+
+    // Only one surface is visible/mounted at a time in a stacked layout, and `secondarySide`'s
+    // only effect is reordering two simultaneously-visible split-layout siblings — so a stacked
+    // render is unaffected regardless of which side is named.
+    expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
+    const idsBefore = { ...mountIds };
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Swap sides', hidden: true }));
+      await Promise.resolve();
+    });
+
+    expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
+    expect(mountIds).toEqual(idsBefore);
   });
 });

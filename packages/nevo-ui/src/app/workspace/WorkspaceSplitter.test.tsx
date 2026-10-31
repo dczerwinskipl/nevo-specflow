@@ -181,4 +181,69 @@ describe('WorkspaceSplitter', () => {
 
     fireEvent.pointerUp(splitter, { pointerId: 1, clientX: 600 });
   });
+
+  describe('secondarySide="start" (workspace-dynamic-split.md §4.2/§4.3, W06 — Secondary before Primary)', () => {
+    it.each([
+      ['ArrowLeft', 0.48],
+      ['ArrowRight', 0.52],
+    ] as const)(
+      '%s adjusts the ratio by a fixed step, direction flipped from the default side',
+      (key, expected) => {
+        render(
+          <ControlledSplitter availableWidth={1200} initialRatio={0.5} secondarySide="start" />,
+        );
+
+        fireEvent.keyDown(getSplitter(), { key });
+
+        expect(getSplitter().getAttribute('aria-valuenow')).toBe(
+          String(Math.round(expected * 100)),
+        );
+      },
+    );
+
+    it('Home still jumps to the minimum and End to the maximum (side-independent)', () => {
+      render(
+        <ControlledSplitter
+          initialRatio={0.5}
+          maxSecondaryRatio={0.75}
+          minSecondaryRatio={0.25}
+          secondarySide="start"
+        />,
+      );
+
+      fireEvent.keyDown(getSplitter(), { key: 'Home' });
+      expect(getSplitter().getAttribute('aria-valuenow')).toBe('25');
+
+      fireEvent.keyDown(getSplitter(), { key: 'End' });
+      expect(getSplitter().getAttribute('aria-valuenow')).toBe('75');
+    });
+
+    it('pointer drag right grows Secondary (on the left) instead of shrinking it', () => {
+      const onChange = vi.fn();
+      render(
+        <ControlledSplitter
+          availableWidth={1000}
+          initialRatio={0.5}
+          onChange={onChange}
+          secondarySide="start"
+        />,
+      );
+
+      const splitter = getSplitter();
+      (splitter as unknown as { setPointerCapture: () => void }).setPointerCapture = () =>
+        undefined;
+      (splitter as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
+      (splitter as unknown as { releasePointerCapture: () => void }).releasePointerCapture = () =>
+        undefined;
+
+      fireEvent.pointerDown(splitter, { pointerId: 1, clientX: 500 });
+      // Dragging 100px right now grows Secondary's share (opposite sign from the default side).
+      fireEvent.pointerMove(splitter, { pointerId: 1, clientX: 600 });
+
+      expect(onChange).toHaveBeenCalledWith(0.6);
+      expect(getSplitter().getAttribute('aria-valuenow')).toBe('60');
+
+      fireEvent.pointerUp(splitter, { pointerId: 1, clientX: 600 });
+    });
+  });
 });

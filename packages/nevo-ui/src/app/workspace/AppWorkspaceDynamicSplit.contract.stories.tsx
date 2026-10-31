@@ -68,7 +68,12 @@ const dynamicItemB = itemStack('dynamic-split-item-b', 'Item B');
 const legacySlotFirst = itemStack('dynamic-split-legacy', 'Legacy first open');
 const legacySlotSecond = itemStack('dynamic-split-legacy', 'Legacy second open');
 
-function DynamicSplitPrimaryContent() {
+function DynamicSplitPrimaryContent({
+  onSwapSides,
+}: {
+  /** W06: a product-owned action — `AppWorkspace` itself has no built-in "swap" control. */
+  onSwapSides: () => void;
+}) {
   const navigation = useSecondaryNavigation();
 
   return (
@@ -86,6 +91,9 @@ function DynamicSplitPrimaryContent() {
       <Button onClick={() => void navigation.open(legacySlotSecond, {})} size="sm">
         Replace legacy slot
       </Button>
+      <Button onClick={onSwapSides} size="sm">
+        Swap sides
+      </Button>
     </div>
   );
 }
@@ -95,6 +103,10 @@ function DynamicSplitFixture() {
   // W05: tracked only so stories can assert on the resolver's own `mode` (uncontrolled
   // `secondaryRatio`/`onSecondaryRatioChange` still owns the actual value; this is read-only).
   const [mode, setMode] = useState<'auto' | 'manual'>('auto');
+  // W06: the fixture owns this exactly like `secondaryRatio` above — `AppWorkspace` never flips it
+  // itself, only reports the effective value back (see `AppWorkspace`'s `onSecondarySideChange`
+  // doc comment). The "Swap sides" button is this fixture's own product-level affordance.
+  const [side, setSide] = useState<'start' | 'end'>('end');
   // A declarative Secondary host still registers its pinned tab explicitly (same pattern as
   // W03's own fixtures — see `useRegisterPinnedSecondaryTab`'s doc comment).
   useRegisterPinnedSecondaryTab(contextOpen ? { title: 'Context' } : null);
@@ -103,15 +115,20 @@ function DynamicSplitFixture() {
     <AppShell
       data-dynamic-split-mode={mode}
       data-dynamic-split-shell="true"
+      data-dynamic-split-side={side}
       navigation={<Navigation />}
     >
       <AppWorkspace
         fit="available"
         onSecondaryRatioChange={(_ratio, nextMode) => setMode(nextMode)}
+        onSecondarySideChange={setSide}
+        secondarySide={side}
         split="dynamic"
       >
         <AppWorkspace.Primary header={<WorkspaceHeader title="Conversation" />}>
-          <DynamicSplitPrimaryContent />
+          <DynamicSplitPrimaryContent
+            onSwapSides={() => setSide((current) => (current === 'end' ? 'start' : 'end'))}
+          />
         </AppWorkspace.Primary>
         <AppWorkspace.Secondary
           header={<WorkspaceHeader title="Context" />}
@@ -577,6 +594,129 @@ export const TouchDragDoesNotScrollContract: Story = {
     assert(
       window.scrollY === windowScrollYBefore,
       'A touch drag on the splitter must not scroll the page.',
+    );
+  },
+};
+
+/**
+ * The active tab's label and total open-tab count, robust to the same strip/switcher
+ * presentations as {@link activateRootTab}/{@link closeRootTab}: with the strip collapsed to its
+ * narrow-width switcher, there is no `[role="tab"]` at all, so the switcher's own label (which
+ * encodes both the active item's label and the open count, see `ItemTabs.tsx`'s switcher button)
+ * is the only place this information is observable in the DOM.
+ */
+function tabStripSummary(canvasElement: HTMLElement): { activeLabel: string; tabCount: number } {
+  const tabs = [...canvasElement.querySelectorAll<HTMLElement>('[role="tab"]')];
+  if (tabs.length > 0) {
+    const active = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
+    assert(active, 'A tab should be active while the full tablist is shown.');
+
+    return { activeLabel: active.textContent ?? '', tabCount: tabs.length };
+  }
+
+  const switcherButton = canvasElement.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  assert(switcherButton, 'Neither a tablist nor a switcher button was found.');
+  const label = switcherButton.textContent ?? '';
+  const countMatch = /\((\d+)\)$/.exec(label);
+  assert(countMatch, `The switcher button should report its open count ("${label}").`);
+
+  return { activeLabel: label.slice(0, countMatch.index).trim(), tabCount: Number(countMatch[1]) };
+}
+
+// W06 — side swap (contract §4.2 last bullet, §5 "secondarySide changes" row): everything the
+// resolver/tab-set own (secondaryRatio, mode, tabs, activeTabId) must survive a swap unchanged;
+// only layout order and which edge carries the divider border change. `AppWorkspace` itself has no
+// built-in "swap" control (§6) — the fixture's own "Swap sides" button (`DynamicSplitFixture`
+// above) is the product-owned trigger, exactly like a real consumer would render one.
+export const SwapSidesPreservesTabsAndRatioContract: Story = {
+  globals: { viewport: { value: 'w1280', isRotated: false } },
+  play: async ({ canvasElement, canvas, userEvent }) => {
+    await settle();
+    const { shell } = regions(canvasElement);
+    assert(shell.dataset.dynamicSplitSide === 'end', 'Secondary starts on the default end side.');
+
+    // Real tab state to verify survives the swap: the pinned tab plus a 2nd, openTab()-opened tab.
+    await openItemATab(canvas, userEvent);
+
+    // A manual ratio to verify survives the swap too (contract §5 "User drags WorkspaceSplitter").
+    const splitterBeforeSwap = workspaceSplitter(canvasElement);
+    const dragRect = splitterBeforeSwap.getBoundingClientRect();
+    const dragStartX = dragRect.left + dragRect.width / 2;
+    const dragClientY = dragRect.top + dragRect.height / 2;
+    dispatchPointer(splitterBeforeSwap, 'pointerdown', {
+      pointerId: 3,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: dragStartX,
+      clientY: dragClientY,
+    });
+    dispatchPointer(splitterBeforeSwap, 'pointermove', {
+      pointerId: 3,
+      pointerType: 'mouse',
+      clientX: dragStartX - 80,
+      clientY: dragClientY,
+    });
+    dispatchPointer(splitterBeforeSwap, 'pointerup', {
+      pointerId: 3,
+      pointerType: 'mouse',
+      clientX: dragStartX - 80,
+      clientY: dragClientY,
+    });
+    await settle();
+    assert(shell.dataset.dynamicSplitMode === 'manual', 'The drag must commit mode: "manual".');
+
+    const widthBeforeSwap = secondaryWidthPx(canvasElement);
+    const summaryBeforeSwap = tabStripSummary(canvasElement);
+    assert(summaryBeforeSwap.tabCount === 2, 'Both the pinned tab and Item A should be open.');
+    const { primary: primaryBeforeSwap, secondary: secondaryBeforeSwap } = regions(canvasElement);
+    assert(
+      primaryBeforeSwap && secondaryBeforeSwap,
+      'Secondary renders split beside Primary before the swap.',
+    );
+    const orderBeforeSwap = [...shell.querySelectorAll('[data-workspace-surface]')];
+    assert(
+      orderBeforeSwap.indexOf(primaryBeforeSwap) < orderBeforeSwap.indexOf(secondaryBeforeSwap),
+      'Secondary renders after Primary at the default end side.',
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Swap sides' }));
+    await settle();
+
+    assert(shell.dataset.dynamicSplitSide === 'start', 'The side flips to "start".');
+    assert(
+      shell.dataset.dynamicSplitMode === 'manual',
+      'mode must survive the swap unchanged (still "manual").',
+    );
+    const widthAfterSwap = secondaryWidthPx(canvasElement);
+    assert(
+      Math.abs(widthAfterSwap - widthBeforeSwap) <= 1.5,
+      `secondaryRatio must survive the swap unchanged (before ${widthBeforeSwap}, after ${widthAfterSwap}).`,
+    );
+    const summaryAfterSwap = tabStripSummary(canvasElement);
+    assert(
+      summaryAfterSwap.activeLabel === summaryBeforeSwap.activeLabel,
+      'activeTabId must survive the swap unchanged.',
+    );
+    assert(
+      summaryAfterSwap.tabCount === summaryBeforeSwap.tabCount,
+      'tabs must survive the swap unchanged (same count, same set).',
+    );
+
+    const { primary: primaryAfterSwap, secondary: secondaryAfterSwap } = regions(canvasElement);
+    assert(primaryAfterSwap && secondaryAfterSwap, 'Both regions still render after the swap.');
+    // `WorkspaceSplitter` itself is the visual division for a dynamic split (no `border-l`/
+    // `border-r` divider rendered alongside it — contract §4.3's framing, carried into the
+    // `divider` prop on `RuntimeSurfaceRegion`); the fixed-preset divider-side flip (`border-l` <->
+    // `border-r`) is covered directly in `AppWorkspace.test.tsx`. So this checks DOM order of all
+    // three split-layout siblings (Secondary, the splitter, Primary) instead.
+    const splitterAfterSwap = workspaceSplitter(canvasElement);
+    const orderAfterSwap = [
+      ...shell.querySelectorAll('[data-workspace-surface], [data-workspace-splitter]'),
+    ];
+    assert(
+      orderAfterSwap.indexOf(secondaryAfterSwap) < orderAfterSwap.indexOf(splitterAfterSwap) &&
+        orderAfterSwap.indexOf(splitterAfterSwap) < orderAfterSwap.indexOf(primaryAfterSwap),
+      'Secondary, then WorkspaceSplitter, then Primary must render in that order once swapped to the start side.',
     );
   },
 };

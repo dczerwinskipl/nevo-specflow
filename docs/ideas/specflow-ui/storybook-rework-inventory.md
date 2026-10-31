@@ -7,6 +7,7 @@ scope: specflow
 areas: [ui, docs, testing, tooling]
 tags: [storybook, inventory, migration, testing, design-system]
 read_when:
+  - auditing uneven Storybook sidebar hierarchy and missing visible Default controls
   - inventorying Storybook stories and product component showcase gaps before restructuring
   - planning migration from numerous screen variants to interactive component and feature stories
   - comparing Storybook changes across the working branch and incoming UI pull requests

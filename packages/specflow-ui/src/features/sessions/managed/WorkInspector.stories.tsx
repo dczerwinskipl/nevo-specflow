@@ -18,6 +18,7 @@ import {
   actionsWorkId,
   createWorkInspectorFixtureApi,
   largeWorkTimelineItems,
+  longRunWorkTimelineItems,
   mixedWorkTimelineActions,
   mixedWorkTimelineItems,
   workInspectorTurnId,
@@ -50,24 +51,14 @@ function Environment({ children }: { children: ReactNode }) {
   );
 }
 
-function WorkInspectorHost({
-  api,
-  operationsDefaultExpanded,
-}: {
-  api: ManagedSessionsApi;
-  /** Storybook Control for the owner's live A/B comparison (WorkInspector.tsx's
-   * `WorkInspectorOptions.operationsDefaultExpanded`): expanded renders each chapter's
-   * operations Timeline directly/visibly; collapsed restores a "N operacje" Collapsible trigger
-   * in front of it. */
-  operationsDefaultExpanded?: boolean;
-}) {
+function WorkInspectorHost({ api }: { api: ManagedSessionsApi }) {
   const feed = useMemo(
     () => createSessionFeed(api, fixtureSessionId, 'work-inspector-story'),
     [api],
   );
   const workStack = useMemo(
-    () => createWorkInspector(api, feed, 'work-inspector-story', { operationsDefaultExpanded }),
-    [api, feed, operationsDefaultExpanded],
+    () => createWorkInspector(api, feed, 'work-inspector-story'),
+    [api, feed],
   );
   const navigation = useSecondaryNavigation();
 
@@ -101,13 +92,6 @@ const meta = {
   title: 'SpecFlow/Components/Work Inspector',
   component: WorkInspectorHost,
   parameters: { layout: 'fullscreen' },
-  argTypes: {
-    operationsDefaultExpanded: {
-      control: 'boolean',
-      description:
-        'A/B compare: each chapter’s operations Timeline rendered directly (expanded) vs. collapsed behind a "N operacje" summary trigger.',
-    },
-  },
   decorators: [
     (Story) => (
       <Environment>
@@ -185,50 +169,67 @@ export const Default: Story = {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
     }),
-    operationsDefaultExpanded: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
 
-    // A representative chapter — Commentary, its grouped operations, a collapsed "Thinking"
-    // summary — is visible as soon as Work opens; nothing requires interaction to appear.
+    // A representative chapter — Commentary read directly (no click needed), its operations, a
+    // collapsed "Thinking" summary — is visible as soon as Work opens; nothing requires
+    // interaction to appear.
     await expect(
       await canvas.findByText('Checking the implementation and locating the admission path…'),
     ).toBeVisible();
-    // The leading Start of Turn item is a standalone row, never folded into a burst — so it is
-    // the one guaranteed to be immediately visible, unlike the three happy-path reads/searches
-    // right after Commentary, which compact into their own collapsed-by-default burst row.
     await expect(canvas.getByText('Read file session.ts')).toBeVisible();
     await expect(canvas.getByText('Myślenie')).toBeVisible();
+    // The three happy-path reads/searches right after Commentary are a short run (below
+    // `workGrouping.TOOL_BURST_MIN_SIZE`): live owner review #2 — don't wrap 1-4 operations in a
+    // synthetic "N tool actions" container, just show the rows. So every one of them is its own
+    // directly visible row, with no trigger to click first.
+    await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
+    await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
+    await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
+    // Never a fabricated "0 ms": every fixture item here has identical createdAt/updatedAt, which
+    // is not a real zero-duration measurement (live owner review #2, rule 6).
+    await expect(canvas.queryByText(/0\s*ms/)).not.toBeInTheDocument();
   },
 };
 
 /**
- * The owner's live A/B comparison for the per-chapter operations Timeline (see
- * `WorkInspectorOptions.operationsDefaultExpanded`): identical fixture to `Default`, but each
- * chapter's operations stay collapsed behind a compact "N operacje" summary trigger instead of
- * rendering directly. Also exposed as a Storybook Control on every story in this file so the
- * owner can flip it live rather than only comparing two fixed stories.
+ * Live owner review #2 (structural pass, rule 3): only a genuinely long run of ADJACENT
+ * happy-path operations compacts into a single Timeline marker, and even then the operations it
+ * groups never swallow an error or an important interaction that falls right after the run — that
+ * stays its own individually visible row. `longRunWorkTimelineItems` is built specifically to
+ * demonstrate both halves of that rule in one chapter.
  */
-export const CollapsedOperations: Story = {
+export const LongRunGrouping: Story = {
+  tags: ['integration'],
   args: {
-    api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
-      [actionsWorkId]: mixedWorkTimelineActions(),
-    }),
-    operationsDefaultExpanded: false,
+    api: createWorkInspectorFixtureApi(longRunWorkTimelineItems()),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
 
     await expect(
-      await canvas.findByText('Checking the implementation and locating the admission path…'),
+      await canvas.findByText('Scanning the whole module for every caller before changing it…'),
     ).toBeVisible();
-    // Operations stay behind their own collapsed summary trigger until expanded — the
-    // Collapsible keeps its panel mounted (height-animated, not removed), so this must assert
+    // The long adjacent run (7 items) compacts into one collapsed-by-default burst trigger —
+    // queried by exact role/name, since the Work summary row above it also renders a "9 działań
+    // narzędzia" substring as part of its own aggregate counts.
+    const burstTrigger = canvas.getByRole('button', { name: '7 działań narzędzia' });
+
+    // Collapsible keeps its panel mounted (height-animated, not removed) — this must assert
     // non-visibility rather than absence from the DOM.
-    await expect(canvas.getByText('Read file session.ts')).not.toBeVisible();
+    await expect(canvas.getByText('Read file module-0.ts')).not.toBeVisible();
+    // ...but the failed tool immediately after that run is never swallowed by it — it stays its
+    // own visible row even though it chronologically follows what is now a grouped run.
+    await expect(canvas.getByText('Run command pnpm test')).toBeVisible();
+
+    // Expanding the group reaches every one of its members as plain rows — never a second,
+    // independently-dotted mini-Timeline (live owner review #2, rule 5: one marker per group).
+    await userEvent.click(burstTrigger);
+    await expect(await canvas.findByText('Read file module-0.ts')).toBeVisible();
   },
 };
 
@@ -256,15 +257,12 @@ export const TypeFilterPreservesCommentaryContext: Story = {
       canvas.getByText('Checking the implementation and locating the admission path…'),
     ).toBeVisible();
 
-    // The three happy-path tool reads/searches left after filtering compact into one collapsible
-    // burst row; expanding it reaches the exact tool rows, still under their Commentary.
-    const burstTrigger = canvas.getByText(/działania narzędzia/).closest('button');
-    if (!burstTrigger) {
-      throw new Error('Expected the tool burst to be a disclosure trigger.');
-    }
-
-    await userEvent.click(burstTrigger);
-    await expect(await canvas.findByText('Read file admission.mjs')).toBeVisible();
+    // The three happy-path tool reads/searches left after filtering are a short run — below
+    // `workGrouping.TOOL_BURST_MIN_SIZE` — so they stay their own individually visible rows,
+    // still under their Commentary context, with nothing to click first.
+    await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
+    await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
+    await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
   },
 };
 

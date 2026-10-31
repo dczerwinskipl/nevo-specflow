@@ -131,20 +131,37 @@ export function filterWorkChapters(
 const happyToolState = (item: WorkSummary) => item.kind === 'tool' && item.state === 'completed';
 
 /**
- * Compacts consecutive happy-path ('completed') tool items inside one chapter into a single
- * collapsible burst row (session-work-inspector-ui-spec.md §6.2/§6.3). Reasoning and Interaction
- * are never merged, and a tool that is queued/active/waiting/failed/cancelled/interrupted/expired
- * always stays its own isolated row — exceptional or in-progress work must never disappear into
- * a compact successful-looking group.
+ * Minimum length of an adjacent happy-path tool run before it compacts into one burst row
+ * (live owner review, second/structural pass): "Nie zwijałbym 1–4 operacji w sztuczny kontener
+ * 'N działań narzędzia' — po prostu pokazałbym wiersze" / don't wrap 1-4 operations in a
+ * synthetic "N tool actions" summary container, just show the rows. A run shorter than this
+ * renders as its own individual `Timeline.Item` per entry — grouping only ever kicks in once
+ * hiding the run's members stops hurting the ability to trace what happened, i.e. for a genuinely
+ * long, uneventful run.
+ */
+export const TOOL_BURST_MIN_SIZE = 5;
+
+/**
+ * Compacts a long (`>= TOOL_BURST_MIN_SIZE`) run of adjacent happy-path ('completed') tool items
+ * inside one chapter into a single collapsible burst row — one `Timeline.Item`/marker for the
+ * whole run, never one marker per member (session-work-inspector-ui-spec.md §6.2/§6.3 and the
+ * live owner review above: "jedna oś, jedna hierarchia" / one axis, one hierarchy). A shorter run
+ * (1 to `TOOL_BURST_MIN_SIZE - 1` items) is left as that many individual rows instead of being
+ * wrapped in a container at all. Reasoning and Interaction are never merged, and a tool that is
+ * queued/active/waiting/failed/cancelled/interrupted/expired always stays its own isolated row —
+ * exceptional or in-progress work must never disappear into a compact successful-looking group,
+ * even when it would otherwise sit inside what is now a long enough run to group.
  */
 export function groupChapterEntries(items: readonly WorkSummary[]): ChapterEntry[] {
   const entries: ChapterEntry[] = [];
   let run: WorkSummary[] = [];
   const flushRun = () => {
-    if (run.length > 1) {
+    if (run.length >= TOOL_BURST_MIN_SIZE) {
       entries.push({ type: 'burst', items: run });
-    } else if (run.length === 1) {
-      entries.push({ type: 'single', item: run[0]! });
+    } else {
+      for (const item of run) {
+        entries.push({ type: 'single', item });
+      }
     }
 
     run = [];
@@ -175,8 +192,12 @@ const terminalWorkStates: ReadonlySet<WorkSummary['state']> = new Set([
 /**
  * Elapsed time for one settled Work item, computed only from its own canonical `createdAt`/
  * `updatedAt` (never fabricated, never a separate `durationMs` field — the real contract has
- * none). `undefined` for a still-running item (queued/active/waiting has no final duration yet)
- * or an unparsable timestamp.
+ * none). `undefined` for a still-running item (queued/active/waiting has no final duration yet),
+ * an unparsable timestamp, or a non-positive span: `createdAt === updatedAt` is not a real "0 ms"
+ * measurement, it is the common case of a timestamp resolution/fixture limit (live owner review:
+ * never display "0 ms" — an unreliable/not-meaningful duration should be hidden, not rendered as
+ * zero). The caller (`useWorkDurationLabel` in WorkInspector.tsx) already treats `undefined` as
+ * "omit the duration entirely", so this is the one place that decision needs to live.
  */
 export function workItemDurationMs(item: WorkSummary): number | undefined {
   if (!terminalWorkStates.has(item.state)) {
@@ -185,7 +206,7 @@ export function workItemDurationMs(item: WorkSummary): number | undefined {
 
   const start = Date.parse(item.createdAt);
   const end = Date.parse(item.updatedAt);
-  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
     return undefined;
   }
 

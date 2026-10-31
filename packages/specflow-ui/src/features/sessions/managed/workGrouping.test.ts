@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/sessions';
 import {
   START_OF_TURN_CHAPTER_ID,
+  TOOL_BURST_MIN_SIZE,
   buildWorkChapters,
   filterWorkChapters,
   formatWorkDuration,
@@ -154,8 +155,8 @@ describe('filterWorkChapters', () => {
 });
 
 describe('groupChapterEntries', () => {
-  it('compacts 3+ consecutive completed tool items into one burst', () => {
-    const items = [tool(), tool(), tool()];
+  it(`compacts a run of ${TOOL_BURST_MIN_SIZE}+ consecutive completed tool items into one burst`, () => {
+    const items = Array.from({ length: TOOL_BURST_MIN_SIZE }, () => tool());
     const entries = groupChapterEntries(items);
 
     expect(entries).toHaveLength(1);
@@ -167,6 +168,27 @@ describe('groupChapterEntries', () => {
     const entries = groupChapterEntries([only]);
 
     expect(entries).toEqual([{ type: 'single', item: only }]);
+  });
+
+  it(`never wraps a short run (below ${TOOL_BURST_MIN_SIZE} items) in a burst — each stays its own row`, () => {
+    const items = Array.from({ length: TOOL_BURST_MIN_SIZE - 1 }, () => tool());
+    const entries = groupChapterEntries(items);
+
+    expect(entries).toEqual(items.map((item) => ({ type: 'single', item })));
+  });
+
+  it('only groups a long separate run, leaving a shorter run elsewhere as individual rows', () => {
+    const short = [tool(), tool()];
+    const boundary = work({ kind: 'reasoning' });
+    const long = Array.from({ length: TOOL_BURST_MIN_SIZE }, () => tool());
+    const entries = groupChapterEntries([...short, boundary, ...long]);
+
+    expect(entries).toEqual([
+      { type: 'single', item: short[0] },
+      { type: 'single', item: short[1] },
+      { type: 'single', item: boundary },
+      { type: 'burst', items: long },
+    ]);
   });
 
   it('never merges a failed tool into a burst — it always stays isolated', () => {
@@ -228,6 +250,16 @@ describe('workItemDurationMs', () => {
     const item = tool({
       state: 'completed',
       createdAt: '2026-10-30T10:00:01.000Z',
+      updatedAt: '2026-10-30T10:00:00.000Z',
+    });
+
+    expect(workItemDurationMs(item)).toBeUndefined();
+  });
+
+  it('is undefined when createdAt equals updatedAt — never a fabricated "0 ms"', () => {
+    const item = tool({
+      state: 'completed',
+      createdAt: '2026-10-30T10:00:00.000Z',
       updatedAt: '2026-10-30T10:00:00.000Z',
     });
 

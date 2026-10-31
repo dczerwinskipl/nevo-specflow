@@ -128,6 +128,37 @@ export function mixedWorkTimelineActions(): ToolActionSummary[] {
 }
 
 /**
+ * A single chapter built specifically to demonstrate live owner review #2's adaptive grouping
+ * (session-work-inspector-ui-spec.md's grouping algorithm, rule 3 of the structural pass): a run
+ * of adjacent happy-path tool items long enough to actually compact into one burst `Timeline.Item`
+ * (`workGrouping.TOOL_BURST_MIN_SIZE`+ — see `WorkInspector.stories.tsx`'s `LongRunGrouping`),
+ * immediately followed by a failed tool and one more ordinary tool. The failed tool chronologically
+ * follows the long run but must never be swallowed into it (rule 4: errors stay individually
+ * visible even inside what would otherwise be a grouped run) — real canonical Work kind/state only,
+ * same as every other fixture in this file.
+ */
+export function longRunWorkTimelineItems(): WorkSummary[] {
+  return [
+    workItem({
+      kind: 'commentary',
+      title: {
+        text: 'Scanning the whole module for every caller before changing it…',
+        complete: true,
+      },
+    }),
+    ...Array.from({ length: 7 }, (_, index) =>
+      workItem({ kind: 'tool', title: { text: `Read file module-${index}.ts`, complete: true } }),
+    ),
+    workItem({
+      kind: 'tool',
+      state: 'failed',
+      title: { text: 'Run command pnpm test', complete: true },
+    }),
+    workItem({ kind: 'tool', title: { text: 'Edit fix.ts', complete: true } }),
+  ];
+}
+
+/**
  * The design doc's own synthetic scalability scenario (session-chat-v10-design.md §4: "the
  * 144-item example is synthetic scalability test data"): repeating Commentary/Reasoning/tool
  * phases until `count` canonical Work items exist, used to demonstrate that WorkInspector pages

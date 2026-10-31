@@ -235,6 +235,37 @@ describe('WorkInspector Work screen', () => {
     expect(screen.getByText('Run command pnpm test')).toBeTruthy();
   });
 
+  it('reads an ordinary Commentary directly, with no chevron and no "Show more" control', async () => {
+    const commentary = work({
+      kind: 'commentary',
+      title: { text: 'Checking the recovery branch…', complete: true },
+    });
+    const { api } = fixtureApi([commentary]);
+
+    await openWork(api);
+    await screen.findByText('Checking the recovery branch…');
+
+    // The text itself is never a button/trigger — it is plain, always-visible content, not a
+    // disclosure (live owner review #2, structural pass, rule 1).
+    expect(screen.getByText('Checking the recovery branch…').closest('button')).toBeNull();
+    expect(screen.queryByText('Show more')).toBeNull();
+  });
+
+  it('truncates a genuinely long Commentary behind "Show more", expanding to the full text', async () => {
+    const longText = 'Investigating the admission failure. '.repeat(10); // > 280 chars
+    const commentary = work({
+      kind: 'commentary',
+      title: { text: longText, complete: true },
+    });
+    const { api } = fixtureApi([commentary]);
+
+    await openWork(api);
+    const trigger = await screen.findByText('Show more');
+
+    fireEvent.click(trigger);
+    await waitFor(() => expect(screen.getByText('Show less')).toBeTruthy());
+  });
+
   it('renders Reasoning as a distinct, separately labeled, collapsible "Thinking" summary', async () => {
     const commentary = work({
       kind: 'commentary',

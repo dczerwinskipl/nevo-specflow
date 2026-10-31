@@ -23,6 +23,7 @@ import {
   TextInput,
   Timeline,
   Typography,
+  cn,
   defineSecondaryStack,
   useSecondaryStack,
 } from '@nevo/ui';
@@ -54,12 +55,6 @@ type Data = Root & {
   api: ManagedSessionsApi;
   feed: SessionFeed;
   owner: string;
-  /** Storybook-controllable A/B switch (owner live-comparison, see WorkInspector.stories.tsx):
-   * whether a chapter's operations Timeline renders directly/visibly, or starts collapsed behind
-   * a compact "N operacje" summary that expands it on click. Defaults to expanded — closest to
-   * the accepted V10 mockup, where operations render directly under Commentary with no extra
-   * toggle. */
-  operationsDefaultExpanded: boolean;
 };
 interface Pages {
   work: Record<string, never>;
@@ -253,9 +248,16 @@ function WorkFilterBar({
   );
 }
 
-/** A plain compact row for a tool item nested inside a `ToolBurstTimelineItem`'s own disclosure
- * (never a second independent Timeline: the burst's members are deliberately de-emphasized detail
- * inside one Timeline.Item's content, not additional chronology markers on the main rail). */
+/** A plain compact row for a tool item nested inside a `ToolBurstTimelineItem`'s own inline
+ * disclosure — the burst's members are de-emphasized detail inside that ONE `Timeline.Item`'s
+ * content, never additional chronology markers of their own (live owner review, second/
+ * structural pass: "jedna oś, jedna hierarchia" / one axis, one hierarchy — a group is exactly
+ * one `Timeline.Marker`/row; its expanded contents are that single item's own details, not a
+ * second mini-Timeline with independent dots). So unlike every top-level row, this one carries no
+ * `StatusIndicator` of its own: a burst only ever groups uniformly happy-path ('completed') tool
+ * items (`groupChapterEntries`), so a per-row status dot here would say nothing a state already
+ * implied by being inside the group, while visually reading as a second rail running alongside
+ * the real one — exactly the "two axes" the owner flagged. */
 function CompactToolRow({
   item,
   onOpenActions,
@@ -267,33 +269,23 @@ function CompactToolRow({
   const duration = useWorkDurationLabel(item);
 
   return (
-    <div className="flex min-w-0 items-start gap-2 text-body-sm">
-      <StatusIndicator
-        tone={stateTone(item.state)}
-        decorative={false}
-        aria-label={t(`managedSession.workState.${item.state}`)}
-        className="mt-1"
-      />
-      <div className="grid min-w-0 flex-1 gap-0.5">
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="min-w-0 truncate text-content-secondary">{item.title.text}</span>
-          {duration && (
-            <span className="shrink-0 text-body-sm text-content-muted tabular-nums">
-              {duration}
-            </span>
-          )}
-        </span>
-        {!!item.actionCount && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-auto w-fit justify-start px-0"
-            onClick={() => onOpenActions(item.workId)}
-          >
-            {t('managedSession.actions')}
-          </Button>
+    <div className="grid min-w-0 gap-0.5 text-body-sm">
+      <span className="flex min-w-0 items-baseline gap-2">
+        <span className="min-w-0 truncate text-content-secondary">{item.title.text}</span>
+        {duration && (
+          <span className="shrink-0 text-body-sm text-content-muted tabular-nums">{duration}</span>
         )}
-      </div>
+      </span>
+      {!!item.actionCount && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-auto w-fit justify-start px-0"
+          onClick={() => onOpenActions(item.workId)}
+        >
+          {t('managedSession.actions')}
+        </Button>
+      )}
     </div>
   );
 }
@@ -398,10 +390,12 @@ function ToolTimelineItem({
   );
 }
 
-/** Two or more consecutive happy-path tool items, compacted into one `Timeline.Item` carrying a
- * collapsible disclosure (session-work-inspector-ui-spec.md §6.2/§6.3): a single marker on the
- * chronology rail, collapsed by default, so a long run of uneventful successful tool calls never
- * forces its own string of rail markers. */
+/** A long (`workGrouping.ts`'s `TOOL_BURST_MIN_SIZE`+) run of adjacent happy-path tool items,
+ * compacted into exactly one `Timeline.Item`/marker on the chronology rail, collapsed by default,
+ * with its members revealed inline inside that same item's `Timeline.Content` on expand — never a
+ * second nested mini-Timeline with its own dots/connector line (see `CompactToolRow`'s own doc
+ * comment). A run shorter than the threshold never reaches this component at all: `workGrouping
+ * .groupChapterEntries` leaves it as that many individual `single` entries instead. */
 function ToolBurstTimelineItem({
   burst,
   onOpenActions,
@@ -459,88 +453,118 @@ function WorkChapterEntryRow({
   return <ToolTimelineItem item={item} onOpenActions={onOpenActions} />;
 }
 
-/** Commentary as a compact, collapsed-by-default divider BETWEEN chapters — never a
- * `Timeline.Item` itself (owner decision on live review, see session-work-inspector-ui-spec.md
- * §2: Commentary is the narrative heading between two chapters' Timelines, not another
- * chronology entry on a rail). The trigger shows an icon, the Commentary's own preview text and
- * the chapter's operation count; expanding it reveals the full Commentary Markdown — the
- * Commentary text itself is never the trigger element, so a link inside it stays a normal link
- * once expanded. The full Markdown render is only mounted once actually expanded (controlled
- * `Collapsible`, not its default uncontrolled state): a complete `TextPreview.text` already
- * equals the trigger's own preview text, so eagerly mounting it too would duplicate the same text
- * in the DOM while collapsed, and — at session-chat-v10-design.md §4's 100+ Work item scale —
- * would mean parsing Markdown for every chapter's Commentary up front instead of on demand. */
-function WorkChapterCommentary({
-  commentary,
-  operationsCount,
-  data,
-}: {
-  commentary: WorkSummary;
-  operationsCount: number;
-  data: Data;
-}) {
+/** The marker-column gutter a Commentary row's leading icon sits in: exactly as wide as
+ * `Timeline`'s `size="sm"` marker column (`timelineItemVariants`'s `1rem` + `gap-x-1.5`), sized
+ * and centered the same way `Timeline.Marker` centers its dot inside that column — so the icon
+ * stays on one vertical axis with every `Timeline.Marker` dot below it (live owner review,
+ * screenshot-verified alignment fix). Unlike the first review round, Commentary is no longer a
+ * `Collapsible.Trigger` at all (see `WorkChapterCommentary`'s own doc comment), so this is a plain
+ * grid column, not a disclosure chevron slot — there is nothing left to compensate a trigger
+ * button's own padding for. */
+const COMMENTARY_GUTTER_CLASS = 'flex size-4 shrink-0 items-center justify-center';
+
+/** A Commentary long enough that showing it in full would push its following operations well
+ * below the fold is the only case that earns a "Show more" truncation (live owner review,
+ * second/structural pass, rule 1). `!complete` is the authoritative signal — the real transport
+ * cap on the initial preview (see `ReadableText`'s own doc comment) means there is strictly more
+ * text the user has not seen yet — and the character count is a plain visual fallback for a
+ * `complete` preview that is nonetheless several paragraphs long. Ordinary Commentary (a sentence
+ * or two, the common case in every fixture here) stays well under this and never shows the
+ * control at all. */
+const COMMENTARY_LONG_TEXT_CHARS = 280;
+
+function isCommentaryLong(commentary: WorkSummary): boolean {
+  return !commentary.title.complete || commentary.title.text.length > COMMENTARY_LONG_TEXT_CHARS;
+}
+
+/** Commentary is read directly in the flow, never gated behind a click (live owner review,
+ * second/structural pass — a ChatGPT-assisted design review that superseded the first round's
+ * collapsed-by-default divider): "Commentary jest elementem narracji, a nie nagłówkiem zwijanej
+ * grupy operacji" / Commentary is a narrative element, not a header that collapses a group of
+ * operations. Commentary and the operations that chronologically follow it are siblings in the
+ * flow (`buildWorkChapters` stays chronology-driven — see its own doc comment — but the VISUAL
+ * treatment here no longer boxes operations under "their" Commentary the way a disclosure gate
+ * would, since the data does not actually support that ownership: see this function's own
+ * disclosure comment below). So there is no chevron, no `Collapsible` wrapping the row, and no
+ * operation count attached to it either — just an icon and the text, always visible.
+ *
+ * The one exception is `isCommentaryLong`: genuinely long Commentary gets a plain "Show more"/
+ * "Show less" ghost `Button` (the same label-only disclosure pattern `TaskDetailDisclosure.tsx`
+ * already uses elsewhere in this app for "reveal more text", not a new chevron-led control
+ * invented for this row) instead of being dumped in full — expanding it mounts `ReadableText`
+ * (which itself auto-fetches and stitches any remaining pages beyond the capped preview). */
+function WorkChapterCommentary({ commentary, data }: { commentary: WorkSummary; data: Data }) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const operationsLabel = t('managedSession.workInspector.operationsCount', {
-    count: operationsCount,
-  });
+  const isLong = isCommentaryLong(commentary);
 
   return (
-    <Collapsible isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
-      <Collapsible.Trigger>
-        <span className="flex min-w-0 items-center gap-2">
-          <Icon name="chat" size="sm" className="shrink-0 text-content-muted" />
-          <span className="min-w-0 flex-1 truncate text-content-primary">
-            {commentary.title.text}
-          </span>
-          {operationsCount > 0 && (
-            <span className="shrink-0 text-body-sm text-content-muted">{operationsLabel}</span>
-          )}
-        </span>
-      </Collapsible.Trigger>
-      <Collapsible.Content>
-        {isExpanded && (
+    <div className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-1.5">
+      <span className={COMMENTARY_GUTTER_CLASS}>
+        <Icon name="chat" size="sm" className="text-content-muted" />
+      </span>
+      <div className="grid min-w-0 gap-1">
+        {isExpanded ? (
           <ReadableText
             api={data.api}
             sessionId={data.sessionId}
             value={commentary.title}
             markdown
           />
+        ) : (
+          <Typography
+            as="p"
+            variant="body-md"
+            className={cn(
+              'min-w-0 text-content-primary [overflow-wrap:anywhere]',
+              isLong && 'line-clamp-4',
+            )}
+          >
+            {commentary.title.text}
+          </Typography>
         )}
-      </Collapsible.Content>
-    </Collapsible>
+        {isLong && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 h-auto w-fit justify-start px-2"
+            onClick={() => setIsExpanded((value) => !value)}
+          >
+            {isExpanded
+              ? t('managedSession.workInspector.showLess')
+              : t('managedSession.workInspector.showMore')}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
-/** A chapter's operations as one flat `Timeline` (compact `size="sm"`) — never nested inside a
- * second Collapsible wrapper by default, since that read as a chevron-nested tree on live review.
- * `defaultExpanded` (Storybook-controllable, see WorkInspector.stories.tsx) keeps the owner's
- * open A/B question real instead of guessed: `true` renders the Timeline directly/visibly,
- * `false` restores the previous "N operacje" Collapsible trigger in front of it, for a live
- * side-by-side comparison. */
+/** A chapter's operations as one flat `Timeline` (compact `size="sm"`), always rendered directly
+ * — never behind a chapter-level "N operations" disclosure gate (live owner review, second/
+ * structural pass, rule 2: a short run of 1-4 operations is just shown, not wrapped in a synthetic
+ * summary container; `workGrouping.groupChapterEntries` already handles the one remaining case
+ * that DOES still compact, a long adjacent happy-path run, into a single burst `Timeline.Item` —
+ * see `ToolBurstTimelineItem`). The first review round's `operationsDefaultExpanded` A/B toggle is
+ * gone with it: there is no longer a meaningful lever here to expose, owner-mandated structure
+ * replaced the open question it existed to compare. */
 function WorkChapterOperationsTimeline({
   entries,
   data,
   onOpenActions,
-  operationsCount,
-  defaultExpanded,
+  ariaLabel,
 }: {
   entries: readonly ChapterEntry[];
   data: Data;
   onOpenActions: (workId: string) => void;
-  operationsCount: number;
-  defaultExpanded: boolean;
+  ariaLabel: string;
 }) {
-  const { t } = useTranslation();
   if (entries.length === 0) {
     return null;
   }
 
-  const operationsLabel = t('managedSession.workInspector.operationsCount', {
-    count: operationsCount,
-  });
-  const timeline = (
-    <Timeline aria-label={operationsLabel} size="sm">
+  return (
+    <Timeline aria-label={ariaLabel} size="sm">
       {entries.map((entry) => (
         <WorkChapterEntryRow
           key={entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId}
@@ -551,46 +575,37 @@ function WorkChapterOperationsTimeline({
       ))}
     </Timeline>
   );
-
-  if (defaultExpanded) {
-    return timeline;
-  }
-
-  return (
-    <Collapsible>
-      <Collapsible.Trigger>{operationsLabel}</Collapsible.Trigger>
-      <Collapsible.Content>{timeline}</Collapsible.Content>
-    </Collapsible>
-  );
 }
 
 /** One Commentary-headed phase: `<timeline> <comment> <timeline> …` — each chapter gets its own
  * Timeline instance (the rail resets at every Commentary boundary; it never spans across one),
- * with Commentary rendered as the compact divider above it, never as part of the rail itself
- * (owner decision, see session-work-inspector-ui-spec.md §2). The leading "Start of Turn" chapter
- * uses a neutral label instead of a Commentary heading — there is no prose to collapse there. */
+ * with Commentary rendered directly above it, never as part of the rail itself (owner decision,
+ * see session-work-inspector-ui-spec.md §2) and never gating it behind a disclosure either (see
+ * `WorkChapterCommentary`'s own doc comment). The leading "Start of Turn" chapter uses a neutral
+ * label instead of a Commentary heading — there is no prose to show there. */
 function WorkChapterSection({
   chapter,
   data,
   onOpenActions,
-  operationsDefaultExpanded,
 }: {
   chapter: WorkChapter;
   data: Data;
   onOpenActions: (workId: string) => void;
-  operationsDefaultExpanded: boolean;
 }) {
   const { t } = useTranslation();
   const entries = useMemo(() => groupChapterEntries(chapter.items), [chapter.items]);
+  // Accessible name only (the Timeline's own `aria-label`) — never rendered as visible text next
+  // to Commentary, which would read as "this Commentary owns N operations" (live owner review,
+  // second/structural pass: don't claim a stronger ownership/causality than the chronological
+  // data supports).
+  const ariaLabel = t('managedSession.workInspector.operationsCount', {
+    count: chapter.items.length,
+  });
 
   return (
     <section className="grid min-w-0 gap-2 border-b border-border-subtle pb-4 last:border-b-0 last:pb-0">
       {chapter.commentary ? (
-        <WorkChapterCommentary
-          commentary={chapter.commentary}
-          operationsCount={chapter.items.length}
-          data={data}
-        />
+        <WorkChapterCommentary commentary={chapter.commentary} data={data} />
       ) : (
         <Typography as="h3" variant="label-sm" className="text-content-secondary">
           {t('managedSession.workInspector.startOfTurn')}
@@ -600,8 +615,7 @@ function WorkChapterSection({
         entries={entries}
         data={data}
         onOpenActions={onOpenActions}
-        operationsCount={chapter.items.length}
-        defaultExpanded={operationsDefaultExpanded}
+        ariaLabel={ariaLabel}
       />
     </section>
   );
@@ -785,7 +799,6 @@ function Work({ data }: { data: Data }) {
                       chapter={chapter}
                       data={data}
                       onOpenActions={openActions}
-                      operationsDefaultExpanded={data.operationsDefaultExpanded}
                     />
                   ))}
                 </div>
@@ -962,27 +975,13 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
   );
 }
 
-export interface WorkInspectorOptions {
-  /** See `Data['operationsDefaultExpanded']`. Defaults to `true` (closest to the accepted V10
-   * mockup); exposed as a Storybook control on `WorkInspector.stories.tsx` so the owner can
-   * compare both states live rather than from another round of text description. */
-  operationsDefaultExpanded?: boolean;
-}
-
-export function createWorkInspector(
-  api: ManagedSessionsApi,
-  feed: SessionFeed,
-  owner: string,
-  options: WorkInspectorOptions = {},
-) {
-  const operationsDefaultExpanded = options.operationsDefaultExpanded ?? true;
-
+export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, owner: string) {
   return defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',
     initial: 'work',
     useData: (params) => ({
       status: 'ready',
-      data: { ...params, api, feed, owner, operationsDefaultExpanded },
+      data: { ...params, api, feed, owner },
     }),
     screens: {
       work: {

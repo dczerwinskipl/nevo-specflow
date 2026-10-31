@@ -1056,6 +1056,7 @@ export function ManagedSession({
   owner,
   api,
   sessionContext = unavailableSessionContext,
+  onOpenSpecification,
 }: {
   sessionId: string;
   owner: string;
@@ -1067,6 +1068,16 @@ export function ManagedSession({
    * projection (Storybook fixtures today) pass it explicitly.
    */
   sessionContext?: SessionContextViewModel;
+  /**
+   * Opens the Specification this session belongs to (`SessionContext`'s own Specification row —
+   * see its doc comment). `ManagedSession` stays router-agnostic itself (mounted unrouted by its
+   * own Storybook stories); the real route composition (`routes.tsx`'s `ManagedSessionRoute`) is
+   * responsible for wiring this to the real `/specs/$specId` navigation. Omitted (or
+   * `sessionContext.specification` absent): the row simply doesn't render, on either layout.
+   */
+  onOpenSpecification?: (
+    specification: NonNullable<SessionContextViewModel['specification']>,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
@@ -1149,7 +1160,10 @@ export function ManagedSession({
         // narrow direct slot regardless of this header's own measured width.
         direct: 'always',
         onPress: () =>
-          void navigation.open(createSessionContextStack(sessionId, sessionContext), {}),
+          void navigation.open(
+            createSessionContextStack(sessionId, sessionContext, onOpenSpecification),
+            {},
+          ),
       }
     : !contextOpen
       ? {
@@ -1208,7 +1222,11 @@ export function ManagedSession({
         onOpenChange={setContextOpen}
         header={<WorkspaceHeader title={t('sessions.context.title')} />}
       >
-        <SessionContext sessionId={sessionId} value={sessionContext} />
+        <SessionContext
+          sessionId={sessionId}
+          value={sessionContext}
+          onOpenSpecification={onOpenSpecification}
+        />
       </AppWorkspace.Secondary>
     </AppWorkspace>
   );

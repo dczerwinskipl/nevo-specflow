@@ -310,6 +310,14 @@ export const longConversationLastMessage = `${longConversationTurns[9]!.answer} 
  */
 export function richDefaultSnapshot(): SessionSnapshot {
   const snapshot = longConversationSnapshot();
+  // A real pre-selected model + effort, not the empty "Wybierz model" placeholder (owner
+  // feedback, reference screenshots): `Default` is the canonical representative state, so it
+  // shows the composer's Model/Effort picker already carrying a selection. `mock-standard`/`high`
+  // are `providerFixture`'s own existing model/effort entries (`managedSession.stories-support.ts`)
+  // matched to this fixture's `providerId: 'claude-code'` — not a new model invented for this
+  // fixture alone. The placeholder/unselected state itself is untouched: every other state fixture
+  // in this file still carries no `modelId`/`effort` at all.
+  snapshot.session = { ...snapshot.session, modelId: 'mock-standard', effort: 'high' };
   snapshot.history = { hasOlder: true, before: 'older' };
   snapshot.entries.push(
     {

@@ -446,7 +446,13 @@ function TaskLink({
  * Context pushes onto this SAME flow's Back stack instead of starting a second, parallel one, so
  * Back returns to Context first instead of skipping it straight to the Session.
  */
-export function createSessionContextStack(sessionId: string, value: SessionContextViewModel) {
+export function createSessionContextStack(
+  sessionId: string,
+  value: SessionContextViewModel,
+  onOpenSpecification?: (
+    specification: NonNullable<SessionContextViewModel['specification']>,
+  ) => void,
+) {
   return defineSecondaryStack<
     Record<string, never>,
     { sessionId: string; value: SessionContextViewModel },
@@ -460,7 +466,13 @@ export function createSessionContextStack(sessionId: string, value: SessionConte
         get title() {
           return translateNow('sessions.context.title');
         },
-        component: ({ data }) => <ContextScreen sessionId={data.sessionId} value={data.value} />,
+        component: ({ data }) => (
+          <ContextScreen
+            sessionId={data.sessionId}
+            value={data.value}
+            onOpenSpecification={onOpenSpecification}
+          />
+        ),
       },
     },
   });
@@ -471,14 +483,25 @@ export function createSessionContextStack(sessionId: string, value: SessionConte
 function ContextScreen({
   sessionId,
   value,
+  onOpenSpecification,
 }: {
   sessionId: string;
   value: SessionContextViewModel;
+  onOpenSpecification?: (
+    specification: NonNullable<SessionContextViewModel['specification']>,
+  ) => void;
 }) {
   const stack = useSecondaryStack<{ context: Record<string, never> }>();
   const openStack: OpenSecondaryStack = (target, params) => stack.navTo(target, params);
 
-  return <SessionContext sessionId={sessionId} value={value} openStack={openStack} />;
+  return (
+    <SessionContext
+      sessionId={sessionId}
+      value={value}
+      openStack={openStack}
+      onOpenSpecification={onOpenSpecification}
+    />
+  );
 }
 
 function collectTasks(value: SessionContextViewModel): SessionContextTaskRef[] {

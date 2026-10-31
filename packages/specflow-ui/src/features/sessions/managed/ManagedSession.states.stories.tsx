@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within, waitFor } from 'storybook/test';
+import { expect, fn, userEvent, within, waitFor } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
 import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
@@ -90,6 +90,11 @@ const meta = {
     sessionId: fixtureSessionId,
     owner: 'full-session-story',
     api: fixtureApi(sessionFixture()),
+    // Story-only stand-in for the real `/specs/$specId` navigation `routes.tsx`'s
+    // `ManagedSessionRoute` wires in production (see `ManagedSession`'s own doc comment for
+    // `onOpenSpecification`): demonstrates the Specification row's real click wiring on every
+    // state story that carries `sessionContext.specification`, without a real router here.
+    onOpenSpecification: fn((specification) => console.info('Open Specification', specification)),
   },
 } satisfies Meta<typeof ManagedSession>;
 export default meta;

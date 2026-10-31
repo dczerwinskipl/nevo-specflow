@@ -221,7 +221,7 @@ export async function prepareAntigravityProfile(
     !isAbsolute(home) ||
     // Include the longest generated configuration name and atomic-write UUID,
     // not just HOME. Reject before mkdir/write on legacy Win32 path profiles.
-    join(home, '.gemini', 'antigravity-cli', 'settings.json').length + 37 >= 260 ||
+    join(home, '.gemini', 'antigravity-cli', '.' + '0'.repeat(32)).length >= 260 ||
     !inside(resolve(installation.homeRoot), resolve(home)) ||
     resolve(home) === resolve(installation.homeRoot)
   ) {
@@ -313,7 +313,9 @@ export async function prepareAntigravityProfile(
       }
     }
 
-    const temporary = path + '.' + randomUUID();
+    // A sibling UUID name keeps atomic rename on the same volume without
+    // appending the destination filename to an already long native HOME.
+    const temporary = join(dirname(path), '.' + randomUUID().replaceAll('-', ''));
     await writeFile(temporary, JSON.stringify(value), { flag: 'wx', mode: 0o600 });
     await rename(temporary, path);
   }

@@ -180,4 +180,16 @@ describe('Antigravity private native profile', () => {
     });
     await expect(lstat(home)).rejects.toMatchObject({ code: 'ENOENT' });
   });
+  it('supports a realistic long session HOME with bounded sibling temporary filenames', async () => {
+    const test = await fixture();
+    const installation = await test.inspect();
+    const prefix = join(installation.homeRoot, '');
+    const home = join(prefix, 'x'.repeat(198 - prefix.length - 1));
+    expect(home.length).toBe(198);
+    const profile = await prepareAntigravityProfile(installation, { home });
+    expect(profile.home).toBe(home);
+    expect(
+      JSON.parse(await readFile(join(home, '.gemini', 'antigravity-cli', 'settings.json'), 'utf8')),
+    ).toMatchObject({ toolPermission: 'proceed-in-sandbox' });
+  });
 });

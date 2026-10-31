@@ -343,6 +343,11 @@ function EntryRow({
   );
 }
 
+// The scroll listener's own "has the user scrolled away from the bottom" geometry threshold,
+// named instead of an inline magic number so `pinToBottomIfNotAway`'s doc comment below can refer
+// to it precisely when explaining why it does NOT also read this value directly.
+const AWAY_THRESHOLD_PX = 80;
+
 /**
  * Primary's conversation body — messages, "jump to latest", pending interaction and the Composer
  * (including its toolbar additions: attachments, intent/operation-policy, Model+effort, Send).
@@ -393,6 +398,21 @@ function ManagedSessionConversation({
   const [localScrollNode, setLocalScrollNode] = useState<HTMLDivElement | null>(null);
   const scroller = supportsSplit ? localScrollNode : ambientScrollElement;
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
+  // A second, deliberately SEPARATE "are we away from the bottom" signal from `state.away` —
+  // read by `pinToBottomIfNotAway` below instead of `state.away` (see that callback's own doc
+  // comment for the live-traced bug this fixes). `state.away` cannot be used directly there for two
+  // independent reasons: (1) it is written to the feed asynchronously — the scroll listener below
+  // only commits it after a 200ms debounce (`AWAY_SETTLE_MS`, kept for the "jump to latest" pill's
+  // own anti-flicker reason) — so a correction reading `state.away` races that debounce on every
+  // real scroll-away gesture; (2) `state.away` is deliberately ALSO `true` for a period that has
+  // nothing to do with the user's scroll position at all — `older()` below sets it in the feed
+  // synchronously the moment an older-history load starts (its own, separate "don't let a live
+  // event corrupt the prepend" signal `apply()` reads), including the mount-time auto-load a short,
+  // non-overflowing conversation triggers before the user could have scrolled anywhere. `awayRef` is
+  // updated synchronously, every raw `scroll` event, directly from geometry — never debounced and
+  // never touched by `older()` — so it answers exactly one question precisely: has a real scroll
+  // gesture moved the viewport away from the bottom, right now.
+  const awayRef = useRef(false);
   // The Composer must stay pinned to the viewport bottom at all times — ONLY the conversation
   // scrolls underneath it, never the Composer itself (owner audit, live on a real phone: an
   // earlier `position: sticky`-everywhere pass regressed into "the Composer is just another block
@@ -510,12 +530,16 @@ function ManagedSessionConversation({
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
       maybeLoadOlder(node);
+      // Synchronous, every event, no debounce: `awayRef`'s own doc comment (above) explains why
+      // `pinToBottomIfNotAway` needs this instead of the feed's own (debounced, and separately
+      // conflated with the older-history-load bookkeeping) `away`.
+      awayRef.current = node.scrollHeight - node.scrollTop - node.clientHeight > AWAY_THRESHOLD_PX;
       if (settleTimer !== undefined) {
         clearTimeout(settleTimer);
       }
 
       settleTimer = setTimeout(() => {
-        feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > 80);
+        feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > AWAY_THRESHOLD_PX);
       }, AWAY_SETTLE_MS);
     };
 
@@ -542,47 +566,84 @@ function ManagedSessionConversation({
   // `MessageText.tsx`'s own local state, invisible to this component's `state.snapshot?.entries`
   // dependency — `onGrow` is how that growth still keeps the view pinned to the bottom.
   //
-  // Two corrections, both unconditional on `supportsSplit` and on `away` (confirmed live,
-  // growth-story regression: `sessionFixture`'s own `history.hasOlder: true` triggers
-  // auto-load-older on mount, setting `away: true` before an answer even starts growing — gating
-  // either correction on `!away` left overlap uncorrected for exactly that case):
-  // 1. A measured overlap nudge, the primary mechanism: whatever is currently visible inside the
-  //    scroller must never render behind the overlay's current screen position, regardless of why
+  // Two corrections (re-opened bug, root-caused via live trace — see `awayRef`'s own doc comment
+  // above for why this reads `awayRef.current`, not `state.away`):
+  // 1. A measured overlap nudge, the primary mechanism: the LATEST entry (and only the latest —
+  //    see below) must never render behind the overlay's current screen position, regardless of why
   //    (composer growing, an entry growing, or either not yet having settled right after mount).
   //    Split/desktop `sticky` reserves its own space by construction, so this is normally a no-op
   //    there (overlap stays 0); stacked/mobile `fixed` reserves none of its own, so this is load-
-  //    bearing there — it measures each visible entry directly and nudges `scrollTop` by the real
+  //    bearing there — it measures the latest entry directly and nudges `scrollTop` by the real
   //    pixel overlap against the overlay's current top, correct regardless of whether the
   //    ResizeObserver-measured bottom padding has caught up yet.
   // 2. A plain scroll-to-bottom snap, split/desktop only (stacked/mobile already reaches the
   //    bottom via nudging alone, and forcing it there risks fighting the anchor-restore effect's
   //    own, separate scrollTop assignment) — keeps a short conversation pinned to its true bottom
   //    as the composer/an entry grows, the same way a new entry arriving does.
+  //
+  // Both corrections are now gated on `!awayRef.current`. Before this fix correction 1 ran fully
+  // unconditionally (a past comment here justified that via the growth-story regression:
+  // `sessionFixture`'s own `history.hasOlder: true` triggers auto-load-older on mount, which sets
+  // the FEED's `away: true` synchronously, before an answer even starts growing — gating correction
+  // 1 on `!state.away` left overlap uncorrected for exactly that case). That regression is still
+  // avoided here, but by `awayRef` itself rather than by leaving correction 1 ungated: `awayRef` is
+  // never touched by `older()` at all (it only reacts to real `scroll` events — see its own doc
+  // comment), so it stays `false` throughout that mount-time-load/growth sequence even while the
+  // feed's `away` is `true`, and correction 1 keeps firing exactly as before in that case.
+  //
+  // What was actually broken (live-traced on
+  // `specflow-screens-managed-session--long-conversation-scroll`, 375px, with a genuine 300px
+  // scroll-away gesture): `pinToBottomIfNotAway` was `useCallback`'d on `state.away`, so the instant
+  // the scroll listener's 200ms debounce committed `away: true` to the feed, this callback got a new
+  // identity — which re-ran the `composerOverlayNode` `ResizeObserver` effect below (it lists this
+  // callback as a dependency), which called `update()`, which called this function synchronously,
+  // *using the just-updated `state.away`* — correct for correction 2, irrelevant to correction 1,
+  // which had no `away` check at all. At that moment the user had genuinely scrolled 300px from the
+  // bottom, but the LAST entry (`answer-30`, 172px tall) still had its *top* inside the viewport —
+  // `insideVisibleWindow` only required `rect.top < nodeRect.bottom`, so its `rect.bottom` (930,
+  // extending 118px past the viewport's own 812px edge, let alone the composer) fed straight into
+  // the overlap math against `overlayTop` (650), yielding a bogus 280px "overlap". Correction 1
+  // force-scrolled `scrollTop` forward by that full 280px, landing within the 80px away-threshold —
+  // close enough that the resulting native `scroll` event (any `scrollTop` write dispatches one)
+  // restarted the listener's debounce with near-bottom geometry, which ~200ms later committed
+  // `away: false` again, flipping the anchor-restore effect's own `!state.away` branch back on and
+  // snapping `scrollTop` the rest of the way to the literal bottom. Net effect: the user's manual
+  // scroll-away was silently reverted in two hops, well within a second. Two independent defects
+  // compounded this: correction 1 had no away-awareness, and even if it had read `state.away`
+  // directly it would have raced the very debounce that was supposed to prevent exactly this
+  // (`awayRef` fixes both — see its own doc comment for why a plain `!state.away` re-gate alone is
+  // not sufficient). Restricting the scan to only the LAST `[data-entry-id]` element is a smaller,
+  // independent tightening: entries render in a single, non-overlapping vertical flow in
+  // document/DOM order (`snapshot.entries.map(...)`, keyed in order), so only the last one can ever
+  // be genuinely adjacent to `scrollHeight` — scanning every visible entry and taking the max was
+  // never necessary for a correct answer.
   const pinToBottomIfNotAway = useCallback(() => {
     const node = scroller;
     const overlay = composerOverlayNode;
-    if (!node || !overlay) {
+    if (!node || !overlay || awayRef.current) {
       return;
     }
 
+    const entries = node.querySelectorAll<HTMLElement>('[data-entry-id]');
+    const latestEntry = entries.length > 0 ? entries[entries.length - 1] : undefined;
     const nodeRect = node.getBoundingClientRect();
     const overlayTop = overlay.getBoundingClientRect().top;
     let overlap = 0;
-    for (const entry of node.querySelectorAll<HTMLElement>('[data-entry-id]')) {
-      const rect = entry.getBoundingClientRect();
+    if (latestEntry) {
+      const rect = latestEntry.getBoundingClientRect();
       const insideVisibleWindow =
         rect.height > 0 && rect.bottom > nodeRect.top && rect.top < nodeRect.bottom;
       if (insideVisibleWindow) {
-        overlap = Math.max(overlap, rect.bottom - overlayTop);
+        overlap = Math.max(0, rect.bottom - overlayTop);
       }
     }
 
     if (overlap > 0) {
       node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, node.scrollTop + overlap);
-    } else if (supportsSplit && !state.away) {
+    } else if (supportsSplit) {
       node.scrollTop = node.scrollHeight;
     }
-  }, [composerOverlayNode, scroller, state.away, supportsSplit]);
+  }, [composerOverlayNode, scroller, supportsSplit]);
   useLayoutEffect(() => {
     const node = composerOverlayNode;
     if (!node) {

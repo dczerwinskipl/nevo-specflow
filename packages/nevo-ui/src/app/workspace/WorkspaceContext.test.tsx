@@ -220,6 +220,10 @@ describe('W02: Secondary root-tab state', () => {
     id: 'item',
     initial: 'details',
     instanceId: (params) => params.itemId,
+    // Lets each openTab()-opened instance carry the opened entity's own name in the tab strip
+    // (contract item-tabs.md's `name (N)` switcher): without this, every "item" tab would show the
+    // identical static per-screen `title` below ("Item details") regardless of which item is open.
+    tabLabel: (params) => `Item ${params.itemId}`,
     useData: (params) => ({ status: 'ready', data: params.itemId }),
     screens: {
       details: { title: 'Item details', component: ItemDetails },
@@ -288,6 +292,9 @@ describe('W02: Secondary root-tab state', () => {
             <output data-testid="tab-ids">
               {navigation.tabs.tabs.map((tab) => tab.id).join(',')}
             </output>
+            <output data-testid="tab-titles">
+              {navigation.tabs.tabs.map((tab) => tab.title).join(',')}
+            </output>
             <output data-testid="tab-closable">
               {navigation.tabs.tabs.map((tab) => String(tab.closable)).join(',')}
             </output>
@@ -313,6 +320,8 @@ describe('W02: Secondary root-tab state', () => {
   }
 
   const tabIds = () => (screen.getByTestId('tab-ids').textContent ?? '').split(',').filter(Boolean);
+  const tabTitles = () =>
+    (screen.getByTestId('tab-titles').textContent ?? '').split(',').filter(Boolean);
   const activeTab = () => screen.getByTestId('active-tab').textContent;
   const isOpen = () => screen.getByTestId('is-open').textContent === 'true';
   const click = async (name: string) => {
@@ -359,6 +368,33 @@ describe('W02: Secondary root-tab state', () => {
     await click('openTab a');
     expect(tabIds()).toHaveLength(2); // Still exactly two tabs, no duplicate.
     expect(screen.getByText('Item a extra')).toBeTruthy();
+  });
+
+  it("a stack's tabLabel names each open instance; a stack without one falls back to its page title unchanged", async () => {
+    mountTabs();
+
+    // Two openTab() instances of the SAME stack/definition must be told apart by name, not just by
+    // which one happens to be active (the nevo-ui-level root cause behind "generic category label
+    // instead of the opened entity's own name" — the tab strip/switcher already render whatever
+    // `tab.title` they are given; the gap was that every instance's title was pinned to the same
+    // static per-screen string with no way to vary by which entity opened it).
+    await click('openTab a');
+    await click('openTab b');
+    expect(tabTitles()).toEqual(['Item a', 'Item b']);
+    expect(tabTitles()).not.toContain('Item details'); // the static per-screen title, unused here
+
+    // Pushing a dependent page within one tab's own local stack still only affects that tab's
+    // entry — tabLabel is keyed off the stack's rootParams, not the active page, so it is stable
+    // across a push/pop that does not change which entity the tab represents.
+    const [idA] = tabIds();
+    await click(`activate ${idA}`);
+    await click('Push extra for a');
+    expect(tabTitles()).toEqual(['Item a', 'Item b']);
+
+    // A stack with no tabLabel (pageStack) is unaffected: it keeps resolving from the active
+    // page's own static title exactly as before this field existed.
+    await click('open one');
+    expect(tabTitles()).toEqual(['Item a', 'Item b', 'One']);
   });
 
   it('with no pinned tab, closing the only tab empties the collection (no tab is synthesized)', async () => {

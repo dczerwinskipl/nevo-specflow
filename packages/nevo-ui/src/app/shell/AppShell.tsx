@@ -60,6 +60,43 @@ export function useAppNavigation() {
   return useContext(AppNavigationContext);
 }
 
+/**
+ * Coalesces a `ResizeObserver` callback through `requestAnimationFrame`: a burst of notifications
+ * (every pixel crossed during a continuous drag-resize fires one) collapses into at most one
+ * `measure()` call per animation frame, always reading the *latest* layout at flush time. Without
+ * this, each notification commits its own React state update synchronously; cascading through the
+ * whole shell/workspace tree (itself full of further `ResizeObserver`-driven measurements —
+ * `AppWorkspace`, `WorkspaceHeader`, `ItemTabs`, `ScrollArea`), that per-notification commit cost
+ * compounds faster than a real drag re-fires the observer, so the committed width falls further and
+ * further behind the actual (already-settled) window size — visibly "stuck" at a stale, narrower-
+ * or-wider-than-current layout for as long as it takes the backlog to drain. Coalescing bounds the
+ * commit rate to one per frame regardless of notification rate, so the rendered layout can never
+ * fall more than one frame behind the real size.
+ */
+function observeWidthCoalesced(element: Element, measure: () => void) {
+  let frame: number | null = null;
+  const scheduleMeasure = () => {
+    if (frame !== null) {
+      cancelAnimationFrame(frame);
+    }
+
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      measure();
+    });
+  };
+
+  const observer = new ResizeObserver(scheduleMeasure);
+  observer.observe(element);
+
+  return () => {
+    observer.disconnect();
+    if (frame !== null) {
+      cancelAnimationFrame(frame);
+    }
+  };
+}
+
 function useElementWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState<number>();
@@ -72,12 +109,10 @@ function useElementWidth<T extends HTMLElement>() {
     }
 
     const update = () => setWidth(element.getBoundingClientRect().width);
-    const observer = new ResizeObserver(update);
 
-    observer.observe(element);
     update();
 
-    return () => observer.disconnect();
+    return observeWidthCoalesced(element, update);
   }, []);
 
   return { ref, width };
@@ -103,12 +138,10 @@ function useDescendantWidth<T extends HTMLElement>(
     }
 
     const update = () => setWidth(element.getBoundingClientRect().width);
-    const observer = new ResizeObserver(update);
 
-    observer.observe(element);
     update();
 
-    return () => observer.disconnect();
+    return observeWidthCoalesced(element, update);
   }, [enabled, rootRef, selector]);
 
   return width;

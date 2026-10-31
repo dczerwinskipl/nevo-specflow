@@ -48,6 +48,8 @@ interface RuntimeDefinition {
   initial: string;
   /** Opt-in: derives `openTab`'s tab identity from its params (see `tabInstanceId` below). */
   instanceId?: (params: object) => string;
+  /** Opt-in: the tab strip/switcher label, derived from root params (see `resolveTabTitle`). */
+  tabLabel?: (rootParams: object) => string;
   useData: (params: object) => SecondaryData<unknown>;
   screens: Record<string, RuntimePage>;
 }
@@ -195,9 +197,32 @@ function activeRuntimeTab(snapshot: TabsSnapshot): TabRecord | null {
   return snapshot.byId[snapshot.activeTabId] ?? null;
 }
 
-function tabTitle(flow: SecondaryFlow): string {
+/**
+ * The Secondary root-tab strip's label for one open tab (contract item-tabs.md's `ItemTab.label`,
+ * shown by both the tab strip and the switcher button — `switcher({ label, ... })` in
+ * `ItemTabsTypes.ts` already renders exactly this value, never a hardcoded category name; any
+ * "generic label" a product sees is this function returning the same string for every instance,
+ * not the strip rendering something else).
+ *
+ * `definition.tabLabel`, when provided, is tried first and computed from the flow's own
+ * `rootParams` — available synchronously the instant the tab opens, unlike `useData`'s result — so
+ * two tabs of the same stack opened for two different entities (`openTab` with `instanceId`, or
+ * `open` replaced across entities) can be told apart by name. Falling back to the active page's own
+ * static `title` is correct only while a stack never opens more than one distinguishable instance;
+ * a stack whose tabs must show the opened entity's own name needs `tabLabel`, not a page title.
+ */
+function resolveTabTitle(flow: SecondaryFlow): string {
   const entry = flow.entries.at(-1);
-  const screen = entry?.definition.screens[entry.page];
+  if (!entry) {
+    return '';
+  }
+
+  const dynamicLabel = entry.definition.tabLabel?.(entry.rootParams);
+  if (dynamicLabel !== undefined) {
+    return dynamicLabel;
+  }
+
+  const screen = entry.definition.screens[entry.page];
 
   return screen?.title ?? '';
 }
@@ -1090,7 +1115,7 @@ export function AppWorkspaceProvider({
     const runtimeEntries: SecondaryTabInfo[] = visibleTabsState.order.map((id) => ({
       id,
       closable: true,
-      title: tabTitle(visibleTabsState.byId[id]!.flow),
+      title: resolveTabTitle(visibleTabsState.byId[id]!.flow),
     }));
 
     return {

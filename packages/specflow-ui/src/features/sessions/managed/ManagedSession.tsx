@@ -30,7 +30,6 @@ import {
   TooltipTrigger,
   Typography,
   WorkspaceHeader,
-  appBackgroundClassName,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
   useWorkspaceCapabilities,
@@ -940,23 +939,31 @@ function ManagedSessionConversation({
                   //
                   // Stacked/mobile only: owner audit, live on a real phone ("Composer - tło nie
                   // dosięga") — `bottom: var(--workspace-overlay-bottom, …)` previously floated
-                  // the *entire* overlay (including the zone its own background should fill) up
-                  // off the true viewport/safe-area edge, the same treatment the top floating-nav
-                  // pill intentionally uses; unlike that pill, the Composer is meant to read as a
-                  // solid bar docked to the edge (mockup's own `.composerwrap`), not a floating
-                  // card with transparent margin around it. It now pins to the real `bottom: 0`
-                  // with its own `appBackgroundClassName` background filling all the way down, and
-                  // reserves the safe-area clearance as `padding-bottom` *inside* that background
-                  // instead of lifting the whole element away from the edge — so nothing scrolling
-                  // underneath can ever show through the gap. Split/desktop keeps the unchanged
-                  // floating-above-the-edge treatment: it is a `sticky` child of its own local
-                  // scroll container, which already shares that container's opaque background, so
-                  // there is no transparent zone for content to show through underneath it.
+                  // the *entire* overlay up off the true viewport/safe-area edge. It now pins to
+                  // the real `bottom: 0` and reserves the safe-area clearance as `padding-bottom`
+                  // instead of lifting the whole element away from the edge.
+                  //
+                  // Background: THIS WRAPPER HAS NO BACKGROUND OF ITS OWN, on either layout —
+                  // owner audit, round three, comparing live against the desktop/split layout
+                  // (which has always been correct): "ma być sam composer (to nie jest karta),
+                  // bez boxa dookoła, a background workspace ma schodzić do samej krawędzi...
+                  // dokładnie tak jak to było i jest w wersji MD" — there is no visible "box"
+                  // around the composer at all on split/desktop (this div is just a `sticky`
+                  // positioning wrapper there, no background class), and mobile must match that
+                  // exactly rather than opting into a filled panel. Two earlier attempts in this
+                  // same spot both assumed the opposite (a solid docked bar needing its own fill)
+                  // and both were real, caught-live regressions — a flat mismatched black, then a
+                  // near-transparent `rgba(255,255,255,0.045)` tint letting conversation text
+                  // bleed through. The actual fix is to give this wrapper no background at all,
+                  // same as its sticky/desktop sibling: whatever is already behind it (the
+                  // conversation scroller's own background) shows through naturally. Elevation
+                  // (`shadow-lg`) lives on `MessageComposer` itself below, never on this wrapper —
+                  // "cień ma być na composerze, a nie na boxie wokół niego".
                   className={cn(
                     'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
                     supportsSplit
                       ? 'sticky pb-4 sm:pb-5'
-                      : cn('fixed inset-x-0 bottom-0 z-20 overflow-y-auto', appBackgroundClassName),
+                      : 'fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
                   )}
                   style={
                     supportsSplit
@@ -1030,7 +1037,10 @@ function ManagedSessionConversation({
                         ))}
                       </div>
                     )}
-                    <label htmlFor="managed-message" className="text-body-sm">
+                    {/* Visually hidden — owner audit, round three: "napis 'wiadomość' też można
+                        usunąć bo nic nie wnosi". Kept for assistive tech via `sr-only`, not
+                        removed outright, since it's still the textarea's only accessible name. */}
+                    <label htmlFor="managed-message" className="sr-only">
                       {t('managedSession.message')}
                     </label>
                     <MessageComposer

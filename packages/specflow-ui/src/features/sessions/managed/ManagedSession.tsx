@@ -35,7 +35,6 @@ import {
   useSecondaryNavigation,
   useWorkspaceCapabilities,
   useWorkspacePrimaryScroll,
-  useWorkspacePrimarySheet,
   cn,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
@@ -396,12 +395,6 @@ function ManagedSessionConversation({
   // `useWorkspacePrimaryScroll()` — there is no local container to render there at all. `scroller`
   // is the one place both are unified into a single element every other effect below reads.
   const ambientScrollElement = useWorkspacePrimaryScroll();
-  // The inner content "sheet" (the bordered, rounded-top box `AppWorkspace` wraps stacked/mobile
-  // content in) — a *different* element from `scroller`/`ambientScrollElement` above, see
-  // `useWorkspacePrimarySheet`'s own doc comment. Only meaningful on the stacked/mobile layout,
-  // same as `ambientScrollElement`: split/desktop's composer is `sticky` and already reserves its
-  // own space in normal flow, needing no padding reservation (on the sheet or anywhere else) at all.
-  const ambientSheetElement = useWorkspacePrimarySheet();
   const [localScrollNode, setLocalScrollNode] = useState<HTMLDivElement | null>(null);
   const scroller = supportsSplit ? localScrollNode : ambientScrollElement;
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
@@ -666,29 +659,13 @@ function ManagedSessionConversation({
       setComposerHeight(height);
       // Only the stacked/mobile `position: fixed` composer needs this: it reserves no space of
       // its own, unlike the split/desktop `position: sticky` one, which already reserves its own
-      // space in the scroll content's normal flow and needs no padding at all. Applied as real
-      // padding on the "sheet" (the bordered, rounded-top content box `AppWorkspace` renders
-      // stacked/mobile content inside, exposed via `useWorkspacePrimarySheet`) rather than on
-      // `scroller` (an ANCESTOR of the sheet — the outer scroll viewport) — reserving the space on
-      // the ancestor left it outside the sheet's own box, so that reserved strip never inherited
-      // the sheet's background/border/corner-radius and had to be color-matched separately by a
-      // backstop element instead of genuinely being part of the same surface (owner audit, live
-      // DOM measurement: the sheet's own `getBoundingClientRect().bottom` stopped short of the
-      // true viewport bottom by exactly the composer's height). The sheet is a descendant of
-      // `scroller`, so growing the sheet's own box still grows `scroller.scrollHeight` by the same
-      // amount — the scrollable range calculation `pinToBottomIfNotAway` below depends on is
-      // unaffected, it is simply now backed by the sheet's real layout size instead of the
-      // viewport's padding. Applied imperatively, right here, instead of waiting for the
-      // `composerHeight` state write above to reach render on some *later* commit, so the very
-      // first measurement after the overlay mounts (and any later one where its height changes,
-      // e.g. the interaction card appearing) reserves the new space before `pinToBottomIfNotAway`
-      // below reads `scrollHeight`.
-      if (!supportsSplit && ambientSheetElement) {
-        ambientSheetElement.style.paddingBottom = height ? `${height}px` : '';
-      }
-
+      // space in the scroll content's normal flow and needs no padding at all. Applied
+      // imperatively, right here, instead of waiting for the `composerHeight` state write above to
+      // reach render on some *later* commit, so the very first measurement after the overlay
+      // mounts (and any later one where its height changes, e.g. the interaction card appearing)
+      // reserves the new space before `pinToBottomIfNotAway` below reads `scrollHeight`.
       if (!supportsSplit && scroller) {
-        scroller.style.paddingBottom = '';
+        scroller.style.paddingBottom = height ? `${height}px` : '';
       }
 
       pinToBottomIfNotAway();
@@ -703,7 +680,7 @@ function ManagedSessionConversation({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [ambientSheetElement, composerOverlayNode, pinToBottomIfNotAway, scroller, supportsSplit]);
+  }, [composerOverlayNode, pinToBottomIfNotAway, scroller, supportsSplit]);
   // Final safety net, independent of the `away`/anchor bookkeeping above and of the
   // `ResizeObserver`'s own direct `pinToBottomIfNotAway()` call: re-runs the same correction for
   // triggers that are not themselves a resize (loading older history while "away" skips the

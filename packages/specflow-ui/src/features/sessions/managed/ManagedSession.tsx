@@ -30,11 +30,11 @@ import {
   TooltipTrigger,
   Typography,
   WorkspaceHeader,
-  appBackgroundClassName,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
   useWorkspaceCapabilities,
   useWorkspacePrimaryScroll,
+  useWorkspacePrimarySheet,
   cn,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
@@ -395,6 +395,12 @@ function ManagedSessionConversation({
   // `useWorkspacePrimaryScroll()` — there is no local container to render there at all. `scroller`
   // is the one place both are unified into a single element every other effect below reads.
   const ambientScrollElement = useWorkspacePrimaryScroll();
+  // The real material box (`.mobile-workspace-surface`) the fixed Composer's reserved space must
+  // become part of — a different element from `ambientScrollElement`/`scroller` below (that one is
+  // the outer scroll viewport). See `useWorkspacePrimarySheet`'s own doc comment. Only meaningful
+  // on stacked/mobile, same as `ambientScrollElement`: split/desktop's `sticky` Composer already
+  // reserves its own space in normal flow and needs no padding reservation anywhere.
+  const ambientSheetElement = useWorkspacePrimarySheet();
   const [localScrollNode, setLocalScrollNode] = useState<HTMLDivElement | null>(null);
   const scroller = supportsSplit ? localScrollNode : ambientScrollElement;
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
@@ -659,13 +665,29 @@ function ManagedSessionConversation({
       setComposerHeight(height);
       // Only the stacked/mobile `position: fixed` composer needs this: it reserves no space of
       // its own, unlike the split/desktop `position: sticky` one, which already reserves its own
-      // space in the scroll content's normal flow and needs no padding at all. Applied
+      // space in the scroll content's normal flow and needs no padding at all. Applied as real
+      // padding on `ambientSheetElement` (the actual bordered/rounded material box,
+      // `.mobile-workspace-surface` — see `useWorkspacePrimarySheet`'s own doc comment), not on
+      // `scroller` (an ANCESTOR of that box — the outer scroll viewport): padding on the ancestor
+      // only extends how far the viewport can scroll, it is not part of the sheet's own box and
+      // does not inherit its background/border/rounding, which is exactly why the Composer used to
+      // need a copied/color-matched background instead of genuinely sharing the one real surface
+      // (owner audit, live DOM measurement: the sheet's own `getBoundingClientRect().bottom`
+      // stopped short of the true viewport bottom by exactly the Composer's height). The sheet is a
+      // descendant of `scroller` with no hard pixel height anywhere in that chain (only
+      // `min-height`), so growing the sheet's own box still grows `scroller.scrollHeight` by the
+      // same amount — the scrollable-range reservation this previously relied on `scroller`'s own
+      // padding for is unaffected, just now backed by the sheet's real layout size. Applied
       // imperatively, right here, instead of waiting for the `composerHeight` state write above to
       // reach render on some *later* commit, so the very first measurement after the overlay
       // mounts (and any later one where its height changes, e.g. the interaction card appearing)
       // reserves the new space before `pinToBottomIfNotAway` below reads `scrollHeight`.
+      if (!supportsSplit && ambientSheetElement) {
+        ambientSheetElement.style.paddingBottom = height ? `${height}px` : '';
+      }
+
       if (!supportsSplit && scroller) {
-        scroller.style.paddingBottom = height ? `${height}px` : '';
+        scroller.style.paddingBottom = '';
       }
 
       pinToBottomIfNotAway();
@@ -680,7 +702,7 @@ function ManagedSessionConversation({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [composerOverlayNode, pinToBottomIfNotAway, scroller, supportsSplit]);
+  }, [ambientSheetElement, composerOverlayNode, pinToBottomIfNotAway, scroller, supportsSplit]);
   // Final safety net, independent of the `away`/anchor bookkeeping above and of the
   // `ResizeObserver`'s own direct `pinToBottomIfNotAway()` call: re-runs the same correction for
   // triggers that are not themselves a resize (loading older history while "away" skips the
@@ -945,18 +967,22 @@ function ManagedSessionConversation({
                   // pill intentionally uses; unlike that pill, the Composer is meant to read as a
                   // solid bar docked to the edge (mockup's own `.composerwrap`), not a floating
                   // card with transparent margin around it. It now pins to the real `bottom: 0`
-                  // with its own `appBackgroundClassName` background filling all the way down, and
-                  // reserves the safe-area clearance as `padding-bottom` *inside* that background
-                  // instead of lifting the whole element away from the edge — so nothing scrolling
-                  // underneath can ever show through the gap. Split/desktop keeps the unchanged
-                  // floating-above-the-edge treatment: it is a `sticky` child of its own local
-                  // scroll container, which already shares that container's opaque background, so
-                  // there is no transparent zone for content to show through underneath it.
+                  // with no background of its own at all (deliberately — see the `useLayoutEffect`
+                  // above that sets `ambientSheetElement.style.paddingBottom`): the one real
+                  // material box (`.mobile-workspace-surface`) now extends its own box all the way
+                  // to the true bottom, so the Composer sits transparently on top of that single
+                  // real surface rather than painting a second, copied one of its own — the two
+                  // used to be color-matched separately (an illusion that a structural DOM check
+                  // reveals as two boxes), now there genuinely is only one. Split/desktop keeps the
+                  // unchanged floating-above-the-edge treatment: it is a `sticky` child of its own
+                  // local scroll container, which already shares that container's opaque
+                  // background, so there is no transparent zone for content to show through
+                  // underneath it either way.
                   className={cn(
                     'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
                     supportsSplit
                       ? 'sticky pb-4 sm:pb-5'
-                      : cn('fixed inset-x-0 bottom-0 z-20 overflow-y-auto', appBackgroundClassName),
+                      : 'fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
                   )}
                   style={
                     supportsSplit
@@ -1030,7 +1056,11 @@ function ManagedSessionConversation({
                         ))}
                       </div>
                     )}
-                    <label htmlFor="managed-message" className="text-body-sm">
+                    {/* Visually hidden, not removed: the `<textarea>` still needs an accessible
+                        name (owner audit, round three: "usuńmy jeszcze napis wiadomości" — the
+                        composer's own placeholder/icon already make its purpose obvious to a
+                        sighted user, so the always-visible label was redundant chrome). */}
+                    <label htmlFor="managed-message" className="sr-only">
                       {t('managedSession.message')}
                     </label>
                     <MessageComposer
@@ -1040,7 +1070,17 @@ function ManagedSessionConversation({
                       // the "jump to latest" pill's own `shadow-lg` below and with the mobile
                       // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
                       // one coherent elevation rather than three different weights.
-                      className="shadow-lg"
+                      //
+                      // `workspace-floating-pill` (`AppWorkspace.css`), not the DS `standalone`
+                      // variant's own default `bg-surface-raised` (a flat, solid `#121212`): owner
+                      // audit, round three ("composer może mieć jaśniejsze tło") — this is the same
+                      // lighter, translucent "floating surface" material the jump-to-latest pill
+                      // and the mobile floating-navigation row already use, declared un-layered so
+                      // it reliably wins over the component's own `@layer`-declared utility
+                      // regardless of Tailwind's internal ordering (see that class's own doc
+                      // comment). Keeps this bar visually consistent with this screen's other
+                      // floating surfaces instead of reading as a separate, darker material.
+                      className="shadow-lg workspace-floating-pill"
                       // Platform-specific Enter handling (owner audit, round two: "enter na
                       // mobilce, ani nawet shift enter nie przenoszą do nowej linii"). Desktop
                       // keeps the DS default (`'submit'`): a physical keyboard reliably reports

@@ -1073,16 +1073,7 @@ function ManagedSessionConversation({
                       // composer this file already branches by `supportsSplit` throughout.
                       enterKeyBehavior={supportsSplit ? 'submit' : 'newline'}
                       onSubmit={handleComposerSubmit}
-                      // Owner audit, round four: "ma się w 100% zlewać z tłem" — the composer must
-                      // blend fully with the workspace background, no card edge of its own.
-                      // `standalone` (the DS default) bakes in its own `border`+`bg-surface-raised`
-                      // (`MessageComposer.tsx`'s `standalone` variant) — that border was mistaken,
-                      // reasonably, for the earlier real double-background-layer bug once that bug
-                      // was fixed and no longer masked it. `integrated` (`rounded-none border-0
-                      // bg-transparent`) is the DS's own existing variant for exactly this case —
-                      // reuse it rather than editing the shared component's variants, so no other
-                      // `MessageComposer` consumer is affected.
-                      presentation="integrated"
+                      presentation="standalone"
                     >
                       <MessageComposer.Editor
                         id="managed-message"

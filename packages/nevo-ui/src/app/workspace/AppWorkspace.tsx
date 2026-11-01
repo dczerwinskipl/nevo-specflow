@@ -816,6 +816,29 @@ function MobileRuntimeSurfaceRegion({
     [surfaceRef],
   );
 
+  // Re-audit of `8b7703e9`'s true-viewport backstop (owner report: the seam is still visible, but
+  // reproduces on a plain DESKTOP browser at a narrow Storybook viewport — no real device or
+  // dynamic toolbar involved, so it is not the `--mobile-workspace-viewport-height`/`visualViewport`
+  // class of bug). Confirmed live in Storybook (`Managed Session/Default` at 320x568, static,
+  // `document.elementsFromPoint`): the root below already paints `bg-workspace-material` across the
+  // *entire* backstop when `runtime.surface === 'primary'`, but the inner "sheet" further down
+  // (`workspaceSurfaceClassName`, applied to the scrolled content in both branches below) paints
+  // that *same* `rgba(255,255,255,0.045)` layer again, directly on top of it. Two stacked
+  // translucent layers composite darker-to-lighter progressively, so the scrolled-content area
+  // (sheet-over-backstop, measured here as background-color: `rgba(255,255,255,0.043)` *twice* in
+  // the paint order) reads visibly lighter than the gap behind the fixed Composer's own transparent
+  // padding (backstop alone, one layer) — the exact seam reported, fully static and device-
+  // independent. `workspaceSurfaceClassName`'s bg utilities are redundant here specifically because
+  // this backstop already supplies that same fill underneath; dropping them from the sheet only for
+  // `primary` (where the backstop under it actually paints material — `secondary` instead uses an
+  // opaque `bg-canvas`, so its sheet's own material layer is the only one and must stay) leaves a
+  // single, consistently-toned material layer everywhere in the primary surface, sheet and backstop
+  // alike.
+  const sheetSurfaceClassName =
+    runtime.surface === 'primary'
+      ? 'workspace-surface-material relative'
+      : workspaceSurfaceClassName;
+
   return (
     <div
       className={cn(
@@ -888,7 +911,7 @@ function MobileRuntimeSurfaceRegion({
               ) : null}
               <div
                 className={cn(
-                  workspaceSurfaceClassName,
+                  sheetSurfaceClassName,
                   'min-h-0 flex-1 overflow-clip rounded-t-surface border border-b-0 border-workspace-edge',
                 )}
               >
@@ -928,7 +951,7 @@ function MobileRuntimeSurfaceRegion({
                   <div className="mobile-workspace-sheet flex-1">
                     <div
                       className={cn(
-                        workspaceSurfaceClassName,
+                        sheetSurfaceClassName,
                         'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
                       )}
                     >

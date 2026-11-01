@@ -525,8 +525,12 @@ function ManagedSessionConversation({
     // and re-crossed by hand-jitter alone). `AWAY_SETTLE_MS` only *delays* when the computed value
     // reaches `feed` — it still recomputes from the latest geometry each time, so the pill never
     // shows a stale verdict, only a slightly late one, settling in once scrolling pauses rather
-    // than chasing every intermediate position.
-    const AWAY_SETTLE_MS = 200;
+    // than chasing every intermediate position. Lowered from the original 200ms (owner audit,
+    // round two: "pokazuje się minimalnie za późno, za duży delay" — 200ms read as sluggish for a
+    // pill that is meant to react to the user having stopped scrolling) to 100ms: still comfortably
+    // longer than a single hand-jitter tick, so the original flicker bug stays fixed, but short
+    // enough that the pill reads as responsive rather than laggy once the gesture actually settles.
+    const AWAY_SETTLE_MS = 100;
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
       maybeLoadOlder(node);
@@ -892,7 +896,24 @@ function ManagedSessionConversation({
                         : `calc(${composerHeight}px + 0.5rem)`,
                     }}
                   >
-                    <Button className="shadow-xl" variant="secondary" onClick={() => feed.latest()}>
+                    {/* `variant="secondary"`'s own background token (`--color-action-secondary`)
+                        is deliberately translucent — it is meant for a control sitting on an
+                        already-opaque surface, not one floating directly over scrolling content
+                        (owner audit, live on a real phone: "powinien mieć tło nieprzezroczyste
+                        tak jak floating przyciski od menu i więcej"). `workspace-floating-pill`
+                        (`AppWorkspace.css`) overrides it to the same opaque material the mobile
+                        floating-navigation row's own buttons use, and reliably wins the cascade
+                        over the variant's Tailwind utility regardless of class order — see that
+                        rule's own doc comment. `shadow-lg` is this screen's shared "subtle
+                        floating surface" elevation (also applied to the Composer bar below, and
+                        mirrored by value in the floating-navigation row's own shadow) — not the
+                        heavier `shadow-xl` this used before, which read as too strong for a small
+                        pill (owner audit, round two: "niech one dostaną delikatny cień"). */}
+                    <Button
+                      className="workspace-floating-pill shadow-lg"
+                      variant="secondary"
+                      onClick={() => feed.latest()}
+                    >
                       {t('managedSession.latest')}
                     </Button>
                   </div>
@@ -1013,7 +1034,34 @@ function ManagedSessionConversation({
                       {t('managedSession.message')}
                     </label>
                     <MessageComposer
-                      className="shadow-2xl"
+                      // `shadow-lg`, not the previous `shadow-2xl` (owner audit, round two: "niech
+                      // one dostaną delikatny cień" — a general note for every floating/elevated
+                      // surface on this screen, this bar included). Shares its literal value with
+                      // the "jump to latest" pill's own `shadow-lg` below and with the mobile
+                      // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
+                      // one coherent elevation rather than three different weights.
+                      className="shadow-lg"
+                      // Platform-specific Enter handling (owner audit, round two: "enter na
+                      // mobilce, ani nawet shift enter nie przenoszą do nowej linii"). Desktop
+                      // keeps the DS default (`'submit'`): a physical keyboard reliably reports
+                      // `shiftKey`, so Shift+Enter already inserts a newline there
+                      // (`resolveMessageComposerKeyAction`) and plain Enter sends. A mobile virtual
+                      // keyboard has no physical Shift key to combine with Enter at all, so under
+                      // the default behavior its only "Enter" input was swallowed into Send —
+                      // never a newline, with no way to invoke the `shiftKey` branch to begin with.
+                      // `'newline'` makes every Enter (shifted or not) insert a newline instead,
+                      // making Send explicit-button-only, which is what a touch composer needs.
+                      // Reuses `supportsSplit` — already this component's one "is this the
+                      // stacked/mobile layout" signal (the composer's own fixed-vs-sticky
+                      // positioning above, and the compact Model/effort and composer-mode pickers
+                      // below, all branch on it) — rather than a `pointer: coarse` media query:
+                      // this codebase's only existing coarse-pointer checks
+                      // (`treeRowActionClassName`, `ItemTabs`) are Tailwind `pointer-coarse:`/
+                      // `pointer-fine:` CSS variants for hover-affordance visibility, never a
+                      // JS-level behavioral branch, so introducing one here just for this prop
+                      // would be a second, inconsistent "is this mobile" signal for the exact same
+                      // composer this file already branches by `supportsSplit` throughout.
+                      enterKeyBehavior={supportsSplit ? 'submit' : 'newline'}
                       onSubmit={handleComposerSubmit}
                       presentation="standalone"
                     >

@@ -24,7 +24,14 @@ describe('AppWorkspace motion CSS contract', () => {
     const source = await readFile('src/app/workspace/AppWorkspace.tsx', 'utf8');
 
     expect(source).not.toContain('DesktopSurfaceContentTransition');
-    expect(source).toContain('@container absolute inset-0');
+    // No longer `'@container absolute inset-0'` (root-caused live on a real phone: `container-type`
+    // — what the Tailwind `@container` utility sets — carries layout containment, which makes this
+    // element a new containing block for its `position: fixed` descendants too, defeating the
+    // mobile Composer overlay's "float above everything" intent several layers down — see this
+    // div's own doc comment in `AppWorkspace.tsx`). Nothing in this package queries a container
+    // scoped to this specific div, so dropping it is not a behavior change for anything that reads
+    // a container query here.
+    expect(source).toContain('absolute inset-0');
     expect(source).toContain('bg-canvas bg-app-base');
   });
 });

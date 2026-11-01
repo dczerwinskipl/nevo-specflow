@@ -819,7 +819,21 @@ function MobileRuntimeSurfaceRegion({
   return (
     <div
       className={cn(
-        '@container absolute inset-0 min-w-0 overflow-clip outline-none',
+        // No `@container` here (root-caused live on a real phone, owner audit: "nie jest po osi
+        // Z tylko pod osią Y" — the mobile Composer read as embedded in normal document flow
+        // instead of floating above everything). `container-type` (what the Tailwind `@container`
+        // utility sets) carries layout containment, which per the CSS Containment spec makes the
+        // element a new containing block for its `position: fixed` descendants too, not only
+        // `absolute` ones — so any `fixed` element nested inside this one (the Composer overlay,
+        // several layers down through `ScrollArea`/`AppContentScrollProvider`) resolves `fixed`
+        // against THIS box instead of the viewport, silently downgrading its "float above
+        // everything" behavior to something that tracks this box's own layout instead. Confirmed
+        // by grepping every `@container`/`@[...]`/`@sm:`-style container-query consumer in this
+        // package: none targets this specific container (the header row a few lines down has its
+        // own, separate `@container`, scoped to just that row) — this one had no query depending
+        // on it, so removing it is not a behavior change for anything that reads a container query
+        // here, only for the `fixed` containing-block side effect it was silently causing.
+        'absolute inset-0 min-w-0 overflow-clip outline-none',
         'h-full w-full',
         runtime.surface === 'secondary' && 'bg-canvas bg-app-base',
         !runtime.visible && 'hidden',

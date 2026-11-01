@@ -835,25 +835,6 @@ function MobileRuntimeSurfaceRegion({
         // here, only for the `fixed` containing-block side effect it was silently causing.
         'absolute inset-0 min-w-0 overflow-clip outline-none',
         'h-full w-full',
-        // Primary's own true-viewport backstop (owner audit, live right after `9b92605d` removed
-        // the Composer overlay's own opaque background: "tło workspace nadal nie sięga samego
-        // dołu" — the workspace background still doesn't reach the very bottom). The actual
-        // "material" sheet below (`.mobile-workspace-surface`, painted via `workspaceSurfaceClassName`
-        // on a descendant of `ScrollArea`'s scrolled content) is sized to the scrolled content's own
-        // box, which a consuming screen can legitimately make shorter than the true viewport — most
-        // commonly by reserving `padding-bottom` on the ambient scroll element itself for a `position:
-        // fixed` composer/footer that reserves no space of its own (see `ManagedSession.tsx`'s
-        // `scroller.style.paddingBottom = ...`). That padding lives on the scroll VIEWPORT, outside
-        // the sheet's own painted box, so scrolling to the true bottom (or an iOS rubber-band
-        // overscroll past it) exposed bare, unpainted space there — previously invisible only because
-        // the Composer's own (now-removed) background happened to paint over exactly that spot. THIS
-        // div is a true full-viewport ancestor: `absolute inset-0` sized via the `h-full` percentage
-        // cascade from the app shell's own `100dvh` root, entirely outside the scrollable content, so
-        // it is immune to scroll position, dynamic padding reservations, and overscroll alike. Giving
-        // it the same workspace-material background the sheet paints means any such gap now shows the
-        // identical material instead of the app's own (differently colored) canvas, closing the seam
-        // structurally rather than by chasing every screen's own padding math.
-        runtime.surface === 'primary' && 'bg-workspace-material bg-workspace',
         runtime.surface === 'secondary' && 'bg-canvas bg-app-base',
         !runtime.visible && 'hidden',
       )}

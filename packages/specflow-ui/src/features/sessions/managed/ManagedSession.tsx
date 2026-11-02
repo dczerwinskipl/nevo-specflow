@@ -235,7 +235,14 @@ function EntryRow({
     return (
       <article data-entry-id={entry.id} className="group/message grid justify-end gap-1">
         {srLabel}
-        <div className="max-w-content-standard rounded-composite bg-surface-subtle px-4 py-3">
+        {/* `bg-surface-primary` (owner audit: "user message mógłby mieć kolor primary, ale
+            trochę przygaszony, ciemniejszy") — a new brand-derived token (`brandEnvironment.ts`'s
+            own `surfacePrimary`, mixed 55% toward black) rather than the brand's full-saturation
+            `--color-action-primary`, which reads as a loud button fill rather than a quiet "this
+            one is mine" message surface. Replaces the previous neutral `bg-surface-subtle`, which
+            gave the user's own messages no visual identity distinct from the rest of the
+            conversation. */}
+        <div className="max-w-content-standard rounded-composite bg-surface-primary px-4 py-3">
           <ReadableText
             ref={textRef}
             api={api}

@@ -83,9 +83,8 @@ async function openModelMenu(canvasElement: HTMLElement, triggerName: string) {
   });
 }
 
-/** Finds the specific "Standard · high" `menuitemradio` by its own label line, not the full
- * accessible name (which also includes that model's "available efforts" description — identical
- * on every one of its effort rows, so matching on it alone would not disambiguate low vs. high). */
+/** Finds the `menuitemradio` with this exact label, in either section (Model or Reasoning
+ * effort) — the two sections never share a label, so an exact label match is unambiguous. */
 function modelOptionByLabel(menu: HTMLElement, label: string) {
   const option = within(menu)
     .getAllByRole('menuitemradio')
@@ -100,13 +99,21 @@ function modelOptionByLabel(menu: HTMLElement, label: string) {
 /** Baseline: the placeholder trigger when no model/effort is selected yet. */
 export const Placeholder: Story = {};
 
-/** Selecting a model+effort fires `onChange` with that exact pair, and the trigger's own label
- * updates to reflect it — the behavior `SelectModelEffort` used to prove at the screen level. */
+/** Picking a model with more than one effort (owner audit, round five: two sections in one
+ * popover, Antigravity reference) keeps the menu open and reveals "Reasoning effort" instead of
+ * closing — picking the effort itself then closes and fires the final combined `onChange`. The
+ * behavior `SelectModelEffort` used to prove at the screen level, for the old single flattened
+ * list, now proven for the two-section popover instead. */
 export const SelectModelEffort: Story = {
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
-    await userEvent.click(modelOptionByLabel(menu, 'Standard · high'));
+    await userEvent.click(modelOptionByLabel(menu, 'Standard'));
+    // Picking "Standard" (2 efforts) must NOT close the menu — it reveals "Poziom wysiłku" below
+    // instead, defaulting to the model's first effort.
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+    await waitFor(() => expect(handleChange).toHaveBeenCalledWith('mock-standard', 'low'));
+    await userEvent.click(modelOptionByLabel(menu, 'high'));
     await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
     // Not `findByRole('button', { name: 'Standard · high' })` (owner audit, round four: the
     // trigger's label is now two separate nodes — the model title text node, then the effort's
@@ -119,28 +126,30 @@ export const SelectModelEffort: Story = {
     await expect(trigger).toBeVisible();
     await expect(trigger.id).toBe('managed-model');
     await expect(trigger.textContent).toBe('Standard · high');
-    await waitFor(() => expect(handleChange).toHaveBeenCalledOnce());
-    await expect(handleChange).toHaveBeenCalledWith('mock-standard', 'high');
+    await expect(handleChange).toHaveBeenCalledTimes(2);
+    await expect(handleChange).toHaveBeenLastCalledWith('mock-standard', 'high');
   },
 };
 
-/** The Menu's richer per-item presentation (item 3): each effort row of a multi-effort model also
- * shows a description line listing every effort that model supports; a single-effort model does
- * not. The behavior `ModelMenuShowsAvailableEfforts` used to prove at the screen level. */
-export const ModelMenuShowsAvailableEfforts: Story = {
+/** The popover's two-section shape (owner audit, round five, Antigravity reference): a
+ * multi-effort model reveals its own "Reasoning effort" section with one row per effort; a
+ * single-/no-effort model never reveals that section at all. Supersedes the old
+ * `ModelMenuShowsAvailableEfforts` (per-row "available efforts" description), removed now that
+ * effort is its own visible section instead of a second description line. */
+export const ModelMenuRevealsEffortSection: Story = {
   play: async ({ canvasElement }) => {
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
+    await expect(within(menu).queryByText('Poziom wysiłku')).not.toBeInTheDocument();
+    await userEvent.click(modelOptionByLabel(menu, 'Standard'));
     // `waitFor` (not a bare assertion) absorbs the Menu's own open fade-in transition — right
-    // after it appears in the DOM its content is still mid-animation (`opacity: 0` on
-    // `MenuContent` itself), so an immediate `toBeVisible()` would be a false negative, not a
-    // real regression.
+    // after the effort section appears it is still mid-animation, so an immediate assertion
+    // would be a false negative, not a real regression.
     await waitFor(async () => {
-      const high = modelOptionByLabel(menu, 'Standard · high');
-      await expect(within(high).getByText('Dostępne poziomy wysiłku: low, high')).toBeVisible();
+      await expect(within(menu).getByText('Poziom wysiłku')).toBeVisible();
+      await expect(modelOptionByLabel(menu, 'low')).toBeVisible();
+      await expect(modelOptionByLabel(menu, 'high')).toBeVisible();
     });
-    const fast = modelOptionByLabel(menu, 'Fast');
-    await expect(within(fast).queryByText(/Dostępne poziomy wysiłku/)).not.toBeInTheDocument();
-    await userEvent.keyboard('{Escape}');
+    await userEvent.click(modelOptionByLabel(menu, 'Fast'));
     await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
   },
 };

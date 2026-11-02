@@ -1542,23 +1542,30 @@
     "model": {
       "label": "Model i poziom wysiłku dla następnej wiadomości",
       "placeholder": "Wybierz model",
-      "availableEfforts": "Dostępne poziomy wysiłku: {{list}}"
+      "sectionLabel": "Model",
+      "effortSectionLabel": "Poziom wysiłku"
     },
     "intent": {
       "label": "Tryb pracy — następny Turn",
       "placeholder": "Wybierz tryb pracy",
+      "sectionLabel": "Tryb pracy",
       "preset": {
         "ask": "Zapytaj",
+        "askDescription": "Odpowiada i analizuje bez edycji plików",
         "plan": "Plan",
-        "agent": "Agent"
+        "planDescription": "Przygotowuje plan działania",
+        "agent": "Agent",
+        "agentDescription": "Samodzielnie wykonuje zadania"
       }
     },
     "policy": {
       "label": "Zgody na operacje — wybierz politykę zatwierdzania",
       "placeholder": "Wybierz politykę zatwierdzania",
+      "sectionLabel": "Zatwierdzanie operacji",
       "option": {
-        "askEachTime": "Pytaj o każdą operację",
-        "acceptEdits": "Zatwierdzaj edycje automatycznie",
+        "askEachTime": "Pytaj za każdym razem",
+        "askEachTimeDescription": "Każda operacja wymaga Twojego potwierdzenia przed wykonaniem.",
+        "acceptEdits": "Automatyczne edycje",
         "acceptEditsDescription": "Odczyty i edycje plików w workspace bez potwierdzenia; inne operacje nadal pytają."
       }
     },

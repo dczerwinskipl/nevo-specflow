@@ -67,7 +67,10 @@ export function demoComposerOptions(providerId: string | undefined): ComposerOpt
         { intent: 'agent', readiness: 'ready' },
       ],
       operationPoliciesByPreset: {
-        agent: [{ id: 'askEachTime' }, { id: 'acceptEdits', hasDescription: true }],
+        agent: [
+          { id: 'askEachTime', hasDescription: true },
+          { id: 'acceptEdits', hasDescription: true },
+        ],
       },
     };
   }

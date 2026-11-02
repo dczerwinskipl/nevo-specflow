@@ -1542,23 +1542,30 @@
     "model": {
       "label": "Model and effort for the next message",
       "placeholder": "Select model",
-      "availableEfforts": "Available efforts: {{list}}"
+      "sectionLabel": "Model",
+      "effortSectionLabel": "Reasoning effort"
     },
     "intent": {
       "label": "Work mode — next Turn",
       "placeholder": "Select work mode",
+      "sectionLabel": "Work mode",
       "preset": {
         "ask": "Ask",
+        "askDescription": "Answers and analyzes without editing files",
         "plan": "Plan",
-        "agent": "Agent"
+        "planDescription": "Prepares a plan of action",
+        "agent": "Agent",
+        "agentDescription": "Performs tasks independently"
       }
     },
     "policy": {
       "label": "Operation approval — select approval policy",
       "placeholder": "Select approval policy",
+      "sectionLabel": "Approval mode",
       "option": {
-        "askEachTime": "Ask for every operation",
-        "acceptEdits": "Approve edits automatically",
+        "askEachTime": "Ask every time",
+        "askEachTimeDescription": "Every operation requires your confirmation before it runs.",
+        "acceptEdits": "Automatic edits",
         "acceptEditsDescription": "Workspace file reads and edits proceed without confirmation; other operations still ask."
       }
     },

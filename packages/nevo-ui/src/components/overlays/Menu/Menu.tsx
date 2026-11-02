@@ -81,7 +81,16 @@ export const MenuContent = forwardRef<ComponentRef<typeof DropdownMenu.Content>,
           className={cn(
             'menu-content',
             floatingContentClassName,
-            'w-56 [&]:min-w-0 max-w-[var(--radix-dropdown-menu-content-available-width)]',
+            // Height counterpart to the existing `available-width` cap just below: without it, a
+            // menu taller than the collision-detected space Radix leaves it (e.g. a popover with
+            // several labeled sections and per-item descriptions open near the bottom of a short
+            // mobile viewport) silently clips past the viewport edge instead of scrolling its own
+            // content — `floatingContentClassName`'s own `overflow-hidden` (from
+            // `floatingSurfaceClassName`) was built for corner-radius clipping, not meant to hide
+            // overflowing content (owner audit, live: "Zatwierdzanie operacji" section checked at
+            // 390px wide). `overflow-y-auto` scrolls the menu's own content inside its fixed
+            // rounded/bordered surface instead.
+            'w-56 [&]:min-w-0 max-w-[var(--radix-dropdown-menu-content-available-width)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto',
             className,
           )}
           collisionPadding={collisionPadding}

@@ -1,52 +1,39 @@
 import { useMemo } from 'react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Bot, ChevronDown } from 'lucide-react';
-import { Button, Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger } from '@nevo/ui';
+import {
+  Button,
+  Menu,
+  MenuContent,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@nevo/ui';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 
-/** Opaque Select value encoding a model+effort pair; modelId/effort are not guaranteed separator-safe. */
-function encodeModelKey(modelId: string, effort?: string) {
-  return JSON.stringify(effort ? [modelId, effort] : [modelId]);
-}
-
-function decodeModelKey(key: string): { modelId: string; effort?: string } {
-  const [modelId, effort] = JSON.parse(key) as [string, string?];
-
-  return effort ? { modelId, effort } : { modelId };
-}
-
 /**
- * Flattens the matched provider's models/efforts into one "Model · Effort" picker, per the
- * composer design's single combined selector. Honors the catalogue's own modelOverride/
- * effortOverride capability flags rather than assuming every listed model is overridable.
- *
- * Each item also carries an optional `description` — the model's full set of available efforts
- * (the Menu picker's own second line, matching the accepted mockup's richer item presentation,
- * session-chat-v10 §"Model — następny Turn"), omitted for a model with a single effort (or none),
- * where it would not add anything the label does not already say.
+ * Flattens the matched provider's models into the picker's "Model" section rows. Honors the
+ * catalogue's own modelOverride/effortOverride capability flags rather than assuming every listed
+ * model is overridable. Each model is its own row (not one row per model+effort pair, see this
+ * file's own doc comment) — `hasEfforts` says whether picking it should reveal the "Reasoning
+ * effort" section below, exactly mirroring the single-effort/no-effort collapse this file always
+ * had (a model with 0-1 efforts never shows a separate effort choice at all).
  */
-function modelPickerItems(provider: ProviderDescriptor | undefined, t: TFunction) {
+function modelSectionItems(provider: ProviderDescriptor | undefined) {
   if (!provider?.capabilities.modelOverride || !provider.models.length) {
     return [];
   }
 
   const withEffort = provider.capabilities.effortOverride;
 
-  return provider.models.flatMap((model) => {
-    const description =
-      withEffort && model.efforts.length > 1
-        ? t('managedSession.model.availableEfforts', { list: model.efforts.join(', ') })
-        : undefined;
-
-    return withEffort && model.efforts.length
-      ? model.efforts.map((effort) => ({
-          key: encodeModelKey(model.modelId, effort),
-          label: model.title + ' · ' + effort,
-          description,
-        }))
-      : [{ key: encodeModelKey(model.modelId), label: model.title, description: undefined }];
-  });
+  return provider.models.map((model) => ({
+    modelId: model.modelId,
+    label: model.title,
+    efforts: withEffort ? model.efforts : [],
+    hasEfforts: withEffort && model.efforts.length > 1,
+  }));
 }
 
 /** The currently selected model (and, when the provider supports it, effort) for the next Turn. */
@@ -96,6 +83,19 @@ export interface ModelEffortValue {
  * the whole thing to the trigger's `max-w` as a last-resort fallback — only a genuinely unusual,
  * very long name should ever actually hit it (see `CompactTriggerLongModelName` for that specific
  * live proof; every other story's realistic-length name fits untruncated).
+ *
+ * Owner audit, round five — the popover itself now mirrors that same Antigravity reference
+ * directly: two sections ("Model", then "Reasoning effort") in ONE popover instead of a single
+ * flattened list of "Title · effort" rows. Picking a model that has more than one effort keeps the
+ * popover open (its own `MenuRadioItem`'s `onSelect` calls `event.preventDefault()` — the
+ * documented Radix mechanism for suppressing a `DropdownMenu` item's own default close-on-select)
+ * so the effort section can be refined in the same open menu; picking a model with 0-1 efforts, or
+ * picking the effort itself, closes normally. Every model pick still fires a complete `onChange`
+ * immediately (keeping the previously selected effort when the new model still offers it, else
+ * falling back to that model's first effort) — the popover staying open is purely to let the user
+ * *refine* that default, never to withhold a value until a second click. Per-row "available
+ * efforts" descriptions are gone: once effort is its own visible section, repeating it as a second
+ * line on every model row said nothing new.
  */
 export function ModelEffortPicker({
   provider,
@@ -121,32 +121,21 @@ export function ModelEffortPicker({
   compact?: boolean;
 }) {
   const { t } = useTranslation();
-  const modelItems = useMemo(() => modelPickerItems(provider, t), [provider, t]);
+  const modelItems = useMemo(() => modelSectionItems(provider), [provider]);
   if (modelItems.length === 0) {
     return null;
   }
 
-  // Always a defined string so MenuRadioGroup stays controlled from its first render (never
-  // undefined), even before the Session's current model/effort is known.
-  const selectedModelKey = value ? encodeModelKey(value.modelId, value.effort) : '';
-  const selectedModelLabel = modelItems.find((item) => item.key === selectedModelKey)?.label;
-  const triggerLabel = selectedModelLabel ?? t('managedSession.model.placeholder');
-  // The model actually selected right now, kept separate from `triggerLabel`'s joined
-  // "Title · effort" string (still used for `title`/the placeholder fallback) so the trigger can
-  // render the title and effort as two differently-weighted spans (owner audit, round four) —
-  // read straight off `value`/`provider`, not reparsed out of the joined display string.
-  const selectedModel = value
-    ? provider?.models.find((model) => model.modelId === value.modelId)
-    : undefined;
+  const selectedModel = modelItems.find((item) => item.modelId === value?.modelId);
+  const triggerLabel = selectedModel
+    ? value?.effort
+      ? `${selectedModel.label} · ${value.effort}`
+      : selectedModel.label
+    : t('managedSession.model.placeholder');
+  const showEffortSection = selectedModel?.hasEfforts ?? false;
 
   return (
     <Menu>
-      {/* The Design System's `Select` has no compact size variant (hardcoded to
-          `h-control-height-default`) and no per-option description, so it cannot show the richer
-          "title + available efforts" presentation the accepted mockup calls for (session-chat-v10
-          §"Model — następny Turn"). `Menu` + `MenuRadioItem` (the same checkmark single-choice
-          primitive `LocaleMenu` already uses) does, via its `description` prop (shared
-          `Select`/`Combobox` option anatomy, see Menu.tsx). */}
       <MenuTrigger asChild>
         {/* A `Button` either way — never a bare icon-only `IconButton` (owner audit, round two:
             see this component's own doc comment). Title + effort render as two spans, not one
@@ -174,7 +163,7 @@ export function ModelEffortPicker({
         >
           {selectedModel ? (
             <>
-              {selectedModel.title}
+              {selectedModel.label}
               {value?.effort ? (
                 // `font-normal` only, deliberately no explicit color override (confirmed live:
                 // `text-content-secondary` (#c5c7cc) actually computes LIGHTER/brighter than this
@@ -192,19 +181,51 @@ export function ModelEffortPicker({
         </Button>
       </MenuTrigger>
       <MenuContent align="end" aria-label={t('managedSession.model.label')}>
-        <MenuRadioGroup
-          value={selectedModelKey}
-          onValueChange={(key) => {
-            const next = decodeModelKey(key);
-            onChange(next.modelId, next.effort);
-          }}
-        >
+        <MenuLabel>{t('managedSession.model.sectionLabel')}</MenuLabel>
+        {/* `onValueChange` deliberately omitted (optional on `MenuRadioGroup`): real selection
+            happens in each item's own `onSelect` below, which also decides whether to keep the
+            menu open — `onValueChange` alone cannot `preventDefault()` the close Radix already
+            started by the time it fires. */}
+        <MenuRadioGroup value={selectedModel?.modelId ?? ''}>
           {modelItems.map((item) => (
-            <MenuRadioItem key={item.key} description={item.description} value={item.key}>
+            <MenuRadioItem
+              key={item.modelId}
+              value={item.modelId}
+              onSelect={(event) => {
+                const nextEffort = item.hasEfforts
+                  ? value?.effort && item.efforts.includes(value.effort)
+                    ? value.effort
+                    : item.efforts[0]
+                  : undefined;
+                onChange(item.modelId, nextEffort);
+                if (item.hasEfforts) {
+                  // Keep the popover open so the just-revealed "Reasoning effort" section below
+                  // can be refined without reopening the menu (owner audit, round five).
+                  event.preventDefault();
+                }
+              }}
+            >
               {item.label}
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>
+        {showEffortSection && selectedModel ? (
+          <>
+            <MenuSeparator />
+            <MenuLabel>{t('managedSession.model.effortSectionLabel')}</MenuLabel>
+            <MenuRadioGroup value={value?.effort ?? ''}>
+              {selectedModel.efforts.map((effort) => (
+                <MenuRadioItem
+                  key={effort}
+                  value={effort}
+                  onSelect={() => onChange(selectedModel.modelId, effort)}
+                >
+                  {effort}
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </>
+        ) : null}
       </MenuContent>
     </Menu>
   );

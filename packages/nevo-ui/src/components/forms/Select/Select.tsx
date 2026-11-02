@@ -231,10 +231,18 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
 
     const label = (
       <SelectPrimitive.ItemText asChild>
+        {/* `label-sm` (weight 600), not `body-sm` (weight 400), whenever a description sits
+            underneath — `design-system.principles.information-hierarchy`'s own canonical table:
+            "Field label -> label-sm ... not body-sm font-medium" / "Description -> body-sm,
+            content-secondary". Both previously rendered at the same weight and a similar-enough
+            `text-current`/`text-content-secondary` lightness in this theme to read as one
+            undifferentiated block (owner audit, live: "nie mamy label i tekst, tylko wszystko
+            jednolita czcionka"). A plain option with no description keeps `body-sm` unchanged —
+            this only strengthens the pairing the hierarchy table is actually about. */}
         <Typography
           className={cn(selectItemLabelClassName, !structured && 'flex-1')}
           {...designSlot('SelectItem', 'label')}
-          variant="body-sm"
+          variant={hasDescription ? 'label-sm' : 'body-sm'}
         >
           {children}
         </Typography>

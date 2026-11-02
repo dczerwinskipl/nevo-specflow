@@ -251,12 +251,17 @@ export const MenuRadioItem = forwardRef<
               even though its full second-line description sat right underneath, uncut. The
               wrapping variant (`optionLabelWrappingClassName`, the same one branch/workspace
               pickers use to keep a long value fully readable) lets the title wrap onto a second
-              line instead of truncating, so nothing in either line is ever lost. */}
+              line instead of truncating, so nothing in either line is ever lost.
+              `label-sm` (weight 600), not `body-sm` (weight 400) — same canonical-table fix as
+              `Select`'s/`Combobox`'s own paired label (see `Select`'s own doc comment): owner
+              audit, live on the two-section Work-mode/Approval menu — a label and its description
+              rendered at the same weight read as "jednolita czcionka" (one undifferentiated
+              block) instead of a title over supporting text. */}
           <Typography
             as="span"
             className={cn(optionLabelWrappingClassName, 'block')}
             {...designSlot('MenuRadioItem', 'label')}
-            variant="body-sm"
+            variant="label-sm"
           >
             {children}
           </Typography>

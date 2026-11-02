@@ -276,11 +276,15 @@ export function ComboboxItem({
           <span className="flex min-w-0 flex-1 flex-col">
             <span className={cn('flex min-w-0', keepsReasonReadable && 'opacity-50')}>
               {/* Deliberately not an aria slot: a slotted label would become the whole accessible
-                  name and leave the visible description/meta out of it (WCAG 2.5.3). */}
+                  name and leave the visible description/meta out of it (WCAG 2.5.3).
+                  `text-label-sm` (weight 600), not `text-body-sm` (weight 400), whenever a
+                  description sits underneath — same canonical-table fix as `Select`'s own label
+                  (see that component's own doc comment); a plain option with no description keeps
+                  `text-body-sm` unchanged. */}
               <span
                 className={cn(
                   optionLabelWrappingClassName,
-                  'text-body-sm',
+                  hasDescription ? 'text-label-sm' : 'text-body-sm',
                   !structured && 'flex-1',
                 )}
                 data-combobox-item-part="label"

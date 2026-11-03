@@ -789,6 +789,10 @@ function ScenarioPrimaryContent({ onSwapSides }: { onSwapSides: () => void }) {
       <Button onClick={onSwapSides} size="sm">
         Swap sides
       </Button>
+      {/* The tab strip owns per-tab close; the whole region has no panel-level close beside it. */}
+      <Button onClick={() => void navigation.close()} size="sm">
+        Hide secondary region
+      </Button>
     </div>
   );
 }
@@ -911,6 +915,43 @@ export const FullConnectedScenarioContract: Story = {
       Math.abs(secondaryWidthPx(canvasElement) - fiftyFiftyWidth) <= 1.5,
       'Step 4: a push/pop inside a tab’s local stack must not resize (the resolver never sees it).',
     );
+    // The tab strip owns per-tab close, so there is no panel-level close beside it. Local depth is
+    // the breadcrumb row at the top of the tab panel (`← Item A › Item A detail`), never a Back in
+    // the rail, and the tab keeps its root's name.
+    assert(
+      canvas.queryByRole('button', { name: 'Close secondary content' }) === null,
+      'Step 4: with the tab strip shown, no panel-level close is rendered.',
+    );
+    const stepFourTabNames = [...canvasElement.querySelectorAll('[role="tab"] .sr-only')].map(
+      (name) => name.textContent,
+    );
+    assert(
+      stepFourTabNames.includes('Item A') && !stepFourTabNames.includes('Item A detail'),
+      `Step 4: the tab keeps its root name ("Item A") while its stack is deeper (got ${stepFourTabNames.join(', ')}).`,
+    );
+    const stepFourTrail = canvasElement.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
+    assert(
+      stepFourTrail !== null &&
+        stepFourTrail.closest('[role="tabpanel"]')?.firstElementChild === stepFourTrail,
+      'Step 4: the breadcrumb row is the first row of the tab panel.',
+    );
+    assert(
+      stepFourTrail.querySelector('button[aria-label="Back: Item A"]') !== null &&
+        canvasElement.querySelector('[data-workspace-tab-rail] button[aria-label^="Back"]') ===
+          null &&
+        stepFourTrail.querySelector('[aria-current="page"]')?.textContent === 'Item A detail',
+      'Step 4: the trail reads ← Item A › Item A detail, and the rail carries no Back.',
+    );
+    const railHeight = canvasElement
+      .querySelector('[data-workspace-surface="secondary"] [data-workspace-tab-rail]')
+      ?.getBoundingClientRect().height;
+    const trailHeight = stepFourTrail.getBoundingClientRect().height;
+    assert(
+      railHeight !== undefined &&
+        Math.abs(railHeight - 38) <= 0.5 &&
+        Math.abs(trailHeight - 28) <= 0.5,
+      `Step 4: the compact tab rail is 38px and the breadcrumb row 28px (got ${railHeight}/${trailHeight}).`,
+    );
 
     // Step 5: drag the splitter -> manual wins.
     const splitterBeforeDrag = workspaceSplitter(canvasElement);
@@ -1018,7 +1059,7 @@ export const FullConnectedScenarioContract: Story = {
     // empty (that fully-empty case, with no pinned tab at all, is `NoPinnedTabDynamicSplitContract`
     // below) — but the tab set, `activeTabId`, `mode` and the manual ratio are all still retained
     // unseen, exactly as §5 requires, which is what this step actually verifies.
-    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Hide secondary region' }));
     await waitFor(
       () => (document.querySelector('[data-scenario-detail-page="Item A"]') === null ? true : null),
       'Step 8: closing the whole region should stop rendering the active runtime tab’s content.',

@@ -36,6 +36,19 @@ export function popEntry<TEntry>(
   return flow.entries.length > 1 ? { ...flow, entries: flow.entries.slice(0, -1) } : null;
 }
 
+/**
+ * Pops every entry above `depth` (1 = the root entry) in one step, for a breadcrumb jump.
+ * `null` when `depth` is not an ancestor level (below 1, or not below the current length).
+ */
+export function popToDepth<TEntry>(
+  flow: SecondaryFlowModel<TEntry>,
+  depth: number,
+): SecondaryFlowModel<TEntry> | null {
+  return Number.isInteger(depth) && depth >= 1 && depth < flow.entries.length
+    ? { ...flow, entries: flow.entries.slice(0, depth) }
+    : null;
+}
+
 export function isCurrentEntry<TEntry extends { instanceKey: number }>(
   flow: SecondaryFlowModel<TEntry> | null,
   flowId: number,

@@ -6,6 +6,7 @@ import {
   type HTMLAttributes,
 } from 'react';
 import { cn } from '../../../lib';
+import { useKeyboardAvoidance } from '../../behaviors/useVisualViewportInset';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 
 export const AlertDialog = AlertDialogPrimitive.Root;
@@ -16,18 +17,21 @@ export const AlertDialogAction = AlertDialogPrimitive.Action;
 export const AlertDialogContent = forwardRef<
   ComponentRef<typeof AlertDialogPrimitive.Content>,
   ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & { container?: HTMLElement | null }
->(function AlertDialogContent({ className, container, ...props }, ref) {
+>(function AlertDialogContent({ className, container, style, ...props }, ref) {
   const capture = useDesignMetadata('AlertDialog');
+  // Re-centres within the visible area while the on-screen keyboard is open (no-op otherwise).
+  const keyboard = useKeyboardAvoidance(ref, { mode: 'center' });
 
   return (
     <AlertDialogPrimitive.Portal container={container}>
       <AlertDialogPrimitive.Overlay className="fixed inset-0 z-40 bg-overlay" />
       <AlertDialogPrimitive.Content
-        ref={ref}
+        ref={keyboard.ref}
         className={cn(
           'fixed left-1/2 top-1/2 z-50 grid w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-surface border border-border-default bg-surface-raised p-5 text-content-primary shadow-2xl outline-none',
           className,
         )}
+        style={{ ...style, ...keyboard.style }}
         {...props}
         {...capture}
       />

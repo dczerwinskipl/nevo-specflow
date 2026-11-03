@@ -104,6 +104,14 @@
   --spacing-shell-footer: calc(
     var(--spacing-control-height-default) + 2 * var(--spacing-shell-footer-padding)
   );
+  /*
+   * Split Secondary navigation (secondary-navigation.md, "Root tabs and breadcrumbs"): a compact
+   * root-tab rail — one compact control plus 6px above it, 38px including its divider — and, only
+   * while a tab is deeper than its root, one breadcrumb row of an inline control plus 2px above and
+   * below (28px). Together ~66px, near the 56px workspace header; at a tab root only the rail.
+   */
+  --spacing-tab-rail: calc(var(--spacing-control-height-compact) + var(--spacing) * 1.5);
+  --spacing-breadcrumb-row: calc(var(--spacing-control-height-inline) + var(--spacing));
   /* Minimum interactive target: 24px on every pointer, 44px on coarse pointers (see hitAreaClassName). */
   --spacing-target-min: 1.5rem;
   --spacing-target-touch: 2.75rem;

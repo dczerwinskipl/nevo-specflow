@@ -59,6 +59,7 @@ import {
   FileCheck,
   BookUser,
   PanelsTopLeft,
+  PanelRight,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -134,6 +135,7 @@ export const iconRegistry = {
   'file-check': FileCheck,
   'book-user': BookUser,
   'panels-top-left': PanelsTopLeft,
+  'panel-right': PanelRight,
 } satisfies Record<IconName, LucideIcon>;
 
 /**

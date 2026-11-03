@@ -34,6 +34,7 @@ export {
   useSecondaryLeaveGuard,
   useRegisterPinnedSecondaryTab,
   type PinnedSecondaryTabInput,
+  type AppWorkspaceProviderProps,
 } from './workspace/WorkspaceContext';
 export {
   defineSecondaryStack,

@@ -15,6 +15,7 @@ import type { AppWorkspaceSurface } from './workspaceSurface';
 import {
   isCurrentEntry,
   popEntry,
+  popToDepth,
   pushEntry,
   replaceEntry,
   startFlow,
@@ -32,9 +33,14 @@ import type {
   SecondaryStackActions,
   SecondaryStackDefinition,
 } from './SecondaryStack';
+import { useWorkspaceBrowserHistory } from './useWorkspaceBrowserHistory';
+import { resolveTabTitle, resolveTrail, type SecondaryTrailItem } from './secondaryTrail';
+
+export type { SecondaryTrailItem } from './secondaryTrail';
 
 interface RuntimePage {
   title: string;
+  breadcrumbLabel?: (params: object) => string;
   actions?: (props: { data: unknown; params: object }) => readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;
   menu?: WorkspaceHeaderMenu;
@@ -91,6 +97,10 @@ export interface SecondaryTabInfo {
   id: string;
   /** `false` only for the pinned tab (contract §3). */
   closable: boolean;
+  /**
+   * The tab's stable label: its stack ROOT's title (`tabLabel(rootParams)`, else the initial page's
+   * `title`) at any depth. Deeper levels are named by `WorkspaceContextValue.trail`, not here.
+   */
   title: string;
 }
 
@@ -104,6 +114,11 @@ export interface WorkspaceContextValue {
   secondary: WorkspaceSecondaryState | null;
   secondaryDepth: number;
   canGoBack: boolean;
+  /**
+   * The active runtime tab's local stack, root first: one titled level per entry
+   * (`trail.length === secondaryDepth`). Empty while no runtime tab is shown.
+   */
+  trail: readonly SecondaryTrailItem[];
   transition: WorkspaceTransition;
   /**
    * Unchanged signature AND unchanged observable behavior from today: always creates-or-replaces
@@ -133,6 +148,12 @@ export interface WorkspaceContextValue {
    */
   closeTab: (id: string) => Promise<boolean>;
   back: () => Promise<boolean>;
+  /**
+   * Pops the active tab's local stack back to `depth` levels (1 = its root) in ONE transition — a
+   * breadcrumb jump. Only the current page's leave guard is consulted (ancestors are not mounted).
+   * Resolves `false` for a depth that is not an ancestor level (`< 1` or `>= secondaryDepth`).
+   */
+  backTo: (depth: number) => Promise<boolean>;
   /** Closes the whole Secondary region. Tabs/flows survive hidden; reopening restores them. */
   close: () => Promise<boolean>;
   /** Application route blockers may call this before an ordinary route change. */
@@ -142,10 +163,11 @@ export interface WorkspaceContextValue {
 type LeaveGuard = () => boolean | Promise<boolean>;
 type NavigationTarget =
   | { kind: 'page'; page: string; params?: object }
-  | { kind: 'stack'; definition: RuntimeDefinition; rootParams: object };
+  | { kind: 'stack'; definition: RuntimeDefinition; rootParams: object }
+  | { kind: 'depth'; depth: number };
 
 type NavigationCommand = (
-  kind: 'push' | 'replace' | 'back' | 'close',
+  kind: 'push' | 'replace' | 'back' | 'backTo' | 'close',
   flowId: number,
   entryKey: number,
   target?: NavigationTarget,
@@ -195,36 +217,6 @@ function activeRuntimeTab(snapshot: TabsSnapshot): TabRecord | null {
   }
 
   return snapshot.byId[snapshot.activeTabId] ?? null;
-}
-
-/**
- * The Secondary root-tab strip's label for one open tab (contract item-tabs.md's `ItemTab.label`,
- * shown by both the tab strip and the switcher button — `switcher({ label, ... })` in
- * `ItemTabsTypes.ts` already renders exactly this value, never a hardcoded category name; any
- * "generic label" a product sees is this function returning the same string for every instance,
- * not the strip rendering something else).
- *
- * `definition.tabLabel`, when provided, is tried first and computed from the flow's own
- * `rootParams` — available synchronously the instant the tab opens, unlike `useData`'s result — so
- * two tabs of the same stack opened for two different entities (`openTab` with `instanceId`, or
- * `open` replaced across entities) can be told apart by name. Falling back to the active page's own
- * static `title` is correct only while a stack never opens more than one distinguishable instance;
- * a stack whose tabs must show the opened entity's own name needs `tabLabel`, not a page title.
- */
-function resolveTabTitle(flow: SecondaryFlow): string {
-  const entry = flow.entries.at(-1);
-  if (!entry) {
-    return '';
-  }
-
-  const dynamicLabel = entry.definition.tabLabel?.(entry.rootParams);
-  if (dynamicLabel !== undefined) {
-    return dynamicLabel;
-  }
-
-  const screen = entry.definition.screens[entry.page];
-
-  return screen?.title ?? '';
 }
 
 function findTabByFlowId(
@@ -536,10 +528,28 @@ function publicEntry(
   };
 }
 
+/** How many workspace `back()` calls hide the region: the active runtime tab's stack length. */
+function backDistance(snapshot: TabsSnapshot): number {
+  return activeRuntimeTab(snapshot)?.flow.entries.length ?? 0;
+}
+
+export interface AppWorkspaceProviderProps {
+  scopeKey?: string | number;
+  /**
+   * Opt-in: mirror the Secondary's own Back into browser history, so browser Back / the Android
+   * back gesture steps back inside the Secondary (sub-page → parent → hide) before leaving the page.
+   * Each step a workspace `back()` would undo adds one same-URL entry; UI Back/Close consumes it.
+   * Enable it on exactly one provider per page (the screen's own); only the first enabled provider
+   * mounted owns history. See secondary-navigation.md, "Browser and system Back".
+   */
+  browserHistory?: boolean;
+}
+
 export function AppWorkspaceProvider({
   children,
   scopeKey,
-}: PropsWithChildren<{ scopeKey?: string | number }>) {
+  browserHistory = false,
+}: PropsWithChildren<AppWorkspaceProviderProps>) {
   const [tabsState, setTabsState] = useState<TabsSnapshot>(() => emptyTabsSnapshot(scopeKey));
   const [pinnedTab, setPinnedTab] = useState<PinnedSecondaryTabInput | null>(null);
   const tabsRef = useRef<TabsSnapshot>(tabsState);
@@ -976,6 +986,13 @@ export function AppWorkspaceProvider({
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
 
+        // A breadcrumb jump to a level that is not an ancestor changes nothing, so it must not
+        // consult (and possibly prompt) the leave guard either.
+        const targetDepth = target?.kind === 'depth' ? target.depth : 0;
+        if (kind === 'backTo' && !popToDepth(previousFlow, targetDepth)) {
+          return false;
+        }
+
         if (
           !(await passesGuard(previousFlow)) ||
           !mounted.current ||
@@ -1033,7 +1050,27 @@ export function AppWorkspaceProvider({
           return true;
         }
 
-        if (!target) {
+        if (kind === 'backTo') {
+          // One 'pop' transition for the whole jump: the levels in between are never shown, and
+          // the browser-history mirror consumes all of their entries with one `go(-n)`.
+          const nextFlow = popToDepth(previousFlow, targetDepth)!;
+          publishTabs(
+            replaceTabFlow(latest, tabId, nextFlow),
+            'pop',
+            isVisible ? previousFlow : null,
+            isVisible ? nextFlow : null,
+          );
+          guards.current.delete(current.instanceKey);
+          // Focus returns to what opened the level above the target, inside the target page.
+          restoreFocus(
+            previousFlow.entries[targetDepth]?.returnFocusTo ?? null,
+            nextFlow.entries.at(-1)?.instanceKey ?? null,
+          );
+
+          return true;
+        }
+
+        if (!target || target.kind === 'depth') {
           throw new Error('Secondary navigation target is required.');
         }
 
@@ -1082,6 +1119,18 @@ export function AppWorkspaceProvider({
     return tab && top ? navigate('back', tab.flow.id, top.instanceKey) : Promise.resolve(true);
   }, [navigate]);
 
+  const backTo = useCallback(
+    (depth: number) => {
+      const tab = activeRuntimeTab(tabsRef.current);
+      const top = tab?.flow.entries.at(-1);
+
+      return tab && top
+        ? navigate('backTo', tab.flow.id, top.instanceKey, { kind: 'depth', depth })
+        : Promise.resolve(false);
+    },
+    [navigate],
+  );
+
   const close = useCallback(() => {
     const tab = activeRuntimeTab(tabsRef.current);
     const top = tab?.flow.entries.at(-1);
@@ -1104,6 +1153,17 @@ export function AppWorkspaceProvider({
   const visibleTabsState =
     tabsState.scopeKey === scopeKey ? tabsState : emptyTabsSnapshot(scopeKey);
   const activeTab = activeRuntimeTab(visibleTabsState);
+
+  const readBackDistance = useCallback(
+    () => (tabsRef.current.scopeKey === currentScope.current ? backDistance(tabsRef.current) : 0),
+    [],
+  );
+  useWorkspaceBrowserHistory({
+    enabled: browserHistory,
+    depth: backDistance(visibleTabsState),
+    getDepth: readBackDistance,
+    back,
+  });
   // A stale (different-scope) snapshot never leaks its transition into the new scope; an entirely
   // empty one has nothing to leak in the first place.
   const stateIsCurrentOrEmpty = tabsState.scopeKey === scopeKey || tabsState.order.length === 0;
@@ -1116,7 +1176,7 @@ export function AppWorkspaceProvider({
     const runtimeEntries: SecondaryTabInfo[] = visibleTabsState.order.map((id) => ({
       id,
       closable: true,
-      title: resolveTabTitle(visibleTabsState.byId[id]!.flow),
+      title: resolveTabTitle(visibleTabsState.byId[id]!.flow.entries),
     }));
 
     return {
@@ -1131,6 +1191,7 @@ export function AppWorkspaceProvider({
           : null,
       secondaryDepth: activeTab?.flow.entries.length ?? 0,
       canGoBack: (activeTab?.flow.entries.length ?? 0) > 1,
+      trail: activeTab ? resolveTrail(activeTab.flow.entries) : [],
       transition: stateIsCurrentOrEmpty
         ? transition
         : { action: 'close', revision: transition.revision, incoming: null, outgoing: null },
@@ -1143,6 +1204,7 @@ export function AppWorkspaceProvider({
       activateTab,
       closeTab,
       back,
+      backTo,
       close,
       canLeaveScope,
     };
@@ -1150,6 +1212,7 @@ export function AppWorkspaceProvider({
     activeTab,
     activateTab,
     back,
+    backTo,
     close,
     closeTab,
     canLeaveScope,

@@ -31,9 +31,17 @@ examples: Storybook `SpecFlow/Screens/Editor mode (mock)` and the `ItemTabs` sto
 A controlled strip of opened items (`items`, `activeId`, `onActivate`, `onClose`, `scope`). The host
 owns state, guards and the tab panel; the strip renders no panel.
 
-- **Placement.** The strip MUST be the content of a region header (`h-14`), left of the header
-  actions. It MUST NOT add a second row under the header. Tabs fill the header height; the active
-  tab's underline sits on the header border.
+- **Placement.** The strip MUST be the content of a region header, left of the header actions. It
+  MUST NOT add a second row under the header. `density` sets the root height: `header` (default)
+  fills the 56 px workspace header (`h-14`, Documents); `rail` fills the split Secondary's compact
+  38 px root-tab rail (`--spacing-tab-rail`, see [Secondary navigation](secondary-navigation.md),
+  "Root tabs and breadcrumbs"). Tabs are one control high (default 36 px in `header`, compact 32 px
+  in `rail`), anchored to the bottom edge with 2 px between them; the active tab's underline sits
+  on the header border.
+- **Tab look.** Only the active tab carries a surface: `bg-surface-control` (the lightest control
+  fill) with the 2 px `action-primary` underline and `content-primary` text. Inactive tabs are
+  plain `content-secondary` text on the header and show `surface-hover` only on hover. A fill on
+  every tab read as a row of separate buttons. Both densities share this look.
 - **Width.** A tab is 140-180 px. If `N x 140` fits, all tabs are visible; otherwise
   `floor((width - 52) / 140)` tabs are visible, the active one always among them, and the rest go to
   the `Opened (N)` menu. Labels truncate in the middle so the extension stays visible; the tooltip
@@ -111,8 +119,8 @@ disabled?, shortcut?, onPress }`.
 - **Promotion.** Direct header actions follow the header action budget of the workspace header. The
   action that persists changes while there are unsaved changes wins first; then lower `promoted`;
   the rest stay menu-only. The header MUST NOT change geometry when state changes.
-- **Height.** `ItemTabs` sets its own height (the workspace header slot minus its divider), so a
-  host renders it inside `WorkspaceHeader.identityContent` without sizing it.
+- **Height.** `ItemTabs` sets its own height (its `density` slot minus the divider), so a host
+  renders it inside `WorkspaceHeader.identityContent` without sizing it.
 
 ## Gaps to close in nevo-ui
 

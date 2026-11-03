@@ -42,7 +42,19 @@ interface DragState {
   pointerId: number;
   startClientX: number;
   startRatio: number;
+  /** Becomes true once the pointer has travelled `DRAG_START_THRESHOLD_PX`; see that constant. */
+  moved: boolean;
 }
+
+/**
+ * Horizontal travel (px) before a press on the splitter counts as a drag. Below it, `pointermove`
+ * reports nothing: a plain click on the splitter, or the 0-2px jitter a real mouse/touch press
+ * produces, used to report a ratio and so silently enter `mode: 'manual'` (contract §5) — after
+ * which opening a second root tab no longer switched to the documented 50/50 split
+ * (full-session-screen-structure.md §10.2), leaving Secondary at its narrow single-tab width.
+ * Only a genuine drag is a user's manual sizing choice.
+ */
+const DRAG_START_THRESHOLD_PX = 3;
 
 function clampRatio(ratio: number, min: number, max: number): number {
   if (min > max) {
@@ -92,6 +104,7 @@ export function WorkspaceSplitter({
       pointerId: event.pointerId,
       startClientX: event.clientX,
       startRatio: secondaryRatio,
+      moved: false,
     };
     try {
       // Pointer capture keeps receiving move/up even if the pointer leaves the thin hit area
@@ -110,7 +123,16 @@ export function WorkspaceSplitter({
       return;
     }
 
-    const deltaRatio = (event.clientX - drag.startClientX) / availableWidth;
+    const deltaPx = event.clientX - drag.startClientX;
+    if (!drag.moved) {
+      if (Math.abs(deltaPx) < DRAG_START_THRESHOLD_PX) {
+        return;
+      }
+
+      drag.moved = true;
+    }
+
+    const deltaRatio = deltaPx / availableWidth;
     onSecondaryRatioChange(clamp(drag.startRatio + sign * deltaRatio));
   };
 

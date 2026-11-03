@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useLayoutEffect,
   useState,
   type HTMLAttributes,
   type KeyboardEvent,
@@ -13,6 +12,7 @@ import {
   hitAreaClassName,
 } from '../../../design-system/interactionRecipes';
 import { resolveRovingIndex } from '../../behaviors/rovingSelection';
+import { useElementWidth } from '../../behaviors/useElementWidth';
 import { Button } from '../../actions/Button';
 import { Spinner } from '../../feedback/Spinner';
 import { Icon } from '../../foundations/Icon';
@@ -58,6 +58,14 @@ export interface ItemTabsProps extends Omit<
   variant?: 'auto' | 'strip' | 'switcher';
   /** Container width in px under which `auto` renders the switcher. Default 480. */
   switcherBelow?: number;
+  /**
+   * Root height. `header` (default): fills a 56px `WorkspaceHeader` slot (minus its 1px divider),
+   * tabs anchored to its bottom edge — the Documents tab header. `rail`: a compact tab rail of
+   * `--spacing-tab-rail` (38px, minus the divider) with compact-height tabs — the split Secondary's
+   * root tabs, where a breadcrumb row (not a second header) follows when a tab is deeper than its
+   * root. Only the height changes; the tab look and the width policy are the same.
+   */
+  density?: 'header' | 'rail';
   /** Replaceable copy. Defaults are English. */
   labels?: Partial<Omit<ItemTabsLabels, 'status'>> & { status?: Partial<ItemTabsLabels['status']> };
 }
@@ -177,11 +185,14 @@ function Tab({
             onFocus={() => onFocusChange(item.id)}
             onBlur={() => onFocusChange(null)}
             className={cn(
-              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 border-b-2 border-solid border-transparent pl-2.5 pr-8 text-label-sm',
+              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-t-control border-b-2 border-solid border-transparent pl-2.5 pr-8 text-label-sm',
               'hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
               fastColorTransitionClassName,
+              // Only the active tab carries a surface (the lightest control fill) with the primary
+              // underline; inactive tabs are plain text on the header until hovered. A fill on
+              // every tab made the strip read as a row of separate buttons.
               active
-                ? 'border-b-action-primary text-content-primary'
+                ? 'border-b-action-primary bg-surface-control text-content-primary'
                 : muted
                   ? 'text-content-muted'
                   : 'text-content-secondary',
@@ -248,34 +259,6 @@ function CloseSlot({
   );
 }
 
-/*
- * Measures the root width. Kept local: the other ResizeObserver users in this package (AppShell,
- * AppWorkspace, WorkspaceHeader, ScrollArea, Progress) each derive their own value from the
- * observer, and none exposes a reusable width hook.
- */
-function useElementWidth() {
-  const [element, setElement] = useState<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState<number>();
-  useLayoutEffect(() => {
-    if (!element) {
-      return undefined;
-    }
-
-    const update = () => setWidth(element.getBoundingClientRect().width);
-    update();
-    if (typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
-
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [element]);
-
-  return { width, element, setElement };
-}
-
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
   if (typeof ref === 'function') {
     ref(value);
@@ -288,7 +271,9 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
  * Tab strip for a set of opened items, hosted in a workspace header. Controlled and content-blind:
  * the host owns the items and the active id, and renders the tab panel (see `getItemTabPanelId`).
  * Visible tabs are 140-180 px wide; the rest go to an `Opened (N)` menu. Below `switcherBelow`
- * the strip becomes a single switcher button opening the same menu. `className` styles the root; by default the root is as tall as the 56 px workspace header slot minus its 1 px divider (`h-[calc(3.5rem-1px)]`), so it needs no host sizing inside `WorkspaceHeader.identityContent`.
+ * the strip becomes a single switcher button opening the same menu. `className` styles the root; the
+ * root is as tall as its host slot minus the 1 px divider (`density`: the 56 px workspace header, or
+ * the 38 px Secondary tab rail), so it needs no host sizing inside `WorkspaceHeader.identityContent`.
  */
 export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemTabs(
   {
@@ -300,6 +285,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     activation = 'manual',
     variant = 'auto',
     switcherBelow = ITEM_TABS_SWITCHER_BELOW,
+    density = 'header',
     labels: labelOverrides,
     className,
     ...props
@@ -307,6 +293,9 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
   forwardedRef,
 ) {
   const labels = resolveLabels(labelOverrides);
+  const rootHeight =
+    density === 'rail' ? 'h-[calc(var(--spacing-tab-rail)-1px)]' : 'h-[calc(3.5rem-1px)]';
+  const tabHeight = density === 'rail' ? 'h-control-height-compact' : 'h-control-height-default';
   const { width, element: root, setElement } = useElementWidth();
   const setRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -386,7 +375,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
       <div
         {...props}
         ref={setRef}
-        className={cn('relative flex h-[calc(3.5rem-1px)] w-full min-w-0 items-center', className)}
+        className={cn('relative flex w-full min-w-0 items-center', rootHeight, className)}
       >
         <Menu>
           <MenuTrigger asChild>
@@ -432,14 +421,14 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     <div
       {...props}
       ref={setRef}
-      className={cn('relative flex h-[calc(3.5rem-1px)] w-full min-w-0 items-stretch', className)}
+      className={cn('relative flex w-full min-w-0 items-end', rootHeight, className)}
     >
       <TooltipProvider delayDuration={400}>
         <div
           role="tablist"
           aria-label={labels.tablist}
           aria-orientation="horizontal"
-          className="flex h-full min-w-0 items-stretch"
+          className={cn('flex min-w-0 items-stretch gap-0.5', tabHeight)}
           onKeyDown={onKeyDown}
         >
           {visible.map((item, index) => (
@@ -458,7 +447,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
             />
           ))}
         </div>
-        <div className="pointer-events-none absolute left-0 top-0 flex h-full">
+        <div className={cn('pointer-events-none absolute bottom-0 left-0 flex gap-0.5', tabHeight)}>
           {visible.map((item, index) => (
             <CloseSlot
               key={item.id}
@@ -473,7 +462,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
         </div>
       </TooltipProvider>
       {overflowing ? (
-        <div className="flex shrink-0 items-center pl-1">
+        <div className={cn('flex shrink-0 items-center pl-1', tabHeight)}>
           <Menu>
             <MenuTrigger asChild>
               <button

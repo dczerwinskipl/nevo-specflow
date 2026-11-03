@@ -89,6 +89,7 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
   interface TabStripPages {
     summary: Record<never, never>;
     detail: Record<never, never>;
+    leaf: { name: string };
   }
 
   function itemStack(id: string, label: string) {
@@ -114,7 +115,26 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
         },
         detail: {
           title: `${label} detail`,
-          component: ({ data }) => <div data-item-page={`${label}:detail`}>{`${data} detail`}</div>,
+          component: ({ data }) => {
+            const stack = useSecondaryStack<TabStripPages>();
+
+            return (
+              <div data-item-page={`${label}:detail`}>
+                <p>{`${data} detail`}</p>
+                <button
+                  type="button"
+                  onClick={() => void stack.navTo('leaf', { name: 'admission.mjs' })}
+                >
+                  {`Push ${label} leaf`}
+                </button>
+              </div>
+            );
+          },
+        },
+        leaf: {
+          title: 'Tool actions',
+          breadcrumbLabel: ({ name }) => `Read file ${name}`,
+          component: ({ data }) => <div data-item-page={`${label}:leaf`}>{`${data} leaf`}</div>,
         },
       },
     });
@@ -137,6 +157,9 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
           </button>
           <button type="button" onClick={() => void navigation.openTab(itemB, {})}>
             openTab B
+          </button>
+          <button type="button" onClick={() => void navigation.close()}>
+            hide secondary
           </button>
         </AppWorkspace.Primary>
         {pinned ? (
@@ -236,8 +259,6 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
     await click('openTab B');
     expect(document.querySelector('[data-item-page="Item A:detail"]')).toBeNull();
 
-    // The tab's label follows the active page's own title ("Item A detail" once pushed), so the
-    // stable `data-item-id` (not the label) identifies which tab is Item A's.
     const tablist = document.querySelector('[role="tablist"]')!;
     const itemATab = tablist.querySelector<HTMLElement>('[data-item-id="test-strip-item-a"]');
     expect(itemATab).toBeTruthy();
@@ -249,6 +270,197 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
 
     expect(document.querySelector('[data-item-page="Item A:detail"]')).not.toBeNull();
     expect(document.querySelector('[data-item-page="Item A:summary"]')).toBeNull();
+  });
+
+  it('shows no split-layout Back at a tab root while the strip is shown; Back appears only to pop a local stack', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+    expect(screen.queryByRole('button', { name: /^Back/ })).toBeNull();
+    expect(document.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
+
+    await click('Push Item A detail');
+    expect(screen.getByRole('button', { name: /^Back/ })).toBeTruthy();
+
+    await click('Back: Item A');
+    expect(document.querySelector('[data-item-page="Item A:summary"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /^Back/ })).toBeNull();
+  });
+
+  it('renders no panel-level close while the strip is shown; each closable tab keeps its own close', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+
+    expect(document.querySelector('[role="tablist"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close secondary content' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close Item A' })).toBeTruthy();
+  });
+
+  it('keeps the single panel close when no strip is shown', async () => {
+    mountTabs({ pinned: false });
+    await click('openTab A');
+    expect(document.querySelector('[role="tablist"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close secondary content' })).toBeTruthy();
+  });
+
+  const breadcrumbs = () => document.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
+
+  it('keeps each tab labelled by its root at any depth', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+    await click('Push Item A detail');
+    await click('Push Item A leaf');
+
+    const tablist = document.querySelector<HTMLElement>('[role="tablist"]')!;
+    expect(within(tablist).getByRole('tab', { name: 'Item A' })).toBeTruthy();
+    expect(within(tablist).queryByRole('tab', { name: 'Tool actions' })).toBeNull();
+    // The region heading names the tab (its root); the detail's own content heading names the
+    // object, so the two never duplicate one heading.
+    expect(
+      document.querySelector('[data-workspace-surface="secondary"] h2[data-workspace-header-title]')
+        ?.textContent,
+    ).toBe('Item A');
+  });
+
+  it('renders the breadcrumb row as the first child of the tab panel only while deeper than the root', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+    expect(breadcrumbs()).toBeNull();
+
+    await click('Push Item A detail');
+    const row = breadcrumbs()!;
+    expect(row).not.toBeNull();
+    expect(secondaryHeader()?.contains(row)).toBe(false);
+    const panel = row.closest<HTMLElement>('[role="tabpanel"]')!;
+    expect(panel.firstElementChild).toBe(row);
+    expect(panel.querySelector('[data-item-page="Item A:detail"]')).not.toBeNull();
+
+    // `← Item A › Item A detail`: a one-level Back, the clickable root, the plain current level.
+    expect(within(row).getByRole('button', { name: 'Back: Item A' })).toBeTruthy();
+    expect(within(row).getByRole('button', { name: 'Item A' })).toBeTruthy();
+    const current = row.querySelector('[aria-current="page"]')!;
+    expect(current.textContent).toBe('Item A detail');
+    expect(current.getAttribute('title')).toBe('Item A detail');
+  });
+
+  it('names a level by its breadcrumbLabel and never shows Back or the trail in the rail header', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+    await click('Push Item A detail');
+    await click('Push Item A leaf');
+
+    const row = breadcrumbs()!;
+    const segments = [...row.querySelectorAll('li')].map((item) => item.textContent);
+    expect(segments).toEqual(['Item A', 'Item A detail', 'Read file admission.mjs']);
+    expect(within(secondaryHeader() as HTMLElement).queryByRole('button', { name: /^Back/ })).toBe(
+      null,
+    );
+  });
+
+  it('pops several levels in one step from an ancestor segment, and one level from ←', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+    await click('Push Item A detail');
+    await click('Push Item A leaf');
+
+    await act(async () => {
+      fireEvent.click(within(breadcrumbs()!).getByRole('button', { name: 'Item A' }));
+      await Promise.resolve();
+    });
+    expect(document.querySelector('[data-item-page="Item A:summary"]')).not.toBeNull();
+    expect(breadcrumbs()).toBeNull();
+
+    await click('Push Item A detail');
+    await click('Push Item A leaf');
+    await click('Back: Item A detail');
+    expect(document.querySelector('[data-item-page="Item A:detail"]')).not.toBeNull();
+    expect(breadcrumbs()?.querySelector('[aria-current="page"]')?.textContent).toBe(
+      'Item A detail',
+    );
+  });
+
+  it('sizes the split header as the compact tab rail only while the strip is shown', async () => {
+    mountTabs({ pinned: true });
+    const headerRow = () =>
+      document.querySelector('[data-workspace-surface="secondary"] [data-workspace-tab-rail]');
+    expect(headerRow()).toBeNull();
+
+    await click('openTab A');
+    expect(headerRow()?.className).toContain('h-tab-rail');
+    const strip = document.querySelector('[role="tablist"]')!.parentElement!;
+    expect(strip.className).toContain('h-[calc(var(--spacing-tab-rail)-1px)]');
+
+    await click('Close Item A');
+    expect(headerRow()).toBeNull();
+  });
+
+  it.each([
+    [470, 'strip'],
+    [340, 'strip'],
+    [320, 'switcher'],
+  ] as const)(
+    'keeps the strip down to a narrower header than ItemTabs’ 480px default (%ipx -> %s)',
+    async (stripWidth, expected) => {
+      // Only the ItemTabs root (the 38px tab-rail row) reports the narrow width; everything else
+      // keeps the split-capable 1400px so the region still renders through the desktop path.
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        const width = this.className.includes('h-[calc(var(--spacing-tab-rail)-1px)]')
+          ? stripWidth
+          : 1400;
+
+        return {
+          width,
+          height: 56,
+          x: 0,
+          y: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          toJSON: () => ({}),
+        };
+      });
+      mountTabs({ pinned: true });
+
+      await click('openTab A');
+      await click('openTab B');
+
+      if (expected === 'strip') {
+        expect(document.querySelector('[role="tablist"]')).not.toBeNull();
+      } else {
+        expect(document.querySelector('[role="tablist"]')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Item B, 3 opened' })).toBeTruthy();
+      }
+    },
+  );
+
+  it('marks the tab whose content is actually shown as selected after the runtime region is hidden', async () => {
+    mountTabs({ pinned: true });
+
+    await click('openTab A');
+    await click('hide secondary');
+
+    // The runtime region is hidden (contract §9.3); the pinned content is what renders now.
+    expect(screen.getByText('Pinned context content')).toBeTruthy();
+    const tablist = document.querySelector<HTMLElement>('[role="tablist"]')!;
+    expect(
+      within(tablist).getByRole('tab', { name: 'Context' }).getAttribute('aria-selected'),
+    ).toBe('true');
+    expect(within(tablist).getByRole('tab', { name: 'Item A' }).getAttribute('aria-selected')).toBe(
+      'false',
+    );
+    // The region keeps a heading naming the shown tab (the strip itself is not a heading).
+    expect(
+      document.querySelector('[data-workspace-surface="secondary"] h2[data-workspace-header-title]')
+        ?.textContent,
+    ).toBe('Context');
   });
 });
 
@@ -409,5 +621,158 @@ describe('AppWorkspace secondarySide (workspace-dynamic-split.md §4.2 last bull
 
     expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
     expect(mountIds).toEqual(idsBefore);
+  });
+});
+
+describe('AppWorkspace stacked Secondary header (unchanged by the split breadcrumb row)', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    Element.prototype.scrollIntoView ??= () => undefined;
+    Element.prototype.scrollTo ??= () => undefined;
+    window.scrollTo = () => undefined;
+  });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const stack = defineSecondaryStack<
+    Record<never, never>,
+    string,
+    { detail: Record<never, never> }
+  >({
+    id: 'test-stacked-item',
+    initial: 'summary' as never,
+    useData: () => ({ status: 'ready', data: 'x' }),
+    screens: {
+      summary: {
+        title: 'Item',
+        component: function Summary() {
+          const stack = useSecondaryStack<{ detail: Record<never, never> }>();
+
+          return (
+            <button type="button" onClick={() => void stack.navTo('detail')}>
+              push detail
+            </button>
+          );
+        },
+      },
+      detail: { title: 'Item detail', component: () => <div>detail</div> },
+    } as never,
+  });
+
+  function Host() {
+    const navigation = useSecondaryNavigation();
+    useRegisterPinnedSecondaryTab({ title: 'Context' });
+
+    return (
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
+          <button type="button" onClick={() => void navigation.openTab(stack, {})}>
+            openTab
+          </button>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header={<WorkspaceHeader title="Context" />}>
+          <div>Pinned context content</div>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    );
+  }
+
+  it('keeps Back and the panel close in the header and renders no split breadcrumb row', async () => {
+    render(
+      <AppWorkspaceProvider>
+        <AppShell navigation={<div>Nav</div>}>
+          <Host />
+        </AppShell>
+      </AppWorkspaceProvider>,
+    );
+    expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'openTab', hidden: true }));
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'push detail', hidden: true }));
+      await Promise.resolve();
+    });
+
+    const secondary = document.querySelector('[data-workspace-surface="secondary"]');
+    expect(secondary).not.toBeNull();
+    expect(
+      within(secondary as HTMLElement).getAllByRole('button', { name: 'Back', hidden: true })[0],
+    ).toBeTruthy();
+    expect(
+      within(secondary as HTMLElement).getByRole('button', {
+        name: 'Close secondary content',
+        hidden: true,
+      }),
+    ).toBeTruthy();
+    // Mobile keeps its own navigation: header Back, no breadcrumb row, the 56px header (no rail).
+    expect(document.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
+    expect(document.querySelector('[data-workspace-tab-rail]')).toBeNull();
+  });
+
+  it('keeps Primary at the full width while a dynamic-split Secondary slides over it', async () => {
+    // A phone width: the dynamic resolver stacks, so Secondary covers Primary instead of sharing
+    // the row. Primary used to be sized by the split ratio's leftover (~45px of 375px) during the
+    // whole slide-in.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      width: 375,
+      height: 812,
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 375,
+      bottom: 812,
+      toJSON: () => ({}),
+    }));
+    function DynamicHost() {
+      const navigation = useSecondaryNavigation();
+      useRegisterPinnedSecondaryTab({ title: 'Context' });
+
+      return (
+        <AppWorkspace split="dynamic">
+          <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
+            <button type="button" onClick={() => void navigation.openTab(stack, {})}>
+              openTab
+            </button>
+          </AppWorkspace.Primary>
+          <AppWorkspace.Secondary header={<WorkspaceHeader title="Context" />}>
+            <div>Pinned context content</div>
+          </AppWorkspace.Secondary>
+        </AppWorkspace>
+      );
+    }
+
+    render(
+      <AppWorkspaceProvider>
+        <AppShell navigation={<div>Nav</div>}>
+          <DynamicHost />
+        </AppShell>
+      </AppWorkspaceProvider>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'openTab', hidden: true }));
+      await Promise.resolve();
+    });
+
+    expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
+    expect(document.querySelector('[data-workspace-surface="secondary"]')).not.toBeNull();
+    const primary = document.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    const maxWidth = primary?.style.maxWidth ?? '';
+    expect(maxWidth === '100%' || Number.parseFloat(maxWidth) >= 375).toBe(true);
   });
 });

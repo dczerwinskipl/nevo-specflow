@@ -106,7 +106,8 @@ the route transition has been approved, changing the provider's `scopeKey` inval
 its flow. Forced context invalidation (logout, revoked global permissions, destroyed
 workspace scope) intentionally bypasses leave guards and removes the flow.
 Do not treat the `scopeKey` change itself as an ordinary guarded user navigation.
-Browser/system Back implementation belongs in that router adapter, not inside feature screens.
+Browser/system Back _between routes_ belongs in that router adapter, not inside feature screens;
+Back _inside_ the Secondary is the provider's opt-in `browserHistory` (see "Browser and system Back").
 
 `useSecondaryLeaveGuard` optionally registers a guard for the active page. Navigation checks
 the guard before replacing, popping or closing that page; denied transitions leave the state intact.
@@ -154,16 +155,96 @@ may remount screens; an ordinary data update must not.
 
 AppWorkspace owns the responsive split/stacked choice and automatic header controls.
 On Narrow, the active runtime Secondary replaces visible Primary and Back occupies the navigation
-position instead of the global hamburger. On desktop/split, Back and Close are provided by the
-workspace header. Default Secondary is not part of the runtime page stack.
+position instead of the global hamburger. On desktop/split with a single runtime flow (no tab
+strip), Back and Close are provided by the workspace header. With the root-tab strip shown on
+desktop/split, see "Root tabs and breadcrumbs" below. Default Secondary is not part of the runtime
+page stack.
 
-Browser history/Back interception and serialization of transient pages are **out of scope**.
-The current implementation preserves the mounted active page across ordinary `ready`
+### Root tabs and breadcrumbs (split layout)
+
+While 2+ root tabs are open on a split layout, the Secondary has no 56 px header: its navigation is
+one compact **tab rail** and, only while the active tab is deeper than its root, one **breadcrumb
+row** inside the tab panel.
+
+- **Tab label = root.** `tabs[].title` is the tab's stack ROOT title (`tabLabel(rootParams)`, else
+  the initial page's `title`) at any depth. A tab never renames itself to the detail open inside it
+  (Work history → a tool action stays "Work history").
+- **Tab rail.** `ItemTabs density="rail"`: `--spacing-tab-rail` = compact control (32 px) + 6 px =
+  38 px including the divider, `px-2`. Lighter tabs: only the active one has a surface (see
+  [Item tabs](item-tabs.md)). The rail keeps the screen's declared actions, no Back and no
+  panel-level Close (each closable tab owns its `x`). Its divider sits at 38 px, deliberately not
+  aligned with Primary's 56 px header: the rail is a tab row, not a title header.
+- **Breadcrumb row.** `SecondaryBreadcrumbRow` (DS `Breadcrumbs overflow="collapse"`) is the first
+  child of the tab panel (`data-workspace-breadcrumbs`), `--spacing-breadcrumb-row` = inline control
+  (24 px) + 4 px = 28 px, `px-3`, no divider; content starts directly under it and keeps its own
+  title heading. Anatomy: `← Root › … › Parent › Current`. The leading `←` (`IconButton xs`,
+  accessible name `labels.backToParent(parentTitle)`) pops one level; every ancestor segment is an
+  `onPress` button that pops straight back to its level (the root segment returns to the tab's root
+  list); the current level is plain text (`aria-current="page"`), truncates with an ellipsis and
+  keeps its full text as `title`. Ancestors are capped (`max-w-48`) and truncate.
+- **Collapse.** Root and current always show. Below 480 px of measured row width every middle
+  segment folds into one `…` menu (3+ levels read `Root › … › Current`); wider, at most four
+  segments show and the oldest middle ones fold first. The `…` menu lists the folded levels in
+  order, so every ancestor stays one click away (`collapseBreadcrumbs`).
+- **Segment titles** come from the entries, never from data or paths: a screen may declare
+  `breadcrumbLabel: (params) => string` (for example the opened Work's name carried in its params);
+  the first page of a stack (the tab root, or another module pushed with `navTo(stack, params)`)
+  uses that stack's `tabLabel(rootParams)`; otherwise the screen's static `title`. Do not put full
+  file paths in segments; a segment is a short name.
+- **Heights.** At a tab root: 38 px of navigation, content starts under the rail. In a detail:
+  38 + 28 = 66 px, close to the 56 px Primary header.
+- **API.** `WorkspaceContextValue.trail` lists the active runtime tab's levels root first
+  (`{ key, title }`, `trail.length === secondaryDepth`); `backTo(depth)` pops to `depth` levels
+  (1 = root) in **one** `pop` transition, consulting only the current page's leave guard, and
+  resolves `false` for a depth that is not an ancestor. With `browserHistory`, a jump of N levels
+  lowers the desired depth by N and the provider consumes exactly N entries with one `go(-N)`.
+- **Not applied** on stacked/mobile (its header Back + title + Close stay; the strip keeps the
+  56 px `header` density there) and not to a single runtime flow without a strip, whose header
+  already shows the current screen's own identity next to Back: a trail there would repeat the
+  title and Back, and the product's custom screen header (status, subtitle) would have nowhere to
+  go. The pinned/declarative tab has no runtime stack and therefore no breadcrumb row.
+
+### Browser and system Back
+
+`<AppWorkspaceProvider browserHistory>` (opt-in, default off) mirrors the Secondary's own `back()`
+into browser history so browser Back and the Android back gesture step back inside the Secondary
+before leaving the page. Enabled today by the Session screen (`ManagedSessionRoute` in
+`specflow-ui/src/features/sessions/managed/routes.tsx` and its Storybook `Environment`).
+
+- **Invariant.** The number of same-URL entries the provider owns above the page's own entry equals
+  the number of `back()` calls that hide the region: the active runtime tab's stack length while
+  the region is visible, else 0 (a pinned/declarative tab counts 0 — UI Back cannot hide it either).
+  So opening the Secondary from hidden adds one entry, `navTo` adds one, `replace` adds none, and
+  `openTab` while a tab is already visible adds none (Back from a tab root hides the region, it
+  never returns to the previous tab). A tab switch to a deeper/shallower tab re-syncs the count.
+- **Browser Back** (`popstate` onto a lower own entry, the base entry, or a multi-step `go(-n)`)
+  runs one workspace `back()` per consumed entry, with the normal `pop`/`close` transition, focus
+  return and leave guard. A refusing guard keeps the page and re-pushes the popped entry.
+- **UI Back/Close/tab close/Escape/scope change** lower the count; the provider consumes the
+  surplus with `history.go(-n)` and ignores the resulting `popstate`. Browser Forward onto an
+  already consumed entry is neutralised (stepped straight back); it never redoes a page.
+- **Router coexistence.** The URL is never changed. Pushed entries copy the current
+  `history.state` (TanStack's `__TSR_index`/`__TSR_key`/`key`) plus one
+  `__nevoWorkspaceHistory: { owner, depth }` marker, through the unpatched
+  `History.prototype.pushState` — so a router that patches `pushState` is not notified, and its
+  `popstate` index delta is 0 (a same-href re-match, no remount). `go(-n)` is issued only while the
+  provider's own entry at the committed depth is current, so it can never undo a route navigation.
+  If another entry is on top (a route push or a `replace` that dropped the marker), the provider
+  re-bases on top of it instead.
+- **Lifecycle.** Only the first enabled provider mounted on a page owns history; later ones stay
+  in-memory. Unmount never traverses (its entries may sit below a router or Storybook manager
+  navigation); entries a dead instance leaves behind ("orphans": reload, route return) are skipped
+  with one `go(-depth)` when browser Back lands on them. Inert without `window` (SSR).
+- **Storybook.** In `iframe.html` inside the manager, the iframe's pushes join the top-level joint
+  session history, so the phone's Back pops them before the manager's own entries.
+
+Serialization of transient pages (restoring a Secondary page from a URL or after reload) remains
+**out of scope**. The current implementation preserves the mounted active page across ordinary `ready`
 refreshes. Without `preserveOnDataLoss`, non-ready states replace the screen content
 and can discard its local draft or leave guard. `access-denied` and `unavailable`
 always unmount current content, even if retention is enabled. A previous screen reached via Back is
 mounted afresh unless the product stores its state outside that component. This prototype
-does not persist offscreen screen-local state or intercept browser/system Back.
+does not persist offscreen screen-local state.
 
 Stack catalogue types constrain `navTo` for each declared set of pages, but the generic
 `useSecondaryStack<TPages>()` parameter is currently asserted by the caller and is
@@ -173,6 +254,7 @@ Do not claim full end-to-end catalogue-type inference.
 ## Agent checklist
 
 1. Read this document and `design-system.implementation.react.component-guidelines`.
+   Name deeper levels with `breadcrumbLabel` when the page title is a page type, not the object.
 2. Keep feature stack catalogue, screen components, and Primary list in separate modules when substantial.
 3. Open with the root entity ID from Primary, not with a React node or stale domain object.
 4. Use `navTo(page, { childId })` for contextual depth. Read the current entity from `useData`.

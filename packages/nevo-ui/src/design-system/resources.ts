@@ -58,6 +58,8 @@ export const iconNames = [
   'file-check',
   'book-user',
   'panels-top-left',
+  // Shows or hides a side panel (the workspace's Secondary region).
+  'panel-right',
 ] as const;
 
 /** `lg` and `xl` are illustration sizes (empty screens), drawn with a lighter stroke. */

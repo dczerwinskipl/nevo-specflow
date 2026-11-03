@@ -3,6 +3,8 @@ export const ITEM_TAB_MAX_WIDTH = 180;
 /** Container width below which the strip is replaced by the switcher button. */
 export const ITEM_TABS_SWITCHER_BELOW = 480;
 export const ITEM_TABS_OVERFLOW_WIDTH = 52;
+/** Space between tabs (px). Coupled to the `gap-0.5` on the tablist and on the close-slot layer. */
+export const ITEM_TAB_GAP = 2;
 /**
  * Pixels around the label: left padding, icon, gap and the right slot reserved for the x.
  * Coupled to the tab classes `pl-2.5` (10), the 16 px `sm` icon, `gap-2` (8) and `pr-8` (32): change
@@ -31,17 +33,18 @@ function naturalWidth(label: string) {
 }
 
 /**
- * Width policy: a tab is never narrower than 140 px nor wider than 180 px. All tabs are visible
- * when N x 140 <= available; otherwise floor((available - overflow button) / 140) tabs are
- * visible (always including the active one) and the rest go to the Opened menu.
+ * Width policy: a tab is never narrower than 140 px nor wider than 180 px, with a 2 px gap
+ * between tabs. All tabs are visible when N x 140 + (N - 1) x gap <= available; otherwise as many
+ * tabs as fit in (available - overflow button) are visible (always including the active one) and the rest go to the Opened menu.
  */
 export function fitItemTabs<T extends FitItem>(
   items: readonly T[],
   available: number,
   activeId: string | null,
 ): ItemTabsFit<T> {
-  if (items.length * ITEM_TAB_MIN_WIDTH <= available) {
-    const spare = Math.floor(available / Math.max(1, items.length));
+  const count0 = Math.max(1, items.length);
+  if (items.length * ITEM_TAB_MIN_WIDTH + (count0 - 1) * ITEM_TAB_GAP <= available) {
+    const spare = Math.floor((available - (count0 - 1) * ITEM_TAB_GAP) / count0);
 
     return {
       visible: items,
@@ -53,7 +56,10 @@ export function fitItemTabs<T extends FitItem>(
   }
 
   const room = available - ITEM_TABS_OVERFLOW_WIDTH;
-  const count = Math.max(1, Math.floor(room / ITEM_TAB_MIN_WIDTH));
+  const count = Math.max(
+    1,
+    Math.floor((room + ITEM_TAB_GAP) / (ITEM_TAB_MIN_WIDTH + ITEM_TAB_GAP)),
+  );
   let visible = items.slice(0, count);
   const active = items.find((item) => item.id === activeId);
   if (active && !visible.includes(active)) {
@@ -62,7 +68,10 @@ export function fitItemTabs<T extends FitItem>(
 
   const width = Math.min(
     ITEM_TAB_MAX_WIDTH,
-    Math.max(ITEM_TAB_MIN_WIDTH, Math.floor(room / visible.length)),
+    Math.max(
+      ITEM_TAB_MIN_WIDTH,
+      Math.floor((room - (visible.length - 1) * ITEM_TAB_GAP) / visible.length),
+    ),
   );
 
   return { visible, widths: visible.map(() => width), overflowing: true };

@@ -23,7 +23,12 @@ import {
   getItemTabId,
   getItemTabPanelId,
   type ItemTab,
+  type ItemTabsProps,
 } from '../../components/navigation/ItemTabs';
+import {
+  ITEM_TAB_MIN_WIDTH,
+  ITEM_TABS_OVERFLOW_WIDTH,
+} from '../../components/navigation/ItemTabs/itemTabsLayout';
 import { workspaceSurfaceClassName } from '../../design-system/brandEnvironment';
 import { cn } from '../../lib';
 import { useAppWorkspace } from '../shell/AppShell';
@@ -45,6 +50,7 @@ import {
   type DynamicSplitRatioBounds,
 } from './workspaceSizing';
 import { WorkspaceSplitter } from './WorkspaceSplitter';
+import { SecondaryBreadcrumbRow } from './SecondaryBreadcrumbRow';
 import type { AppWorkspaceSurface } from './workspaceSurface';
 import {
   useMobileWorkspaceTransition,
@@ -74,6 +80,18 @@ import {
 const SECONDARY_TABS_SCOPE = 'workspace-secondary-tabs';
 
 /**
+ * Width (px) under which the Secondary root-tab strip collapses to `ItemTabs`' switcher button —
+ * scoped to this header only (`ItemTabs`' own `switcherBelow` prop), never a change to its general
+ * 480px default that other hosts (Documents' `DocumentTabStrip`, …) keep. At an ordinary 50/50 split
+ * the strip's own width sits just under 480 (measured 470px at 1440), and the owner decision is to
+ * keep the strip visible longer: it stays usable while two tabs still fit next to its overflow menu
+ * (the rest go to that menu, `fitItemTabs`); below that it falls back to the switcher. Local depth
+ * never shares this row (it is the breadcrumb row under it), so the presentation does not flip
+ * between a tab's root and its details.
+ */
+const SECONDARY_TABS_SWITCHER_BELOW = 2 * ITEM_TAB_MIN_WIDTH + ITEM_TABS_OVERFLOW_WIDTH;
+
+/**
  * Composes the Secondary root-tab strip (contract workspace-dynamic-split.md §4.1, reusing
  * item-tabs.md's Content tabs host pattern verbatim) into an already-resolved surface's header,
  * replacing only its identity content. The header's own actions/menu/labels are preserved exactly
@@ -84,14 +102,18 @@ const SECONDARY_TABS_SCOPE = 'workspace-secondary-tabs';
 function withSecondaryTabStrip(
   surface: AppWorkspaceSurface,
   tabs: SecondaryTabsState,
+  shownTabId: string | null,
   activateTab: (id: string) => Promise<boolean>,
   closeTab: (id: string) => Promise<boolean>,
+  density: 'header' | 'rail',
+  tabLabels?: AppWorkspaceLabels['secondaryTabs'],
 ): AppWorkspaceSurface {
   const items: readonly ItemTab[] = tabs.tabs.map((tab) => ({
     id: tab.id,
     label: tab.title,
     closable: tab.closable,
   }));
+  const shownTitle = tabs.tabs.find((tab) => tab.id === shownTabId)?.title;
 
   return {
     ...surface,
@@ -102,13 +124,25 @@ function withSecondaryTabStrip(
         labels={getWorkspaceHeaderLabels(surface.header)}
         menu={getWorkspaceHeaderMenu(surface.header)}
         identityContent={
-          <ItemTabs
-            activeId={tabs.activeTabId}
-            items={items}
-            onActivate={(id) => void activateTab(id)}
-            onClose={(id) => void closeTab(id)}
-            scope={SECONDARY_TABS_SCOPE}
-          />
+          <>
+            {/* The region's heading, as `DocumentTabStrip` (the established strip host) renders
+                it: `identityContent` replaces `WorkspaceHeader`'s own visible title, so without
+                this the region had no heading and no `data-workspace-header-title` focus target
+                for the push/replace focus move below. The strip itself is not a heading. */}
+            <h2 tabIndex={-1} data-workspace-header-title="true" className="sr-only outline-none">
+              {shownTitle}
+            </h2>
+            <ItemTabs
+              activeId={shownTabId}
+              items={items}
+              onActivate={(id) => void activateTab(id)}
+              onClose={(id) => void closeTab(id)}
+              scope={SECONDARY_TABS_SCOPE}
+              switcherBelow={SECONDARY_TABS_SWITCHER_BELOW}
+              density={density}
+              labels={tabLabels}
+            />
+          </>
         }
       />
     ),
@@ -163,10 +197,25 @@ export function useWorkspacePrimarySheet(): HTMLElement | null {
 
 export interface AppWorkspaceLabels {
   backToPrimary: string;
+  /**
+   * Accessible name of the split Secondary breadcrumb row's leading one-level Back, given the title
+   * of the level it returns to. Optional: defaults to `"<backToPrimary>: <title>"`.
+   */
+  backToParent?: (parentTitle: string) => string;
+  /**
+   * The split Secondary breadcrumb row's `nav` name and its collapsed `…` menu trigger. Optional:
+   * English defaults.
+   */
+  secondaryBreadcrumbs?: { navigation?: string; collapsed?: string };
   closeSecondary: string;
   openNavigation: string;
   /** `WorkspaceSplitter`'s accessible name (workspace-dynamic-split.md §7). */
   resizeSecondary: string;
+  /**
+   * Copy for the Secondary root-tab strip's `ItemTabs` (switcher, close, opened menu). Optional:
+   * without it the strip keeps `ItemTabs`' own English defaults, so existing consumers are unchanged.
+   */
+  secondaryTabs?: ItemTabsProps['labels'];
 }
 
 export interface AppWorkspaceRegionProps {
@@ -476,6 +525,25 @@ function useWorkspaceLayoutState(
       };
     }
 
+    // Stacked: Secondary slides OVER Primary instead of sitting beside it, so Primary keeps the
+    // full content width. Sizing it by the split ratio here squeezed the still-visible chat to
+    // the ratio's leftover (~45px at 375px) for the whole slide-in/out (owner audit, live on a
+    // phone: "panel główny się kurczy podczas gdy jest zasłaniany").
+    //
+    // The resolver owns the split/stacked decision entirely for `dynamic` (contract §4.2's own
+    // two minimum-width constants, independent of the generic `WORKSPACE_SPLIT_MIN_WIDTH` the
+    // fixed presets use below): `dynamic` may split at a narrower width than the fixed presets
+    // do, and may also fall back to stacked at a wide width once a manual ratio (§5) makes the
+    // current ratio's panes infeasible even after clamping — neither is the generic check.
+    if (dynamicSplit.layout !== 'split') {
+      return {
+        mode: 'stacked',
+        showSecondary,
+        primaryMaxWidth: resolveSlotMaxWidth(contentWidth, 100),
+        secondaryMaxWidth: undefined,
+      };
+    }
+
     const secondaryShare = dynamicSplit.secondaryRatio * 100;
     const widths = capPrimaryWidth(
       contentWidth,
@@ -487,7 +555,7 @@ function useWorkspaceLayoutState(
     );
 
     const splitter: WorkspaceSplitterState | undefined =
-      dynamicSplit.layout === 'split' && dynamicSplit.bounds && contentWidth !== undefined
+      dynamicSplit.bounds && contentWidth !== undefined
         ? {
             secondaryRatio: dynamicSplit.secondaryRatio,
             minSecondaryRatio: dynamicSplit.bounds.min,
@@ -498,12 +566,7 @@ function useWorkspaceLayoutState(
         : undefined;
 
     return {
-      // The resolver owns this decision entirely for `dynamic` (contract §4.2's own two
-      // minimum-width constants, independent of the generic `WORKSPACE_SPLIT_MIN_WIDTH` the
-      // fixed presets use below): `dynamic` may split at a narrower width than the fixed presets
-      // do, and may also fall back to stacked at a wide width once a manual ratio (§5) makes the
-      // current ratio's panes infeasible even after clamping — neither is the generic check.
-      mode: dynamicSplit.layout === 'split' ? 'split' : 'stacked',
+      mode: 'split',
       showSecondary,
       primaryMaxWidth: widths.primary,
       secondaryMaxWidth: widths.secondary,
@@ -587,6 +650,8 @@ function RuntimeSurfaceRegion({
   stackedVisual,
   surface,
   surfaceName,
+  contentNavigation,
+  headerVariant = 'header',
   tabPanelId,
   tabPanelLabelledBy,
   trailingAction,
@@ -605,6 +670,17 @@ function RuntimeSurfaceRegion({
   dividerSide?: 'start' | 'end';
   instanceKey: string;
   leadingAction?: ReactNode;
+  /**
+   * Split layout only (ignored by the stacked branch, which keeps its header Back): the breadcrumb
+   * row, rendered as the first child of the content region (the tab panel), directly under the
+   * header and above the content.
+   */
+  contentNavigation?: ReactNode;
+  /**
+   * Split layout only: `tab-rail` sizes the header row as the compact root-tab rail
+   * (`--spacing-tab-rail`, 38px) instead of the 56px workspace header.
+   */
+  headerVariant?: 'header' | 'tab-rail';
   maxWidth?: number;
   fitAvailable?: boolean;
   mobileRuntime?: MobileWorkspaceSurfaceRuntime;
@@ -684,9 +760,10 @@ function RuntimeSurfaceRegion({
             {showHeader ? (
               <div
                 className={cn(
-                  '@container flex h-14 shrink-0 items-center gap-2',
-                  'border-b border-border-subtle px-4',
+                  '@container flex shrink-0 items-center gap-2 border-b border-border-subtle',
+                  headerVariant === 'tab-rail' ? 'h-tab-rail px-2' : 'h-14 px-4',
                 )}
+                data-workspace-tab-rail={headerVariant === 'tab-rail' ? 'true' : undefined}
               >
                 {leadingAction}
                 <div className="min-w-0 flex-1">{surface.header}</div>
@@ -695,11 +772,16 @@ function RuntimeSurfaceRegion({
             ) : null}
             <div
               aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
-              className="min-h-0 flex-1 overflow-clip"
+              className={cn('min-h-0 flex-1 overflow-clip', contentNavigation && 'flex flex-col')}
               id={tabPanelId}
               role={tabPanelId ? 'tabpanel' : undefined}
             >
-              {surface.content}
+              {contentNavigation}
+              {contentNavigation ? (
+                <div className="min-h-0 flex-1 overflow-clip">{surface.content}</div>
+              ) : (
+                surface.content
+              )}
             </div>
           </SurfaceBoundary>
         </div>
@@ -1043,28 +1125,24 @@ function AppWorkspaceRoot({
             : undefined,
         }
       : undefined;
-  // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
-  // §4.1); with 0 or 1, `surface` passes through completely unchanged, so that baseline stays
-  // pixel/DOM-identical to today.
-  const secondaryPresentation: WorkspaceSecondaryPresentation | undefined =
-    secondaryPresentationBase && showSecondaryTabStrip && workspace && secondaryTabsState
-      ? {
-          ...secondaryPresentationBase,
-          surface: withSecondaryTabStrip(
-            secondaryPresentationBase.surface,
-            secondaryTabsState,
-            workspace.activateTab,
-            workspace.closeTab,
-          ),
-        }
-      : secondaryPresentationBase;
+  // The tab whose content is actually rendered, which the strip must mark as selected. Normally
+  // `activeTabId`. But when no runtime tab is shown while a runtime id is still active — the
+  // runtime region was hidden (`close`, or `back` at a tab root: `isOpen: false`, contract §9.3,
+  // which deliberately retains `activeTabId`) — `AppWorkspace` falls back to rendering the
+  // declarative pinned Secondary, so the strip used to keep marking the hidden runtime tab as
+  // selected above the pinned tab's content (reproduced live: "Historia pracy" selected over
+  // Context). The pinned entry is the one `closable: false` tab (contract §3).
+  const shownSecondaryTabId =
+    secondaryTabsState && !runtimeSecondary && secondaryPresentationBase
+      ? (secondaryTabsState.tabs.find((tab) => !tab.closable)?.id ?? secondaryTabsState.activeTabId)
+      : (secondaryTabsState?.activeTabId ?? null);
   const secondaryTabPanelId =
-    showSecondaryTabStrip && secondaryTabsState?.activeTabId
-      ? getItemTabPanelId(SECONDARY_TABS_SCOPE, secondaryTabsState.activeTabId)
+    showSecondaryTabStrip && shownSecondaryTabId
+      ? getItemTabPanelId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
       : undefined;
   const secondaryTabPanelLabelledBy =
-    showSecondaryTabStrip && secondaryTabsState?.activeTabId
-      ? getItemTabId(SECONDARY_TABS_SCOPE, secondaryTabsState.activeTabId)
+    showSecondaryTabStrip && shownSecondaryTabId
+      ? getItemTabId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
       : undefined;
   const outgoingSecondary = workspace?.transition.outgoing;
   const outgoingSecondaryPresentation = outgoingSecondary
@@ -1083,13 +1161,32 @@ function AppWorkspaceRoot({
       : 0;
   const state = useWorkspaceLayoutState(
     split,
-    secondaryPresentation !== undefined,
-    secondaryPresentation?.canStack ?? false,
+    secondaryPresentationBase !== undefined,
+    secondaryPresentationBase?.canStack ?? false,
     primaryMaxPx,
     dynamicOpenTabCount,
     secondaryRatio,
     onSecondaryRatioChange,
   );
+  // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
+  // §4.1); with 0 or 1, `surface` passes through completely unchanged, so that baseline stays
+  // pixel/DOM-identical to today.
+  const secondaryPresentation: WorkspaceSecondaryPresentation | undefined =
+    secondaryPresentationBase && showSecondaryTabStrip && workspace && secondaryTabsState
+      ? {
+          ...secondaryPresentationBase,
+          surface: withSecondaryTabStrip(
+            secondaryPresentationBase.surface,
+            secondaryTabsState,
+            shownSecondaryTabId,
+            workspace.activateTab,
+            workspace.closeTab,
+            // Split: the compact root-tab rail. Stacked keeps its 56px header (mobile unchanged).
+            state.mode === 'split' ? 'rail' : 'header',
+            labelsProp?.secondaryTabs,
+          ),
+        }
+      : secondaryPresentationBase;
   const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary, navigationMode);
   const mobileRuntime = useMobileWorkspaceTransition({
     secondaryInstanceKey:
@@ -1110,16 +1207,51 @@ function AppWorkspaceRoot({
   const labels = { ...defaultAppWorkspaceLabels, ...labelsProp };
   const primaryNavigationAction =
     navigationMode === 'drawer' ? <NavigationAction label={labels.openNavigation} /> : undefined;
+  // Split layout: Back pops the active tab's own local stack (`canGoBack`) — full-session-screen-
+  // structure.md §10.1 "Back pops inside the active tab before returning to its root". At a tab
+  // root with the root-tab strip shown there is nothing local to pop: the strip owns switching
+  // between roots and Close owns closing, so a root-level Back only duplicated those (it hid the
+  // runtime region, revealing the pinned tab) — the redundant desktop "←" the owner flagged. It
+  // also cost the header ~44px, flipping the strip to its switcher on one tab but not another.
+  // A single runtime flow without a strip keeps its existing root-level Back unchanged; local depth
+  // with the strip shown is the breadcrumb row below.
+  const splitWithStrip = state.mode === 'split' && showSecondaryTabStrip;
   const secondaryBackAction =
     secondaryPresentation?.onBack &&
+    !splitWithStrip &&
     (state.mode === 'stacked' ||
       workspace?.canGoBack ||
       (state.mode === 'split' && secondaryPresentation.canStack)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
+  // Split + tab strip: local depth is a breadcrumb row at the top of the tab panel
+  // (`SecondaryBreadcrumbRow`), never a header Back — the tab keeps its root's name in the rail and
+  // the row names every level, so both views read as one tab. Never on a stacked layout, which
+  // keeps its header Back (mobile has its own navigation).
+  const secondaryTrail = workspace?.trail ?? [];
+  const secondaryBreadcrumbRow =
+    splitWithStrip &&
+    runtimeSecondary &&
+    workspace &&
+    secondaryTrail.length > 1 &&
+    secondaryPresentation?.onBack ? (
+      <SecondaryBreadcrumbRow
+        labels={{
+          navigation: labels.secondaryBreadcrumbs?.navigation ?? 'Panel location',
+          collapsed: labels.secondaryBreadcrumbs?.collapsed ?? 'Show hidden levels',
+          back: (parentTitle) =>
+            labels.backToParent?.(parentTitle) ?? `${labels.backToPrimary}: ${parentTitle}`,
+        }}
+        onBack={secondaryPresentation.onBack}
+        onBackTo={workspace.backTo}
+        trail={secondaryTrail}
+      />
+    ) : undefined;
   const hideClose = state.mode === 'stacked' && stackedSecondaryClose === 'hide';
+  // With the tab strip shown each closable tab owns its own close; a second panel-level `x` beside
+  // them was ambiguous (which one closes what), so it is not rendered. A lone surface keeps it.
   const secondaryCloseAction =
-    secondaryPresentation?.onClose && !hideClose ? (
+    secondaryPresentation?.onClose && !hideClose && !splitWithStrip ? (
       <CloseAction label={labels.closeSecondary} onClose={secondaryPresentation.onClose} />
     ) : undefined;
   const compactSecondaryCloseAction: WorkspaceHeaderAction | undefined =
@@ -1224,6 +1356,8 @@ function AppWorkspaceRoot({
         instanceKey={secondaryPresentation.key}
         key={secondaryPresentation.key}
         leadingAction={secondaryBackAction}
+        contentNavigation={secondaryBreadcrumbRow}
+        headerVariant={splitWithStrip ? 'tab-rail' : 'header'}
         fitAvailable={fit === 'available'}
         maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}
         mobileRuntime={state.mode === 'stacked' ? mobileRuntime.secondary : undefined}

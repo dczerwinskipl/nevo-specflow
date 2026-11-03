@@ -304,6 +304,10 @@ stacks full-width actions with the primary/destructive action on top; from `sm` 
 row that wraps (`sm:flex-wrap`) instead of clipping, which keeps 200% zoom readable. Use
 `AlertDialog` with a `destructive` action for irreversible or discarding confirmations.
 
+## On-screen keyboard
+
+Android Chrome (108+) and iOS Safari resize only the visual viewport when the keyboard opens, so a `fixed` overlay would stay behind it. `DialogContent`, `AlertDialogContent` and a `side="bottom"` `DrawerContent` track `window.visualViewport` (shared internal hook `useVisualViewportInset` / `useKeyboardAvoidance`, `rAF`-throttled, inert without `visualViewport`, on pinch-zoom and for insets under 80 px) and, only while a keyboard is open, apply inline styles: dialogs re-centre in the visible area (`top` = visual centre) and cap `max-height` to the visible height minus 2rem; a bottom sheet is lifted (`bottom` = keyboard inset, safe-area padding dropped) and capped to the visible height minus 3rem (still honouring its `size` cap). The body scrolls inside the capped surface so the action row stays visible, and the focused field is scrolled into view. With no keyboard nothing is applied, so desktop and the resting layout are unchanged. The move is not animated (so there is nothing to disable for `prefers-reduced-motion`). Side and top drawers are not adjusted.
+
 ## Drawer sides and sheets
 
 `DrawerContent` takes `side: 'left' | 'right' | 'top' | 'bottom'` (default `'right'`; AppShell navigation uses `'left'`). All sides keep the Radix Dialog contract: focus trap, Esc, overlay click, `aria-modal`, focus return to the trigger, a required `DrawerTitle` as the accessible name and a named close action (`closeLabel`, 44 px hit area on coarse pointers through `IconButton`).

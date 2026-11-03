@@ -19,6 +19,13 @@ export interface SecondaryScreenProps<TData, TParams extends object> {
 
 export interface SecondaryScreenDefinition<TData, TParams extends object> {
   title: string;
+  /**
+   * Opt-in: this entry's segment in the split Secondary's breadcrumb trail, derived from the page's
+   * own params (synchronous, like `tabLabel`) — e.g. the opened object's name instead of the page
+   * type's static `title`. Omit to use `title`. Not a place for a full file path: a segment is a
+   * short name and truncates when long.
+   */
+  breadcrumbLabel?: (params: TParams) => string;
   /** Product-only header content. The workspace renders declared actions automatically. */
   header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
   /** Pure action metadata, resolved against the same live data as Header and Content. */
@@ -63,9 +70,10 @@ export interface SecondaryStackDefinition<
    * a stack replaced-in-place by `open` across different entities) must be told apart by name, not
    * just by which one is active.
    *
-   * Omit to fall back to the active page's own per-screen `title` (today's behavior, unchanged for
-   * every caller that does not set this field) — adequate only when every tab of this stack is
-   * always the same single instance, since `title` cannot vary by which entity is open.
+   * Omit to fall back to the stack's root (initial) page `title` — adequate only when every tab of
+   * this stack is always the same single instance, since `title` cannot vary by which entity is
+   * open. Either way the label names the tab's ROOT and stays stable while the tab's own local stack
+   * goes deeper; the deeper levels are shown by the Secondary breadcrumb trail, not the tab label.
    */
   tabLabel?: (rootParams: TRoot) => string;
   useData: (params: TRoot) => SecondaryData<TData>;

@@ -182,6 +182,31 @@ describe('WorkspaceSplitter', () => {
     fireEvent.pointerUp(splitter, { pointerId: 1, clientX: 600 });
   });
 
+  it('a click or sub-threshold jitter on the splitter reports no ratio (never enters manual mode)', () => {
+    const onChange = vi.fn();
+    render(<ControlledSplitter availableWidth={1000} initialRatio={0.5} onChange={onChange} />);
+
+    const splitter = getSplitter();
+    (splitter as unknown as { setPointerCapture: () => void }).setPointerCapture = () => undefined;
+    (splitter as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture = () => false;
+    (splitter as unknown as { releasePointerCapture: () => void }).releasePointerCapture = () =>
+      undefined;
+
+    fireEvent.pointerDown(splitter, { pointerId: 1, clientX: 500 });
+    fireEvent.pointerMove(splitter, { pointerId: 1, clientX: 500 });
+    fireEvent.pointerMove(splitter, { pointerId: 1, clientX: 502 });
+    fireEvent.pointerMove(splitter, { pointerId: 1, clientX: 498 });
+    fireEvent.pointerUp(splitter, { pointerId: 1, clientX: 498 });
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    // Once a press does travel past the threshold it is a real drag, reported from the start point.
+    fireEvent.pointerDown(splitter, { pointerId: 2, clientX: 500 });
+    fireEvent.pointerMove(splitter, { pointerId: 2, clientX: 400 });
+    expect(onChange).toHaveBeenLastCalledWith(0.6);
+    fireEvent.pointerUp(splitter, { pointerId: 2, clientX: 400 });
+  });
+
   describe('secondarySide="start" (workspace-dynamic-split.md §4.2/§4.3, W06 — Secondary before Primary)', () => {
     it.each([
       ['ArrowLeft', 0.48],

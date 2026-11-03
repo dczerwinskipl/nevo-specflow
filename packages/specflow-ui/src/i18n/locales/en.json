@@ -548,8 +548,6 @@
     "providerDefault": "Executor default",
     "changeMethod": "Change the way of working",
     "formRegion": "Specification creation",
-    "sessionWorkspaceIntro": "The new session uses the workspace of this specification.",
-    "simulatedSuffix": "simulated, no Git operations",
     "method": {
       "title": "How do you want to create the specification?",
       "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype.",
@@ -1775,7 +1773,7 @@
   },
   "sessionStart": {
     "heading": "New session",
-    "subheading": "The agent starts from your first message, in the context of this specification.",
+    "subheading": "The agent works in the context of this specification. You write the first message in the session.",
     "context": {
       "heading": "Context",
       "intro": "The session works on this specification — the agent receives it as context.",
@@ -1786,29 +1784,24 @@
       "heading": "Agent",
       "intro": "Choose who runs this session. It cannot be changed during the conversation."
     },
-    "message": {
-      "label": "First message",
-      "placeholder": "Write what the agent should start with…",
-      "description": "The work mode and model apply to this message; in the session you can change them before each next one."
-    },
     "name": {
       "heading": "Session name",
+      "intro": "The name shows in the session list and in its header.",
       "agentDefault": "The agent names the session from your first message.",
+      "customDescription": "The agent will not rename it.",
       "useCustom": "Give it your own name",
-      "useAgent": "Let the agent name it",
       "label": "Session name",
       "placeholder": "e.g. Acceptance criteria review",
       "limit": "Up to {{max}} characters.",
       "remaining": "Characters left: {{remaining}}."
     },
     "prerequisite": {
-      "message": "Write the first message.",
       "name": "Enter a name or let the agent name it.",
       "noProvider": "No executor is available right now."
     },
     "footer": {
-      "agentNames": "The session opens with this message and the agent names it.",
-      "ready": "The session opens with this message."
+      "agentNames": "The session opens without a message and the agent names it after the first one.",
+      "ready": "The session opens without a message, with your name."
     },
     "submit": {
       "start": "Start session",

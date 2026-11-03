@@ -527,7 +527,8 @@ async function expectFormWidth() {
       getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-form'),
     ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
   const heading = await within(document.body).findByRole('heading', { level: 1 });
-  const content = heading.closest('.scroll-area')!.parentElement!;
+  // The form column, centred inside the full-width scroll area (`CreateShell`).
+  const content = heading.closest<HTMLElement>('.w-content-form')!;
   const surface =
     content.closest<HTMLElement>('[data-workspace-surface]') ?? content.parentElement!;
   for (const width of [1440, 1920, 2560, 900, 390]) {

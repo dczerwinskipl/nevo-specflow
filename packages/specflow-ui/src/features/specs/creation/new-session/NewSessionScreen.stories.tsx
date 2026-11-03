@@ -12,8 +12,9 @@ import {
 
 /**
  * New Session of an existing Specification (`/specs/$specId/sessions/new`, demo Runtime): the
- * pinned Specification, the agent, the first message in the Session Composer, the optional own
- * name and the read-only workspace. UX contract: `docs/ideas/specflow-ui/screens/new-session-ui-spec.md`.
+ * pinned Specification, the agent section of Create Specification (executor, work mode and
+ * model · effort) and the optional own name. The Session opens idle; the first message is written
+ * in its own Composer. UX contract: `docs/ideas/specflow-ui/screens/new-session-ui-spec.md`.
  */
 const meta = {
   decorators: [withLocale('pl')],
@@ -28,6 +29,8 @@ type Story = StoryObj<typeof meta>;
 const body = () => within(document.body);
 const firstMessage =
   'Przejrzyj kryteria akceptacji logowania SSO i wskaż luki w scenariuszach błędów.';
+const landingComposer = (canvas: StoryContext['canvas']) =>
+  canvas.getByRole('textbox', { name: 'Wiadomość' });
 const startButton = (canvas: StoryContext['canvas']) =>
   canvas.getByRole('button', { name: 'Rozpocznij sesję' });
 
@@ -48,34 +51,34 @@ async function expectNoHorizontalScroll() {
   );
 }
 
-/** Scenario (a)+(b)+(c): the agent names the Session; the header shows the naming, then the name. */
+/** Scenario (a)+(b)+(c): the Session opens idle; the agent names it after the first message sent in it. */
 export const AgentNamesSession: Story = {
   play: async ({ canvas, userEvent }) => {
     await settleViewport();
     await expect(
       await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
     ).toBeVisible();
-    // (a) The Specification is the pinned, read-only context; the workspace is read-only too.
+    // (a) The Specification is the pinned, read-only context. No first message, no workspace section.
     await expect(await canvas.findByText('Logowanie SSO')).toBeVisible();
     await expect(canvas.getByText('Przypięta')).toBeVisible();
-    await expect(canvas.getByText(/\/demo\/project · main/)).toBeVisible();
+    await expect(canvas.queryByRole('textbox', { name: 'Pierwsza wiadomość' })).toBeNull();
+    await expect(canvas.queryByText('Gdzie chcesz pracować?')).toBeNull();
     await expect(canvas.queryByRole('radio', { name: 'Nowe środowisko pracy' })).toBeNull();
-    // (c) The default is legible before sending: the agent names the Session, no name field.
+    // (c) The default is legible before starting: the agent names the Session, no name field.
     await expect(
       canvas.getByText('Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.'),
     ).toBeVisible();
     await expect(canvas.queryByRole('textbox', { name: 'Nazwa sesji' })).toBeNull();
-    // (b) Agent, then the first message with the first Turn's mode and model in its toolbar.
+    // (b) The agent section of Create Specification: tiles, then the model and work mode row.
     await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeChecked();
     await expect(startButton(canvas)).toBeDisabled();
     await expect(canvas.getByText('Wybierz model.')).toBeVisible();
     await chooseModel(canvas, 'codex model A');
     await expect(canvas.getByRole('button', { name: 'Agent' })).toBeVisible();
-    await expect(canvas.getByText('Napisz pierwszą wiadomość.')).toBeVisible();
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' }), firstMessage);
     await expect(
-      canvas.getByText('Sesja otworzy się z tą wiadomością, a agent nada jej nazwę.'),
+      canvas.getByText('Sesja otworzy się bez wiadomości, a agent nada jej nazwę po pierwszej.'),
     ).toBeVisible();
+    await expect(startButton(canvas)).toBeEnabled();
     await userEvent.click(startButton(canvas));
     await waitFor(() =>
       expect(allocations).toEqual([
@@ -83,8 +86,16 @@ export const AgentNamesSession: Story = {
       ]),
     );
     await expect(allocations[0]).not.toHaveProperty('effort');
-    await expect(starts).toEqual([{ firstMessage, name: undefined }]);
-    // The Session screen: provisional title while the agent names it, then the generated name.
+    await expect(starts).toEqual([{ name: undefined }]);
+    // The Session opens idle: provisional title, empty Composer, no naming yet.
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
+    ).toBeVisible();
+    await expect(landingComposer(canvas)).toHaveValue('');
+    await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
+    // The first message is written in the Session itself: then the agent names it.
+    await userEvent.type(landingComposer(canvas), firstMessage);
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
     await expect(await canvas.findByText('Nadawanie nazwy…')).toBeVisible();
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('Nowa sesja');
     await expect(
@@ -101,21 +112,18 @@ export const AgentNamesSessionMobile: Story = {
     await canvas.findByText('Logowanie SSO');
     await expectNoHorizontalScroll();
     await chooseModel(canvas, 'codex model A');
-    const editor = canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' });
-    // Touch layout: Enter adds a line, it never starts the Session.
-    await userEvent.type(editor, 'Pierwsza linia{Enter}druga linia');
-    await expect(editor).toHaveValue('Pierwsza linia\ndruga linia');
-    await expect(allocations).toHaveLength(0);
-    // Mode and model stay on one toolbar row inside the Composer at 375px.
+    // The model and work mode triggers fit the 375px row.
     const mode = canvas.getByRole('button', { name: 'Agent' });
     const model = canvas.getByRole('button', { name: /codex model A/ });
-    await expect(
-      Math.abs(mode.getBoundingClientRect().top - model.getBoundingClientRect().top),
-    ).toBeLessThan(4);
+    await expect(mode.getBoundingClientRect().right).toBeLessThanOrEqual(375);
     await expect(model.getBoundingClientRect().right).toBeLessThanOrEqual(375);
     await expectNoHorizontalScroll();
     await userEvent.click(startButton(canvas));
-    await expect(await canvas.findByText('Nadawanie nazwy…')).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
+    ).toBeVisible();
+    await expect(landingComposer(canvas)).toBeVisible();
+    await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
     await expectNoHorizontalScroll();
   },
 };
@@ -126,34 +134,39 @@ export const OwnName: Story = {
     await settleViewport();
     await canvas.findByText('Logowanie SSO');
     await chooseModel(canvas, 'codex model A');
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' }), firstMessage);
-    await userEvent.click(canvas.getByRole('button', { name: 'Nadaj własną nazwę' }));
+    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
     const field = canvas.getByRole('textbox', { name: 'Nazwa sesji' });
-    await waitFor(() => expect(field).toHaveFocus());
+    await expect(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' })).toBeChecked();
     await expect(field).toHaveAttribute('maxlength', '256');
     await expect(canvas.getByText('Do 256 znaków.')).toBeVisible();
     // A chosen own name must not be blank.
     await expect(startButton(canvas)).toBeDisabled();
     await expect(canvas.getByText('Wpisz nazwę albo pozwól agentowi ją nadać.')).toBeVisible();
     await userEvent.type(field, 'Przegląd SSO — błędy');
-    await expect(canvas.getByText('Sesja otworzy się z tą wiadomością.')).toBeVisible();
-    // Switching back hides the field (focus returns to "own name") and keeps the text.
-    await userEvent.click(canvas.getByRole('button', { name: 'Niech nazwę nada agent' }));
+    await expect(startButton(canvas)).toBeEnabled();
+    // Switching back hides the field and keeps the text; the agent names the Session again.
+    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
     await expect(canvas.queryByRole('textbox', { name: 'Nazwa sesji' })).toBeNull();
-    await waitFor(() =>
-      expect(canvas.getByRole('button', { name: 'Nadaj własną nazwę' })).toHaveFocus(),
-    );
-    await userEvent.click(canvas.getByRole('button', { name: 'Nadaj własną nazwę' }));
+    await expect(
+      canvas.getByText('Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.'),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
     await expect(canvas.getByRole('textbox', { name: 'Nazwa sesji' })).toHaveValue(
       'Przegląd SSO — błędy',
     );
     await userEvent.click(startButton(canvas));
-    await waitFor(() => expect(starts).toEqual([{ firstMessage, name: 'Przegląd SSO — błędy' }]));
-    // An own name is shown at once: no naming state.
+    await waitFor(() => expect(starts).toEqual([{ name: 'Przegląd SSO — błędy' }]));
+    // An own name is shown at once, on the idle Session: no naming state, even after a message.
     await expect(
       await canvas.findByRole('heading', { level: 1, name: 'Przegląd SSO — błędy' }),
     ).toBeVisible();
+    await expect(landingComposer(canvas)).toHaveValue('');
+    await userEvent.type(landingComposer(canvas), firstMessage);
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
     await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Przegląd SSO — błędy',
+    );
   },
 };
 
@@ -162,7 +175,7 @@ export const OwnNameMobile: Story = {
   play: async ({ canvas, userEvent }) => {
     await settleViewport(375, 812);
     await canvas.findByText('Logowanie SSO');
-    await userEvent.click(canvas.getByRole('button', { name: 'Nadaj własną nazwę' }));
+    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
     await userEvent.type(canvas.getByRole('textbox', { name: 'Nazwa sesji' }), 'x'.repeat(240));
     await expect(canvas.getByText('Pozostało znaków: 16.')).toBeVisible();
     await expectNoHorizontalScroll();
@@ -188,9 +201,7 @@ export const EffortAndMode: Story = {
     await expect(body().queryByRole('menuitemradio', { name: /^Plan/ })).toBeNull();
     await userEvent.click(await body().findByRole('menuitemradio', { name: 'Ask' }));
     await waitFor(() => expect(body().queryByRole('menu')).toBeNull());
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' }), firstMessage);
-    // Enter on a desktop keyboard starts the Session like the button.
-    await userEvent.keyboard('{Enter}');
+    await userEvent.click(startButton(canvas));
     await waitFor(() =>
       expect(allocations).toEqual([
         expect.objectContaining({ modelId: 'model-a', effort: 'high', mode: 'ask' }),
@@ -232,33 +243,17 @@ export const NoProviderReadyMobile: Story = {
   },
 };
 
-/** Scenario (e): a blank message cannot start the Session, by button or by Enter. */
-export const EmptyMessage: Story = {
-  play: async ({ canvas, userEvent }) => {
-    await settleViewport();
-    await canvas.findByText('Logowanie SSO');
-    await chooseModel(canvas, 'codex model A');
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' }), '   ');
-    await userEvent.keyboard('{Enter}');
-    await expect(canvas.getByText('Napisz pierwszą wiadomość.')).toBeVisible();
-    await expect(startButton(canvas)).toBeDisabled();
-    await expect(allocations).toHaveLength(0);
-  },
-};
-
-/** Scenario (e): the allocation fails — the form, message and choices stay; the reason is shown. */
+/** Scenario (e): the allocation fails — the form and choices stay; the reason is shown. */
 export const StartFailed: Story = {
   args: { allocation: 'failed' },
   play: async ({ canvas, userEvent }) => {
     await settleViewport();
     await canvas.findByText('Logowanie SSO');
     await chooseModel(canvas, 'codex model A');
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' }), firstMessage);
     await userEvent.click(startButton(canvas));
     await expect(await canvas.findByRole('alert')).toBeVisible();
-    await expect(canvas.getByRole('textbox', { name: 'Pierwsza wiadomość' })).toHaveValue(
-      firstMessage,
-    );
+    await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeChecked();
+    await expect(canvas.getByRole('button', { name: /codex model A/ })).toBeVisible();
     await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
   },
 };

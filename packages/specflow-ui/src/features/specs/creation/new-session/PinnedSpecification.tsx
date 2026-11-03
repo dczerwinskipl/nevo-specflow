@@ -19,7 +19,7 @@ export function PinnedSpecification({ specId }: { specId: string }) {
         : specId;
 
   return (
-    <section className="grid gap-3" aria-labelledby={headingId}>
+    <section className="grid gap-4" aria-labelledby={headingId}>
       <div className="grid gap-1">
         <Typography as="h2" variant="title-md" id={headingId}>
           {t('sessionStart.context.heading')}

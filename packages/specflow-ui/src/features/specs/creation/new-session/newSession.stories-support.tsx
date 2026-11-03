@@ -14,7 +14,7 @@ import type { SessionStart } from './sessionStart';
 export const newSessionSpecId = 'api-integration';
 /** The Session allocations the screen sent (reset by every fixture mount). */
 export const allocations: DemoSessionInput[] = [];
-/** What the opened Session was asked to begin with (reset by every fixture mount). */
+/** What the opened Session was given at start (reset by every fixture mount). */
 export const starts: SessionStart[] = [];
 
 /** The generated name the mocked agent gives a Session it names from the first message. */
@@ -23,7 +23,8 @@ export const generatedSessionTitle = 'Luki w kryteriach logowania SSO';
 /**
  * The New Session screen of `/specs/$specId/sessions/new` on a demo Runtime, with mocked
  * catalogue, Specification and Session allocation. Starting a Session shows the Session screen
- * stand-in (`SessionLandingPreview`): the provisional title while the agent names it, then the name.
+ * stand-in (`SessionLandingPreview`): idle with the provisional title and an empty Composer; the
+ * agent names it only after the first message sent there.
  */
 export function NewSessionFixture({
   catalogue = creationCatalogue,
@@ -80,7 +81,6 @@ export function NewSessionFixture({
               <AppShell navigation={<div>Projekt</div>} style={{ height: '100%', width: '100%' }}>
                 {started ? (
                   <SessionLandingPreview
-                    firstMessage={started.firstMessage}
                     customName={started.name}
                     generatedTitle={generatedSessionTitle}
                   />

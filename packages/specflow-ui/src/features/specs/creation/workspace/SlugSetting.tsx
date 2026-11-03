@@ -1,7 +1,8 @@
 import type { MutableRefObject } from 'react';
-import { Field, SwitchField, TextInput } from '@nevo/ui';
+import { TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { SPEC_SLUG_MAX_LENGTH, deriveSpecSlug } from '@nevo/specflow-contracts/specs';
+import { OwnValueSetting } from '../form/OwnValueSetting';
 import { useMessage, type Message } from '../../../../i18n/message';
 import type { SettingsUpdate } from './settingsTypes';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
@@ -26,35 +27,31 @@ export function SlugSetting({
   const value = choice.slug.edited ? choice.slug.value : deriveSpecSlug(title);
 
   return (
-    <div className="grid grid-cols-1 gap-3 py-3">
-      <SwitchField
-        label={t('create.workspace.settings.slugSwitch')}
-        checked={choice.slug.on}
-        description={t('create.workspace.settings.slugSwitchDescription')}
-        onCheckedChange={(on) =>
-          update.set({
-            slug: on ? { on: true, value: '', edited: false } : initialWorkspaceChoice.slug,
-          })
+    <OwnValueSetting
+      className="grid grid-cols-1 gap-3 py-3"
+      switchLabel={t('create.workspace.settings.slugSwitch')}
+      on={choice.slug.on}
+      switchDescription={t('create.workspace.settings.slugSwitchDescription')}
+      onOnChange={(on) =>
+        update.set({
+          slug: on ? { on: true, value: '', edited: false } : initialWorkspaceChoice.slug,
+        })
+      }
+      fieldLabel={t('create.workspace.settings.slugLabel')}
+      error={error ? text(error) : undefined}
+    >
+      <TextInput
+        ref={inputRef}
+        value={value}
+        maxLength={SPEC_SLUG_MAX_LENGTH}
+        placeholder={t('create.workspace.settings.slugPlaceholder')}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(event) =>
+          update.set({ slug: { on: true, value: event.target.value, edited: true } })
         }
       />
-      {choice.slug.on && (
-        <Field invalid={Boolean(error)}>
-          <Field.Label>{t('create.workspace.settings.slugLabel')}</Field.Label>
-          <TextInput
-            ref={inputRef}
-            value={value}
-            maxLength={SPEC_SLUG_MAX_LENGTH}
-            placeholder={t('create.workspace.settings.slugPlaceholder')}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            onChange={(event) =>
-              update.set({ slug: { on: true, value: event.target.value, edited: true } })
-            }
-          />
-          {error && <Field.Error>{text(error)}</Field.Error>}
-        </Field>
-      )}
-    </div>
+    </OwnValueSetting>
   );
 }

@@ -5,7 +5,6 @@ import { newSessionReadiness } from './newSessionReadiness';
 const ready = {
   catalogue,
   agent: { providerId: 'codex', modelId: 'model-a', effort: 'provider-default', mode: 'agent' },
-  message: 'Przejrzyj kryteria akceptacji.',
   name: { mode: 'agent', value: '' },
   configurationUnavailable: false,
 } as const;
@@ -14,7 +13,7 @@ const reason = (input: Parameters<typeof newSessionReadiness>[0]) =>
   newSessionReadiness(input).prerequisite?.key;
 
 describe('newSessionReadiness', () => {
-  it('starts with an agent, a model, a supported mode and a first message; the agent names it', () => {
+  it('starts with an agent, a model, a supported mode and effort; the agent names it', () => {
     expect(newSessionReadiness(ready)).toEqual({ prerequisite: undefined, canStart: true });
   });
 
@@ -26,17 +25,24 @@ describe('newSessionReadiness', () => {
     expect(reason({ ...ready, catalogue: offline })).toBe('sessionStart.prerequisite.noProvider');
   });
 
-  it('asks for the model before the mode, and for the mode before the message', () => {
-    expect(reason({ ...ready, agent: { ...ready.agent, modelId: '' }, message: '' })).toBe(
+  it('asks for the model before the mode, and for the mode before the name', () => {
+    const unnamed = { mode: 'custom', value: '' } as const;
+    expect(reason({ ...ready, agent: { ...ready.agent, modelId: '' }, name: unnamed })).toBe(
       'create.prerequisite.model',
     );
-    expect(reason({ ...ready, agent: { ...ready.agent, mode: '' }, message: '' })).toBe(
+    expect(reason({ ...ready, agent: { ...ready.agent, mode: '' }, name: unnamed })).toBe(
       'create.prerequisite.mode',
     );
   });
 
-  it('requires a first message that is not only whitespace', () => {
-    expect(reason({ ...ready, message: '  \n ' })).toBe('sessionStart.prerequisite.message');
+  it('asks for an effort the model supports', () => {
+    expect(reason({ ...ready, agent: { ...ready.agent, effort: 'not-an-effort' } })).toBe(
+      'create.prerequisite.model',
+    );
+  });
+
+  it('has no first-message prerequisite: the message is written in the Session', () => {
+    expect(reason(ready)).toBeUndefined();
   });
 
   it('requires the custom name only while the custom name is chosen', () => {

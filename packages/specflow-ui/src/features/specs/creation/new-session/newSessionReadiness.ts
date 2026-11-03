@@ -11,12 +11,12 @@ export interface NewSessionReadiness {
 
 /**
  * Whether a new Session can start and, if not, the one reason shown next to the start button. In
- * the order the page is read: configuration, agent, model, mode, first message, custom name.
+ * the order the page is read: configuration, agent, model, mode, effort, custom name. The first message is written in the
+ * Session itself, so it is no prerequisite.
  */
 export function newSessionReadiness(input: {
   catalogue: DemoCatalogue;
   agent: AgentChoice;
-  message: string;
   name: SessionNameChoice;
   configurationUnavailable: boolean;
 }): NewSessionReadiness {
@@ -35,11 +35,9 @@ export function newSessionReadiness(input: {
             ? message('create.prerequisite.mode')
             : agent.effort !== providerDefaultEffort && !model.efforts.includes(agent.effort)
               ? message('create.prerequisite.model')
-              : !input.message.trim()
-                ? message('sessionStart.prerequisite.message')
-                : sessionNameMissing(input.name)
-                  ? message('sessionStart.prerequisite.name')
-                  : undefined;
+              : sessionNameMissing(input.name)
+                ? message('sessionStart.prerequisite.name')
+                : undefined;
 
   return { prerequisite, canStart: !prerequisite };
 }

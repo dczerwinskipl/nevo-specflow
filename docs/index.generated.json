@@ -5500,10 +5500,10 @@
       "file": "docs/ideas/specflow-ui/screens/new-session-ui-spec.md",
       "read_when": [
         "implementing or reviewing the New Session screen or its Session-start block",
-        "changing how a Session is named, or what the first message of a Session is written in",
+        "changing how a Session is named, or what a Session is started with",
         "changing the agent choice shared by New Session and Create with an agent"
       ],
-      "summary": "UX contract of starting a new Session on an existing Specification: the Specification pinned as read-only context, the agent, the first message in the Session Composer (with the first Turn's work mode and model · effort), the default agent-generated name with an explicit own-name alternative, the read-only workspace, the naming state of the Session header, and the Session start block shared with Create. UI-only: the first message, own name and naming are not yet delivered by the Runtime.",
+      "summary": "UX contract of starting a new Session on an existing Specification: the Specification pinned as read-only context, the agent section shared with Create Specification (executor, work mode and model · effort), the default agent-generated name with an explicit own-name alternative (the same switch-and-field pattern as Create's branch name), and the Session that opens idle, whose first message is written in its own Composer and starts the naming. UI-only: the own name and naming are not yet delivered by the Runtime.",
       "related": [
         "ideas.specflow-ui.screens",
         "ideas.specflow-ui.navigation-route-model",

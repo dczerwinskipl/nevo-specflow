@@ -7,7 +7,7 @@ import { AgentSettings } from '../session-start/AgentSettings';
 import { ProviderChoice } from '../session-start/ProviderChoice';
 
 /**
- * The agent of the specification's initial Session: the shared start block without a first
+ * The agent of a new Session (the specification's initial one, or New Session's): the shared start block without a first
  * message (the Session opens idle and the message is written in its Composer). Provider tiles, then
  * the work mode and model · effort with the Composer's own pickers.
  */
@@ -16,11 +16,16 @@ export function CreateAgentSection({
   choice,
   locked,
   onChange,
+  title,
+  intro,
 }: {
   catalogue: DemoCatalogue;
   choice: AgentChoice;
   locked: boolean;
   onChange: (choice: AgentChoice) => void;
+  /** The section heading and intro; Create's own wording by default. */
+  title?: string;
+  intro?: string;
 }) {
   const { t } = useTranslation();
   const legendId = useId();
@@ -31,10 +36,10 @@ export function CreateAgentSection({
       <fieldset disabled={locked} className="grid gap-4">
         <div className="grid gap-1">
           <Typography as="legend" id={legendId} variant="title-md" className="p-0">
-            {t('create.agent.initialTitle')}
+            {title ?? t('create.agent.initialTitle')}
           </Typography>
           <Typography as="p" variant="body-md" className="text-content-secondary">
-            {t('create.agent.introInitial')}
+            {intro ?? t('create.agent.introInitial')}
           </Typography>
         </div>
         <ProviderChoice
@@ -58,7 +63,6 @@ export function CreateAgentSection({
             choice={choice}
             locked={locked}
             onChange={onChange}
-            placement="inline"
           />
         </div>
       </div>

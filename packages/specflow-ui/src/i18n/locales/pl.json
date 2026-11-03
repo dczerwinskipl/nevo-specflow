@@ -548,8 +548,6 @@
     "providerDefault": "Domyślny wykonawcy",
     "changeMethod": "Zmień sposób pracy",
     "formRegion": "Utworzenie specyfikacji",
-    "sessionWorkspaceIntro": "Nowa sesja korzysta z środowiska pracy tej specyfikacji.",
-    "simulatedSuffix": "symulacja, bez operacji Git",
     "method": {
       "title": "Jak chcesz stworzyć specyfikację?",
       "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z archetypu.",
@@ -1775,7 +1773,7 @@
   },
   "sessionStart": {
     "heading": "Nowa sesja",
-    "subheading": "Agent zacznie pracę od Twojej pierwszej wiadomości, w kontekście tej specyfikacji.",
+    "subheading": "Agent będzie pracował w kontekście tej specyfikacji. Pierwszą wiadomość napiszesz w sesji.",
     "context": {
       "heading": "Kontekst",
       "intro": "Sesja pracuje na tej specyfikacji — agent otrzyma ją jako kontekst.",
@@ -1786,29 +1784,24 @@
       "heading": "Agent",
       "intro": "Wybierz wykonawcę tej sesji. Nie zmienisz go w trakcie rozmowy."
     },
-    "message": {
-      "label": "Pierwsza wiadomość",
-      "placeholder": "Napisz, od czego agent ma zacząć…",
-      "description": "Tryb pracy i model dotyczą tej wiadomości; w sesji zmienisz je przed każdą kolejną."
-    },
     "name": {
       "heading": "Nazwa sesji",
+      "intro": "Nazwa pojawi się na liście sesji i w nagłówku.",
       "agentDefault": "Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.",
+      "customDescription": "Agent nie będzie zmieniał tej nazwy.",
       "useCustom": "Nadaj własną nazwę",
-      "useAgent": "Niech nazwę nada agent",
       "label": "Nazwa sesji",
       "placeholder": "np. Przegląd kryteriów akceptacji",
       "limit": "Do {{max}} znaków.",
       "remaining": "Pozostało znaków: {{remaining}}."
     },
     "prerequisite": {
-      "message": "Napisz pierwszą wiadomość.",
       "name": "Wpisz nazwę albo pozwól agentowi ją nadać.",
       "noProvider": "Żaden wykonawca nie jest teraz dostępny."
     },
     "footer": {
-      "agentNames": "Sesja otworzy się z tą wiadomością, a agent nada jej nazwę.",
-      "ready": "Sesja otworzy się z tą wiadomością."
+      "agentNames": "Sesja otworzy się bez wiadomości, a agent nada jej nazwę po pierwszej.",
+      "ready": "Sesja otworzy się bez wiadomości, z Twoją nazwą."
     },
     "submit": {
       "start": "Rozpocznij sesję",

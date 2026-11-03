@@ -33,13 +33,14 @@ owns state, guards and the tab panel; the strip renders no panel.
 
 - **Placement.** The strip MUST be the content of a region header, left of the header actions. It
   MUST NOT add a second row under the header. `density` sets the root height: `header` (default)
-  fills the 56 px workspace header (`h-14`, Documents); `rail` is the split Secondary's editor-tab
-  rail, the full 36 px `--spacing-tab-rail` (see [Secondary navigation](secondary-navigation.md),
+  fills the 56 px workspace header (`h-14`; the stacked/narrow switcher headers and mocks that are
+  not on a split rail); `rail` is every split Secondary's editor-tab rail (Session and Documents
+  alike, owner decision 2026-11-03: one look for all desktop tab strips), the full 36 px `--spacing-tab-rail` (see [Secondary navigation](secondary-navigation.md),
   "Root tabs and local navigation"), which draws its own bottom divider, so its host row has no
   border or padding. In `header` tabs are one control high (36 px), anchored to the bottom edge
   with 2 px between them; the active tab's underline sits on the header border. The strip never
   adds height of its own to match another region.
-- **Tab look (`header`, Documents).** Square tabs, no rounded "card" top and no fill when
+- **Tab look (`header`).** Square tabs, no rounded "card" top and no fill when
   selected: the active tab is the 2 px `action-primary` underline plus `content-primary` text,
   12 px / 600 labels. Inactive tabs are plain `content-secondary` text (muted while loading or
   missing) with no underline and show `surface-hover` only on hover. A fill — on every tab, or
@@ -53,8 +54,10 @@ owns state, guards and the tab panel; the strip renders no panel.
   divider and `surface-hover` on hover; the **active tab takes the panel's own surface** (no fill,
   no bottom border), so it reads as the top of the content below, under a 1 px **neutral** top
   border of the separators' colour — no primary accent line — plus `content-primary` text. The
-  strip continues past the last tab with the same fill and divider and carries the `Opened (N)`
-  trigger. The earlier "underline only, no card" rule remains Documents'; these tabs are square and
+  strip continues past the last tab with the same fill and divider (`RailTail`, exported with
+  `ItemTabs`) and carries the `Opened (N)` trigger and any rail controls of the host. A dirty item
+  shows its dot in the glyph slot, which is reserved for it. A rail has no region-level close:
+  each tab closes itself (Documents offers _Close all documents_ in the document's `...` menu). The earlier "underline only, no card" rule remains `header`'s; these tabs are square and
   touching, so they are not the separate rounded cards that rule rejected.
 - **Width (content width, both densities).** A tab is as wide as its own content: the start padding
   (`pl-2.5` in `header`, `pl-3` in `rail`), the glyph (16 px, or 14 px in `rail`, + 8 px gap)
@@ -73,8 +76,8 @@ owns state, guards and the tab panel; the strip renders no panel.
   fixed width wasted space on short names (`Kontekst`) and cut long file names early; one policy
   keeps the strips consistent. Documents' short file names now get narrower tabs and long ones up to
   240 px.
-- **Switcher.** Below `switcherBelow` (default 480 px of strip width; the Secondary rail passes
-  292 px = two compressed tabs plus the overflow trigger) the strip MUST become one button
+- **Switcher.** Below `switcherBelow` (default 480 px of strip width in `header`, 292 px in
+  `rail` = two compressed tabs plus the overflow trigger) the strip MUST become one button
   `name (N)` opening the same menu (`variant="auto"`).
 - **Overflow trigger.** Shows the chevron and the count; its accessible name is the full
   `labels.openedMenu(N)` text (the visible count is `aria-hidden`, so the visible text is never

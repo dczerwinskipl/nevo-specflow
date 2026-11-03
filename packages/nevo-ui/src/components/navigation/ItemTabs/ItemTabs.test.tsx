@@ -183,6 +183,34 @@ describe('ItemTabs', () => {
       expect(width('Context')).toBe(44 + Math.round('Context'.length * 7.4));
     });
 
+    it('shows the dirty dot in the glyph slot of an iconless tab and reserves its width', () => {
+      renderTabs({
+        items: [
+          makeItem('clean', { label: 'Clean', icon: undefined }),
+          makeItem('dirty', { label: 'Clean', icon: undefined, dirty: true }),
+        ],
+        activeId: 'clean',
+        density: 'rail',
+      });
+      const [clean, dirty] = screen.getAllByRole('tab');
+      expect(clean!.querySelector('.bg-status-attention')).toBeNull();
+      expect(dirty!.querySelector('.bg-status-attention')).not.toBeNull();
+      expect(dirty!.querySelector('svg')).toBeNull();
+      // Same label, so the only difference is the reserved glyph slot (14px + 8px gap).
+      expect(Number.parseFloat(dirty!.parentElement!.style.width)).toBe(
+        Number.parseFloat(clean!.parentElement!.style.width) + 22,
+      );
+    });
+
+    it('stays a strip down to 292px, the header density keeps its 480px switcher', () => {
+      containerWidth = 300;
+      const { unmount } = renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      expect(screen.getAllByRole('tab')).toHaveLength(3);
+      unmount();
+      renderTabs({ items: railItems, activeId: 'history' });
+      expect(screen.queryByRole('tab')).toBeNull();
+    });
+
     it('keeps the header density unchanged: underline, rounded, 2px apart', () => {
       renderTabs({ items: railItems, activeId: 'history' });
       expect(screen.getByRole('tablist').className).toContain('gap-0.5');

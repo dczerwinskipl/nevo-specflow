@@ -34,7 +34,7 @@ function Fixture({ width }: { width: number }) {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Tool detail code',
+  title: 'SpecFlow/Components/Work Inspector',
   component: Fixture,
   tags: ['contract'],
   args: { width: 330 },

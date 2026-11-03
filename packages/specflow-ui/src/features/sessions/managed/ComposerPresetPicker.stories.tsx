@@ -83,12 +83,33 @@ const rowLabels = (menu: HTMLElement) =>
     .getAllByRole('menuitemradio')
     .map((item) => item.textContent);
 
-/** Baseline: the placeholder trigger when no work mode is selected yet. */
-export const Placeholder: Story = {};
+/** Baseline: the placeholder trigger when no work mode is selected yet; the controls pick the
+ * provider catalogue, the selected mode and the compact (mobile) presentation. */
+export const Default: Story = {
+  argTypes: {
+    options: {
+      name: 'catalogue',
+      control: 'select',
+      options: ['claude', 'cursor', 'withoutModes'],
+      mapping: {
+        claude: claudeModes,
+        cursor: runtimeWorkModes(providerFixture('cursor')),
+        withoutModes: runtimeWorkModes(providerFixture('without-modes')),
+      },
+    },
+    initialValue: {
+      control: 'select',
+      options: [undefined, 'plan', 'acceptEdits', 'ask'],
+    },
+    disabled: { control: 'boolean' },
+    compact: { control: 'boolean' },
+  },
+};
 
 /** Claude Code's own catalogue, in its order and under its own titles; picking a mode closes the
  * menu and reports the opaque catalogue id. Ready modes carry no description line. */
 export const ClaudeCatalogue: Story = {
+  tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
     const menu = await openModeMenu(canvasElement, 'Wybierz tryb pracy');
@@ -111,6 +132,7 @@ export const ClaudeCatalogue: Story = {
 
 /** An unavailable mode is listed, disabled, with the catalogue's own reason as its second line. */
 export const UnavailableModeShowsReason: Story = {
+  tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
     const menu = await openModeMenu(canvasElement, 'Wybierz tryb pracy');
@@ -132,6 +154,7 @@ export const UnavailableModeShowsReason: Story = {
 /** A Cursor-like provider speaks its own vocabulary (Ask/Plan/Agent); a mode the actor is not
  * authorized for is disabled with the generic "unavailable" wording (no catalogue reason). */
 export const CursorLikeCatalogue: Story = {
+  tags: ['contract'],
   args: { options: runtimeWorkModes(providerFixture('cursor')), initialValue: 'ask' },
   play: async ({ canvasElement }) => {
     const menu = await openModeMenu(canvasElement, 'Ask');
@@ -147,6 +170,7 @@ export const CursorLikeCatalogue: Story = {
 /** The picker renders nothing at all when the provider's catalogue lists no work modes — the
  * gating lives entirely inside `ComposerModePicker`, not split with its caller. */
 export const NoModes: Story = {
+  tags: ['contract'],
   args: { options: runtimeWorkModes(providerFixture('without-modes')) },
   play: async ({ canvasElement }) => {
     await expect(canvasElement.querySelector('#managed-intent')).toBeNull();
@@ -157,6 +181,7 @@ export const NoModes: Story = {
 /** The narrow/mobile presentation (`compact`): a text trigger with no icon, capped at 9rem and
  * truncated, with the full label in `title` — see `ComposerModePicker`'s own doc comment. */
 export const CompactTrigger: Story = {
+  tags: ['contract'],
   args: {
     compact: true,
     options: [{ id: 'long', title: 'A provider mode with a deliberately long own title' }],

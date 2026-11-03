@@ -549,13 +549,13 @@
     "changeMethod": "Zmień sposób pracy",
     "formRegion": "Utworzenie specyfikacji",
     "method": {
-      "title": "Jak chcesz stworzyć specyfikację?",
+      "title": "Sposób tworzenia",
       "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z archetypu.",
       "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów.",
       "manualText": "Utwórz dokumenty archetypu i edytuj je samodzielnie."
     },
     "heading": {
-      "specification": "Co chcesz opisać?"
+      "specification": "Nowa specyfikacja"
     },
     "subheading": {
       "withArchetype": "Nazwij pracę, wybierz pasujący do niej archetyp i miejsce, w którym powstanie."
@@ -741,7 +741,7 @@
       "refreshArchetypes": "Odśwież archetypy"
     },
     "workspace": {
-      "heading": "Gdzie chcesz pracować?",
+      "heading": "Miejsce pracy",
       "intro": "Wybierz, gdzie powstanie specyfikacja i jej zmiany.",
       "refreshOptions": "Odśwież opcje środowiska pracy",
       "refreshOptionsAction": "Odśwież opcje",
@@ -1772,7 +1772,7 @@
     }
   },
   "sessionStart": {
-    "heading": "Z kim chcesz pracować?",
+    "heading": "Nowa sesja",
     "subheading": "Agent będzie pracował w kontekście tej specyfikacji. Pierwszą wiadomość napiszesz w sesji.",
     "context": {
       "heading": "Kontekst",

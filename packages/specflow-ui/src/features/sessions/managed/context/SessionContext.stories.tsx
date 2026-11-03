@@ -105,11 +105,33 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** The representative Context panel: pick the Session's context fixture. */
+export const Default: Story = {
+  args: { value: genericSpecLevelContext() },
+  argTypes: {
+    value: {
+      name: 'context',
+      control: 'select',
+      options: ['relatedTasks', 'singleTask', 'batch', 'stale', 'stress', 'settledTurn', 'empty'],
+      mapping: {
+        relatedTasks: genericSpecLevelContext(),
+        singleTask: singleTaskContext(),
+        batch: batchContext(),
+        stale: terminalOutcomeContext(),
+        stress: stressContext(),
+        settledTurn: settledTurnContext(),
+        empty: emptyContext(),
+      },
+    },
+  },
+};
+
 /** Two related Tasks: the summary row reads "2 Tasks" and opens the shared Tasks list screen —
  * never the individual Task titles rendered inline. Full telemetry snapshot exercises every
  * `Progress` bar (context occupancy + both rate-limit windows), all comfortably under the
  * attention/danger thresholds. */
 export const GenericWithRelatedTasks: Story = {
+  tags: ['contract'],
   args: { value: genericSpecLevelContext() },
 };
 
@@ -117,24 +139,28 @@ export const GenericWithRelatedTasks: Story = {
  * opens that one Task directly (interim behaviour — see `SessionContext.tsx`'s
  * `openRelatedTasksEntry`). Partial telemetry: cost stays absent rather than a fake `$0`. */
 export const SingleRelatedTask: Story = {
+  tags: ['contract'],
   args: { value: singleTaskContext() },
 };
 
 /** Batch execution scope: several "current execution" Task rows, each a `ContextNavigationRow`
  * (icon, title + key, centred chevron) instead of the old stacked-text `Button`. */
 export const BatchExecution: Story = {
+  tags: ['contract'],
   args: { value: batchContext() },
 };
 
 /** Stale telemetry: every `Progress` bar and sentence carries the muted "Stale" cue. Also the
  * fixture whose rate-limit window crosses the danger threshold (390k/400k ≈ 98%). */
 export const StaleTelemetry: Story = {
+  tags: ['contract'],
   args: { value: terminalOutcomeContext() },
 };
 
 /** Stress fixture: long Task/Specification titles, a longer related-Task list (3), mixed
  * Attention tones — the responsive/typography regression check for Parts 1–2. */
 export const Stress: Story = {
+  tags: ['contract'],
   args: { value: stressContext() },
 };
 
@@ -142,6 +168,7 @@ export const Stress: Story = {
  * rebuilt telemetry hierarchy (stat cells, collapsed token breakdown, separated provider-limits
  * row), and the navigation skeleton below it all still read cleanly in the narrow Context flow. */
 export const MobileGenericWithRelatedTasks: Story = {
+  tags: ['contract'],
   args: { value: genericSpecLevelContext() },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
@@ -149,6 +176,7 @@ export const MobileGenericWithRelatedTasks: Story = {
 /** Generic fixture in the real ~330 px Secondary (1280 px viewport): navigation rows, Session
  * usage metrics and the three progress bars at the narrow width they are tuned for. */
 export const InSecondary: Story = {
+  tags: ['contract'],
   args: { value: genericSpecLevelContext() },
   render: (args) => <SecondaryContextHost {...args} />,
 };
@@ -156,6 +184,7 @@ export const InSecondary: Story = {
 /** The same Session after its last Turn settled (no running Turn, Session still ready for the
  * next message): the context window is captioned "Ostatnia tura", not "Bieżąca tura". */
 export const InSecondarySettledTurn: Story = {
+  tags: ['contract'],
   args: { value: settledTurnContext() },
   render: (args) => <SecondaryContextHost {...args} />,
 };
@@ -163,12 +192,14 @@ export const InSecondarySettledTurn: Story = {
 /** Stress fixture in the ~330 px Secondary: long Specification/Task titles wrap into two-line
  * rows whose chevron stays centred on the whole row, and stale/danger telemetry. */
 export const InSecondaryStress: Story = {
+  tags: ['contract'],
   args: { value: stressContext() },
   render: (args) => <SecondaryContextHost {...args} />,
 };
 
 /** Batch execution in the ~330 px Secondary: several two-line Task rows (key + note). */
 export const InSecondaryBatch: Story = {
+  tags: ['contract'],
   args: { value: batchContext() },
   render: (args) => <SecondaryContextHost {...args} />,
 };
@@ -179,5 +210,6 @@ export const InSecondaryBatch: Story = {
  * (`OtherAreasSection`), since that skeleton is a fixed entry point rather than session-derived
  * content that can legitimately be absent. */
 export const EmptyWithNavigationSkeleton: Story = {
+  tags: ['contract'],
   args: { value: emptyContext() },
 };

@@ -80,9 +80,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** A short, already-`complete` preview: no auto-stitch fetch sequence ever starts. */
-export const ShortCompleteText: Story = {
+export const Default: Story = {
   args: {
     value: { text: 'Krótka, kompletna odpowiedź bez dalszych stron.', complete: true },
+  },
+  argTypes: {
+    value: {
+      name: 'preview',
+      control: 'select',
+      options: ['short', 'capped'],
+      mapping: {
+        short: { text: 'Krótka, kompletna odpowiedź bez dalszych stron.', complete: true },
+        capped: sessionFixture(true).entries[1]!.text,
+      },
+    },
+    markdown: { control: 'boolean' },
   },
 };
 
@@ -92,6 +104,7 @@ export const ShortCompleteText: Story = {
  * `ManagedSession.interactions.stories.tsx`, at the component level.
  */
 export const AutoStitchedLongText: Story = {
+  tags: ['contract'],
   args: { value: sessionFixture(true).entries[1]!.text },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -110,6 +123,7 @@ export const AutoStitchedLongText: Story = {
  * approach the removed screen-level `CopyMessage` story used.
  */
 export const Copy: Story = {
+  tags: ['contract'],
   args: { value: sessionFixture(true).entries[1]!.text },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

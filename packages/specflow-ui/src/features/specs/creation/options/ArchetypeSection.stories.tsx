@@ -47,7 +47,7 @@ function Host({ catalogue }: { catalogue: ArchetypeCatalogue }) {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Create archetype selection',
+  title: 'SpecFlow/Features/Archetype Selection',
   component: Host,
   decorators: [withLocale('pl')],
   tags: ['contract'],
@@ -55,6 +55,25 @@ const meta = {
 } satisfies Meta<typeof Host>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** The Default: the demo catalogue (a default archetype is preselected). */
+export const Default: Story = {
+  tags: ['!contract'],
+  // The Host keeps the served catalogue in state, so a new choice remounts it.
+  render: (args) => <Host key={args.catalogue.archetypes.map((a) => a.id).join()} {...args} />,
+  argTypes: {
+    catalogue: {
+      control: 'select',
+      options: ['withDefault', 'single', 'severalWithoutDefault', 'none'],
+      mapping: {
+        withDefault: demoCatalogue,
+        single,
+        severalWithoutDefault: several,
+        none: { ...several, archetypes: [] },
+      },
+    },
+  },
+};
 
 const selected = (canvas: Pick<StoryContext['canvas'], 'getByRole'>) =>
   canvas.getByRole('status', { name: 'Selected archetype' });

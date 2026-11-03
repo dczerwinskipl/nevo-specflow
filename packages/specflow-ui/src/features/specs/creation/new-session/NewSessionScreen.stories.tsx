@@ -26,6 +26,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Default: Story = {
+  tags: ['!contract'],
+  argTypes: { allocation: { control: 'inline-radio', options: ['ok', 'failed'] } },
+};
+
 const body = () => within(document.body);
 const firstMessage =
   'Przejrzyj kryteria akceptacji logowania SSO i wskaż luki w scenariuszach błędów.';
@@ -56,13 +61,13 @@ export const AgentNamesSession: Story = {
   play: async ({ canvas, userEvent }) => {
     await settleViewport();
     await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Z kim chcesz pracować?' }),
+      await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
     ).toBeVisible();
     // (a) The Specification is the pinned, read-only context. No first message, no workspace section.
     await expect(await canvas.findByText('Logowanie SSO')).toBeVisible();
     await expect(canvas.getByText('Przypięta')).toBeVisible();
     await expect(canvas.queryByRole('textbox', { name: 'Pierwsza wiadomość' })).toBeNull();
-    await expect(canvas.queryByText('Gdzie chcesz pracować?')).toBeNull();
+    await expect(canvas.queryByText('Miejsce pracy')).toBeNull();
     await expect(canvas.queryByRole('radio', { name: 'Nowe środowisko pracy' })).toBeNull();
     // (c) The default is legible before starting: the agent names the Session, no name field.
     await expect(
@@ -87,11 +92,11 @@ export const AgentNamesSession: Story = {
     );
     await expect(allocations[0]).not.toHaveProperty('effort');
     await expect(starts).toEqual([{ name: undefined }]);
-    // The Session opens idle: provisional title, empty Composer, no naming yet.
-    await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
-    ).toBeVisible();
-    await expect(landingComposer(canvas)).toHaveValue('');
+    // The Session opens idle: provisional title, empty Composer, no naming yet. The form's own
+    // heading is also "Nowa sesja", so wait for the Session's Composer before checking the title.
+    await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue('');
+    await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
     await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
     // The first message is written in the Session itself: then the agent names it.
     await userEvent.type(landingComposer(canvas), firstMessage);
@@ -119,10 +124,9 @@ export const AgentNamesSessionMobile: Story = {
     await expect(model.getBoundingClientRect().right).toBeLessThanOrEqual(375);
     await expectNoHorizontalScroll();
     await userEvent.click(startButton(canvas));
-    await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
-    ).toBeVisible();
-    await expect(landingComposer(canvas)).toBeVisible();
+    await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
     await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
     await expectNoHorizontalScroll();
   },

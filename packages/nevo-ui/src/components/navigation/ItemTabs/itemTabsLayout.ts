@@ -11,6 +11,12 @@ export const ITEM_TAB_MAX_WIDTH = 240;
 /** Container width below which the strip is replaced by the switcher button. */
 export const ITEM_TABS_SWITCHER_BELOW = 480;
 export const ITEM_TABS_OVERFLOW_WIDTH = 52;
+/**
+ * The rail's switcher threshold: two compressed tabs and the Opened trigger, the room the editor
+ * tabs of a Secondary are meant to stay a strip in (the Secondary root-tab strip passes the same).
+ */
+export const ITEM_TABS_RAIL_SWITCHER_BELOW =
+  2 * ITEM_TAB_COMPRESSED_WIDTH + ITEM_TABS_OVERFLOW_WIDTH;
 /** Space between tabs (px). Coupled to the `gap-0.5` on the tablist and on the close-slot layer. */
 export const ITEM_TAB_GAP = 2;
 /**

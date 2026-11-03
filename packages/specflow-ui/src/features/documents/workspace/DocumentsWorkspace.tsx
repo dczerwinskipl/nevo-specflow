@@ -26,6 +26,7 @@ import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { DocumentPane } from './DocumentPane';
 import { DocumentsEmptyState } from './DocumentsEmptyState';
+import { DocumentsIdleRailHeader } from './DocumentsIdleRailHeader';
 import {
   DocumentsTreeActionsContext,
   assignTypeFor,
@@ -75,15 +76,16 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     assignType: (id) => treeController.current?.assignType(id),
     removeRegistration: (id) => treeController.current?.removeRegistration(id),
   }));
-  const documentHeader = documentHeaderModel(editor, t, {
-    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
-    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
-  });
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
   const commitRef = useRef<(() => void) | null>(null);
   const takeDiscardedRef = useRef<(() => string[]) | null>(null);
   const operations = useDocumentTreeOperations({ specId });
   const opening = useDocumentOpening({ specId, documentId, requestRef, commitRef });
+  const documentHeader = documentHeaderModel(editor, t, {
+    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
+    onCloseAll: tabs.tabs.length > 0 ? () => opening.closeAll() : undefined,
+    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
+  });
   // Once per visit (this screen's mount), as soon as the tree and the layout are known: the main
   // file opens when nothing is chosen. Decided once, so closing it never reopens it in this visit.
   const startDecided = useRef(false);
@@ -202,6 +204,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                 opening.closeAll();
               }
             }}
+            // The Session's editor-tab rail; the stacked document keeps its own 56px header.
+            headerVariant="tab-rail"
             header={
               <WorkspaceHeader
                 actions={documentHeader.actions}
@@ -217,7 +221,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                   tabs.tabs.find((tab) => tab.id === documentId)?.label ??
                   t('specification.documentPreviewTitle')
                 }
-                identityContent={<DocumentTabStrip />}
+                identityContent={<DocumentTabStrip density="rail" />}
+                tabRail
               />
             }
           >
@@ -226,7 +231,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
         ) : supportsSplit ? (
           // Idle placeholder: not dismissible, so closing it cannot bring back a full-width list.
           <AppWorkspace.Secondary
-            header={<WorkspaceHeader title={t('specification.documentPreviewTitle')} />}
+            headerVariant="tab-rail"
+            header={<DocumentsIdleRailHeader title={t('specification.documentPreviewTitle')} />}
           >
             {pane}
           </AppWorkspace.Secondary>

@@ -549,13 +549,13 @@
     "changeMethod": "Change the way of working",
     "formRegion": "Specification creation",
     "method": {
-      "title": "How do you want to create the specification?",
+      "title": "Creation method",
       "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype.",
       "aiText": "Start a Spec Writer session. Later stages can use other agents.",
       "manualText": "Create the documents of an archetype and edit them yourself."
     },
     "heading": {
-      "specification": "What do you want to describe?"
+      "specification": "New specification"
     },
     "subheading": {
       "withArchetype": "Name the work, choose the archetype that matches it and where it lives."
@@ -741,7 +741,7 @@
       "refreshArchetypes": "Refresh archetypes"
     },
     "workspace": {
-      "heading": "Where do you want to work?",
+      "heading": "Workspace",
       "intro": "Choose where the specification and its changes will live.",
       "refreshOptions": "Refresh workspace options",
       "refreshOptionsAction": "Refresh options",
@@ -1772,7 +1772,7 @@
     }
   },
   "sessionStart": {
-    "heading": "Who do you want to work with?",
+    "heading": "New session",
     "subheading": "The agent works in the context of this specification. You write the first message in the session.",
     "context": {
       "heading": "Context",

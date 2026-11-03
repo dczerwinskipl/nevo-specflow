@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../components/overlays/Tooltip';
+import { RailTail } from '../../components/navigation/ItemTabs/RailTail';
 import { cn } from '../../lib';
 import { WORKSPACE_HEADER_NARROW_MAX_WIDTH } from './workspaceSizing';
 
@@ -127,6 +128,11 @@ export interface WorkspaceHeaderProps {
   identityContent?: ReactNode;
   /** Primary defaults to h1; contextual Secondary headers use h2. */
   headingLevel?: 1 | 2;
+  /**
+   * The header is the content of a `density="rail"` tab strip (`identityContent` is an `ItemTabs`
+   * rail): the actions continue the strip (`RailTail`) instead of floating on the page after a gap.
+   */
+  tabRail?: boolean;
 }
 
 export interface WorkspaceHeaderLabels {
@@ -547,6 +553,14 @@ function useNarrowHeader() {
   return { ref, narrow };
 }
 
+function ActionsWrapper({ tabRail, children }: { tabRail: boolean; children: ReactNode }) {
+  return tabRail ? (
+    <RailTail className="gap-1.5">{children}</RailTail>
+  ) : (
+    <div className="flex shrink-0 items-center gap-1.5">{children}</div>
+  );
+}
+
 /** One owner of action placement for desktop headers, including custom Secondary content. */
 export function WorkspaceHeaderFrame({
   content,
@@ -554,12 +568,15 @@ export function WorkspaceHeaderFrame({
   labels: labelsProp,
   menu = 'default',
   className,
+  tabRail = false,
 }: {
   content: ReactNode;
   actions?: readonly WorkspaceHeaderAction[];
   labels?: Partial<WorkspaceHeaderLabels>;
   menu?: WorkspaceHeaderMenu;
   className?: string;
+  /** See `WorkspaceHeaderProps.tabRail`. */
+  tabRail?: boolean;
 }) {
   const { ref, narrow } = useNarrowHeader();
   const resolved = resolveWorkspaceHeaderActions(actions, narrow ? 'narrow' : 'wide');
@@ -567,14 +584,18 @@ export function WorkspaceHeaderFrame({
 
   return (
     <div
-      className={cn('flex w-full min-w-0 items-center justify-between gap-3', className)}
+      className={cn(
+        'flex w-full min-w-0 items-center justify-between',
+        tabRail ? 'items-stretch' : 'gap-3',
+        className,
+      )}
       data-workspace-header="true"
       data-workspace-header-density={narrow ? 'narrow' : 'wide'}
       ref={ref}
     >
       <div className="min-w-0 flex-1">{content}</div>
       {resolved.direct.length > 0 || resolved.overflow.length > 0 ? (
-        <div className="flex shrink-0 items-center gap-1.5">
+        <ActionsWrapper tabRail={tabRail}>
           {resolved.direct.map((action) => (
             <DirectPrimaryAction action={action} key={action.id} narrow={narrow} />
           ))}
@@ -584,7 +605,7 @@ export function WorkspaceHeaderFrame({
             label={labels.moreActions}
             scope={labels.menuScope}
           />
-        </div>
+        </ActionsWrapper>
       ) : null}
     </div>
   );
@@ -602,10 +623,12 @@ export function WorkspaceHeader({
   title,
   headingLevel = 1,
   identityContent,
+  tabRail,
 }: WorkspaceHeaderProps) {
   return (
     <WorkspaceHeaderFrame
       actions={actions}
+      tabRail={tabRail}
       className={className}
       labels={labels}
       menu={menu}

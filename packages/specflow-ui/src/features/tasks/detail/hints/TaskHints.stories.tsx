@@ -12,7 +12,7 @@ const hints = [
   { kind: 'doc' as const, ref: 'opaque/id/without-extension' },
 ];
 const meta = {
-  title: 'SpecFlow/Features/Tasks/Hints',
+  title: 'SpecFlow/Components/Task Hints',
   component: TaskHints,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -28,8 +28,8 @@ const meta = {
 } satisfies Meta<typeof TaskHints>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const MixedReferences: Story = {};
-export const Empty: Story = { args: { hints: [] } };
+export const Default: Story = {};
+export const Empty: Story = { tags: ['contract'], args: { hints: [] } };
 export const ReferenceAndCopy: Story = {
   tags: ['contract'],
   play: async ({ canvas, canvasElement, userEvent }) => {

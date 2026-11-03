@@ -28,16 +28,77 @@ function withRouter(Story: ComponentType) {
   return <RouterDecorator />;
 }
 
+type ErrorView =
+  | 'notFound'
+  | 'routeError'
+  | 'routeApiError'
+  | 'featureUnavailablePage'
+  | 'featureUnavailablePanel';
+
+/** One surface that shows the chosen view, so the Default can switch between them. */
+function ErrorViewPreview({ view }: { view: ErrorView }) {
+  switch (view) {
+    case 'notFound':
+      return <NotFoundView />;
+    case 'routeError':
+      return <RouteErrorView error={new TypeError('secret detail')} reset={fn()} />;
+    case 'routeApiError':
+      return (
+        <RouteErrorView
+          error={
+            new ApiError({
+              kind: 'forbidden',
+              operation: 'specs.workspace',
+              outcome: 'not-applied',
+              retryable: false,
+              code: 'forbidden',
+            })
+          }
+        />
+      );
+    case 'featureUnavailablePage':
+      return (
+        <div className="p-6">
+          <FeatureUnavailable onBack={fn()} />
+        </div>
+      );
+    case 'featureUnavailablePanel':
+      return (
+        <div className="p-6">
+          <FeatureUnavailable />
+        </div>
+      );
+  }
+}
+
 const meta = {
   decorators: [withRouter, withLocale('pl')],
   title: 'SpecFlow/Screens/Error Views',
+  component: ErrorViewPreview,
+  args: { view: 'notFound' },
   parameters: { layout: 'fullscreen' },
-} satisfies Meta;
+} satisfies Meta<typeof ErrorViewPreview>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Default: Story = {
+  argTypes: {
+    view: {
+      control: 'select',
+      options: [
+        'notFound',
+        'routeError',
+        'routeApiError',
+        'featureUnavailablePage',
+        'featureUnavailablePanel',
+      ],
+    },
+  },
+};
+
 /** An address that leads nowhere: the only action is the way back to the specifications. */
 export const NotFound: Story = {
+  tags: ['contract'],
   render: () => <NotFoundView />,
   play: async ({ canvas }) => {
     await expect(
@@ -49,6 +110,7 @@ export const NotFound: Story = {
 
 /** A defect: the generic screen with a retry and the way back; its technical text is never shown. */
 export const RouteError: Story = {
+  tags: ['contract'],
   render: () => <RouteErrorView error={new TypeError('secret detail')} reset={fn()} />,
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('alert')).toBeInTheDocument();
@@ -59,6 +121,7 @@ export const RouteError: Story = {
 
 /** A classified API failure reads like any other: the copy of its kind, never the operation name. */
 export const RouteApiError: Story = {
+  tags: ['contract'],
   render: () => (
     <RouteErrorView
       error={
@@ -82,6 +145,7 @@ export const RouteApiError: Story = {
 
 /** A feature the server does not provide, as a full page: a calm state with a way out (never a dead end). */
 export const FeatureUnavailablePage: Story = {
+  tags: ['contract'],
   args: {},
   render: () => {
     const onBack = fn();
@@ -102,6 +166,7 @@ export const FeatureUnavailablePage: Story = {
 
 /** The same state as a panel inside a page that keeps its own navigation: no action. */
 export const FeatureUnavailablePanel: Story = {
+  tags: ['contract'],
   render: () => (
     <div className="p-6">
       <FeatureUnavailable />

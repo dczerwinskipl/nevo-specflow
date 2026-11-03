@@ -102,10 +102,46 @@ function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
   );
 }
 
-export const PasswordOnly: Story = { args: { loginMethods: passwordOnly } };
-export const SingleOidc: Story = { args: { loginMethods: singleOidc } };
-export const MultipleOidc: Story = { args: { loginMethods: multipleOidc } };
+export const Default: Story = {
+  args: { loginMethods: mixed },
+  argTypes: {
+    loginMethods: {
+      control: 'select',
+      options: [
+        'passwordAndOidc',
+        'passwordOnly',
+        'singleOidc',
+        'multipleOidc',
+        'passwordAndSingleOidc',
+      ],
+      mapping: {
+        passwordAndOidc: mixed,
+        passwordOnly,
+        singleOidc,
+        multipleOidc,
+        passwordAndSingleOidc,
+      },
+    },
+    error: {
+      control: 'select',
+      options: ['none', 'invalidCredentials', 'providerUnavailable'],
+      mapping: {
+        none: undefined,
+        invalidCredentials: loginErrorMessage('invalid_credentials'),
+        providerUnavailable: loginErrorMessage('provider_unavailable'),
+      },
+    },
+    pending: { control: 'inline-radio', options: [undefined, 'password'] },
+    username: { control: 'text' },
+    password: { control: 'text' },
+  },
+};
+
+export const PasswordOnly: Story = { tags: ['contract'], args: { loginMethods: passwordOnly } };
+export const SingleOidc: Story = { tags: ['contract'], args: { loginMethods: singleOidc } };
+export const MultipleOidc: Story = { tags: ['contract'], args: { loginMethods: multipleOidc } };
 export const PasswordAndSingleOidc: Story = {
+  tags: ['contract'],
   args: { loginMethods: passwordAndSingleOidc },
 };
 export const PasswordAndOidc: Story = {
@@ -150,6 +186,7 @@ export const PasswordAndOidcContract: Story = {
 };
 
 export const InvalidCredentials: Story = {
+  tags: ['contract'],
   args: {
     loginMethods: mixed,
     username: 'dominik',
@@ -159,6 +196,7 @@ export const InvalidCredentials: Story = {
 };
 
 export const ProviderUnavailable: Story = {
+  tags: ['contract'],
   args: {
     loginMethods: singleOidc,
     error: loginErrorMessage('provider_unavailable'),
@@ -166,6 +204,7 @@ export const ProviderUnavailable: Story = {
 };
 
 export const SubmittingPassword: Story = {
+  tags: ['contract'],
   args: {
     loginMethods: mixed,
     username: 'dominik',
@@ -175,6 +214,7 @@ export const SubmittingPassword: Story = {
 };
 
 export const Polish: Story = {
+  tags: ['contract'],
   render: (args) => (
     <StoryLocalization locale="pl">
       <LoginScreenView {...args} />
@@ -207,6 +247,7 @@ export const MobileContract: Story = {
 };
 
 export const MobileLongOidcName: Story = {
+  tags: ['contract'],
   args: {
     loginMethods: {
       password: { enabled: false },
@@ -217,6 +258,7 @@ export const MobileLongOidcName: Story = {
 };
 
 export const MobileSimilarLongOidcNames: Story = {
+  tags: ['contract'],
   args: {
     loginMethods: {
       password: { enabled: false },

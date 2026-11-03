@@ -44,8 +44,48 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const samples = {
+  json: { language: 'json', label: 'Parametry', readOnly: true },
+  markdown: { language: 'markdown', label: 'Treść notes.md', readOnly: false },
+  plain: { language: 'plain', label: 'Odpowiedź narzędzia', readOnly: true },
+} as const;
+
+/** The representative view: pick the content kind; language and label follow it. */
+export const Default: Story = {
+  args: { value: jsonSample },
+  argTypes: {
+    value: {
+      name: 'content',
+      control: 'select',
+      options: ['json', 'markdown', 'plain'],
+      mapping: { json: jsonSample, markdown: markdownSample, plain: plainSample },
+    },
+    language: { table: { disable: true } },
+    label: { table: { disable: true } },
+  },
+  render: (args) => {
+    const sample =
+      args.value === markdownSample
+        ? samples.markdown
+        : args.value === plainSample
+          ? samples.plain
+          : samples.json;
+
+    return (
+      <div className="flex h-72 max-w-xl flex-col">
+        <CodeView
+          {...args}
+          {...sample}
+          className={cn('min-h-0 flex-1 overflow-hidden', codeSurfaceClassName)}
+        />
+      </div>
+    );
+  },
+};
+
 /** JSON on DS tokens: keys, strings, literal constants and punctuation each in their own role. */
 export const Json: Story = {
+  tags: ['contract'],
   play: async ({ canvas }) => {
     const text = canvas.getByRole('textbox', { name: 'Parametry' });
     await expect(text).toHaveAttribute('aria-readonly', 'true');
@@ -63,10 +103,12 @@ export const Json: Story = {
 };
 
 export const Markdown: Story = {
+  tags: ['contract'],
   args: { value: markdownSample, language: 'markdown', label: 'Treść notes.md', readOnly: false },
 };
 
 /** Verbatim output: the same view, no colouring. */
 export const PlainText: Story = {
+  tags: ['contract'],
   args: { value: plainSample, language: 'plain', label: 'Odpowiedź narzędzia' },
 };

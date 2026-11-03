@@ -23,6 +23,7 @@ import { DirtyDot, OpenedMenuBody, type OpenedMenuProps } from './OpenedMenu';
 import { useCloseFocus } from './useCloseFocus';
 import { resolveLabels, statusText, type ItemTab, type ItemTabsLabels } from './itemTabsTypes';
 import {
+  ITEM_TABS_RAIL_SWITCHER_BELOW,
   ITEM_TABS_SWITCHER_BELOW,
   fitItemTabs,
   itemTabMetrics,
@@ -61,7 +62,7 @@ export interface ItemTabsProps extends Omit<
    * `switcherBelow`; `strip` and `switcher` force one presentation.
    */
   variant?: 'auto' | 'strip' | 'switcher';
-  /** Container width in px under which `auto` renders the switcher. Default 480. */
+  /** Container width in px under which `auto` renders the switcher. Default 480, `rail` 292. */
   switcherBelow?: number;
   /**
    * Root height and tab look. `header` (default): fills a 56px `WorkspaceHeader` slot (minus its 1px
@@ -110,7 +111,12 @@ function tabChrome(item: ItemTab, density: ItemTabDensity): ItemTabChrome {
     // `closable` reserves the trailing slot. On the rail a pinned (non-closable) tab shows its pin
     // there, so it keeps the slot too.
     closable: item.closable !== false || density === 'rail',
-    glyph: Boolean(item.icon) || item.state === 'loading' || item.state === 'missing',
+    // The dirty dot stands in the glyph slot of an iconless tab (the rail), so it reserves it too.
+    glyph:
+      Boolean(item.icon) ||
+      item.state === 'loading' ||
+      item.state === 'missing' ||
+      Boolean(item.dirty),
   };
 }
 
@@ -355,7 +361,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     scope,
     activation = 'manual',
     variant = 'auto',
-    switcherBelow = ITEM_TABS_SWITCHER_BELOW,
+    switcherBelow: switcherBelowProp,
     density = 'header',
     labels: labelOverrides,
     className,
@@ -365,6 +371,8 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
 ) {
   const labels = resolveLabels(labelOverrides);
   const rail = density === 'rail';
+  const switcherBelow =
+    switcherBelowProp ?? (rail ? ITEM_TABS_RAIL_SWITCHER_BELOW : ITEM_TABS_SWITCHER_BELOW);
   const metrics = itemTabMetrics(density);
   // The rail draws its own bottom divider (on the inactive tabs and the strip), so it is the full
   // `--spacing-tab-rail`; the header root leaves the 1px divider its host row draws.

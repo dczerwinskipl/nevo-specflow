@@ -198,7 +198,7 @@ function Fixture({
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Contracts/Document edit-preview and position',
+  title: 'SpecFlow/Features/Document Editor',
   component: Fixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },

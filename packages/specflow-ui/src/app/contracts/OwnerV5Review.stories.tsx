@@ -6,10 +6,10 @@ import { withLocale } from '../../i18n/StoryLocalization';
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Review/Owner V5 independent responsive review',
+  title: 'SpecFlow/Screens/Application Shell',
   component: ConnectedApplication,
   parameters: { layout: 'fullscreen' },
-  tags: ['contract', 'visual'],
+  tags: ['contract'],
 } satisfies Meta<typeof ConnectedApplication>;
 export default meta;
 type Story = StoryObj<typeof meta>;

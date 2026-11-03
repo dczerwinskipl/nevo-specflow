@@ -5,7 +5,7 @@ import { TaskHistoryDetails } from './TaskHistoryDetails';
 import { createHistoryDetailsFixture } from './taskHistoryDetails.test-support';
 
 const meta = {
-  title: 'SpecFlow/Features/Tasks/Historical details',
+  title: 'SpecFlow/Components/Task History Details',
   component: TaskHistoryDetails,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -27,7 +27,7 @@ const meta = {
 } satisfies Meta<typeof TaskHistoryDetails>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const MixedAvailability: Story = {};
+export const Default: Story = {};
 export const TechnicalReachability: Story = {
   tags: ['contract'],
   play: async ({ canvas, canvasElement, userEvent, args }) => {

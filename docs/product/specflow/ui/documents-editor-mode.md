@@ -67,7 +67,8 @@ document owns only what they mean in the product. Approved mock: Storybook
   neighbour, else the left one, by replacing the entry; closing the last tab shows the document list. The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
 - **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab
   that is not on screen; Discard removes its draft, so reopening shows the saved document. Leaving the
-  screen, switching specification, a tree operation, closing every tab (the region's close) or unloading
+  screen, switching specification, a tree operation, closing every tab (_Close all documents_ in the document's `...` menu — the split tab rail has
+  no region-level close) or unloading
   the page asks once, listing the unsaved documents (Save all / Discard all / Cancel). When Save all
   cannot save everything the dialog stays open and lists the documents that are still unsaved.
 - **Switching tabs is not leaving.** Moving between open tabs changes the route

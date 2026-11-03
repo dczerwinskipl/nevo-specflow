@@ -55,10 +55,12 @@ export const Default: Story = {
 };
 
 export const Retrying: Story = {
+  tags: ['contract'],
   args: { retrying: true },
 };
 
 export const Polish: Story = {
+  tags: ['contract'],
   render: (args) => (
     <StoryLocalization locale="pl">
       <RuntimeUnavailableView {...args} />
@@ -67,6 +69,7 @@ export const Polish: Story = {
 };
 
 export const Mobile: Story = {
+  tags: ['contract'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: ({ canvasElement }) => {
     const mobileHeader = canvasElement.querySelector<HTMLElement>(

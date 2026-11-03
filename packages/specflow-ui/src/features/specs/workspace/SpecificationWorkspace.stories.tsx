@@ -59,7 +59,7 @@ function Workspace({ demo }: { readonly demo: boolean }) {
 }
 
 const meta = {
-  title: 'SpecFlow/Features/Specification/Overview after Create',
+  title: 'SpecFlow/Screens/Specification Workspace',
   component: Workspace,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof Workspace>;

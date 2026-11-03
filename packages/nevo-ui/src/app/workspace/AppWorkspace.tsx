@@ -237,6 +237,14 @@ export interface AppWorkspaceSecondaryRegionProps extends AppWorkspaceRegionProp
    * Consumers can restore the default Secondary later by rendering it with open=true.
    */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Split layout only: `tab-rail` hosts the header as the 36px editor-tab rail
+   * (`--spacing-tab-rail`) like the Secondary root-tab strip: no padding or border of its own, no
+   * panel-level Close (each tab closes itself). The `header` is then an `ItemTabs`
+   * `density="rail"` strip, usually inside `WorkspaceHeader tabRail` so its actions continue the
+   * strip. Stacked layouts keep the 56px `header`. Default `header`.
+   */
+  headerVariant?: 'header' | 'tab-rail';
 }
 
 interface CommonAppWorkspaceProps {
@@ -315,6 +323,8 @@ interface WorkspaceSecondaryPresentation {
   surface: AppWorkspaceSurface;
   key: string;
   canStack: boolean;
+  /** The declarative Secondary's own request for the editor-tab rail header (split only). */
+  headerVariant?: 'header' | 'tab-rail';
   transition?: WorkspaceTransition;
   onClose?: () => void | Promise<unknown>;
   onBack?: () => void | Promise<unknown>;
@@ -379,6 +389,7 @@ function flattenWorkspaceChildren(children: ReactNode): ReactElement[] {
 
 interface ComposedDefaultSecondary {
   surface: AppWorkspaceSurface;
+  headerVariant?: 'header' | 'tab-rail';
   open: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -406,6 +417,7 @@ function resolveComposedWorkspace(children: ReactNode): {
       const props = child.props as AppWorkspaceSecondaryRegionProps;
       defaultSecondary = {
         surface: { header: props.header, content: props.children },
+        headerVariant: props.headerVariant,
         open: props.open ?? true,
         onOpenChange: props.onOpenChange,
       };
@@ -1129,6 +1141,7 @@ function AppWorkspaceRoot({
           surface: defaultSecondary.surface,
           key: 'default-secondary',
           canStack: false,
+          headerVariant: defaultSecondary.headerVariant,
           transition: workspace?.transition,
           onClose: defaultSecondary.onOpenChange
             ? () => defaultSecondary.onOpenChange?.(false)
@@ -1234,6 +1247,11 @@ function AppWorkspaceRoot({
   // A single runtime flow without a strip keeps its existing root-level Back unchanged; local depth
   // with the strip shown is the breadcrumb row below.
   const splitWithStrip = state.mode === 'split' && showSecondaryTabStrip;
+  // The rail header: the root-tab strip, or a declarative Secondary whose own header is a rail strip
+  // (Documents). Only the root-tab strip owns the Back/local-navigation behaviour above.
+  const splitRailHeader =
+    splitWithStrip ||
+    (state.mode === 'split' && secondaryPresentation?.headerVariant === 'tab-rail');
   const secondaryBackAction =
     secondaryPresentation?.onBack &&
     !splitWithStrip &&
@@ -1291,7 +1309,7 @@ function AppWorkspaceRoot({
   // With the tab strip shown each closable tab owns its own close; a second panel-level `x` beside
   // them was ambiguous (which one closes what), so it is not rendered. A lone surface keeps it.
   const secondaryCloseAction =
-    secondaryPresentation?.onClose && !hideClose && !splitWithStrip ? (
+    secondaryPresentation?.onClose && !hideClose && !splitRailHeader ? (
       <CloseAction label={labels.closeSecondary} onClose={secondaryPresentation.onClose} />
     ) : undefined;
   const compactSecondaryCloseAction: WorkspaceHeaderAction | undefined =
@@ -1397,7 +1415,7 @@ function AppWorkspaceRoot({
         key={secondaryPresentation.key}
         leadingAction={secondaryBackAction}
         contentNavigation={secondaryLocalNavigationRow}
-        headerVariant={splitWithStrip ? 'tab-rail' : 'header'}
+        headerVariant={splitRailHeader ? 'tab-rail' : 'header'}
         detailHeaderHosted={detailHeaderHosted}
         fitAvailable={fit === 'available'}
         maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}

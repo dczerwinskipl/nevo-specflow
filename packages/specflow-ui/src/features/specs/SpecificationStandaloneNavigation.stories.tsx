@@ -81,7 +81,7 @@ function StandaloneSurface({
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Standalone specification navigation',
+  title: 'SpecFlow/Screens/Specification Workspace',
   component: StandaloneSurface,
   tags: ['contract'],
 } satisfies Meta<typeof StandaloneSurface>;

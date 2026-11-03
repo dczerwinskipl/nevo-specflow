@@ -23,7 +23,7 @@ function StandaloneTask({ href = true }: { href?: boolean }) {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Standalone full task navigation',
+  title: 'SpecFlow/Screens/Task Workbench',
   component: StandaloneTask,
   tags: ['contract'],
 } satisfies Meta<typeof StandaloneTask>;

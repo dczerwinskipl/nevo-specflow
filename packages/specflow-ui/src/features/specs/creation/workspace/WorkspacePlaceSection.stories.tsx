@@ -100,7 +100,7 @@ function Harness({
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Features/Specification Creation/Workspace Section',
+  title: 'SpecFlow/Features/Workspace Selection',
   component: Harness,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof Harness>;
@@ -155,6 +155,47 @@ async function openSettings(canvas: Context['canvas'], userEvent: Context['userE
   await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
 }
 
+export const Default: Story = {
+  argTypes: {
+    variant: {
+      control: 'select',
+      options: [
+        'default',
+        'git-disabled',
+        'git-unavailable',
+        'membership-mismatch',
+        'no-linked',
+        'linked-none-selectable',
+        'none-available',
+        'no-integration-target',
+        'target-dirty',
+        'platform-dirty',
+        'primary-dirty',
+        'primary-other-branch',
+        'pin-drift',
+        'primary-detached',
+        'head-base',
+        'head-base-no-branch',
+        'many-workspaces',
+        'managed-false',
+        'long-names',
+        'no-selectable-targets',
+        'commits',
+        'protected-primary',
+        'not-allowed-primary',
+        'protected-all-linked',
+        'new-branch-protected',
+        'git-policy-invalid',
+      ],
+    },
+    status: { control: 'inline-radio', options: ['ready', 'loading', 'error', 'forbidden'] },
+    locked: { control: 'boolean' },
+    refreshing: { control: 'boolean' },
+    refreshFailed: { control: 'boolean' },
+    title: { control: 'text' },
+  },
+};
+
 export const DefaultNewWorkspace: Story = {
   tags: ['contract'],
   play: async ({ canvas }) => {
@@ -163,7 +204,7 @@ export const DefaultNewWorkspace: Story = {
     await expect(main).not.toBeChecked();
     await expect(existing).not.toBeChecked();
     // Order of the group is Nowy -> Główny -> Istniejący and the badge recommends the first.
-    await expect(canvas.getByRole('radiogroup', { name: 'Gdzie chcesz pracować?' })).toBeVisible();
+    await expect(canvas.getByRole('radiogroup', { name: 'Miejsce pracy' })).toBeVisible();
     await expect(canvas.getByText('Zalecane')).toBeVisible();
     await expect(canvas.getByText('3 dostępne')).toBeVisible();
     // The tile owns the "new branch + worktree" statement; the summary only labels defaults.
@@ -695,6 +736,7 @@ export const ServerNameConflictFocusesTheField: Story = {
 };
 
 export const ServerSlugConflictFocusesTheSlugField: Story = {
+  tags: ['contract'],
   args: {
     slugConflict: 'moj-slug',
     initial: {
@@ -937,7 +979,7 @@ export const Loading: Story = {
   args: { status: 'loading' },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('heading', { name: 'Gdzie chcesz pracować?' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Miejsce pracy' })).toBeVisible();
     await expect(canvas.queryByRole('radio')).not.toBeInTheDocument();
     await expect(canvas.getByLabelText('Żądanie')).toBeInTheDocument();
   },
@@ -1078,6 +1120,7 @@ const brokenWords = (root: Element) => {
 };
 
 export const TargetSwitchPrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: Story = {
+  tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openSettings(canvas, userEvent);
@@ -1112,6 +1155,7 @@ export const TargetSwitchPrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: St
 };
 
 export const EnablingTheBaseSwitchPrefillsTheEffectiveDefault: Story = {
+  tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openSettings(canvas, userEvent);
@@ -1133,6 +1177,7 @@ export const EnablingTheBaseSwitchPrefillsTheEffectiveDefault: Story = {
 };
 
 export const EnablingBaseWithoutAnyDefaultStaysBlockedUntilChosen: Story = {
+  tags: ['contract'],
   args: { variant: 'head-base-no-branch' },
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
@@ -1150,6 +1195,7 @@ export const EnablingBaseWithoutAnyDefaultStaysBlockedUntilChosen: Story = {
 };
 
 export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
+  tags: ['contract'],
   args: {
     initial: {
       settingsOpen: false,
@@ -1179,12 +1225,14 @@ export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
 };
 
 export const DefaultDisclosureNameHasNoStrayComma: Story = {
+  tags: ['contract'],
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('button', { name: 'Zmień ustawienia' })).toBeVisible();
   },
 };
 
 export const BranchIconStaysOnTheFirstLineOfAWrappingValue: Story = {
+  tags: ['contract'],
   args: {
     initial: {
       branch: { on: true, name: `feature/${'a-very-long-segment-'.repeat(6)}end`, edited: true },
@@ -1211,6 +1259,7 @@ export const BranchIconStaysOnTheFirstLineOfAWrappingValue: Story = {
 };
 
 export const StructuralBranchNameErrorNamesTheRule: Story = {
+  tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openSettings(canvas, userEvent);
@@ -1225,6 +1274,7 @@ export const StructuralBranchNameErrorNamesTheRule: Story = {
 };
 
 export const OutsideNevoIsExplained: Story = {
+  tags: ['contract'],
   args: { variant: 'managed-false', initial: { tile: 'existing' } },
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
@@ -1241,11 +1291,12 @@ export const OutsideNevoIsExplained: Story = {
 };
 
 export const LoadingPlaceholdersAreTileShaped: Story = {
+  tags: ['contract'],
   args: { status: 'loading' },
   play: async ({ canvas }) => {
     await settle(1440);
     const busy = canvas
-      .getByRole('heading', { name: 'Gdzie chcesz pracować?' })
+      .getByRole('heading', { name: 'Miejsce pracy' })
       .closest('section')!
       .querySelector('[aria-busy=true]')!;
     const tilesLoading = [...busy.querySelectorAll<HTMLElement>(':scope > div:first-child > div')];
@@ -1259,6 +1310,7 @@ export const LoadingPlaceholdersAreTileShaped: Story = {
 };
 
 export const FailedRefreshKeepsTheOptionsAndSaysSo: Story = {
+  tags: ['contract'],
   args: { refreshFailed: true },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('alert')).toHaveTextContent('Nie udało się odświeżyć opcji');

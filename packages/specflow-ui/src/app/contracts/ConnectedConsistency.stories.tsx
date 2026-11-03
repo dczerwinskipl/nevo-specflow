@@ -404,7 +404,7 @@ function Connected({
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Connected creation consistency',
+  title: 'SpecFlow/Screens/Application Shell',
   component: Connected,
   excludeStories: ['ConnectedApplication', 'createResponseControl'],
   parameters: { layout: 'fullscreen' },
@@ -588,9 +588,14 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
     await userEvent.click(input);
     await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Unsaved line');
-    // The region's close closes every tab, asking once about the unsaved documents.
+    // Close all (the document's ... menu; the tab rail has no region close) closes every tab,
+    // asking once about the unsaved documents.
     const close = () =>
-      userEvent.click(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' }));
+      invokeDocumentAction(
+        within(canvasElement.querySelector<HTMLElement>('[data-workspace-surface="secondary"]')!),
+        userEvent,
+        'Zamknij wszystkie dokumenty',
+      );
     const dialog = () => within(document.body).findByRole('alertdialog');
 
     // Keep editing: the pane and the draft stay.
@@ -751,7 +756,7 @@ export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
 /** Medium (split, document panel below the column threshold): strip, contents icon and the close. */
 export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
   args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await viewport(1280, 900);
     await openFromTree(canvas, userEvent, /^plan.md/);
     await canvas.findByRole('button', { name: 'Otwórz spis treści' });
@@ -771,7 +776,11 @@ export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
         throw new Error(`The contents icon is not after the strip (gap ${gap})`);
       }
     });
-    await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
+    // Close all lives in the ... menu on the tab rail, reachable next to the strip.
+    const secondary = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"]',
+    )!;
+    await expect(within(secondary).getByRole('button', { name: 'Więcej akcji' })).toBeVisible();
   },
 };
 
@@ -821,7 +830,7 @@ export const ShortCreateAndBranch: Story = {
     await settleViewport();
     await viewport(390, 430);
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
-    await expect(canvas.getByRole('heading', { name: 'Co chcesz opisać?' })).toHaveFocus();
+    await expect(canvas.getByRole('heading', { name: 'Nowa specyfikacja' })).toHaveFocus();
     const input = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
     await userEvent.click(input);
     await userEvent.type(input, 'Logowanie SSO');

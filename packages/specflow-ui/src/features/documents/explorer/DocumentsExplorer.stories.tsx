@@ -395,13 +395,21 @@ function Fixture(props: FixtureProps) {
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Contracts/Documents owner V4',
+  title: 'SpecFlow/Features/Document Explorer',
   component: Fixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof Fixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+export const Default: Story = {
+  tags: ['!contract'],
+  argTypes: {
+    loseAck: { control: 'boolean' },
+    concurrent: { control: 'boolean' },
+    slowMs: { control: { type: 'number', min: 0, step: 100 } },
+  },
+};
 /** Root-level creation lives in the Primary header menu (the first `Więcej akcji` in the document). */
 async function chooseRootAction(
   canvas: StoryContext['canvas'],

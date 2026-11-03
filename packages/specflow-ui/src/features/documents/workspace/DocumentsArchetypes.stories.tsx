@@ -443,7 +443,7 @@ function Workspace({
 }
 
 const meta = {
-  title: 'SpecFlow/Screens/Documents/Archetype states',
+  title: 'SpecFlow/Screens/Documents',
   component: Workspace,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
@@ -451,6 +451,17 @@ const meta = {
 } satisfies Meta<typeof Workspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+export const Default: Story = {
+  tags: ['!contract'],
+  argTypes: {
+    scenario: { control: 'inline-radio', options: ['states', 'read-only', 'conflict', 'project'] },
+    path: {
+      control: 'select',
+      options: [`/specs/${SPEC}/documents`, `/specs/${SPEC}/documents/ux`],
+    },
+    saveRefusal: { control: 'text' },
+  },
+};
 
 const body = () => within(document.body);
 async function wide() {

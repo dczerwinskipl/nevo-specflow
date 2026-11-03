@@ -96,8 +96,14 @@ function modelOptionByLabel(menu: HTMLElement, label: string) {
   return option;
 }
 
-/** Baseline: the placeholder trigger when no model/effort is selected yet. */
-export const Placeholder: Story = {};
+/** Baseline: the placeholder trigger when no model/effort is selected yet; the controls toggle the
+ * disabled and compact (mobile) presentations. */
+export const Default: Story = {
+  argTypes: {
+    disabled: { control: 'boolean' },
+    compact: { control: 'boolean' },
+  },
+};
 
 /** Picking a model with more than one effort (owner audit, round five: two sections in one
  * popover, Antigravity reference) keeps the menu open and reveals "Reasoning effort" instead of
@@ -105,6 +111,7 @@ export const Placeholder: Story = {};
  * behavior `SelectModelEffort` used to prove at the screen level, for the old single flattened
  * list, now proven for the two-section popover instead. */
 export const SelectModelEffort: Story = {
+  tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
@@ -137,6 +144,7 @@ export const SelectModelEffort: Story = {
  * `ModelMenuShowsAvailableEfforts` (per-row "available efforts" description), removed now that
  * effort is its own visible section instead of a second description line. */
 export const ModelMenuRevealsEffortSection: Story = {
+  tags: ['contract'],
   play: async ({ canvasElement }) => {
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
     await expect(within(menu).queryByText('Poziom wysiłku')).not.toBeInTheDocument();
@@ -158,6 +166,7 @@ export const ModelMenuRevealsEffortSection: Story = {
  * — the gating lives entirely inside `ModelEffortPicker` now, not split with its caller. The
  * behavior `NoModelOverrideCapability` used to prove at the screen level. */
 export const NoModelOverrideCapability: Story = {
+  tags: ['contract'],
   args: {
     provider: {
       ...providerFixture(),
@@ -174,6 +183,7 @@ export const NoModelOverrideCapability: Story = {
  * selected model/effort as visible truncating text — never collapses to an icon-only button
  * (owner audit, round two: a real user could not find this picker at all when it did). */
 export const CompactTrigger: Story = {
+  tags: ['contract'],
   args: {
     compact: true,
     initialValue: { modelId: 'mock-standard', effort: 'low' },
@@ -194,6 +204,7 @@ export const CompactTrigger: Story = {
  * fixture otherwise uses everywhere else.
  */
 export const CompactTriggerLongModelName: Story = {
+  tags: ['contract'],
   args: {
     compact: true,
     provider: {

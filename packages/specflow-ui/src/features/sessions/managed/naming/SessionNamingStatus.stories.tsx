@@ -11,7 +11,7 @@ import { SessionLandingPreview } from './sessionLanding.stories-support';
  * name at once, with no naming state.
  */
 const meta = {
-  title: 'SpecFlow/Screens/Session Naming',
+  title: 'SpecFlow/Screens/New Session',
   component: SessionLandingPreview,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },

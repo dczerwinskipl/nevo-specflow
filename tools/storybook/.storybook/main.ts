@@ -12,6 +12,7 @@ const config: StorybookConfig = {
     capture: { defaultFilterSelection: 'exclude' },
     contract: { defaultFilterSelection: 'exclude' },
     integration: { defaultFilterSelection: 'exclude' },
+    visual: { defaultFilterSelection: 'exclude' },
   },
   addons: ['@storybook/addon-docs', '@storybook/addon-a11y', '@storybook/addon-vitest'],
   framework: '@storybook/react-vite',

@@ -62,14 +62,15 @@ its own Composer.
 Order answers: _what will this Session work on → who works and how → what will it be called_. One
 primary action: **Start session** in the pinned footer, in a form (Enter in the name field submits it
 like the button). Sections use Create's headings, spacing and separators.
-The page heading is a question, like Create's ("What do you want to describe?"): the header bar
-already says **New session**, so repeating it as the heading said nothing new (owner review).
+Headings are plain names, not questions (owner review: question headings such as "Who do you want
+to work with?" read like AI slogans). The page heading is **New session**; Create uses **New
+specification**, **Creation method** and **Workspace** the same way.
 
 ```text
 Wide (Primary only, content-form width)            Narrow 375px (same order, one column)
 ┌──────────────────────────────────────────────┐   ┌───────────────────────────────┐
-│ Who do you want to work with?                │   │ ‹ Specification               │
-│ The agent works in the context of this spec… │   │ Who do you want to work with? │
+│ New session                                  │   │ ‹ Specification               │
+│ The agent works in the context of this spec… │   │ New session                   │
 │──────────────────────────────────────────────│   │ The agent works in…           │
 │ Context                                      │   │───────────────────────────────│
 │ [doc] Logowanie SSO · Specification   Pinned │   │ Context                       │
@@ -156,9 +157,11 @@ the stories use a stand-in Session screen (`naming/sessionLanding.stories-suppor
 there → naming → generated name), Agent Names Session Mobile (375), Own Name (c alternative, switching
 off keeps the text; the own name is shown at once and never replaced), Own Name Mobile (count), Effort
 And Mode (explicit effort and mode reach the allocation), No Provider Ready (+ Mobile), Start Failed.
-`SpecFlow/Screens/Session Naming`: Idle Before First Message, Naming Starts After First Message, Naming
-Pending (+ Mobile), Named By Agent, Own Name No Naming. Create (d) stays covered by
-`SpecFlow/Contracts/Creation Demo` and the Owner V5 / Connected consistency contracts.
+The Session naming stories (Idle Before First Message, Naming Starts After First Message, Naming
+Pending (+ Mobile), Named By Agent, Own Name No Naming) also live under `SpecFlow/Screens/New Session`
+(contract-tagged, hidden from the default sidebar). Create (d) stays covered by
+`SpecFlow/Screens/Create Specification` and the Owner V5 / Connected consistency contracts (under
+`SpecFlow/Screens/Application Shell`).
 
 ## 9. Integration dependencies
 

@@ -50,7 +50,7 @@ function DisclosureFixture() {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Session navigation disclosure',
+  title: 'SpecFlow/Screens/Application Shell',
   component: DisclosureFixture,
   tags: ['contract'],
 } satisfies Meta<typeof DisclosureFixture>;

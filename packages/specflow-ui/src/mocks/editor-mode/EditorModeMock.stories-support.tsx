@@ -327,6 +327,7 @@ function EditorWorkspace({
               scope={scope}
               label="Opened documents"
               budget={headerBudget(layout)}
+              rail
             />
             <div className="min-h-0 flex-1">
               <TabHostBody host={host} content={content} scope={scope} empty={emptyState} />

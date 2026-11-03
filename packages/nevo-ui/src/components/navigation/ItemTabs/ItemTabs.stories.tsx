@@ -54,7 +54,7 @@ const meta = {
       control: 'inline-radio',
       options: ['header', 'rail'],
       description:
-        'Root height: the 56px workspace header slot, or the 38px split Secondary tab rail.',
+        'Root height: the 56px workspace header slot, or the 32px split Secondary tab rail.',
       table: { defaultValue: { summary: 'header' } },
     },
     labels: {
@@ -135,7 +135,7 @@ export const InWorkspaceHeader: Story = {
 };
 
 /**
- * `density="rail"`: the split Secondary's compact 38px root-tab rail (`--spacing-tab-rail`), with
+ * `density="rail"`: the split Secondary's compact 32px root-tab rail (`--spacing-tab-rail`), with
  * compact-height tabs. Same tab look and width policy as the header density.
  */
 export const InTabRail: Story = {

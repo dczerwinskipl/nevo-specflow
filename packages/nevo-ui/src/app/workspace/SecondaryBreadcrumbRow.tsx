@@ -37,7 +37,8 @@ export function SecondaryBreadcrumbRow({
 
   return (
     <Breadcrumbs
-      className="h-breadcrumb-row shrink-0 px-3"
+      // Its divider sits at the rail + row = 56px line, continuing Primary's header divider.
+      className="h-breadcrumb-row shrink-0 border-b border-border-subtle px-3"
       collapsedLabel={labels.collapsed}
       data-workspace-breadcrumbs="true"
       label={labels.navigation}

@@ -406,7 +406,7 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
   ] as const)(
     'keeps the strip down to a narrower header than ItemTabs’ 480px default (%ipx -> %s)',
     async (stripWidth, expected) => {
-      // Only the ItemTabs root (the 38px tab-rail row) reports the narrow width; everything else
+      // Only the ItemTabs root (the 32px tab-rail row) reports the narrow width; everything else
       // keeps the split-capable 1400px so the region still renders through the desktop path.
       vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
         this: HTMLElement,

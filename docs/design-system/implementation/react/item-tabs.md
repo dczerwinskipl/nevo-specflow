@@ -34,7 +34,7 @@ owns state, guards and the tab panel; the strip renders no panel.
 - **Placement.** The strip MUST be the content of a region header, left of the header actions. It
   MUST NOT add a second row under the header. `density` sets the root height: `header` (default)
   fills the 56 px workspace header (`h-14`, Documents); `rail` fills the split Secondary's compact
-  38 px root-tab rail (`--spacing-tab-rail`, see [Secondary navigation](secondary-navigation.md),
+  32 px root-tab rail (`--spacing-tab-rail`, see [Secondary navigation](secondary-navigation.md),
   "Root tabs and breadcrumbs"). Tabs are one control high (default 36 px in `header`, compact 32 px
   in `rail`), anchored to the bottom edge with 2 px between them; the active tab's underline sits
   on the header border.

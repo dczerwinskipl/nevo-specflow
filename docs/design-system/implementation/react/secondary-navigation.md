@@ -169,14 +169,14 @@ row** inside the tab panel.
 - **Tab label = root.** `tabs[].title` is the tab's stack ROOT title (`tabLabel(rootParams)`, else
   the initial page's `title`) at any depth. A tab never renames itself to the detail open inside it
   (Work history → a tool action stays "Work history").
-- **Tab rail.** `ItemTabs density="rail"`: `--spacing-tab-rail` = compact control (32 px) + 6 px =
-  38 px including the divider, `px-2`. Lighter tabs: only the active one has a surface (see
+- **Tab rail.** `ItemTabs density="rail"`: `--spacing-tab-rail` = one compact control = 32 px
+  including the divider, `px-2`. Rail tabs are square and fill the rail's full height (no rounded
+  top, no free space above them). Lighter tabs: only the active one has a surface (see
   [Item tabs](item-tabs.md)). The rail keeps the screen's declared actions, no Back and no
-  panel-level Close (each closable tab owns its `x`). Its divider sits at 38 px, deliberately not
-  aligned with Primary's 56 px header: the rail is a tab row, not a title header.
+  panel-level Close (each closable tab owns its `x`).
 - **Breadcrumb row.** `SecondaryBreadcrumbRow` (DS `Breadcrumbs overflow="collapse"`) is the first
-  child of the tab panel (`data-workspace-breadcrumbs`), `--spacing-breadcrumb-row` = inline control
-  (24 px) + 4 px = 28 px, `px-3`, no divider; content starts directly under it and keeps its own
+  child of the tab panel (`data-workspace-breadcrumbs`), `--spacing-breadcrumb-row` = one inline
+  control = 24 px including its divider, `px-3`; content starts directly under it and keeps its own
   title heading. Anatomy: `← Root › … › Parent › Current`. The leading `←` (`IconButton xs`,
   accessible name `labels.backToParent(parentTitle)`) pops one level; every ancestor segment is an
   `onPress` button that pops straight back to its level (the root segment returns to the tab's root
@@ -191,8 +191,8 @@ row** inside the tab panel.
   the first page of a stack (the tab root, or another module pushed with `navTo(stack, params)`)
   uses that stack's `tabLabel(rootParams)`; otherwise the screen's static `title`. Do not put full
   file paths in segments; a segment is a short name.
-- **Heights.** At a tab root: 38 px of navigation, content starts under the rail. In a detail:
-  38 + 28 = 66 px, close to the 56 px Primary header.
+- **Heights.** At a tab root: 32 px of navigation, content starts under the rail. In a detail:
+  32 + 24 = 56 px, exactly the Primary header, so the breadcrumb row's divider continues Primary's.
 - **API.** `WorkspaceContextValue.trail` lists the active runtime tab's levels root first
   (`{ key, title }`, `trail.length === secondaryDepth`); `backTo(depth)` pops to `depth` levels
   (1 = root) in **one** `pop` transition, consulting only the current page's leave guard, and

@@ -77,6 +77,10 @@
 
 .mobile-workspace-scroll {
   scroll-padding-top: var(--workspace-overlay-inset-top);
+  /* A narrow desktop window has classic (space-taking) scrollbars: reserving the gutter on both
+     edges keeps the sheet centred instead of losing width on the right only. Touch devices use
+     overlay scrollbars, so the gutter is 0 there and nothing changes. */
+  scrollbar-gutter: stable both-edges;
 }
 
 .mobile-floating-navigation {

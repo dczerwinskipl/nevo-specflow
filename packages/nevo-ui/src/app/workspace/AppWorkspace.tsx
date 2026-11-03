@@ -678,7 +678,7 @@ function RuntimeSurfaceRegion({
   contentNavigation?: ReactNode;
   /**
    * Split layout only: `tab-rail` sizes the header row as the compact root-tab rail
-   * (`--spacing-tab-rail`, 38px) instead of the 56px workspace header.
+   * (`--spacing-tab-rail`, 32px) instead of the 56px workspace header.
    */
   headerVariant?: 'header' | 'tab-rail';
   maxWidth?: number;

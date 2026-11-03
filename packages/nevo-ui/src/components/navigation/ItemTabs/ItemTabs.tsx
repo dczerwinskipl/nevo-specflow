@@ -60,10 +60,10 @@ export interface ItemTabsProps extends Omit<
   switcherBelow?: number;
   /**
    * Root height. `header` (default): fills a 56px `WorkspaceHeader` slot (minus its 1px divider),
-   * tabs anchored to its bottom edge — the Documents tab header. `rail`: a compact tab rail of
-   * `--spacing-tab-rail` (38px, minus the divider) with compact-height tabs — the split Secondary's
-   * root tabs, where a breadcrumb row (not a second header) follows when a tab is deeper than its
-   * root. Only the height changes; the tab look and the width policy are the same.
+   * tabs anchored to its bottom edge with rounded tops — the Documents tab header. `rail`: a compact
+   * tab rail of `--spacing-tab-rail` (32px, minus the divider) whose square tabs fill its whole
+   * height — the split Secondary's root tabs, where a breadcrumb row (not a second header) follows
+   * when a tab is deeper than its root. The width policy is the same.
    */
   density?: 'header' | 'rail';
   /** Replaceable copy. Defaults are English. */
@@ -130,6 +130,7 @@ interface TabProps {
   onClose: (id: string) => void;
   onHover: (id: string | null) => void;
   onFocusChange: (id: string | null) => void;
+  density: 'header' | 'rail';
 }
 
 function Tab({
@@ -143,6 +144,7 @@ function Tab({
   onClose,
   onHover,
   onFocusChange,
+  density,
 }: TabProps) {
   const status = statusText(item, labels);
   const muted = item.state === 'missing' || item.state === 'loading';
@@ -185,7 +187,9 @@ function Tab({
             onFocus={() => onFocusChange(item.id)}
             onBlur={() => onFocusChange(null)}
             className={cn(
-              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-t-control border-b-2 border-solid border-transparent pl-2.5 pr-8 text-label-sm',
+              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 border-b-2 border-solid border-transparent pl-2.5 pr-8 text-label-sm',
+              // Rail tabs fill the rail edge to edge, so a rounded top would only leave a notch.
+              density === 'header' && 'rounded-t-control',
               'hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
               fastColorTransitionClassName,
               // Only the active tab carries a surface (the lightest control fill) with the primary
@@ -273,7 +277,7 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
  * Visible tabs are 140-180 px wide; the rest go to an `Opened (N)` menu. Below `switcherBelow`
  * the strip becomes a single switcher button opening the same menu. `className` styles the root; the
  * root is as tall as its host slot minus the 1 px divider (`density`: the 56 px workspace header, or
- * the 38 px Secondary tab rail), so it needs no host sizing inside `WorkspaceHeader.identityContent`.
+ * the 32 px Secondary tab rail), so it needs no host sizing inside `WorkspaceHeader.identityContent`.
  */
 export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemTabs(
   {
@@ -295,7 +299,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
   const labels = resolveLabels(labelOverrides);
   const rootHeight =
     density === 'rail' ? 'h-[calc(var(--spacing-tab-rail)-1px)]' : 'h-[calc(3.5rem-1px)]';
-  const tabHeight = density === 'rail' ? 'h-control-height-compact' : 'h-control-height-default';
+  const tabHeight = density === 'rail' ? 'h-full' : 'h-control-height-default';
   const { width, element: root, setElement } = useElementWidth();
   const setRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -444,6 +448,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
               onClose={onClose}
               onHover={setHovered}
               onFocusChange={setFocused}
+              density={density}
             />
           ))}
         </div>

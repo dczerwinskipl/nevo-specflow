@@ -948,9 +948,9 @@ export const FullConnectedScenarioContract: Story = {
     const trailHeight = stepFourTrail.getBoundingClientRect().height;
     assert(
       railHeight !== undefined &&
-        Math.abs(railHeight - 38) <= 0.5 &&
-        Math.abs(trailHeight - 28) <= 0.5,
-      `Step 4: the compact tab rail is 38px and the breadcrumb row 28px (got ${railHeight}/${trailHeight}).`,
+        Math.abs(railHeight - 32) <= 0.5 &&
+        Math.abs(trailHeight - 24) <= 0.5,
+      `Step 4: the compact tab rail is 32px and the breadcrumb row 24px (got ${railHeight}/${trailHeight}).`,
     );
 
     // Step 5: drag the splitter -> manual wins.

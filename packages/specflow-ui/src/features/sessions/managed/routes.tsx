@@ -46,8 +46,10 @@ function ManagedSessionRoute() {
     [navigate, collection],
   );
 
+  // `browserHistory`: browser/Android Back steps back inside the Context/Work Secondary (sub-page →
+  // parent → hide) before leaving the Session (secondary-navigation.md, "Browser and system Back").
   return (
-    <AppWorkspaceProvider>
+    <AppWorkspaceProvider browserHistory>
       <ManagedSession
         key={owner + sessionId}
         api={services.managedSessionsApi}

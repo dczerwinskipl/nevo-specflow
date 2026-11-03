@@ -5,7 +5,6 @@ import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/se
 import {
   Alert,
   AppContent,
-  Badge,
   Button,
   Collapsible,
   EmptyState,
@@ -34,18 +33,19 @@ import { ReadableText } from './MessageText';
 import {
   buildWorkChapters,
   filterWorkChapters,
-  formatWorkDuration,
   groupChapterEntries,
   mergeToolActions,
   mergeWorkItems,
-  workFilterKinds,
-  workItemDurationMs,
+  availableWorkFilterKinds,
   type ChapterEntry,
   type ToolBurstEntry,
   type WorkChapter,
   type WorkFilterKind,
 } from './workGrouping';
 import type { WorkCounts } from './workCounts';
+import { workStateTone } from './workStatus';
+import { WorkRowContent, useWorkRowMeta } from './WorkRow';
+import { SingleToolActionDetail, ToolActionTimelineItem } from './ToolActionDetails';
 
 interface Root {
   sessionId: string;
@@ -58,7 +58,7 @@ type Data = Root & {
 };
 interface Pages {
   work: Record<string, never>;
-  actions: { workId: string };
+  actions: { workId: string; workTitle: string };
 }
 function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promise<unknown>) {
   useEffect(() => {
@@ -79,28 +79,6 @@ function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promis
       clearTimeout(timer);
     };
   }, [feed, turnId, refresh]);
-}
-
-type SemanticTone = 'neutral' | 'info' | 'success' | 'attention' | 'danger';
-
-/** Shared Work/ToolAction state vocabulary -> semantic tone (sessions.md `WorkStateSchema`). */
-function stateTone(state: WorkSummary['state']): SemanticTone {
-  switch (state) {
-    case 'active':
-      return 'info';
-    case 'completed':
-      return 'success';
-    case 'failed':
-      return 'danger';
-    case 'cancelled':
-    case 'interrupted':
-      return 'attention';
-    case 'queued':
-    case 'waiting':
-    case 'expired':
-    default:
-      return 'neutral';
-  }
 }
 
 interface WorkFilterState {
@@ -177,9 +155,12 @@ function useAutoLoadOlder({
  * `aria-label`, so the state is never conveyed by colour alone. */
 function WorkFilterBar({
   filter,
+  kinds,
   onChange,
 }: {
   filter: WorkFilterState;
+  /** Only kinds present in this Turn (`availableWorkFilterKinds`) — never a dead-end option. */
+  kinds: readonly WorkFilterKind[];
   onChange: (next: WorkFilterState) => void;
 }) {
   const { t } = useTranslation();
@@ -196,7 +177,7 @@ function WorkFilterBar({
       <Menu>
         <span className="relative inline-flex shrink-0">
           <MenuTrigger asChild>
-            <IconButton aria-label={triggerLabel} icon="filter" size="sm" variant="secondary" />
+            <IconButton aria-label={triggerLabel} icon="filter" size="md" variant="secondary" />
           </MenuTrigger>
           {isFiltered && (
             <StatusIndicator
@@ -211,7 +192,7 @@ function WorkFilterBar({
             value={filter.kind}
             onValueChange={(value) => onChange({ ...filter, kind: value as WorkFilterKind })}
           >
-            {workFilterKinds.map((kind) => (
+            {kinds.map((kind) => (
               <MenuRadioItem key={kind} value={kind}>
                 {kind === 'all'
                   ? t('managedSession.workInspector.filterAll')
@@ -248,204 +229,162 @@ function WorkFilterBar({
   );
 }
 
-/** A plain compact row for a tool item nested inside a `ToolBurstTimelineItem`'s own inline
- * disclosure — the burst's members are de-emphasized detail inside that ONE `Timeline.Item`'s
- * content, never additional chronology markers of their own (live owner review, second/
- * structural pass: "jedna oś, jedna hierarchia" / one axis, one hierarchy — a group is exactly
- * one `Timeline.Marker`/row; its expanded contents are that single item's own details, not a
- * second mini-Timeline with independent dots). So unlike every top-level row, this one carries no
- * `StatusIndicator` of its own: a burst only ever groups uniformly happy-path ('completed') tool
- * items (`groupChapterEntries`), so a per-row status dot here would say nothing a state already
- * implied by being inside the group, while visually reading as a second rail running alongside
- * the real one — exactly the "two axes" the owner flagged. */
-function CompactToolRow({
-  item,
-  onOpenActions,
-}: {
-  item: WorkSummary;
-  onOpenActions: (workId: string) => void;
-}) {
-  const { t } = useTranslation();
-  const duration = useWorkDurationLabel(item);
-
-  return (
-    <div className="grid min-w-0 gap-0.5 text-body-sm">
-      <span className="flex min-w-0 items-baseline gap-2">
-        <span className="min-w-0 truncate text-content-secondary">{item.title.text}</span>
-        {duration && (
-          <span className="shrink-0 text-body-sm text-content-muted tabular-nums">{duration}</span>
-        )}
-      </span>
-      {!!item.actionCount && (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-auto w-fit justify-start px-0"
-          onClick={() => onOpenActions(item.workId)}
-        >
-          {t('managedSession.actions')}
-        </Button>
-      )}
-    </div>
-  );
-}
-
-/** Localized elapsed-time text for a settled Work item, or `undefined` for one still running
- * (queued/active/waiting) or with an unparsable timestamp — never fabricated (session-
- * work-inspector-ui-spec.md §2: the real contract has no separate `durationMs` field, so this is
- * computed only from the canonical `createdAt`/`updatedAt` every `WorkSummary` already has). */
-function useWorkDurationLabel(item: WorkSummary): string | undefined {
-  const { i18n } = useTranslation();
-  const ms = workItemDurationMs(item);
-
-  return ms === undefined ? undefined : formatWorkDuration(ms, i18n.language);
-}
-
-/** A reasoning summary as its own `Timeline.Item`: separately labeled "Thinking" and optionally
- * collapsible — never styled like a tool action or presented as Commentary
- * (session-chat-v10-design.md §4). Every non-Commentary Work item — Reasoning included — gets the
- * exact same `Timeline.Item`/`Timeline.Marker` treatment on the chapter's rail (owner decision,
- * see session-work-inspector-ui-spec.md §2); only Reasoning's own disclosure, unchanged from
- * before, lives inside its Content. */
-function ReasoningTimelineItem({ item, data }: { item: WorkSummary; data: Data }) {
-  const { t } = useTranslation();
-  const duration = useWorkDurationLabel(item);
-
-  return (
-    <Timeline.Item>
-      <Timeline.Marker tone={stateTone(item.state)} />
-      <Timeline.Content title="">
-        <Collapsible>
-          <Collapsible.Trigger>
-            <span className="flex min-w-0 items-baseline gap-2">
-              <span className="italic text-content-muted">
-                {t('managedSession.workInspector.thinking')}
-              </span>
-              {duration && (
-                <span className="shrink-0 text-body-sm text-content-muted tabular-nums">
-                  {duration}
-                </span>
-              )}
-            </span>
-          </Collapsible.Trigger>
-          <Collapsible.Content>
-            <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
-          </Collapsible.Content>
-        </Collapsible>
-      </Timeline.Content>
-    </Timeline.Item>
-  );
-}
-
+/** A Work row's title on the Timeline rail (`WorkRowContent`). The Timeline is `size="md"`: its
+ * title slot is a block that wraps (long tool titles take two lines instead of being cut), and the
+ * row carries its own meta line and navigation chevron — owner brief "Work Item jako wiersz
+ * nawigacyjny". */
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
-  const duration = useWorkDurationLabel(item);
+  const kind = t('managedSession.workKind.interaction');
+  // The interaction's own title (e.g. "Permission to write workspace") — previously every
+  // interaction showed only the generic kind name, losing what was actually asked — with its kind
+  // leading the meta line under it.
+  const { meta, srStatus } = useWorkRowMeta(item, { leading: item.title.text ? kind : undefined });
 
   return (
     <Timeline.Item>
-      <Timeline.Marker active={item.state === 'active'} tone={stateTone(item.state)} />
+      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
       <Timeline.Content
-        meta={t(`managedSession.workState.${item.state}`)}
-        time={duration}
-        title={t('managedSession.workKind.interaction')}
+        title={
+          <WorkRowContent
+            title={
+              <>
+                {item.title.text || kind}
+                {srStatus}
+              </>
+            }
+            meta={meta}
+          />
+        }
       />
     </Timeline.Item>
   );
 }
 
-/** A compact tool row as its own `Timeline.Item`. Clicking a Work item with child ToolActions
- * opens that exact Work's ToolActionSummary detail (ToolAction stays the tool's own child, never a
- * top-level row). The state is carried as visible `meta` text — never only the marker's color —
- * because `Timeline.Marker` is decorative (`aria-hidden`) by the real component's own contract. */
+/** A tool operation as its own `Timeline.Item`. When the Work has ToolActions, the whole row opens
+ * that exact Work's ToolAction details (ToolAction stays the tool's own child, never a top-level
+ * row) — one row-sized button with a trailing navigation chevron, never a link-styled title or a
+ * separate "Działania narzędzia" text button. Without ToolActions there is nothing to open, so no
+ * chevron and no button. State is carried by `useWorkRowMeta` (visible words for anything but a
+ * plain completion), never only by the marker's colour — `Timeline.Marker` is `aria-hidden`. */
 function ToolTimelineItem({
   item,
   onOpenActions,
 }: {
   item: WorkSummary;
-  onOpenActions: (workId: string) => void;
+  onOpenActions: (workId: string, title: string) => void;
 }) {
-  const { t } = useTranslation();
-  const duration = useWorkDurationLabel(item);
+  const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
 
   return (
     <Timeline.Item>
-      <Timeline.Marker active={item.state === 'active'} tone={stateTone(item.state)} />
+      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
       <Timeline.Content
-        meta={t(`managedSession.workState.${item.state}`)}
-        time={duration}
-        title={item.title.text}
-      >
-        {!!item.actionCount && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-auto w-fit justify-start px-0"
-            onClick={() => onOpenActions(item.workId)}
-          >
-            {t('managedSession.actions')}
-          </Button>
-        )}
-      </Timeline.Content>
+        title={
+          <WorkRowContent
+            bleed="rail"
+            title={
+              <>
+                {item.title.text}
+                {srStatus}
+              </>
+            }
+            meta={meta}
+            onOpen={
+              item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined
+            }
+          />
+        }
+      />
     </Timeline.Item>
   );
 }
 
+/** A member of an expanded tool group: exactly the same row (`WorkRowContent`) as a top-level
+ * operation, minus its own marker — a group is one marker on the rail ("jedna oś, jedna
+ * hierarchia"); its members are that item's details, not a second mini-Timeline. Only completed
+ * tools are ever grouped (`groupChapterEntries`), so the state word never shows here. */
+function GroupedToolRow({
+  item,
+  onOpenActions,
+}: {
+  item: WorkSummary;
+  onOpenActions: (workId: string, title: string) => void;
+}) {
+  const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
+
+  return (
+    <WorkRowContent
+      title={
+        <Typography as="span" variant="body-md" className="text-content-primary">
+          {item.title.text}
+          {srStatus}
+        </Typography>
+      }
+      meta={meta}
+      onOpen={item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined}
+    />
+  );
+}
+
 /** A long (`workGrouping.ts`'s `TOOL_BURST_MIN_SIZE`+) run of adjacent happy-path tool items,
- * compacted into exactly one `Timeline.Item`/marker on the chronology rail, collapsed by default,
- * with its members revealed inline inside that same item's `Timeline.Content` on expand — never a
- * second nested mini-Timeline with its own dots/connector line (see `CompactToolRow`'s own doc
- * comment). A run shorter than the threshold never reaches this component at all: `workGrouping
- * .groupChapterEntries` leaves it as that many individual `single` entries instead. */
+ * compacted into exactly one `Timeline.Item`/marker on the chronology rail, collapsed by default.
+ * Its disclosure trigger sits IN the title slot (`Collapsible density="inline"`), so the label
+ * shares the marker's line; the disclosure chevron is LEADING (DS: a chevron at the leading edge
+ * means expand/collapse) while every member row's navigation chevron is TRAILING, so the two never
+ * read as the same control. A shorter run never reaches this component: `groupChapterEntries`
+ * leaves it as individual rows. */
 function ToolBurstTimelineItem({
   burst,
   onOpenActions,
 }: {
   burst: ToolBurstEntry;
-  onOpenActions: (workId: string) => void;
+  onOpenActions: (workId: string, title: string) => void;
 }) {
   const { t } = useTranslation();
 
   return (
     <Timeline.Item>
       <Timeline.Marker tone="success" />
-      <Timeline.Content title="">
-        <Collapsible>
-          <Collapsible.Trigger>
-            {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
-          </Collapsible.Trigger>
+      <Collapsible density="inline">
+        <Timeline.Content
+          title={
+            // Touch target: expand the block axis only, never the visual row — same pattern
+            // `ContextNavigationRow` already uses (owner review, round four: this trigger measured
+            // 20×140px, below the DS touch-target rule every other clickable row in this pass
+            // follows).
+            <Collapsible.Trigger className="relative after:absolute after:inset-x-0 after:top-1/2 after:h-[max(100%,var(--target-size))] after:-translate-y-1/2 after:content-['']">
+              {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
+            </Collapsible.Trigger>
+          }
+        >
           <Collapsible.Content>
-            <ul className="grid gap-1.5">
+            <ul className="grid gap-3 pt-1">
               {burst.items.map((item) => (
-                <li key={item.workId}>
-                  <CompactToolRow item={item} onOpenActions={onOpenActions} />
+                <li key={item.workId} className="min-w-0">
+                  <GroupedToolRow item={item} onOpenActions={onOpenActions} />
                 </li>
               ))}
             </ul>
           </Collapsible.Content>
-        </Collapsible>
-      </Timeline.Content>
+        </Timeline.Content>
+      </Collapsible>
     </Timeline.Item>
   );
 }
 
 function WorkChapterEntryRow({
   entry,
-  data,
   onOpenActions,
 }: {
   entry: ChapterEntry;
-  data: Data;
-  onOpenActions: (workId: string) => void;
+  onOpenActions: (workId: string, title: string) => void;
 }) {
   if (entry.type === 'burst') {
     return <ToolBurstTimelineItem burst={entry} onOpenActions={onOpenActions} />;
   }
 
   const { item } = entry;
-  if (item.kind === 'reasoning') {
-    return <ReasoningTimelineItem item={item} data={data} />;
-  }
-
   if (item.kind === 'interaction') {
     return <InteractionTimelineItem item={item} />;
   }
@@ -453,122 +392,120 @@ function WorkChapterEntryRow({
   return <ToolTimelineItem item={item} onOpenActions={onOpenActions} />;
 }
 
-/** The marker-column gutter a Commentary row's leading icon sits in: exactly as wide as
- * `Timeline`'s `size="sm"` marker column (`timelineItemVariants`'s `1rem` + `gap-x-1.5`), sized
- * and centered the same way `Timeline.Marker` centers its dot inside that column — so the icon
- * stays on one vertical axis with every `Timeline.Marker` dot below it (live owner review,
- * screenshot-verified alignment fix). Unlike the first review round, Commentary is no longer a
- * `Collapsible.Trigger` at all (see `WorkChapterCommentary`'s own doc comment), so this is a plain
- * grid column, not a disclosure chevron slot — there is nothing left to compensate a trigger
- * button's own padding for. */
-const COMMENTARY_GUTTER_CLASS = 'flex size-4 shrink-0 items-center justify-center';
-
-/** A Commentary long enough that showing it in full would push its following operations well
+/** Narration long enough that showing it in full would push its following operations well
  * below the fold is the only case that earns a "Show more" truncation (live owner review,
  * second/structural pass, rule 1). `!complete` is the authoritative signal — the real transport
  * cap on the initial preview (see `ReadableText`'s own doc comment) means there is strictly more
  * text the user has not seen yet — and the character count is a plain visual fallback for a
- * `complete` preview that is nonetheless several paragraphs long. Ordinary Commentary (a sentence
+ * `complete` preview that is nonetheless several paragraphs long. Ordinary narration (a sentence
  * or two, the common case in every fixture here) stays well under this and never shows the
  * control at all. */
-const COMMENTARY_LONG_TEXT_CHARS = 280;
+const NARRATION_LONG_TEXT_CHARS = 280;
 
-function isCommentaryLong(commentary: WorkSummary): boolean {
-  return !commentary.title.complete || commentary.title.text.length > COMMENTARY_LONG_TEXT_CHARS;
+function isNarrationLong(item: WorkSummary): boolean {
+  return !item.title.complete || item.title.text.length > NARRATION_LONG_TEXT_CHARS;
 }
 
-/** Commentary is read directly in the flow, never gated behind a click (live owner review,
- * second/structural pass — a ChatGPT-assisted design review that superseded the first round's
- * collapsed-by-default divider): "Commentary jest elementem narracji, a nie nagłówkiem zwijanej
- * grupy operacji" / Commentary is a narrative element, not a header that collapses a group of
- * operations. Commentary and the operations that chronologically follow it are siblings in the
- * flow (`buildWorkChapters` stays chronology-driven — see its own doc comment — but the VISUAL
- * treatment here no longer boxes operations under "their" Commentary the way a disclosure gate
- * would, since the data does not actually support that ownership: see this function's own
- * disclosure comment below). So there is no chevron, no `Collapsible` wrapping the row, and no
- * operation count attached to it either — just an icon and the text, always visible.
+/** The narrating voice of a block: the agent's running Commentary, or its Thinking. */
+type NarrationVoice = 'commentary' | 'reasoning';
+
+/** Commentary AND Thinking (Reasoning) are the agent's own narration, read directly in the flow —
+ * never gated behind a click, never a row on the operations rail (live owner review:
+ * "Commentary jest elementem narracji, a nie nagłówkiem zwijanej grupy operacji"; and for
+ * Thinking, "Commentary i thinking by mogło wyglądać tak samo, tylko np. thinking dostawać
+ * kursywę"). Both use exactly this one block — same size, colour, spacing and long-text handling —
+ * and the ONLY visual difference is the voice: Thinking is italic, Commentary upright. They are
+ * still two different kinds of Work (session-chat-v10-design.md §4): the italic voice tells them
+ * apart at a glance, and assistive tech gets the kind's own name (`sr-only`), since italics are not
+ * announced. No icon, no marker dot, no chevron, no card.
  *
- * The one exception is `isCommentaryLong`: genuinely long Commentary gets a plain "Show more"/
+ * Same text rendering as the chat's own Commentary row (`ManagedSession.tsx`'s `commentary`
+ * branch): plain prose (`body-md`, pre-wrapped, no Markdown), `text-content-muted` — so the same
+ * Commentary reads identically at both levels.
+ *
+ * The one exception is `isNarrationLong`: genuinely long narration gets a plain "Show more"/
  * "Show less" ghost `Button` (the same label-only disclosure pattern `TaskDetailDisclosure.tsx`
  * already uses elsewhere in this app for "reveal more text", not a new chevron-led control
  * invented for this row) instead of being dumped in full — expanding it mounts `ReadableText`
  * (which itself auto-fetches and stitches any remaining pages beyond the capped preview). */
-function WorkChapterCommentary({ commentary, data }: { commentary: WorkSummary; data: Data }) {
+function WorkNarration({
+  item,
+  voice,
+  data,
+}: {
+  item: WorkSummary;
+  voice: NarrationVoice;
+  data: Data;
+}) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const isLong = isCommentaryLong(commentary);
+  const isLong = isNarrationLong(item);
 
   return (
-    <div className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-1.5">
-      <span className={COMMENTARY_GUTTER_CLASS}>
-        <Icon name="chat" size="sm" className="text-content-muted" />
+    <div className={cn('grid min-w-0 gap-1 text-content-muted', voice === 'reasoning' && 'italic')}>
+      <span className="sr-only">
+        {voice === 'reasoning'
+          ? t('managedSession.workInspector.thinking')
+          : t('managedSession.workKind.commentary')}
       </span>
-      <div className="grid min-w-0 gap-1">
-        {isExpanded ? (
-          <ReadableText
-            api={data.api}
-            sessionId={data.sessionId}
-            value={commentary.title}
-            markdown
-          />
-        ) : (
-          <Typography
-            as="p"
-            variant="body-md"
-            className={cn(
-              'min-w-0 text-content-primary [overflow-wrap:anywhere]',
-              isLong && 'line-clamp-4',
-            )}
-          >
-            {commentary.title.text}
-          </Typography>
-        )}
-        {isLong && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 h-auto w-fit justify-start px-2"
-            onClick={() => setIsExpanded((value) => !value)}
-          >
-            {isExpanded
-              ? t('managedSession.workInspector.showLess')
-              : t('managedSession.workInspector.showMore')}
-          </Button>
-        )}
-      </div>
+      {isExpanded ? (
+        <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
+      ) : (
+        <Typography
+          as="p"
+          variant="body-md"
+          className={cn(
+            'min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]',
+            isLong && 'line-clamp-4',
+          )}
+        >
+          {item.title.text}
+        </Typography>
+      )}
+      {isLong && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 h-auto w-fit justify-start px-2 not-italic"
+          onClick={() => setIsExpanded((value) => !value)}
+        >
+          {isExpanded
+            ? t('managedSession.workInspector.showLess')
+            : t('managedSession.workInspector.showMore')}
+        </Button>
+      )}
     </div>
   );
 }
 
-/** A chapter's operations as one flat `Timeline` (compact `size="sm"`), always rendered directly
+/** A run of operations as one flat `Timeline` (`size="md"`: wrapping titles and a meta line under
+ * each — owner: "itemy mogły być dwuwierszowe, czas pod spodem"), always rendered directly
  * — never behind a chapter-level "N operations" disclosure gate (live owner review, second/
  * structural pass, rule 2: a short run of 1-4 operations is just shown, not wrapped in a synthetic
  * summary container; `workGrouping.groupChapterEntries` already handles the one remaining case
  * that DOES still compact, a long adjacent happy-path run, into a single burst `Timeline.Item` —
- * see `ToolBurstTimelineItem`). The first review round's `operationsDefaultExpanded` A/B toggle is
- * gone with it: there is no longer a meaningful lever here to expose, owner-mandated structure
- * replaced the open question it existed to compare. */
-function WorkChapterOperationsTimeline({
+ * see `ToolBurstTimelineItem`). */
+function WorkOperationsTimeline({
   entries,
-  data,
   onOpenActions,
-  ariaLabel,
 }: {
   entries: readonly ChapterEntry[];
-  data: Data;
-  onOpenActions: (workId: string) => void;
-  ariaLabel: string;
+  onOpenActions: (workId: string, title: string) => void;
 }) {
-  if (entries.length === 0) {
-    return null;
-  }
+  const { t } = useTranslation();
+  const count = entries.reduce(
+    (sum, entry) => sum + (entry.type === 'burst' ? entry.items.length : 1),
+    0,
+  );
 
+  // Accessible name only — never rendered as visible text next to Commentary, which would read as
+  // "this Commentary owns N operations" (live owner review, second/structural pass: don't claim a
+  // stronger ownership/causality than the chronological data supports).
   return (
-    <Timeline aria-label={ariaLabel} size="sm">
+    <Timeline aria-label={t('managedSession.workInspector.operationsCount', { count })} size="md">
       {entries.map((entry) => (
         <WorkChapterEntryRow
-          key={entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId}
-          data={data}
+          key={chapterEntryKey(entry)}
           entry={entry}
           onOpenActions={onOpenActions}
         />
@@ -577,12 +514,41 @@ function WorkChapterOperationsTimeline({
   );
 }
 
-/** One Commentary-headed phase: `<timeline> <comment> <timeline> …` — each chapter gets its own
- * Timeline instance (the rail resets at every Commentary boundary; it never spans across one),
- * with Commentary rendered directly above it, never as part of the rail itself (owner decision,
- * see session-work-inspector-ui-spec.md §2) and never gating it behind a disclosure either (see
- * `WorkChapterCommentary`'s own doc comment). The leading "Start of Turn" chapter uses a neutral
- * label instead of a Commentary heading — there is no prose to show there. */
+function chapterEntryKey(entry: ChapterEntry): string {
+  return entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId;
+}
+
+type ChapterSegment =
+  { type: 'operations'; entries: ChapterEntry[] } | { type: 'reasoning'; item: WorkSummary };
+
+/** Splits a chapter's grouped entries, in chronological order, into operation runs (one rail each)
+ * and the Thinking narration between them — Thinking is narration, not a rail row
+ * (`WorkNarration`). */
+function chapterSegments(entries: readonly ChapterEntry[]): ChapterSegment[] {
+  const segments: ChapterSegment[] = [];
+  for (const entry of entries) {
+    if (entry.type !== 'burst' && entry.item.kind === 'reasoning') {
+      segments.push({ type: 'reasoning', item: entry.item });
+      continue;
+    }
+
+    const last = segments.at(-1);
+    if (last?.type === 'operations') {
+      last.entries.push(entry);
+    } else {
+      segments.push({ type: 'operations', entries: [entry] });
+    }
+  }
+
+  return segments;
+}
+
+/** One Commentary-headed phase: `<comment> <timeline> [<thinking> <timeline>] …` — the rail resets
+ * at every narration boundary and never spans across one; narration (Commentary, Thinking) is
+ * rendered between rails, never as part of a rail itself (owner decision, see
+ * session-work-inspector-ui-spec.md §2) and never gated behind a disclosure either (see
+ * `WorkNarration`). The leading "Start of Turn" chapter uses a neutral label instead of a
+ * Commentary heading — there is no prose to show there. */
 function WorkChapterSection({
   chapter,
   data,
@@ -590,33 +556,51 @@ function WorkChapterSection({
 }: {
   chapter: WorkChapter;
   data: Data;
-  onOpenActions: (workId: string) => void;
+  onOpenActions: (workId: string, title: string) => void;
 }) {
   const { t } = useTranslation();
-  const entries = useMemo(() => groupChapterEntries(chapter.items), [chapter.items]);
-  // Accessible name only (the Timeline's own `aria-label`) — never rendered as visible text next
-  // to Commentary, which would read as "this Commentary owns N operations" (live owner review,
-  // second/structural pass: don't claim a stronger ownership/causality than the chronological
-  // data supports).
-  const ariaLabel = t('managedSession.workInspector.operationsCount', {
-    count: chapter.items.length,
-  });
+  const segments = useMemo(
+    () => chapterSegments(groupChapterEntries(chapter.items)),
+    [chapter.items],
+  );
 
+  // No divider line between chapters (owner review, round two: "nie wiem czy potrzebujemy
+  // separatory poziome dla sekcji pracy ... ja bym wolał po prostu [Commentary z paddingiem]
+  // [Timeline] [Commentary2 z paddingiem] [Timeline2]" — a chapter's Commentary does not always
+  // own everything below a drawn line, so a line overstates that boundary; layout-and-containment's
+  // borderless-first rule applies one step further than the previous pass already took it).
+  //
+  // One even rhythm: the chapter list's `gap-5` (space before a Commentary) and this section's
+  // `gap-5` (space after it) both match the ~20px between operation rows, so narration sits in the
+  // chronology like any other line rather than being pulled toward what follows it (owner: spacing
+  // above and below Commentary must be equal; a Commentary does not own the operations after it).
   return (
-    <section className="grid min-w-0 gap-2 border-b border-border-subtle pb-4 last:border-b-0 last:pb-0">
-      {chapter.commentary ? (
-        <WorkChapterCommentary commentary={chapter.commentary} data={data} />
-      ) : (
-        <Typography as="h3" variant="label-sm" className="text-content-secondary">
+    <section className="grid min-w-0 gap-5">
+      {chapter.commentary && chapter.commentaryRole === 'match' ? (
+        <WorkNarration item={chapter.commentary} voice="commentary" data={data} />
+      ) : !chapter.commentary ? (
+        // h2, not h3: the panel's own title is the only heading above it (h1), so h3 skipped a
+        // level (axe heading-order) whenever Work history opened inside the composed screen.
+        <Typography as="h2" variant="label-sm" className="text-content-secondary">
           {t('managedSession.workInspector.startOfTurn')}
         </Typography>
+      ) : null}
+      {segments.map((segment) =>
+        segment.type === 'reasoning' ? (
+          <WorkNarration
+            key={segment.item.workId}
+            item={segment.item}
+            voice="reasoning"
+            data={data}
+          />
+        ) : (
+          <WorkOperationsTimeline
+            key={chapterEntryKey(segment.entries[0]!)}
+            entries={segment.entries}
+            onOpenActions={onOpenActions}
+          />
+        ),
       )}
-      <WorkChapterOperationsTimeline
-        entries={entries}
-        data={data}
-        onOpenActions={onOpenActions}
-        ariaLabel={ariaLabel}
-      />
     </section>
   );
 }
@@ -629,28 +613,37 @@ function WorkChapterSection({
  * sub-kind to break tool counts down further (workGrouping.ts's own header comment). */
 function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
   const { t } = useTranslation();
+  // A kind with zero items is left out ("0 analiz · 0 odpowiedzi" is noise, not information).
   const byKindLabels = [
-    t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
-    t('managedSession.workInspector.counts.commentary', { count: counts.byKind.commentary }),
-    t('managedSession.workInspector.counts.reasoning', { count: counts.byKind.reasoning }),
-    t('managedSession.workInspector.counts.interaction', { count: counts.byKind.interaction }),
-  ];
+    counts.byKind.tool > 0 &&
+      t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
+    counts.byKind.commentary > 0 &&
+      t('managedSession.workInspector.counts.commentary', { count: counts.byKind.commentary }),
+    counts.byKind.reasoning > 0 &&
+      t('managedSession.workInspector.counts.reasoning', { count: counts.byKind.reasoning }),
+    counts.byKind.interaction > 0 &&
+      t('managedSession.workInspector.counts.interaction', { count: counts.byKind.interaction }),
+  ].filter((label): label is string => typeof label === 'string');
+  // Plain text, never a badge (owner brief §5): an ordinary statistic, quieter than the operation
+  // titles below it (`body-md` secondary vs. `label-md` primary), and "w toku" is the same
+  // `workState.active` word the rows themselves use — not a second status vocabulary. It counts
+  // Work in this Turn only; it says nothing about the Session as a whole.
+  const headline = [
+    t('managedSession.workInspector.counts.total', { count: counts.total }),
+    counts.inProgress > 0 &&
+      t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress }),
+  ].filter((label): label is string => typeof label === 'string');
 
   return (
     <div className="grid gap-0.5">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <Typography as="span" variant="label-sm" className="text-content-primary">
-          {t('managedSession.workInspector.counts.total', { count: counts.total })}
-        </Typography>
-        {counts.inProgress > 0 && (
-          <Badge tone="info" size="compact">
-            {t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress })}
-          </Badge>
-        )}
-      </div>
-      <Typography as="p" variant="body-sm" className="text-content-muted">
-        {byKindLabels.join(' · ')}
+      <Typography as="p" variant="body-md" className="text-content-secondary">
+        {headline.join(' · ')}
       </Typography>
+      {byKindLabels.length > 0 && (
+        <Typography as="p" variant="body-sm" className="text-content-muted">
+          {byKindLabels.join(' · ')}
+        </Typography>
+      )}
     </div>
   );
 }
@@ -741,18 +734,22 @@ function Work({ data }: { data: Data }) {
 
   const chapters = useMemo(() => buildWorkChapters(items), [items]);
   const visibleChapters = useMemo(() => filterWorkChapters(chapters, filter), [chapters, filter]);
-  const openActions = (workId: string) => void navigation.navTo('actions', { workId });
+  const filterKinds = useMemo(
+    () => availableWorkFilterKinds(items, counts?.byKind),
+    [items, counts],
+  );
+  const openActions = (workId: string, workTitle: string) =>
+    void navigation.navTo('actions', { workId, workTitle });
 
   return (
     <AppContent className="h-full w-full">
       {/* `contentClassName`'s `flex min-h-full flex-col` gives the scrolled content a definite,
-          full-height column: `EmptyState`'s own `variant="pane"` (`flex-1 min-h-full ...
-          justify-center`) then actually has remaining space (below the filter bar) to fill and
-          self-centre within, and the real-results wrapper's `m-auto` centres a short visible Work
-          log the same way — both instead of collapsing to intrinsic height at the top of an
-          otherwise-blank, full-viewport mobile drill-in panel (live-review finding). A Work log
-          long enough to overflow computes `m-auto`'s margins to `0` and starts under the filter
-          bar as before, so this never fights normal scrolling. */}
+          full-height column so `EmptyState`'s own `variant="pane"` (`flex-1 min-h-full ...
+          justify-center`) has remaining space (below the filter bar) to fill and self-centre
+          within. The real Work log is NOT centred (confirmed desktop live-review bug: a previous
+          `m-auto` wrapper here left a large blank gap between the filter bar and a short log, so
+          the log read as floating mid-panel — the same defect already fixed in `SessionContext`).
+          A list starts directly under its filter bar and simply scrolls once it overflows. */}
       <ScrollArea
         viewportRef={scroller}
         className="min-h-0 w-full flex-1"
@@ -769,7 +766,7 @@ function Work({ data }: { data: Data }) {
           {!query.isPending && !query.isError && (
             <>
               {counts && <WorkCountsSummary counts={counts} />}
-              <WorkFilterBar filter={filter} onChange={setFilter} />
+              <WorkFilterBar filter={filter} kinds={filterKinds} onChange={setFilter} />
               {/* Auto-loads on scroll near the top instead of a manual button (live-review fix
                   #3, `useAutoLoadOlder`); this is just its busy indicator. */}
               {olderBusy && (
@@ -792,7 +789,7 @@ function Work({ data }: { data: Data }) {
               ) : visibleChapters.length === 0 ? (
                 <EmptyState variant="pane" title={t('managedSession.workInspector.noMatches')} />
               ) : (
-                <div className="m-auto grid w-full gap-4">
+                <div className="grid w-full gap-5">
                   {visibleChapters.map((chapter) => (
                     <WorkChapterSection
                       key={chapter.id}
@@ -811,7 +808,7 @@ function Work({ data }: { data: Data }) {
   );
 }
 
-function Actions({ data, params }: { data: Data; params: { workId: string } }) {
+function Actions({ data, params }: { data: Data; params: { workId: string; workTitle: string } }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<ToolActionSummary[]>([]);
   const [history, setHistory] = useState<{ hasOlder: boolean; before?: string }>({
@@ -881,11 +878,9 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
 
   return (
     <AppContent className="h-full w-full">
-      {/* Same full-height-centring treatment as `Work` above: `EmptyState` fills and self-centres
-          via its own `flex-1`, and the real Actions Timeline's `m-auto` wrapper centres a short
-          drill-in (a Work item with only one or two actions) instead of leaving it pinned to the
-          top of an otherwise-blank, full-viewport mobile panel (live-review finding) — a Timeline
-          long enough to overflow computes `m-auto`'s margins to `0` and is unaffected. */}
+      {/* Same treatment as `Work` above: only `EmptyState` fills and self-centres via its own
+          `flex-1`; the real Actions Timeline starts at the top of the panel (no `m-auto` vertical
+          centring — see `Work`'s comment for the confirmed live-review bug it caused). */}
       <ScrollArea
         viewportRef={scroller}
         className="min-h-0 w-full flex-1"
@@ -893,6 +888,14 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div className="flex w-full flex-1 flex-col gap-4">
+          {/* Which Work these actions belong to — only when there are several. A single action's
+              own title is the heading (`SingleToolActionDetail`), and repeating the Work title
+              above it showed the same name twice (owner: "mamy podwójny nagłówek"). */}
+          {!query.isPending && items.length > 1 && (
+            <Typography as="h2" variant="title-sm" className="text-content-primary">
+              {params.workTitle}
+            </Typography>
+          )}
           {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
           {query.isError && (
             <Alert tone="attention" title={t('managedSession.failed')}>
@@ -920,49 +923,24 @@ function Actions({ data, params }: { data: Data; params: { workId: string } }) {
               )}
               {items.length === 0 ? (
                 <EmptyState variant="pane" title={t('managedSession.workInspector.noActions')} />
+              ) : items.length === 1 ? (
+                // The common case — one ToolAction. No Timeline/marker rail: with nothing else on
+                // the rail to align against, that reserved column was pure indent (see
+                // `SingleToolActionDetail`'s own doc comment). Flush at the same edge as
+                // `params.workTitle` above.
+                <SingleToolActionDetail item={items[0]!} source={data} />
               ) : (
                 // L3/L4 exact chronology: the generic Timeline is the right default here, unlike
                 // the Commentary-grouped L2 Work log above (session-work-inspector-ui-spec.md §2).
-                <div className="m-auto w-full">
-                  <Timeline size="sm" aria-label={t('managedSession.actions')}>
+                // Several ToolActions genuinely need the marker rail — see
+                // `ToolActionTimelineItem`'s own doc comment.
+                <div className="w-full">
+                  <Timeline
+                    size="md"
+                    aria-label={t('managedSession.actions', { count: items.length })}
+                  >
                     {items.map((item) => (
-                      <Timeline.Item key={item.actionId}>
-                        <Timeline.Marker tone={stateTone(item.state)} />
-                        <Timeline.Content title={t(`managedSession.workState.${item.state}`)}>
-                          <div className="grid min-w-0 gap-2">
-                            <ReadableText
-                              api={data.api}
-                              sessionId={data.sessionId}
-                              value={item.title}
-                            />
-                            {item.input && (
-                              <div className="grid min-w-0 gap-1">
-                                <Typography variant="label-sm" className="text-content-muted">
-                                  {t('managedSession.workInspector.input')}
-                                </Typography>
-                                <ReadableText
-                                  api={data.api}
-                                  sessionId={data.sessionId}
-                                  value={{ text: '', complete: false, content: item.input }}
-                                />
-                              </div>
-                            )}
-                            {item.output && (
-                              <div className="grid min-w-0 gap-1">
-                                <Typography variant="label-sm" className="text-content-muted">
-                                  {t('managedSession.workInspector.output')}
-                                </Typography>
-                                <ReadableText
-                                  api={data.api}
-                                  sessionId={data.sessionId}
-                                  value={{ text: '', complete: false, content: item.output }}
-                                />
-                              </div>
-                            )}
-                            {item.error && <Alert tone="attention" title={item.error.message} />}
-                          </div>
-                        </Timeline.Content>
-                      </Timeline.Item>
+                      <ToolActionTimelineItem key={item.actionId} item={item} source={data} />
                     ))}
                   </Timeline>
                 </div>
@@ -994,6 +972,9 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         get title() {
           return translateNow('managedSession.actions');
         },
+        // The breadcrumb names the opened Work ("Read file admission.mjs"), not the page type;
+        // the tab itself keeps its root's name ("Historia pracy").
+        breadcrumbLabel: (params) => params.workTitle,
         component: Actions,
       },
     },

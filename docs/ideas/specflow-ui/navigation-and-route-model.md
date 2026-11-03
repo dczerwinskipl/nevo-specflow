@@ -204,7 +204,10 @@ implementations in multiple dialogs:
 - user-authored text should use the normal/shared composer interaction rather than a one-off prompt
   textarea embedded in every start modal.
 
-Exact visual composition and optional advanced fields remain product-design details.
+Exact visual composition and optional advanced fields remain product-design details. The explicit
+**New session** start on an existing Specification (pinned Specification, agent, first message in the
+shared Composer, agent-generated name with an own-name alternative) and the start block it shares with
+Create are specified in the [New Session UI spec](screens/new-session-ui-spec.md).
 
 ## 8. Full Session navigation — Workspace V2 accepted
 

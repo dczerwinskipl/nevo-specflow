@@ -62,6 +62,20 @@ or any missing Runtime API. No production code changed as part of these UX ideas
 
 ## 3. Work intent versus operation approval
 
+> **Owner decision (resolved, 2026-11-03): the Runtime is the source of truth for work modes.**
+> The Composer's work-mode picker — and the shared Session start block / Create agent row —
+> lists exactly the modes the provider catalogue reports for that provider
+> (`ProviderDescriptor.providerModes`; the creation catalogue's provider `modes`), in catalogue
+> order, under the provider's own titles. A provider without Plan (or with Plan but without Ask)
+> simply shows what it has. The UI holds no Ask/Plan/Agent vocabulary: a mode id is opaque, there
+> are no UI-authored labels or descriptions per mode, the default is the catalogue's
+> `defaultModeId` (else the first ready mode), and an unavailable mode is shown disabled with the
+> catalogue's `reason`. A pick maps to `StartTurn`/`CreateSession` `mode` + `providerModeId`.
+> No catalogue reports separate operation-approval policies, so the Composer shows no separate
+> approval section; a provider's native permission variants (e.g. Claude's Plan / Accept edits /
+> Manual) are simply its work modes. The intent/approval split below remains design background
+> for a future catalogue that certifies such a distinction.
+
 Do **not** model Ask/Plan/Agent and Accept All as values of one enum.
 
 | Concern            | Product meaning                                                                           | Boundary                                                 |
@@ -144,8 +158,8 @@ state survives local navigation as appropriate, respects limits and cleans up ab
 ## 6. Composer UI behavior (V10 approved direction, styling provisional)
 
 - Visual order inside Composer: attachments / previews -> multiline message -> toolbar.
-- Toolbar contains `+`, one intent/preset entry, conditional operation policy entry, one
-  model+effort selector, and primary Send. Provider identity can be static context,
+- Toolbar contains `+`, one work-mode entry (the provider catalogue's own modes, see §3 owner
+  decision), one model+effort selector, and primary Send. Provider identity can be static context,
   not another picker.
 - Menus expose only tested options; unavailable cases carry explanatory reasons.
 - Composer updates are independent of Secondary tabs, context navigation and panel split size.
@@ -158,10 +172,13 @@ state survives local navigation as appropriate, respects limits and cleans up ab
 
 1. DS-compliant iconography and responsive density: replace unrecognized mobile glyphs,
    avoid toolbar overflow/wrap, test at 390px and smaller supported sizes, keyboard and touch.
-2. Whether operation approval is a separate visible selector for a provider with one policy
-   (probably hide it) or how to expose provider-native fine-grained variants.
-3. Exact certified Ask/Plan mappings per provider and installed CLI version.
-4. Whether an option is provisionally shown disabled with an explanation or omitted entirely.
+2. ~~Whether operation approval is a separate visible selector~~ — **resolved** (§3 owner
+   decision): provider-native variants are the provider's own work modes; no separate selector
+   until a catalogue reports separate approval policies.
+3. ~~Exact certified Ask/Plan mappings per provider~~ — **resolved** (§3 owner decision): no UI
+   mapping; the Runtime catalogue lists each provider's modes under its own names.
+4. ~~Whether an option is shown disabled or omitted~~ — **resolved**: a catalogue mode reported
+   unavailable is shown disabled with its reason; a mode the selected model cannot run is omitted.
 5. Upload UI lifecycle, previews, size constraints and cross-session draft persistence.
 6. Whether mobile camera choice is displayed as a separate item or folded into image selection.
 7. Keyboard/paste/drop interactions, focus, live state and composer disabling during interactions.

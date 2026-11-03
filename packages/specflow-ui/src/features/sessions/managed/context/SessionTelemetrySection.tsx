@@ -10,7 +10,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
   Typography,
-  cn,
 } from '@nevo/ui';
 import type {
   LimitWindow,
@@ -33,7 +32,7 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * same "missing data hides the section" rule the rest of `SessionContext` already follows.
  *
  * Hierarchy rebuild (live owner review, mobile mock + rationale — see this task's handoff):
- * - Cost and token usage are aggregated top-level stat cells (big number over a muted caption),
+ * - Cost and token usage are aggregated top-level stat cells (a compact `title-md` tabular value over a muted caption),
  *   not inline label+value sentences — `StatCell`.
  * - The full cache-read/cache-write/reasoning token breakdown is real information but does not
  *   permanently occupy space: it sits behind a collapsed-by-default `Collapsible` ("Pozostałe
@@ -43,8 +42,8 @@ import { isTelemetryVisible } from './sessionTelemetry';
  *   is used") and must not read as one undifferentiated list of bars — they are two separate
  *   `<section>`s ("Zużycie sesji" / "Limity dostawcy"), each with its own heading.
  * - The two rate-limit windows most relevant to the user (ranked by usage, same as before) render
- *   side by side as two columns, since a 5h and a 7d budget are directly comparable to each other,
- *   rather than as two full-width stacked rows.
+ *   as two full-width stacked rows (label + value header, then the bar), so at a ~330 px
+ *   Secondary each bar keeps the full column width (owner visual-refinement brief).
  *
  * Every percentage shown here is unambiguously a "how much is USED" figure, never "how much is
  * left": `limitWindowPercentage`/`formatContextOccupancy` both compute `used / limit` (or, for
@@ -66,7 +65,15 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * already populated data, unlike `usage.turn`/`cost.turn` above) instead of silently inheriting
  * the section's "for the whole session" claim.
  */
-export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySnapshot }) {
+export function SessionTelemetrySection({
+  telemetry,
+  runningTurnId,
+}: {
+  telemetry?: TelemetrySnapshot;
+  /** The Turn in flight right now, if any (`SessionContextViewModel.runningTurnId`). Decides
+   * whether the context-window measurement is captioned as the current or the last Turn. */
+  runningTurnId?: string;
+}) {
   const { t, i18n } = useTranslation();
 
   if (!isTelemetryVisible(telemetry)) {
@@ -90,7 +97,7 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
       {hasUsageSection && (
         <section className="grid gap-3">
           <div className="flex flex-wrap items-baseline gap-2">
-            <Typography variant="section-label" className="text-content-muted">
+            <Typography variant="section-label">
               {t('sessions.context.sessionDetails.usageTitle')}
             </Typography>
             <Typography variant="label-sm" className="text-content-muted">
@@ -103,7 +110,8 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
             )}
           </div>
           {(costStat ?? tokensStat) && (
-            <div className="grid grid-cols-2 gap-4">
+            // Cost sizes to its (short) value; tokens take the rest, so neither column wraps.
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-8">
               {costStat && (
                 <StatCell
                   value={costStat.text}
@@ -129,12 +137,20 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
                 value: new Intl.NumberFormat(i18n.language).format(contextStat.percentage),
               })}
               stale={contextStat.stale}
-              scopeCaption={formatContextWindowScope(contextStat.turnId, contextStat.modelId, t)}
+              scopeCaption={formatContextWindowScope(
+                contextStat.turnId,
+                contextStat.modelId,
+                runningTurnId,
+                t,
+              )}
             />
           )}
           {tokenBreakdown && (
-            <Collapsible>
-              <Collapsible.Trigger>
+            // The trigger owns `px-control-padding-compact`; bleeding the whole disclosure by the
+            // same token puts its chevron on the content edge shared by the rows above, while the
+            // hover surface extends into the host padding (no local padding override).
+            <Collapsible className="-mx-control-padding-compact">
+              <Collapsible.Trigger className="text-body-sm">
                 {t('sessions.context.sessionDetails.tokenBreakdownLabel')}
               </Collapsible.Trigger>
               <Collapsible.Content>
@@ -150,13 +166,13 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
         </section>
       )}
       {limits && (
-        <section className="grid gap-2">
-          <Typography variant="section-label" className="text-content-muted">
+        <section className="grid gap-3">
+          <Typography variant="section-label">
             {t('sessions.context.sessionDetails.limitsTitle')}
           </Typography>
-          <div
-            className={cn('grid gap-3', limits.windows.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}
-          >
+          {/* One full-width row per window (label + value header, then the bar), never two
+              cramped columns: at ~330 px the side-by-side split left each bar a few dozen px. */}
+          <div className="grid gap-4">
             {limits.windows.map((window) => (
               <LimitRow
                 key={window.id}
@@ -168,7 +184,7 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
             ))}
           </div>
           {limits.extra > 0 && (
-            <Typography variant="body-sm" className="text-content-muted">
+            <Typography variant="body-sm" className="text-content-muted tabular-nums">
               {t('sessions.context.sessionDetails.moreLimitWindows', { value: limits.extra })}
             </Typography>
           )}
@@ -178,7 +194,7 @@ export function SessionTelemetrySection({ telemetry }: { telemetry?: TelemetrySn
   );
 }
 
-/** A top-level aggregate stat (cost, token usage): a large bold number over a small muted
+/** A top-level aggregate stat (cost, token usage): a compact inspector-sized number over a muted
  * caption, never inline label+value text — the owner's explicit correction to the previous "one
  * undifferentiated font" telemetry read. `note` is a second, smaller muted line for a caveat that
  * belongs with the number itself (cost basis/meaning), not a separate sentence. */
@@ -194,16 +210,18 @@ function StatCell({
   stale: boolean;
 }) {
   return (
-    <div className="grid gap-0.5">
-      <div className="flex items-center gap-1.5">
-        <Typography variant="title-lg">{value}</Typography>
+    <div className="grid min-w-0 content-start gap-0.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+        <Typography variant="title-md" className="tabular-nums">
+          {value}
+        </Typography>
         {stale && <StaleMark />}
       </div>
-      <Typography variant="label-sm" className="text-content-muted">
+      <Typography variant="body-sm" className="text-content-muted">
         {caption}
       </Typography>
       {note && (
-        <Typography variant="label-sm" className="text-content-muted">
+        <Typography variant="body-sm" className="text-content-muted">
           {note}
         </Typography>
       )}
@@ -242,39 +260,33 @@ function LimitRow({
   const labelId = useId();
 
   return (
-    <div className="grid gap-1">
-      <div className="flex items-center gap-1.5">
-        <Typography id={labelId} variant="label-sm" className="text-content-muted">
-          {label}
-        </Typography>
-        {stale && <StaleMark />}
-      </div>
-      {scopeCaption && (
-        <Typography variant="label-sm" className="text-content-muted">
-          {scopeCaption}
-        </Typography>
-      )}
-      {percentage !== undefined ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <Progress
-            size="compact"
-            value={percentage}
-            max={100}
-            aria-labelledby={labelId}
-            style={progressFillStyle(progressTone(percentage))}
-          />
-          {valueText && (
-            <Typography variant="code-md" className="text-content-muted">
-              {valueText}
-            </Typography>
-          )}
-        </div>
-      ) : (
-        valueText && (
-          <Typography variant="body-sm" className="text-content-secondary">
+    <div className="grid min-w-0 gap-1.5">
+      {/* Header: label left, value right on one line; the bar below spans the whole column. */}
+      <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <Typography id={labelId} variant="body-sm" className="text-content-secondary">
+            {label}
+          </Typography>
+          {stale && <StaleMark />}
+        </span>
+        {valueText && (
+          <Typography variant="body-sm" className="ml-auto tabular-nums text-content-primary">
             {valueText}
           </Typography>
-        )
+        )}
+      </div>
+      {percentage !== undefined && (
+        <Progress
+          value={percentage}
+          max={100}
+          aria-labelledby={labelId}
+          style={progressFillStyle(progressTone(percentage))}
+        />
+      )}
+      {scopeCaption && (
+        <Typography variant="body-sm" className="text-content-muted">
+          {scopeCaption}
+        </Typography>
       )}
     </div>
   );
@@ -490,17 +502,26 @@ function formatContextOccupancy(
 function formatContextWindowScope(
   turnId: string | undefined,
   modelId: string | undefined,
+  runningTurnId: string | undefined,
   t: TFunction,
 ): string | undefined {
-  if (turnId && modelId) {
-    return t('sessions.context.sessionDetails.contextWindowScopeTurnAndModel', {
-      turn: turnId,
-      model: modelId,
-    });
-  }
-
+  // "Current Turn" only when the measured Turn is the one in flight right now; a measurement whose
+  // Turn has settled (no running Turn, or a newer one running that has not been measured yet) is
+  // the last Turn's. Never inferred from the Session's own status: an active Session that is
+  // ready for the next message has no running Turn. The technical Turn id stays out of the view.
   if (turnId) {
-    return t('sessions.context.sessionDetails.contextWindowScopeTurnOnly', { turn: turnId });
+    const current = turnId === runningTurnId;
+    if (modelId) {
+      return current
+        ? t('sessions.context.sessionDetails.contextWindowScopeTurnAndModel', { model: modelId })
+        : t('sessions.context.sessionDetails.contextWindowScopeLastTurnAndModel', {
+            model: modelId,
+          });
+    }
+
+    return current
+      ? t('sessions.context.sessionDetails.contextWindowScopeTurnOnly')
+      : t('sessions.context.sessionDetails.contextWindowScopeLastTurnOnly');
   }
 
   if (modelId) {

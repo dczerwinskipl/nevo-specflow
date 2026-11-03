@@ -14,8 +14,14 @@ export function CreateFooter({
   note,
   submitLabel,
   submitDisabled,
+  formId,
 }: {
   submitRef?: RefObject<HTMLButtonElement | null>;
+  /**
+   * The form the button submits when the footer is not inside it (New Session: the first-message
+   * Composer is its own form, which must not be nested in another one).
+   */
+  formId?: string;
   /** Translated reason Create is unavailable; undefined shows `note` instead. */
   prerequisite: string | undefined;
   note: string;
@@ -45,6 +51,7 @@ export function CreateFooter({
         <Button
           ref={submitRef}
           type="submit"
+          form={formId}
           aria-describedby={prerequisite ? prerequisiteId : undefined}
           disabled={submitDisabled}
         >

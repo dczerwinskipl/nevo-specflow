@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import {
   Button,
   Menu,
@@ -21,7 +21,7 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
  * effort" section below, exactly mirroring the single-effort/no-effort collapse this file always
  * had (a model with 0-1 efforts never shows a separate effort choice at all).
  */
-function modelSectionItems(provider: ProviderDescriptor | undefined) {
+function modelSectionItems(provider: ModelEffortProvider | undefined, withDefaultEffort: boolean) {
   if (!provider?.capabilities.modelOverride || !provider.models.length) {
     return [];
   }
@@ -32,8 +32,20 @@ function modelSectionItems(provider: ProviderDescriptor | undefined) {
     modelId: model.modelId,
     label: model.title,
     efforts: withEffort ? model.efforts : [],
-    hasEfforts: withEffort && model.efforts.length > 1,
+    // With an explicit "provider default" row, a single effort is still a real choice (default
+    // versus that one effort); without it, 0-1 efforts never show a separate section.
+    hasEfforts: withEffort && model.efforts.length > (withDefaultEffort ? 0 : 1),
   }));
+}
+
+/**
+ * What the picker reads from a provider: only its model list and the two override capabilities.
+ * A full `ProviderDescriptor` satisfies it; a start screen can adapt its own provider catalogue
+ * (`features/specs/creation/session-start`) without inventing the descriptor's other fields.
+ */
+export interface ModelEffortProvider {
+  capabilities: Pick<ProviderDescriptor['capabilities'], 'modelOverride' | 'effortOverride'>;
+  models: ProviderDescriptor['models'];
 }
 
 /** The currently selected model (and, when the provider supports it, effort) for the next Turn. */
@@ -52,12 +64,9 @@ export interface ModelEffortValue {
  * — the gating is entirely internal, so a caller never has to duplicate "should I render this?"
  * logic alongside it.
  *
- * Icon: `Bot`, not `SlidersHorizontal` (owner audit, live: a real user could not find this picker
- * at all, and instead assumed the composer toolbar's work-mode/intent entry — which used to carry
- * `Bot` — was "where you pick the model"; see `ComposerPresetPicker.tsx`'s own doc comment for the
- * other half of that swap). `Bot` is the one glyph a real user already associates with "the
- * model", so giving it to the picker that actually *is* the model/effort picker removes the
- * ambiguity instead of relying on a neutral icon no one reliably reads as "AI model" at a glance.
+ * No leading icon (owner audit, round seven: "usuńmy ikonki od modeli i effort. Modele już mamy
+ * tekstem"). The visible "<Model> · <effort>" text is what identifies this picker; the earlier
+ * `Bot` glyph only added width the narrow toolbar needs for the work-mode picker's own text label.
  *
  * Owner audit, round two — reference screenshots of ChatGPT/Codex's own compact composer toolbar:
  * its model+effort trigger always shows a short but readable TEXT label next to the icon (e.g.
@@ -103,16 +112,26 @@ export function ModelEffortPicker({
   onChange,
   disabled = false,
   compact = false,
+  defaultEffortLabel,
 }: {
-  provider: ProviderDescriptor | undefined;
+  provider: ModelEffortProvider | undefined;
   value: ModelEffortValue | undefined;
   onChange: (modelId: string, effort?: string) => void;
   disabled?: boolean;
   /**
+   * Start-of-Session variant (`features/specs/creation/session-start`): "no effort" is an explicit,
+   * selectable choice labelled with this text (the provider's own default), shown as the first row
+   * of the effort section. Picking a model then keeps the current effort only when the new model
+   * offers it and otherwise falls back to that default (`undefined`), instead of pre-selecting the
+   * model's first effort. Omitted in the Session's own Composer, whose next Turn always has an
+   * effort.
+   */
+  defaultEffortLabel?: string;
+  /**
    * Narrows the trigger's max width for a layout with less room (`ManagedSession.tsx` passes
    * `!supportsSplit`, the same measured-width signal it already uses for the Context header
-   * action) — it still always shows the selected model (and effort) as visible text next to the
-   * icon, never collapsing to an icon-only trigger (owner audit, round two: see this component's
+   * action) — it still always shows the selected model (and effort) as visible text, never
+   * collapsing to an icon-only trigger (owner audit, round two: see this component's
    * own doc comment for why an unlabeled icon is specifically what made the owner unable to find
    * this picker at all). The width is generous enough that a realistic model name fits
    * untruncated (owner audit, round four): it only narrows the gap between the two triggers'
@@ -121,7 +140,11 @@ export function ModelEffortPicker({
   compact?: boolean;
 }) {
   const { t } = useTranslation();
-  const modelItems = useMemo(() => modelSectionItems(provider), [provider]);
+  const withDefaultEffort = defaultEffortLabel !== undefined;
+  const modelItems = useMemo(
+    () => modelSectionItems(provider, withDefaultEffort),
+    [provider, withDefaultEffort],
+  );
   if (modelItems.length === 0) {
     return null;
   }
@@ -155,7 +178,6 @@ export function ModelEffortPicker({
           disabled={disabled}
           id="managed-model"
           labelOverflow="truncate"
-          leadingIcon={Bot}
           trailingIcon={ChevronDown}
           size="sm"
           title={triggerLabel}
@@ -172,7 +194,12 @@ export function ModelEffortPicker({
                 // the opposite of "lighter/secondary weight"). Inheriting `text-current` keeps the
                 // same color as the title; the lighter `font-normal` weight next to the title's
                 // bold `label-sm` (600) is what actually reads as de-emphasized here.
-                <span className="font-normal"> · {value.effort}</span>
+                // The separating space sits outside the span: accessible-name computation trims
+                // each element's own text, so a leading space inside it read as "Model· high".
+                <>
+                  {' '}
+                  <span className="font-normal">· {value.effort}</span>
+                </>
               ) : null}
             </>
           ) : (
@@ -195,7 +222,9 @@ export function ModelEffortPicker({
                 const nextEffort = item.hasEfforts
                   ? value?.effort && item.efforts.includes(value.effort)
                     ? value.effort
-                    : item.efforts[0]
+                    : withDefaultEffort
+                      ? undefined
+                      : item.efforts[0]
                   : undefined;
                 onChange(item.modelId, nextEffort);
                 if (item.hasEfforts) {
@@ -214,6 +243,11 @@ export function ModelEffortPicker({
             <MenuSeparator />
             <MenuLabel>{t('managedSession.model.effortSectionLabel')}</MenuLabel>
             <MenuRadioGroup value={value?.effort ?? ''}>
+              {withDefaultEffort ? (
+                <MenuRadioItem value="" onSelect={() => onChange(selectedModel.modelId)}>
+                  {defaultEffortLabel}
+                </MenuRadioItem>
+              ) : null}
               {selectedModel.efforts.map((effort) => (
                 <MenuRadioItem
                   key={effort}

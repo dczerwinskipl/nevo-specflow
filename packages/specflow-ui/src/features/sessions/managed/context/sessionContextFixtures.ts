@@ -1,3 +1,4 @@
+import { workInspectorTurnId } from '../managedSession.workInspector.stories-support';
 import {
   fullTelemetrySnapshot,
   partialAntigravityTelemetrySnapshot,
@@ -41,7 +42,21 @@ export function genericSpecLevelContext(): SessionContextViewModel {
     executionScope: { kind: 'generic' },
     relatedTasks: [task02, task03],
     telemetry: fullTelemetrySnapshot,
+    // The live Turn of `richDefaultApi` (`workInspectorTurnId`) — opening Context's "Work history"
+    // row lands on the same Work its chat Work block opens (same tab either way).
+    activeTurnId: workInspectorTurnId,
+    // The measured Turn is the one still running, so the context window reads "Current Turn".
+    runningTurnId: fullTelemetrySnapshot.context.value?.turnId,
   };
+}
+
+/** Same Session after its last Turn settled: still active and ready for the next message, but no
+ * Turn is running (`runningTurnId` absent), so the context-window measurement is labelled as the
+ * last Turn's, not the current one. */
+export function settledTurnContext(): SessionContextViewModel {
+  const { runningTurnId: _running, ...settled } = genericSpecLevelContext();
+
+  return settled;
 }
 
 /** State B — single-Task execution (§13). Also carries a partial telemetry snapshot reflecting

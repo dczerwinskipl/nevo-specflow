@@ -1,5 +1,7 @@
 import type {
   ActionPage,
+  ContentPage,
+  ContentRef,
   ProviderDescriptor,
   ToolActionSummary,
   TurnSummary,
@@ -16,6 +18,7 @@ import type { WorkCounts, WorkKind } from './workCounts';
 
 export const workInspectorTurnId = '00000000-0000-4000-8000-000000000010';
 const actionsWorkId = '00000000-0000-4000-8000-000000000011';
+const longReadWorkId = '00000000-0000-4000-8000-000000000012';
 
 const turnSummary: TurnSummary = {
   turnId: workInspectorTurnId,
@@ -25,6 +28,39 @@ const turnSummary: TurnSummary = {
   updatedAt: '2026-10-30T10:00:00Z',
   userMessage: { text: 'Investigate why workflow admission is failing.', complete: true },
 };
+
+/** Fixture-only full text behind a `ContentRef` (a ToolAction's real parameters/response), served by
+ * every fixture API's `content()` below — so the L4 detail screen shows real content instead of
+ * a rejected fetch. */
+const fixtureContents = new Map<string, string>();
+let contentSeq = 0;
+
+export function fixtureContentRef(text: string): ContentRef {
+  contentSeq += 1;
+  const contentId = `00000000-0000-4000-8000-${String(900000000000 + contentSeq)}`;
+  fixtureContents.set(contentId, text);
+
+  return { contentId, revision: '1', byteLength: new TextEncoder().encode(text).length };
+}
+
+export function hasFixtureContent(ref: ContentRef): boolean {
+  return fixtureContents.has(ref.contentId);
+}
+
+export function fixtureContentPage(ref: ContentRef, offset = 0): Promise<ContentPage> {
+  const text = fixtureContents.get(ref.contentId);
+  if (text === undefined) {
+    return Promise.reject(new Error(`No fixture content ${ref.contentId}`));
+  }
+
+  return Promise.resolve({
+    contentId: ref.contentId,
+    revision: ref.revision,
+    offset,
+    text: text.slice(offset),
+    complete: true,
+  });
+}
 
 let seq = 0;
 function workItem(overrides: Partial<WorkSummary> & { kind: WorkSummary['kind'] }): WorkSummary {
@@ -91,6 +127,57 @@ export function mixedWorkTimelineItems(): WorkSummary[] {
       state: 'completed',
       title: { text: 'Permission to write workspace', complete: true },
     }),
+    // A long title and a long single-action response: the row wraps to two lines instead of being
+    // cut, and its details scroll on their own instead of stretching the panel.
+    workItem({
+      kind: 'tool',
+      title: {
+        text: 'Read file packages/specflow-runtime/src/features/sessions/persistence/admission-revision-reconciliation.test.mjs',
+        complete: true,
+      },
+      actionCount: 1,
+      workId: longReadWorkId,
+      createdAt: '2026-10-30T10:00:09.000Z',
+      updatedAt: '2026-10-30T10:00:09.180Z',
+    }),
+  ];
+}
+
+/** The single ToolAction of the long-titled read above: a long path parameter and a long, plain-text
+ * (not JSON) response. */
+export function longReadActions(): ToolActionSummary[] {
+  return [
+    {
+      actionId: 'a-long-1',
+      ordinal: 1,
+      revision: 1,
+      state: 'completed',
+      title: {
+        text: 'Read · packages/specflow-runtime/src/features/sessions/persistence/admission-revision-reconciliation.test.mjs',
+        complete: true,
+      },
+      input: fixtureContentRef(
+        JSON.stringify(
+          {
+            file_path:
+              'packages/specflow-runtime/src/features/sessions/persistence/admission-revision-reconciliation.test.mjs',
+            offset: 1,
+            limit: 80,
+          },
+          null,
+          2,
+        ),
+      ),
+      output: fixtureContentRef(
+        Array.from(
+          { length: 80 },
+          (_, index) =>
+            `${String(index + 1).padStart(5)}\t${index % 9 === 0 ? `describe('admission revision ${index}', () => {` : `  expect(await admit(operation${index})).toEqual({ state: 'accepted', revision: ${index} });`}`,
+        ).join('\n'),
+      ),
+      createdAt: '2026-10-30T10:00:09.000Z',
+      updatedAt: '2026-10-30T10:00:09.180Z',
+    },
   ];
 }
 
@@ -102,8 +189,20 @@ export function mixedWorkTimelineActions(): ToolActionSummary[] {
       revision: 1,
       state: 'completed',
       title: { text: 'Edit · admission.mjs', complete: true },
-      createdAt: '2026-10-30T10:00:00Z',
-      updatedAt: '2026-10-30T10:00:00Z',
+      input: fixtureContentRef(
+        JSON.stringify(
+          {
+            file_path: 'src/admission.mjs',
+            old_string: 'if (revision !== current) reject();',
+            new_string: 'if (revision !== (await reloadRevision())) reject();',
+          },
+          null,
+          2,
+        ),
+      ),
+      output: fixtureContentRef('Updated src/admission.mjs (1 replacement, lines 42-44).'),
+      createdAt: '2026-10-30T10:00:00.000Z',
+      updatedAt: '2026-10-30T10:00:00.420Z',
     },
     {
       actionId: 'a2',
@@ -111,8 +210,20 @@ export function mixedWorkTimelineActions(): ToolActionSummary[] {
       revision: 1,
       state: 'completed',
       title: { text: 'Edit · readiness-policy.mjs', complete: true },
-      createdAt: '2026-10-30T10:00:01Z',
-      updatedAt: '2026-10-30T10:00:01Z',
+      input: fixtureContentRef(
+        JSON.stringify(
+          {
+            file_path: 'src/readiness-policy.mjs',
+            old_string: 'retries: 0',
+            new_string: 'retries: 1',
+          },
+          null,
+          2,
+        ),
+      ),
+      output: fixtureContentRef('Updated src/readiness-policy.mjs (1 replacement, line 17).'),
+      createdAt: '2026-10-30T10:00:01.000Z',
+      updatedAt: '2026-10-30T10:00:01.310Z',
     },
     {
       actionId: 'a3',
@@ -120,9 +231,19 @@ export function mixedWorkTimelineActions(): ToolActionSummary[] {
       revision: 1,
       state: 'failed',
       title: { text: 'Execute · pnpm test', complete: true },
+      input: fixtureContentRef(JSON.stringify({ command: 'pnpm test -- admission' }, null, 2)),
+      output: fixtureContentRef(
+        [
+          ' FAIL  test/admission.test.mjs > rejects a stale revision',
+          '   AssertionError: expected "accepted" to be "rejected"',
+          '',
+          ' Test Files  1 failed | 7 passed (8)',
+          '      Tests  1 failed | 41 passed (42)',
+        ].join('\n'),
+      ),
       error: { code: 'process_exit', message: '1 test failed.' },
-      createdAt: '2026-10-30T10:00:02Z',
-      updatedAt: '2026-10-30T10:00:02Z',
+      createdAt: '2026-10-30T10:00:02.000Z',
+      updatedAt: '2026-10-30T10:00:08.400Z',
     },
   ];
 }
@@ -240,6 +361,7 @@ export function createWorkInspectorFixtureApi(
   items: readonly WorkSummary[],
   actionsByWorkId: Record<string, readonly ToolActionSummary[]> = {},
   pageSize = 40,
+  turn: TurnSummary = turnSummary,
 ): ManagedSessionsApi {
   const pages = paginate(items, pageSize);
   const counts = computeWorkCounts(items);
@@ -257,7 +379,7 @@ export function createWorkInspectorFixtureApi(
       return Promise.resolve({
         sessionId: fixtureSessionId,
         eventSeq: 1,
-        turn: turnSummary,
+        turn,
         items: pageItems,
         history: { hasOlder, before: hasOlder ? String(index - 1) : undefined },
         counts,
@@ -271,7 +393,7 @@ export function createWorkInspectorFixtureApi(
         items: [...(actionsByWorkId[workId] ?? [])],
         history: { hasOlder: false },
       } satisfies ActionPage),
-    content: () => Promise.reject(new Error('not used by these stories')),
+    content: (_sessionId, ref, offset) => fixtureContentPage(ref, offset),
     start: () => Promise.resolve({ turnId: workInspectorTurnId }),
     cancel: () => Promise.resolve({ turnId: workInspectorTurnId }),
     respond: () => Promise.resolve({ turnId: workInspectorTurnId }),
@@ -288,4 +410,4 @@ export function createWorkInspectorFixtureApi(
   };
 }
 
-export { actionsWorkId };
+export { actionsWorkId, longReadWorkId };

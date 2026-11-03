@@ -33,3 +33,39 @@ export interface WorkCounts {
  * projection — real HTTP responses never populate it; only fixtures do, until the backend
  * projection exists. */
 export type WithWorkCounts<TPage> = TPage & { counts?: WorkCounts };
+
+/**
+ * PROPOSED, NOT YET BACKEND — what the agent actually did in a Turn, by tool sub-kind
+ * (session-work-inspector-ui-spec.md §10-11's read/edit/write/list/search/command/test/web/other).
+ * The canonical contract carries no tool sub-kind or state on a conversation entry (see `WorkKind`
+ * above and `ConversationEntrySchema`), so this exists only as a demo-fixture extension of a
+ * `work-summary` `ConversationEntry`, documented in session-chat-v10-design.md §3.1 ("Proposed Work
+ * digest"). The Turn's latest entry carrying one wins. Real responses never populate it; the chat's
+ * Work block then shows only the honest count of tool Work it has loaded.
+ */
+export type ToolActivityKind =
+  'read' | 'edit' | 'write' | 'list' | 'search' | 'command' | 'test' | 'web' | 'other';
+
+/** Display order: what changed the workspace and what verified it first, lookups after. */
+export const toolActivityKinds: readonly ToolActivityKind[] = [
+  'edit',
+  'write',
+  'command',
+  'test',
+  'read',
+  'search',
+  'list',
+  'web',
+  'other',
+];
+
+/** Every kind counts tool actions (not files); a Turn's own interruption is its outcome, not a
+ * digest field, so the fact is shown once. */
+export interface WorkDigest {
+  /** Tool actions that finished successfully, per sub-kind. */
+  done: Partial<Record<ToolActivityKind, number>>;
+  /** Tool actions that failed, per sub-kind — the exceptional Work §4.5 says must stand out. */
+  failed?: Partial<Record<ToolActivityKind, number>>;
+}
+
+export type WithWorkDigest<TEntry> = TEntry & { digest?: WorkDigest };

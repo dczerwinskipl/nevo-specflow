@@ -266,7 +266,7 @@ describe('WorkInspector Work screen', () => {
     await waitFor(() => expect(screen.getByText('Show less')).toBeTruthy());
   });
 
-  it('renders Reasoning as a distinct, separately labeled, collapsible "Thinking" summary', async () => {
+  it('renders Reasoning as narration like Commentary — visible without a click, told apart only by italic voice', async () => {
     const commentary = work({
       kind: 'commentary',
       title: { text: 'Checking options…', complete: true },
@@ -278,17 +278,20 @@ describe('WorkInspector Work screen', () => {
     const { api } = fixtureApi([commentary, reasoning]);
 
     await openWork(api);
-    await screen.findByText('Thinking');
-    // Collapsed by default — a tool row never gets this "Thinking" treatment or label.
-    const trigger = screen.getByText('Thinking').closest('button');
-    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
-
-    clickTrigger('Thinking');
-    await waitFor(() => expect(trigger?.getAttribute('aria-expanded')).toBe('true'));
-    expect(screen.getByText('The simpler fix risks a regression')).toBeTruthy();
+    const thought = await screen.findByText('The simpler fix risks a regression');
+    const said = screen.getByText('Checking options…');
+    // No disclosure: the text is shown directly, not behind a "Thinking" trigger.
+    expect(thought.closest('button')).toBeNull();
+    // Same narration block, different voice: italic for Thinking only.
+    expect(thought.closest('.italic')).not.toBeNull();
+    expect(said.closest('.italic')).toBeNull();
+    // Never a row on the operations rail.
+    expect(thought.closest('ol')).toBeNull();
+    // Assistive tech still gets the kind's own name, since italics are not announced.
+    expect(thought.parentElement?.textContent).toContain('Thinking');
   });
 
-  it('a type filter narrows to one kind while keeping the parent Commentary heading visible', async () => {
+  it('a type filter narrows to exactly one kind, with no Commentary mixed in (owner review, round three)', async () => {
     const commentary = work({
       kind: 'commentary',
       title: { text: 'Checking options…', complete: true },
@@ -306,12 +309,14 @@ describe('WorkInspector Work screen', () => {
 
     selectFilterKind('Filter Work by type', 'Tool');
     await waitFor(() => expect(screen.queryByText('Thinking')).toBeNull());
-    // The Commentary that heads the chapter stays visible for context (never stripped away).
-    expect(screen.getByText('Checking options…')).toBeTruthy();
+    // Commentary is not part of the "Tool" filter's own result, so it is not shown either —
+    // every option shows only the kind it names, nothing mixed in (owner: "Commentary to nie
+    // kontekst chyba?").
+    expect(screen.queryByText('Checking options…')).toBeNull();
     expect(screen.getByText('Run command pnpm test')).toBeTruthy();
   });
 
-  it('search matches a tool title while keeping it grouped under its own Commentary', async () => {
+  it('search matches a tool title and keeps it in its chapter, without surfacing a non-matching Commentary', async () => {
     const leading = work({
       title: { text: 'Read file unrelated.mjs', complete: true },
       kind: 'tool',
@@ -330,7 +335,9 @@ describe('WorkInspector Work screen', () => {
     fireEvent.change(search, { target: { value: 'pnpm' } });
 
     await waitFor(() => expect(screen.queryByText('Start of Turn')).toBeNull());
-    expect(screen.getByText('Checking recovery…')).toBeTruthy();
+    // The Commentary itself doesn't match "pnpm", so (owner review, round three) it isn't shown
+    // either — only the matching tool row.
+    expect(screen.queryByText('Checking recovery…')).toBeNull();
     expect(screen.getByText('Run command pnpm test')).toBeTruthy();
     expect(screen.queryByText('Read file unrelated.mjs')).toBeNull();
   });
@@ -419,7 +426,9 @@ describe('WorkInspector sparse-state framing', () => {
     expect(scrollContent?.className).toMatch(/min-h-full/);
   });
 
-  it('vertically centres a short (one-item) visible Work log instead of leaving it pinned under the filter bar in a tall blank panel', async () => {
+  // Confirmed desktop live-review bug: an `m-auto` wrapper centred a short Work log vertically,
+  // leaving a large blank gap between the filter bar and the log. Lists start at the top.
+  it('anchors a short (one-item) visible Work log directly under the filter bar instead of vertically centring it', async () => {
     const lone = work({ kind: 'tool', title: { text: 'Run a single step', complete: true } });
     const { api } = fixtureApi([lone]);
 
@@ -442,11 +451,10 @@ describe('WorkInspector sparse-state framing', () => {
     });
 
     const row = await screen.findByText('Run a single step');
-    const centered = row.closest('.m-auto');
-    expect(centered).toBeTruthy();
+    expect(row.closest('.m-auto')).toBeNull();
   });
 
-  it('vertically centres a short (one-action) drill-in instead of leaving it pinned under nothing in a tall blank panel', async () => {
+  it('anchors a short (one-action) drill-in at the top of the panel instead of vertically centring it', async () => {
     const tool = work({
       kind: 'tool',
       title: { text: 'Run a single step', complete: true },
@@ -493,10 +501,10 @@ describe('WorkInspector sparse-state framing', () => {
       await Promise.resolve();
     });
     await screen.findByText('Run a single step');
-    clickTrigger('Tool actions');
+    // The operation's own title is the way into its ToolAction details.
+    clickTrigger('Run a single step');
 
     const action = await screen.findByText('Read one file');
-    const centered = action.closest('.m-auto');
-    expect(centered).toBeTruthy();
+    expect(action.closest('.m-auto')).toBeNull();
   });
 });

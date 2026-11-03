@@ -175,6 +175,11 @@ export function createSessionTasksInspector(tasks: SessionContextTaskRef[]) {
       get title() {
         return translateNow('sessions.context.taskTitle');
       },
+      // The breadcrumb segment names the opened Task (`Zadania › Document the admission guard`);
+      // the tab keeps its root's name ("Tasks").
+      breadcrumbLabel: (params: { taskId?: string }) =>
+        tasks.find((task) => task.id === params.taskId)?.title ??
+        translateNow('sessions.context.taskTitle'),
       component: TaskDetail,
     },
   };

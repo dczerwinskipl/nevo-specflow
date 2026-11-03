@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import {
-  initialAgentChoice,
-  modeLabel,
-  selectModel,
-  selectProvider,
-  supportedModes,
-} from './agentChoice';
+import { initialAgentChoice, selectModel, selectProvider, supportedModes } from './agentChoice';
 
 const provider = {
   id: 'p1',
   available: true,
+  modes: [
+    { id: 'edit', title: 'Edit' },
+    { id: 'agent', title: 'Agent' },
+    { id: 'ask', title: 'Ask' },
+  ],
+  defaultModeId: 'agent',
   models: [
-    { id: 'm-agent', modes: ['ask', 'agent'], efforts: [] },
+    { id: 'm-agent', modes: ['ask', 'agent', 'undescribed'], efforts: [] },
     { id: 'm-edit', modes: ['edit', 'ask'], efforts: ['low'] },
   ],
 } as unknown as DemoCatalogue['providers'][number];
@@ -40,7 +40,7 @@ describe('agentChoice', () => {
     });
   });
 
-  it('keeps a supported mode, else prefers agent, else the first mode', () => {
+  it("keeps a supported mode, else the provider's default, else the model's first mode", () => {
     const base = { providerId: 'p1', modelId: '', effort: 'low', mode: 'ask' };
     expect(selectModel(base, provider, 'm-agent')).toMatchObject({
       mode: 'ask',
@@ -51,9 +51,11 @@ describe('agentChoice', () => {
     expect(selectModel(base, undefined, 'x').mode).toBe('');
   });
 
-  it('orders modes canonically and labels unknown modes by their id', () => {
-    expect(supportedModes(['agent', 'custom', 'ask'])).toEqual(['ask', 'agent', 'custom']);
-    expect(modeLabel('edit')).toBe('Edit');
-    expect(modeLabel('custom')).toBe('custom');
+  it("lists the model's modes in the provider catalogue order, leaving undescribed ids out", () => {
+    expect(supportedModes(provider, provider.models[0])).toEqual([
+      { id: 'agent', title: 'Agent' },
+      { id: 'ask', title: 'Ask' },
+    ]);
+    expect(supportedModes(provider, undefined)).toEqual([]);
   });
 });

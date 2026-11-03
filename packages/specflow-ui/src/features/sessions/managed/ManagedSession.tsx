@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Activity, Check, Copy, Plus, Send, Square, X } from 'lucide-react';
+import { Check, Copy, Plus, Send, Square, X } from 'lucide-react';
 import {
   Alert,
   AppContent,
@@ -46,12 +46,16 @@ import type {
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
 import { ModelEffortPicker } from './ModelEffortPicker';
-import { ComposerModePicker, type ComposerModeValue } from './ComposerPresetPicker';
-import { demoComposerOptions } from './composerOptions';
+import { ComposerModePicker } from './ComposerPresetPicker';
+import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
 import { createWorkInspector } from './WorkInspector';
 import { SessionContext, createSessionContextStack } from './context/SessionContext';
 import { unavailableSessionContext } from './context/sessionContextTypes';
+import { useSessionActions, type SessionActionHandlers } from './sessionActions/useSessionActions';
+import { SessionNamingStatus } from './naming/SessionNamingStatus';
 import type { SessionContextViewModel } from './context/sessionContextTypes';
+import { WorkBlock } from './WorkBlock';
+import { conversationItems, liveActivity } from './workBlockModel';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
 
@@ -214,14 +218,13 @@ function EntryRow({
   api,
   sessionId,
   outcomeLabels,
-  onInspect,
   onGrow,
 }: {
+  /** Never a `work-summary` entry: those are folded into a `WorkBlock` by `conversationItems`. */
   entry: ConversationEntry;
   api: ManagedSessionsApi;
   sessionId: string;
   outcomeLabels: Record<string, string>;
-  onInspect: () => void;
   /** Forwarded to every `ReadableText` below — see its own doc comment in `MessageText.tsx`. */
   onGrow: () => void;
 }) {
@@ -251,6 +254,10 @@ function EntryRow({
             onGrow={onGrow}
           />
         </div>
+        {/* In normal flow, directly under the bubble. An `absolute` copy row reserved no space,
+            so on touch screens (where it is always visible) it sat inside the list gap and touched
+            the next message. The list gap is kept small instead (`gap-4`), so the copy row plus
+            that gap reads as one clear break between messages. */}
         <div className="flex justify-end">
           <MessageCopyAction onCopy={handleCopy} />
         </div>
@@ -270,45 +277,35 @@ function EntryRow({
           markdown
           onGrow={onGrow}
         />
-        <MessageCopyAction onCopy={handleCopy} />
+        {/* In flow, same as the request bubble above. */}
+        <div className="flex">
+          <MessageCopyAction onCopy={handleCopy} />
+        </div>
       </article>
     );
   }
 
   if (entry.kind === 'commentary') {
-    // V10 intermediate status/commentary treatment (session-chat-v10-design.md,
-    // examples/session-chat-v10/desktop.html's "Przeglądam ścieżkę recovery…" status line): a
-    // small icon prefix plus a muted, subtly contained row — distinct from the bare,
-    // undifferentiated text this used to render (owner audit: zero visual treatment, invisible
-    // against the page background), but deliberately NOT a full bordered bubble like a final
-    // answer or a user message — V10 keeps final answers borderless-first; an intermediate status
-    // only needs a visual anchor, not the same weight.
-    return (
-      <article data-entry-id={entry.id} className="grid min-w-0 gap-1">
-        {srLabel}
-        <div className="flex items-start gap-2 rounded-control bg-surface-subtle px-3 py-2 text-content-secondary">
-          <Activity aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-content-muted" />
-          <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
-        </div>
-      </article>
-    );
-  }
-
-  if (entry.kind === 'work-summary') {
+    // Plain muted prose, no icon, no container (owner review, round two: "to nie pasuje do
+    // commentary, i pytanie czy potrzebujemy tam ikonkę czy dla commentary/thinking nie wystarczy
+    // zwykłe md parsing" — the EKG/pulse `Activity` icon didn't semantically fit, and reads fine as
+    // Markdown alone). `text-content-muted` (not `-secondary`) so it is clearly quieter than the
+    // final answer below it without a box to lean on — confirmed live it still reads against the
+    // page background, which was the original reason the box/icon were added.
     return (
       <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
         {srLabel}
-        <div className="flex flex-wrap items-center gap-2">
-          <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
-          <Button size="sm" variant="ghost" onClick={onInspect}>
-            {t('managedSession.inspect')}
-          </Button>
-        </div>
+        <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
       </article>
     );
   }
 
-  // 'outcome': no celebratory chrome on completion; a quiet semantic marker on failure/cancel.
+  // 'outcome' (only for a Turn with no Work block — `conversationItems` folds it into the block
+  // otherwise, so the fact appears once): no celebratory chrome on completion; a quiet semantic
+  // marker on failure/cancel. No "Zobacz pracę" here (owner review, round two): by construction
+  // this branch only ever renders for a Turn with zero `work-summary` entries, so that link would
+  // open an empty, dead-end Work history panel every time, not just in the one case the reviewer
+  // happened to hit.
   const tone =
     entry.text.text === 'failed'
       ? 'danger'
@@ -342,9 +339,6 @@ function EntryRow({
           value={{ ...entry.text, text: outcomeLabels[entry.text.text] ?? entry.text.text }}
           onGrow={onGrow}
         />
-        <Button size="sm" variant="ghost" onClick={onInspect}>
-          {t('managedSession.inspect')}
-        </Button>
       </div>
     </article>
   );
@@ -710,6 +704,25 @@ function ManagedSessionConversation({
 
     return () => observer.disconnect();
   }, [ambientSheetElement, composerOverlayNode, pinToBottomIfNotAway, scroller, supportsSplit]);
+  // Re-pins on a SCROLLER resize, not just a composer/entries/history change (owner review, round
+  // four, live trace: opening Work history from a bottom-pinned chat narrowed the chat column via
+  // the Secondary splitter, which re-wrapped message text and grew `scroller.scrollHeight` with no
+  // new entry, no composer-height change, and no history load — none of the triggers the effects
+  // above or below already cover. The browser has already completed layout by the time
+  // `ResizeObserver`'s callback fires, so `scrollHeight` here already reflects the new wrapped
+  // height; `pinToBottomIfNotAway` itself still gates on `awayRef`, so a user who had genuinely
+  // scrolled away keeps their position — only a width/height-driven reflow while already pinned to
+  // the bottom gets corrected.
+  useLayoutEffect(() => {
+    if (!scroller || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(() => pinToBottomIfNotAway());
+    observer.observe(scroller);
+
+    return () => observer.disconnect();
+  }, [pinToBottomIfNotAway, scroller]);
   // Final safety net, independent of the `away`/anchor bookkeeping above and of the
   // `ResizeObserver`'s own direct `pinToBottomIfNotAway()` call: re-runs the same correction for
   // triggers that are not themselves a resize (loading older history while "away" skips the
@@ -741,6 +754,20 @@ function ManagedSessionConversation({
   }
 
   const snapshot = state.snapshot;
+  // The work-mode picker lists the provider's own `providerModes` (owner decision: the Runtime is
+  // the source of truth). Shown: an explicit pick, else the Session's current provider mode (what
+  // the next Turn inherits), else the catalogue default. A pick — or a shown default that differs
+  // from what the Session would inherit — is sent as `mode` + `providerModeId`.
+  const workModes = useMemo(() => runtimeWorkModes(provider), [provider]);
+  const workModeId = selectedWorkModeId(
+    workModes,
+    [state.workModeOverride?.providerModeId, snapshot?.session.providerModeId],
+    provider?.defaultModeId,
+  );
+  const workModeDefault =
+    workModeId && workModeId !== snapshot?.session.providerModeId
+      ? runtimeWorkModeCommand(provider, workModeId)
+      : undefined;
   // Mirrors the Send button's own disabled condition so MessageComposer's Enter-to-submit path
   // (which bypasses the button's `disabled` attribute entirely) cannot start a Turn the capability
   // gate, an empty draft, or an in-flight command would otherwise block.
@@ -765,7 +792,7 @@ function ManagedSessionConversation({
     // Demo-only (§5/§7): nothing above actually transports `attachments`; clearing them here
     // simulates "consumed by Send" the same way the mockup's own simulated Send does.
     setAttachments([]);
-    void feed.send();
+    void feed.send(workModeDefault);
   };
 
   const outcomeLabels: Record<string, string> = {
@@ -775,9 +802,7 @@ function ManagedSessionConversation({
     interrupted: t('managedSession.outcome.interrupted'),
   };
 
-  // Composer toolbar's "+"/intent/operation-policy entries (session-composer-design.md §6: an
-  // owner-approved, not-yet-backend-contracted part of the toolbar — see `composerOptions.ts`'s
-  // own doc comment for why this is a local demo catalogue, not a placeholder). Attachments are
+  // Composer toolbar's "+" entry (session-composer-design.md §6). Attachments are
   // local-only React state: §5 documents the real upload contract as a known gap, so nothing here
   // is actually sent anywhere — `handleComposerSubmit` below just clears the chips, matching the
   // mockup's own "local mock" framing (`managedSession.attach.note`).
@@ -787,14 +812,6 @@ function ManagedSessionConversation({
   // input is itself part of that distinction (a generic file input would let through anything).
   const fileAttachmentInputRef = useRef<HTMLInputElement>(null);
   const imageAttachmentInputRef = useRef<HTMLInputElement>(null);
-  const composerOptions = useMemo(
-    () => demoComposerOptions(state.snapshot?.session.providerId),
-    [state.snapshot?.session.providerId],
-  );
-  // One combined intent + operation-policy choice (owner audit, round five: the same "flatten the
-  // dependent sub-choice into the parent's own list" trick `ModelEffortPicker` uses for Model →
-  // effort, applied to intent → operation policy — see `ComposerModePicker`'s own doc comment).
-  const [composerMode, setComposerMode] = useState<ComposerModeValue | undefined>(undefined);
   const handleAttachmentsSelected = (
     files: FileList | null,
     inputRef: typeof fileAttachmentInputRef,
@@ -850,7 +867,7 @@ function ManagedSessionConversation({
           {(() => {
             const conversationBody = (
               <>
-                <div className="mx-auto grid w-full max-w-content-standard gap-5 px-5 py-5">
+                <div className="mx-auto grid w-full max-w-content-standard gap-4 px-5 py-5">
                   {/* Auto-loads on scroll near the top instead of a manual button (owner
                           feedback #5, `maybeLoadOlder`); this is just its busy indicator. */}
                   {state.historyBusy && (
@@ -873,19 +890,33 @@ function ManagedSessionConversation({
                       {t('managedSession.empty')}
                     </p>
                   )}
-                  {snapshot.entries.map((entry) => (
-                    <EntryRow
-                      key={entry.id}
-                      entry={entry}
-                      api={api}
-                      sessionId={sessionId}
-                      outcomeLabels={outcomeLabels}
-                      onInspect={() =>
-                        void navigation.open(workStack, { sessionId, turnId: entry.turnId })
-                      }
-                      onGrow={pinToBottomIfNotAway}
-                    />
-                  ))}
+                  {conversationItems(snapshot.entries, {
+                    activeTurn: snapshot.activeTurn,
+                    currentActivity: snapshot.currentActivity,
+                    hasOlder: snapshot.history.hasOlder,
+                  }).map((item) =>
+                    item.type === 'work' ? (
+                      <WorkBlock
+                        key={item.block.id}
+                        block={item.block}
+                        onInspect={() =>
+                          void navigation.open(workStack, {
+                            sessionId,
+                            turnId: item.block.turnId,
+                          })
+                        }
+                      />
+                    ) : (
+                      <EntryRow
+                        key={item.entry.id}
+                        entry={item.entry}
+                        api={api}
+                        sessionId={sessionId}
+                        outcomeLabels={outcomeLabels}
+                        onGrow={pinToBottomIfNotAway}
+                      />
+                    ),
+                  )}
                 </div>
                 {/* "Jump to latest": a genuinely independent floating control (owner audit, live
                     on a real phone: "ten przycisk żeby przesunąć na dół najlepiej jakby też był
@@ -1005,7 +1036,15 @@ function ManagedSessionConversation({
                         }
                   }
                 >
-                  <div className="grid w-full max-w-content-standard gap-3">
+                  {/* Narrower than the conversation on the split layout (owner audit, round
+                      seven: the composer spanning the full 1100px reading column looked like a
+                      form field, not a chat input). The stacked layout keeps its own width. */}
+                  <div
+                    className={cn(
+                      'grid w-full gap-3',
+                      supportsSplit ? 'max-w-content-narrow' : 'max-w-content-standard',
+                    )}
+                  >
                     {snapshot.interaction && (
                       <InteractionPrompt
                         key={snapshot.interaction.interactionId}
@@ -1124,7 +1163,10 @@ function ManagedSessionConversation({
                                 conditional operation policy, then the trailing Model+effort/Send
                                 cluster (`ml-auto` keeps that cluster right-aligned, as it already
                                 was). */}
-                        <div className="flex flex-wrap items-center gap-1">
+                        {/* One row, never wrapped (owner audit, round seven: at 375px the wrap put
+                            Model above the work mode). Both groups may shrink; the two text
+                            pickers truncate instead. */}
+                        <div className="flex min-w-0 items-center gap-1">
                           <input
                             ref={fileAttachmentInputRef}
                             hidden
@@ -1179,14 +1221,18 @@ function ManagedSessionConversation({
                             </MenuContent>
                           </Menu>
                           <ComposerModePicker
-                            options={composerOptions}
-                            value={composerMode}
-                            onChange={setComposerMode}
+                            options={workModes}
+                            value={workModeId}
+                            onChange={(modeId) =>
+                              feed.setWorkMode(runtimeWorkModeCommand(provider, modeId))
+                            }
                             disabled={state.commandBusy || !!state.pending}
                             compact={!supportsSplit}
                           />
                         </div>
-                        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                        {/* `shrink-0`: Model/effort keeps its full text (capped by its own
+                            max-width); the work-mode picker on the left truncates first. */}
+                        <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
                           <ModelEffortPicker
                             provider={provider}
                             value={
@@ -1251,9 +1297,18 @@ export function ManagedSession({
   api,
   sessionContext = unavailableSessionContext,
   onOpenSpecification,
+  onRenameSession,
+  onArchiveSession,
+  onDeleteSession,
+  namingPending = false,
 }: {
   sessionId: string;
   owner: string;
+  /**
+   * The agent is still naming a Session started without an own name (new-session-ui-spec.md): the
+   * header shows the provisional title with a "Nadawanie nazwy…" status until the name arrives.
+   */
+  namingPending?: boolean;
   api: ManagedSessionsApi;
   /**
    * Context Secondary content (full-session-screen-structure.md §7). Optional because the real
@@ -1272,7 +1327,7 @@ export function ManagedSession({
   onOpenSpecification?: (
     specification: NonNullable<SessionContextViewModel['specification']>,
   ) => void;
-}) {
+} & SessionActionHandlers) {
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
   const [contextOpen, setContextOpen] = useState(true);
@@ -1314,6 +1369,15 @@ export function ManagedSession({
     ? state.effortOverride
     : state.snapshot?.session.effort;
   const snapshot = state.snapshot;
+  // `runningTurnId` ("Bieżąca tura" vs "Ostatnia tura" in Context's context-window caption) is
+  // live Session state, so it comes from this feed's own snapshot — the same `activeTurn` the
+  // Conversation's live Work block reads — not from the supplied Context view model. Until the
+  // first snapshot arrives the supplied value (if any) stands.
+  const runningTurnId = snapshot ? snapshot.activeTurn?.turnId : sessionContext.runningTurnId;
+  const contextValue = useMemo<SessionContextViewModel>(
+    () => ({ ...sessionContext, runningTurnId }),
+    [sessionContext, runningTurnId],
+  );
 
   // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (owner audit:
   // the previous dedicated, bordered status/provider row read as a second header competing with
@@ -1322,13 +1386,23 @@ export function ManagedSession({
   // flow. Nothing it showed is dropped: the connection/activity text and the mock-provider safety
   // note both still render, just as the header's own muted subtitle; `role="status"` keeps the
   // same live-region announcement the old row's `<span role="status">` gave screen reader users.
+  // When the active Turn's Work block already shows what is happening right now (with its own
+  // spinner), the header keeps only the coarse Session state ("Praca trwa") — the detailed live fact
+  // appears once, in the block (owner: "nie chcę widzieć dwa razy tej samej informacji").
+  const liveInConversation =
+    !!snapshot && !!liveActivity(snapshot.activeTurn, snapshot.currentActivity);
   const activityLabel = snapshot
     ? state.connection === 'connected'
-      ? (snapshot.currentActivity?.label ?? t(`managedSession.${snapshot.session.readiness}`))
+      ? liveInConversation
+        ? t(`managedSession.${snapshot.session.readiness}`)
+        : (snapshot.currentActivity?.label ?? t(`managedSession.${snapshot.session.readiness}`))
       : t(`managedSession.${state.connection}`)
     : undefined;
   const isWaitingOnProvider =
-    !!snapshot && state.connection === 'connected' && snapshot.currentActivity?.kind === 'waiting';
+    !!snapshot &&
+    state.connection === 'connected' &&
+    !liveInConversation &&
+    snapshot.currentActivity?.kind === 'waiting';
   // The raw provider id ("claude-code", "codex", …) is not shown on its own anymore (owner audit:
   // "tragiczne designowo" — not meaningful to a user who already sees the active model via the
   // composer's own Model picker). Only the mock-provider safety caveat survives, since it carries
@@ -1355,18 +1429,24 @@ export function ManagedSession({
         direct: 'always',
         onPress: () =>
           void navigation.open(
-            createSessionContextStack(sessionId, sessionContext, onOpenSpecification),
+            createSessionContextStack(sessionId, contextValue, onOpenSpecification, workStack),
             {},
           ),
       }
-    : !contextOpen
-      ? {
-          id: 'context',
-          label: t('sessions.context.title'),
-          icon: 'file',
-          onPress: () => setContextOpen(true),
-        }
-      : undefined;
+    : {
+        // Split layout: a persistent toggle that both opens and closes the Context panel. With the
+        // Secondary tab strip shown the panel has no close of its own (each tab closes itself), so
+        // this is the one way to hide the whole panel.
+        id: 'context',
+        label: t('sessions.context.title'),
+        // The standard side-panel glyph, not a document (owner audit, round eight): this shows or
+        // hides the panel itself rather than opening a file.
+        icon: 'panel-right',
+        presentation: 'icon',
+        pressed: contextOpen,
+        direct: 'always',
+        onPress: () => setContextOpen((open) => !open),
+      };
   // Replaces the old status row's own Retry button (`state.connection === 'error'`), which this
   // pass removes along with the rest of that row.
   const retryConnectionAction: WorkspaceHeaderAction | undefined =
@@ -1378,19 +1458,40 @@ export function ManagedSession({
           onPress: () => feed.connect(),
         }
       : undefined;
-  const headerActions = [contextAction, retryConnectionAction].filter(
-    Boolean,
-  ) as WorkspaceHeaderAction[];
+  // Rename/archive/delete live in the header's "…" menu (never direct, so the Context action keeps
+  // the single narrow direct slot); their dialogs mount below.
+  const sessionActions = useSessionActions({
+    title: snapshot?.session.title,
+    onRenameSession,
+    onArchiveSession,
+    onDeleteSession,
+  });
+  const headerActions = [
+    contextAction,
+    retryConnectionAction,
+    ...(snapshot ? sessionActions.actions : []),
+  ].filter(Boolean) as WorkspaceHeaderAction[];
 
   return (
     <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader
-            title={snapshot?.session.title ?? t('managedSession.title')}
+            title={
+              namingPending
+                ? t('sessionNaming.provisionalTitle')
+                : (sessionActions.title ?? t('managedSession.title'))
+            }
             subtitle={headerSubtitle}
-            status={isWaitingOnProvider ? <Spinner size="sm" /> : undefined}
+            status={
+              isWaitingOnProvider ? (
+                <Spinner size="sm" />
+              ) : namingPending ? (
+                <SessionNamingStatus />
+              ) : undefined
+            }
             actions={headerActions}
+            labels={{ moreActions: t('common.moreActions') }}
           />
         }
       >
@@ -1405,6 +1506,7 @@ export function ManagedSession({
           selectedModelId={selectedModelId}
           selectedEffort={selectedEffort}
         />
+        {sessionActions.dialogs}
       </AppWorkspace.Primary>
       {/* Context is the default split-capable Secondary (full-session-screen-structure.md §3.1,
           §3.4): open by default, stays closed once the user explicitly closes it, and is restored
@@ -1418,8 +1520,9 @@ export function ManagedSession({
       >
         <SessionContext
           sessionId={sessionId}
-          value={sessionContext}
+          value={contextValue}
           onOpenSpecification={onOpenSpecification}
+          workStack={workStack}
         />
       </AppWorkspace.Secondary>
     </AppWorkspace>

@@ -598,6 +598,14 @@ ToolAction stays inside the Work tab. A local detail must reveal its Task/attemp
 Switching tabs preserves each tab's stack; Back pops inside the active tab before returning to
 its root. Closing a tab does not close or reset the whole Session. Context remains pinned.
 
+On desktop the tab keeps its root's name at any depth (the Work tab stays "Work history" while a
+ToolAction is open) and local depth is a breadcrumb row at the top of the tab, under a compact tab
+rail: `← Work history › Read file admission.mjs`. `←` pops one level, every ancestor segment jumps
+straight back to its level, the current object is plain text and truncates; with 3+ levels the
+middle segments fold into `…` at narrow widths. Segments are object names, never full file paths.
+Mobile keeps its header Back and title. Contract:
+[Secondary navigation](../../design-system/implementation/react/secondary-navigation.md#root-tabs-and-breadcrumbs-split-layout).
+
 Do not add a second horizontal section-selector bar alongside these tabs, or a second navigation
 tree inside Context duplicating all sections. Long lists (e.g. many Tasks or 100+ files) belong in
 their own tabs with search/filter/progressive loading, not eagerly expanded Context content.

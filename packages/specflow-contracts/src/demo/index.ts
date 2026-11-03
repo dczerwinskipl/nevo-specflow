@@ -26,12 +26,15 @@ export const DemoLocationSchema = Type.Object({
   branch: Type.String(),
   simulated: Type.Boolean(),
 });
+/** `modes`: the ids (from its provider's `modes`) this model can run. */
 const Model = Type.Object({
   id: Id,
   title: Type.String(),
   efforts: Type.Array(Type.String()),
   modes: Type.Array(Type.String()),
 });
+/** One of the provider's own work modes: an opaque id and the provider's own name for it. */
+const Mode = Type.Object({ id: Id, title: Type.String() });
 const Provider = Type.Object({
   id: Id,
   title: Type.String(),
@@ -45,6 +48,10 @@ const Provider = Type.Object({
   quota: Type.Optional(Type.Object({ state: Type.Literal('unknown') })),
   available: Type.Boolean(),
   reason: Type.Optional(Type.String()),
+  /** The provider's work modes in the order it offers them (the Runtime is the source of truth). */
+  modes: Type.Array(Mode),
+  /** The mode a new Session starts in when the chosen model supports it. */
+  defaultModeId: Type.Optional(Id),
   models: Type.Array(Model),
 });
 /**

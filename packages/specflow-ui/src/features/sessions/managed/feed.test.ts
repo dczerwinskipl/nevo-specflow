@@ -348,6 +348,34 @@ describe('Session feed operation lifetime', () => {
     expect(feed.getSnapshot().modelOverride).toBeUndefined();
     expect(feed.getSnapshot().effortOverride).toBeUndefined();
   });
+  it('threads the picked work mode into StartTurn as mode + providerModeId, over any shown default', async () => {
+    const { storage, api } = setup();
+    const start = vi.fn<ManagedSessionsApi['start']>().mockResolvedValue({ turnId: 'turn' });
+    api.start = start;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Plan it first');
+    feed.setWorkMode({ mode: 'read-only', providerModeId: 'plan' });
+    await feed.send({ mode: 'workspace-write', providerModeId: 'acceptEdits' });
+    expect(start.mock.calls[0]![1]).toMatchObject({ mode: 'read-only', providerModeId: 'plan' });
+  });
+  it("sends the shown catalogue default only when nothing is picked, and inherits the Session's mode otherwise", async () => {
+    const { storage, api } = setup();
+    const start = vi.fn<ManagedSessionsApi['start']>().mockResolvedValue({ turnId: 'turn' });
+    api.start = start;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Use the default');
+    await feed.send({ mode: 'workspace-write', providerModeId: 'acceptEdits' });
+    expect(start.mock.calls[0]![1]).toMatchObject({
+      mode: 'workspace-write',
+      providerModeId: 'acceptEdits',
+    });
+    feed.setWorkMode({ mode: 'read-only', providerModeId: 'plan' });
+    feed.setWorkMode(undefined);
+    feed.setDraft('Inherit the Session mode');
+    await feed.send();
+    expect(start.mock.calls[1]![1]).not.toHaveProperty('mode');
+    expect(start.mock.calls[1]![1]).not.toHaveProperty('providerModeId');
+  });
   it('surfaces a rejected (CAPABILITY_UNSUPPORTED) model/effort override through the existing command error path', async () => {
     const { storage, api } = setup();
     const start = vi.fn<ManagedSessionsApi['start']>().mockRejectedValue(

@@ -1,13 +1,20 @@
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import type {
+  ConversationEntry,
+  SessionSnapshot,
+  ToolActionSummary,
+  TurnSummary,
+  WorkSummary,
+} from '@nevo/specflow-contracts/sessions';
 import { fixtureSessionId, fixtureApi } from './managedSession.stories-support';
 import type { ManagedSessionsApi } from './api';
 import {
   createWorkInspectorFixtureApi,
-  mixedWorkTimelineActions,
-  mixedWorkTimelineItems,
+  fixtureContentPage,
+  fixtureContentRef,
+  hasFixtureContent,
   workInspectorTurnId,
-  actionsWorkId,
 } from './managedSession.workInspector.stories-support';
+import type { ToolActivityKind, WithWorkDigest, WorkDigest } from './workCounts';
 
 /** Isolated presentation adapters for the Full Session state fixtures: never imported by a
  * production route. Each builds a realistic `SessionSnapshot` for one state validated this pass
@@ -253,10 +260,12 @@ export function longConversationSnapshot(): SessionSnapshot {
   for (let i = 1; i <= pairs; i += 1) {
     const round = Math.floor((i - 1) / longConversationTurns.length) + 1;
     const turn = longConversationTurns[(i - 1) % longConversationTurns.length]!;
+    // One Turn per request/answer pair, as a real Session has — not one Turn spanning everything.
+    const pairTurnId = `00000000-0000-4000-8000-0000000002${String(i).padStart(2, '0')}`;
     snapshot.entries.push(
       {
         id: `request-${i}`,
-        turnId,
+        turnId: pairTurnId,
         ordinal: i * 2,
         revision: 1,
         kind: 'request',
@@ -268,7 +277,7 @@ export function longConversationSnapshot(): SessionSnapshot {
       },
       {
         id: `answer-${i}`,
-        turnId,
+        turnId: pairTurnId,
         ordinal: i * 2 + 1,
         revision: 1,
         kind: 'answer',
@@ -290,79 +299,480 @@ export function longConversationSnapshot(): SessionSnapshot {
 export const longConversationLastMessage = `${longConversationTurns[9]!.answer} (runda 3)`;
 
 /**
- * The `Default` story's own canonical fixture (owner feedback: "Default ma dawać podgląd default
- * stanu, czyli długa sesja, powiązana z taskami, z workiem, etc." — a long session, linked to
- * Tasks, with Work reachable), replacing the previous `genericSpecLevelSnapshot()` default, which
- * was too sparse to review scroll/composer behavior or Work against: only 2 entries, no older
- * history, and no entry of kind `'work-summary'`/`'outcome'` at all, so the Primary conversation
- * never actually rendered an "Zobacz pracę" (Inspect) action anywhere.
- *
- * Builds on `longConversationSnapshot()`'s 30 request/answer pairs (real scroll-height stress,
- * §7 "item 7" above) and appends the intermediate status-line entry the owner specifically flagged
- * ("Checking the workflow admission path…", `EntryRow`'s `'commentary'` branch) plus a
- * `'work-summary'` entry whose `turnId` matches `workInspectorTurnId` — the same turn
- * `WorkInspector.stories.tsx`'s own `mixedWorkTimelineItems()`/`mixedWorkTimelineActions()`
- * fixtures already describe (reused here via `richDefaultApi` below, not duplicated) — so
- * "Zobacz pracę" opens a populated, representative Work timeline instead of the one-item stub
- * `fixtureApi`'s default `work()` returns. `history.hasOlder: true` also keeps the pre-existing
- * auto-load-older-history behavior demonstrable on the default story, matching a real long-lived
- * session more closely than a fixture with no older history at all.
+ * One step of a fixture Turn's Work: a tool action (`kind` is the proposed demo sub-kind, `state`
+ * the canonical Work state) or a Commentary line. `turnFixture` turns a list of these into BOTH the
+ * conversation entries the real runtime would emit (one `work-summary` entry per tool Work, title
+ * only — `specflow-runtime/.../persistence/facts.ts`) AND the Turn's own Work history items, so a
+ * Work block and the Work history it opens can never disagree.
  */
-export function richDefaultSnapshot(): SessionSnapshot {
-  const snapshot = longConversationSnapshot();
-  // A real pre-selected model + effort, not the empty "Wybierz model" placeholder (owner
-  // feedback, reference screenshots): `Default` is the canonical representative state, so it
-  // shows the composer's Model/Effort picker already carrying a selection. `mock-standard`/`high`
-  // are `providerFixture`'s own existing model/effort entries (`managedSession.stories-support.ts`)
-  // matched to this fixture's `providerId: 'claude-code'` — not a new model invented for this
-  // fixture alone. The placeholder/unselected state itself is untouched: every other state fixture
-  // in this file still carries no `modelId`/`effort` at all.
-  snapshot.session = { ...snapshot.session, modelId: 'mock-standard', effort: 'high' };
-  snapshot.history = { hasOlder: true, before: 'older' };
-  snapshot.entries.push(
-    {
-      id: 'status-1',
-      turnId,
-      ordinal: 62,
-      revision: 1,
-      kind: 'commentary',
-      createdAt: '2026-10-29T09:05:00Z',
-      text: { text: 'Checking the workflow admission path…', complete: true },
-    },
-    {
-      id: 'work-summary-1',
-      turnId: workInspectorTurnId,
-      ordinal: 63,
-      revision: 1,
-      kind: 'work-summary',
-      createdAt: '2026-10-29T09:05:05Z',
-      text: { text: 'Workflow admission hardening — 10 kroków pracy', complete: true },
-    },
-  );
-  snapshot.activeTurn = { turnId, state: 'active', revision: 1, startedAt: '2026-10-29T09:00:00Z' };
-  snapshot.currentActivity = { kind: 'tool', turnId, label: 'Searching repository…' };
+type WorkStep =
+  | {
+      tool: string;
+      kind: ToolActivityKind;
+      state?: Extract<WorkSummary['state'], 'completed' | 'failed' | 'active' | 'interrupted'>;
+    }
+  | { commentary: string };
 
-  return snapshot;
+interface TurnFixture {
+  turnId: string;
+  entries: WithWorkDigest<ConversationEntry>[];
+  items: WorkSummary[];
+  /** One ToolAction per tool Work (the real runtime's common case), with real parameters, the
+   * tool's actual response and its own timing — what Work history's L4 detail opens. */
+  actions: Record<string, ToolActionSummary[]>;
+}
+
+/** Plausible per-kind call timings (seconds) so every settled step has a real elapsed time. */
+const stepSeconds: Record<ToolActivityKind, number> = {
+  read: 0.2,
+  list: 0.1,
+  search: 0.6,
+  edit: 0.4,
+  write: 0.3,
+  command: 2.1,
+  test: 8.4,
+  web: 1.5,
+  other: 0.5,
+};
+
+/** What the tool was called with and what it answered, derived from the step's own title so the
+ * L2 row and its L4 detail always describe the same call. */
+function toolCall(step: { tool: string; kind: ToolActivityKind }, failed: boolean) {
+  const subject = step.tool.replace(
+    /^(Read file|Edit|Write|Search code|List directory|Bash:)\s*/,
+    '',
+  );
+  switch (step.kind) {
+    case 'read':
+      return {
+        input: { file_path: subject },
+        output: `     1	import { revision } from './revision-cache';
+     2	
+     3	export function admit(operation) {
+     4	  return checkRevision(operation, revision());
+     5	}`,
+      };
+    case 'search':
+      return {
+        input: { pattern: subject, path: 'src' },
+        output: `src/admission-policy.mjs:42:  if (${subject}) {
+src/workspace-writer.ts:118:  // ${subject}
+2 matches in 2 files`,
+      };
+    case 'list':
+      return {
+        input: { path: subject },
+        output: 'admission.test.mjs\nadmission-race.test.mjs\nfixtures/',
+      };
+    case 'edit':
+    case 'write':
+      return {
+        input: { file_path: subject, old_string: 'retries: 0', new_string: 'retries: 1' },
+        output: `Updated ${subject} (1 replacement).`,
+      };
+    case 'test':
+    case 'command':
+      return {
+        input: { command: subject },
+        output: failed
+          ? [
+              ' FAIL  test/admission.test.mjs > rejects a stale revision',
+              '   AssertionError: expected "accepted" to be "rejected"',
+              '',
+              ' Tests  1 failed | 41 passed (42)',
+            ].join('\n')
+          : ' Test Files  8 passed (8)\n      Tests  42 passed (42)',
+      };
+    default:
+      return { input: { subject }, output: 'Done.' };
+  }
 }
 
 /**
- * `richDefaultSnapshot()`'s own backing `ManagedSessionsApi`: `snapshot`/`history`/`content`/
- * `providers` (matched to the snapshot's own `providerId`, see `providerFixture`) come from the
- * ordinary `fixtureApi`; `work`/`actions` are redirected to `WorkInspector.stories.tsx`'s own
- * `mixedWorkTimelineItems`/`mixedWorkTimelineActions` fixtures (via `createWorkInspectorFixtureApi`,
- * `context/sessionContextFixtures.ts`) instead of `fixtureApi`'s one-item stub, so "Zobacz pracę"
- * on the `work-summary-1` entry above opens the same rich, representative Work timeline Work's own
- * story group already demonstrates — not a second, separately authored Work fixture.
+ * Builds one Turn. `withDigest` attaches the proposed, demo-only `WorkDigest` (`workCounts.ts`) to
+ * the Turn's last `work-summary` entry — computed here from the very steps that also become the Work
+ * history, standing in for the per-Turn server projection that does not exist yet. Without it the
+ * entries look exactly like today's real backend output.
  */
-export function richDefaultApi(): ManagedSessionsApi {
-  const snapshot = richDefaultSnapshot();
-  const workApi = createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
-    [actionsWorkId]: mixedWorkTimelineActions(),
-  });
+function turnFixture(
+  turnId: string,
+  nextOrdinal: () => number,
+  request: string,
+  steps: readonly WorkStep[],
+  options: { answer?: string; outcome?: string; withDigest?: boolean } = {},
+): TurnFixture {
+  const entries: WithWorkDigest<ConversationEntry>[] = [];
+  const items: WorkSummary[] = [];
+  const actions: Record<string, ToolActionSummary[]> = {};
+  const at = '2026-10-29T09:00:00Z';
+  // Fixture clock (ms after `at`) so each step gets its own real start and elapsed time.
+  let clock = 0;
+  const stamp = (ms: number) => new Date(Date.parse(at) + ms).toISOString();
+  const push = (kind: ConversationEntry['kind'], text: string, workId?: string) => {
+    const ordinal = nextOrdinal();
+    entries.push({
+      id: `${turnId}-entry-${ordinal}`,
+      turnId,
+      ordinal,
+      revision: 1,
+      kind,
+      createdAt: at,
+      text: { text, complete: true },
+      ...(workId ? { workId } : {}),
+    });
+  };
+
+  push('request', request);
+  const digest: WorkDigest = { done: {}, failed: {} };
+  for (const step of steps) {
+    const workId = `${turnId}-work-${items.length + 1}`;
+    if ('commentary' in step) {
+      push('commentary', step.commentary);
+      items.push(workSummaryItem(workId, items.length + 1, 'commentary', step.commentary));
+      continue;
+    }
+
+    const state = step.state ?? 'completed';
+    push('work-summary', step.tool, workId);
+    const settled = state !== 'active';
+    const createdAt = stamp(clock);
+    const updatedAt = stamp(clock + (settled ? stepSeconds[step.kind] * 1000 : 0));
+    clock += stepSeconds[step.kind] * 1000 + 300;
+    const call = toolCall(step, state === 'failed');
+    items.push({
+      ...workSummaryItem(workId, items.length + 1, 'tool', step.tool, state),
+      actionCount: 1,
+      createdAt,
+      updatedAt,
+    });
+    actions[workId] = [
+      {
+        actionId: `${workId}-action-1`,
+        ordinal: 1,
+        revision: 1,
+        state,
+        title: { text: step.tool, complete: true },
+        input: fixtureContentRef(JSON.stringify(call.input, null, 2)),
+        ...(settled && state !== 'interrupted' ? { output: fixtureContentRef(call.output) } : {}),
+        ...(state === 'failed'
+          ? { error: { code: 'process_exit', message: '1 test failed.' } }
+          : state === 'interrupted'
+            ? { error: { code: 'interrupted', message: 'Interrupted before the tool returned.' } }
+            : {}),
+        createdAt,
+        updatedAt,
+      },
+    ];
+    // Every state counts toward `done` — the digest total, matching `computeWorkCounts`'s own
+    // `items.length`-based `byKind.tool` the history panel renders (owner decision, round two
+    // review: "licz wszystko jak w historii"; confirmed again, round four review, after a failed
+    // action was found missing from the chat Work block's own top-line total — it must count in
+    // BOTH places, not one or the other). `failed` is an ADDITIONAL breakdown layered on top of
+    // `done`, giving the failure its own highlighted line, never a replacement for counting it in
+    // the total: `active`/`interrupted`/`failed` all still fold into `done` since this per-kind
+    // tally is "what this kind has happened so far", not strictly "succeeded", and the block's
+    // separate live line already carries the currently-running item's own detail.
+    digest.done[step.kind] = (digest.done[step.kind] ?? 0) + 1;
+    if (state === 'failed') {
+      digest.failed![step.kind] = (digest.failed![step.kind] ?? 0) + 1;
+    }
+  }
+
+  if (options.withDigest) {
+    const last = [...entries].reverse().find((entry) => entry.kind === 'work-summary');
+    if (last) {
+      last.digest = digest;
+    }
+  }
+
+  if (options.answer) {
+    push('answer', options.answer);
+  }
+
+  if (options.outcome) {
+    push('outcome', options.outcome);
+  }
+
+  return { turnId, entries, items, actions };
+}
+
+function workSummaryItem(
+  workId: string,
+  ordinal: number,
+  kind: WorkSummary['kind'],
+  title: string,
+  state: WorkSummary['state'] = 'completed',
+): WorkSummary {
+  return {
+    workId,
+    ordinal,
+    revision: 1,
+    kind,
+    state,
+    title: { text: title, complete: true },
+    createdAt: '2026-10-29T09:00:00Z',
+    updatedAt: '2026-10-29T09:00:00Z',
+  };
+}
+
+/** Routes `work()`/`actions()` to each fixture Turn's own Work history (one paged fixture API per
+ * Turn, `createWorkInspectorFixtureApi`), so opening any Work block shows that Turn's items. */
+function perTurnWorkApi(
+  snapshot: SessionSnapshot,
+  turns: readonly TurnFixture[],
+  actionsByWorkId: Record<string, readonly ToolActionSummary[]> = {},
+): ManagedSessionsApi {
+  const apis = new Map(
+    turns.map((turn) => {
+      const request = turn.entries.find((entry) => entry.kind === 'request')!;
+      const active = snapshot.activeTurn?.turnId === turn.turnId;
+      const summary: TurnSummary = active
+        ? {
+            turnId: turn.turnId,
+            state: 'active',
+            revision: 1,
+            createdAt: '2026-10-29T09:00:00Z',
+            updatedAt: '2026-10-29T09:00:00Z',
+            userMessage: request.text,
+          }
+        : {
+            turnId: turn.turnId,
+            state: 'terminal',
+            outcome: (turn.entries.find((entry) => entry.kind === 'outcome')?.text.text ??
+              'completed') as Extract<TurnSummary, { state: 'terminal' }>['outcome'],
+            revision: 1,
+            createdAt: '2026-10-29T09:00:00Z',
+            updatedAt: '2026-10-29T09:00:00Z',
+            completedAt: '2026-10-29T09:01:00Z',
+            userMessage: request.text,
+          };
+
+      return [
+        turn.turnId,
+        createWorkInspectorFixtureApi(
+          turn.items,
+          { ...turn.actions, ...actionsByWorkId },
+          40,
+          summary,
+        ),
+      ] as const;
+    }),
+  );
+  const forTurn = (turnId: string) => {
+    const api = apis.get(turnId);
+    if (!api) {
+      throw new Error(`No Work fixture for Turn ${turnId}`);
+    }
+
+    return api;
+  };
+
+  const baseApi = fixtureApi(snapshot);
 
   return {
-    ...fixtureApi(snapshot),
-    work: (...args) => workApi.work(...args),
-    actions: (...args) => workApi.actions(...args),
+    ...baseApi,
+    work: (sessionId, turnId, ...rest) => forTurn(turnId).work(sessionId, turnId, ...rest),
+    // Routed to the Turn that owns this Work (every fixture workId is `${turnId}-work-N`).
+    actions: (sessionId, workId, ...rest) =>
+      (
+        [...apis.entries()].find(([id]) => workId.startsWith(id))?.[1] ?? [...apis.values()][0]!
+      ).actions(sessionId, workId, ...rest),
+    // ToolAction parameters/responses come from the Work fixtures; anything else (long answers)
+    // stays with the conversation fixture's own content pages.
+    content: (sessionId, ref, offset, signal) =>
+      hasFixtureContent(ref)
+        ? fixtureContentPage(ref, offset)
+        : baseApi.content(sessionId, ref, offset, signal),
   };
+}
+
+/**
+ * The `Default` story's own canonical fixture (owner feedback: "Default ma dawać podgląd default
+ * stanu, czyli długa sesja, powiązana z taskami, z workiem, etc."): `longConversationSnapshot()`'s
+ * 30 request/answer pairs (real scroll-height stress, "item 7" above) followed by a live Turn in
+ * the middle of its work — Commentary, a run of tool Work (one `work-summary` entry per tool, as the
+ * real runtime emits them), a failed test command, and the agent currently running another test
+ * command. Its Work block, the header and the Work history it opens all describe that same Turn.
+ * `history.hasOlder: true` keeps auto-load-older-history demonstrable.
+ */
+/** The live Turn is the one the Context fixture's Work history row also opens. */
+const liveTurnId = workInspectorTurnId;
+
+function richDefaultFixture(): { snapshot: SessionSnapshot; turns: TurnFixture[] } {
+  const snapshot = longConversationSnapshot();
+  // A real pre-selected model + effort, not the empty "Wybierz model" placeholder (owner
+  // feedback, reference screenshots). `mock-standard`/`high` are `providerFixture`'s own entries.
+  snapshot.session = {
+    ...snapshot.session,
+    modelId: 'mock-standard',
+    effort: 'high',
+    readiness: 'busy',
+  };
+  snapshot.history = { hasOlder: true, before: 'older' };
+  // base()'s opening request belongs to the same Turn id; the live Turn brings its own request.
+  snapshot.entries = snapshot.entries.filter((entry) => entry.turnId !== liveTurnId);
+  let ordinal = snapshot.entries.length * 2 + 10;
+  const live = turnFixture(
+    liveTurnId,
+    () => (ordinal += 1),
+    'Uruchom testy admission jeszcze raz i popraw to, co nie przechodzi.',
+    [
+      { tool: 'Read file session.ts', kind: 'read' },
+      { commentary: 'Sprawdzam ścieżkę admission i miejsce, w którym odrzuca operację…' },
+      { tool: 'Read file admission.mjs', kind: 'read' },
+      { tool: 'Search code WORKSPACE_WRITER_BLOCKED', kind: 'search' },
+      { tool: 'Search code readiness-policy', kind: 'search' },
+      { tool: 'Edit workspace (3 files)', kind: 'edit' },
+      { tool: 'Bash: pnpm test -- admission', kind: 'test', state: 'failed' },
+      { commentary: 'Jeden test nie przechodzi — sprawdzam asercję przed ponownym uruchomieniem…' },
+      { tool: 'Edit admission.test.mjs', kind: 'edit' },
+      { tool: 'Bash: pnpm test -- admission', kind: 'test', state: 'active' },
+    ],
+    { withDigest: true },
+  );
+  snapshot.entries.push(...live.entries);
+  snapshot.activeTurn = {
+    turnId: liveTurnId,
+    state: 'active',
+    revision: 1,
+    startedAt: '2026-10-29T09:00:00Z',
+  };
+  snapshot.currentActivity = {
+    kind: 'tool',
+    turnId: liveTurnId,
+    workId: live.items.at(-1)!.workId,
+    label: 'Bash: pnpm test -- admission',
+  };
+
+  return { snapshot, turns: [live] };
+}
+
+export function richDefaultSnapshot(): SessionSnapshot {
+  return richDefaultFixture().snapshot;
+}
+
+/** `richDefaultSnapshot()`'s own backing API: everything from `fixtureApi`, `work()` from the live
+ * Turn's own Work items (same steps its Work block counts). */
+export function richDefaultApi(): ManagedSessionsApi {
+  const { snapshot, turns } = richDefaultFixture();
+
+  return perTurnWorkApi(snapshot, turns);
+}
+
+/**
+ * Every Work-block state in one realistic multi-Turn conversation (session-chat-v10-design.md
+ * §3.1): settled; settled with a failed test across many kinds (four-kinds cap + "i więcej"); a
+ * Turn interrupted mid-work (shown once, in its block — no separate outcome row); a Turn with no
+ * tool Work that failed (outcome row alone, the only place that fact exists); a Turn whose entries
+ * carry no digest — exactly today's real backend output (honest "N działań narzędzi"); and the live
+ * Turn thinking. Every block opens Work history with that Turn's own items.
+ */
+function workSummaryStatesFixture(): { snapshot: SessionSnapshot; turns: TurnFixture[] } {
+  const snapshot = base();
+  let ordinal = 0;
+  const next = () => (ordinal += 1);
+  const turn = (n: number) => `00000000-0000-4000-8000-0000000001${String(n).padStart(2, '0')}`;
+  const turns = [
+    turnFixture(
+      turn(1),
+      next,
+      'Sprawdź, dlaczego admission odrzuca operacje mimo poprawnych uprawnień.',
+      [
+        { tool: 'Read file admission-policy.mjs', kind: 'read' },
+        { tool: 'Read file workspace-writer.ts', kind: 'read' },
+        { tool: 'Search code revision', kind: 'search' },
+        { tool: 'Read file revision-cache.ts', kind: 'read' },
+        { tool: 'Read file admission-policy.test.mjs', kind: 'read' },
+      ],
+      {
+        answer:
+          'Polityka sprawdza rewizję specyfikacji sprzed ostatniego commita — to wyścig, nie błąd uprawnień.',
+        outcome: 'completed',
+        withDigest: true,
+      },
+    ),
+    turnFixture(
+      turn(2),
+      next,
+      'Napraw to i dodaj test odtwarzający wyścig.',
+      [
+        { commentary: 'Dodaję ponowną weryfikację rewizji przed odrzuceniem…' },
+        { tool: 'Read file admission-policy.mjs', kind: 'read' },
+        { tool: 'Edit admission-policy.mjs', kind: 'edit' },
+        { tool: 'Write admission-race.test.mjs', kind: 'write' },
+        { tool: 'Bash: pnpm lint', kind: 'command' },
+        { tool: 'Search code retryAdmission', kind: 'search' },
+        { tool: 'Edit telemetry/retries.ts', kind: 'edit' },
+        { tool: 'List directory test/integration', kind: 'list' },
+        { tool: 'Bash: pnpm test -- admission-race', kind: 'test', state: 'failed' },
+      ],
+      {
+        answer:
+          'Poprawka gotowa, ale jeden test integracyjny nadal nie przechodzi — szczegóły w historii pracy.',
+        outcome: 'completed',
+        withDigest: true,
+      },
+    ),
+    turnFixture(
+      turn(3),
+      next,
+      'Uruchom pełny zestaw testów jeszcze raz.',
+      [
+        { tool: 'Read file package.json', kind: 'read' },
+        { tool: 'Read file vitest.config.ts', kind: 'read' },
+        { tool: 'Bash: pnpm test', kind: 'test', state: 'interrupted' },
+      ],
+      { outcome: 'interrupted', withDigest: true },
+    ),
+    turnFixture(turn(4), next, 'Wyślij podsumowanie na kanał zespołu.', [], {
+      outcome: 'failed',
+    }),
+    turnFixture(
+      turn(5),
+      next,
+      'Podsumuj zmiany dla code review.',
+      [
+        { tool: 'Bash: git diff --stat', kind: 'command' },
+        { tool: 'Read file admission-policy.mjs', kind: 'read' },
+        { tool: 'Read file admission-policy.test.mjs', kind: 'read' },
+        { tool: 'Read file telemetry/retries.ts', kind: 'read' },
+      ],
+      {
+        answer: 'Zmieniono politykę admission, dodano test wyścigu i telemetrię ponowień.',
+        outcome: 'completed',
+      },
+    ),
+    turnFixture(
+      turn(6),
+      next,
+      'Sprawdź jeszcze przypadek zamkniętej specyfikacji.',
+      [
+        { commentary: 'Szukam ścieżki dla zamkniętej specyfikacji…' },
+        { tool: 'Search code SPEC_CLOSED', kind: 'search' },
+        { tool: 'Read file spec-lifecycle.ts', kind: 'read' },
+      ],
+      { withDigest: true },
+    ),
+  ];
+  snapshot.entries = turns.flatMap((fixture) => fixture.entries);
+  snapshot.session = { ...snapshot.session, readiness: 'busy' };
+  snapshot.activeTurn = {
+    turnId: turn(6),
+    state: 'active',
+    revision: 1,
+    startedAt: '2026-10-29T09:10:00Z',
+  };
+  snapshot.currentActivity = { kind: 'reasoning', turnId: turn(6), label: 'Reasoning' };
+
+  return { snapshot, turns };
+}
+
+export function workSummaryStatesSnapshot(): SessionSnapshot {
+  return workSummaryStatesFixture().snapshot;
+}
+
+export function workSummaryStatesApi(): ManagedSessionsApi {
+  const { snapshot, turns } = workSummaryStatesFixture();
+
+  return perTurnWorkApi(snapshot, turns);
 }

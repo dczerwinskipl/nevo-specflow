@@ -13,10 +13,10 @@ import {
 
 afterEach(cleanup);
 
-function renderSection(telemetry?: TelemetrySnapshot) {
+function renderSection(telemetry?: TelemetrySnapshot, runningTurnId?: string) {
   return render(
     <StoryLocalization locale="en">
-      <SessionTelemetrySection telemetry={telemetry} />
+      <SessionTelemetrySection telemetry={telemetry} runningTurnId={runningTurnId} />
     </StoryLocalization>,
   );
 }
@@ -79,26 +79,54 @@ describe('SessionTelemetrySection', () => {
     // `modelId: 'claude-sonnet-5'` — real, already-observed data (unlike `usage.turn`/`cost.turn`,
     // which no fixture populates), so the row can name its actual scope instead of silently
     // reading as part of "Session usage" / "for the whole session" above it.
+    // The technical Turn id itself stays out of the primary view (owner visual-refinement brief).
+    // Here the measured Turn is the one still running.
+    renderSection(fullTelemetrySnapshot, 'turn-37');
+
+    expect(screen.getByText('Current Turn · claude-sonnet-5')).toBeTruthy();
+    expect(screen.queryByText(/turn-37/)).toBeNull();
+  });
+
+  it('labels the measurement as the last Turn when no Turn is running', () => {
+    // An active Session that is ready for the next message has no running Turn: the measurement
+    // belongs to the settled last Turn, whatever the Session's own status is.
     renderSection(fullTelemetrySnapshot);
 
-    expect(screen.getByText('For Turn turn-37 · claude-sonnet-5')).toBeTruthy();
+    expect(screen.getByText('Last Turn · claude-sonnet-5')).toBeTruthy();
+    expect(screen.queryByText(/Current Turn/)).toBeNull();
+  });
+
+  it('labels the measurement as the last Turn while a newer, not yet measured Turn runs', () => {
+    renderSection(fullTelemetrySnapshot, 'turn-38');
+
+    expect(screen.getByText('Last Turn · claude-sonnet-5')).toBeTruthy();
   });
 
   it('falls back to naming just the Turn when the reading has no model id', () => {
     // `staleTelemetrySnapshot.context.value` carries `turnId: 'turn-20'` but no `modelId`.
     renderSection(staleTelemetrySnapshot);
 
-    expect(screen.getByText('For Turn turn-20')).toBeTruthy();
+    expect(screen.getByText('Last Turn')).toBeTruthy();
+    expect(screen.queryByText(/turn-20/)).toBeNull();
   });
 
-  it('lays the two rate-limit windows out as two columns, not stacked full-width rows', () => {
-    const { container } = renderSection(fullTelemetrySnapshot);
+  it('shows no context-window value or Turn caption when there is no measurement', () => {
+    renderSection(partialAntigravityTelemetrySnapshot, 'turn-1');
 
-    const limitsHeading = screen.getByText('Provider limits');
-    const limitsGrid = limitsHeading.parentElement?.querySelector('.grid-cols-2');
-    expect(limitsGrid).toBeTruthy();
-    expect(limitsGrid?.children.length).toBe(2);
-    expect(container).toBeTruthy();
+    expect(screen.queryByText('Model context window')).toBeNull();
+    expect(screen.queryByText(/Current Turn|Last Turn/)).toBeNull();
+  });
+
+  it('stacks the rate-limit windows as full-width rows, each with its value in the bar header', () => {
+    renderSection(fullTelemetrySnapshot);
+
+    const limitsSection = screen.getByText('Provider limits').closest('section')!;
+    expect(limitsSection.querySelector('.grid-cols-2')).toBeNull();
+    const bars = limitsSection.querySelectorAll('[role="progressbar"]');
+    expect(bars).toHaveLength(2);
+    // Value text sits in the header row above its bar, not after the bar.
+    const fiveHours = screen.getByText('42% used');
+    expect(fiveHours.parentElement?.nextElementSibling?.getAttribute('role')).toBe('progressbar');
   });
 
   it('shows only the available dimensions for partial telemetry, never a placeholder for cost', () => {

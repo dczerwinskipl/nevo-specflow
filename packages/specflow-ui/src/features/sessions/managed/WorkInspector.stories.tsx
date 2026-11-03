@@ -16,6 +16,8 @@ import { createWorkInspector } from './WorkInspector';
 import { fixtureSessionId } from './managedSession.stories-support';
 import {
   actionsWorkId,
+  longReadActions,
+  longReadWorkId,
   createWorkInspectorFixtureApi,
   largeWorkTimelineItems,
   longRunWorkTimelineItems,
@@ -158,8 +160,8 @@ async function selectFilterKind(canvasElement: HTMLElement, triggerName: string,
  * Commentary-grouped (L2) timeline, a representative chapter visible, nothing mid-interaction —
  * the single visible entry point for this component. Its `play` is a light, demonstration-only
  * confirmation that this canonical state actually renders, not a hidden contract suite (Storybook
- * catalog rework, §4 table): that behavioral coverage (grouping, the collapsible "Thinking"
- * summary, filtering/search preserving Commentary context, isolated failures, the ToolAction
+ * catalog rework, §4 table): that behavioral coverage (grouping, Thinking shown as italic
+ * narration, filtering/search preserving Commentary context, isolated failures, the ToolAction
  * drill-in) already lives in `WorkInspector.test.tsx`. The dedicated filtering/search/scale
  * regression checks below are tagged `integration` (they exercise the real
  * `AppWorkspace`/navigation stack this component is mounted through) and stay out of the default
@@ -168,20 +170,25 @@ export const Default: Story = {
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
+      [longReadWorkId]: longReadActions(),
     }),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
 
-    // A representative chapter — Commentary read directly (no click needed), its operations, a
-    // collapsed "Thinking" summary — is visible as soon as Work opens; nothing requires
-    // interaction to appear.
+    // A representative chapter — Commentary read directly (no click needed), its operations, and
+    // the agent's Thinking shown as narration (italic, no disclosure) — is visible as soon as Work
+    // opens; nothing requires interaction to appear.
     await expect(
       await canvas.findByText('Checking the implementation and locating the admission path…'),
     ).toBeVisible();
     await expect(canvas.getByText('Read file session.ts')).toBeVisible();
-    await expect(canvas.getByText('Myślenie')).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'Two approaches could fix this; the narrower one risks missing a related case.',
+      ),
+    ).toBeVisible();
     // The three happy-path reads/searches right after Commentary are a short run (below
     // `workGrouping.TOOL_BURST_MIN_SIZE`): live owner review #2 — don't wrap 1-4 operations in a
     // synthetic "N tool actions" container, just show the rows. So every one of them is its own
@@ -191,7 +198,8 @@ export const Default: Story = {
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
     // Never a fabricated "0 ms": every fixture item here has identical createdAt/updatedAt, which
     // is not a real zero-duration measurement (live owner review #2, rule 6).
-    await expect(canvas.queryByText(/0\s*ms/)).not.toBeInTheDocument();
+    // (A real measured duration such as "180 ms" is fine; only a standalone zero is not.)
+    await expect(canvas.queryByText(/(^|[^\d,.])0\s*ms/)).not.toBeInTheDocument();
   },
 };
 
@@ -233,44 +241,179 @@ export const LongRunGrouping: Story = {
   },
 };
 
-export const TypeFilterPreservesCommentaryContext: Story = {
+/**
+ * Owner review, final correction: "Commentary to nie kontekst chyba?" — Commentary is its own
+ * kind, never kept as background/context for another kind's filtered results (reverses this
+ * story's own earlier name/premise — see `EveryFilterNarrowsToItsKind` for the current rule).
+ * Selecting a non-Commentary kind hides Commentary entirely, same as any other non-matching kind.
+ */
+export const TypeFilterShowsOnlyItsKind: Story = {
   tags: ['integration'],
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
+      [longReadWorkId]: longReadActions(),
     }),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
     await canvas.findByText('Checking the implementation and locating the admission path…');
-    await expect(canvas.getByText('Myślenie')).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'Two approaches could fix this; the narrower one risks missing a related case.',
+      ),
+    ).toBeVisible();
 
     // The toolbar row (type-filter Menu + search) must size against the panel's available width,
     // never collapse to max-content.
     assertSearchInputFits(canvas.getByPlaceholderText<HTMLInputElement>('Szukaj w historii pracy'));
 
     await selectFilterKind(canvasElement, 'Filtruj pracę według typu', 'Narzędzie');
-    await waitFor(() => expect(canvas.queryByText('Myślenie')).not.toBeInTheDocument());
-    // The Commentary heading that groups the remaining tool rows is never stripped away.
+    await waitFor(() =>
+      expect(
+        canvas.queryByText(
+          'Two approaches could fix this; the narrower one risks missing a related case.',
+        ),
+      ).not.toBeInTheDocument(),
+    );
+    await expect(canvas.queryByText('Permission to write workspace')).not.toBeInTheDocument();
+    // Commentary is not kept as a grouping heading for the filtered tool rows either — it is its
+    // own kind, and this filter selected "Narzędzie", not it.
     await expect(
-      canvas.getByText('Checking the implementation and locating the admission path…'),
-    ).toBeVisible();
+      canvas.queryByText('Checking the implementation and locating the admission path…'),
+    ).not.toBeInTheDocument();
 
     // The three happy-path tool reads/searches left after filtering are a short run — below
-    // `workGrouping.TOOL_BURST_MIN_SIZE` — so they stay their own individually visible rows,
-    // still under their Commentary context, with nothing to click first.
+    // `workGrouping.TOOL_BURST_MIN_SIZE` — so they stay their own individually visible rows, with
+    // nothing to click first.
     await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
   },
 };
 
-export const SearchPreservesCommentaryContext: Story = {
+/**
+ * Owner review: "each filter behaves differently, you can't predict what to expect", then,
+ * reviewing an intermediate fix that kept Commentary visible as "context" for every other kind:
+ * "Commentary to nie kontekst chyba?" (Commentary isn't context, is it?). One rule now: every
+ * option shows ONLY its own kind — Commentary included, never kept around for another kind's
+ * results — and the menu offers only kinds this Turn actually has.
+ */
+export const EveryFilterNarrowsToItsKind: Story = {
   tags: ['integration'],
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
+      [longReadWorkId]: longReadActions(),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await openWork(canvasElement);
+    await canvas.findByText('Read file session.ts');
+    const reasoningText =
+      'Two approaches could fix this; the narrower one risks missing a related case.';
+
+    await selectFilterKind(canvasElement, 'Filtruj pracę według typu', 'Postęp');
+    await waitFor(() => expect(canvas.queryByText('Read file session.ts')).not.toBeInTheDocument());
+    await expect(canvas.queryByText(reasoningText)).not.toBeInTheDocument();
+    await expect(
+      canvas.getByText('Checking the implementation and locating the admission path…'),
+    ).toBeVisible();
+
+    await selectFilterKind(
+      canvasElement,
+      'Filtruj pracę według typu (aktywny filtr: Postęp)',
+      'Myślenie',
+    );
+    await expect(await canvas.findByText(reasoningText)).toBeVisible();
+    await expect(canvas.queryByText('Read file admission.mjs')).not.toBeInTheDocument();
+
+    await selectFilterKind(
+      canvasElement,
+      'Filtruj pracę według typu (aktywny filtr: Myślenie)',
+      'Interakcja z użytkownikiem',
+    );
+    await expect(await canvas.findByText('Permission to write workspace')).toBeVisible();
+    await expect(canvas.queryByText('Run command pnpm test')).not.toBeInTheDocument();
+    await expect(canvas.queryByText(reasoningText)).not.toBeInTheDocument();
+
+    await selectFilterKind(
+      canvasElement,
+      'Filtruj pracę według typu (aktywny filtr: Interakcja z użytkownikiem)',
+      'Wszystkie',
+    );
+    await expect(await canvas.findByText('Read file session.ts')).toBeVisible();
+    await expect(canvas.getByText(reasoningText)).toBeVisible();
+    await expect(canvas.getByText('Permission to write workspace')).toBeVisible();
+  },
+};
+
+/**
+ * Owner review: "brakuje mi czasu każdego kroku oraz możliwości podejrzenia szczegółów ... jakie
+ * parametry, jaki wynik, ale nie sukces tylko response toola". The operation's title opens its
+ * ToolActions; each shows its own elapsed time, the parameters it was called with and the tool's
+ * actual response — for a successful action too, not just a bare "completed".
+ */
+export const ToolActionDetails: Story = {
+  tags: ['integration'],
+  args: {
+    api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
+      [actionsWorkId]: mixedWorkTimelineActions(),
+      [longReadWorkId]: longReadActions(),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await openWork(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /Edit workspace \(3 files\)/ }),
+    );
+
+    await expect(await canvas.findByText('Edit · admission.mjs')).toBeVisible();
+    await expect(
+      await canvas.findByText('Updated src/admission.mjs (1 replacement, lines 42-44).'),
+    ).toBeVisible();
+    await expect(canvas.getAllByText('Parametry')).toHaveLength(3);
+    await expect(canvas.getAllByText('Odpowiedź narzędzia')).toHaveLength(3);
+    // Parameters and response sit on the one product code view (as a document's source): a
+    // read-only text with line numbers; JSON parameters are coloured, the verbatim response is not.
+    const inputs = await canvas.findAllByRole('textbox', { name: 'Parametry' });
+    const outputs = await canvas.findAllByRole('textbox', { name: 'Odpowiedź narzędzia' });
+    await expect(inputs).toHaveLength(3);
+    await expect(outputs).toHaveLength(3);
+    for (const block of [...inputs, ...outputs]) {
+      await expect(block).toHaveAttribute('aria-readonly', 'true');
+      await expect(block.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
+    }
+
+    const spans = [...inputs[0]!.querySelectorAll<HTMLElement>('.cm-line span')];
+    const key = spans.find((span) => span.textContent === '"file_path"');
+    const value = spans.find((span) => span.textContent === '"src/admission.mjs"');
+    if (!key || !value) {
+      throw new Error('JSON tokens are not coloured');
+    }
+
+    await expect(getComputedStyle(key).color).not.toBe(getComputedStyle(value).color);
+    await expect(outputs[0]!.querySelector('.cm-line span')).toBeNull();
+    await expect(canvas.getByText(/420 ms/)).toBeVisible();
+    await expect(canvas.getByText('Niepowodzenie')).toBeVisible();
+    await expect(await canvas.findByText(/AssertionError/)).toBeVisible();
+  },
+};
+
+/**
+ * Owner review, final correction: same "Commentary is not context" rule applies to search —
+ * a non-matching Commentary is hidden exactly like any other non-matching row, even though the
+ * tool row that DOES match chronologically followed it.
+ */
+export const SearchShowsOnlyMatches: Story = {
+  tags: ['integration'],
+  args: {
+    api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
+      [actionsWorkId]: mixedWorkTimelineActions(),
+      [longReadWorkId]: longReadActions(),
     }),
   },
   play: async ({ canvasElement }) => {
@@ -284,10 +427,11 @@ export const SearchPreservesCommentaryContext: Story = {
 
     // The unrelated Start of Turn chapter (no matching child) disappears entirely...
     await waitFor(() => expect(canvas.queryByText('Początek tury')).not.toBeInTheDocument());
-    // ...while the matching command still shows which Commentary phase it belongs to.
+    // ...and so does the Commentary phase the matching command chronologically followed — its own
+    // text never matched "pnpm", so it is not kept around merely to explain the match.
     await expect(
-      canvas.getByText('One test failed; checking the assertion before retrying…'),
-    ).toBeVisible();
+      canvas.queryByText('One test failed; checking the assertion before retrying…'),
+    ).not.toBeInTheDocument();
     await expect(canvas.getByText('Run command pnpm test')).toBeVisible();
   },
 };

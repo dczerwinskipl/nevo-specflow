@@ -10,6 +10,7 @@ import {
   terminalFailureSnapshot,
   unavailableSnapshot,
   waitingWithoutAttentionSnapshot,
+  workSummaryStatesApi,
 } from './managedSession.fullSession.stories-support';
 import {
   genericSpecLevelContext,
@@ -59,7 +60,6 @@ import {
  */
 async function verifyContextReopens(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  const doc = canvasElement.ownerDocument;
   const closeLabel = 'Zamknij panel dodatkowy';
   const reopenLabel = 'Kontekst';
   await expect(await canvas.findByRole('button', { name: closeLabel })).toBeVisible();
@@ -67,11 +67,11 @@ async function verifyContextReopens(canvasElement: HTMLElement) {
   await waitFor(() =>
     expect(canvas.queryByRole('button', { name: closeLabel })).not.toBeInTheDocument(),
   );
-  // The reopen control sits in the Primary header's "More actions" menu budget (not a direct
-  // action), the same established pattern as the pre-existing narrow-mode Context action.
-  await userEvent.click(await canvas.findByRole('button', { name: 'More actions' }));
-  const reopen = await within(doc.body).findByRole('menuitem', { name: reopenLabel });
-  await userEvent.click(reopen);
+  // The Primary header carries a persistent direct "Kontekst" toggle (aria-pressed mirrors the
+  // panel): pressed while open, unpressed once the panel was closed, and it reopens it.
+  const toggle = await canvas.findByRole('button', { name: reopenLabel });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await userEvent.click(toggle);
   await waitFor(() => expect(canvas.getByRole('button', { name: closeLabel })).toBeVisible());
 }
 
@@ -95,6 +95,12 @@ const meta = {
     // `onOpenSpecification`): demonstrates the Specification row's real click wiring on every
     // state story that carries `sessionContext.specification`, without a real router here.
     onOpenSpecification: fn((specification) => console.info('Open Specification', specification)),
+    // Story-only stand-ins for the header "⋯" session actions, which have no backend yet (the
+    // real route leaves them unwired, so they render disabled there): wired here so the rename /
+    // archive / delete dialogs can be tried on the browsable states.
+    onRenameSession: fn(),
+    onArchiveSession: fn(),
+    onDeleteSession: fn(),
   },
 } satisfies Meta<typeof ManagedSession>;
 export default meta;
@@ -340,4 +346,52 @@ export const UnsupportedMultipleChoice: Story = {
     await settleViewport(320, 568);
     await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
   },
+};
+
+/** One Work block per Turn in every state (session-chat-v10-design.md §3.1), inside one realistic
+ * conversation shaped like real runtime output (one `work-summary` entry per tool Work). Checks:
+ * exactly one block per Turn that has Work, one focus target per block, no overflow, the interrupted
+ * fact shown once (in its block, no separate outcome row), the Turn without Work keeps its outcome
+ * row, only the live block has a spinner, and a block opens that same Turn's Work history. */
+async function verifyWorkBlocks(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await waitFor(() => expect(canvasElement.querySelectorAll('[data-work-block]')).toHaveLength(5));
+  for (const block of canvasElement.querySelectorAll<HTMLElement>('[data-work-block]')) {
+    await expect(block.querySelectorAll('button, a, [tabindex]')).toHaveLength(1);
+    const button = block.querySelector('button')!;
+    await expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
+  }
+
+  await expect(canvas.getAllByText('Tura przerwana')).toHaveLength(1);
+  await expect(canvas.queryByText('Przerwano')).not.toBeInTheDocument();
+  await expect(canvas.getByText('Niepowodzenie')).toBeVisible();
+  await expect(canvas.getByText('Nie powiodło się: 1 uruchomienie testów')).toBeVisible();
+  await expect(canvas.getByText('4 działania narzędzia')).toBeVisible();
+  await expect(canvas.getByText(/i więcej$/)).toBeVisible();
+  await expect(canvas.getByText('Myśli…')).toBeVisible();
+  // The live line is the only spinner in the conversation; the header defers to it.
+  await expect(canvasElement.querySelectorAll('[data-work-block] .animate-spin')).toHaveLength(1);
+
+  // `\s` (not a literal space) between the count and its noun: `workSummary.kind.*` now joins
+  // them with a non-breaking space so a count never wraps away from its unit (owner audit, live
+  // on mobile: "2 / odczyty" split across two lines) — a literal-space regex stopped matching.
+  await userEvent.click(canvas.getByRole('button', { name: /4\sodczyty\s·\s1\swyszukiwanie/ }));
+  // That Turn's own Work history: its 5 tool actions, and nothing from other Turns.
+  await waitFor(() => expect(canvas.getByText('5 elementów przebiegu')).toBeVisible());
+}
+
+export const WorkSummaryStates: Story = {
+  tags: ['contract'],
+  args: {
+    api: workSummaryStatesApi(),
+    sessionContext: genericSpecLevelContext(),
+  },
+  globals: WIDE_VIEWPORT,
+  play: ({ canvasElement }) => verifyWorkBlocks(canvasElement),
+};
+
+export const WorkSummaryStatesNarrow: Story = {
+  tags: ['contract'],
+  args: { api: workSummaryStatesApi() },
+  globals: NARROW_VIEWPORT,
 };

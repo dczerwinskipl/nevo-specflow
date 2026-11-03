@@ -338,9 +338,7 @@ export const ChoiceAndConfiguration: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Logowanie SSO',
     );
-    await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
-      'Wybierz model',
-    );
+    await expect(canvas.getByRole('button', { name: 'Wybierz model' })).toBeVisible();
     await settleViewport();
     await settleViewport(390, 844);
     await settleViewport(390, 844, () =>
@@ -363,17 +361,18 @@ export const ExplicitModelCapabilities: Story = {
       Number.parseFloat(getComputedStyle(focusedProvider.closest('label')!).outlineWidth),
     ).toBeGreaterThanOrEqual(2);
     await settleViewport();
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
     await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'codex model B' }),
+      await within(document.body).findByRole('menuitemradio', { name: 'codex model B' }),
     );
-    await expect(canvas.queryByRole('radio', { name: 'Edit' })).not.toBeInTheDocument();
-    await expect(canvas.getByRole('radio', { name: 'Agent' })).toBeEnabled();
-    await expect(canvas.queryByRole('combobox', { name: 'Effort' })).not.toBeInTheDocument();
+    // A model without efforts closes the menu at once: there is no effort section.
+    await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull());
+    await userEvent.click(canvas.getByRole('button', { name: 'Agent' }));
+    const modes = await within(document.body).findAllByRole('menuitemradio');
+    await expect(modes.map((mode) => mode.textContent)).toEqual(['Ask', 'Agent']);
+    await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('radio', { name: /Claude/ }));
-    await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
-      'Wybierz model',
-    );
+    await expect(canvas.getByRole('button', { name: 'Wybierz model' })).toBeVisible();
   },
 };
 
@@ -385,13 +384,15 @@ export const LostCreateAcknowledgement: Story = {
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'SSO recovery',
     );
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
     await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'codex model A' }),
+      await within(document.body).findByRole('menuitemradio', { name: 'codex model A' }),
     );
+    // Model A has efforts: the menu stays open on its effort section.
+    await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' }));
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();
-    await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'codex model A' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź wynik' }));
@@ -641,10 +642,14 @@ export const SingleModeModel: Story = {
   ),
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
-    await userEvent.click(await within(document.body).findByRole('option', { name: 'Solo model' }));
-    await expect(canvas.queryByRole('radio', { name: 'Agent' })).not.toBeInTheDocument();
-    await expect(canvas.getByText('Agent')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
+    await userEvent.click(
+      await within(document.body).findByRole('menuitemradio', { name: 'Solo model' }),
+    );
+    // The only mode is shown as the chosen one; its menu offers nothing else.
+    await userEvent.click(canvas.getByRole('button', { name: 'Agent' }));
+    await expect(await within(document.body).findAllByRole('menuitemradio')).toHaveLength(1);
+    await userEvent.keyboard('{Escape}');
   },
 };
 export const SeparatorsOnlyBetweenRenderedSections: Story = {

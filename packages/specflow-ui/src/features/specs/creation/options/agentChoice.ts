@@ -27,32 +27,41 @@ export function selectProvider(choice: AgentChoice, providerId: string): AgentCh
   return { ...choice, providerId, modelId: '', effort: providerDefaultEffort, mode: '' };
 }
 
-/** A new model resets the effort and keeps the mode when the model supports it, else prefers Agent. */
+type Model = Provider['models'][number];
+
+/**
+ * The provider's work modes the model can run, in the provider catalogue's own order (the Runtime
+ * is the source of truth for which modes exist and what they are called). A model id the provider
+ * does not describe is left out: there is nothing to call it.
+ */
+export const supportedModes = (
+  provider: Provider | undefined,
+  model: Model | undefined,
+): Provider['modes'] =>
+  model ? (provider?.modes ?? []).filter((mode) => model.modes.includes(mode.id)) : [];
+
+/**
+ * A new model resets the effort and keeps the mode when the model supports it, else takes the
+ * provider's `defaultModeId` when the model supports that, else the model's first mode.
+ */
 export function selectModel(
   choice: AgentChoice,
   provider: Provider | undefined,
   modelId: string,
 ): AgentChoice {
-  const model = provider?.models.find((m) => m.id === modelId);
+  const modes = supportedModes(
+    provider,
+    provider?.models.find((m) => m.id === modelId),
+  ).map((mode) => mode.id);
 
   return {
     ...choice,
     modelId,
     effort: providerDefaultEffort,
-    mode: model?.modes.includes(choice.mode)
+    mode: modes.includes(choice.mode)
       ? choice.mode
-      : model?.modes.includes('agent')
-        ? 'agent'
-        : (model?.modes[0] ?? ''),
+      : provider?.defaultModeId && modes.includes(provider.defaultModeId)
+        ? provider.defaultModeId
+        : (modes[0] ?? ''),
   };
 }
-
-const modeOrder = ['ask', 'edit', 'agent'];
-const modeLabels: Record<string, string> = { ask: 'Ask', edit: 'Edit', agent: 'Agent' };
-export const modeLabel = (mode: string): string => modeLabels[mode] ?? mode;
-
-/** Only the modes a model supports, in the canonical order. */
-export const supportedModes = (modes: readonly string[]): string[] => [
-  ...modeOrder.filter((mode) => modes.includes(mode)),
-  ...modes.filter((mode) => !modeOrder.includes(mode)),
-];

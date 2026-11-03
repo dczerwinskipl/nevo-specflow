@@ -49,6 +49,25 @@ export interface SessionContextViewModel {
   attention?: SessionContextAttentionItem[];
   relatedTasks?: SessionContextTaskRef[];
   /**
+   * The Session's current/most-recent Turn, when one exists — the id `SessionContext`'s own
+   * "Work history" row opens (reuses the same `managed-session-work` Secondary tab `ManagedSession`
+   * already creates for Conversation's own compact Work summaries, full-session-screen-structure.md
+   * §7.4/§8.3: one Work root tab, reused regardless of entry point, never a second instance).
+   * Absent: the row does not render (same "missing fact hides the row" rule as every other optional
+   * section here) — there is no cross-Turn "list all Turns" projection yet (owner decision: scope
+   * v1 to the current Turn only; full history needs a new backend endpoint, a separate task).
+   */
+  activeTurnId?: string;
+  /**
+   * The Turn that is in flight right now — the Managed Sessions snapshot's `activeTurn.turnId`,
+   * which the contract only carries while a Turn is running (`ActiveTurnSchema`, absent/`null`
+   * once it settles). Absent when no Turn is running, even if the Session itself is still active
+   * and ready for the next message. Unlike `activeTurnId` above ("current or most recent"), this
+   * never names a settled Turn, so the context-window caption can tell "Current Turn" (the measured
+   * Turn is this one) from "Last Turn" (the measurement belongs to a Turn that has settled).
+   */
+  runningTurnId?: string;
+  /**
    * Low-emphasis "Session details" (§7.2/§23): token usage, cost, context occupancy, rate
    * limits. Demo data against the not-yet-merged PR #107 contract — see `sessionTelemetry.ts`.
    * Absent/fully-`unavailable` telemetry renders nothing, same as the other optional sections.

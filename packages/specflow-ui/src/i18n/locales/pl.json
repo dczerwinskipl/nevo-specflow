@@ -30,7 +30,28 @@
     "title": "Nawigacja aplikacji",
     "open": "Otwórz nawigację",
     "back": "Wstecz",
-    "closeSecondary": "Zamknij panel dodatkowy"
+    "backTo": "Wstecz do: {{name}}",
+    "closeSecondary": "Zamknij panel dodatkowy",
+    "resizeSecondary": "Zmień rozmiar panelu dodatkowego",
+    "secondaryBreadcrumbs": "Położenie w karcie panelu",
+    "secondaryBreadcrumbsCollapsed": "Pokaż ukryte poziomy",
+    "secondaryTabs": {
+      "tablist": "Otwarte karty panelu",
+      "openedMenu": "Otwarte karty ({{n}})",
+      "openedHeading": "Otwarte karty",
+      "close": "Zamknij {{name}}",
+      "closeHint": "Zamknij: Delete lub środkowy przycisk myszy",
+      "menuHint": "Delete zamyka wyróżnioną kartę.",
+      "menuClose": "Zamknij",
+      "rootLocation": "Katalog główny",
+      "statusLoading": "ładowanie",
+      "statusMissing": "nie znaleziono",
+      "statusDirty": "niezapisane zmiany",
+      "statusCurrent": "bieżąca",
+      "switcher": "{{name}}, otwarte karty: {{n}}",
+      "switcherDirty": "{{name}}, niezapisane zmiany, otwarte karty: {{n}}",
+      "noItem": "Brak karty"
+    }
   },
   "account": {
     "localAccess": "Dostęp lokalny",
@@ -524,11 +545,7 @@
     "manual": "Samodzielnie",
     "nameLabel": "Nazwa specyfikacji",
     "namePlaceholder": "Np. Logowanie SSO",
-    "model": "Model",
-    "chooseModel": "Wybierz model",
-    "effort": "Effort",
     "providerDefault": "Domyślny wykonawcy",
-    "mode": "Tryb pracy",
     "changeMethod": "Zmień sposób pracy",
     "formRegion": "Utworzenie specyfikacji",
     "sessionWorkspaceIntro": "Nowa sesja korzysta z środowiska pracy tej specyfikacji.",
@@ -540,19 +557,16 @@
       "manualText": "Utwórz dokumenty archetypu i edytuj je samodzielnie."
     },
     "heading": {
-      "session": "Z kim chcesz pracować?",
       "specification": "Co chcesz opisać?"
     },
     "subheading": {
-      "session": "Skonfiguruj kolejną sesję Spec Writera.",
       "withArchetype": "Nazwij pracę, wybierz pasujący do niej archetyp i miejsce, w którym powstanie."
     },
     "agent": {
-      "sessionTitle": "Konfiguracja sesji",
       "initialTitle": "Początkowa sesja agenta",
-      "introSession": "Wybierz wykonawcę tej sesji Spec Writera.",
       "introInitial": "Wybierz wykonawcę pierwszej sesji Spec Writera. Kolejne sesje mogą korzystać z innych agentów.",
-      "noProviders": "Brak dostępnych wykonawców."
+      "noProviders": "Brak dostępnych wykonawców.",
+      "settingsLabel": "Model i tryb pracy"
     },
     "provider": {
       "accessApi": "API",
@@ -617,7 +631,6 @@
       "preparing": "Przygotowywanie…",
       "checkOperation": "Sprawdź stan operacji",
       "checkResult": "Sprawdź wynik",
-      "openSession": "Otwórz sesję",
       "createAndOpen": "Utwórz i otwórz sesję",
       "create": "Utwórz specyfikację"
     },
@@ -1380,7 +1393,6 @@
       "empty": "Brak dodatkowego kontekstu dla tej tury.",
       "executionScope": "Aktualne wykonanie",
       "generic": "Ogólne / na poziomie specyfikacji",
-      "batch": "{{count}} zadań",
       "attention": "Uwaga / dalsze działania",
       "attentionTone": {
         "attention": "Wymaga uwagi",
@@ -1390,6 +1402,9 @@
       "relatedTasks": "Powiązane zadania",
       "tasksTitle": "Zadania",
       "taskTitle": "Zadanie",
+      "workHistory": {
+        "title": "Historia pracy"
+      },
       "tasks": {
         "empty": "Brak powiązanych zadań.",
         "unavailable": "To zadanie jest już niedostępne.",
@@ -1404,7 +1419,6 @@
         "referenceGroupTitle": "Historia i materiały",
         "notYetImplemented": "Ta sekcja nie jest jeszcze zaimplementowana.",
         "files": "Pliki / zmiany",
-        "history": "Historia",
         "handovers": "Przekazania",
         "artifacts": "Artefakty",
         "instructions": "Instrukcje",
@@ -1426,8 +1440,10 @@
         "costUnconfirmedSuffix": "niepotwierdzone",
         "contextWindowTitle": "Okno kontekstu modelu",
         "contextOccupancyValue": "{{value}}% zajęte",
-        "contextWindowScopeTurnAndModel": "Dla tury {{turn}} · {{model}}",
-        "contextWindowScopeTurnOnly": "Dla tury {{turn}}",
+        "contextWindowScopeTurnAndModel": "Bieżąca tura · {{model}}",
+        "contextWindowScopeTurnOnly": "Bieżąca tura",
+        "contextWindowScopeLastTurnAndModel": "Ostatnia tura · {{model}}",
+        "contextWindowScopeLastTurnOnly": "Ostatnia tura",
         "contextWindowScopeModelOnly": "Model: {{model}}",
         "rateLimitWindow": "okno {{window}}",
         "rateLimitWindowHours_one": "{{count}} godzina",
@@ -1443,7 +1459,11 @@
         "moreLimitWindows": "+{{value}} więcej",
         "stale": "Nieaktualne",
         "staleExplanation": "Zaobserwowano wcześniej i jeszcze nie potwierdzono jako aktualne. Dane mogą być nieaktualne."
-      }
+      },
+      "batch_one": "{{count}} zadanie",
+      "batch_few": "{{count}} zadania",
+      "batch_many": "{{count}} zadań",
+      "batch_other": "{{count}} zadania"
     }
   },
   "apiErrors": {
@@ -1519,6 +1539,20 @@
     "back": "Wróć do specyfikacji"
   },
   "managedSession": {
+    "sessionActions": {
+      "rename": "Zmień nazwę",
+      "renameTitle": "Zmień nazwę sesji",
+      "renameLabel": "Nazwa sesji",
+      "renameSave": "Zapisz",
+      "renameEmpty": "Podaj nazwę sesji.",
+      "renameTooLong": "Nazwa może mieć maksymalnie {{max}} znaków.",
+      "archive": "Archiwizuj",
+      "archiveTitle": "Zarchiwizować tę sesję?",
+      "archiveDescription": "Sesja zniknie z list, ale cała jej historia zostanie zachowana. Możesz ją później przywrócić z archiwum.",
+      "delete": "Usuń",
+      "deleteTitle": "Usunąć tę sesję?",
+      "deleteDescription": "Tej operacji nie można cofnąć. Sesja wraz z całą historią rozmowy zostanie trwale usunięta."
+    },
     "authenticationRequired": "Wymagane ponowne logowanie",
     "authenticationHelp": "Zaloguj się ponownie w CLI dostawcy, a następnie sprawdź dostępność. Wiadomości nie zostaną ponowione automatycznie.",
     "recheckAuthentication": "Sprawdź logowanie",
@@ -1549,25 +1583,7 @@
       "label": "Tryb pracy — następny Turn",
       "placeholder": "Wybierz tryb pracy",
       "sectionLabel": "Tryb pracy",
-      "preset": {
-        "ask": "Zapytaj",
-        "askDescription": "Odpowiada i analizuje bez edycji plików",
-        "plan": "Plan",
-        "planDescription": "Przygotowuje plan działania",
-        "agent": "Agent",
-        "agentDescription": "Samodzielnie wykonuje zadania"
-      }
-    },
-    "policy": {
-      "label": "Zgody na operacje — wybierz politykę zatwierdzania",
-      "placeholder": "Wybierz politykę zatwierdzania",
-      "sectionLabel": "Zatwierdzanie operacji",
-      "option": {
-        "askEachTime": "Pytaj za każdym razem",
-        "askEachTimeDescription": "Każda operacja wymaga Twojego potwierdzenia przed wykonaniem.",
-        "acceptEdits": "Automatyczne edycje",
-        "acceptEditsDescription": "Odczyty i edycje plików w workspace bez potwierdzenia; inne operacje nadal pytają."
-      }
+      "unavailable": "Niedostępny"
     },
     "attach": {
       "action": "Dołącz załącznik",
@@ -1590,7 +1606,7 @@
     },
     "empty": "Rozpocznij rozmowę.",
     "inspect": "Zobacz pracę",
-    "work": "Praca",
+    "work": "Historia pracy",
     "closeWork": "Zamknij pracę",
     "ready": "Gotowa",
     "busy": "Praca trwa",
@@ -1607,6 +1623,10 @@
       "outcome": "Wynik tury"
     },
     "actions": "Działania narzędzia",
+    "actions_one": "Działanie narzędzia",
+    "actions_few": "Działania narzędzia",
+    "actions_many": "Działań narzędzia",
+    "actions_other": "Działania narzędzia",
     "newer": "Nowsza aktywność",
     "outcome": {
       "completed": "Zakończono",
@@ -1616,8 +1636,8 @@
     },
     "workKind": {
       "commentary": "Postęp",
-      "reasoning": "Rozumowanie",
-      "interaction": "Odpowiedź użytkownika",
+      "reasoning": "Myślenie",
+      "interaction": "Interakcja z użytkownikiem",
       "tool": "Narzędzie"
     },
     "workState": {
@@ -1631,6 +1651,14 @@
       "expired": "Wygasło"
     },
     "workInspector": {
+      "copy": "Kopiuj",
+      "copyInput": "Kopiuj parametry",
+      "copyOutput": "Kopiuj odpowiedź narzędzia",
+      "detailTruncated": "Pokazano początek — pełna treść jest dłuższa.",
+      "actionCount_one": "{{count}} działanie",
+      "actionCount_few": "{{count}} działania",
+      "actionCount_many": "{{count}} działań",
+      "actionCount_other": "{{count}} działania",
       "startOfTurn": "Początek tury",
       "filterLabel": "Filtruj pracę według typu",
       "filterActive": "Filtruj pracę według typu (aktywny filtr: {{kind}})",
@@ -1653,27 +1681,141 @@
       "noMatches": "Żadna pozycja nie odpowiada tym filtrom.",
       "emptyTurn": "Brak jeszcze historii pracy dla tej tury.",
       "noActions": "Jeszcze brak działań narzędzia.",
-      "input": "Dane wejściowe",
-      "output": "Dane wyjściowe",
+      "input": "Parametry",
+      "output": "Odpowiedź narzędzia",
+      "errorCode": "Kod błędu: {{code}}",
       "counts": {
         "total_one": "{{count}} element przebiegu",
         "total_few": "{{count}} elementy przebiegu",
         "total_many": "{{count}} elementów przebiegu",
         "total_other": "{{count}} elementy przebiegu",
         "inProgress": "{{count}} w toku",
-        "commentary_one": "{{count}} komentarz",
-        "commentary_few": "{{count}} komentarze",
-        "commentary_many": "{{count}} komentarzy",
-        "commentary_other": "{{count}} komentarze",
-        "reasoning_one": "{{count}} analiza",
-        "reasoning_few": "{{count}} analizy",
-        "reasoning_many": "{{count}} analiz",
-        "reasoning_other": "{{count}} analizy",
-        "interaction_one": "{{count}} odpowiedź użytkownika",
-        "interaction_few": "{{count}} odpowiedzi użytkownika",
-        "interaction_many": "{{count}} odpowiedzi użytkownika",
-        "interaction_other": "{{count}} odpowiedzi użytkownika"
+        "commentary_one": "{{count}} wpis postępu",
+        "commentary_few": "{{count}} wpisy postępu",
+        "commentary_many": "{{count}} wpisów postępu",
+        "commentary_other": "{{count}} wpisu postępu",
+        "reasoning_one": "{{count}} etap myślenia",
+        "reasoning_few": "{{count}} etapy myślenia",
+        "reasoning_many": "{{count}} etapów myślenia",
+        "reasoning_other": "{{count}} etapu myślenia",
+        "interaction_one": "{{count}} interakcja z użytkownikiem",
+        "interaction_few": "{{count}} interakcje z użytkownikiem",
+        "interaction_many": "{{count}} interakcji z użytkownikiem",
+        "interaction_other": "{{count}} interakcji z użytkownikiem"
+      }
+    },
+    "workSummary": {
+      "running": "W toku:",
+      "open": "Otwórz historię pracy",
+      "failed": "Nie powiodło się: {{list}}",
+      "more": "i więcej",
+      "actions_one": "{{count}} działanie narzędzia",
+      "actions_few": "{{count}} działania narzędzia",
+      "actions_many": "{{count}} działań narzędzia",
+      "actions_other": "{{count}} działania narzędzia",
+      "actionsAtLeast_one": "co najmniej {{count}} działanie narzędzia",
+      "actionsAtLeast_few": "co najmniej {{count}} działania narzędzia",
+      "actionsAtLeast_many": "co najmniej {{count}} działań narzędzia",
+      "actionsAtLeast_other": "co najmniej {{count}} działania narzędzia",
+      "kind": {
+        "read_one": "{{count}} odczyt",
+        "read_few": "{{count}} odczyty",
+        "read_many": "{{count}} odczytów",
+        "read_other": "{{count}} odczytu",
+        "edit_one": "{{count}} edycja",
+        "edit_few": "{{count}} edycje",
+        "edit_many": "{{count}} edycji",
+        "edit_other": "{{count}} edycji",
+        "write_one": "{{count}} zapis",
+        "write_few": "{{count}} zapisy",
+        "write_many": "{{count}} zapisów",
+        "write_other": "{{count}} zapisu",
+        "list_one": "{{count}} przegląd katalogu",
+        "list_few": "{{count}} przeglądy katalogów",
+        "list_many": "{{count}} przeglądów katalogów",
+        "list_other": "{{count}} przeglądu katalogów",
+        "search_one": "{{count}} wyszukiwanie",
+        "search_few": "{{count}} wyszukiwania",
+        "search_many": "{{count}} wyszukiwań",
+        "search_other": "{{count}} wyszukiwania",
+        "command_one": "{{count}} polecenie",
+        "command_few": "{{count}} polecenia",
+        "command_many": "{{count}} poleceń",
+        "command_other": "{{count}} polecenia",
+        "test_one": "{{count}} uruchomienie testów",
+        "test_few": "{{count}} uruchomienia testów",
+        "test_many": "{{count}} uruchomień testów",
+        "test_other": "{{count}} uruchomienia testów",
+        "web_one": "{{count}} strona",
+        "web_few": "{{count}} strony",
+        "web_many": "{{count}} stron",
+        "web_other": "{{count}} strony",
+        "other_one": "{{count}} inne działanie",
+        "other_few": "{{count}} inne działania",
+        "other_many": "{{count}} innych działań",
+        "other_other": "{{count}} innego działania"
+      },
+      "outcome": {
+        "failed": "Tura zakończona niepowodzeniem",
+        "cancelled": "Tura zatrzymana",
+        "interrupted": "Tura przerwana"
+      },
+      "live": {
+        "tool": "{{label}}",
+        "toolUnnamed": "Wykonuje narzędzie…",
+        "reasoning": "Myśli…",
+        "responding": "Pisze odpowiedź…",
+        "commentary": "Opisuje postęp…",
+        "waiting": "Czeka…",
+        "cancelling": "Anuluje…",
+        "working": "Pracuje…"
       }
     }
+  },
+  "sessionStart": {
+    "heading": "Nowa sesja",
+    "subheading": "Agent zacznie pracę od Twojej pierwszej wiadomości, w kontekście tej specyfikacji.",
+    "context": {
+      "heading": "Kontekst",
+      "intro": "Sesja pracuje na tej specyfikacji — agent otrzyma ją jako kontekst.",
+      "kind": "Specyfikacja",
+      "pinned": "Przypięta"
+    },
+    "agent": {
+      "heading": "Agent",
+      "intro": "Wybierz wykonawcę tej sesji. Nie zmienisz go w trakcie rozmowy."
+    },
+    "message": {
+      "label": "Pierwsza wiadomość",
+      "placeholder": "Napisz, od czego agent ma zacząć…",
+      "description": "Tryb pracy i model dotyczą tej wiadomości; w sesji zmienisz je przed każdą kolejną."
+    },
+    "name": {
+      "heading": "Nazwa sesji",
+      "agentDefault": "Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.",
+      "useCustom": "Nadaj własną nazwę",
+      "useAgent": "Niech nazwę nada agent",
+      "label": "Nazwa sesji",
+      "placeholder": "np. Przegląd kryteriów akceptacji",
+      "limit": "Do {{max}} znaków.",
+      "remaining": "Pozostało znaków: {{remaining}}."
+    },
+    "prerequisite": {
+      "message": "Napisz pierwszą wiadomość.",
+      "name": "Wpisz nazwę albo pozwól agentowi ją nadać.",
+      "noProvider": "Żaden wykonawca nie jest teraz dostępny."
+    },
+    "footer": {
+      "agentNames": "Sesja otworzy się z tą wiadomością, a agent nada jej nazwę.",
+      "ready": "Sesja otworzy się z tą wiadomością."
+    },
+    "submit": {
+      "start": "Rozpocznij sesję",
+      "starting": "Uruchamianie…"
+    }
+  },
+  "sessionNaming": {
+    "pending": "Nadawanie nazwy…",
+    "provisionalTitle": "Nowa sesja"
   }
 }

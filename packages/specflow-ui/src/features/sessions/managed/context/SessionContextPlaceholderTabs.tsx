@@ -13,10 +13,13 @@ import { translateNow } from '../../../../i18n/message';
  * Navigation-skeleton placeholder root tabs for Context's other subjects
  * (full-session-screen-structure.md §7.4: "Its concise, clickable content summaries open/reselect
  * root tabs such as Tasks, Files/Changes, History, Handovers, Artifacts, Instructions or
- * Environment when useful"). Tasks already has a real tab (`SessionTasksInspector.tsx`); none of
- * the other six has a real screen anywhere in the product yet (confirmed by search — there is no
- * Files/Changes, History, Handovers, Artifacts, Instructions or Environment view today), so each
- * opens the SAME shared "not yet implemented" placeholder screen instead of faking real content.
+ * Environment when useful"). Tasks already has a real tab (`SessionTasksInspector.tsx`); History
+ * now has one too (`SessionContext.tsx`'s own "Work history" row, reusing `WorkInspector.tsx`'s
+ * existing Work root tab — see that row's own doc comment for why it is not listed here as a
+ * placeholder anymore). None of the remaining five has a real screen anywhere in the product yet
+ * (confirmed by search — there is no Files/Changes, Handovers, Artifacts, Instructions or
+ * Environment view today), so each opens the SAME shared "not yet implemented" placeholder screen
+ * instead of faking real content.
  *
  * The point of this pass is only to prove the navigation mechanics end to end — Context's row ->
  * `useSecondaryNavigation().openTab` -> a real Secondary tab -> the tab strip -> close/reopen —
@@ -83,8 +86,9 @@ function definePlaceholderStack(id: string, titleKey: MessageKey) {
 }
 
 /**
- * Exactly the six remaining subjects §7.4 names besides Tasks, in the order the doc lists them.
- * `icon` names are confirmed members of the real `iconRegistry` (`Icon.tsx`), not guesses.
+ * The five remaining subjects §7.4 names besides Tasks and History (now real — see this file's
+ * own module comment), in the order the doc lists them. `icon` names are confirmed members of the
+ * real `iconRegistry` (`Icon.tsx`), not guesses.
  */
 export const placeholderRootTabs: PlaceholderRootTab[] = [
   {
@@ -93,13 +97,6 @@ export const placeholderRootTabs: PlaceholderRootTab[] = [
     titleKey: 'sessions.context.placeholders.files',
     group: 'results',
     stack: definePlaceholderStack('files', 'sessions.context.placeholders.files'),
-  },
-  {
-    id: 'history',
-    icon: 'clock',
-    titleKey: 'sessions.context.placeholders.history',
-    group: 'reference',
-    stack: definePlaceholderStack('history', 'sessions.context.placeholders.history'),
   },
   {
     id: 'handovers',

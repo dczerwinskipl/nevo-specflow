@@ -4,6 +4,7 @@ import {
   START_OF_TURN_CHAPTER_ID,
   TOOL_BURST_MIN_SIZE,
   buildWorkChapters,
+  availableWorkFilterKinds,
   filterWorkChapters,
   formatWorkDuration,
   groupChapterEntries,
@@ -132,11 +133,12 @@ describe('filterWorkChapters', () => {
     expect(visible[0]!.items).toEqual([]);
   });
 
-  it('search matches a child title case-insensitively while keeping its Commentary context', () => {
+  it('search matches a child title case-insensitively, keeping the chapter but not surfacing its non-matching Commentary', () => {
     const visible = filterWorkChapters(chapters, { kind: 'all', search: 'ADMISSION' });
 
     expect(visible).toHaveLength(1);
     expect(visible[0]!.commentary).toBe(c1);
+    expect(visible[0]!.commentaryRole).toBeUndefined();
     expect(visible[0]!.items).toEqual([read]);
   });
 
@@ -151,6 +153,47 @@ describe('filterWorkChapters', () => {
     const visible = filterWorkChapters(trailing, { kind: 'all', search: 'nothing-matches-this' });
 
     expect(visible).toHaveLength(0);
+  });
+
+  it('does not surface Commentary at all under a non-Commentary kind filter (owner review, round three)', () => {
+    expect(
+      filterWorkChapters(chapters, { kind: 'tool', search: '' })[0]!.commentaryRole,
+    ).toBeUndefined();
+    expect(filterWorkChapters(chapters, { kind: 'reasoning', search: '' })[0]!.items).toEqual([
+      reasoning,
+    ]);
+  });
+
+  it('every kind filter yields only items of that kind — never the unfiltered set', () => {
+    for (const kind of ['tool', 'reasoning'] as const) {
+      const items = filterWorkChapters(chapters, { kind, search: '' }).flatMap((c) => c.items);
+      expect(items.length).toBeGreaterThan(0);
+      expect(items.every((item) => item.kind === kind)).toBe(true);
+    }
+  });
+
+  it('keeps a chapter whose Commentary text matches the search, as a match', () => {
+    const visible = filterWorkChapters(chapters, { kind: 'all', search: 'implementation' });
+
+    expect(visible).toHaveLength(1);
+    expect(visible[0]!.commentaryRole).toBe('match');
+    expect(visible[0]!.items).toEqual([]);
+  });
+});
+
+describe('availableWorkFilterKinds', () => {
+  it('offers only kinds present in the Turn, always starting with "all"', () => {
+    const items = [commentary('c'), tool()];
+
+    expect(availableWorkFilterKinds(items)).toEqual(['all', 'commentary', 'tool']);
+  });
+
+  it('also offers a kind the Turn-wide projection reports beyond the loaded page', () => {
+    expect(availableWorkFilterKinds([tool()], { interaction: 1, reasoning: 0 })).toEqual([
+      'all',
+      'tool',
+      'interaction',
+    ]);
   });
 });
 

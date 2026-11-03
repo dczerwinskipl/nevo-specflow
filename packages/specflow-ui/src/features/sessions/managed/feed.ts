@@ -22,6 +22,8 @@ export interface FeedState {
   modelOverride?: string;
   /** Next-Turn effort override; omitted inherits the Session's current effort. */
   effortOverride?: string;
+  /** Next-Turn work mode (engine mode + provider mode id); omitted inherits the Session's own. */
+  workModeOverride?: Required<Pick<StartTurn, 'mode' | 'providerModeId'>>;
   pending?: StartTurn;
 }
 interface BrowserStorage {
@@ -207,7 +209,11 @@ export function createSessionFeed(
     }
   }
 
-  async function send() {
+  /**
+   * `workModeDefault`: the work mode the Composer shows when nothing is picked but which the Session
+   * would not inherit by itself (the catalogue default), so what is shown is what is sent.
+   */
+  async function send(workModeDefault?: FeedState['workModeOverride']) {
     if (state.commandBusy) {
       return;
     }
@@ -219,6 +225,7 @@ export function createSessionFeed(
         message: state.draft,
         ...(state.modelOverride ? { modelId: state.modelOverride } : {}),
         ...(state.effortOverride ? { effort: state.effortOverride } : {}),
+        ...(state.workModeOverride ?? workModeDefault),
       } satisfies StartTurn);
     if (!request.message.trim()) {
       return;
@@ -328,6 +335,17 @@ export function createSessionFeed(
         next.effortOverride = effort;
       } else {
         delete next.effortOverride;
+      }
+
+      notify(next);
+    },
+    /** Selects the next Turn's work mode; `undefined` inherits the Session's current one. */
+    setWorkMode(workMode: FeedState['workModeOverride']) {
+      const next: FeedState = { ...state };
+      if (workMode) {
+        next.workModeOverride = workMode;
+      } else {
+        delete next.workModeOverride;
       }
 
       notify(next);

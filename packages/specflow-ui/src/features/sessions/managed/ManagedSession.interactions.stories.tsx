@@ -385,7 +385,7 @@ async function activateRootTab(
   const directTab = queryDirectTab(canvasElement, label);
   if (directTab) {
     if (assertNotClosable) {
-      await expect(canvasElement.querySelector(`button[aria-label="Close ${label}"]`)).toBeNull();
+      await expect(canvasElement.querySelector(`button[aria-label="Zamknij ${label}"]`)).toBeNull();
     }
 
     await userEvent.click(directTab);
@@ -396,11 +396,13 @@ async function activateRootTab(
   const menu = await openSwitcherMenu(canvasElement);
   const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
   if (assertNotClosable) {
-    await expect(items.some((item) => item.textContent?.startsWith(`Close ${label}`))).toBe(false);
+    await expect(items.some((item) => item.textContent?.startsWith(`Zamknij ${label}`))).toBe(
+      false,
+    );
   }
 
   const row = items.find(
-    (item) => !item.textContent?.startsWith('Close ') && item.textContent?.includes(label),
+    (item) => !item.textContent?.startsWith('Zamknij ') && item.textContent?.includes(label),
   );
   if (!row) {
     throw new Error(`The Opened items menu should list "${label}".`);
@@ -412,7 +414,7 @@ async function activateRootTab(
 /** Closes a root tab by label, robust to the same strip/switcher presentations as {@link activateRootTab}. */
 async function closeRootTab(canvasElement: HTMLElement, label: string) {
   const directClose = canvasElement.querySelector<HTMLElement>(
-    `button[aria-label="Close ${label}"]`,
+    `button[aria-label="Zamknij ${label}"]`,
   );
   if (directClose) {
     await userEvent.click(directClose);
@@ -422,10 +424,10 @@ async function closeRootTab(canvasElement: HTMLElement, label: string) {
 
   const menu = await openSwitcherMenu(canvasElement);
   const row = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
-    item.textContent?.startsWith(`Close ${label}`),
+    item.textContent?.startsWith(`Zamknij ${label}`),
   );
   if (!row) {
-    throw new Error(`The Opened items menu should offer "Close ${label}".`);
+    throw new Error(`The Opened items menu should offer "Zamknij ${label}".`);
   }
 
   await userEvent.click(row);
@@ -485,7 +487,7 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     // Click the Related Tasks summary row — this fixture has 2 related Tasks (TASK-02, TASK-03),
     // so it opens the shared Tasks tab on its list (`openRelatedTasksEntry`'s >1 branch), not a
     // direct per-Task tab.
-    const relatedTasksRow = canvas.getByText('2 zadań').closest('button');
+    const relatedTasksRow = canvas.getByText('2 zadania').closest('button');
     if (!relatedTasksRow) {
       throw new Error('The Related Tasks summary row should render as a button.');
     }
@@ -518,6 +520,29 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     ).toBeVisible();
     await expect(canvas.getByText('TASK-02')).toBeVisible();
     await expect(queryDirectTab(canvasElement, 'Document the admission guard')).toBeUndefined();
+
+    // The tab keeps its root's name and the local depth is the breadcrumb row at the top of the
+    // tab panel: `← Zadania › Document the admission guard` (secondary-navigation.md, "Root tabs
+    // and breadcrumbs"). The root segment pops straight back to the list.
+    await expect(queryDirectTab(canvasElement, 'Zadania')).toBeDefined();
+    const trail = await waitFor(() => {
+      const row = canvasElement.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
+      if (!row) {
+        throw new Error('Task detail inside the Tasks tab should show the breadcrumb row.');
+      }
+
+      return row;
+    });
+    await expect(trail.closest('[role="tabpanel"]')?.firstElementChild).toBe(trail);
+    await expect(trail.querySelector('[aria-current="page"]')?.textContent).toBe(
+      'Document the admission guard',
+    );
+    await expect(within(trail).getByRole('button', { name: 'Wstecz do: Zadania' })).toBeVisible();
+    await userEvent.click(within(trail).getByRole('button', { name: 'Zadania' }));
+    await waitFor(() =>
+      expect(canvasElement.querySelector('[data-workspace-breadcrumbs]')).toBeNull(),
+    );
+    await expect(await canvas.findByText('Deterministic admission')).toBeVisible();
 
     // Click back to the Context tab via the strip (asserting it has no close control along the
     // way — the pinned tab, contract §3): Context is shown again with its state intact.

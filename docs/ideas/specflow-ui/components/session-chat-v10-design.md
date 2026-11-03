@@ -73,6 +73,72 @@ When the Turn ends, remove transient working indicators. Keep the final answer a
 message actions, along with a way to open full Work history and any verified workflow
 annotation. Do not confuse a settled Turn with completed workflow.
 
+### 3.1 Work block — decided treatment (2026-11-02, independent review pending)
+
+Owner direction: "widzę co aktualnie robi, widzę ile już zrobił" — one Work block per Turn,
+cumulative work on top, what is happening right now under it, a clear side icon so Work does
+not drown in the conversation text.
+
+```text
+[icon]  4 odczyty · 50 zapisów · 3 polecenia · 2 wyszukiwania i więcej            >
+        Nie powiodło się: 1 uruchomienie testów        (danger, own line)
+        ⟳ Wykonuje: Bash: pnpm test -- admission       (live line, active Turn only)
+```
+
+- **One block per Turn.** The runtime emits one `work-summary` entry per tool Work it opens
+  (title only). The UI folds all of a Turn's `work-summary` entries into one block
+  (`workBlockModel.ts`, `conversationItems`); raw tool titles never become chat rows. A settled
+  Turn's block sits where its last tool Work was (Commentary before it stays before it); the
+  active Turn's block sits at the end of that Turn, before a streaming answer.
+- **Top line — done so far**, by kind, at most four kinds then "i więcej", workspace changes
+  first (edits, writes, commands, test runs, reads, searches, directory listings, web, other).
+  Every kind counts tool actions.
+- **Live line** (spinner) only while the Turn is the authoritative active Turn, from Runtime's
+  `currentActivity` (tool → its own label, reasoning → "Myśli…", responding, commentary,
+  waiting, cancelling), else from `activeTurn.state` when Runtime cleared `currentActivity`
+  between Work items. Never inferred from the last entry. `attention`/`waitingForUser` produce
+  no live line — the pending interaction prompt owns that. While the block shows the live line,
+  the header subtitle keeps only the coarse Session state ("Praca trwa") and drops its own
+  spinner, so the live fact appears once.
+- **Single owner for terminal state.** When a Turn has a Work block, the block shows its
+  failed/stopped/interrupted outcome ("Tura przerwana") and the separate `outcome` row is not
+  rendered; a completed Turn adds nothing. A Turn with no tool Work keeps its outcome row with its
+  "Zobacz pracę" — the only place that fact and that entry point exist.
+- **Interaction:** the whole block is the one click/keyboard target into that Turn's Work
+  history (chevron + hover surface, no visible "Historia pracy" label). Borderless at rest; the
+  leading icon sits in a small tile (alert + tone when something failed or the Turn did not
+  complete, otherwise a neutral tool icon). Colour only for exceptions.
+
+Rejected: one row per `work-summary` entry (raw tool titles in chat, N rows per Turn — what the
+real backend data would produce); per-kind icon chips (icon-only meaning is ambiguous); title +
+counts line + separate Inspect button (two targets, competing numbers); a contained card like
+Commentary (same weight as agent prose); showing interruption both in the block and in an
+outcome row (same fact twice).
+
+**Data contract.** Real `ConversationEntry` (`@nevo/specflow-contracts/sessions`) carries
+`id, ordinal, revision, turnId, kind, text, workId?, createdAt` — no tool sub-kind and no Work
+state; a `work-summary` entry is written once at Work open
+(`specflow-runtime/.../persistence/facts.ts`) and never updated when the Work fails. So on real
+data the block shows the honest count of tool Work it has loaded ("12 działań narzędzi", "co
+najmniej N…" when the Turn may continue into older, not-yet-loaded history) plus the live line
+and the folded outcome. The by-kind breakdown and failed-action line come only from a
+**proposed, not-yet-backend** digest, carried by fixtures on the Turn's latest `work-summary`
+entry (`workCounts.ts`, `WorkDigest`):
+
+```ts
+type ToolActivityKind =
+  'read' | 'edit' | 'write' | 'list' | 'search' | 'command' | 'test' | 'web' | 'other';
+interface WorkDigest {
+  done: Partial<Record<ToolActivityKind, number>>; // tool actions per kind
+  failed?: Partial<Record<ToolActivityKind, number>>;
+}
+```
+
+Backend gap that closes it: a bounded per-Turn Work digest projection (tool actions classified
+into these kinds, success/failure counts), either on the Turn's `work-summary` entry (with the
+entry revised as Work state changes) or as a `TurnSummary` field
+(session-work-inspector-ui-spec.md §10-11).
+
 ## 4. Large Work history: commentary structures operations
 
 A Work timeline is not a flat list of identical tool, commentary and reasoning rows.

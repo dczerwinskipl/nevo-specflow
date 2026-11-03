@@ -9,6 +9,8 @@ import { demoCreationKeys } from './api/api.demo';
 import { CreateDemoForm } from './form/CreateDemoForm';
 import { CreateProjectForm } from './form/CreateProjectForm';
 import { CreateFallback, CreateRuntimeGate } from './CreateRuntimeGate';
+import { NewSessionForm } from './new-session/NewSessionForm';
+import type { SessionStart } from './new-session/sessionStart';
 
 interface Props {
   /** Present when only a Session is created for an existing specification (demo Runtime only). */
@@ -24,7 +26,8 @@ interface Props {
    * page. Without it the form is always empty.
    */
   restoreDraftOf?: string;
-  onSession: (spec: string, session: string) => void;
+  /** A Session was allocated; `start` is set when the user started it with a first message. */
+  onSession: (spec: string, session: string, start?: SessionStart) => void;
   onBack: () => void;
 }
 
@@ -85,15 +88,30 @@ function DemoCreateSpecification(props: Props) {
     );
   }
 
+  const configurationUnavailable = runtime.isError || catalogue.isError;
+  const refresh = () => void Promise.all([runtime.refetch(), catalogue.refetch()]);
+  if (props.specId) {
+    return (
+      <NewSessionForm
+        key={props.specId}
+        specId={props.specId}
+        catalogue={catalogue.data}
+        onCreated={props.onCreated}
+        onSession={props.onSession}
+        configurationUnavailable={configurationUnavailable}
+        onRefresh={refresh}
+      />
+    );
+  }
+
   return (
     <CreateDemoForm
-      key={props.specId ?? 'new'}
-      specId={props.specId}
+      key="new"
       onCreated={props.onCreated}
       onSession={props.onSession}
       catalogue={catalogue.data}
-      configurationUnavailable={runtime.isError || catalogue.isError}
-      onRefresh={() => void Promise.all([runtime.refetch(), catalogue.refetch()])}
+      configurationUnavailable={configurationUnavailable}
+      onRefresh={refresh}
       onRefreshCatalogue={async () => {
         // The documents feature reads the same catalogue: it is refreshed with it.
         void cache.invalidateQueries({ queryKey: documentCatalogueKeys.all });

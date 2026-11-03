@@ -6,6 +6,7 @@ import {
   batchContext,
   emptyContext,
   genericSpecLevelContext,
+  settledTurnContext,
   singleTaskContext,
   stressContext,
   terminalOutcomeContext,
@@ -16,14 +17,14 @@ import type { SessionContextViewModel } from './sessionContextTypes';
  * Isolated catalog entry for the Context panel (no `ManagedSession` composition — that screen is
  * under separate, parallel edit): visual verification for the live-review fixes —
  * - Related Tasks collapses to one navigational summary row (icon + count + chevron), never the
- *   individual Task list, built from the real `OperationalRow` list pattern;
+ *   individual Task list, built from the shared `ContextNavigationRow` geometry;
  * - consistent `Typography` tokens across every section instead of ad hoc `text-*`/`font-*`
  *   classes;
- * - `SessionTelemetrySection`'s new hierarchy — big-number stat cells for cost/tokens, the
+ * - `SessionTelemetrySection`'s new hierarchy — compact stat cells for cost/tokens, the
  *   collapsed token-breakdown disclosure, and "Zużycie sesji"/"Limity dostawcy" as two visually
- *   separate sections, the rate-limit windows side by side as two columns;
+ *   separate sections, the rate-limit windows as full-width stacked rows;
  * - the §7.4 navigation skeleton (`OtherAreasSection`): one real, clickable, navigable
- *   `OperationalRow` per remaining root-tab subject.
+ *   `ContextNavigationRow` per remaining root-tab subject.
  *
  * Mounted through the real `AppWorkspace`/`AppWorkspaceProvider` runtime `SessionContext` itself
  * depends on (`useSecondaryNavigation`) — deliberately not through `ManagedSession` itself, which
@@ -64,6 +65,38 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
   );
 }
 
+/**
+ * Context mounted the way `ManagedSession` mounts it: the default split-capable Secondary next to a
+ * Primary, with the same `fit="available" split="dynamic"` workspace. At a 1280 px viewport the
+ * Secondary resolves to ~330 px, the narrow width the Context layout is tuned for; the splitter
+ * can be dragged to check a wider Secondary. Locale is Polish because the Polish copy is the
+ * longest of the shipped locales.
+ */
+function SecondaryContextHost({ value }: { value: SessionContextViewModel }) {
+  return (
+    <StoryLocalization locale="pl">
+      <AppWorkspaceProvider>
+        <AppShell navigation={<div className="p-4">SpecFlow</div>}>
+          <AppWorkspace fit="available" split="dynamic">
+            <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
+              <div className="p-4" />
+            </AppWorkspace.Primary>
+            <AppWorkspace.Secondary header={<WorkspaceHeader title="Kontekst" />}>
+              <SessionContext
+                sessionId={sessionId}
+                value={value}
+                onOpenSpecification={(specification) =>
+                  console.info('Open Specification', specification)
+                }
+              />
+            </AppWorkspace.Secondary>
+          </AppWorkspace>
+        </AppShell>
+      </AppWorkspaceProvider>
+    </StoryLocalization>
+  );
+}
+
 const meta = {
   title: 'SpecFlow/Components/Session Context',
   component: ContextHost,
@@ -80,15 +113,15 @@ export const GenericWithRelatedTasks: Story = {
   args: { value: genericSpecLevelContext() },
 };
 
-/** Exactly one related Task: the summary row still reads as a count ("1 Tasks"), but clicking it
+/** Exactly one related Task: the summary row still reads as a count ("1 zadanie"), but clicking it
  * opens that one Task directly (interim behaviour — see `SessionContext.tsx`'s
  * `openRelatedTasksEntry`). Partial telemetry: cost stays absent rather than a fake `$0`. */
 export const SingleRelatedTask: Story = {
   args: { value: singleTaskContext() },
 };
 
-/** Batch execution scope: several "current execution" Task rows, each a real `OperationalRow`
- * (icon, key + title, trailing chevron) instead of the old stacked-text `Button`. */
+/** Batch execution scope: several "current execution" Task rows, each a `ContextNavigationRow`
+ * (icon, title + key, centred chevron) instead of the old stacked-text `Button`. */
 export const BatchExecution: Story = {
   args: { value: batchContext() },
 };
@@ -111,6 +144,33 @@ export const Stress: Story = {
 export const MobileGenericWithRelatedTasks: Story = {
   args: { value: genericSpecLevelContext() },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** Generic fixture in the real ~330 px Secondary (1280 px viewport): navigation rows, Session
+ * usage metrics and the three progress bars at the narrow width they are tuned for. */
+export const InSecondary: Story = {
+  args: { value: genericSpecLevelContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+};
+
+/** The same Session after its last Turn settled (no running Turn, Session still ready for the
+ * next message): the context window is captioned "Ostatnia tura", not "Bieżąca tura". */
+export const InSecondarySettledTurn: Story = {
+  args: { value: settledTurnContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+};
+
+/** Stress fixture in the ~330 px Secondary: long Specification/Task titles wrap into two-line
+ * rows whose chevron stays centred on the whole row, and stale/danger telemetry. */
+export const InSecondaryStress: Story = {
+  args: { value: stressContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+};
+
+/** Batch execution in the ~330 px Secondary: several two-line Task rows (key + note). */
+export const InSecondaryBatch: Story = {
+  args: { value: batchContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
 };
 
 /** Every DYNAMIC section absent (owner decision 2's graceful-omission fixture): confirms the

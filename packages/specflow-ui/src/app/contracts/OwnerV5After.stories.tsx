@@ -301,11 +301,11 @@ export const ProviderAndCapabilities: Story = {
     await shot('agent-form', 1440);
     await settle(390, 844);
     await shot('agent-form', 390, 844);
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
     await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'codex model B' }),
+      await within(document.body).findByRole('menuitemradio', { name: 'codex model B' }),
     );
-    canvas.getByRole('combobox', { name: 'Model' }).scrollIntoView({ block: 'center' });
+    canvas.getByRole('button', { name: 'codex model B' }).scrollIntoView({ block: 'center' });
     await shot('model-no-effort', 390, 844);
   },
 };
@@ -419,22 +419,26 @@ export const ExplicitModeFallback: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
     await expect(canvas.queryByText('Tryb pracy')).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('radio', { name: /Claude/ }));
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
     await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'claude model B' }),
+      await within(document.body).findByRole('menuitemradio', { name: 'claude model B' }),
     );
-    await expect(canvas.queryByRole('combobox', { name: 'Effort' })).not.toBeInTheDocument();
-    // Claude model B supports Ask and Edit only: no dead Agent segment, and the first
-    // supported mode is selected when the previous mode is not supported.
-    await expect(canvas.queryByRole('radio', { name: 'Agent' })).not.toBeInTheDocument();
-    await expect(canvas.getByRole('radio', { name: 'Ask' })).toBeChecked();
-    await expect(canvas.getByRole('radio', { name: 'Edit' })).not.toBeChecked();
-    await userEvent.click(canvas.getByRole('radio', { name: 'Edit' }));
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
+    // No efforts: the menu closes at once, there is no effort section.
+    await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull());
+    // Claude's own catalogue: model B runs Plan and Accept edits only (no dead Auto option),
+    // under Claude's own titles, and starts in the provider's default mode.
+    await userEvent.click(canvas.getByRole('button', { name: 'Accept edits' }));
+    const modes = await within(document.body).findAllByRole('menuitemradio');
+    await expect(modes.map((mode) => mode.textContent)).toEqual(['Plan', 'Accept edits']);
+    await expect(modes[1]).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(modes[0]!);
+    await userEvent.click(canvas.getByRole('button', { name: 'claude model B' }));
     await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'claude model A' }),
+      await within(document.body).findByRole('menuitemradio', { name: 'claude model A' }),
     );
-    await expect(canvas.getByRole('radio', { name: 'Edit' })).toBeChecked();
+    await userEvent.keyboard('{Escape}');
+    // Model A also runs Plan: the picked mode is kept.
+    await expect(canvas.getByRole('button', { name: 'Plan' })).toBeVisible();
   },
 };
 

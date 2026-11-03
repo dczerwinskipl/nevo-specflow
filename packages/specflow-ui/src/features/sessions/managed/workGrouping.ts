@@ -45,6 +45,18 @@ export interface WorkChapter {
   /** Stable key: the heading Commentary's workId, or the constant below for Start of Turn. */
   id: string;
   commentary?: WorkSummary;
+  /**
+   * How the heading Commentary takes part in the current view: `match` — it is itself part of
+   * what the user asked to see (no filter, the Commentary kind, or a search that hits its text),
+   * shown in full. Undefined when the chapter is only present because one of its OTHER items
+   * matches a kind/search filter — Commentary is never shown as a secondary "context" line for a
+   * filter it did not itself match (owner review, round three: "Commentary to nie kontekst
+   * chyba?" — a prior pass kept it visible as orientation for where a match occurred, which made
+   * e.g. "Narzędzie" read identically to "Wszystkie" whenever every chapter already had its own
+   * Commentary; every filter must show ONLY the kind it names, with nothing else mixed in).
+   * Absent on unfiltered chapters straight from `buildWorkChapters` (= `match`).
+   */
+  commentaryRole?: 'match';
   /** Raw, unfiltered, ascending (oldest first) children of this chapter. */
   items: readonly WorkSummary[];
 }
@@ -97,12 +109,43 @@ function matchesSearch(item: WorkSummary, term: string): boolean {
 }
 
 /**
- * Applies the type filter and text search while preserving Commentary context: a chapter stays
- * visible, with its heading Commentary intact, whenever at least one of its children still
- * matches — the match is never lifted out into a flat list that loses its phase. Selecting the
- * "commentary" kind switches to a table-of-contents view of just the matching Commentary
- * headings. With no active filter, an otherwise-empty trailing chapter (the current Commentary
- * with no operations yet) is still shown.
+ * Kinds actually present in this Turn — the only type-filter options worth offering. A kind with
+ * no item can never match, so offering it is a dead end (owner review: an "interaction" option on
+ * a Turn that has none showed an empty view every time). Uses the Turn-wide `byKind` projection
+ * when one exists, otherwise the loaded items; `'all'` is always first.
+ */
+export function availableWorkFilterKinds(
+  items: readonly WorkSummary[],
+  byKind?: Partial<Record<WorkSummary['kind'], number>>,
+): WorkFilterKind[] {
+  const present = new Set<WorkSummary['kind']>(items.map((item) => item.kind));
+  for (const [kind, count] of Object.entries(byKind ?? {})) {
+    if ((count ?? 0) > 0) {
+      present.add(kind as WorkSummary['kind']);
+    }
+  }
+
+  return workFilterKinds.filter((kind) => kind === 'all' || present.has(kind));
+}
+
+/**
+ * One rule for every option (owner review: "each filter behaves differently, you can't predict
+ * what to expect"): a type filter shows ONLY Work items of that kind, and search shows only items
+ * whose text matches — nothing else is mixed in (owner review, round three: dropped the earlier
+ * "show Commentary as context" exception entirely; it made a kind filter read identically to
+ * "Wszystkie" whenever every chapter already had its own Commentary). Chronology is still never
+ * flattened — a matching item stays inside its Commentary-headed chapter — but that chapter's
+ * Commentary itself is only shown when it is ALSO part of what the user asked to see. A chapter
+ * with no match (items or, where applicable, its own Commentary) is dropped entirely.
+ *
+ * - `all`, no search: everything, every Commentary in full (an empty trailing chapter too).
+ * - `commentary`: only Commentary (each a `match`), no operations.
+ * - any other kind: only that kind's items; the chapter's own Commentary is NOT shown unless it
+ *   also matches (only possible for `all` + a search term, below).
+ * - search: narrows whatever the kind selected; a Commentary whose own text matches is a `match`
+ *   (and keeps its chapter visible even if none of its operations match) — only evaluated when
+ *   `kind === 'all'`, matching the rule above that a non-"all" kind filter never surfaces
+ *   Commentary on its own.
  */
 export function filterWorkChapters(
   chapters: readonly WorkChapter[],
@@ -110,22 +153,32 @@ export function filterWorkChapters(
 ): WorkChapter[] {
   const term = options.search.trim().toLowerCase();
 
+  if (options.kind === 'all' && !term) {
+    return chapters.map((chapter) => ({ ...chapter, commentaryRole: 'match' }));
+  }
+
   if (options.kind === 'commentary') {
     return chapters
       .filter((chapter) => chapter.commentary && matchesSearch(chapter.commentary, term))
-      .map((chapter) => ({ ...chapter, items: [] }));
+      .map((chapter) => ({ ...chapter, commentaryRole: 'match', items: [] }));
   }
 
-  const filtered = chapters.map((chapter) => ({
-    ...chapter,
-    items: chapter.items.filter(
+  return chapters.flatMap((chapter): WorkChapter[] => {
+    const items = chapter.items.filter(
       (item) => (options.kind === 'all' || item.kind === options.kind) && matchesSearch(item, term),
-    ),
-  }));
+    );
+    const commentaryMatches =
+      options.kind === 'all' &&
+      !!term &&
+      !!chapter.commentary &&
+      matchesSearch(chapter.commentary, term);
 
-  return filtered.filter(
-    (chapter) => chapter.items.length > 0 || (options.kind === 'all' && !term),
-  );
+    if (items.length === 0 && !commentaryMatches) {
+      return [];
+    }
+
+    return [{ ...chapter, commentaryRole: commentaryMatches ? 'match' : undefined, items }];
+  });
 }
 
 const happyToolState = (item: WorkSummary) => item.kind === 'tool' && item.state === 'completed';
@@ -199,7 +252,9 @@ const terminalWorkStates: ReadonlySet<WorkSummary['state']> = new Set([
  * zero). The caller (`useWorkDurationLabel` in WorkInspector.tsx) already treats `undefined` as
  * "omit the duration entirely", so this is the one place that decision needs to live.
  */
-export function workItemDurationMs(item: WorkSummary): number | undefined {
+export function workItemDurationMs(
+  item: Pick<WorkSummary, 'state' | 'createdAt' | 'updatedAt'>,
+): number | undefined {
   if (!terminalWorkStates.has(item.state)) {
     return undefined;
   }
@@ -229,6 +284,31 @@ export function formatWorkDuration(ms: number, locale: string): string {
     unitDisplay: 'short',
     maximumFractionDigits: 1,
   }).format(ms / 1000);
+}
+
+/**
+ * Localized wall-clock start/end, e.g. "14:32:05–14:32:06" (session-work-inspector-ui-spec.md §9's
+ * Started/Completed fields — owner review, round four: "Dodaj też zegarowy start/koniec", the
+ * duration alone left no way to tell WHEN a ToolAction ran). `undefined` on the same terms
+ * {@link workItemDurationMs} already uses for "no reliable duration" (not yet settled, or an
+ * unparsable/non-positive span) — the two are shown together, so one being unavailable implies the
+ * other is too.
+ */
+export function formatWorkClockRange(
+  item: Pick<WorkSummary, 'state' | 'createdAt' | 'updatedAt'>,
+  locale: string,
+): string | undefined {
+  if (workItemDurationMs(item) === undefined) {
+    return undefined;
+  }
+
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  return `${time.format(new Date(item.createdAt))}–${time.format(new Date(item.updatedAt))}`;
 }
 
 /**

@@ -171,10 +171,8 @@ export const NoModelOverrideCapability: Story = {
 };
 
 /** The narrow/mobile presentation (`compact`): the trigger narrows, but keeps showing the
- * selected model/effort as visible truncating text next to its icon — never collapses to an
- * icon-only button (owner audit, round two: a real user could not find this picker at all when it
- * did, and reference screenshots of ChatGPT/Codex's own compact composer toolbar confirm a short
- * text label next to the icon is the expected pattern, not an unlabeled glyph). */
+ * selected model/effort as visible truncating text — never collapses to an icon-only button
+ * (owner audit, round two: a real user could not find this picker at all when it did). */
 export const CompactTrigger: Story = {
   args: {
     compact: true,

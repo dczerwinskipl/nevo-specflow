@@ -6,6 +6,7 @@ import {
   AppWorkspace,
   AppWorkspaceProvider,
   WorkspaceHeader,
+  defineSecondaryStack,
   useSecondaryNavigation,
 } from '@nevo/ui';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
@@ -63,7 +64,10 @@ function clickButtonByText(text: string) {
   fireEvent.click(trigger);
 }
 
-async function renderContextWithRelatedTasks(value: SessionContextViewModel) {
+async function renderContextWithRelatedTasks(
+  value: SessionContextViewModel,
+  options?: { workStack?: Parameters<typeof SessionContext>[0]['workStack'] },
+) {
   render(
     <StoryLocalization locale="en">
       <AppWorkspaceProvider>
@@ -71,7 +75,7 @@ async function renderContextWithRelatedTasks(value: SessionContextViewModel) {
           <AppWorkspace split="primary">
             <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
               <TabTitles />
-              <SessionContext sessionId={sessionId} value={value} />
+              <SessionContext sessionId={sessionId} value={value} workStack={options?.workStack} />
             </AppWorkspace.Primary>
           </AppWorkspace>
         </AppShell>
@@ -110,7 +114,7 @@ describe('Related Tasks summary row', () => {
 
     await renderContextWithRelatedTasks(value);
 
-    clickButtonByText('1 Tasks');
+    clickButtonByText('1 Task');
     await act(async () => {
       await Promise.resolve();
     });
@@ -179,7 +183,7 @@ describe('Related Tasks summary row', () => {
     // Opening the single related Task (TASK-03) activates the SAME existing tab rather than
     // creating a second one — `openTab`'s documented "already open: activate it, leaving its flow
     // untouched" behavior, so the tab keeps showing TASK-02, not TASK-03.
-    clickButtonByText('1 Tasks');
+    clickButtonByText('1 Task');
     await act(async () => {
       await Promise.resolve();
     });
@@ -190,7 +194,7 @@ describe('Related Tasks summary row', () => {
 });
 
 describe('navigation skeleton (other root tabs)', () => {
-  it('opens a real Secondary tab with a clearly-labelled placeholder screen for each of the six remaining subjects', async () => {
+  it('opens a real Secondary tab with a clearly-labelled placeholder screen for each of the five remaining placeholder subjects', async () => {
     const value: SessionContextViewModel = { status: 'ready' };
     await renderContextWithRelatedTasks(value);
 
@@ -211,7 +215,7 @@ describe('navigation skeleton (other root tabs)', () => {
     const value: SessionContextViewModel = { status: 'ready' };
     await renderContextWithRelatedTasks(value);
 
-    clickButtonByText('History');
+    clickButtonByText('Instructions');
     await act(async () => {
       await Promise.resolve();
     });
@@ -222,8 +226,74 @@ describe('navigation skeleton (other root tabs)', () => {
 
     const openTabs = screen.getByLabelText('open-tabs');
     expect(openTabs.querySelectorAll('li')).toHaveLength(2);
-    expect(within(openTabs).getByText('History')).toBeTruthy();
+    expect(within(openTabs).getByText('Instructions')).toBeTruthy();
     expect(within(openTabs).getByText('Environment')).toBeTruthy();
+  });
+});
+
+describe('Work history row', () => {
+  // Minimal stand-in for `createWorkInspector`'s own stack, same shape (`{sessionId, turnId}` ->
+  // a tab titled "Work history"), sufficient to test `SessionContext`'s own wiring (row
+  // visibility, which params it opens with) without needing a full `ManagedSessionsApi`/
+  // `SessionFeed` — `WorkInspector.tsx`'s own tests cover what that real stack renders.
+  function fakeWorkStack(received: { params: unknown }[]) {
+    return defineSecondaryStack<
+      { sessionId: string; turnId: string },
+      { sessionId: string; turnId: string },
+      { work: object }
+    >({
+      id: 'managed-session-work',
+      initial: 'work',
+      tabLabel: () => 'Work history',
+      useData: (params) => {
+        received.push({ params });
+
+        return { status: 'ready', data: params };
+      },
+      screens: {
+        work: { title: 'Work history', component: () => <div>Work history content</div> },
+      },
+    });
+  }
+
+  it('does not render when no activeTurnId is known, even with a workStack available', async () => {
+    const received: { params: unknown }[] = [];
+    await renderContextWithRelatedTasks(
+      { status: 'ready' },
+      { workStack: fakeWorkStack(received) },
+    );
+
+    expect(screen.queryByText('Work history')).toBeNull();
+  });
+
+  it('does not render when activeTurnId is known but no workStack is passed', async () => {
+    await renderContextWithRelatedTasks({
+      status: 'ready',
+      activeTurnId: '00000000-0000-4000-8000-000000000099',
+    });
+
+    expect(screen.queryByText('Work history')).toBeNull();
+  });
+
+  it('renders in the "History & reference" group and opens the shared Work tab for the current Turn', async () => {
+    const received: { params: unknown }[] = [];
+    const turnId = '00000000-0000-4000-8000-000000000099';
+    await renderContextWithRelatedTasks(
+      { status: 'ready', activeTurnId: turnId },
+      { workStack: fakeWorkStack(received) },
+    );
+
+    const referenceGroup = screen.getByText('History & reference').closest('div');
+    expect(referenceGroup?.textContent).toContain('Work history');
+
+    clickButtonByText('Work history');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const openTabs = screen.getByLabelText('open-tabs');
+    expect(within(openTabs).getByText('Work history')).toBeTruthy();
+    expect(received).toContainEqual({ params: { sessionId, turnId } });
   });
 });
 
@@ -264,11 +334,14 @@ describe('sparse Context states', () => {
     expect(screen.getByText('No additional context for this Turn.')).toBeTruthy();
     expect(screen.getByText('Other areas')).toBeTruthy();
     expect(screen.getByText('Files / Changes')).toBeTruthy();
-    expect(screen.getByText('History')).toBeTruthy();
     expect(screen.getByText('Handovers')).toBeTruthy();
     expect(screen.getByText('Artifacts')).toBeTruthy();
     expect(screen.getByText('Instructions')).toBeTruthy();
     expect(screen.getByText('Environment')).toBeTruthy();
+    // No `workStack`/`activeTurnId` passed here: the real "Work history" row must not render
+    // (see the dedicated `describe('Work history row')` block below), and it is no longer one of
+    // the "not implemented yet" placeholders either (`SessionContextPlaceholderTabs.tsx`).
+    expect(screen.queryByText('Work history')).toBeNull();
   });
 
   it('groups the six navigation-skeleton rows under two subsection labels instead of one flat list (live owner review, second pass)', () => {
@@ -278,16 +351,16 @@ describe('sparse Context states', () => {
     expect(screen.getByText('History & reference')).toBeTruthy();
 
     // Files/Changes, Handovers and Artifacts (produced/attached output) sit under "Results &
-    // resources"; History, Instructions and Environment (background/setup material) sit under
-    // "History & reference" — this pass's own grouping interpretation, not every six-row order
-    // the owner's reference mock could imply.
+    // resources"; Instructions and Environment (background/setup material) sit under "History &
+    // reference" — this pass's own grouping interpretation, not every row order the owner's
+    // reference mock could imply. The real "Work history" row (not tested here — no `workStack`
+    // passed) would also sit in "History & reference", first, when present (see the dedicated
+    // `describe('Work history row')` block below).
     const resultsGroup = screen.getByText('Results & resources').closest('div');
     const referenceGroup = screen.getByText('History & reference').closest('div');
     expect(resultsGroup?.textContent).toContain('Files / Changes');
     expect(resultsGroup?.textContent).toContain('Handovers');
     expect(resultsGroup?.textContent).toContain('Artifacts');
-    expect(resultsGroup?.textContent).not.toContain('History');
-    expect(referenceGroup?.textContent).toContain('History');
     expect(referenceGroup?.textContent).toContain('Instructions');
     expect(referenceGroup?.textContent).toContain('Environment');
     expect(container.textContent).toContain('Other areas');
@@ -333,6 +406,28 @@ describe('Specification entry', () => {
       </StoryLocalization>,
     );
   }
+
+  it('weights a row by its information role: object identities semibold, navigation subjects regular, keys muted', () => {
+    const task = { id: 'task-03', key: 'TASK-03', title: 'Deterministic admission' };
+    renderContext(
+      {
+        status: 'ready',
+        specification,
+        executionScope: { kind: 'single-task', task },
+        relatedTasks: [task, { id: 'task-02', key: 'TASK-02', title: 'Admission guard' }],
+      },
+      vi.fn(),
+    );
+
+    // Specification and Task titles are the object's identity (DS primary information).
+    expect(screen.getByText('Workflow admission hardening').className).toContain('text-title-sm');
+    expect(screen.getByText('Deterministic admission').className).toContain('text-title-sm');
+    // Navigation subjects and count summaries are not bold just because they are clickable.
+    expect(screen.getByText('Files / Changes').className).toContain('text-body-md');
+    expect(screen.getByText('2 Tasks').className).toContain('text-body-md');
+    // Technical identifiers stay muted on the secondary line.
+    expect(screen.getByText('SPEC-A').closest('.text-content-muted')).toBeTruthy();
+  });
 
   it('renders a navigational Specification row when the view model carries one and a handler is wired, and opens it with the real specification reference on click', () => {
     const onOpenSpecification = vi.fn();

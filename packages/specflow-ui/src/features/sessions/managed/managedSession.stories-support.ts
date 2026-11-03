@@ -1,5 +1,6 @@
 import type { ProviderDescriptor, SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
+import { providerModesFixture } from './workModes.stories-support';
 
 export const fixtureSessionId = '00000000-0000-4000-8000-000000000001';
 const turnId = '00000000-0000-4000-8000-000000000002';
@@ -94,6 +95,7 @@ export function sessionFixture(waiting = false): SessionSnapshot {
  * `'claude-code'`, see `managedSession.fullSession.stories-support.ts`) also gets a matching
  * provider — before this, `ModelEffortPicker` silently rendered nothing for every one of those
  * stories, since no item in `providers().items` ever matched that session's own `providerId`.
+ * Its work modes are that provider's own catalogue (`providerModesFixture`).
  */
 export function providerFixture(providerId = 'mock'): ProviderDescriptor {
   return {
@@ -113,6 +115,7 @@ export function providerFixture(providerId = 'mock'): ProviderDescriptor {
       { modelId: 'mock-fast', title: 'Fast', efforts: [] },
     ],
     modes: ['read-only', 'workspace-write'],
+    ...providerModesFixture(providerId),
   };
 }
 

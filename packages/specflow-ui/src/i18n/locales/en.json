@@ -30,7 +30,28 @@
     "title": "Application navigation",
     "open": "Open navigation",
     "back": "Back",
-    "closeSecondary": "Close secondary content"
+    "backTo": "Back to {{name}}",
+    "closeSecondary": "Close secondary content",
+    "resizeSecondary": "Resize secondary panel",
+    "secondaryBreadcrumbs": "Location in the panel tab",
+    "secondaryBreadcrumbsCollapsed": "Show hidden levels",
+    "secondaryTabs": {
+      "tablist": "Open panel tabs",
+      "openedMenu": "Open tabs ({{n}})",
+      "openedHeading": "Open tabs",
+      "close": "Close {{name}}",
+      "closeHint": "Close: Delete or middle-click",
+      "menuHint": "Delete closes the highlighted tab.",
+      "menuClose": "Close",
+      "rootLocation": "Root folder",
+      "statusLoading": "loading",
+      "statusMissing": "not found",
+      "statusDirty": "unsaved changes",
+      "statusCurrent": "current",
+      "switcher": "{{name}}, {{n}} open tabs",
+      "switcherDirty": "{{name}}, unsaved changes, {{n}} open tabs",
+      "noItem": "No tab"
+    }
   },
   "account": {
     "localAccess": "Local access",
@@ -524,11 +545,7 @@
     "manual": "On my own",
     "nameLabel": "Specification name",
     "namePlaceholder": "E.g. SSO sign-in",
-    "model": "Model",
-    "chooseModel": "Choose a model",
-    "effort": "Effort",
     "providerDefault": "Executor default",
-    "mode": "Working mode",
     "changeMethod": "Change the way of working",
     "formRegion": "Specification creation",
     "sessionWorkspaceIntro": "The new session uses the workspace of this specification.",
@@ -540,19 +557,16 @@
       "manualText": "Create the documents of an archetype and edit them yourself."
     },
     "heading": {
-      "session": "Who do you want to work with?",
       "specification": "What do you want to describe?"
     },
     "subheading": {
-      "session": "Configure another Spec Writer session.",
       "withArchetype": "Name the work, choose the archetype that matches it and where it lives."
     },
     "agent": {
-      "sessionTitle": "Session configuration",
       "initialTitle": "Initial agent session",
-      "introSession": "Choose the executor of this Spec Writer session.",
       "introInitial": "Choose the executor of the first Spec Writer session. Later sessions can use other agents.",
-      "noProviders": "No executors are available."
+      "noProviders": "No executors are available.",
+      "settingsLabel": "Model and work mode"
     },
     "provider": {
       "accessApi": "API",
@@ -617,7 +631,6 @@
       "preparing": "Preparing…",
       "checkOperation": "Check operation status",
       "checkResult": "Check the result",
-      "openSession": "Open session",
       "createAndOpen": "Create and open session",
       "create": "Create specification"
     },
@@ -1380,7 +1393,6 @@
       "empty": "No additional context for this Turn.",
       "executionScope": "Current execution",
       "generic": "Generic / Spec-level",
-      "batch": "{{count}} Tasks",
       "attention": "Attention / next actions",
       "attentionTone": {
         "attention": "Requires attention",
@@ -1390,6 +1402,9 @@
       "relatedTasks": "Related Tasks",
       "tasksTitle": "Tasks",
       "taskTitle": "Task",
+      "workHistory": {
+        "title": "Work history"
+      },
       "tasks": {
         "empty": "No related Tasks.",
         "unavailable": "This Task is no longer available.",
@@ -1404,7 +1419,6 @@
         "referenceGroupTitle": "History & reference",
         "notYetImplemented": "This section is not implemented yet.",
         "files": "Files / Changes",
-        "history": "History",
         "handovers": "Handovers",
         "artifacts": "Artifacts",
         "instructions": "Instructions",
@@ -1426,8 +1440,10 @@
         "costUnconfirmedSuffix": "unconfirmed",
         "contextWindowTitle": "Model context window",
         "contextOccupancyValue": "{{value}}% occupied",
-        "contextWindowScopeTurnAndModel": "For Turn {{turn}} · {{model}}",
-        "contextWindowScopeTurnOnly": "For Turn {{turn}}",
+        "contextWindowScopeTurnAndModel": "Current Turn · {{model}}",
+        "contextWindowScopeTurnOnly": "Current Turn",
+        "contextWindowScopeLastTurnAndModel": "Last Turn · {{model}}",
+        "contextWindowScopeLastTurnOnly": "Last Turn",
         "contextWindowScopeModelOnly": "Model: {{model}}",
         "rateLimitWindow": "{{window}} window",
         "rateLimitWindowHours_one": "{{count}} hour",
@@ -1443,7 +1459,11 @@
         "moreLimitWindows": "+{{value}} more",
         "stale": "Stale",
         "staleExplanation": "Observed earlier and not yet confirmed current. May be out of date."
-      }
+      },
+      "batch_one": "{{count}} Task",
+      "batch_other": "{{count}} Tasks",
+      "batch_few": "{{count}} Tasks",
+      "batch_many": "{{count}} Tasks"
     }
   },
   "apiErrors": {
@@ -1519,6 +1539,20 @@
     "back": "Back to specifications"
   },
   "managedSession": {
+    "sessionActions": {
+      "rename": "Rename",
+      "renameTitle": "Rename session",
+      "renameLabel": "Session name",
+      "renameSave": "Save",
+      "renameEmpty": "Enter a session name.",
+      "renameTooLong": "The name can be at most {{max}} characters.",
+      "archive": "Archive",
+      "archiveTitle": "Archive this session?",
+      "archiveDescription": "The session will disappear from the lists, but its whole history is kept. You can restore it from the archive later.",
+      "delete": "Delete",
+      "deleteTitle": "Delete this session?",
+      "deleteDescription": "This cannot be undone. The session and its whole conversation history will be permanently deleted."
+    },
     "authenticationRequired": "Sign-in required",
     "authenticationHelp": "Sign in again using the provider CLI, then recheck availability. Messages will not be retried automatically.",
     "recheckAuthentication": "Check sign-in",
@@ -1549,25 +1583,7 @@
       "label": "Work mode — next Turn",
       "placeholder": "Select work mode",
       "sectionLabel": "Work mode",
-      "preset": {
-        "ask": "Ask",
-        "askDescription": "Answers and analyzes without editing files",
-        "plan": "Plan",
-        "planDescription": "Prepares a plan of action",
-        "agent": "Agent",
-        "agentDescription": "Performs tasks independently"
-      }
-    },
-    "policy": {
-      "label": "Operation approval — select approval policy",
-      "placeholder": "Select approval policy",
-      "sectionLabel": "Approval mode",
-      "option": {
-        "askEachTime": "Ask every time",
-        "askEachTimeDescription": "Every operation requires your confirmation before it runs.",
-        "acceptEdits": "Automatic edits",
-        "acceptEditsDescription": "Workspace file reads and edits proceed without confirmation; other operations still ask."
-      }
+      "unavailable": "Unavailable"
     },
     "attach": {
       "action": "Add attachment",
@@ -1590,7 +1606,7 @@
     },
     "empty": "Start a conversation.",
     "inspect": "Inspect Work",
-    "work": "Work",
+    "work": "Work history",
     "closeWork": "Close Work",
     "ready": "Ready",
     "busy": "Working",
@@ -1607,6 +1623,10 @@
       "outcome": "Turn outcome"
     },
     "actions": "Tool actions",
+    "actions_one": "Tool action",
+    "actions_few": "Tool actions",
+    "actions_many": "Tool actions",
+    "actions_other": "Tool actions",
     "newer": "Newer activity",
     "outcome": {
       "completed": "Completed",
@@ -1616,8 +1636,8 @@
     },
     "workKind": {
       "commentary": "Progress",
-      "reasoning": "Reasoning",
-      "interaction": "User response",
+      "reasoning": "Thinking",
+      "interaction": "User interaction",
       "tool": "Tool"
     },
     "workState": {
@@ -1631,6 +1651,14 @@
       "expired": "Expired"
     },
     "workInspector": {
+      "copy": "Copy",
+      "copyInput": "Copy parameters",
+      "copyOutput": "Copy tool response",
+      "detailTruncated": "Showing the beginning — the full content is longer.",
+      "actionCount_one": "{{count}} action",
+      "actionCount_few": "{{count}} actions",
+      "actionCount_many": "{{count}} actions",
+      "actionCount_other": "{{count}} actions",
       "startOfTurn": "Start of Turn",
       "filterLabel": "Filter Work by type",
       "filterActive": "Filter Work by type (active filter: {{kind}})",
@@ -1653,27 +1681,141 @@
       "noMatches": "No Work matches these filters.",
       "emptyTurn": "No Work yet for this Turn.",
       "noActions": "No tool actions yet.",
-      "input": "Input",
-      "output": "Output",
+      "input": "Parameters",
+      "output": "Tool response",
+      "errorCode": "Error code: {{code}}",
       "counts": {
         "total_one": "{{count}} work item",
         "total_few": "{{count}} work items",
         "total_many": "{{count}} work items",
         "total_other": "{{count}} work items",
         "inProgress": "{{count}} in progress",
-        "commentary_one": "{{count}} commentary",
-        "commentary_few": "{{count}} commentary items",
-        "commentary_many": "{{count}} commentary items",
-        "commentary_other": "{{count}} commentary items",
-        "reasoning_one": "{{count}} analysis",
-        "reasoning_few": "{{count}} analyses",
-        "reasoning_many": "{{count}} analyses",
-        "reasoning_other": "{{count}} analyses",
-        "interaction_one": "{{count}} user response",
-        "interaction_few": "{{count}} user responses",
-        "interaction_many": "{{count}} user responses",
-        "interaction_other": "{{count}} user responses"
+        "commentary_one": "{{count}} progress note",
+        "commentary_few": "{{count}} progress notes",
+        "commentary_many": "{{count}} progress notes",
+        "commentary_other": "{{count}} progress notes",
+        "reasoning_one": "{{count}} thinking step",
+        "reasoning_few": "{{count}} thinking steps",
+        "reasoning_many": "{{count}} thinking steps",
+        "reasoning_other": "{{count}} thinking steps",
+        "interaction_one": "{{count}} user interaction",
+        "interaction_few": "{{count}} user interactions",
+        "interaction_many": "{{count}} user interactions",
+        "interaction_other": "{{count}} user interactions"
       }
+    },
+    "workSummary": {
+      "running": "In progress:",
+      "open": "Open work history",
+      "failed": "Failed: {{list}}",
+      "more": "and more",
+      "actions_one": "{{count}} tool action",
+      "actions_other": "{{count}} tool actions",
+      "actionsAtLeast_one": "at least {{count}} tool action",
+      "actionsAtLeast_other": "at least {{count}} tool actions",
+      "kind": {
+        "read_one": "{{count}} read",
+        "read_other": "{{count}} reads",
+        "edit_one": "{{count}} edit",
+        "edit_other": "{{count}} edits",
+        "write_one": "{{count}} write",
+        "write_other": "{{count}} writes",
+        "list_one": "{{count}} directory listing",
+        "list_other": "{{count}} directory listings",
+        "search_one": "{{count}} search",
+        "search_other": "{{count}} searches",
+        "command_one": "{{count}} command",
+        "command_other": "{{count}} commands",
+        "test_one": "{{count}} test run",
+        "test_other": "{{count}} test runs",
+        "web_one": "{{count}} web page",
+        "web_other": "{{count}} web pages",
+        "other_one": "{{count}} other action",
+        "other_other": "{{count}} other actions",
+        "read_few": "{{count}} reads",
+        "read_many": "{{count}} reads",
+        "edit_few": "{{count}} edits",
+        "edit_many": "{{count}} edits",
+        "write_few": "{{count}} writes",
+        "write_many": "{{count}} writes",
+        "list_few": "{{count}} directory listings",
+        "list_many": "{{count}} directory listings",
+        "search_few": "{{count}} searches",
+        "search_many": "{{count}} searches",
+        "command_few": "{{count}} commands",
+        "command_many": "{{count}} commands",
+        "test_few": "{{count}} test runs",
+        "test_many": "{{count}} test runs",
+        "web_few": "{{count}} web pages",
+        "web_many": "{{count}} web pages",
+        "other_few": "{{count}} other actions",
+        "other_many": "{{count}} other actions"
+      },
+      "outcome": {
+        "failed": "Turn failed",
+        "cancelled": "Turn stopped",
+        "interrupted": "Turn interrupted"
+      },
+      "live": {
+        "tool": "{{label}}",
+        "toolUnnamed": "Running a tool…",
+        "reasoning": "Thinking…",
+        "responding": "Writing the answer…",
+        "commentary": "Describing progress…",
+        "waiting": "Waiting…",
+        "cancelling": "Cancelling…",
+        "working": "Working…"
+      },
+      "actions_few": "{{count}} tool actions",
+      "actions_many": "{{count}} tool actions",
+      "actionsAtLeast_few": "at least {{count}} tool actions",
+      "actionsAtLeast_many": "at least {{count}} tool actions"
     }
+  },
+  "sessionStart": {
+    "heading": "New session",
+    "subheading": "The agent starts from your first message, in the context of this specification.",
+    "context": {
+      "heading": "Context",
+      "intro": "The session works on this specification — the agent receives it as context.",
+      "kind": "Specification",
+      "pinned": "Pinned"
+    },
+    "agent": {
+      "heading": "Agent",
+      "intro": "Choose who runs this session. It cannot be changed during the conversation."
+    },
+    "message": {
+      "label": "First message",
+      "placeholder": "Write what the agent should start with…",
+      "description": "The work mode and model apply to this message; in the session you can change them before each next one."
+    },
+    "name": {
+      "heading": "Session name",
+      "agentDefault": "The agent names the session from your first message.",
+      "useCustom": "Give it your own name",
+      "useAgent": "Let the agent name it",
+      "label": "Session name",
+      "placeholder": "e.g. Acceptance criteria review",
+      "limit": "Up to {{max}} characters.",
+      "remaining": "Characters left: {{remaining}}."
+    },
+    "prerequisite": {
+      "message": "Write the first message.",
+      "name": "Enter a name or let the agent name it.",
+      "noProvider": "No executor is available right now."
+    },
+    "footer": {
+      "agentNames": "The session opens with this message and the agent names it.",
+      "ready": "The session opens with this message."
+    },
+    "submit": {
+      "start": "Start session",
+      "starting": "Starting…"
+    }
+  },
+  "sessionNaming": {
+    "pending": "Naming…",
+    "provisionalTitle": "New session"
   }
 }

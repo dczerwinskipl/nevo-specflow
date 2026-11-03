@@ -57,8 +57,9 @@ import {
  * Context Secondary must leave behind a visible, clickable way to reopen it — not only on narrow
  * layouts. Context is the one tab of the Secondary rail there, with no close of its own and no
  * panel close beside it (secondary-navigation.md, "Root tabs and local navigation"): the
- * Primary header's persistent "Kontekst" toggle (aria-pressed mirrors the panel) hides and shows
- * it. Verified in every state story below that uses the Context mock view model, at 1440px.
+ * Primary header's persistent "Panel boczny" toggle (aria-pressed mirrors the panel) hides and
+ * shows the WHOLE side panel — Context and any opened tab — and showing it again restores both.
+ * Verified in every state story below that uses the Context mock view model, at 1440px.
  */
 async function verifyContextReopens(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
@@ -66,13 +67,29 @@ async function verifyContextReopens(canvasElement: HTMLElement) {
   await waitFor(() => expect(contextTab()).toBeVisible());
   await expect(canvas.queryByRole('button', { name: 'Zamknij panel dodatkowy' })).toBeNull();
   await expect(canvas.queryByRole('button', { name: 'Zamknij Kontekst' })).toBeNull();
-  const toggle = await canvas.findByRole('button', { name: 'Kontekst' });
+  const toggle = await canvas.findByRole('button', { name: 'Panel boczny' });
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await userEvent.click(toggle);
   await waitFor(() => expect(contextTab()).not.toBeInTheDocument());
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await userEvent.click(toggle);
   await waitFor(() => expect(contextTab()).toBeVisible());
+
+  // With another tab open, the toggle hides the whole panel, not only Context.
+  const historyRow = canvas.queryByRole('button', { name: /^Historia pracy/ });
+  if (!historyRow) {
+    return;
+  }
+
+  await userEvent.click(historyRow);
+  const historyTab = () => canvas.queryByRole('tab', { name: 'Historia pracy' });
+  await waitFor(() => expect(historyTab()).toBeVisible());
+  await userEvent.click(toggle);
+  await waitFor(() => expect(canvas.queryByRole('tablist')).not.toBeInTheDocument());
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await userEvent.click(toggle);
+  await waitFor(() => expect(historyTab()).toHaveAttribute('aria-selected', 'true'));
+  await expect(contextTab()).toBeVisible();
 }
 
 const meta = {

@@ -92,15 +92,22 @@ export function sessionFixture(waiting = false): SessionSnapshot {
  * Matches a session's `providerId` so the next-Turn model/effort picker has data to render.
  * Defaults to `sessionFixture`'s own `'mock'`; `fixtureApi` passes the actual snapshot's
  * `providerId` instead, so a fixture built on `base()`/`genericSpecLevelSnapshot()` (providerId
- * `'claude-code'`, see `managedSession.fullSession.stories-support.ts`) also gets a matching
+ * `'claude'`, see `managedSession.fullSession.stories-support.ts`) also gets a matching
  * provider — before this, `ModelEffortPicker` silently rendered nothing for every one of those
  * stories, since no item in `providers().items` ever matched that session's own `providerId`.
  * Its work modes are that provider's own catalogue (`providerModesFixture`).
  */
+/** Real Runtime provider ids (`claude`, `codex`) carry their product names, so Context shows them
+ * with their own logos (`SessionProviderIcon`); anything else is the controlled test provider. */
+const providerTitles: Readonly<Record<string, string>> = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+};
+
 export function providerFixture(providerId = 'mock'): ProviderDescriptor {
   return {
     providerId,
-    title: 'Controlled test provider',
+    title: providerTitles[providerId] ?? 'Controlled test provider',
     readiness: 'ready',
     capabilities: {
       questions: true,

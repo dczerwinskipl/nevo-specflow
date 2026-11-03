@@ -1388,6 +1388,7 @@
   },
   "sessions": {
     "context": {
+      "executor": "Wykonawca",
       "title": "Kontekst",
       "unavailable": "Kontekst nie jest jeszcze dostępny dla tej sesji.",
       "empty": "Brak dodatkowego kontekstu dla tej tury.",
@@ -1426,7 +1427,6 @@
       },
       "sessionDetails": {
         "usageTitle": "Zużycie sesji",
-        "usageScope": "w całej sesji",
         "limitsTitle": "Limity dostawcy",
         "refreshing": "Odświeżanie…",
         "costLabel": "Koszt",
@@ -1539,6 +1539,7 @@
     "back": "Wróć do specyfikacji"
   },
   "managedSession": {
+    "sidePanel": "Panel boczny",
     "sessionActions": {
       "rename": "Zmień nazwę",
       "renameTitle": "Zmień nazwę sesji",

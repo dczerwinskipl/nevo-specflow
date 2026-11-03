@@ -9,7 +9,7 @@ type ProviderModes = Pick<ProviderDescriptor, 'providerModes' | 'defaultModeId'>
  */
 export const providerModeFixtures = {
   /** Claude Code's native permission modes (titles as the Runtime's Claude driver reports them). */
-  'claude-code': {
+  claude: {
     defaultModeId: 'acceptEdits',
     providerModes: [
       {

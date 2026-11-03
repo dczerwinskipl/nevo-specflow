@@ -1388,6 +1388,7 @@
   },
   "sessions": {
     "context": {
+      "executor": "Agent",
       "title": "Context",
       "unavailable": "Context is not available for this session yet.",
       "empty": "No additional context for this Turn.",
@@ -1426,7 +1427,6 @@
       },
       "sessionDetails": {
         "usageTitle": "Session usage",
-        "usageScope": "for the whole session",
         "limitsTitle": "Provider limits",
         "refreshing": "Refreshing…",
         "costLabel": "Cost",
@@ -1539,6 +1539,7 @@
     "back": "Back to specifications"
   },
   "managedSession": {
+    "sidePanel": "Side panel",
     "sessionActions": {
       "rename": "Rename",
       "renameTitle": "Rename session",

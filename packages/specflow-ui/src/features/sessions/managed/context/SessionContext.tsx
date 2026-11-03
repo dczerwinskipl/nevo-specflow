@@ -13,6 +13,7 @@ import {
   type SecondaryStackDefinition,
 } from '@nevo/ui';
 import { translateNow, type MessageKey } from '../../../../i18n/message';
+import { ContextExecutorSection } from './ContextExecutorSection';
 import { ContextNavigationRow } from './ContextNavigationRow';
 import { placeholderRootTabs, type PlaceholderRootTab } from './SessionContextPlaceholderTabs';
 import { createSessionTasksInspector } from './SessionTasksInspector';
@@ -232,6 +233,7 @@ export function SessionContext({
    * anything renders at all.
    */
   const hasAnySection =
+    !!value.executor ||
     (!!value.specification && !!onOpenSpecification) ||
     !!value.executionScope ||
     !!value.attention?.length ||
@@ -247,6 +249,7 @@ export function SessionContext({
             own scroll-architecture contribution to the same complaint). Starts at the top and
             simply scrolls once content overflows, like an ordinary panel. */}
         <div className="grid w-full gap-6">
+          {value.executor && <ContextExecutorSection executor={value.executor} />}
           {value.specification && onOpenSpecification && (
             <section className="grid gap-1">
               <Typography variant="section-label">

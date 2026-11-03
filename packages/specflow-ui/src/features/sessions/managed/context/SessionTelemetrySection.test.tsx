@@ -26,7 +26,8 @@ describe('SessionTelemetrySection', () => {
     renderSection(fullTelemetrySnapshot);
 
     expect(screen.getByText('Session usage')).toBeTruthy();
-    expect(screen.getByText('for the whole session')).toBeTruthy();
+    // The title already says "session"; no repeated "for the whole session" caption.
+    expect(screen.queryByText('for the whole session')).toBeNull();
     // Cost stat cell: big number + "Cost" caption, no estimate/unconfirmed caveat for a
     // provider-reported + billed reading.
     expect(screen.getByText('$0.47')).toBeTruthy();

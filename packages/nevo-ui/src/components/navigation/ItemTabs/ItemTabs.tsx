@@ -105,9 +105,11 @@ function MiddleTruncate({ text, maxChars }: { text: string; maxChars?: number })
 }
 
 /** The chrome around a tab's label, shared by its classes and its width (`itemTabChromeWidth`). */
-function tabChrome(item: ItemTab): ItemTabChrome {
+function tabChrome(item: ItemTab, density: ItemTabDensity): ItemTabChrome {
   return {
-    closable: item.closable !== false,
+    // `closable` reserves the trailing slot. On the rail a pinned (non-closable) tab shows its pin
+    // there, so it keeps the slot too.
+    closable: item.closable !== false || density === 'rail',
     glyph: Boolean(item.icon) || item.state === 'loading' || item.state === 'missing',
   };
 }
@@ -166,7 +168,7 @@ function Tab({
 }: TabProps) {
   const status = statusText(item, labels);
   const muted = item.state === 'missing' || item.state === 'loading';
-  const chrome = tabChrome(item);
+  const chrome = tabChrome(item, density);
   const rail = density === 'rail';
 
   return (
@@ -270,9 +272,11 @@ function Tab({
 /**
  * Close button of one tab, pinned to the right edge of that tab. It lives in a layer beside the
  * tablist, never inside it (a tablist may only own tabs), and stays out of the tab order: the
- * keyboard path is Delete on the focused tab.
+ * keyboard path is Delete on the focused tab. On the rail, like an editor's tabs, the `x` of
+ * every closable tab is always visible and a pinned tab shows a pin in the same slot.
  */
 function CloseSlot({
+  density,
   item,
   width,
   shown,
@@ -280,6 +284,7 @@ function CloseSlot({
   onClose,
   onHover,
 }: {
+  density: ItemTabDensity;
   item: ItemTab;
   width: number;
   shown: boolean;
@@ -287,8 +292,19 @@ function CloseSlot({
   onClose: (id: string) => void;
   onHover: (id: string | null) => void;
 }) {
+  const rail = density === 'rail';
+
   return (
     <div className="pointer-events-none relative h-full shrink-0" style={{ width }}>
+      {item.closable === false && rail ? (
+        <span
+          aria-hidden="true"
+          className="absolute right-1 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-content-muted"
+          data-item-pinned="true"
+        >
+          <Icon name="pin" size="sm" />
+        </span>
+      ) : null}
       {item.closable !== false ? (
         <span className="absolute right-1 top-1/2 size-6 -translate-y-1/2">
           <button
@@ -301,7 +317,7 @@ function CloseSlot({
             className={cn(
               hitAreaClassName,
               'pointer-events-auto grid size-6 cursor-pointer place-items-center rounded-control-inline text-content-muted hover:bg-surface-selected hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring',
-              shown ? 'opacity-100' : 'opacity-0 pointer-coarse:opacity-100',
+              shown || rail ? 'opacity-100' : 'opacity-0 pointer-coarse:opacity-100',
             )}
           >
             <Icon name="close" size="sm" />
@@ -377,7 +393,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     variant === 'switcher' || (variant === 'auto' && width !== undefined && width < switcherBelow);
   const hintId = `${scope}-opened-hint`;
   const naturalWidths = items.map((item) =>
-    itemTabNaturalWidth(item.label, tabChrome(item), labelWidths[item.id], metrics),
+    itemTabNaturalWidth(item.label, tabChrome(item, density), labelWidths[item.id], metrics),
   );
   const naturalById = new Map(items.map((item, index) => [item.id, naturalWidths[index]!]));
   const { visible, widths, overflowing } = fitItemTabs(
@@ -556,6 +572,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
           {visible.map((item, index) => (
             <CloseSlot
               key={item.id}
+              density={density}
               item={item}
               width={widths[index]!}
               shown={hovered === item.id || focused === item.id || item.id === activeId}

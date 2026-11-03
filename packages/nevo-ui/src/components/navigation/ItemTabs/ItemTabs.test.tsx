@@ -164,10 +164,14 @@ describe('ItemTabs', () => {
       expect(files!.className).toContain('bg-tab-strip');
       expect(files!.className).toContain('border-b-border-subtle');
       expect(files!.className).toContain('border-t-transparent');
-      // Pinned Context: symmetric padding, no x.
-      expect(context!.className).toContain('pr-3');
+      // Pinned Context: no x, a pin in the trailing slot (which it keeps, like a closable tab).
+      expect(context!.className).toContain('pr-8');
       expect(screen.queryByRole('button', { name: 'Close Context' })).toBeNull();
-      expect(screen.getByRole('button', { name: 'Close Files' })).toBeTruthy();
+      expect(document.querySelectorAll('[data-item-pinned="true"]')).toHaveLength(1);
+      // Every closable rail tab shows its x at rest, not only the active or hovered one.
+      const closeFiles = screen.getByRole('button', { name: 'Close Files' });
+      expect(closeFiles.className).toContain('opacity-100');
+      expect(closeFiles.className).not.toContain('opacity-0');
     });
 
     it('sizes tabs with the rail metrics: 12px padding and a 7.4px estimated character', () => {
@@ -175,7 +179,8 @@ describe('ItemTabs', () => {
       const width = (name: string) =>
         Number.parseFloat(screen.getByRole('tab', { name }).parentElement!.style.width);
       expect(width('Work history')).toBe(44 + Math.round('Work history'.length * 7.4));
-      expect(width('Context')).toBe(24 + Math.round('Context'.length * 7.4));
+      // The pinned tab keeps the trailing slot for its pin, so it is sized like a closable tab.
+      expect(width('Context')).toBe(44 + Math.round('Context'.length * 7.4));
     });
 
     it('keeps the header density unchanged: underline, rounded, 2px apart', () => {

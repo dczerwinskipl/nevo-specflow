@@ -60,6 +60,7 @@ import {
   BookUser,
   PanelsTopLeft,
   PanelRight,
+  Pin,
   type LucideIcon,
 } from 'lucide-react';
 import { useDesignMetadata } from '@nevo/figma-capture/metadata';
@@ -136,6 +137,7 @@ export const iconRegistry = {
   'book-user': BookUser,
   'panels-top-left': PanelsTopLeft,
   'panel-right': PanelRight,
+  pin: Pin,
 } satisfies Record<IconName, LucideIcon>;
 
 /**

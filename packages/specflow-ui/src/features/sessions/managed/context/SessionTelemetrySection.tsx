@@ -51,7 +51,7 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * reading), and the visible value text spells that out ("43% zajęte" / "43% used", "47%
  * wykorzystane" / "47% used") instead of a bare, directionless "43%".
  *
- * "Zużycie sesji" is explicitly session-scoped (`usageScope` caption): `TelemetrySnapshot.usage`/
+ * "Zużycie sesji" is session-scoped by its title: `TelemetrySnapshot.usage`/
  * `.cost` already carry an optional sibling `turn` reading next to `session` (see
  * `sessionTelemetry.ts`), but no fixture populates it and nothing else in this UI reads it yet.
  * This section still only ever reads `.session` — same as before this pass — labelled honestly as
@@ -97,11 +97,10 @@ export function SessionTelemetrySection({
       {hasUsageSection && (
         <section className="grid gap-3">
           <div className="flex flex-wrap items-baseline gap-2">
+            {/* The title alone says it is session-wide ("Zużycie sesji"); a "w całej sesji" caption
+                next to it only repeated it (owner review). */}
             <Typography variant="section-label">
               {t('sessions.context.sessionDetails.usageTitle')}
-            </Typography>
-            <Typography variant="label-sm" className="text-content-muted">
-              {t('sessions.context.sessionDetails.usageScope')}
             </Typography>
             {snapshot.refresh.state === 'running' && (
               <Typography variant="label-sm" className="text-content-muted">
@@ -237,7 +236,7 @@ function StatCell({
  * be honestly computed (graceful degradation; see `limitWindowPercentage`).
  *
  * `scopeCaption` (context-window occupancy only, see `formatContextWindowScope`): this row sits
- * inside a section captioned "Zużycie sesji" / "for the whole session" (`usageScope`), which is
+ * inside a section titled "Zużycie sesji" (session-wide), which is
  * accurate for the cost/token stat cells next to it but NOT for context-window occupancy — a
  * model's context window is architecturally scoped to one Turn/model invocation, never summed
  * across a Session. Rather than inventing a Session-wide number that doesn't exist, this small
@@ -486,7 +485,7 @@ function formatContextOccupancy(
 
 /**
  * Correctness fix (live owner review, second pass): "Model context window" sits inside a section
- * explicitly captioned "for the whole session" (`usageScope`), but a model's context window is
+ * titled as session-wide ("Zużycie sesji"), but a model's context window is
  * architecturally scoped to ONE Turn/model invocation, never summed or meaningful across a whole
  * Session — unlike cost/token usage next to it, which genuinely ARE session aggregates. Labelling
  * the row "for the whole session" by ambient proximity would be a real (if implicit) scope claim

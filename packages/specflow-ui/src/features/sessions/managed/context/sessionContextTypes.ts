@@ -40,10 +40,22 @@ export interface SessionContextAttentionItem {
   task?: SessionContextTaskRef;
 }
 
+/** Who runs this Session: the provider's own identity and the model (and effort) selected for the
+ * next Turn, exactly as the Runtime and the composer report them — never inferred from titles. */
+export interface SessionExecutor {
+  providerId: string;
+  providerTitle: string;
+  modelTitle?: string;
+  effort?: string;
+}
+
 export interface SessionContextViewModel {
   /** `unavailable` means the projection itself could not be read (missing capability/backend
    * error), which must read differently from a legitimately empty section. */
   status: 'ready' | 'unavailable';
+  /** Who runs the Session (provider + selected model/effort), shown first. Supplied by the Session
+   * screen from the Runtime's provider catalogue and the composer's selection; absent until known. */
+  executor?: SessionExecutor;
   specification?: { id: string; key: string; title: string };
   executionScope?: SessionContextExecutionScope;
   attention?: SessionContextAttentionItem[];

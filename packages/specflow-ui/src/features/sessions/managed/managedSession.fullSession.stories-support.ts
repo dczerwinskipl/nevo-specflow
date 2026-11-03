@@ -27,7 +27,7 @@ function base(): SessionSnapshot {
     session: {
       sessionId: fixtureSessionId,
       projectId: 'project',
-      providerId: 'claude-code',
+      providerId: 'claude',
       mode: 'workspace-write',
       title: 'Workflow admission hardening',
       readiness: 'ready',

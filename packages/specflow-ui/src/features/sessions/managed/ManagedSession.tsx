@@ -1358,6 +1358,29 @@ export function ManagedSession({
   }, [feed]);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
+  // The side panel shows when Context is registered or a runtime tab is visible.
+  const sidePanelOpen = contextOpen || navigation.isOpen;
+  const hiddenTabIdRef = useRef<string | null>(null);
+  const toggleSidePanel = async () => {
+    if (sidePanelOpen) {
+      hiddenTabIdRef.current = navigation.isOpen ? navigation.tabs.activeTabId : null;
+      if (navigation.isOpen && !(await navigation.close())) {
+        return; // a leave guard kept the open tab
+      }
+
+      setContextOpen(false);
+
+      return;
+    }
+
+    setContextOpen(true);
+    const hiddenTabId = hiddenTabIdRef.current;
+    hiddenTabIdRef.current = null;
+    if (hiddenTabId && navigation.tabs.tabs.some((tab) => tab.id === hiddenTabId)) {
+      await navigation.activateTab(hiddenTabId);
+    }
+  };
+
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
   const providers = useQuery({
     queryKey: ['managed-session-providers', owner],
@@ -1376,9 +1399,26 @@ export function ManagedSession({
   // Conversation's live Work block reads — not from the supplied Context view model. Until the
   // first snapshot arrives the supplied value (if any) stands.
   const runningTurnId = snapshot ? snapshot.activeTurn?.turnId : sessionContext.runningTurnId;
+  // Context's first section: the provider (as the Runtime names it) and the model/effort the
+  // composer has selected for the next Turn.
+  const executorModelTitle = provider?.models.find(
+    (model) => model.modelId === selectedModelId,
+  )?.title;
+  const executor = useMemo(
+    () =>
+      provider
+        ? {
+            providerId: provider.providerId,
+            providerTitle: provider.title,
+            modelTitle: executorModelTitle,
+            effort: executorModelTitle ? selectedEffort : undefined,
+          }
+        : undefined,
+    [provider, executorModelTitle, selectedEffort],
+  );
   const contextValue = useMemo<SessionContextViewModel>(
-    () => ({ ...sessionContext, runningTurnId }),
-    [sessionContext, runningTurnId],
+    () => ({ ...sessionContext, runningTurnId, ...(executor ? { executor } : {}) }),
+    [sessionContext, runningTurnId, executor],
   );
 
   // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (owner audit:
@@ -1405,7 +1445,7 @@ export function ManagedSession({
     state.connection === 'connected' &&
     !liveInConversation &&
     snapshot.currentActivity?.kind === 'waiting';
-  // The raw provider id ("claude-code", "codex", …) is not shown on its own anymore (owner audit:
+  // The raw provider id ("claude", "codex", …) is not shown on its own anymore (owner audit:
   // "tragiczne designowo" — not meaningful to a user who already sees the active model via the
   // composer's own Model picker). Only the mock-provider safety caveat survives, since it carries
   // real operational meaning ("nothing you do here persists"), not mere identity.
@@ -1436,18 +1476,19 @@ export function ManagedSession({
           ),
       }
     : {
-        // Split layout: a persistent toggle that both opens and closes the Context panel. With the
-        // Secondary tab strip shown the panel has no close of its own (each tab closes itself), so
-        // this is the one way to hide the whole panel.
+        // Split layout: a persistent toggle that hides and shows the WHOLE side panel — Context
+        // and every opened tab (owner: it used to close only Context, leaving Work history open).
+        // With the tab rail shown the panel has no close of its own, so this is the one way to
+        // hide it. Hiding keeps the tabs and their stacks (`navigation.close` retains them);
+        // showing again restores Context and the tab that was active.
         id: 'context',
-        label: t('sessions.context.title'),
-        // The standard side-panel glyph, not a document (owner audit, round eight): this shows or
-        // hides the panel itself rather than opening a file.
+        label: t('managedSession.sidePanel'),
+        // The standard side-panel glyph, not a document (owner audit, round eight).
         icon: 'panel-right',
         presentation: 'icon',
-        pressed: contextOpen,
+        pressed: sidePanelOpen,
         direct: 'always',
-        onPress: () => setContextOpen((open) => !open),
+        onPress: () => void toggleSidePanel(),
       };
   // Replaces the old status row's own Retry button (`state.connection === 'error'`), which this
   // pass removes along with the rest of that row.

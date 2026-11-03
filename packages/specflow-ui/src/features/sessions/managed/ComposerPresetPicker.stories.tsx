@@ -47,7 +47,7 @@ function ComposerModePickerHarness({
 }
 
 const handleChange = fn();
-const claudeModes = runtimeWorkModes(providerFixture('claude-code'));
+const claudeModes = runtimeWorkModes(providerFixture('claude'));
 
 const meta = {
   title: 'SpecFlow/Components/ComposerModePicker',

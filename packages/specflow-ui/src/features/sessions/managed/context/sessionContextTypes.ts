@@ -8,9 +8,10 @@
  * needs, used here with representative fixtures (see `sessionContextFixtures.ts`) until a real
  * Runtime projection exists. See the Full Session UX report for the flagged backend dependency.
  *
- * Every section is optional: a missing section simply does not render (graceful degradation),
- * and adding a future section (Handovers, Evidence, …) must not require reworking this shape or
- * its consumers.
+ * Every section is optional and carries a `ContextFact`: a section the Session has no association
+ * with is absent (it simply does not render), while a section whose data is loading, unreadable or
+ * missing says so (see `sessionContextAvailability.ts`, full-session-screen-structure.md §7.6).
+ * Adding a future section (Handovers, Evidence, …) must not require reworking this shape.
  */
 
 import type { TelemetrySnapshot } from './sessionTelemetry';
@@ -27,7 +28,13 @@ export interface SessionContextTaskRef {
 export type SessionContextExecutionScope =
   | { kind: 'generic' }
   | { kind: 'single-task'; role?: string; task: SessionContextTaskRef }
-  | { kind: 'batch'; role?: string; tasks: SessionContextTaskRef[] };
+  | {
+      kind: 'batch';
+      role?: string;
+      tasks: SessionContextTaskRef[];
+      /** How many of the Session's Tasks could not be found; the `tasks` that were found still show. */
+      missingTaskCount?: number;
+    };
 
 export interface SessionContextAttentionItem {
   id: string;
@@ -49,47 +56,72 @@ export interface SessionExecutor {
   effort?: string;
 }
 
+/**
+ * One piece of Context data together with what we know about it. `loading`: the read is in flight;
+ * `ready`: we have the value; `unreadable`: the association exists but its data could not be read;
+ * `missing`: the association exists but the referenced object cannot be found (`ref.key` names it
+ * when the reference itself is known).
+ */
+export type ContextFact<T> =
+  | { status: 'loading' }
+  | { status: 'ready'; value: T }
+  | { status: 'unreadable' }
+  | { status: 'missing'; ref?: { key?: string } };
+
+/**
+ * What kind of Session this is, which decides which sections are present and which are required.
+ * `unknown` is the real route today: the Runtime contract carries no Specification/Task
+ * association yet, so we must not infer one (`not-provided`) or could not read it (`unreadable`).
+ */
+export type SessionScope =
+  | { kind: 'unknown'; reason: 'not-provided' | 'unreadable' }
+  | { kind: 'standalone' }
+  | { kind: 'specification' }
+  | { kind: 'task'; taskCount: number };
+
+/** The Specification a Specification-/Task-scoped Session belongs to. */
+export interface ContextSpecification {
+  id: string;
+  key: string;
+  title: string;
+}
+
 export interface SessionContextViewModel {
-  /** `unavailable` means the projection itself could not be read (missing capability/backend
-   * error), which must read differently from a legitimately empty section. */
-  status: 'ready' | 'unavailable';
-  /** Who runs the Session (provider + selected model/effort), shown first. Supplied by the Session
-   * screen from the Runtime's provider catalogue and the composer's selection; absent until known. */
-  executor?: SessionExecutor;
-  specification?: { id: string; key: string; title: string };
-  executionScope?: SessionContextExecutionScope;
-  attention?: SessionContextAttentionItem[];
-  relatedTasks?: SessionContextTaskRef[];
+  /** Replaces the former `status`: which sections are present/required for this Session. */
+  scope: SessionScope;
+  /** Who runs the Session (provider + selected model/effort), shown first; always required. The
+   * Session screen derives it from the Runtime's provider catalogue and the composer's selection. */
+  executor?: ContextFact<SessionExecutor>;
+  specification?: ContextFact<ContextSpecification>;
+  executionScope?: ContextFact<SessionContextExecutionScope>;
+  attention?: ContextFact<SessionContextAttentionItem[]>;
+  relatedTasks?: ContextFact<SessionContextTaskRef[]>;
   /**
-   * The Session's current/most-recent Turn, when one exists — the id `SessionContext`'s own
-   * "Work history" row opens (reuses the same `managed-session-work` Secondary tab `ManagedSession`
-   * already creates for Conversation's own compact Work summaries, full-session-screen-structure.md
-   * §7.4/§8.3: one Work root tab, reused regardless of entry point, never a second instance).
-   * Absent: the row does not render (same "missing fact hides the row" rule as every other optional
-   * section here) — there is no cross-Turn "list all Turns" projection yet (owner decision: scope
-   * v1 to the current Turn only; full history needs a new backend endpoint, a separate task).
+   * The Session's current/most-recent Turn — the id `SessionContext`'s own "Work history" row
+   * opens (the same per-Turn Work tab Conversation's Work blocks open, full-session-screen-structure.md
+   * §8.3). `loading` before the first snapshot; absent when the Session has no Turn yet. There is
+   * no cross-Turn list projection yet (v1 scope: the current/last Turn only).
    */
-  activeTurnId?: string;
+  workHistory?: ContextFact<{ turnId: string }>;
   /**
-   * The Turn that is in flight right now — the Managed Sessions snapshot's `activeTurn.turnId`,
-   * which the contract only carries while a Turn is running (`ActiveTurnSchema`, absent/`null`
-   * once it settles). Absent when no Turn is running, even if the Session itself is still active
-   * and ready for the next message. Unlike `activeTurnId` above ("current or most recent"), this
-   * never names a settled Turn, so the context-window caption can tell "Current Turn" (the measured
-   * Turn is this one) from "Last Turn" (the measurement belongs to a Turn that has settled).
+   * The Turn that is in flight right now — the snapshot's `activeTurn.turnId`, present only while
+   * a Turn runs. Lets the "Work" row and the context-window caption tell "Current Turn" from "Last
+   * Turn".
    */
   runningTurnId?: string;
   /**
    * Low-emphasis "Session details" (§7.2/§23): token usage, cost, context occupancy, rate
    * limits. Demo data against the not-yet-merged PR #107 contract — see `sessionTelemetry.ts`.
-   * Absent/fully-`unavailable` telemetry renders nothing, same as the other optional sections.
+   * Absent/fully-`unavailable` telemetry renders nothing.
    */
   telemetry?: TelemetrySnapshot;
 }
 
 /**
- * Honest default for the real `ManagedSession` route: the managed Sessions contract currently has
- * no Specification/Task association projection at all, so Context has nothing to read yet. This is
- * an `unavailable` integration dependency, not a legitimately empty Context.
+ * Honest default for the real `ManagedSession` route: the managed Sessions contract has no
+ * Specification/Task association projection, so the scope is unknown (not provided) and only the
+ * facts the screen can derive itself (executor, work history) are shown.
  */
-export const unavailableSessionContext: SessionContextViewModel = { status: 'unavailable' };
+export const realRouteSessionContext: SessionContextViewModel = {
+  scope: { kind: 'unknown', reason: 'not-provided' },
+};

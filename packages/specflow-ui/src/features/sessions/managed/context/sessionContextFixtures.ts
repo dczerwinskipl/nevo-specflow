@@ -4,10 +4,16 @@ import {
   partialAntigravityTelemetrySnapshot,
   staleTelemetrySnapshot,
 } from './sessionTelemetry';
-import { unavailableSessionContext } from './sessionContextTypes';
-import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
+import type {
+  ContextFact,
+  SessionContextTaskRef,
+  SessionContextViewModel,
+  SessionExecutor,
+} from './sessionContextTypes';
 
 /** Product-owned mock fixtures. Not backend payloads — see `sessionContextTypes.ts`. */
+
+const ready = <T>(value: T): ContextFact<T> => ({ status: 'ready', value });
 
 const specA = { id: 'spec-a', key: 'SPEC-A', title: 'Workflow admission hardening' };
 
@@ -32,19 +38,29 @@ const task05: SessionContextTaskRef = {
   title: 'Update the readiness policy snapshot',
 };
 
+/** The executor a real route shows once the Runtime's provider catalogue has loaded. */
+export const claudeExecutor: SessionExecutor = {
+  providerId: 'claude',
+  providerTitle: 'Claude',
+  modelTitle: 'Opus 4.1',
+  effort: 'high',
+};
+
+/** The live Turn of `richDefaultApi` (`workInspectorTurnId`): opening Context's "Work history" row
+ * lands on the same Work its chat Work block opens (same tab either way). */
+const workHistory = ready({ turnId: workInspectorTurnId });
+
 /** State A — generic/spec-level Session (full-session-screen-structure.md §12). Also carries a
  * full/available telemetry snapshot (§23/PR #107 demo data) to exercise `SessionTelemetrySection`
- * with every dimension present. */
+ * with every dimension present. Shows the Documents row once a handler is wired. */
 export function genericSpecLevelContext(): SessionContextViewModel {
   return {
-    status: 'ready',
-    specification: specA,
-    executionScope: { kind: 'generic' },
-    relatedTasks: [task02, task03],
+    scope: { kind: 'specification' },
+    specification: ready(specA),
+    executionScope: ready({ kind: 'generic' }),
+    relatedTasks: ready([task02, task03]),
     telemetry: fullTelemetrySnapshot,
-    // The live Turn of `richDefaultApi` (`workInspectorTurnId`) — opening Context's "Work history"
-    // row lands on the same Work its chat Work block opens (same tab either way).
-    activeTurnId: workInspectorTurnId,
+    workHistory,
     // The measured Turn is the one still running, so the context window reads "Current Turn".
     runningTurnId: fullTelemetrySnapshot.context.value?.turnId,
   };
@@ -64,10 +80,10 @@ export function settledTurnContext(): SessionContextViewModel {
  * currency and stays `unavailable` rather than guessed at. */
 export function singleTaskContext(): SessionContextViewModel {
   return {
-    status: 'ready',
-    specification: specA,
-    executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
-    relatedTasks: [task02],
+    scope: { kind: 'task', taskCount: 1 },
+    specification: ready(specA),
+    executionScope: ready({ kind: 'single-task', role: 'Implementer', task: task03 }),
+    relatedTasks: ready([task02]),
     telemetry: partialAntigravityTelemetrySnapshot,
   };
 }
@@ -76,10 +92,10 @@ export function singleTaskContext(): SessionContextViewModel {
  * primary validation target). */
 export function batchContext(): SessionContextViewModel {
   return {
-    status: 'ready',
-    specification: specA,
-    executionScope: { kind: 'batch', role: 'Reviewer', tasks: [task02, task03, task04] },
-    relatedTasks: [task05],
+    scope: { kind: 'task', taskCount: 3 },
+    specification: ready(specA),
+    executionScope: ready({ kind: 'batch', role: 'Reviewer', tasks: [task02, task03, task04] }),
+    relatedTasks: ready([task05]),
   };
 }
 
@@ -87,17 +103,17 @@ export function batchContext(): SessionContextViewModel {
  * actionable controls, which remain in Primary. */
 export function pendingInteractionContext(): SessionContextViewModel {
   return {
-    status: 'ready',
-    specification: specA,
-    executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
-    attention: [
+    scope: { kind: 'task', taskCount: 1 },
+    specification: ready(specA),
+    executionScope: ready({ kind: 'single-task', role: 'Implementer', task: task03 }),
+    attention: ready([
       {
         id: 'session-interaction',
         tone: 'attention',
         summary: 'Agent needs your input in the conversation.',
         readOnly: true,
       },
-    ],
+    ]),
   };
 }
 
@@ -110,49 +126,155 @@ export function waitingWithoutAttentionContext(): SessionContextViewModel {
 /** State H — terminal failure/cancellation/interruption (§19): Turn outcome and Task/workflow
  * consequence stay separate facts. The Task's own summary says no recovery action is needed yet
  * (Task-level consequence, independent of the Turn's own failure), so its tone must read as
- * informational, not as a "needs attention" warning the text itself contradicts (owner audit) —
- * the fix is the icon/tone, the copy's own meaning is unchanged. */
+ * informational, not as a "needs attention" warning the text itself contradicts (owner audit). */
 export function terminalOutcomeContext(): SessionContextViewModel {
   return {
-    status: 'ready',
-    specification: specA,
-    executionScope: { kind: 'single-task', role: 'Implementer', task: task03 },
-    attention: [
+    scope: { kind: 'task', taskCount: 1 },
+    specification: ready(specA),
+    executionScope: ready({ kind: 'single-task', role: 'Implementer', task: task03 }),
+    attention: ready([
       {
         id: 'task-03-attention',
         tone: 'info',
         summary: 'Still active — no recovery required yet.',
         task: task03,
       },
-    ],
+    ]),
     // Stale telemetry (§23/PR #107 demo data): observed before this outcome settled and not yet
     // reconfirmed, so every telemetry line must show the subtle "stale" cue, not read as live.
     telemetry: staleTelemetrySnapshot,
   };
 }
 
-/** State I — unavailable/unknown Session state (§20): the projection itself could not be read. */
-export function unavailableContext(): SessionContextViewModel {
-  return unavailableSessionContext;
+/** The real route today: the Runtime carries no Specification/Task association, so the scope is
+ * unknown (not provided) and only the executor and Work history (derived from the Session's own
+ * snapshot) show. */
+export function realRouteContext(): SessionContextViewModel {
+  return {
+    scope: { kind: 'unknown', reason: 'not-provided' },
+    executor: ready(claudeExecutor),
+    workHistory,
+    runningTurnId: workInspectorTurnId,
+  };
 }
 
-/** Graceful full omission: every optional section absent (owner decision 2 — a missing group must
- * never crash or show a broken UI, including before any optional section has ever shipped). */
-export function emptyContext(): SessionContextViewModel {
-  return { status: 'ready' };
+/** The real route before the first snapshot and the provider catalogue arrive. */
+export function realRouteLoadingContext(): SessionContextViewModel {
+  return {
+    scope: { kind: 'unknown', reason: 'not-provided' },
+    executor: { status: 'loading' },
+    workHistory: { status: 'loading' },
+  };
+}
+
+/** State I — the Session's links to a Specification/Tasks exist but could not be read (§11). */
+export function associationsUnreadableContext(): SessionContextViewModel {
+  return {
+    scope: { kind: 'unknown', reason: 'unreadable' },
+    executor: ready(claudeExecutor),
+    workHistory,
+  };
+}
+
+/** A Session with no Specification association at all: nothing is promised, so no note either. */
+export function standaloneContext(): SessionContextViewModel {
+  return {
+    scope: { kind: 'standalone' },
+    executor: ready(claudeExecutor),
+    workHistory,
+    runningTurnId: workInspectorTurnId,
+  };
+}
+
+/** Specification-scoped Session whose Specification is still loading (skeleton under its label). */
+export function specLoadingContext(): SessionContextViewModel {
+  return {
+    ...genericSpecLevelContext(),
+    executor: ready(claudeExecutor),
+    specification: { status: 'loading' },
+  };
+}
+
+/** The Specification exists but could not be read: a warning in its slot. */
+export function specUnreadableContext(): SessionContextViewModel {
+  return {
+    ...genericSpecLevelContext(),
+    executor: ready(claudeExecutor),
+    specification: { status: 'unreadable' },
+  };
+}
+
+/** A required Specification that cannot be found: an error (danger) note naming its key. */
+export function specRequiredMissingContext(): SessionContextViewModel {
+  return {
+    ...genericSpecLevelContext(),
+    executor: ready(claudeExecutor),
+    specification: { status: 'missing', ref: { key: 'SPEC-A' } },
+  };
+}
+
+/** A Task-scoped Session whose Task cannot be found: an error note in Current execution. */
+export function taskRequiredMissingContext(): SessionContextViewModel {
+  return {
+    ...singleTaskContext(),
+    executor: ready(claudeExecutor),
+    executionScope: { status: 'missing', ref: { key: 'TASK-03' } },
+    attention: { status: 'loading' },
+  };
+}
+
+/** A batch of three Tasks of which one cannot be found: the two found Tasks still show beside the
+ * error note. */
+export function batchPartialMissingContext(): SessionContextViewModel {
+  return {
+    ...batchContext(),
+    executor: ready(claudeExecutor),
+    executionScope: ready({
+      kind: 'batch',
+      role: 'Reviewer',
+      tasks: [task02, task03],
+      missingTaskCount: 1,
+    }),
+  };
+}
+
+/** Attention could not be checked: a warning in its slot. */
+export function attentionUnreadableContext(): SessionContextViewModel {
+  return {
+    ...singleTaskContext(),
+    executor: ready(claudeExecutor),
+    attention: { status: 'unreadable' },
+  };
+}
+
+/** Related Tasks could not be loaded: a warning in its slot. */
+export function relatedTasksUnreadableContext(): SessionContextViewModel {
+  return {
+    ...singleTaskContext(),
+    executor: ready(claudeExecutor),
+    relatedTasks: { status: 'unreadable' },
+  };
+}
+
+/** The executor the Session names is no longer in the provider catalogue: an error note. */
+export function executorMissingContext(): SessionContextViewModel {
+  return {
+    ...realRouteContext(),
+    executor: { status: 'missing', ref: { key: 'claude' } },
+  };
 }
 
 /** Stress fixture: long titles, a longer related-Task list, mixed attention tones. */
 export function stressContext(): SessionContextViewModel {
   return {
-    status: 'ready',
-    specification: {
+    scope: { kind: 'task', taskCount: 3 },
+    specification: ready({
       id: 'spec-long',
       key: 'SPEC-LONG',
       title:
         'Cross-module authorization and recovery hardening for the deterministic workflow engine',
-    },
-    executionScope: {
+    }),
+    executionScope: ready({
       kind: 'batch',
       role: 'Reviewer',
       tasks: [
@@ -165,8 +287,8 @@ export function stressContext(): SessionContextViewModel {
             'Reconcile the readiness policy with the recovery transition table across every provider adapter',
         },
       ],
-    },
-    attention: [
+    }),
+    attention: ready([
       {
         id: 'a1',
         tone: 'attention',
@@ -174,11 +296,11 @@ export function stressContext(): SessionContextViewModel {
         readOnly: true,
       },
       { id: 'a2', tone: 'info', summary: 'TASK-05 requires owner review.', task: task05 },
-    ],
-    relatedTasks: [
+    ]),
+    relatedTasks: ready([
       task04,
       task05,
       { id: 'task-06', key: 'TASK-06', title: 'Archive the migration notes' },
-    ],
+    ]),
   };
 }

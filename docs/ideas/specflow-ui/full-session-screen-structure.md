@@ -442,6 +442,13 @@ It should not become a metadata dump.
 ### 7.2 Proposed structural order
 
 ```text
+Executor                      (always first: provider, selected model and effort)
+  scope note                  (only when the Session's links are unknown, §7.6)
+
+Specification                 (Specification- and Task-scoped Sessions)
+  Specification row
+  Documents row               (real: opens that Specification's Documents)
+
 Current execution
   agent role/profile
   generic / single Task / Task batch
@@ -452,21 +459,23 @@ Attention / next actions
   Spec/Task human-required action
   continue/resume/recovery when relevant
 
-Related product context
-  Specification
-  current execution Tasks
+Related Tasks
   contextual/historical Tasks
 
-Evidence
-  Handover(s) when available
-  review/artifact references
-  change/verification summary when relevant
+Work                          (real: Work history of the current or last Turn)
+
+Planned areas                 (preview rows, §7.4: Files / Changes, Handovers, Artifacts,
+                               Instructions, Environment)
 
 Session details
-  mode/capabilities/provider/model only as secondary technical context
+  token usage, cost, context window and provider limits, always last
 ```
 
-Empty sections disappear.
+The order is fixed: a section changing state (loading, ready, note) replaces the content of its own
+slot and never moves its neighbours. Whether a section is present, loading, a note or a failure
+follows §7.6. The former "empty sections disappear" is refined there: nothing is shown for a
+subject the Session has no association with, but a known association whose data is missing is said
+out loud.
 
 When a Session interaction already requires response in Primary, Context may summarize that fact for
 orientation but should not duplicate the full response controls. The authoritative interaction stays
@@ -498,6 +507,15 @@ The Context home is a **pinned Secondary tab**. Context itself does not duplicat
 a second horizontal set of section buttons or repeat the full section lists in a competing menu.
 Its concise, clickable content summaries open/reselect **root tabs** such as Tasks, Files/Changes,
 History, Handovers, Artifacts, Instructions or Environment when useful.
+
+**Real subjects versus Planned areas.** Three subjects have a real screen and sit in their own
+sections: **Documents** (a row under the Specification, a route to that Specification's Documents
+with the Session as the way back), **Work history** (section "Work", opens the Work tab of the
+current or last Turn, one tab per Turn) and **Tasks** (Current execution and Related Tasks). The
+remaining five (Files / Changes, Handovers, Artifacts, Instructions, Environment) have no screen
+yet: they are one flat section **"Planned areas"**, a preview of what Context will cover. Their rows
+still open a placeholder tab ("This area is a preview — its content will come later.") so the
+navigation mechanics are real. No sub-groups, and no "coming soon" labels on the real subjects.
 
 ### 7.4.1 Per-object tabs (owner decision 2026-11-03)
 
@@ -534,6 +552,51 @@ specific Task execution or attempt belong in its local stack. This distinction i
 navigation decision; the exact canonical Handover and artifact contracts still need integration.
 
 Do not create a third simultaneous workspace pane.
+
+### 7.6 Context data availability
+
+Every fact-backed section carries a `ContextFact`: `loading`, `ready`, `unreadable` or `missing`.
+The Session also has a **scope**: `unknown` (not provided or unreadable), `standalone`,
+`specification` or `task`. The scope decides which sections exist and which references are
+required:
+
+| Section           | Exists for scope    | Required (missing = error)  |
+| ----------------- | ------------------- | --------------------------- |
+| Executor          | always              | always                      |
+| Specification     | specification, task | specification, task         |
+| Current execution | specification, task | task (the executed Task(s)) |
+| Attention         | specification, task | never                       |
+| Related Tasks     | specification, task | never                       |
+| Work              | always              | never                       |
+
+Resolution of one section: no fact, or an empty ready list, is **omitted**; `loading` shows the
+section label with skeleton rows at the height of the rows they stand for (one row; a Task-scoped
+execution shows `min(taskCount, 3)`); `unreadable` is a **warning** note; `missing` is a warning for
+an optional reference and an **error** note for a required one. An absent association ("not
+created") is never a note. The whole-panel "Context is not available" screen is gone: Context always
+keeps the facts it does know.
+
+Notes are the DS `InlineNote` in the section's slot, under its label: `info`, `attention` for a
+warning and `danger` for an error. They are passive: no live region (Context is an inspector the
+reader opens, not an alert), the text carries the meaning, the icon is decorative. No retry in v1.
+
+- Scope unknown, not provided (the real route today): one panel-level info note under the Executor,
+  no label: "This session's links to a Specification and Tasks aren't available yet." Unreadable:
+  the same slot, attention tone: "Couldn't load this session's links." A standalone Session has no
+  note.
+- Specification unreadable: "Couldn't load this session's Specification." Missing and required:
+  "Can't find Specification {key} that this session belongs to."
+- Execution Task missing and required: "Can't find {key}, the Task this session is executing." For a
+  batch: "{count} of {total} Tasks for this session can't be found." (the Tasks that were found still
+  render beside the note). Execution unreadable: "Couldn't load the Tasks being executed."
+- Attention unreadable: "Couldn't check whether anything needs your attention." Related Tasks
+  unreadable or missing: "Couldn't load related Tasks."
+- Executor unreadable: "Couldn't load executor details." Missing (not in the provider catalogue):
+  "This session's executor is no longer available."
+
+The Documents row appears only while the Specification is ready: a loading Specification's skeleton
+covers both rows, an unreadable or missing one shows only its note. Work history is `loading` before
+the first snapshot and absent when the Session has no Turn yet.
 
 ---
 
@@ -1037,6 +1100,10 @@ composer/action availability follows authoritative readiness
 
 Unknown/unavailable is not the same as a failed historical Turn.
 
+The Context Secondary keeps every fact it still knows in this state: an unreadable or unavailable
+association is a note in that section's slot (§7.6), never a screen that replaces the whole
+Context.
+
 Transport reconnecting may be shown as connection feedback, but transport state must not overwrite
 canonical Session/Turn semantics. Once authoritative state is restored, the canonical projection
 wins.
@@ -1071,6 +1138,13 @@ composer / interaction controls
 ```text
 ←  Context
 
+Executor
+  Claude · Opus · high
+
+Specification
+  Spec A
+  Documents
+
 Current execution
   Reviewer
   3 Tasks
@@ -1081,9 +1155,16 @@ Needs attention
 Related Tasks
   ...
 
-Evidence
+Work
+  Work history · Current Turn
+
+Planned areas
   ...
 ```
+
+The same sections and rules as wide (§7.2, §7.6); loading and note states occupy the same slots.
+From the Documents row, the Documents tree (also with no document open) shows the Session as its
+way back.
 
 ### 21.3 Work/detail pushed inspection
 

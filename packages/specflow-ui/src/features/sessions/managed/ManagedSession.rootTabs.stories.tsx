@@ -41,7 +41,10 @@ const meta = {
     owner: 'root-tabs-story',
     api: workSummaryStatesApi(),
     // Context's "Work history" row opens the THIRD Turn: the same Turn as the third Work block.
-    sessionContext: { ...genericSpecLevelContext(), activeTurnId: turnIds[2] },
+    sessionContext: {
+      ...genericSpecLevelContext(),
+      workHistory: { status: 'ready', value: { turnId: turnIds[2]! } },
+    },
   },
 } satisfies Meta<typeof ManagedSession>;
 export default meta;

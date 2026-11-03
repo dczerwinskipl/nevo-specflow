@@ -620,7 +620,8 @@ export const NarrowPanelOpensContentsAsSheet: Story = {
     await expect(bar.width).toBe('2px');
     await expect(bar.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
     for (const link of within(sheet).getAllByRole('link')) {
-      const height = link.getBoundingClientRect().height;
+      // Layout height: the sheet may still be scaling in, which skews getBoundingClientRect.
+      const height = link.offsetHeight;
       await expect(height).toBeGreaterThanOrEqual(32);
       // Wrapped titles may take two lines; a single line stays one compact row.
       if (link.textContent.length < 20) {

@@ -1388,8 +1388,6 @@
     "context": {
       "executor": "Agent",
       "title": "Context",
-      "unavailable": "Context is not available for this session yet.",
-      "empty": "No additional context for this Turn.",
       "executionScope": "Current execution",
       "generic": "Generic / Spec-level",
       "attention": "Attention / next actions",
@@ -1410,13 +1408,12 @@
         "detailNote": "Task evidence and actions are reachable from its own Full Task page."
       },
       "specification": {
-        "sectionTitle": "Specification"
+        "sectionTitle": "Specification",
+        "documents": "Documents"
       },
       "placeholders": {
-        "sectionTitle": "Other areas",
-        "resultsGroupTitle": "Results & resources",
-        "referenceGroupTitle": "History & reference",
-        "notYetImplemented": "This section is not implemented yet.",
+        "sectionTitle": "Planned areas",
+        "notYetImplemented": "This area is a preview — its content will come later.",
         "files": "Files / Changes",
         "handovers": "Handovers",
         "artifacts": "Artifacts",
@@ -1461,7 +1458,27 @@
       "batch_one": "{{count}} Task",
       "batch_other": "{{count}} Tasks",
       "batch_few": "{{count}} Tasks",
-      "batch_many": "{{count}} Tasks"
+      "batch_many": "{{count}} Tasks",
+      "availability": {
+        "scopeNotProvided": "This session’s links to a Specification and Tasks aren’t available yet.",
+        "scopeUnreadable": "Couldn’t load this session’s links.",
+        "specificationUnreadable": "Couldn’t load this session’s Specification.",
+        "specificationMissing": "Can’t find the Specification that this session belongs to.",
+        "specificationMissingNamed": "Can’t find Specification {{key}} that this session belongs to.",
+        "executionUnreadable": "Couldn’t load the Tasks being executed.",
+        "taskMissing": "Can’t find the Task this session is executing.",
+        "taskMissingNamed": "Can’t find {{key}}, the Task this session is executing.",
+        "tasksMissingBatch": "{{count}} of {{total}} Tasks for this session can’t be found.",
+        "attentionUnreadable": "Couldn’t check whether anything needs your attention.",
+        "relatedTasksUnreadable": "Couldn’t load related Tasks.",
+        "executorUnreadable": "Couldn’t load executor details.",
+        "executorMissing": "This session’s executor is no longer available."
+      },
+      "work": {
+        "sectionTitle": "Work",
+        "currentTurn": "Current Turn",
+        "lastTurn": "Last Turn"
+      }
     }
   },
   "apiErrors": {

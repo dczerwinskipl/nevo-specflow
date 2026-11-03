@@ -205,8 +205,9 @@ long paths and branch names never overflow at 320 px. It is not a table and not 
 
 `InlineNote` is a short explanatory sentence with a leading icon and no container, the quiet
 counterpart of `Alert`: a fact or caveat that belongs to the content next to it, or the reason an
-action is unavailable. `tone` is `info` (muted icon) or `attention` (status colour); the icon is
-decorative. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
+action is unavailable. `tone` is `info` (muted icon), `attention` (status colour) or `danger` (a failure or a missing
+required thing: status-danger colour, circle-alert icon); the icon is decorative and the text
+carries the meaning. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
 ## Shell footer

@@ -1388,8 +1388,6 @@
     "context": {
       "executor": "Wykonawca",
       "title": "Kontekst",
-      "unavailable": "Kontekst nie jest jeszcze dostępny dla tej sesji.",
-      "empty": "Brak dodatkowego kontekstu dla tej tury.",
       "executionScope": "Aktualne wykonanie",
       "generic": "Ogólne / na poziomie specyfikacji",
       "attention": "Uwaga / dalsze działania",
@@ -1410,13 +1408,12 @@
         "detailNote": "Dowody i działania dla zadania są dostępne na jego własnej stronie zadania."
       },
       "specification": {
-        "sectionTitle": "Specyfikacja"
+        "sectionTitle": "Specyfikacja",
+        "documents": "Dokumenty"
       },
       "placeholders": {
-        "sectionTitle": "Inne obszary",
-        "resultsGroupTitle": "Wyniki i zasoby",
-        "referenceGroupTitle": "Historia i materiały",
-        "notYetImplemented": "Ta sekcja nie jest jeszcze zaimplementowana.",
+        "sectionTitle": "Planowane obszary",
+        "notYetImplemented": "Ten obszar jest zapowiedzią — jego zawartość dodamy później.",
         "files": "Pliki / zmiany",
         "handovers": "Przekazania",
         "artifacts": "Artefakty",
@@ -1461,7 +1458,27 @@
       "batch_one": "{{count}} zadanie",
       "batch_few": "{{count}} zadania",
       "batch_many": "{{count}} zadań",
-      "batch_other": "{{count}} zadania"
+      "batch_other": "{{count}} zadania",
+      "availability": {
+        "scopeNotProvided": "Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.",
+        "scopeUnreadable": "Nie udało się wczytać powiązań tej sesji.",
+        "specificationUnreadable": "Nie udało się wczytać specyfikacji tej sesji.",
+        "specificationMissing": "Nie znaleziono specyfikacji, do której należy ta sesja.",
+        "specificationMissingNamed": "Nie znaleziono specyfikacji {{key}}, do której należy ta sesja.",
+        "executionUnreadable": "Nie udało się wczytać wykonywanych zadań.",
+        "taskMissing": "Nie znaleziono zadania, które wykonuje ta sesja.",
+        "taskMissingNamed": "Nie znaleziono zadania {{key}}, które wykonuje ta sesja.",
+        "tasksMissingBatch": "Nie znaleziono {{count}} z {{total}} zadań tej sesji.",
+        "attentionUnreadable": "Nie udało się sprawdzić, czy coś wymaga Twojej uwagi.",
+        "relatedTasksUnreadable": "Nie udało się wczytać powiązanych zadań.",
+        "executorUnreadable": "Nie udało się wczytać danych wykonawcy.",
+        "executorMissing": "Wykonawca tej sesji nie jest już dostępny."
+      },
+      "work": {
+        "sectionTitle": "Praca",
+        "currentTurn": "Bieżąca tura",
+        "lastTurn": "Ostatnia tura"
+      }
     }
   },
   "apiErrors": {

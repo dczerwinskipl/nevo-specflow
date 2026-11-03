@@ -102,6 +102,14 @@ UI consumes, not derives:
 - current execution scope;
 - distinction between current and merely related Tasks.
 
+**Context scope read model (mock until Runtime provides it).** Context reads a product-owned
+projection: a `scope` (`unknown` with reason `not-provided` or `unreadable`, `standalone`,
+`specification`, `task` with a task count) and, per section, a `ContextFact` (`loading`, `ready`,
+`unreadable`, `missing`). The Runtime contract carries no Specification/Task association today, so
+the real route supplies scope `unknown / not-provided` and only the facts the screen derives itself
+(executor from the provider catalogue; Work history from the snapshot's active or last Turn). The
+association is never inferred from the URL. Rules and copy: full-session-screen-structure.md §7.6.
+
 Transport connection/reconnect state is UI/adapter state and must not overwrite canonical Session
 semantics.
 
@@ -109,16 +117,16 @@ semantics.
 
 Legacy Session API is the strongest migration candidate among current UI surfaces.
 
-| Need                                 | New SpecFlow | Old repo evidence                                                                                                 | Direction                                                                                    |
-| ------------------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Session snapshot/chat/Turns          | **missing**  | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid.                       |
-| Live updates/replay cursor           | **missing**  | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE                                      | Preserve replayable ordered event model.                                                     |
-| Start next Turn                      | **missing**  | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\`                                          | Preserve idempotent command semantics.                                                       |
-| Cancel/recover Turn                  | **missing**  | **old-repo-available** via Turn cancel/recover routes                                                             | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed. |
-| Respond to interaction               | **missing**  | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\`            | Strong migration candidate.                                                                  |
-| Provider capabilities                | **missing**  | **old-repo-available** via \`GET /api/agent-providers\` and Session capabilities                                  | Preserve semantic capabilities; new Runtime owns provider boundary.                          |
-| Current single/batch execution scope | **missing**  | partial legacy session/task fields; historical association is insufficient                                        | Add explicit current execution projection.                                                   |
-| Context evidence/Handover/artifacts  | **missing**  | partial scattered evidence                                                                                        | Add product context references without bloating provider Work model.                         |
+| Need                                 | New SpecFlow | Old repo evidence                                                                                                 | Direction                                                                                                                                                            |
+| ------------------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session snapshot/chat/Turns          | **missing**  | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid.                                                                                               |
+| Live updates/replay cursor           | **missing**  | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE                                      | Preserve replayable ordered event model.                                                                                                                             |
+| Start next Turn                      | **missing**  | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\`                                          | Preserve idempotent command semantics.                                                                                                                               |
+| Cancel/recover Turn                  | **missing**  | **old-repo-available** via Turn cancel/recover routes                                                             | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed.                                                                         |
+| Respond to interaction               | **missing**  | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\`            | Strong migration candidate.                                                                                                                                          |
+| Provider capabilities                | **missing**  | **old-repo-available** via \`GET /api/agent-providers\` and Session capabilities                                  | Preserve semantic capabilities; new Runtime owns provider boundary.                                                                                                  |
+| Current single/batch execution scope | **missing**  | partial legacy session/task fields; historical association is insufficient                                        | Add explicit current execution projection. The execution-scope row and its required-Task error state are UI-ready (Context, §7.6); the data is a Runtime dependency. |
+| Context evidence/Handover/artifacts  | **missing**  | partial scattered evidence                                                                                        | Add product context references without bloating provider Work model.                                                                                                 |
 
 ### Old-repo field evidence
 
@@ -481,6 +489,14 @@ Only when capability permits.
 
 These states must remain semantically distinct.
 
+### Context data availability
+
+Separate from the Session states above, each Context section has its own availability (see
+full-session-screen-structure.md §7.6): no association (section absent), loading (label plus
+skeleton rows), unreadable (warning note), missing optional (warning note), missing required
+(error note), ready. The scope-unknown note sits under the Executor. A failure of one section never
+hides another, and Context is never replaced by a whole-panel "unavailable" screen.
+
 ## 12. Data loading, events, batching, and reconnect
 
 This screen inherits
@@ -620,7 +636,9 @@ Do not create one generic design-system Chat component around Session domain sem
 - sending/Cancel controls expose busy/disabled semantics;
 - inspector Back/Close restores meaningful focus;
 - current activity not color-only;
-- live regions are used sparingly;
+- live regions are used sparingly: Context notes (loading, warning, error) are passive inspector
+  content with no `role="alert"`/`status`; a loading section is `aria-busy` and the text, not the
+  colour or icon, carries every meaning;
 - composer text survives contextual navigation where expected.
 
 ## 17. Storybook scenarios
@@ -637,6 +655,11 @@ Do not create one generic design-system Chat component around Session domain sem
 - continue/resume;
 - recovery;
 - unavailable;
+- Context data states: real route (scope unknown note, Work, Planned areas), standalone, loading
+  (skeletons that do not move the sections below on arrival), Specification unreadable / missing
+  (danger), required Task missing (single and partial batch), Attention and Related Tasks
+  unreadable, executor missing; each at the 1280 Secondary and 390;
+- Context Documents row -> Documents -> Back to the Session (with and without a document open);
 - Context -> Tasks tab -> Task detail -> attempt/event in tab-local stack;
 - compact Work burst -> Work tab -> ToolAction detail;
 - multiple file tabs and switching without layout jump;

@@ -14,8 +14,13 @@ import {
   getItemTabPanelId,
   useWorkspaceCapabilities,
 } from '@nevo/ui';
-import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
+import {
+  ApplicationSessionBack,
+  applicationLocationHeader,
+  useApplicationCollection,
+} from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { useSessionReturn } from '../../sessions';
 import { useDocumentsApi } from '../useDocumentsApi';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
@@ -69,6 +74,10 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   });
   const editor = useDocumentEditor();
   const tabs = useDocumentTabs();
+  // The Session the user came from (Context's Documents row), so the way back exists even while no
+  // document is open; an open document shows the same link in its own pane.
+  const sessionReturn = useSessionReturn(specId);
+  const collection = useApplicationCollection();
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   // Stable: the callbacks read the controller only when the user acts.
@@ -125,21 +134,32 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <DocumentPane data={{ specId, documentId }} />
     </div>
   ) : (
-    <DocumentsEmptyState
-      // The start actions the Specification allows; a running operation only disables them.
-      actions={rootActions.filter((action) => {
-        const capabilities = tree.data?.capabilities;
-        if (action.id === 'documents-new-file') {
-          return capabilities?.createFile.available === true;
-        }
+    <>
+      {sessionReturn && supportsSplit && (
+        <div className="shrink-0 px-4 py-3">
+          <ApplicationSessionBack
+            specId={specId}
+            sessionId={sessionReturn}
+            collection={collection}
+          />
+        </div>
+      )}
+      <DocumentsEmptyState
+        // The start actions the Specification allows; a running operation only disables them.
+        actions={rootActions.filter((action) => {
+          const capabilities = tree.data?.capabilities;
+          if (action.id === 'documents-new-file') {
+            return capabilities?.createFile.available === true;
+          }
 
-        if (action.id === 'documents-upload') {
-          return capabilities?.import.available === true;
-        }
+          if (action.id === 'documents-upload') {
+            return capabilities?.import.available === true;
+          }
 
-        return false;
-      })}
-    />
+          return false;
+        })}
+      />
+    </>
   );
 
   return (

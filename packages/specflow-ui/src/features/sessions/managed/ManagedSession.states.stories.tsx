@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useEffect, useState, type ComponentProps } from 'react';
 import { expect, fn, userEvent, within, waitFor } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
@@ -13,13 +14,16 @@ import {
   workSummaryStatesApi,
 } from './managedSession.fullSession.stories-support';
 import {
+  associationsUnreadableContext,
+  claudeExecutor,
   genericSpecLevelContext,
   pendingInteractionContext,
   singleTaskContext,
+  specRequiredMissingContext,
   terminalOutcomeContext,
-  unavailableContext,
   waitingWithoutAttentionContext,
 } from './context/sessionContextFixtures';
+import type { SessionContextViewModel } from './context/sessionContextTypes';
 import {
   Environment,
   NARROW_VIEWPORT,
@@ -90,6 +94,9 @@ async function verifyContextReopens(canvasElement: HTMLElement) {
   await userEvent.click(toggle);
   await waitFor(() => expect(historyTab()).toHaveAttribute('aria-selected', 'true'));
   await expect(contextTab()).toBeVisible();
+  // Back to Context, the state every story starts from and the rest of its checks expect.
+  await userEvent.click(contextTab()!);
+  await waitFor(() => expect(contextTab()).toHaveAttribute('aria-selected', 'true'));
 }
 
 const meta = {
@@ -112,6 +119,7 @@ const meta = {
     // `onOpenSpecification`): demonstrates the Specification row's real click wiring on every
     // state story that carries `sessionContext.specification`, without a real router here.
     onOpenSpecification: fn((specification) => console.info('Open Specification', specification)),
+    onOpenDocuments: fn((specification) => console.info('Open Documents', specification)),
     // Story-only stand-ins for the header "⋯" session actions, which have no backend yet (the
     // real route leaves them unwired, so they render disabled there): wired here so the rename /
     // archive / delete dialogs can be tried on the browsable states.
@@ -320,7 +328,7 @@ export const Unavailable: Story = {
   tags: ['contract'],
   args: {
     api: fixtureApi(unavailableSnapshot()),
-    sessionContext: unavailableContext(),
+    sessionContext: associationsUnreadableContext(),
   },
   globals: WIDE_VIEWPORT,
   play: async ({ canvasElement }) => {
@@ -411,4 +419,185 @@ export const WorkSummaryStatesNarrow: Story = {
   tags: ['contract'],
   args: { api: workSummaryStatesApi() },
   globals: NARROW_VIEWPORT,
+};
+
+/** The Secondary's "Praca" (Work) section label, found within the Context panel. */
+function workSectionTop(canvasElement: HTMLElement) {
+  const label = [...canvasElement.querySelectorAll('section')].find(
+    (section) => section.firstElementChild?.textContent === 'Praca',
+  );
+  if (!label) {
+    throw new Error('Work section not found');
+  }
+
+  return label.getBoundingClientRect().top;
+}
+
+async function openContextOnNarrow(canvasElement: HTMLElement) {
+  await settleViewport(390, 844);
+  const canvas = within(canvasElement);
+  await waitFor(() =>
+    expect(canvasElement.querySelector('[data-composer-overlay]')).not.toBeNull(),
+  );
+  // The collapsing header is covered (inert) while the conversation is pinned at the bottom.
+  const scroller = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');
+  if (scroller) {
+    scroller.scrollTop = 0;
+    scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
+  }
+
+  await userEvent.click(await canvas.findByRole('button', { name: 'Kontekst' }));
+}
+
+/** The real route today: no `sessionContext` prop at all. Executor from the provider catalogue, the
+ * scope-unknown info note under it, Work history derived from the snapshot, then Planned areas.
+ * No Specification/Execution/Attention/Related Tasks (nothing is promised there). */
+export const RealRouteContext: Story = {
+  tags: ['contract'],
+  args: { api: richDefaultApi() },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Wykonawca')).toBeVisible();
+    await expect(
+      await canvas.findByText(
+        'Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.',
+      ),
+    ).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
+    await expect(canvas.getByText('Planowane obszary')).toBeVisible();
+    await expect(canvas.queryByText('Specyfikacja')).toBeNull();
+    await expect(canvas.queryByText('Aktualne wykonanie')).toBeNull();
+  },
+};
+
+export const RealRouteContextNarrow: Story = {
+  tags: ['contract'],
+  args: { api: richDefaultApi() },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await openContextOnNarrow(canvasElement);
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(
+        'Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.',
+      ),
+    ).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
+  },
+};
+
+/** A Specification-scoped Session whose Specification cannot be found: a danger note in the
+ * Specification slot (required reference), the rest of Context still shows. */
+export const ContextRequiredMissing: Story = {
+  tags: ['contract'],
+  args: { api: richDefaultApi(), sessionContext: specRequiredMissingContext() },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const note = await canvas.findByText(
+      'Nie znaleziono specyfikacji SPEC-A, do której należy ta sesja.',
+    );
+    await expect(note).toBeVisible();
+    await expect(note.closest('p')?.querySelector('.text-status-danger')).not.toBeNull();
+    await expect(canvas.queryByText('Dokumenty')).toBeNull();
+  },
+};
+
+export const ContextRequiredMissingNarrow: Story = {
+  tags: ['contract'],
+  args: { api: richDefaultApi(), sessionContext: specRequiredMissingContext() },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await openContextOnNarrow(canvasElement);
+    await expect(
+      await within(canvasElement).findByText(
+        'Nie znaleziono specyfikacji SPEC-A, do której należy ta sesja.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+/** The Session's executor is not in the provider catalogue any more: a danger note. */
+export const ExecutorMissing: Story = {
+  tags: ['contract'],
+  args: {
+    api: richDefaultApi(),
+    sessionContext: { scope: { kind: 'standalone' }, executor: { status: 'missing' } },
+  },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText('Wykonawca tej sesji nie jest już dostępny.'),
+    ).toBeVisible();
+  },
+};
+
+const loadingContext: SessionContextViewModel = {
+  scope: { kind: 'task', taskCount: 1 },
+  executor: { status: 'ready', value: claudeExecutor },
+  specification: { status: 'loading' },
+  executionScope: { status: 'loading' },
+  relatedTasks: { status: 'loading' },
+  workHistory: { status: 'ready', value: { turnId: '00000000-0000-4000-8000-000000000010' } },
+};
+const readyContext: SessionContextViewModel = {
+  ...loadingContext,
+  specification: {
+    status: 'ready',
+    value: { id: 'spec-a', key: 'SPEC-A', title: 'Workflow admission hardening' },
+  },
+  executionScope: {
+    status: 'ready',
+    value: {
+      kind: 'single-task',
+      task: { id: 'task-03', key: 'TASK-03', title: 'Deterministic admission' },
+    },
+  },
+  relatedTasks: {
+    status: 'ready',
+    value: [{ id: 'task-02', key: 'TASK-02', title: 'Document the admission guard' }],
+  },
+};
+let releaseContext: (() => void) | undefined;
+
+function LoadingToReadyHost(props: ComponentProps<typeof ManagedSession>) {
+  const [released, setReleased] = useState(false);
+  useEffect(() => {
+    releaseContext = () => setReleased(true);
+
+    return () => {
+      releaseContext = undefined;
+    };
+  }, []);
+
+  return <ManagedSession {...props} sessionContext={released ? readyContext : loadingContext} />;
+}
+
+/** Context data arriving after first paint: skeleton rows are replaced in place and nothing below
+ * them moves — the Work section's top is measured before and after the facts resolve. */
+export const ContextLoadingToReady: Story = {
+  tags: ['contract'],
+  args: { api: richDefaultApi() },
+  render: (args) => <LoadingToReadyHost {...args} />,
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(workSectionTop(canvasElement)).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(canvasElement.querySelectorAll('[data-context-skeleton-row]').length).toBeGreaterThan(
+        0,
+      ),
+    );
+    await settleViewport();
+    const before = workSectionTop(canvasElement);
+    releaseContext?.();
+    await canvas.findByText('Deterministic admission');
+    await canvas.findByText('Dokumenty');
+    await settleViewport();
+    await expect(canvasElement.querySelectorAll('[data-context-skeleton-row]')).toHaveLength(0);
+    const after = workSectionTop(canvasElement);
+    console.info('Work section top before/after', before, after);
+    await expect(Math.abs(after - before)).toBeLessThanOrEqual(0.5);
+  },
 };

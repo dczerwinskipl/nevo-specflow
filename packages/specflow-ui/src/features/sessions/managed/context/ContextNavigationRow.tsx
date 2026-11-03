@@ -46,7 +46,7 @@ export interface ContextNavigationRowProps {
   ariaLabel?: string;
 }
 
-const rowGridClassName =
+export const contextRowGridClassName =
   'grid w-full min-w-0 grid-cols-[var(--spacing-icon-md)_minmax(0,1fr)_var(--spacing-icon-sm)] items-center gap-x-3 py-2.5 text-left';
 
 export function ContextNavigationRow({
@@ -110,7 +110,7 @@ export function ContextNavigationRow({
           aria-label={ariaLabel}
           onClick={onClick}
           className={cn(
-            rowGridClassName,
+            contextRowGridClassName,
             'group relative cursor-pointer outline-none',
             // Hover/focus surface bleeds into the host's inline padding; content stays on the grid.
             "before:absolute before:-inset-x-2 before:inset-y-0.5 before:rounded-control before:content-['']",
@@ -124,7 +124,7 @@ export function ContextNavigationRow({
           {body}
         </button>
       ) : (
-        <div className={rowGridClassName}>{body}</div>
+        <div className={contextRowGridClassName}>{body}</div>
       )}
     </li>
   );

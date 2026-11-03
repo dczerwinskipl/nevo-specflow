@@ -52,10 +52,16 @@ import { ComposerModePicker } from './ComposerPresetPicker';
 import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
 import { createWorkInspector } from './WorkInspector';
 import { SessionContext, createSessionContextStack } from './context/SessionContext';
-import { unavailableSessionContext } from './context/sessionContextTypes';
+import { realRouteSessionContext } from './context/sessionContextTypes';
 import { useSessionActions, type SessionActionHandlers } from './sessionActions/useSessionActions';
 import { SessionNamingStatus } from './naming/SessionNamingStatus';
-import type { SessionContextViewModel } from './context/sessionContextTypes';
+import type {
+  ContextFact,
+  ContextSpecification,
+  SessionContextViewModel,
+  SessionExecutor,
+} from './context/sessionContextTypes';
+
 import { WorkBlock } from './WorkBlock';
 import { conversationItems, liveActivity } from './workBlockModel';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
@@ -1328,8 +1334,9 @@ export function ManagedSession({
   sessionId,
   owner,
   api,
-  sessionContext = unavailableSessionContext,
+  sessionContext = realRouteSessionContext,
   onOpenSpecification,
+  onOpenDocuments,
   onRenameSession,
   onArchiveSession,
   onDeleteSession,
@@ -1345,9 +1352,10 @@ export function ManagedSession({
   api: ManagedSessionsApi;
   /**
    * Context Secondary content (full-session-screen-structure.md §7). Optional because the real
-   * managed-Sessions contract has no Specification/Task association projection yet: the default
-   * is an honest "unavailable" Context, not a fabricated empty one. Callers with a real/mock
-   * projection (Storybook fixtures today) pass it explicitly.
+   * managed-Sessions contract has no Specification/Task association projection yet: the default is
+   * the honest "scope unknown, not provided" Context, which still shows what this screen derives
+   * itself (executor, Work history). Callers with a real/mock projection (Storybook fixtures
+   * today) pass it explicitly; an `executor`/`workHistory` fact it carries wins over the derived one.
    */
   sessionContext?: SessionContextViewModel;
   /**
@@ -1357,9 +1365,12 @@ export function ManagedSession({
    * responsible for wiring this to the real `/specs/$specId` navigation. Omitted (or
    * `sessionContext.specification` absent): the row simply doesn't render, on either layout.
    */
-  onOpenSpecification?: (
-    specification: NonNullable<SessionContextViewModel['specification']>,
-  ) => void;
+  onOpenSpecification?: (specification: ContextSpecification) => void;
+  /**
+   * Opens that Specification's Documents with this Session as the way back (the route composition
+   * wires it, like `onOpenSpecification`). Omitted: no Documents row.
+   */
+  onOpenDocuments?: (specification: ContextSpecification) => void;
 } & SessionActionHandlers) {
   const { t } = useTranslation();
   // The shell hint "a non-stacking Secondary (the pinned Context tab, the side-panel toggle) can be
@@ -1434,26 +1445,65 @@ export function ManagedSession({
   // Conversation's live Work block reads — not from the supplied Context view model. Until the
   // first snapshot arrives the supplied value (if any) stands.
   const runningTurnId = snapshot ? snapshot.activeTurn?.turnId : sessionContext.runningTurnId;
+  // Work history: the Turn in flight, else the last Turn of the loaded conversation; "loading"
+  // before the first snapshot, absent when the Session has no Turn yet.
+  const workHistoryTurnId = snapshot
+    ? (snapshot.activeTurn?.turnId ?? snapshot.entries[snapshot.entries.length - 1]?.turnId)
+    : undefined;
   // Context's first section: the provider (as the Runtime names it) and the model/effort the
   // composer has selected for the next Turn.
   const executorModelTitle = provider?.models.find(
     (model) => model.modelId === selectedModelId,
   )?.title;
-  const executor = useMemo(
+  const providerId = snapshot?.session.providerId;
+  const executor = useMemo<ContextFact<SessionExecutor> | undefined>(() => {
+    if (provider) {
+      return {
+        status: 'ready',
+        value: {
+          providerId: provider.providerId,
+          providerTitle: provider.title,
+          modelTitle: executorModelTitle,
+          effort: executorModelTitle ? selectedEffort : undefined,
+        },
+      };
+    }
+
+    if (providers.isError) {
+      return { status: 'unreadable' };
+    }
+
+    if (providers.isPending || !providerId) {
+      return { status: 'loading' };
+    }
+
+    // The catalogue loaded but does not know the Session's provider.
+    return { status: 'missing', ref: { key: providerId } };
+  }, [
+    provider,
+    providers.isError,
+    providers.isPending,
+    providerId,
+    executorModelTitle,
+    selectedEffort,
+  ]);
+  const workHistory = useMemo<ContextFact<{ turnId: string }> | undefined>(
     () =>
-      provider
-        ? {
-            providerId: provider.providerId,
-            providerTitle: provider.title,
-            modelTitle: executorModelTitle,
-            effort: executorModelTitle ? selectedEffort : undefined,
-          }
-        : undefined,
-    [provider, executorModelTitle, selectedEffort],
+      snapshot
+        ? workHistoryTurnId
+          ? { status: 'ready', value: { turnId: workHistoryTurnId } }
+          : undefined
+        : { status: 'loading' },
+    [snapshot, workHistoryTurnId],
   );
   const contextValue = useMemo<SessionContextViewModel>(
-    () => ({ ...sessionContext, runningTurnId, ...(executor ? { executor } : {}) }),
-    [sessionContext, runningTurnId, executor],
+    () => ({
+      ...sessionContext,
+      runningTurnId,
+      executor: sessionContext.executor ?? executor,
+      workHistory: sessionContext.workHistory ?? workHistory,
+    }),
+    [sessionContext, runningTurnId, executor, workHistory],
   );
 
   // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (owner audit:
@@ -1506,7 +1556,13 @@ export function ManagedSession({
         direct: 'always',
         onPress: () =>
           void navigation.open(
-            createSessionContextStack(sessionId, contextValue, onOpenSpecification, workStack),
+            createSessionContextStack(
+              sessionId,
+              contextValue,
+              onOpenSpecification,
+              workStack,
+              onOpenDocuments,
+            ),
             {},
           ),
       }
@@ -1599,6 +1655,7 @@ export function ManagedSession({
           sessionId={sessionId}
           value={contextValue}
           onOpenSpecification={onOpenSpecification}
+          onOpenDocuments={onOpenDocuments}
           workStack={workStack}
         />
       </AppWorkspace.Secondary>

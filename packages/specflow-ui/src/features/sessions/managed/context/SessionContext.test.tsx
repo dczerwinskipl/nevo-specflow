@@ -11,6 +11,7 @@ import {
 } from '@nevo/ui';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
+import type { ContextFact } from './sessionContextTypes';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
 
 beforeEach(() => {
@@ -29,6 +30,7 @@ afterEach(() => {
 });
 
 const sessionId = '00000000-0000-4000-8000-000000000001';
+const ready = <T,>(value: T): ContextFact<T> => ({ status: 'ready', value });
 const task02: SessionContextTaskRef = {
   id: 'task-02',
   key: 'TASK-02',
@@ -98,9 +100,9 @@ async function renderContextWithRelatedTasks(
 describe('Related Tasks summary row', () => {
   it('renders one navigational summary row — never the individual Task list — on Context itself', async () => {
     const value: SessionContextViewModel = {
-      status: 'ready',
-      executionScope: { kind: 'generic' },
-      relatedTasks: [task02, task03],
+      scope: { kind: 'specification' },
+      executionScope: ready({ kind: 'generic' }),
+      relatedTasks: ready([task02, task03]),
     };
 
     await renderContextWithRelatedTasks(value);
@@ -114,9 +116,9 @@ describe('Related Tasks summary row', () => {
 
   it('opens a single related Task directly, as its own tab named by the Task key', async () => {
     const value: SessionContextViewModel = {
-      status: 'ready',
-      executionScope: { kind: 'generic' },
-      relatedTasks: [task02],
+      scope: { kind: 'specification' },
+      executionScope: ready({ kind: 'generic' }),
+      relatedTasks: ready([task02]),
     };
 
     await renderContextWithRelatedTasks(value);
@@ -136,9 +138,9 @@ describe('Related Tasks summary row', () => {
 
   it('opens the shared Tasks list — not a direct per-Task tab — when more than one Task is related', async () => {
     const value: SessionContextViewModel = {
-      status: 'ready',
-      executionScope: { kind: 'generic' },
-      relatedTasks: [task02, task03],
+      scope: { kind: 'specification' },
+      executionScope: ready({ kind: 'generic' }),
+      relatedTasks: ready([task02, task03]),
     };
 
     await renderContextWithRelatedTasks(value);
@@ -156,9 +158,9 @@ describe('Related Tasks summary row', () => {
 
   it('selecting a Task from the list opens that Task as its own tab beside the list', async () => {
     const value: SessionContextViewModel = {
-      status: 'ready',
-      executionScope: { kind: 'generic' },
-      relatedTasks: [task02, task03],
+      scope: { kind: 'specification' },
+      executionScope: ready({ kind: 'generic' }),
+      relatedTasks: ready([task02, task03]),
     };
     await renderContextWithRelatedTasks(value);
 
@@ -182,9 +184,9 @@ describe('Related Tasks summary row', () => {
     // Previously a single shared Tasks tab: opening Task B while Task A was open only re-activated
     // that tab, which kept showing Task A. The tab identity is now the Task.
     const value: SessionContextViewModel = {
-      status: 'ready',
-      executionScope: { kind: 'single-task', task: task02 },
-      relatedTasks: [task03],
+      scope: { kind: 'specification' },
+      executionScope: ready({ kind: 'single-task', task: task02 }),
+      relatedTasks: ready([task03]),
     };
 
     await renderContextWithRelatedTasks(value);
@@ -226,8 +228,8 @@ describe('Related Tasks summary row', () => {
           <SessionContext
             sessionId={sessionId}
             value={{
-              status: 'ready',
-              executionScope: { kind: 'single-task', task: task02 },
+              scope: { kind: 'specification' },
+              executionScope: ready({ kind: 'single-task', task: task02 }),
             }}
             openStack={openStack}
           />
@@ -249,7 +251,7 @@ describe('Related Tasks summary row', () => {
 
 describe('navigation skeleton (other root tabs)', () => {
   it('opens a real Secondary tab with a clearly-labelled placeholder screen for each of the five remaining placeholder subjects', async () => {
-    const value: SessionContextViewModel = { status: 'ready' };
+    const value: SessionContextViewModel = { scope: { kind: 'standalone' } };
     await renderContextWithRelatedTasks(value);
 
     clickButtonByText('Files / Changes');
@@ -262,11 +264,11 @@ describe('navigation skeleton (other root tabs)', () => {
     expect(within(openTabs).getByText('Files / Changes')).toBeTruthy();
     // A real, navigable tab — not faked content: an honestly-labelled "not implemented yet"
     // placeholder, same shared screen every one of the six subjects uses today.
-    expect(screen.getByText('This section is not implemented yet.')).toBeTruthy();
+    expect(screen.getByText('This area is a preview — its content will come later.')).toBeTruthy();
   });
 
   it("opens each remaining subject as its OWN independent tab, never reusing another subject's tab", async () => {
-    const value: SessionContextViewModel = { status: 'ready' };
+    const value: SessionContextViewModel = { scope: { kind: 'standalone' } };
     await renderContextWithRelatedTasks(value);
 
     clickButtonByText('Instructions');
@@ -311,35 +313,40 @@ describe('Work history row', () => {
     });
   }
 
-  it('does not render when no activeTurnId is known, even with a workStack available', async () => {
+  it('does not render the Work section when no Work history fact is known, even with a workStack available', async () => {
     const received: { params: unknown }[] = [];
     await renderContextWithRelatedTasks(
-      { status: 'ready' },
+      { scope: { kind: 'standalone' } },
       { workStack: fakeWorkStack(received) },
     );
 
     expect(screen.queryByText('Work history')).toBeNull();
+    expect(screen.queryByText('Work')).toBeNull();
   });
 
-  it('does not render when activeTurnId is known but no workStack is passed', async () => {
+  it('does not render when the Turn is known but no workStack is passed', async () => {
     await renderContextWithRelatedTasks({
-      status: 'ready',
-      activeTurnId: '00000000-0000-4000-8000-000000000099',
+      scope: { kind: 'specification' },
+      workHistory: ready({ turnId: '00000000-0000-4000-8000-000000000099' }),
     });
 
     expect(screen.queryByText('Work history')).toBeNull();
   });
 
-  it('renders in the "History & reference" group and opens the shared Work tab for the current Turn', async () => {
+  it('renders in its own Work section and opens the shared Work tab for the current Turn', async () => {
     const received: { params: unknown }[] = [];
     const turnId = '00000000-0000-4000-8000-000000000099';
     await renderContextWithRelatedTasks(
-      { status: 'ready', activeTurnId: turnId },
+      { scope: { kind: 'standalone' }, workHistory: ready({ turnId }) },
       { workStack: fakeWorkStack(received) },
     );
 
-    const referenceGroup = screen.getByText('History & reference').closest('div');
-    expect(referenceGroup?.textContent).toContain('Work history');
+    const section = screen.getByText('Work').closest('section')!;
+    expect(section.textContent).toContain('Work history');
+    // Planned areas do not own it any more.
+    expect(screen.getByText('Planned areas').closest('section')!.textContent).not.toContain(
+      'Work history',
+    );
 
     clickButtonByText('Work history');
     await act(async () => {
@@ -351,98 +358,280 @@ describe('Work history row', () => {
 
     // The same Turn again (Context row, or a chat Work block calling `openTab` with the same
     // params) activates that tab instead of adding a second one.
-    fireEvent.click(within(referenceGroup as HTMLElement).getByText('Work history'));
+    fireEvent.click(within(section).getByText('Work history'));
     await act(async () => {
       await Promise.resolve();
     });
     expect(tabLabels()).toEqual(['Work history 99']);
   });
+
+  it('names the Turn "Current Turn" while it runs and "Last Turn" once it has settled', () => {
+    const turnId = '00000000-0000-4000-8000-000000000099';
+    const received: { params: unknown }[] = [];
+    const { rerender } = renderWork(
+      { scope: { kind: 'standalone' }, workHistory: ready({ turnId }), runningTurnId: turnId },
+      fakeWorkStack(received),
+    );
+    expect(screen.getByText('Current Turn')).toBeTruthy();
+
+    rerender({ scope: { kind: 'standalone' }, workHistory: ready({ turnId }) });
+    expect(screen.getByText('Last Turn')).toBeTruthy();
+  });
+
+  it('shows the Work label with a busy skeleton while the history is loading', () => {
+    const received: { params: unknown }[] = [];
+    renderWork(
+      { scope: { kind: 'standalone' }, workHistory: { status: 'loading' } },
+      fakeWorkStack(received),
+    );
+
+    const section = screen.getByText('Work').closest('section')!;
+    expect(section.getAttribute('aria-busy')).toBe('true');
+    expect(section.querySelectorAll('[data-context-skeleton-row]')).toHaveLength(1);
+    expect(screen.queryByText('Work history')).toBeNull();
+  });
+
+  function renderWork(
+    value: SessionContextViewModel,
+    workStack: Parameters<typeof SessionContext>[0]['workStack'],
+  ) {
+    const tree = (v: SessionContextViewModel) => (
+      <StoryLocalization locale="en">
+        <AppWorkspaceProvider>
+          <SessionContext sessionId={sessionId} value={v} workStack={workStack} />
+        </AppWorkspaceProvider>
+      </StoryLocalization>
+    );
+    const view = render(tree(value));
+
+    return { rerender: (next: SessionContextViewModel) => view.rerender(tree(next)) };
+  }
 });
 
-describe('sparse Context states', () => {
-  function renderContext(value: SessionContextViewModel) {
+describe('data states', () => {
+  function renderContext(
+    value: SessionContextViewModel,
+    handlers: Partial<Parameters<typeof SessionContext>[0]> = {},
+  ) {
     return render(
       <StoryLocalization locale="en">
         <AppWorkspaceProvider>
-          <SessionContext sessionId={sessionId} value={value} />
+          <SessionContext sessionId={sessionId} value={value} {...handlers} />
         </AppWorkspaceProvider>
       </StoryLocalization>,
     );
   }
 
-  it('frames an unavailable Context as a deliberate EmptyState, full-height-centred, not a bare top-pinned line', () => {
-    const { container } = renderContext({ status: 'unavailable' });
+  const executor = ready({ providerId: 'claude', providerTitle: 'Claude', modelTitle: 'Opus' });
 
-    const empty = container.querySelector('[data-empty-state="pane"]');
-    expect(empty).toBeTruthy();
-    expect(empty?.textContent).toContain('Context is not available');
-
-    // The scrolled content must be a definite-height flex column, otherwise `EmptyState`'s own
-    // `flex-1 min-h-full ... justify-center` has nothing to fill/centre within and silently
-    // collapses to the top of an otherwise-blank, full-viewport mobile panel.
-    const scrollContent = container.querySelector('.scroll-area-content');
-    expect(scrollContent?.className).toMatch(/\bflex\b/);
-    expect(scrollContent?.className).toMatch(/min-h-full/);
-  });
-
-  it('shows the inline "no additional context" note alongside the always-present navigation skeleton, not a full-pane EmptyState, once every dynamic section is absent', () => {
-    // Part 2 (owner-greenlit navigation skeleton): a Context with every dynamic section
-    // (execution/attention/related Tasks/telemetry) absent is no longer treated as literally
-    // empty — `OtherAreasSection`'s six root-tab rows are a fixed entry point, not
-    // session-derived content, so they are always there once Context is `ready`.
-    const { container } = renderContext({ status: 'ready' });
+  it('real route: executor, the scope-unknown info note under it, then planned areas; never a full-pane EmptyState', () => {
+    const { container } = renderContext({
+      scope: { kind: 'unknown', reason: 'not-provided' },
+      executor,
+    });
 
     expect(container.querySelector('[data-empty-state="pane"]')).toBeNull();
-    expect(screen.getByText('No additional context for this Turn.')).toBeTruthy();
-    expect(screen.getByText('Other areas')).toBeTruthy();
-    expect(screen.getByText('Files / Changes')).toBeTruthy();
-    expect(screen.getByText('Handovers')).toBeTruthy();
-    expect(screen.getByText('Artifacts')).toBeTruthy();
-    expect(screen.getByText('Instructions')).toBeTruthy();
-    expect(screen.getByText('Environment')).toBeTruthy();
-    // No `workStack`/`activeTurnId` passed here: the real "Work history" row must not render
-    // (see the dedicated `describe('Work history row')` block below), and it is no longer one of
-    // the "not implemented yet" placeholders either (`SessionContextPlaceholderTabs.tsx`).
-    expect(screen.queryByText('Work history')).toBeNull();
+    expect(screen.getByText('Claude')).toBeTruthy();
+    expect(
+      screen.getByText('This session’s links to a Specification and Tasks aren’t available yet.'),
+    ).toBeTruthy();
+    for (const absent of ['Specification', 'Current execution', 'Attention / next actions']) {
+      expect(screen.queryByText(absent)).toBeNull();
+    }
+
+    expect(screen.getByText('Planned areas')).toBeTruthy();
   });
 
-  it('groups the six navigation-skeleton rows under two subsection labels instead of one flat list (live owner review, second pass)', () => {
-    const { container } = renderContext({ status: 'ready' });
+  it('a standalone Session shows no scope note at all', () => {
+    renderContext({ scope: { kind: 'standalone' }, executor });
 
-    expect(screen.getByText('Results & resources')).toBeTruthy();
-    expect(screen.getByText('History & reference')).toBeTruthy();
+    expect(screen.queryByText(/aren’t available yet/)).toBeNull();
+    expect(screen.queryByText(/Couldn’t load this session’s links/)).toBeNull();
+  });
 
-    // Files/Changes, Handovers and Artifacts (produced/attached output) sit under "Results &
-    // resources"; Instructions and Environment (background/setup material) sit under "History &
-    // reference" — this pass's own grouping interpretation, not every row order the owner's
-    // reference mock could imply. The real "Work history" row (not tested here — no `workStack`
-    // passed) would also sit in "History & reference", first, when present (see the dedicated
-    // `describe('Work history row')` block below).
-    const resultsGroup = screen.getByText('Results & resources').closest('div');
-    const referenceGroup = screen.getByText('History & reference').closest('div');
-    expect(resultsGroup?.textContent).toContain('Files / Changes');
-    expect(resultsGroup?.textContent).toContain('Handovers');
-    expect(resultsGroup?.textContent).toContain('Artifacts');
-    expect(referenceGroup?.textContent).toContain('Instructions');
-    expect(referenceGroup?.textContent).toContain('Environment');
-    expect(container.textContent).toContain('Other areas');
+  it('unreadable associations warn with the attention tone, not the info note', () => {
+    const { container } = renderContext({
+      scope: { kind: 'unknown', reason: 'unreadable' },
+      executor,
+    });
+
+    expect(screen.getByText('Couldn’t load this session’s links.')).toBeTruthy();
+    expect(container.querySelector('.text-status-attention')).toBeTruthy();
+  });
+
+  it('groups the five placeholder rows in one flat "Planned areas" section and says they are a preview', () => {
+    renderContext({ scope: { kind: 'standalone' } });
+
+    const section = screen.getByText('Planned areas').closest('section')!;
+    for (const label of [
+      'Files / Changes',
+      'Handovers',
+      'Artifacts',
+      'Instructions',
+      'Environment',
+    ]) {
+      expect(within(section).getByText(label)).toBeTruthy();
+    }
+
+    // No sub-group headings any more.
+    expect(screen.queryByText('Results & resources')).toBeNull();
+    expect(screen.queryByText('History & reference')).toBeNull();
+    expect(screen.queryByText('Other areas')).toBeNull();
+  });
+
+  it('loading sections keep their label, are aria-busy and show skeleton rows (executor)', () => {
+    renderContext({
+      scope: { kind: 'unknown', reason: 'not-provided' },
+      executor: { status: 'loading' },
+    });
+
+    const section = screen.getByText('Agent').closest('section')!;
+    expect(section.getAttribute('aria-busy')).toBe('true');
+    expect(section.querySelectorAll('[data-context-skeleton-row]')).toHaveLength(1);
+  });
+
+  it('a Specification loading shows two skeleton rows (identity + Documents) when Documents is wired', () => {
+    renderContext(
+      { scope: { kind: 'specification' }, specification: { status: 'loading' } },
+      { onOpenSpecification: vi.fn(), onOpenDocuments: vi.fn() },
+    );
+
+    const section = screen.getByText('Specification').closest('section')!;
+    expect(section.getAttribute('aria-busy')).toBe('true');
+    expect(section.querySelectorAll('[data-context-skeleton-row]')).toHaveLength(2);
+    expect(screen.queryByText('Documents')).toBeNull();
+  });
+
+  it('a Task-scoped execution loading shows min(taskCount, 3) skeleton rows', () => {
+    renderContext({
+      scope: { kind: 'task', taskCount: 5 },
+      executionScope: { status: 'loading' },
+    });
+
+    const section = screen.getByText('Current execution').closest('section')!;
+    expect(section.querySelectorAll('[data-context-skeleton-row]')).toHaveLength(3);
+  });
+
+  it('unreadable Specification warns; a required missing one is a danger note naming its key', () => {
+    const { container, unmount } = renderContext(
+      { scope: { kind: 'specification' }, specification: { status: 'unreadable' } },
+      { onOpenSpecification: vi.fn() },
+    );
+    expect(screen.getByText('Couldn’t load this session’s Specification.')).toBeTruthy();
+    expect(container.querySelector('.text-status-danger')).toBeNull();
+    unmount();
+
+    const missing = renderContext(
+      {
+        scope: { kind: 'specification' },
+        specification: { status: 'missing', ref: { key: 'SPEC-A' } },
+      },
+      { onOpenSpecification: vi.fn() },
+    );
+    expect(
+      screen.getByText('Can’t find Specification SPEC-A that this session belongs to.'),
+    ).toBeTruthy();
+    expect(missing.container.querySelector('.text-status-danger')).toBeTruthy();
+  });
+
+  it('a missing Specification stays a warning when the scope does not require it', () => {
+    // Task/specification scope require it; a missing optional reference must not be an error.
+    const { container } = renderContext({
+      scope: { kind: 'unknown', reason: 'not-provided' },
+      specification: { status: 'missing' },
+    });
+
+    // Not present for an unknown scope at all.
+    expect(screen.queryByText('Specification')).toBeNull();
+    expect(container.querySelector('.text-status-danger')).toBeNull();
+  });
+
+  it('a missing required Task is a danger note; a partially missing batch keeps the found Tasks beside it', () => {
+    const { container, unmount } = renderContext({
+      scope: { kind: 'task', taskCount: 1 },
+      executionScope: { status: 'missing', ref: { key: 'TASK-03' } },
+    });
+    expect(
+      screen.getByText('Can’t find TASK-03, the Task this session is executing.'),
+    ).toBeTruthy();
+    expect(container.querySelector('.text-status-danger')).toBeTruthy();
+    unmount();
+
+    renderContext({
+      scope: { kind: 'task', taskCount: 3 },
+      executionScope: ready({
+        kind: 'batch',
+        tasks: [task02, task03],
+        missingTaskCount: 1,
+      }),
+    });
+    expect(screen.getByText('1 of 3 Tasks for this session can’t be found.')).toBeTruthy();
+    expect(screen.getByText('Document the admission guard')).toBeTruthy();
+    expect(screen.getByText('Deterministic admission')).toBeTruthy();
+  });
+
+  it('unreadable execution, Attention and Related Tasks each warn in their own slot', () => {
+    renderContext({
+      scope: { kind: 'task', taskCount: 1 },
+      executionScope: { status: 'unreadable' },
+      attention: { status: 'unreadable' },
+      relatedTasks: { status: 'missing' },
+    });
+
+    expect(screen.getByText('Couldn’t load the Tasks being executed.')).toBeTruthy();
+    expect(screen.getByText('Couldn’t check whether anything needs your attention.')).toBeTruthy();
+    expect(screen.getByText('Couldn’t load related Tasks.')).toBeTruthy();
+  });
+
+  it('omits Attention and Related Tasks when their ready list is empty', () => {
+    renderContext({
+      scope: { kind: 'task', taskCount: 1 },
+      attention: ready([]),
+      relatedTasks: ready([]),
+    });
+
+    expect(screen.queryByText('Attention / next actions')).toBeNull();
+    expect(screen.queryByText('Related Tasks')).toBeNull();
+  });
+
+  it('executor unreadable warns and missing is a danger note', () => {
+    const { container, unmount } = renderContext({
+      scope: { kind: 'standalone' },
+      executor: { status: 'unreadable' },
+    });
+    expect(screen.getByText('Couldn’t load executor details.')).toBeTruthy();
+    expect(container.querySelector('.text-status-danger')).toBeNull();
+    unmount();
+
+    const missing = renderContext({
+      scope: { kind: 'standalone' },
+      executor: { status: 'missing' },
+    });
+    expect(screen.getByText('This session’s executor is no longer available.')).toBeTruthy();
+    expect(missing.container.querySelector('.text-status-danger')).toBeTruthy();
+  });
+
+  it('notes are passive: no live region role on any Context note', () => {
+    const { container } = renderContext({
+      scope: { kind: 'task', taskCount: 1 },
+      executor: { status: 'unreadable' },
+      specification: { status: 'missing', ref: { key: 'SPEC-A' } },
+      executionScope: { status: 'missing' },
+    });
+
+    expect(container.querySelector('[role="alert"], [role="status"]')).toBeNull();
   });
 
   it('renders a short-but-real Context without artificial vertical centering', () => {
     const { container } = renderContext({
-      status: 'ready',
-      executionScope: { kind: 'generic' },
+      scope: { kind: 'specification' },
+      executionScope: ready({ kind: 'generic' }),
     });
 
     // Confirmed live-review bug: an `m-auto` wrapper centred short Context content vertically
-    // inside the tall panel instead of starting at the top like every other scrolled surface —
-    // this is one of the two contributors the owner traced the "wyśrodkowane w pionie" complaint
-    // to (the other is `ManagedSession`'s own scroll architecture). A regression test previously
-    // asserted the centring itself as correct behavior; this asserts its absence instead.
+    // inside the tall panel instead of starting at the top like every other scrolled surface.
     expect(container.querySelector('.m-auto')).toBeNull();
     expect(container.textContent).toContain('Generic / Spec-level');
-    // Its own scrolled ancestor still has the definite full height ordinary top-anchored content
-    // needs to scroll correctly once it overflows.
     const scrollContent = container.querySelector('.scroll-area-content');
     expect(scrollContent?.className).toMatch(/\bflex\b/);
     expect(scrollContent?.className).toMatch(/min-h-full/);
@@ -454,7 +643,7 @@ describe('Specification entry', () => {
 
   function renderContext(
     value: SessionContextViewModel,
-    onOpenSpecification?: (spec: NonNullable<SessionContextViewModel['specification']>) => void,
+    onOpenSpecification?: (spec: { id: string; key: string; title: string }) => void,
   ) {
     return render(
       <StoryLocalization locale="en">
@@ -473,10 +662,10 @@ describe('Specification entry', () => {
     const task = { id: 'task-03', key: 'TASK-03', title: 'Deterministic admission' };
     renderContext(
       {
-        status: 'ready',
-        specification,
-        executionScope: { kind: 'single-task', task },
-        relatedTasks: [task, { id: 'task-02', key: 'TASK-02', title: 'Admission guard' }],
+        scope: { kind: 'specification' },
+        specification: ready(specification),
+        executionScope: ready({ kind: 'single-task', task }),
+        relatedTasks: ready([task, { id: 'task-02', key: 'TASK-02', title: 'Admission guard' }]),
       },
       vi.fn(),
     );
@@ -493,7 +682,10 @@ describe('Specification entry', () => {
 
   it('renders a navigational Specification row when the view model carries one and a handler is wired, and opens it with the real specification reference on click', () => {
     const onOpenSpecification = vi.fn();
-    renderContext({ status: 'ready', specification }, onOpenSpecification);
+    renderContext(
+      { scope: { kind: 'specification' }, specification: ready(specification) },
+      onOpenSpecification,
+    );
 
     expect(screen.getByText('Specification')).toBeTruthy();
     expect(screen.getByText('Workflow admission hardening')).toBeTruthy();
@@ -508,15 +700,49 @@ describe('Specification entry', () => {
     // No real navigation destination to offer without a wired handler (unlike the placeholder
     // root-tab rows, which always have at least the shared "not implemented yet" screen to fall
     // back to) — a row that looks clickable but does nothing would be worse than no row.
-    renderContext({ status: 'ready', specification });
+    renderContext({ scope: { kind: 'specification' }, specification: ready(specification) });
 
     expect(screen.queryByText('Specification')).toBeNull();
     expect(screen.queryByText('Workflow admission hardening')).toBeNull();
   });
 
   it('omits the Specification row when the view model carries no specification reference, even with a handler wired', () => {
-    renderContext({ status: 'ready' }, vi.fn());
+    renderContext({ scope: { kind: 'standalone' } }, vi.fn());
 
     expect(screen.queryByText('Specification')).toBeNull();
+  });
+
+  it('adds a Documents row under the Specification row that opens the Specification Documents', () => {
+    const onOpenDocuments = vi.fn();
+    const { container } = render(
+      <StoryLocalization locale="en">
+        <AppWorkspaceProvider>
+          <SessionContext
+            sessionId={sessionId}
+            value={{ scope: { kind: 'specification' }, specification: ready(specification) }}
+            onOpenSpecification={vi.fn()}
+            onOpenDocuments={onOpenDocuments}
+          />
+        </AppWorkspaceProvider>
+      </StoryLocalization>,
+    );
+
+    const section = screen.getByText('Specification').closest('section')!;
+    // Same list as the identity row, no count.
+    expect(section.querySelectorAll('ul')).toHaveLength(1);
+    expect(section.querySelectorAll('li')).toHaveLength(2);
+    expect(container.querySelector('[data-context-skeleton-row]')).toBeNull();
+
+    clickButtonByText('Documents');
+
+    expect(onOpenDocuments).toHaveBeenCalledWith(specification);
+  });
+
+  it('omits the Documents row without a handler, and while the Specification is not ready', () => {
+    renderContext(
+      { scope: { kind: 'specification' }, specification: ready(specification) },
+      vi.fn(),
+    );
+    expect(screen.queryByText('Documents')).toBeNull();
   });
 });

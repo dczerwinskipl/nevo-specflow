@@ -1,14 +1,32 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { AppShell, AppWorkspace, AppWorkspaceProvider, WorkspaceHeader } from '@nevo/ui';
+import {
+  AppShell,
+  AppWorkspace,
+  AppWorkspaceProvider,
+  WorkspaceHeader,
+  defineSecondaryStack,
+} from '@nevo/ui';
+import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
 import {
+  associationsUnreadableContext,
+  attentionUnreadableContext,
   batchContext,
-  emptyContext,
+  batchPartialMissingContext,
+  executorMissingContext,
   genericSpecLevelContext,
+  realRouteContext,
+  realRouteLoadingContext,
+  relatedTasksUnreadableContext,
   settledTurnContext,
   singleTaskContext,
+  specLoadingContext,
+  specRequiredMissingContext,
+  specUnreadableContext,
+  standaloneContext,
   stressContext,
+  taskRequiredMissingContext,
   terminalOutcomeContext,
 } from './sessionContextFixtures';
 import type { SessionContextViewModel } from './sessionContextTypes';
@@ -23,19 +41,34 @@ import type { SessionContextViewModel } from './sessionContextTypes';
  * - `SessionTelemetrySection`'s new hierarchy — compact stat cells for cost/tokens, the
  *   collapsed token-breakdown disclosure, and "Zużycie sesji"/"Limity dostawcy" as two visually
  *   separate sections, the rate-limit windows as full-width stacked rows;
- * - the §7.4 navigation skeleton (`OtherAreasSection`): one real, clickable, navigable
+ * - the Planned areas section (`ContextPlannedAreasSection`): one real, clickable, navigable
  *   `ContextNavigationRow` per remaining root-tab subject.
  *
  * Mounted through the real `AppWorkspace`/`AppWorkspaceProvider` runtime `SessionContext` itself
  * depends on (`useSecondaryNavigation`) — deliberately not through `ManagedSession` itself, which
  * is under separate, parallel edit. `fit="available" split="dynamic"` (mirroring
  * `WorkInspector.stories.tsx`'s own harness) is required for an `openTab()`-opened tab (Tasks, or
- * any of the six placeholder subjects) to actually render at a usable width instead of the fixed
+ * any of the five planned areas) to actually render at a usable width instead of the fixed
  * `split="primary"` 75/25 preset's cramped Secondary share — this is the one thing this harness
  * changes beyond `SessionContext.test.tsx`'s minimal mount, so clicking a navigation row is
  * genuinely visually verifiable here, not just functionally wired.
  */
 const sessionId = '00000000-0000-4000-8000-000000000001';
+
+/** Stand-in for `createWorkInspector`'s per-Turn Work stack (this harness has no Sessions API):
+ * one tab per Turn, so the "Work history" row is real and clickable here. */
+const storyWorkStack = defineSecondaryStack<
+  { sessionId: string; turnId: string },
+  { sessionId: string; turnId: string },
+  { work: object }
+>({
+  id: 'managed-session-work',
+  initial: 'work',
+  instanceId: (params) => params.turnId,
+  tabLabel: () => 'Work history',
+  useData: (params) => ({ status: 'ready', data: params }),
+  screens: { work: { title: 'Work history', component: () => <div className="p-4">Work</div> } },
+});
 
 function ContextHost({ value }: { value: SessionContextViewModel }) {
   return (
@@ -56,6 +89,8 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
                 onOpenSpecification={(specification) =>
                   console.info('Open Specification', specification)
                 }
+                onOpenDocuments={(specification) => console.info('Open Documents', specification)}
+                workStack={storyWorkStack}
               />
             </AppWorkspace.Primary>
           </AppWorkspace>
@@ -88,6 +123,8 @@ function SecondaryContextHost({ value }: { value: SessionContextViewModel }) {
                 onOpenSpecification={(specification) =>
                   console.info('Open Specification', specification)
                 }
+                onOpenDocuments={(specification) => console.info('Open Documents', specification)}
+                workStack={storyWorkStack}
               />
             </AppWorkspace.Secondary>
           </AppWorkspace>
@@ -112,7 +149,26 @@ export const Default: Story = {
     value: {
       name: 'context',
       control: 'select',
-      options: ['relatedTasks', 'singleTask', 'batch', 'stale', 'stress', 'settledTurn', 'empty'],
+      options: [
+        'relatedTasks',
+        'singleTask',
+        'batch',
+        'stale',
+        'stress',
+        'settledTurn',
+        'realRoute',
+        'realRouteLoading',
+        'associationsUnreadable',
+        'standalone',
+        'specLoading',
+        'specUnreadable',
+        'specRequiredMissing',
+        'taskRequiredMissing',
+        'batchPartialMissing',
+        'attentionUnreadable',
+        'relatedTasksUnreadable',
+        'executorMissing',
+      ],
       mapping: {
         relatedTasks: genericSpecLevelContext(),
         singleTask: singleTaskContext(),
@@ -120,7 +176,18 @@ export const Default: Story = {
         stale: terminalOutcomeContext(),
         stress: stressContext(),
         settledTurn: settledTurnContext(),
-        empty: emptyContext(),
+        realRoute: realRouteContext(),
+        realRouteLoading: realRouteLoadingContext(),
+        associationsUnreadable: associationsUnreadableContext(),
+        standalone: standaloneContext(),
+        specLoading: specLoadingContext(),
+        specUnreadable: specUnreadableContext(),
+        specRequiredMissing: specRequiredMissingContext(),
+        taskRequiredMissing: taskRequiredMissingContext(),
+        batchPartialMissing: batchPartialMissingContext(),
+        attentionUnreadable: attentionUnreadableContext(),
+        relatedTasksUnreadable: relatedTasksUnreadableContext(),
+        executorMissing: executorMissingContext(),
       },
     },
   },
@@ -204,12 +271,113 @@ export const InSecondaryBatch: Story = {
   render: (args) => <SecondaryContextHost {...args} />,
 };
 
-/** Every DYNAMIC section absent (owner decision 2's graceful-omission fixture): confirms the
- * Part 2 correction — Context is no longer a full-pane "nothing here" EmptyState in this case, it
- * shows the inline "no additional context" note alongside the always-present navigation skeleton
- * (`OtherAreasSection`), since that skeleton is a fixed entry point rather than session-derived
- * content that can legitimately be absent. */
-export const EmptyWithNavigationSkeleton: Story = {
+/** A Session with no Specification association: executor, Work and Planned areas only, and no
+ * scope note (nothing is promised, so nothing is explained). */
+export const Standalone: Story = {
   tags: ['contract'],
-  args: { value: emptyContext() },
+  args: { value: standaloneContext() },
+};
+
+/** The Specification-scoped Session with the Documents row under its Specification row. */
+export const WithDocuments: Story = {
+  tags: ['contract'],
+  args: { value: genericSpecLevelContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+};
+
+/** Specification still loading: its label with skeleton rows (identity + Documents). */
+export const SpecificationLoading: Story = {
+  tags: ['contract'],
+  args: { value: specLoadingContext() },
+};
+
+/** The Specification exists but could not be read: a warning note in its slot. */
+export const SpecificationUnreadable: Story = {
+  tags: ['contract'],
+  args: { value: specUnreadableContext() },
+};
+
+/** A Task-scoped Session whose required Task cannot be found: an error note. */
+export const TaskRequiredMissing: Story = {
+  tags: ['contract'],
+  args: { value: taskRequiredMissingContext() },
+};
+
+/** One of three Tasks missing: the two found Tasks render beside the error note. */
+export const BatchPartialMissing: Story = {
+  tags: ['contract'],
+  args: { value: batchPartialMissingContext() },
+};
+
+export const AttentionUnreadable: Story = {
+  tags: ['contract'],
+  args: { value: attentionUnreadableContext() },
+};
+
+export const RelatedTasksUnreadable: Story = {
+  tags: ['contract'],
+  args: { value: relatedTasksUnreadableContext() },
+};
+
+export const ExecutorMissing: Story = {
+  tags: ['contract'],
+  args: { value: executorMissingContext() },
+};
+
+const settleWide = () => settleViewport(1280, 800);
+const settleNarrow = () => settleViewport(390, 844);
+const mobile = { viewport: { value: 'mobile1', isRotated: false } };
+
+/** The real route today in the ~330 px Secondary: executor, the scope-unknown note, Work, Planned
+ * areas. */
+export const RealRouteInSecondary: Story = {
+  tags: ['contract'],
+  args: { value: realRouteContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: settleWide,
+};
+export const RealRouteMobile: Story = {
+  tags: ['contract'],
+  args: { value: realRouteContext() },
+  globals: mobile,
+  play: settleNarrow,
+};
+
+export const RequiredMissingInSecondary: Story = {
+  tags: ['contract'],
+  args: { value: specRequiredMissingContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: settleWide,
+};
+export const RequiredMissingMobile: Story = {
+  tags: ['contract'],
+  args: { value: specRequiredMissingContext() },
+  globals: mobile,
+  play: settleNarrow,
+};
+
+export const LoadingInSecondary: Story = {
+  tags: ['contract'],
+  args: { value: { ...specLoadingContext(), attention: { status: 'loading' } } },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: settleWide,
+};
+export const LoadingMobile: Story = {
+  tags: ['contract'],
+  args: { value: realRouteLoadingContext() },
+  globals: mobile,
+  play: settleNarrow,
+};
+
+export const AssociationsUnreadableInSecondary: Story = {
+  tags: ['contract'],
+  args: { value: associationsUnreadableContext() },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: settleWide,
+};
+export const AssociationsUnreadableMobile: Story = {
+  tags: ['contract'],
+  args: { value: associationsUnreadableContext() },
+  globals: mobile,
+  play: settleNarrow,
 };

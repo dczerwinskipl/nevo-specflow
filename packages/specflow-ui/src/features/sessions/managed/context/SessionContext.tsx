@@ -1,28 +1,33 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AppContent,
   AppWorkspaceBody,
-  EmptyState,
-  InformationList,
-  StatusIndicator,
-  Typography,
   defineSecondaryStack,
   useSecondaryNavigation,
   useSecondaryStack,
   type SecondaryStackDefinition,
 } from '@nevo/ui';
-import { translateNow, type MessageKey } from '../../../../i18n/message';
+import { translateNow } from '../../../../i18n/message';
 import { ContextExecutorSection } from './ContextExecutorSection';
-import { ContextNavigationRow } from './ContextNavigationRow';
-import { placeholderRootTabs, type PlaceholderRootTab } from './SessionContextPlaceholderTabs';
+import { ContextPlannedAreasSection } from './ContextPlannedAreasSection';
+import { ContextNote } from './ContextSectionFrame';
+import { ContextSpecificationSection } from './ContextSpecificationSection';
+import {
+  ContextAttentionSection,
+  ContextExecutionSection,
+  ContextRelatedTasksSection,
+} from './ContextTaskSections';
+import { ContextWorkSection } from './ContextWorkSection';
+import type { PlaceholderRootTab } from './SessionContextPlaceholderTabs';
 import { createSessionTasksInspector } from './SessionTasksInspector';
 import { SessionTelemetrySection } from './SessionTelemetrySection';
-import { isTelemetryVisible } from './sessionTelemetry';
-import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
+import type {
+  ContextSpecification,
+  SessionContextTaskRef,
+  SessionContextViewModel,
+} from './sessionContextTypes';
 
-/** Same shape as `useSecondaryNavigation().open` and the stack-push overload of a flow's own
- * `navTo` — whichever is passed in, it starts the target stack somewhere in the Secondary. */
 /**
  * `SessionContext` only ever passes a Work stack through to `openStack`/`navigation.openTab` —
  * it never reads its `Data`/`Pages` shape itself, so this stays deliberately generic over those
@@ -38,6 +43,8 @@ type WorkHistoryStack = SecondaryStackDefinition<
   any
 >;
 
+/** Same shape as `useSecondaryNavigation().open` and the stack-push overload of a flow's own
+ * `navTo` — whichever is passed in, it starts the target stack somewhere in the Secondary. */
 type OpenSecondaryStack = <
   TRoot extends object,
   TData,
@@ -50,34 +57,20 @@ type OpenSecondaryStack = <
 /**
  * Full Session Context Secondary (full-session-screen-structure.md §7).
  *
- * Structural order, top to bottom (live owner review, second pass — translated from the owner's
- * own mock + rationale; see this task's handoff for the exact source):
- * 1. Specification (`SpecificationEntry`) — one navigational row into the Specification this
- *    session belongs to, when the (product-owned, not-yet-backend) view model carries one.
- * 2. Current execution, Attention/next actions, Related Tasks (§7.2, unchanged by this pass).
- * 3. The §7.4 navigation skeleton into Context's other root-tab subjects (`OtherAreasSection` —
- *    owner greenlit the navigation mechanics in the first pass; this pass only adds the grouping
- *    headers within it, see `SessionContextPlaceholderTabs.tsx`).
- * 4. `SessionTelemetrySection` (§23/PR #107) — ALWAYS last, visually separated from the rows above
- *    by its own section break, never folded into the same list.
- *
- * `Evidence` and the rest of Session details (mode/capabilities/provider/model) remain
- * deliberately out of this pass's scope (owner decision 2) and are simply absent rather than
- * stubbed.
- *
- * Every DYNAMIC section (execution/attention/related Tasks/telemetry) is independently optional
- * (owner decision 2 — a missing group must never crash or show a broken UI). `OtherAreasSection`
- * is not one of those — it is a fixed navigation entry point, always present once Context is
- * `ready`, so "every dynamic section absent" no longer means a literally empty Context. The
- * Specification row IS data-driven like the dynamic sections (omitted when `value.specification`
- * or `onOpenSpecification` is absent), since unlike `OtherAreasSection` it has no "not implemented
- * yet" placeholder destination to fall back to.
+ * Fixed section order, top to bottom: Executor (+ the scope note), Specification (identity row +
+ * Documents row), Current execution, Attention, Related Tasks, Work, Planned areas, then Session
+ * details (telemetry) always last. Each fact-backed section resolves its `ContextFact` through
+ * `resolveSection` (`sessionContextAvailability.ts`, §7.6): no association is omitted, loading is
+ * label + skeleton rows, data that exists but cannot be read is a warning note, a missing required
+ * reference an error note. Planned areas are a flat preview of subjects without a real screen yet.
+ * The sections live in their own files next to this one.
  */
 export function SessionContext({
   sessionId,
   value,
   openStack,
   onOpenSpecification,
+  onOpenDocuments,
   workStack,
 }: {
   sessionId: string;
@@ -86,35 +79,29 @@ export function SessionContext({
    * How Tasks opens from here. On the narrow runtime Context flow (`createSessionContextStack`
    * below) this is that flow's own `navTo`, which pushes the Tasks tab's initial screen onto
    * Context's OWN stack — narrow has no tabs at all (full-session-screen-structure.md §10.3), so
-   * this is a plain, correct push/pop, unchanged by the correction below. Omitted on the
-   * wide/split-capable default Secondary (see `ManagedSession`), where each Task (and the Tasks
-   * list) opens as its own root tab via `navigation.openTab` (see `openTasksTab` below) — never the
-   * single shared "legacy open" slot `useSecondaryNavigation().open` reserves for other features.
+   * this is a plain, correct push/pop. Omitted on the wide/split-capable default Secondary (see
+   * `ManagedSession`), where each Task (and the Tasks list) opens as its own root tab via
+   * `navigation.openTab`.
    */
   openStack?: OpenSecondaryStack;
   /**
-   * Opens the Specification this session belongs to (live owner review, second pass): a real,
-   * cross-feature route navigation (`/specs/$specId`, the same destination
-   * `productNavigationModel.ts`'s "Overview" entry and `SessionRecoveryNotice.tsx` already use —
-   * see `useNavigate`/`useApplicationCollection` there), not a Secondary tab/stack like Tasks or
-   * the placeholder subjects below. `SessionContext` itself stays router-agnostic (it is mounted,
-   * unrouted, by both `SessionContext.stories.tsx` and `SessionContext.test.tsx`) and simply hands
-   * the real `{id, key, title}` off to this optional callback; the caller (`ManagedSession`'s route
-   * composition, out of this task's file scope) is responsible for wiring it to the real
-   * navigation. Omitted (or `value.specification` absent): the row simply doesn't render — same
-   * "missing data/capability hides the row" rule as every other optional piece of Context.
+   * Opens the Specification this session belongs to: a real, cross-feature route navigation
+   * (`/specs/$specId`), not a Secondary tab. `SessionContext` stays router-agnostic (it is mounted,
+   * unrouted, by its stories and tests) and hands the `{id, key, title}` to this callback; the route
+   * composition wires it. Omitted: the Specification row does not render.
    */
-  onOpenSpecification?: (
-    specification: NonNullable<SessionContextViewModel['specification']>,
-  ) => void;
+  onOpenSpecification?: (specification: ContextSpecification) => void;
+  /**
+   * Opens that Specification's Documents (`/specs/$specId/documents`), remembering this Session as
+   * the way back. Same router-agnostic contract as `onOpenSpecification`. Omitted: no Documents row.
+   */
+  onOpenDocuments?: (specification: ContextSpecification) => void;
   /**
    * The Work history stack `ManagedSession` also uses for its Conversation Work blocks
-   * (`createWorkInspector`) — passed in rather than created here so both entry points share its
-   * per-Turn tab identity (full-session-screen-structure.md §8.3): Context's "Work history" row and
-   * the chat block of the same Turn call `openTab` with the same `{ sessionId, turnId }`, so they
-   * land on one tab, and a different Turn gets its own. Omitted (or `value.activeTurnId` absent):
-   * the row does not render — `ManagedSession`'s own Storybook/test mounts that have no real
-   * `api`/`feed` simply don't pass this prop, same optional-prop pattern as `onOpenSpecification`.
+   * (`createWorkInspector`), passed in so both entry points share its per-Turn tab identity
+   * (full-session-screen-structure.md §8.3): the "Work history" row and the chat block of the same
+   * Turn call `openTab` with the same `{ sessionId, turnId }`, so they land on one tab. Omitted: no
+   * Work section.
    */
   workStack?: WorkHistoryStack;
 }) {
@@ -141,42 +128,25 @@ export function SessionContext({
     void navigation.openTab(stack, { sessionId, taskId });
   }
 
-  function openTasksList() {
-    openTasksTab(inspectors.tasksStack);
-  }
-
   /** Opens a specific Task (current-execution Task, Attention's task reference, or a Related Tasks
-   * summary with exactly one entry): its own root tab, activated if that Task is already open
-   * (see `openTasksTab`). */
+   * summary with exactly one entry): its own root tab, activated if already open. */
   function openTask(task: SessionContextTaskRef) {
     openTasksTab(inspectors.taskStack, task.id);
   }
 
-  /**
-   * Related Tasks' single summary row (owner correction, live review): Context is a navigational
-   * entry point, not a place that lists every related Task inline — it shows one row naming how
-   * many related Tasks exist and leads further. With exactly one related Task the row goes
-   * straight to it (`openTask`). With more than one, it reuses the existing Tasks list screen
-   * (`inspectors.tasksStack`, previously reachable only via a separate "Open Tasks" button) as
-   * that dedicated subject view; selecting a Task there opens that Task's own tab, like `openTask`.
-   */
-  function openRelatedTasksEntry() {
-    const relatedTasks = value.relatedTasks;
-    if (relatedTasks?.length === 1) {
-      openTask(relatedTasks[0]!);
+  /** Related Tasks' summary row: exactly one Task goes straight to it, several to the shared
+   * Tasks list (selecting a Task there opens that Task's own tab). */
+  function openRelatedTasksEntry(tasks: SessionContextTaskRef[]) {
+    if (tasks.length === 1) {
+      openTask(tasks[0]!);
 
       return;
     }
 
-    openTasksList();
+    openTasksTab(inspectors.tasksStack);
   }
 
-  /**
-   * Navigation-skeleton rows for Context's other originally-planned root tabs
-   * (full-session-screen-structure.md §7.4 — see `SessionContextPlaceholderTabs.tsx`'s module
-   * comment). Same open mechanism as Tasks: `openStack` on the narrow runtime flow, `openTab` on
-   * the wide/split-capable default Secondary.
-   */
+  /** Planned-area rows open their placeholder tab the same way as Tasks (`openStack`/`openTab`). */
   function openPlaceholderTab(tab: PlaceholderRootTab) {
     const params = { sessionId };
     if (openStack) {
@@ -188,18 +158,14 @@ export function SessionContext({
     void navigation.openTab(tab.stack, params);
   }
 
-  /**
-   * Opens/reselects the Work history tab of the Session's current Turn (see `workStack`'s own doc
-   * comment above). The tab is one per Turn (`workStack`'s `instanceId`), so this and a chat Work
-   * block for the same Turn are the same tab; another Turn has its own. Same `openStack`/`openTab`
-   * split every other row here uses.
-   */
-  function openWorkHistory() {
-    if (!workStack || !value.activeTurnId) {
+  /** Opens/reselects the Work history tab of one Turn: one tab per Turn (`workStack`'s
+   * `instanceId`), shared with that Turn's chat Work block; another Turn has its own. */
+  function openWorkHistory(turnId: string) {
+    if (!workStack) {
       return;
     }
 
-    const params = { sessionId, turnId: value.activeTurnId };
+    const params = { sessionId, turnId };
     if (openStack) {
       void openStack(workStack, params);
 
@@ -209,117 +175,38 @@ export function SessionContext({
     void navigation.openTab(workStack, params);
   }
 
-  if (value.status === 'unavailable') {
-    return (
-      <AppContent className="h-full w-full">
-        {/* `contentClassName` gives the scrolled content a definite, full-height flex column so
-            `EmptyState`'s own `variant="pane"` (`min-h-full flex-1 ... justify-center`) actually has
-            something to fill and centre within, instead of collapsing to its own intrinsic height
-            at the top of an otherwise-blank, full-viewport mobile panel (live-review finding). */}
-        <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
-          <EmptyState variant="pane" title={t('sessions.context.unavailable')} />
-        </AppWorkspaceBody>
-      </AppContent>
-    );
-  }
-
-  /**
-   * No longer gates a full-pane `EmptyState` on its own (live-review Part 2 correction): Context
-   * now always offers the `OtherAreasSection` navigation skeleton once it is `ready`, so a Session
-   * with every DYNAMIC section (execution/attention/related Tasks/telemetry) absent is never
-   * actually empty — there is still real, clickable content below. `hasAnySection` only decides
-   * whether the inline "no additional context" note shows alongside that skeleton, not whether
-   * anything renders at all.
-   */
-  const hasAnySection =
-    !!value.executor ||
-    (!!value.specification && !!onOpenSpecification) ||
-    !!value.executionScope ||
-    !!value.attention?.length ||
-    !!value.relatedTasks?.length ||
-    isTelemetryVisible(value.telemetry);
+  const scope = value.scope;
 
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
-        {/* No vertical `m-auto` centering here (confirmed live-review bug — a short Context read
-            as oddly centred in a tall panel instead of starting at the top like every other
-            scrolled surface; this div previously centred itself, compounding `ManagedSession`'s
-            own scroll-architecture contribution to the same complaint). Starts at the top and
-            simply scrolls once content overflows, like an ordinary panel. */}
+        {/* Starts at the top and scrolls once content overflows (no vertical centring). */}
         <div className="grid w-full gap-6">
-          {value.executor && <ContextExecutorSection executor={value.executor} />}
-          {value.specification && onOpenSpecification && (
-            <section className="grid gap-1">
-              <Typography variant="section-label">
-                {t('sessions.context.specification.sectionTitle')}
-              </Typography>
-              <InformationList>
-                <ContextNavigationRow
-                  icon="workflow"
-                  emphasis="identity"
-                  label={value.specification.title}
-                  secondary={<span className="font-mono">{value.specification.key}</span>}
-                  onClick={() => onOpenSpecification(value.specification!)}
-                />
-              </InformationList>
-            </section>
-          )}
-          {value.executionScope && (
-            <section className="grid gap-1">
-              <Typography variant="section-label">
-                {t('sessions.context.executionScope')}
-              </Typography>
-              <ExecutionScope scope={value.executionScope} onOpenTask={openTask} />
-            </section>
-          )}
-          {!!value.attention?.length && (
-            <section className="grid gap-1">
-              <Typography variant="section-label">{t('sessions.context.attention')}</Typography>
-              {/* Same row grid as every other Context row: the tone dot takes the icon track, so
-                  the summary starts on the same text edge as the navigation labels. */}
-              <InformationList>
-                {value.attention.map((item) => (
-                  <ContextNavigationRow
-                    key={item.id}
-                    leading={
-                      <StatusIndicator
-                        tone={item.tone}
-                        decorative={false}
-                        aria-label={t(`sessions.context.attentionTone.${item.tone}`)}
-                      />
-                    }
-                    label={item.summary}
-                    onClick={item.task && !item.readOnly ? () => openTask(item.task!) : undefined}
-                  />
-                ))}
-              </InformationList>
-            </section>
-          )}
-          {!!value.relatedTasks?.length && (
-            <section className="grid gap-1">
-              <Typography variant="section-label">{t('sessions.context.relatedTasks')}</Typography>
-              {/* One navigational summary row, not the individual Task list (live-review
-                  correction): Context is an entry point into its subjects, it does not dump every
-                  related Task inline. */}
-              <InformationList>
-                <ContextNavigationRow
-                  icon="list-checks"
-                  label={t('sessions.context.batch', { count: value.relatedTasks.length })}
-                  onClick={openRelatedTasksEntry}
-                />
-              </InformationList>
-            </section>
-          )}
-          {!hasAnySection && (
-            <Typography variant="body-sm" className="text-content-secondary">
-              {t('sessions.context.empty')}
-            </Typography>
-          )}
-          <OtherAreasSection
-            onOpen={openPlaceholderTab}
-            workHistory={workStack && value.activeTurnId ? { onOpen: openWorkHistory } : undefined}
+          <ContextExecutorSection executor={value.executor} scope={scope}>
+            {scope.kind === 'unknown' && (
+              <ContextNote kind={scope.reason === 'unreadable' ? 'warning' : 'info'}>
+                {t(
+                  scope.reason === 'unreadable'
+                    ? 'sessions.context.availability.scopeUnreadable'
+                    : 'sessions.context.availability.scopeNotProvided',
+                )}
+              </ContextNote>
+            )}
+          </ContextExecutorSection>
+          <ContextSpecificationSection
+            value={value}
+            onOpenSpecification={onOpenSpecification}
+            onOpenDocuments={onOpenDocuments}
           />
+          <ContextExecutionSection value={value} onOpenTask={openTask} />
+          <ContextAttentionSection value={value} onOpenTask={openTask} />
+          <ContextRelatedTasksSection value={value} onOpen={openRelatedTasksEntry} />
+          <ContextWorkSection
+            workHistory={value.workHistory}
+            runningTurnId={value.runningTurnId}
+            onOpen={workStack ? openWorkHistory : undefined}
+          />
+          <ContextPlannedAreasSection onOpen={openPlaceholderTab} />
           <SessionTelemetrySection
             telemetry={value.telemetry}
             runningTurnId={value.runningTurnId}
@@ -331,157 +218,9 @@ export function SessionContext({
 }
 
 /**
- * Navigation skeleton (full-session-screen-structure.md §7.4, owner-greenlit): one clickable row
- * per remaining root-tab subject besides Tasks, built from the shared `ContextNavigationRow` list
- * pattern. Every row opens a real Secondary tab (see `SessionContextPlaceholderTabs.tsx`) — a
- * minimal shared "not yet implemented" placeholder screen where no real one exists yet — so the
- * navigation mechanics (Context -> tab -> tab strip -> close/reopen) are genuinely exercised, not
- * faked. Always present once Context itself is `ready` (independent of `hasAnySection`'s dynamic
- * sections above): it is a fixed entry point into the other subjects, not session-derived content
- * that can legitimately be absent.
- */
-/**
- * Grouped into "Results & resources" (Files/Changes, Handovers, Artifacts — output the session
- * produced) and "History & reference" (History, Instructions, Environment — background/setup
- * material), each under its own small subsection label, rather than one flat six-row list (live
- * owner review, second pass): the owner's reference mock shows exactly this visual pattern — a
- * subsection label above a cluster of related rows — for a "RESULTS & RESOURCES" group, though it
- * only shows that one group (unclear whether the screenshot simply didn't scroll further, or the
- * mock intends only two rows total; see this task's handoff). All six rows from the first pass are
- * kept — none dropped — and this split is this pass's own interpretation, flagged for the owner to
- * confirm or adjust (`PlaceholderRootTab.group`, `SessionContextPlaceholderTabs.tsx`).
- */
-function OtherAreasSection({
-  onOpen,
-  workHistory,
-}: {
-  onOpen: (tab: PlaceholderRootTab) => void;
-  /** Real row, not a placeholder — see `SessionContext`'s own `openWorkHistory` doc comment.
-   * Rendered first in the "reference" group, the same slot the old History placeholder sat in. */
-  workHistory?: { onOpen: () => void };
-}) {
-  const { t } = useTranslation();
-  const results = placeholderRootTabs.filter((tab) => tab.group === 'results');
-  const reference = placeholderRootTabs.filter((tab) => tab.group === 'reference');
-
-  function group(titleKey: MessageKey, tabs: PlaceholderRootTab[], leading?: ReactNode) {
-    return (
-      <div className="grid gap-1">
-        <Typography variant="label-sm" className="text-content-muted">
-          {t(titleKey)}
-        </Typography>
-        <InformationList>
-          {leading}
-          {tabs.map((tab) => (
-            <ContextNavigationRow
-              key={tab.id}
-              icon={tab.icon}
-              label={t(tab.titleKey)}
-              onClick={() => onOpen(tab)}
-            />
-          ))}
-        </InformationList>
-      </div>
-    );
-  }
-
-  return (
-    <section className="grid gap-3">
-      <Typography variant="section-label">
-        {t('sessions.context.placeholders.sectionTitle')}
-      </Typography>
-      {group('sessions.context.placeholders.resultsGroupTitle', results)}
-      {group(
-        'sessions.context.placeholders.referenceGroupTitle',
-        reference,
-        workHistory && (
-          <ContextNavigationRow
-            key="work-history"
-            icon="clock"
-            label={t('sessions.context.workHistory.title')}
-            onClick={workHistory.onOpen}
-          />
-        ),
-      )}
-    </section>
-  );
-}
-
-function ExecutionScope({
-  scope,
-  onOpenTask,
-}: {
-  scope: NonNullable<SessionContextViewModel['executionScope']>;
-  onOpenTask: (task: SessionContextTaskRef) => void;
-}) {
-  const { t } = useTranslation();
-
-  if (scope.kind === 'generic') {
-    return (
-      <Typography variant="body-sm" className="text-content-secondary">
-        {t('sessions.context.generic')}
-      </Typography>
-    );
-  }
-
-  if (scope.kind === 'single-task') {
-    return (
-      <div className="grid gap-1">
-        {scope.role && <Typography variant="title-sm">{scope.role}</Typography>}
-        <InformationList>
-          <TaskLink task={scope.task} onOpen={onOpenTask} />
-        </InformationList>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-1">
-      {scope.role && <Typography variant="title-sm">{scope.role}</Typography>}
-      <Typography variant="body-sm" className="text-content-secondary">
-        {t('sessions.context.batch', { count: scope.tasks.length })}
-      </Typography>
-      <InformationList>
-        {scope.tasks.map((task) => (
-          <TaskLink key={task.id} task={task} onOpen={onOpenTask} />
-        ))}
-      </InformationList>
-    </div>
-  );
-}
-
-/** A Task reference row (current-execution Task, or the single related-Tasks summary's direct
- * target): the shared `ContextNavigationRow` geometry (icon, title + key, centred chevron) every
- * Context row uses, not bespoke stacked text in a `Button` — so it visibly affords
- * "this leads further" like every other operational list row in the product (live-review
- * finding). */
-function TaskLink({
-  task,
-  onOpen,
-}: {
-  task: SessionContextTaskRef;
-  onOpen: (task: SessionContextTaskRef) => void;
-}) {
-  return (
-    <ContextNavigationRow
-      icon="list-checks"
-      emphasis="identity"
-      label={task.title}
-      secondary={
-        <>
-          <span className="font-mono">{task.key}</span>
-          {task.note && <span className="block text-content-secondary">{task.note}</span>}
-        </>
-      }
-      onClick={() => onOpen(task)}
-    />
-  );
-}
-
-/**
  * Narrow fallback: on layouts that cannot show Primary + Secondary side by side, Context is not
  * auto-pushed (full-session-screen-structure.md §3.3); a header action opens it as a pushed local
- * detail instead, the same fallback the retired demo-era `SessionContextPanel` used to have.
+ * detail instead.
  *
  * Context here is a *runtime* Secondary flow (there is no default/static Secondary on narrow), so
  * `ContextScreen` below passes this flow's own `navTo` as `openStack`: opening a Task from inside
@@ -491,10 +230,9 @@ function TaskLink({
 export function createSessionContextStack(
   sessionId: string,
   value: SessionContextViewModel,
-  onOpenSpecification?: (
-    specification: NonNullable<SessionContextViewModel['specification']>,
-  ) => void,
+  onOpenSpecification?: (specification: ContextSpecification) => void,
   workStack?: WorkHistoryStack,
+  onOpenDocuments?: (specification: ContextSpecification) => void,
 ) {
   return defineSecondaryStack<
     Record<string, never>,
@@ -514,6 +252,7 @@ export function createSessionContextStack(
             sessionId={data.sessionId}
             value={data.value}
             onOpenSpecification={onOpenSpecification}
+            onOpenDocuments={onOpenDocuments}
             workStack={workStack}
           />
         ),
@@ -528,13 +267,13 @@ function ContextScreen({
   sessionId,
   value,
   onOpenSpecification,
+  onOpenDocuments,
   workStack,
 }: {
   sessionId: string;
   value: SessionContextViewModel;
-  onOpenSpecification?: (
-    specification: NonNullable<SessionContextViewModel['specification']>,
-  ) => void;
+  onOpenSpecification?: (specification: ContextSpecification) => void;
+  onOpenDocuments?: (specification: ContextSpecification) => void;
   workStack?: WorkHistoryStack;
 }) {
   const stack = useSecondaryStack<{ context: Record<string, never> }>();
@@ -546,6 +285,7 @@ function ContextScreen({
       value={value}
       openStack={openStack}
       onOpenSpecification={onOpenSpecification}
+      onOpenDocuments={onOpenDocuments}
       workStack={workStack}
     />
   );
@@ -554,14 +294,21 @@ function ContextScreen({
 function collectTasks(value: SessionContextViewModel): SessionContextTaskRef[] {
   const tasks = new Map<string, SessionContextTaskRef>();
   const add = (task: SessionContextTaskRef) => tasks.set(task.id, task);
-  if (value.executionScope?.kind === 'single-task') {
-    add(value.executionScope.task);
-  } else if (value.executionScope?.kind === 'batch') {
-    value.executionScope.tasks.forEach(add);
+  const execution =
+    value.executionScope?.status === 'ready' ? value.executionScope.value : undefined;
+  if (execution?.kind === 'single-task') {
+    add(execution.task);
+  } else if (execution?.kind === 'batch') {
+    execution.tasks.forEach(add);
   }
 
-  value.attention?.forEach((item) => item.task && add(item.task));
-  value.relatedTasks?.forEach(add);
+  if (value.attention?.status === 'ready') {
+    value.attention.value.forEach((item) => item.task && add(item.task));
+  }
+
+  if (value.relatedTasks?.status === 'ready') {
+    value.relatedTasks.value.forEach(add);
+  }
 
   return [...tasks.values()];
 }

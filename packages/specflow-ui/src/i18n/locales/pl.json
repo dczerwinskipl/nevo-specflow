@@ -1772,7 +1772,7 @@
     }
   },
   "sessionStart": {
-    "heading": "Nowa sesja",
+    "heading": "Z kim chcesz pracować?",
     "subheading": "Agent będzie pracował w kontekście tej specyfikacji. Pierwszą wiadomość napiszesz w sesji.",
     "context": {
       "heading": "Kontekst",

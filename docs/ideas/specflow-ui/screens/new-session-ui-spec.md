@@ -62,12 +62,14 @@ its own Composer.
 Order answers: _what will this Session work on → who works and how → what will it be called_. One
 primary action: **Start session** in the pinned footer, in a form (Enter in the name field submits it
 like the button). Sections use Create's headings, spacing and separators.
+The page heading is a question, like Create's ("What do you want to describe?"): the header bar
+already says **New session**, so repeating it as the heading said nothing new (owner review).
 
 ```text
 Wide (Primary only, content-form width)            Narrow 375px (same order, one column)
 ┌──────────────────────────────────────────────┐   ┌───────────────────────────────┐
-│ New session                                  │   │ ‹ Specification               │
-│ The agent works in the context of this spec… │   │ New session                   │
+│ Who do you want to work with?                │   │ ‹ Specification               │
+│ The agent works in the context of this spec… │   │ Who do you want to work with? │
 │──────────────────────────────────────────────│   │ The agent works in…           │
 │ Context                                      │   │───────────────────────────────│
 │ [doc] Logowanie SSO · Specification   Pinned │   │ Context                       │

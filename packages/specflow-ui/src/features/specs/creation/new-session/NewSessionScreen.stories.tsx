@@ -56,7 +56,7 @@ export const AgentNamesSession: Story = {
   play: async ({ canvas, userEvent }) => {
     await settleViewport();
     await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' }),
+      await canvas.findByRole('heading', { level: 1, name: 'Z kim chcesz pracować?' }),
     ).toBeVisible();
     // (a) The Specification is the pinned, read-only context. No first message, no workspace section.
     await expect(await canvas.findByText('Logowanie SSO')).toBeVisible();

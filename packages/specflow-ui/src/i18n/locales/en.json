@@ -1772,7 +1772,7 @@
     }
   },
   "sessionStart": {
-    "heading": "New session",
+    "heading": "Who do you want to work with?",
     "subheading": "The agent works in the context of this specification. You write the first message in the session.",
     "context": {
       "heading": "Context",

@@ -186,7 +186,7 @@ function simpleStack(id: string, label: string) {
   });
 }
 
-const longLabel = 'Specification review notes for the admission readiness policy';
+const longLabel = 'Review notes for the admission readiness policy document';
 const longStack = simpleStack('local-nav-long', longLabel);
 const manyStacks = Array.from({ length: 6 }, (_, index) =>
   simpleStack(`local-nav-file-${index}`, `notes-${index + 1}.md`),

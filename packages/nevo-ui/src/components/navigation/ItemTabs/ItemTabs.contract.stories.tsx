@@ -197,7 +197,17 @@ export const OverflowContract: Story = {
 
     const used = widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * 2;
     assert(used <= 760 - 52, `Tabs leave room for the Opened trigger (used ${used}px).`);
-    assert(new Set(widths.map(Math.round)).size > 1, 'Tab widths follow their labels.');
+    // Content width, independent of the platform's fonts: a tab narrower than the common cap shows
+    // its whole label; only tabs at the cap may truncate it (in the middle).
+    const cap = Math.max(...widths);
+    tabs.forEach((tab, index) => {
+      const shown = tab.textContent ?? '';
+      const truncated = shown.includes('…');
+      assert(
+        !truncated || widths[index]! >= cap - 1,
+        `Only a tab at the common cap truncates its label (${shown}: ${widths[index]} < ${cap}).`,
+      );
+    });
 
     await userEvent.click(
       canvas.getByRole('button', { name: `Opened items (${manyItems.length})` }),

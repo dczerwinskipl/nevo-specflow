@@ -344,8 +344,52 @@ interface CommonAppWorkspaceProps /* existing, extended */ {
   `layout: 'stacked'`; `AppWorkspace` renders through the **existing** stacked/narrow path
   (`supportsRuntimeWorkspaceSplit` / `state.mode === 'stacked'`) verbatim. This document does not
   add a second stacked implementation; it only adds one more reason `AppWorkspace` may choose that
-  existing path (today: `availableWidth < WORKSPACE_SPLIT_MIN_WIDTH`; with `dynamic`: additionally,
-  the current ratio's panes do not fit even after clamping).
+  existing path. With `dynamic` the decision is the resolver's alone and is width-only: a
+  Secondary that can stack (a runtime tab) splits from `WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH` +
+  `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` (400 + 330 = 730px), whereas the fixed presets and the
+  default (non-stackable) declarative Secondary keep `WORKSPACE_SPLIT_MIN_WIDTH` (840px). A ratio
+  never makes the panes "not fit": it is clamped first.
+
+#### Resolved layout vs shell capability
+
+Two different questions have two different answers between 730px and 839px:
+
+| Question                                                           | API                                                      | Threshold                                          |
+| ------------------------------------------------------------------ | -------------------------------------------------------- | -------------------------------------------------- |
+| "Can the shell show a non-stacking Secondary at all?" (shell hint) | `useWorkspaceCapabilities().supportsSplit`               | 840px (`WORKSPACE_SPLIT_MIN_WIDTH`)                |
+| "How is this workspace actually laid out right now?" (resolved)    | `useWorkspaceLayout()` -> `{ mode, primaryScrollOwner }` | the resolver's, from 730px for a runtime Secondary |
+
+- The hint is for the shell-level decisions that exist _before_ and _outside_ the workspace: whether
+  to register the pinned Context tab (`useRegisterPinnedSecondaryTab`) and whether the header offers
+  the side-panel toggle or a "Context" button. Between 730 and 839 it is `false` and Context is
+  opened as a runtime flow (decision recorded as option A; whether a pinned tab should also exist
+  there is a separate, undecided product question).
+- `useWorkspaceLayout()` is published by `AppWorkspace` itself and read by content **inside** it
+  (Primary/Secondary children): `mode` is `'split'` or `'stacked'`, `primaryScrollOwner` is
+  `'ambient'` when `AppWorkspace` supplies the stacked page scroll viewport
+  (`useWorkspacePrimaryScroll()` is non-null) and `'local'` when Primary content must own a scroll
+  container (every split layout, or `scroll="content"`). Anything that depends on the layout the
+  user sees — scroll ownership, `position: sticky` versus `fixed` overlays (a composer, a "jump to
+  latest" pill), density, Enter behaviour — MUST read this hook, never `supportsSplit`: with the
+  hint, a workspace split at 780px but "stacked" by the hint left Primary with no scroll owner and a
+  `fixed` composer painting over the Secondary. A `fixed inset-x-0` overlay is only valid while
+  `primaryScrollOwner === 'ambient'`. Outside an `AppWorkspace` the hook falls back to the shell
+  hint.
+- **Ratio contract** (`useDynamicWorkspaceSplit.ts`). The rendered ratio is always the resolver's
+  clamped result, so Primary never drops below its minimum width and the splitter's
+  `aria-valuenow` always lies within `aria-valuemin`/`aria-valuemax`:
+  - _Uncontrolled_ (`secondaryRatio` omitted): the resolver's auto/manual value is rendered and
+    every change of `(ratio, mode)` is reported through `onSecondaryRatioChange`.
+  - _Controlled_ (`secondaryRatio` given): the value is a manual preference and goes through the
+    same resolver (`mode: 'manual'`), so an out-of-range value (for example `0.95`, `0.05`, `1.5`)
+    renders clamped, and the layout is stacked only when the width cannot hold both minimum panes.
+    It is **never overwritten by auto values**: a restored value survives mount, a width change or
+    a tab opening without any callback. The product is told only about (a) a user adjustment of the
+    splitter, as `(ratio, 'manual')`, and (b) a later controlled value that the current width cannot
+    honour, once, as its clamped value. The first value seen after the width is measured is a
+    restored preference and is not corrected (it is rendered clamped; the stored preference is kept
+    so it can come back when the window widens).
+  - Nothing is reported before the width is measured.
 - `secondarySide` only changes layout order (which side of the flex row Secondary renders on,
   which side its border sits on). It MUST NOT remount Primary, any tab, or any tab's content, and
   MUST NOT change `secondaryRatio`, `tabs`, `activeTabId`, or any tab's local stack/scroll/focus.

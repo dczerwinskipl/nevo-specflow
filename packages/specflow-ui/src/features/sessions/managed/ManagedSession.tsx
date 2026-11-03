@@ -33,6 +33,7 @@ import {
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
   useWorkspaceCapabilities,
+  useWorkspaceLayout,
   useWorkspacePrimaryScroll,
   useWorkspacePrimarySheet,
   cn,
@@ -46,6 +47,7 @@ import type {
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
 import { ModelEffortPicker } from './ModelEffortPicker';
+import { useLayoutInducedScroll } from './useLayoutInducedScroll';
 import { ComposerModePicker } from './ComposerPresetPicker';
 import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
 import { createWorkInspector } from './WorkInspector';
@@ -368,7 +370,6 @@ function ManagedSessionConversation({
   api,
   sessionId,
   feed,
-  supportsSplit,
   navigation,
   workStack,
   provider,
@@ -378,7 +379,6 @@ function ManagedSessionConversation({
   api: ManagedSessionsApi;
   sessionId: string;
   feed: SessionFeed;
-  supportsSplit: boolean;
   navigation: ReturnType<typeof useSecondaryNavigation>;
   workStack: ReturnType<typeof createWorkInspector>;
   provider: ProviderDescriptor | undefined;
@@ -387,7 +387,16 @@ function ManagedSessionConversation({
 }) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
-  // `supportsSplit` also decides scroll ownership (secondary-navigation.md "Reaching Primary's
+  // The layout `AppWorkspace` actually resolved (`useWorkspaceLayout`), NOT the shell's
+  // `supportsSplit` hint: with `split="dynamic"` a runtime Secondary splits from 730px while
+  // `supportsSplit` switches at 840px, and reading the hint here left 730-839 with a split workspace
+  // but a stacked-behaving conversation (no scroll owner, a `fixed` composer painting over the
+  // Secondary). `localScroll` decides who owns scrolling and how the composer is positioned;
+  // `isSplit` the density/Enter behaviour of the narrower stacked presentation.
+  const workspaceLayout = useWorkspaceLayout();
+  const isSplit = workspaceLayout.mode === 'split';
+  const localScroll = workspaceLayout.primaryScrollOwner === 'local';
+  // Scroll ownership (secondary-navigation.md "Reaching Primary's
   // ambient scroll element, and the bottom safe area"): on the split/desktop layout `AppWorkspace`
   // gives Primary no scroll affordance of its own, so this component keeps owning a local scroll
   // container exactly as it always has (`localScrollNode`); on the stacked/mobile layout
@@ -403,7 +412,7 @@ function ManagedSessionConversation({
   // reserves its own space in normal flow and needs no padding reservation anywhere.
   const ambientSheetElement = useWorkspacePrimarySheet();
   const [localScrollNode, setLocalScrollNode] = useState<HTMLDivElement | null>(null);
-  const scroller = supportsSplit ? localScrollNode : ambientScrollElement;
+  const scroller = localScroll ? localScrollNode : ambientScrollElement;
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
   // A second, deliberately SEPARATE "are we away from the bottom" signal from `state.away` —
   // read by `pinToBottomIfNotAway` below instead of `state.away` (see that callback's own doc
@@ -420,6 +429,7 @@ function ManagedSessionConversation({
   // never touched by `older()` — so it answers exactly one question precisely: has a real scroll
   // gesture moved the viewport away from the bottom, right now.
   const awayRef = useRef(false);
+  const isLayoutInducedScroll = useLayoutInducedScroll(scroller);
   // The Composer must stay pinned to the viewport bottom at all times — ONLY the conversation
   // scrolls underneath it, never the Composer itself (owner audit, live on a real phone: an
   // earlier `position: sticky`-everywhere pass regressed into "the Composer is just another block
@@ -544,13 +554,19 @@ function ManagedSessionConversation({
       // Synchronous, every event, no debounce: `awayRef`'s own doc comment (above) explains why
       // `pinToBottomIfNotAway` needs this instead of the feed's own (debounced, and separately
       // conflated with the older-history-load bookkeeping) `away`.
-      awayRef.current = node.scrollHeight - node.scrollTop - node.clientHeight > AWAY_THRESHOLD_PX;
+      const away = node.scrollHeight - node.scrollTop - node.clientHeight > AWAY_THRESHOLD_PX;
+      // A scroll the browser caused while re-laying out after a resize never means "the reader
+      // scrolled away" (`useLayoutInducedScroll`): it may leave the away state, never enter it.
+      if (!away || !isLayoutInducedScroll()) {
+        awayRef.current = away;
+      }
+
       if (settleTimer !== undefined) {
         clearTimeout(settleTimer);
       }
 
       settleTimer = setTimeout(() => {
-        feed.setAway(node.scrollHeight - node.scrollTop - node.clientHeight > AWAY_THRESHOLD_PX);
+        feed.setAway(awayRef.current);
       }, AWAY_SETTLE_MS);
     };
 
@@ -651,10 +667,15 @@ function ManagedSessionConversation({
 
     if (overlap > 0) {
       node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, node.scrollTop + overlap);
-    } else if (supportsSplit) {
+    } else if (!anchor.current) {
+      // Snap to the true bottom on EVERY layout while still stuck to it (not scrolled away): a
+      // stacked scroller that shrinks while pinned (width 780 -> 390, a shorter viewport, a soft
+      // keyboard) re-wraps/overflows the content with no scroll event, so only this snap keeps the
+      // last entry above the composer. Skipped while an older-history prepend is waiting for its
+      // scroll anchor to be restored — that restore owns `scrollTop` for this commit.
       node.scrollTop = node.scrollHeight;
     }
-  }, [composerOverlayNode, scroller, supportsSplit]);
+  }, [composerOverlayNode, scroller]);
   useLayoutEffect(() => {
     const node = composerOverlayNode;
     if (!node) {
@@ -683,11 +704,11 @@ function ManagedSessionConversation({
       // reach render on some *later* commit, so the very first measurement after the overlay
       // mounts (and any later one where its height changes, e.g. the interaction card appearing)
       // reserves the new space before `pinToBottomIfNotAway` below reads `scrollHeight`.
-      if (!supportsSplit && ambientSheetElement) {
+      if (!localScroll && ambientSheetElement) {
         ambientSheetElement.style.paddingBottom = height ? `${height}px` : '';
       }
 
-      if (!supportsSplit && scroller) {
+      if (!localScroll && scroller) {
         scroller.style.paddingBottom = '';
       }
 
@@ -703,7 +724,7 @@ function ManagedSessionConversation({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [ambientSheetElement, composerOverlayNode, pinToBottomIfNotAway, scroller, supportsSplit]);
+  }, [ambientSheetElement, composerOverlayNode, localScroll, pinToBottomIfNotAway, scroller]);
   // Re-pins on a SCROLLER resize, not just a composer/entries/history change (owner review, round
   // four, live trace: opening Work history from a bottom-pinned chat narrowed the chat column via
   // the Secondary splitter, which re-wrapped message text and grew `scroller.scrollHeight` with no
@@ -946,12 +967,12 @@ function ManagedSessionConversation({
                   <div
                     className={cn(
                       'z-20',
-                      supportsSplit
+                      localScroll
                         ? 'sticky self-center'
                         : 'fixed inset-x-0 flex justify-center px-4',
                     )}
                     style={{
-                      bottom: supportsSplit
+                      bottom: localScroll
                         ? `calc(var(--workspace-overlay-bottom, 0.75rem) + ${composerHeight}px + 0.5rem)`
                         : `calc(${composerHeight}px + 0.5rem)`,
                     }}
@@ -1018,12 +1039,12 @@ function ManagedSessionConversation({
                   // underneath it either way.
                   className={cn(
                     'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
-                    supportsSplit
+                    localScroll
                       ? 'sticky pb-4 sm:pb-5'
                       : 'scrollbar-subtle fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
                   )}
                   style={
-                    supportsSplit
+                    localScroll
                       ? { bottom: 'var(--workspace-overlay-bottom, 0.75rem)' }
                       : {
                           // The same breathing room `pb-4` gave before, now stacked on top of the
@@ -1042,7 +1063,7 @@ function ManagedSessionConversation({
                   <div
                     className={cn(
                       'grid w-full gap-3',
-                      supportsSplit ? 'max-w-content-narrow' : 'max-w-content-standard',
+                      isSplit ? 'max-w-content-narrow' : 'max-w-content-standard',
                     )}
                   >
                     {snapshot.interaction && (
@@ -1137,7 +1158,7 @@ function ManagedSessionConversation({
                       // never a newline, with no way to invoke the `shiftKey` branch to begin with.
                       // `'newline'` makes every Enter (shifted or not) insert a newline instead,
                       // making Send explicit-button-only, which is what a touch composer needs.
-                      // Reuses `supportsSplit` — already this component's one "is this the
+                      // Reuses the resolved layout (`isSplit`) — already this component's one "is this the
                       // stacked/mobile layout" signal (the composer's own fixed-vs-sticky
                       // positioning above, and the compact Model/effort and composer-mode pickers
                       // below, all branch on it) — rather than a `pointer: coarse` media query:
@@ -1146,8 +1167,8 @@ function ManagedSessionConversation({
                       // `pointer-fine:` CSS variants for hover-affordance visibility, never a
                       // JS-level behavioral branch, so introducing one here just for this prop
                       // would be a second, inconsistent "is this mobile" signal for the exact same
-                      // composer this file already branches by `supportsSplit` throughout.
-                      enterKeyBehavior={supportsSplit ? 'submit' : 'newline'}
+                      // composer this file already branches by the resolved layout throughout.
+                      enterKeyBehavior={isSplit ? 'submit' : 'newline'}
                       onSubmit={handleComposerSubmit}
                       presentation="standalone"
                     >
@@ -1227,7 +1248,7 @@ function ManagedSessionConversation({
                               feed.setWorkMode(runtimeWorkModeCommand(provider, modeId))
                             }
                             disabled={state.commandBusy || !!state.pending}
-                            compact={!supportsSplit}
+                            compact={!isSplit}
                           />
                         </div>
                         {/* `shrink-0`: Model/effort keeps its full text (capped by its own
@@ -1242,7 +1263,7 @@ function ManagedSessionConversation({
                             }
                             onChange={(modelId, effort) => feed.setModel(modelId, effort)}
                             disabled={state.commandBusy || !!state.pending}
-                            compact={!supportsSplit}
+                            compact={!isSplit}
                           />
                           <TooltipProvider delayDuration={400}>
                             <Tooltip>
@@ -1274,7 +1295,7 @@ function ManagedSessionConversation({
               </>
             );
 
-            return supportsSplit ? (
+            return localScroll ? (
               <div
                 ref={setLocalScrollNode}
                 // A native scroller (the feed measures and pins it itself), styled like the DS
@@ -1331,6 +1352,9 @@ export function ManagedSession({
   ) => void;
 } & SessionActionHandlers) {
   const { t } = useTranslation();
+  // The shell hint "a non-stacking Secondary (the pinned Context tab, the side-panel toggle) can be
+  // shown" — NOT the layout of the conversation, which `ManagedSessionConversation` reads from
+  // `useWorkspaceLayout()` (workspace-dynamic-split.md "Resolved layout vs shell capability").
   const { supportsSplit } = useWorkspaceCapabilities();
   const [contextOpen, setContextOpen] = useState(true);
   // Scoped W01-W04 adoption (demonstrated via Related Tasks only, see `SessionContext`'s
@@ -1542,7 +1566,6 @@ export function ManagedSession({
           api={api}
           sessionId={sessionId}
           feed={feed}
-          supportsSplit={supportsSplit}
           navigation={navigation}
           workStack={workStack}
           provider={provider}

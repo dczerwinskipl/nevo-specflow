@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type AnimationEvent,
@@ -37,19 +38,16 @@ import { useOptionalWorkspace } from './WorkspaceContext';
 import type { SecondaryTabsState, WorkspaceTransition } from './WorkspaceContext';
 import {
   capPrimaryWidth,
-  resolveDynamicSplitRatioBounds,
-  resolveDynamicWorkspaceSplit,
   resolveSlotMaxWidth,
   resolveWorkspaceFit,
   resolveWorkspaceSplit,
   supportsRuntimeWorkspaceSplit,
-  WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH,
-  WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH,
   type AppWorkspaceFit,
   type AppWorkspaceSplitMode,
-  type DynamicSplitRatioBounds,
 } from './workspaceSizing';
 import { WorkspaceSplitter } from './WorkspaceSplitter';
+import { useDynamicWorkspaceSplit } from './useDynamicWorkspaceSplit';
+import { WorkspaceLayoutContext, type WorkspaceLayout } from './useWorkspaceLayout';
 import { SecondaryDetailHeaderRow } from './SecondaryDetailHeaderRow';
 import { SecondaryDetailHeaderHostContext } from './secondaryDetailHeaderHost';
 import { SecondaryBreadcrumbRow } from './SecondaryBreadcrumbRow';
@@ -280,7 +278,13 @@ interface CommonAppWorkspaceProps {
    * return, never recompute it.
    */
   secondaryRatio?: number;
-  /** Only meaningful with `split="dynamic"`; see `secondaryRatio`. Reports `resolveDynamicWorkspaceSplit`'s own computed value, independent of whether `secondaryRatio` is controlled. */
+  /**
+   * Only meaningful with `split="dynamic"`; see `secondaryRatio`. Uncontrolled: reports every change
+   * of the resolver's `(ratio, mode)` once the width is measured. Controlled: a controlled
+   * `secondaryRatio` is a manual preference rendered clamped to the valid range, never overwritten by
+   * auto values; this reports only a user adjustment (`'manual'`) or a later controlled value the
+   * current width cannot honour (once, clamped). See `useDynamicWorkspaceSplit`.
+   */
   onSecondaryRatioChange?: (ratio: number, mode: 'auto' | 'manual') => void;
   /**
    * Which side of Primary Secondary renders on (workspace-dynamic-split.md §4.2 last bullet, §6
@@ -435,77 +439,6 @@ function resolveComposedWorkspace(children: ReactNode): {
   return { primary, defaultSecondary };
 }
 
-/**
- * `split="dynamic"`'s sizing branch (workspace-dynamic-split.md §4.2), consuming
- * `resolveDynamicWorkspaceSplit`. `mode`/`manualRatio` are the resolver's own owned state
- * (contract §3 items 4-5), held here as real React state: `AppWorkspace` starts in `'auto'` mode
- * and enters `'manual'` the first time `setManualRatio` is called — by `WorkspaceSplitter`'s
- * pointer/touch drag or keyboard adjustment (§4.3/§7, wired by `useWorkspaceLayoutState` below).
- * This is deliberately **not** a second stacked rendering path: it only decides
- * `layout`/`secondaryRatio`; the existing `supportsRuntimeWorkspaceSplit`/`state.mode === 'stacked'`
- * path still renders the result.
- *
- * Live/product-event non-resize is structural here, not merely tested: the only values this
- * function reads are `availableWidth` (from the existing `ResizeObserver`-driven measurement) and
- * `openTabCount` (a plain count, never an active tab's identity or its local-stack depth) — there
- * is no Session/product subscription anywhere in this file.
- */
-function useDynamicWorkspaceSplit(
-  availableWidth: number | undefined,
-  openTabCount: number,
-  secondaryRatioProp: number | undefined,
-  onSecondaryRatioChange: ((ratio: number, mode: 'auto' | 'manual') => void) | undefined,
-  enabled: boolean,
-): {
-  layout: 'split' | 'stacked';
-  secondaryRatio: number;
-  bounds?: DynamicSplitRatioBounds;
-  setManualRatio: (ratio: number) => void;
-} {
-  const [mode, setMode] = useState<'auto' | 'manual'>('auto');
-  const [manualRatio, setManualRatioState] = useState<number | null>(null);
-
-  const previousOpenTabCountRef = useRef(openTabCount);
-  const result = resolveDynamicWorkspaceSplit({
-    availableWidth,
-    openTabCount,
-    mode,
-    manualRatio,
-    previousOpenTabCount: previousOpenTabCountRef.current,
-  });
-  const bounds =
-    availableWidth !== undefined &&
-    availableWidth >= WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH + WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH
-      ? resolveDynamicSplitRatioBounds(availableWidth)
-      : undefined;
-
-  useEffect(() => {
-    previousOpenTabCountRef.current = openTabCount;
-  }, [openTabCount]);
-
-  useEffect(() => {
-    if (enabled) {
-      onSecondaryRatioChange?.(result.secondaryRatio, result.mode);
-    }
-  }, [enabled, onSecondaryRatioChange, result.secondaryRatio, result.mode]);
-
-  // A drag/keyboard adjustment always enters 'manual' (contract §5/§7), regardless of whether the
-  // rendered ratio is uncontrolled (this state wins) or controlled (the product's own
-  // `secondaryRatioProp` wins instead — it must echo this value back via `onSecondaryRatioChange`
-  // above, the same controlled-prop convention as every other `AppWorkspace` value prop).
-  const setManualRatio = useCallback((ratio: number) => {
-    setMode('manual');
-    setManualRatioState(ratio);
-  }, []);
-
-  return {
-    layout: result.layout,
-    secondaryRatio: secondaryRatioProp ?? result.secondaryRatio,
-    bounds,
-    setManualRatio,
-  };
-}
-
 function useWorkspaceLayoutState(
   split: AppWorkspaceSplitMode,
   hasSecondary: boolean,
@@ -548,8 +481,9 @@ function useWorkspaceLayoutState(
     // The resolver owns the split/stacked decision entirely for `dynamic` (contract §4.2's own
     // two minimum-width constants, independent of the generic `WORKSPACE_SPLIT_MIN_WIDTH` the
     // fixed presets use below): `dynamic` may split at a narrower width than the fixed presets
-    // do, and may also fall back to stacked at a wide width once a manual ratio (§5) makes the
-    // current ratio's panes infeasible even after clamping — neither is the generic check.
+    // do (400 + 330 = 730px). A ratio — controlled or manual — is always clamped into the valid
+    // range first, so the layout falls back to stacked only when the width cannot hold both
+    // minimum pane widths at all.
     if (dynamicSplit.layout !== 'split') {
       return {
         mode: 'stacked',
@@ -1235,6 +1169,15 @@ function AppWorkspaceRoot({
   // reasoning as `primaryScrollElement` above, and deliberately a separate piece of state from it
   // (a different DOM node, see that context's own doc comment).
   const [primarySheetElement, setPrimarySheetElement] = useState<HTMLElement | null>(null);
+  // The layout this render resolved, published for Primary content (`useWorkspaceLayout`). Ambient
+  // scroll exists exactly when the stacked layout wraps Primary in the workspace `ScrollArea`.
+  const workspaceLayoutMode = state.mode;
+  const primaryScrollOwner: WorkspaceLayout['primaryScrollOwner'] =
+    workspaceLayoutMode === 'stacked' && scroll === 'workspace' ? 'ambient' : 'local';
+  const workspaceLayout = useMemo<WorkspaceLayout>(
+    () => ({ mode: workspaceLayoutMode, primaryScrollOwner }),
+    [workspaceLayoutMode, primaryScrollOwner],
+  );
   const labels = { ...defaultAppWorkspaceLabels, ...labelsProp };
   const primaryNavigationAction =
     navigationMode === 'drawer' ? <NavigationAction label={labels.openNavigation} /> : undefined;
@@ -1441,51 +1384,53 @@ function AppWorkspaceRoot({
   const splitSecondaryStart = state.mode === 'split' && secondarySide === 'start';
 
   return (
-    <WorkspacePrimaryScrollContext.Provider value={primaryScrollElement}>
-      <WorkspacePrimarySheetContext.Provider value={primarySheetElement}>
-        <div
-          className={cn(
-            'group/workspace relative flex h-full max-w-full items-stretch overflow-hidden',
-            state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
-          )}
-          data-layout={state.mode}
-          data-workspace-fit={resolvedFit}
-          style={{ width: resolvedFit === 'content' ? 'max-content' : '100%' }}
-        >
-          {splitSecondaryStart ? (
-            <>
-              {secondaryElement}
-              {splitterElement}
-              {primaryElement}
-            </>
-          ) : (
-            <>
-              {primaryElement}
-              {splitterElement}
-              {secondaryElement}
-            </>
-          )}
+    <WorkspaceLayoutContext.Provider value={workspaceLayout}>
+      <WorkspacePrimaryScrollContext.Provider value={primaryScrollElement}>
+        <WorkspacePrimarySheetContext.Provider value={primarySheetElement}>
+          <div
+            className={cn(
+              'group/workspace relative flex h-full max-w-full items-stretch overflow-hidden',
+              state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
+            )}
+            data-layout={state.mode}
+            data-workspace-fit={resolvedFit}
+            style={{ width: resolvedFit === 'content' ? 'max-content' : '100%' }}
+          >
+            {splitSecondaryStart ? (
+              <>
+                {secondaryElement}
+                {splitterElement}
+                {primaryElement}
+              </>
+            ) : (
+              <>
+                {primaryElement}
+                {splitterElement}
+                {secondaryElement}
+              </>
+            )}
 
-          {state.mode === 'stacked' &&
-          mobileRuntime.outgoingSecondary.mounted &&
-          outgoingSecondaryPresentation ? (
-            <RuntimeSurfaceRegion
-              contentOwnsScroll={scroll === 'content'}
-              instanceKey={outgoingSecondaryPresentation.key}
-              key={`outgoing-${outgoingSecondaryPresentation.key}`}
-              leadingAction={outgoingBackAction}
-              maxWidth={undefined}
-              mobileRuntime={mobileRuntime.outgoingSecondary}
-              onMobileMotionComplete={mobileRuntime.completeMotion}
-              stackedVisual
-              surface={outgoingSecondaryPresentation.surface}
-              surfaceName="secondary"
-              trailingAction={outgoingCloseAction}
-            />
-          ) : null}
-        </div>
-      </WorkspacePrimarySheetContext.Provider>
-    </WorkspacePrimaryScrollContext.Provider>
+            {state.mode === 'stacked' &&
+            mobileRuntime.outgoingSecondary.mounted &&
+            outgoingSecondaryPresentation ? (
+              <RuntimeSurfaceRegion
+                contentOwnsScroll={scroll === 'content'}
+                instanceKey={outgoingSecondaryPresentation.key}
+                key={`outgoing-${outgoingSecondaryPresentation.key}`}
+                leadingAction={outgoingBackAction}
+                maxWidth={undefined}
+                mobileRuntime={mobileRuntime.outgoingSecondary}
+                onMobileMotionComplete={mobileRuntime.completeMotion}
+                stackedVisual
+                surface={outgoingSecondaryPresentation.surface}
+                surfaceName="secondary"
+                trailingAction={outgoingCloseAction}
+              />
+            ) : null}
+          </div>
+        </WorkspacePrimarySheetContext.Provider>
+      </WorkspacePrimaryScrollContext.Provider>
+    </WorkspaceLayoutContext.Provider>
   );
 }
 

@@ -336,10 +336,19 @@ static catalogue coupling is a separate follow-up, not a prerequisite for this f
 ### Measured split capability
 
 Products can call the public `useWorkspaceCapabilities()` inside the shell to read
-`supportsSplit`. It uses the same measured available workspace width and threshold
-as `AppWorkspace`, including a narrow workspace in a wide browser window. Use it to
-expose an overflow entry for a default Secondary surface on stacked layouts. Do not
-import shell internals or derive this decision from browser width.
+`supportsSplit`. It uses the same measured available workspace width as `AppWorkspace`
+(including a narrow workspace in a wide browser window) and the fixed-preset threshold
+(840px): it answers "can a non-stacking Secondary be shown", the shell-level hint for
+registering a pinned tab or choosing a side-panel toggle over a Context button. Do not import
+shell internals or derive this decision from browser width.
+
+It is **not** the workspace's layout. A `split="dynamic"` workspace splits a runtime
+(stackable) Secondary from 730px (400 + 330), so between 730 and 839px the workspace is split
+while `supportsSplit` is still `false`. Content rendered inside `AppWorkspace` that depends on the
+layout (scroll ownership, sticky versus fixed overlays, density) reads `useWorkspaceLayout()`
+(`{ mode: 'split' | 'stacked', primaryScrollOwner: 'local' | 'ambient' }`), which `AppWorkspace`
+publishes from the layout it resolved; see
+[Workspace dynamic split](workspace-dynamic-split.md#resolved-layout-vs-shell-capability).
 
 Secondary content that establishes an inline-size container must declare its supported
 content width (for example `w-content-standard max-w-full`) and use `AppWorkspaceBody`
@@ -445,7 +454,9 @@ bottom-floating control — cannot keep a local scroll ref the way a `scroll="co
 does: in stacked (mobile) mode the scroll viewport is the `ScrollArea` `AppWorkspace` itself owns
 for the collapsing-header pattern above, not an element the consumer renders.
 `useWorkspacePrimaryScroll()` (exported from `@nevo/ui`) returns that element, or `null` when there
-is none to read:
+is none to read. Which of the two a Primary is in follows the layout `AppWorkspace` resolved, read with
+`useWorkspaceLayout().primaryScrollOwner` (`'ambient'` / `'local'`), not the shell hint
+`supportsSplit` (they differ between 730 and 839px):
 
 - Stacked/mobile: the live `.mobile-workspace-scroll` viewport element, the same node the collapsing
   header above measures. Updates (including back to `null`) whenever the layout transitions in or

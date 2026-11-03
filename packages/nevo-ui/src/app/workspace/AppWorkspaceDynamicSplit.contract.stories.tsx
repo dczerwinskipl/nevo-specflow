@@ -162,6 +162,17 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
+// Read through functions, never as `shell.dataset.x` property reads: these dataset values are
+// updated by the app between awaits, but TypeScript narrows a repeated property read after an
+// `assert(... === 'auto')` to that literal and then rejects the later (real) comparisons.
+function splitModeOf(shell: HTMLElement): string | undefined {
+  return shell.dataset.dynamicSplitMode;
+}
+
+function splitSideOf(shell: HTMLElement): string | undefined {
+  return shell.dataset.dynamicSplitSide;
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
@@ -496,7 +507,7 @@ export const PointerDragEntersManualContract: Story = {
   play: async ({ canvasElement }) => {
     await settle();
     const { shell } = regions(canvasElement);
-    assert(shell.dataset.dynamicSplitMode === 'auto', 'A dynamic split starts in auto mode.');
+    assert(splitModeOf(shell) === 'auto', 'A dynamic split starts in auto mode.');
 
     const splitter = workspaceSplitter(canvasElement);
     assert(
@@ -532,7 +543,7 @@ export const PointerDragEntersManualContract: Story = {
     await settle();
 
     assert(
-      shell.dataset.dynamicSplitMode === 'manual',
+      splitModeOf(shell) === 'manual',
       "Dragging WorkspaceSplitter must commit mode: 'manual'.",
     );
     const widthAfterDrag = secondaryWidthPx(canvasElement);
@@ -636,7 +647,7 @@ export const SwapSidesPreservesTabsAndRatioContract: Story = {
   play: async ({ canvasElement, canvas, userEvent }) => {
     await settle();
     const { shell } = regions(canvasElement);
-    assert(shell.dataset.dynamicSplitSide === 'end', 'Secondary starts on the default end side.');
+    assert(splitSideOf(shell) === 'end', 'Secondary starts on the default end side.');
 
     // Real tab state to verify survives the swap: the pinned tab plus a 2nd, openTab()-opened tab.
     await openItemATab(canvas, userEvent);
@@ -666,7 +677,7 @@ export const SwapSidesPreservesTabsAndRatioContract: Story = {
       clientY: dragClientY,
     });
     await settle();
-    assert(shell.dataset.dynamicSplitMode === 'manual', 'The drag must commit mode: "manual".');
+    assert(splitModeOf(shell) === 'manual', 'The drag must commit mode: "manual".');
 
     const widthBeforeSwap = secondaryWidthPx(canvasElement);
     const summaryBeforeSwap = tabStripSummary(canvasElement);
@@ -685,9 +696,9 @@ export const SwapSidesPreservesTabsAndRatioContract: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Swap sides' }));
     await settle();
 
-    assert(shell.dataset.dynamicSplitSide === 'start', 'The side flips to "start".');
+    assert(splitSideOf(shell) === 'start', 'The side flips to "start".');
     assert(
-      shell.dataset.dynamicSplitMode === 'manual',
+      splitModeOf(shell) === 'manual',
       'mode must survive the swap unchanged (still "manual").',
     );
     const widthAfterSwap = secondaryWidthPx(canvasElement);
@@ -869,10 +880,7 @@ export const FullConnectedScenarioContract: Story = {
     const { shell, layout, primary } = regions(canvasElement);
     assert(primary, 'A split-capable dynamic workspace renders Primary.');
     assert(layout.dataset.layout === 'split', 'Step 1: entering split starts in split layout.');
-    assert(
-      shell.dataset.dynamicSplitMode === 'auto',
-      'Step 1: a dynamic split starts in auto mode.',
-    );
+    assert(splitModeOf(shell) === 'auto', 'Step 1: a dynamic split starts in auto mode.');
     const narrowWidth = secondaryWidthPx(canvasElement);
     assert(
       Math.abs(narrowWidth - WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH) <= 1.5,
@@ -985,10 +993,7 @@ export const FullConnectedScenarioContract: Story = {
       clientY: dragClientY,
     });
     await settle();
-    assert(
-      shell.dataset.dynamicSplitMode === 'manual',
-      'Step 5: dragging must commit mode: "manual".',
-    );
+    assert(splitModeOf(shell) === 'manual', 'Step 5: dragging must commit mode: "manual".');
     const manualWidth = secondaryWidthPx(canvasElement);
     assert(
       manualWidth > fiftyFiftyWidth + 40,
@@ -1032,10 +1037,7 @@ export const FullConnectedScenarioContract: Story = {
     );
 
     // Step 7: swap sides — everything the resolver/tab-set own survives unchanged.
-    assert(
-      shell.dataset.dynamicSplitSide === 'end',
-      'Step 7: Secondary starts on the default end side.',
-    );
+    assert(splitSideOf(shell) === 'end', 'Step 7: Secondary starts on the default end side.');
     const summaryBeforeSwap = tabStripSummary(canvasElement);
     const { primary: primaryBeforeSwap, secondary: secondaryBeforeSwap } = regions(canvasElement);
     assert(
@@ -1044,11 +1046,8 @@ export const FullConnectedScenarioContract: Story = {
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Swap sides' }));
     await settle();
-    assert(shell.dataset.dynamicSplitSide === 'start', 'Step 7: the side flips to "start".');
-    assert(
-      shell.dataset.dynamicSplitMode === 'manual',
-      'Step 7: mode must survive the swap unchanged.',
-    );
+    assert(splitSideOf(shell) === 'start', 'Step 7: the side flips to "start".');
+    assert(splitModeOf(shell) === 'manual', 'Step 7: mode must survive the swap unchanged.');
     assert(
       Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
       'Step 7: secondaryRatio must survive the swap unchanged.',
@@ -1080,7 +1079,7 @@ export const FullConnectedScenarioContract: Story = {
       'Step 8: the manual ratio must be retained, not discarded, while the region is closed.',
     );
     assert(
-      shell.dataset.dynamicSplitMode === 'manual',
+      splitModeOf(shell) === 'manual',
       'Step 8: mode must be retained, not discarded, while the region is closed.',
     );
     // Reopen by re-activating the exact tab that was open when closed (tab count/identity
@@ -1094,10 +1093,7 @@ export const FullConnectedScenarioContract: Story = {
       Math.abs(secondaryWidthPx(canvasElement) - manualWidth) <= 1.5,
       'Step 8: reopening must restore the exact manual ratio it had when closed.',
     );
-    assert(
-      shell.dataset.dynamicSplitMode === 'manual',
-      'Step 8: reopening must restore "manual" mode.',
-    );
+    assert(splitModeOf(shell) === 'manual', 'Step 8: reopening must restore "manual" mode.');
 
     // Step 9: shrink below the dynamic minimums -> falls back to the existing stacked/narrow path.
     await userEvent.click(canvas.getByTestId('scenario-shrink'));
@@ -1118,7 +1114,7 @@ export const FullConnectedScenarioContract: Story = {
       `Step 10: widening back to the same width must restore the same clamped manual ratio (before ${manualWidth}, after ${widthAfterWiden}).`,
     );
     assert(
-      shell.dataset.dynamicSplitMode === 'manual',
+      splitModeOf(shell) === 'manual',
       'Step 10: widening back must not reset mode to "auto".',
     );
   },

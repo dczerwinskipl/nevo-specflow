@@ -157,52 +157,76 @@ AppWorkspace owns the responsive split/stacked choice and automatic header contr
 On Narrow, the active runtime Secondary replaces visible Primary and Back occupies the navigation
 position instead of the global hamburger. On desktop/split with a single runtime flow (no tab
 strip), Back and Close are provided by the workspace header. With the root-tab strip shown on
-desktop/split, see "Root tabs and breadcrumbs" below. Default Secondary is not part of the runtime
-page stack.
+desktop/split, see "Root tabs and local navigation" below. Default Secondary is not part of the
+runtime page stack.
 
-### Root tabs and breadcrumbs (split layout)
+### Root tabs and local navigation (split layout)
 
-While 2+ root tabs are open on a split layout, the Secondary has no 56 px header: its navigation is
-one compact **tab rail** and, only while the active tab is deeper than its root, one **breadcrumb
-row** inside the tab panel.
+On a split layout the Secondary has no 56 px header while the root-tab strip is shown: its
+navigation is one compact **tab rail** and, only while the active tab is deeper than its root, one
+**local navigation row** inside the tab panel — by default a back row, by opt-in a breadcrumb trail.
 
+- **When the strip shows.** With 2+ root tabs, and on a split layout already while a pinned tab
+  (`useRegisterPinnedSecondaryTab`, for example Session Context) is the only one: the pinned tab is
+  a tab from the start, so opening or closing another tab never swaps a 56 px header for the 32 px
+  rail under the content (the "jumping screen" the owner reported). The pinned tab has no `x` and
+  the rail has no panel-level Close; the product closes the panel from its own control (Session:
+  the Primary "Kontekst" toggle). Stacked layouts and a single runtime tab without a pinned one
+  keep their header unchanged: a lone flow's header carries the screen's own identity, Back and
+  Close, which a one-tab rail would drop.
 - **Tab label = root.** `tabs[].title` is the tab's stack ROOT title (`tabLabel(rootParams)`, else
   the initial page's `title`) at any depth. A tab never renames itself to the detail open inside it
   (Work history → a tool action stays "Work history").
 - **Tab rail.** `ItemTabs density="rail"`: `--spacing-tab-rail` = one compact control = 32 px
-  including the divider, `px-2`. Rail tabs are square and fill the rail's full height (no rounded
-  top, no free space above them). Lighter tabs: only the active one has a surface (see
-  [Item tabs](item-tabs.md)). The rail keeps the screen's declared actions, no Back and no
-  panel-level Close (each closable tab owns its `x`).
-- **Breadcrumb row.** `SecondaryBreadcrumbRow` (DS `Breadcrumbs overflow="collapse"`) is the first
-  child of the tab panel (`data-workspace-breadcrumbs`), `--spacing-breadcrumb-row` = one inline
-  control = 24 px including its divider, `px-3`; content starts directly under it and keeps its own
-  title heading. Anatomy: `← Root › … › Parent › Current`. The leading `←` (`IconButton xs`,
-  accessible name `labels.backToParent(parentTitle)`) pops one level; every ancestor segment is an
-  `onPress` button that pops straight back to its level (the root segment returns to the tab's root
-  list); the current level is plain text (`aria-current="page"`), truncates with an ellipsis and
-  keeps its full text as `title`. Ancestors are capped (`max-w-48`) and truncate.
-- **Collapse.** Root and current always show. Below 480 px of measured row width every middle
-  segment folds into one `…` menu (3+ levels read `Root › … › Current`); wider, at most four
-  segments show and the oldest middle ones fold first. The `…` menu lists the folded levels in
-  order, so every ancestor stays one click away (`collapseBreadcrumbs`).
+  including the divider, `px-2`. Tabs fill the rail's full height, are as wide as their content and
+  are marked active by the primary underline and text colour only (see [Item tabs](item-tabs.md)).
+  The rail keeps the screen's declared actions, no Back and no panel-level Close (each closable tab
+  owns its `x`). Many tabs go to the existing `Opened (N)` menu; below 292 px of strip width the
+  strip becomes the switcher button.
+- **Choosing the row: `localNavigation`.** A stack declares how its tabs show depth:
+  `defineSecondaryStack({ localNavigation: 'back' | 'breadcrumbs' })`, default `back`. The stack the
+  tab was opened with decides (`WorkspaceContextValue.localNavigation`). Use `breadcrumbs` only when
+  every level is a place worth jumping back to (Tasks › TASK-03 › Attempt 2 › Review); depth alone
+  is not a reason. Today no product stack opts in: Work history → ToolAction and Tasks → Task are
+  one-level drills.
+- **Back row (default).** `SecondaryBackRow` is the first child of the tab panel
+  (`data-workspace-back-row`), `--spacing-breadcrumb-row` = 24 px including its divider, `px-3`: one
+  muted link-style button `← labels.backToParent(parentTitle)` (Session: `Wróć do: Historia
+pracy`), returning to the direct parent. It names where Back goes, never the current page, whose
+  own content heading sits right below (repeating it showed the title twice). A long parent name
+  truncates with the full text as `title`; the arrow and the control stay, so the way back never
+  disappears.
+- **Breadcrumb row (opt-in).** `SecondaryBreadcrumbRow` (DS `Breadcrumbs overflow="collapse"`),
+  same place, height and divider (`data-workspace-breadcrumbs`). Anatomy:
+  `← Root › … › Parent › Current`. The leading `←` (`IconButton xs`, accessible name
+  `labels.backToParent(parentTitle)`) pops one level; every ancestor segment is an `onPress` button
+  that pops straight back to its level; the current level is plain text (`aria-current="page"`),
+  truncates with an ellipsis and keeps its full text as `title`. Ancestors are capped (`max-w-48`).
+- **Collapse.** Root and current always show, and the leading `←` always returns to the direct
+  parent. Below 480 px of measured row width every middle segment folds into one `…` menu (3+ levels
+  read `Root › … › Current`); wider, at most four segments show and the oldest middle ones fold
+  first. The `…` menu lists the folded levels in order (`collapseBreadcrumbs`).
 - **Segment titles** come from the entries, never from data or paths: a screen may declare
-  `breadcrumbLabel: (params) => string` (for example the opened Work's name carried in its params);
-  the first page of a stack (the tab root, or another module pushed with `navTo(stack, params)`)
-  uses that stack's `tabLabel(rootParams)`; otherwise the screen's static `title`. Do not put full
-  file paths in segments; a segment is a short name.
+  `breadcrumbLabel: (params) => string`; the first page of a stack (the tab root, or another module
+  pushed with `navTo(stack, params)`) uses that stack's `tabLabel(rootParams)`; otherwise the
+  screen's static `title`. The back row uses the same title for the parent. Do not put full file
+  paths in titles; a title is a short name.
 - **Heights.** At a tab root: 32 px of navigation, content starts under the rail. In a detail:
-  32 + 24 = 56 px, exactly the Primary header, so the breadcrumb row's divider continues Primary's.
+  32 + 24 = 56 px, exactly the Primary header, so the row's divider continues Primary's.
 - **API.** `WorkspaceContextValue.trail` lists the active runtime tab's levels root first
   (`{ key, title }`, `trail.length === secondaryDepth`); `backTo(depth)` pops to `depth` levels
   (1 = root) in **one** `pop` transition, consulting only the current page's leave guard, and
   resolves `false` for a depth that is not an ancestor. With `browserHistory`, a jump of N levels
   lowers the desired depth by N and the provider consumes exactly N entries with one `go(-N)`.
-- **Not applied** on stacked/mobile (its header Back + title + Close stay; the strip keeps the
-  56 px `header` density there) and not to a single runtime flow without a strip, whose header
-  already shows the current screen's own identity next to Back: a trail there would repeat the
-  title and Back, and the product's custom screen header (status, subtitle) would have nowhere to
-  go. The pinned/declarative tab has no runtime stack and therefore no breadcrumb row.
+- **Not applied** on stacked/mobile (its header Back + title + Close stay, with no row under the
+  header; the strip keeps the 56 px `header` density there) and not to a single runtime flow without
+  a strip. The pinned/declarative tab has no runtime stack and therefore no local row.
+- **Scroll after Back.** Back remounts the parent screen (see "Refresh and missing data" below):
+  its scroll position and local state are what the product keeps outside the screen. Measured in
+  `SecondaryLocalNavigation.contract.stories.tsx`: a list scrolled to 400 px returns at 0.
+- **Verification.** `SecondaryLocalNavigation.contract.stories.tsx` (Secondary at 330 px, 450 px and
+  50/50 at 1440; deep opted-in Tasks trail at 1440 and 330; long and many tabs; 390 and 360 mobile)
+  and the Session's `ManagedSession.workDetail.stories.tsx`.
 
 ### Browser and system Back
 

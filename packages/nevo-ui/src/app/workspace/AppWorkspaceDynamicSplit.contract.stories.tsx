@@ -336,13 +336,14 @@ async function verifyDynamicSplitTransitions(
 
   // closeTab() reducing open tabs to just the pinned one while auto: back to the narrow default.
   await closeRootTab(canvasElement, userEvent, 'Item A');
+  // The rail stays, now with the pinned tab as its one tab (a split layout shows it from the start).
   await waitFor(
     () =>
-      document.querySelector('[role="tablist"]') === null &&
-      document.querySelector('[aria-haspopup="menu"]') === null
+      document.querySelectorAll('[role="tab"]').length === 1 &&
+      document.querySelector('[data-workspace-tab-rail]') !== null
         ? true
         : null,
-    'Closing back down to just the pinned tab should remove the strip.',
+    'Closing back down to just the pinned tab should leave it as the one tab of the rail.',
   );
   await waitFor(
     () => (Math.abs(secondaryWidth() - narrowSecondaryWidth) <= 1.5 ? true : null),
@@ -374,13 +375,14 @@ async function verifyDynamicSplitTransitions(
 
   // closeTab() reducing open tabs to just the pinned one again: back to the narrow default.
   await closeRootTab(canvasElement, userEvent, 'Legacy second open');
+  // The rail stays, now with the pinned tab as its one tab (a split layout shows it from the start).
   await waitFor(
     () =>
-      document.querySelector('[role="tablist"]') === null &&
-      document.querySelector('[aria-haspopup="menu"]') === null
+      document.querySelectorAll('[role="tab"]').length === 1 &&
+      document.querySelector('[data-workspace-tab-rail]') !== null
         ? true
         : null,
-    'Closing back down to just the pinned tab should remove the strip.',
+    'Closing back down to just the pinned tab should leave it as the one tab of the rail.',
   );
   await waitFor(
     () => (Math.abs(secondaryWidth() - narrowSecondaryWidth) <= 1.5 ? true : null),
@@ -915,9 +917,10 @@ export const FullConnectedScenarioContract: Story = {
       Math.abs(secondaryWidthPx(canvasElement) - fiftyFiftyWidth) <= 1.5,
       'Step 4: a push/pop inside a tab’s local stack must not resize (the resolver never sees it).',
     );
-    // The tab strip owns per-tab close, so there is no panel-level close beside it. Local depth is
-    // the breadcrumb row at the top of the tab panel (`← Item A › Item A detail`), never a Back in
-    // the rail, and the tab keeps its root's name.
+    // The tab strip owns per-tab close, so there is no panel-level close beside it. Local depth of
+    // a one-level drill is the compact back row at the top of the tab panel (`← Back: Item A`,
+    // the stack's default `localNavigation`), never a Back in the rail nor a breadcrumb trail, and
+    // the tab keeps its root's name.
     assert(
       canvas.queryByRole('button', { name: 'Close secondary content' }) === null,
       'Step 4: with the tab strip shown, no panel-level close is rendered.',
@@ -929,18 +932,21 @@ export const FullConnectedScenarioContract: Story = {
       stepFourTabNames.includes('Item A') && !stepFourTabNames.includes('Item A detail'),
       `Step 4: the tab keeps its root name ("Item A") while its stack is deeper (got ${stepFourTabNames.join(', ')}).`,
     );
-    const stepFourTrail = canvasElement.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
+    const stepFourTrail = canvasElement.querySelector<HTMLElement>('[data-workspace-back-row]');
     assert(
       stepFourTrail !== null &&
-        stepFourTrail.closest('[role="tabpanel"]')?.firstElementChild === stepFourTrail,
-      'Step 4: the breadcrumb row is the first row of the tab panel.',
+        stepFourTrail.closest('[role="tabpanel"]')?.firstElementChild === stepFourTrail &&
+        canvasElement.querySelector('[data-workspace-breadcrumbs]') === null,
+      'Step 4: the back row (not a breadcrumb trail) is the first row of the tab panel.',
     );
+    const stepFourBack = stepFourTrail.querySelector('button');
     assert(
-      stepFourTrail.querySelector('button[aria-label="Back: Item A"]') !== null &&
+      stepFourBack?.textContent === 'Back: Item A' &&
+        stepFourTrail.querySelectorAll('button').length === 1 &&
+        !stepFourTrail.textContent?.includes('Item A detail') &&
         canvasElement.querySelector('[data-workspace-tab-rail] button[aria-label^="Back"]') ===
-          null &&
-        stepFourTrail.querySelector('[aria-current="page"]')?.textContent === 'Item A detail',
-      'Step 4: the trail reads ← Item A › Item A detail, and the rail carries no Back.',
+          null,
+      'Step 4: the row reads ← Back: Item A, never repeats the detail, and the rail carries no Back.',
     );
     const railHeight = canvasElement
       .querySelector('[data-workspace-surface="secondary"] [data-workspace-tab-rail]')
@@ -950,7 +956,7 @@ export const FullConnectedScenarioContract: Story = {
       railHeight !== undefined &&
         Math.abs(railHeight - 32) <= 0.5 &&
         Math.abs(trailHeight - 24) <= 0.5,
-      `Step 4: the compact tab rail is 32px and the breadcrumb row 24px (got ${railHeight}/${trailHeight}).`,
+      `Step 4: the compact tab rail is 32px and the back row 24px (got ${railHeight}/${trailHeight}).`,
     );
 
     // Step 5: drag the splitter -> manual wins.

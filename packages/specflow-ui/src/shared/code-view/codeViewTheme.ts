@@ -61,6 +61,14 @@ export const codeViewTheme = EditorView.theme(
 );
 
 /**
+ * A view without the line-number gutter: the text keeps the same inset on both sides instead of
+ * the compact start inset that only made sense next to the gutter band.
+ */
+export const gutterlessTheme = EditorView.theme({
+  '.cm-line': { padding: '0 var(--spacing-control-padding-default)' },
+});
+
+/**
  * A view scrolled by an ancestor (`scrolling="container"`): it grows to its whole text, both ways,
  * and lets the ancestor scroll it. It is as wide as its longest line (at least its box), so the
  * sticky line-number gutter stays pinned however far the ancestor scrolls sideways.

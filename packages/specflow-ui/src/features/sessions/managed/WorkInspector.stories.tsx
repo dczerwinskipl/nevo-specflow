@@ -377,15 +377,23 @@ export const ToolActionDetails: Story = {
     ).toBeVisible();
     await expect(canvas.getAllByText('Parametry')).toHaveLength(3);
     await expect(canvas.getAllByText('Odpowiedź narzędzia')).toHaveLength(3);
-    // Parameters and response sit on the one product code view (as a document's source): a
-    // read-only text with line numbers; JSON parameters are coloured, the verbatim response is not.
+    // Parameters and response sit on the one product code view (as a document's source), read-only.
+    // The JSON parameters the product pretty-printed are coloured and numbered; the verbatim
+    // response is neither — its lines are the tool's own, so no gutter numbers them.
     const inputs = await canvas.findAllByRole('textbox', { name: 'Parametry' });
     const outputs = await canvas.findAllByRole('textbox', { name: 'Odpowiedź narzędzia' });
     await expect(inputs).toHaveLength(3);
     await expect(outputs).toHaveLength(3);
     for (const block of [...inputs, ...outputs]) {
       await expect(block).toHaveAttribute('aria-readonly', 'true');
+    }
+
+    for (const block of inputs) {
       await expect(block.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
+    }
+
+    for (const block of outputs) {
+      await expect(block.closest('.cm-editor')!.querySelector('.cm-gutters')).toBeNull();
     }
 
     const spans = [...inputs[0]!.querySelectorAll<HTMLElement>('.cm-line span')];

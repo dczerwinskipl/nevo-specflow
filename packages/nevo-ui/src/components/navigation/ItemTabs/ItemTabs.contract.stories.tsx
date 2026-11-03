@@ -183,15 +183,21 @@ export const OverflowContract: Story = {
       () => canvas.getAllByRole('tab').length < manyItems.length && canvas.getAllByRole('tab'),
       'The strip overflows.',
     );
-    assert(tabs.length === Math.floor((760 - 52) / 140), 'floor((width - 52) / 140) tabs fit.');
+    // Content-width tabs, the long ones compressed to no less than 120 px before overflowing: at
+    // least floor((760 - 52 + 2) / 122) = 5 tabs fit next to the Opened trigger.
+    assert(tabs.length >= 5, `At least five compressed tabs fit (got ${tabs.length}).`);
     assert(
       tabs.some((tab) => tab.getAttribute('aria-selected') === 'true'),
       'The active tab is always visible.',
     );
-    for (const tab of tabs) {
-      const { width } = tab.getBoundingClientRect();
-      assert(width >= 140 && width <= 180, `A tab is 140-180 px wide (got ${width}).`);
+    const widths = tabs.map((tab) => tab.getBoundingClientRect().width);
+    for (const width of widths) {
+      assert(width >= 64 && width <= 240, `A tab is 64-240 px wide (got ${width}).`);
     }
+
+    const used = widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * 2;
+    assert(used <= 760 - 52, `Tabs leave room for the Opened trigger (used ${used}px).`);
+    assert(new Set(widths.map(Math.round)).size > 1, 'Tab widths follow their labels.');
 
     await userEvent.click(
       canvas.getByRole('button', { name: `Opened items (${manyItems.length})` }),

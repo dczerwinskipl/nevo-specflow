@@ -193,7 +193,7 @@ interface SecondaryStackDefinition<TRoot, TData, TPages> /* existing, extended *
 
 interface WorkspaceContextValue /* existing, extended */ {
   // existing: secondary, secondaryDepth, canGoBack, transition, back, close, canLeaveScope
-  // plus trail/backTo (breadcrumbs, secondary-navigation.md "Root tabs and breadcrumbs")
+  // plus trail/backTo (breadcrumbs, secondary-navigation.md "Root tabs and local navigation")
   /**
    * Unchanged signature AND unchanged observable behavior from today: always creates-or-replaces
    * the single "legacy open slot" tab, regardless of which `definition` is passed and regardless

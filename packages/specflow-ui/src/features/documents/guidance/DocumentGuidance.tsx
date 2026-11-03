@@ -60,7 +60,7 @@ export function DocumentGuidanceColumn({
   return (
     <aside
       aria-labelledby={titleId}
-      className={cn('grid min-w-0 content-start gap-2 overflow-y-auto', className)}
+      className={cn('scrollbar-subtle grid min-w-0 content-start gap-2 overflow-y-auto', className)}
       style={maxHeight ? { width, maxHeight } : { width }}
     >
       <Typography as="p" variant="label-md" className="m-0 px-2 text-content-muted">

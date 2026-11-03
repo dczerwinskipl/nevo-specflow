@@ -11,6 +11,7 @@ interface TrailScreen {
 interface TrailDefinition {
   initial: string;
   tabLabel?: (rootParams: object) => string;
+  localNavigation?: 'back' | 'breadcrumbs';
   screens: Record<string, TrailScreen>;
 }
 
@@ -71,6 +72,14 @@ export function resolveEntryTitle(entries: readonly TrailEntry[], index: number)
  */
 export function resolveTabTitle(entries: readonly TrailEntry[]): string {
   return resolveEntryTitle(entries, 0);
+}
+
+/**
+ * How the active tab shows its local depth: declared by the stack the tab was opened with (its
+ * root entry), `back` unless that stack opts into `breadcrumbs`.
+ */
+export function resolveLocalNavigation(entries: readonly TrailEntry[]): 'back' | 'breadcrumbs' {
+  return entries[0]?.definition.localNavigation ?? 'back';
 }
 
 export function resolveTrail(entries: readonly TrailEntry[]): readonly SecondaryTrailItem[] {

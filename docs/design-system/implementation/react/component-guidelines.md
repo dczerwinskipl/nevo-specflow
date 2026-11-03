@@ -490,7 +490,9 @@ Products pass localized `labels` (the defaults are English).
 ## Scrolling regions
 
 Every scrolling region uses the DS `ScrollArea` (thin scrollbar, edge indicators); never hide scrollbars and
-do not nest scrollers. `DrawerBody` is a `ScrollArea` (padding on its content wrapper; the viewport is one
+do not nest scrollers. A native scroller that cannot be a `ScrollArea` (for example one whose element the
+product measures and pins itself) adds the `scrollbar-subtle` class so it gets the same scrollbar instead of
+the platform default. `DrawerBody` is a `ScrollArea` (padding on its content wrapper; the viewport is one
 keyboard-focusable Tab stop so content without focusable children stays scrollable). A list that already
 contains focusable items (for example a navigation `nav`) wraps its list in `ScrollArea` with
 `className="min-h-0 flex-1"` and `tabIndex={-1}` and no `aria-label`, so it adds no Tab stop and no extra

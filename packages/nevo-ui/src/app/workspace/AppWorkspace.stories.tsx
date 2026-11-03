@@ -727,12 +727,6 @@ function NoPinnedTabStripContract() {
   );
 }
 
-function secondaryHeader(shell: HTMLElement) {
-  return shell.querySelector<HTMLElement>(
-    '[data-workspace-surface="secondary"] [data-workspace-header="true"]',
-  );
-}
-
 export const RootTabStripAppearsContract: Story = {
   render: () => <PinnedTabStripContract />,
   tags: ['contract', '!autodocs'],
@@ -740,19 +734,23 @@ export const RootTabStripAppearsContract: Story = {
     const shell = canvasElement.querySelector<HTMLElement>('[data-tab-strip-shell]');
     assert(shell, 'The fixture should expose its application shell.');
 
-    assert(
-      shell.querySelector('[role="tablist"]') === null,
-      'With only the pinned tab open, no strip should render at all.',
+    // Split layout: the pinned tab alone is already the one tab of the rail, so opening another
+    // tab never swaps a 56px header for the rail under the content.
+    await waitFor(
+      () => shell.querySelectorAll('[role="tab"]').length === 1,
+      'With only the pinned tab open, the rail shows it as its one tab.',
     );
     assert(
-      secondaryHeader(shell)?.textContent?.includes('Context'),
-      "The pinned tab's own header should render exactly as today's single Secondary.",
+      shell.querySelector('[data-workspace-tab-rail]') !== null &&
+        canvas.queryByRole('button', { name: 'Close Context' }) === null &&
+        canvas.queryByRole('button', { name: 'Close secondary content' }) === null,
+      'The pinned tab alone has no close and the rail no panel close.',
     );
 
     await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
     await waitFor(
-      () => shell.querySelector('[role="tablist"]'),
-      'Opening a second root tab should render the tab strip.',
+      () => shell.querySelectorAll('[role="tab"]').length === 2,
+      'Opening a second root tab should add its tab to the strip.',
     );
 
     const tabs = Array.from(shell.querySelectorAll<HTMLElement>('[role="tab"]'));
@@ -786,29 +784,31 @@ export const RootTabStripClosesToBaselineContract: Story = {
   tags: ['contract', '!autodocs'],
   parameters: {
     // Covered by RootTabStripAppearsContract while the strip is visible; this story's own
-    // regression check is DOM/markup equality against the pre-strip baseline, asserted below.
+    // regression check is the rail's geometry before and after, asserted below.
     a11y: { test: 'off' },
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const shell = canvasElement.querySelector<HTMLElement>('[data-tab-strip-shell]');
     assert(shell, 'The fixture should expose its application shell.');
-    const baseline = secondaryHeader(shell)?.outerHTML;
-    assert(baseline, 'The single-tab baseline should render a Secondary header.');
+    const rail = () => shell.querySelector<HTMLElement>('[data-workspace-tab-rail]');
+    await waitFor(rail, 'The pinned tab alone shows the rail.');
+    const before = rail()!.getBoundingClientRect();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Open Item A' }));
     await waitFor(
-      () => shell.querySelector('[role="tablist"]'),
-      'Opening a second root tab should render the tab strip.',
+      () => shell.querySelectorAll('[role="tab"]').length === 2,
+      'Opening a second root tab should add its tab to the strip.',
     );
 
     await userEvent.click(canvas.getByRole('button', { name: 'Close Item A' }));
     await waitFor(
-      () => shell.querySelector('[role="tablist"]') === null,
-      'Closing back down to the pinned tab should remove the strip.',
+      () => shell.querySelectorAll('[role="tab"]').length === 1,
+      'Closing back down to the pinned tab leaves its one tab.',
     );
+    const after = rail()!.getBoundingClientRect();
     assert(
-      secondaryHeader(shell)?.outerHTML === baseline,
-      "Closing back down to the pinned tab should restore today's single-Secondary header exactly, byte for byte.",
+      after.top === before.top && after.height === before.height,
+      'Closing back down to the pinned tab keeps the rail exactly where it was.',
     );
   },
 };

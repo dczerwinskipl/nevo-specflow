@@ -42,6 +42,9 @@ export type SecondaryScreenMap<TData, TPages extends { [K in keyof TPages]: obje
   [K in keyof TPages]: SecondaryScreenDefinition<TData, TPages[K]>;
 };
 
+/** See `SecondaryStackDefinition.localNavigation`. */
+export type SecondaryLocalNavigation = 'back' | 'breadcrumbs';
+
 /**
  * A catalogue of contextual pages, not a second router.
  * Root parameters identify the entity; page parameters must not contain cached domain snapshots.
@@ -76,6 +79,15 @@ export interface SecondaryStackDefinition<
    * goes deeper; the deeper levels are shown by the Secondary breadcrumb trail, not the tab label.
    */
   tabLabel?: (rootParams: TRoot) => string;
+  /**
+   * How the split Secondary shows local depth while a tab of this stack (the stack the tab was
+   * opened with) is deeper than its root. `back` (default): one compact back row,
+   * `← <backToParent(parent title)>`, that returns to the direct parent; the current page names
+   * itself in its own content. `breadcrumbs`: the full trail `← Root › … › Parent › Current`, for
+   * stacks whose every level is a place worth jumping back to (Tasks › TASK-03 › Attempt 2 ›
+   * Review), not merely because a stack is deep. Stacked/mobile layouts ignore it (header Back).
+   */
+  localNavigation?: SecondaryLocalNavigation;
   useData: (params: TRoot) => SecondaryData<TData>;
   screens: SecondaryScreenMap<TData, TPages>;
 }

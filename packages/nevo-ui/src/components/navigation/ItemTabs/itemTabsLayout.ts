@@ -1,22 +1,43 @@
-export const ITEM_TAB_MIN_WIDTH = 140;
-export const ITEM_TAB_MAX_WIDTH = 180;
+/**
+ * Width policy of the tab strip: a tab is as wide as its own content (padding, glyph, label, close
+ * slot), between `ITEM_TAB_MIN_WIDTH` and `ITEM_TAB_MAX_WIDTH`. When the content widths do not fit,
+ * long tabs first give up width down to `ITEM_TAB_COMPRESSED_WIDTH` (their labels truncate in the
+ * middle); only when even that does not fit, the trailing tabs go to the `Opened (N)` menu.
+ */
+export const ITEM_TAB_MIN_WIDTH = 64;
+/** The width a long tab may shrink to before tabs start going to the Opened menu. */
+export const ITEM_TAB_COMPRESSED_WIDTH = 120;
+export const ITEM_TAB_MAX_WIDTH = 240;
 /** Container width below which the strip is replaced by the switcher button. */
 export const ITEM_TABS_SWITCHER_BELOW = 480;
 export const ITEM_TABS_OVERFLOW_WIDTH = 52;
 /** Space between tabs (px). Coupled to the `gap-0.5` on the tablist and on the close-slot layer. */
 export const ITEM_TAB_GAP = 2;
 /**
- * Pixels around the label: left padding, icon, gap and the right slot reserved for the x.
- * Coupled to the tab classes `pl-2.5` (10), the 16 px `sm` icon, `gap-2` (8) and `pr-8` (32): change
- * them together.
+ * Pixels around the label. Coupled to the tab classes: `pl-2.5` (10) before the glyph or label, the
+ * 16 px `sm` glyph plus `gap-2` (8), and at the end either `pr-8` (32, the slot reserved for the x of
+ * a closable tab) or `pr-2.5` (10). Change them together.
  */
-export const ITEM_TAB_CHROME = 10 + 16 + 8 + 32;
-/** Average glyph width (text-label-sm) used to size tabs and decide how many characters fit. */
+export const ITEM_TAB_PADDING_START = 10;
+export const ITEM_TAB_GLYPH = 16 + 8;
+export const ITEM_TAB_CLOSE_SLOT = 32;
+export const ITEM_TAB_PADDING_END = 10;
+/**
+ * Average glyph width (text-label-sm), used only where the label cannot be measured (no layout,
+ * for example jsdom or the first render before measurement).
+ */
 export const ITEM_TAB_CHAR_WIDTH = 6.4;
 
 export interface FitItem {
   id: string;
   label: string;
+}
+
+/** What decides a tab's chrome around its label. */
+export interface ItemTabChrome {
+  closable?: boolean;
+  /** The tab shows a leading glyph (an icon, a spinner or a warning). */
+  glyph?: boolean;
 }
 
 export interface ItemTabsFit<T extends FitItem> {
@@ -25,67 +46,151 @@ export interface ItemTabsFit<T extends FitItem> {
   overflowing: boolean;
 }
 
-function naturalWidth(label: string) {
-  return Math.min(
-    ITEM_TAB_MAX_WIDTH,
-    Math.max(ITEM_TAB_MIN_WIDTH, Math.round(ITEM_TAB_CHROME + label.length * ITEM_TAB_CHAR_WIDTH)),
+/** Pixels a tab needs around its label. */
+export function itemTabChromeWidth({ closable = true, glyph = false }: ItemTabChrome) {
+  return (
+    ITEM_TAB_PADDING_START +
+    (glyph ? ITEM_TAB_GLYPH : 0) +
+    (closable ? ITEM_TAB_CLOSE_SLOT : ITEM_TAB_PADDING_END)
   );
 }
 
 /**
- * Width policy: a tab is never narrower than 140 px nor wider than 180 px, with a 2 px gap
- * between tabs. All tabs are visible when N x 140 + (N - 1) x gap <= available; otherwise as many
- * tabs as fit in (available - overflow button) are visible (always including the active one) and the rest go to the Opened menu.
+ * The content width of a tab: its chrome plus the label, measured (`labelWidth`) when the layout
+ * is known, else estimated from its length, clamped to 64-240 px.
+ */
+export function itemTabNaturalWidth(label: string, chrome: ItemTabChrome, labelWidth?: number) {
+  const text =
+    labelWidth !== undefined && labelWidth > 0
+      ? // `offsetWidth` is rounded: one spare pixel keeps a fitting label from a sub-pixel ellipsis.
+        Math.ceil(labelWidth) + 1
+      : Math.round(label.length * ITEM_TAB_CHAR_WIDTH);
+
+  return Math.min(
+    ITEM_TAB_MAX_WIDTH,
+    Math.max(ITEM_TAB_MIN_WIDTH, itemTabChromeWidth(chrome) + text),
+  );
+}
+
+function totalWidth(widths: readonly number[]) {
+  return (
+    widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * ITEM_TAB_GAP
+  );
+}
+
+/**
+ * Shrinks the widest tabs first (one common cap, never below their compressed width) until the
+ * tabs fit `space`. Short tabs keep their content width.
+ */
+function compress(natural: readonly number[], space: number): number[] {
+  const floor = natural.map((width) => Math.min(width, ITEM_TAB_COMPRESSED_WIDTH));
+  if (totalWidth(natural) <= space) {
+    return [...natural];
+  }
+
+  let low = ITEM_TAB_COMPRESSED_WIDTH;
+  let high = Math.max(...natural);
+  while (low < high) {
+    const cap = Math.ceil((low + high) / 2);
+    if (totalWidth(natural.map((width) => Math.min(width, cap))) <= space) {
+      low = cap;
+    } else {
+      high = cap - 1;
+    }
+  }
+
+  return natural.map((width, index) => Math.max(floor[index]!, Math.min(width, low)));
+}
+
+/**
+ * Which tabs are visible and how wide each one is. `naturalWidths[i]` is the content width of
+ * `items[i]` (`itemTabNaturalWidth`); without it the width is estimated from the label length.
+ *
+ * 1. All content widths fit: every tab at its content width.
+ * 2. Else, if every tab fits at no less than its compressed width (120 px, or its content width when
+ *    narrower): all tabs visible, the widest ones shrunk to one common cap.
+ * 3. Else the leading tabs that fit next to the overflow trigger stay visible, always including the
+ *    active one (it replaces the last ones that no longer fit), and the rest go to the Opened menu.
+ *    One tab always stays visible, shrunk to the room when it is wider.
  */
 export function fitItemTabs<T extends FitItem>(
   items: readonly T[],
   available: number,
   activeId: string | null,
+  naturalWidths?: readonly number[],
 ): ItemTabsFit<T> {
-  const count0 = Math.max(1, items.length);
-  if (items.length * ITEM_TAB_MIN_WIDTH + (count0 - 1) * ITEM_TAB_GAP <= available) {
-    const spare = Math.floor((available - (count0 - 1) * ITEM_TAB_GAP) / count0);
+  const natural = items.map(
+    (item, index) => naturalWidths?.[index] ?? itemTabNaturalWidth(item.label, {}),
+  );
+  const floor = natural.map((width) => Math.min(width, ITEM_TAB_COMPRESSED_WIDTH));
+  if (items.length <= 1 || totalWidth(floor) <= available) {
+    const widths = compress(natural, available);
+    if (items.length === 1 && widths[0]! > available) {
+      widths[0] = Math.max(ITEM_TAB_MIN_WIDTH, Math.floor(available));
+    }
 
-    return {
-      visible: items,
-      widths: items.map((item) =>
-        Math.min(naturalWidth(item.label), Math.max(ITEM_TAB_MIN_WIDTH, spare)),
-      ),
-      overflowing: false,
-    };
+    return { visible: items, widths, overflowing: false };
   }
 
   const room = available - ITEM_TABS_OVERFLOW_WIDTH;
-  const count = Math.max(
-    1,
-    Math.floor((room + ITEM_TAB_GAP) / (ITEM_TAB_MIN_WIDTH + ITEM_TAB_GAP)),
-  );
-  let visible = items.slice(0, count);
-  const active = items.find((item) => item.id === activeId);
-  if (active && !visible.includes(active)) {
-    visible = [...visible.slice(0, count - 1), active];
+  const activeIndex = items.findIndex((item) => item.id === activeId);
+  let indices: number[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    if (totalWidth([...indices, index].map((i) => floor[i]!)) > room) {
+      break;
+    }
+
+    indices.push(index);
   }
 
-  const width = Math.min(
-    ITEM_TAB_MAX_WIDTH,
-    Math.max(
-      ITEM_TAB_MIN_WIDTH,
-      Math.floor((room - (visible.length - 1) * ITEM_TAB_GAP) / visible.length),
-    ),
+  if (activeIndex >= 0 && !indices.includes(activeIndex)) {
+    while (
+      indices.length > 0 &&
+      totalWidth([...indices, activeIndex].map((i) => floor[i]!)) > room
+    ) {
+      indices = indices.slice(0, -1);
+    }
+
+    indices.push(activeIndex);
+  }
+
+  if (indices.length === 0) {
+    indices = [0];
+  }
+
+  const visible = indices.map((index) => items[index]!);
+  const widths = compress(
+    indices.map((index) => natural[index]!),
+    room,
   );
+  if (widths.length === 1 && widths[0]! > room) {
+    widths[0] = Math.max(ITEM_TAB_MIN_WIDTH, Math.floor(room));
+  }
 
-  return { visible, widths: visible.map(() => width), overflowing: true };
-}
-
-/** How many characters of a label fit in a tab of the given width. */
-export function maxLabelChars(tabWidth: number) {
-  return Math.round((tabWidth - ITEM_TAB_CHROME) / ITEM_TAB_CHAR_WIDTH);
+  return { visible, widths, overflowing: true };
 }
 
 /**
- * Splits a label for middle truncation: the tail (extension and last characters) stays visible
- * and the head shrinks. The label is returned whole when it fits.
+ * How many characters of a label fit in a tab of `tabWidth`, given its content width: the label is
+ * whole when the tab has its content width, else proportionally shorter (the middle truncation
+ * keeps the tail, the CSS ellipsis absorbs the rest of the difference).
  */
+export function maxLabelChars(
+  label: string,
+  tabWidth: number,
+  naturalWidth: number,
+  chrome: ItemTabChrome,
+) {
+  if (tabWidth >= naturalWidth) {
+    return undefined;
+  }
+
+  const chromeWidth = itemTabChromeWidth(chrome);
+  const ratio = Math.max(0, tabWidth - chromeWidth) / Math.max(1, naturalWidth - chromeWidth);
+
+  return Math.max(1, Math.floor(label.length * ratio));
+}
+
 const segmenter =
   typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : undefined;
 

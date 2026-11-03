@@ -5,8 +5,8 @@ import { Check, Copy } from 'lucide-react';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
 import { Alert, Button, Spinner, Timeline, Typography } from '@nevo/ui';
 import type { ManagedSessionsApi } from './api';
+import { ToolActionHeader } from './ToolActionHeader';
 import { ToolDetailCode } from './ToolDetailCode';
-import { WorkRowContent, useWorkClockRangeLabel, useWorkRowMeta } from './WorkRow';
 import { workStateTone } from './workStatus';
 
 interface ContentSource {
@@ -128,11 +128,13 @@ function ToolActionDetailSection({
           {t('managedSession.failed')}
         </Typography>
       )}
+      {/* Numbered only when the lines are ours (pretty-printed JSON); verbatim text keeps exactly
+          its own lines, including any numbering the tool printed (`cat -n`). */}
       {shape?.kind === 'json' && (
-        <ToolDetailCode text={shape.pretty} language="json" label={label} />
+        <ToolDetailCode text={shape.pretty} language="json" label={label} lineNumbers />
       )}
       {shape?.kind === 'text' && (
-        <ToolDetailCode text={shape.text} language="plain" label={label} />
+        <ToolDetailCode text={shape.text} language="plain" label={label} lineNumbers={false} />
       )}
       {content.data?.truncated && (
         <Typography as="p" variant="body-sm" className="text-content-muted">
@@ -145,11 +147,11 @@ function ToolActionDetailSection({
 
 /**
  * L4: one ToolAction's own content (owner brief "ToolAction details: struktura zamiast surowego
- * tekstu"). The header is the same Work row anatomy as L2 (`WorkRowContent`: its own name, then
- * its status and elapsed time). Below it, structured rather than raw: the parameters and the
- * tool's response each under a label + Copy row, on their own code surface — formatted JSON when
- * the body is JSON, verbatim text otherwise — height-capped with its own scroll; an error as its
- * own alert with message and code.
+ * tekstu"), one simple structure: header (`ToolActionHeader`: the full title, then a status line
+ * with a discreet status mark and the duration), the parameters, the tool's response — each under
+ * a label + Copy row on its own code surface (formatted JSON when the body is JSON, verbatim text
+ * otherwise), height-capped with its own scroll — and an error as its own alert with message and
+ * code. No extra cards, labels or separators around them.
  *
  * Deliberately NOT a `Timeline.Item`/`Timeline.Marker` itself — see `ToolActionTimelineItem` (the
  * multi-item case) vs. `SingleToolActionDetail` (this content rendered flush, no marker gutter)
@@ -166,40 +168,11 @@ function ToolActionContent({
   asHeading?: boolean;
 }) {
   const { t } = useTranslation();
-  // The detail header always states the outcome ("Zakończono · 600 ms"), unlike an L2 row.
-  const { meta, srStatus } = useWorkRowMeta(item, { alwaysState: true });
-  // Wall-clock start–end, ADDITIONAL to the duration already in `meta` (owner review, round four:
-  // "Dodaj też zegarowy start/koniec" — the duration alone left no way to tell WHEN this ran). Own
-  // line below `meta`, same muted/secondary treatment, rather than crowding onto the one meta line
-  // L2's compact rows share — this detail header has the room.
-  const clockRange = useWorkClockRangeLabel(item);
   const failed = workStateTone(item.state) === 'danger';
 
   return (
     <div className="grid min-w-0 gap-3">
-      <div className="grid min-w-0 gap-0.5">
-        <WorkRowContent
-          title={
-            asHeading ? (
-              <Typography as="h2" variant="title-sm" className="text-content-primary">
-                {item.title.text}
-                {srStatus}
-              </Typography>
-            ) : (
-              <>
-                {item.title.text}
-                {srStatus}
-              </>
-            )
-          }
-          meta={meta}
-        />
-        {clockRange && (
-          <Typography as="span" variant="body-sm" className="text-content-muted">
-            {clockRange}
-          </Typography>
-        )}
-      </div>
+      <ToolActionHeader item={item} asHeading={asHeading} />
       {item.input && (
         <ToolActionDetailSection
           label={t('managedSession.workInspector.input')}

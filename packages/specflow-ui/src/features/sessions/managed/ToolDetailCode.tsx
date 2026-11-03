@@ -12,10 +12,15 @@ import {
 const readOnlyNavigation = (): CodeViewSetup => ({ extensions: [keymap.of(defaultKeymap)] });
 
 /**
- * A tool's parameters or response on the product's one code view — the same gutter, line numbers,
- * mono type, DS-token colouring and field surface as a document's source — read-only, with lines
- * never re-wrapped so indentation and columns survive. Parameters and response look the same; only
- * the `language` differs (JSON coloured as JSON, anything else plain).
+ * A tool's parameters or response on the product's one code view — the same mono type, DS-token
+ * colouring and field surface as a document's source — read-only, with lines never re-wrapped so
+ * indentation and columns survive. Parameters and response look the same; only the `language`
+ * differs (JSON coloured as JSON, anything else plain).
+ *
+ * Line numbers (`lineNumbers`) only where the product produced the text's lines itself — JSON it
+ * pretty-printed. Text shown verbatim (a tool's stdout, a file the Read tool returned with its own
+ * `cat -n` numbers) keeps exactly its own content: no second gutter numbering its numbers, and no
+ * attempt to strip numbers out of it either.
  *
  * The view grows to its text and a DS `ScrollArea` scrolls it, capped in height (`max-h-80`), both
  * ways: a long response scrolls inside its own block instead of stretching the Secondary panel,
@@ -32,10 +37,13 @@ export function ToolDetailCode({
   text,
   language,
   label,
+  lineNumbers,
 }: {
   text: string;
   language: CodeLanguage;
   label: string;
+  /** Number the lines: only for text the product formatted itself (pretty-printed JSON). */
+  lineNumbers: boolean;
 }) {
   return (
     <ScrollArea
@@ -54,6 +62,7 @@ export function ToolDetailCode({
         readOnly
         wrapLines={false}
         activeLine={false}
+        lineNumbers={lineNumbers}
         scrolling="container"
         setup={readOnlyNavigation}
       />

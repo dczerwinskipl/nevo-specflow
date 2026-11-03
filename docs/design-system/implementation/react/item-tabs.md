@@ -35,19 +35,35 @@ owns state, guards and the tab panel; the strip renders no panel.
   MUST NOT add a second row under the header. `density` sets the root height: `header` (default)
   fills the 56 px workspace header (`h-14`, Documents); `rail` fills the split Secondary's compact
   32 px root-tab rail (`--spacing-tab-rail`, see [Secondary navigation](secondary-navigation.md),
-  "Root tabs and breadcrumbs"). Tabs are one control high (default 36 px in `header`, compact 32 px
-  in `rail`), anchored to the bottom edge with 2 px between them; the active tab's underline sits
-  on the header border.
-- **Tab look.** Only the active tab carries a surface: `bg-surface-control` (the lightest control
-  fill) with the 2 px `action-primary` underline and `content-primary` text. Inactive tabs are
-  plain `content-secondary` text on the header and show `surface-hover` only on hover. A fill on
-  every tab read as a row of separate buttons. Both densities share this look.
-- **Width.** A tab is 140-180 px. If `N x 140` fits, all tabs are visible; otherwise
-  `floor((width - 52) / 140)` tabs are visible, the active one always among them, and the rest go to
-  the `Opened (N)` menu. Labels truncate in the middle so the extension stays visible; the tooltip
-  shows the full description (path).
-- **Switcher.** Below `switcherBelow` (default 480 px of strip width) the strip MUST become one
-  button `name (N)` opening the same menu (`variant="auto"`).
+  "Root tabs and local navigation"). Tabs are one control high (default 36 px in `header`, compact
+  32 px in `rail`), anchored to the bottom edge with 2 px between them; the active tab's underline
+  sits on the header border. The strip never adds height of its own to match another region.
+- **Tab look.** Square tabs, no rounded "card" top and no fill when selected: the active tab is the
+  2 px `action-primary` underline plus `content-primary` text. Inactive tabs are plain
+  `content-secondary` text (muted while loading or missing) with no underline and show
+  `surface-hover` only on hover. A fill — on every tab, or only on the active one — read as a row of
+  separate buttons and competed with the underline. Labels never wrap. Both densities share this
+  look.
+- **Width (content width, both densities).** A tab is as wide as its own content: `pl-2.5`, the
+  glyph (16 px + 8 px gap) when the item has an icon or a loading/missing state, the label measured
+  in the rendered font (a hidden, clipped measuring layer, re-measured when labels change and when
+  web fonts are ready; estimated at 6.4 px a character only where nothing is laid out), and the end
+  slot — 32 px reserved for the `x` on a closable tab, so label and `x` keep fixed positions, or a
+  symmetric 10 px on a non-closable one. Clamped to 64-240 px. When the content widths do not fit,
+  the widest tabs first shrink to one common cap, never below 120 px (their labels truncate in the
+  middle, the full label stays the tab's accessible name and tooltip); only when even that does not
+  fit do the trailing tabs go to the `Opened (N)` menu, the active one always staying visible
+  (`fitItemTabs`). Decision (owner, 2026-11): content width replaces the earlier fixed 140-180 px
+  for **both** hosts — Documents' `DocumentTabStrip` (file names) and the Secondary rail — because a
+  fixed width wasted space on short names (`Kontekst`) and cut long file names early; one policy
+  keeps the strips consistent. Documents' short file names now get narrower tabs and long ones up to
+  240 px.
+- **Switcher.** Below `switcherBelow` (default 480 px of strip width; the Secondary rail passes
+  292 px = two compressed tabs plus the overflow trigger) the strip MUST become one button
+  `name (N)` opening the same menu (`variant="auto"`).
+- **Overflow trigger.** Shows the chevron and the count; its accessible name is the full
+  `labels.openedMenu(N)` text (the visible count is `aria-hidden`, so the visible text is never
+  outside the name — WCAG 2.5.3).
 - **Tab anatomy.** Icon, label, close `x` at the label's right edge. The unsaved state is a badge on
   the icon, visible on every pointer and in the switcher; it MUST NOT share the close slot. `loading`
   shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.

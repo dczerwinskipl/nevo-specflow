@@ -97,8 +97,35 @@ describe('ItemTabs', () => {
     expect(screen.getByRole('tab', { name: 'item-1.md' })).toBe(tabs[1]);
   });
 
+  it('sizes each tab to its own label, and marks the active one by underline and text only', () => {
+    renderTabs({
+      items: [
+        makeItem('plan', { label: 'Planning', icon: undefined }),
+        makeItem('long', { label: 'Historia pracy agenta', icon: undefined }),
+        makeItem('pinned', { label: 'Planning', icon: undefined, closable: false }),
+      ],
+      activeId: 'plan',
+    });
+    const width = (name: string, index = 0) =>
+      Number.parseFloat(screen.getAllByRole('tab', { name })[index]!.parentElement!.style.width);
+    // jsdom has no layout, so the label is estimated (6.4 px a character); a browser measures it.
+    expect(width('Planning')).toBe(42 + 51);
+    expect(width('Historia pracy agenta')).toBe(42 + 134);
+    // No close slot on a non-closable tab: symmetric padding instead.
+    expect(width('Planning', 1)).toBe(20 + 51);
+    expect(screen.getAllByRole('tab', { name: 'Planning' })[1]!.className).toContain('pr-2.5');
+
+    const active = screen.getAllByRole('tab', { name: 'Planning' })[0]!;
+    expect(active.className).toContain('border-b-action-primary');
+    expect(active.className).toContain('text-content-primary');
+    expect(active.className).not.toMatch(/\bbg-surface-control\b|rounded-t/);
+    expect(active.className).toContain('whitespace-nowrap');
+  });
+
   it('keeps the space at the split point of a middle-truncated label', () => {
-    renderTabs({ items: [makeItem('ux', { label: 'Single sign-on - UX' })] });
+    // Narrower than the tab's content width, so its label is truncated in the middle.
+    containerWidth = 150;
+    renderTabs({ items: [makeItem('ux', { label: 'Single sign-on - UX' })], variant: 'strip' });
     const tab = screen.getByRole('tab', { name: 'Single sign-on - UX' });
     const halves = Array.from(tab.querySelectorAll('[aria-hidden="true"]')).filter(
       (node) => node.textContent,
@@ -316,7 +343,7 @@ describe('ItemTabs', () => {
 
     for (const [way, close] of Object.entries(closers)) {
       it(`keeps focus on a tab when ${way} in the Opened menu removes the trigger`, async () => {
-        containerWidth = 1000;
+        containerWidth = 880;
         render(<Host initial={makeItems(8)} />);
         close(await openMenu(8));
         await settleTimers();
@@ -326,7 +353,7 @@ describe('ItemTabs', () => {
     }
 
     it('waits for a delayed guard before moving focus, then lands on the neighbour', async () => {
-      containerWidth = 1000;
+      containerWidth = 880;
       let allow: (value: boolean) => void = () => undefined;
       render(
         <Host
@@ -345,7 +372,7 @@ describe('ItemTabs', () => {
     });
 
     it('leaves the item and focus alone when the guard refuses', async () => {
-      containerWidth = 1000;
+      containerWidth = 880;
       render(<Host initial={makeItems(8)} canClose={() => Promise.resolve(false)} />);
       closers['Close menuitem'](await openMenu(8));
       await settleTimers();
@@ -369,10 +396,10 @@ describe('ItemTabs', () => {
   });
 
   describe('overflow', () => {
-    it('shows floor((width - 52) / 140) tabs plus the Opened (N) trigger', () => {
+    it('shows the tabs that fit at their compressed width next to the Opened (N) trigger', () => {
       containerWidth = 700;
       renderTabs({ items: makeItems(8), activeId: 'item-0' });
-      expect(screen.getAllByRole('tab')).toHaveLength(4);
+      expect(screen.getAllByRole('tab')).toHaveLength(5);
       expect(screen.getByRole('button', { name: 'Opened items (8)' })).toBeTruthy();
     });
 
@@ -381,7 +408,7 @@ describe('ItemTabs', () => {
       renderTabs({ items: makeItems(8), activeId: 'item-7' });
       const names = screen.getAllByRole('tab').map((tab) => tab.dataset.itemId);
       expect(names).toContain('item-7');
-      expect(names).toHaveLength(4);
+      expect(names).toHaveLength(5);
     });
 
     it('recomputes when the container resizes', () => {
@@ -390,7 +417,7 @@ describe('ItemTabs', () => {
       expect(screen.getAllByRole('tab')).toHaveLength(8);
       expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
       resize(700);
-      expect(screen.getAllByRole('tab')).toHaveLength(4);
+      expect(screen.getAllByRole('tab')).toHaveLength(5);
     });
 
     it('offers an accessible Close menuitem per row, for users without a keyboard', async () => {

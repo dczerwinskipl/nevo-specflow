@@ -598,13 +598,26 @@ ToolAction stays inside the Work tab. A local detail must reveal its Task/attemp
 Switching tabs preserves each tab's stack; Back pops inside the active tab before returning to
 its root. Closing a tab does not close or reset the whole Session. Context remains pinned.
 
-On desktop the tab keeps its root's name at any depth (the Work tab stays "Work history" while a
-ToolAction is open) and local depth is a breadcrumb row at the top of the tab, under a compact tab
-rail: `← Work history › Read file admission.mjs`. `←` pops one level, every ancestor segment jumps
-straight back to its level, the current object is plain text and truncates; with 3+ levels the
-middle segments fold into `…` at narrow widths. Segments are object names, never full file paths.
-Mobile keeps its header Back and title. Contract:
-[Secondary navigation](../../design-system/implementation/react/secondary-navigation.md#root-tabs-and-breadcrumbs-split-layout).
+On desktop Context is a tab from the start: the compact tab rail (32px) shows already while
+Context is the only tab, so opening Work history or Tasks adds a tab without moving the header or
+the content. The tab keeps its root's name at any depth (the Work tab stays "Historia pracy" while a
+ToolAction is open). Local depth is one 24px row at the top of the tab, under the rail (rail + row
+= the 56px Primary header):
+
+- **Default — back row** for a one-level drill (Work history -> ToolAction, Tasks -> Task):
+  `← Wróć do: Historia pracy`, built from the parent level's title; it returns to the direct parent
+  and does not repeat the opened object's title, which heads the content right below it.
+- **Opt-in — breadcrumbs** only for a stack whose every level is worth jumping back to
+  (Tasks › TASK-03 › Attempt 2 › Review), declared per stack (`localNavigation: 'breadcrumbs'`),
+  never derived from depth alone. `←` pops one level, ancestors jump straight back, the current
+  object is plain text; at narrow widths middle segments fold into `…` while root, the way back to
+  the direct parent and the current level stay. No Session stack opts in today.
+
+Tabs are as wide as their names (64-240px), marked active by the underline and text colour only;
+many tabs overflow into the `Opened (N)` menu. Mobile keeps its header Back and title with no row
+under it. Back remounts the parent (its scroll returns to the top unless the product keeps it).
+Contract:
+[Secondary navigation](../../design-system/implementation/react/secondary-navigation.md#root-tabs-and-local-navigation-split-layout).
 
 Do not add a second horizontal section-selector bar alongside these tabs, or a second navigation
 tree inside Context duplicating all sections. Long lists (e.g. many Tasks or 100+ files) belong in

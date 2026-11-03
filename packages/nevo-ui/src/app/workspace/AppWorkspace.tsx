@@ -26,7 +26,7 @@ import {
   type ItemTabsProps,
 } from '../../components/navigation/ItemTabs';
 import {
-  ITEM_TAB_MIN_WIDTH,
+  ITEM_TAB_COMPRESSED_WIDTH,
   ITEM_TABS_OVERFLOW_WIDTH,
 } from '../../components/navigation/ItemTabs/itemTabsLayout';
 import { workspaceSurfaceClassName } from '../../design-system/brandEnvironment';
@@ -50,6 +50,7 @@ import {
   type DynamicSplitRatioBounds,
 } from './workspaceSizing';
 import { WorkspaceSplitter } from './WorkspaceSplitter';
+import { SecondaryBackRow } from './SecondaryBackRow';
 import { SecondaryBreadcrumbRow } from './SecondaryBreadcrumbRow';
 import type { AppWorkspaceSurface } from './workspaceSurface';
 import {
@@ -84,12 +85,13 @@ const SECONDARY_TABS_SCOPE = 'workspace-secondary-tabs';
  * scoped to this header only (`ItemTabs`' own `switcherBelow` prop), never a change to its general
  * 480px default that other hosts (Documents' `DocumentTabStrip`, …) keep. At an ordinary 50/50 split
  * the strip's own width sits just under 480 (measured 470px at 1440), and the owner decision is to
- * keep the strip visible longer: it stays usable while two tabs still fit next to its overflow menu
- * (the rest go to that menu, `fitItemTabs`); below that it falls back to the switcher. Local depth
- * never shares this row (it is the breadcrumb row under it), so the presentation does not flip
- * between a tab's root and its details.
+ * keep the strip visible longer: it stays usable while two tabs still fit at their compressed width
+ * next to its overflow menu (the rest go to that menu, `fitItemTabs`; content-width tabs usually
+ * need less); below that it falls back to the switcher. Local depth never shares this row (it is
+ * the back/breadcrumb row under it), so the presentation does not flip between a tab's root and
+ * its details.
  */
-const SECONDARY_TABS_SWITCHER_BELOW = 2 * ITEM_TAB_MIN_WIDTH + ITEM_TABS_OVERFLOW_WIDTH;
+const SECONDARY_TABS_SWITCHER_BELOW = 2 * ITEM_TAB_COMPRESSED_WIDTH + ITEM_TABS_OVERFLOW_WIDTH;
 
 /**
  * Composes the Secondary root-tab strip (contract workspace-dynamic-split.md §4.1, reusing
@@ -1104,7 +1106,6 @@ function AppWorkspaceRoot({
   const defaultSecondary = staticSurfaces.defaultSecondary;
   const defaultSecondaryOpen = defaultSecondary?.open ?? false;
   const secondaryTabsState = workspace?.tabs;
-  const showSecondaryTabStrip = Boolean(secondaryTabsState && secondaryTabsState.tabs.length >= 2);
   const secondaryPresentationBase: WorkspaceSecondaryPresentation | undefined = runtimeSecondary
     ? {
         surface: runtimeSecondary.surface,
@@ -1136,14 +1137,6 @@ function AppWorkspaceRoot({
     secondaryTabsState && !runtimeSecondary && secondaryPresentationBase
       ? (secondaryTabsState.tabs.find((tab) => !tab.closable)?.id ?? secondaryTabsState.activeTabId)
       : (secondaryTabsState?.activeTabId ?? null);
-  const secondaryTabPanelId =
-    showSecondaryTabStrip && shownSecondaryTabId
-      ? getItemTabPanelId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
-      : undefined;
-  const secondaryTabPanelLabelledBy =
-    showSecondaryTabStrip && shownSecondaryTabId
-      ? getItemTabId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
-      : undefined;
   const outgoingSecondary = workspace?.transition.outgoing;
   const outgoingSecondaryPresentation = outgoingSecondary
     ? {
@@ -1169,8 +1162,24 @@ function AppWorkspaceRoot({
     onSecondaryRatioChange,
   );
   // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
-  // §4.1); with 0 or 1, `surface` passes through completely unchanged, so that baseline stays
-  // pixel/DOM-identical to today.
+  // §4.1), and on a split layout already while the pinned tab is the only one: the pinned tab
+  // (Context) is a tab from the start, so opening or closing another tab never swaps a 56px header
+  // for the 32px rail under the content (owner: the screen "jumped" when Work opened). Stacked
+  // layouts and a lone runtime tab without a pinned one keep `surface` unchanged — their header
+  // carries the screen's own Back/Close and identity, which a one-tab rail would drop.
+  const hasPinnedSecondaryTab = Boolean(secondaryTabsState?.tabs.some((tab) => !tab.closable));
+  const showSecondaryTabStrip = Boolean(
+    secondaryTabsState &&
+    (secondaryTabsState.tabs.length >= 2 || (state.mode === 'split' && hasPinnedSecondaryTab)),
+  );
+  const secondaryTabPanelId =
+    showSecondaryTabStrip && shownSecondaryTabId
+      ? getItemTabPanelId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
+      : undefined;
+  const secondaryTabPanelLabelledBy =
+    showSecondaryTabStrip && shownSecondaryTabId
+      ? getItemTabId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
+      : undefined;
   const secondaryPresentation: WorkspaceSecondaryPresentation | undefined =
     secondaryPresentationBase && showSecondaryTabStrip && workspace && secondaryTabsState
       ? {
@@ -1224,29 +1233,44 @@ function AppWorkspaceRoot({
       (state.mode === 'split' && secondaryPresentation.canStack)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
-  // Split + tab strip: local depth is a breadcrumb row at the top of the tab panel
-  // (`SecondaryBreadcrumbRow`), never a header Back — the tab keeps its root's name in the rail and
-  // the row names every level, so both views read as one tab. Never on a stacked layout, which
-  // keeps its header Back (mobile has its own navigation).
+  // Split + tab strip: local depth is one row at the top of the tab panel, never a header Back —
+  // the tab keeps its root's name in the rail. By default it is the compact back row
+  // (`SecondaryBackRow`, `← Back to <parent>`); a stack whose levels are each worth jumping to opts
+  // into the full trail (`localNavigation: 'breadcrumbs'`, `SecondaryBreadcrumbRow`). Never on a
+  // stacked layout, which keeps its header Back (mobile has its own navigation).
   const secondaryTrail = workspace?.trail ?? [];
-  const secondaryBreadcrumbRow =
+  const secondaryParentTitle = secondaryTrail.at(-2)?.title;
+  const backToParentLabel = (parentTitle: string) =>
+    labels.backToParent?.(parentTitle) ?? `${labels.backToPrimary}: ${parentTitle}`;
+  const secondaryOnBack = secondaryPresentation?.onBack;
+  let secondaryLocalNavigationRow: ReactNode;
+  if (
     splitWithStrip &&
     runtimeSecondary &&
     workspace &&
-    secondaryTrail.length > 1 &&
-    secondaryPresentation?.onBack ? (
-      <SecondaryBreadcrumbRow
-        labels={{
-          navigation: labels.secondaryBreadcrumbs?.navigation ?? 'Panel location',
-          collapsed: labels.secondaryBreadcrumbs?.collapsed ?? 'Show hidden levels',
-          back: (parentTitle) =>
-            labels.backToParent?.(parentTitle) ?? `${labels.backToPrimary}: ${parentTitle}`,
-        }}
-        onBack={secondaryPresentation.onBack}
-        onBackTo={workspace.backTo}
-        trail={secondaryTrail}
-      />
-    ) : undefined;
+    secondaryParentTitle !== undefined &&
+    secondaryOnBack
+  ) {
+    secondaryLocalNavigationRow =
+      workspace.localNavigation === 'breadcrumbs' ? (
+        <SecondaryBreadcrumbRow
+          labels={{
+            navigation: labels.secondaryBreadcrumbs?.navigation ?? 'Panel location',
+            collapsed: labels.secondaryBreadcrumbs?.collapsed ?? 'Show hidden levels',
+            back: backToParentLabel,
+          }}
+          onBack={secondaryOnBack}
+          onBackTo={workspace.backTo}
+          trail={secondaryTrail}
+        />
+      ) : (
+        <SecondaryBackRow
+          label={backToParentLabel(secondaryParentTitle)}
+          onBack={secondaryOnBack}
+        />
+      );
+  }
+
   const hideClose = state.mode === 'stacked' && stackedSecondaryClose === 'hide';
   // With the tab strip shown each closable tab owns its own close; a second panel-level `x` beside
   // them was ambiguous (which one closes what), so it is not rendered. A lone surface keeps it.
@@ -1356,7 +1380,7 @@ function AppWorkspaceRoot({
         instanceKey={secondaryPresentation.key}
         key={secondaryPresentation.key}
         leadingAction={secondaryBackAction}
-        contentNavigation={secondaryBreadcrumbRow}
+        contentNavigation={secondaryLocalNavigationRow}
         headerVariant={splitWithStrip ? 'tab-rail' : 'header'}
         fitAvailable={fit === 'available'}
         maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}

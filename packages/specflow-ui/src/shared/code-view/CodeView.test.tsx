@@ -28,6 +28,16 @@ describe('CodeView', () => {
     expect(numbers).toEqual(expect.arrayContaining(['1', '2', '3']));
   });
 
+  it('shows text verbatim without a gutter when line numbers are off', () => {
+    const numbered = '     1\tone\n     2\ttwo';
+    const { container } = render(
+      <CodeView value={numbered} language="plain" label="Output" lineNumbers={false} />,
+    );
+
+    expect(container.querySelector('.cm-gutters')).toBeNull();
+    expect(editorOf(container).state.doc.toString()).toBe(numbered);
+  });
+
   it('colours JSON keys, strings, numbers and literals as distinct tokens', () => {
     const { container } = render(
       <CodeView

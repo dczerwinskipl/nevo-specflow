@@ -21,26 +21,36 @@
   outline-offset: -2px;
 }
 
-.scroll-area-viewport {
+/*
+ * The DS scrollbar look. `.scrollbar-subtle` is the public class for a native scroll container that
+ * cannot be a `ScrollArea` (for example one whose element a product measures and drives itself),
+ * so it gets the same thin, token-coloured scrollbar instead of the platform default.
+ */
+.scroll-area-viewport,
+.scrollbar-subtle {
   scrollbar-width: thin;
   scrollbar-color: var(--color-scrollbar-thumb) transparent;
 }
 
-.scroll-area-viewport::-webkit-scrollbar {
+.scroll-area-viewport::-webkit-scrollbar,
+.scrollbar-subtle::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.scroll-area-viewport::-webkit-scrollbar-track {
+.scroll-area-viewport::-webkit-scrollbar-track,
+.scrollbar-subtle::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.scroll-area-viewport::-webkit-scrollbar-thumb {
+.scroll-area-viewport::-webkit-scrollbar-thumb,
+.scrollbar-subtle::-webkit-scrollbar-thumb {
   background: var(--color-scrollbar-thumb);
   border-radius: 999px;
 }
 
-.scroll-area-viewport::-webkit-scrollbar-thumb:hover {
+.scroll-area-viewport::-webkit-scrollbar-thumb:hover,
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
   background: var(--color-scrollbar-thumb-hover);
 }
 

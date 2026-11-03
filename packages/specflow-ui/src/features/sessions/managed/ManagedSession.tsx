@@ -84,7 +84,7 @@ function InteractionPrompt({
     <section
       aria-label={t('managedSession.responseRequired')}
       data-interaction-prompt="true"
-      className="grid max-h-[40dvh] gap-3 overflow-y-auto rounded-control border border-border-subtle p-4"
+      className="scrollbar-subtle grid max-h-[40dvh] gap-3 overflow-y-auto rounded-control border border-border-subtle p-4"
     >
       <Typography as="h2" variant="title-sm">
         {t('managedSession.responseRequired')}
@@ -1020,7 +1020,7 @@ function ManagedSessionConversation({
                     'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
                     supportsSplit
                       ? 'sticky pb-4 sm:pb-5'
-                      : 'fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
+                      : 'scrollbar-subtle fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
                   )}
                   style={
                     supportsSplit
@@ -1277,7 +1277,9 @@ function ManagedSessionConversation({
             return supportsSplit ? (
               <div
                 ref={setLocalScrollNode}
-                className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+                // A native scroller (the feed measures and pins it itself), styled like the DS
+                // `ScrollArea` instead of the platform's default scrollbar.
+                className="scrollbar-subtle flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
               >
                 {conversationBody}
               </div>

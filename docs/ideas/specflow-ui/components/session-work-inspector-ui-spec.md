@@ -626,6 +626,39 @@ Input                     collapsible/raw
 Output                    collapsible/raw
 ```
 
+### 9.1 Implemented ToolAction header and code blocks (owner decision, 2026-11)
+
+The header above is the target once Runtime supplies tool kind and subject. Today's
+`ToolActionSummary` has neither (only `title`, `state`, `input`, `output`, `error`, `createdAt`,
+`updatedAt`), so the implementation does not guess them: no parsing of titles or stdout into a
+tool type or target, and no contract extension in the UI. One simple structure, no extra cards or
+labels:
+
+```text
+Read file admission.mjs               full title, h2 title-sm on the single-action screen
+(✓) 200 ms                            status line, body-sm muted
+PARAMETRY                    Kopiuj   numbered pretty-printed JSON
+ODPOWIEDŹ NARZĘDZIA          Kopiuj   verbatim output, no gutter
+```
+
+- **Status.** Completed: a discreet `circle-check` in `status-success`, the word "Zakończono" for
+  assistive technology only, no badge. Failed / cancelled / interrupted: the matching icon plus the
+  state word visibly (never colour alone); the readable error message is the alert below the
+  header. Running and other unsettled states show the real state ("W toku", spinner), never a
+  duration or a success mark. Inside the Timeline of several actions the marker carries the state,
+  so the status line has no icon there.
+- **Time.** The duration is the visible time. The wall-clock range (`10:00:00–10:00:00`) is hidden
+  by default because next to "200 ms" it reads as a contradiction; it stays reachable as the
+  duration's tooltip (`<time title>`), and is shown in the line itself once a run lasts 60 s or more
+  (`CLOCK_RANGE_VISIBLE_FROM_MS`), where start and end genuinely differ.
+- **Line numbers.** The code view adds a gutter only for text the product formatted itself
+  (pretty-printed JSON parameters). Any other body — stdout, the Read tool's own `cat -n` numbered
+  file — is shown verbatim without a gutter, so its own numbers are never numbered again; numbers
+  are never stripped with a heuristic. No language is guessed beyond "is this valid JSON".
+- **Overflow.** Lines never wrap; each block is height-capped and scrolls both ways inside itself,
+  so a long line or file never widens the Secondary and nothing is truncated (Copy copies the
+  original text).
+
 ### Raw input/output rules
 
 - monospace;

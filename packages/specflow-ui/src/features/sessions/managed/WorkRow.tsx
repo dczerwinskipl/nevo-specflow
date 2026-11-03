@@ -18,8 +18,9 @@ export function useWorkDurationLabel(item: Timed): string | undefined {
 
 /** Localized wall-clock start–end of a settled item, e.g. "14:32:05–14:32:06", or `undefined` on
  * the same terms as {@link useWorkDurationLabel} (owner review, round four: "Dodaj też zegarowy
- * start/koniec" — only the ToolAction detail header shows this; L2's compact rows keep just the
- * duration, there is no room for both). */
+ * start/koniec" — only the ToolAction detail header uses this, visibly only for long runs and
+ * otherwise as the duration's tooltip, `ToolActionHeader.tsx`; L2's compact rows keep just the
+ * duration). */
 export function useWorkClockRangeLabel(item: Timed): string | undefined {
   const { i18n } = useTranslation();
 
@@ -35,7 +36,7 @@ export function useWorkClockRangeLabel(item: Timed): string | undefined {
  */
 export function useWorkRowMeta(
   item: Timed,
-  options: { actionCount?: number; leading?: string; alwaysState?: boolean } = {},
+  options: { actionCount?: number; leading?: string } = {},
 ): { meta?: ReactNode; srStatus?: ReactNode } {
   const { t } = useTranslation();
   const duration = useWorkDurationLabel(item);
@@ -45,7 +46,7 @@ export function useWorkRowMeta(
     parts.push(options.leading);
   }
 
-  if (options.alwaysState || item.state !== 'completed') {
+  if (item.state !== 'completed') {
     parts.push(
       <span key="state" className={workStateTextClassName(workStateTone(item.state))}>
         {stateLabel}
@@ -72,9 +73,7 @@ export function useWorkRowMeta(
   return {
     meta,
     srStatus:
-      item.state === 'completed' && !options.alwaysState ? (
-        <span className="sr-only">, {stateLabel}</span>
-      ) : undefined,
+      item.state === 'completed' ? <span className="sr-only">, {stateLabel}</span> : undefined,
   };
 }
 

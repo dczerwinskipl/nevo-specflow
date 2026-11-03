@@ -344,6 +344,18 @@ function normalizeAutoIds(html: string) {
   return html.replace(/\b(id|aria-labelledby|aria-controls|aria-describedby)="[^"]*"/g, '$1="_"');
 }
 
+/** The same elements, attributes, values and text, in any attribute order (`isEqualNode`). */
+function sameMarkup(a: string, b: string) {
+  const parse = (html: string) => {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+
+    return template.content;
+  };
+
+  return parse(a).isEqualNode(parse(b));
+}
+
 function queryDirectTab(canvasElement: HTMLElement, label: string) {
   return [...secondaryRegionOf(canvasElement).querySelectorAll<HTMLElement>('[role="tab"]')].find(
     (tab) => tab.textContent?.includes(label),
@@ -433,6 +445,11 @@ async function closeRootTab(canvasElement: HTMLElement, label: string) {
   await userEvent.click(row);
 }
 
+/** How many root tabs the strip shows directly (the pinned Context alone is already one). */
+function directTabCount(canvasElement: HTMLElement) {
+  return secondaryRegionOf(canvasElement).querySelectorAll('[role="tab"]').length;
+}
+
 function hasRootTabStrip(canvasElement: HTMLElement) {
   const secondary = secondaryRegionOf(canvasElement);
 
@@ -475,10 +492,11 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Baseline: Context is the single pinned tab — no root-tab strip yet (W03 §4.1: the strip
-    // only appears once 2+ tabs are open).
+    // Baseline: Context is the single pinned tab — on a split layout already the one tab of the
+    // rail, so opening another tab never changes the header height under the content.
     await expect(await canvas.findByText('Powiązane zadania')).toBeVisible();
-    await expect(hasRootTabStrip(canvasElement)).toBe(false);
+    await waitFor(() => expect(directTabCount(canvasElement)).toBe(1));
+    await expect(queryDirectTab(canvasElement, 'Kontekst')).toBeDefined();
     const secondaryRegion = () =>
       canvasElement.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
     const baselineSecondaryHTML = normalizeAutoIds(secondaryRegion()?.outerHTML ?? '');
@@ -495,6 +513,7 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     await userEvent.click(relatedTasksRow);
 
     await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(true));
+    await waitFor(() => expect(directTabCount(canvasElement)).toBeGreaterThanOrEqual(2));
     await expect(canvas.queryByText('Powiązane zadania')).not.toBeInTheDocument();
     await expect(await canvas.findByText('Document the admission guard')).toBeVisible();
     await expect(canvas.getByText('Deterministic admission')).toBeVisible();
@@ -521,26 +540,25 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     await expect(canvas.getByText('TASK-02')).toBeVisible();
     await expect(queryDirectTab(canvasElement, 'Document the admission guard')).toBeUndefined();
 
-    // The tab keeps its root's name and the local depth is the breadcrumb row at the top of the
-    // tab panel: `← Zadania › Document the admission guard` (secondary-navigation.md, "Root tabs
-    // and breadcrumbs"). The root segment pops straight back to the list.
+    // The tab keeps its root's name; a one-level drill (Tasks -> one Task) is the compact back row
+    // at the top of the tab panel, `← Wróć do: Zadania`, never a breadcrumb trail, and it does not
+    // repeat the Task's title that heads the content right below it (secondary-navigation.md,
+    // "Root tabs and local navigation").
     await expect(queryDirectTab(canvasElement, 'Zadania')).toBeDefined();
-    const trail = await waitFor(() => {
-      const row = canvasElement.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
+    const backRow = await waitFor(() => {
+      const row = canvasElement.querySelector<HTMLElement>('[data-workspace-back-row]');
       if (!row) {
-        throw new Error('Task detail inside the Tasks tab should show the breadcrumb row.');
+        throw new Error('Task detail inside the Tasks tab should show the back row.');
       }
 
       return row;
     });
-    await expect(trail.closest('[role="tabpanel"]')?.firstElementChild).toBe(trail);
-    await expect(trail.querySelector('[aria-current="page"]')?.textContent).toBe(
-      'Document the admission guard',
-    );
-    await expect(within(trail).getByRole('button', { name: 'Wstecz do: Zadania' })).toBeVisible();
-    await userEvent.click(within(trail).getByRole('button', { name: 'Zadania' }));
+    await expect(canvasElement.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
+    await expect(backRow.closest('[role="tabpanel"]')?.firstElementChild).toBe(backRow);
+    await expect(backRow.textContent).not.toContain('Document the admission guard');
+    await userEvent.click(within(backRow).getByRole('button', { name: 'Wróć do: Zadania' }));
     await waitFor(() =>
-      expect(canvasElement.querySelector('[data-workspace-breadcrumbs]')).toBeNull(),
+      expect(canvasElement.querySelector('[data-workspace-back-row]')).toBeNull(),
     );
     await expect(await canvas.findByText('Deterministic admission')).toBeVisible();
 
@@ -550,12 +568,16 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     await waitFor(() => expect(canvas.getByText('Powiązane zadania')).toBeVisible());
 
     // Close the Tasks tab — labelled "Zadania" throughout (never renamed to the Task that was open
-    // inside it, per §10.1's "Work -> ToolAction stays inside the Work tab" rule) — and the strip
-    // disappears, back to the single-pinned-tab baseline.
+    // inside it, per §10.1's "Work -> ToolAction stays inside the Work tab" rule) — and the rail is
+    // back to the single-pinned-tab baseline.
     await closeRootTab(canvasElement, 'Zadania');
-    await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(false));
+    await waitFor(() => expect(directTabCount(canvasElement)).toBe(1));
+    // Attribute ORDER is not part of the contract: the first render adds the tab panel's
+    // `aria-labelledby` after its other attributes, a remount writes them in source order.
     await waitFor(() =>
-      expect(normalizeAutoIds(secondaryRegion()?.outerHTML ?? '')).toBe(baselineSecondaryHTML),
+      expect(
+        sameMarkup(normalizeAutoIds(secondaryRegion()?.outerHTML ?? ''), baselineSecondaryHTML),
+      ).toBe(true),
     );
   },
 };

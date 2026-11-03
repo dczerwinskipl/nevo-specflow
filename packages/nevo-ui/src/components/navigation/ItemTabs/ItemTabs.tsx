@@ -23,11 +23,13 @@ import { useCloseFocus } from './useCloseFocus';
 import { resolveLabels, statusText, type ItemTab, type ItemTabsLabels } from './itemTabsTypes';
 import {
   ITEM_TABS_SWITCHER_BELOW,
-  ITEM_TAB_MIN_WIDTH,
   fitItemTabs,
+  itemTabNaturalWidth,
   maxLabelChars,
   splitMiddle,
+  type ItemTabChrome,
 } from './itemTabsLayout';
+import { measureAttribute, useLabelWidths } from './useLabelWidths';
 
 export type { ItemTab, ItemTabsLabels } from './itemTabsTypes';
 export { defaultItemTabsLabels } from './itemTabsTypes';
@@ -60,10 +62,10 @@ export interface ItemTabsProps extends Omit<
   switcherBelow?: number;
   /**
    * Root height. `header` (default): fills a 56px `WorkspaceHeader` slot (minus its 1px divider),
-   * tabs anchored to its bottom edge with rounded tops — the Documents tab header. `rail`: a compact
-   * tab rail of `--spacing-tab-rail` (32px, minus the divider) whose square tabs fill its whole
-   * height — the split Secondary's root tabs, where a breadcrumb row (not a second header) follows
-   * when a tab is deeper than its root. The width policy is the same.
+   * one-control-high tabs anchored to its bottom edge — the Documents tab header. `rail`: a compact
+   * tab rail of `--spacing-tab-rail` (32px, minus the divider) whose tabs fill its whole height —
+   * the split Secondary's root tabs, where a local back/breadcrumb row (not a second header)
+   * follows when a tab is deeper than its root. Tab look and width policy are the same.
    */
   density?: 'header' | 'rail';
   /** Replaceable copy. Defaults are English. */
@@ -97,6 +99,14 @@ function MiddleTruncate({ text, maxChars }: { text: string; maxChars?: number })
   );
 }
 
+/** The chrome around a tab's label, shared by its classes and its width (`itemTabChromeWidth`). */
+function tabChrome(item: ItemTab): ItemTabChrome {
+  return {
+    closable: item.closable !== false,
+    glyph: Boolean(item.icon) || item.state === 'loading' || item.state === 'missing',
+  };
+}
+
 function ItemGlyph({ item, badge = true }: { item: ItemTab; badge?: boolean }) {
   const glyph =
     item.state === 'loading' ? (
@@ -124,13 +134,14 @@ interface TabProps {
   active: boolean;
   tabbable: boolean;
   width: number;
+  /** The tab's content width; a narrower `width` truncates the label in the middle. */
+  naturalWidth: number;
   scope: string;
   labels: ItemTabsLabels;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   onHover: (id: string | null) => void;
   onFocusChange: (id: string | null) => void;
-  density: 'header' | 'rail';
 }
 
 function Tab({
@@ -138,22 +149,23 @@ function Tab({
   active,
   tabbable,
   width,
+  naturalWidth,
   scope,
   labels,
   onActivate,
   onClose,
   onHover,
   onFocusChange,
-  density,
 }: TabProps) {
   const status = statusText(item, labels);
   const muted = item.state === 'missing' || item.state === 'loading';
+  const chrome = tabChrome(item);
 
   return (
     <div
       role="presentation"
       className="relative flex h-full shrink-0 items-stretch"
-      // Inline: the width is computed per tab by fitItemTabs, not a design token.
+      // Inline: the width is the tab's measured content width (fitItemTabs), not a design token.
       style={{ width }}
       onPointerEnter={() => onHover(item.id)}
       onPointerLeave={() => onHover(null)}
@@ -187,23 +199,27 @@ function Tab({
             onFocus={() => onFocusChange(item.id)}
             onBlur={() => onFocusChange(null)}
             className={cn(
-              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 border-b-2 border-solid border-transparent pl-2.5 pr-8 text-label-sm',
-              // Rail tabs fill the rail edge to edge, so a rounded top would only leave a notch.
-              density === 'header' && 'rounded-t-control',
+              // `pl-2.5`, the glyph gap and `pr-8`/`pr-2.5` are `itemTabChromeWidth`'s numbers.
+              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 border-solid border-transparent pl-2.5 text-label-sm',
+              chrome.closable ? 'pr-8' : 'pr-2.5',
               'hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
               fastColorTransitionClassName,
-              // Only the active tab carries a surface (the lightest control fill) with the primary
-              // underline; inactive tabs are plain text on the header until hovered. A fill on
-              // every tab made the strip read as a row of separate buttons.
+              // The active tab is the primary underline plus primary text, nothing else: no fill,
+              // no rounded card. A fill (on every tab, or only on the active one) read as a row of
+              // separate buttons and competed with the underline. Inactive tabs are plain
+              // secondary text until hovered.
               active
-                ? 'border-b-action-primary bg-surface-control text-content-primary'
+                ? 'border-b-action-primary text-content-primary'
                 : muted
                   ? 'text-content-muted'
                   : 'text-content-secondary',
             )}
           >
             <ItemGlyph item={item} />
-            <MiddleTruncate text={item.label} maxChars={maxLabelChars(width)} />
+            <MiddleTruncate
+              text={item.label}
+              maxChars={maxLabelChars(item.label, width, naturalWidth, chrome)}
+            />
             {status ? <span className="sr-only">({status})</span> : null}
           </button>
         </TooltipTrigger>
@@ -274,7 +290,8 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
 /**
  * Tab strip for a set of opened items, hosted in a workspace header. Controlled and content-blind:
  * the host owns the items and the active id, and renders the tab panel (see `getItemTabPanelId`).
- * Visible tabs are 140-180 px wide; the rest go to an `Opened (N)` menu. Below `switcherBelow`
+ * Each tab is as wide as its content (64-240 px, the label measured in the rendered font); long tabs
+ * shrink to 120 px before the trailing ones go to an `Opened (N)` menu. Below `switcherBelow`
  * the strip becomes a single switcher button opening the same menu. `className` styles the root; the
  * root is as tall as its host slot minus the 1 px divider (`density`: the 56 px workspace header, or
  * the 32 px Secondary tab rail), so it needs no host sizing inside `WorkspaceHeader.identityContent`.
@@ -301,6 +318,8 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     density === 'rail' ? 'h-[calc(var(--spacing-tab-rail)-1px)]' : 'h-[calc(3.5rem-1px)]';
   const tabHeight = density === 'rail' ? 'h-full' : 'h-control-height-default';
   const { width, element: root, setElement } = useElementWidth();
+  const labelSignature = items.map((item) => `${item.id}\u0000${item.label}`).join('\u0001');
+  const { widths: labelWidths, setLayer: setMeasureLayer } = useLabelWidths(labelSignature);
   const setRef = useCallback(
     (node: HTMLDivElement | null) => {
       setElement(node);
@@ -319,10 +338,15 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
   const switcher =
     variant === 'switcher' || (variant === 'auto' && width !== undefined && width < switcherBelow);
   const hintId = `${scope}-opened-hint`;
+  const naturalWidths = items.map((item) =>
+    itemTabNaturalWidth(item.label, tabChrome(item), labelWidths[item.id]),
+  );
+  const naturalById = new Map(items.map((item, index) => [item.id, naturalWidths[index]!]));
   const { visible, widths, overflowing } = fitItemTabs(
     items,
-    width ?? items.length * ITEM_TAB_MIN_WIDTH,
+    width ?? naturalWidths.reduce((sum, natural) => sum + natural, 0),
     activeId,
+    naturalWidths,
   );
   const tabStopId =
     focused && visible.some((item) => item.id === focused)
@@ -427,6 +451,20 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
       ref={setRef}
       className={cn('relative flex w-full min-w-0 items-end', rootHeight, className)}
     >
+      {/* Measures every label in the tab font, so a tab is exactly as wide as its own text. Clipped
+          to nothing: it never takes space or widens a scroll container. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute inset-0 overflow-hidden"
+      >
+        <div ref={setMeasureLayer} className="flex w-max whitespace-pre text-label-sm">
+          {items.map((item) => (
+            <span key={item.id} {...measureAttribute(item.id)}>
+              {item.label}
+            </span>
+          ))}
+        </div>
+      </div>
       <TooltipProvider delayDuration={400}>
         <div
           role="tablist"
@@ -442,13 +480,13 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
               active={item.id === activeId}
               tabbable={item.id === tabStopId}
               width={widths[index]!}
+              naturalWidth={naturalById.get(item.id)!}
               scope={scope}
               labels={labels}
               onActivate={onActivate}
               onClose={onClose}
               onHover={setHovered}
               onFocusChange={setFocused}
-              density={density}
             />
           ))}
         </div>
@@ -472,11 +510,14 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
             <MenuTrigger asChild>
               <button
                 type="button"
-                aria-label={labels.openedMenu(items.length)}
                 className="inline-flex h-control-height-compact cursor-pointer items-center gap-0.5 rounded-control px-1.5 text-label-sm text-content-muted hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
               >
                 <Icon name="chevron-down" size="sm" />
-                <span>{items.length}</span>
+                {/* The visible count is a shorthand of the name, which assistive technology reads
+                    in full; an `aria-label` would leave the visible "8" outside the name
+                    (WCAG 2.5.3, axe label-content-name-mismatch). */}
+                <span aria-hidden="true">{items.length}</span>
+                <span className="sr-only">{labels.openedMenu(items.length)}</span>
               </button>
             </MenuTrigger>
             <MenuContent

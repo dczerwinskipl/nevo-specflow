@@ -29,12 +29,18 @@ import type {
 } from './WorkspaceHeader';
 import type {
   SecondaryData,
+  SecondaryLocalNavigation,
   SecondaryPageArgs,
   SecondaryStackActions,
   SecondaryStackDefinition,
 } from './SecondaryStack';
 import { useWorkspaceBrowserHistory } from './useWorkspaceBrowserHistory';
-import { resolveTabTitle, resolveTrail, type SecondaryTrailItem } from './secondaryTrail';
+import {
+  resolveLocalNavigation,
+  resolveTabTitle,
+  resolveTrail,
+  type SecondaryTrailItem,
+} from './secondaryTrail';
 
 export type { SecondaryTrailItem } from './secondaryTrail';
 
@@ -56,6 +62,8 @@ interface RuntimeDefinition {
   instanceId?: (params: object) => string;
   /** Opt-in: the tab strip/switcher label, derived from root params (see `resolveTabTitle`). */
   tabLabel?: (rootParams: object) => string;
+  /** Opt-in local-depth presentation (see `SecondaryStackDefinition.localNavigation`). */
+  localNavigation?: SecondaryLocalNavigation;
   useData: (params: object) => SecondaryData<unknown>;
   screens: Record<string, RuntimePage>;
 }
@@ -119,6 +127,11 @@ export interface WorkspaceContextValue {
    * (`trail.length === secondaryDepth`). Empty while no runtime tab is shown.
    */
   trail: readonly SecondaryTrailItem[];
+  /**
+   * How the split Secondary shows the active tab's local depth: the stack the tab was opened with
+   * declares it (`SecondaryStackDefinition.localNavigation`), default `back`.
+   */
+  localNavigation: SecondaryLocalNavigation;
   transition: WorkspaceTransition;
   /**
    * Unchanged signature AND unchanged observable behavior from today: always creates-or-replaces
@@ -1192,6 +1205,7 @@ export function AppWorkspaceProvider({
       secondaryDepth: activeTab?.flow.entries.length ?? 0,
       canGoBack: (activeTab?.flow.entries.length ?? 0) > 1,
       trail: activeTab ? resolveTrail(activeTab.flow.entries) : [],
+      localNavigation: activeTab ? resolveLocalNavigation(activeTab.flow.entries) : 'back',
       transition: stateIsCurrentOrEmpty
         ? transition
         : { action: 'close', revision: transition.revision, incoming: null, outgoing: null },

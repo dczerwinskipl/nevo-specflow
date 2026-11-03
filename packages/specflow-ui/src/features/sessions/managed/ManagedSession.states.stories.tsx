@@ -54,25 +54,25 @@ import {
  * Full Session UX report for that flagged dependency.
  */
 /** Full Session §3.4 / acceptance check §24.2: on a split-capable (wide) layout, closing the
- * Context Secondary via its own close control must leave behind a visible, clickable way to
- * reopen it — not only on narrow layouts. Verifies the regression is fixed in every state story
- * below that uses the Context mock view model, at a wide (1440px) viewport.
+ * Context Secondary must leave behind a visible, clickable way to reopen it — not only on narrow
+ * layouts. Context is the one tab of the Secondary rail there, with no close of its own and no
+ * panel close beside it (secondary-navigation.md, "Root tabs and local navigation"): the
+ * Primary header's persistent "Kontekst" toggle (aria-pressed mirrors the panel) hides and shows
+ * it. Verified in every state story below that uses the Context mock view model, at 1440px.
  */
 async function verifyContextReopens(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  const closeLabel = 'Zamknij panel dodatkowy';
-  const reopenLabel = 'Kontekst';
-  await expect(await canvas.findByRole('button', { name: closeLabel })).toBeVisible();
-  await userEvent.click(canvas.getByRole('button', { name: closeLabel }));
-  await waitFor(() =>
-    expect(canvas.queryByRole('button', { name: closeLabel })).not.toBeInTheDocument(),
-  );
-  // The Primary header carries a persistent direct "Kontekst" toggle (aria-pressed mirrors the
-  // panel): pressed while open, unpressed once the panel was closed, and it reopens it.
-  const toggle = await canvas.findByRole('button', { name: reopenLabel });
+  const contextTab = () => canvas.queryByRole('tab', { name: 'Kontekst' });
+  await waitFor(() => expect(contextTab()).toBeVisible());
+  await expect(canvas.queryByRole('button', { name: 'Zamknij panel dodatkowy' })).toBeNull();
+  await expect(canvas.queryByRole('button', { name: 'Zamknij Kontekst' })).toBeNull();
+  const toggle = await canvas.findByRole('button', { name: 'Kontekst' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await userEvent.click(toggle);
+  await waitFor(() => expect(contextTab()).not.toBeInTheDocument());
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await userEvent.click(toggle);
-  await waitFor(() => expect(canvas.getByRole('button', { name: closeLabel })).toBeVisible());
+  await waitFor(() => expect(contextTab()).toBeVisible());
 }
 
 const meta = {

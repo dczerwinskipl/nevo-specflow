@@ -32,7 +32,7 @@ const action: ToolActionSummary = {
   output: outputRef,
 };
 
-function renderDetail() {
+function renderDetail(item: ToolActionSummary = action) {
   const bodies: Record<string, string> = { 'content-in': rawInput, 'content-out': rawOutput };
   const api = {
     content: (_sessionId: string, ref: ContentRef, offset: number) =>
@@ -50,7 +50,7 @@ function renderDetail() {
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
-        <SingleToolActionDetail item={action} source={{ api, sessionId: 'session-1' }} />
+        <SingleToolActionDetail item={item} source={{ api, sessionId: 'session-1' }} />
       </QueryClientProvider>
     </StoryLocalization>,
   );
@@ -73,15 +73,16 @@ describe('ToolAction details', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows parameters and response on the same read-only code view with line numbers', async () => {
+  it('numbers only the JSON it pretty-printed; the verbatim response keeps its own lines, no gutter', async () => {
     renderDetail();
     const input = await screen.findByRole('textbox', { name: 'Parameters' });
     const output = await screen.findByRole('textbox', { name: 'Tool response' });
 
+    expect(input.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
+    expect(output.closest('.cm-editor')!.querySelector('.cm-gutters')).toBeNull();
     for (const block of [input, output]) {
       expect(block.getAttribute('aria-readonly')).toBe('true');
       const editor = block.closest('.cm-editor')!;
-      expect(editor.querySelector('.cm-lineNumbers')).not.toBeNull();
       // A passive viewer: no "current line" tint.
       expect(editor.querySelector('.cm-activeLine')).toBeNull();
       // Same surface for both: the shared code surface on a height-capped scroller.
@@ -95,6 +96,55 @@ describe('ToolAction details', () => {
     expect(input.querySelectorAll('.cm-line span').length).toBeGreaterThan(0);
     expect(output.querySelectorAll('.cm-line span')).toHaveLength(0);
     expect(output.textContent).toBe(rawOutput.replaceAll('\n', ''));
+  });
+
+  const status = () => document.querySelector<HTMLElement>('[data-tool-action-status]')!;
+
+  it('heads a completed action with its full title, a success mark and the duration only', async () => {
+    renderDetail();
+    await screen.findByRole('textbox', { name: 'Parameters' });
+
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Search admission');
+    const line = status();
+    // The success icon is the visible mark; the state word is there for assistive technology only.
+    expect(line.querySelector('svg.text-status-success')).not.toBeNull();
+    expect(line.querySelector('.sr-only')?.textContent).toBe('Completed');
+    const time = line.querySelector('time')!;
+    expect(time.textContent).toMatch(/^1(\.0)?\s?s(ec)?$/);
+    // A one-second run: the clock range is reachable as the duration's tooltip, not shown.
+    expect(time.getAttribute('title')).toMatch(/^\d{1,2}:\d\d:\d\d\D*–\d{1,2}:\d\d:\d\d\D*$/);
+    expect(line.textContent).not.toContain('–');
+  });
+
+  it('shows the clock range in the line once a run lasts a minute or more', async () => {
+    renderDetail({ ...action, updatedAt: '2026-10-30T10:02:30Z' });
+    await screen.findByRole('textbox', { name: 'Parameters' });
+
+    expect(status().textContent).toMatch(/\d{1,2}:\d\d:\d\d\D*–\d{1,2}:\d\d:\d\d/);
+  });
+
+  it('names a failure in words next to its icon, with the readable message below', async () => {
+    renderDetail({
+      ...action,
+      state: 'failed',
+      error: { code: 'process_exit', message: 'Tests failed: 1 of 42' },
+    });
+    await screen.findByRole('textbox', { name: 'Parameters' });
+
+    const line = status();
+    expect(line.querySelector('svg.text-status-danger')).not.toBeNull();
+    expect(line.textContent).toContain('Failed');
+    expect(screen.getByText('Tests failed: 1 of 42')).toBeTruthy();
+  });
+
+  it('shows a running action as running, with no duration and no success mark', async () => {
+    renderDetail({ ...action, state: 'active', updatedAt: action.createdAt });
+    await screen.findByRole('textbox', { name: 'Parameters' });
+
+    const line = status();
+    expect(line.textContent).toBe('In progress');
+    expect(line.querySelector('time')).toBeNull();
+    expect(line.querySelector('.text-status-success')).toBeNull();
   });
 
   it('copies the original text, not the pretty-printed presentation', async () => {

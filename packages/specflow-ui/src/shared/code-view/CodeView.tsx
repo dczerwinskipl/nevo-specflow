@@ -14,7 +14,7 @@ import {
   type StateEffect,
 } from '@codemirror/state';
 import { codeLanguageExtensions, type CodeLanguage } from './codeLanguages';
-import { codeViewTheme, containerScrollingTheme } from './codeViewTheme';
+import { codeViewTheme, containerScrollingTheme, gutterlessTheme } from './codeViewTheme';
 
 /** Read once, when the view is created; the owner's own behaviour on top of the shared code view. */
 export interface CodeViewSetup {
@@ -37,6 +37,12 @@ export interface CodeViewProps {
   wrapLines?: boolean;
   /** Marks the caret's line and its number (an editor's cue; a passive viewer turns it off). */
   activeLine?: boolean;
+  /**
+   * The line-number gutter (default on). Turn it off for text shown verbatim whose lines are not
+   * ours to number — for example a tool's raw output, which may carry its own numbering
+   * (`cat -n`); a second gutter beside it would number the numbers.
+   */
+  lineNumbers?: boolean;
   /**
    * `own`: the view fills its mount and scrolls itself. `container`: the view grows to its text and
    * an ancestor scroller (for example a DS `ScrollArea` with its edge cues) scrolls it.
@@ -61,6 +67,7 @@ export function CodeView({
   readOnly = false,
   wrapLines = true,
   activeLine = true,
+  lineNumbers: showLineNumbers = true,
   scrolling = 'own',
   onChange,
   setup,
@@ -88,7 +95,7 @@ export function CodeView({
         doc,
         selection: owner.selection,
         extensions: [
-          lineNumbers(),
+          showLineNumbers ? lineNumbers() : Prec.highest(gutterlessTheme),
           ...(latest.current.activeLine
             ? [highlightActiveLineGutter(), highlightActiveLine()]
             : []),
@@ -121,7 +128,7 @@ export function CodeView({
     // The initial text is read at creation; later value changes are synchronised by the effect
     // below, so they must not rebuild (and reset) the CodeMirror view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language, label, readOnly, scrolling]);
+  }, [language, label, readOnly, scrolling, showLineNumbers]);
   useEffect(() => {
     const editor = view.current;
     if (!editor) {

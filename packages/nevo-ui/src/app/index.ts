@@ -39,6 +39,7 @@ export {
 export {
   defineSecondaryStack,
   type SecondaryData,
+  type SecondaryLocalNavigation,
   type SecondaryScreenProps,
   type SecondaryStackDefinition,
   type SecondaryStackActions,

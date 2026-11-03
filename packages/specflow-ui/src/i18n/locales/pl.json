@@ -30,7 +30,7 @@
     "title": "Nawigacja aplikacji",
     "open": "Otwórz nawigację",
     "back": "Wstecz",
-    "backTo": "Wstecz do: {{name}}",
+    "backTo": "Wróć do: {{name}}",
     "closeSecondary": "Zamknij panel dodatkowy",
     "resizeSecondary": "Zmień rozmiar panelu dodatkowego",
     "secondaryBreadcrumbs": "Położenie w karcie panelu",

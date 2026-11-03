@@ -234,11 +234,11 @@ body {
   font-family: var(--font-sans);
 }
 
+/* The scrollbar keeps the global greyed thumb on workspace surfaces too: a black thumb read as a
+   heavy, unstyled bar on these dark materials (owner review). Only the edge shadow differs here. */
 .workspace-surface-material,
 .mobile-workspace-scroll-area {
   --color-scroll-edge-indicator: rgba(0, 0, 0, 0.34);
-  --color-scrollbar-thumb: rgba(0, 0, 0, 0.34);
-  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.48);
 }
 
 .workspace-surface-material::before {

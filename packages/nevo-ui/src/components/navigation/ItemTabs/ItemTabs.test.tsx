@@ -122,6 +122,72 @@ describe('ItemTabs', () => {
     expect(active.className).toContain('whitespace-nowrap');
   });
 
+  describe('density="rail" (the Secondary editor tabs)', () => {
+    const railItems = [
+      makeItem('context', { label: 'Context', icon: undefined, closable: false }),
+      makeItem('history', { label: 'Work history', icon: undefined }),
+      makeItem('files', { label: 'Files', icon: undefined }),
+    ];
+
+    it('is the full 36px rail token and draws the strip with its own divider', () => {
+      renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      const root = screen.getByRole('tablist').parentElement!;
+      expect(root.className).toContain('h-tab-rail');
+      expect(root.className).not.toContain('calc');
+      // The strip continues past the last tab with the same fill and divider as the inactive tabs.
+      const filler = root.lastElementChild as HTMLElement;
+      expect(filler.className).toMatch(/\bbg-tab-strip\b/);
+      expect(filler.className).toMatch(/\bborder-b\b/);
+      expect(filler.className).toContain('border-border-subtle');
+    });
+
+    it('looks like an editor tab: 14px label, 1px separators, no gap, no icon', () => {
+      renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      const tablist = screen.getByRole('tablist');
+      expect(tablist.className).not.toContain('gap-');
+      const [context, history, files] = screen.getAllByRole('tab');
+      for (const tab of [context!, history!, files!]) {
+        expect(tab.className).toContain('text-body-md');
+        expect(tab.className).not.toContain('text-label-sm');
+        expect(tab.className).toContain('border-r-border-subtle');
+        expect(tab.querySelector('svg')).toBeNull();
+      }
+
+      // Active: the panel surface itself (no fill, no bottom border) under a neutral top border,
+      // never the primary underline or accent.
+      expect(history!.className).toContain('border-t-border-subtle');
+      expect(history!.className).toContain('border-b-transparent');
+      expect(history!.className).toContain('text-content-primary');
+      expect(history!.className).not.toMatch(/\bbg-/);
+      expect(history!.className).not.toContain('action-primary');
+      // Inactive: the darker strip, its bottom divider, no top edge.
+      expect(files!.className).toContain('bg-tab-strip');
+      expect(files!.className).toContain('border-b-border-subtle');
+      expect(files!.className).toContain('border-t-transparent');
+      // Pinned Context: symmetric padding, no x.
+      expect(context!.className).toContain('pr-3');
+      expect(screen.queryByRole('button', { name: 'Close Context' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Close Files' })).toBeTruthy();
+    });
+
+    it('sizes tabs with the rail metrics: 12px padding and a 7.4px estimated character', () => {
+      renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      const width = (name: string) =>
+        Number.parseFloat(screen.getByRole('tab', { name }).parentElement!.style.width);
+      expect(width('Work history')).toBe(44 + Math.round('Work history'.length * 7.4));
+      expect(width('Context')).toBe(24 + Math.round('Context'.length * 7.4));
+    });
+
+    it('keeps the header density unchanged: underline, rounded, 2px apart', () => {
+      renderTabs({ items: railItems, activeId: 'history' });
+      expect(screen.getByRole('tablist').className).toContain('gap-0.5');
+      expect(screen.getByRole('tab', { name: 'Work history' }).className).toContain(
+        'border-b-action-primary',
+      );
+      expect(screen.getByRole('tablist').parentElement!.className).not.toContain('h-tab-rail');
+    });
+  });
+
   it('keeps the space at the split point of a middle-truncated label', () => {
     // Narrower than the tab's content width, so its label is truncated in the middle.
     containerWidth = 150;

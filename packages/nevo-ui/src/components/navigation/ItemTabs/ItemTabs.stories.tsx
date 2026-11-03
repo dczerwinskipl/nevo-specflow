@@ -54,7 +54,7 @@ const meta = {
       control: 'inline-radio',
       options: ['header', 'rail'],
       description:
-        'Root height: the 56px workspace header slot, or the 32px split Secondary tab rail.',
+        'Root height and look: the 56px workspace header slot (rounded tabs, underline), or the 36px split Secondary tab rail (editor tabs).',
       table: { defaultValue: { summary: 'header' } },
     },
     labels: {
@@ -135,8 +135,10 @@ export const InWorkspaceHeader: Story = {
 };
 
 /**
- * `density="rail"`: the split Secondary's compact 32px root-tab rail (`--spacing-tab-rail`), with
- * compact-height tabs. Same tab look and width policy as the header density.
+ * `density="rail"`: the split Secondary's 36px editor-tab rail (`--spacing-tab-rail`): square
+ * touching tabs, 14px labels, 1px separators, the active tab on the panel surface under a neutral
+ * top border, inactive tabs on the darker strip. The rail draws its own divider, so its host row
+ * has no border or padding. Same width policy as the header density.
  */
 export const InTabRail: Story = {
   args: { items: sampleItems.slice(0, 4), activeId: sampleItems[1]?.id ?? null, density: 'rail' },
@@ -147,7 +149,7 @@ export const InTabRail: Story = {
       activeId={activeId}
       frame={(tabs, panel) => (
         <>
-          <div className="flex h-tab-rail items-center border-b border-border-subtle px-2">
+          <div className="flex h-tab-rail items-center">
             <div className="min-w-0 flex-1">
               <WorkspaceHeader title="Opened items" identityContent={tabs} />
             </div>

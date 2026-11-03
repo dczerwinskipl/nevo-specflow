@@ -3,6 +3,7 @@ import { Button, Typography } from '../../components';
 import { AppShell } from '../shell/AppShell';
 import { AppContent, AppWorkspace, AppWorkspaceBody } from './AppWorkspace';
 import { defineSecondaryStack } from './SecondaryStack';
+import { useSecondaryDetailHeaderHosted } from './secondaryDetailHeaderHost';
 import {
   AppWorkspaceProvider,
   useRegisterPinnedSecondaryTab,
@@ -14,8 +15,9 @@ import { WorkspaceHeader } from './WorkspaceHeader';
 /**
  * Real-Chromium geometry contracts for the split Secondary's root tabs and local navigation
  * (secondary-navigation.md, "Root tabs and local navigation"; item-tabs.md, "Width"):
- * content-width tabs on a 32 px rail, the active tab marked by its underline and text only, the
- * default one-level back row vs the opt-in breadcrumb trail, long and many tabs, and the
+ * content-width editor tabs on a 36 px rail that never changes height with depth, the active tab
+ * on the panel surface under a neutral top border, the default detail header row (Back + the
+ * screen's detailHeader) vs the opt-in breadcrumb trail, long and many tabs, and the
  * stacked/mobile layout that keeps its header Back with no row under it.
  */
 
@@ -58,6 +60,17 @@ function HistoryList() {
   );
 }
 
+function ActionIdentity({ title }: { title: string }) {
+  return (
+    <div className="grid gap-1" data-action-identity="true">
+      <Typography as="h2" variant="title-sm">
+        {title}
+      </Typography>
+      <Typography variant="body-sm">120 ms</Typography>
+    </div>
+  );
+}
+
 /** Default local navigation (`back`): Work history -> one action, a one-level drill. */
 const historyStack = defineSecondaryStack<Record<never, never>, string, HistoryPages>({
   id: 'local-nav-history',
@@ -68,14 +81,18 @@ const historyStack = defineSecondaryStack<Record<never, never>, string, HistoryP
     action: {
       title: 'Tool action',
       breadcrumbLabel: ({ title }) => title,
-      component: ({ params }) => (
-        <div className="grid gap-2 p-4" data-action-detail="true">
-          <Typography as="h2" variant="title-sm">
-            {params.title}
-          </Typography>
-          <Typography variant="body-sm">Parameters and output.</Typography>
-        </div>
-      ),
+      detailHeader: ({ params }) => <ActionIdentity title={params.title} />,
+      component: function ActionDetail({ params }) {
+        // Shown once: in the workspace's detail header row where it hosts it, else here.
+        const hosted = useSecondaryDetailHeaderHosted();
+
+        return (
+          <div className="grid gap-2 p-4" data-action-detail="true">
+            {hosted ? null : <ActionIdentity title={params.title} />}
+            <Typography variant="body-sm">Parameters and output.</Typography>
+          </div>
+        );
+      },
     },
   },
 });
@@ -284,7 +301,7 @@ const secondary = () =>
     '[data-workspace-surface="secondary"][data-workspace-active="true"]',
   ) ?? document.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
 const rail = () => secondary()?.querySelector<HTMLElement>('[data-workspace-tab-rail]') ?? null;
-const backRow = () => document.querySelector<HTMLElement>('[data-workspace-back-row]');
+const detailRow = () => document.querySelector<HTMLElement>('[data-workspace-detail-header]');
 const breadcrumbs = () => document.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
 const tabs = () => [...(secondary()?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])];
 const tabNamed = (name: string) =>
@@ -338,52 +355,103 @@ async function setSecondaryWidth(userEvent: UserEvent, width: number) {
   assert(Math.abs(actual - width) <= 2, `Secondary should be ${width}px wide (got ${actual}).`);
 }
 
+/** The nearest ancestor (or the element) that paints a background; what shows through a transparent one. */
+function surfaceOwner(element: HTMLElement) {
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const style = getComputedStyle(node);
+    if (style.backgroundColor !== 'rgba(0, 0, 0, 0)' || style.backgroundImage !== 'none') {
+      return node;
+    }
+  }
+
+  return null;
+}
+
 /**
- * The rail contract at the current width: 32 px, tabs one line high filling it, never wrapping or
+ * The rail contract at the current width: 36 px, editor tabs filling it, never wrapping or
  * overflowing the panel, each tab as wide as its content (label not truncated unless it is at the
- * 240 px cap or the strip compressed it), the active tab underlined with no fill.
+ * 240 px cap or the strip compressed it), no icons; the active tab takes the panel's own surface
+ * (no fill, no bottom border) under a neutral top border of the separators' colour, the inactive
+ * ones sit on the darker strip.
  */
 function assertRail(context: string) {
   const row = rail();
   assert(row, `${context}: the tab rail renders.`);
   const railRect = row.getBoundingClientRect();
   assert(
-    Math.abs(railRect.height - 32) <= 0.5,
-    `${context}: rail is 32px (got ${railRect.height}).`,
+    Math.abs(railRect.height - 36) <= 0.5,
+    `${context}: rail is 36px (got ${railRect.height}).`,
+  );
+  const rowStyle = getComputedStyle(row);
+  assert(
+    rowStyle.borderBottomWidth === '0px' && rowStyle.paddingLeft === '0px',
+    `${context}: the rail row has no border or padding of its own.`,
   );
   const tablist = row.querySelector<HTMLElement>('[role="tablist"]');
   assert(tablist, `${context}: the strip (not the switcher) renders.`);
+  const panel = secondary()!.querySelector<HTMLElement>('[role="tabpanel"]');
+  assert(panel, `${context}: the tab panel renders.`);
   const tops = new Set<number>();
   for (const tab of tabs()) {
     const rect = tab.getBoundingClientRect();
     tops.add(Math.round(rect.top));
     assert(
-      rect.height <= 31.5 && rect.height >= 30.5,
+      Math.abs(rect.height - 36) <= 0.5,
       `${context}: a tab fills the rail (got ${rect.height}).`,
     );
     assert(rect.right <= railRect.right + 0.5, `${context}: tabs stay inside the rail.`);
+    assert(!tab.querySelector('svg'), `${context}: a tab has no icon.`);
     const style = getComputedStyle(tab);
     assert(style.whiteSpace === 'nowrap', `${context}: tab labels never wrap.`);
+    assert(
+      style.fontSize === '14px' && style.fontWeight === '400',
+      `${context}: labels are 14px / 400 (got ${style.fontSize} / ${style.fontWeight}).`,
+    );
+    const separator = style.borderRightColor;
+    assert(
+      style.borderRightWidth === '1px' && separator !== 'rgba(0, 0, 0, 0)',
+      `${context}: a 1px neutral separator ends every tab.`,
+    );
     if (tab.getAttribute('aria-selected') === 'true') {
       assert(
-        style.backgroundColor === 'rgba(0, 0, 0, 0)' &&
-          style.borderBottomWidth === '2px' &&
-          style.borderBottomColor !== 'rgba(0, 0, 0, 0)',
-        `${context}: the active tab is marked by its underline only (bg ${style.backgroundColor}).`,
+        style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.backgroundImage === 'none',
+        `${context}: the active tab paints no fill of its own (bg ${style.backgroundColor}).`,
+      );
+      assert(
+        surfaceOwner(tab) === surfaceOwner(panel) &&
+          getComputedStyle(panel).backgroundColor === 'rgba(0, 0, 0, 0)',
+        `${context}: the active tab shows the same surface as the panel content.`,
+      );
+      assert(
+        style.borderTopWidth === '1px' && style.borderTopColor === separator,
+        `${context}: the active top edge is the separator colour (top ${style.borderTopColor} vs ${separator}).`,
+      );
+      assert(
+        style.borderBottomColor === 'rgba(0, 0, 0, 0)',
+        `${context}: the active tab joins the content: no bottom border.`,
       );
     } else {
       assert(
-        style.borderBottomColor === 'rgba(0, 0, 0, 0)',
-        `${context}: an inactive tab has no underline.`,
+        style.backgroundColor !== 'rgba(0, 0, 0, 0)',
+        `${context}: an inactive tab sits on the darker strip.`,
+      );
+      assert(
+        style.borderBottomColor === separator && style.borderTopColor === 'rgba(0, 0, 0, 0)',
+        `${context}: an inactive tab has the strip divider below and no top edge.`,
       );
     }
   }
 
   assert(tops.size === 1, `${context}: all tabs sit on one line (tops ${[...tops].join(', ')}).`);
-  const panel = secondary()!;
+  const rectOf = (element: HTMLElement) => element.getBoundingClientRect();
   assert(
-    panel.scrollWidth <= panel.clientWidth + 1,
-    `${context}: nothing widens the Secondary (${panel.scrollWidth} > ${panel.clientWidth}).`,
+    Math.abs(rectOf(panel).top - railRect.bottom) <= 0.5,
+    `${context}: the content starts right under the rail.`,
+  );
+  assert(
+    panel.scrollWidth <= panel.clientWidth + 1 &&
+      secondary()!.scrollWidth <= secondary()!.clientWidth + 1,
+    `${context}: nothing widens the Secondary (${secondary()!.scrollWidth} > ${secondary()!.clientWidth}).`,
   );
 }
 
@@ -392,16 +460,6 @@ function labelTruncated(tab: HTMLElement) {
   const head = tab.querySelector<HTMLElement>('[aria-hidden="true"].text-ellipsis');
 
   return Boolean(head && (head.scrollWidth > head.clientWidth + 0.5 || head.nextElementSibling));
-}
-
-function primaryHeaderRow() {
-  const header = document.querySelector<HTMLElement>(
-    '[data-workspace-surface="primary"] [data-workspace-header="true"]',
-  );
-  const row = header?.closest<HTMLElement>('.h-14');
-  assert(row, 'The Primary header row renders.');
-
-  return row;
 }
 
 /** Rail and content geometry of the Secondary: what must not move when another tab opens. */
@@ -427,7 +485,7 @@ async function historyDrill(userEvent: UserEvent, width: number | 'half') {
     'Context alone has no close: neither on its tab nor a panel close in the rail.',
   );
   const before = secondaryGeometry();
-  assert(Math.abs(before.railHeight - 32) <= 0.5, `Context alone: the rail is 32px.`);
+  assert(Math.abs(before.railHeight - 36) <= 0.5, `Context alone: the rail is 36px.`);
   await press(userEvent, 'Open history');
   await waitFor(() => tabNamed('Work history'), 'The Work history tab opens.');
   const after = secondaryGeometry();
@@ -444,7 +502,11 @@ async function historyDrill(userEvent: UserEvent, width: number | 'half') {
   const context = `${width === 'half' ? '50/50' : `${width}px`} root`;
   assertRail(context);
   // Root view: only the tab bar, no local row.
-  assert(backRow() === null && breadcrumbs() === null, `${context}: no back row at a tab root.`);
+  assert(
+    detailRow() === null && breadcrumbs() === null,
+    `${context}: no detail header row at a tab root.`,
+  );
+  const rootRail = secondaryGeometry();
   const contextTab = tabNamed('Context')!;
   const historyTab = tabNamed('Work history')!;
   assert(
@@ -465,34 +527,54 @@ async function historyDrill(userEvent: UserEvent, width: number | 'half') {
   list.scrollTop = 400;
   await frames();
   await press(userEvent, 'Read file module-20.ts');
-  const row = await waitFor(backRow, `${context}: the detail shows the back row.`);
+  const row = await waitFor(detailRow, `${context}: the detail shows the detail header row.`);
   assert(breadcrumbs() === null, `${context}: a one-level drill has no breadcrumb trail.`);
   const button = row.querySelector('button')!;
-  assert(button.textContent === 'Back to Work history', `${context}: the row names the parent.`);
   assert(
-    !row.textContent?.includes('module-20'),
-    `${context}: the row does not repeat the action title shown right below it.`,
+    button.getAttribute('aria-label') === 'Back to Work history' && button.textContent === '',
+    `${context}: Back is an icon named after the parent (got ${button.getAttribute('aria-label')}).`,
   );
-  const heading = secondary()!.querySelector('[data-action-detail] h2');
-  assert(heading?.textContent === 'Read file module-20.ts', `${context}: the detail names itself.`);
+  const backRect = button.getBoundingClientRect();
+  assert(
+    Math.abs(backRect.width - 32) <= 0.5 && Math.abs(backRect.height - 32) <= 0.5,
+    `${context}: Back is a 32px control (got ${backRect.width}x${backRect.height}).`,
+  );
+  const identity = row.querySelector<HTMLElement>('[data-action-identity]');
+  assert(
+    identity?.querySelector('h2')?.textContent === 'Read file module-20.ts' &&
+      identity.getBoundingClientRect().left >= backRect.right - 0.5,
+    `${context}: the declared header follows Back in the row.`,
+  );
+  assert(
+    secondary()!.querySelectorAll('[data-action-identity]').length === 1,
+    `${context}: the identity is shown exactly once.`,
+  );
+  assert(
+    secondary()!.querySelector('[data-action-detail]') &&
+      !row.closest('.scroll-area-viewport') &&
+      row.parentElement?.getAttribute('role') === 'tabpanel' &&
+      row.parentElement.firstElementChild === row,
+    `${context}: the row is the first, non-scrolling child of the tab panel.`,
+  );
   assert(tabNamed('Work history'), `${context}: the tab keeps its root name.`);
+  const detailRail = secondaryGeometry();
+  assert(
+    Math.abs(detailRail.railTop - rootRail.railTop) <= 0.5 &&
+      Math.abs(detailRail.railHeight - rootRail.railHeight) <= 0.5 &&
+      Math.abs(detailRail.contentTop - rootRail.contentTop) <= 0.5,
+    `${context}: opening a detail does not move the rail (${JSON.stringify(rootRail)} -> ${JSON.stringify(detailRail)}).`,
+  );
   const rowRect = row.getBoundingClientRect();
   const railRect = rail()!.getBoundingClientRect();
-  const primaryHeader = primaryHeaderRow().getBoundingClientRect();
   assert(
-    Math.abs(rowRect.height - 24) <= 0.5,
-    `${context}: back row is 24px (got ${rowRect.height}).`,
-  );
-  assert(
-    Math.abs(rowRect.bottom - primaryHeader.bottom) <= 1 &&
-      Math.abs(railRect.top - primaryHeader.top) <= 1,
-    `${context}: rail + back row line up with the Primary header (${railRect.top}-${rowRect.bottom} vs ${primaryHeader.top}-${primaryHeader.bottom}).`,
+    Math.abs(rowRect.top - railRect.bottom) <= 0.5,
+    `${context}: the row sits right under the rail.`,
   );
   assertRail(`${context} detail`);
 
   await userEvent.click(button);
   await waitFor(
-    () => backRow() === null && secondary()!.querySelector('[data-history-scroll]'),
+    () => detailRow() === null && secondary()!.querySelector('[data-history-scroll]'),
     `${context}: Back returns to the history root.`,
   );
   assert(
@@ -505,7 +587,7 @@ async function historyDrill(userEvent: UserEvent, width: number | 'half') {
     '[data-history-scroll] .scroll-area-viewport',
   )!.scrollTop;
   console.info(
-    `[local-nav] ${context}: secondary ${secondary()!.getBoundingClientRect().width}px, tabs Context ${contextWidth}px / Work history ${historyWidth}px, rail ${railRect.height}px + back row ${rowRect.height}px, root scroll before ${400} after Back ${rootScroll}`,
+    `[local-nav] ${context}: secondary ${secondary()!.getBoundingClientRect().width}px, tabs Context ${contextWidth}px / Work history ${historyWidth}px, rail ${railRect.height}px, detail row ${rowRect.height}px, root scroll before ${400} after Back ${rootScroll}`,
   );
 }
 
@@ -537,7 +619,7 @@ export const DeepTasksBreadcrumbs: Story = {
     await waitFor(() => document.querySelector('[data-review-detail]'), 'Review opens.');
 
     const trail = await waitFor(breadcrumbs, 'An opted-in stack shows the breadcrumb row.');
-    assert(backRow() === null, 'Breadcrumb mode replaces the back row.');
+    assert(detailRow() === null, 'Breadcrumb mode replaces the detail header row.');
     const segments = () => [...trail.querySelectorAll('li')].map((item) => item.textContent);
     assert(
       segments().join(' › ') === 'Tasks › TASK-03 › Attempt 2 › Review',
@@ -629,8 +711,8 @@ async function mobileDrill(userEvent: UserEvent, width: number) {
   assert(document.querySelector('[data-layout="stacked"]'), `${width}px: stacked layout.`);
   assert(rail() === null, `${width}px: no tab rail.`);
   assert(
-    backRow() === null && breadcrumbs() === null,
-    `${width}px: no back row or breadcrumbs under the header (header Back only).`,
+    detailRow() === null && breadcrumbs() === null,
+    `${width}px: no detail header row or breadcrumbs under the header (header Back only).`,
   );
   // System Back sits in the header row next to the screen's header content.
   const headerRow = secondary()!.querySelector('[data-workspace-header="true"]')?.parentElement

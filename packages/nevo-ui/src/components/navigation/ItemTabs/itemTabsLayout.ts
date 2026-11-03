@@ -28,6 +28,46 @@ export const ITEM_TAB_PADDING_END = 10;
  */
 export const ITEM_TAB_CHAR_WIDTH = 6.4;
 
+/** The numbers that depend on a tab's look: the chrome around the label and the space between tabs. */
+export interface ItemTabMetrics {
+  gap: number;
+  paddingStart: number;
+  glyph: number;
+  closeSlot: number;
+  paddingEnd: number;
+  charWidth: number;
+}
+
+/** `header` (the Documents strip): rounded tabs 2 px apart, 12 px / 600 labels. */
+const HEADER_METRICS: ItemTabMetrics = {
+  gap: ITEM_TAB_GAP,
+  paddingStart: ITEM_TAB_PADDING_START,
+  glyph: ITEM_TAB_GLYPH,
+  closeSlot: ITEM_TAB_CLOSE_SLOT,
+  paddingEnd: ITEM_TAB_PADDING_END,
+  charWidth: ITEM_TAB_CHAR_WIDTH,
+};
+
+/**
+ * `rail` (the split Secondary's editor tabs): square tabs that touch (separated by their own 1 px
+ * edge, inside the width), 12 px padding, a 14 px glyph plus `gap-2`, 14 px / 400 labels. Coupled
+ * to the rail tab classes in `ItemTabs.tsx` (`pl-3`, `pr-8` / `pr-3`, `text-body-md`).
+ */
+const RAIL_METRICS: ItemTabMetrics = {
+  gap: 0,
+  paddingStart: 12,
+  glyph: 14 + 8,
+  closeSlot: ITEM_TAB_CLOSE_SLOT,
+  paddingEnd: 12,
+  charWidth: 7.4,
+};
+
+export type ItemTabDensity = 'header' | 'rail';
+
+export function itemTabMetrics(density: ItemTabDensity = 'header'): ItemTabMetrics {
+  return density === 'rail' ? RAIL_METRICS : HEADER_METRICS;
+}
+
 export interface FitItem {
   id: string;
   label: string;
@@ -47,11 +87,14 @@ export interface ItemTabsFit<T extends FitItem> {
 }
 
 /** Pixels a tab needs around its label. */
-export function itemTabChromeWidth({ closable = true, glyph = false }: ItemTabChrome) {
+export function itemTabChromeWidth(
+  { closable = true, glyph = false }: ItemTabChrome,
+  metrics: ItemTabMetrics = HEADER_METRICS,
+) {
   return (
-    ITEM_TAB_PADDING_START +
-    (glyph ? ITEM_TAB_GLYPH : 0) +
-    (closable ? ITEM_TAB_CLOSE_SLOT : ITEM_TAB_PADDING_END)
+    metrics.paddingStart +
+    (glyph ? metrics.glyph : 0) +
+    (closable ? metrics.closeSlot : metrics.paddingEnd)
   );
 }
 
@@ -59,32 +102,35 @@ export function itemTabChromeWidth({ closable = true, glyph = false }: ItemTabCh
  * The content width of a tab: its chrome plus the label, measured (`labelWidth`) when the layout
  * is known, else estimated from its length, clamped to 64-240 px.
  */
-export function itemTabNaturalWidth(label: string, chrome: ItemTabChrome, labelWidth?: number) {
+export function itemTabNaturalWidth(
+  label: string,
+  chrome: ItemTabChrome,
+  labelWidth?: number,
+  metrics: ItemTabMetrics = HEADER_METRICS,
+) {
   const text =
     labelWidth !== undefined && labelWidth > 0
       ? // `offsetWidth` is rounded: one spare pixel keeps a fitting label from a sub-pixel ellipsis.
         Math.ceil(labelWidth) + 1
-      : Math.round(label.length * ITEM_TAB_CHAR_WIDTH);
+      : Math.round(label.length * metrics.charWidth);
 
   return Math.min(
     ITEM_TAB_MAX_WIDTH,
-    Math.max(ITEM_TAB_MIN_WIDTH, itemTabChromeWidth(chrome) + text),
+    Math.max(ITEM_TAB_MIN_WIDTH, itemTabChromeWidth(chrome, metrics) + text),
   );
 }
 
-function totalWidth(widths: readonly number[]) {
-  return (
-    widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * ITEM_TAB_GAP
-  );
+function totalWidth(widths: readonly number[], gap: number) {
+  return widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * gap;
 }
 
 /**
  * Shrinks the widest tabs first (one common cap, never below their compressed width) until the
  * tabs fit `space`. Short tabs keep their content width.
  */
-function compress(natural: readonly number[], space: number): number[] {
+function compress(natural: readonly number[], space: number, gap: number): number[] {
   const floor = natural.map((width) => Math.min(width, ITEM_TAB_COMPRESSED_WIDTH));
-  if (totalWidth(natural) <= space) {
+  if (totalWidth(natural, gap) <= space) {
     return [...natural];
   }
 
@@ -92,7 +138,12 @@ function compress(natural: readonly number[], space: number): number[] {
   let high = Math.max(...natural);
   while (low < high) {
     const cap = Math.ceil((low + high) / 2);
-    if (totalWidth(natural.map((width) => Math.min(width, cap))) <= space) {
+    if (
+      totalWidth(
+        natural.map((width) => Math.min(width, cap)),
+        gap,
+      ) <= space
+    ) {
       low = cap;
     } else {
       high = cap - 1;
@@ -118,13 +169,16 @@ export function fitItemTabs<T extends FitItem>(
   available: number,
   activeId: string | null,
   naturalWidths?: readonly number[],
+  metrics: ItemTabMetrics = HEADER_METRICS,
 ): ItemTabsFit<T> {
+  const gap = metrics.gap;
   const natural = items.map(
-    (item, index) => naturalWidths?.[index] ?? itemTabNaturalWidth(item.label, {}),
+    (item, index) =>
+      naturalWidths?.[index] ?? itemTabNaturalWidth(item.label, {}, undefined, metrics),
   );
   const floor = natural.map((width) => Math.min(width, ITEM_TAB_COMPRESSED_WIDTH));
-  if (items.length <= 1 || totalWidth(floor) <= available) {
-    const widths = compress(natural, available);
+  if (items.length <= 1 || totalWidth(floor, gap) <= available) {
+    const widths = compress(natural, available, gap);
     if (items.length === 1 && widths[0]! > available) {
       widths[0] = Math.max(ITEM_TAB_MIN_WIDTH, Math.floor(available));
     }
@@ -136,7 +190,12 @@ export function fitItemTabs<T extends FitItem>(
   const activeIndex = items.findIndex((item) => item.id === activeId);
   let indices: number[] = [];
   for (let index = 0; index < items.length; index += 1) {
-    if (totalWidth([...indices, index].map((i) => floor[i]!)) > room) {
+    if (
+      totalWidth(
+        [...indices, index].map((i) => floor[i]!),
+        gap,
+      ) > room
+    ) {
       break;
     }
 
@@ -146,7 +205,10 @@ export function fitItemTabs<T extends FitItem>(
   if (activeIndex >= 0 && !indices.includes(activeIndex)) {
     while (
       indices.length > 0 &&
-      totalWidth([...indices, activeIndex].map((i) => floor[i]!)) > room
+      totalWidth(
+        [...indices, activeIndex].map((i) => floor[i]!),
+        gap,
+      ) > room
     ) {
       indices = indices.slice(0, -1);
     }
@@ -162,6 +224,7 @@ export function fitItemTabs<T extends FitItem>(
   const widths = compress(
     indices.map((index) => natural[index]!),
     room,
+    gap,
   );
   if (widths.length === 1 && widths[0]! > room) {
     widths[0] = Math.max(ITEM_TAB_MIN_WIDTH, Math.floor(room));
@@ -180,12 +243,13 @@ export function maxLabelChars(
   tabWidth: number,
   naturalWidth: number,
   chrome: ItemTabChrome,
+  metrics: ItemTabMetrics = HEADER_METRICS,
 ) {
   if (tabWidth >= naturalWidth) {
     return undefined;
   }
 
-  const chromeWidth = itemTabChromeWidth(chrome);
+  const chromeWidth = itemTabChromeWidth(chrome, metrics);
   const ratio = Math.max(0, tabWidth - chromeWidth) / Math.max(1, naturalWidth - chromeWidth);
 
   return Math.max(1, Math.floor(label.length * ratio));

@@ -11,8 +11,9 @@ import { Environment, WIDE_VIEWPORT } from './managedSession.storyHelpers.storie
  * The composed Session screen's Work history -> ToolAction drill on the real `ManagedSession`
  * (secondary-navigation.md "Root tabs and local navigation"; session-work-inspector-ui-spec.md
  * §9.1): Context is already the one tab of the split rail, so opening Work history moves nothing;
- * a ToolAction detail gets the compact back row (`← Wróć do: Historia pracy`), never a breadcrumb
- * trail or a repeat of its own title; the header is title + status line; pretty-printed JSON
+ * a ToolAction detail gets the detail header row (a `←` named "Wróć do: Historia pracy" followed by
+ * the action's own title + status line, shown once), never a breadcrumb trail, with the 36px rail
+ * unmoved and the sections 20px apart; pretty-printed JSON
  * parameters are numbered while the Read tool's own `cat -n` output is shown verbatim without a
  * second gutter; a failure names itself next to its icon with its message. Mobile keeps its header
  * Back with no row under it. Same title as the other Managed Session groups; hidden `contract`.
@@ -104,7 +105,7 @@ export const WorkHistoryToolActionDetail: Story = {
       secondary(canvasElement).querySelector('button[aria-label^="Zamknij"]'),
     ).toBeNull();
     const before = railGeometry(canvasElement);
-    await expect(before.railHeight).toBe(32);
+    await expect(before.railHeight).toBe(36);
 
     // Opening Work history adds a tab; the rail and the content start do not move.
     await openTurnWork(canvasElement, 2);
@@ -112,22 +113,32 @@ export const WorkHistoryToolActionDetail: Story = {
     const after = railGeometry(canvasElement);
     await expect(after).toEqual(before);
 
-    // One-level drill: the back row names the parent, never repeats the action's own title.
+    // One-level drill: the detail header row is Back (named after the parent) then the action's
+    // own title and status, shown once; the rail does not move.
     await openAction(canvasElement, 'Read file package.json');
     const region = secondary(canvasElement);
-    const backRow = region.querySelector<HTMLElement>('[data-workspace-back-row]')!;
-    await expect(backRow).not.toBeNull();
+    const detailRow = region.querySelector<HTMLElement>('[data-workspace-detail-header]')!;
+    await expect(detailRow).not.toBeNull();
     await expect(region.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
-    await expect(within(backRow).getByRole('button').textContent).toBe('Wróć do: Historia pracy');
-    await expect(backRow.textContent).not.toContain('package.json');
-    await expect(backRow.getBoundingClientRect().height).toBe(24);
+    const backButton = within(detailRow).getByRole('button', { name: 'Wróć do: Historia pracy' });
+    await expect(backButton.textContent).toBe('');
+    await expect(detailRow.parentElement?.firstElementChild).toBe(detailRow);
+    await expect(detailRow.closest('.scroll-area-viewport')).toBeNull();
+    const title = within(detailRow).getByRole('heading', {
+      level: 2,
+      name: 'Read file package.json',
+    });
+    await expect(title.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+      backButton.getBoundingClientRect().right - 0.5,
+    );
     await expect(tabLabels(canvasElement)).toEqual(['Kontekst', 'Historia pracy']);
+    await expect(railGeometry(canvasElement)).toEqual(before);
     await expect(
       within(region).getAllByText('Read file package.json', { exact: true }),
     ).toHaveLength(1);
 
     // Header: success icon (state name for assistive technology), the duration; no clock range.
-    const status = region.querySelector<HTMLElement>('[data-tool-action-status]')!;
+    const status = detailRow.querySelector<HTMLElement>('[data-tool-action-status]')!;
     await expect(status.querySelector('svg.text-status-success')).not.toBeNull();
     await expect(status.querySelector('.sr-only')?.textContent).toBe('Zakończono');
     const time = status.querySelector('time')!;
@@ -145,10 +156,26 @@ export const WorkHistoryToolActionDetail: Story = {
     );
     await expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth + 1);
 
+    // Spacing: a clear, equal gap between the header and PARAMETRY and between PARAMETRY and the
+    // response (measured from the header block / the previous section to the next section title).
+    const headerBlock = title.parentElement!;
+    const sections = [...region.querySelectorAll<HTMLElement>('section')];
+    await expect(sections).toHaveLength(2);
+    const sectionTitle = (section: HTMLElement) => section.querySelector('h3')!;
+    const headerToParameters =
+      sectionTitle(sections[0]!).getBoundingClientRect().top -
+      headerBlock.getBoundingClientRect().bottom;
+    const parametersToResponse =
+      sectionTitle(sections[1]!).getBoundingClientRect().top -
+      sections[0]!.getBoundingClientRect().bottom;
+    await expect(headerToParameters).toBeGreaterThanOrEqual(16);
+    await expect(parametersToResponse).toBeGreaterThanOrEqual(16);
+    await expect(Math.abs(headerToParameters - parametersToResponse)).toBeLessThanOrEqual(1);
+
     // Back returns to the Work history root of the same tab.
-    await userEvent.click(within(backRow).getByRole('button'));
+    await userEvent.click(backButton);
     await waitFor(() =>
-      expect(secondary(canvasElement).querySelector('[data-workspace-back-row]')).toBeNull(),
+      expect(secondary(canvasElement).querySelector('[data-workspace-detail-header]')).toBeNull(),
     );
     await expect(tabLabels(canvasElement)).toEqual(['Kontekst', 'Historia pracy']);
     await expect(railGeometry(canvasElement)).toEqual(before);
@@ -183,8 +210,8 @@ export const ToolActionDetailMobile: Story = {
       await openAction(canvasElement, 'Read file package.json');
       await settleViewport(width, 844);
       const region = secondary(canvasElement);
-      // Mobile: the header's own Back; no back row, breadcrumbs or tab rail under it.
-      await expect(region.querySelector('[data-workspace-back-row]')).toBeNull();
+      // Mobile: the header's own Back; no detail header row, breadcrumbs or tab rail under it.
+      await expect(region.querySelector('[data-workspace-detail-header]')).toBeNull();
       await expect(region.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
       await expect(region.querySelector('[data-workspace-tab-rail]')).toBeNull();
       await expect(region.querySelector('button[aria-label^="Wstecz"]')).not.toBeNull();

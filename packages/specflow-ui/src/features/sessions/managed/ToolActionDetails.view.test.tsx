@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
-import { SingleToolActionDetail } from './ToolActionDetails';
+import { SingleToolActionDetail, SingleToolActionHeader } from './ToolActionDetails';
 
 const rawInput = '{"pattern":"admission","path":"src","limit":3}';
 const rawOutput = 'src/admission.mjs:42: export function admission() {\n  return true;\n}';
@@ -32,7 +32,7 @@ const action: ToolActionSummary = {
   output: outputRef,
 };
 
-function renderDetail(item: ToolActionSummary = action) {
+function renderDetail(item: ToolActionSummary = action, withHeader = true) {
   const bodies: Record<string, string> = { 'content-in': rawInput, 'content-out': rawOutput };
   const api = {
     content: (_sessionId: string, ref: ContentRef, offset: number) =>
@@ -50,7 +50,11 @@ function renderDetail(item: ToolActionSummary = action) {
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
-        <SingleToolActionDetail item={item} source={{ api, sessionId: 'session-1' }} />
+        <SingleToolActionDetail
+          item={item}
+          source={{ api, sessionId: 'session-1' }}
+          withHeader={withHeader}
+        />
       </QueryClientProvider>
     </StoryLocalization>,
   );
@@ -96,6 +100,39 @@ describe('ToolAction details', () => {
     expect(input.querySelectorAll('.cm-line span').length).toBeGreaterThan(0);
     expect(output.querySelectorAll('.cm-line span')).toHaveLength(0);
     expect(output.textContent).toBe(rawOutput.replaceAll('\n', ''));
+  });
+
+  it('leaves the header out when the workspace shows it as the screen detailHeader', async () => {
+    renderDetail(action, false);
+    await screen.findByRole('textbox', { name: 'Parameters' });
+
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+    expect(document.querySelector('[data-tool-action-status]')).toBeNull();
+    // The sections are still there, separated by the screen's 20px rhythm.
+    const sections = [...document.querySelectorAll('section')];
+    expect(sections).toHaveLength(2);
+    expect(sections[0]!.parentElement!.className).toContain('gap-5');
+  });
+
+  it('declares the same header as a separate component: the title as the heading, then the status', () => {
+    render(
+      <StoryLocalization locale="en">
+        <SingleToolActionHeader item={action} />
+      </StoryLocalization>,
+    );
+
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Search admission');
+    expect(document.querySelector('[data-tool-action-status="completed"]')).not.toBeNull();
+  });
+
+  it('separates the header, the parameters and the response by the 20px section rhythm', async () => {
+    renderDetail();
+    await screen.findByRole('textbox', { name: 'Parameters' });
+
+    const stack = document.querySelector('section')!.parentElement!;
+    expect(stack.className).toContain('gap-5');
+    expect(stack.className).not.toContain('gap-3');
+    expect(stack.firstElementChild?.querySelector('h2')).not.toBeNull();
   });
 
   const status = () => document.querySelector<HTMLElement>('[data-tool-action-status]')!;

@@ -33,26 +33,41 @@ owns state, guards and the tab panel; the strip renders no panel.
 
 - **Placement.** The strip MUST be the content of a region header, left of the header actions. It
   MUST NOT add a second row under the header. `density` sets the root height: `header` (default)
-  fills the 56 px workspace header (`h-14`, Documents); `rail` fills the split Secondary's compact
-  32 px root-tab rail (`--spacing-tab-rail`, see [Secondary navigation](secondary-navigation.md),
-  "Root tabs and local navigation"). Tabs are one control high (default 36 px in `header`, compact
-  32 px in `rail`), anchored to the bottom edge with 2 px between them; the active tab's underline
-  sits on the header border. The strip never adds height of its own to match another region.
-- **Tab look.** Square tabs, no rounded "card" top and no fill when selected: the active tab is the
-  2 px `action-primary` underline plus `content-primary` text. Inactive tabs are plain
-  `content-secondary` text (muted while loading or missing) with no underline and show
-  `surface-hover` only on hover. A fill — on every tab, or only on the active one — read as a row of
-  separate buttons and competed with the underline. Labels never wrap. Both densities share this
-  look.
-- **Width (content width, both densities).** A tab is as wide as its own content: `pl-2.5`, the
-  glyph (16 px + 8 px gap) when the item has an icon or a loading/missing state, the label measured
-  in the rendered font (a hidden, clipped measuring layer, re-measured when labels change and when
-  web fonts are ready; estimated at 6.4 px a character only where nothing is laid out), and the end
-  slot — 32 px reserved for the `x` on a closable tab, so label and `x` keep fixed positions, or a
-  symmetric 10 px on a non-closable one. Clamped to 64-240 px. When the content widths do not fit,
+  fills the 56 px workspace header (`h-14`, Documents); `rail` is the split Secondary's editor-tab
+  rail, the full 36 px `--spacing-tab-rail` (see [Secondary navigation](secondary-navigation.md),
+  "Root tabs and local navigation"), which draws its own bottom divider, so its host row has no
+  border or padding. In `header` tabs are one control high (36 px), anchored to the bottom edge
+  with 2 px between them; the active tab's underline sits on the header border. The strip never
+  adds height of its own to match another region.
+- **Tab look (`header`, Documents).** Square tabs, no rounded "card" top and no fill when
+  selected: the active tab is the 2 px `action-primary` underline plus `content-primary` text,
+  12 px / 600 labels. Inactive tabs are plain `content-secondary` text (muted while loading or
+  missing) with no underline and show `surface-hover` only on hover. A fill — on every tab, or
+  only on the active one — read as a row of separate buttons and competed with the underline.
+  Labels never wrap.
+- **Tab look (`rail`, editor tabs).** Owner decision 2026-11-03, after "tiny and cramped … should
+  look like typical IDE tabs": tabs touch (no gap), full rail height, `body-md` labels (14 px /
+  400, active included, so activation never changes the width), a 1 px `border-subtle` separator
+  on every tab's end edge, and **no icons** (a tab is its name). The strip is darker than the panel
+  (`--color-tab-strip`, the canvas at 60 %): inactive tabs sit on it with the strip's bottom
+  divider and `surface-hover` on hover; the **active tab takes the panel's own surface** (no fill,
+  no bottom border), so it reads as the top of the content below, under a 1 px **neutral** top
+  border of the separators' colour — no primary accent line — plus `content-primary` text. The
+  strip continues past the last tab with the same fill and divider and carries the `Opened (N)`
+  trigger. The earlier "underline only, no card" rule remains Documents'; these tabs are square and
+  touching, so they are not the separate rounded cards that rule rejected.
+- **Width (content width, both densities).** A tab is as wide as its own content: the start padding
+  (`pl-2.5` in `header`, `pl-3` in `rail`), the glyph (16 px, or 14 px in `rail`, + 8 px gap)
+  when the item has an icon or a loading/missing state, the label measured in the rendered font (a
+  hidden, clipped measuring layer, re-measured when labels change and when web fonts are ready;
+  estimated at 6.4 px a character in `header` and 7.4 in `rail` only where nothing is laid out), and
+  the end slot — 32 px reserved for the `x` on a closable tab, so label and `x` keep fixed
+  positions, or a symmetric 10 px (`header`) / 12 px (`rail`) on a non-closable one. The numbers are
+  `itemTabMetrics(density)` in `itemTabsLayout.ts`, coupled to the tab classes. Clamped to 64-240 px. When the content widths do not fit,
   the widest tabs first shrink to one common cap, never below 120 px (their labels truncate in the
-  middle, the full label stays the tab's accessible name and tooltip); only when even that does not
-  fit do the trailing tabs go to the `Opened (N)` menu, the active one always staying visible
+  middle, the full label stays the tab's accessible name and tooltip; with no icons there is no
+  earlier compaction step); only when even that does not fit do the trailing tabs go to the
+  `Opened (N)` menu, the active one always staying visible
   (`fitItemTabs`). Decision (owner, 2026-11): content width replaces the earlier fixed 140-180 px
   for **both** hosts — Documents' `DocumentTabStrip` (file names) and the Secondary rail — because a
   fixed width wasted space on short names (`Kontekst`) and cut long file names early; one policy

@@ -52,6 +52,7 @@ interface RuntimePage {
   menu?: WorkspaceHeaderMenu;
   preserveOnDataLoss?: boolean;
   header?: ComponentType<{ data: unknown; params: object }>;
+  detailHeader?: ComponentType<{ data: unknown; params: object }>;
   component: ComponentType<{ data: unknown; params: object }>;
 }
 
@@ -497,6 +498,23 @@ function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
   );
 }
 
+/** The screen's declared `detailHeader`; nothing when it declares none. */
+function DetailHeaderOutlet({ entry }: { entry: SecondaryEntry }) {
+  const { result } = useScreenData();
+  const page = entry.definition.screens[entry.page];
+  if (!page) {
+    throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  }
+
+  if (result.status !== 'ready' || !page.detailHeader) {
+    return null;
+  }
+
+  const DetailHeader = page.detailHeader;
+
+  return <DetailHeader data={result.data} params={entry.params} />;
+}
+
 function CompactScreenActions({
   className,
   navigationAction,
@@ -533,6 +551,7 @@ function publicEntry(
     surface: {
       wrap: (children) => <ScreenDataHost entry={entry}>{children}</ScreenDataHost>,
       header: <HeaderOutlet entry={entry} />,
+      detailHeader: <DetailHeaderOutlet entry={entry} />,
       renderCompactActions: (props) => <CompactScreenActions {...props} />,
       content: (
         <ScreenOutlet flow={flow} entry={entry} navigate={navigate} registerGuard={registerGuard} />

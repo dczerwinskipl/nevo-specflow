@@ -11,6 +11,7 @@ import {
   ITEM_TAB_PADDING_START,
   fitItemTabs,
   itemTabChromeWidth,
+  itemTabMetrics,
   itemTabNaturalWidth,
   maxLabelChars,
   splitMiddle,
@@ -147,5 +148,40 @@ describe('splitMiddle', () => {
     expect(maxLabelChars(label, 240, 240, {})).toBeUndefined();
     const half = maxLabelChars(label, 42 + 99, 42 + 198, {})!;
     expect(half).toBe(Math.floor(label.length / 2));
+  });
+});
+
+describe('rail metrics (the split Secondary editor tabs)', () => {
+  const rail = itemTabMetrics('rail');
+
+  it('uses 12 px padding, touching tabs and the same 32 px close slot', () => {
+    expect(itemTabMetrics()).toEqual(itemTabMetrics('header'));
+    expect(rail.gap).toBe(0);
+    expect(itemTabChromeWidth({}, rail)).toBe(12 + 32);
+    expect(itemTabChromeWidth({ closable: false }, rail)).toBe(12 + 12);
+    // A measured 80 px label: 80 + 1 spare pixel against the rounded offsetWidth.
+    expect(itemTabNaturalWidth('Historia pracy', {}, 80, rail)).toBe(44 + 81);
+    expect(itemTabNaturalWidth('Kontekst', { closable: false }, 52, rail)).toBe(24 + 53);
+  });
+
+  it('fits tabs without the 2 px gap the header strip keeps between them', () => {
+    const natural = [100, 100, 100];
+    const widths = (metrics?: ReturnType<typeof itemTabMetrics>) =>
+      fitItemTabs(items(3), 300, 'i0', natural, metrics);
+    // Touching tabs exactly fill 300 px; with 2 px gaps they would not fit and would shrink.
+    expect(widths(rail).widths).toEqual(natural);
+    expect(widths(rail).overflowing).toBe(false);
+    expect(widths().widths).not.toEqual(natural);
+  });
+
+  it('keeps the shrink-then-overflow order: widest tabs to 120 px, then the Opened menu', () => {
+    const natural = [150, 240, 240];
+    const shrunk = fitItemTabs(items(3), 400, 'i0', natural, rail);
+    expect(shrunk.overflowing).toBe(false);
+    expect(shrunk.widths.reduce((sum, width) => sum + width, 0)).toBeLessThanOrEqual(400);
+    expect(Math.min(...shrunk.widths)).toBeGreaterThanOrEqual(ITEM_TAB_COMPRESSED_WIDTH);
+    const overflow = fitItemTabs(items(3), 300, 'i0', natural, rail);
+    expect(overflow.overflowing).toBe(true);
+    expect(overflow.visible.length).toBeLessThan(3);
   });
 });

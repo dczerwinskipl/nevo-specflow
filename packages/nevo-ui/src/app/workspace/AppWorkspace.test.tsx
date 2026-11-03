@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../shell/AppShell';
 import { AppWorkspace, AppWorkspaceSlots } from './AppWorkspace';
 import { defineSecondaryStack } from './SecondaryStack';
+import { useSecondaryDetailHeaderHosted } from './secondaryDetailHeaderHost';
 import {
   AppWorkspaceProvider,
   useRegisterPinnedSecondaryTab,
@@ -116,11 +117,16 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
         },
         detail: {
           title: `${label} detail`,
+          // The identity the workspace shows beside Back in the detail header row.
+          detailHeader: () => <p data-detail-identity>{`Identity of ${label} detail`}</p>,
           component: ({ data }) => {
             const stack = useSecondaryStack<TabStripPages>();
 
             return (
-              <div data-item-page={`${label}:detail`}>
+              <div
+                data-item-page={`${label}:detail`}
+                data-detail-header-hosted={String(useSecondaryDetailHeaderHosted())}
+              >
                 <p>{`${data} detail`}</p>
                 <button
                   type="button"
@@ -327,9 +333,9 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
   });
 
   const breadcrumbs = () => document.querySelector<HTMLElement>('[data-workspace-breadcrumbs]');
-  const backRow = () => document.querySelector<HTMLElement>('[data-workspace-back-row]');
+  const backRow = () => document.querySelector<HTMLElement>('[data-workspace-detail-header]');
 
-  it('by default shows one compact back row to the direct parent, never a trail or the current title', async () => {
+  it('by default shows a detail header row: Back to the direct parent, then the screen’s detailHeader, never a trail', async () => {
     mountTabs({ pinned: true });
 
     await click('openTab A');
@@ -342,16 +348,33 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
     expect(secondaryHeader()?.contains(row)).toBe(false);
     const panel = row.closest<HTMLElement>('[role="tabpanel"]')!;
     expect(panel.firstElementChild).toBe(row);
-    // One control, named after where it goes; the current page ("Item A detail") is not repeated.
+    // One control, an icon named after where it goes, then the screen's declared identity; the
+    // content below shows the page itself, not that identity (it is shown once).
     expect(within(row).getAllByRole('button')).toHaveLength(1);
-    expect(within(row).getByRole('button', { name: 'Back: Item A' }).textContent).toBe(
-      'Back: Item A',
+    const back = within(row).getByRole('button', { name: 'Back: Item A' });
+    expect(back.textContent).toBe('');
+    expect(back.querySelector('svg')).not.toBeNull();
+    expect(row.querySelector('[data-detail-identity]')?.textContent).toBe(
+      'Identity of Item A detail',
     );
-    expect(row.textContent).not.toContain('Item A detail');
+    expect(back.compareDocumentPosition(row.querySelector('[data-detail-identity]')!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(panel.querySelectorAll('[data-detail-identity]')).toHaveLength(1);
+    expect(
+      panel
+        .querySelector('[data-item-page="Item A:detail"]')
+        ?.getAttribute('data-detail-header-hosted'),
+    ).toBe('true');
+    expect(row.parentElement?.querySelector('[data-item-page="Item A:detail"]')).not.toBeNull();
 
+    // A screen that declares no detailHeader shows Back alone, named after its parent.
     await click('Push Item A leaf');
-    expect(within(backRow()!).getByRole('button').textContent).toBe('Back: Item A detail');
-    expect(backRow()!.textContent).not.toContain('Read file admission.mjs');
+    const leafRow = backRow()!;
+    expect(within(leafRow).getAllByRole('button')).toHaveLength(1);
+    expect(within(leafRow).getByRole('button', { name: 'Back: Item A detail' })).toBeTruthy();
+    expect(leafRow.querySelector('[data-detail-identity]')).toBeNull();
+    expect(leafRow.textContent).toBe('');
 
     await click('Back: Item A detail');
     expect(document.querySelector('[data-item-page="Item A:detail"]')).not.toBeNull();
@@ -392,6 +415,13 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
     const panel = row.closest<HTMLElement>('[role="tabpanel"]')!;
     expect(panel.firstElementChild).toBe(row);
     expect(panel.querySelector('[data-item-page="Item B:detail"]')).not.toBeNull();
+    // The breadcrumb row does not host the detailHeader: the screen shows its identity itself.
+    expect(
+      panel
+        .querySelector('[data-item-page="Item B:detail"]')
+        ?.getAttribute('data-detail-header-hosted'),
+    ).toBe('false');
+    expect(panel.querySelector('[data-detail-identity]')).toBeNull();
 
     // `← Item B › Item B detail`: a one-level Back, the clickable root, the plain current level.
     expect(within(row).getByRole('button', { name: 'Back: Item B' })).toBeTruthy();
@@ -450,9 +480,12 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
     expect(screen.getByRole('button', { name: 'Close secondary content' })).toBeTruthy();
 
     await click('openTab B');
+    // The rail row is exactly the 36px token with no padding or border of its own: the tabs draw
+    // the strip and its divider.
     expect(headerRow()?.className).toContain('h-tab-rail');
+    expect(headerRow()?.className).not.toMatch(/(^| )border-b( |$)|(^| )px-/);
     const strip = document.querySelector('[role="tablist"]')!.parentElement!;
-    expect(strip.className).toContain('h-[calc(var(--spacing-tab-rail)-1px)]');
+    expect(strip.className).toContain('h-tab-rail');
 
     await click('Close Item B');
     expect(headerRow()).toBeNull();
@@ -465,14 +498,15 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
   ] as const)(
     'keeps the strip down to a narrower header than ItemTabs’ 480px default (%ipx -> %s)',
     async (stripWidth, expected) => {
-      // Only the ItemTabs root (the 32px tab-rail row) reports the narrow width; everything else
+      // Only the ItemTabs root (the 36px tab-rail) reports the narrow width; everything else
       // keeps the split-capable 1400px so the region still renders through the desktop path.
       vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
         this: HTMLElement,
       ) {
-        const width = this.className.includes('h-[calc(var(--spacing-tab-rail)-1px)]')
-          ? stripWidth
-          : 1400;
+        const width =
+          this.className.includes('h-tab-rail') && !this.hasAttribute('data-workspace-tab-rail')
+            ? stripWidth
+            : 1400;
 
         return {
           width,

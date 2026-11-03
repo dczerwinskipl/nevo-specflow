@@ -16,6 +16,7 @@ import { useElementWidth } from '../../behaviors/useElementWidth';
 import { Button } from '../../actions/Button';
 import { Spinner } from '../../feedback/Spinner';
 import { Icon } from '../../foundations/Icon';
+import { typographyVariantClasses } from '../../foundations/Typography/Typography';
 import { Menu, MenuContent, MenuTrigger } from '../../overlays/Menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../overlays/Tooltip';
 import { DirtyDot, OpenedMenuBody, type OpenedMenuProps } from './OpenedMenu';
@@ -24,10 +25,12 @@ import { resolveLabels, statusText, type ItemTab, type ItemTabsLabels } from './
 import {
   ITEM_TABS_SWITCHER_BELOW,
   fitItemTabs,
+  itemTabMetrics,
   itemTabNaturalWidth,
   maxLabelChars,
   splitMiddle,
   type ItemTabChrome,
+  type ItemTabDensity,
 } from './itemTabsLayout';
 import { measureAttribute, useLabelWidths } from './useLabelWidths';
 
@@ -61,13 +64,15 @@ export interface ItemTabsProps extends Omit<
   /** Container width in px under which `auto` renders the switcher. Default 480. */
   switcherBelow?: number;
   /**
-   * Root height. `header` (default): fills a 56px `WorkspaceHeader` slot (minus its 1px divider),
-   * one-control-high tabs anchored to its bottom edge — the Documents tab header. `rail`: a compact
-   * tab rail of `--spacing-tab-rail` (32px, minus the divider) whose tabs fill its whole height —
-   * the split Secondary's root tabs, where a local back/breadcrumb row (not a second header)
-   * follows when a tab is deeper than its root. Tab look and width policy are the same.
+   * Root height and tab look. `header` (default): fills a 56px `WorkspaceHeader` slot (minus its 1px
+   * divider), one-control-high rounded tabs 2px apart, anchored to its bottom edge, 12px / 600
+   * labels, a primary underline on the active tab — the Documents tab header. `rail`: the split
+   * Secondary's editor tabs, `--spacing-tab-rail` (36px, divider included) tall: square tabs that
+   * touch, 14px labels, 1px neutral separators, inactive tabs on the darker `tab-strip` and the
+   * active tab on the panel's own surface (no bottom border, a neutral top border). The root draws
+   * the strip's bottom divider itself, so its host row has no border. The width policy is the same.
    */
-  density?: 'header' | 'rail';
+  density?: ItemTabDensity;
   /** Replaceable copy. Defaults are English. */
   labels?: Partial<Omit<ItemTabsLabels, 'status'>> & { status?: Partial<ItemTabsLabels['status']> };
 }
@@ -130,6 +135,7 @@ function ItemGlyph({ item, badge = true }: { item: ItemTab; badge?: boolean }) {
 }
 
 interface TabProps {
+  density: ItemTabDensity;
   item: ItemTab;
   active: boolean;
   tabbable: boolean;
@@ -145,6 +151,7 @@ interface TabProps {
 }
 
 function Tab({
+  density,
   item,
   active,
   tabbable,
@@ -160,6 +167,7 @@ function Tab({
   const status = statusText(item, labels);
   const muted = item.state === 'missing' || item.state === 'loading';
   const chrome = tabChrome(item);
+  const rail = density === 'rail';
 
   return (
     <div
@@ -199,26 +207,51 @@ function Tab({
             onFocus={() => onFocusChange(item.id)}
             onBlur={() => onFocusChange(null)}
             className={cn(
-              // `pl-2.5`, the glyph gap and `pr-8`/`pr-2.5` are `itemTabChromeWidth`'s numbers.
-              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 border-solid border-transparent pl-2.5 text-label-sm',
-              chrome.closable ? 'pr-8' : 'pr-2.5',
-              'hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
+              'flex min-w-0 flex-1 cursor-pointer items-center gap-2 whitespace-nowrap border-solid',
+              'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
               fastColorTransitionClassName,
-              // The active tab is the primary underline plus primary text, nothing else: no fill,
-              // no rounded card. A fill (on every tab, or only on the active one) read as a row of
-              // separate buttons and competed with the underline. Inactive tabs are plain
-              // secondary text until hovered.
-              active
-                ? 'border-b-action-primary text-content-primary'
-                : muted
-                  ? 'text-content-muted'
-                  : 'text-content-secondary',
+              rail
+                ? cn(
+                    // Editor tab. `pl-3`, the glyph gap and `pr-8`/`pr-3` are the rail metrics'
+                    // numbers (`itemTabMetrics`). 1px separator on every end edge; the active tab
+                    // is the panel's own surface (no fill, no bottom border) under a neutral top
+                    // border, the inactive ones sit on the darker strip with its bottom divider.
+                    typographyVariantClasses['body-md'],
+                    'border-y border-r border-r-border-subtle pl-3',
+                    chrome.closable ? 'pr-8' : 'pr-3',
+                    active
+                      ? 'border-t-border-subtle border-b-transparent text-content-primary'
+                      : cn(
+                          'border-t-transparent border-b-border-subtle bg-tab-strip hover:bg-surface-hover hover:text-content-primary',
+                          muted ? 'text-content-muted' : 'text-content-secondary',
+                        ),
+                  )
+                : cn(
+                    // `pl-2.5`, the glyph gap and `pr-8`/`pr-2.5` are `itemTabChromeWidth`'s numbers.
+                    'border-b-2 border-transparent pl-2.5 text-label-sm hover:bg-surface-hover hover:text-content-primary',
+                    chrome.closable ? 'pr-8' : 'pr-2.5',
+                    // The active tab is the primary underline plus primary text, nothing else: no
+                    // fill, no rounded card. A fill (on every tab, or only on the active one) read
+                    // as a row of separate buttons and competed with the underline. Inactive tabs
+                    // are plain secondary text until hovered.
+                    active
+                      ? 'border-b-action-primary text-content-primary'
+                      : muted
+                        ? 'text-content-muted'
+                        : 'text-content-secondary',
+                  ),
             )}
           >
             <ItemGlyph item={item} />
             <MiddleTruncate
               text={item.label}
-              maxChars={maxLabelChars(item.label, width, naturalWidth, chrome)}
+              maxChars={maxLabelChars(
+                item.label,
+                width,
+                naturalWidth,
+                chrome,
+                itemTabMetrics(density),
+              )}
             />
             {status ? <span className="sr-only">({status})</span> : null}
           </button>
@@ -293,8 +326,9 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
  * Each tab is as wide as its content (64-240 px, the label measured in the rendered font); long tabs
  * shrink to 120 px before the trailing ones go to an `Opened (N)` menu. Below `switcherBelow`
  * the strip becomes a single switcher button opening the same menu. `className` styles the root; the
- * root is as tall as its host slot minus the 1 px divider (`density`: the 56 px workspace header, or
- * the 32 px Secondary tab rail), so it needs no host sizing inside `WorkspaceHeader.identityContent`.
+ * root sizes itself (`density`): the 56 px workspace header minus its 1 px divider, or the full 36 px
+ * Secondary tab rail, which draws its own divider. It needs no host sizing inside
+ * `WorkspaceHeader.identityContent`.
  */
 export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemTabs(
   {
@@ -314,9 +348,13 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
   forwardedRef,
 ) {
   const labels = resolveLabels(labelOverrides);
-  const rootHeight =
-    density === 'rail' ? 'h-[calc(var(--spacing-tab-rail)-1px)]' : 'h-[calc(3.5rem-1px)]';
-  const tabHeight = density === 'rail' ? 'h-full' : 'h-control-height-default';
+  const rail = density === 'rail';
+  const metrics = itemTabMetrics(density);
+  // The rail draws its own bottom divider (on the inactive tabs and the strip), so it is the full
+  // `--spacing-tab-rail`; the header root leaves the 1px divider its host row draws.
+  const rootHeight = rail ? 'h-tab-rail' : 'h-[calc(3.5rem-1px)]';
+  const tabHeight = rail ? 'h-full' : 'h-control-height-default';
+  const stripClassName = 'bg-tab-strip border-b border-border-subtle';
   const { width, element: root, setElement } = useElementWidth();
   const labelSignature = items.map((item) => `${item.id}\u0000${item.label}`).join('\u0001');
   const { widths: labelWidths, setLayer: setMeasureLayer } = useLabelWidths(labelSignature);
@@ -339,7 +377,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     variant === 'switcher' || (variant === 'auto' && width !== undefined && width < switcherBelow);
   const hintId = `${scope}-opened-hint`;
   const naturalWidths = items.map((item) =>
-    itemTabNaturalWidth(item.label, tabChrome(item), labelWidths[item.id]),
+    itemTabNaturalWidth(item.label, tabChrome(item), labelWidths[item.id], metrics),
   );
   const naturalById = new Map(items.map((item, index) => [item.id, naturalWidths[index]!]));
   const { visible, widths, overflowing } = fitItemTabs(
@@ -347,6 +385,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     width ?? naturalWidths.reduce((sum, natural) => sum + natural, 0),
     activeId,
     naturalWidths,
+    metrics,
   );
   const tabStopId =
     focused && visible.some((item) => item.id === focused)
@@ -403,7 +442,12 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
       <div
         {...props}
         ref={setRef}
-        className={cn('relative flex w-full min-w-0 items-center', rootHeight, className)}
+        className={cn(
+          'relative flex w-full min-w-0 items-center',
+          rootHeight,
+          rail && cn(stripClassName, 'px-1'),
+          className,
+        )}
       >
         <Menu>
           <MenuTrigger asChild>
@@ -449,7 +493,12 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     <div
       {...props}
       ref={setRef}
-      className={cn('relative flex w-full min-w-0 items-end', rootHeight, className)}
+      className={cn(
+        'relative flex w-full min-w-0',
+        rail ? 'items-stretch' : 'items-end',
+        rootHeight,
+        className,
+      )}
     >
       {/* Measures every label in the tab font, so a tab is exactly as wide as its own text. Clipped
           to nothing: it never takes space or widens a scroll container. */}
@@ -457,7 +506,13 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
         aria-hidden="true"
         className="pointer-events-none invisible absolute inset-0 overflow-hidden"
       >
-        <div ref={setMeasureLayer} className="flex w-max whitespace-pre text-label-sm">
+        <div
+          ref={setMeasureLayer}
+          className={cn(
+            'flex w-max whitespace-pre',
+            rail ? typographyVariantClasses['body-md'] : 'text-label-sm',
+          )}
+        >
           {items.map((item) => (
             <span key={item.id} {...measureAttribute(item.id)}>
               {item.label}
@@ -470,12 +525,13 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
           role="tablist"
           aria-label={labels.tablist}
           aria-orientation="horizontal"
-          className={cn('flex min-w-0 items-stretch gap-0.5', tabHeight)}
+          className={cn('flex min-w-0 items-stretch', !rail && 'gap-0.5', tabHeight)}
           onKeyDown={onKeyDown}
         >
           {visible.map((item, index) => (
             <Tab
               key={item.id}
+              density={density}
               item={item}
               active={item.id === activeId}
               tabbable={item.id === tabStopId}
@@ -490,7 +546,13 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
             />
           ))}
         </div>
-        <div className={cn('pointer-events-none absolute bottom-0 left-0 flex gap-0.5', tabHeight)}>
+        <div
+          className={cn(
+            'pointer-events-none absolute bottom-0 left-0 flex',
+            !rail && 'gap-0.5',
+            tabHeight,
+          )}
+        >
           {visible.map((item, index) => (
             <CloseSlot
               key={item.id}
@@ -504,31 +566,42 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
           ))}
         </div>
       </TooltipProvider>
-      {overflowing ? (
-        <div className={cn('flex shrink-0 items-center pl-1', tabHeight)}>
-          <Menu>
-            <MenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-control-height-compact cursor-pointer items-center gap-0.5 rounded-control px-1.5 text-label-sm text-content-muted hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
-              >
-                <Icon name="chevron-down" size="sm" />
-                {/* The visible count is a shorthand of the name, which assistive technology reads
+      {rail || overflowing ? (
+        // Rail: the strip continues past the last tab (its fill and bottom divider) and carries the
+        // menu. Header: just the menu trigger after the tabs.
+        <div
+          className={cn(
+            'flex items-center',
+            rail
+              ? cn('min-w-0 flex-1 justify-end pr-1', stripClassName)
+              : cn('shrink-0 pl-1', tabHeight),
+          )}
+        >
+          {overflowing ? (
+            <Menu>
+              <MenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-control-height-compact cursor-pointer items-center gap-0.5 rounded-control px-1.5 text-label-sm text-content-muted hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
+                >
+                  <Icon name="chevron-down" size="sm" />
+                  {/* The visible count is a shorthand of the name, which assistive technology reads
                     in full; an `aria-label` would leave the visible "8" outside the name
                     (WCAG 2.5.3, axe label-content-name-mismatch). */}
-                <span aria-hidden="true">{items.length}</span>
-                <span className="sr-only">{labels.openedMenu(items.length)}</span>
-              </button>
-            </MenuTrigger>
-            <MenuContent
-              align="end"
-              className="w-80"
-              aria-describedby={hintId}
-              onCloseAutoFocus={onCloseAutoFocus}
-            >
-              <OpenedMenuBody {...menu} />
-            </MenuContent>
-          </Menu>
+                  <span aria-hidden="true">{items.length}</span>
+                  <span className="sr-only">{labels.openedMenu(items.length)}</span>
+                </button>
+              </MenuTrigger>
+              <MenuContent
+                align="end"
+                className="w-80"
+                aria-describedby={hintId}
+                onCloseAutoFocus={onCloseAutoFocus}
+              >
+                <OpenedMenuBody {...menu} />
+              </MenuContent>
+            </Menu>
+          ) : null}
         </div>
       ) : null}
     </div>

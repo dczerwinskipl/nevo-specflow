@@ -148,7 +148,8 @@ function ToolActionDetailSection({
 /**
  * L4: one ToolAction's own content (owner brief "ToolAction details: struktura zamiast surowego
  * tekstu"), one simple structure: header (`ToolActionHeader`: the full title, then a status line
- * with a discreet status mark and the duration), the parameters, the tool's response — each under
+ * with a discreet status mark and the duration; in a split Secondary the single-action screen
+ * declares it as its `detailHeader`, outside this content), the parameters, the tool's response — each under
  * a label + Copy row on its own code surface (formatted JSON when the body is JSON, verbatim text
  * otherwise), height-capped with its own scroll — and an error as its own alert with message and
  * code. No extra cards, labels or separators around them.
@@ -160,10 +161,13 @@ function ToolActionDetailSection({
 function ToolActionContent({
   item,
   source,
+  withHeader,
   asHeading = false,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  /** Render the header (`ToolActionHeader`) as the first part of the content. */
+  withHeader: boolean;
   /** The single-action screen's own heading (no parent Work title above it). */
   asHeading?: boolean;
 }) {
@@ -171,8 +175,10 @@ function ToolActionContent({
   const failed = workStateTone(item.state) === 'danger';
 
   return (
-    <div className="grid min-w-0 gap-3">
-      <ToolActionHeader item={item} asHeading={asHeading} />
+    // `gap-5`: the screen's section rhythm (20px) between the header, the parameters and the
+    // response — the sections read as separate blocks, not one stack of captions.
+    <div className="grid min-w-0 gap-5">
+      {withHeader && <ToolActionHeader item={item} asHeading={asHeading} />}
       {item.input && (
         <ToolActionDetailSection
           label={t('managedSession.workInspector.input')}
@@ -218,9 +224,18 @@ export function ToolActionTimelineItem({
   return (
     <Timeline.Item>
       <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
-      <Timeline.Content title={<ToolActionContent item={item} source={source} />} />
+      <Timeline.Content title={<ToolActionContent item={item} source={source} withHeader />} />
     </Timeline.Item>
   );
+}
+
+/**
+ * The single-action screen's header: the action's full title as the screen heading and its status
+ * line. Declared as the `actions` screen's `detailHeader`, so a split Secondary shows it beside Back
+ * in the non-scrolling detail header row, not inside the scrolling content.
+ */
+export function SingleToolActionHeader({ item }: { item: ToolActionSummary }) {
+  return <ToolActionHeader item={item} asHeading />;
 }
 
 /**
@@ -235,9 +250,15 @@ export function ToolActionTimelineItem({
 export function SingleToolActionDetail({
   item,
   source,
+  withHeader,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  /**
+   * Heads the content with the action's header (as the screen's heading). False when the workspace
+   * already shows it in the detail header row (`SingleToolActionHeader`, `detailHeader`).
+   */
+  withHeader: boolean;
 }) {
-  return <ToolActionContent item={item} source={source} asHeading />;
+  return <ToolActionContent item={item} source={source} withHeader={withHeader} asHeading />;
 }

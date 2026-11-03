@@ -24,6 +24,7 @@ import {
   Typography,
   cn,
   defineSecondaryStack,
+  useSecondaryDetailHeaderHosted,
   useSecondaryStack,
 } from '@nevo/ui';
 import { translateNow } from '../../../i18n/message';
@@ -45,7 +46,11 @@ import {
 import type { WorkCounts } from './workCounts';
 import { workStateTone } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
-import { SingleToolActionDetail, ToolActionTimelineItem } from './ToolActionDetails';
+import {
+  SingleToolActionDetail,
+  SingleToolActionHeader,
+  ToolActionTimelineItem,
+} from './ToolActionDetails';
 
 interface Root {
   sessionId: string;
@@ -808,7 +813,45 @@ function Work({ data }: { data: Data }) {
   );
 }
 
-function Actions({ data, params }: { data: Data; params: { workId: string; workTitle: string } }) {
+type ActionsParams = Pages['actions'];
+
+/** The Work's ToolActions, one page; shared by the `actions` screen and its declared header. */
+function useActionsQuery(data: Data, params: ActionsParams) {
+  return useQuery({
+    queryKey: ['managed-actions', data.owner, data.sessionId, params.workId],
+    queryFn: ({ signal }) => data.api.actions(data.sessionId, params.workId, undefined, signal),
+  });
+}
+
+/** The common case — one ToolAction, with no older page behind it — is shown as a single detail. */
+function isSingleAction(count: number, hasOlder: boolean) {
+  return count === 1 && !hasOlder;
+}
+
+/**
+ * The `actions` screen's `detailHeader`, shown by a split Secondary beside Back in the
+ * non-scrolling detail header row: the single ToolAction's own title and status, else (several
+ * actions) the Work they belong to. Nothing until the actions are loaded. Elsewhere (stacked,
+ * breadcrumbs) the screen shows the same identity at the top of its own content.
+ */
+function ActionsHeader({ data, params }: { data: Data; params: ActionsParams }) {
+  const { data: page } = useActionsQuery(data, params);
+  if (!page) {
+    return null;
+  }
+
+  if (isSingleAction(page.items.length, page.history.hasOlder)) {
+    return <SingleToolActionHeader item={page.items[0]!} />;
+  }
+
+  return page.items.length > 0 ? (
+    <Typography as="h2" variant="title-sm" className="text-content-primary">
+      {params.workTitle}
+    </Typography>
+  ) : null;
+}
+
+function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<ToolActionSummary[]>([]);
   const [history, setHistory] = useState<{ hasOlder: boolean; before?: string }>({
@@ -818,11 +861,10 @@ function Actions({ data, params }: { data: Data; params: { workId: string; workT
   const [olderError, setOlderError] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
+  const headerHosted = useSecondaryDetailHeaderHosted();
+  const single = isSingleAction(items.length, history.hasOlder);
 
-  const query = useQuery({
-    queryKey: ['managed-actions', data.owner, data.sessionId, params.workId],
-    queryFn: ({ signal }) => data.api.actions(data.sessionId, params.workId, undefined, signal),
-  });
+  const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
   useEffect(() => {
@@ -884,14 +926,16 @@ function Actions({ data, params }: { data: Data; params: { workId: string; workT
       <ScrollArea
         viewportRef={scroller}
         className="min-h-0 w-full flex-1"
-        contentClassName="flex min-h-full flex-col p-4"
+        // `pt-5` under the detail header row: the 20px section rhythm between it and the first section.
+        contentClassName={cn('flex min-h-full flex-col px-4 pb-4', headerHosted ? 'pt-5' : 'pt-4')}
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div className="flex w-full flex-1 flex-col gap-4">
           {/* Which Work these actions belong to — only when there are several. A single action's
               own title is the heading (`SingleToolActionDetail`), and repeating the Work title
-              above it showed the same name twice (owner: "mamy podwójny nagłówek"). */}
-          {!query.isPending && items.length > 1 && (
+              above it showed the same name twice (owner: "mamy podwójny nagłówek"). Where the
+              workspace hosts the `detailHeader` (`ActionsHeader`) beside Back, it shows either. */}
+          {!headerHosted && !query.isPending && !single && items.length > 0 && (
             <Typography as="h2" variant="title-sm" className="text-content-primary">
               {params.workTitle}
             </Typography>
@@ -923,12 +967,12 @@ function Actions({ data, params }: { data: Data; params: { workId: string; workT
               )}
               {items.length === 0 ? (
                 <EmptyState variant="pane" title={t('managedSession.workInspector.noActions')} />
-              ) : items.length === 1 ? (
+              ) : single ? (
                 // The common case — one ToolAction. No Timeline/marker rail: with nothing else on
                 // the rail to align against, that reserved column was pure indent (see
                 // `SingleToolActionDetail`'s own doc comment). Flush at the same edge as
                 // `params.workTitle` above.
-                <SingleToolActionDetail item={items[0]!} source={data} />
+                <SingleToolActionDetail item={items[0]!} source={data} withHeader={!headerHosted} />
               ) : (
                 // L3/L4 exact chronology: the generic Timeline is the right default here, unlike
                 // the Commentary-grouped L2 Work log above (session-work-inspector-ui-spec.md §2).
@@ -975,6 +1019,7 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         // The breadcrumb names the opened Work ("Read file admission.mjs"), not the page type;
         // the tab itself keeps its root's name ("Historia pracy").
         breadcrumbLabel: (params) => params.workTitle,
+        detailHeader: ActionsHeader,
         component: Actions,
       },
     },

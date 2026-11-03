@@ -918,9 +918,10 @@ export const FullConnectedScenarioContract: Story = {
       'Step 4: a push/pop inside a tab’s local stack must not resize (the resolver never sees it).',
     );
     // The tab strip owns per-tab close, so there is no panel-level close beside it. Local depth of
-    // a one-level drill is the compact back row at the top of the tab panel (`← Back: Item A`,
-    // the stack's default `localNavigation`), never a Back in the rail nor a breadcrumb trail, and
-    // the tab keeps its root's name.
+    // a one-level drill is the detail header row at the top of the tab panel (a `←` Back named
+    // "Back: Item A" followed by the screen's declared header, the stack's default
+    // `localNavigation`), never a Back in the rail nor a breadcrumb trail, and the tab keeps its
+    // root's name.
     assert(
       canvas.queryByRole('button', { name: 'Close secondary content' }) === null,
       'Step 4: with the tab strip shown, no panel-level close is rendered.',
@@ -932,31 +933,31 @@ export const FullConnectedScenarioContract: Story = {
       stepFourTabNames.includes('Item A') && !stepFourTabNames.includes('Item A detail'),
       `Step 4: the tab keeps its root name ("Item A") while its stack is deeper (got ${stepFourTabNames.join(', ')}).`,
     );
-    const stepFourTrail = canvasElement.querySelector<HTMLElement>('[data-workspace-back-row]');
+    const stepFourTrail = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-detail-header]',
+    );
     assert(
       stepFourTrail !== null &&
         stepFourTrail.closest('[role="tabpanel"]')?.firstElementChild === stepFourTrail &&
         canvasElement.querySelector('[data-workspace-breadcrumbs]') === null,
-      'Step 4: the back row (not a breadcrumb trail) is the first row of the tab panel.',
+      'Step 4: the detail header row (not a breadcrumb trail) is the first row of the tab panel.',
     );
     const stepFourBack = stepFourTrail.querySelector('button');
     assert(
-      stepFourBack?.textContent === 'Back: Item A' &&
+      stepFourBack?.getAttribute('aria-label') === 'Back: Item A' &&
+        stepFourBack.textContent === '' &&
         stepFourTrail.querySelectorAll('button').length === 1 &&
         !stepFourTrail.textContent?.includes('Item A detail') &&
         canvasElement.querySelector('[data-workspace-tab-rail] button[aria-label^="Back"]') ===
           null,
-      'Step 4: the row reads ← Back: Item A, never repeats the detail, and the rail carries no Back.',
+      'Step 4: the row is a ← named "Back: Item A", never repeats the detail, and the rail carries no Back.',
     );
     const railHeight = canvasElement
       .querySelector('[data-workspace-surface="secondary"] [data-workspace-tab-rail]')
       ?.getBoundingClientRect().height;
-    const trailHeight = stepFourTrail.getBoundingClientRect().height;
     assert(
-      railHeight !== undefined &&
-        Math.abs(railHeight - 32) <= 0.5 &&
-        Math.abs(trailHeight - 24) <= 0.5,
-      `Step 4: the compact tab rail is 32px and the back row 24px (got ${railHeight}/${trailHeight}).`,
+      railHeight !== undefined && Math.abs(railHeight - 36) <= 0.5,
+      `Step 4: the tab rail stays 36px at depth (got ${railHeight}).`,
     );
 
     // Step 5: drag the splitter -> manual wins.

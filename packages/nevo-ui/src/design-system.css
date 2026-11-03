@@ -32,6 +32,9 @@
   --color-surface-control: rgba(255, 255, 255, 0.045);
   --color-surface-hover: rgba(255, 255, 255, 0.06);
   --color-surface-selected: rgba(255, 255, 255, 0.09);
+  /* The darker tab strip behind editor tabs (ItemTabs density="rail"): the canvas at 60%, so the
+     active tab, which takes the panel's own surface, reads as joined to the content below. */
+  --color-tab-strip: rgba(10, 10, 10, 0.6);
   --color-workspace-material: rgba(255, 255, 255, 0.045);
   --color-overlay: rgba(0, 0, 0, 0.66);
 
@@ -105,13 +108,13 @@
     var(--spacing-control-height-default) + 2 * var(--spacing-shell-footer-padding)
   );
   /*
-   * Split Secondary navigation (secondary-navigation.md, "Root tabs and breadcrumbs"): a compact
-   * root-tab rail of full-height tabs, one compact control tall (32px including its divider) — and,
-   * only while a tab is deeper than its root, one breadcrumb row of an inline control (24px).
-   * Together exactly the 56px workspace header, so the breadcrumb's divider continues Primary's;
-   * at a tab root only the rail.
+   * Split Secondary navigation (secondary-navigation.md, "Root tabs and local navigation"): the
+   * root-tab rail of editor tabs, one default control tall (36px, its bottom divider included) at
+   * every depth. A deeper level adds no bar to the rail: its Back leads the detail header row at the
+   * top of the panel. The rail is deliberately not the 56px Primary header.
+   * `breadcrumb-row` only sizes the opt-in breadcrumb row (`localNavigation: 'breadcrumbs'`).
    */
-  --spacing-tab-rail: var(--spacing-control-height-compact);
+  --spacing-tab-rail: var(--spacing-control-height-default);
   --spacing-breadcrumb-row: var(--spacing-control-height-inline);
   /* Minimum interactive target: 24px on every pointer, 44px on coarse pointers (see hitAreaClassName). */
   --spacing-target-min: 1.5rem;

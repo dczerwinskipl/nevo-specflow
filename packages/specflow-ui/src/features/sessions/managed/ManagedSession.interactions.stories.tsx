@@ -540,15 +540,15 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     await expect(canvas.getByText('TASK-02')).toBeVisible();
     await expect(queryDirectTab(canvasElement, 'Document the admission guard')).toBeUndefined();
 
-    // The tab keeps its root's name; a one-level drill (Tasks -> one Task) is the compact back row
-    // at the top of the tab panel, `← Wróć do: Zadania`, never a breadcrumb trail, and it does not
-    // repeat the Task's title that heads the content right below it (secondary-navigation.md,
-    // "Root tabs and local navigation").
+    // The tab keeps its root's name; a one-level drill (Tasks -> one Task) is the detail header row
+    // at the top of the tab panel, a `←` named "Wróć do: Zadania", never a breadcrumb trail, and it
+    // does not repeat the Task's title that heads the content right below it
+    // (secondary-navigation.md, "Root tabs and local navigation").
     await expect(queryDirectTab(canvasElement, 'Zadania')).toBeDefined();
     const backRow = await waitFor(() => {
-      const row = canvasElement.querySelector<HTMLElement>('[data-workspace-back-row]');
+      const row = canvasElement.querySelector<HTMLElement>('[data-workspace-detail-header]');
       if (!row) {
-        throw new Error('Task detail inside the Tasks tab should show the back row.');
+        throw new Error('Task detail inside the Tasks tab should show the detail header row.');
       }
 
       return row;
@@ -558,7 +558,7 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     await expect(backRow.textContent).not.toContain('Document the admission guard');
     await userEvent.click(within(backRow).getByRole('button', { name: 'Wróć do: Zadania' }));
     await waitFor(() =>
-      expect(canvasElement.querySelector('[data-workspace-back-row]')).toBeNull(),
+      expect(canvasElement.querySelector('[data-workspace-detail-header]')).toBeNull(),
     );
     await expect(await canvas.findByText('Deterministic admission')).toBeVisible();
 

@@ -28,6 +28,15 @@ export interface SecondaryScreenDefinition<TData, TParams extends object> {
   breadcrumbLabel?: (params: TParams) => string;
   /** Product-only header content. The workspace renders declared actions automatically. */
   header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
+  /**
+   * Opt-in: the screen's identity (title, status) for a split Secondary with root tabs. A tab deeper
+   * than its root shows this component beside Back in the non-scrolling detail header row, instead
+   * of the screen rendering it at the top of its scrolling content. Every other layout (stacked,
+   * breadcrumbs) keeps showing the identity in the screen's own content, where
+   * `useSecondaryDetailHeaderHosted()` tells the screen whether the workspace already shows it.
+   * Separate from `header`, which stays the stacked header's content.
+   */
+  detailHeader?: ComponentType<SecondaryScreenProps<TData, TParams>>;
   /** Pure action metadata, resolved against the same live data as Header and Content. */
   actions?: (props: SecondaryScreenProps<TData, TParams>) => readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;
@@ -81,9 +90,9 @@ export interface SecondaryStackDefinition<
   tabLabel?: (rootParams: TRoot) => string;
   /**
    * How the split Secondary shows local depth while a tab of this stack (the stack the tab was
-   * opened with) is deeper than its root. `back` (default): one compact back row,
-   * `← <backToParent(parent title)>`, that returns to the direct parent; the current page names
-   * itself in its own content. `breadcrumbs`: the full trail `← Root › … › Parent › Current`, for
+   * opened with) is deeper than its root. `back` (default): the detail header row, a `←`
+   * Back control (named `backToParent(parent title)`) that returns to the direct parent, followed
+   * by the screen's `detailHeader`; a screen that declares none shows Back alone. `breadcrumbs`: the full trail `← Root › … › Parent › Current`, for
    * stacks whose every level is a place worth jumping back to (Tasks › TASK-03 › Attempt 2 ›
    * Review), not merely because a stack is deep. Stacked/mobile layouts ignore it (header Back).
    */

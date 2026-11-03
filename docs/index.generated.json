@@ -4957,6 +4957,38 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.components.secondary-tabs-redesign",
+      "type": "product",
+      "title": "Secondary tab rail and local Back — IDE-style redesign variants",
+      "status": "current",
+      "file": "docs/ideas/specflow-ui/components/secondary-tabs-redesign.md",
+      "read_when": [
+        "reviewing or choosing the redesign of the split Secondary's tab rail or its local Back",
+        "promoting the chosen variant into ItemTabs and AppWorkspace"
+      ],
+      "summary": "Decision record: the owner chose variant A (editor tabs) for the split Secondary's root-tab rail and local Back, implemented; this note keeps the three IDE-style variants that were weighed, the owner-decision history they reverse and the owner's changes to A. The normative rules live in secondary-navigation and item-tabs.",
+      "related": [
+        "design-system.implementation.react.secondary-navigation",
+        "design-system.implementation.react.item-tabs",
+        "design-system.principles.layout-and-containment",
+        "design-system.principles.information-hierarchy",
+        "ideas.specflow-ui.components.session-work-inspector"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "secondary",
+        "tabs",
+        "item-tabs",
+        "back",
+        "navigation",
+        "workspace",
+        "ide"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.components.session-chat-v10-design",
       "type": "product",
       "title": "Session Chat V10 — accepted UX direction and Workspace split behavior",

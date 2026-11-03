@@ -50,7 +50,8 @@ import {
   type DynamicSplitRatioBounds,
 } from './workspaceSizing';
 import { WorkspaceSplitter } from './WorkspaceSplitter';
-import { SecondaryBackRow } from './SecondaryBackRow';
+import { SecondaryDetailHeaderRow } from './SecondaryDetailHeaderRow';
+import { SecondaryDetailHeaderHostContext } from './secondaryDetailHeaderHost';
 import { SecondaryBreadcrumbRow } from './SecondaryBreadcrumbRow';
 import type { AppWorkspaceSurface } from './workspaceSurface';
 import {
@@ -654,6 +655,7 @@ function RuntimeSurfaceRegion({
   surfaceName,
   contentNavigation,
   headerVariant = 'header',
+  detailHeaderHosted = false,
   tabPanelId,
   tabPanelLabelledBy,
   trailingAction,
@@ -673,16 +675,19 @@ function RuntimeSurfaceRegion({
   instanceKey: string;
   leadingAction?: ReactNode;
   /**
-   * Split layout only (ignored by the stacked branch, which keeps its header Back): the breadcrumb
-   * row, rendered as the first child of the content region (the tab panel), directly under the
+   * Split layout only (ignored by the stacked branch, which keeps its header Back): the local
+   * navigation row (detail header row or breadcrumbs), rendered as the first child of the content region (the tab panel), directly under the
    * header and above the content.
    */
   contentNavigation?: ReactNode;
   /**
-   * Split layout only: `tab-rail` sizes the header row as the compact root-tab rail
-   * (`--spacing-tab-rail`, 32px) instead of the 56px workspace header.
+   * Split layout only: `tab-rail` sizes the header row as the editor-tab rail
+   * (`--spacing-tab-rail`, 36px, no padding or border of its own: the tabs draw the strip and its
+   * divider) instead of the 56px workspace header.
    */
   headerVariant?: 'header' | 'tab-rail';
+  /** The `contentNavigation` row is the detail header row, which hosts the screen's `detailHeader`. */
+  detailHeaderHosted?: boolean;
   maxWidth?: number;
   fitAvailable?: boolean;
   mobileRuntime?: MobileWorkspaceSurfaceRuntime;
@@ -759,32 +764,36 @@ function RuntimeSurfaceRegion({
       <div className="workspace-stack relative h-full min-h-0 min-w-0 overflow-clip">
         <div className="flex h-full min-h-0 flex-col" data-workspace-layer={instanceKey}>
           <SurfaceBoundary surface={surface}>
-            {showHeader ? (
+            <SecondaryDetailHeaderHostContext.Provider value={detailHeaderHosted}>
+              {showHeader ? (
+                <div
+                  className={cn(
+                    '@container flex shrink-0 items-center gap-2',
+                    headerVariant === 'tab-rail'
+                      ? 'h-tab-rail'
+                      : 'h-14 border-b border-border-subtle px-4',
+                  )}
+                  data-workspace-tab-rail={headerVariant === 'tab-rail' ? 'true' : undefined}
+                >
+                  {leadingAction}
+                  <div className="min-w-0 flex-1">{surface.header}</div>
+                  {trailingAction}
+                </div>
+              ) : null}
               <div
-                className={cn(
-                  '@container flex shrink-0 items-center gap-2 border-b border-border-subtle',
-                  headerVariant === 'tab-rail' ? 'h-tab-rail px-2' : 'h-14 px-4',
-                )}
-                data-workspace-tab-rail={headerVariant === 'tab-rail' ? 'true' : undefined}
+                aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
+                className={cn('min-h-0 flex-1 overflow-clip', contentNavigation && 'flex flex-col')}
+                id={tabPanelId}
+                role={tabPanelId ? 'tabpanel' : undefined}
               >
-                {leadingAction}
-                <div className="min-w-0 flex-1">{surface.header}</div>
-                {trailingAction}
+                {contentNavigation}
+                {contentNavigation ? (
+                  <div className="min-h-0 flex-1 overflow-clip">{surface.content}</div>
+                ) : (
+                  surface.content
+                )}
               </div>
-            ) : null}
-            <div
-              aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
-              className={cn('min-h-0 flex-1 overflow-clip', contentNavigation && 'flex flex-col')}
-              id={tabPanelId}
-              role={tabPanelId ? 'tabpanel' : undefined}
-            >
-              {contentNavigation}
-              {contentNavigation ? (
-                <div className="min-h-0 flex-1 overflow-clip">{surface.content}</div>
-              ) : (
-                surface.content
-              )}
-            </div>
+            </SecondaryDetailHeaderHostContext.Provider>
           </SurfaceBoundary>
         </div>
       </div>
@@ -1164,7 +1173,7 @@ function AppWorkspaceRoot({
   // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
   // §4.1), and on a split layout already while the pinned tab is the only one: the pinned tab
   // (Context) is a tab from the start, so opening or closing another tab never swaps a 56px header
-  // for the 32px rail under the content (owner: the screen "jumped" when Work opened). Stacked
+  // for the 36px rail under the content (owner: the screen "jumped" when Work opened). Stacked
   // layouts and a lone runtime tab without a pinned one keep `surface` unchanged — their header
   // carries the screen's own Back/Close and identity, which a one-tab rail would drop.
   const hasPinnedSecondaryTab = Boolean(secondaryTabsState?.tabs.some((tab) => !tab.closable));
@@ -1234,9 +1243,9 @@ function AppWorkspaceRoot({
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
   // Split + tab strip: local depth is one row at the top of the tab panel, never a header Back —
-  // the tab keeps its root's name in the rail. By default it is the compact back row
-  // (`SecondaryBackRow`, `← Back to <parent>`); a stack whose levels are each worth jumping to opts
-  // into the full trail (`localNavigation: 'breadcrumbs'`, `SecondaryBreadcrumbRow`). Never on a
+  // the tab keeps its root's name in the rail, whose height never changes with depth. By default
+  // it is the detail header row (`SecondaryDetailHeaderRow`: `←` Back to the parent, then the
+  // screen's declared header); a stack whose levels are each worth jumping to opts into the full trail (`localNavigation: 'breadcrumbs'`, `SecondaryBreadcrumbRow`). Never on a
   // stacked layout, which keeps its header Back (mobile has its own navigation).
   const secondaryTrail = workspace?.trail ?? [];
   const secondaryParentTitle = secondaryTrail.at(-2)?.title;
@@ -1244,6 +1253,7 @@ function AppWorkspaceRoot({
     labels.backToParent?.(parentTitle) ?? `${labels.backToPrimary}: ${parentTitle}`;
   const secondaryOnBack = secondaryPresentation?.onBack;
   let secondaryLocalNavigationRow: ReactNode;
+  let detailHeaderHosted = false;
   if (
     splitWithStrip &&
     runtimeSecondary &&
@@ -1251,8 +1261,8 @@ function AppWorkspaceRoot({
     secondaryParentTitle !== undefined &&
     secondaryOnBack
   ) {
-    secondaryLocalNavigationRow =
-      workspace.localNavigation === 'breadcrumbs' ? (
+    if (workspace.localNavigation === 'breadcrumbs') {
+      secondaryLocalNavigationRow = (
         <SecondaryBreadcrumbRow
           labels={{
             navigation: labels.secondaryBreadcrumbs?.navigation ?? 'Panel location',
@@ -1263,12 +1273,18 @@ function AppWorkspaceRoot({
           onBackTo={workspace.backTo}
           trail={secondaryTrail}
         />
-      ) : (
-        <SecondaryBackRow
-          label={backToParentLabel(secondaryParentTitle)}
-          onBack={secondaryOnBack}
-        />
       );
+    } else {
+      detailHeaderHosted = true;
+      secondaryLocalNavigationRow = (
+        <SecondaryDetailHeaderRow
+          backLabel={backToParentLabel(secondaryParentTitle)}
+          onBack={secondaryOnBack}
+        >
+          {secondaryPresentation.surface.detailHeader}
+        </SecondaryDetailHeaderRow>
+      );
+    }
   }
 
   const hideClose = state.mode === 'stacked' && stackedSecondaryClose === 'hide';
@@ -1382,6 +1398,7 @@ function AppWorkspaceRoot({
         leadingAction={secondaryBackAction}
         contentNavigation={secondaryLocalNavigationRow}
         headerVariant={splitWithStrip ? 'tab-rail' : 'header'}
+        detailHeaderHosted={detailHeaderHosted}
         fitAvailable={fit === 'available'}
         maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}
         mobileRuntime={state.mode === 'stacked' ? mobileRuntime.secondary : undefined}

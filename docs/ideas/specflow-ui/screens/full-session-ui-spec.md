@@ -422,14 +422,24 @@ Narrow:
 
 ### Context/detail drill-down
 
-Context pinned home -> select “Tasks” => activate/open Tasks root tab -> select TASK-03 =>
-push Task detail into the Tasks stack -> select rejected attempt => push attempt detail ->
-Back returns to TASK-03. Tab switching preserves each stack and current split geometry.
+A root tab is identified by the object it shows. Context pinned home -> select a Task (the
+current-execution row, an Attention reference, or the single related Task) => open that Task's own
+root tab, labelled with its key (TASK-03); selecting a Task that is already open activates its tab,
+never a second one and never another Task's. The Related Tasks summary with several Tasks opens the
+Tasks list tab; selecting a Task there opens that Task's own tab beside the list. Inside a Task tab,
+select a rejected attempt => push attempt detail on that tab's local stack -> Back returns to
+TASK-03. Tab switching preserves each stack and current split geometry, and each tab's scroll.
+Switching away from a tab with unsaved work asks that tab first (its leave guard).
+
+On Narrow there are no tabs: the same selections push onto the Context flow, and Back follows the
+path the user took, a repeated selection pushing again.
 
 ### Work drill-down
 
-Click a compact Work burst in Conversation -> open/reselect Work tab -> ToolAction
-detail is pushed in its local stack -> Back to Work.
+Click a compact Work burst in Conversation -> open/reselect the Work history tab of that Turn (one
+tab per Turn, labelled "Work history · turn N"); Context's "Work history" row for the same Turn
+lands on the same tab, another Turn on its own. ToolAction detail is pushed in the tab's local
+stack -> Back to Work.
 
 ### Future File
 

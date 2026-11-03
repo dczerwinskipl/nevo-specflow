@@ -51,6 +51,7 @@ import { WorkspaceLayoutContext, type WorkspaceLayout } from './useWorkspaceLayo
 import { SecondaryDetailHeaderRow } from './SecondaryDetailHeaderRow';
 import { SecondaryDetailHeaderHostContext } from './secondaryDetailHeaderHost';
 import { SecondaryBreadcrumbRow } from './SecondaryBreadcrumbRow';
+import { secondaryScrollKey, useSecondaryScrollMemory } from './secondaryScrollMemory';
 import type { AppWorkspaceSurface } from './workspaceSurface';
 import {
   useMobileWorkspaceTransition,
@@ -604,6 +605,7 @@ function RuntimeSurfaceRegion({
   detailHeaderHosted = false,
   tabPanelId,
   tabPanelLabelledBy,
+  scrollMemoryKey,
   trailingAction,
   surfaceRef,
   tabIndex,
@@ -657,12 +659,20 @@ function RuntimeSurfaceRegion({
    */
   tabPanelId?: string;
   tabPanelLabelledBy?: string;
+  /**
+   * Split layout, Secondary only: `(tab id, stack entry)` identity under which the workspace
+   * remembers the scroll offsets inside this tab panel and restores them when the entry is shown
+   * again (see `secondaryScrollMemory.ts`). Stacked layouts keep their own scroll reset.
+   */
+  scrollMemoryKey?: string;
   trailingAction?: ReactNode;
   surfaceRef?: Ref<HTMLDivElement>;
   tabIndex?: number;
 }) {
   const showHeader =
     surface.header !== undefined || leadingAction !== undefined || trailingAction !== undefined;
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSecondaryScrollMemory(panelRef, stackedVisual ? undefined : scrollMemoryKey);
 
   if (stackedVisual) {
     if (!mobileRuntime?.mounted) {
@@ -684,6 +694,8 @@ function RuntimeSurfaceRegion({
         surface={surface}
         surfaceRef={surfaceRef}
         tabIndex={tabIndex}
+        tabPanelId={tabPanelId}
+        tabPanelLabelledBy={tabPanelLabelledBy}
         trailingAction={trailingAction}
       />
     );
@@ -730,6 +742,7 @@ function RuntimeSurfaceRegion({
                 aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
                 className={cn('min-h-0 flex-1 overflow-clip', contentNavigation && 'flex flex-col')}
                 id={tabPanelId}
+                ref={panelRef}
                 role={tabPanelId ? 'tabpanel' : undefined}
               >
                 {contentNavigation}
@@ -760,6 +773,8 @@ function MobileRuntimeSurfaceRegion({
   surface,
   surfaceRef,
   tabIndex,
+  tabPanelId,
+  tabPanelLabelledBy,
   trailingAction,
 }: {
   contentOwnsScroll?: boolean;
@@ -774,6 +789,9 @@ function MobileRuntimeSurfaceRegion({
   surface: AppWorkspaceSurface;
   surfaceRef?: Ref<HTMLDivElement>;
   tabIndex?: number;
+  /** Set while the root-tab strip is shown: the content wrapper is the active tab's `tabpanel`. */
+  tabPanelId?: string;
+  tabPanelLabelledBy?: string;
   trailingAction?: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -950,10 +968,13 @@ function MobileRuntimeSurfaceRegion({
                 </div>
               ) : null}
               <div
+                aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
                 className={cn(
                   workspaceSurfaceClassName,
                   'min-h-0 flex-1 overflow-clip rounded-t-surface border border-b-0 border-workspace-edge',
                 )}
+                id={tabPanelId}
+                role={tabPanelId ? 'tabpanel' : undefined}
               >
                 {surface.content}
               </div>
@@ -997,7 +1018,14 @@ function MobileRuntimeSurfaceRegion({
                       ref={setSheetElement}
                     >
                       <AppContentScrollProvider>
-                        <div className="min-h-full">{surface.content}</div>
+                        <div
+                          aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
+                          className="min-h-full"
+                          id={tabPanelId}
+                          role={tabPanelId ? 'tabpanel' : undefined}
+                        >
+                          {surface.content}
+                        </div>
                       </AppContentScrollProvider>
                     </div>
                   </div>
@@ -1136,6 +1164,11 @@ function AppWorkspaceRoot({
     showSecondaryTabStrip && shownSecondaryTabId
       ? getItemTabId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
       : undefined;
+  // The shown Secondary's scroll identity: the shown tab and the stack entry on top of it (the
+  // declarative pinned surface has no stack, so its one entry is `root`).
+  const secondaryScrollMemoryKey = shownSecondaryTabId
+    ? secondaryScrollKey(shownSecondaryTabId, runtimeSecondary?.instanceKey ?? 'root')
+    : undefined;
   const secondaryPresentation: WorkspaceSecondaryPresentation | undefined =
     secondaryPresentationBase && showSecondaryTabStrip && workspace && secondaryTabsState
       ? {
@@ -1371,6 +1404,7 @@ function AppWorkspaceRoot({
         tabIndex={state.mode === 'stacked' ? -1 : undefined}
         tabPanelId={secondaryTabPanelId}
         tabPanelLabelledBy={secondaryTabPanelLabelledBy}
+        scrollMemoryKey={secondaryScrollMemoryKey}
         trailingAction={secondaryCloseAction}
       />
     ) : null;

@@ -82,7 +82,7 @@ async function verifyContextReopens(canvasElement: HTMLElement) {
   }
 
   await userEvent.click(historyRow);
-  const historyTab = () => canvas.queryByRole('tab', { name: 'Historia pracy' });
+  const historyTab = () => canvas.queryByRole('tab', { name: /^Historia pracy/ });
   await waitFor(() => expect(historyTab()).toBeVisible());
   await userEvent.click(toggle);
   await waitFor(() => expect(canvas.queryByRole('tablist')).not.toBeInTheDocument());

@@ -338,10 +338,46 @@ function secondaryRegionOf(canvasElement: HTMLElement) {
  * Context remounts `SessionTelemetrySection`'s `Progress`/`Collapsible` instances, so React hands
  * out fresh ids the second time even though the DOM is otherwise byte-for-byte the same. Comparing
  * raw `outerHTML` without normalizing them made this "back to baseline" check fail on every run,
- * regardless of any actual regression.
+ * regardless of any actual regression. The scroll area's `data-edge-*` flags are likewise
+ * measurements (whether content overflows each edge when last observed), not structure: they
+ * follow layout timing and flipped this comparison on a loaded machine.
  */
 function normalizeAutoIds(html: string) {
-  return html.replace(/\b(id|aria-labelledby|aria-controls|aria-describedby)="[^"]*"/g, '$1="_"');
+  return html
+    .replace(/\b(id|aria-labelledby|aria-controls|aria-describedby)="[^"]*"/g, '$1="_"')
+    .replace(/\bdata-edge-(top|bottom|left|right)="[^"]*"/g, 'data-edge-$1="_"');
+}
+
+/** The markup with attributes in a fixed order, so two equal trees read as equal strings. */
+function canonicalMarkup(html: string) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const write = (node: Node): string => {
+    if (node instanceof Element) {
+      const attributes = [...node.attributes]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((attribute) => ` ${attribute.name}="${attribute.value}"`)
+        .join('');
+
+      return `<${node.localName}${attributes}>${[...node.childNodes].map(write).join('')}</${node.localName}>`;
+    }
+
+    return node.textContent ?? '';
+  };
+
+  return [...template.content.childNodes].map(write).join('');
+}
+
+/** Where two markup strings first differ, for a failure message that names the difference. */
+function firstMarkupDifference(a: string, b: string) {
+  const left = canonicalMarkup(a);
+  const right = canonicalMarkup(b);
+  let index = 0;
+  while (index < left.length && left[index] === right[index]) {
+    index += 1;
+  }
+
+  return `at ${index}: "${left.slice(Math.max(0, index - 120), index + 160)}" vs "${right.slice(Math.max(0, index - 120), index + 160)}"`;
 }
 
 /** The same elements, attributes, values and text, in any attribute order (`isEqualNode`). */
@@ -445,43 +481,27 @@ async function closeRootTab(canvasElement: HTMLElement, label: string) {
   await userEvent.click(row);
 }
 
-/** How many root tabs the strip shows directly (the pinned Context alone is already one). */
-function directTabCount(canvasElement: HTMLElement) {
-  return secondaryRegionOf(canvasElement).querySelectorAll('[role="tab"]').length;
-}
-
-function hasRootTabStrip(canvasElement: HTMLElement) {
-  const secondary = secondaryRegionOf(canvasElement);
-
-  return (
-    secondary.querySelector('[role="tab"]') !== null ||
-    secondary.querySelector('[aria-haspopup="menu"]') !== null
+/** The labels of the Secondary's root tabs (the strip is wide enough for all of them at 1440). */
+function rootTabLabels(canvasElement: HTMLElement) {
+  return [...secondaryRegionOf(canvasElement).querySelectorAll('[role="tab"]')].map(
+    (tab) => tab.querySelector('.sr-only')?.textContent,
   );
 }
 
+function selectedRootTabLabel(canvasElement: HTMLElement) {
+  return secondaryRegionOf(canvasElement).querySelector(
+    '[role="tab"][aria-selected="true"] .sr-only',
+  )?.textContent;
+}
+
 /**
- * Corrected per full-session-screen-structure.md §7.4/§10.1 — read in full before touching this
- * story again: "Its concise, clickable content summaries open/reselect root tabs such as
- * Tasks... A Task selection from a Tasks tab pushes Task detail onto that tab's local stack... Do
- * not spawn an independent tab for a task-bound event and lose provenance", and §10.1's own
- * "Work -> ToolAction stays inside the Work tab" example (the tab's identity never renames itself
- * to whichever detail is open inside it).
- *
- * Previously named `RelatedTaskOpensAsIndependentTab` and asserted the OPPOSITE of the above — a
- * confirmed bug (`SessionContext`'s `openRelatedTask` used to call `navigation.openTab` with a
- * per-Task `instanceId`, giving each related Task its own independent tab and losing its
- * Tasks-tab provenance). Renamed to match the corrected behavior:
- * Context open (pinned tab, no strip visible) -> click the Related Tasks summary row (this
- * fixture has 2 related Tasks, so it opens the ONE Tasks tab on its list, not a direct Task) ->
- * strip appears with 2 tabs (Context pinned/non-closable, Tasks closable) -> select a Task from
- * the list -> Task detail is now the Tasks tab's own content (pushed onto its local stack,
- * `stack.navTo('task', ...)` in `SessionTasksInspector.tsx`'s `TaskList`) — still exactly 2 tabs,
- * no third one appears for the Task -> click back to the Context tab via the strip -> Context
- * still shown with its state intact -> close the Tasks tab -> strip disappears, back to a
- * single-pinned-tab baseline that is DOM-identical to before (W03's own regression-check
- * standard, `verifyContextReopens`'s sibling check in the `States` group).
+ * Root tab identity is the object (full-session-screen-structure.md §7.4/§10.1): the Related Tasks
+ * summary (2 Tasks) opens the Tasks LIST tab "Zadania"; selecting a Task there opens that Task as
+ * its own tab named by its key, beside the list; a Task already open is activated, never
+ * duplicated. Context stays the pinned, non-closable first tab throughout, and closing the opened
+ * tabs returns the Secondary to the DOM-identical single-pinned-tab baseline.
  */
-export const RelatedTaskPushesOntoSharedTasksTab: Story = {
+export const RelatedTasksListOpensTaskTabs: Story = {
   tags: ['integration'],
   args: {
     owner: 'full-session-story',
@@ -495,89 +515,121 @@ export const RelatedTaskPushesOntoSharedTasksTab: Story = {
     // Baseline: Context is the single pinned tab — on a split layout already the one tab of the
     // rail, so opening another tab never changes the header height under the content.
     await expect(await canvas.findByText('Powiązane zadania')).toBeVisible();
-    await waitFor(() => expect(directTabCount(canvasElement)).toBe(1));
-    await expect(queryDirectTab(canvasElement, 'Kontekst')).toBeDefined();
+    await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst']));
     const secondaryRegion = () =>
       canvasElement.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
     const baselineSecondaryHTML = normalizeAutoIds(secondaryRegion()?.outerHTML ?? '');
     await expect(baselineSecondaryHTML).toBeTruthy();
 
-    // Click the Related Tasks summary row — this fixture has 2 related Tasks (TASK-02, TASK-03),
-    // so it opens the shared Tasks tab on its list (`openRelatedTasksEntry`'s >1 branch), not a
-    // direct per-Task tab.
+    // The Related Tasks summary row (2 Tasks) opens the list tab, not a Task.
     const relatedTasksRow = canvas.getByText('2 zadania').closest('button');
     if (!relatedTasksRow) {
       throw new Error('The Related Tasks summary row should render as a button.');
     }
 
     await userEvent.click(relatedTasksRow);
-
-    await waitFor(() => expect(hasRootTabStrip(canvasElement)).toBe(true));
-    await waitFor(() => expect(directTabCount(canvasElement)).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'Zadania']));
+    await expect(selectedRootTabLabel(canvasElement)).toBe('Zadania');
     await expect(canvas.queryByText('Powiązane zadania')).not.toBeInTheDocument();
-    await expect(await canvas.findByText('Document the admission guard')).toBeVisible();
-    await expect(canvas.getByText('Deterministic admission')).toBeVisible();
+    await expect(await canvas.findByText('Deterministic admission')).toBeVisible();
 
-    // Select TASK-02 from the list: Task detail becomes this SAME tab's content — the core
-    // correction. No independent "TASK-02 ..." tab appears alongside it.
-    // `findByText` above only guarantees the text node is in the document, not that the row's
-    // interactive `<button>` wrapper has finished its own render pass — wait for it explicitly
-    // instead of asserting synchronously right after, which raced on a cold run.
-    const taskRow = await waitFor(() => {
-      const row = canvas.getByText('Document the admission guard').closest('button');
-      if (!row) {
-        throw new Error('The Task row inside the Tasks tab should render as a button.');
-      }
+    // A Task row of the list opens that Task's own tab; the list tab stays as it was.
+    // `findByText` only guarantees the text node exists, not that the row's interactive `<button>`
+    // wrapper finished its render pass — wait for the button itself.
+    const taskRow = (title: string) =>
+      waitFor(() => {
+        const row = canvas.getByText(title).closest('button');
+        if (!row) {
+          throw new Error(`The "${title}" row should render as a button.`);
+        }
 
-      return row;
-    });
-
-    await userEvent.click(taskRow);
-
+        return row;
+      });
+    await userEvent.click(await taskRow('Document the admission guard'));
+    await waitFor(() =>
+      expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'Zadania', 'TASK-02']),
+    );
+    await expect(selectedRootTabLabel(canvasElement)).toBe('TASK-02');
     await expect(
       await canvas.findByRole('heading', { name: 'Document the admission guard' }),
     ).toBeVisible();
-    await expect(canvas.getByText('TASK-02')).toBeVisible();
-    await expect(queryDirectTab(canvasElement, 'Document the admission guard')).toBeUndefined();
+    // A root tab is its own surface: nothing to go back to, so no detail header row either.
+    await expect(canvasElement.querySelector('[data-workspace-detail-header]')).toBeNull();
 
-    // The tab keeps its root's name; a one-level drill (Tasks -> one Task) is the detail header row
-    // at the top of the tab panel, a `←` named "Wróć do: Zadania", never a breadcrumb trail, and it
-    // does not repeat the Task's title that heads the content right below it
-    // (secondary-navigation.md, "Root tabs and local navigation").
-    await expect(queryDirectTab(canvasElement, 'Zadania')).toBeDefined();
-    const backRow = await waitFor(() => {
-      const row = canvasElement.querySelector<HTMLElement>('[data-workspace-detail-header]');
-      if (!row) {
-        throw new Error('Task detail inside the Tasks tab should show the detail header row.');
-      }
-
-      return row;
-    });
-    await expect(canvasElement.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
-    await expect(backRow.closest('[role="tabpanel"]')?.firstElementChild).toBe(backRow);
-    await expect(backRow.textContent).not.toContain('Document the admission guard');
-    await userEvent.click(within(backRow).getByRole('button', { name: 'Wróć do: Zadania' }));
+    // Back in the list, another Task gets its own, distinctly labelled tab.
+    await activateRootTab(canvasElement, 'Zadania');
+    await userEvent.click(await taskRow('Deterministic admission'));
     await waitFor(() =>
-      expect(canvasElement.querySelector('[data-workspace-detail-header]')).toBeNull(),
+      expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'Zadania', 'TASK-02', 'TASK-03']),
     );
-    await expect(await canvas.findByText('Deterministic admission')).toBeVisible();
+    await expect(selectedRootTabLabel(canvasElement)).toBe('TASK-03');
+    await expect(
+      await canvas.findByRole('heading', { name: 'Deterministic admission' }),
+    ).toBeVisible();
 
-    // Click back to the Context tab via the strip (asserting it has no close control along the
-    // way — the pinned tab, contract §3): Context is shown again with its state intact.
+    // The first Task again: its tab is activated and still shows that Task, not the last one.
+    await activateRootTab(canvasElement, 'Zadania');
+    await userEvent.click(await taskRow('Document the admission guard'));
+    await waitFor(() => expect(selectedRootTabLabel(canvasElement)).toBe('TASK-02'));
+    await expect(rootTabLabels(canvasElement)).toEqual([
+      'Kontekst',
+      'Zadania',
+      'TASK-02',
+      'TASK-03',
+    ]);
+    await expect(
+      await canvas.findByRole('heading', { name: 'Document the admission guard' }),
+    ).toBeVisible();
+
+    // Context is pinned (no close control) and shows again with its state intact.
     await activateRootTab(canvasElement, 'Kontekst', true);
     await waitFor(() => expect(canvas.getByText('Powiązane zadania')).toBeVisible());
 
-    // Close the Tasks tab — labelled "Zadania" throughout (never renamed to the Task that was open
-    // inside it, per §10.1's "Work -> ToolAction stays inside the Work tab" rule) — and the rail is
-    // back to the single-pinned-tab baseline.
+    // Closing every opened tab returns to the single-pinned-tab baseline, DOM-identical.
+    await closeRootTab(canvasElement, 'TASK-03');
+    await closeRootTab(canvasElement, 'TASK-02');
     await closeRootTab(canvasElement, 'Zadania');
-    await waitFor(() => expect(directTabCount(canvasElement)).toBe(1));
+    await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst']));
     // Attribute ORDER is not part of the contract: the first render adds the tab panel's
     // `aria-labelledby` after its other attributes, a remount writes them in source order.
-    await waitFor(() =>
-      expect(
-        sameMarkup(normalizeAutoIds(secondaryRegion()?.outerHTML ?? ''), baselineSecondaryHTML),
-      ).toBe(true),
-    );
+    await waitFor(() => {
+      const current = normalizeAutoIds(secondaryRegion()?.outerHTML ?? '');
+      if (!sameMarkup(current, baselineSecondaryHTML)) {
+        throw new Error(
+          `The Secondary differs from its baseline ${firstMarkupDifference(baselineSecondaryHTML, current)}`,
+        );
+      }
+    });
+  },
+};
+
+/**
+ * Attachments are UI-only (session-composer-design.md §5): Send must not clear them, which would
+ * imply they were delivered, and the "local mock" note stays under the chips while any exist.
+ */
+export const AttachmentsStayAfterSend: Story = {
+  tags: ['contract'],
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const message = await canvas.findByLabelText('Wiadomość');
+    await expect(message).toBeEnabled();
+    const input = canvasElement.querySelector<HTMLInputElement>(
+      'input[type="file"]:not([accept])',
+    )!;
+    await userEvent.upload(input, new File(['x'], 'notes.txt', { type: 'text/plain' }));
+
+    const chips = await canvas.findByLabelText('Załączniki');
+    await expect(within(chips).getByText('notes.txt')).toBeVisible();
+    const note = canvas.getByRole('note');
+    await expect(note).toHaveTextContent('Makieta lokalna');
+
+    await userEvent.type(message, 'Wyślij to');
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await waitFor(() => expect(message).toHaveValue(''));
+
+    // Still there, with its note: nothing pretends the file was sent.
+    await expect(within(canvas.getByLabelText('Załączniki')).getByText('notes.txt')).toBeVisible();
+    await expect(canvas.getByRole('note')).toHaveTextContent('Makieta lokalna');
   },
 };

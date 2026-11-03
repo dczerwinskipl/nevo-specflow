@@ -1606,6 +1606,7 @@
     "empty": "Start a conversation.",
     "inspect": "Inspect Work",
     "work": "Work history",
+    "workTab": "Work history · turn {{number}}",
     "closeWork": "Close Work",
     "ready": "Ready",
     "busy": "Working",

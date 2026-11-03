@@ -11,7 +11,7 @@ import { Environment, WIDE_VIEWPORT } from './managedSession.storyHelpers.storie
  * The composed Session screen's Work history -> ToolAction drill on the real `ManagedSession`
  * (secondary-navigation.md "Root tabs and local navigation"; session-work-inspector-ui-spec.md
  * §9.1): Context is already the one tab of the split rail, so opening Work history moves nothing;
- * a ToolAction detail gets the detail header row (a `←` named "Wróć do: Historia pracy" followed by
+ * a ToolAction detail gets the detail header row (a `←` named "Wróć do: Historia pracy · tura 3" followed by
  * the action's own title + status line, shown once), never a breadcrumb trail, with the 36px rail
  * unmoved and the sections 20px apart; pretty-printed JSON
  * parameters are numbered while the Read tool's own `cat -n` output is shown verbatim without a
@@ -61,6 +61,9 @@ function railGeometry(canvasElement: HTMLElement) {
   };
 }
 
+/** The third Turn's Work history tab: one tab per Turn, named by the Turn's position. */
+const WORK_TAB = 'Historia pracy · tura 3';
+
 const tabLabels = (canvasElement: HTMLElement) =>
   [...secondary(canvasElement).querySelectorAll('[role="tab"]')].map(
     (tab) => tab.querySelector('.sr-only')?.textContent,
@@ -109,7 +112,7 @@ export const WorkHistoryToolActionDetail: Story = {
 
     // Opening Work history adds a tab; the rail and the content start do not move.
     await openTurnWork(canvasElement, 2);
-    await waitFor(() => expect(tabLabels(canvasElement)).toEqual(['Kontekst', 'Historia pracy']));
+    await waitFor(() => expect(tabLabels(canvasElement)).toEqual(['Kontekst', WORK_TAB]));
     const after = railGeometry(canvasElement);
     await expect(after).toEqual(before);
 
@@ -120,7 +123,7 @@ export const WorkHistoryToolActionDetail: Story = {
     const detailRow = region.querySelector<HTMLElement>('[data-workspace-detail-header]')!;
     await expect(detailRow).not.toBeNull();
     await expect(region.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
-    const backButton = within(detailRow).getByRole('button', { name: 'Wróć do: Historia pracy' });
+    const backButton = within(detailRow).getByRole('button', { name: `Wróć do: ${WORK_TAB}` });
     await expect(backButton.textContent).toBe('');
     await expect(detailRow.parentElement?.firstElementChild).toBe(detailRow);
     await expect(detailRow.closest('.scroll-area-viewport')).toBeNull();
@@ -131,7 +134,7 @@ export const WorkHistoryToolActionDetail: Story = {
     await expect(title.getBoundingClientRect().left).toBeGreaterThanOrEqual(
       backButton.getBoundingClientRect().right - 0.5,
     );
-    await expect(tabLabels(canvasElement)).toEqual(['Kontekst', 'Historia pracy']);
+    await expect(tabLabels(canvasElement)).toEqual(['Kontekst', WORK_TAB]);
     await expect(railGeometry(canvasElement)).toEqual(before);
     await expect(
       within(region).getAllByText('Read file package.json', { exact: true }),
@@ -177,7 +180,7 @@ export const WorkHistoryToolActionDetail: Story = {
     await waitFor(() =>
       expect(secondary(canvasElement).querySelector('[data-workspace-detail-header]')).toBeNull(),
     );
-    await expect(tabLabels(canvasElement)).toEqual(['Kontekst', 'Historia pracy']);
+    await expect(tabLabels(canvasElement)).toEqual(['Kontekst', WORK_TAB]);
     await expect(railGeometry(canvasElement)).toEqual(before);
   },
 };

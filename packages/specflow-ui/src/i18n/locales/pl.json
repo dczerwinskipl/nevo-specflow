@@ -1606,6 +1606,7 @@
     "empty": "Rozpocznij rozmowę.",
     "inspect": "Zobacz pracę",
     "work": "Historia pracy",
+    "workTab": "Historia pracy · tura {{number}}",
     "closeWork": "Zamknij pracę",
     "ready": "Gotowa",
     "busy": "Praca trwa",

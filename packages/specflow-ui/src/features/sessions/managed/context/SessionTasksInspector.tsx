@@ -7,39 +7,32 @@ import {
   InformationList,
   Typography,
   defineSecondaryStack,
+  useSecondaryNavigation,
   useSecondaryStack,
+  type SecondaryStackDefinition,
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
 import { OperationalRow } from '../../../../shared/operational-list';
 import type { SessionContextTaskRef } from './sessionContextTypes';
 
 /**
- * Tasks root tab opened from Session Context (full-session-screen-structure.md §7.4/§10.1):
- * "Context... open/reselect root tabs such as Tasks... A Task selection from a Tasks tab pushes
- * Task detail onto that tab's local stack... Do not spawn an independent tab for a task-bound
- * event and lose provenance."
+ * Task root tabs opened from Session Context (full-session-screen-structure.md §7.4/§10.1): a root
+ * tab is an independently revisitable working surface, and its identity is the OBJECT it shows.
  *
- * `tasksStack` and `taskDeepLinkStack` below share one `id` (`managed-session-tasks`) and neither
- * sets `instanceId`, so `useSecondaryNavigation().openTab` always resolves them to the SAME
- * Secondary tab regardless of which Task opened it — there is exactly one "Tasks" root tab, never
- * one per Task (the bug a prior pass of this file had: a per-Task `instanceId` gave each related
- * Task its own independent tab, confirmed by `ManagedSession.interactions.stories.tsx`'s
- * `RelatedTaskOpensAsIndependentTab`, which needs rewriting to match this correction).
- * `taskDeepLinkStack` only changes `initial`/`tabLabel`, so opening it when the tab does not exist
- * yet starts that one tab straight on Task detail; `stack.navTo('task', ...)` from inside the
- * already-open list (below) pushes detail onto that SAME tab's own local stack, matching §7.4
- * exactly. If the tab is already open on a different Task, `openTab` documents that it activates
- * the existing tab untouched rather than retargeting it — an honest limitation of the shared
- * primitive, not a new one introduced here (see `SessionContext.tsx`'s `openTask`).
- *
- * `AppWorkspace` does not yet support several independent root tabs open at once beside the
- * pinned Context tab (design-system-component-composition-gaps.md §5.4) — that shared split/tab
- * capability is a separate, parallel design-system track. Today this composition reuses the real
- * default-Secondary + runtime-stack mechanism already used by `WorkInspector`:
- * opening Tasks temporarily replaces Context in the one Secondary, and Back/Close returns to the
- * default Context. That already gives the required V1 semantics (an independently revisitable
- * Task list with its own local stack; Back walks Task -> list -> Context) and should switch to the
- * shared tab-bar primitive, unchanged in information architecture, once that capability lands.
+ * - `taskStack` is one root tab PER TASK (`instanceId` = the task id, label = the Task key, e.g.
+ *   "TASK-03"). Opening a Task from anywhere (the current-execution row, an Attention reference, a
+ *   single Related Task, or the Tasks list below) calls `openTab` with that Task: a tab already
+ *   open for it is activated untouched, otherwise a new tab opens. A tab is never retargeted to
+ *   another Task, so selecting Task B can no longer show Task A.
+ * - `tasksStack` is the LIST tab ("Zadania", one per Session, reached from a Related Tasks summary
+ *   with more than one entry). Selecting a Task in it opens that Task's own tab (rule above), so the
+ *   same Task is never both a tab and a page inside the list.
+ * - On the narrow runtime Context flow there are no tabs (Context passes its own `navTo` as
+ *   `openStack`, and `Root.inFlow` is set): the list and a Task are plain pushes onto that flow, and
+ *   Back follows the path the user took, duplicates included (Context -> Task A -> Back -> Context
+ *   -> Task A pushes again).
+ * - Within a Task tab, deeper levels (attempt, review, feedback) push onto that tab's local stack
+ *   (`localNavigation` decides how depth shows), keeping their Task provenance.
  *
  * Task data is a product-owned mock (`SessionContextTaskRef`), not a Runtime read — the managed
  * Session contract has no Task association yet (see the Full Session UX report). `TaskDetail`
@@ -49,11 +42,15 @@ import type { SessionContextTaskRef } from './sessionContextTypes';
 
 interface Root {
   sessionId: string;
-  /** Present only when opening directly onto Task detail (source-aware direct inspection). */
+  /** The Task a Task tab is about; absent for the list. */
   taskId?: string;
+  /** Opened as a push onto another flow (the narrow Context flow): no tabs, Back follows the path. */
+  inFlow?: boolean;
 }
 interface Data extends Root {
   tasks: SessionContextTaskRef[];
+  /** The per-Task tab definition, so the list can open a Task's own tab. */
+  taskStack: SecondaryStackDefinition<Root, Data, Pages>;
 }
 interface Pages {
   tasks: Record<string, never>;
@@ -63,6 +60,13 @@ interface Pages {
 function TaskList({ data }: { data: Data }) {
   const { t } = useTranslation();
   const stack = useSecondaryStack<Pages>();
+  const navigation = useSecondaryNavigation();
+  // A Task opens as its own root tab, except inside another flow (narrow Context), where it is a
+  // push so Back returns along the path.
+  const openTask = (task: SessionContextTaskRef) =>
+    data.inFlow
+      ? void stack.navTo('task', { taskId: task.id })
+      : void navigation.openTab(data.taskStack, { sessionId: data.sessionId, taskId: task.id });
 
   if (!data.tasks.length) {
     return (
@@ -89,7 +93,7 @@ function TaskList({ data }: { data: Data }) {
                 leading={<Icon name="list-checks" size="sm" className="text-content-muted" />}
                 primary={task.title}
                 compactFacts={[{ text: task.key, mono: true }]}
-                onPrimaryClick={() => void stack.navTo('task', { taskId: task.id })}
+                onPrimaryClick={() => openTask(task)}
                 trailing={
                   <Icon
                     name="chevron-right"
@@ -146,22 +150,10 @@ function TaskDetail({ data, params }: { data: Data; params: { taskId?: string } 
 }
 
 /**
- * One Tasks root tab (full-session-screen-structure.md §7.4/§10.1 — see the module comment
- * above) over the same two screens: `tasksStack` opens/reselects it on the list, and
- * `taskDeepLinkStack` opens/reselects the SAME tab (identical `id`, no `instanceId` on either)
- * starting straight on a specific Task's detail — used when Context already knows which single
- * Task is relevant (the current-execution Task, or a Related Tasks summary with exactly one
- * entry) so the user is not forced through the list first. Both are the same tab, never two.
- *
- * Both share one stable `tabLabel` ("Tasks"), not a per-Task name: §10.1's own "Work -> ToolAction
- * stays inside the Work tab" example keeps the WORK tab labelled "Work" throughout its drill-down,
- * never renamed to the open ToolAction, and the Tasks tab follows the same rule — its identity is
- * the tab (Tasks), the open Task is the tab's CONTENT (`TaskDetail`'s own heading already names
- * it). A per-Task `tabLabel` would only be correct for the instant this tab is first created; once
- * the user navigates inside it (`stack.navTo('task', ...)` from the list, or Back to the list),
- * the active screen's own static per-page title would show through instead (`screens.task.title`,
- * the generic "Task") and the tab name would flip depending on navigation depth rather than naming
- * the tab itself — the exact inconsistency a per-Task label was originally meant to avoid.
+ * The two Task stacks over the same two screens (see the module comment): `tasksStack` is the list
+ * tab, `taskStack` is one tab per Task. The Task tab is named after its Task KEY at any depth (a
+ * tab never renames itself to the detail open inside it, §10.1's "Work -> ToolAction stays inside
+ * the Work tab"), which also tells two open Task tabs apart; the list tab keeps "Zadania".
  */
 export function createSessionTasksInspector(tasks: SessionContextTaskRef[]) {
   const screens = {
@@ -176,24 +168,37 @@ export function createSessionTasksInspector(tasks: SessionContextTaskRef[]) {
         return translateNow('sessions.context.taskTitle');
       },
       // The breadcrumb segment names the opened Task (`Zadania › Document the admission guard`);
-      // the tab keeps its root's name ("Tasks").
+      // the tab keeps its root's name.
       breadcrumbLabel: (params: { taskId?: string }) =>
         tasks.find((task) => task.id === params.taskId)?.title ??
         translateNow('sessions.context.taskTitle'),
       component: TaskDetail,
     },
   };
-  const tasksStack = defineSecondaryStack<Root, Data, Pages>({
+  const tasksStack: SecondaryStackDefinition<Root, Data, Pages> = defineSecondaryStack<
+    Root,
+    Data,
+    Pages
+  >({
     id: 'managed-session-tasks',
     initial: 'tasks',
     tabLabel: () => translateNow('sessions.context.tasksTitle'),
-    useData: (params) => ({ status: 'ready', data: { ...params, tasks } }),
+    useData: (params) => ({ status: 'ready', data: { ...params, tasks, taskStack } }),
     screens,
   });
-  const taskDeepLinkStack = defineSecondaryStack<Root, Data, Pages>({
+  const taskStack: SecondaryStackDefinition<Root, Data, Pages> = defineSecondaryStack<
+    Root,
+    Data,
+    Pages
+  >({
     ...tasksStack,
+    id: 'managed-session-task',
     initial: 'task',
+    instanceId: (params) => params.taskId ?? '',
+    tabLabel: (params) =>
+      tasks.find((task) => task.id === params.taskId)?.key ??
+      translateNow('sessions.context.taskTitle'),
   });
 
-  return { tasksStack, taskDeepLinkStack };
+  return { tasksStack, taskStack };
 }

@@ -499,18 +499,31 @@ a second horizontal set of section buttons or repeat the full section lists in a
 Its concise, clickable content summaries open/reselect **root tabs** such as Tasks, Files/Changes,
 History, Handovers, Artifacts, Instructions or Environment when useful.
 
-A Task selection from a Tasks tab pushes Task detail onto **that tab's local stack**.
-An attempt, review event, rejection and feedback opened from that Task push deeper on the same stack:
+### 7.4.1 Per-object tabs (owner decision 2026-11-03)
+
+A root tab's identity is **the object it shows**. Each Task opened from Context is its own root tab
+(label = the Task key, `TASK-03`); a Task that is already open is **activated**, never duplicated
+and never retargeted to another Task. The "Related Tasks (N)" summary with more than one Task opens
+the **Tasks list tab** ("Zadania"); selecting a Task there opens that Task's own tab beside the
+list, so a Task never lives both as a tab and as a page inside the list.
+
+An attempt, review event, rejection and feedback opened from a Task push deeper on **that Task
+tab's local stack**:
 
 ```text
-Context [pinned] | Tasks [tab: task list -> TASK-03 -> review attempt 1 -> feedback]
+Context [pinned] | Tasks [tab: task list]
+                 | TASK-03 [tab: task -> review attempt 1 -> feedback]
+                 | TASK-04 [tab: task]
                  | Files [tab: file list]
                  | backend.md [independent file tab]
 ```
 
-Switching tabs preserves their local stack, scroll and selection. Back returns to the direct parent
-inside the active tab. Do not spawn an independent tab for a task-bound event and lose provenance.
-History events opened in History also retain explicit Task/attempt context and a local return path.
+Switching tabs preserves their local stack and each tab's scroll position; the screens of inactive
+tabs are not kept mounted, so selection, filters and drafts are **product state** (the Documents
+pattern), and leaving a tab with unsaved work asks that tab's leave guard first. Back returns to the
+direct parent inside the active tab. Do not spawn an independent tab for a task-bound event and lose
+provenance. History events opened in History also retain explicit Task/attempt context and a local
+return path.
 
 ### 7.5 Handover / artifact selection
 
@@ -548,9 +561,12 @@ L4 Action details      selected ToolAction/detail
 
 ### 8.3 Entry
 
-Compact Work bursts remain in Conversation chronology. Explicit inspection opens/reselects a
-dedicated Work root tab inside the **same** Secondary; ToolAction details push onto its local stack.
-Current activity/live updates must never steal focus or change the active tab.
+Compact Work bursts remain in Conversation chronology. Explicit inspection opens/reselects the
+Work root tab **of that Turn** inside the **same** Secondary: one tab per Turn, labelled
+"Work history · turn N". A Work block in the conversation and Context's "Work history" row for the
+same Turn land on the same tab; another Turn opens or activates its own. ToolAction details push
+onto the tab's local stack. Current activity/live updates must never steal focus or change the
+active tab.
 
 ### 8.4 Drill-down
 
@@ -593,9 +609,10 @@ Examples of independent roots: Tasks, Files/Changes, History, Handovers, Artifac
 Environment, Work inspection, independently opened files and shared reports.
 
 A root tab is for an independently revisitable working surface; a local stack is for dependent
-details. Task -> attempt -> rejected review -> feedback stays inside the Tasks tab. Work ->
-ToolAction stays inside the Work tab. A local detail must reveal its Task/attempt provenance.
-Switching tabs preserves each tab's stack; Back pops inside the active tab before returning to
+details. Task -> attempt -> rejected review -> feedback stays inside that Task's tab (each Task is
+its own root tab, §7.4.1). Work -> ToolAction stays inside the Work tab of its Turn (one per Turn,
+§8.3). A local detail must reveal its Task/attempt provenance.
+Switching tabs preserves each tab's stack and scroll; Back pops inside the active tab before returning to
 its root. Closing a tab does not close or reset the whole Session. Context remains pinned.
 
 On desktop Context is a tab from the start: the editor-tab rail (36px, at every depth) shows
@@ -650,7 +667,10 @@ a coherent extension rather than inventing local, conflicting workspace engines.
 
 Mobile/Narrow uses one visible surface at a time; no bottom tab bar. Conversation opens first.
 Context and root destinations open on explicit action, and details drill down via the header and
-Back. A header-level opened-item switcher may support multiple open files. The event title and
+Back. **Back follows the actual path**: opening an object pushes it on top of the stack even when
+it was visited before (Context -> Task A -> Back -> Context -> Task A pushes again), so Back always
+returns to where the user came from; there are no per-object tabs on Narrow. A header-level
+opened-item switcher may support multiple open files. The event title and
 its parent Task/attempt remain clear. Navigation must preserve Conversation composer draft and
 scroll when returning.
 

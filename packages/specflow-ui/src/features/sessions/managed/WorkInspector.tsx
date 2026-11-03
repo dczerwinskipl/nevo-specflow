@@ -46,6 +46,7 @@ import {
 import type { WorkCounts } from './workCounts';
 import { workStateTone } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
+import { workTabLabel } from './workTabLabel';
 import {
   SingleToolActionDetail,
   SingleToolActionHeader,
@@ -997,10 +998,18 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   );
 }
 
+/**
+ * The Work history root tab: one tab per Turn (full-session-screen-structure.md §8.3). The tab's
+ * identity is the Turn (`instanceId`), so a Work block in the conversation and Context's "Work
+ * history" row, both calling `openTab` with the same `turnId`, land on the SAME tab, while another
+ * Turn opens or activates its own. The label names the Turn (`workTabLabel`).
+ */
 export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, owner: string) {
   return defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',
     initial: 'work',
+    instanceId: (params) => params.turnId,
+    tabLabel: (params) => workTabLabel(feed.getSnapshot().snapshot?.entries ?? [], params.turnId),
     useData: (params) => ({
       status: 'ready',
       data: { ...params, api, feed, owner },

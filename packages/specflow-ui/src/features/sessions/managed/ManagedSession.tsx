@@ -810,10 +810,20 @@ function ManagedSessionConversation({
       return;
     }
 
-    // Demo-only (§5/§7): nothing above actually transports `attachments`; clearing them here
-    // simulates "consumed by Send" the same way the mockup's own simulated Send does.
-    setAttachments([]);
+    // Attachments stay in the composer: nothing transports them (session-composer-design.md §5
+    // documents the upload contract as a known gap), so clearing the chips on Send would imply they
+    // were delivered. They remain visible, with `managedSession.attach.note` under them, until the
+    // user removes them.
     void feed.send(workModeDefault);
+  };
+
+  // A Work block opens its Turn's Work history. Split layout: the Turn's own root tab (`openTab`
+  // with the Turn as instance), the very tab Context's "Work history" row opens for the same Turn.
+  // Stacked layout has no tabs (one visible surface, Back follows the path), so it keeps the single
+  // runtime flow that Back closes (`open`).
+  const openWork = (turnId: string) => {
+    const params = { sessionId, turnId };
+    void (isSplit ? navigation.openTab(workStack, params) : navigation.open(workStack, params));
   };
 
   const outcomeLabels: Record<string, string> = {
@@ -825,8 +835,8 @@ function ManagedSessionConversation({
 
   // Composer toolbar's "+" entry (session-composer-design.md §6). Attachments are
   // local-only React state: §5 documents the real upload contract as a known gap, so nothing here
-  // is actually sent anywhere — `handleComposerSubmit` below just clears the chips, matching the
-  // mockup's own "local mock" framing (`managedSession.attach.note`).
+  // is actually sent anywhere — they stay in the composer after Send and the chips carry the
+  // "local mock" note (`managedSession.attach.note`), so the UI never implies delivery.
   const [attachments, setAttachments] = useState<{ id: string; name: string; size: number }[]>([]);
   // Two hidden inputs, not one (owner audit): "+" opens a menu offering "Dodaj plik"/"Dodaj obraz"
   // rather than jumping straight to a native file/image picker — `accept="image/*"` on the image
@@ -920,12 +930,7 @@ function ManagedSessionConversation({
                       <WorkBlock
                         key={item.block.id}
                         block={item.block}
-                        onInspect={() =>
-                          void navigation.open(workStack, {
-                            sessionId,
-                            turnId: item.block.turnId,
-                          })
-                        }
+                        onInspect={() => openWork(item.block.turnId)}
                       />
                     ) : (
                       <EntryRow
@@ -1100,27 +1105,32 @@ function ManagedSessionConversation({
                             design.md §6 visual order), demo-only chips — see `handleComposerSubmit`
                             and `managedSession.attach.note`. */}
                     {attachments.length > 0 && (
-                      <div
-                        aria-label={t('managedSession.attach.list')}
-                        className="flex flex-wrap gap-2"
-                      >
-                        {attachments.map((attachment) => (
-                          <span
-                            key={attachment.id}
-                            className="inline-flex max-w-full items-center gap-1.5 rounded-control border border-border-subtle bg-surface-subtle px-2 py-1 text-body-sm"
-                          >
-                            <span className="truncate">{attachment.name}</span>
-                            <IconButton
-                              aria-label={t('managedSession.attach.remove', {
-                                name: attachment.name,
-                              })}
-                              icon={X}
-                              size="xs"
-                              variant="ghost"
-                              onClick={() => removeAttachment(attachment.id)}
-                            />
-                          </span>
-                        ))}
+                      <div className="grid gap-1.5">
+                        <div
+                          aria-label={t('managedSession.attach.list')}
+                          className="flex flex-wrap gap-2"
+                        >
+                          {attachments.map((attachment) => (
+                            <span
+                              key={attachment.id}
+                              className="inline-flex max-w-full items-center gap-1.5 rounded-control border border-border-subtle bg-surface-subtle px-2 py-1 text-body-sm"
+                            >
+                              <span className="truncate">{attachment.name}</span>
+                              <IconButton
+                                aria-label={t('managedSession.attach.remove', {
+                                  name: attachment.name,
+                                })}
+                                icon={X}
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => removeAttachment(attachment.id)}
+                              />
+                            </span>
+                          ))}
+                        </div>
+                        <p role="note" className="text-body-sm text-content-muted">
+                          {t('managedSession.attach.note')}
+                        </p>
                       </div>
                     )}
                     {/* Visually hidden, not removed: the `<textarea>` still needs an accessible
@@ -1357,9 +1367,10 @@ export function ManagedSession({
   // `useWorkspaceLayout()` (workspace-dynamic-split.md "Resolved layout vs shell capability").
   const { supportsSplit } = useWorkspaceCapabilities();
   const [contextOpen, setContextOpen] = useState(true);
-  // Scoped W01-W04 adoption (demonstrated via Related Tasks only, see `SessionContext`'s
-  // `openRelatedTask`): registers Context as the pinned Secondary tab only on the split-capable
-  // (wide) layout where it is the default declarative Secondary. `supportsSplit` gates it off on
+  // Registers Context as the pinned Secondary tab only on the split-capable (wide) layout where it
+  // is the default declarative Secondary; every other root tab (a Task, a Turn's Work history, a
+  // placeholder subject) opens beside it through `useSecondaryNavigation().openTab`, one tab per
+  // object. `supportsSplit` gates it off on
   // the narrow/mobile layout, where Context is instead a runtime flow pushed via `navigation.open`
   // (SessionContext's `openStack` fallback) and must stay exactly as it behaves today — registering
   // the pinned tab there too would make that runtime flow's tab count reach 2 and spuriously show

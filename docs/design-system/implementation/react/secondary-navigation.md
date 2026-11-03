@@ -25,7 +25,7 @@ Product routes remain owned by the application router. This is not the global na
 - `AppWorkspace.Primary` renders the main work surface.
 - `AppWorkspace.Secondary` is the optional declarative base shown on split-capable layouts.
 - A runtime Secondary flow temporarily takes precedence over the declarative base.
-- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately. **This single-flow model is specified to generalize to multiple independently open root tabs** — see [Workspace dynamic split and Secondary root tabs](workspace-dynamic-split.md), not yet implemented.
+- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately. **The provider generalizes this single flow to several independently open root tabs** (`open` keeps one reserved slot, `openTab` opens one tab per instance id, an optional pinned tab) — see [Workspace dynamic split and Secondary root tabs](workspace-dynamic-split.md) and "Root tabs lifecycle" below.
 - Feature code defines available pages in `defineSecondaryStack`, usually in a separate module.
 - A page descriptor contains a page name, small page-specific identifiers and an instance key. Do not store React elements or cached domain snapshots in navigation state.
 - `useData(rootParams)` resolves current data **once per mounted entry** in a stable host; the header and content consume the same result. A refresh updates rendered props without a navigation transition.
@@ -121,9 +121,10 @@ it must map confirmed authorization loss to `access-denied` rather than a generi
 network error. Hidden/inert is not an acceptable protection for revoked data.
 
 This retention option applies **only to the current screen**. After Back, earlier
-entries retain identifiers but can remount. If scroll, filters or an unsaved form must
-survive Back, the product should explicitly own that state outside the unmounted page,
-scoped to the flow. Full offscreen React subtree retention is intentionally deferred.
+entries retain identifiers but can remount; the workspace restores their scroll offsets (see "Root
+tabs lifecycle"), but if filters, a selection or an unsaved form must survive Back, the product
+should explicitly own that state outside the unmounted page, scoped to the flow. Full offscreen
+React subtree retention is intentionally deferred.
 Avoid synchronizing two owners of the Secondary with effects in product screens.
 
 ## Refresh and missing data
@@ -240,13 +241,50 @@ not aligned with the 56 px Primary header; opening a detail never moves the tabs
   look) and not to a single runtime flow without
   a strip. The pinned/declarative tab has no runtime stack and therefore no local row.
 - **Scroll after Back.** Back remounts the parent screen (see "Refresh and missing data" below):
-  its scroll position and local state are what the product keeps outside the screen. Measured in
-  `SecondaryLocalNavigation.contract.stories.tsx`: a list scrolled to 400 px returns at 0.
+  its local state is what the product keeps outside the screen, but its scroll offset is restored
+  by the workspace (see "Root tabs lifecycle"). Measured in
+  `SecondaryLocalNavigation.contract.stories.tsx`: a list scrolled to 400 px returns at 400.
 - **Verification.** `SecondaryLocalNavigation.contract.stories.tsx` (Secondary at 330 px, 450 px and
   50/50 at 1440: the 36 px rail at root and in a detail, the active tab's surface and neutral top
   border, no icons, the detail header row; deep opted-in Tasks trail at 1440 and 330; long and many
   tabs; 390 and 360 mobile) and the Session's `ManagedSession.workDetail.stories.tsx` (including the
   equal 20 px gaps between a ToolAction's header, PARAMETRY and response).
+
+### Root tabs lifecycle
+
+How the root tabs behave over time, for every product that opens them with `openTab`:
+
+- **Identity is the object.** `openTab` derives the tab id from `definition.id` plus
+  `definition.instanceId(params)`. A root tab shows ONE object, so give a stack that can open many
+  objects an `instanceId` (the Task id, the Turn id) and a `tabLabel` that tells them apart. An
+  already-open id is **activated untouched**: it is never retargeted to the new params, so two
+  objects that share an id show whichever opened first. Every entry point of the same object (a list
+  row, a summary row, a chat block) calls `openTab` with the same params and lands on the same tab.
+- **Inactive tabs unmount.** Only the active tab's screen is mounted. Its **stack** (the entries and
+  their params) and its **scroll offsets** survive; everything inside the screen does not.
+  **Selection, filters, drafts and expanded rows are product state**, kept outside the screen (the
+  Documents pattern), scoped to the tab's object. Nothing keeps a React subtree alive.
+- **Scroll is remembered by the workspace** (`secondaryScrollMemory.ts`): on the split layout the
+  tab panel records the scroll offset of each scroll container inside it, keyed by
+  `(tab id, stack entry instance)`, and puts it back when that entry is shown again (a tab
+  re-selected, Back to a parent entry, the region shown again). Only numbers are retained. A
+  container is matched by its ordinal among the panel's `overflow-y: auto | scroll` elements, so
+  products mark nothing; restoring waits (up to ~30 frames) for async content to be tall enough and
+  gives up on the first user scroll, wheel, touch, key or pointer press. A closed tab, a popped or
+  replaced entry and a scope change drop their offsets. Stacked layouts keep today's reset to the
+  top; they do not use this memory.
+- **Switching away asks the leave guard.** Showing another tab (`activateTab`, and `openTab` for an
+  open tab or a new one, and `open` when it replaces the slot) leaves the visible tab, whose screen
+  then unmounts. The workspace therefore asks that tab's own leave guard first, exactly as closing it
+  would; a refusal (`false`) keeps it shown and resolves the call with `false`. Nothing is asked when
+  the target is the shown tab, the region is hidden, or the visible tab is the pinned one. After the
+  switch the unmounted tab's guard is gone with its screen, so `closeTab` of a background tab and
+  `canLeaveScope` (which consults the active tab only) stay correct: anything worth protecting was
+  protected at the moment the user left it.
+- **Stacked layouts have no per-object tabs in the product flow.** Narrow layouts show one surface
+  at a time and Back follows the path (each selection pushes, repeats included). The tab strip
+  appears on a stacked layout only when 2+ tabs were opened before narrowing, as a `header`-density
+  strip whose active tab owns a real `tabpanel` (`aria-controls` resolves on both layouts).
 
 ### Browser and system Back
 

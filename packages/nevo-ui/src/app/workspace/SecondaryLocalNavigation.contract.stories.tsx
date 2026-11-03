@@ -581,11 +581,16 @@ async function historyDrill(userEvent: UserEvent, width: number | 'half') {
     tabNamed('Work history')?.getAttribute('aria-selected') === 'true',
     `${context}: same tab.`,
   );
-  // Reported, not asserted: Back remounts the root screen (secondary-navigation.md: earlier entries
-  // retain identifiers but remount), so its scroll is whatever the product keeps.
-  const rootScroll = secondary()!.querySelector<HTMLElement>(
-    '[data-history-scroll] .scroll-area-viewport',
-  )!.scrollTop;
+  // Back remounts the root screen (secondary-navigation.md: earlier entries retain identifiers but
+  // remount), but the workspace restores its scroll offset ("Root tabs lifecycle"): the list is
+  // where it was left.
+  const rootViewport = () =>
+    secondary()!.querySelector<HTMLElement>('[data-history-scroll] .scroll-area-viewport')!;
+  await waitFor(
+    () => Math.abs(rootViewport().scrollTop - 400) <= 1,
+    `${context}: Back restores the list scroll (400, got ${rootViewport().scrollTop}).`,
+  );
+  const rootScroll = rootViewport().scrollTop;
   console.info(
     `[local-nav] ${context}: secondary ${secondary()!.getBoundingClientRect().width}px, tabs Context ${contextWidth}px / Work history ${historyWidth}px, rail ${railRect.height}px, detail row ${rowRect.height}px, root scroll before ${400} after Back ${rootScroll}`,
   );

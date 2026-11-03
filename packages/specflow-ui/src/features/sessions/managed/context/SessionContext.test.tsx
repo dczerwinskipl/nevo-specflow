@@ -49,11 +49,18 @@ function TabTitles() {
   return (
     <ul aria-label="open-tabs">
       {tabs.tabs.map((tab) => (
-        <li key={tab.id}>{tab.title}</li>
+        <li key={tab.id} data-active={tab.id === tabs.activeTabId}>
+          {tab.title}
+        </li>
       ))}
     </ul>
   );
 }
+
+const tabLabels = () =>
+  [...screen.getByLabelText('open-tabs').querySelectorAll('li')].map((tab) => tab.textContent);
+const activeTabLabel = () =>
+  screen.getByLabelText('open-tabs').querySelector('li[data-active="true"]')?.textContent;
 
 function clickButtonByText(text: string) {
   const trigger = screen.getByText(text).closest('button');
@@ -105,7 +112,7 @@ describe('Related Tasks summary row', () => {
     expect(screen.queryByText('Deterministic admission')).toBeNull();
   });
 
-  it('opens a single related Task directly, inside the one stably-labelled Tasks tab', async () => {
+  it('opens a single related Task directly, as its own tab named by the Task key', async () => {
     const value: SessionContextViewModel = {
       status: 'ready',
       executionScope: { kind: 'generic' },
@@ -119,16 +126,9 @@ describe('Related Tasks summary row', () => {
       await Promise.resolve();
     });
 
-    // Exactly one new tab, stably labelled "Tasks" — full-session-screen-structure.md §10.1's own
-    // "Work -> ToolAction stays inside the Work tab" rule: the tab's identity never renames itself
-    // to whichever Task happens to be open inside it (that would flip between "Tasks" and the
-    // generic "Task" screen title depending on navigation depth, not name the tab consistently).
-    const openTabs = screen.getByLabelText('open-tabs');
-    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
-    expect(within(openTabs).getByText('Tasks')).toBeTruthy();
-    // Deep-linked straight to that one Task's own detail, not forced through the list first — the
-    // real Task identity is still clear, just in the tab's content (`TaskDetail`'s own heading)
-    // rather than the tab strip.
+    // One tab for that Task, named by its key (the object is the tab's identity) and deep-linked
+    // straight to its detail, not forced through the list first.
+    expect(tabLabels()).toEqual(['TASK-02']);
     expect(
       await screen.findByRole('heading', { name: 'Document the admission guard' }),
     ).toBeTruthy();
@@ -154,11 +154,33 @@ describe('Related Tasks summary row', () => {
     expect(within(openTabs).getByText('Tasks')).toBeTruthy();
   });
 
-  it('reuses one Tasks tab across different entry points instead of one tab per Task (full-session-screen-structure.md §7.4/§10.1)', async () => {
-    // A confirmed bug this corrects: Related Tasks used to open each Task as its own independent
-    // root tab via a per-Task `instanceId` ("Do not spawn an independent tab for a task-bound
-    // event and lose provenance" — §7.4). The current-execution Task (single-task scope) and a
-    // Related Tasks entry must land in the SAME "Tasks" tab, never two.
+  it('selecting a Task from the list opens that Task as its own tab beside the list', async () => {
+    const value: SessionContextViewModel = {
+      status: 'ready',
+      executionScope: { kind: 'generic' },
+      relatedTasks: [task02, task03],
+    };
+    await renderContextWithRelatedTasks(value);
+
+    clickButtonByText('2 Tasks');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(tabLabels()).toEqual(['Tasks']);
+
+    clickButtonByText('Document the admission guard');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The list tab is untouched and the Task is its own tab, not a page inside the list.
+    expect(tabLabels()).toEqual(['Tasks', 'TASK-02']);
+    expect(activeTabLabel()).toBe('TASK-02');
+  });
+
+  it('one tab per Task: another Task gets its own tab, and re-opening an open Task activates it', async () => {
+    // Previously a single shared Tasks tab: opening Task B while Task A was open only re-activated
+    // that tab, which kept showing Task A. The tab identity is now the Task.
     const value: SessionContextViewModel = {
       status: 'ready',
       executionScope: { kind: 'single-task', task: task02 },
@@ -167,29 +189,61 @@ describe('Related Tasks summary row', () => {
 
     await renderContextWithRelatedTasks(value);
 
-    // Opens the current-execution Task first: a fresh Tasks tab, deep-linked straight to TASK-02.
     clickButtonByText('Document the admission guard');
     await act(async () => {
       await Promise.resolve();
     });
-
-    let openTabs = screen.getByLabelText('open-tabs');
-    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
-    expect(within(openTabs).getByText('Tasks')).toBeTruthy();
+    expect(tabLabels()).toEqual(['TASK-02']);
     expect(
       await screen.findByRole('heading', { name: 'Document the admission guard' }),
     ).toBeTruthy();
 
-    // Opening the single related Task (TASK-03) activates the SAME existing tab rather than
-    // creating a second one — `openTab`'s documented "already open: activate it, leaving its flow
-    // untouched" behavior, so the tab keeps showing TASK-02, not TASK-03.
     clickButtonByText('1 Task');
     await act(async () => {
       await Promise.resolve();
     });
+    expect(tabLabels()).toEqual(['TASK-02', 'TASK-03']);
+    expect(activeTabLabel()).toBe('TASK-03');
+    expect(await screen.findByRole('heading', { name: 'Deterministic admission' })).toBeTruthy();
 
-    openTabs = screen.getByLabelText('open-tabs');
-    expect(openTabs.querySelectorAll('li')).toHaveLength(1);
+    // Task A again: its existing tab is activated (no third tab, no retarget of B's).
+    clickButtonByText('Document the admission guard');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(tabLabels()).toEqual(['TASK-02', 'TASK-03']);
+    expect(activeTabLabel()).toBe('TASK-02');
+    expect(
+      await screen.findByRole('heading', { name: 'Document the admission guard' }),
+    ).toBeTruthy();
+  });
+
+  it('on the narrow Context flow a Task is a push onto that flow (no tab), flagged inFlow', () => {
+    const openStack = vi.fn(() => Promise.resolve(true));
+    render(
+      <StoryLocalization locale="en">
+        <AppWorkspaceProvider>
+          <SessionContext
+            sessionId={sessionId}
+            value={{
+              status: 'ready',
+              executionScope: { kind: 'single-task', task: task02 },
+            }}
+            openStack={openStack}
+          />
+        </AppWorkspaceProvider>
+      </StoryLocalization>,
+    );
+
+    clickButtonByText('Document the admission guard');
+    clickButtonByText('Document the admission guard');
+
+    // Every selection pushes again (Back follows the path, duplicates included).
+    expect(openStack).toHaveBeenCalledTimes(2);
+    expect(openStack).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'managed-session-task' }),
+      { sessionId, taskId: 'task-02', inFlow: true },
+    );
   });
 });
 
@@ -244,7 +298,8 @@ describe('Work history row', () => {
     >({
       id: 'managed-session-work',
       initial: 'work',
-      tabLabel: () => 'Work history',
+      instanceId: (params) => params.turnId,
+      tabLabel: (params) => `Work history ${params.turnId.slice(-2)}`,
       useData: (params) => {
         received.push({ params });
 
@@ -291,9 +346,16 @@ describe('Work history row', () => {
       await Promise.resolve();
     });
 
-    const openTabs = screen.getByLabelText('open-tabs');
-    expect(within(openTabs).getByText('Work history')).toBeTruthy();
+    expect(tabLabels()).toEqual(['Work history 99']);
     expect(received).toContainEqual({ params: { sessionId, turnId } });
+
+    // The same Turn again (Context row, or a chat Work block calling `openTab` with the same
+    // params) activates that tab instead of adding a second one.
+    fireEvent.click(within(referenceGroup as HTMLElement).getByText('Work history'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(tabLabels()).toEqual(['Work history 99']);
   });
 });
 

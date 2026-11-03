@@ -87,9 +87,9 @@ export function SessionContext({
    * below) this is that flow's own `navTo`, which pushes the Tasks tab's initial screen onto
    * Context's OWN stack — narrow has no tabs at all (full-session-screen-structure.md §10.3), so
    * this is a plain, correct push/pop, unchanged by the correction below. Omitted on the
-   * wide/split-capable default Secondary (see `ManagedSession`), where Tasks instead opens as its
-   * own root tab via `navigation.openTab` (see `openTasksTab` below) — never the single shared
-   * "legacy open" slot `useSecondaryNavigation().open` reserves for other features.
+   * wide/split-capable default Secondary (see `ManagedSession`), where each Task (and the Tasks
+   * list) opens as its own root tab via `navigation.openTab` (see `openTasksTab` below) — never the
+   * single shared "legacy open" slot `useSecondaryNavigation().open` reserves for other features.
    */
   openStack?: OpenSecondaryStack;
   /**
@@ -108,13 +108,13 @@ export function SessionContext({
     specification: NonNullable<SessionContextViewModel['specification']>,
   ) => void;
   /**
-   * The SAME Work Secondary tab `ManagedSession` already creates for Conversation's own compact
-   * Work-summary rows (`createWorkInspector`, `managed-session-work`) — passed in rather than
-   * created here so opening it from Context's "Work history" row and opening it from a chat row
-   * land in the exact same tab (full-session-screen-structure.md §8.3: "one Work root tab...
-   * reused"), never a second instance. Omitted (or `value.activeTurnId` absent): the row does not
-   * render — `ManagedSession`'s own Storybook/test mounts that have no real `api`/`feed` simply
-   * don't pass this prop, same optional-prop pattern as `onOpenSpecification`.
+   * The Work history stack `ManagedSession` also uses for its Conversation Work blocks
+   * (`createWorkInspector`) — passed in rather than created here so both entry points share its
+   * per-Turn tab identity (full-session-screen-structure.md §8.3): Context's "Work history" row and
+   * the chat block of the same Turn call `openTab` with the same `{ sessionId, turnId }`, so they
+   * land on one tab, and a different Turn gets its own. Omitted (or `value.activeTurnId` absent):
+   * the row does not render — `ManagedSession`'s own Storybook/test mounts that have no real
+   * `api`/`feed` simply don't pass this prop, same optional-prop pattern as `onOpenSpecification`.
    */
   workStack?: WorkHistoryStack;
 }) {
@@ -124,35 +124,32 @@ export function SessionContext({
   const inspectors = useMemo(() => createSessionTasksInspector(allTasks), [allTasks]);
 
   /**
-   * Opens/reselects the ONE "Tasks" root tab (full-session-screen-structure.md §7.4/§10.1 — see
-   * `SessionTasksInspector.tsx`'s module comment for the full contract and its
-   * `tasksStack`/`taskDeepLinkStack` mechanism). `stack` is `inspectors.tasksStack` for the plain
-   * list, or `inspectors.taskDeepLinkStack` (same tab id, different `initial` screen) to start a
-   * FRESH tab straight on a specific Task instead of forcing the list first — still exactly one
-   * tab either way, never one per Task (the confirmed bug this replaces: Related Tasks used to
-   * call `navigation.openTab` with a per-Task `instanceId`, giving each related Task its own
-   * independent tab and losing its Tasks-tab provenance).
+   * Opens a Tasks surface (full-session-screen-structure.md §7.4/§10.1 — see
+   * `SessionTasksInspector.tsx`'s module comment). With `openStack` (the narrow Context flow) it is
+   * a push onto that flow, flagged `inFlow` so the list also pushes Tasks instead of opening tabs.
+   * Otherwise it is `openTab`: `inspectors.tasksStack` is the one list tab, `inspectors.taskStack`
+   * is one tab per Task (instance = the task id), so a Task already open is activated, never
+   * retargeted or duplicated.
    */
   function openTasksTab(stack: typeof inspectors.tasksStack, taskId?: string) {
-    const params = { sessionId, taskId };
     if (openStack) {
-      void openStack(stack, params);
+      void openStack(stack, { sessionId, taskId, inFlow: true });
 
       return;
     }
 
-    void navigation.openTab(stack, params);
+    void navigation.openTab(stack, { sessionId, taskId });
   }
 
   function openTasksList() {
     openTasksTab(inspectors.tasksStack);
   }
 
-  /** Opens a specific Task directly (current-execution Task, Attention's task reference, or a
-   * Related Tasks summary with exactly one entry) — still the single Tasks tab, deep-linked
-   * straight to that Task's detail when the tab does not exist yet (see `openTasksTab`). */
+  /** Opens a specific Task (current-execution Task, Attention's task reference, or a Related Tasks
+   * summary with exactly one entry): its own root tab, activated if that Task is already open
+   * (see `openTasksTab`). */
   function openTask(task: SessionContextTaskRef) {
-    openTasksTab(inspectors.taskDeepLinkStack, task.id);
+    openTasksTab(inspectors.taskStack, task.id);
   }
 
   /**
@@ -161,7 +158,7 @@ export function SessionContext({
    * many related Tasks exist and leads further. With exactly one related Task the row goes
    * straight to it (`openTask`). With more than one, it reuses the existing Tasks list screen
    * (`inspectors.tasksStack`, previously reachable only via a separate "Open Tasks" button) as
-   * that dedicated subject view — no new list screen invented for this fix.
+   * that dedicated subject view; selecting a Task there opens that Task's own tab, like `openTask`.
    */
   function openRelatedTasksEntry() {
     const relatedTasks = value.relatedTasks;
@@ -192,8 +189,10 @@ export function SessionContext({
   }
 
   /**
-   * Opens/reselects the shared Work tab scoped to the Session's current Turn (see `workStack`'s
-   * own doc comment above). Same `openStack`/`openTab` split every other row here uses.
+   * Opens/reselects the Work history tab of the Session's current Turn (see `workStack`'s own doc
+   * comment above). The tab is one per Turn (`workStack`'s `instanceId`), so this and a chat Work
+   * block for the same Turn are the same tab; another Turn has its own. Same `openStack`/`openTab`
+   * split every other row here uses.
    */
   function openWorkHistory() {
     if (!workStack || !value.activeTurnId) {

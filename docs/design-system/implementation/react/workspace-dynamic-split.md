@@ -146,8 +146,11 @@ changes, independent of route/URL.
    behavior). Swapping changes only this value.
 
 Explicitly **not** owned state, because it must not influence the above (section 6): which page is
-active inside a tab's local stack, dependent-detail depth, scroll position inside a tab, or any
-Session/product runtime fact (new message, new Work, new Turn).
+active inside a tab's local stack, dependent-detail depth, or any Session/product runtime fact (new
+message, new Work, new Turn). The scroll offsets inside a tab are remembered per `(tab id, stack
+entry)` and restored when it is shown again (see
+[Secondary navigation, "Root tabs lifecycle"](secondary-navigation.md#root-tabs-lifecycle)), but
+they never feed the sizing/side state above; selection and drafts remain product state.
 
 ## 4. Public API
 
@@ -247,10 +250,15 @@ params.turnId`) makes every distinct derived value its own tab.
   ("[o]pening an item whose id is already open activates it instead of adding another"; "[a]n
   existing item keeps its stored value") applied to flows instead of generic items, now correctly
   scoped to a method whose whole contract is "the instance id is the full identity," unlike `open`.
-  This is additive: no existing caller uses it, so it changes nothing for `packages/specflow-ui`
-  until a consumer deliberately adopts it.
+  It is additive and never retargets: an open id keeps its flow, so a stack that can show many
+  objects needs an `instanceId` per object (Session: one Task tab per Task, one Work history tab per
+  Turn). Consumers today: Session (Tasks, Work history, Context placeholders) and Documents.
 - `activateTab(id)` switches the active tab without touching any flow. Unknown ids are ignored,
   mirroring `useOpenedItems.activate`. Operates uniformly over pinned/legacy-slot/`openTab` entries.
+  **Leaving the visible tab consults its leave guard** (its screen unmounts when it stops being
+  the active one): `activateTab`, `openTab` (switch to an open tab, or a new tab) and `open` (when it
+  shows the slot over another visible tab) resolve `false` and keep the visible tab when the guard
+  refuses.
 - `closeTab(id)` closes one tab (consulting its own leave guard via the same mechanism
   `useSecondaryLeaveGuard` already registers per entry). Closing the pinned tab is refused
   (`closable: false`), matching how `useOpenedItems` would need a "closable" extension it does not
@@ -510,12 +518,12 @@ revision):
 
 - `packages/specflow-ui/src/features/sessions/managed/ManagedSession.tsx` calls
   `navigation.open(workStack, { sessionId, turnId })` once per inspected Turn's Work, with a fixed
-  `workStack.id`. **Compatible, unchanged behavior**: `open`'s legacy slot is global and
-  replace-on-every-call regardless of id or params, so Turn B's `open()` still replaces Turn A's,
-  exactly as today. _Product option, not required:_ if the feature owner later wants Work-for-Turn-A
-  and Work-for-Turn-B open as two independent, simultaneous tabs, that is a deliberate migration to
-  `openTab(workStack, { sessionId, turnId })` with `workStack.instanceId = (params) => params
-.turnId` added to the definition — a product decision outside this document's scope.
+  `workStack.id`. At the time of the original audit this was **compatible, unchanged behavior**
+  (`open`'s legacy slot is global and replace-on-every-call). **Since migrated (owner decision
+  2026-11-03):** on the split layout a Work block calls `openTab(workStack, { sessionId, turnId })`
+  with `workStack.instanceId = (params) => params.turnId`, so Work history is one tab per Turn and
+  Context's "Work history" row for the same Turn lands on the same tab; the stacked layout keeps
+  `open` (one visible surface, Back closes it).
 - `packages/specflow-ui/src/features/sessions/context/SessionContextPanel.tsx` defines three
   separate stack _ids_ (`demo-session-documents`, `demo-session-project`,
   `demo-session-instructions`) purely so that opening each one discards the others and lands on a
@@ -527,9 +535,10 @@ revision):
   it with `context/SessionContext.tsx` — see the next entry — so it may become moot independently of
   this compatibility finding.)
 - `packages/specflow-ui/src/features/sessions/managed/context/SessionTasksInspector.tsx` (added
-  2026-10-30) defines two fixed stack ids (`managed-session-tasks`, `managed-session-task-detail`)
-  for the identical reason as `SessionContextPanel.tsx` above. **Compatible, unchanged behavior**,
-  same reasoning: all `open` calls share the one global legacy slot regardless of definition id.
+  2026-10-30) defined two fixed stack ids for the identical reason as `SessionContextPanel.tsx`
+  above. **Since migrated (owner decision 2026-11-03):** `managed-session-tasks` is the list tab and
+  `managed-session-task` is one tab per Task (`instanceId` = the task id, label = the Task key),
+  both opened with `openTab`; on the narrow Context flow they remain pushes onto that flow.
 - `packages/specflow-ui/src/features/tasks/workspace/TaskWorkspace.tsx` calls
   `navigation.open(taskWorkspaceMaterialStack, { taskId, id })` with a fixed `id` varying per
   Material clicked, and `navigation.open(taskWorkspaceHistoryStack, { taskId })` from a different

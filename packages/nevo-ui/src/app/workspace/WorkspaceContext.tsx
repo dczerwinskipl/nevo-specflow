@@ -35,6 +35,7 @@ import type {
   SecondaryStackDefinition,
 } from './SecondaryStack';
 import { useWorkspaceBrowserHistory } from './useWorkspaceBrowserHistory';
+import { SecondaryScrollMemoryContext, createSecondaryScrollMemory } from './secondaryScrollMemory';
 import {
   resolveLocalNavigation,
   resolveTabTitle,
@@ -144,16 +145,22 @@ export interface WorkspaceContextValue {
     params: TRoot,
   ) => Promise<boolean>;
   /**
-   * New, additive. Opens or activates a tab keyed by a `tabInstanceId` derived from
-   * `definition.id` (+ `definition.instanceId(params)` when provided): a brand-new id creates and
-   * activates a tab; an already-open id activates it, leaving its flow untouched.
+   * Opens or activates a root tab keyed by a `tabInstanceId` derived from `definition.id`
+   * (+ `definition.instanceId(params)` when provided): a brand-new id creates and activates a tab;
+   * an already-open id activates it, leaving its flow untouched (it is never retargeted, so two
+   * objects that must be separate tabs need different instance ids). Showing a different tab
+   * leaves the visible one, so its leave guard is consulted first (a refusal resolves `false`).
    */
   openTab: <TRoot extends object, TData, TPages extends { [K in keyof TPages]: object }>(
     definition: SecondaryStackDefinition<TRoot, TData, TPages>,
     params: TRoot,
   ) => Promise<boolean>;
   tabs: SecondaryTabsState;
-  /** Switches the active tab without touching any flow. Unknown ids are ignored. */
+  /**
+   * Switches the active tab without touching any flow. Unknown ids are ignored. Leaving the visible
+   * tab consults its leave guard first (its screen unmounts when it is not the active one); a
+   * refusal resolves `false` and keeps it shown.
+   */
   activateTab: (id: string) => Promise<boolean>;
   /**
    * Closes one tab (consulting its own leave guard). A `closable: false` tab (the pinned one)
@@ -275,8 +282,8 @@ export interface PinnedSecondaryTabInput {
 
 // Lets a declarative Secondary host register the pinned tab described by the
 // workspace-dynamic-split contract (§3, §9 item 2). Not part of the public `WorkspaceContextValue`
-// contract (§4.1 lists no such method) — `AppWorkspace` wires its declarative `Secondary` children
-// into this in a later task; this module's own tests/stories exercise it directly until then.
+// contract (§4.1 lists no such method): a product registers it with `useRegisterPinnedSecondaryTab`
+// (Session Context is the one consumer today) and `AppWorkspace` folds it into `tabs`.
 const PinnedSecondaryTabRegistrationContext = createContext<
   ((pinned: PinnedSecondaryTabInput | null) => void) | null
 >(null);
@@ -591,6 +598,7 @@ export function AppWorkspaceProvider({
   const mounted = useRef(true);
   const currentScope = useRef(scopeKey);
   const guards = useRef(new Map<number, LeaveGuard>());
+  const scrollMemory = useRef(createSecondaryScrollMemory());
   const pending = useRef<Promise<unknown>>(Promise.resolve());
   const [transition, setTransition] = useState<WorkspaceTransition>({
     action: 'close',
@@ -603,11 +611,13 @@ export function AppWorkspaceProvider({
     mounted.current = true;
     // The map is created once and only mutated: this is the instance to clear on unmount.
     const registeredGuards = guards.current;
+    const memory = scrollMemory.current;
 
     return () => {
       mounted.current = false;
       tabsRef.current = emptyTabsSnapshot(scopeKey);
       registeredGuards.clear();
+      memory.clear();
     };
   }, [scopeKey]);
 
@@ -621,6 +631,7 @@ export function AppWorkspaceProvider({
     if (staleTabs) {
       tabsRef.current = emptyTabsSnapshot(scopeKey);
       guards.current.clear();
+      scrollMemory.current.clear();
       setTabsState(tabsRef.current);
     }
 
@@ -755,6 +766,24 @@ export function AppWorkspaceProvider({
     return guard ? await guard() : true;
   }, []);
 
+  /**
+   * Leaving the VISIBLE runtime tab for another one: its screen unmounts (only the active tab is
+   * mounted), so the switch asks that tab's own leave guard first, exactly as closing it would.
+   * Nothing to ask when the target is the visible tab itself, when the region is hidden, or when
+   * the visible tab is the pinned one (it has no flow).
+   */
+  const passesVisibleTabGuard = useCallback(
+    (targetTabId: string) => {
+      const snapshot = tabsRef.current;
+      const visibleId = snapshot.isOpen ? snapshot.activeTabId : null;
+      const leaving =
+        visibleId !== null && visibleId !== targetTabId ? (snapshot.byId[visibleId] ?? null) : null;
+
+      return passesGuard(leaving?.flow ?? null);
+    },
+    [passesGuard],
+  );
+
   /** Removes one tab from the collection, activating its neighbour (else the pinned tab, else none). */
   const applyCloseTab = useCallback(
     (tabId: string, snapshot: TabsSnapshot, returnFocusTo: WorkspaceFocusTarget | null) => {
@@ -771,6 +800,8 @@ export function AppWorkspaceProvider({
       if (closedTopKey !== undefined) {
         guards.current.delete(closedTopKey);
       }
+
+      scrollMemory.current.forgetTab(tabId);
 
       const wasActive = snapshot.activeTabId === tabId;
       let activeTabId = snapshot.activeTabId;
@@ -808,6 +839,10 @@ export function AppWorkspaceProvider({
         if (
           !(await passesGuard(existingLegacy?.flow ?? null)) ||
           !mounted.current ||
+          currentScope.current !== scopeKey ||
+          // Another visible tab is left (unmounted) by showing the legacy slot.
+          !(await passesVisibleTabGuard(LEGACY_OPEN_TAB_ID)) ||
+          !mounted.current ||
           currentScope.current !== scopeKey
         ) {
           return false;
@@ -842,6 +877,9 @@ export function AppWorkspaceProvider({
           guards.current.delete(oldTopKey);
         }
 
+        // The slot starts a new flow: whatever its previous entries had scrolled is gone.
+        scrollMemory.current.forgetTab(LEGACY_OPEN_TAB_ID);
+
         const nextSnapshot: TabsSnapshot = {
           scopeKey,
           order: latest.order.includes(LEGACY_OPEN_TAB_ID)
@@ -862,14 +900,14 @@ export function AppWorkspaceProvider({
 
         return true;
       }),
-    [passesGuard, publishTabs, queue, scopeKey],
+    [passesGuard, passesVisibleTabGuard, publishTabs, queue, scopeKey],
   );
 
   const openTab = useCallback<WorkspaceContextValue['openTab']>(
     (definition, params) =>
-      queue(() => {
+      queue(async () => {
         if (!mounted.current || currentScope.current !== scopeKey) {
-          return Promise.resolve(false);
+          return false;
         }
 
         const runtime = definition as unknown as RuntimeDefinition;
@@ -878,16 +916,33 @@ export function AppWorkspaceProvider({
           throw new Error(`"${id}" collides with a reserved Secondary tab id.`);
         }
 
+        const current =
+          tabsRef.current.scopeKey === scopeKey ? tabsRef.current : emptyTabsSnapshot(scopeKey);
+        if (current.byId[id] && current.activeTabId === id && current.isOpen) {
+          return true; // Already shown: nothing is left, nothing to ask.
+        }
+
+        if (!runtime.screens[runtime.initial] && !current.byId[id]) {
+          throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
+        }
+
+        // Showing this tab leaves the visible one (its screen unmounts): ask its guard, for the
+        // switch to an open tab and for a new tab alike.
+        if (
+          !(await passesVisibleTabGuard(id)) ||
+          !mounted.current ||
+          currentScope.current !== scopeKey
+        ) {
+          return false;
+        }
+
+        // Re-read after the async guard: another queued operation may have changed things meanwhile.
         const snapshot =
           tabsRef.current.scopeKey === scopeKey ? tabsRef.current : emptyTabsSnapshot(scopeKey);
         const existing = snapshot.byId[id];
         if (existing) {
           // Already open: activate it, leaving its flow untouched (`useOpenedItems.open`'s rule).
           // Nothing is discarded by switching to it: no outgoing surface.
-          if (snapshot.activeTabId === id && snapshot.isOpen) {
-            return Promise.resolve(true);
-          }
-
           publishTabs(
             { ...snapshot, activeTabId: id, isOpen: true },
             'replace',
@@ -895,14 +950,9 @@ export function AppWorkspaceProvider({
             existing.flow,
           );
 
-          return Promise.resolve(true);
+          return true;
         }
 
-        if (!runtime.screens[runtime.initial]) {
-          throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
-        }
-
-        // Nothing is discarded by creating a new tab: no leave guard applies.
         const entry: SecondaryEntry = {
           definition: runtime,
           rootParams: { ...params },
@@ -922,26 +972,41 @@ export function AppWorkspaceProvider({
         // The previously active tab (if any) is only backgrounded, not discarded: no outgoing.
         publishTabs(nextSnapshot, 'push', null, nextFlow);
 
-        return Promise.resolve(true);
+        return true;
       }),
-    [publishTabs, queue, scopeKey],
+    [passesVisibleTabGuard, publishTabs, queue, scopeKey],
   );
 
   const activateTab = useCallback<WorkspaceContextValue['activateTab']>(
     (id) =>
-      queue(() => {
+      queue(async () => {
         if (!mounted.current || currentScope.current !== scopeKey) {
-          return Promise.resolve(false);
+          return false;
         }
 
-        const snapshot = tabsRef.current;
-        if (snapshot.scopeKey !== scopeKey) {
-          return Promise.resolve(false);
+        const current = tabsRef.current;
+        if (current.scopeKey !== scopeKey) {
+          return false;
         }
 
         const isPinned = id === PINNED_TAB_ID && pinnedTabRef.current !== null;
-        if (!snapshot.byId[id] && !isPinned) {
-          return Promise.resolve(false); // Unknown id: ignored, mirroring `useOpenedItems.activate`.
+        if (!current.byId[id] && !isPinned) {
+          return false; // Unknown id: ignored, mirroring `useOpenedItems.activate`.
+        }
+
+        // Showing another tab leaves the visible one (its screen unmounts): ask its guard first.
+        if (
+          !(await passesVisibleTabGuard(id)) ||
+          !mounted.current ||
+          currentScope.current !== scopeKey
+        ) {
+          return false;
+        }
+
+        // Re-read after the async guard; the target may have been closed meanwhile.
+        const snapshot = tabsRef.current;
+        if (snapshot.scopeKey !== scopeKey || (!snapshot.byId[id] && !isPinned)) {
+          return false;
         }
 
         // A tab switch discards nothing: no outgoing surface.
@@ -952,9 +1017,9 @@ export function AppWorkspaceProvider({
           snapshot.byId[id]?.flow ?? null,
         );
 
-        return Promise.resolve(true);
+        return true;
       }),
-    [publishTabs, queue, scopeKey],
+    [passesVisibleTabGuard, publishTabs, queue, scopeKey],
   );
 
   const closeTab = useCallback<WorkspaceContextValue['closeTab']>(
@@ -1077,6 +1142,7 @@ export function AppWorkspaceProvider({
             isVisible ? nextFlow : null,
           );
           guards.current.delete(current.instanceKey);
+          scrollMemory.current.forget(tabId, current.instanceKey);
           restoreFocus(current.returnFocusTo, nextFlow.entries.at(-1)?.instanceKey ?? null);
 
           return true;
@@ -1093,6 +1159,10 @@ export function AppWorkspaceProvider({
             isVisible ? nextFlow : null,
           );
           guards.current.delete(current.instanceKey);
+          for (const popped of previousFlow.entries.slice(targetDepth)) {
+            scrollMemory.current.forget(tabId, popped.instanceKey);
+          }
+
           // Focus returns to what opened the level above the target, inside the target page.
           restoreFocus(
             previousFlow.entries[targetDepth]?.returnFocusTo ?? null,
@@ -1133,6 +1203,7 @@ export function AppWorkspaceProvider({
         );
         if (kind === 'replace') {
           guards.current.delete(current.instanceKey);
+          scrollMemory.current.forget(tabId, current.instanceKey);
         }
 
         return true;
@@ -1260,7 +1331,9 @@ export function AppWorkspaceProvider({
 
   return (
     <PinnedSecondaryTabRegistrationContext.Provider value={setPinnedTab}>
-      <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
+      <SecondaryScrollMemoryContext.Provider value={scrollMemory.current}>
+        <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
+      </SecondaryScrollMemoryContext.Provider>
     </PinnedSecondaryTabRegistrationContext.Provider>
   );
 }

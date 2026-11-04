@@ -1,4 +1,4 @@
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSessionRequest } from './request';
 import type { CreateSession } from '@nevo/specflow-contracts/sessions';
 import { ApiError } from '../../../../api';
@@ -150,4 +150,103 @@ it('keeps blocking, with no discard, while storage itself is unavailable', async
   expect(request.state()).toBe('unavailable');
   expect(request.discard()).toBe(false);
   await expect(request.send(body, vi.fn())).rejects.toThrow();
+});
+
+describe('a confirmed create whose record cannot be cleaned up', () => {
+  const ok = () => Promise.resolve({ sessionId: 'created' });
+  type Failure = 'remove-throws' | 'remove-ignored' | 'readback-throws';
+
+  /** Storage whose cleanup misbehaves only while `failing` is set (the window after the response). */
+  function failingCleanup(failure: Failure) {
+    const storage = storageFixture();
+    const flags = { failing: false };
+    const wrapped = {
+      getItem: (key: string) => {
+        if (flags.failing && failure === 'readback-throws') {
+          throw new Error('Storage read denied');
+        }
+
+        return storage.getItem(key);
+      },
+      setItem: storage.setItem,
+      removeItem: (key: string) => {
+        if (!flags.failing) {
+          storage.removeItem(key);
+        } else if (failure === 'remove-throws') {
+          throw new Error('Storage remove denied');
+        }
+      },
+    };
+
+    return { storage: wrapped, flags };
+  }
+
+  it.each(['remove-throws', 'remove-ignored', 'readback-throws'] as const)(
+    'never replays the spent request after a remount, and the next create is new: %s',
+    async (failure) => {
+      const { storage, flags } = failingCleanup(failure);
+      const first = createSessionRequest('alice', storage);
+      const requests: CreateSession[] = [];
+      const send = (input: CreateSession) => {
+        requests.push(input);
+        flags.failing = true;
+
+        return ok();
+      };
+
+      await expect(first.send(body, send)).resolves.toEqual({ sessionId: 'created' });
+      flags.failing = false;
+      expect(first.pending()).toBeUndefined();
+
+      const remounted = createSessionRequest('alice', storage);
+      expect(remounted.state()).toBe('ready');
+      expect(remounted.pending()).toBeUndefined();
+      await remounted.send(body, send);
+      expect(requests).toHaveLength(2);
+      expect(requests[1]?.requestId).not.toBe(requests[0]?.requestId);
+    },
+  );
+
+  it('remembers the spent request even when nothing can be written any more', async () => {
+    const storage = storageFixture();
+    let broken = false;
+    const wrapped = {
+      getItem: storage.getItem,
+      setItem: (key: string, value: string) => {
+        if (broken) {
+          throw new Error('Quota');
+        }
+
+        storage.setItem(key, value);
+      },
+      removeItem: () => {
+        if (broken) {
+          throw new Error('Storage remove denied');
+        }
+      },
+    };
+    const requests: CreateSession[] = [];
+    const send = (input: CreateSession) => {
+      requests.push(input);
+      broken = true;
+
+      return ok();
+    };
+
+    await createSessionRequest('alice', wrapped).send(body, send);
+    broken = false;
+    const remounted = createSessionRequest('alice', wrapped);
+    expect(remounted.pending()).toBeUndefined();
+    await remounted.send(body, send);
+    expect(requests[1]?.requestId).not.toBe(requests[0]?.requestId);
+  });
+
+  it('still resumes an unknown outcome and an unreadable record is not mistaken for a spent one', async () => {
+    const storage = storageFixture();
+    const first = createSessionRequest('alice', storage);
+    await expect(first.send(body, () => Promise.reject(new Error('Lost')))).rejects.toThrow();
+    expect(createSessionRequest('alice', storage).pending()).toEqual(first.pending());
+    storage.setItem('nevo:session-create:bob', '{"consumed":"not-an-id"}');
+    expect(createSessionRequest('bob', storage).state()).toBe('unreadable');
+  });
 });

@@ -48,16 +48,45 @@ function parseRetained(encoded: string): CreateSession | undefined {
   return valid ? input : undefined;
 }
 
+/**
+ * Creates the server confirmed whose retained record could not be removed. A replay of such a
+ * request would only return the Session that already exists, so a record naming one is never
+ * resumed: the next start is a new create. Kept for the page's lifetime, beyond a remount.
+ */
+const confirmed = new Set<string>();
+
+/** What replaces a confirmed create's record when it cannot be removed. */
+function consumedMarker(encoded: string): string | undefined {
+  try {
+    const value: unknown = JSON.parse(encoded);
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const keys = Object.keys(value);
+      const id = (value as { consumed?: unknown }).consumed;
+      if (keys.length === 1 && typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id)) {
+        return id;
+      }
+    }
+  } catch {
+    /* Not a marker. */
+  }
+
+  return undefined;
+}
+
 /** Persist before dispatch. An uncertain create retains its exact body across route reloads. */
 export function createSessionRequest(owner: string, storage: Storage | undefined) {
   const key = 'nevo:session-create:' + owner;
   const holder: { current: RequestAttempt<CreateSession> | null } = { current: null };
   let state: RetainedCreateState = storage ? 'ready' : 'unavailable';
+  let leftover = false;
   try {
     const encoded = storage?.getItem(key);
     if (encoded) {
       const input = parseRetained(encoded);
-      if (input) {
+      if (consumedMarker(encoded) || (input && confirmed.has(input.requestId))) {
+        // The server confirmed this create already: it is spent, not a request to resume.
+        leftover = true;
+      } else if (input) {
         const { requestId: _requestId, ...body } = input;
         holder.current = { signature: JSON.stringify(body), input };
       } else {
@@ -85,6 +114,27 @@ export function createSessionRequest(owner: string, storage: Storage | undefined
     holder.current = null;
 
     return true;
+  }
+
+  if (leftover) {
+    release();
+  }
+
+  /**
+   * A confirmed create is spent. When its record cannot be removed it is remembered as spent (in
+   * memory, and in the record itself when that can still be written), so it is never resumed.
+   */
+  function settle(record: string, requestId: string) {
+    if (release(record)) {
+      return;
+    }
+
+    confirmed.add(requestId);
+    try {
+      storage?.setItem(key, JSON.stringify({ consumed: requestId }));
+    } catch {
+      /* The in-memory mark still stands. */
+    }
   }
 
   return {
@@ -144,8 +194,9 @@ export function createSessionRequest(owner: string, storage: Storage | undefined
         throw error;
       }
 
-      // Confirmed: the exact record goes; whatever else is stored stays for its own owner.
-      release(record);
+      // Confirmed: the exact record goes; whatever else is stored stays for its own owner. A record
+      // that cannot go is marked spent, so the Session this opened is not created a second time.
+      settle(record, input.requestId);
       holder.current = null;
 
       return result;

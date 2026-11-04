@@ -83,8 +83,8 @@ const SECONDARY_TABS_SCOPE_PREFIX = 'workspace-secondary-tabs';
  * Width (px) under which the Secondary root-tab strip collapses to `ItemTabs`' switcher button —
  * scoped to this header only (`ItemTabs`' own `switcherBelow` prop), never a change to its general
  * 480px default that other hosts (Documents' `DocumentTabStrip`, …) keep. At an ordinary 50/50 split
- * the strip's own width sits just under 480 (measured 470px at 1440), and the owner decision is to
- * keep the strip visible longer: it stays usable while two tabs still fit at their compressed width
+ * the strip's own width sits just under 480 (measured 470px at 1440), and the strip is deliberately kept
+ * visible longer: it stays usable while two tabs still fit at their compressed width
  * next to its overflow menu (the rest go to that menu, `fitItemTabs`; content-width tabs usually
  * need less); below that it falls back to the switcher. Local depth never shares this row (it is
  * the back/breadcrumb row under it), so the presentation does not flip between a tab's root and
@@ -479,8 +479,8 @@ function useWorkspaceLayoutState(
 
     // Stacked: Secondary slides OVER Primary instead of sitting beside it, so Primary keeps the
     // full content width. Sizing it by the split ratio here squeezed the still-visible chat to
-    // the ratio's leftover (~45px at 375px) for the whole slide-in/out (owner audit, live on a
-    // phone: "panel główny się kurczy podczas gdy jest zasłaniany").
+    // the ratio's leftover (~45px at 375px) for the whole slide-in/out, so Primary visibly shrank
+    // while it was being covered.
     //
     // The resolver owns the split/stacked decision entirely for `dynamic` (contract §4.2's own
     // two minimum-width constants, independent of the generic `WORKSPACE_SPLIT_MIN_WIDTH` the
@@ -862,10 +862,9 @@ function MobileRuntimeSurfaceRegion({
     // percentage cascaded from the app shell's own `h-dvh` root, which the UA recomputes
     // immediately at the CSS level, but `ResizeObserver` only fires if/when that recomputation
     // actually changes `viewport`'s rendered box — a multi-ancestor percentage chain some real
-    // devices do not reflow promptly on a toolbar-only change (owner audit, real Android phone:
-    // "Composer - tło nie dosięga" persisted after `635648d9` pinned the overlay to a literal
-    // `bottom: 0`, which only ever reads *this* variable for its own max-height, not its
-    // position — the live-ness of the variable itself was the remaining gap).
+    // devices do not reflow promptly on a toolbar-only change (pinning the overlay to a literal
+    // `bottom: 0` only fixes its position; this variable still feeds its max-height, so the
+    // variable itself must stay live).
     // `window.visualViewport` is the API purpose-built to report the current, authoritative
     // visible height directly, independent of any element's own layout box; its own `resize`
     // event fires reliably on both toolbar collapse/expand and on-screen-keyboard changes. Read
@@ -922,9 +921,8 @@ function MobileRuntimeSurfaceRegion({
   return (
     <div
       className={cn(
-        // No `@container` here (root-caused live on a real phone, owner audit: "nie jest po osi
-        // Z tylko pod osią Y" — the mobile Composer read as embedded in normal document flow
-        // instead of floating above everything). `container-type` (what the Tailwind `@container`
+        // No `@container` here: the mobile Composer would read as embedded in normal document flow
+        // instead of floating above everything. `container-type` (what the Tailwind `@container`
         // utility sets) carries layout containment, which per the CSS Containment spec makes the
         // element a new containing block for its `position: fixed` descendants too, not only
         // `absolute` ones — so any `fixed` element nested inside this one (the Composer overlay,
@@ -1153,7 +1151,7 @@ function AppWorkspaceRoot({
   // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
   // §4.1), and on a split layout already while the pinned tab is the only one: the pinned tab
   // (Context) is a tab from the start, so opening or closing another tab never swaps a 56px header
-  // for the 36px rail under the content (owner: the screen "jumped" when Work opened). Stacked
+  // for the 36px rail under the content (the screen would jump when Work opened). Stacked
   // layouts and a lone runtime tab without a pinned one keep `surface` unchanged — their header
   // carries the screen's own Back/Close and identity, which a one-tab rail would drop.
   const hasPinnedSecondaryTab = Boolean(secondaryTabsState?.tabs.some((tab) => !tab.closable));
@@ -1224,7 +1222,7 @@ function AppWorkspaceRoot({
   // structure.md §10.1 "Back pops inside the active tab before returning to its root". At a tab
   // root with the root-tab strip shown there is nothing local to pop: the strip owns switching
   // between roots and Close owns closing, so a root-level Back only duplicated those (it hid the
-  // runtime region, revealing the pinned tab) — the redundant desktop "←" the owner flagged. It
+  // runtime region, revealing the pinned tab) — a redundant desktop "←". It
   // also cost the header ~44px, flipping the strip to its switcher on one tab but not another.
   // A single runtime flow without a strip keeps its existing root-level Back unchanged; local depth
   // with the strip shown is the breadcrumb row below.

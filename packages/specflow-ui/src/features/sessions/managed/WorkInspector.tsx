@@ -108,11 +108,10 @@ function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promis
 
 /** The type filter is a compact icon-only `IconButton` opening the same `Menu`/`MenuRadioGroup`
  * selection surface as before — never a `SegmentedControl` (its five options do not fit the
- * Secondary panel's real minimum width, `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` 330px) and, per
- * live owner review, never a `Button` showing the current selection as a visible text label
- * either (found "ugly/weak" next to the V10 mockup's own pill-filter row, which the owner also
- * rejected for this screen). The trigger shows only the `filter` glyph — the same one already
- * used for this exact affordance elsewhere (`Icon`'s curated `filter` entry) — plus a small
+ * Secondary panel's real minimum width, `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` 330px) and
+ * never a `Button` showing the current selection as a visible text label either (it reads weak
+ * next to the V10 mockup's own pill-filter row, which is also not used for this screen). The trigger shows only the `filter` glyph — the same one
+ * already used for this exact affordance elsewhere (`Icon`'s curated `filter` entry) — plus a small
  * decorative `StatusIndicator` dot (the DS's existing "something is active" pattern; `IconButton`
  * itself has no built-in badge/indicator slot) when the active filter is not "Wszystkie"/all. The
  * dot is `aria-hidden`: the accessible name carries the active kind instead, via the button's own
@@ -195,8 +194,7 @@ function WorkFilterBar({
 
 /** A Work row's title on the Timeline rail (`WorkRowContent`). The Timeline is `size="md"`: its
  * title slot is a block that wraps (long tool titles take two lines instead of being cut), and the
- * row carries its own meta line and navigation chevron — owner brief "Work Item jako wiersz
- * nawigacyjny". */
+ * row carries its own meta line and navigation chevron. */
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
   const kind = t('managedSession.workKind.interaction');
@@ -314,9 +312,8 @@ function ToolBurstTimelineItem({
         <Timeline.Content
           title={
             // Touch target: expand the block axis only, never the visual row — same pattern
-            // `ContextNavigationRow` already uses (owner review, round four: this trigger measured
-            // 20×140px, below the DS touch-target rule every other clickable row in this pass
-            // follows).
+            // `ContextNavigationRow` already uses (without it the trigger measures 20×140px, below the
+            // DS touch-target rule every other clickable row follows).
             <Collapsible.Trigger className="relative after:absolute after:inset-x-0 after:top-1/2 after:h-[max(100%,var(--target-size))] after:-translate-y-1/2 after:content-['']">
               {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
             </Collapsible.Trigger>
@@ -357,8 +354,7 @@ function WorkChapterEntryRow({
 }
 
 /** Narration long enough that showing it in full would push its following operations well
- * below the fold is the only case that earns a "Show more" truncation (live owner review,
- * second/structural pass, rule 1). `!complete` is the authoritative signal — the real transport
+ * below the fold is the only case that earns a "Show more" truncation. `!complete` is the authoritative signal — the real transport
  * cap on the initial preview (see `ReadableText`'s own doc comment) means there is strictly more
  * text the user has not seen yet — and the character count is a plain visual fallback for a
  * `complete` preview that is nonetheless several paragraphs long. Ordinary narration (a sentence
@@ -374,10 +370,9 @@ function isNarrationLong(item: WorkSummary): boolean {
 type NarrationVoice = 'commentary' | 'reasoning';
 
 /** Commentary AND Thinking (Reasoning) are the agent's own narration, read directly in the flow —
- * never gated behind a click, never a row on the operations rail (live owner review:
- * "Commentary jest elementem narracji, a nie nagłówkiem zwijanej grupy operacji"; and for
- * Thinking, "Commentary i thinking by mogło wyglądać tak samo, tylko np. thinking dostawać
- * kursywę"). Both use exactly this one block — same size, colour, spacing and long-text handling —
+ * never gated behind a click, never a row on the operations rail: Commentary is narration, not the
+ * header of a collapsible operations group, and Thinking looks the same apart from its voice.
+ * Both use exactly this one block — same size, colour, spacing and long-text handling —
  * and the ONLY visual difference is the voice: Thinking is italic, Commentary upright. They are
  * still two different kinds of Work (session-chat-v10-design.md §4): the italic voice tells them
  * apart at a glance, and assistive tech gets the kind's own name (`sr-only`), since italics are not
@@ -444,9 +439,8 @@ function WorkNarration({
 }
 
 /** A run of operations as one flat `Timeline` (`size="md"`: wrapping titles and a meta line under
- * each — owner: "itemy mogły być dwuwierszowe, czas pod spodem"), always rendered directly
- * — never behind a chapter-level "N operations" disclosure gate (live owner review, second/
- * structural pass, rule 2: a short run of 1-4 operations is just shown, not wrapped in a synthetic
+ * each), always rendered directly
+ * — never behind a chapter-level "N operations" disclosure gate (a short run of 1-4 operations is just shown, not wrapped in a synthetic
  * summary container; `workGrouping.groupChapterEntries` already handles the one remaining case
  * that DOES still compact, a long adjacent happy-path run, into a single burst `Timeline.Item` —
  * see `ToolBurstTimelineItem`). */
@@ -464,8 +458,8 @@ function WorkOperationsTimeline({
   );
 
   // Accessible name only — never rendered as visible text next to Commentary, which would read as
-  // "this Commentary owns N operations" (live owner review, second/structural pass: don't claim a
-  // stronger ownership/causality than the chronological data supports).
+  // "this Commentary owns N operations" (don't claim a stronger ownership/causality than the
+  // chronological data supports).
   return (
     <Timeline aria-label={t('managedSession.workInspector.operationsCount', { count })} size="md">
       {entries.map((entry) => (
@@ -510,7 +504,7 @@ function chapterSegments(entries: readonly ChapterEntry[]): ChapterSegment[] {
 
 /** One Commentary-headed phase: `<comment> <timeline> [<thinking> <timeline>] …` — the rail resets
  * at every narration boundary and never spans across one; narration (Commentary, Thinking) is
- * rendered between rails, never as part of a rail itself (owner decision, see
+ * rendered between rails, never as part of a rail itself (see
  * session-work-inspector-ui-spec.md §2) and never gated behind a disclosure either (see
  * `WorkNarration`). The leading "Start of Turn" chapter uses a neutral label instead of a
  * Commentary heading — there is no prose to show there. */
@@ -529,16 +523,14 @@ function WorkChapterSection({
     [chapter.items],
   );
 
-  // No divider line between chapters (owner review, round two: "nie wiem czy potrzebujemy
-  // separatory poziome dla sekcji pracy ... ja bym wolał po prostu [Commentary z paddingiem]
-  // [Timeline] [Commentary2 z paddingiem] [Timeline2]" — a chapter's Commentary does not always
-  // own everything below a drawn line, so a line overstates that boundary; layout-and-containment's
-  // borderless-first rule applies one step further than the previous pass already took it).
+  // No divider line between chapters (a chapter's Commentary does not always own
+  // everything below a drawn line, so a line overstates that boundary; layout-and-containment's
+  // borderless-first rule applies).
   //
   // One even rhythm: the chapter list's `gap-5` (space before a Commentary) and this section's
   // `gap-5` (space after it) both match the ~20px between operation rows, so narration sits in the
-  // chronology like any other line rather than being pulled toward what follows it (owner: spacing
-  // above and below Commentary must be equal; a Commentary does not own the operations after it).
+  // chronology like any other line rather than being pulled toward what follows it (spacing above
+  // and below Commentary must be equal; a Commentary does not own the operations after it).
   return (
     <section className="grid min-w-0 gap-5">
       {chapter.commentary && chapter.commentaryRole === 'match' ? (
@@ -589,7 +581,7 @@ function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
     counts.byKind.interaction > 0 &&
       t('managedSession.workInspector.counts.interaction', { count: counts.byKind.interaction }),
   ].filter((label): label is string => typeof label === 'string');
-  // Plain text, never a badge (owner brief §5): an ordinary statistic, quieter than the operation
+  // Plain text, never a badge: an ordinary statistic, quieter than the operation
   // titles below it (`body-md` secondary vs. `label-md` primary), and "w toku" is the same
   // `workState.active` word the rows themselves use — not a second status vocabulary. It counts
   // Work in this Turn only; it says nothing about the Session as a whole.
@@ -668,9 +660,9 @@ function Work({ data }: { data: Data }) {
       {/* `contentClassName`'s `flex min-h-full flex-col` gives the scrolled content a definite,
           full-height column so `EmptyState`'s own `variant="pane"` (`flex-1 min-h-full ...
           justify-center`) has remaining space (below the filter bar) to fill and self-centre
-          within. The real Work log is NOT centred (confirmed desktop live-review bug: a previous
-          `m-auto` wrapper here left a large blank gap between the filter bar and a short log, so
-          the log read as floating mid-panel — the same defect already fixed in `SessionContext`).
+          within. The real Work log is NOT centred (an `m-auto` wrapper would leave a large blank gap between the
+          filter bar and a short log, so the log would read as floating mid-panel, as in
+          `SessionContext`).
           A list starts directly under its filter bar and simply scrolls once it overflows. */}
       <ScrollArea
         viewportRef={scroller}
@@ -689,8 +681,8 @@ function Work({ data }: { data: Data }) {
             <>
               {counts && <WorkCountsSummary counts={counts} />}
               <WorkFilterBar filter={filter} kinds={filterKinds} onChange={setFilter} />
-              {/* Auto-loads on scroll near the top instead of a manual button (live-review fix
-                  #3, `useAutoLoadOlder`); this is just its busy indicator. */}
+              {/* Auto-loads on scroll near the top instead of a manual button
+                  (`useAutoLoadOlder`); this is just its busy indicator. */}
               {olderBusy && (
                 <p role="status" className="flex items-center justify-center gap-2 py-1">
                   <Spinner size="sm" />
@@ -799,7 +791,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
     <AppContent className="h-full w-full">
       {/* Same treatment as `Work` above: only `EmptyState` fills and self-centres via its own
           `flex-1`; the real Actions Timeline starts at the top of the panel (no `m-auto` vertical
-          centring — see `Work`'s comment for the confirmed live-review bug it caused). */}
+          centring — see `Work`'s comment for why). */}
       <ScrollArea
         viewportRef={scroller}
         className="min-h-0 w-full flex-1"
@@ -810,7 +802,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
         <div className="flex w-full flex-1 flex-col gap-4">
           {/* Which Work these actions belong to — only when there are several. A single action's
               own title is the heading (`SingleToolActionDetail`), and repeating the Work title
-              above it showed the same name twice (owner: "mamy podwójny nagłówek"). Where the
+              above it would show the same name twice. Where the
               workspace hosts the `detailHeader` (`ActionsHeader`) beside Back, it shows either. */}
           {!headerHosted && !query.isPending && !single && items.length > 0 && (
             <Typography as="h2" variant="title-sm" className="text-content-primary">
@@ -825,8 +817,8 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
           )}
           {!query.isPending && !query.isError && (
             <>
-              {/* Auto-loads on scroll near the top instead of a manual button (live-review fix
-                  #3, `useAutoLoadOlder`); this is just its busy indicator. */}
+              {/* Auto-loads on scroll near the top instead of a manual button
+                  (`useAutoLoadOlder`); this is just its busy indicator. */}
               {olderBusy && (
                 <p role="status" className="flex items-center justify-center gap-2 py-1">
                   <Spinner size="sm" />

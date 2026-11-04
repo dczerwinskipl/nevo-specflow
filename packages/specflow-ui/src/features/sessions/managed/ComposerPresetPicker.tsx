@@ -14,21 +14,20 @@ import type { WorkModeOption } from './workModes';
 /**
  * The Composer toolbar's "Tryb pracy" entry (session-composer-design.md §6): the provider's own
  * work modes, exactly as its catalogue lists them — in catalogue order, under the catalogue's own
- * titles, unavailable ones disabled with the catalogue's reason (owner decision: the Runtime is
- * the source of truth; this component knows no mode vocabulary). The caller maps its catalogue
+ * titles, unavailable ones disabled with the catalogue's reason (the Runtime is the
+ * source of truth; this component knows no mode vocabulary). The caller maps its catalogue
  * onto `WorkModeOption`s (`runtimeWorkModes` for a managed Session) and the picked id back onto its
  * own command. Renders nothing when the catalogue offers
  * no modes. Distinct from the Model · effort picker.
  *
- * A text trigger on every layout, with no leading icon (owner audit, round seven: the earlier
- * icon-only compact trigger hid what mode is selected). `compact` only narrows the truncation cap,
+ * A text trigger on every layout, with no leading icon (an icon-only compact trigger would hide
+ * which mode is selected). `compact` only narrows the truncation cap,
  * and `title` carries the full label when it is truncated.
  *
  * Same `Menu`/`MenuRadioGroup` shape — and same `MenuTrigger asChild` requirement that its direct
  * child forward a ref (the `Button` itself, not an extra wrapping component) — as
- * `ModelEffortPicker`. The trigger is not also wrapped in a `Tooltip`/`TooltipTrigger` (confirmed
- * live, owner audit on a real phone: two nested Radix `asChild` triggers silently ate the
- * open-on-tap interaction).
+ * `ModelEffortPicker`. The trigger is not also wrapped in a `Tooltip`/`TooltipTrigger`: two nested
+ * Radix `asChild` triggers silently swallow the open-on-tap interaction on touch devices.
  */
 export function ComposerModePicker({
   options,

@@ -1,9 +1,9 @@
 import type { ProviderDescriptor, StartTurn } from '@nevo/specflow-contracts/sessions';
 
 /**
- * One row of the Composer's work-mode picker, exactly as a provider catalogue describes it (owner
- * decision: the Runtime is the source of truth for which work modes exist, per provider, under the
- * provider's own names). `id` is opaque; `title` is the catalogue's own title, never UI copy.
+ * One row of the Composer's work-mode picker, exactly as a provider catalogue describes it (the
+ * Runtime is the source of truth for which work modes exist, per provider, under the provider's
+ * own names). `id` is opaque; `title` is the catalogue's own title, never UI copy.
  */
 export interface WorkModeOption {
   id: string;

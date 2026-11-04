@@ -20,7 +20,6 @@ export interface BrandEnvironment {
    * user's own chat bubble, say) rather than an action fill. `--color-action-primary` itself is
    * tuned for a button's full-saturation, attention-grabbing fill; using it directly as a message
    * bubble background read as loud/action-like rather than a quiet "this one is mine" surface
-   * (owner audit: "user message mógłby mieć kolor primary, ale trochę przygaszony, ciemniejszy").
    * Mixed 55% toward black, the same `mixRgb` mechanism `actionHover`/`focusRing` above already
    * use for their own derived shades.
    */

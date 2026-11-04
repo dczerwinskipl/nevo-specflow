@@ -110,11 +110,9 @@
   /* Drop-shadow component matches Tailwind's own `shadow-lg` literally (see
    * `node_modules/tailwindcss/theme.css`'s `--shadow-lg`) — this screen's one shared "floating
    * surface above content" elevation, also applied via the `shadow-lg` utility class to the
-   * Composer bar and the "jump to latest" pill in `ManagedSession.tsx` (owner audit, round two:
-   * "niech one dostaną delikatny cień ... jeden coherent elevation, nie trzy różne wartości cienia").
-   * Previously a heavier bespoke `0 8px 24px rgb(0 0 0 / 0.24)`, which read as a stronger shadow
-   * than the other two floating controls now use. The inset highlight is a separate "material"
-   * effect (the frosted edge), not the elevation shadow, so it is kept as-is.
+   * Composer bar and the "jump to latest" pill in `ManagedSession.tsx`, so all three floating
+   * controls share one elevation rather than three different shadow values. The inset highlight
+   * is a separate "material" effect (the frosted edge), not the elevation shadow, so it is kept as-is.
    */
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
@@ -129,8 +127,7 @@
  * latest" pill) — the DS `Button` `secondary` variant's own background token
  * (`--color-action-secondary`) is deliberately translucent, meant for a control sitting on an
  * already-opaque surface, which let scrolled content show through a genuinely floating pill
- * (owner audit, live on a real phone: "powinien mieć tło nieprzezroczyste tak jak floating
- * przyciski od menu i więcej"). Declared here, unlayered (this file is `@import`-ed directly by
+ * (the pill must be opaque like the other floating navigation buttons). Declared here, unlayered (this file is `@import`-ed directly by
  * `design-system.css`, before Tailwind's own `@layer utilities`), so it reliably overrides the
  * variant's `bg-action-secondary` utility class regardless of Tailwind's internal utility
  * ordering — un-layered CSS always wins over a `@layer`-declared rule per the CSS Cascade Layers

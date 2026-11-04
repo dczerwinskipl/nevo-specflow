@@ -42,9 +42,9 @@ export function CreateShell({
 }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
-  // The scroll area spans the whole pane and the form column is centred INSIDE it (owner review:
-  // the column used to wrap the scroller, which left unscrollable side bands and put the
-  // scrollbar at the column's edge instead of the pane's). The footer centres the same column, so
+  // The scroll area spans the whole pane and the form column is centred INSIDE it (the column must not wrap the
+  // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
+  // edge instead of the pane's). The footer centres the same column, so
   // its button stays aligned with the content.
   const column = 'mx-auto w-content-form max-w-full px-4 sm:px-6';
   const body = (

@@ -7,13 +7,13 @@ import {
   type ViewStore,
 } from './workInspectorStore';
 
-// "Near the top" per the same owner feedback (#5) `ManagedSession.tsx`'s conversation scroller
-// already applies: not literally `scrollTop === 0`, a threshold reached shortly before it so the
+// "Near the top" as `ManagedSession.tsx`'s conversation scroller already applies it: not literally
+// `scrollTop === 0`, a threshold reached shortly before it so the
 // next page is ready before the user hits the physical edge.
 const NEAR_TOP_PX = 200;
 
 /** Scroll-triggered auto-loading of older Work/ToolAction pages, replacing the old manual
- * "Load older" button (session-work-inspector-ui-spec.md, live-review fix #3) with the same
+ * "Load older" button, with the same
  * mechanism `ManagedSession.tsx`'s own conversation scroller uses for older messages:
  * `maybeLoadOlder` is called both from the scroller's own `onScroll` handler (interactive scroll)
  * and from a `useLayoutEffect` that re-checks after every items/busy/error change, so a page that

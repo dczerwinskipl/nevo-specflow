@@ -215,8 +215,8 @@ export function WorkspaceSplitter({
       tabIndex={0}
     >
       {/*
-       * Persistent drag-grip affordance: the owner's live Storybook review found that the splitter
-       * being draggable had no visual sign of it (the 1px line above reads as a static divider).
+       * Persistent drag-grip affordance: without it the splitter
+       * being draggable has no visual sign of it (the 1px line above reads as a static divider).
        * This small pill is visible at rest — not just on hover/focus — so a user can tell the
        * boundary is interactive without discovering it by accident. No equivalent grip/handle
        * visual exists elsewhere in this DS (checked DataTable's column-resize handle and the

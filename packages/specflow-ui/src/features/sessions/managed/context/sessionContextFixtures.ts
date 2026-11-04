@@ -88,8 +88,8 @@ export function singleTaskContext(): SessionContextViewModel {
   };
 }
 
-/** State C — Task-batch execution (§14), designed enough not to visibly break (not this pass's
- * primary validation target). */
+/** State C — Task-batch execution (§14), designed enough not to visibly break (not a primary
+ * validation target). */
 export function batchContext(): SessionContextViewModel {
   return {
     scope: { kind: 'task', taskCount: 3 },
@@ -126,7 +126,7 @@ export function waitingWithoutAttentionContext(): SessionContextViewModel {
 /** State H — terminal failure/cancellation/interruption (§19): Turn outcome and Task/workflow
  * consequence stay separate facts. The Task's own summary says no recovery action is needed yet
  * (Task-level consequence, independent of the Turn's own failure), so its tone must read as
- * informational, not as a "needs attention" warning the text itself contradicts (owner audit). */
+ * informational, not as a "needs attention" warning the text itself contradicts. */
 export function terminalOutcomeContext(): SessionContextViewModel {
   return {
     scope: { kind: 'task', taskCount: 1 },

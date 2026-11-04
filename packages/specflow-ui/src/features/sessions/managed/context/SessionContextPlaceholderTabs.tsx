@@ -21,10 +21,10 @@ import { translateNow } from '../../../../i18n/message';
  * Environment view today), so each opens the SAME shared "not yet implemented" placeholder screen
  * instead of faking real content.
  *
- * The point of this pass is only to prove the navigation mechanics end to end — Context's row ->
+ * These placeholders only prove the navigation mechanics end to end — Context's row ->
  * `useSecondaryNavigation().openTab` -> a real Secondary tab -> the tab strip -> close/reopen —
  * for every one of Context's originally-planned root tabs, not to build their real content (that
- * is explicitly out of this task's scope; see this task's handoff for the open follow-up).
+ * is out of scope here).
  */
 export interface PlaceholderRootTab {
   id: string;

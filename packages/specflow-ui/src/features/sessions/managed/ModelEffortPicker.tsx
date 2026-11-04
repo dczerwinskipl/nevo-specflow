@@ -63,47 +63,40 @@ export interface ModelEffortValue {
  * — the gating is entirely internal, so a caller never has to duplicate "should I render this?"
  * logic alongside it.
  *
- * No leading icon (owner audit, round seven: "usuńmy ikonki od modeli i effort. Modele już mamy
- * tekstem"). The visible "<Model> · <effort>" text is what identifies this picker; the earlier
- * `Bot` glyph only added width the narrow toolbar needs for the work-mode picker's own text label.
+ * No leading icon: the visible "<Model> · <effort>" text is what identifies this picker, and an
+ * icon would only add width the narrow toolbar needs for the work-mode picker's own text label.
  *
- * Owner audit, round two — reference screenshots of ChatGPT/Codex's own compact composer toolbar:
- * its model+effort trigger always shows a short but readable TEXT label next to the icon (e.g.
- * "6.1 Sol  Średni"), never collapses to an unlabeled icon. `compact` below no longer renders a
- * bare `IconButton` for exactly that reason — an icon-only trigger is very likely why the owner
- * could not find this picker at all on the narrow layout.
+ * The trigger always shows a short but readable TEXT label, never collapsing to an unlabeled icon
+ * (`compact` does not render a bare `IconButton`): an icon-only trigger makes the picker hard to
+ * find on the narrow layout.
  *
- * Owner audit, round three — a real caution on the above: this app's own `ProviderDescriptor`
- * (`model.title`, checked directly — there is no separate short/display-name field, only the one
- * `title` string) is not guaranteed to be a short brand-dropped form the way the reference
- * screenshots' own in-app labels were ("Claude Sonnet 5", not "Sonnet 5"; "ChatGPT 6.1 Sol", not
- * "6.1 Sol" — this product cannot assume the brand prefix is implicit the way a provider's own
- * app can).
+ * `ProviderDescriptor` has no separate short/display-name field, only the one `model.title`
+ * string, which is not guaranteed to be a short brand-dropped form ("Claude Sonnet 5", not
+ * "Sonnet 5"); this product cannot assume the brand prefix is implicit the way a provider's own
+ * app can.
  *
- * Owner audit, round four — Google's Antigravity app proves the full name fits cleanly without
- * truncation in the common case: its own composer trigger shows "Claude Opus 5.5" in a heavier
- * weight next to "High" in a lighter/secondary weight, both at a small label size, plus a small
- * expand chevron. The trigger below copies that exact anatomy instead of one plain joined string:
+ * The full name fits without truncation in the common case, so the trigger shows the model title
+ * in a heavier weight next to the effort in a lighter/secondary weight, both at a small label
+ * size, plus a small expand chevron, instead of one plain joined string:
  * the model title keeps the `Button` label's own default weight (`label-sm`'s `600`, already the
  * smallest/boldest label size this Design System has), the effort renders in a second, explicitly
  * lighter-weight/secondary-colored span right after it, and a trailing `ChevronDown` reads as
- * "this expands" the way the reference's own chevron does. `labelOverflow="truncate"` still caps
+ * "this expands" the way a chevron conventionally does. `labelOverflow="truncate"` still caps
  * the whole thing to the trigger's `max-w` as a last-resort fallback — only a genuinely unusual,
  * very long name should ever actually hit it (see `CompactTriggerLongModelName` for that specific
- * live proof; every other story's realistic-length name fits untruncated).
+ * case; every other story's realistic-length name fits untruncated).
  *
- * Owner audit, round five — the popover itself now mirrors that same Antigravity reference
- * directly: two sections ("Model", then "Reasoning effort") in ONE popover instead of a single
- * flattened list of "Title · effort" rows. Picking a model that has more than one effort keeps the
+ * The popover has two sections ("Model", then "Reasoning effort") in ONE popover instead of a
+ * single flattened list of "Title · effort" rows. Picking a model that has more than one effort keeps the
  * popover open (its own `MenuRadioItem`'s `onSelect` calls `event.preventDefault()` — the
  * documented Radix mechanism for suppressing a `DropdownMenu` item's own default close-on-select)
  * so the effort section can be refined in the same open menu; picking a model with 0-1 efforts, or
  * picking the effort itself, closes normally. Every model pick still fires a complete `onChange`
  * immediately (keeping the previously selected effort when the new model still offers it, else
  * falling back to that model's first effort) — the popover staying open is purely to let the user
- * *refine* that default, never to withhold a value until a second click. Per-row "available
- * efforts" descriptions are gone: once effort is its own visible section, repeating it as a second
- * line on every model row said nothing new.
+ * *refine* that default, never to withhold a value until a second click. Model rows carry no
+ * "available efforts" description: with effort as its own visible section, repeating it as a
+ * second line on every model row would say nothing new.
  */
 export function ModelEffortPicker({
   provider,
@@ -120,10 +113,8 @@ export function ModelEffortPicker({
    * Narrows the trigger's max width for a layout with less room (`ManagedSession.tsx` passes
    * `!supportsSplit`, the same measured-width signal it already uses for the Context header
    * action) — it still always shows the selected model (and effort) as visible text, never
-   * collapsing to an icon-only trigger (owner audit, round two: see this component's
-   * own doc comment for why an unlabeled icon is specifically what made the owner unable to find
-   * this picker at all). The width is generous enough that a realistic model name fits
-   * untruncated (owner audit, round four): it only narrows the gap between the two triggers'
+   * collapsing to an icon-only trigger (see this component's own doc comment). The
+   * width is generous enough that a realistic model name fits untruncated: it only narrows the gap between the two triggers'
    * typical content, not the point past which truncation kicks in.
    */
   compact?: boolean;
@@ -147,14 +138,13 @@ export function ModelEffortPicker({
   return (
     <Menu>
       <MenuTrigger asChild>
-        {/* A `Button` either way — never a bare icon-only `IconButton` (owner audit, round two:
-            see this component's own doc comment). Title + effort render as two spans, not one
+        {/* A `Button` either way — never a bare icon-only `IconButton` (see this component's own doc
+            comment). Title + effort render as two spans, not one
             joined string, so the effort can carry its own lighter weight/secondary color
-            (Antigravity reference, owner audit round four) while the title keeps the label's own
+            while the title keeps the label's own
             bold `label-sm` weight; `labelOverflow="truncate"` on the whole thing is still the
             fallback for a genuinely long name (see `CompactTriggerLongModelName`).
-            The cap is an inline `style.maxWidth`, not a `max-w-*` className (confirmed live,
-            round four's own long-name check: `cn` here is plain `clsx`, not `tailwind-merge`, so
+            The cap is an inline `style.maxWidth`, not a `max-w-*` className (`cn` here is plain `clsx`, not `tailwind-merge`, so
             a `max-w-*` utility class has no guaranteed precedence over `truncate`'s own built-in
             `max-w-full` — the two co-existing classes left `max-w-full` winning in the generated
             stylesheet's own rule order, and the "long name" story rendered at its full,
@@ -215,7 +205,7 @@ export function ModelEffortPicker({
                 onChange(item.modelId, nextEffort);
                 if (item.hasEfforts) {
                   // Keep the popover open so the just-revealed "Reasoning effort" section below
-                  // can be refined without reopening the menu (owner audit, round five).
+                  // can be refined without reopening the menu.
                   event.preventDefault();
                 }
               }}

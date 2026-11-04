@@ -236,8 +236,7 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
             "Field label -> label-sm ... not body-sm font-medium" / "Description -> body-sm,
             content-secondary". Both previously rendered at the same weight and a similar-enough
             `text-current`/`text-content-secondary` lightness in this theme to read as one
-            undifferentiated block (owner audit, live: "nie mamy label i tekst, tylko wszystko
-            jednolita czcionka"). A plain option with no description keeps `body-sm` unchanged —
+            undifferentiated block. A plain option with no description keeps `body-sm` unchanged —
             this only strengthens the pairing the hierarchy table is actually about. */}
         <Typography
           className={cn(selectItemLabelClassName, !structured && 'flex-1')}

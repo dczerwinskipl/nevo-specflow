@@ -50,9 +50,8 @@ export interface WorkChapter {
    * what the user asked to see (no filter, the Commentary kind, or a search that hits its text),
    * shown in full. Undefined when the chapter is only present because one of its OTHER items
    * matches a kind/search filter — Commentary is never shown as a secondary "context" line for a
-   * filter it did not itself match (owner review, round three: "Commentary to nie kontekst
-   * chyba?" — a prior pass kept it visible as orientation for where a match occurred, which made
-   * e.g. "Narzędzie" read identically to "Wszystkie" whenever every chapter already had its own
+   * filter it did not itself match (showing it as orientation for where a match occurred would make
+   * e.g. the tool filter read identically to "all" whenever every chapter already had its own
    * Commentary; every filter must show ONLY the kind it names, with nothing else mixed in).
    * Absent on unfiltered chapters straight from `buildWorkChapters` (= `match`).
    */
@@ -110,8 +109,8 @@ function matchesSearch(item: WorkSummary, term: string): boolean {
 
 /**
  * Kinds actually present in this Turn — the only type-filter options worth offering. A kind with
- * no item can never match, so offering it is a dead end (owner review: an "interaction" option on
- * a Turn that has none showed an empty view every time). Uses the Turn-wide `byKind` projection
+ * no item can never match, so offering it is a dead end (an "interaction" option on a Turn
+ * that has none would show an empty view every time). Uses the Turn-wide `byKind` projection
  * when one exists, otherwise the loaded items; `'all'` is always first.
  */
 export function availableWorkFilterKinds(
@@ -129,11 +128,10 @@ export function availableWorkFilterKinds(
 }
 
 /**
- * One rule for every option (owner review: "each filter behaves differently, you can't predict
- * what to expect"): a type filter shows ONLY Work items of that kind, and search shows only items
- * whose text matches — nothing else is mixed in (owner review, round three: dropped the earlier
- * "show Commentary as context" exception entirely; it made a kind filter read identically to
- * "Wszystkie" whenever every chapter already had its own Commentary). Chronology is still never
+ * One rule for every option, so no filter behaves unpredictably: a type filter shows ONLY Work items of that kind, and search shows only items
+ * whose text matches — nothing else is mixed in (no "show Commentary as context" exception: it would make
+ * a kind filter read identically to "all" whenever every chapter already had its own
+ * Commentary). Chronology is still never
  * flattened — a matching item stays inside its Commentary-headed chapter — but that chapter's
  * Commentary itself is only shown when it is ALSO part of what the user asked to see. A chapter
  * with no match (items or, where applicable, its own Commentary) is dropped entirely.
@@ -185,11 +183,9 @@ const happyToolState = (item: WorkSummary) => item.kind === 'tool' && item.state
 
 /**
  * Minimum length of an adjacent happy-path tool run before it compacts into one burst row
- * (live owner review, second/structural pass): "Nie zwijałbym 1–4 operacji w sztuczny kontener
- * 'N działań narzędzia' — po prostu pokazałbym wiersze" / don't wrap 1-4 operations in a
- * synthetic "N tool actions" summary container, just show the rows. A run shorter than this
- * renders as its own individual `Timeline.Item` per entry — grouping only ever kicks in once
- * hiding the run's members stops hurting the ability to trace what happened, i.e. for a genuinely
+ * (don't wrap 1-4 operations in a synthetic "N tool actions" summary container, just show the
+ * rows). A run shorter than this renders as its own individual `Timeline.Item` per entry —
+ * grouping only ever kicks in once hiding the run's members stops hurting the ability to trace what happened, i.e. for a genuinely
  * long, uneventful run.
  */
 export const TOOL_BURST_MIN_SIZE = 5;
@@ -198,7 +194,7 @@ export const TOOL_BURST_MIN_SIZE = 5;
  * Compacts a long (`>= TOOL_BURST_MIN_SIZE`) run of adjacent happy-path ('completed') tool items
  * inside one chapter into a single collapsible burst row — one `Timeline.Item`/marker for the
  * whole run, never one marker per member (session-work-inspector-ui-spec.md §6.2/§6.3 and the
- * live owner review above: "jedna oś, jedna hierarchia" / one axis, one hierarchy). A shorter run
+ * one-axis, one-hierarchy principle above). A shorter run
  * (1 to `TOOL_BURST_MIN_SIZE - 1` items) is left as that many individual rows instead of being
  * wrapped in a container at all. Reasoning and Interaction are never merged, and a tool that is
  * queued/active/waiting/failed/cancelled/interrupted/expired always stays its own isolated row —
@@ -247,9 +243,8 @@ const terminalWorkStates: ReadonlySet<WorkSummary['state']> = new Set([
  * `updatedAt` (never fabricated, never a separate `durationMs` field — the real contract has
  * none). `undefined` for a still-running item (queued/active/waiting has no final duration yet),
  * an unparsable timestamp, or a non-positive span: `createdAt === updatedAt` is not a real "0 ms"
- * measurement, it is the common case of a timestamp resolution/fixture limit (live owner review:
- * never display "0 ms" — an unreliable/not-meaningful duration should be hidden, not rendered as
- * zero). The caller (`useWorkDurationLabel` in WorkInspector.tsx) already treats `undefined` as
+ * measurement, it is the common case of a timestamp resolution/fixture limit (never display "0 ms" — an
+ * unreliable/not-meaningful duration should be hidden, not rendered as zero). The caller (`useWorkDurationLabel` in WorkInspector.tsx) already treats `undefined` as
  * "omit the duration entirely", so this is the one place that decision needs to live.
  */
 export function workItemDurationMs(
@@ -288,8 +283,7 @@ export function formatWorkDuration(ms: number, locale: string): string {
 
 /**
  * Localized wall-clock start/end, e.g. "14:32:05–14:32:06" (session-work-inspector-ui-spec.md §9's
- * Started/Completed fields — owner review, round four: "Dodaj też zegarowy start/koniec", the
- * duration alone left no way to tell WHEN a ToolAction ran). `undefined` on the same terms
+ * Started/Completed fields: the duration alone leaves no way to tell WHEN a ToolAction ran). `undefined` on the same terms
  * {@link workItemDurationMs} already uses for "no reliable duration" (not yet settled, or an
  * unparsable/non-positive span) — the two are shown together, so one being unavailable implies the
  * other is too.

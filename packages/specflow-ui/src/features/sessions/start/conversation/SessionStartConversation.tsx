@@ -38,8 +38,8 @@ export function SessionStartConversation({
     return () => observer.disconnect();
   }, [overlay]);
 
-  // Content sits directly on the conversation, from the top (owner, 2026-11-04: centred in the free
-  // height looked odd); an empty state centres itself in the same column.
+  // Content sits directly on the conversation, from the top (centred in the free
+  // height looks odd); an empty state centres itself in the same column.
   const content = (
     <>
       <div className="mx-auto flex w-full max-w-content-standard flex-1 flex-col px-5 py-5">

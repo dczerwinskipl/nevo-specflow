@@ -37,9 +37,8 @@ export const ReadableText = forwardRef<
      * `ManagedSession.tsx` uses this to correct the floating composer overlay against this exact
      * mutation instead of waiting for a `ResizeObserver` to notice it: a `ResizeObserver`
      * notification is a separate, best-effort browser scheduling step (one per rendered frame),
-     * not guaranteed to land inside the same task as this specific DOM write, and the owner's
-     * item 1 follow-up report was exactly that gap — a page landing without its correction having
-     * caught up yet. A direct call from this component's own layout effect has no such gap: it is
+     * not guaranteed to land inside the same task as this specific DOM write, which can leave a page
+     * landing without its correction having caught up yet. A direct call from this component's own layout effect has no such gap: it is
      * part of the very React commit that grew the text.
      */
     onGrow?: () => void;

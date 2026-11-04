@@ -166,13 +166,11 @@ function EntryRow({
     return (
       <article data-entry-id={entry.id} className="group/message grid justify-end gap-1">
         {srLabel}
-        {/* `bg-surface-primary` (owner audit: "user message mógłby mieć kolor primary, ale
-            trochę przygaszony, ciemniejszy") — a new brand-derived token (`brandEnvironment.ts`'s
-            own `surfacePrimary`, mixed 55% toward black) rather than the brand's full-saturation
+        {/* `bg-surface-primary` — a brand-derived token (`brandEnvironment.ts`'s own
+            `surfacePrimary`, mixed 55% toward black) rather than the brand's full-saturation
             `--color-action-primary`, which reads as a loud button fill rather than a quiet "this
-            one is mine" message surface. Replaces the previous neutral `bg-surface-subtle`, which
-            gave the user's own messages no visual identity distinct from the rest of the
-            conversation. */}
+            one is mine" message surface. A neutral `bg-surface-subtle` would give the user's own
+            messages no visual identity distinct from the rest of the conversation. */}
         <div className="max-w-content-standard rounded-composite bg-surface-primary px-4 py-3">
           <ReadableText
             ref={textRef}
@@ -214,12 +212,10 @@ function EntryRow({
   }
 
   if (entry.kind === 'commentary') {
-    // Plain muted prose, no icon, no container (owner review, round two: "to nie pasuje do
-    // commentary, i pytanie czy potrzebujemy tam ikonkę czy dla commentary/thinking nie wystarczy
-    // zwykłe md parsing" — the EKG/pulse `Activity` icon didn't semantically fit, and reads fine as
-    // Markdown alone). `text-content-muted` (not `-secondary`) so it is clearly quieter than the
-    // final answer below it without a box to lean on — confirmed live it still reads against the
-    // page background, which was the original reason the box/icon were added.
+    // Plain muted prose, no icon, no container: a pulse icon does not fit commentary semantically,
+    // and it reads fine as Markdown alone. `text-content-muted` (not `-secondary`) so it is
+    // clearly quieter than the final answer below it without a box to lean on, while still
+    // reading against the page background.
     return (
       <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
         {srLabel}
@@ -230,10 +226,9 @@ function EntryRow({
 
   // 'outcome' (only for a Turn with no Work block — `conversationItems` folds it into the block
   // otherwise, so the fact appears once): no celebratory chrome on completion; a quiet semantic
-  // marker on failure/cancel. No "Zobacz pracę" here (owner review, round two): by construction
-  // this branch only ever renders for a Turn with zero `work-summary` entries, so that link would
-  // open an empty, dead-end Work history panel every time, not just in the one case the reviewer
-  // happened to hit.
+  // marker on failure/cancel. No "view work" link here: by construction this branch only
+  // ever renders for a Turn with zero `work-summary` entries, so that link would open an empty,
+  // dead-end Work history panel every time.
   const tone =
     entry.text.text === 'failed'
       ? 'danger'
@@ -362,9 +357,9 @@ function ManagedSessionConversation({
   const awayRef = useRef(false);
   const isLayoutInducedScroll = useLayoutInducedScroll(scroller);
   // The Composer must stay pinned to the viewport bottom at all times — ONLY the conversation
-  // scrolls underneath it, never the Composer itself (owner audit, live on a real phone: an
-  // earlier `position: sticky`-everywhere pass regressed into "the Composer is just another block
-  // in the page flow, only visible once scrolled all the way down" on the real composed route).
+  // scrolls underneath it, never the Composer itself (`position: sticky` everywhere regresses into
+  // "the Composer is just another block in the page flow, only visible once scrolled all the way
+  // down" on the real composed route).
   // Split/desktop: `position: sticky` as the local scroll container's own last flow child — this
   // component owns that single-level container, so sticky reserves its own space correctly and
   // stays correctly bounded to Primary's own column (confirmed live). Stacked/mobile:
@@ -440,8 +435,8 @@ function ManagedSessionConversation({
     scroller,
     composerHeight,
   ]);
-  // Scroll-triggered auto-loading of older history (owner feedback #5), replacing the old manual
-  // "Load older messages" button: `maybeLoadOlder` (declared below, a hoisted function
+  // Scroll-triggered auto-loading of older history, instead of a manual "Load older messages"
+  // button: `maybeLoadOlder` (declared below, a hoisted function
   // declaration) is called both from the scroll listener below (interactive scroll) and from this
   // effect, which re-checks after every entries/busy/error change — so a page that was just
   // prepended and still leaves the scroller at/near the top keeps loading until `history.hasOlder`
@@ -484,17 +479,15 @@ function ManagedSessionConversation({
       return undefined;
     }
 
-    // Debounced, not recomputed on every tick (owner audit, live on a real phone: a slow manual
-    // scroll gesture fires many intermediate `scroll` events, and committing `away` from each one
-    // made the "jump to latest" pill flicker in/out mid-gesture as the 80px threshold was crossed
+    // Debounced, not recomputed on every tick: a slow manual scroll gesture fires many
+    // intermediate `scroll` events, and committing `away` from each one would make the "jump to
+    // latest" pill flicker in/out mid-gesture as the 80px threshold was crossed
     // and re-crossed by hand-jitter alone). `AWAY_SETTLE_MS` only *delays* when the computed value
     // reaches `feed` — it still recomputes from the latest geometry each time, so the pill never
     // shows a stale verdict, only a slightly late one, settling in once scrolling pauses rather
-    // than chasing every intermediate position. Lowered from the original 200ms (owner audit,
-    // round two: "pokazuje się minimalnie za późno, za duży delay" — 200ms read as sluggish for a
-    // pill that is meant to react to the user having stopped scrolling) to 100ms: still comfortably
-    // longer than a single hand-jitter tick, so the original flicker bug stays fixed, but short
-    // enough that the pill reads as responsive rather than laggy once the gesture actually settles.
+    // than chasing every intermediate position. 100ms is comfortably longer than a single
+    // hand-jitter tick, so the pill does not flicker, but short enough that it reads as responsive
+    // rather than laggy once the gesture actually settles (200ms felt sluggish).
     const AWAY_SETTLE_MS = 100;
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     const handleScroll = () => {
@@ -642,8 +635,8 @@ function ManagedSessionConversation({
       // only extends how far the viewport can scroll, it is not part of the sheet's own box and
       // does not inherit its background/border/rounding, which is exactly why the Composer used to
       // need a copied/color-matched background instead of genuinely sharing the one real surface
-      // (owner audit, live DOM measurement: the sheet's own `getBoundingClientRect().bottom`
-      // stopped short of the true viewport bottom by exactly the Composer's height). The sheet is a
+      // (the sheet's own `getBoundingClientRect().bottom` would otherwise stop short of the
+      // true viewport bottom by exactly the Composer's height). The sheet is a
       // descendant of `scroller` with no hard pixel height anywhere in that chain (only
       // `min-height`), so growing the sheet's own box still grows `scroller.scrollHeight` by the
       // same amount — the scrollable-range reservation this previously relied on `scroller`'s own
@@ -673,11 +666,10 @@ function ManagedSessionConversation({
 
     return () => observer.disconnect();
   }, [ambientSheetElement, composerOverlayNode, localScroll, pinToBottomIfNotAway, scroller]);
-  // Re-pins on a SCROLLER resize, not just a composer/entries/history change (owner review, round
-  // four, live trace: opening Work history from a bottom-pinned chat narrowed the chat column via
-  // the Secondary splitter, which re-wrapped message text and grew `scroller.scrollHeight` with no
-  // new entry, no composer-height change, and no history load — none of the triggers the effects
-  // above or below already cover. The browser has already completed layout by the time
+  // Re-pins on a SCROLLER resize, not just a composer/entries/history change : opening Work history from
+  // a bottom-pinned chat narrows the chat column via the Secondary splitter, which re-wraps
+  // message text and grows `scroller.scrollHeight` with no new entry, no composer-height change,
+  // and no history load — none of the triggers the effects above or below already cover. The browser has already completed layout by the time
   // `ResizeObserver`'s callback fires, so `scrollHeight` here already reflects the new wrapped
   // height; `pinToBottomIfNotAway` itself still gates on `awayRef`, so a user who had genuinely
   // scrolled away keeps their position — only a width/height-driven reflow while already pinned to
@@ -715,7 +707,7 @@ function ManagedSessionConversation({
     void feed.older();
   }
 
-  // "Near the top" per owner feedback #5: not literally scrollTop === 0, a threshold reached
+  // "Near the top": not literally scrollTop === 0, a threshold reached
   // shortly before it so the next page is ready before the user hits the physical edge.
   const NEAR_TOP_PX = 200;
   function maybeLoadOlder(node: HTMLElement) {
@@ -729,8 +721,8 @@ function ManagedSessionConversation({
   }
 
   const snapshot = state.snapshot;
-  // The work-mode picker lists the provider's own `providerModes` (owner decision: the Runtime is
-  // the source of truth). Shown: an explicit pick, else the Session's current provider mode (what
+  // The work-mode picker lists the provider's own `providerModes` (the Runtime is the source of
+  // truth). Shown: an explicit pick, else the Session's current provider mode (what
   // the next Turn inherits), else the catalogue default. A pick — or a shown default that differs
   // from what the Session would inherit — is sent as `mode` + `providerModeId`.
   const workModes = useMemo(() => runtimeWorkModes(provider), [provider]);
@@ -751,7 +743,7 @@ function ManagedSessionConversation({
     !state.commandBusy &&
     (!!state.pending || snapshot.session.capabilities.start) &&
     (!!state.pending || !!state.draft.trim());
-  // The composer shows one adaptive Send/Stop action (owner feedback #2), not two simultaneous
+  // The composer shows one adaptive Send/Stop action, not two simultaneous
   // buttons: Stop only while a Turn is actually running and cancellable, Send/Retry otherwise.
   const canCancel = !!snapshot?.session.capabilities.cancel && !!snapshot?.activeTurn;
   const sendActionLabelKey = canCancel
@@ -796,7 +788,7 @@ function ManagedSessionConversation({
   // is actually sent anywhere — they stay in the composer after Send and the chips carry the
   // "local mock" note (`managedSession.attach.note`), so the UI never implies delivery.
   const [attachments, setAttachments] = useState<{ id: string; name: string; size: number }[]>([]);
-  // Two hidden inputs, not one (owner audit): "+" opens a menu offering "Dodaj plik"/"Dodaj obraz"
+  // Two hidden inputs, not one: "+" opens a menu offering "Add file"/"Add image"
   // rather than jumping straight to a native file/image picker — `accept="image/*"` on the image
   // input is itself part of that distinction (a generic file input would let through anything).
   const fileAttachmentInputRef = useRef<HTMLInputElement>(null);
@@ -860,8 +852,8 @@ function ManagedSessionConversation({
                     !snapshot.entries.length && 'flex-1 grid-rows-[1fr]',
                   )}
                 >
-                  {/* Auto-loads on scroll near the top instead of a manual button (owner
-                          feedback #5, `maybeLoadOlder`); this is just its busy indicator. */}
+                  {/* Auto-loads on scroll near the top instead of a manual button
+                          (`maybeLoadOlder`); this is just its busy indicator. */}
                   {state.historyBusy && (
                     <p role="status" className="flex items-center justify-center gap-2 py-1">
                       <Spinner size="sm" />
@@ -906,9 +898,8 @@ function ManagedSessionConversation({
                     ),
                   )}
                 </div>
-                {/* "Jump to latest": a genuinely independent floating control (owner audit, live
-                    on a real phone: "ten przycisk żeby przesunąć na dół najlepiej jakby też był
-                    floating") — deliberately a SIBLING of `composerOverlayNode` below, never a
+                {/* "Jump to latest": a genuinely independent floating control —
+                    deliberately a SIBLING of `composerOverlayNode` below, never a
                     flow child inside it. It used to render as the overlay's own first child,
                     which meant its own appear/disappear toggle changed that single node's
                     measured height — the exact node `composerOverlayNode`'s `ResizeObserver`
@@ -947,8 +938,7 @@ function ManagedSessionConversation({
                     {/* `variant="secondary"`'s own background token (`--color-action-secondary`)
                         is deliberately translucent — it is meant for a control sitting on an
                         already-opaque surface, not one floating directly over scrolling content
-                        (owner audit, live on a real phone: "powinien mieć tło nieprzezroczyste
-                        tak jak floating przyciski od menu i więcej"). `workspace-floating-pill`
+                        (it must stay opaque like the other floating buttons). `workspace-floating-pill`
                         (`AppWorkspace.css`) overrides it to the same opaque material the mobile
                         floating-navigation row's own buttons use, and reliably wins the cascade
                         over the variant's Tailwind utility regardless of class order — see that
@@ -956,7 +946,7 @@ function ManagedSessionConversation({
                         floating surface" elevation (also applied to the Composer bar below, and
                         mirrored by value in the floating-navigation row's own shadow) — not the
                         heavier `shadow-xl` this used before, which read as too strong for a small
-                        pill (owner audit, round two: "niech one dostaną delikatny cień"). */}
+                        pill. */}
                     <Button
                       className="workspace-floating-pill shadow-lg"
                       variant="secondary"
@@ -970,12 +960,11 @@ function ManagedSessionConversation({
                   ref={setComposerOverlayNode}
                   data-composer-overlay="true"
                   // Split/desktop: a normal flow child of the single local scroll container above
-                  // (`position: sticky` reserves its own space there, confirmed live, and needs no
+                  // (`position: sticky` reserves its own space there and needs no
                   // height cap — the container it is inside is already bounded by the workspace
-                  // layout). Stacked/mobile: `position: fixed` instead (owner audit, live on a
-                  // real phone: `sticky` must sit relative to the TRUE scrolling ancestor to stay
-                  // pinned, and this screen's real composed route — unlike this component's own
-                  // isolated Storybook fixture — did not reliably give it one; `fixed` is
+                  // layout). Stacked/mobile: `position: fixed` instead (`sticky` must sit
+                  // relative to the TRUE scrolling ancestor to stay pinned, and this screen's real
+                  // composed route does not reliably provide one; `fixed` is
                   // unconditionally pinned to the viewport regardless of any ancestor's stacking
                   // context, which is the actual "only the composer stays put, nothing else
                   // scrolls" requirement). `fixed` reserves no space of its own, so the ambient
@@ -986,8 +975,7 @@ function ManagedSessionConversation({
                   // (`AppWorkspace.css`) — not a separately computed height relationship of this
                   // component's own.
                   //
-                  // Stacked/mobile only: owner audit, live on a real phone ("Composer - tło nie
-                  // dosięga") — `bottom: var(--workspace-overlay-bottom, …)` previously floated
+                  // Stacked/mobile only: `bottom: var(--workspace-overlay-bottom, …)` would float
                   // the *entire* overlay (including the zone its own background should fill) up
                   // off the true viewport/safe-area edge, the same treatment the top floating-nav
                   // pill intentionally uses; unlike that pill, the Composer is meant to read as a
@@ -998,8 +986,8 @@ function ManagedSessionConversation({
                   // material box (`.mobile-workspace-surface`) now extends its own box all the way
                   // to the true bottom, so the Composer sits transparently on top of that single
                   // real surface rather than painting a second, copied one of its own — the two
-                  // used to be color-matched separately (an illusion that a structural DOM check
-                  // reveals as two boxes), now there genuinely is only one. Split/desktop keeps the
+                  // would otherwise be color-matched separately (an illusion that a structural DOM
+                  // check reveals as two boxes), so there genuinely is only one. Split/desktop keeps the
                   // unchanged floating-above-the-edge treatment: it is a `sticky` child of its own
                   // local scroll container, which already shares that container's opaque
                   // background, so there is no transparent zone for content to show through
@@ -1024,9 +1012,8 @@ function ManagedSessionConversation({
                         }
                   }
                 >
-                  {/* Narrower than the conversation on the split layout (owner audit, round
-                      seven: the composer spanning the full 1100px reading column looked like a
-                      form field, not a chat input). The stacked layout keeps its own width. */}
+                  {/* Narrower than the conversation on the split layout (spanning the full 1100px
+                      reading column would look like a form field, not a chat input). The stacked layout keeps its own width. */}
                   <div
                     className={cn(
                       'grid w-full gap-3',
@@ -1103,32 +1090,29 @@ function ManagedSessionConversation({
                       </div>
                     )}
                     {/* Visually hidden, not removed: the `<textarea>` still needs an accessible
-                        name (owner audit, round three: "usuńmy jeszcze napis wiadomości" — the
-                        composer's own placeholder/icon already make its purpose obvious to a
-                        sighted user, so the always-visible label was redundant chrome). */}
+                        name (the composer's own placeholder/icon already make its
+                        purpose obvious to a sighted user, so a visible label is redundant
+                        chrome). */}
                     <label htmlFor="managed-message" className="sr-only">
                       {t('managedSession.message')}
                     </label>
                     <MessageComposer
-                      // `shadow-lg`, not the previous `shadow-2xl` (owner audit, round two: "niech
-                      // one dostaną delikatny cień" — a general note for every floating/elevated
-                      // surface on this screen, this bar included). Shares its literal value with
+                      // `shadow-lg` (a subtle shadow for every floating/elevated surface on this
+                      // screen, this bar included). Shares its literal value with
                       // the "jump to latest" pill's own `shadow-lg` below and with the mobile
                       // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
                       // one coherent elevation rather than three different weights.
                       //
                       // `workspace-floating-pill` (`AppWorkspace.css`), not the DS `standalone`
-                      // variant's own default `bg-surface-raised` (a flat, solid `#121212`): owner
-                      // audit, round three ("composer może mieć jaśniejsze tło") — this is the same
-                      // lighter, translucent "floating surface" material the jump-to-latest pill
+                      // variant's own default `bg-surface-raised` (a flat, solid `#121212`): this is
+                      // the same lighter, translucent "floating surface" material the jump-to-latest pill
                       // and the mobile floating-navigation row already use, declared un-layered so
                       // it reliably wins over the component's own `@layer`-declared utility
                       // regardless of Tailwind's internal ordering (see that class's own doc
                       // comment). Keeps this bar visually consistent with this screen's other
                       // floating surfaces instead of reading as a separate, darker material.
                       className="shadow-lg workspace-floating-pill"
-                      // Platform-specific Enter handling (owner audit, round two: "enter na
-                      // mobilce, ani nawet shift enter nie przenoszą do nowej linii"). Desktop
+                      // Platform-specific Enter handling. Desktop
                       // keeps the DS default (`'submit'`): a physical keyboard reliably reports
                       // `shiftKey`, so Shift+Enter already inserts a newline there
                       // (`resolveMessageComposerKeyAction`) and plain Enter sends. A mobile virtual
@@ -1163,8 +1147,8 @@ function ManagedSessionConversation({
                                 conditional operation policy, then the trailing Model+effort/Send
                                 cluster (`ml-auto` keeps that cluster right-aligned, as it already
                                 was). */}
-                        {/* One row, never wrapped (owner audit, round seven: at 375px the wrap put
-                            Model above the work mode). Both groups may shrink; the two text
+                        {/* One row, never wrapped (at 375px a wrap would put Model above the
+                            work mode). Both groups may shrink; the two text
                             pickers truncate instead. */}
                         <div className="flex min-w-0 items-center gap-1">
                           <input
@@ -1187,8 +1171,8 @@ function ManagedSessionConversation({
                             }
                           />
                           {/* Opens a menu ("Dodaj plik"/"Dodaj obraz"), not a native picker
-                              directly (owner audit): the mockup's own "+" affordance is itself a
-                              menu trigger (desktop.html's `c3-plus`/`data-cmp="attach"`), and a
+                              directly: the mockup's own "+" affordance is itself a menu trigger
+                              (desktop.html's `c3-plus`/`data-cmp="attach"`), and a
                               bare `IconButton` here — not also wrapped in `Tooltip`/
                               `TooltipTrigger`, see `ComposerModePicker`'s doc comment — avoids
                               the same nested-`asChild` tap bug. */}
@@ -1255,9 +1239,8 @@ function ManagedSessionConversation({
                                   type={canCancel ? 'button' : 'submit'}
                                   // Bold `primary` only while Send is actually actionable: the
                                   // disabled `opacity-50` treatment alone reads too close to
-                                  // "primary" at full saturation (owner audit — the composer's
-                                  // disabled textarea visibly mutes, the Send icon button did
-                                  // not), so the disabled Send case falls back to the same muted
+                                  // "primary" at full saturation (the composer's disabled textarea
+                                  // visibly mutes, so the Send icon button must too), so the disabled Send case falls back to the same muted
                                   // `secondary` treatment Stop/Cancel already uses.
                                   variant={canCancel || !canSend ? 'secondary' : 'primary'}
                                   onClick={canCancel ? () => void feed.cancel() : undefined}
@@ -1478,16 +1461,15 @@ export function ManagedSession({
     [sessionContext, runningTurnId, executor, workHistory],
   );
 
-  // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (owner audit:
-  // the previous dedicated, bordered status/provider row read as a second header competing with
-  // this one for space, especially on narrow widths — the same space pressure implicated in the
-  // floating-overlay overlap this pass also fixes) instead of a standalone row in the conversation
+  // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (a dedicated, bordered
+  // status/provider row would read as a second header competing with this one for space,
+  // especially on narrow widths) instead of a standalone row in the conversation
   // flow. Nothing it showed is dropped: the connection/activity text and the mock-provider safety
   // note both still render, just as the header's own muted subtitle; `role="status"` keeps the
   // same live-region announcement the old row's `<span role="status">` gave screen reader users.
   // When the active Turn's Work block already shows what is happening right now (with its own
   // spinner), the header keeps only the coarse Session state ("Praca trwa") — the detailed live fact
-  // appears once, in the block (owner: "nie chcę widzieć dwa razy tej samej informacji").
+  // appears once, in the block, never twice.
   const liveInConversation =
     !!snapshot && !!liveActivity(snapshot.activeTurn, snapshot.currentActivity);
   const activityLabel = snapshot
@@ -1502,9 +1484,8 @@ export function ManagedSession({
     state.connection === 'connected' &&
     !liveInConversation &&
     snapshot.currentActivity?.kind === 'waiting';
-  // The raw provider id ("claude", "codex", …) is not shown on its own anymore (owner audit:
-  // "tragiczne designowo" — not meaningful to a user who already sees the active model via the
-  // composer's own Model picker). Only the mock-provider safety caveat survives, since it carries
+  // The raw provider id ("claude", "codex", …) is not shown on its own anymore (not meaningful to a user who already sees the active
+  // model via the composer's own Model picker). Only the mock-provider safety caveat survives, since it carries
   // real operational meaning ("nothing you do here persists"), not mere identity.
   const mockNote =
     snapshot?.session.providerId === 'mock' ? t('managedSession.mockNote') : undefined;
@@ -1530,13 +1511,13 @@ export function ManagedSession({
       }
     : {
         // Split layout: a persistent toggle that hides and shows the WHOLE side panel — Context
-        // and every opened tab (owner: it used to close only Context, leaving Work history open).
+        // and every opened tab, not only Context.
         // With the tab rail shown the panel has no close of its own, so this is the one way to
         // hide it. Hiding keeps the tabs and their stacks (`navigation.close` retains them);
         // showing again restores Context and the tab that was active.
         id: 'context',
         label: t('managedSession.sidePanel'),
-        // The standard side-panel glyph, not a document (owner audit, round eight).
+        // The standard side-panel glyph, not a document.
         icon: 'panel-right',
         presentation: 'icon',
         pressed: sidePanel.sidePanelOpen,

@@ -31,7 +31,7 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * placeholder/zero. When every dimension is unavailable this whole section renders nothing, the
  * same "missing data hides the section" rule the rest of `SessionContext` already follows.
  *
- * Hierarchy rebuild (live owner review, mobile mock + rationale — see this task's handoff):
+ * Hierarchy:
  * - Cost and token usage are aggregated top-level stat cells (a compact `title-md` tabular value over a muted caption),
  *   not inline label+value sentences — `StatCell`.
  * - The full cache-read/cache-write/reasoning token breakdown is real information but does not
@@ -43,7 +43,7 @@ import { isTelemetryVisible } from './sessionTelemetry';
  *   `<section>`s ("Zużycie sesji" / "Limity dostawcy"), each with its own heading.
  * - The two rate-limit windows most relevant to the user (ranked by usage, same as before) render
  *   as two full-width stacked rows (label + value header, then the bar), so at a ~330 px
- *   Secondary each bar keeps the full column width (owner visual-refinement brief).
+ *   Secondary each bar keeps the full column width.
  *
  * Every percentage shown here is unambiguously a "how much is USED" figure, never "how much is
  * left": `limitWindowPercentage`/`formatContextOccupancy` both compute `used / limit` (or, for
@@ -54,13 +54,13 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * "Zużycie sesji" is session-scoped by its title: `TelemetrySnapshot.usage`/
  * `.cost` already carry an optional sibling `turn` reading next to `session` (see
  * `sessionTelemetry.ts`), but no fixture populates it and nothing else in this UI reads it yet.
- * This section still only ever reads `.session` — same as before this pass — labelled honestly as
+ * This section still only ever reads `.session` labelled honestly as
  * such rather than inventing a Turn/Session split the data/product has not decided on.
  *
- * Correctness fix (live owner review, second pass): unlike cost/tokens, "Model context window" is
+ * Unlike cost/tokens, "Model context window" is
  * NOT a session aggregate — architecturally, a model's context window is scoped to one Turn/model
  * invocation. It still renders inside the "Zużycie sesji" section (there is nowhere better for a
- * single always-visible row), but `LimitRow`'s `scopeCaption` now names the actual Turn/model it
+ * single always-visible row), but `LimitRow`'s `scopeCaption` names the actual Turn/model it
  * measures (`formatContextWindowScope`, reading `ContextUsage.turnId`/`.modelId` — already real,
  * already populated data, unlike `usage.turn`/`cost.turn` above) instead of silently inheriting
  * the section's "for the whole session" claim.
@@ -100,7 +100,7 @@ export function SessionTelemetrySection({
         <section className="grid gap-3" aria-labelledby={usageTitleId}>
           <div className="flex flex-wrap items-baseline gap-2">
             {/* The title alone says it is session-wide ("Zużycie sesji"); a "w całej sesji" caption
-                next to it only repeated it (owner review). */}
+                next to it only repeated it. */}
             <Typography as="h3" id={usageTitleId} variant="section-label">
               {t('sessions.context.sessionDetails.usageTitle')}
             </Typography>
@@ -196,8 +196,8 @@ export function SessionTelemetrySection({
 }
 
 /** A top-level aggregate stat (cost, token usage): a compact inspector-sized number over a muted
- * caption, never inline label+value text — the owner's explicit correction to the previous "one
- * undifferentiated font" telemetry read. `note` is a second, smaller muted line for a caveat that
+ * caption, never inline label+value text, so telemetry does not read as one
+ * undifferentiated font. `note` is a second, smaller muted line for a caveat that
  * belongs with the number itself (cost basis/meaning), not a separate sentence. */
 function StatCell({
   value,
@@ -294,7 +294,7 @@ function LimitRow({
 }
 
 /**
- * Usage threshold tiers (owner-decision default — see module header: `Reading`/`LimitWindow` have
+ * Usage threshold tiers (a product default — see module header: `Reading`/`LimitWindow` have
  * no server-provided tone/threshold field today, so this is a hardcoded client-side cutoff, not a
  * value read from the telemetry contract. Revisit once PR #107 or a successor documents one).
  */
@@ -486,7 +486,7 @@ function formatContextOccupancy(
 }
 
 /**
- * Correctness fix (live owner review, second pass): "Model context window" sits inside a section
+ * "Model context window" sits inside a section
  * titled as session-wide ("Zużycie sesji"), but a model's context window is
  * architecturally scoped to ONE Turn/model invocation, never summed or meaningful across a whole
  * Session — unlike cost/token usage next to it, which genuinely ARE session aggregates. Labelling
@@ -560,9 +560,8 @@ function limitWindowPercentage(window: LimitWindow): number | undefined {
 }
 
 /** A full-word duration label ("5 godzin" / "7 dni") for the common hour/day-aligned provider
- * windows the owner's mock names directly, instead of the previous abbreviated "okno 5h". Falls
- * back to the old abbreviated/generic wording for a window that isn't an exact hour or day
- * multiple (a rarer case the mock does not cover). */
+ * windows, instead of an abbreviated "5h". Falls back to abbreviated/generic wording for a window
+ * that isn't an exact hour or day multiple (a rarer case). */
 function formatLimitWindowLabel(seconds: number | undefined, t: TFunction): string | undefined {
   if (seconds === undefined || seconds <= 0) {
     return undefined;

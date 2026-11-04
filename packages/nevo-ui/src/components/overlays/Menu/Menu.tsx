@@ -87,8 +87,7 @@ export const MenuContent = forwardRef<ComponentRef<typeof DropdownMenu.Content>,
             // mobile viewport) silently clips past the viewport edge instead of scrolling its own
             // content — `floatingContentClassName`'s own `overflow-hidden` (from
             // `floatingSurfaceClassName`) was built for corner-radius clipping, not meant to hide
-            // overflowing content (owner audit, live: "Zatwierdzanie operacji" section checked at
-            // 390px wide). `overflow-y-auto` scrolls the menu's own content inside its fixed
+            // overflowing content (a long section at 390px wide was clipped). `overflow-y-auto` scrolls the menu's own content inside its fixed
             // rounded/bordered surface instead.
             'w-56 [&]:min-w-0 max-w-[var(--radix-dropdown-menu-content-available-width)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto',
             className,
@@ -246,9 +245,9 @@ export const MenuRadioItem = forwardRef<
         <span className="grid min-w-0 flex-1 gap-0.5 py-0.5">
           {/* A heading above a description reads as a title, not a single-line value (unlike the
               plain, no-description branch below, which stays `optionLabelClassName`'s single-line
-              truncating recipe): owner audit, live — a long option's own title (e.g. "Zatwierdzaj
-              edycje automatycznie") was being cut to an ellipsis by that same single-line recipe
-              even though its full second-line description sat right underneath, uncut. The
+              truncating recipe): a long option title (e.g. "Approve edits automatically") would be cut
+              to an ellipsis by that same single-line recipe even though its full second-line
+              description sits right underneath, uncut. The
               wrapping variant (`optionLabelWrappingClassName`, the same one branch/workspace
               pickers use to keep a long value fully readable) lets the title wrap onto a second
               line instead of truncating, so nothing in either line is ever lost.

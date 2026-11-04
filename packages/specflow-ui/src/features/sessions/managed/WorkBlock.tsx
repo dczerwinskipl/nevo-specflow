@@ -23,7 +23,7 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
   // Turn is still running (work may yet succeed), so the icon stays the spinner even when a tool
   // has already failed — only `text.outcome` (set once the Turn settles, never while live, see
   // `workBlockModel.ts`) promotes the icon to alert. The red failure LINE itself still renders
-  // immediately below, independent of the icon (owner decision, round two review).
+  // immediately below, independent of the icon.
   const danger = !block.live && (!!text.failed || text.outcome?.tone === 'danger');
   const attention = !block.live && !danger && text.outcome?.tone === 'attention';
 
@@ -79,11 +79,10 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
             </Typography>
           )}
           {/* Visible, but `aria-hidden` — the live announcement itself lives in the sr-only sibling
-              region below, OUTSIDE this `button` (owner review, round four: a `role="status"` live
+              region below, OUTSIDE this `button` (a `role="status"` live
               region nested INSIDE a button becomes part of that button's own accessible name, so
-              every live-text change re-announced the WHOLE control, not just the update — the same
-              problem the earlier "move it out of the page-level status region" fix, round two,
-              hadn't actually solved, just relocated one level too shallow). The leading icon tile
+              every live-text change would re-announce the WHOLE control, not just the update).
+              The leading icon tile
               already carries the spinner while live (see above), so this line doesn't repeat one of
               its own. */}
           {text.live && (

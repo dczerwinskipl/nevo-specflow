@@ -146,8 +146,7 @@ function ToolActionDetailSection({
 }
 
 /**
- * L4: one ToolAction's own content (owner brief "ToolAction details: struktura zamiast surowego
- * tekstu"), one simple structure: header (`ToolActionHeader`: the full title, then a status line
+ * L4: one ToolAction's own content, one simple structured layout rather than raw text: header (`ToolActionHeader`: the full title, then a status line
  * with a discreet status mark and the duration; in a split Secondary the single-action screen
  * declares it as its `detailHeader`, outside this content), the parameters, the tool's response — each under
  * a label + Copy row on its own code surface (formatted JSON when the body is JSON, verbatim text
@@ -197,9 +196,8 @@ function ToolActionContent({
       )}
       {item.error && (
         <Alert tone={failed ? 'danger' : 'attention'} title={item.error.message}>
-          {/* Labelled, not a bare technical code as the primary visible text (owner review,
-              round four: a raw `process_exit` read as unexplained noise right under the
-              message) — the code is secondary metadata, smaller and muted, not styled like a
+          {/* Labelled, not a bare technical code as the primary visible text (a raw `process_exit`
+              reads as unexplained noise right under the message) — the code is secondary metadata, smaller and muted, not styled like a
               second line of the message itself. */}
           <Typography as="span" variant="body-sm" className="text-content-muted">
             {t('managedSession.workInspector.errorCode', { code: item.error.code })}
@@ -243,9 +241,7 @@ export function SingleToolActionHeader({ item }: { item: ToolActionSummary }) {
  * no Timeline/marker rail at all: with nothing else on the rail to align against, the reserved
  * 1.25rem+gap-x-3 marker column (`TimelineItem`'s own `size="md"` grid) was pure unexplained
  * indent, misaligning "PARAMETRY"/"ODPOWIEDŹ NARZĘDZIA" and their code blocks against the page's
- * own header and the parent Work title above them (owner audit, live on the real composed screen:
- * "Dalej mamy niepotrzebne wcięcia po lewej stronie" — still have unnecessary left indentation,
- * after an earlier pass left the rail in place reasoning it was harmless chrome). This renders the
+ * own header and the parent Work title above them. This renders the
  * identical content flush at the panel's own padding edge instead. */
 export function SingleToolActionDetail({
   item,

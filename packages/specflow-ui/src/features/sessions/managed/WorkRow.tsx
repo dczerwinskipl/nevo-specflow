@@ -17,8 +17,7 @@ export function useWorkDurationLabel(item: Timed): string | undefined {
 }
 
 /** Localized wall-clock start–end of a settled item, e.g. "14:32:05–14:32:06", or `undefined` on
- * the same terms as {@link useWorkDurationLabel} (owner review, round four: "Dodaj też zegarowy
- * start/koniec" — only the ToolAction detail header uses this, visibly only for long runs and
+ * the same terms as {@link useWorkDurationLabel}; only the ToolAction detail header uses this, visibly only for long runs and
  * otherwise as the duration's tooltip, `ToolActionHeader.tsx`; L2's compact rows keep just the
  * duration). */
 export function useWorkClockRangeLabel(item: Timed): string | undefined {
@@ -28,8 +27,7 @@ export function useWorkClockRangeLabel(item: Timed): string | undefined {
 }
 
 /**
- * The one optional line under a Work row's title (owner brief: "pod tytułem opcjonalna linia
- * metadanych"): the state only when it says something (anything but a plain completion — never
+ * The one optional line under a Work row's title: the state only when it says something (anything but a plain completion — never
  * "Zakończono" on every successful row; the word stays for assistive tech), then elapsed time,
  * then how many ToolActions the details hold. Absent entirely when there is nothing worth saying,
  * so a row never gets an empty second line.
@@ -58,9 +56,9 @@ export function useWorkRowMeta(
     parts.push(duration);
   }
 
-  // Only shown for 2+ (owner review, round four: "1 działanie" on every multi-action row said
-  // nothing a single action's own title didn't already — the count only earns its place once
-  // there's actually more than one to count).
+  // Only shown for 2+ (a "1 action" count on every row would say
+  // nothing a single action's own title doesn't already — the count only earns its place once
+  // there's more than one to count).
   if (options.actionCount && options.actionCount > 1) {
     parts.push(t('managedSession.workInspector.actionCount', { count: options.actionCount }));
   }
@@ -79,8 +77,7 @@ export function useWorkRowMeta(
 
 /**
  * One Work row's content — the same anatomy for a top-level operation on the Timeline rail, a
- * member of an expanded tool group, and a ToolAction header (owner brief "Work Item jako wiersz
- * nawigacyjny"):
+ * member of an expanded tool group, and a ToolAction header:
  *
  * ```text
  * [ title (wraps) ............................ ]  [ > ]

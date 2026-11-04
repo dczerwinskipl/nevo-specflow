@@ -67,7 +67,7 @@ export function InteractionPrompt({
               </label>
               {/* A structured interaction response, not free prose — the main message composer
                   below keeps native spellcheck; this one does not need the red squiggly
-                  underlines (owner audit). */}
+                  underlines. */}
               <TextArea
                 id="managed-answer"
                 spellCheck={false}

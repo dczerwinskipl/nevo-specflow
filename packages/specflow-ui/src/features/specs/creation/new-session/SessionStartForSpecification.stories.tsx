@@ -495,6 +495,28 @@ export const NarrowModelChosen: Story = {
   },
 };
 
+/** Narrow flow: choose a model, Start; the Session opens with the Composer docked and focused. */
+export const NarrowStartFlow: Story = {
+  globals: mobile,
+  play: async ({ canvas }) => {
+    await settle(375, 812);
+    await pick(canvas, 'Model', 'codex model A');
+    // The model and the work mode fields fit the 375 px column.
+    const model = canvas.getByRole('combobox', { name: 'Model' });
+    await expect(model.getBoundingClientRect().right).toBeLessThanOrEqual(375);
+    const modes = canvas.getByRole('radiogroup', { name: 'Tryb pracy' });
+    await expect(modes.getBoundingClientRect().right).toBeLessThanOrEqual(375);
+    await expectNoHorizontalScroll();
+    await userEvent.click(startButton(canvas));
+    await expect(await canvas.findByText('Codex jest gotowy')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
+    await waitFor(() => expect(composer(canvas)).toHaveFocus());
+    await expect(canvas.queryByText('Nadawanie nazwy…')).toBeNull();
+    await expectNoHorizontalScroll();
+  },
+};
+
 export const NarrowNoProviderAvailable: Story = {
   ...NoProviderAvailable,
   globals: mobile,

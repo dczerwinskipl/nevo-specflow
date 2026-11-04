@@ -277,7 +277,7 @@ state, rendered from args; the plays only assert it and walk the flows):
   (ready empty state, focused Composer), `StartFailed`, `NoProviderAvailable`, plus the flows
   `AgentNamesSession`, `OwnName`, `EffortAndMode`, `AllocationFails` and `UnknownOutcome`; Narrow
   375 px — `NarrowOpen`, `NarrowModelChosen` (no Composer), `NarrowStarted`,
-  `NarrowNoProviderAvailable`, `OwnNameMobile`.
+  `NarrowStartFlow`, `NarrowNoProviderAvailable`, `OwnNameMobile`.
 - **Managed source, no Specification** (`features/sessions/start/screen/SessionStartManaged.stories.tsx`,
   scenario (h)): `NoSpecification`, `NativeModesWithUnavailableOne`, `ProviderWithoutModels`,
   `ManagedAntigravityLongModelList` (the thirteen-model catalogue), `ManyWorkModes` (a picker),

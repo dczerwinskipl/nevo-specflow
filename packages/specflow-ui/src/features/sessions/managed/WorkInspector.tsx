@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/sessions';
@@ -31,6 +31,22 @@ import { translateNow } from '../../../i18n/message';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
+import { usePagedHistory } from './usePagedHistory';
+import {
+  absorbPage,
+  absorbWorkPage,
+  createViewStoreRegistry,
+  initialPagedState,
+  initialWorkViewState,
+  newestCounts,
+  toggleExpanded,
+  useViewState,
+  workPageCounts,
+  type ActionsViewState,
+  type ViewStore,
+  type WorkFilterState,
+  type WorkViewState,
+} from './workInspectorStore';
 import {
   buildWorkChapters,
   filterWorkChapters,
@@ -61,6 +77,9 @@ type Data = Root & {
   api: ManagedSessionsApi;
   feed: SessionFeed;
   owner: string;
+  /** The view state of an object, kept across Secondary tab switches (`workInspectorStore.ts`). */
+  workView: (turnId: string) => ViewStore<WorkViewState>;
+  actionsView: (workId: string) => ViewStore<ActionsViewState>;
 };
 interface Pages {
   work: Record<string, never>;
@@ -85,67 +104,6 @@ function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promis
       clearTimeout(timer);
     };
   }, [feed, turnId, refresh]);
-}
-
-interface WorkFilterState {
-  kind: WorkFilterKind;
-  search: string;
-}
-
-// "Near the top" per the same owner feedback (#5) `ManagedSession.tsx`'s conversation scroller
-// already applies: not literally `scrollTop === 0`, a threshold reached shortly before it so the
-// next page is ready before the user hits the physical edge.
-const NEAR_TOP_PX = 200;
-
-/** Scroll-triggered auto-loading of older Work/ToolAction pages, replacing the old manual
- * "Load older" button (session-work-inspector-ui-spec.md, live-review fix #3) with the same
- * mechanism `ManagedSession.tsx`'s own conversation scroller uses for older messages:
- * `maybeLoadOlder` is called both from the scroller's own `onScroll` handler (interactive scroll)
- * and from a `useLayoutEffect` that re-checks after every items/busy/error change, so a page that
- * was just prepended and still leaves the scroller near the top keeps loading until
- * `history.hasOlder` is false, and a short Work/Actions list that never overflows (no scrollbar to
- * drive) still pages in its older history once mounted. Stops entirely on `error` — the caller
- * keeps a manual Retry action instead of looping a failing request. */
-function useAutoLoadOlder({
-  scroller,
-  hasOlder,
-  busy,
-  error,
-  loadOlder,
-  itemsVersion,
-}: {
-  scroller: { current: HTMLDivElement | null };
-  hasOlder: boolean;
-  busy: boolean;
-  error: boolean;
-  loadOlder: () => void | Promise<void>;
-  itemsVersion: unknown;
-}) {
-  function maybeLoadOlder(node: HTMLDivElement) {
-    if (!hasOlder || busy || error) {
-      return;
-    }
-
-    if (node.scrollTop < NEAR_TOP_PX) {
-      void loadOlder();
-    }
-  }
-
-  // Runs after the anchor-restoring effect declared above it in each screen (same commit, later
-  // in declaration order), so it reads the scroll position that effect just restored, not a stale
-  // one.
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    if (node) {
-      maybeLoadOlder(node);
-    }
-    // `hasOlder`/`busy`/`error` are already listed; `loadOlder` and `scroller` are stable-enough
-    // closures (a new `loadOlder` identity per render carries no behavior the listed values don't
-    // already determine) and re-adding them would only re-run this on every unrelated render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemsVersion, hasOlder, busy, error]);
-
-  return maybeLoadOlder;
 }
 
 /** The type filter is a compact icon-only `IconButton` opening the same `Menu`/`MenuRadioGroup`
@@ -444,7 +402,8 @@ function WorkNarration({
   data: Data;
 }) {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const view = data.workView(data.turnId);
+  const isExpanded = useViewState(view).expanded.has(item.workId);
   const isLong = isNarrationLong(item);
 
   return (
@@ -473,7 +432,7 @@ function WorkNarration({
           variant="ghost"
           size="sm"
           className="-ml-2 h-auto w-fit justify-start px-2 not-italic"
-          onClick={() => setIsExpanded((value) => !value)}
+          onClick={() => view.update((state) => toggleExpanded(state, item.workId))}
         >
           {isExpanded
             ? t('managedSession.workInspector.showLess')
@@ -657,86 +616,43 @@ function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
 function Work({ data }: { data: Data }) {
   const { t } = useTranslation();
   const navigation = useSecondaryStack<Pages>();
-  const [items, setItems] = useState<WorkSummary[]>([]);
-  const [history, setHistory] = useState<{ hasOlder: boolean; before?: string }>({
-    hasOlder: false,
-  });
-  const [olderBusy, setOlderBusy] = useState(false);
-  const [olderError, setOlderError] = useState(false);
-  const [filter, setFilter] = useState<WorkFilterState>({ kind: 'all', search: '' });
-  // The proposed, not-yet-backend-implemented `WorkPage.counts` aggregate (workCounts.ts,
-  // docs/reference/api/sessions.md "Proposed Work aggregate counts"): kept as separate state,
-  // updated from every tail refresh and older-page fetch, rather than ever derived from `items`
-  // — this hides the whole summary row when the field is absent instead of faking it from
-  // `items.length` (session-chat-v10-design.md §3).
-  const [counts, setCounts] = useState<WorkCounts | undefined>(undefined);
-  const scroller = useRef<HTMLDivElement>(null);
-  const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
+  // The view (loaded older pages and cursor, filter, search, counts, expanded narration) is
+  // product state of this Turn's tab, kept outside the screen: an inactive tab unmounts, and this
+  // is what it comes back to (workInspectorStore.ts).
+  const view = data.workView(data.turnId);
 
   // Always fetches the current tail window (no `before`): older pages are loaded progressively
-  // and merged locally (see `loadOlder`), never fetched eagerly — this stays a bounded
-  // `WorkPage` request even for a Turn with hundreds of historical Work items.
+  // (see `usePagedHistory`), never fetched eagerly — this stays a bounded `WorkPage` request even
+  // for a Turn with hundreds of historical Work items. Items that later slide out of the tail
+  // window are kept by the view, so a refresh never opens a hole behind the tail.
   const query = useQuery({
     queryKey: ['managed-work', data.owner, data.sessionId, data.turnId],
-    queryFn: ({ signal }) => data.api.work(data.sessionId, data.turnId, undefined, signal),
+    queryFn: async ({ signal }) => {
+      const page = await data.api.work(data.sessionId, data.turnId, undefined, signal);
+      view.update((state) => absorbWorkPage(state, page, 'tail'));
+
+      return page;
+    },
   });
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  useEffect(() => {
-    if (!query.data) {
-      return;
-    }
-
-    setItems((previous) => mergeWorkItems(previous, query.data.items));
-    setHistory(query.data.history);
-    setCounts(query.data.counts);
-  }, [query.data]);
-
-  // Restores the viewport anchor after an older page is prepended (session-work-inspector-ui-
-  // spec.md §5.5): the user's current scroll position must not jump when older content loads
-  // above it. Mirrors ManagedSession's own history-scroll-anchor technique.
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    if (!node || !anchor.current) {
-      return;
-    }
-
-    node.scrollTop = anchor.current.top + node.scrollHeight - anchor.current.height;
-    anchor.current = undefined;
-  }, [items]);
-
-  async function loadOlder() {
-    if (!history.before || olderBusy) {
-      return;
-    }
-
-    if (scroller.current) {
-      anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
-    }
-
-    setOlderBusy(true);
-    setOlderError(false);
-    try {
-      const page = await data.api.work(data.sessionId, data.turnId, history.before);
-      setItems((previous) => mergeWorkItems(previous, page.items));
-      setHistory(page.history);
-      setCounts(page.counts);
-    } catch {
-      anchor.current = undefined;
-      setOlderError(true);
-    } finally {
-      setOlderBusy(false);
-    }
-  }
-
-  const maybeLoadOlder = useAutoLoadOlder({
-    scroller,
-    hasOlder: history.hasOlder,
-    busy: olderBusy,
-    error: olderError,
-    loadOlder,
-    itemsVersion: items,
+  const { state, items, scroller, loadOlder, maybeLoadOlder } = usePagedHistory({
+    store: view,
+    merge: mergeWorkItems,
+    tail: query.data,
+    fetchOlder: (before) => data.api.work(data.sessionId, data.turnId, before),
+    absorbOlder: (current, page) => absorbWorkPage(current, page, 'older'),
   });
+  const { filter } = state;
+  // The proposed, not-yet-backend-implemented `WorkPage.counts` aggregate (workCounts.ts,
+  // docs/reference/api/sessions.md "Proposed Work aggregate counts"): the newest by `eventSeq`
+  // among the tail and every page loaded — never derived from `items`, so the summary row is
+  // hidden entirely when the field is absent instead of faked from `items.length`
+  // (session-chat-v10-design.md §3).
+  const counts = newestCounts(state.counts, query.data && workPageCounts(query.data))?.value;
+  const olderBusy = state.busy;
+  const olderError = state.error;
+  const setFilter = (next: WorkFilterState) => view.update((value) => ({ ...value, filter: next }));
 
   const chapters = useMemo(() => buildWorkChapters(items), [items]);
   const visibleChapters = useMemo(() => filterWorkChapters(chapters, filter), [chapters, filter]);
@@ -816,11 +732,19 @@ function Work({ data }: { data: Data }) {
 
 type ActionsParams = Pages['actions'];
 
-/** The Work's ToolActions, one page; shared by the `actions` screen and its declared header. */
+/** The Work's ToolActions, one page (the tail window); shared by the `actions` screen and its declared
+ * header. Items that later leave the window are kept by the view store. */
 function useActionsQuery(data: Data, params: ActionsParams) {
   return useQuery({
     queryKey: ['managed-actions', data.owner, data.sessionId, params.workId],
-    queryFn: ({ signal }) => data.api.actions(data.sessionId, params.workId, undefined, signal),
+    queryFn: async ({ signal }) => {
+      const page = await data.api.actions(data.sessionId, params.workId, undefined, signal);
+      data
+        .actionsView(params.workId)
+        .update((state) => absorbPage(state, mergeToolActions, page, 'tail'));
+
+      return page;
+    },
   });
 }
 
@@ -854,70 +778,22 @@ function ActionsHeader({ data, params }: { data: Data; params: ActionsParams }) 
 
 function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const { t } = useTranslation();
-  const [items, setItems] = useState<ToolActionSummary[]>([]);
-  const [history, setHistory] = useState<{ hasOlder: boolean; before?: string }>({
-    hasOlder: false,
-  });
-  const [olderBusy, setOlderBusy] = useState(false);
-  const [olderError, setOlderError] = useState(false);
-  const scroller = useRef<HTMLDivElement>(null);
-  const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
   const headerHosted = useSecondaryDetailHeaderHosted();
-  const single = isSingleAction(items.length, history.hasOlder);
-
+  const view = data.actionsView(params.workId);
   const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  useEffect(() => {
-    if (!query.data) {
-      return;
-    }
-
-    setItems((previous) => mergeToolActions(previous, query.data.items));
-    setHistory(query.data.history);
-  }, [query.data]);
-
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    if (!node || !anchor.current) {
-      return;
-    }
-
-    node.scrollTop = anchor.current.top + node.scrollHeight - anchor.current.height;
-    anchor.current = undefined;
-  }, [items]);
-
-  async function loadOlder() {
-    if (!history.before || olderBusy) {
-      return;
-    }
-
-    if (scroller.current) {
-      anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
-    }
-
-    setOlderBusy(true);
-    setOlderError(false);
-    try {
-      const page = await data.api.actions(data.sessionId, params.workId, history.before);
-      setItems((previous) => mergeToolActions(previous, page.items));
-      setHistory(page.history);
-    } catch {
-      anchor.current = undefined;
-      setOlderError(true);
-    } finally {
-      setOlderBusy(false);
-    }
-  }
-
-  const maybeLoadOlder = useAutoLoadOlder({
-    scroller,
-    hasOlder: history.hasOlder,
-    busy: olderBusy,
-    error: olderError,
-    loadOlder,
-    itemsVersion: items,
+  const { state, items, scroller, loadOlder, maybeLoadOlder } = usePagedHistory({
+    store: view,
+    merge: mergeToolActions,
+    tail: query.data,
+    fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
+    absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
   });
+  const olderBusy = state.busy;
+  const olderError = state.error;
+  const hasOlder = (state.cursor ?? query.data?.history)?.hasOlder ?? false;
+  const single = isSingleAction(items.length, hasOlder);
 
   return (
     <AppContent className="h-full w-full">
@@ -1005,6 +881,10 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
  * Turn opens or activates its own. The label names the Turn (`workTabLabel`).
  */
 export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, owner: string) {
+  // One view per Turn / per Work, for as long as this inspector lives (workInspectorStore.ts).
+  const workView = createViewStoreRegistry(initialWorkViewState);
+  const actionsView = createViewStoreRegistry(initialPagedState<ToolActionSummary>);
+
   return defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',
     initial: 'work',
@@ -1012,7 +892,7 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
     tabLabel: (params) => workTabLabel(feed.getSnapshot().snapshot?.entries ?? [], params.turnId),
     useData: (params) => ({
       status: 'ready',
-      data: { ...params, api, feed, owner },
+      data: { ...params, api, feed, owner, workView, actionsView },
     }),
     screens: {
       work: {

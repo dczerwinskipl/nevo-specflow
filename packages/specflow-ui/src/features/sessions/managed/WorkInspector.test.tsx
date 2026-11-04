@@ -508,3 +508,340 @@ describe('WorkInspector sparse-state framing', () => {
     expect(action.closest('.m-auto')).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// View state kept across Secondary tab switches, the older-page cursor, the scroll anchor and the
+// counts (PR #112 review F05-F10). The Work view is product state of the Turn's tab
+// (secondary-navigation.md "Selection, filters, drafts and expanded rows are product state, kept
+// outside the screen… scoped to the tab's object"); an inactive tab unmounts by design.
+// ---------------------------------------------------------------------------------------------
+
+const otherTurnId = '00000000-0000-4000-8000-000000000003';
+const countsOf = (total: number) => ({
+  total,
+  inProgress: 0,
+  byKind: { tool: total, commentary: 0, reasoning: 0, interaction: 0 },
+});
+
+interface PagedApiOptions {
+  /** Pages per Turn, ascending; the last one is the tail window. */
+  turns: Record<string, WorkSummary[][]>;
+  /** Counts a page reports, by whether it is the tail window. */
+  countsFor?: (source: 'tail' | 'older') => { eventSeq: number; total: number } | undefined;
+  /** An older `before` whose first request is held until `release()` (a slow older load). */
+  hold?: string;
+  /** An older `before` whose first request fails. */
+  failOnce?: string;
+}
+
+function pagedApi(options: PagedApiOptions) {
+  const calls: { turnId: string; before: string | undefined }[] = [];
+  let tailCalls = 0;
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let heldUsed = false;
+  let failed = false;
+  const api = {
+    work: async (_sessionId: string, forTurn: string, before?: string) => {
+      calls.push({ turnId: forTurn, before });
+      const pages = options.turns[forTurn] ?? [[]];
+      const index = before === undefined ? pages.length - 1 : Number(before);
+      if (before !== undefined && before === options.hold && !heldUsed) {
+        heldUsed = true;
+        await held;
+      }
+
+      if (before !== undefined && before === options.failOnce && !failed) {
+        failed = true;
+
+        throw new Error('older page failed');
+      }
+
+      const source = before === undefined ? 'tail' : 'older';
+      if (source === 'tail') {
+        tailCalls += 1;
+      }
+
+      const reported = options.countsFor?.(source);
+      const hasOlder = index > 0;
+
+      return {
+        sessionId,
+        // Every tail request describes a newer snapshot, so a refresh always yields new data.
+        eventSeq: reported?.eventSeq ?? (source === 'tail' ? 100 + tailCalls : 1),
+        turn,
+        items: pages[index] ?? [],
+        history: { hasOlder, before: hasOlder ? String(index - 1) : undefined },
+        ...(reported ? { counts: countsOf(reported.total) } : {}),
+      } satisfies WorkPage & { counts?: ReturnType<typeof countsOf> };
+    },
+    actions: () =>
+      Promise.resolve({
+        sessionId,
+        eventSeq: 1,
+        workId: 'work-0',
+        items: [],
+        history: { hasOlder: false },
+      }),
+  } as unknown as ManagedSessionsApi;
+
+  return { api, calls, release: () => release() };
+}
+
+function TurnsHost({ api }: { api: ManagedSessionsApi }) {
+  const feed = useMemo(() => createSessionFeed(api, sessionId, 'work-test'), [api]);
+  const workStack = useMemo(() => createWorkInspector(api, feed, 'work-test'), [api, feed]);
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <AppWorkspace split="primary">
+      <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
+        {[turnId, otherTurnId].map((id, index) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => void navigation.openTab(workStack, { sessionId, turnId: id })}
+          >
+            {`Open Turn ${index + 1}`}
+          </button>
+        ))}
+      </AppWorkspace.Primary>
+    </AppWorkspace>
+  );
+}
+
+function mountTurns(api: ManagedSessionsApi) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <StoryLocalization locale="en">
+      <QueryClientProvider client={client}>
+        <AppWorkspaceProvider>
+          <AppShell navigation={<div>Nav</div>}>
+            <TurnsHost api={api} />
+          </AppShell>
+        </AppWorkspaceProvider>
+      </QueryClientProvider>
+    </StoryLocalization>,
+  );
+
+  return client;
+}
+
+async function openTurn(label: string) {
+  await act(async () => {
+    fireEvent.click(screen.getByText(label));
+    await Promise.resolve();
+  });
+}
+
+/** The tail refresh a Work-change notification triggers, without the debounce timer. */
+async function refreshTail(client: QueryClient) {
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ['managed-work'] });
+    // Let the query observers deliver the refreshed data to the screen before returning.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+}
+
+function toolItems(prefix: string, count: number): WorkSummary[] {
+  return Array.from({ length: count }, (_, index) =>
+    work({ kind: 'tool', title: { text: `${prefix} ${index}`, complete: true } }),
+  );
+}
+
+function longNarration(): WorkSummary {
+  return work({
+    kind: 'commentary',
+    title: { text: 'Long narration. '.repeat(30), complete: true },
+  });
+}
+
+describe('WorkInspector view state', () => {
+  it('F05: a tail refresh does not rewind the older-page cursor (Retry continues where it failed)', async () => {
+    const pages = [
+      toolItems('Page0', 2),
+      toolItems('Page1', 2),
+      toolItems('Page2', 2),
+      toolItems('Tail', 2),
+    ];
+    const { api, calls } = pagedApi({ turns: { [turnId]: pages }, failOnce: '1' });
+    const client = mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText('Tail 0');
+
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+    // '2' loads, then '1' fails and the auto-load stops on the error.
+    await screen.findByRole('button', { name: 'Retry' }, { timeout: 5000 });
+    expect(calls.map((call) => call.before)).toEqual([undefined, '2', '1']);
+
+    await refreshTail(client);
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await screen.findByText('Page1 0');
+
+    // Continues with the failed page; a rewound cursor would request page '2' a second time.
+    const older = calls.map((call) => call.before).filter((before) => before !== undefined);
+    expect(older.slice(0, 3)).toEqual(['2', '1', '1']);
+  });
+
+  it('F06/F07: loaded older pages, filter, search and expanded narration come back for the same Turn after a tab switch', async () => {
+    const pages = [[longNarration(), ...toolItems('Old', 2)], toolItems('Tail', 2)];
+    const { api, calls } = pagedApi({
+      turns: { [turnId]: pages, [otherTurnId]: [toolItems('Elsewhere', 1)] },
+    });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText('Tail 0');
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+    await screen.findByText('Old 0', {}, { timeout: 5000 });
+    fireEvent.click(await screen.findByText('Show more'));
+    await screen.findByText('Show less');
+    selectFilterKind('Filter Work by type', 'Tool');
+    fireEvent.change(screen.getByPlaceholderText('Search Work'), { target: { value: 'Old' } });
+    await waitFor(() => expect(screen.queryByText('Tail 0')).toBeNull());
+
+    // Another Turn's tab replaces this one (inactive tabs unmount).
+    await openTurn('Open Turn 2');
+    await screen.findByText('Elsewhere 0');
+    expect(screen.queryByText('Old 0')).toBeNull();
+    const callsBefore = calls.length;
+
+    await openTurn('Open Turn 1');
+    // The same view: older page merged, filter and search kept, no older refetch.
+    expect(await screen.findByText('Old 0')).toBeTruthy();
+    expect(screen.getByPlaceholderText<HTMLInputElement>('Search Work').value).toBe('Old');
+    expect(
+      screen.getByRole('button', { name: 'Filter Work by type (active filter: Tool)' }),
+    ).toBeTruthy();
+    expect(calls.slice(callsBefore).filter((call) => call.before !== undefined)).toEqual([]);
+  });
+
+  it('F07: expanded narration survives a tab switch', async () => {
+    const { api } = pagedApi({
+      turns: { [turnId]: [[longNarration()]], [otherTurnId]: [toolItems('Elsewhere', 1)] },
+    });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    fireEvent.click(await screen.findByText('Show more'));
+    await screen.findByText('Show less');
+
+    await openTurn('Open Turn 2');
+    await screen.findByText('Elsewhere 0');
+    await openTurn('Open Turn 1');
+
+    expect(await screen.findByText('Show less')).toBeTruthy();
+  });
+
+  it('F09: a tail refresh landing during an older load does not use up the scroll anchor', async () => {
+    let height = 1000;
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => height,
+    });
+    try {
+      const pages = [toolItems('Old', 2), toolItems('Tail', 2)];
+      const { api, release } = pagedApi({ turns: { [turnId]: pages }, hold: '0' });
+      const client = mountTurns(api);
+      await openTurn('Open Turn 1');
+      const tail = await screen.findByText('Tail 0');
+      const viewport = workScroller(tail);
+
+      fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+      await screen.findByText('Loading older Work…');
+      await refreshTail(client);
+
+      height = 1600;
+      await act(async () => {
+        release();
+        await Promise.resolve();
+      });
+      await screen.findByText('Old 0');
+
+      // 0 + the 600px the older page added above the viewport.
+      expect(viewport.scrollTop).toBe(600);
+    } finally {
+      if (original) {
+        Object.defineProperty(HTMLElement.prototype, 'scrollHeight', original);
+      } else {
+        delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
+      }
+    }
+  });
+
+  it('F10: counts from an older page never overwrite the newer tail counts', async () => {
+    const pages = [toolItems('Old', 2), toolItems('Tail', 2)];
+    const { api } = pagedApi({
+      turns: { [turnId]: pages },
+      countsFor: (source) =>
+        source === 'tail' ? { eventSeq: 50, total: 40 } : { eventSeq: 10, total: 7 },
+    });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText('Tail 0');
+    await screen.findByText('40 work items');
+
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+    await screen.findByText('Old 0');
+
+    expect(screen.getByText('40 work items')).toBeTruthy();
+    expect(screen.queryByText('7 work items')).toBeNull();
+  });
+});
+
+describe('WorkInspector Actions view state', () => {
+  it('keeps loaded older ToolAction pages when the tab is switched away and back', async () => {
+    const tool = work({
+      kind: 'tool',
+      title: { text: 'Run a batch', complete: true },
+      actionCount: 4,
+    });
+    const action = (ordinal: number) => ({
+      actionId: `action-${ordinal}`,
+      ordinal,
+      revision: 1,
+      state: 'completed' as const,
+      title: { text: `Action ${ordinal}`, complete: true },
+      createdAt: '2026-10-30T10:00:00Z',
+      updatedAt: '2026-10-30T10:00:00Z',
+    });
+    const actionPages = [
+      [action(1), action(2)],
+      [action(3), action(4)],
+    ];
+    const actionCalls: (string | undefined)[] = [];
+    const { api: workApi } = pagedApi({
+      turns: { [turnId]: [[tool]], [otherTurnId]: [toolItems('Elsewhere', 1)] },
+    });
+    const api = {
+      ...workApi,
+      actions: (_sessionId: string, workId: string, before?: string) => {
+        actionCalls.push(before);
+        const index = before === undefined ? 1 : Number(before);
+
+        return Promise.resolve({
+          sessionId,
+          eventSeq: 1,
+          workId,
+          items: actionPages[index],
+          history: { hasOlder: index > 0, before: index > 0 ? String(index - 1) : undefined },
+        });
+      },
+    } as unknown as ManagedSessionsApi;
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    fireEvent.click((await screen.findByText('Run a batch')).closest('button')!);
+    const newest = await screen.findByText('Action 3');
+    fireEvent.scroll(workScroller(newest), { target: { scrollTop: 0 } });
+    await screen.findByText('Action 1', {}, { timeout: 5000 });
+
+    await openTurn('Open Turn 2');
+    await screen.findByText('Elsewhere 0');
+    const before = actionCalls.length;
+    await openTurn('Open Turn 1');
+
+    expect(await screen.findByText('Action 1')).toBeTruthy();
+    expect(actionCalls.slice(before).filter((cursor) => cursor !== undefined)).toEqual([]);
+  });
+});

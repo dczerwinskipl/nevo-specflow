@@ -256,8 +256,9 @@ export const InSecondarySettledTurn: Story = {
   render: (args) => <SecondaryContextHost {...args} />,
 };
 
-/** Stress fixture in the ~330 px Secondary: long Specification/Task titles wrap into two-line
- * rows whose chevron stays centred on the whole row, and stale/danger telemetry. */
+/** Stress fixture in the ~330 px Secondary: long Specification/Task titles stay one truncated line
+ * (the height of their loading skeleton) above their key, the chevron centred on the two-line row,
+ * and stale/danger telemetry. */
 export const InSecondaryStress: Story = {
   tags: ['contract'],
   args: { value: stressContext() },

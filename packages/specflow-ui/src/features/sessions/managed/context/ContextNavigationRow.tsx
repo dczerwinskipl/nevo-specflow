@@ -22,7 +22,9 @@ import { Icon, Typography, cn, fastColorTransitionClassName, type IconName } fro
  *   target (`--target-size`) without growing the visual row (component-guidelines "Target size").
  * - Label weight follows its information role (`emphasis`): a Specification/Task title is the
  *   object's identity (`title-sm`, semibold); a navigation subject is regular `body-md` (not bold
- *   just because it is clickable). The optional `count` sits
+ *   just because it is clickable). An identity title is one truncated line, the height of the
+ *   loading skeleton that stands for it (`ContextSkeletonRows`), so a long title, or one set in a
+ *   wider fallback font, never grows the row when the data arrives. The optional `count` sits
  *   right after the label in `content-muted`, and the optional `secondary` line is `body-sm`
  *   `content-muted`.
  */
@@ -66,12 +68,25 @@ export function ContextNavigationRow({
       </span>
       <span className="relative grid min-w-0 gap-0.5">
         <span className="flex min-w-0 items-baseline gap-x-1.5">
-          <Typography
-            variant={emphasis === 'identity' ? 'title-sm' : 'body-md'}
-            className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
-          >
-            {label}
-          </Typography>
+          {emphasis === 'identity' ? (
+            // One line, like the skeleton that stands for it: a title that wrapped would grow the
+            // row on arrival and move every section below it. The full title stays the button's
+            // accessible name and its hover title, and the opened object shows it whole.
+            <Typography
+              variant="title-sm"
+              className="min-w-0 truncate text-content-primary"
+              title={typeof label === 'string' ? label : undefined}
+            >
+              {label}
+            </Typography>
+          ) : (
+            <Typography
+              variant="body-md"
+              className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+            >
+              {label}
+            </Typography>
+          )}
           {count !== undefined && (
             <Typography variant="body-md" className="shrink-0 tabular-nums text-content-muted">
               {count}

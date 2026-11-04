@@ -35,6 +35,8 @@ export interface StartProvider {
    * Catalogue-authored text is shown as it is.
    */
   reason?: Message | string;
+  /** What the user can do about an unavailable provider (for example sign in again). */
+  hint?: Message | string;
   /** How the provider is accessed; absent when the catalogue does not state it. */
   access?: 'api' | 'subscription';
   /**

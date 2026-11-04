@@ -6,6 +6,7 @@ import { appRoute } from '../../../app/router/root';
 import { specificationRoute } from '../routes';
 import { CreateOperationScreen } from './CreateOperationScreen';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
+import { NewSessionScreen } from './new-session/NewSessionScreen';
 export const createSpecificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/new',
@@ -116,7 +117,7 @@ function NewSession() {
 
   return (
     <AppWorkspaceProvider>
-      <CreateSpecificationScreen
+      <NewSessionScreen
         specId={specId}
         onBack={() =>
           void navigate({
@@ -125,15 +126,18 @@ function NewSession() {
             search: { collection },
           })
         }
-        onCreated={() => {
-          void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
-        }}
-        onSession={(id, sessionId) =>
+        // The start screen is replaced by the Session (history replace): Back does not return to an
+        // empty start state.
+        onOpenSession={(sessionId) =>
           void navigate({
             to: '/specs/$specId/sessions/$sessionId',
-            params: { specId: id, sessionId },
+            params: { specId, sessionId },
             search: { collection },
+            replace: true,
           })
+        }
+        onOpenSpecification={() =>
+          void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } })
         }
       />
     </AppWorkspaceProvider>

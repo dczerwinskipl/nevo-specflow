@@ -55,6 +55,10 @@ import { SessionContext, createSessionContextStack } from './context/SessionCont
 import { realRouteSessionContext } from './context/sessionContextTypes';
 import { useSessionActions, type SessionActionHandlers } from './sessionActions/useSessionActions';
 import { SessionNamingStatus } from './naming/SessionNamingStatus';
+import { SessionReadyEmptyState } from './empty/SessionReadyEmptyState';
+import { useFocusStartedComposer } from '../start/handoff/useFocusStartedComposer';
+import { StartedSessionPlaceholder } from '../start/handoff/StartedSessionPlaceholder';
+import { startedSessionOf, type StartedSession } from '../start/handoff/startedSession';
 import type {
   ContextFact,
   ContextSpecification,
@@ -381,6 +385,7 @@ function ManagedSessionConversation({
   provider,
   selectedModelId,
   selectedEffort,
+  started,
 }: {
   api: ManagedSessionsApi;
   sessionId: string;
@@ -390,9 +395,12 @@ function ManagedSessionConversation({
   provider: ProviderDescriptor | undefined;
   selectedModelId: string | undefined;
   selectedEffort: string | undefined;
+  /** What the Session was started with here, while there is no snapshot to read it from. */
+  started: StartedSession | undefined;
 }) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
+  useFocusStartedComposer(sessionId, !!state.snapshot && !!started);
   // The layout `AppWorkspace` actually resolved (`useWorkspaceLayout`), NOT the shell's
   // `supportsSplit` hint: with `split="dynamic"` a runtime Secondary splits from 730px while
   // `supportsSplit` switches at 840px, and reading the hint here left 730-839 with a split workspace
@@ -875,7 +883,11 @@ function ManagedSessionConversation({
 
   return (
     <AppContent className="flex h-full min-h-0 w-full flex-col">
-      {!snapshot ? (
+      {!snapshot && started && state.connection !== 'error' ? (
+        // Just started here: the ready empty state and the Composer stand in the place of the real
+        // ones, so no loading text shows while the first snapshot loads.
+        <StartedSessionPlaceholder started={started} />
+      ) : !snapshot ? (
         <div className="grid gap-3 p-5">
           <p role="status">
             {t(state.connection === 'error' ? 'managedSession.failed' : 'managedSession.loading')}
@@ -904,7 +916,13 @@ function ManagedSessionConversation({
           {(() => {
             const conversationBody = (
               <>
-                <div className="mx-auto grid w-full max-w-content-standard gap-4 px-5 py-5">
+                <div
+                  className={cn(
+                    'mx-auto grid w-full max-w-content-standard gap-4 px-5 py-5',
+                    // Empty: the ready empty state centres in the free height above the Composer.
+                    !snapshot.entries.length && 'flex-1 grid-rows-[1fr]',
+                  )}
+                >
                   {/* Auto-loads on scroll near the top instead of a manual button (owner
                           feedback #5, `maybeLoadOlder`); this is just its busy indicator. */}
                   {state.historyBusy && (
@@ -923,9 +941,10 @@ function ManagedSessionConversation({
                     </Alert>
                   )}
                   {!snapshot.entries.length && (
-                    <p className="py-8 text-body-md text-content-muted">
-                      {t('managedSession.empty')}
-                    </p>
+                    <SessionReadyEmptyState
+                      providerId={snapshot.session.providerId}
+                      providerTitle={provider?.title ?? snapshot.session.providerId}
+                    />
                   )}
                   {conversationItems(snapshot.entries, {
                     activeTurn: snapshot.activeTurn,
@@ -1432,14 +1451,16 @@ export function ManagedSession({
     queryKey: ['managed-session-providers', owner],
     queryFn: ({ signal }) => api.providers(signal),
   });
-  const provider = providers.data?.items.find(
-    (item) => item.providerId === state.snapshot?.session.providerId,
-  );
-  const selectedModelId = state.modelOverride ?? state.snapshot?.session.modelId;
+  const snapshot = state.snapshot;
+  // Started here and not loaded yet: the start values stand in for the snapshot's.
+  const startedHere = startedSessionOf(sessionId);
+  const started = snapshot ? undefined : startedHere;
+  const sessionProviderId = snapshot?.session.providerId ?? started?.providerId;
+  const provider = providers.data?.items.find((item) => item.providerId === sessionProviderId);
+  const selectedModelId = state.modelOverride ?? snapshot?.session.modelId ?? started?.modelId;
   const selectedEffort = state.modelOverride
     ? state.effortOverride
-    : state.snapshot?.session.effort;
-  const snapshot = state.snapshot;
+    : (snapshot?.session.effort ?? started?.effort);
   // `runningTurnId` ("Bieżąca tura" vs "Ostatnia tura" in Context's context-window caption) is
   // live Session state, so it comes from this feed's own snapshot — the same `activeTurn` the
   // Conversation's live Work block reads — not from the supplied Context view model. Until the
@@ -1455,8 +1476,20 @@ export function ManagedSession({
   const executorModelTitle = provider?.models.find(
     (model) => model.modelId === selectedModelId,
   )?.title;
-  const providerId = snapshot?.session.providerId;
+  const providerId = sessionProviderId;
   const executor = useMemo<ContextFact<SessionExecutor> | undefined>(() => {
+    if (started) {
+      return {
+        status: 'ready',
+        value: {
+          providerId: started.providerIcon ?? started.providerId,
+          providerTitle: started.providerTitle,
+          modelTitle: started.modelTitle,
+          effort: started.effort,
+        },
+      };
+    }
+
     if (provider) {
       return {
         status: 'ready',
@@ -1486,6 +1519,7 @@ export function ManagedSession({
     providerId,
     executorModelTitle,
     selectedEffort,
+    started,
   ]);
   const workHistory = useMemo<ContextFact<{ turnId: string }> | undefined>(
     () =>
@@ -1493,8 +1527,11 @@ export function ManagedSession({
         ? workHistoryTurnId
           ? { status: 'ready', value: { turnId: workHistoryTurnId } }
           : undefined
-        : { status: 'loading' },
-    [snapshot, workHistoryTurnId],
+        : // A Session just started here has no Turn yet: nothing to wait for.
+          started
+          ? undefined
+          : { status: 'loading' },
+    [snapshot, workHistoryTurnId, started],
   );
   const contextValue = useMemo<SessionContextViewModel>(
     () => ({
@@ -1524,7 +1561,9 @@ export function ManagedSession({
         ? t(`managedSession.${snapshot.session.readiness}`)
         : (snapshot.currentActivity?.label ?? t(`managedSession.${snapshot.session.readiness}`))
       : t(`managedSession.${state.connection}`)
-    : undefined;
+    : started
+      ? t('managedSession.ready')
+      : undefined;
   const isWaitingOnProvider =
     !!snapshot &&
     state.connection === 'connected' &&
@@ -1603,7 +1642,7 @@ export function ManagedSession({
   const headerActions = [
     contextAction,
     retryConnectionAction,
-    ...(snapshot ? sessionActions.actions : []),
+    ...(snapshot || startedHere ? sessionActions.actions : []),
   ].filter(Boolean) as WorkspaceHeaderAction[];
 
   return (
@@ -1614,7 +1653,10 @@ export function ManagedSession({
             title={
               namingPending
                 ? t('sessionNaming.provisionalTitle')
-                : (sessionActions.title ?? t('managedSession.title'))
+                : (sessionActions.title ??
+                  // A Session started here is still "New session" until it has a name.
+                  startedHere?.title ??
+                  (startedHere ? t('sessionStart.heading') : t('managedSession.title')))
             }
             subtitle={headerSubtitle}
             status={
@@ -1638,6 +1680,7 @@ export function ManagedSession({
           provider={provider}
           selectedModelId={selectedModelId}
           selectedEffort={selectedEffort}
+          started={startedHere}
         />
         {sessionActions.dialogs}
       </AppWorkspace.Primary>

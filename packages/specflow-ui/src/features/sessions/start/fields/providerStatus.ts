@@ -11,7 +11,7 @@ export interface ProviderStatus {
   readonly availability: Message | string;
   /** Decorative indicator tone for the availability; unavailable providers carry no dot. */
   readonly tone: 'info' | 'success' | undefined;
-  /** Catalogue-authored caveat of an available provider, shown as it is. */
+  /** A caveat of an available provider, or what to do about an unavailable one. */
   readonly note: Message | string | undefined;
 }
 
@@ -38,7 +38,7 @@ const accessLabels = {
  * unknown quota is simply not shown (no "unknown" filler).
  */
 export function providerStatus(
-  provider: Pick<StartProvider, 'available' | 'access' | 'reason'>,
+  provider: Pick<StartProvider, 'available' | 'access' | 'reason' | 'hint'>,
   catalogue: Pick<StartCatalogue, 'demo'>,
 ): ProviderStatus {
   const access = provider.access ? accessLabels[provider.access] : undefined;
@@ -48,7 +48,7 @@ export function providerStatus(
       access: undefined,
       availability: reason ?? message('create.provider.unavailable'),
       tone: undefined,
-      note: undefined,
+      note: nonEmpty(provider.hint),
     };
   }
 

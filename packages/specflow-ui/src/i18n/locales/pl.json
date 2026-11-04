@@ -1574,10 +1574,7 @@
     "authenticationRequired": "Wymagane ponowne logowanie",
     "authenticationHelp": "Zaloguj się ponownie w CLI dostawcy, a następnie sprawdź dostępność. Wiadomości nie zostaną ponowione automatycznie.",
     "recheckAuthentication": "Sprawdź logowanie",
-    "nativeMode": "Tryb natywny",
     "title": "Sesja",
-    "new": "Nowa sesja testowa",
-    "create": "Utwórz sesję",
     "retryCreate": "Ponów tworzenie",
     "mockNote": "Kontrolowany dostawca testowy · bez zmian w plikach",
     "loading": "Wczytywanie sesji…",
@@ -1626,7 +1623,6 @@
       "copied": "Skopiowano",
       "failed": "Nie udało się skopiować"
     },
-    "empty": "Rozpocznij rozmowę.",
     "inspect": "Zobacz pracę",
     "work": "Historia pracy",
     "workTab": "Historia pracy · tura {{number}}",
@@ -1797,16 +1793,8 @@
   },
   "sessionStart": {
     "heading": "Nowa sesja",
-    "subheading": "Agent będzie pracował w kontekście tej specyfikacji. Pierwszą wiadomość napiszesz w sesji.",
-    "context": {
-      "heading": "Kontekst",
-      "intro": "Sesja pracuje na tej specyfikacji — agent otrzyma ją jako kontekst.",
-      "kind": "Specyfikacja",
-      "pinned": "Przypięta"
-    },
     "agent": {
-      "heading": "Agent",
-      "intro": "Wybierz wykonawcę tej sesji. Nie zmienisz go w trakcie rozmowy."
+      "heading": "Agent"
     },
     "name": {
       "heading": "Nazwa sesji",
@@ -1828,14 +1816,14 @@
       "ready": "Sesja otworzy się bez wiadomości, z Twoją nazwą."
     },
     "submit": {
-      "start": "Rozpocznij sesję",
-      "starting": "Uruchamianie…"
+      "start": "Rozpocznij sesję"
     },
     "form": {
       "title": "Rozpocznij sesję",
       "starting": "Rozpoczynanie…",
       "failedTitle": "Nie udało się rozpocząć sesji",
-      "failedBody": "Twoje wybory zostały zachowane. Spróbuj ponownie."
+      "failedBody": "Twoje wybory zostały zachowane. Spróbuj ponownie.",
+      "configurationBody": "Twoje wybory pozostają zachowane. Odśwież konfigurację przed rozpoczęciem sesji."
     },
     "fields": {
       "effort": "Effort",

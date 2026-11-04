@@ -46,4 +46,11 @@ export {
   pickerModes,
   pickerProvider,
 } from './start/choice/agentPickers';
-export { SessionStartForm, type SessionStartStatus } from './start/form/SessionStartForm';
+export type { ContextSpecification } from './managed/context/sessionContextTypes';
+export { SessionStartScreen, type SessionStartDefaults } from './start/screen/SessionStartScreen';
+export type {
+  SessionStartPending,
+  SessionStartSource,
+  StartCatalogueState,
+} from './start/source/sessionStartSource';
+export { useManagedStartSource } from './start/source/useManagedStartSource';

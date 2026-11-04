@@ -1,4 +1,4 @@
-import { useId, type FormEvent } from 'react';
+import { useId, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Typography } from '@nevo/ui';
 import { useMessage } from '../../../../i18n/message';
@@ -9,6 +9,8 @@ import type { SessionNameChoice } from '../choice/sessionName';
 import { AgentFields } from '../fields/AgentFields';
 import { ProviderChoice } from '../fields/ProviderChoice';
 import { SessionNameSection } from '../fields/SessionNameSection';
+import type { SessionStartPending } from '../source/sessionStartSource';
+import { ConfigurationNotice } from './ConfigurationNotice';
 import { StartFormActions } from './StartFormActions';
 
 /** `failed`: the last start did not succeed; the choices are kept and the form is unlocked. */
@@ -19,7 +21,8 @@ export type SessionStartStatus = 'idle' | 'starting' | 'failed';
  * (new-session-ui-spec.md section 5): provider tiles, then the labelled Model, Effort and Work mode
  * fields (`AgentFields`), then the optional own name, then the note and **Start session**. Fully
  * controlled: the owner holds the choice and runs the start, the form only presents it and reports
- * `onStart` once, when the choice is complete.
+ * `onStart` once, when the choice is complete (or, while an earlier start is unresolved, to
+ * resolve it).
  */
 export function SessionStartForm({
   catalogue,
@@ -28,7 +31,10 @@ export function SessionStartForm({
   name,
   onNameChange,
   status,
+  pending,
+  notice,
   configurationUnavailable = false,
+  onRefresh,
   onStart,
 }: {
   catalogue: StartCatalogue;
@@ -37,7 +43,13 @@ export function SessionStartForm({
   name: SessionNameChoice;
   onNameChange: (name: SessionNameChoice) => void;
   status: SessionStartStatus;
+  /** An earlier start is unresolved: the form is locked and only resolving it is offered. */
+  pending?: SessionStartPending;
+  /** Replaces the generic failure alert (a source's own, with its remedies). */
+  notice?: ReactNode;
   configurationUnavailable?: boolean;
+  /** Reads the catalogue again; offered when the configuration is unreadable or no agent is usable. */
+  onRefresh?: () => void;
   onStart: () => void;
 }) {
   const { t } = useTranslation();
@@ -45,22 +57,37 @@ export function SessionStartForm({
   const titleId = useId();
   const agentId = useId();
   const noteId = useId();
-  const starting = status === 'starting';
+  const working = status === 'starting' || pending?.checking === true;
+  const locked = working || pending !== undefined;
   const { prerequisite, canStart } = newSessionReadiness({
     catalogue,
     agent,
     name,
     configurationUnavailable,
   });
-  const note = prerequisite
-    ? text(prerequisite)
-    : name.mode === 'agent'
-      ? t('sessionStart.footer.agentNames')
-      : t('sessionStart.footer.ready');
+  const note = pending
+    ? t('create.footer.operationKept')
+    : prerequisite
+      ? text(prerequisite)
+      : name.mode === 'agent'
+        ? t('sessionStart.footer.agentNames')
+        : t('sessionStart.footer.ready');
+  const label = pending?.checking
+    ? t('create.submit.checking')
+    : status === 'starting'
+      ? t('sessionStart.form.starting')
+      : pending?.kind === 'retry'
+        ? t('managedSession.retryCreate')
+        : pending?.kind === 'check'
+          ? t('create.submit.checkResult')
+          : pending?.kind === 'recover'
+            ? t('create.submit.checkOperation')
+            : t('sessionStart.submit.start');
+  const noAgent = !catalogue.providers.some((provider) => provider.available);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (canStart && !starting) {
+    if (!working && (pending || canStart)) {
       onStart();
     }
   };
@@ -74,7 +101,7 @@ export function SessionStartForm({
             {t('sessionStart.form.title')}
           </Typography>
         </div>
-        <fieldset disabled={starting} className="grid min-w-0">
+        <fieldset disabled={locked} className="grid min-w-0">
           {/* A rendered `<legend>` takes no part in the fieldset's grid gap: its own margin gives the
               label-to-control spacing of a DS `Field` (`gap-1.5`), like Model and Effort below. */}
           <Typography as="legend" variant="label-md" id={agentId} className="mb-1.5 p-0">
@@ -97,26 +124,29 @@ export function SessionStartForm({
         <AgentFields
           catalogue={catalogue}
           choice={agent}
-          locked={starting}
+          locked={locked}
           onChange={onAgentChange}
         />
         <SessionNameSection
           choice={name}
-          locked={starting}
+          locked={locked}
           onChange={onNameChange}
           headingLevel="h3"
         />
-        {status === 'failed' && (
-          <Alert tone="danger" role="alert" title={t('sessionStart.form.failedTitle')}>
-            {t('sessionStart.form.failedBody')}
-          </Alert>
-        )}
+        {configurationUnavailable && onRefresh && <ConfigurationNotice onRefresh={onRefresh} />}
+        {notice ??
+          (status === 'failed' && (
+            <Alert tone="danger" role="alert" title={t('sessionStart.form.failedTitle')}>
+              {t('sessionStart.form.failedBody')}
+            </Alert>
+          ))}
         <StartFormActions
           noteId={noteId}
           note={note}
-          label={starting ? t('sessionStart.form.starting') : t('sessionStart.submit.start')}
-          disabled={starting || !canStart}
-          pending={starting}
+          label={label}
+          disabled={working || (pending === undefined && !canStart)}
+          pending={working}
+          onRefresh={noAgent && !pending ? onRefresh : undefined}
         />
       </div>
     </form>

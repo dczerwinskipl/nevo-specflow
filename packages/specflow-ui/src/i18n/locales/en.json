@@ -1574,10 +1574,7 @@
     "authenticationRequired": "Sign-in required",
     "authenticationHelp": "Sign in again using the provider CLI, then recheck availability. Messages will not be retried automatically.",
     "recheckAuthentication": "Check sign-in",
-    "nativeMode": "Native mode",
     "title": "Session",
-    "new": "New test session",
-    "create": "Create session",
     "retryCreate": "Retry creation",
     "mockNote": "Controlled test provider · no files are changed",
     "loading": "Loading session…",
@@ -1626,7 +1623,6 @@
       "copied": "Copied",
       "failed": "Could not copy"
     },
-    "empty": "Start a conversation.",
     "inspect": "Inspect Work",
     "work": "Work history",
     "workTab": "Work history · turn {{number}}",
@@ -1797,16 +1793,8 @@
   },
   "sessionStart": {
     "heading": "New session",
-    "subheading": "The agent works in the context of this specification. You write the first message in the session.",
-    "context": {
-      "heading": "Context",
-      "intro": "The session works on this specification — the agent receives it as context.",
-      "kind": "Specification",
-      "pinned": "Pinned"
-    },
     "agent": {
-      "heading": "Agent",
-      "intro": "Choose who runs this session. It cannot be changed during the conversation."
+      "heading": "Agent"
     },
     "name": {
       "heading": "Session name",
@@ -1828,14 +1816,14 @@
       "ready": "The session opens without a message, with your name."
     },
     "submit": {
-      "start": "Start session",
-      "starting": "Starting…"
+      "start": "Start session"
     },
     "form": {
       "title": "Start a session",
       "starting": "Starting…",
       "failedTitle": "The session could not be started",
-      "failedBody": "Your choices were kept. Try again."
+      "failedBody": "Your choices were kept. Try again.",
+      "configurationBody": "Your choices are kept. Refresh the configuration before starting the session."
     },
     "fields": {
       "effort": "Effort",

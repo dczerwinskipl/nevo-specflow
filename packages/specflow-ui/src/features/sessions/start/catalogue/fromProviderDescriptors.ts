@@ -56,6 +56,9 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
     icon: provider.providerId,
     available: provider.readiness === 'ready',
     ...(reason ? { reason } : {}),
+    ...(provider.readiness === 'authenticationRequired'
+      ? { hint: message('managedSession.authenticationHelp') }
+      : {}),
     // A provider that does not accept a model (or an effort) override has nothing to choose: the
     // Session starts at its default.
     models: modelOverride

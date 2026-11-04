@@ -1,9 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { Button, Typography } from '@nevo/ui';
 
 /**
  * The form's last row (not a page footer): the note at the start, naming the one thing still
  * missing (or what Start will do), and **Start session** at the end. On a narrow form the note
- * wraps above the button.
+ * wraps above the button. When no agent is usable the row also offers to check again.
  */
 export function StartFormActions({
   noteId,
@@ -11,6 +12,7 @@ export function StartFormActions({
   label,
   disabled,
   pending,
+  onRefresh,
 }: {
   noteId: string;
   note: string;
@@ -19,7 +21,11 @@ export function StartFormActions({
   disabled: boolean;
   /** The Session is being started: the button says so and announces it as busy. */
   pending: boolean;
+  /** Reads the catalogue again; shown only while there is something to wait for. */
+  onRefresh?: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <Typography
@@ -30,15 +36,21 @@ export function StartFormActions({
       >
         {note}
       </Typography>
-      <Button
-        type="submit"
-        className="ml-auto"
-        disabled={disabled}
-        aria-busy={pending || undefined}
-        aria-describedby={noteId}
-      >
-        {label}
-      </Button>
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        {onRefresh && (
+          <Button type="button" variant="secondary" onClick={onRefresh}>
+            {t('common.retry')}
+          </Button>
+        )}
+        <Button
+          type="submit"
+          disabled={disabled}
+          aria-busy={pending || undefined}
+          aria-describedby={noteId}
+        >
+          {label}
+        </Button>
+      </div>
     </div>
   );
 }

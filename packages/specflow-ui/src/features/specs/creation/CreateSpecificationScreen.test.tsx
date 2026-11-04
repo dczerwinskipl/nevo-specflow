@@ -42,7 +42,7 @@ const silentOperations: OperationsApi = {
 function renderScreen(
   dataMode: 'project' | 'demo',
   projectCreationApi: Partial<ProjectCreationApi>,
-  props: { specId?: string; restoreDraftOf?: string } = {},
+  props: { restoreDraftOf?: string } = {},
   client = createSpecFlowQueryClient(),
   operationsApi: OperationsApi = silentOperations,
 ) {
@@ -341,10 +341,5 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     resolve(createOptionsFixture('default'));
     expect(await screen.findByRole('radio', { name: /new workspace/i })).toBeTruthy();
     expect(document.querySelector('[aria-busy="true"]')).toBeNull();
-  });
-
-  it('explains that a session cannot be created on a project Runtime', async () => {
-    renderScreen('project', {}, { specId: 'spec-1' });
-    expect(await screen.findByText('Not available on this server')).toBeTruthy();
   });
 });

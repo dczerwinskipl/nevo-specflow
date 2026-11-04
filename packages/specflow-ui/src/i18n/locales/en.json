@@ -467,7 +467,7 @@
     "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
     "activeCount_many": "{{count}} active",
-    "sessionBack": "Spec Writer session"
+    "sessionBack": "Back to session"
   },
   "operations": {
     "progress": {

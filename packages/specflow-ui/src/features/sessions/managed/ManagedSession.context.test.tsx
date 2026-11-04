@@ -140,6 +140,27 @@ describe('N1 a narrow Context flow does not become a second Context tab', () => 
   });
 });
 
+describe('N4 narrowing below 840px follows the mobile scheme', () => {
+  it('Context active with a Work tab in the background: the panel hides instead of sliding Work over the conversation', async () => {
+    renderSession(workSummaryStatesApi(), 1400);
+    await waitFor(() =>
+      expect(document.querySelectorAll('[data-work-block] button').length).toBeGreaterThan(0),
+    );
+    fireEvent.click(document.querySelectorAll<HTMLElement>('[data-work-block] button')[0]!);
+    await settle();
+    fireEvent.click(screen.getByRole('tab', { name: 'Context' }));
+    await settle();
+    expect(screen.getByTestId('tabs').dataset.active).toBe('$workspace-pinned$');
+
+    await width.setWidth(780);
+    await settle();
+
+    // Owner decision (2026-11-04): nothing opens without the user; Work stays in the background.
+    expect(screen.getByTestId('tabs').dataset.visible).toBe('false');
+    expect(document.querySelector('[data-workspace-surface="secondary"]')).toBeNull();
+  });
+});
+
 describe('N2 the side-panel toggle hides the whole panel and restores what was active', () => {
   it('Context active with a Work tab in the background: one press hides all, the next shows Context', async () => {
     renderSession(workSummaryStatesApi(), 1400);

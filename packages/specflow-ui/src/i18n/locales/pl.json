@@ -467,7 +467,7 @@
     "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
     "noSpecificationSelectedTitle": "Wybierz specyfikację",
     "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
-    "sessionBack": "Sesja Spec Writera"
+    "sessionBack": "Wróć do sesji"
   },
   "operations": {
     "progress": {

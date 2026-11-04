@@ -1054,7 +1054,7 @@ export const SessionContextRoundTrip: Story = {
     );
     // The way back is read only now: the Documents list's own link unmounts when the main file
     // opens, and the open document's pane shows the link the reader actually uses.
-    await userEvent.click(await canvas.findByRole('link', { name: 'Sesja Spec Writera' }));
+    await userEvent.click(await canvas.findByRole('link', { name: 'Wróć do sesji' }));
     await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue(
       'Zachowany szkic wiadomości',
     );

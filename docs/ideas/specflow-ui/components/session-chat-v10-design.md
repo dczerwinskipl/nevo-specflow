@@ -50,6 +50,9 @@ Do not copy ad-hoc CSS/SVG/Markdown parsers from HTML examples into production.
   SpecFlow is the product; workflow metadata has no brand-as-speaker prefix.
 - Copy and Quote belong to their specific authored message. Desktop hover/focus and
   mobile visible hit targets must follow accessibility and DS conventions.
+- Copy writes only the complete message (owner, 2026-11-04): while the rest of a long message is
+  still loading, or after it failed to load, Copy reports that it could not copy; it never copies the
+  loaded part as if it were the whole.
 - Keep raw tool operations, verbose commentary history, artifacts and system logs out of
   ordinary chat. A long assistant report remains one Markdown answer.
 - Annotate a Turn only when reliable **product-owned** workflow events exist, such as

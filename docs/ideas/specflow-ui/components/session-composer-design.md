@@ -165,6 +165,13 @@ state survives local navigation as appropriate, respects limits and cleans up ab
   decision), one model+effort selector, and primary Send. Provider identity can be static context,
   not another picker.
 - Menus expose only tested options; unavailable cases carry explanatory reasons.
+- A definitely refused command (a 4xx that is not `SESSION_RECOVERY_REQUIRED`) is released: the
+  draft and overrides stay for the user to adjust and resend; an unknown outcome keeps the command
+  retained for an exact replay.
+- A saved command (or Session create) that is present but unreadable is never dropped silently
+  (owner, 2026-11-04): the Composer and the start form show "Saved request can't be read" with an
+  explicit "Discard saved request" and a warning that it may already have been applied. Storage that
+  is only temporarily unavailable keeps blocking.
 - Composer updates are independent of Secondary tabs, context navigation and panel split size.
   Ensure the real control remains usable at minimum Conversation width and on mobile keyboard.
 - Interactive HTML examples use **synthetic provider/model options**, simulated attachment

@@ -373,7 +373,8 @@ Two different questions have two different answers between 730px and 839px:
   the side-panel toggle or a "Context" button. Between 730 and 839 it is `false` and Context is
   opened as a runtime flow (option A). Owner decision, 2026-11-04: this stays. Below 840 px the
   Session uses the mobile navigation scheme (a "Context" button opening a runtime flow); root tabs
-  and the pinned Context tab start at 840 px.
+  and the pinned Context tab start at 840 px. Narrowing below 840 px hides the side panel even when
+  runtime tabs wait in the background; nothing opens over the conversation without the user.
 - `useWorkspaceLayout()` is published by `AppWorkspace` itself and read by content **inside** it
   (Primary/Secondary children): `mode` is `'split'` or `'stacked'`, `primaryScrollOwner` is
   `'ambient'` when `AppWorkspace` supplies the stacked page scroll viewport

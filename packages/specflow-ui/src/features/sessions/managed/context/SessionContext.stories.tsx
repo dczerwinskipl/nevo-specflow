@@ -9,6 +9,7 @@ import {
 import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
+import { SessionContextSourceProvider } from './sessionContextValue';
 import {
   associationsUnreadableContext,
   attentionUnreadableContext,
@@ -74,27 +75,33 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
   return (
     <StoryLocalization locale="en">
       <AppWorkspaceProvider>
-        <AppShell navigation={<div className="p-4">SpecFlow</div>}>
-          <AppWorkspace fit="available" split="dynamic">
-            <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
-              {/* `onOpenSpecification` here is a story-only stand-in for the real
+        <SessionContextSourceProvider
+          sessionId={sessionId}
+          value={value}
+          workStack={storyWorkStack}
+        >
+          <AppShell navigation={<div className="p-4">SpecFlow</div>}>
+            <AppWorkspace fit="available" split="dynamic">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
+                {/* `onOpenSpecification` here is a story-only stand-in for the real
                   `useNavigate({ to: '/specs/$specId' })` call (see `SessionContext.tsx`'s own
                   prop doc) — this harness has no Router mounted (same as `SessionContext.test.tsx`
                   and every other story here), so it just logs instead of navigating. Exercises the
                   row's real click wiring and the real `value.specification` data without that
                   dependency. */}
-              <SessionContext
-                sessionId={sessionId}
-                value={value}
-                onOpenSpecification={(specification) =>
-                  console.info('Open Specification', specification)
-                }
-                onOpenDocuments={(specification) => console.info('Open Documents', specification)}
-                workStack={storyWorkStack}
-              />
-            </AppWorkspace.Primary>
-          </AppWorkspace>
-        </AppShell>
+                <SessionContext
+                  sessionId={sessionId}
+                  value={value}
+                  onOpenSpecification={(specification) =>
+                    console.info('Open Specification', specification)
+                  }
+                  onOpenDocuments={(specification) => console.info('Open Documents', specification)}
+                  workStack={storyWorkStack}
+                />
+              </AppWorkspace.Primary>
+            </AppWorkspace>
+          </AppShell>
+        </SessionContextSourceProvider>
       </AppWorkspaceProvider>
     </StoryLocalization>
   );
@@ -111,24 +118,30 @@ function SecondaryContextHost({ value }: { value: SessionContextViewModel }) {
   return (
     <StoryLocalization locale="pl">
       <AppWorkspaceProvider>
-        <AppShell navigation={<div className="p-4">SpecFlow</div>}>
-          <AppWorkspace fit="available" split="dynamic">
-            <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
-              <div className="p-4" />
-            </AppWorkspace.Primary>
-            <AppWorkspace.Secondary header={<WorkspaceHeader title="Kontekst" />}>
-              <SessionContext
-                sessionId={sessionId}
-                value={value}
-                onOpenSpecification={(specification) =>
-                  console.info('Open Specification', specification)
-                }
-                onOpenDocuments={(specification) => console.info('Open Documents', specification)}
-                workStack={storyWorkStack}
-              />
-            </AppWorkspace.Secondary>
-          </AppWorkspace>
-        </AppShell>
+        <SessionContextSourceProvider
+          sessionId={sessionId}
+          value={value}
+          workStack={storyWorkStack}
+        >
+          <AppShell navigation={<div className="p-4">SpecFlow</div>}>
+            <AppWorkspace fit="available" split="dynamic">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
+                <div className="p-4" />
+              </AppWorkspace.Primary>
+              <AppWorkspace.Secondary header={<WorkspaceHeader title="Kontekst" />}>
+                <SessionContext
+                  sessionId={sessionId}
+                  value={value}
+                  onOpenSpecification={(specification) =>
+                    console.info('Open Specification', specification)
+                  }
+                  onOpenDocuments={(specification) => console.info('Open Documents', specification)}
+                  workStack={storyWorkStack}
+                />
+              </AppWorkspace.Secondary>
+            </AppWorkspace>
+          </AppShell>
+        </SessionContextSourceProvider>
       </AppWorkspaceProvider>
     </StoryLocalization>
   );

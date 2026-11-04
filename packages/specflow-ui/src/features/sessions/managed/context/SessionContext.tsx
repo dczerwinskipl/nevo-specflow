@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AppContent,
@@ -20,28 +19,18 @@ import {
 } from './ContextTaskSections';
 import { ContextWorkSection } from './ContextWorkSection';
 import type { PlaceholderRootTab } from './SessionContextPlaceholderTabs';
-import { createSessionTasksInspector } from './SessionTasksInspector';
+import { taskStack, tasksStack } from './SessionTasksInspector';
 import { SessionTelemetrySection } from './SessionTelemetrySection';
+import {
+  useSessionContextSource,
+  type SessionContextSource,
+  type WorkHistoryStack,
+} from './sessionContextValue';
 import type {
   ContextSpecification,
   SessionContextTaskRef,
   SessionContextViewModel,
 } from './sessionContextTypes';
-
-/**
- * `SessionContext` only ever passes a Work stack through to `openStack`/`navigation.openTab` —
- * it never reads its `Data`/`Pages` shape itself, so this stays deliberately generic over those
- * (unlike `OpenSecondaryStack` below, a concrete `ReturnType<typeof createWorkInspector>` would
- * force every caller, including tests, to construct `WorkInspector.tsx`'s own `{api, feed,
- * owner}` data shape just to satisfy the type — real coupling this component does not have).
- */
-type WorkHistoryStack = SecondaryStackDefinition<
-  { sessionId: string; turnId: string },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see doc comment above
-  any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see doc comment above
-  any
->;
 
 /** Same shape as `useSecondaryNavigation().open` and the stack-push overload of a flow's own
  * `navTo` — whichever is passed in, it starts the target stack somewhere in the Secondary. */
@@ -107,31 +96,30 @@ export function SessionContext({
 }) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
-  const allTasks = useMemo(() => collectTasks(value), [value]);
-  const inspectors = useMemo(() => createSessionTasksInspector(allTasks), [allTasks]);
 
   /**
    * Opens a Tasks surface (full-session-screen-structure.md §7.4/§10.1 — see
    * `SessionTasksInspector.tsx`'s module comment). With `openStack` (the narrow Context flow) it is
    * a push onto that flow, flagged `inFlow` so the list also pushes Tasks instead of opening tabs.
-   * Otherwise it is `openTab`: `inspectors.tasksStack` is the one list tab, `inspectors.taskStack`
-   * is one tab per Task (instance = the task id), so a Task already open is activated, never
-   * retargeted or duplicated.
+   * Otherwise it is `openTab`: `tasksStack` is the one list tab, `taskStack` is one tab per Task
+   * (instance = the task id), so a Task already open is activated, never retargeted or duplicated.
+   * Both read the live Tasks (`SessionContextSourceProvider`), not this render's.
    */
-  function openTasksTab(stack: typeof inspectors.tasksStack, taskId?: string) {
+  function openTasksTab(stack: typeof tasksStack, task?: SessionContextTaskRef) {
+    const root = { sessionId, taskId: task?.id, taskKey: task?.key };
     if (openStack) {
-      void openStack(stack, { sessionId, taskId, inFlow: true });
+      void openStack(stack, { ...root, inFlow: true });
 
       return;
     }
 
-    void navigation.openTab(stack, { sessionId, taskId });
+    void navigation.openTab(stack, root);
   }
 
   /** Opens a specific Task (current-execution Task, Attention's task reference, or a Related Tasks
    * summary with exactly one entry): its own root tab, activated if already open. */
   function openTask(task: SessionContextTaskRef) {
-    openTasksTab(inspectors.taskStack, task.id);
+    openTasksTab(taskStack, task);
   }
 
   /** Related Tasks' summary row: exactly one Task goes straight to it, several to the shared
@@ -143,7 +131,7 @@ export function SessionContext({
       return;
     }
 
-    openTasksTab(inspectors.tasksStack);
+    openTasksTab(tasksStack);
   }
 
   /** Planned-area rows open their placeholder tab the same way as Tasks (`openStack`/`openTab`). */
@@ -226,89 +214,46 @@ export function SessionContext({
  * `ContextScreen` below passes this flow's own `navTo` as `openStack`: opening a Task from inside
  * Context pushes onto this SAME flow's Back stack instead of starting a second, parallel one, so
  * Back returns to Context first instead of skipping it straight to the Session.
+ *
+ * Defined once: its data is the host's LIVE `SessionContextSource`, never the value that was
+ * current when the flow opened (a Context opened while still loading fills in when it arrives).
  */
-export function createSessionContextStack(
-  sessionId: string,
-  value: SessionContextViewModel,
-  onOpenSpecification?: (specification: ContextSpecification) => void,
-  workStack?: WorkHistoryStack,
-  onOpenDocuments?: (specification: ContextSpecification) => void,
-) {
-  return defineSecondaryStack<
-    Record<string, never>,
-    { sessionId: string; value: SessionContextViewModel },
-    { context: Record<string, never> }
-  >({
-    id: 'managed-session-context',
-    initial: 'context',
-    useData: () => ({ status: 'ready', data: { sessionId, value } }),
-    screens: {
-      context: {
-        get title() {
-          return translateNow('sessions.context.title');
-        },
-        component: ({ data }) => (
-          <ContextScreen
-            sessionId={data.sessionId}
-            value={data.value}
-            onOpenSpecification={onOpenSpecification}
-            onOpenDocuments={onOpenDocuments}
-            workStack={workStack}
-          />
-        ),
+export const sessionContextStack = defineSecondaryStack<
+  Record<string, never>,
+  SessionContextSource,
+  { context: Record<string, never> }
+>({
+  id: 'managed-session-context',
+  initial: 'context',
+  useData: () => {
+    const source = useSessionContextSource();
+
+    return source ? { status: 'ready', data: source } : { status: 'unavailable' };
+  },
+  screens: {
+    context: {
+      get title() {
+        return translateNow('sessions.context.title');
       },
+      component: ({ data }) => <ContextScreen source={data} />,
     },
-  });
-}
+  },
+});
 
 /** Wraps `SessionContext` with the Context flow's own `navTo`, so Related Tasks/Task push onto
- * this flow's stack rather than opening a second, parallel one (see `createSessionContextStack`). */
-function ContextScreen({
-  sessionId,
-  value,
-  onOpenSpecification,
-  onOpenDocuments,
-  workStack,
-}: {
-  sessionId: string;
-  value: SessionContextViewModel;
-  onOpenSpecification?: (specification: ContextSpecification) => void;
-  onOpenDocuments?: (specification: ContextSpecification) => void;
-  workStack?: WorkHistoryStack;
-}) {
+ * this flow's stack rather than opening a second, parallel one (see `sessionContextStack`). */
+function ContextScreen({ source }: { source: SessionContextSource }) {
   const stack = useSecondaryStack<{ context: Record<string, never> }>();
   const openStack: OpenSecondaryStack = (target, params) => stack.navTo(target, params);
 
   return (
     <SessionContext
-      sessionId={sessionId}
-      value={value}
+      sessionId={source.sessionId}
+      value={source.value}
       openStack={openStack}
-      onOpenSpecification={onOpenSpecification}
-      onOpenDocuments={onOpenDocuments}
-      workStack={workStack}
+      onOpenSpecification={source.onOpenSpecification}
+      onOpenDocuments={source.onOpenDocuments}
+      workStack={source.workStack}
     />
   );
-}
-
-function collectTasks(value: SessionContextViewModel): SessionContextTaskRef[] {
-  const tasks = new Map<string, SessionContextTaskRef>();
-  const add = (task: SessionContextTaskRef) => tasks.set(task.id, task);
-  const execution =
-    value.executionScope?.status === 'ready' ? value.executionScope.value : undefined;
-  if (execution?.kind === 'single-task') {
-    add(execution.task);
-  } else if (execution?.kind === 'batch') {
-    execution.tasks.forEach(add);
-  }
-
-  if (value.attention?.status === 'ready') {
-    value.attention.value.forEach((item) => item.task && add(item.task));
-  }
-
-  if (value.relatedTasks?.status === 'ready') {
-    value.relatedTasks.value.forEach(add);
-  }
-
-  return [...tasks.values()];
 }

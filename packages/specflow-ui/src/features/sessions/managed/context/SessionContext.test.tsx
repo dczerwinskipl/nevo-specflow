@@ -11,6 +11,7 @@ import {
 } from '@nevo/ui';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
+import { SessionContextSourceProvider } from './sessionContextValue';
 import { fullTelemetrySnapshot } from './sessionTelemetry';
 import type { ContextFact } from './sessionContextTypes';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
@@ -81,14 +82,24 @@ async function renderContextWithRelatedTasks(
   render(
     <StoryLocalization locale="en">
       <AppWorkspaceProvider>
-        <AppShell navigation={<div>Nav</div>}>
-          <AppWorkspace split="primary">
-            <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
-              <TabTitles />
-              <SessionContext sessionId={sessionId} value={value} workStack={options?.workStack} />
-            </AppWorkspace.Primary>
-          </AppWorkspace>
-        </AppShell>
+        <SessionContextSourceProvider
+          sessionId={sessionId}
+          value={value}
+          workStack={options?.workStack}
+        >
+          <AppShell navigation={<div>Nav</div>}>
+            <AppWorkspace split="primary">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
+                <TabTitles />
+                <SessionContext
+                  sessionId={sessionId}
+                  value={value}
+                  workStack={options?.workStack}
+                />
+              </AppWorkspace.Primary>
+            </AppWorkspace>
+          </AppShell>
+        </SessionContextSourceProvider>
       </AppWorkspaceProvider>
     </StoryLocalization>,
   );
@@ -245,7 +256,7 @@ describe('Related Tasks summary row', () => {
     expect(openStack).toHaveBeenCalledTimes(2);
     expect(openStack).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'managed-session-task' }),
-      { sessionId, taskId: 'task-02', inFlow: true },
+      { sessionId, taskId: 'task-02', taskKey: 'TASK-02', inFlow: true },
     );
   });
 });

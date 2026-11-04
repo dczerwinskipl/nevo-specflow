@@ -10,7 +10,12 @@ import {
 } from '@nevo/ui';
 import { useWorkspaceLabels } from '../../../../app/navigation/useWorkspaceLabels';
 import { useMessage } from '../../../../i18n/message';
-import { SessionContext, createSessionContextStack } from '../../managed/context/SessionContext';
+import { SessionContext, sessionContextStack } from '../../managed/context/SessionContext';
+import { SessionContextSourceProvider } from '../../managed/context/sessionContextValue';
+import {
+  useDropNarrowContextOnSplit,
+  useSessionSidePanel,
+} from '../../managed/context/useSessionSidePanel';
 import type { ContextSpecification } from '../../managed/context/sessionContextTypes';
 import { initialAgentChoice, type AgentChoice } from '../choice/agentChoice';
 import { initialSessionName, type SessionNameChoice } from '../choice/sessionName';
@@ -66,6 +71,10 @@ export function SessionStartScreen({
   const navigation = useSecondaryNavigation();
   const labels = useWorkspaceLabels();
   const [contextOpen, setContextOpen] = useState(true);
+  // One press hides the whole side panel (Context and a visible tab), the next restores it.
+  const sidePanel = useSessionSidePanel(contextOpen, setContextOpen);
+  // A narrow Context flow does not survive into the split scheme next to the pinned Context tab.
+  useDropNarrowContextOnSplit(t('sessions.context.title'));
   const [chosen, setChosen] = useState<AgentChoice | undefined>(defaults?.agent);
   const [name, setName] = useState<SessionNameChoice>(defaults?.name ?? initialSessionName);
   const [status, setStatus] = useState<SessionStartStatus>(defaults?.status ?? 'idle');
@@ -141,61 +150,63 @@ export function SessionStartScreen({
         label: t('sessions.context.title'),
         icon: 'file',
         direct: 'always',
-        onPress: () =>
-          void navigation.open(
-            createSessionContextStack(pendingSessionId, contextValue, onOpenSpecification),
-            {},
-          ),
+        onPress: () => void navigation.open(sessionContextStack, {}),
       }
     : {
         id: 'context',
         label: t('managedSession.sidePanel'),
         icon: 'panel-right',
         presentation: 'icon',
-        pressed: contextOpen,
+        pressed: sidePanel.sidePanelOpen,
         direct: 'always',
-        onPress: () => setContextOpen((open) => !open),
+        onPress: () => void sidePanel.toggle(),
       };
 
   return (
-    <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
-      <AppWorkspace.Primary
-        header={
-          <WorkspaceHeader
-            title={t('sessionStart.heading')}
-            // The Session's own actions (rename, archive, delete) exist only after Start.
-            actions={[contextAction]}
-            labels={{ moreActions: t('common.moreActions') }}
+    <SessionContextSourceProvider
+      sessionId={pendingSessionId}
+      value={contextValue}
+      onOpenSpecification={onOpenSpecification}
+    >
+      <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
+        <AppWorkspace.Primary
+          header={
+            <WorkspaceHeader
+              title={t('sessionStart.heading')}
+              // The Session's own actions (rename, archive, delete) exist only after Start.
+              actions={[contextAction]}
+              labels={{ moreActions: t('common.moreActions') }}
+            />
+          }
+        >
+          <SessionStartColumn
+            source={source}
+            agent={agent}
+            onAgentChange={(next) => {
+              setChosen(next);
+              edited();
+            }}
+            name={name}
+            onNameChange={(next) => {
+              setName(next);
+              edited();
+            }}
+            status={status}
+            onStart={start}
           />
-        }
-      >
-        <SessionStartColumn
-          source={source}
-          agent={agent}
-          onAgentChange={(next) => {
-            setChosen(next);
-            edited();
-          }}
-          name={name}
-          onNameChange={(next) => {
-            setName(next);
-            edited();
-          }}
-          status={status}
-          onStart={start}
-        />
-      </AppWorkspace.Primary>
-      <AppWorkspace.Secondary
-        open={contextOpen}
-        onOpenChange={setContextOpen}
-        header={<WorkspaceHeader title={t('sessions.context.title')} />}
-      >
-        <SessionContext
-          sessionId={pendingSessionId}
-          value={contextValue}
-          onOpenSpecification={onOpenSpecification}
-        />
-      </AppWorkspace.Secondary>
-    </AppWorkspace>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary
+          open={contextOpen}
+          onOpenChange={setContextOpen}
+          header={<WorkspaceHeader title={t('sessions.context.title')} />}
+        >
+          <SessionContext
+            sessionId={pendingSessionId}
+            value={contextValue}
+            onOpenSpecification={onOpenSpecification}
+          />
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </SessionContextSourceProvider>
   );
 }

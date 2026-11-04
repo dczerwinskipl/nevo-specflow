@@ -45,7 +45,9 @@ import { useLayoutInducedScroll } from './useLayoutInducedScroll';
 import { ComposerModePicker } from './ComposerPresetPicker';
 import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
 import { createWorkInspector } from './WorkInspector';
-import { SessionContext, createSessionContextStack } from './context/SessionContext';
+import { SessionContext, sessionContextStack } from './context/SessionContext';
+import { SessionContextSourceProvider } from './context/sessionContextValue';
+import { useDropNarrowContextOnSplit, useSessionSidePanel } from './context/useSessionSidePanel';
 import { realRouteSessionContext } from './context/sessionContextTypes';
 import { useSessionActions, type SessionActionHandlers } from './sessionActions/useSessionActions';
 import { SessionNamingStatus } from './naming/SessionNamingStatus';
@@ -320,6 +322,7 @@ function ManagedSessionConversation({
   // but a stacked-behaving conversation (no scroll owner, a `fixed` composer painting over the
   // Secondary). `localScroll` decides who owns scrolling and how the composer is positioned;
   // `isSplit` the density/Enter behaviour of the narrower stacked presentation.
+  const { supportsSplit } = useWorkspaceCapabilities();
   const workspaceLayout = useWorkspaceLayout();
   const isSplit = workspaceLayout.mode === 'split';
   const localScroll = workspaceLayout.primaryScrollOwner === 'local';
@@ -768,13 +771,17 @@ function ManagedSessionConversation({
     void feed.send(workModeDefault);
   };
 
-  // A Work block opens its Turn's Work history. Split layout: the Turn's own root tab (`openTab`
-  // with the Turn as instance), the very tab Context's "Work history" row opens for the same Turn.
-  // Stacked layout has no tabs (one visible surface, Back follows the path), so it keeps the single
-  // runtime flow that Back closes (`open`).
+  // A Work block opens its Turn's Work history. From the split width (`supportsSplit`, 840px) it
+  // is the Turn's own root tab (`openTab` with the Turn as instance), the very tab Context's "Work
+  // history" row opens for the same Turn. Below it the Session uses the mobile scheme whatever the
+  // resolved layout is (a runtime Secondary already splits from 730px, but there are no root tabs
+  // yet): one visible surface, Back follows the path, the single runtime flow Back closes (`open`),
+  // so the same Turn opened twice is one flow, never two tabs (workspace-dynamic-split.md).
   const openWork = (turnId: string) => {
     const params = { sessionId, turnId };
-    void (isSplit ? navigation.openTab(workStack, params) : navigation.open(workStack, params));
+    void (supportsSplit
+      ? navigation.openTab(workStack, params)
+      : navigation.open(workStack, params));
   };
 
   const outcomeLabels: Record<string, string> = {
@@ -1360,28 +1367,12 @@ export function ManagedSession({
   }, [feed]);
   const navigation = useSecondaryNavigation(),
     labels = useWorkspaceLabels();
-  // The side panel shows when Context is registered or a runtime tab is visible.
-  const sidePanelOpen = contextOpen || navigation.isOpen;
-  const hiddenTabIdRef = useRef<string | null>(null);
-  const toggleSidePanel = async () => {
-    if (sidePanelOpen) {
-      hiddenTabIdRef.current = navigation.isOpen ? navigation.tabs.activeTabId : null;
-      if (navigation.isOpen && !(await navigation.close())) {
-        return; // a leave guard kept the open tab
-      }
-
-      setContextOpen(false);
-
-      return;
-    }
-
-    setContextOpen(true);
-    const hiddenTabId = hiddenTabIdRef.current;
-    hiddenTabIdRef.current = null;
-    if (hiddenTabId && navigation.tabs.tabs.some((tab) => tab.id === hiddenTabId)) {
-      await navigation.activateTab(hiddenTabId);
-    }
-  };
+  // The side panel shows when Context is registered or a runtime tab is visible; one press hides
+  // all of it and the next restores what was active (`useSessionSidePanel`).
+  const sidePanel = useSessionSidePanel(contextOpen, setContextOpen);
+  const contextTitle = t('sessions.context.title');
+  // A narrow Context flow does not survive into the split scheme next to the pinned Context tab.
+  useDropNarrowContextOnSplit(contextTitle);
 
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
   const providers = useQuery({
@@ -1419,6 +1410,7 @@ export function ManagedSession({
     (model) => model.modelId === selectedModelId,
   )?.title;
   const providerId = sessionProviderId;
+  const firstSnapshotFailed = !snapshot && !fallback.pending && state.connection === 'error';
   const executor = useMemo<ContextFact<SessionExecutor> | undefined>(() => {
     if (fallback.executor) {
       return fallback.executor;
@@ -1440,7 +1432,13 @@ export function ManagedSession({
       return { status: 'unreadable' };
     }
 
-    if (providers.isPending || !providerId) {
+    if (!providerId) {
+      // No snapshot ever arrived and nothing started here stands in for it: the provider cannot
+      // become known, so waiting would be a skeleton forever.
+      return firstSnapshotFailed ? { status: 'unreadable' } : { status: 'loading' };
+    }
+
+    if (providers.isPending) {
       return { status: 'loading' };
     }
 
@@ -1451,6 +1449,7 @@ export function ManagedSession({
     providers.isError,
     providers.isPending,
     providerId,
+    firstSnapshotFailed,
     executorModelTitle,
     selectedEffort,
     fallback.executor,
@@ -1464,8 +1463,10 @@ export function ManagedSession({
         : // A Session just started here has no Turn yet: nothing to wait for.
           fallback.pending
           ? undefined
-          : { status: 'loading' },
-    [snapshot, workHistoryTurnId, fallback.pending],
+          : firstSnapshotFailed
+            ? { status: 'unreadable' }
+            : { status: 'loading' },
+    [snapshot, workHistoryTurnId, fallback.pending, firstSnapshotFailed],
   );
   const contextValue = useMemo<SessionContextViewModel>(
     () => ({
@@ -1525,17 +1526,7 @@ export function ManagedSession({
         // (full-session-screen-structure.md §21.1's `[Context]` pill); `'always'` wins the single
         // narrow direct slot regardless of this header's own measured width.
         direct: 'always',
-        onPress: () =>
-          void navigation.open(
-            createSessionContextStack(
-              sessionId,
-              contextValue,
-              onOpenSpecification,
-              workStack,
-              onOpenDocuments,
-            ),
-            {},
-          ),
+        onPress: () => void navigation.open(sessionContextStack, {}),
       }
     : {
         // Split layout: a persistent toggle that hides and shows the WHOLE side panel — Context
@@ -1548,9 +1539,9 @@ export function ManagedSession({
         // The standard side-panel glyph, not a document (owner audit, round eight).
         icon: 'panel-right',
         presentation: 'icon',
-        pressed: sidePanelOpen,
+        pressed: sidePanel.sidePanelOpen,
         direct: 'always',
-        onPress: () => void toggleSidePanel(),
+        onPress: () => void sidePanel.toggle(),
       };
   // Replaces the old status row's own Retry button (`state.connection === 'error'`), which this
   // pass removes along with the rest of that row.
@@ -1578,59 +1569,67 @@ export function ManagedSession({
   ].filter(Boolean) as WorkspaceHeaderAction[];
 
   return (
-    <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
-      <AppWorkspace.Primary
-        header={
-          <WorkspaceHeader
-            title={
-              namingPending
-                ? t('sessionNaming.provisionalTitle')
-                : (sessionActions.title ?? fallback.title ?? t('managedSession.title'))
-            }
-            subtitle={headerSubtitle}
-            status={
-              isWaitingOnProvider ? (
-                <Spinner size="sm" />
-              ) : namingPending ? (
-                <SessionNamingStatus />
-              ) : undefined
-            }
-            actions={headerActions}
-            labels={{ moreActions: t('common.moreActions') }}
+    <SessionContextSourceProvider
+      sessionId={sessionId}
+      value={contextValue}
+      onOpenSpecification={onOpenSpecification}
+      onOpenDocuments={onOpenDocuments}
+      workStack={workStack}
+    >
+      <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
+        <AppWorkspace.Primary
+          header={
+            <WorkspaceHeader
+              title={
+                namingPending
+                  ? t('sessionNaming.provisionalTitle')
+                  : (sessionActions.title ?? fallback.title ?? t('managedSession.title'))
+              }
+              subtitle={headerSubtitle}
+              status={
+                isWaitingOnProvider ? (
+                  <Spinner size="sm" />
+                ) : namingPending ? (
+                  <SessionNamingStatus />
+                ) : undefined
+              }
+              actions={headerActions}
+              labels={{ moreActions: t('common.moreActions') }}
+            />
+          }
+        >
+          <ManagedSessionConversation
+            api={api}
+            sessionId={sessionId}
+            feed={feed}
+            navigation={navigation}
+            workStack={workStack}
+            provider={provider}
+            selectedModelId={selectedModelId}
+            selectedEffort={selectedEffort}
+            started={fallback.pending}
           />
-        }
-      >
-        <ManagedSessionConversation
-          api={api}
-          sessionId={sessionId}
-          feed={feed}
-          navigation={navigation}
-          workStack={workStack}
-          provider={provider}
-          selectedModelId={selectedModelId}
-          selectedEffort={selectedEffort}
-          started={fallback.pending}
-        />
-        {sessionActions.dialogs}
-      </AppWorkspace.Primary>
-      {/* Context is the default split-capable Secondary (full-session-screen-structure.md §3.1,
+          {sessionActions.dialogs}
+        </AppWorkspace.Primary>
+        {/* Context is the default split-capable Secondary (full-session-screen-structure.md §3.1,
           §3.4): open by default, stays closed once the user explicitly closes it, and is restored
           by the Primary "Context" action — on narrow layouts it opens the Context Secondary stack;
           on split-capable layouts it reappears whenever Context is closed, so there is always a
           way back in regardless of `supportsSplit` (§24.2). */}
-      <AppWorkspace.Secondary
-        open={contextOpen}
-        onOpenChange={setContextOpen}
-        header={<WorkspaceHeader title={t('sessions.context.title')} />}
-      >
-        <SessionContext
-          sessionId={sessionId}
-          value={contextValue}
-          onOpenSpecification={onOpenSpecification}
-          onOpenDocuments={onOpenDocuments}
-          workStack={workStack}
-        />
-      </AppWorkspace.Secondary>
-    </AppWorkspace>
+        <AppWorkspace.Secondary
+          open={contextOpen}
+          onOpenChange={setContextOpen}
+          header={<WorkspaceHeader title={t('sessions.context.title')} />}
+        >
+          <SessionContext
+            sessionId={sessionId}
+            value={contextValue}
+            onOpenSpecification={onOpenSpecification}
+            onOpenDocuments={onOpenDocuments}
+            workStack={workStack}
+          />
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </SessionContextSourceProvider>
   );
 }

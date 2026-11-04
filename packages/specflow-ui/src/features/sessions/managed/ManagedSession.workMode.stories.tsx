@@ -54,7 +54,7 @@ export const WorkModeFromRuntimeCatalogue: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     // No mode of its own on the Session: the catalogue default (`defaultModeId`) is shown.
-    await userEvent.click(await canvas.findByRole('button', { name: 'Agent' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Tryb pracy: Agent' }));
     const menu = await within(document.body).findByRole('menu');
     await expect(
       within(menu)
@@ -62,7 +62,7 @@ export const WorkModeFromRuntimeCatalogue: Story = {
         .map((item) => item.textContent),
     ).toEqual(['Agent', 'Plan']);
     await userEvent.click(within(menu).getByRole('menuitemradio', { name: 'Plan' }));
-    await expect(await canvas.findByRole('button', { name: 'Plan' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Tryb pracy: Plan' })).toBeVisible();
     await expect(await send(canvasElement, 'Najpierw plan')).toMatchObject({
       message: 'Najpierw plan',
       mode: 'read-only',
@@ -85,7 +85,7 @@ export const WorkModeInheritedFromSession: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Plan' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Tryb pracy: Plan' })).toBeVisible();
     const request = await send(canvasElement, 'Dalej w tym samym trybie');
     await expect(request).not.toHaveProperty('providerModeId');
     await expect(request).not.toHaveProperty('mode');

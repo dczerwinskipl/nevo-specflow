@@ -8,10 +8,13 @@ import {
   defineSecondaryStack,
   useSecondaryNavigation,
   useSecondaryStack,
+  type SecondaryData,
   type SecondaryStackDefinition,
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
 import { ContextTaskRow } from './ContextTaskSections';
+import { collectTasks } from './sessionContextTasks';
+import { useSessionContextSource } from './sessionContextValue';
 import type { SessionContextTaskRef } from './sessionContextTypes';
 
 /**
@@ -33,27 +36,36 @@ import type { SessionContextTaskRef } from './sessionContextTypes';
  * - Within a Task tab, deeper levels (attempt, review, feedback) push onto that tab's local stack
  *   (`localNavigation` decides how depth shows), keeping their Task provenance.
  *
+ * Both stacks are defined ONCE, at module level, and read the LIVE Tasks from the Session's
+ * `SessionContextSourceProvider` (`useData`), never from a value captured when a tab opened: a
+ * renamed Task, or Tasks that arrive later, show in an already-open tab. A tab's strip label and a
+ * list-to-Task breadcrumb segment are synchronous by the Secondary contract (`tabLabel`,
+ * `breadcrumbLabel` see root/page params only), so they carry the Task's stable KEY (and the
+ * title the row showed when it was pushed); everything inside the screens is live.
+ *
  * Task data is a product-owned mock (`SessionContextTaskRef`), not a Runtime read — the managed
  * Session contract has no Task association yet (see the Full Session UX report). `TaskDetail`
  * below is a deliberate, explicitly-flagged stand-in for that reason (see its own comment) — not
  * an adaptation of the real `TaskDetails`/`TaskInspection` presentation.
  */
 
-interface Root {
+export interface TaskStackRoot {
   sessionId: string;
   /** The Task a Task tab is about; absent for the list. */
   taskId?: string;
+  /** That Task's key: the tab's strip label (synchronous, so it cannot be read from live data). */
+  taskKey?: string;
   /** Opened as a push onto another flow (the narrow Context flow): no tabs, Back follows the path. */
   inFlow?: boolean;
 }
+type Root = TaskStackRoot;
 interface Data extends Root {
+  /** The Session's Tasks as they are now. */
   tasks: SessionContextTaskRef[];
-  /** The per-Task tab definition, so the list can open a Task's own tab. */
-  taskStack: SecondaryStackDefinition<Root, Data, Pages>;
 }
 interface Pages {
   tasks: Record<string, never>;
-  task: { taskId?: string };
+  task: { taskId?: string; taskTitle?: string };
 }
 
 function TaskList({ data }: { data: Data }) {
@@ -64,8 +76,12 @@ function TaskList({ data }: { data: Data }) {
   // push so Back returns along the path.
   const openTask = (task: SessionContextTaskRef) =>
     data.inFlow
-      ? void stack.navTo('task', { taskId: task.id })
-      : void navigation.openTab(data.taskStack, { sessionId: data.sessionId, taskId: task.id });
+      ? void stack.navTo('task', { taskId: task.id, taskTitle: task.title })
+      : void navigation.openTab(taskStack, {
+          sessionId: data.sessionId,
+          taskId: task.id,
+          taskKey: task.key,
+        });
 
   if (!data.tasks.length) {
     return (
@@ -136,56 +152,59 @@ function TaskDetail({ data, params }: { data: Data; params: { taskId?: string } 
   );
 }
 
+function useTasksData(params: Root): SecondaryData<Data> {
+  const source = useSessionContextSource();
+
+  return source
+    ? { status: 'ready', data: { ...params, tasks: collectTasks(source.value) } }
+    : { status: 'unavailable' };
+}
+
+const screens = {
+  tasks: {
+    get title() {
+      return translateNow('sessions.context.tasksTitle');
+    },
+    component: TaskList,
+  },
+  task: {
+    get title() {
+      return translateNow('sessions.context.taskTitle');
+    },
+    // The breadcrumb segment names the opened Task (`Zadania › Document the admission guard`) from
+    // the title the pushing row showed; the tab keeps its root's name.
+    breadcrumbLabel: (params: { taskId?: string; taskTitle?: string }) =>
+      params.taskTitle ?? translateNow('sessions.context.taskTitle'),
+    component: TaskDetail,
+  },
+};
+
 /**
  * The two Task stacks over the same two screens (see the module comment): `tasksStack` is the list
  * tab, `taskStack` is one tab per Task. The Task tab is named after its Task KEY at any depth (a
  * tab never renames itself to the detail open inside it, §10.1's "Work -> ToolAction stays inside
  * the Work tab"), which also tells two open Task tabs apart; the list tab keeps "Zadania".
  */
-export function createSessionTasksInspector(tasks: SessionContextTaskRef[]) {
-  const screens = {
-    tasks: {
-      get title() {
-        return translateNow('sessions.context.tasksTitle');
-      },
-      component: TaskList,
-    },
-    task: {
-      get title() {
-        return translateNow('sessions.context.taskTitle');
-      },
-      // The breadcrumb segment names the opened Task (`Zadania › Document the admission guard`);
-      // the tab keeps its root's name.
-      breadcrumbLabel: (params: { taskId?: string }) =>
-        tasks.find((task) => task.id === params.taskId)?.title ??
-        translateNow('sessions.context.taskTitle'),
-      component: TaskDetail,
-    },
-  };
-  const tasksStack: SecondaryStackDefinition<Root, Data, Pages> = defineSecondaryStack<
-    Root,
-    Data,
-    Pages
-  >({
-    id: 'managed-session-tasks',
-    initial: 'tasks',
-    tabLabel: () => translateNow('sessions.context.tasksTitle'),
-    useData: (params) => ({ status: 'ready', data: { ...params, tasks, taskStack } }),
-    screens,
-  });
-  const taskStack: SecondaryStackDefinition<Root, Data, Pages> = defineSecondaryStack<
-    Root,
-    Data,
-    Pages
-  >({
-    ...tasksStack,
-    id: 'managed-session-task',
-    initial: 'task',
-    instanceId: (params) => params.taskId ?? '',
-    tabLabel: (params) =>
-      tasks.find((task) => task.id === params.taskId)?.key ??
-      translateNow('sessions.context.taskTitle'),
-  });
+export const tasksStack: SecondaryStackDefinition<Root, Data, Pages> = defineSecondaryStack<
+  Root,
+  Data,
+  Pages
+>({
+  id: 'managed-session-tasks',
+  initial: 'tasks',
+  tabLabel: () => translateNow('sessions.context.tasksTitle'),
+  useData: useTasksData,
+  screens,
+});
 
-  return { tasksStack, taskStack };
-}
+export const taskStack: SecondaryStackDefinition<Root, Data, Pages> = defineSecondaryStack<
+  Root,
+  Data,
+  Pages
+>({
+  ...tasksStack,
+  id: 'managed-session-task',
+  initial: 'task',
+  instanceId: (params) => params.taskId ?? '',
+  tabLabel: (params) => params.taskKey ?? translateNow('sessions.context.taskTitle'),
+});

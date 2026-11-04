@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { defineSecondaryStack, useSecondaryNavigation } from '@nevo/ui';
-import { createMemoryHistory } from '@tanstack/react-router';
+import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowRouter } from '../../../app/router';
@@ -11,6 +11,10 @@ import { ManagedSessionRouteView } from './routes';
 
 vi.mock('../../../app/useAppServices', () => ({
   useAppServices: () => ({ managedSessionsApi: {} }),
+}));
+// The application shell is not what these tests are about: only its Outlet.
+vi.mock('../../../app/SpecFlowShell', () => ({
+  SpecFlowShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock('./useAuthOwner', () => ({ useAuthOwner: () => 'owner-1' }));
 vi.mock('./useSessionContextNavigation', () => ({
@@ -114,5 +118,60 @@ describe('Session route collection', () => {
 
     expect(location.pathname).toBe('/sessions/s1');
     expect(location.search).toEqual({ collection: 'archive' });
+  });
+});
+
+describe('Session route history', () => {
+  function routerAt(url: string) {
+    return createSpecFlowRouter(
+      createMemoryHistory({ initialEntries: [url] }),
+      createSpecFlowAppServices({
+        authStore: createAuthStore(
+          {
+            getSession: () => Promise.resolve(local),
+            loginWithPassword: () => Promise.reject(new Error('unused')),
+            startOidc: () => Promise.reject(new Error('unused')),
+            logout: () => Promise.resolve(),
+          },
+          local,
+        ),
+      }),
+    );
+  }
+
+  const settle = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+  it('Back from Session B lands on Session A without a Secondary tab left over from B', async () => {
+    const router = routerAt('/sessions/A');
+    render(<RouterProvider router={router} />);
+    await settle();
+    expect(router.state.location.pathname).toBe('/sessions/A');
+
+    await act(async () => {
+      await router.navigate({
+        to: '/sessions/$sessionId',
+        params: { sessionId: 'B' },
+        search: { collection: 'current' },
+      });
+    });
+    await settle();
+    expect(router.state.location.pathname).toBe('/sessions/B');
+    fireEvent.click(screen.getByRole('button', { name: 'open work' }));
+    await settle();
+    expect(screen.getByTestId('tabs').textContent).toBe('work:B-turn');
+
+    // Back steps out of B's open tab first, then leaves B for A.
+    for (let step = 0; step < 3 && router.state.location.pathname !== '/sessions/A'; step += 1) {
+      await act(async () => {
+        router.history.back();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+
+    expect(router.state.location.pathname).toBe('/sessions/A');
+    expect(screen.getByTestId('tabs').textContent).toBe('');
   });
 });

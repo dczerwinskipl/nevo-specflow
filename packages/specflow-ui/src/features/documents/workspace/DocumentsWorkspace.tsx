@@ -20,7 +20,7 @@ import { useDocumentsApi } from '../useDocumentsApi';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
-import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
+import { documentRootActions, type DocumentTreeController } from '../explorer/documentRootActions';
 import { documentTreeKeys } from '../read-model/queries';
 import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';

@@ -17,7 +17,8 @@ import {
 } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
-import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
+import { DocumentsExplorer } from '../explorer/DocumentsExplorer';
+import type { DocumentTreeController } from '../explorer/documentRootActions';
 import { documentTreeKeys } from '../read-model/queries';
 import { CloseIssues } from './CloseIssues';
 import { createDiscardConsent } from './discardConsent';

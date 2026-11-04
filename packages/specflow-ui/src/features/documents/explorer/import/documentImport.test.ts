@@ -13,7 +13,7 @@ const tree = {
     import: available,
     formats: ['md', 'txt'],
   },
-} as unknown as Pick<DocumentTree, 'documents' | 'folders' | 'capabilities'>;
+} as unknown as Pick<DocumentTree, 'documents' | 'folders' | 'dangling' | 'capabilities'>;
 
 const file = (name: string, content = 'text') => new File([content], name);
 const reasons = (plan: Awaited<ReturnType<typeof planImport>>) =>

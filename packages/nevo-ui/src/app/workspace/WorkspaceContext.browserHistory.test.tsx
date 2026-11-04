@@ -448,4 +448,30 @@ describe('AppWorkspaceProvider browserHistory: tab and scope regressions', () =>
     expect(depth()).toBe(0);
     expect(markerDepth()).toBe(0);
   });
+
+  it("after a scope change, browser Back walks only the new scope's entries", async () => {
+    const tree = (scopeKey: string) => (
+      <AppWorkspaceProvider browserHistory scopeKey={scopeKey}>
+        <Host />
+      </AppWorkspaceProvider>
+    );
+    const { rerender } = render(tree('A'));
+    await openWork('a');
+    await click('Push detail');
+    await screen.findByText('Detail page');
+
+    rerender(tree('B'));
+    await settleHistory();
+    await openWork('b');
+    await settleHistory();
+    expect(depth()).toBe(1);
+    expect(markerDepth()).toBe(1);
+
+    await browser(() => window.history.back());
+    await waitFor(() => expect(depth()).toBe(0));
+    await settleHistory();
+    expect(markerDepth()).toBe(0);
+    expect(screen.queryByText('Detail page')).toBeNull();
+    expect(screen.queryByText('Root page')).toBeNull();
+  });
 });

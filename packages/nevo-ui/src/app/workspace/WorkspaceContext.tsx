@@ -223,7 +223,12 @@ interface TabRecord {
  * has no flow — it is folded into the public `tabs`/`activeTabId` alongside this collection.
  */
 interface TabsSnapshot {
-  scopeKey?: string | number;
+  /**
+   * The scope generation (see `WorkspaceContextValue.scopeGeneration`) that owns this snapshot. A
+   * generation, not the `scopeKey` itself: A → B → A is two scope changes, and the second visit of
+   * A must not inherit anything from the first.
+   */
+  generation: number;
   /** Runtime tab ids (legacy slot + `openTab()` entries), in creation order. */
   order: readonly string[];
   byId: Readonly<Record<string, TabRecord>>;
@@ -233,8 +238,15 @@ interface TabsSnapshot {
   isOpen: boolean;
 }
 
-function emptyTabsSnapshot(scopeKey?: string | number): TabsSnapshot {
-  return { scopeKey, order: [], byId: {}, activeTabId: null, isOpen: true };
+/** A scope's starting state: no runtime tab; the pinned tab, when registered, is the active one. */
+function emptyTabsSnapshot(generation: number, hasPinnedTab = false): TabsSnapshot {
+  return {
+    generation,
+    order: [],
+    byId: {},
+    activeTabId: hasPinnedTab ? PINNED_TAB_ID : null,
+    isOpen: true,
+  };
 }
 
 /** The active tab's own record, or `null` when the active tab is pinned, unknown, or hidden. */
@@ -595,26 +607,39 @@ export function AppWorkspaceProvider({
   scopeKey,
   browserHistory = false,
 }: PropsWithChildren<AppWorkspaceProviderProps>) {
-  const [tabsState, setTabsState] = useState<TabsSnapshot>(() => emptyTabsSnapshot(scopeKey));
-  const [pinnedTab, setPinnedTab] = useState<PinnedSecondaryTabInput | null>(null);
-  // Derived during render (no effect): a scope change bumps the generation in the same render
-  // that first sees the new `scopeKey`, so consumers never paint one frame of the old scope's state.
-  const [scopeIdentity, setScopeIdentity] = useState({ scopeKey, generation: 0 });
-  let scopeGeneration = scopeIdentity.generation;
+  // Scope ownership. Everything a scope owns is tied to its generation, which is derived during
+  // render (no effect): a scope change bumps the generation — and creates the new scope's own scroll
+  // memory — in the same render that first sees the new `scopeKey`, so consumers never paint, nor
+  // restore, one frame of the old scope's state. Its tab snapshot (`tabsRef`/`tabsState`), leave
+  // guards and navigation queue are invalidated by the layout effect below, before any operation of
+  // the new scope can run; every operation is bound to the generation it was created in.
+  const [scopeIdentity, setScopeIdentity] = useState(() => ({
+    scopeKey,
+    generation: 0,
+    scrollMemory: createSecondaryScrollMemory(),
+  }));
+  let { generation: scopeGeneration, scrollMemory } = scopeIdentity;
   if (scopeIdentity.scopeKey !== scopeKey) {
     scopeGeneration += 1;
-    setScopeIdentity({ scopeKey, generation: scopeGeneration });
+    scrollMemory = createSecondaryScrollMemory();
+    setScopeIdentity({ scopeKey, generation: scopeGeneration, scrollMemory });
   }
 
+  const [tabsState, setTabsState] = useState<TabsSnapshot>(() => emptyTabsSnapshot(0));
+  const [pinnedTab, setPinnedTab] = useState<PinnedSecondaryTabInput | null>(null);
   const tabsRef = useRef<TabsSnapshot>(tabsState);
   const pinnedTabRef = useRef(pinnedTab);
   const counter = useRef(0);
   const revision = useRef(0);
   const mounted = useRef(true);
-  const currentScope = useRef(scopeKey);
+  /** The generation the committed tree belongs to; operations of any other one are stale. */
+  const currentGeneration = useRef(scopeGeneration);
   const guards = useRef(new Map<number, LeaveGuard>());
-  const scrollMemory = useRef(createSecondaryScrollMemory());
-  const pending = useRef<Promise<unknown>>(Promise.resolve());
+  /** One serial chain per generation (see `queue`). */
+  const pending = useRef<{ generation: number; chain: Promise<unknown> }>({
+    generation: scopeGeneration,
+    chain: Promise.resolve(),
+  });
   const [transition, setTransition] = useState<WorkspaceTransition>({
     action: 'close',
     revision: 0,
@@ -626,47 +651,45 @@ export function AppWorkspaceProvider({
     mounted.current = true;
     // The map is created once and only mutated: this is the instance to clear on unmount.
     const registeredGuards = guards.current;
-    const memory = scrollMemory.current;
 
     return () => {
       mounted.current = false;
-      tabsRef.current = emptyTabsSnapshot(scopeKey);
       registeredGuards.clear();
-      memory.clear();
     };
-  }, [scopeKey]);
+  }, []);
 
   // Route/owner scope invalidation is not a user-initiated close: clear even if
   // the old screen has a leave guard. No stale screen may affect the new scope.
   // That includes a Secondary that is still sliding out after its flow was closed.
+  // Unconditional on a scope change: a scope showing only the pinned tab has no runtime tab, but its
+  // snapshot (and pinned selection) still belongs to it.
   useLayoutEffect(() => {
-    const scopeChanged = currentScope.current !== scopeKey;
-    currentScope.current = scopeKey;
-    const staleTabs = tabsRef.current.order.length > 0 && tabsRef.current.scopeKey !== scopeKey;
-    if (staleTabs) {
-      tabsRef.current = emptyTabsSnapshot(scopeKey);
-      guards.current.clear();
-      scrollMemory.current.clear();
-      setTabsState(tabsRef.current);
+    if (currentGeneration.current === scopeGeneration) {
+      return;
     }
 
-    if (staleTabs || scopeChanged) {
-      revision.current += 1;
-      const revisionAtChange = revision.current;
-      setTransition((previous) =>
-        staleTabs || previous.outgoing
-          ? { action: 'close', revision: revisionAtChange, incoming: null, outgoing: null }
-          : previous,
-      );
-    }
-  }, [scopeKey]);
+    currentGeneration.current = scopeGeneration;
+    const hadRuntimeTabs = tabsRef.current.order.length > 0;
+    // The pinned-tab effect below, which runs next in this same commit, re-selects the pinned tab.
+    tabsRef.current = emptyTabsSnapshot(scopeGeneration);
+    guards.current.clear();
+    setTabsState(tabsRef.current);
+
+    revision.current += 1;
+    const revisionAtChange = revision.current;
+    setTransition((previous) =>
+      hadRuntimeTabs || previous.outgoing
+        ? { action: 'close', revision: revisionAtChange, incoming: null, outgoing: null }
+        : previous,
+    );
+  }, [scopeGeneration]);
 
   // The pinned tab becomes active when nothing else is, and yields to a runtime tab (or nothing)
   // once it disappears; it is never created/destroyed by open/openTab/closeTab (contract §3).
   useLayoutEffect(() => {
     pinnedTabRef.current = pinnedTab;
     const previous = tabsRef.current;
-    if (previous.scopeKey !== scopeKey) {
+    if (previous.generation !== scopeGeneration) {
       return;
     }
 
@@ -680,7 +703,7 @@ export function AppWorkspaceProvider({
       tabsRef.current = { ...previous, activeTabId: null, isOpen: false };
       setTabsState(tabsRef.current);
     }
-  }, [pinnedTab, scopeKey]);
+  }, [pinnedTab, scopeGeneration]);
 
   const registerGuard = useCallback((entryKey: number, guard: LeaveGuard) => {
     guards.current.set(entryKey, guard);
@@ -767,15 +790,36 @@ export function AppWorkspaceProvider({
     [currentSurfaceForFlow],
   );
 
-  const queue = useCallback((operation: () => Promise<boolean>) => {
-    const result = pending.current.then(operation, operation);
-    pending.current = result.then(
-      () => undefined,
-      () => undefined,
-    );
+  /**
+   * Serialises one scope's operations. Each generation gets its own chain, so an operation of the
+   * old scope that is still waiting (a leave guard whose dialog went away with its screen) never
+   * blocks the new scope; generations only grow, so an operation of an older one is refused
+   * outright without disturbing the current chain.
+   */
+  const queue = useCallback((generation: number, operation: () => Promise<boolean>) => {
+    const current = pending.current;
+    if (generation < current.generation) {
+      return Promise.resolve(false);
+    }
+
+    const head = generation === current.generation ? current.chain : Promise.resolve();
+    const result = head.then(operation, operation);
+    pending.current = {
+      generation,
+      chain: result.then(
+        () => undefined,
+        () => undefined,
+      ),
+    };
 
     return result;
   }, []);
+
+  /** The operation's scope is still the committed one (and the provider is mounted). */
+  const isCurrentScope = useCallback(
+    (generation: number) => mounted.current && currentGeneration.current === generation,
+    [],
+  );
 
   const passesGuard = useCallback(async (flow: SecondaryFlow | null) => {
     const key = flow?.entries.at(-1)?.instanceKey;
@@ -819,7 +863,7 @@ export function AppWorkspaceProvider({
         guards.current.delete(closedTopKey);
       }
 
-      scrollMemory.current.forgetTab(tabId);
+      scrollMemory.forgetTab(tabId);
 
       const wasActive = snapshot.activeTabId === tabId;
       let activeTabId = snapshot.activeTabId;
@@ -843,27 +887,24 @@ export function AppWorkspaceProvider({
 
       return true;
     },
-    [publishTabs, restoreFocus],
+    [publishTabs, restoreFocus, scrollMemory],
   );
 
   const open = useCallback<WorkspaceContextValue['open']>(
     (definition, params) =>
-      queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) {
+      queue(scopeGeneration, async () => {
+        if (!isCurrentScope(scopeGeneration)) {
           return false;
         }
 
-        const snapshot =
-          tabsRef.current.scopeKey === scopeKey ? tabsRef.current : emptyTabsSnapshot(scopeKey);
+        const snapshot = tabsRef.current;
         const existingLegacy = snapshot.byId[LEGACY_OPEN_TAB_ID] ?? null;
         if (
           !(await passesGuard(existingLegacy?.flow ?? null)) ||
-          !mounted.current ||
-          currentScope.current !== scopeKey ||
+          !isCurrentScope(scopeGeneration) ||
           // Another visible tab is left (unmounted) by showing the legacy slot.
           !(await passesVisibleTabGuard(LEGACY_OPEN_TAB_ID)) ||
-          !mounted.current ||
-          currentScope.current !== scopeKey
+          !isCurrentScope(scopeGeneration)
         ) {
           return false;
         }
@@ -885,8 +926,7 @@ export function AppWorkspaceProvider({
         const nextFlow = startFlow(++counter.current, entry, scopeKey);
 
         // Re-read after the async guard: another queued operation may have changed things meanwhile.
-        const latest =
-          tabsRef.current.scopeKey === scopeKey ? tabsRef.current : emptyTabsSnapshot(scopeKey);
+        const latest = tabsRef.current;
         // Reproduces today's single-flow push/replace classification byte-for-byte: 'replace' only
         // when the legacy slot was the visible active tab right before this call (not merely
         // whether a record for it still exists — closing hides without discarding it, contract §9.3).
@@ -898,10 +938,10 @@ export function AppWorkspaceProvider({
         }
 
         // The slot starts a new flow: whatever its previous entries had scrolled is gone.
-        scrollMemory.current.forgetTab(LEGACY_OPEN_TAB_ID);
+        scrollMemory.forgetTab(LEGACY_OPEN_TAB_ID);
 
         const nextSnapshot: TabsSnapshot = {
-          scopeKey,
+          generation: scopeGeneration,
           order: latest.order.includes(LEGACY_OPEN_TAB_ID)
             ? latest.order
             : [...latest.order, LEGACY_OPEN_TAB_ID],
@@ -920,13 +960,22 @@ export function AppWorkspaceProvider({
 
         return true;
       }),
-    [passesGuard, passesVisibleTabGuard, publishTabs, queue, scopeKey],
+    [
+      isCurrentScope,
+      passesGuard,
+      passesVisibleTabGuard,
+      publishTabs,
+      queue,
+      scopeGeneration,
+      scopeKey,
+      scrollMemory,
+    ],
   );
 
   const openTab = useCallback<WorkspaceContextValue['openTab']>(
     (definition, params) =>
-      queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) {
+      queue(scopeGeneration, async () => {
+        if (!isCurrentScope(scopeGeneration)) {
           return false;
         }
 
@@ -936,8 +985,7 @@ export function AppWorkspaceProvider({
           throw new Error(`"${id}" collides with a reserved Secondary tab id.`);
         }
 
-        const current =
-          tabsRef.current.scopeKey === scopeKey ? tabsRef.current : emptyTabsSnapshot(scopeKey);
+        const current = tabsRef.current;
         if (current.byId[id] && current.activeTabId === id && current.isOpen) {
           return true; // Already shown: nothing is left, nothing to ask.
         }
@@ -948,17 +996,12 @@ export function AppWorkspaceProvider({
 
         // Showing this tab leaves the visible one (its screen unmounts): ask its guard, for the
         // switch to an open tab and for a new tab alike.
-        if (
-          !(await passesVisibleTabGuard(id)) ||
-          !mounted.current ||
-          currentScope.current !== scopeKey
-        ) {
+        if (!(await passesVisibleTabGuard(id)) || !isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         // Re-read after the async guard: another queued operation may have changed things meanwhile.
-        const snapshot =
-          tabsRef.current.scopeKey === scopeKey ? tabsRef.current : emptyTabsSnapshot(scopeKey);
+        const snapshot = tabsRef.current;
         const existing = snapshot.byId[id];
         if (existing) {
           // Already open: activate it, leaving its flow untouched (`useOpenedItems.open`'s rule).
@@ -983,7 +1026,7 @@ export function AppWorkspaceProvider({
         };
         const nextFlow = startFlow(++counter.current, entry, scopeKey);
         const nextSnapshot: TabsSnapshot = {
-          scopeKey,
+          generation: scopeGeneration,
           order: [...snapshot.order, id],
           byId: { ...snapshot.byId, [id]: { flow: nextFlow } },
           activeTabId: id,
@@ -994,18 +1037,18 @@ export function AppWorkspaceProvider({
 
         return true;
       }),
-    [passesVisibleTabGuard, publishTabs, queue, scopeKey],
+    [isCurrentScope, passesVisibleTabGuard, publishTabs, queue, scopeGeneration, scopeKey],
   );
 
   const activateTab = useCallback<WorkspaceContextValue['activateTab']>(
     (id) =>
-      queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) {
+      queue(scopeGeneration, async () => {
+        if (!isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         const current = tabsRef.current;
-        if (current.scopeKey !== scopeKey) {
+        if (current.generation !== scopeGeneration) {
           return false;
         }
 
@@ -1015,17 +1058,13 @@ export function AppWorkspaceProvider({
         }
 
         // Showing another tab leaves the visible one (its screen unmounts): ask its guard first.
-        if (
-          !(await passesVisibleTabGuard(id)) ||
-          !mounted.current ||
-          currentScope.current !== scopeKey
-        ) {
+        if (!(await passesVisibleTabGuard(id)) || !isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         // Re-read after the async guard; the target may have been closed meanwhile.
         const snapshot = tabsRef.current;
-        if (snapshot.scopeKey !== scopeKey || (!snapshot.byId[id] && !isPinned)) {
+        if (snapshot.generation !== scopeGeneration || (!snapshot.byId[id] && !isPinned)) {
           return false;
         }
 
@@ -1039,18 +1078,18 @@ export function AppWorkspaceProvider({
 
         return true;
       }),
-    [passesVisibleTabGuard, publishTabs, queue, scopeKey],
+    [isCurrentScope, passesVisibleTabGuard, publishTabs, queue, scopeGeneration],
   );
 
   const closeTab = useCallback<WorkspaceContextValue['closeTab']>(
     (id) =>
-      queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) {
+      queue(scopeGeneration, async () => {
+        if (!isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         const snapshot = tabsRef.current;
-        if (snapshot.scopeKey !== scopeKey) {
+        if (snapshot.generation !== scopeGeneration) {
           return false;
         }
 
@@ -1061,33 +1100,29 @@ export function AppWorkspaceProvider({
           return false;
         }
 
-        if (
-          !(await passesGuard(record.flow)) ||
-          !mounted.current ||
-          currentScope.current !== scopeKey
-        ) {
+        if (!(await passesGuard(record.flow)) || !isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         const latest = tabsRef.current;
-        if (latest.scopeKey !== scopeKey || !latest.byId[id]) {
+        if (latest.generation !== scopeGeneration || !latest.byId[id]) {
           return false;
         }
 
         return applyCloseTab(id, latest, record.flow.entries[0]?.returnFocusTo ?? null);
       }),
-    [applyCloseTab, passesGuard, queue, scopeKey],
+    [applyCloseTab, isCurrentScope, passesGuard, queue, scopeGeneration],
   );
 
   const navigate = useCallback<NavigationCommand>(
     (kind, flowId, entryKey, target) =>
-      queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) {
+      queue(scopeGeneration, async () => {
+        if (!isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         const snapshot = tabsRef.current;
-        if (snapshot.scopeKey !== scopeKey) {
+        if (snapshot.generation !== scopeGeneration) {
           return false;
         }
 
@@ -1110,16 +1145,12 @@ export function AppWorkspaceProvider({
           return false;
         }
 
-        if (
-          !(await passesGuard(previousFlow)) ||
-          !mounted.current ||
-          currentScope.current !== scopeKey
-        ) {
+        if (!(await passesGuard(previousFlow)) || !isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         const latest = tabsRef.current;
-        if (latest.scopeKey !== scopeKey) {
+        if (latest.generation !== scopeGeneration) {
           return false;
         }
 
@@ -1162,7 +1193,7 @@ export function AppWorkspaceProvider({
             isVisible ? nextFlow : null,
           );
           guards.current.delete(current.instanceKey);
-          scrollMemory.current.forget(tabId, current.instanceKey);
+          scrollMemory.forget(tabId, current.instanceKey);
           restoreFocus(current.returnFocusTo, nextFlow.entries.at(-1)?.instanceKey ?? null);
 
           return true;
@@ -1180,7 +1211,7 @@ export function AppWorkspaceProvider({
           );
           guards.current.delete(current.instanceKey);
           for (const popped of previousFlow.entries.slice(targetDepth)) {
-            scrollMemory.current.forget(tabId, popped.instanceKey);
+            scrollMemory.forget(tabId, popped.instanceKey);
           }
 
           // Focus returns to what opened the level above the target, inside the target page.
@@ -1223,12 +1254,21 @@ export function AppWorkspaceProvider({
         );
         if (kind === 'replace') {
           guards.current.delete(current.instanceKey);
-          scrollMemory.current.forget(tabId, current.instanceKey);
+          scrollMemory.forget(tabId, current.instanceKey);
         }
 
         return true;
       }),
-    [applyCloseTab, passesGuard, publishTabs, queue, restoreFocus, scopeKey],
+    [
+      applyCloseTab,
+      isCurrentScope,
+      passesGuard,
+      publishTabs,
+      queue,
+      restoreFocus,
+      scopeGeneration,
+      scrollMemory,
+    ],
   );
 
   useLayoutEffect(() => {
@@ -1264,40 +1304,43 @@ export function AppWorkspaceProvider({
     // The pinned tab is shown while runtime tabs wait in the background: hiding the region is
     // still "close" (tabs and `activeTabId` survive; `activateTab` reopens). A pinned tab alone
     // cannot be hidden (contract §4.1), so that stays a no-op.
-    return queue(() => {
+    return queue(scopeGeneration, () => {
+      if (!isCurrentScope(scopeGeneration)) {
+        return Promise.resolve(false);
+      }
+
       const snapshot = tabsRef.current;
-      if (
-        mounted.current &&
-        snapshot.scopeKey === currentScope.current &&
-        snapshot.isOpen &&
-        snapshot.activeTabId === PINNED_TAB_ID &&
-        snapshot.order.length > 0
-      ) {
+      if (snapshot.isOpen && snapshot.activeTabId === PINNED_TAB_ID && snapshot.order.length > 0) {
         publishTabs({ ...snapshot, isOpen: false }, 'close', null, null);
       }
 
       return Promise.resolve(true);
     });
-  }, [navigate, publishTabs, queue]);
+  }, [isCurrentScope, navigate, publishTabs, queue, scopeGeneration]);
 
   const canLeaveScope = useCallback(
     () =>
-      queue(async () => {
-        if (!mounted.current || currentScope.current !== scopeKey) {
+      queue(scopeGeneration, async () => {
+        if (!isCurrentScope(scopeGeneration)) {
           return false;
         }
 
         return passesGuard(activeRuntimeTab(tabsRef.current)?.flow ?? null);
       }),
-    [queue, passesGuard, scopeKey],
+    [isCurrentScope, queue, passesGuard, scopeGeneration],
   );
 
+  // The render that first sees a new scope (before its layout effect commits the new snapshot)
+  // already shows that scope's starting state, never the old one's.
   const visibleTabsState =
-    tabsState.scopeKey === scopeKey ? tabsState : emptyTabsSnapshot(scopeKey);
+    tabsState.generation === scopeGeneration
+      ? tabsState
+      : emptyTabsSnapshot(scopeGeneration, pinnedTab !== null);
   const activeTab = activeRuntimeTab(visibleTabsState);
 
   const readBackDistance = useCallback(
-    () => (tabsRef.current.scopeKey === currentScope.current ? backDistance(tabsRef.current) : 0),
+    () =>
+      tabsRef.current.generation === currentGeneration.current ? backDistance(tabsRef.current) : 0,
     [],
   );
   useWorkspaceBrowserHistory({
@@ -1308,7 +1351,8 @@ export function AppWorkspaceProvider({
   });
   // A stale (different-scope) snapshot never leaks its transition into the new scope; an entirely
   // empty one has nothing to leak in the first place.
-  const stateIsCurrentOrEmpty = tabsState.scopeKey === scopeKey || tabsState.order.length === 0;
+  const stateIsCurrentOrEmpty =
+    tabsState.generation === scopeGeneration || tabsState.order.length === 0;
 
   const value = useMemo<WorkspaceContextValue>(() => {
     const topEntry = activeTab?.flow.entries.at(-1);
@@ -1372,7 +1416,7 @@ export function AppWorkspaceProvider({
 
   return (
     <PinnedSecondaryTabRegistrationContext.Provider value={setPinnedTab}>
-      <SecondaryScrollMemoryContext.Provider value={scrollMemory.current}>
+      <SecondaryScrollMemoryContext.Provider value={scrollMemory}>
         <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
       </SecondaryScrollMemoryContext.Provider>
     </PinnedSecondaryTabRegistrationContext.Provider>

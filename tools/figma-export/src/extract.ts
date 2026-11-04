@@ -91,7 +91,15 @@ async function extract(): Promise<CapturedProjectIR> {
     const { width, height, deviceScaleFactor } = captureViewport;
     const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor });
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(async () => {
+      // Inter is shipped lazily per unicode-range subset; request Latin and Latin Extended
+      // (Polish) explicitly so measurements never see the fallback face.
+      await Promise.all([
+        document.fonts.load('400 14px Inter', 'Abc'),
+        document.fonts.load('400 14px Inter', '����󜟿'),
+      ]);
+      await document.fonts.ready;
+    });
     await page.evaluate('globalThis.__name = (target) => target');
 
     const captured = await page.evaluate((projectSource) => {

@@ -571,7 +571,8 @@ required:
 
 Resolution of one section: no fact, or an empty ready list, is **omitted**; `loading` shows the
 section label with skeleton rows at the height of the rows they stand for (one row; a Task-scoped
-execution shows `min(taskCount, 3)`); `unreadable` is a **warning** note; `missing` is a warning for
+execution shows `min(taskCount, 3)`), so a Specification or Task title is one truncated line (full
+title as the row's accessible name and hover title) and never wraps the row taller on arrival; `unreadable` is a **warning** note; `missing` is a warning for
 an optional reference and an **error** note for a required one. An absent association ("not
 created") is never a note. The whole-panel "Context is not available" screen is gone: Context always
 keeps the facts it does know.

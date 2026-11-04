@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { polishText } from '../../../i18n/testing';
+import { polishText } from '../../../../i18n/testing';
 import {
   documentTreeFixture,
   folderRevisionFixture,
-} from '../../../../test-support/documents/fixtures';
+} from '../../../../../test-support/documents/fixtures';
 import {
   allDocumentFolders,
   folderActions,

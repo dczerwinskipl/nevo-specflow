@@ -14,8 +14,8 @@ import {
   PopoverTrigger,
   treeRowActionClassName,
 } from '@nevo/ui';
-import { useMessage } from '../../../i18n/message';
-import { menuReasonNote } from '../catalogue/documentTypePolicy';
+import { useMessage } from '../../../../i18n/message';
+import { menuReasonNote } from '../../catalogue/documentTypePolicy';
 import { folderActions, type EntryKind } from './documentTreePolicy';
 
 /** What the row menu can ask for; the explorer decides how each is carried out. */

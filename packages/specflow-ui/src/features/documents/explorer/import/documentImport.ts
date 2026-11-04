@@ -1,6 +1,10 @@
 import type { DocumentTree } from '@nevo/specflow-contracts/documents';
-import { message, type Message } from '../../../i18n/message';
-import { joinDocumentPath, uploadNameReason, type PlannedDocument } from './documentTreePolicy';
+import { message, type Message } from '../../../../i18n/message';
+import {
+  joinDocumentPath,
+  uploadNameReason,
+  type PlannedDocument,
+} from '../tree/documentTreePolicy';
 
 /** Import limits mirrored from the Runtime; the skip reasons quote them. */
 export const importLimits = {

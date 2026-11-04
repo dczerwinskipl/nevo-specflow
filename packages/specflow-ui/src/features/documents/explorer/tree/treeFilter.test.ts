@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentTreeFixture } from '../../../../test-support/documents/fixtures';
+import { documentTreeFixture } from '../../../../../test-support/documents/fixtures';
 import { treeRows } from './documentTreePolicy';
 import { NO_TYPE, activeFilterCount, filterTreeRows, treeTypes } from './treeFilter';
 

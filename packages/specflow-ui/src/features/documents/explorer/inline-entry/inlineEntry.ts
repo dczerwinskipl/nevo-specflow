@@ -1,10 +1,10 @@
-import type { Message } from '../../../i18n/message';
+import type { Message } from '../../../../i18n/message';
 import {
   entryNameError,
   finalEntryName,
   joinDocumentPath,
   type EntryKind,
-} from './documentTreePolicy';
+} from '../tree/documentTreePolicy';
 
 /** The name being typed in the tree: a new file or folder, or a rename of an existing entry. */
 export interface InlineEntry {

@@ -13,9 +13,9 @@ import {
   declaredTypeIcon,
   documentRowGlyph,
   documentTrailingLabel,
-} from '../catalogue/documentTypePolicy';
+} from '../../catalogue/documentTypePolicy';
 import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
-import type { InlineEntry } from './inlineEntry';
+import type { InlineEntry } from '../inline-entry/inlineEntry';
 
 /** Everything a level (and the levels below it) needs to draw rows; no state of its own. */
 export interface DocumentTreeLevelContext {

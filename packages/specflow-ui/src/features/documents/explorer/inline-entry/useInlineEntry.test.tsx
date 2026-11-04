@@ -7,11 +7,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   documentTreeFixture,
   folderRevisionFixture,
-} from '../../../../test-support/documents/fixtures';
-import { NotificationProvider } from '../../../shared/notifications/notifications';
-import { useDocumentOperations, type DocumentOperation } from './useDocumentOperations';
+} from '../../../../../test-support/documents/fixtures';
+import { NotificationProvider } from '../../../../shared/notifications/notifications';
+import { useDocumentOperations, type DocumentOperation } from '../useDocumentOperations';
 import { useInlineEntry } from './useInlineEntry';
-import type { TreeFocus } from './useTreeFocus';
+import type { TreeFocus } from '../tree/useTreeFocus';
 
 afterEach(cleanup);
 

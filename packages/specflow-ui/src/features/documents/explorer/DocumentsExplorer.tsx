@@ -24,22 +24,22 @@ import {
   treeSectionHeaderClassName,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
-import type { CatalogueState } from './DocumentTypeDialogs';
-import { AssignTypeDialog, NewDocumentDialog } from './DocumentTypeDialogs';
-import { DocumentImporter, type DocumentImporterHandle } from './DocumentImporter';
-import { DocumentNodeMenu, type DocumentNodeActions } from './DocumentNodeMenu';
-import { DocumentOperationDialogs } from './DocumentOperationDialogs';
-import { DocumentTreeLevel } from './DocumentTreeLevel';
-import { InlineEntryEditor } from './InlineEntryEditor';
-import { createTreeIndex, folderOperationRevision, treeRows } from './documentTreePolicy';
-import { TreeFilterBar } from './TreeFilterBar';
+import type { CatalogueState } from './dialogs/DocumentTypeDialogs';
+import { AssignTypeDialog, NewDocumentDialog } from './dialogs/DocumentTypeDialogs';
+import { DocumentImporter, type DocumentImporterHandle } from './import/DocumentImporter';
+import { DocumentNodeMenu, type DocumentNodeActions } from './tree/DocumentNodeMenu';
+import { DocumentOperationDialogs } from './dialogs/DocumentOperationDialogs';
+import { DocumentTreeLevel } from './tree/DocumentTreeLevel';
+import { InlineEntryEditor } from './inline-entry/InlineEntryEditor';
+import { createTreeIndex, folderOperationRevision, treeRows } from './tree/documentTreePolicy';
+import { TreeFilterBar } from './tree/TreeFilterBar';
 import {
   activeFilterCount,
   filterTreeRows,
   noTreeFilter,
   treeTypes,
   type TreeFilter,
-} from './treeFilter';
+} from './tree/treeFilter';
 import { typeTitle } from '../catalogue/documentTypePolicy';
 import {
   useDocumentOperations,
@@ -48,9 +48,9 @@ import {
   type BeforeActionOptions,
   type NewDocumentEntry,
 } from './useDocumentOperations';
-import { useInlineEntry } from './useInlineEntry';
+import { useInlineEntry } from './inline-entry/useInlineEntry';
 import { useDelayedFlag } from './useDelayedFlag';
-import { useTreeFocus } from './useTreeFocus';
+import { useTreeFocus } from './tree/useTreeFocus';
 
 export type { DocumentOperation } from './useDocumentOperations';
 

@@ -14,22 +14,22 @@ import {
   Field,
   TextInput,
 } from '@nevo/ui';
-import { useMessage } from '../../../i18n/message';
+import { useMessage } from '../../../../i18n/message';
 import {
   archetypeTitle,
   defaultFileName,
   initialTypeChoice,
   typeChoices,
   type TypeChoice,
-} from '../catalogue/documentTypePolicy';
+} from '../../catalogue/documentTypePolicy';
 import { DocumentTypeChooser, DocumentTypeGuidance, noTypeValue } from './DocumentTypeChooser';
 import {
   entryNameError,
   finalEntryName,
   joinDocumentPath,
   pathCollides,
-} from './documentTreePolicy';
-import type { NewDocumentInput, TypeOperationOutcome } from './useDocumentOperations';
+} from '../tree/documentTreePolicy';
+import type { NewDocumentInput, TypeOperationOutcome } from '../useDocumentOperations';
 
 /** The catalogue as the dialogs need it: its data and how to retry a failed read. */
 export interface CatalogueState {

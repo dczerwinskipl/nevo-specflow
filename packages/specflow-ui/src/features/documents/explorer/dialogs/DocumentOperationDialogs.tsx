@@ -18,8 +18,8 @@ import {
   DialogTitle,
   Field,
 } from '@nevo/ui';
-import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
-import type { DocumentDialogRequest } from './useDocumentOperations';
+import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
+import type { DocumentDialogRequest } from '../useDocumentOperations';
 
 /**
  * The confirmation dialogs of a move, a delete and a registration removal (a dangling entry); the

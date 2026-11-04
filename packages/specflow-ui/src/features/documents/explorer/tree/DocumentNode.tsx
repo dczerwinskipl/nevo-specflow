@@ -16,7 +16,7 @@ import {
   treeNodeClassName,
   treeRowClassName,
 } from '@nevo/ui';
-import type { TrailingLabel } from '../catalogue/documentTypePolicy';
+import type { TrailingLabel } from '../../catalogue/documentTypePolicy';
 
 const lastSegment = (path: string) => path.split('/').at(-1) ?? path;
 

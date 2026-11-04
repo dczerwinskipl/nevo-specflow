@@ -1,10 +1,10 @@
 import { useRef, useState, type RefObject } from 'react';
-import { newId } from '../../../shared/ids/newId';
-import { message, useMessage } from '../../../i18n/message';
+import { newId } from '../../../../shared/ids/newId';
+import { message, useMessage } from '../../../../i18n/message';
 import { entryOriginKey, entryResultKey, resolveEntry, type InlineEntry } from './inlineEntry';
-import { folderOperationRevision, type EntryKind } from './documentTreePolicy';
-import type { DocumentOperationsActions } from './useDocumentOperations';
-import type { TreeFocus } from './useTreeFocus';
+import { folderOperationRevision, type EntryKind } from '../tree/documentTreePolicy';
+import type { DocumentOperationsActions } from '../useDocumentOperations';
+import type { TreeFocus } from '../tree/useTreeFocus';
 
 export type CommitSource = 'enter' | 'blur' | 'retry';
 

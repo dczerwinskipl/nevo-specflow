@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Collapsible, RadioGroup, RadioGroupOption, Typography } from '@nevo/ui';
-import type { TypeChoice, TypeChoices } from '../catalogue/documentTypePolicy';
+import type { TypeChoice, TypeChoices } from '../../../catalogue/documentTypePolicy';
 
 /** Value of the "No type" option (catalogue ids start with a letter, so it never collides). */
 export const noTypeValue = '-none';

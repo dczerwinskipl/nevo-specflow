@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { documentTreeFixture } from '../../../../test-support/documents/fixtures';
-import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
+import { documentTreeFixture } from '../../../../../test-support/documents/fixtures';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { DocumentOperationDialogs } from './DocumentOperationDialogs';
 
 afterEach(cleanup);

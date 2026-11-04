@@ -42,6 +42,16 @@ These rules govern reusable components in `packages/nevo-ui/` and product UI com
 - **Feature-local vertical ownership:** keep a feature's components, hooks, view-models
   and tests together under `features/<domain>/`. Promote code upward to a shared
   location only when reuse is real, not anticipated.
+- **Folders follow the shape of the code** (owner, 2026-11-04). A component with its own
+  sub-components, hooks and pure model is a folder package: the root component file that composes
+  it, plus sub-folders named after real sub-concerns (for example `conversation/`, `composer/`,
+  `model/`, or a component's private `parts/`). A folder never becomes a flat list of dozens of
+  files; see [UI feature folders](../../../engineering/shared/code-organization.md#ui-feature-folders).
+  Feature-level technical buckets (`hooks/`, `components/`, `utils/`) that separate code changing
+  together are still not used.
+- **One pattern, one implementation (DRY).** A structure that repeats with the same shape (JSX
+  frames, state machines, query/command plumbing, paging, helpers) is extracted once into its
+  owning slice, or into `shared/` when a second feature needs it, instead of being copied.
 
 ## Ownership boundary
 
@@ -55,9 +65,18 @@ These rules govern reusable components in `packages/nevo-ui/` and product UI com
 
 ## File size
 
-An inspection trigger, not an extraction rule. A large cohesive component can be fine;
-split when it mixes independent concerns, tangles orchestration with presentation, or
-is hard to test because of unrelated effects.
+Target (owner, 2026-11-04): a component or hook file stays within about **200-300 lines**. Above
+300 lines the file is split along its real sub-concerns, unless it is one cohesive unit: a single
+state machine, a pure policy or projection module, or a parser. That exception is stated in the
+file's header comment. Comments do not count as a way out: review history and breadcrumbs are
+removed (see [Comments](../../../engineering/shared/code-organization.md#comments-document-why-and-invariants)),
+not kept to explain a long file. Stories and tests are scenario catalogues; split them only where
+one file mixes unrelated scenario groups.
+
+A split keeps cohesion. Split a component into sub-components that own their own markup and state,
+pure model/helper modules, and hooks that pass the [Hooks](#hooks) rule. Moving half of a
+component's body into a hook used only by that component is relocation, not decomposition, and is
+not an acceptable way to meet the target.
 
 ## Visual vs orchestration
 
@@ -72,6 +91,12 @@ is hard to test because of unrelated effects.
 
 Extract hooks **by behavior ownership** (`useSessionStream`, `useWorkTimeline`), not as
 a `useEverything` catch-all. A hook that does five unrelated things is five hooks.
+
+Each hook lives in its own file. A hook is extracted when it is reused, or when it owns one
+behaviour (its effects and invariants) behind a **narrow interface**: a few inputs and a few
+outputs. A single-consumer `useComponentXYZ` that takes the component's state and returns most of
+its values and handlers is relocation: keep that code in the component, or split the component
+itself.
 
 ## View models
 
@@ -114,9 +139,12 @@ behavior and accessibility, and inspect computed styles when exact visuals matte
 - [ ] One primary concept per module?
 - [ ] Composition instead of a configuration-heavy component?
 - [ ] Feature-local ownership, not premature sharing?
-- [ ] File size used only as an inspection trigger?
+- [ ] Files within ~200-300 lines, or a stated cohesive exception?
+- [ ] Repeated patterns implemented once (DRY)?
+- [ ] Folder shape matches the code (sub-concern folders, no flat lists of dozens of files)?
 - [ ] Visual components free of data/routing concerns?
-- [ ] Hooks split by behavior, no catch-alls?
+- [ ] Hooks split by behavior, each in its own file, with a narrow interface; no relocation-only
+      `useComponentXYZ`?
 - [ ] State at the right owner; effects only for synchronization?
 - [ ] Accessible and responsive?
 

@@ -12,11 +12,11 @@ import {
   cn,
   workspaceSurfaceClassName,
 } from '@nevo/ui';
+import { DocumentsExplorer } from '../../features/documents/explorer/DocumentsExplorer';
 import {
-  DocumentsExplorer,
   documentRootActions,
   type DocumentTreeController,
-} from '../../features/documents/explorer/DocumentsExplorer';
+} from '../../features/documents/explorer/documentRootActions';
 import { NotificationProvider } from '../../shared/notifications/notifications';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { contentRegistry, type MockLayout } from './content-kinds/contentKinds.stories-support';

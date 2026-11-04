@@ -1,5 +1,5 @@
 import type { DocumentTree } from '@nevo/specflow-contracts/documents';
-import { message, type Message } from '../../../i18n/message';
+import { message, type Message } from '../../../../i18n/message';
 
 const hasControlCharacter = (value: string) =>
   [...value].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);

@@ -99,7 +99,9 @@ owns state, guards and the tab panel; the strip renders no panel.
   non-closable item shows its pin where the row `x` would be. Each closable item row is
   followed by a `Close <label>` menu item, shown when its row is highlighted and always available to
   assistive technology; the `x` in a row is a pointer shortcut only. The same menu serves the
-  switcher, so closing never depends on a keyboard.
+  switcher, so closing never depends on a keyboard. The menu has no footer note: the former
+  "Delete closes the highlighted item" line was removed (owner, 2026-11-04: it read as untrue and
+  told the user nothing they needed); `Delete` on a row still closes it as a keyboard shortcut.
 - **Focus after close.** After a close from a tab, the menu or the keyboard, focus MUST move to the
   neighbouring tab (right, else left) and MUST NOT return to a trigger that may have unmounted. This
   holds for every close path in the `Opened` menu (the `Close` item, the row's `x` and `Delete`).

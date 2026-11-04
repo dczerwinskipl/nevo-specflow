@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { cn } from '../../../lib';
 import { Icon } from '../../foundations/Icon';
-import { MenuItem, MenuLabel, MenuNote, MenuSeparator } from '../../overlays/Menu';
+import { MenuItem, MenuLabel } from '../../overlays/Menu';
 import type { ItemTab, ItemTabsLabels } from './itemTabsTypes';
 
 export function DirtyDot({ className }: { className?: string }) {
@@ -21,7 +21,6 @@ export interface OpenedMenuProps {
   heading: string;
   activeId: string | null;
   labels: ItemTabsLabels;
-  hintId: string;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
 }
@@ -31,7 +30,6 @@ export function OpenedMenuBody({
   heading,
   activeId,
   labels,
-  hintId,
   onActivate,
   onClose,
 }: OpenedMenuProps) {
@@ -135,10 +133,6 @@ export function OpenedMenuBody({
           ) : null}
         </Fragment>
       ))}
-      <MenuSeparator />
-      <MenuNote id={hintId} className="pointer-coarse:hidden">
-        {labels.menuHint}
-      </MenuNote>
     </>
   );
 }

@@ -23,7 +23,6 @@ export function useDocumentTabLabels(): Partial<ItemTabsLabels> {
       moreHeading: t('documents.tabs.moreHeading'),
       close: (name) => t('documents.tabs.close', { name }),
       closeHint: t('documents.tabs.closeHint'),
-      menuHint: t('documents.tabs.menuHint'),
       menuClose: t('documents.tabs.menuClose'),
       rootLocation: t('documents.tabs.rootLocation'),
       status: {

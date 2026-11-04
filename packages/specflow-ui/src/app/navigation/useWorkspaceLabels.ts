@@ -26,7 +26,6 @@ export function useWorkspaceLabels(): NonNullable<AppWorkspaceProps['labels']> {
         moreHeading: t('navigation.secondaryTabs.moreHeading'),
         close: (name: string) => t('navigation.secondaryTabs.close', { name }),
         closeHint: t('navigation.secondaryTabs.closeHint'),
-        menuHint: t('navigation.secondaryTabs.menuHint'),
         menuClose: t('navigation.secondaryTabs.menuClose'),
         rootLocation: t('navigation.secondaryTabs.rootLocation'),
         status: {

@@ -401,7 +401,6 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
 
   const switcher =
     variant === 'switcher' || (variant === 'auto' && width !== undefined && width < switcherBelow);
-  const hintId = `${scope}-opened-hint`;
   const naturalWidths = items.map((item) =>
     itemTabNaturalWidth(item.label, tabChrome(item, density), labelWidths[item.id], metrics),
   );
@@ -457,7 +456,6 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     heading: labels.openedHeading,
     activeId,
     labels,
-    hintId,
     onActivate,
     onClose: onCloseFromMenu,
   };
@@ -509,7 +507,6 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
             onCloseAutoFocus={onCloseAutoFocus}
             // Arbitrary: 20rem, but never wider than the viewport minus the collision padding.
             className="w-[min(20rem,calc(100vw-1rem))]"
-            aria-describedby={hintId}
           >
             <OpenedMenuBody {...menu} />
           </MenuContent>
@@ -622,12 +619,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
                   <span className="sr-only">{labels.moreMenu(hidden.length)}</span>
                 </button>
               </MenuTrigger>
-              <MenuContent
-                align="end"
-                className="w-80"
-                aria-describedby={hintId}
-                onCloseAutoFocus={onCloseAutoFocus}
-              >
+              <MenuContent align="end" className="w-80" onCloseAutoFocus={onCloseAutoFocus}>
                 <OpenedMenuBody {...menu} items={hidden} heading={labels.moreHeading} />
               </MenuContent>
             </Menu>

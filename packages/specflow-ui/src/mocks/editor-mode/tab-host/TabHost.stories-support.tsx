@@ -287,7 +287,6 @@ export function TabHostHeader({
                 openedHeading: 'Opened files',
                 moreMenu: (count) => `More files (${count})`,
                 moreHeading: 'More files',
-                menuHint: 'Delete closes the highlighted file.',
               }}
             />
           }
@@ -357,7 +356,6 @@ export function TabHostNarrowHeader({
       labels={{
         openedMenu: () => 'Opened files',
         openedHeading: 'Opened files',
-        menuHint: 'Delete closes the highlighted file.',
         noItem: 'No document',
         switcher: ({ label, count, dirty }) =>
           `${label}${dirty ? ', unsaved changes' : ''}, ${count} opened`,

@@ -35,8 +35,6 @@ export interface ItemTabsLabels {
   close: (label: string) => string;
   /** Last line of every tab tooltip. */
   closeHint: string;
-  /** Note at the bottom of the Opened menu. */
-  menuHint: string;
   /** Pointer-only close affordance title inside Opened menu rows. */
   menuClose: string;
   /**
@@ -60,7 +58,6 @@ export const defaultItemTabsLabels: ItemTabsLabels = {
   moreHeading: 'More opened items',
   close: (label) => `Close ${label}`,
   closeHint: 'Close: Delete or middle-click',
-  menuHint: 'Delete closes the highlighted item.',
   menuClose: 'Close',
   rootLocation: 'Root folder',
   status: {

@@ -370,8 +370,9 @@ Two different questions have two different answers between 730px and 839px:
 - The hint is for the shell-level decisions that exist _before_ and _outside_ the workspace: whether
   to register the pinned Context tab (`useRegisterPinnedSecondaryTab`) and whether the header offers
   the side-panel toggle or a "Context" button. Between 730 and 839 it is `false` and Context is
-  opened as a runtime flow (decision recorded as option A; whether a pinned tab should also exist
-  there is a separate, undecided product question).
+  opened as a runtime flow (option A). Owner decision, 2026-11-04: this stays. Below 840 px the
+  Session uses the mobile navigation scheme (a "Context" button opening a runtime flow); root tabs
+  and the pinned Context tab start at 840 px.
 - `useWorkspaceLayout()` is published by `AppWorkspace` itself and read by content **inside** it
   (Primary/Secondary children): `mode` is `'split'` or `'stacked'`, `primaryScrollOwner` is
   `'ambient'` when `AppWorkspace` supplies the stacked page scroll viewport

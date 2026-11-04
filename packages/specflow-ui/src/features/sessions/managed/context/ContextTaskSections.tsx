@@ -185,7 +185,7 @@ function ExecutionScope({
       <div className="grid gap-1">
         {scope.role && <Typography variant="title-sm">{scope.role}</Typography>}
         <InformationList>
-          <TaskLink task={scope.task} onOpen={onOpenTask} />
+          <ContextTaskRow task={scope.task} onOpen={onOpenTask} />
         </InformationList>
       </div>
     );
@@ -207,17 +207,17 @@ function ExecutionScope({
       )}
       <InformationList>
         {scope.tasks.map((task) => (
-          <TaskLink key={task.id} task={task} onOpen={onOpenTask} />
+          <ContextTaskRow key={task.id} task={task} onOpen={onOpenTask} />
         ))}
       </InformationList>
     </div>
   );
 }
 
-/** A Task reference row (current-execution Task): the shared `ContextNavigationRow` geometry
+/** A Task reference row (Context and the Tasks tab): the shared `ContextNavigationRow` geometry
  * (icon, title + key, centred chevron) every Context row uses, so it visibly affords "this leads
  * further" like every other operational list row. */
-function TaskLink({
+export function ContextTaskRow({
   task,
   onOpen,
 }: {

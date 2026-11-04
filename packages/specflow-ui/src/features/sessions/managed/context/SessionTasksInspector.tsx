@@ -3,7 +3,6 @@ import {
   AppContent,
   AppWorkspaceBody,
   EmptyState,
-  Icon,
   InformationList,
   Typography,
   defineSecondaryStack,
@@ -12,7 +11,7 @@ import {
   type SecondaryStackDefinition,
 } from '@nevo/ui';
 import { translateNow } from '../../../../i18n/message';
-import { OperationalRow } from '../../../../shared/operational-list';
+import { ContextTaskRow } from './ContextTaskSections';
 import type { SessionContextTaskRef } from './sessionContextTypes';
 
 /**
@@ -85,24 +84,12 @@ function TaskList({ data }: { data: Data }) {
   return (
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
+        {/* The rows Context lists the same Tasks with: no inset of their own, the body's padding is
+            the only content edge, so the tab and Context line up. */}
         <div className="w-full">
           <InformationList>
             {data.tasks.map((task) => (
-              <OperationalRow
-                key={task.id}
-                leading={<Icon name="list-checks" size="sm" className="text-content-muted" />}
-                primary={task.title}
-                compactFacts={[{ text: task.key, mono: true }]}
-                onPrimaryClick={() => openTask(task)}
-                trailing={
-                  <Icon
-                    name="chevron-right"
-                    size="sm"
-                    className="text-content-muted"
-                    aria-hidden="true"
-                  />
-                }
-              />
+              <ContextTaskRow key={task.id} task={task} onOpen={openTask} />
             ))}
           </InformationList>
         </div>

@@ -346,16 +346,25 @@ const pullRequestContractPlay: NonNullable<Story['play']> = async ({
     { once: true },
   );
   if (matchMedia('(pointer:coarse)').matches) {
+    // The 44×44 target is the link's hit area (a pseudo-element), not its box: every point 21px
+    // from its centre must still hit the PR link and never the stretched Specification link.
     const rect = pr.getBoundingClientRect();
-    if (rect.width < 44 || rect.height < 44) {
-      throw new Error('PR touch target must be at least44×44');
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const edges = [
+      [x - 21, y - 21],
+      [x + 21, y - 21],
+      [x - 21, y + 21],
+      [x + 21, y + 21],
+    ] as const;
+    for (const [px, py] of edges) {
+      const hit = canvasElement.ownerDocument.elementFromPoint(px, py);
+      if (hit?.closest('a') !== pr) {
+        throw new Error('Near-edge PR target must not activate the stretched Specification link');
+      }
     }
 
-    const hit = canvasElement.ownerDocument.elementFromPoint(rect.right - 1, rect.bottom - 1);
-    if (hit?.closest('a') !== pr) {
-      throw new Error('Near-edge PR target must not activate the stretched Specification link');
-    }
-
+    const hit = canvasElement.ownerDocument.elementFromPoint(x + 21, y + 21)!;
     await userEvent.click(hit);
   } else {
     await userEvent.click(pr);

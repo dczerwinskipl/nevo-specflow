@@ -22,6 +22,8 @@ related:
 The workspace uses Tailwind CSS 4. Semantic design tokens and the shared theme live in
 `packages/nevo-ui/src/design-system.css`. The package includes `@source './';` so Tailwind sees
 classes authored inside the reusable library when a consumer imports the stylesheet.
+The sans-serif face (`--font-sans`, Inter) is shipped by the design system itself; see
+[Typography and shipped fonts](../library-packaging.md#typography-and-shipped-fonts).
 
 ## 1. Local static layout
 

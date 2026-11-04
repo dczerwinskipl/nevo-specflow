@@ -1,11 +1,19 @@
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { channel } from 'node:diagnostics_channel';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { bootstrapProjectHome, resolveProjectHome, withProjectControlLock } from '../src/testing';
+import {
+  bootstrapProjectHome,
+  inspectProjectControlLock,
+  resolveProjectHome,
+  withProjectControlLock,
+} from '../src/testing';
 import {
   assertProjectHomeLockProof,
   captureProjectHomeLockProof,
@@ -13,6 +21,8 @@ import {
 import { PROJECT_HOME_MARKER_RELATIVE_PATH } from '../src/project/home/home';
 import { GIT_INSTANCE_SENTINEL_FILE } from '../src/project/git-instance';
 import { createGitTestProject, git } from './support/git-project';
+
+const execFileAsync = promisify(execFile);
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -106,5 +116,45 @@ describe('P2 Project Home lock filesystem-only post-acquisition proof', () => {
     const linkedContext = await resolveProjectHome({ cwd: linked, projectRoot: root });
     const result = await withProjectControlLock(linkedContext, () => Promise.resolve('linked'));
     expect(result).toBe('linked');
+  });
+
+  it('retries with a fresh proof when another call changes worktree membership first', async () => {
+    const { root, context } = await fixture();
+    const linked = join(dirname(root), 'specflow-p2-concurrent-worktree-' + randomUUID());
+    roots.push(linked);
+
+    // `first` pins its proof and acquires the lock before `worktreeAdded`, then waits for the
+    // signal below before changing the physical worktree membership, so `second`'s own proof is
+    // guaranteed to be pinned (while `first` already holds the lock) before that change lands.
+    let releaseFirst!: () => void;
+    const waitForSignal = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const first = withProjectControlLock(context, async () => {
+      await waitForSignal;
+      await execFileAsync('git', ['worktree', 'add', '-q', '--detach', linked, 'HEAD'], {
+        cwd: root,
+      });
+
+      return 'first';
+    });
+
+    for (;;) {
+      if ((await inspectProjectControlLock(context)).status === 'held') {
+        break;
+      }
+
+      await sleep(5);
+    }
+
+    // `second`'s own proof-capture (pure local fs reads, the first step of its attempt) starts
+    // now, well before `first` is let through to add the worktree.
+    const second = withProjectControlLock(context, () => Promise.resolve('second'), {
+      waitMs: 3000,
+    });
+    await sleep(20);
+    releaseFirst();
+
+    expect(await Promise.all([first, second])).toEqual(['first', 'second']);
   });
 });

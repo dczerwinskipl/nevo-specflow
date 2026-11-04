@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Check, Copy, Plus, Send, Square, X } from 'lucide-react';
@@ -41,7 +33,11 @@ import type { ConversationEntry, ProviderDescriptor } from '@nevo/specflow-contr
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
 import { ModelEffortPicker } from './ModelEffortPicker';
-import { useLayoutInducedScroll } from './useLayoutInducedScroll';
+import {
+  createConversationScrollPosition,
+  useConversationScroll,
+  type ConversationScrollPosition,
+} from './conversation/useConversationScroll';
 import { ComposerModePicker } from './ComposerPresetPicker';
 import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
 import { createWorkInspector } from './WorkInspector';
@@ -267,11 +263,6 @@ function EntryRow({
   );
 }
 
-// The scroll listener's own "has the user scrolled away from the bottom" geometry threshold,
-// named instead of an inline magic number so `pinToBottomIfNotAway`'s doc comment below can refer
-// to it precisely when explaining why it does NOT also read this value directly.
-const AWAY_THRESHOLD_PX = 80;
-
 /**
  * Primary's conversation body — messages, "jump to latest", pending interaction and the Composer
  * (including its toolbar additions: attachments, intent/operation-policy, Model+effort, Send).
@@ -291,6 +282,7 @@ function ManagedSessionConversation({
   api,
   sessionId,
   feed,
+  scrollPosition,
   navigation,
   workStack,
   provider,
@@ -301,6 +293,8 @@ function ManagedSessionConversation({
   api: ManagedSessionsApi;
   sessionId: string;
   feed: SessionFeed;
+  /** Where the reader is in the conversation; kept here, across remounts of this view. */
+  scrollPosition: ConversationScrollPosition;
   navigation: ReturnType<typeof useSecondaryNavigation>;
   workStack: ReturnType<typeof createWorkInspector>;
   provider: ProviderDescriptor | undefined;
@@ -338,24 +332,14 @@ function ManagedSessionConversation({
   const ambientSheetElement = useWorkspacePrimarySheet();
   const [localScrollNode, setLocalScrollNode] = useState<HTMLDivElement | null>(null);
   const scroller = localScroll ? localScrollNode : ambientScrollElement;
-  // The first visible entry (by `data-entry-id`) and its offset from the scroller's top, taken when
-  // an older page starts loading: prepending keeps that entry where the reader sees it, however the
-  // content above it changed (a height delta would also count a tail refresh as the prepend).
-  const anchor = useRef<{ id: string; offset: number } | undefined>(undefined);
-  // A second, deliberately SEPARATE "are we away from the bottom" signal from `state.away` —
-  // read by `pinToBottomIfNotAway` below instead of `state.away` (see that callback's own doc
-  // comment for the live-traced bug this fixes). `state.away` cannot be used directly there for two
-  // independent reasons: (1) it is written to the feed asynchronously — the scroll listener below
-  // only commits it after a 200ms debounce (`AWAY_SETTLE_MS`, kept for the "jump to latest" pill's
-  // own anti-flicker reason) — so a correction reading `state.away` races that debounce on every
-  // real scroll-away gesture; (2) the feed's `away` is also the verdict the pill shows, settled late
-  // on purpose. `awayRef` is updated synchronously, every raw `scroll` event, directly from
-  // geometry — never debounced and never touched by `older()` (which does not set `away`; the
-  // feed's separate `detached` flag says the window no longer reaches the live end) — so it answers
-  // exactly one question precisely: has a real scroll gesture moved the viewport away from the
-  // bottom, right now.
-  const awayRef = useRef(false);
-  const isLayoutInducedScroll = useLayoutInducedScroll(scroller);
+  // The one owner of the scroll position (following the latest message vs reading above it, and
+  // every `scrollTop` write): see `useConversationScroll`. The feed only receives its settled
+  // "away" verdict, for the "Jump to latest" pill and for keeping the window the reader is reading;
+  // no position decision reads that verdict back.
+  const conversationScroll = useConversationScroll(scrollPosition, scroller, (away) =>
+    feed.setAway(away),
+  );
+  const { layoutChanged } = conversationScroll;
   // The Composer must stay pinned to the viewport bottom at all times — ONLY the conversation
   // scrolls underneath it, never the Composer itself (`position: sticky` everywhere regresses into
   // "the Composer is just another block in the page flow, only visible once scrolled all the way
@@ -398,52 +382,20 @@ function ManagedSessionConversation({
       delete node.dataset.sessionScroller;
     };
   }, [scroller]);
+  // Every commit that changes what the conversation renders (entries, the live Turn, the
+  // older-history spinner or its failure above the entries) re-applies the scroll position in that
+  // same commit, before paint: following stays pinned to the bottom, reading keeps its entry.
   useLayoutEffect(() => {
-    const node = scroller;
-    if (!node) {
-      return;
-    }
-
-    if (anchor.current) {
-      const element = node.querySelector<HTMLElement>(
-        `[data-entry-id="${CSS.escape(anchor.current.id)}"]`,
-      );
-      if (element) {
-        const shift =
-          element.getBoundingClientRect().top -
-          node.getBoundingClientRect().top -
-          anchor.current.offset;
-        node.scrollTop += shift;
-      }
-
-      // Kept while the page is still loading (a tail refresh in between must not consume it);
-      // dropped once it landed, failed, or its entry is gone.
-      if (!element || !state.historyBusy) {
-        anchor.current = undefined;
-      }
-    } else if (!state.away) {
-      node.scrollTop = node.scrollHeight;
-    }
-    // `composerHeight` is a deliberate extra trigger, not merely a value read here: a composer
-    // that grows while the user is at the bottom (not `away`) must re-pin the view to the new
-    // bottom, the same way a new entry does.
-  }, [
-    state.snapshot?.entries,
-    state.away,
-    state.historyBusy,
-    state.historyError,
-    scroller,
-    composerHeight,
-  ]);
+    layoutChanged();
+  }, [layoutChanged, state.snapshot, state.historyBusy, state.historyError]);
   // Scroll-triggered auto-loading of older history, instead of a manual "Load older messages"
-  // button: `maybeLoadOlder` (declared below, a hoisted function
-  // declaration) is called both from the scroll listener below (interactive scroll) and from this
-  // effect, which re-checks after every entries/busy/error change — so a page that was just
-  // prepended and still leaves the scroller at/near the top keeps loading until `history.hasOlder`
-  // is false, and a short conversation that never overflows (so the user has no scrollbar to
-  // drive) still gets its older history pulled in once mounted. Runs after the anchor-restoring
-  // effect above (same commit, later in declaration order), so it reads the scroll position that
-  // effect just restored, not a stale one.
+  // button: `maybeLoadOlder` (declared below, a hoisted function declaration) is called both from
+  // the scroll listener below (interactive scroll) and from this effect, which re-checks after
+  // every entries/busy/error change — so a page that was just prepended and still leaves the
+  // scroller at/near the top keeps loading until `history.hasOlder` is false, and a short
+  // conversation that never overflows (so the user has no scrollbar to drive) still gets its older
+  // history pulled in once mounted. Runs after the position effect above (same commit, later in
+  // declaration order), so it reads the scroll position that effect just applied.
   useLayoutEffect(() => {
     const node = scroller;
     if (node) {
@@ -462,161 +414,21 @@ function ManagedSessionConversation({
     state.historyBusy,
     state.historyError,
   ]);
-  // Native `scroll` listener, not a JSX `onScroll` prop: on mobile `scroller` is
-  // `AppWorkspace`'s own ambient element, not one this component renders itself, so there is no
-  // JSX to attach a handler to. Covers both the away-from-bottom ("jump to latest") detection and
-  // the same `maybeLoadOlder` the effect above already drives after a data change, now also
-  // driven by the user's own interactive scrolling. Deliberately does *not* also call
-  // `handleScroll()` eagerly on attach/dependency-change the way the effect above calls
-  // `maybeLoadOlder` eagerly: an eager geometry-only recompute here — which this effect's own deps
-  // (`historyBusy`/`historyError`/`hasOlder`) cause to re-run on every `older()` call — would
-  // overwrite `away` whenever the anchor-restoring effect's programmatic `scrollTop` assignment
-  // happens to land back at the (new) bottom. Only a real `scroll` event — user-driven or not —
-  // should ever recompute `away` from geometry.
+  // Native `scroll` listener, not a JSX `onScroll` prop: on mobile `scroller` is `AppWorkspace`'s
+  // own ambient element, not one this component renders itself.
   useEffect(() => {
     const node = scroller;
     if (!node) {
       return undefined;
     }
 
-    // Debounced, not recomputed on every tick: a slow manual scroll gesture fires many
-    // intermediate `scroll` events, and committing `away` from each one would make the "jump to
-    // latest" pill flicker in/out mid-gesture as the 80px threshold was crossed
-    // and re-crossed by hand-jitter alone). `AWAY_SETTLE_MS` only *delays* when the computed value
-    // reaches `feed` — it still recomputes from the latest geometry each time, so the pill never
-    // shows a stale verdict, only a slightly late one, settling in once scrolling pauses rather
-    // than chasing every intermediate position. 100ms is comfortably longer than a single
-    // hand-jitter tick, so the pill does not flicker, but short enough that it reads as responsive
-    // rather than laggy once the gesture actually settles (200ms felt sluggish).
-    const AWAY_SETTLE_MS = 100;
-    let settleTimer: ReturnType<typeof setTimeout> | undefined;
-    const handleScroll = () => {
-      maybeLoadOlder(node);
-      // Synchronous, every event, no debounce: `awayRef`'s own doc comment (above) explains why
-      // `pinToBottomIfNotAway` needs this instead of the feed's own (debounced, and separately
-      // conflated with the older-history-load bookkeeping) `away`.
-      const away = node.scrollHeight - node.scrollTop - node.clientHeight > AWAY_THRESHOLD_PX;
-      // A scroll the browser caused while re-laying out after a resize never means "the reader
-      // scrolled away" (`useLayoutInducedScroll`): it may leave the away state, never enter it.
-      if (!away || !isLayoutInducedScroll()) {
-        awayRef.current = away;
-      }
-
-      if (settleTimer !== undefined) {
-        clearTimeout(settleTimer);
-      }
-
-      settleTimer = setTimeout(() => {
-        feed.setAway(awayRef.current);
-      }, AWAY_SETTLE_MS);
-    };
-
+    const handleScroll = () => maybeLoadOlder(node);
     node.addEventListener('scroll', handleScroll, { passive: true });
 
-    return () => {
-      node.removeEventListener('scroll', handleScroll);
-      if (settleTimer !== undefined) {
-        clearTimeout(settleTimer);
-      }
-    };
-    // Same closure note as the effect above: `maybeLoadOlder`/`feed` are recreated every render
-    // with no behavior beyond the listed primitives.
+    return () => node.removeEventListener('scroll', handleScroll);
+    // Same closure note as the effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scroller, state.snapshot?.history.hasOlder, state.historyBusy, state.historyError]);
-  // Re-pins the view to the bottom when the user has not scrolled away — called directly, not
-  // merely from a `useLayoutEffect` keyed on state some other callback sets, from three places
-  // below: each `ResizeObserver` callback (itself guaranteed to run before the browser's next
-  // paint of the same frame, per spec), and `MessageText.tsx`'s own `onGrow` (guaranteed to run in
-  // the exact commit that grew a message's text, via its own `useLayoutEffect`, since that is the
-  // one growth path a `ResizeObserver` is not a tight enough guarantee for — see `onGrow`'s doc
-  // comment in `MessageText.tsx`). A conversation entry can grow *after* this component's own
-  // re-render triggers run out: a large answer is stitched in progressively, page by page, inside
-  // `MessageText.tsx`'s own local state, invisible to this component's `state.snapshot?.entries`
-  // dependency — `onGrow` is how that growth still keeps the view pinned to the bottom.
-  //
-  // Two corrections (re-opened bug, root-caused via live trace — see `awayRef`'s own doc comment
-  // above for why this reads `awayRef.current`, not `state.away`):
-  // 1. A measured overlap nudge, the primary mechanism: the LATEST entry (and only the latest —
-  //    see below) must never render behind the overlay's current screen position, regardless of why
-  //    (composer growing, an entry growing, or either not yet having settled right after mount).
-  //    Split/desktop `sticky` reserves its own space by construction, so this is normally a no-op
-  //    there (overlap stays 0); stacked/mobile `fixed` reserves none of its own, so this is load-
-  //    bearing there — it measures the latest entry directly and nudges `scrollTop` by the real
-  //    pixel overlap against the overlay's current top, correct regardless of whether the
-  //    ResizeObserver-measured bottom padding has caught up yet.
-  // 2. A plain scroll-to-bottom snap, split/desktop only (stacked/mobile already reaches the
-  //    bottom via nudging alone, and forcing it there risks fighting the anchor-restore effect's
-  //    own, separate scrollTop assignment) — keeps a short conversation pinned to its true bottom
-  //    as the composer/an entry grows, the same way a new entry arriving does.
-  //
-  // Both corrections are now gated on `!awayRef.current`. Before this fix correction 1 ran fully
-  // unconditionally (a past comment here justified that via the growth-story regression:
-  // `sessionFixture`'s own `history.hasOlder: true` triggers auto-load-older on mount, which sets
-  // the FEED's `away: true` synchronously, before an answer even starts growing — gating correction
-  // 1 on `!state.away` left overlap uncorrected for exactly that case). That regression is still
-  // avoided here, but by `awayRef` itself rather than by leaving correction 1 ungated: `awayRef` is
-  // never touched by `older()` at all (it only reacts to real `scroll` events — see its own doc
-  // comment), so it stays `false` throughout that mount-time-load/growth sequence, and
-  // correction 1 keeps firing exactly as before in that case.
-  //
-  // What was actually broken (live-traced on
-  // `specflow-screens-managed-session--long-conversation-scroll`, 375px, with a genuine 300px
-  // scroll-away gesture): `pinToBottomIfNotAway` was `useCallback`'d on `state.away`, so the instant
-  // the scroll listener's 200ms debounce committed `away: true` to the feed, this callback got a new
-  // identity — which re-ran the `composerOverlayNode` `ResizeObserver` effect below (it lists this
-  // callback as a dependency), which called `update()`, which called this function synchronously,
-  // *using the just-updated `state.away`* — correct for correction 2, irrelevant to correction 1,
-  // which had no `away` check at all. At that moment the user had genuinely scrolled 300px from the
-  // bottom, but the LAST entry (`answer-30`, 172px tall) still had its *top* inside the viewport —
-  // `insideVisibleWindow` only required `rect.top < nodeRect.bottom`, so its `rect.bottom` (930,
-  // extending 118px past the viewport's own 812px edge, let alone the composer) fed straight into
-  // the overlap math against `overlayTop` (650), yielding a bogus 280px "overlap". Correction 1
-  // force-scrolled `scrollTop` forward by that full 280px, landing within the 80px away-threshold —
-  // close enough that the resulting native `scroll` event (any `scrollTop` write dispatches one)
-  // restarted the listener's debounce with near-bottom geometry, which ~200ms later committed
-  // `away: false` again, flipping the anchor-restore effect's own `!state.away` branch back on and
-  // snapping `scrollTop` the rest of the way to the literal bottom. Net effect: the user's manual
-  // scroll-away was silently reverted in two hops, well within a second. Two independent defects
-  // compounded this: correction 1 had no away-awareness, and even if it had read `state.away`
-  // directly it would have raced the very debounce that was supposed to prevent exactly this
-  // (`awayRef` fixes both — see its own doc comment for why a plain `!state.away` re-gate alone is
-  // not sufficient). Restricting the scan to only the LAST `[data-entry-id]` element is a smaller,
-  // independent tightening: entries render in a single, non-overlapping vertical flow in
-  // document/DOM order (`snapshot.entries.map(...)`, keyed in order), so only the last one can ever
-  // be genuinely adjacent to `scrollHeight` — scanning every visible entry and taking the max was
-  // never necessary for a correct answer.
-  const pinToBottomIfNotAway = useCallback(() => {
-    const node = scroller;
-    const overlay = composerOverlayNode;
-    if (!node || !overlay || awayRef.current) {
-      return;
-    }
-
-    const entries = node.querySelectorAll<HTMLElement>('[data-entry-id]');
-    const latestEntry = entries.length > 0 ? entries[entries.length - 1] : undefined;
-    const nodeRect = node.getBoundingClientRect();
-    const overlayTop = overlay.getBoundingClientRect().top;
-    let overlap = 0;
-    if (latestEntry) {
-      const rect = latestEntry.getBoundingClientRect();
-      const insideVisibleWindow =
-        rect.height > 0 && rect.bottom > nodeRect.top && rect.top < nodeRect.bottom;
-      if (insideVisibleWindow) {
-        overlap = Math.max(0, rect.bottom - overlayTop);
-      }
-    }
-
-    if (overlap > 0) {
-      node.scrollTop = Math.min(node.scrollHeight - node.clientHeight, node.scrollTop + overlap);
-    } else if (!anchor.current) {
-      // Snap to the true bottom on EVERY layout while still stuck to it (not scrolled away): a
-      // stacked scroller that shrinks while pinned (width 780 -> 390, a shorter viewport, a soft
-      // keyboard) re-wraps/overflows the content with no scroll event, so only this snap keeps the
-      // last entry above the composer. Skipped while an older-history prepend is waiting for its
-      // scroll anchor to be restored — that restore owns `scrollTop` for this commit.
-      node.scrollTop = node.scrollHeight;
-    }
-  }, [composerOverlayNode, scroller]);
   useLayoutEffect(() => {
     const node = composerOverlayNode;
     if (!node) {
@@ -644,7 +456,7 @@ function ManagedSessionConversation({
       // imperatively, right here, instead of waiting for the `composerHeight` state write above to
       // reach render on some *later* commit, so the very first measurement after the overlay
       // mounts (and any later one where its height changes, e.g. the interaction card appearing)
-      // reserves the new space before `pinToBottomIfNotAway` below reads `scrollHeight`.
+      // reserves the new space before the scroll position is re-applied from `scrollHeight`.
       if (!localScroll && ambientSheetElement) {
         ambientSheetElement.style.paddingBottom = height ? `${height}px` : '';
       }
@@ -653,7 +465,7 @@ function ManagedSessionConversation({
         scroller.style.paddingBottom = '';
       }
 
-      pinToBottomIfNotAway();
+      layoutChanged();
     };
 
     update();
@@ -665,45 +477,10 @@ function ManagedSessionConversation({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [ambientSheetElement, composerOverlayNode, localScroll, pinToBottomIfNotAway, scroller]);
-  // Re-pins on a SCROLLER resize, not just a composer/entries/history change : opening Work history from
-  // a bottom-pinned chat narrows the chat column via the Secondary splitter, which re-wraps
-  // message text and grows `scroller.scrollHeight` with no new entry, no composer-height change,
-  // and no history load — none of the triggers the effects above or below already cover. The browser has already completed layout by the time
-  // `ResizeObserver`'s callback fires, so `scrollHeight` here already reflects the new wrapped
-  // height; `pinToBottomIfNotAway` itself still gates on `awayRef`, so a user who had genuinely
-  // scrolled away keeps their position — only a width/height-driven reflow while already pinned to
-  // the bottom gets corrected.
-  useLayoutEffect(() => {
-    if (!scroller || typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
-
-    const observer = new ResizeObserver(() => pinToBottomIfNotAway());
-    observer.observe(scroller);
-
-    return () => observer.disconnect();
-  }, [pinToBottomIfNotAway, scroller]);
-  // Final safety net, independent of the `away`/anchor bookkeeping above and of the
-  // `ResizeObserver`'s own direct `pinToBottomIfNotAway()` call: re-runs the same correction for
-  // triggers that are not themselves a resize (loading older history while "away" skips the
-  // scroll-to-bottom branch entirely by design, and a short conversation's first layout can clamp
-  // an attempted scroll to 0 until the reserved padding actually makes the content tall enough to
-  // need scrolling).
-  useLayoutEffect(() => {
-    pinToBottomIfNotAway();
-  }, [composerHeight, state.snapshot?.entries, state.historyBusy, pinToBottomIfNotAway]);
+  }, [ambientSheetElement, composerOverlayNode, layoutChanged, localScroll, scroller]);
+  // An older page keeps the reader's place by itself: while reading, the position policy keeps the
+  // entry being read where it is as the page lands above it.
   function older() {
-    if (scroller) {
-      const top = scroller.getBoundingClientRect().top;
-      const first = [...scroller.querySelectorAll<HTMLElement>('[data-entry-id]')].find(
-        (element) => element.getBoundingClientRect().bottom > top,
-      );
-      anchor.current = first?.dataset.entryId
-        ? { id: first.dataset.entryId, offset: first.getBoundingClientRect().top - top }
-        : undefined;
-    }
-
     void feed.older();
   }
 
@@ -893,34 +670,19 @@ function ManagedSessionConversation({
                         api={api}
                         sessionId={sessionId}
                         outcomeLabels={outcomeLabels}
-                        onGrow={pinToBottomIfNotAway}
+                        onGrow={layoutChanged}
                       />
                     ),
                   )}
                 </div>
-                {/* "Jump to latest": a genuinely independent floating control —
-                    deliberately a SIBLING of `composerOverlayNode` below, never a
-                    flow child inside it. It used to render as the overlay's own first child,
-                    which meant its own appear/disappear toggle changed that single node's
-                    measured height — the exact node `composerOverlayNode`'s `ResizeObserver`
-                    (below) watches to drive `pinToBottomIfNotAway`'s scroll correction. Traced
-                    live-code sequence that produced the reported jump: scroll up -> `away`
-                    settles `true` -> this control renders -> the then-shared overlay node grows
-                    by the control's own height -> `ResizeObserver` fires -> `pinToBottomIfNotAway`
-                    reads the overlay's now-higher (because taller) top edge against the visible
-                    entries and/or (split/desktop) snaps straight to `scrollHeight` -> that
-                    `scrollTop` correction can land close enough to the true bottom that the next
-                    `scroll` event settles `away` back to `false` -> the control disappears again
-                    -> net effect: appear, self-correcting jump, vanish. Floating entirely outside
-                    `composerOverlayNode` means its own render can never feed that loop: it is not
-                    inside the observed node, and it is not a `[data-entry-id]` message either, so
-                    `pinToBottomIfNotAway`'s overlap scan does not see it. Positioned to land in
-                    the same place as before (just above the composer): `sticky` on split/desktop
-                    (bounded to this component's own local scroll container, exactly like the
-                    overlay itself, per that element's own doc comment below) and `fixed` on
-                    stacked/mobile (anchored to the true viewport, like the overlay), each offset
-                    by the overlay's own live-measured `composerHeight` plus a small gap, so it
-                    tracks the composer's actual current height without needing to live inside it. */}
+                {/* "Jump to latest": a genuinely independent floating control — deliberately a
+                    SIBLING of `composerOverlayNode` below, never a flow child inside it, so its
+                    own appear/disappear never changes the composer's measured height (which
+                    re-applies the scroll position). Positioned just above the composer: `sticky`
+                    on split/desktop (bounded to this component's own local scroll container, like
+                    the overlay) and `fixed` on stacked/mobile (anchored to the true viewport, like
+                    the overlay), each offset by the overlay's live-measured `composerHeight` plus a
+                    small gap. */}
                 {(state.hasNew || state.away || state.detached) && (
                   <div
                     className={cn(
@@ -950,7 +712,10 @@ function ManagedSessionConversation({
                     <Button
                       className="workspace-floating-pill shadow-lg"
                       variant="secondary"
-                      onClick={() => feed.latest()}
+                      onClick={() => {
+                        conversationScroll.followLatest();
+                        void feed.latest();
+                      }}
                     >
                       {t('managedSession.latest')}
                     </Button>
@@ -1335,8 +1100,14 @@ export function ManagedSession({
   useRegisterPinnedSecondaryTab(
     supportsSplit && contextOpen ? { title: t('sessions.context.title') } : null,
   );
-  const feed = useMemo(
-    () => createSessionFeed(api, sessionId, owner, browserStorage()),
+  // The conversation view is re-parented (and so remounted) when the layout switches between split
+  // and stacked: the reader's position in it lives with the Session's feed, not with one mounted
+  // view.
+  const { feed, scrollPosition } = useMemo(
+    () => ({
+      feed: createSessionFeed(api, sessionId, owner, browserStorage()),
+      scrollPosition: createConversationScrollPosition(),
+    }),
     [api, sessionId, owner],
   );
   // Read again here (the same `feed`, so always consistent with `ManagedSessionConversation`'s own
@@ -1583,6 +1354,7 @@ export function ManagedSession({
             api={api}
             sessionId={sessionId}
             feed={feed}
+            scrollPosition={scrollPosition}
             navigation={navigation}
             workStack={workStack}
             provider={provider}

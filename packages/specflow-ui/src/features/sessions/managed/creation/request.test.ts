@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { createSessionRequest } from './request';
 import type { CreateSession } from '@nevo/specflow-contracts/sessions';
+import { ApiError } from '../../../../api';
 
 function storageFixture() {
   const records = new Map<string, string>();
@@ -68,4 +69,85 @@ it('isolates identities and refuses to dispatch without retained storage', async
   await expect(createSessionRequest('bob', failing).send(body, send)).rejects.toThrow('Quota');
   expect(send).not.toHaveBeenCalled();
   expect(createSessionRequest('alice', storage).pending()).toEqual(alice.pending());
+});
+
+const refused = () =>
+  new ApiError({
+    kind: 'validation',
+    operation: 'sessions',
+    outcome: 'not-applied',
+    retryable: false,
+    status: 400,
+  });
+
+it('releases a definitely refused create so the form can be edited, and keeps an unknown one', async () => {
+  const storage = storageFixture();
+  const request = createSessionRequest('alice', storage);
+  await expect(request.send(body, () => Promise.reject(refused()))).rejects.toThrow();
+  expect(request.pending()).toBeUndefined();
+  expect(createSessionRequest('alice', storage).pending()).toBeUndefined();
+  const send = vi.fn<(input: CreateSession) => Promise<{ sessionId: string }>>();
+  send.mockResolvedValue({ sessionId: 'created' });
+  await request.send({ ...body, modelId: 'edited' }, send);
+  expect(send.mock.calls[0]?.[0]).toMatchObject({ modelId: 'edited' });
+  const unknown = createSessionRequest('bob', storage);
+  await expect(unknown.send(body, () => Promise.reject(new Error('Lost')))).rejects.toThrow();
+  expect(unknown.pending()).toBeDefined();
+});
+
+it.each(['write-ignored', 'readback-throws'] as const)(
+  'sends nothing when the create could not be read back from storage: %s',
+  async (failure) => {
+    const storage = storageFixture();
+    let written = false;
+    const blocked = {
+      ...storage,
+      setItem: (key: string, value: string) => {
+        written = true;
+        if (failure !== 'write-ignored') {
+          storage.setItem(key, value);
+        }
+      },
+      getItem: (key: string) => {
+        if (written && failure === 'readback-throws') {
+          throw new Error('Storage read denied');
+        }
+
+        return storage.getItem(key);
+      },
+    };
+    const request = createSessionRequest('alice', blocked);
+    const send = vi.fn();
+    await expect(request.send(body, send)).rejects.toThrow();
+    expect(send).not.toHaveBeenCalled();
+    expect(request.pending()).toBeUndefined();
+  },
+);
+
+it('blocks on an unreadable create record until it is discarded explicitly', async () => {
+  const storage = storageFixture();
+  storage.setItem('nevo:session-create:alice', '{broken');
+  const request = createSessionRequest('alice', storage);
+  expect(request.state()).toBe('unreadable');
+  const send = vi.fn(() => Promise.resolve({ sessionId: 'created' }));
+  await expect(request.send(body, send)).rejects.toThrow();
+  expect(send).not.toHaveBeenCalled();
+  expect(storage.getItem('nevo:session-create:alice')).toBe('{broken');
+  expect(request.discard()).toBe(true);
+  expect(request.state()).toBe('ready');
+  await request.send(body, send);
+  expect(send).toHaveBeenCalledOnce();
+});
+
+it('keeps blocking, with no discard, while storage itself is unavailable', async () => {
+  const request = createSessionRequest('alice', {
+    getItem: () => {
+      throw new Error('Storage denied');
+    },
+    setItem: () => undefined,
+    removeItem: () => undefined,
+  });
+  expect(request.state()).toBe('unavailable');
+  expect(request.discard()).toBe(false);
+  await expect(request.send(body, vi.fn())).rejects.toThrow();
 });

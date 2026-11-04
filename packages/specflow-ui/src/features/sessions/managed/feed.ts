@@ -5,9 +5,17 @@ import type {
   SessionChange,
 } from '@nevo/specflow-contracts/sessions';
 import { utf8Bytes, SessionLimits } from '@nevo/specflow-contracts/sessions';
+import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
+import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import type { ManagedSessionsApi } from './api';
 import { applySessionEvent, conversationWindow, mergeEntries, prependHistory } from './model';
 
+/** An interaction answer without its idempotency key, which the feed retains. */
+export type RespondAnswer = RespondInteraction extends infer T
+  ? T extends unknown
+    ? Omit<T, 'requestId'>
+    : never
+  : never;
 export interface FeedState {
   snapshot?: SessionSnapshot;
   connection: 'loading' | 'connected' | 'reconnecting' | 'error';
@@ -15,8 +23,23 @@ export interface FeedState {
   historyError: boolean;
   commandBusy: boolean;
   commandError: boolean;
+  /** The reader has scrolled away from the bottom (drives the "Jump to latest" pill). */
   away: boolean;
+  /**
+   * The loaded window no longer reaches the live end (older history pushed the newest entries
+   * out, or the reader was away while newer ones arrived): live entries are not applied until
+   * `latest()`. Independent of where the reader scrolled.
+   */
+  detached: boolean;
+  /** Entries newer than the loaded window were dropped while `detached`. */
   hasNew: boolean;
+  /** The Turn the Session's Work history belongs to: in flight, else the newest known. */
+  latestTurnId?: string;
+  /**
+   * The retained Turn record exists but cannot be read. It may hold a command whose acknowledgement
+   * was lost, so it blocks sending until `discardPending()` is chosen explicitly.
+   */
+  pendingUnreadable: boolean;
   draft: string;
   /** Next-Turn model override; omitted inherits the Session's current model. */
   modelOverride?: string;
@@ -59,27 +82,79 @@ export function createSessionFeed(
   };
 
   let pending: StartTurn | undefined;
-  let pendingReadable = true;
+  // `unreadable`: a record is there but malformed (explicit discard only); `unavailable`: the
+  // storage itself cannot be read (blocks until it can).
+  let retention: 'ready' | 'unreadable' | 'unavailable' = 'ready';
+  let encodedPending: string | null | undefined;
   try {
-    const encoded = storage?.getItem(key + ':pending');
-    const value: unknown = JSON.parse(encoded ?? 'null');
-    if (
-      value &&
-      typeof value === 'object' &&
-      'message' in value &&
-      typeof value.message === 'string' &&
-      'requestId' in value &&
-      typeof value.requestId === 'string'
-    ) {
-      pending = value as StartTurn;
-    } else if (encoded) {
-      pendingReadable = false;
-    }
+    encodedPending = storage?.getItem(key + ':pending');
   } catch {
+    retention = 'unavailable';
+  }
+
+  if (retention === 'ready' && encodedPending) {
     // An unreadable record may contain a dispatched command whose ACK was lost.
     // Do not overwrite it with a newly generated request ID.
-    pendingReadable = false;
+    try {
+      const value: unknown = JSON.parse(encodedPending);
+      if (
+        value &&
+        typeof value === 'object' &&
+        'message' in value &&
+        typeof value.message === 'string' &&
+        'requestId' in value &&
+        typeof value.requestId === 'string'
+      ) {
+        pending = value as StartTurn;
+      } else {
+        retention = 'unreadable';
+      }
+    } catch {
+      retention = 'unreadable';
+    }
   }
+
+  /** Drops the retained Turn record when it is still `encoded`; whether it is really gone. */
+  const releaseRetained = (encoded?: string) => {
+    try {
+      if (encoded === undefined || storage?.getItem(key + ':pending') === encoded) {
+        storage?.removeItem(key + ':pending');
+      }
+
+      return storage?.getItem(key + ':pending') === null;
+    } catch {
+      return false;
+    }
+  };
+
+  // The newest conversation entry ordinal seen, so a late event for an older entry never moves
+  // `latestTurnId` back.
+  let latestOrdinal = -1;
+  const newestEntry = (entries: readonly { ordinal: number; turnId?: string }[]) =>
+    entries.reduce<{ ordinal: number; turnId?: string } | undefined>(
+      (best, entry) => (!best || entry.ordinal >= best.ordinal ? entry : best),
+      undefined,
+    );
+  /** The latest Turn after `entries`/`activeTurn` became known; an unchanged answer keeps `previous`. */
+  const latestTurnAfter = (
+    previous: string | undefined,
+    entries: readonly { ordinal: number; turnId?: string }[],
+    activeTurnId?: string,
+  ) => {
+    const newest = newestEntry(entries);
+    let turnId = previous;
+    if (newest?.turnId && newest.ordinal >= latestOrdinal) {
+      latestOrdinal = newest.ordinal;
+      turnId = newest.turnId;
+    }
+
+    return activeTurnId ?? turnId;
+  };
+
+  // After `latest()` the old window stays on screen until the next snapshot replaces it.
+  let replaceOnNextSnapshot = false;
+  const respondAttempt: { current: RequestAttempt<RespondInteraction> | null } = { current: null };
+  let respondFor: string | undefined;
 
   let state: FeedState = {
     connection: 'loading',
@@ -88,7 +163,9 @@ export function createSessionFeed(
     commandBusy: false,
     commandError: false,
     away: false,
+    detached: false,
     hasNew: false,
+    pendingUnreadable: retention === 'unreadable',
     draft: read(':draft'),
     ...(pending ? { pending } : {}),
   };
@@ -109,23 +186,38 @@ export function createSessionFeed(
     }
 
     let incoming = event;
-    if (state.away && event.kind === 'conversation') {
+    let detached = state.detached;
+    let dropped = false;
+    if (event.kind === 'conversation') {
       const existing = new Set(state.snapshot.entries.map((e) => e.id));
-      incoming = {
-        ...event,
-        changes: {
-          ...event.changes,
-          entries: event.changes.entries.filter((e) => existing.has(e.id)),
-        },
-      };
+      const added = event.changes.entries.filter((e) => !existing.has(e.id)).length;
+      // A reader who is away keeps the window they are reading once it would outgrow its bound.
+      detached ||= state.away && existing.size + added > conversationWindow;
+      if (detached) {
+        const kept = event.changes.entries.filter((e) => existing.has(e.id));
+        dropped = kept.length < event.changes.entries.length;
+        incoming = { ...event, changes: { ...event.changes, entries: kept } };
+      }
     }
 
     const snapshot = applySessionEvent(state.snapshot, incoming);
+    const activeTurnId =
+      event.kind === 'turn'
+        ? event.changes.turn.turnId
+        : 'projection' in event.changes
+          ? event.changes.projection?.activeTurn?.turnId
+          : undefined;
     notify({
       ...state,
       snapshot,
       connection: 'connected',
-      hasNew: state.hasNew || (state.away && event.kind === 'conversation'),
+      detached,
+      hasNew: state.hasNew || dropped,
+      latestTurnId: latestTurnAfter(
+        state.latestTurnId,
+        event.kind === 'conversation' ? event.changes.entries : [],
+        activeTurnId,
+      ),
     });
     const changedTurn =
       event.kind === 'work'
@@ -150,22 +242,49 @@ export function createSessionFeed(
           return;
         }
 
-        const old = state.snapshot;
+        // After `latest()` the window is replaced outright by the live end.
+        const old = replaceOnNextSnapshot ? undefined : state.snapshot;
+        replaceOnNextSnapshot = false;
         const entries = old ? mergeEntries(old.entries, fresh.entries) : fresh.entries;
         const gap =
           old?.entries.length &&
           fresh.entries.length &&
           fresh.entries[0]!.ordinal > old.entries.at(-1)!.ordinal + 1;
-        const snapshot =
-          old && !gap && entries.length <= conversationWindow
-            ? { ...fresh, entries, history: old.history }
-            : fresh;
+        const outgrown = entries.length > conversationWindow;
+        // A detached window, or one a reader who is away would lose (a gap, or too many entries),
+        // stays as it is: only the entries already shown take their newer revisions.
+        const keep = !!old && (state.detached || (state.away && (!!gap || outgrown)));
+        let snapshot: SessionSnapshot;
+        let hasNew = state.hasNew;
+        if (old && keep) {
+          const revised = new Map(fresh.entries.map((entry) => [entry.id, entry]));
+          snapshot = {
+            ...fresh,
+            entries: old.entries.map((entry) => {
+              const newer = revised.get(entry.id);
+
+              return newer && newer.revision > entry.revision ? newer : entry;
+            }),
+            history: old.history,
+          };
+          const shown = new Set(old.entries.map((entry) => entry.id));
+          hasNew ||= fresh.entries.some((entry) => !shown.has(entry.id));
+        } else {
+          snapshot = old && !gap && !outgrown ? { ...fresh, entries, history: old.history } : fresh;
+        }
+
+        latestOrdinal = -1;
         notify({
           ...state,
-          snapshot:
-            state.away && old ? { ...fresh, entries: old.entries, history: old.history } : snapshot,
+          snapshot,
           connection: 'connected',
-          hasNew: state.hasNew || !!gap,
+          detached: keep,
+          hasNew,
+          latestTurnId: latestTurnAfter(
+            state.latestTurnId,
+            fresh.entries,
+            fresh.activeTurn?.turnId,
+          ),
         });
         let restart = false;
         for await (const event of api.watch(sessionId, fresh.eventSeq, signal, () => {
@@ -192,7 +311,7 @@ export function createSessionFeed(
           }
 
           apply(event);
-          if ((state.snapshot?.entries.length ?? 0) > conversationWindow) {
+          if (!state.detached && (state.snapshot?.entries.length ?? 0) > conversationWindow) {
             restart = true;
             break;
           }
@@ -238,7 +357,7 @@ export function createSessionFeed(
     }
 
     try {
-      if (!storage || !pendingReadable) {
+      if (!storage || retention !== 'ready') {
         throw new Error('Pending command storage is unavailable.');
       }
 
@@ -279,8 +398,16 @@ export function createSessionFeed(
       const next = { ...state, draft, commandBusy: false };
       delete next.pending;
       notify(next);
-    } catch {
-      notify({ ...state, commandBusy: false, commandError: true });
+    } catch (error) {
+      // A definite refusal (the server saw the command and said no) could never succeed when
+      // replayed, so the Composer is released: the draft and overrides stay editable, the error
+      // stays visible. Any answer that leaves the outcome open keeps the exact command.
+      const next: FeedState = { ...state, commandBusy: false, commandError: true };
+      if (!writeOutcomeUnknown(error) && releaseRetained(JSON.stringify(request))) {
+        delete next.pending;
+      }
+
+      notify(next);
     }
   }
 
@@ -350,6 +477,20 @@ export function createSessionFeed(
 
       notify(next);
     },
+    /**
+     * The explicit way out of an unreadable retained Turn record (it may already have been
+     * applied). Resolves whether the record is gone and a new command may be sent.
+     */
+    discardPending() {
+      if (retention !== 'unreadable' || !releaseRetained()) {
+        return false;
+      }
+
+      retention = 'ready';
+      notify({ ...state, pendingUnreadable: false, commandError: false });
+
+      return true;
+    },
     setAway(away: boolean) {
       if (state.away !== away) {
         notify({ ...state, away });
@@ -386,7 +527,7 @@ export function createSessionFeed(
       }
 
       const token = generation;
-      notify({ ...state, historyBusy: true, historyError: false, away: true });
+      notify({ ...state, historyBusy: true, historyError: false });
       try {
         const page = await api.history(sessionId, before, controller?.signal);
         if (token !== generation || !state.snapshot) {
@@ -399,7 +540,8 @@ export function createSessionFeed(
           snapshot.entries = snapshot.entries.slice(0, conversationWindow);
         }
 
-        notify({ ...state, snapshot, historyBusy: false, hasNew: state.hasNew || trimmed });
+        // Trimming pushes the newest entries out of the window: it no longer reaches the live end.
+        notify({ ...state, snapshot, historyBusy: false, detached: state.detached || trimmed });
       } catch {
         if (token === generation) {
           notify({ ...state, historyBusy: false, historyError: true });
@@ -407,10 +549,13 @@ export function createSessionFeed(
       }
     },
     latest() {
+      // The window on screen stays until the next snapshot replaces it (no flash of a loading or
+      // "ready" screen).
+      replaceOnNextSnapshot = true;
       state = {
         ...state,
-        snapshot: undefined,
         away: false,
+        detached: false,
         hasNew: false,
         historyError: false,
         historyBusy: false,
@@ -432,14 +577,29 @@ export function createSessionFeed(
         notify({ ...state, commandBusy: false, commandError: true });
       }
     },
-    async respond(interactionId: string, input: RespondInteraction) {
+    /**
+     * Answers an interaction. One request id per `{interactionId, answer}`: a retry after a lost
+     * acknowledgement reuses it, a changed answer is a new request.
+     */
+    async respond(interactionId: string, answer: RespondAnswer) {
       if (state.commandBusy) {
         return;
       }
 
+      if (respondFor !== interactionId) {
+        respondFor = interactionId;
+        respondAttempt.current = null;
+      }
+
       notify({ ...state, commandBusy: true, commandError: false });
       try {
-        await api.respond(sessionId, interactionId, input);
+        await sendRetained(
+          respondAttempt,
+          answer as Omit<RespondInteraction, 'requestId'>,
+          (input) => api.respond(sessionId, interactionId, input),
+          'requestId',
+          (error) => !writeOutcomeUnknown(error),
+        );
         notify({ ...state, commandBusy: false });
       } catch {
         notify({ ...state, commandBusy: false, commandError: true });

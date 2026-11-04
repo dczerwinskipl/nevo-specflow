@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer } from 'react';
+import { createElement, useCallback, useMemo, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { CreateSession, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from '../../managed/api';
@@ -7,6 +7,7 @@ import { startCatalogueFromProviders } from '../catalogue/fromProviderDescriptor
 import { providerDefaultEffort, type AgentChoice } from '../choice/agentChoice';
 import { chosenSessionName, type SessionNameChoice } from '../choice/sessionName';
 import type { SentStart } from '../handoff/startedSession';
+import { UnreadableSavedStart } from '../form/UnreadableSavedStart';
 import type { SessionStartSource } from './sessionStartSource';
 
 function browserSessionStorage(): Storage | undefined {
@@ -72,6 +73,10 @@ export function useManagedStartSource(owner: string, api: ManagedSessionsApi): S
     [items],
   );
   const refresh = useCallback(() => void providers.refetch(), [providers]);
+  const discard = useCallback(() => {
+    retained.discard();
+    reread();
+  }, [retained]);
 
   const start = useCallback(
     async (choice: AgentChoice, name: SessionNameChoice) => {
@@ -95,6 +100,12 @@ export function useManagedStartSource(owner: string, api: ManagedSessionsApi): S
     [api, items, retained],
   );
 
+  // An unreadable retained request is never dropped silently: the user discards it explicitly.
+  const unreadable =
+    retained.state() === 'unreadable'
+      ? createElement(UnreadableSavedStart, { onDiscard: discard })
+      : null;
+
   return {
     owner,
     catalogue: catalogue
@@ -108,6 +119,8 @@ export function useManagedStartSource(owner: string, api: ManagedSessionsApi): S
         ? { status: 'loading' }
         : { status: 'error', refresh },
     start,
+    // In the form when there is one, else beside the error that stands in for it.
+    ...(unreadable ? (catalogue ? { notice: unreadable } : { extras: unreadable }) : {}),
     ...(retained.pending() ? { pending: { kind: 'retry' as const, checking: false } } : {}),
   };
 }

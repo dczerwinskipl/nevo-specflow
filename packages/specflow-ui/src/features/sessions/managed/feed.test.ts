@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import type { SessionSnapshot, SessionChange } from '@nevo/specflow-contracts/sessions';
-import type { ManagedSessionsApi } from './api';
+import { ApiError } from '../../../api';
+import { createManagedSessionsApi, type ManagedSessionsApi } from './api';
 import { createSessionFeed } from './feed';
 
 const snapshot = {
@@ -376,20 +378,160 @@ describe('Session feed operation lifetime', () => {
     expect(start.mock.calls[1]![1]).not.toHaveProperty('mode');
     expect(start.mock.calls[1]![1]).not.toHaveProperty('providerModeId');
   });
-  it('surfaces a rejected (CAPABILITY_UNSUPPORTED) model/effort override through the existing command error path', async () => {
+  it('releases a definitely refused command: the Composer unlocks and the edited draft is a new request', async () => {
     const { storage, api } = setup();
-    const start = vi.fn<ManagedSessionsApi['start']>().mockRejectedValue(
-      Object.assign(new Error('Unsupported model/effort override'), {
-        code: 'CAPABILITY_UNSUPPORTED',
-      }),
-    );
+    const refusal = new ApiError({
+      kind: 'precondition',
+      operation: 'sessions',
+      outcome: 'not-applied',
+      retryable: false,
+      status: 422,
+      code: 'CAPABILITY_UNSUPPORTED',
+    });
+    const start = vi
+      .fn<ManagedSessionsApi['start']>()
+      .mockRejectedValueOnce(refusal)
+      .mockResolvedValue({ turnId: 'turn' });
     api.start = start;
     const feed = createSessionFeed(api, 'session', 'actor', storage);
     feed.setDraft('Try an unsupported override');
     feed.setModel('model-a', 'ultra');
     await feed.send();
-    expect(feed.getSnapshot()).toMatchObject({ commandBusy: false, commandError: true });
-    expect(feed.getSnapshot().pending).toMatchObject({ modelId: 'model-a', effort: 'ultra' });
+    expect(feed.getSnapshot()).toMatchObject({
+      commandBusy: false,
+      commandError: true,
+      draft: 'Try an unsupported override',
+      modelOverride: 'model-a',
+    });
+    expect(feed.getSnapshot().pending).toBeUndefined();
+    expect(
+      createSessionFeed(api, 'session', 'actor', storage).getSnapshot().pending,
+    ).toBeUndefined();
+    feed.setModel(undefined, undefined);
+    feed.setDraft('Edited without the override');
+    await feed.send();
+    const [first, second] = [start.mock.calls[0]![1], start.mock.calls[1]![1]];
+    expect(second).toMatchObject({ message: 'Edited without the override' });
+    expect(second).not.toHaveProperty('modelId');
+    expect(second.requestId).not.toBe(first.requestId);
+    expect(feed.getSnapshot().commandError).toBe(false);
+  });
+  it('keeps the command when the Runtime answers SESSION_RECOVERY_REQUIRED (409, outcome unknown)', async () => {
+    const { storage, api } = setup();
+    const post = vi.fn().mockRejectedValue(
+      new HttpClientError('conflict', {
+        kind: 'http',
+        status: 409,
+        data: { error: 'session_error', code: 'SESSION_RECOVERY_REQUIRED', message: 'recover' },
+      }),
+    );
+    const transport = createManagedSessionsApi({ post } as unknown as HttpRequestClient);
+    const feed = createSessionFeed(
+      { ...api, start: (id, input) => transport.start(id, input) },
+      'session',
+      'actor',
+      storage,
+    );
+    feed.setDraft('Maybe applied');
+    await feed.send();
+    const pending = feed.getSnapshot().pending;
+    expect(pending).toMatchObject({ message: 'Maybe applied' });
+    expect(feed.getSnapshot().commandError).toBe(true);
+    await feed.send();
+    expect(post.mock.calls[1]![1]).toEqual(post.mock.calls[0]![1]);
+    expect(createSessionFeed(api, 'session', 'actor', storage).getSnapshot().pending).toEqual(
+      pending,
+    );
+  });
+  it('treats any other 409 as a definite refusal of the command', async () => {
+    const { storage, api } = setup();
+    const post = vi.fn().mockRejectedValue(
+      new HttpClientError('conflict', {
+        kind: 'http',
+        status: 409,
+        data: { error: 'session_error', code: 'TURN_CONFLICT', message: 'busy' },
+      }),
+    );
+    const transport = createManagedSessionsApi({ post } as unknown as HttpRequestClient);
+    const feed = createSessionFeed(
+      { ...api, start: (id, input) => transport.start(id, input) },
+      'session',
+      'actor',
+      storage,
+    );
+    feed.setDraft('Refused');
+    await feed.send();
+    expect(feed.getSnapshot().pending).toBeUndefined();
+    expect(feed.getSnapshot().commandError).toBe(true);
+  });
+  it('offers an explicit discard for an unreadable retained command and never overwrites it', async () => {
+    const { storage, api, start } = setup();
+    storage.setItem('nevo:session:actor:session:pending', '{not json');
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    expect(feed.getSnapshot().pendingUnreadable).toBe(true);
+    feed.setDraft('New command');
+    await feed.send();
+    expect(start).not.toHaveBeenCalled();
+    expect(storage.getItem('nevo:session:actor:session:pending')).toBe('{not json');
+    expect(feed.discardPending()).toBe(true);
+    expect(feed.getSnapshot()).toMatchObject({ pendingUnreadable: false, draft: 'New command' });
+    await feed.send();
+    expect(start).toHaveBeenCalledOnce();
+  });
+  it('keeps blocking, without a discard offer, while the retained command storage is unavailable', async () => {
+    const { storage, api, start } = setup();
+    const denied = {
+      ...storage,
+      getItem: () => {
+        throw new Error('Storage denied');
+      },
+    };
+    const feed = createSessionFeed(api, 'session', 'actor', denied);
+    expect(feed.getSnapshot().pendingUnreadable).toBe(false);
+    feed.setDraft('Blocked');
+    await feed.send();
+    expect(start).not.toHaveBeenCalled();
+    expect(feed.discardPending()).toBe(false);
+  });
+  it('reuses one requestId for an identical interaction answer and a new one for a changed answer', async () => {
+    const { storage, api } = setup();
+    const respond = vi
+      .fn<ManagedSessionsApi['respond']>()
+      .mockRejectedValueOnce(new Error('Lost acknowledgement'))
+      .mockResolvedValue({});
+    api.respond = respond;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
+    await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
+    expect(respond.mock.calls[1]![2]).toEqual(respond.mock.calls[0]![2]);
+    const lost = vi
+      .fn<ManagedSessionsApi['respond']>()
+      .mockRejectedValueOnce(new Error('Lost acknowledgement'))
+      .mockResolvedValue({});
+    api.respond = lost;
+    await feed.respond('interaction-2', { kind: 'permission', decision: 'allow' });
+    await feed.respond('interaction-2', { kind: 'permission', decision: 'deny' });
+    expect(lost.mock.calls[1]![2].requestId).not.toBe(lost.mock.calls[0]![2].requestId);
+  });
+  it('does not replay an interaction answer the Runtime definitely refused', async () => {
+    const { storage, api } = setup();
+    const expired = new ApiError({
+      kind: 'conflict',
+      operation: 'sessions',
+      outcome: 'not-applied',
+      retryable: false,
+      status: 409,
+      code: 'INTERACTION_EXPIRED',
+    });
+    const respond = vi
+      .fn<ManagedSessionsApi['respond']>()
+      .mockRejectedValueOnce(expired)
+      .mockResolvedValue({});
+    api.respond = respond;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
+    await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
+    expect(respond.mock.calls[1]![2].requestId).not.toBe(respond.mock.calls[0]![2].requestId);
   });
   it('disconnects the latest retry connection when its owner unmounts', async () => {
     const { storage, api } = setup();

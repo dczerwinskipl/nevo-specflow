@@ -13,7 +13,7 @@ import {
   type ActionPage,
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
-import { createApiTransport } from '../../../api';
+import { createApiTransport, type ErrorCodeTable } from '../../../api';
 import type { WithWorkCounts } from './workCounts';
 
 export interface ManagedSessionsApi {
@@ -53,8 +53,16 @@ export interface ManagedSessionsApi {
     onReconnect: () => void,
   ): AsyncIterable<SessionChange | undefined>;
 }
+/**
+ * The Runtime's journal needs recovery for this Session: whether the command was applied is not
+ * known, so it is kept for a replay with the same `requestId` (a plain 409 would read as a
+ * definite refusal).
+ */
+export const sessionErrorCodes: ErrorCodeTable = {
+  SESSION_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
+};
 export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessionsApi {
-  const read = createApiTransport(http, { operation: 'sessions' });
+  const read = createApiTransport(http, { operation: 'sessions', codes: sessionErrorCodes });
   const path = (id: string) => '/api/sessions/' + encodeURIComponent(id);
 
   return {

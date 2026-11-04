@@ -340,21 +340,22 @@ function ManagedSessionConversation({
   const ambientSheetElement = useWorkspacePrimarySheet();
   const [localScrollNode, setLocalScrollNode] = useState<HTMLDivElement | null>(null);
   const scroller = localScroll ? localScrollNode : ambientScrollElement;
-  const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
+  // The first visible entry (by `data-entry-id`) and its offset from the scroller's top, taken when
+  // an older page starts loading: prepending keeps that entry where the reader sees it, however the
+  // content above it changed (a height delta would also count a tail refresh as the prepend).
+  const anchor = useRef<{ id: string; offset: number } | undefined>(undefined);
   // A second, deliberately SEPARATE "are we away from the bottom" signal from `state.away` —
   // read by `pinToBottomIfNotAway` below instead of `state.away` (see that callback's own doc
   // comment for the live-traced bug this fixes). `state.away` cannot be used directly there for two
   // independent reasons: (1) it is written to the feed asynchronously — the scroll listener below
   // only commits it after a 200ms debounce (`AWAY_SETTLE_MS`, kept for the "jump to latest" pill's
   // own anti-flicker reason) — so a correction reading `state.away` races that debounce on every
-  // real scroll-away gesture; (2) `state.away` is deliberately ALSO `true` for a period that has
-  // nothing to do with the user's scroll position at all — `older()` below sets it in the feed
-  // synchronously the moment an older-history load starts (its own, separate "don't let a live
-  // event corrupt the prepend" signal `apply()` reads), including the mount-time auto-load a short,
-  // non-overflowing conversation triggers before the user could have scrolled anywhere. `awayRef` is
-  // updated synchronously, every raw `scroll` event, directly from geometry — never debounced and
-  // never touched by `older()` — so it answers exactly one question precisely: has a real scroll
-  // gesture moved the viewport away from the bottom, right now.
+  // real scroll-away gesture; (2) the feed's `away` is also the verdict the pill shows, settled late
+  // on purpose. `awayRef` is updated synchronously, every raw `scroll` event, directly from
+  // geometry — never debounced and never touched by `older()` (which does not set `away`; the
+  // feed's separate `detached` flag says the window no longer reaches the live end) — so it answers
+  // exactly one question precisely: has a real scroll gesture moved the viewport away from the
+  // bottom, right now.
   const awayRef = useRef(false);
   const isLayoutInducedScroll = useLayoutInducedScroll(scroller);
   // The Composer must stay pinned to the viewport bottom at all times — ONLY the conversation
@@ -406,15 +407,36 @@ function ManagedSessionConversation({
     }
 
     if (anchor.current) {
-      node.scrollTop = anchor.current.top + node.scrollHeight - anchor.current.height;
-      anchor.current = undefined;
+      const element = node.querySelector<HTMLElement>(
+        `[data-entry-id="${CSS.escape(anchor.current.id)}"]`,
+      );
+      if (element) {
+        const shift =
+          element.getBoundingClientRect().top -
+          node.getBoundingClientRect().top -
+          anchor.current.offset;
+        node.scrollTop += shift;
+      }
+
+      // Kept while the page is still loading (a tail refresh in between must not consume it);
+      // dropped once it landed, failed, or its entry is gone.
+      if (!element || !state.historyBusy) {
+        anchor.current = undefined;
+      }
     } else if (!state.away) {
       node.scrollTop = node.scrollHeight;
     }
     // `composerHeight` is a deliberate extra trigger, not merely a value read here: a composer
     // that grows while the user is at the bottom (not `away`) must re-pin the view to the new
     // bottom, the same way a new entry does.
-  }, [state.snapshot?.entries, state.away, scroller, composerHeight]);
+  }, [
+    state.snapshot?.entries,
+    state.away,
+    state.historyBusy,
+    state.historyError,
+    scroller,
+    composerHeight,
+  ]);
   // Scroll-triggered auto-loading of older history (owner feedback #5), replacing the old manual
   // "Load older messages" button: `maybeLoadOlder` (declared below, a hoisted function
   // declaration) is called both from the scroll listener below (interactive scroll) and from this
@@ -448,14 +470,10 @@ function ManagedSessionConversation({
   // the same `maybeLoadOlder` the effect above already drives after a data change, now also
   // driven by the user's own interactive scrolling. Deliberately does *not* also call
   // `handleScroll()` eagerly on attach/dependency-change the way the effect above calls
-  // `maybeLoadOlder` eagerly: `feed.older()` sets `away: true` itself the moment it starts
-  // (`feed.ts`), as its own "you've navigated into history" signal, independent of geometry; an
-  // eager geometry-only recompute here — which this effect's own deps (`historyBusy`/
-  // `historyError`/`hasOlder`) cause to re-run on every `older()` call — would immediately
-  // overwrite that back to `false` whenever the anchor-restoring effect's programmatic
-  // `scrollTop` assignment happens to land back at the (new) bottom, which it legitimately often
-  // does (confirmed live: this is exactly what made `away` never read `true` after `older()`,
-  // even though the feed had just set it). Only a real `scroll` event — user-driven or not —
+  // `maybeLoadOlder` eagerly: an eager geometry-only recompute here — which this effect's own deps
+  // (`historyBusy`/`historyError`/`hasOlder`) cause to re-run on every `older()` call — would
+  // overwrite `away` whenever the anchor-restoring effect's programmatic `scrollTop` assignment
+  // happens to land back at the (new) bottom. Only a real `scroll` event — user-driven or not —
   // should ever recompute `away` from geometry.
   useEffect(() => {
     const node = scroller;
@@ -542,8 +560,8 @@ function ManagedSessionConversation({
   // 1 on `!state.away` left overlap uncorrected for exactly that case). That regression is still
   // avoided here, but by `awayRef` itself rather than by leaving correction 1 ungated: `awayRef` is
   // never touched by `older()` at all (it only reacts to real `scroll` events — see its own doc
-  // comment), so it stays `false` throughout that mount-time-load/growth sequence even while the
-  // feed's `away` is `true`, and correction 1 keeps firing exactly as before in that case.
+  // comment), so it stays `false` throughout that mount-time-load/growth sequence, and
+  // correction 1 keeps firing exactly as before in that case.
   //
   // What was actually broken (live-traced on
   // `specflow-screens-managed-session--long-conversation-scroll`, 375px, with a genuine 300px
@@ -682,7 +700,13 @@ function ManagedSessionConversation({
   }, [composerHeight, state.snapshot?.entries, state.historyBusy, pinToBottomIfNotAway]);
   function older() {
     if (scroller) {
-      anchor.current = { height: scroller.scrollHeight, top: scroller.scrollTop };
+      const top = scroller.getBoundingClientRect().top;
+      const first = [...scroller.querySelectorAll<HTMLElement>('[data-entry-id]')].find(
+        (element) => element.getBoundingClientRect().bottom > top,
+      );
+      anchor.current = first?.dataset.entryId
+        ? { id: first.dataset.entryId, offset: first.getBoundingClientRect().top - top }
+        : undefined;
     }
 
     void feed.older();
@@ -899,7 +923,7 @@ function ManagedSessionConversation({
                     stacked/mobile (anchored to the true viewport, like the overlay), each offset
                     by the overlay's own live-measured `composerHeight` plus a small gap, so it
                     tracks the composer's actual current height without needing to live inside it. */}
-                {(state.hasNew || state.away) && (
+                {(state.hasNew || state.away || state.detached) && (
                   <div
                     className={cn(
                       'z-20',
@@ -1013,12 +1037,10 @@ function ManagedSessionConversation({
                             i.interactionId,
                             i.kind === 'permission'
                               ? {
-                                  requestId: crypto.randomUUID(),
                                   kind: 'permission',
                                   decision: allow ? 'allow' : 'deny',
                                 }
                               : {
-                                  requestId: crypto.randomUUID(),
                                   kind: 'question',
                                   answer: {
                                     optionIds: optionId ? [optionId] : [],
@@ -1029,8 +1051,17 @@ function ManagedSessionConversation({
                         }}
                       />
                     )}
-                    {state.commandError && (
-                      <Alert tone="attention" title={t('managedSession.commandFailed')} />
+                    {state.pendingUnreadable ? (
+                      <Alert tone="attention" title={t('managedSession.savedRequestUnreadable')}>
+                        <p>{t('managedSession.savedRequestUnreadableBody')}</p>
+                        <Button size="sm" onClick={() => feed.discardPending()}>
+                          {t('managedSession.discardSavedRequest')}
+                        </Button>
+                      </Alert>
+                    ) : (
+                      state.commandError && (
+                        <Alert tone="attention" title={t('managedSession.commandFailed')} />
+                      )
                     )}
                     {/* Attachments/previews sit above the message text (session-composer-
                             design.md §6 visual order), demo-only chips — see `handleComposerSubmit`
@@ -1376,10 +1407,11 @@ export function ManagedSession({
   // Conversation's live Work block reads — not from the supplied Context view model. Until the
   // first snapshot arrives the supplied value (if any) stands.
   const runningTurnId = snapshot ? snapshot.activeTurn?.turnId : sessionContext.runningTurnId;
-  // Work history: the Turn in flight, else the last Turn of the loaded conversation; "loading"
+  // Work history: the Turn in flight, else the newest Turn the feed knows (not the last loaded
+  // entry: older history never lowers it); "loading"
   // before the first snapshot, absent when the Session has no Turn yet.
   const workHistoryTurnId = snapshot
-    ? (snapshot.activeTurn?.turnId ?? snapshot.entries[snapshot.entries.length - 1]?.turnId)
+    ? (snapshot.activeTurn?.turnId ?? state.latestTurnId)
     : undefined;
   // Context's first section: the provider (as the Runtime names it) and the model/effort the
   // composer has selected for the next Turn.

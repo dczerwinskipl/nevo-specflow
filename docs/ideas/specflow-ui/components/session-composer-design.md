@@ -52,6 +52,9 @@ or any missing Runtime API. No production code changed as part of these UX ideas
   loading/rejection state, and bounded height when numerous.
 - **One model/effort picker** (e.g. “Model · High”) rather than a redundant “Change model” action.
   Effort choices depend on the selected model; omit the effort selector if unsupported.
+  A provider that allows an effort override but no model override (`modelOverride: false`,
+  `effortOverride: true`) is not supported by the picker yet: it renders nothing, because no driver
+  reports that combination today.
 - The `+` attachment menu can offer locally selected file, selected image, project/repository
   reference and on mobile a camera capture flow. Drag/drop/paste are desktop enhancements.
   A reference to a repository path is not the same as uploading file bytes.

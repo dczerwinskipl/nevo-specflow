@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { InformationList, InlineNote, Skeleton, Typography } from '@nevo/ui';
 import { contextRowGridClassName } from './ContextNavigationRow';
 
 /**
  * The frame every fact-backed Context section shares: its label, then one slot that holds exactly
  * one of skeleton rows, the rows themselves or a note, so a section changing state replaces the
- * slot's content instead of moving its neighbours (fixed section order, no jump). While loading the
+ * slot's content instead of moving its neighbours (fixed section order, no jump). The label is the section's heading and its accessible name. While loading the
  * section is `aria-busy`; the label stays so the reader knows what is coming.
  */
 export function ContextSection({
@@ -17,9 +17,13 @@ export function ContextSection({
   busy?: boolean;
   children: ReactNode;
 }) {
+  const titleId = useId();
+
   return (
-    <section className="grid gap-1" aria-busy={busy ? 'true' : undefined}>
-      <Typography variant="section-label">{title}</Typography>
+    <section className="grid gap-1" aria-labelledby={titleId} aria-busy={busy ? 'true' : undefined}>
+      <Typography as="h3" id={titleId} variant="section-label">
+        {title}
+      </Typography>
       {children}
     </section>
   );

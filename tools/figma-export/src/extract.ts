@@ -96,7 +96,7 @@ async function extract(): Promise<CapturedProjectIR> {
       // (Polish) explicitly so measurements never see the fallback face.
       await Promise.all([
         document.fonts.load('400 14px Inter', 'Abc'),
-        document.fonts.load('400 14px Inter', '����󜟿'),
+        document.fonts.load('400 14px Inter', 'ąćęłńóśźż'),
       ]);
       await document.fonts.ready;
     });

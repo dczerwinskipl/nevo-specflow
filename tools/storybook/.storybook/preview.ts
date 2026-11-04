@@ -7,7 +7,7 @@ import './preview.css';
 async function loadShippedFonts(): Promise<void> {
   await Promise.all([
     document.fonts.load('400 14px Inter', 'Abc'),
-    document.fonts.load('400 14px Inter', '����󜟿'),
+    document.fonts.load('400 14px Inter', 'ąćęłńóśźż'),
   ]);
   await document.fonts.ready;
 }

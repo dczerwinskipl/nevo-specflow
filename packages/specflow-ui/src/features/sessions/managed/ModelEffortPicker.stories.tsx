@@ -69,7 +69,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function openModelMenu(canvasElement: HTMLElement, triggerName: string) {
+async function openModelMenu(canvasElement: HTMLElement, triggerName: string | RegExp) {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByRole('button', { name: triggerName }));
 
@@ -96,7 +96,7 @@ function modelOptionByLabel(menu: HTMLElement, label: string) {
   return option;
 }
 
-/** Baseline: the placeholder trigger when no model/effort is selected yet; the controls toggle the
+/** Baseline: the "Model domyślny" trigger when no model/effort is selected yet (the provider's default); the controls toggle the
  * disabled and compact (mobile) presentations. */
 export const Default: Story = {
   argTypes: {
@@ -114,7 +114,7 @@ export const SelectModelEffort: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
-    const menu = await openModelMenu(canvasElement, 'Wybierz model');
+    const menu = await openModelMenu(canvasElement, /Model domyślny/);
     await userEvent.click(modelOptionByLabel(menu, 'Standard'));
     // Picking "Standard" (2 efforts) must NOT close the menu — it reveals "Effort" below
     // instead, defaulting to the model's first effort.
@@ -146,7 +146,7 @@ export const SelectModelEffort: Story = {
 export const ModelMenuRevealsEffortSection: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {
-    const menu = await openModelMenu(canvasElement, 'Wybierz model');
+    const menu = await openModelMenu(canvasElement, /Model domyślny/);
     await expect(within(menu).queryByText('Effort')).not.toBeInTheDocument();
     await userEvent.click(modelOptionByLabel(menu, 'Standard'));
     // `waitFor` (not a bare assertion) absorbs the Menu's own open fade-in transition — right

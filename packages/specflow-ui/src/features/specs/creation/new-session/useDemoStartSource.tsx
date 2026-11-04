@@ -28,6 +28,11 @@ import {
  */
 const startSnapshot = 'session-start';
 
+/** One `start()` call's way back to its caller. */
+interface StartCall {
+  resolve: (sessionId: string) => void;
+}
+
 function sentStartOf(choice: AgentChoice, name: SessionNameChoice): SentStart {
   const title = chosenSessionName(name);
 
@@ -74,10 +79,13 @@ export function useDemoStartSource(specId: string): SessionStartSource {
   });
   const specification = useSpecificationNavigationSource(specId);
   // The Session start settles through `onSession`, which resolves the promise `start` returned.
-  const settle = useRef<((sessionId: string) => void) | null>(null);
+  // `current` is the one start in flight: each call owns its own resolvers and only ever clears
+  // itself, so a late settlement of an earlier call cannot drop a later one.
+  const current = useRef<StartCall | null>(null);
   const onSession = useCallback((_specId: string, sessionId: string) => {
-    settle.current?.(sessionId);
-    settle.current = null;
+    const call = current.current;
+    current.current = null;
+    call?.resolve(sessionId);
   }, []);
   const { state, flags, actions } = useCreateDemoSpecification({
     specId,
@@ -87,26 +95,46 @@ export function useDemoStartSource(specId: string): SessionStartSource {
     onSession,
     announce,
   });
-  // An unfinished operation is finished by the server and resumed on return, so leaving never asks;
-  // closing the tab is the one way to lose that, which the browser's own prompt covers.
+  // Leaving never asks: the operation is retained in this page's memory and offered for checking or
+  // recovery on return within it. Closing or reloading the tab is the one way to lose it (a demo
+  // allocation is not persisted), which the browser's own prompt covers.
   useBlocker({ shouldBlockFn: () => false, enableBeforeUnload: flags.unfinished });
 
   const start = useCallback(
     (choice: AgentChoice, name: SessionNameChoice) =>
       new Promise<{ sessionId: string; sent: SentStart }>((resolve, reject) => {
+        if (current.current) {
+          // One start at a time: refuse this one and leave the running one's resolver intact.
+          reject(new Error('A Session is already being started.'));
+
+          return;
+        }
+
         // A replay (an unknown outcome checked) resends the retained request, and the form is locked
         // meanwhile, so the choices are what was sent.
         const sent = sentStartOf(choice, name);
-        settle.current = (sessionId) => resolve({ sessionId, sent });
-        void actions.submit(submissionOf(choice)).then((outcome) => {
-          const completed =
-            outcome.kind === 'completed' ||
-            (outcome.kind === 'checked' && outcome.resumed?.kind === 'completed');
-          if (!completed) {
-            settle.current = null;
-            reject(new Error('The Session was not started.'));
+        const call: StartCall = { resolve: (sessionId) => resolve({ sessionId, sent }) };
+        current.current = call;
+        const fail = (error: Error) => {
+          if (current.current === call) {
+            current.current = null;
           }
-        });
+
+          reject(error);
+        };
+
+        void actions.submit(submissionOf(choice)).then(
+          (outcome) => {
+            const completed =
+              outcome.kind === 'completed' ||
+              (outcome.kind === 'checked' && outcome.resumed?.kind === 'completed');
+            if (!completed) {
+              fail(new Error('The Session was not started.'));
+            }
+          },
+          (error: unknown) =>
+            fail(error instanceof Error ? error : new Error('The Session was not started.')),
+        );
       }),
     [actions],
   );

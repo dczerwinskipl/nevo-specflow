@@ -75,6 +75,8 @@ export function SessionTelemetrySection({
   runningTurnId?: string;
 }) {
   const { t, i18n } = useTranslation();
+  const usageTitleId = useId();
+  const limitsTitleId = useId();
 
   if (!isTelemetryVisible(telemetry)) {
     return null;
@@ -95,11 +97,11 @@ export function SessionTelemetrySection({
   return (
     <div className="grid gap-6">
       {hasUsageSection && (
-        <section className="grid gap-3">
+        <section className="grid gap-3" aria-labelledby={usageTitleId}>
           <div className="flex flex-wrap items-baseline gap-2">
             {/* The title alone says it is session-wide ("Zużycie sesji"); a "w całej sesji" caption
                 next to it only repeated it (owner review). */}
-            <Typography variant="section-label">
+            <Typography as="h3" id={usageTitleId} variant="section-label">
               {t('sessions.context.sessionDetails.usageTitle')}
             </Typography>
             {snapshot.refresh.state === 'running' && (
@@ -165,8 +167,8 @@ export function SessionTelemetrySection({
         </section>
       )}
       {limits && (
-        <section className="grid gap-3">
-          <Typography variant="section-label">
+        <section className="grid gap-3" aria-labelledby={limitsTitleId}>
+          <Typography as="h3" id={limitsTitleId} variant="section-label">
             {t('sessions.context.sessionDetails.limitsTitle')}
           </Typography>
           {/* One full-width row per window (label + value header, then the bar), never two

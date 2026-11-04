@@ -1600,12 +1600,15 @@
     "model": {
       "label": "Model and effort for the next message",
       "placeholder": "Select model",
+      "default": "Default model",
+      "triggerLabel": "Model: {{value}}",
       "sectionLabel": "Model",
       "effortSectionLabel": "Reasoning effort"
     },
     "intent": {
       "label": "Work mode — next Turn",
       "placeholder": "Select work mode",
+      "triggerLabel": "Work mode: {{value}}",
       "sectionLabel": "Work mode",
       "unavailable": "Unavailable"
     },

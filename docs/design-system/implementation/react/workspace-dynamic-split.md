@@ -79,15 +79,17 @@ The repository rule for this capability is: do not invent a parallel tab/navigat
 Two existing product-neutral primitives already solve most of this problem for a different
 consumer, and both generalize cleanly:
 
-- **`useOpenedItems` / `ItemTabs`** (`components/navigation/ItemTabs/`) is already the
+- **`useOpenedItems` / `ItemTabs`** (`components/navigation/ItemTabs/`; items already carry an
+  optional `closable`) is already the
   product-neutral "open a set of independently revisitable items, one active, open-activates-
   existing-instead-of-duplicating" contract, with roving-tabindex keyboard behavior, a narrow-width
   switcher, and close/guard semantics already specified in
   [Item tabs and content tabs host](item-tabs.md). Secondary root tabs are an instance of exactly
   this problem: an independently revisitable root ("Tasks", "Files", an opened file, Context) is a
   tab; a dependent detail (a Task's attempt, a ToolAction) is not a new tab, it is a push onto that
-  tab's local stack. Section 4.1 below is `useOpenedItems` applied to Secondary's root flows, not a
-  new state model.
+  tab's local stack. Section 4.1 below applies the same open/activate/close rules to Secondary's
+  root flows; the tab collection itself lives in `WorkspaceContext`, which also owns each tab's
+  flow, leave guards and scroll memory, and renders the strip through `ItemTabs`.
 - **`secondaryNavigationModel.ts`** already owns one flow's push/pop/replace/stale-entry
   invariants (see [Secondary navigation](secondary-navigation.md)). A root tab's local stack is one
   instance of this existing model. Multiple tabs are multiple independent instances selected by the
@@ -165,7 +167,7 @@ Turn B's data, not silently reactivate Turn A's stale tab. The root cause was co
 different things a product might want from one `open`-shaped call:
 
 1. **One tab for this definition, always showing the latest params** (today's actual behavior:
-   `ManagedSession.tsx`'s per-Turn Work flow, `SessionContextPanel.tsx`'s/`SessionTasksInspector
+   `ManagedSession.tsx`'s per-Turn Work flow, the former `SessionContextPanel.tsx`'s and `SessionTasksInspector
 .tsx`'s fixed-id "different initial page of the same screen" trick, `taskWorkspaceMaterialStack`
    in `TaskWorkspace.tsx` — confirmed by reading these files, see §8).
 2. **One tab per distinct entity, all independently open and revisitable at once** (a genuinely new
@@ -261,8 +263,7 @@ params.turnId`) makes every distinct derived value its own tab.
   refuses.
 - `closeTab(id)` closes one tab (consulting its own leave guard via the same mechanism
   `useSecondaryLeaveGuard` already registers per entry). Closing the pinned tab is refused
-  (`closable: false`), matching how `useOpenedItems` would need a "closable" extension it does not
-  have today (see 9.1). Closing the legacy `open()` slot or an `openTab` entry behaves identically
+  (`closable: false`), the flag `useOpenedItems` items already carry (see 9.1). Closing the legacy `open()` slot or an `openTab` entry behaves identically
   (both are `closable: true`): the active tab's right neighbor activates, else its left one
   (reuses `useOpenedItems`'s existing neighbor rule verbatim); closing the last remaining tab closes
   the whole Secondary region if there is no pinned tab (§3, §4.2), else leaves only the pinned tab
@@ -525,16 +526,12 @@ revision):
   with `workStack.instanceId = (params) => params.turnId`, so Work history is one tab per Turn and
   Context's "Work history" row for the same Turn lands on the same tab; the stacked layout keeps
   `open` (one visible surface, Back closes it).
-- `packages/specflow-ui/src/features/sessions/context/SessionContextPanel.tsx` defines three
-  separate stack _ids_ (`demo-session-documents`, `demo-session-project`,
-  `demo-session-instructions`) purely so that opening each one discards the others and lands on a
-  different initial page of the same screen set. **Compatible, unchanged behavior**: because `open`
-  never keys its slot by `definition.id`, calling `open` with any of these three definitions still
-  replaces the same single legacy slot the other two also target — the "opening one discards the
-  others" behavior this consumer relies on is preserved exactly, with no migration needed. (This
-  file is the demo-era Context panel; a parallel Full Session redesign pass is expected to supersede
-  it with `context/SessionContext.tsx` — see the next entry — so it may become moot independently of
-  this compatibility finding.)
+- `SessionContextPanel.tsx` (the demo-era Context panel, since deleted; superseded by
+  `managed/context/SessionContext.tsx`) defined three separate stack _ids_
+  (`demo-session-documents`, `demo-session-project`, `demo-session-instructions`) purely so that
+  opening each one discards the others and landed on a different initial page of the same screen
+  set. At the time of the audit this was **compatible, unchanged behavior**, because `open` never
+  keys its slot by `definition.id`. It is no longer a live consumer.
 - `packages/specflow-ui/src/features/sessions/managed/context/SessionTasksInspector.tsx` (added
   2026-10-30) defined two fixed stack ids for the identical reason as `SessionContextPanel.tsx`
   above. **Since migrated (owner decision 2026-11-03):** `managed-session-tasks` is the list tab and
@@ -563,11 +560,12 @@ out as an exit criterion of its own task rather than deferred, per Finding 3 (se
 and
 [W07](../../../ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W07-verification-and-compatibility-audit.md)).
 
-1. **`useOpenedItems` needs an optional `closable` per item** (default `true`); `close`,
-   `requestClose`, and `closeAll` must skip non-closable items. This is a small, backward-compatible
-   extension — existing `ItemTabs` consumers that never pass `closable: false` are unaffected.
-2. **`WorkspaceContext`'s single nullable `flow` becomes a tab-keyed collection** built on the
-   extended `useOpenedItems`, holding: the pinned entry (only when `AppWorkspace.Secondary`'s
+1. **`useOpenedItems` has an optional `closable` per item** (default `true`; done): `close`,
+   `requestClose`, and `closeAll` skip non-closable items. It is backward-compatible — existing
+   `ItemTabs` consumers that never pass `closable: false` are unaffected.
+2. **`WorkspaceContext`'s single nullable `flow` becomes a tab-keyed collection** that
+   `WorkspaceContext` owns itself (it follows `useOpenedItems`' open/activate/close rules but also
+   carries each tab's flow, leave guards and scroll memory), holding: the pinned entry (only when `AppWorkspace.Secondary`'s
    declarative children are present and `open !== false` — **not guaranteed to exist**, confirmed
    against `AppWorkspace.tsx`'s `resolveComposedWorkspace`/`AppWorkspaceRoot`, where
    `defaultSecondary` is already optional and `secondaryPresentation` already resolves to

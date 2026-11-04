@@ -139,7 +139,9 @@ export function ModelEffortPicker({
     ? value?.effort
       ? `${selectedModel.label} · ${value.effort}`
       : selectedModel.label
-    : t('managedSession.model.placeholder');
+    : // A session model the catalogue no longer lists is still shown (its raw id), and a session
+      // with none chosen runs the provider's default: neither is a "select a model" prompt.
+      (value?.modelId ?? t('managedSession.model.default'));
   const showEffortSection = selectedModel?.hasEfforts ?? false;
 
   return (
@@ -162,6 +164,7 @@ export function ModelEffortPicker({
           style={{ maxWidth: compact ? '12rem' : '18rem' }}
           disabled={disabled}
           id="managed-model"
+          aria-label={t('managedSession.model.triggerLabel', { value: triggerLabel })}
           labelOverflow="truncate"
           trailingIcon={ChevronDown}
           size="sm"

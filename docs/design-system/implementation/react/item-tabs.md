@@ -88,8 +88,10 @@ owns state, guards and the tab panel; the strip renders no panel.
 - **Tab anatomy.** Icon, label, close `x` at the label's right edge. The unsaved state is a badge on
   the icon, visible on every pointer and in the switcher; it MUST NOT share the close slot. `loading`
   shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.
-- **Close.** The `x` is shown on hover, focus and on the active tab, always on coarse pointers, with
-  a 44 px hit area there. It is outside the tablist and not in the tab order.
+- **Close.** On the `header` density the `x` is shown on hover, focus and on the active tab, always
+  on coarse pointers, with a 44 px hit area there. On the `rail` density the `x` of every closable
+  tab is always visible (like an editor's tabs), and a pinned (non-closable) tab shows a pin in the
+  same slot. It is outside the tablist and not in the tab order.
 - **Menu.** The strip's `More (N)` menu (heading `labels.moreHeading`) lists only the hidden tabs;
   the switcher's `Opened (N)` menu (heading `labels.openedHeading`) lists every item. Rows carry
   the description and dirty badge. Every row has the same
@@ -174,6 +176,7 @@ Secondary stack screens pass `menu` through their definition; see
    header height would remove that coupling.
 2. The Content tabs host pattern above has its first concrete consumer specified in
    [Workspace dynamic split and Secondary root tabs](workspace-dynamic-split.md): Secondary root
-   tabs reuse `useOpenedItems`/`ItemTabs` directly, with one addition this document does not yet
-   have — an optional non-closable (`closable: false`) item, needed for a pinned root tab. That
-   document's §9 tracks the `useOpenedItems` extension as its first implementation gap.
+   tabs render through `ItemTabs`, whose items already carry an optional `closable` flag (`false`
+   for a pinned root tab; `useOpenedItems` skips such items in `close`, `requestClose` and
+   `closeAll`). The Secondary tab collection itself is owned by `WorkspaceContext`, not by
+   `useOpenedItems`: it also carries each tab's flow, leave guards and scroll memory.

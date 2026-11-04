@@ -62,6 +62,7 @@ export function ComposerModePicker({
           style={{ maxWidth: compact ? '9rem' : '14rem' }}
           disabled={disabled}
           id="managed-intent"
+          aria-label={t('managedSession.intent.triggerLabel', { value: triggerLabel })}
           labelOverflow="truncate"
           trailingIcon={ChevronDown}
           size="sm"

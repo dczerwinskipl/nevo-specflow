@@ -1600,12 +1600,15 @@
     "model": {
       "label": "Model i Effort dla następnej wiadomości",
       "placeholder": "Wybierz model",
+      "default": "Model domyślny",
+      "triggerLabel": "Wybrany model: {{value}}",
       "sectionLabel": "Model",
       "effortSectionLabel": "Effort"
     },
     "intent": {
       "label": "Tryb pracy — następny Turn",
       "placeholder": "Wybierz tryb pracy",
+      "triggerLabel": "Tryb pracy: {{value}}",
       "sectionLabel": "Tryb pracy",
       "unavailable": "Niedostępny"
     },

@@ -112,7 +112,7 @@ export const ClaudeCatalogue: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
-    const menu = await openModeMenu(canvasElement, 'Wybierz tryb pracy');
+    const menu = await openModeMenu(canvasElement, /Wybierz tryb pracy/);
     await expect(rowLabels(menu)).toEqual([
       'Plan',
       'Accept edits',
@@ -125,7 +125,7 @@ export const ClaudeCatalogue: Story = {
     await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
     await expect(handleChange).toHaveBeenCalledOnce();
     await expect(handleChange).toHaveBeenCalledWith('acceptEdits');
-    const trigger = within(canvasElement).getByRole('button', { name: 'Accept edits' });
+    const trigger = within(canvasElement).getByRole('button', { name: 'Tryb pracy: Accept edits' });
     await expect(trigger.id).toBe('managed-intent');
   },
 };
@@ -135,7 +135,7 @@ export const UnavailableModeShowsReason: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
-    const menu = await openModeMenu(canvasElement, 'Wybierz tryb pracy');
+    const menu = await openModeMenu(canvasElement, /Wybierz tryb pracy/);
     const dontAsk = within(menu)
       .getAllByRole('menuitemradio')
       .find((item) => item.textContent?.startsWith("Don't ask"))!;

@@ -11,6 +11,7 @@ import {
 } from '@nevo/ui';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
+import { fullTelemetrySnapshot } from './sessionTelemetry';
 import type { ContextFact } from './sessionContextTypes';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
 
@@ -378,6 +379,17 @@ describe('Work history row', () => {
     expect(screen.getByText('Last Turn')).toBeTruthy();
   });
 
+  it.each(['unreadable', 'missing'] as const)(
+    'shows a warning in the Work section when the work history is %s, never hides it (F35)',
+    (status) => {
+      renderWork({ scope: { kind: 'standalone' }, workHistory: { status } }, fakeWorkStack([]));
+
+      const section = screen.getByRole('region', { name: 'Work' });
+      expect(section.textContent).toContain('Couldn’t load the work history.');
+      expect(section.getAttribute('aria-busy')).toBeNull();
+    },
+  );
+
   it('shows the Work label with a busy skeleton while the history is loading', () => {
     const received: { params: unknown }[] = [];
     renderWork(
@@ -423,6 +435,21 @@ describe('data states', () => {
   }
 
   const executor = ready({ providerId: 'claude', providerTitle: 'Claude', modelTitle: 'Opus' });
+
+  it('gives every section a heading that names its region (F37)', () => {
+    renderContext({
+      scope: { kind: 'standalone' },
+      executor,
+      telemetry: fullTelemetrySnapshot,
+    });
+
+    for (const name of ['Agent', 'Session usage']) {
+      const region = screen.getByRole('region', { name });
+      expect(within(region).getByRole('heading', { level: 3, name })).toBeTruthy();
+    }
+
+    expect(screen.getByRole('region', { name: 'Provider limits' })).toBeTruthy();
+  });
 
   it('real route: executor, the scope-unknown info note under it, then planned areas; never a full-pane EmptyState', () => {
     const { container } = renderContext({

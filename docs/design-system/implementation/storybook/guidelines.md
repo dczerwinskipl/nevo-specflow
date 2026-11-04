@@ -40,7 +40,7 @@ Use `Brand`, `Components`, `Features`, and `Screens` below `SpecFlow`. Nevo UI c
 the package organization, such as `Foundations`, `Actions`, `Forms`, `Navigation`, `Data`, and
 `Patterns`. Do not add further levels (`Contracts/…`, `…/States`): a subject is one sidebar entry.
 
-Each subject shows **one visible `Default`** story: a representative normal state whose states,
+Each **SpecFlow UI** subject shows **one visible `Default`** story: a representative normal state whose states,
 scenarios and supported variants are changed through Controls (`args`/`argTypes`, with `mapping`
 for fixture objects), not through dozens of visible exports. Several story files of one subject
 (for example a screen's contract files) share its title; only one of them exports `Default`, and
@@ -48,6 +48,12 @@ story IDs must not collide. Every other export carries a hidden profile tag (bel
 exports (fixtures, shared helpers) belong in `*.stories-support.ts(x)` modules or are hidden with
 `excludeStories`, so they never appear as stories. Never delete a `play`, an assertion or a
 snapshot to shorten the sidebar — hide it with a tag instead.
+
+The one-visible-`Default` rule is scoped to SpecFlow UI. A **Nevo UI** component page is a
+showcase: its named variants, states and compositions (for example `Info`/`Attention`/`Danger`,
+`States`/`Overflow`/`InWorkspaceHeader`) are visible exports of that one entry, as they have been
+since the design system's first stories, and no check enforces a single `Default` there. Interaction,
+visual and capture checks on those components still carry the hidden profile tags below.
 
 ## Co-location and naming
 

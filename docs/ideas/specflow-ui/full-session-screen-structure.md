@@ -594,6 +594,9 @@ reader opens, not an alert), the text carries the meaning, the icon is decorativ
   unreadable or missing: "Couldn't load related Tasks."
 - Executor unreadable: "Couldn't load executor details." Missing (not in the provider catalogue):
   "This session's executor is no longer available."
+- Work history unreadable or missing: "Couldn't load the work history." (Polish: "Nie udało się
+  wczytać historii pracy."), a warning note in the Work section's slot under its label; the section
+  is not hidden.
 
 The Documents row appears only while the Specification is ready: a loading Specification's skeleton
 covers both rows, an unreadable or missing one shows only its note. Work history is `loading` before

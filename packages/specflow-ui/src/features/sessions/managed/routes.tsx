@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { AppWorkspaceProvider } from '@nevo/ui';
 import { appRoute } from '../../../app/router/root';
 import { useAppServices } from '../../../app/useAppServices';
-import { authSessionIdentity } from '../../../auth/store';
+import { useAuthOwner } from './useAuthOwner';
 import { realRouteSessionContext } from './context/sessionContextTypes';
 import { startedSessionContext, startedSessionOf } from '../start/handoff/startedSession';
 import { ManagedSessionStart } from '../start/screen/ManagedSessionStart';
@@ -23,15 +23,9 @@ export const managedSessionRoute = createRoute({
 function ManagedSessionRoute() {
   const { sessionId } = managedSessionRoute.useParams(),
     services = useAppServices();
-  const subscribe = useCallback(
-    (listener: () => void) => services.authStore.subscribe(listener),
-    [services.authStore],
-  );
-  const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
-  const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
-  const owner = auth.status === 'ready' ? authSessionIdentity(auth.session) : 'unavailable';
+  const owner = useAuthOwner() ?? 'unavailable';
   const { onOpenSpecification, onOpenDocuments } = useSessionContextNavigation(sessionId);
-  const started = startedSessionOf(sessionId);
+  const started = startedSessionOf(owner, sessionId);
   const sessionContext = useMemo(
     () => (started ? startedSessionContext(started) : realRouteSessionContext),
     [started],
@@ -58,17 +52,10 @@ function ManagedSessionRoute() {
 function NewManagedSession() {
   const services = useAppServices();
   const navigate = useNavigate();
-  const subscribe = useCallback(
-    (listener: () => void) => services.authStore.subscribe(listener),
-    [services.authStore],
-  );
-  const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
-  const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
-  if (auth.status !== 'ready') {
+  const owner = useAuthOwner();
+  if (owner === undefined) {
     return null;
   }
-
-  const owner = authSessionIdentity(auth.session);
 
   return (
     <ManagedSessionStart

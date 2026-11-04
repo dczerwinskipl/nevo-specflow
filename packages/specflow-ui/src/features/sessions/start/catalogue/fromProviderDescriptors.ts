@@ -42,7 +42,20 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
   const { modelOverride, effortOverride } = provider.capabilities;
   const trimmed = provider.reason?.trim();
   const given = trimmed === '' ? undefined : trimmed;
+  // Available means startable: a ready provider that can run no work mode cannot start a Session
+  // (without modes of its own only the read-only safety mode is executable).
+  const startable =
+    provider.readiness === 'ready' &&
+    (provider.providerModes
+      ? modes.some((mode) => mode.available)
+      : provider.modes.includes('read-only'));
+  const noMode =
+    provider.readiness === 'ready' && !startable
+      ? (modes.find((mode) => !mode.available && mode.reason)?.reason ??
+        message('sessionStart.provider.noMode'))
+      : undefined;
   const reason =
+    noMode ??
     given ??
     (provider.readiness === 'authenticationRequired'
       ? message('managedSession.authenticationRequired')
@@ -54,7 +67,7 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
     id: provider.providerId,
     title: provider.title,
     icon: provider.providerId,
-    available: provider.readiness === 'ready',
+    available: startable,
     ...(reason ? { reason } : {}),
     ...(provider.readiness === 'authenticationRequired'
       ? { hint: message('managedSession.authenticationHelp') }

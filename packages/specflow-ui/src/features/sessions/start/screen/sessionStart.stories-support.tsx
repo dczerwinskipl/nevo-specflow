@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import type {
+  StartTurn,
   CreateSession,
   ProviderDescriptor,
   SessionSnapshot,
@@ -60,20 +61,28 @@ export const creates: CreateSession[] = [];
  * message yet) or still loading. It is rendered as the route does: what the Session was started
  * with is handed to it, and its Context is the one it was started with.
  */
+/** The messages the opened Session sent to the Runtime (reset by every start preview). */
+export const turns: StartTurn[] = [];
+
 export function StartedSessionView({
   started,
+  owner = 'story',
   sessionId = storySessionId,
   snapshot = 'empty',
   onOpenSpecification,
 }: {
   started: StartedSession;
+  owner?: string;
   sessionId?: string;
-  /** `loading`: the first snapshot never arrives, so only the start values are shown. */
-  snapshot?: 'empty' | 'loading';
+  /**
+   * `loading`: the first snapshot never arrives, so only the start values are shown; `failed`: it
+   * cannot be read.
+   */
+  snapshot?: 'empty' | 'loading' | 'failed';
   onOpenSpecification?: (specification: ContextSpecification) => void;
 }) {
   const [{ api, context }] = useState(() => {
-    rememberStartedSession(sessionId, started);
+    rememberStartedSession(owner, sessionId, started);
     const base = sessionFixture();
     const created = creates.at(-1);
     const empty: SessionSnapshot = {
@@ -126,7 +135,16 @@ export function StartedSessionView({
       ...fixtureApi(empty),
       providers: () => Promise.resolve({ items: [provider] }),
       snapshot: () =>
-        snapshot === 'loading' ? new Promise(() => undefined) : Promise.resolve(empty),
+        snapshot === 'loading'
+          ? new Promise(() => undefined)
+          : snapshot === 'failed'
+            ? Promise.reject(new Error('Session unavailable'))
+            : Promise.resolve(empty),
+      start: (_id, input) => {
+        turns.push(structuredClone(input));
+
+        return Promise.resolve({ turnId: 'turn-1' });
+      },
     };
 
     return { api, context: startedSessionContext(started) };
@@ -135,7 +153,7 @@ export function StartedSessionView({
   return (
     <ManagedSession
       sessionId={sessionId}
-      owner="story"
+      owner={owner}
       api={api}
       sessionContext={context}
       onOpenSpecification={onOpenSpecification}
@@ -146,7 +164,7 @@ export function StartedSessionView({
 /** A Session already started here, as it is shown while (or after) its first snapshot loads. */
 export function StartedSessionPreview(props: {
   started: StartedSession;
-  snapshot?: 'empty' | 'loading';
+  snapshot?: 'empty' | 'loading' | 'failed';
 }) {
   return (
     <StartEnvironment browserHistory>
@@ -192,15 +210,17 @@ export function ManagedStartPreview({
   const [opened, setOpened] = useState<string>();
   useState(() => {
     creates.length = 0;
+    turns.length = 0;
     forgetStartedSessions();
   });
 
   return opened ? (
     <StartEnvironment browserHistory>
       <StartedSessionView
+        owner={owner}
         sessionId={opened}
         started={
-          startedSessionOf(opened) ?? {
+          startedSessionOf(owner, opened) ?? {
             providerId: 'claude',
             providerIcon: 'claude',
             providerTitle: 'Claude',

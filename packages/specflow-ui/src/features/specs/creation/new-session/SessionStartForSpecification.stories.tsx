@@ -4,7 +4,12 @@ import { withLocale } from '../../../../i18n/StoryLocalization';
 import { browserPage } from '../../../../test-support/browserPage';
 import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
 import { noProviderCatalogue } from './demoStartCatalogue.stories-support';
-import { allocations, DemoStartedPreview, DemoStartPreview } from './demoStart.stories-support';
+import {
+  allocations,
+  DemoStartedPreview,
+  DemoStartPreview,
+  turns,
+} from './demoStart.stories-support';
 
 /**
  * Starting a new Session on a Specification inside the Session screen itself
@@ -278,6 +283,29 @@ export const Started: Story = {
   },
 };
 
+/** The Session exists but its snapshot cannot be read: the header and the body say so, not "ready". */
+export const StartedWhileConnectionFails: Story = {
+  render: () => (
+    <DemoStartedPreview
+      snapshot="failed"
+      providerId="claude"
+      providerIcon="claude"
+      providerTitle="Claude"
+      modelId="model-a"
+      modelTitle="claude model A"
+    />
+  ),
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Nie udało się wczytać tej części sesji.')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeEnabled();
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
+    await expect(canvas.getByText('Utracono połączenie')).toBeVisible();
+    await expect(canvas.queryByText('Gotowa')).toBeNull();
+    await expect(canvas.queryByText('Claude jest gotowy')).toBeNull();
+  },
+};
+
 /** Scenario (f): the allocation failed; the choices stay and the form unlocks. */
 export const StartFailed: Story = {
   args: { ...claudeModelA, defaults: { ...claudeModelA.defaults, status: 'failed' } },
@@ -347,8 +375,15 @@ export const AgentNamesSession: Story = {
     await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
     await waitFor(() => expect(composer(canvas)).toHaveFocus());
+    // The first message is written in the Session itself and reaches the Runtime. (Naming the
+    // Session from it is not part of this composition: the Session screen has no naming state yet,
+    // see the contract's section 10; `Session Naming Status` stories cover that flow.)
     await userEvent.type(composer(canvas), firstMessage);
-    await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeEnabled();
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await waitFor(() =>
+      expect(turns).toEqual([expect.objectContaining({ message: firstMessage })]),
+    );
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
   },
 };
 

@@ -114,6 +114,72 @@ describe('startCatalogueFromProviders', () => {
     ).toEqual([]);
   });
 
+  describe('available means startable', () => {
+    it('is unavailable when it is ready but none of its own modes can run, with the first mode reason', () => {
+      const provider = only(
+        providerDescriptor({
+          providerId: 'p',
+          modes: ['read-only', 'workspace-write'],
+          providerModes: [
+            providerMode({ modeId: 'a', readiness: 'unavailable', reason: 'Not installed' }),
+            providerMode({ modeId: 'b', authorized: false, reason: 'Denied' }),
+          ],
+        }),
+      );
+      expect(provider.available).toBe(false);
+      expect(provider.reason).toBe('Not installed');
+    });
+
+    it('says that no work mode is available when the modes give no reason', () => {
+      const provider = only(
+        providerDescriptor({
+          providerId: 'p',
+          modes: ['read-only', 'workspace-write'],
+          providerModes: [providerMode({ modeId: 'a', authorized: false })],
+        }),
+      );
+      expect(provider.available).toBe(false);
+      expect(provider.reason).toEqual({ key: 'sessionStart.provider.noMode' });
+    });
+
+    it('needs the read-only mode when it lists no modes of its own', () => {
+      expect(only(providerDescriptor({ providerId: 'p', modes: [] })).available).toBe(false);
+      expect(
+        only(providerDescriptor({ providerId: 'p', modes: ['workspace-write'] })).available,
+      ).toBe(false);
+      expect(only(providerDescriptor({ providerId: 'p', modes: ['read-only'] })).available).toBe(
+        true,
+      );
+    });
+
+    it('is startable with a single executable mode among unavailable ones', () => {
+      const provider = only(
+        providerDescriptor({
+          providerId: 'p',
+          modes: ['read-only', 'workspace-write'],
+          providerModes: [
+            providerMode({ modeId: 'a', readiness: 'unavailable' }),
+            providerMode({ modeId: 'plan', mode: 'read-only' }),
+          ],
+        }),
+      );
+      expect(provider.available).toBe(true);
+    });
+
+    it('keeps the reason of a provider that is not ready, whatever its modes', () => {
+      const provider = only(
+        providerDescriptor({
+          providerId: 'p',
+          readiness: 'unavailable',
+          reason: 'No CLI',
+          modes: [],
+        }),
+      );
+      expect(provider.available).toBe(false);
+      expect(provider.reason).toBe('No CLI');
+    });
+  });
+
   it('keeps the mock provider caveat as the note of an available provider', () => {
     expect(only(providerDescriptor({ providerId: 'mock' })).reason).toEqual({
       key: 'managedSession.mockNote',

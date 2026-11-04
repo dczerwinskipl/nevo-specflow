@@ -316,7 +316,7 @@ it('sends the chosen model, effort and an own name, and opens the Session with t
     title: 'Review SSO',
   });
   // What the Session was started with is handed to the screen that opens it.
-  expect(startedSessionOf('created')).toMatchObject({
+  expect(startedSessionOf('alice', 'created')).toMatchObject({
     providerTitle: 'Claude',
     modelTitle: 'Model one',
     effort: 'high',
@@ -361,7 +361,118 @@ it('does not open a Session for another identity when an unmounted create is ack
   view(api, 'bob');
   await act(() => Promise.resolve(finish({ sessionId: 'alice-session' })));
   expect(open).not.toHaveBeenCalled();
-  expect(startedSessionOf('alice-session')).toBeUndefined();
+  expect(startedSessionOf('alice', 'alice-session')).toBeUndefined();
   await clickStart();
   await waitFor(() => expect(open).toHaveBeenCalledWith('bob-session'));
+});
+
+const twoProviders = async (f: ReturnType<typeof fixture>) => {
+  const base = (await f.providers()).items[0]!;
+  f.providers.mockResolvedValue({
+    items: [
+      base,
+      {
+        ...base,
+        providerId: 'codex',
+        title: 'Codex',
+        models: [{ modelId: 'm1', title: 'Model one', efforts: ['low', 'high'] }],
+      },
+    ],
+  });
+};
+
+async function startCodexWithLostResponse(f: ReturnType<typeof fixture>) {
+  const first = view(f.api);
+  fireEvent.click(await screen.findByRole('radio', { name: /Codex/ }));
+  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Model' }), { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('option', { name: 'Model one' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Give it your own name' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Session name' }), {
+    target: { value: 'Review SSO' },
+  });
+  await clickStart();
+  await screen.findByRole('button', { name: 'Retry creation' });
+  first.unmount();
+}
+
+it('opens a resent request with what was sent, not with the fresh form of a reload', async () => {
+  const f = fixture();
+  await twoProviders(f);
+  await startCodexWithLostResponse(f);
+  view(f.api);
+  // The form of the reloaded page holds its defaults (the first provider, nothing chosen).
+  expect(await screen.findByRole('radio', { name: /Claude/ })).toBeDefined();
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry creation' }));
+  await waitFor(() => expect(open).toHaveBeenCalledWith('created'));
+  expect(f.create.mock.calls[1]![0]).toEqual(f.create.mock.calls[0]![0]);
+  expect(startedSessionOf('alice', 'created')).toMatchObject({
+    providerId: 'codex',
+    providerTitle: 'Codex',
+    modelId: 'm1',
+    modelTitle: 'Model one',
+    title: 'Review SSO',
+  });
+});
+
+it('keeps a kept request retryable while the provider catalogue cannot be read', async () => {
+  const f = fixture();
+  await twoProviders(f);
+  await startCodexWithLostResponse(f);
+  f.providers.mockRejectedValue(new Error('Catalogue unavailable'));
+  view(f.api);
+  expect(await screen.findByText('Unable to load the configuration')).toBeDefined();
+  const retry = await screen.findByRole('button', { name: 'Retry creation' });
+  expect(retry.hasAttribute('disabled')).toBe(false);
+  fireEvent.click(retry);
+  await waitFor(() => expect(open).toHaveBeenCalledWith('created'));
+  expect(f.create.mock.calls[1]![0]).toEqual(f.create.mock.calls[0]![0]);
+  // Nothing is known about the provider any more: the ids stand in for its titles.
+  expect(startedSessionOf('alice', 'created')).toMatchObject({
+    providerId: 'codex',
+    modelId: 'm1',
+    title: 'Review SSO',
+  });
+});
+
+it('treats a ready provider without a usable work mode as unavailable, with the reason', async () => {
+  const f = fixture();
+  const base = (await f.providers()).items[0]!;
+  f.providers.mockResolvedValue({
+    items: [
+      {
+        ...base,
+        modes: ['read-only', 'workspace-write'],
+        providerModes: [{ ...writer, readiness: 'unavailable' as const, reason: 'Needs approval' }],
+      },
+      { ...base, providerId: 'codex', title: 'Codex', modes: [] },
+    ],
+  });
+  view(f.api);
+  expect(await screen.findByText('Needs approval')).toBeDefined();
+  expect(screen.getByText('No work mode is available')).toBeDefined();
+  expect(screen.getByRole('radio', { name: /Claude/ }).hasAttribute('disabled')).toBe(true);
+  expect(screen.getByRole('radio', { name: /Codex/ }).hasAttribute('disabled')).toBe(true);
+  // Never preselected; with every provider like that no executor is available.
+  expect(screen.getByRole('radio', { name: /Claude/ }).getAttribute('aria-checked')).not.toBe(
+    'true',
+  );
+  expect(screen.getByText('No executor is available right now.')).toBeDefined();
+  expect(screen.getByRole('button', { name: 'Start session' }).hasAttribute('disabled')).toBe(true);
+});
+
+it('prefers a provider that can start over one that cannot', async () => {
+  const f = fixture();
+  const base = (await f.providers()).items[0]!;
+  f.providers.mockResolvedValue({
+    items: [{ ...base, modes: [], title: 'Broken', providerId: 'broken' }, base],
+  });
+  view(f.api);
+  expect((await screen.findByRole('radio', { name: /Claude/ })).hasAttribute('disabled')).toBe(
+    false,
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Start session' }).hasAttribute('disabled')).toBe(
+      false,
+    ),
+  );
 });

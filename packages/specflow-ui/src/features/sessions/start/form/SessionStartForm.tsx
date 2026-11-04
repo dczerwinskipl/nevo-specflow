@@ -11,6 +11,7 @@ import { ProviderChoice } from '../fields/ProviderChoice';
 import { SessionNameSection } from '../fields/SessionNameSection';
 import type { SessionStartPending } from '../source/sessionStartSource';
 import { ConfigurationNotice } from './ConfigurationNotice';
+import { pendingLabel } from './pendingLabel';
 import { StartFormActions } from './StartFormActions';
 
 /** `failed`: the last start did not succeed; the choices are kept and the form is unlocked. */
@@ -72,17 +73,12 @@ export function SessionStartForm({
       : name.mode === 'agent'
         ? t('sessionStart.footer.agentNames')
         : t('sessionStart.footer.ready');
-  const label = pending?.checking
-    ? t('create.submit.checking')
-    : status === 'starting'
+  const label =
+    status === 'starting'
       ? t('sessionStart.form.starting')
-      : pending?.kind === 'retry'
-        ? t('managedSession.retryCreate')
-        : pending?.kind === 'check'
-          ? t('create.submit.checkResult')
-          : pending?.kind === 'recover'
-            ? t('create.submit.checkOperation')
-            : t('sessionStart.submit.start');
+      : pending
+        ? pendingLabel(t, pending)
+        : t('sessionStart.submit.start');
   const noAgent = !catalogue.providers.some((provider) => provider.available);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {

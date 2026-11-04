@@ -14,6 +14,10 @@ export {
   selectProvider,
   type AgentChoice,
 } from './start/choice/agentChoice';
+export { useAuthOwner } from './managed/useAuthOwner';
+export { forgetStartedSessions } from './start/handoff/startedSession';
+export { chosenSessionName, type SessionNameChoice } from './start/choice/sessionName';
+export type { SentStart } from './start/handoff/startedSession';
 export { AgentFields } from './start/fields/AgentFields';
 export { ProviderChoice } from './start/fields/ProviderChoice';
 export type { ContextSpecification } from './managed/context/sessionContextTypes';

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { StartCatalogue } from '../catalogue/startCatalogue';
 import type { AgentChoice } from '../choice/agentChoice';
 import type { SessionNameChoice } from '../choice/sessionName';
+import type { SentStart } from '../handoff/startedSession';
 import type { ContextFact, ContextSpecification } from '../../managed/context/sessionContextTypes';
 
 export type StartCatalogueState =
@@ -32,14 +33,21 @@ export interface SessionStartPending {
  * the same screen serves the managed Runtime's `/sessions/new` and a Specification's demo start.
  */
 export interface SessionStartSource {
+  /** The signed-in identity the started Session (and its handoff) belongs to. */
+  owner: string;
   catalogue: StartCatalogueState;
   /** The Specification the Session is pinned to; absent for a Session without one. */
   specification?: ContextFact<ContextSpecification>;
   /**
-   * Starts the Session with what was chosen. Resolves with its id once it exists; rejects when it
-   * was not started (the choices stay and the form unlocks, or the pending outcome says why not).
+   * Starts the Session with what was chosen. Resolves with its id once it exists, and with what the
+   * request actually carried (`sent`; a kept request is resent unchanged, whatever the form holds
+   * now). Rejects when it was not started (the choices stay and the form unlocks, or the pending
+   * outcome says why not).
    */
-  start: (choice: AgentChoice, name: SessionNameChoice) => Promise<{ sessionId: string }>;
+  start: (
+    choice: AgentChoice,
+    name: SessionNameChoice,
+  ) => Promise<{ sessionId: string; sent: SentStart }>;
   /** Retires the failure the source shows (called when the user edits the choices after it). */
   dismissFailure?: () => void;
   /** An earlier start is unresolved (see {@link SessionStartPending}). */

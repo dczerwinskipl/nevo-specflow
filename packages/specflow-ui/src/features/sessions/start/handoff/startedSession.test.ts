@@ -12,11 +12,10 @@ import {
 
 afterEach(forgetStartedSessions);
 
-const choice = { providerId: 'claude', modelId: 'model-a', effort: 'high', mode: 'acceptEdits' };
+const sent = { providerId: 'claude', modelId: 'model-a', effort: 'high', modeId: 'acceptEdits' };
 const input = {
   catalogue: codexClaudeCatalogue,
-  choice,
-  name: { mode: 'agent', value: '' } as const,
+  sent,
   modeTitle: (title: unknown) => String(title),
 };
 
@@ -34,34 +33,35 @@ describe('startedSessionFrom', () => {
     });
   });
 
-  it('leaves out the provider default effort, an absent model and the agent-given name', () => {
-    const started = startedSessionFrom({
-      ...input,
-      choice: { ...choice, modelId: '', effort: 'provider-default' },
-    });
+  it('leaves out an absent effort, model and name', () => {
+    const started = startedSessionFrom({ ...input, sent: { providerId: 'claude' } });
     expect(started).not.toHaveProperty('effort');
     expect(started).not.toHaveProperty('modelId');
+    expect(started).not.toHaveProperty('modeId');
     expect(started).not.toHaveProperty('title');
   });
 
-  it('keeps an own name trimmed, and the pinned Specification', () => {
+  it('keeps the own name that was sent, and the pinned Specification', () => {
     const specification = {
       status: 'ready',
       value: { id: 's', key: 'SPEC-1', title: 'Logowanie SSO' },
     } as const;
     expect(
-      startedSessionFrom({
-        ...input,
-        name: { mode: 'custom', value: '  Review SSO ' },
-        specification,
-      }),
+      startedSessionFrom({ ...input, sent: { ...sent, title: 'Review SSO' }, specification }),
     ).toMatchObject({ title: 'Review SSO', specification });
   });
 
-  it('has nothing to hand over for a provider the catalogue does not know', () => {
-    expect(
-      startedSessionFrom({ ...input, choice: { ...choice, providerId: 'gone' } }),
-    ).toBeUndefined();
+  it('is what was sent, not what any form holds: the ids stand in where the catalogue lacks them', () => {
+    expect(startedSessionFrom({ ...input, catalogue: undefined })).toMatchObject({
+      providerId: 'claude',
+      providerTitle: 'claude',
+      modelTitle: 'model-a',
+      modeTitle: 'acceptEdits',
+    });
+    expect(startedSessionFrom({ ...input, sent: { ...sent, providerId: 'gone' } })).toMatchObject({
+      providerTitle: 'gone',
+      modelTitle: 'model-a',
+    });
   });
 });
 
@@ -88,26 +88,40 @@ describe('the start handoff', () => {
   const started: StartedSession = { providerId: 'p', providerIcon: undefined, providerTitle: 'P' };
 
   it('is read by the Session it was remembered for, and by no other', () => {
-    rememberStartedSession('a', started);
-    expect(startedSessionOf('a')).toBe(started);
-    expect(startedSessionOf('b')).toBeUndefined();
+    rememberStartedSession('alice', 'a', started);
+    expect(startedSessionOf('alice', 'a')).toBe(started);
+    expect(startedSessionOf('alice', 'b')).toBeUndefined();
+  });
+
+  it('is never read by another signed-in user, nor focused for them', () => {
+    rememberStartedSession('alice', 'a', started);
+    expect(startedSessionOf('bob', 'a')).toBeUndefined();
+    expect(consumeStartFocus('bob', 'a')).toBe(false);
+    expect(startedSessionOf('alice', 'a')).toBe(started);
+  });
+
+  it('is forgotten altogether when the identity changes', () => {
+    rememberStartedSession('alice', 'a', started);
+    forgetStartedSessions();
+    expect(startedSessionOf('alice', 'a')).toBeUndefined();
+    expect(consumeStartFocus('alice', 'a')).toBe(false);
   });
 
   it('asks for the Composer focus exactly once', () => {
-    rememberStartedSession('a', started);
-    expect(consumeStartFocus('a')).toBe(true);
-    expect(consumeStartFocus('a')).toBe(false);
-    expect(startedSessionOf('a')).toBe(started);
-    expect(consumeStartFocus('never-started')).toBe(false);
+    rememberStartedSession('alice', 'a', started);
+    expect(consumeStartFocus('alice', 'a')).toBe(true);
+    expect(consumeStartFocus('alice', 'a')).toBe(false);
+    expect(startedSessionOf('alice', 'a')).toBe(started);
+    expect(consumeStartFocus('alice', 'never-started')).toBe(false);
   });
 
   it('forgets the oldest start once more than a few are remembered', () => {
     for (let index = 0; index < 20; index += 1) {
-      rememberStartedSession(`s${index}`, started);
+      rememberStartedSession('alice', `s${index}`, started);
     }
 
-    expect(startedSessionOf('s0')).toBeUndefined();
-    expect(consumeStartFocus('s0')).toBe(false);
-    expect(startedSessionOf('s19')).toBe(started);
+    expect(startedSessionOf('alice', 's0')).toBeUndefined();
+    expect(consumeStartFocus('alice', 's0')).toBe(false);
+    expect(startedSessionOf('alice', 's19')).toBe(started);
   });
 });

@@ -6,6 +6,7 @@ import { InertComposer } from '../conversation/InertComposer';
 import { SessionStartConversation } from '../conversation/SessionStartConversation';
 import { SessionStartForm, type SessionStartStatus } from '../form/SessionStartForm';
 import type { SessionStartSource } from '../source/sessionStartSource';
+import { PendingStartActions } from '../form/PendingStartActions';
 import { StartFormSkeleton } from './StartFormSkeleton';
 
 /**
@@ -42,12 +43,24 @@ export function SessionStartColumn({
         ) : undefined
       }
     >
-      {catalogue.status === 'loading' ? (
-        <StartFormSkeleton />
-      ) : catalogue.status === 'error' ? (
-        <Alert tone="attention" title={t('create.loadError')}>
-          <Button onClick={catalogue.refresh}>{t('common.retry')}</Button>
-        </Alert>
+      {catalogue.status !== 'ready' ? (
+        <div className="grid gap-6">
+          {catalogue.status === 'loading' ? (
+            <StartFormSkeleton />
+          ) : (
+            <Alert tone="attention" title={t('create.loadError')}>
+              <Button onClick={catalogue.refresh}>{t('common.retry')}</Button>
+            </Alert>
+          )}
+          {/* A kept request is resent as it was, so it stays reachable without the catalogue. */}
+          {source.pending && (
+            <PendingStartActions
+              pending={source.pending}
+              working={status === 'starting'}
+              onStart={onStart}
+            />
+          )}
+        </div>
       ) : (
         <SessionStartForm
           catalogue={catalogue.catalogue}

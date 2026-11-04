@@ -1837,6 +1837,9 @@
     },
     "executor": {
       "notChosen": "not chosen"
+    },
+    "provider": {
+      "noMode": "No work mode is available"
     }
   },
   "sessionNaming": {

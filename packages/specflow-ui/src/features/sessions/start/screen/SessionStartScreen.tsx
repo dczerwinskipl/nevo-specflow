@@ -96,23 +96,22 @@ export function SessionStartScreen({
     const submitted = { agent, name };
     setStatus('starting');
     source.start(submitted.agent, submitted.name).then(
-      ({ sessionId }) => {
+      ({ sessionId, sent }) => {
         if (!mounted.current) {
           return;
         }
 
-        const started =
-          catalogue &&
+        // The Session opens with what was sent, which a kept request keeps from the form's values.
+        rememberStartedSession(
+          source.owner,
+          sessionId,
           startedSessionFrom({
             catalogue,
-            choice: submitted.agent,
-            name: submitted.name,
+            sent,
             specification: source.specification,
             modeTitle: text,
-          });
-        if (started) {
-          rememberStartedSession(sessionId, started);
-        }
+          }),
+        );
 
         onOpenSession(sessionId);
       },

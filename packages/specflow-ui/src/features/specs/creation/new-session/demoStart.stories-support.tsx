@@ -5,6 +5,7 @@ import { HttpClientError } from '@nevo/http-client';
 import type { DemoCatalogue, DemoSessionInput } from '@nevo/specflow-contracts/demo';
 import { createWorkspaceIntegrationApi } from '../../../../../test-support/specs/workspace/api';
 import { TestServicesRouterContext } from '../../../../../test-support/app/TestServicesRouterContext';
+import { useAuthOwner } from '../../../sessions';
 import { VisitStateProvider } from '../../../../app/VisitStateProvider';
 import { createSpecFlowAppServices } from '../../../../services';
 import {
@@ -20,6 +21,7 @@ import {
   StartedSessionPreview,
   StartedSessionView,
   storySessionId,
+  turns,
 } from '../../../sessions/start/screen/sessionStart.stories-support';
 import { startCatalogue } from './demoStartCatalogue.stories-support';
 import { useDemoStartSource } from './useDemoStartSource';
@@ -48,6 +50,7 @@ export function DemoStartPreview({
 }) {
   useState(() => {
     allocations.length = 0;
+    turns.length = 0;
     forgetStartedSessions();
   });
   const [opened, setOpened] = useState<string>();
@@ -103,11 +106,7 @@ export function DemoStartPreview({
             <AppShell navigation={<div>Projekt</div>} style={{ height: '100%', width: '100%' }}>
               <AppWorkspaceProvider browserHistory={opened !== undefined}>
                 {opened ? (
-                  <StartedSessionView
-                    sessionId={opened}
-                    started={startedSessionOf(opened) ?? fallbackStarted}
-                    onOpenSpecification={() => undefined}
-                  />
+                  <DemoOpenedSession sessionId={opened} />
                 ) : (
                   <DemoStartScreen
                     defaults={defaults}
@@ -120,6 +119,20 @@ export function DemoStartPreview({
         </VisitStateProvider>
       </TestServicesRouterContext>
     </QueryClientProvider>
+  );
+}
+
+/** The Session screen the start screen opens, for the signed-in user who started it. */
+function DemoOpenedSession({ sessionId }: { sessionId: string }) {
+  const owner = useAuthOwner() ?? 'unavailable';
+
+  return (
+    <StartedSessionView
+      owner={owner}
+      sessionId={sessionId}
+      started={startedSessionOf(owner, sessionId) ?? fallbackStarted}
+      onOpenSpecification={() => undefined}
+    />
   );
 }
 
@@ -155,7 +168,7 @@ function DemoStartScreen({
 export function DemoStartedPreview({
   snapshot = 'empty',
   ...started
-}: StartedSession & { snapshot?: 'empty' | 'loading' }) {
+}: StartedSession & { snapshot?: 'empty' | 'loading' | 'failed' }) {
   return (
     <StartedSessionPreview
       snapshot={snapshot}
@@ -169,3 +182,5 @@ export function DemoStartedPreview({
     />
   );
 }
+
+export { turns };

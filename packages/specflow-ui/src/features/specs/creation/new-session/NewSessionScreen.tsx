@@ -10,6 +10,7 @@ import { useDemoStartSource } from './useDemoStartSource';
 
 /** The Runtime mode is still being read: the shell is there already, its catalogue loading. */
 const loadingSource: SessionStartSource = {
+  owner: 'unavailable',
   catalogue: { status: 'loading' },
   specification: { status: 'loading' },
   start: () => new Promise(() => undefined),

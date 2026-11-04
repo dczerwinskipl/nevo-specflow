@@ -6,6 +6,7 @@ import { createSessionRequest } from '../../managed/creation/request';
 import { startCatalogueFromProviders } from '../catalogue/fromProviderDescriptors';
 import { providerDefaultEffort, type AgentChoice } from '../choice/agentChoice';
 import { chosenSessionName, type SessionNameChoice } from '../choice/sessionName';
+import type { SentStart } from '../handoff/startedSession';
 import type { SessionStartSource } from './sessionStartSource';
 
 function browserSessionStorage(): Storage | undefined {
@@ -36,6 +37,17 @@ export function createSessionBody(
     mode: native?.mode ?? (choice.mode === 'workspace-write' ? 'workspace-write' : 'read-only'),
     ...(native ? { providerModeId: native.modeId } : {}),
     ...(title ? { title } : {}),
+  };
+}
+
+/** What a create body carried, for the handoff to the Session it opens. */
+export function sentStartOf(body: Omit<CreateSession, 'requestId'>): SentStart {
+  return {
+    providerId: body.providerId,
+    ...(body.modelId ? { modelId: body.modelId } : {}),
+    ...(body.effort ? { effort: body.effort } : {}),
+    modeId: body.providerModeId ?? body.mode,
+    ...(body.title ? { title: body.title } : {}),
   };
 }
 
@@ -73,7 +85,9 @@ export function useManagedStartSource(owner: string, api: ManagedSessionsApi): S
             name,
           );
       try {
-        return await retained.send(body, (request) => api.create(request));
+        const created = await retained.send(body, (request) => api.create(request));
+
+        return { sessionId: created.sessionId, sent: sentStartOf(body) };
       } finally {
         reread();
       }
@@ -82,6 +96,7 @@ export function useManagedStartSource(owner: string, api: ManagedSessionsApi): S
   );
 
   return {
+    owner,
     catalogue: catalogue
       ? {
           status: 'ready',

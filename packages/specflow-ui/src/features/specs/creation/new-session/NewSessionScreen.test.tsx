@@ -6,6 +6,7 @@ import type { DemoSessionInput } from '@nevo/specflow-contracts/demo';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../../app/queryClient';
+import { authSessionIdentity } from '../../../../auth/store';
 import { VisitStateProvider } from '../../../../app/VisitStateProvider';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { createSpecFlowAppServices } from '../../../../services';
@@ -67,6 +68,13 @@ function renderScreen(
     </QueryClientProvider>,
   );
 }
+
+/** The signed-in identity the screen under test belongs to (the default test services). */
+const owner = () => {
+  const auth = createSpecFlowAppServices().authStore.getState();
+
+  return auth.status === 'ready' ? authSessionIdentity(auth.session) : 'unavailable';
+};
 
 const ok = () => Promise.resolve({ sessionId: 'session-1', location: undefined as never });
 
@@ -137,14 +145,14 @@ describe('NewSessionScreen', () => {
         mode: 'ask',
       }),
     ]);
-    expect(startedSessionOf('session-1')).toMatchObject({
+    expect(startedSessionOf(owner(), 'session-1')).toMatchObject({
       providerTitle: 'Codex',
       modelTitle: 'codex model A',
       effort: 'high',
       modeId: 'ask',
     });
     // The pinned Specification (read while the form was open) goes with it.
-    expect(startedSessionOf('session-1')?.specification).toBeDefined();
+    expect(startedSessionOf(owner(), 'session-1')?.specification).toBeDefined();
   });
 
   it('allocates at the provider default effort without sending one', async () => {

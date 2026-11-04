@@ -84,7 +84,10 @@ saved.
   **Effort** and **Work mode** fields, then **Session name**. The model is a deliberate choice (none
   preselected); choosing it enables Effort (the provider default selected) and Work mode (the
   provider's `defaultModeId` when the model runs it, else its first mode). Changing the provider
-  resets everything below it. Context's executor row mirrors the choice as it is made.
+  resets everything below it. Context's executor row mirrors the choice as it is made. A provider
+  is available only when a Session can start on it: a ready provider with no executable work mode
+  is unavailable (its tile is disabled with the reason of its first unavailable mode, else **No
+  work mode is available**) and is never preselected.
 - **(c) Start.** **Start session** (or Enter in the name field) locks the form and shows
   **Starting…** in the button. The Session is allocated; the URL is replaced with the Session's own
   (`/specs/$specId/sessions/$sessionId`, history replace, so Back does not return to the empty
@@ -273,7 +276,8 @@ state, rendered from args; the plays only assert it and walk the flows):
 
 - **Specification-bound, demo source** (`features/specs/creation/new-session/SessionStartForSpecification.stories.tsx`):
   Wide — `Open` (no model), `ClaudeModelChosen`, `AntigravityLongModelList` (searchable),
-  `Starting`, `StartedWhileLoading` (the Session screen before its first snapshot), `Started`
+  `Starting`, `StartedWhileLoading` (the Session screen before its first snapshot), `StartedWhileConnectionFails`,
+  `Started`
   (ready empty state, focused Composer), `StartFailed`, `NoProviderAvailable`, plus the flows
   `AgentNamesSession`, `OwnName`, `EffortAndMode`, `AllocationFails` and `UnknownOutcome`; Narrow
   375 px — `NarrowOpen`, `NarrowModelChosen` (no Composer), `NarrowStarted`,
@@ -281,7 +285,7 @@ state, rendered from args; the plays only assert it and walk the flows):
 - **Managed source, no Specification** (`features/sessions/start/screen/SessionStartManaged.stories.tsx`,
   scenario (h)): `NoSpecification`, `NativeModesWithUnavailableOne`, `ProviderWithoutModels`,
   `ManagedAntigravityLongModelList` (the thirteen-model catalogue), `ManyWorkModes` (a picker),
-  `ManagedNoProviderAvailable`, `ManagedStarting`, `ManagedStartFailed`, `ManagedStartFlow`;
+  `ManagedNoProviderAvailable`, `ManagedProviderWithoutUsableMode`, `ManagedStarting`, `ManagedStartFailed`, `ManagedStartFlow`;
   Narrow — `NarrowNoSpecification`, `NarrowNativeModes`.
 - A Session without a message, however it was opened: `SpecFlow/Screens/Managed Session` /
   `EmptySession`.

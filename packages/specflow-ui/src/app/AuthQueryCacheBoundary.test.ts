@@ -3,6 +3,10 @@ import type { AuthSessionResponse } from '@nevo/specflow-contracts/authenticatio
 import { describe, expect, it } from 'vitest';
 import { createAuthStore } from '../auth/store';
 import type { AuthApi } from '../auth/api';
+import {
+  rememberStartedSession,
+  startedSessionOf,
+} from '../features/sessions/start/handoff/startedSession';
 import { bindAuthQueryCache } from './AuthQueryCacheBoundary';
 
 const session = (id: string): AuthSessionResponse => ({
@@ -44,6 +48,20 @@ describe('Auth Query cache isolation', () => {
     expect(queryClient.getQueryData(key)).toEqual({ data: 'private' });
     await refresh;
     expect(queryClient.getQueryData(key)).toEqual({ data: 'private' });
+    detach();
+  });
+
+  it('forgets what the previous user started when the identity changes', async () => {
+    const { auth, detach } = setup(() => Promise.resolve(session('a')));
+    rememberStartedSession('a', 'session-1', {
+      providerId: 'claude',
+      providerIcon: 'claude',
+      providerTitle: 'Claude',
+    });
+    await auth.refresh();
+    expect(startedSessionOf('a', 'session-1')).toBeDefined();
+    await auth.loginWithPassword('b', 'secret');
+    expect(startedSessionOf('a', 'session-1')).toBeUndefined();
     detach();
   });
 

@@ -6,10 +6,14 @@ import { consumeStartFocus } from './startedSession';
  * field takes focus (new-session-ui-spec.md, section 3(c)). One time per start; a Session opened
  * any other way keeps the browser's own focus.
  */
-export function useFocusStartedComposer(sessionId: string, composerActive: boolean): void {
+export function useFocusStartedComposer(
+  owner: string,
+  sessionId: string,
+  composerActive: boolean,
+): void {
   useEffect(() => {
-    if (composerActive && consumeStartFocus(sessionId)) {
+    if (composerActive && consumeStartFocus(owner, sessionId)) {
       document.getElementById('managed-message')?.focus();
     }
-  }, [sessionId, composerActive]);
+  }, [owner, sessionId, composerActive]);
 }

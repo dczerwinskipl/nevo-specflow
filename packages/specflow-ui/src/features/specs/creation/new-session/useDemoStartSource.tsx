@@ -2,9 +2,13 @@ import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBlocker } from '@tanstack/react-router';
 import {
+  chosenSessionName,
   providerDefaultEffort,
   startCatalogueFromDemo,
+  useAuthOwner,
   type AgentChoice,
+  type SentStart,
+  type SessionNameChoice,
   type SessionStartSource,
 } from '../../../sessions';
 import { useRuntimeInfo } from '../../../../app/useRuntimeMode';
@@ -23,6 +27,18 @@ import {
  * the screen when the user edits the choices (`dismissFailure`), so it is one constant here.
  */
 const startSnapshot = 'session-start';
+
+function sentStartOf(choice: AgentChoice, name: SessionNameChoice): SentStart {
+  const title = chosenSessionName(name);
+
+  return {
+    providerId: choice.providerId,
+    ...(choice.modelId ? { modelId: choice.modelId } : {}),
+    ...(choice.effort !== providerDefaultEffort ? { effort: choice.effort } : {}),
+    modeId: choice.mode,
+    ...(title ? { title } : {}),
+  };
+}
 
 function submissionOf(choice: AgentChoice): CreateSubmission {
   return {
@@ -49,6 +65,7 @@ function submissionOf(choice: AgentChoice): CreateSubmission {
  */
 export function useDemoStartSource(specId: string): SessionStartSource {
   const services = useAppServices();
+  const owner = useAuthOwner() ?? 'unavailable';
   const runtime = useRuntimeInfo();
   const { announce, region } = useAnnouncer();
   const catalogue = useQuery({
@@ -57,9 +74,9 @@ export function useDemoStartSource(specId: string): SessionStartSource {
   });
   const specification = useSpecificationNavigationSource(specId);
   // The Session start settles through `onSession`, which resolves the promise `start` returned.
-  const settle = useRef<((result: { sessionId: string }) => void) | null>(null);
+  const settle = useRef<((sessionId: string) => void) | null>(null);
   const onSession = useCallback((_specId: string, sessionId: string) => {
-    settle.current?.({ sessionId });
+    settle.current?.(sessionId);
     settle.current = null;
   }, []);
   const { state, flags, actions } = useCreateDemoSpecification({
@@ -75,9 +92,12 @@ export function useDemoStartSource(specId: string): SessionStartSource {
   useBlocker({ shouldBlockFn: () => false, enableBeforeUnload: flags.unfinished });
 
   const start = useCallback(
-    (choice: AgentChoice) =>
-      new Promise<{ sessionId: string }>((resolve, reject) => {
-        settle.current = resolve;
+    (choice: AgentChoice, name: SessionNameChoice) =>
+      new Promise<{ sessionId: string; sent: SentStart }>((resolve, reject) => {
+        // A replay (an unknown outcome checked) resends the retained request, and the form is locked
+        // meanwhile, so the choices are what was sent.
+        const sent = sentStartOf(choice, name);
+        settle.current = (sessionId) => resolve({ sessionId, sent });
         void actions.submit(submissionOf(choice)).then((outcome) => {
           const completed =
             outcome.kind === 'completed' ||
@@ -130,6 +150,7 @@ export function useDemoStartSource(specId: string): SessionStartSource {
           : { status: 'loading' };
 
   return {
+    owner,
     catalogue: startCatalogue
       ? {
           status: 'ready',

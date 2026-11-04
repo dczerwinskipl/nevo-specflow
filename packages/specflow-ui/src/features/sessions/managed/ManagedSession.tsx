@@ -23,12 +23,10 @@ import {
   MessageComposer,
   Spinner,
   StatusIndicator,
-  TextArea,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  Typography,
   WorkspaceHeader,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
@@ -39,11 +37,7 @@ import {
   cn,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
-import type {
-  ConversationEntry,
-  Interaction,
-  ProviderDescriptor,
-} from '@nevo/specflow-contracts/sessions';
+import type { ConversationEntry, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
 import { ModelEffortPicker } from './ModelEffortPicker';
@@ -55,10 +49,11 @@ import { SessionContext, createSessionContextStack } from './context/SessionCont
 import { realRouteSessionContext } from './context/sessionContextTypes';
 import { useSessionActions, type SessionActionHandlers } from './sessionActions/useSessionActions';
 import { SessionNamingStatus } from './naming/SessionNamingStatus';
+import { InteractionPrompt } from './InteractionPrompt';
 import { SessionReadyEmptyState } from './empty/SessionReadyEmptyState';
-import { useFocusStartedComposer } from '../start/handoff/useFocusStartedComposer';
-import { StartedSessionPlaceholder } from '../start/handoff/StartedSessionPlaceholder';
-import { startedSessionOf, type StartedSession } from '../start/handoff/startedSession';
+import { PendingConversation } from '../start/handoff/PendingConversation';
+import type { StartedSession } from '../start/handoff/startedSession';
+import { useStartedSessionFallback } from '../start/handoff/useStartedSessionFallback';
 import type {
   ContextFact,
   ContextSpecification,
@@ -77,87 +72,6 @@ function browserStorage() {
   } catch {
     return undefined;
   }
-}
-
-function InteractionPrompt({
-  interaction,
-  busy,
-  onRespond,
-}: {
-  interaction: Interaction;
-  busy: boolean;
-  onRespond: (answer: string, optionId?: string, allow?: boolean) => void;
-}) {
-  const { t } = useTranslation();
-  const [answer, setAnswer] = useState('');
-  const unsupported = interaction.kind === 'question' && (interaction.maxSelections ?? 1) > 1;
-
-  return (
-    <section
-      aria-label={t('managedSession.responseRequired')}
-      data-interaction-prompt="true"
-      className="scrollbar-subtle grid max-h-[40dvh] gap-3 overflow-y-auto rounded-control border border-border-subtle p-4"
-    >
-      <Typography as="h2" variant="title-sm">
-        {t('managedSession.responseRequired')}
-      </Typography>
-      <p className="whitespace-pre-wrap break-words text-body-sm">{interaction.prompt}</p>
-      {unsupported ? (
-        <Alert tone="attention" title={t('managedSession.unsupportedQuestion')} />
-      ) : interaction.kind === 'permission' ? (
-        <>
-          <p className="break-words text-body-sm">{interaction.actionSummary}</p>
-          <div className="flex gap-2">
-            <Button disabled={busy} onClick={() => onRespond('', undefined, true)}>
-              {t('managedSession.allow')}
-            </Button>
-            <Button
-              disabled={busy}
-              variant="secondary"
-              onClick={() => onRespond('', undefined, false)}
-            >
-              {t('managedSession.deny')}
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {interaction.options?.map((option) => (
-              <Button
-                key={option.id}
-                className="max-w-full whitespace-normal text-left"
-                disabled={busy}
-                variant="secondary"
-                onClick={() => onRespond('', option.id)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-          {interaction.allowText && (
-            <>
-              <label htmlFor="managed-answer" className="text-body-sm">
-                {t('managedSession.answer')}
-              </label>
-              {/* A structured interaction response, not free prose — the main message composer
-                  below keeps native spellcheck; this one does not need the red squiggly
-                  underlines (owner audit). */}
-              <TextArea
-                id="managed-answer"
-                spellCheck={false}
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-              />
-              <Button disabled={busy || !answer.trim()} onClick={() => onRespond(answer)}>
-                {t('managedSession.respond')}
-              </Button>
-            </>
-          )}
-        </>
-      )}
-    </section>
-  );
 }
 
 /**
@@ -400,7 +314,6 @@ function ManagedSessionConversation({
 }) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(feed.subscribe, feed.getSnapshot, feed.getSnapshot);
-  useFocusStartedComposer(sessionId, !!state.snapshot && !!started);
   // The layout `AppWorkspace` actually resolved (`useWorkspaceLayout`), NOT the shell's
   // `supportsSplit` hint: with `split="dynamic"` a runtime Secondary splits from 730px while
   // `supportsSplit` switches at 840px, and reading the hint here left 730-839 with a split workspace
@@ -883,19 +796,12 @@ function ManagedSessionConversation({
 
   return (
     <AppContent className="flex h-full min-h-0 w-full flex-col">
-      {!snapshot && started && state.connection !== 'error' ? (
-        // Just started here: the ready empty state and the Composer stand in the place of the real
-        // ones, so no loading text shows while the first snapshot loads.
-        <StartedSessionPlaceholder started={started} />
-      ) : !snapshot ? (
-        <div className="grid gap-3 p-5">
-          <p role="status">
-            {t(state.connection === 'error' ? 'managedSession.failed' : 'managedSession.loading')}
-          </p>
-          {state.connection === 'error' && (
-            <Button onClick={() => feed.connect()}>{t('common.retry')}</Button>
-          )}
-        </div>
+      {!snapshot ? (
+        <PendingConversation
+          started={started}
+          connection={state.connection}
+          onRetry={() => feed.connect()}
+        />
       ) : (
         <>
           {snapshot.session.readiness === 'authenticationRequired' && (
@@ -1453,14 +1359,18 @@ export function ManagedSession({
   });
   const snapshot = state.snapshot;
   // Started here and not loaded yet: the start values stand in for the snapshot's.
-  const startedHere = startedSessionOf(sessionId);
-  const started = snapshot ? undefined : startedHere;
-  const sessionProviderId = snapshot?.session.providerId ?? started?.providerId;
+  const fallback = useStartedSessionFallback({
+    owner,
+    sessionId,
+    hasSnapshot: !!snapshot,
+    connection: state.connection,
+  });
+  const sessionProviderId = snapshot?.session.providerId ?? fallback.providerId;
   const provider = providers.data?.items.find((item) => item.providerId === sessionProviderId);
-  const selectedModelId = state.modelOverride ?? snapshot?.session.modelId ?? started?.modelId;
+  const selectedModelId = state.modelOverride ?? snapshot?.session.modelId ?? fallback.modelId;
   const selectedEffort = state.modelOverride
     ? state.effortOverride
-    : (snapshot?.session.effort ?? started?.effort);
+    : (snapshot?.session.effort ?? fallback.effort);
   // `runningTurnId` ("Bieżąca tura" vs "Ostatnia tura" in Context's context-window caption) is
   // live Session state, so it comes from this feed's own snapshot — the same `activeTurn` the
   // Conversation's live Work block reads — not from the supplied Context view model. Until the
@@ -1478,16 +1388,8 @@ export function ManagedSession({
   )?.title;
   const providerId = sessionProviderId;
   const executor = useMemo<ContextFact<SessionExecutor> | undefined>(() => {
-    if (started) {
-      return {
-        status: 'ready',
-        value: {
-          providerId: started.providerIcon ?? started.providerId,
-          providerTitle: started.providerTitle,
-          modelTitle: started.modelTitle,
-          effort: started.effort,
-        },
-      };
+    if (fallback.executor) {
+      return fallback.executor;
     }
 
     if (provider) {
@@ -1519,7 +1421,7 @@ export function ManagedSession({
     providerId,
     executorModelTitle,
     selectedEffort,
-    started,
+    fallback.executor,
   ]);
   const workHistory = useMemo<ContextFact<{ turnId: string }> | undefined>(
     () =>
@@ -1528,10 +1430,10 @@ export function ManagedSession({
           ? { status: 'ready', value: { turnId: workHistoryTurnId } }
           : undefined
         : // A Session just started here has no Turn yet: nothing to wait for.
-          started
+          fallback.pending
           ? undefined
           : { status: 'loading' },
-    [snapshot, workHistoryTurnId, started],
+    [snapshot, workHistoryTurnId, fallback.pending],
   );
   const contextValue = useMemo<SessionContextViewModel>(
     () => ({
@@ -1561,9 +1463,7 @@ export function ManagedSession({
         ? t(`managedSession.${snapshot.session.readiness}`)
         : (snapshot.currentActivity?.label ?? t(`managedSession.${snapshot.session.readiness}`))
       : t(`managedSession.${state.connection}`)
-    : started
-      ? t('managedSession.ready')
-      : undefined;
+    : fallback.subtitle;
   const isWaitingOnProvider =
     !!snapshot &&
     state.connection === 'connected' &&
@@ -1642,7 +1542,7 @@ export function ManagedSession({
   const headerActions = [
     contextAction,
     retryConnectionAction,
-    ...(snapshot || startedHere ? sessionActions.actions : []),
+    ...(snapshot || fallback.startedHere ? sessionActions.actions : []),
   ].filter(Boolean) as WorkspaceHeaderAction[];
 
   return (
@@ -1653,10 +1553,7 @@ export function ManagedSession({
             title={
               namingPending
                 ? t('sessionNaming.provisionalTitle')
-                : (sessionActions.title ??
-                  // A Session started here is still "New session" until it has a name.
-                  startedHere?.title ??
-                  (startedHere ? t('sessionStart.heading') : t('managedSession.title')))
+                : (sessionActions.title ?? fallback.title ?? t('managedSession.title'))
             }
             subtitle={headerSubtitle}
             status={
@@ -1680,7 +1577,7 @@ export function ManagedSession({
           provider={provider}
           selectedModelId={selectedModelId}
           selectedEffort={selectedEffort}
-          started={startedHere}
+          started={fallback.pending}
         />
         {sessionActions.dialogs}
       </AppWorkspace.Primary>

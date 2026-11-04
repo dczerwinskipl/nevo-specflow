@@ -5,6 +5,7 @@ import { browserPage } from '../../../../test-support/browserPage';
 import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
 import {
   antigravityDescriptor,
+  claudeDescriptor,
   codexDescriptor,
   unavailableProviders,
 } from '../catalogue/providerDescriptors.stories-support';
@@ -197,6 +198,33 @@ export const ManagedNoProviderAvailable: Story = {
     // The Runtime is asked again only on request, after signing in.
     await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeEnabled();
     await expect(canvas.getByText('nie wybrano')).toBeVisible();
+  },
+};
+
+/** A ready provider that can run no work mode is not startable: disabled with its reason. */
+export const ManagedProviderWithoutUsableMode: Story = {
+  args: {
+    providers: [
+      {
+        ...claudeDescriptor,
+        providerModes: claudeDescriptor.providerModes?.map((mode) => ({
+          ...mode,
+          readiness: 'unavailable' as const,
+          reason: 'Wymaga zgody administratora.',
+        })),
+      },
+      providerDescriptor({ providerId: 'codex', title: 'Codex', modes: [] }),
+    ],
+  },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeDisabled();
+    await expect(canvas.getByRole('radio', { name: /Claude/ })).not.toBeChecked();
+    await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeDisabled();
+    await expect(canvas.getByText('Wymaga zgody administratora.')).toBeVisible();
+    await expect(canvas.getByText('Brak dostępnego trybu pracy')).toBeVisible();
+    await expect(canvas.getByText('Żaden wykonawca nie jest teraz dostępny.')).toBeVisible();
+    await expect(startButton(canvas)).toBeDisabled();
   },
 };
 

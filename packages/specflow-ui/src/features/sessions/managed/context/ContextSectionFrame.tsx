@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { InformationList, InlineNote, Skeleton, Typography, cn } from '@nevo/ui';
+import { InformationList, InlineNote, Skeleton, Typography } from '@nevo/ui';
 import { contextRowGridClassName } from './ContextNavigationRow';
 
 /**
@@ -27,12 +27,12 @@ export function ContextSection({
 
 /**
  * Loading placeholder at the height of the rows it stands for (`ContextNavigationRow`): each entry of
- * `rows` is the shape of the row it replaces: `navigation` (one line), `identity` (title + secondary
- * line) or `identity-key` (title + a monospace key line, one pixel taller than a plain secondary
- * line). Matching the heights is what keeps everything below from moving when the data arrives. The
- * DS `Skeleton` is decorative (`aria-hidden`); the section's `aria-busy` carries the state.
+ * `rows` is the shape of the row it replaces: `navigation` (one line) or `identity` (title + secondary
+ * line, a key line included: `ContextKey` keeps it one line height). Matching the heights is what
+ * keeps everything below from moving when the data arrives. The DS `Skeleton` is decorative
+ * (`aria-hidden`); the section's `aria-busy` carries the state.
  */
-export type ContextSkeletonShape = 'navigation' | 'identity' | 'identity-key';
+export type ContextSkeletonShape = 'navigation' | 'identity';
 
 export function ContextSkeletonRows({ rows }: { rows: readonly ContextSkeletonShape[] }) {
   return (
@@ -43,11 +43,7 @@ export function ContextSkeletonRows({ rows }: { rows: readonly ContextSkeletonSh
             <Skeleton className="size-[var(--spacing-icon-md)] justify-self-center" />
             <span className="grid min-w-0 gap-0.5">
               <Skeleton className="my-0.5 h-4 w-2/3" />
-              {shape !== 'navigation' && (
-                <Skeleton
-                  className={cn('my-0.5 w-1/3', shape === 'identity-key' ? 'h-[13px]' : 'h-3')}
-                />
-              )}
+              {shape !== 'navigation' && <Skeleton className="my-0.5 h-3 w-1/3" />}
             </span>
             <span aria-hidden="true" />
           </div>

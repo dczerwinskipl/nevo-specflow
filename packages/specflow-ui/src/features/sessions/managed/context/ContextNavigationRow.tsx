@@ -48,6 +48,16 @@ export interface ContextNavigationRowProps {
   ariaLabel?: string;
 }
 
+/**
+ * A Specification/Task key on a row's `secondary` line. A monospace run inside a line set in the
+ * sans font would, aligned on the baseline, stretch the line box past its line height by however
+ * much the two fonts' metrics differ, so the row's height would depend on which fonts are present.
+ * Aligned to the top it keeps the line exactly one line height, the height of the skeleton.
+ */
+export function ContextKey({ children }: { children: ReactNode }) {
+  return <span className="align-top font-mono">{children}</span>;
+}
+
 export const contextRowGridClassName =
   'grid w-full min-w-0 grid-cols-[var(--spacing-icon-md)_minmax(0,1fr)_var(--spacing-icon-sm)] items-center gap-x-3 py-2.5 text-left';
 

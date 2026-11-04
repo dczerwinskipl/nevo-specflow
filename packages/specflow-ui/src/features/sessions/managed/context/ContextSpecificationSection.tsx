@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { InformationList } from '@nevo/ui';
-import { ContextNavigationRow } from './ContextNavigationRow';
+import { ContextKey, ContextNavigationRow } from './ContextNavigationRow';
 import { ContextNote, ContextSection, ContextSkeletonRows } from './ContextSectionFrame';
 import { isRequired, isSectionPresent, resolveSection } from './sessionContextAvailability';
 import type { ContextSpecification, SessionContextViewModel } from './sessionContextTypes';
@@ -42,9 +42,7 @@ export function ContextSpecificationSection({
       busy={resolved.kind === 'skeleton'}
     >
       {resolved.kind === 'skeleton' && (
-        <ContextSkeletonRows
-          rows={onOpenDocuments ? ['identity-key', 'navigation'] : ['identity-key']}
-        />
+        <ContextSkeletonRows rows={onOpenDocuments ? ['identity', 'navigation'] : ['identity']} />
       )}
       {resolved.kind === 'ready' && onOpenSpecification && (
         <InformationList>
@@ -52,7 +50,7 @@ export function ContextSpecificationSection({
             icon="workflow"
             emphasis="identity"
             label={resolved.value.title}
-            secondary={<span className="font-mono">{resolved.value.key}</span>}
+            secondary={<ContextKey>{resolved.value.key}</ContextKey>}
             onClick={() => onOpenSpecification(resolved.value)}
           />
           {onOpenDocuments && (

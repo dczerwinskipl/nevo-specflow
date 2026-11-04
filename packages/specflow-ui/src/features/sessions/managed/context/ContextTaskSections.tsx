@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { InformationList, StatusIndicator, Typography } from '@nevo/ui';
-import { ContextNavigationRow } from './ContextNavigationRow';
+import { ContextKey, ContextNavigationRow } from './ContextNavigationRow';
 import {
   ContextNote,
   ContextSection,
@@ -43,7 +43,7 @@ export function ContextExecutionSection({
     value.scope.kind === 'task'
       ? Array.from(
           { length: Math.min(Math.max(value.scope.taskCount, 1), maxExecutionSkeletonRows) },
-          () => 'identity-key' as const,
+          () => 'identity' as const,
         )
       : ['navigation'];
 
@@ -231,7 +231,7 @@ function TaskLink({
       label={task.title}
       secondary={
         <>
-          <span className="font-mono">{task.key}</span>
+          <ContextKey>{task.key}</ContextKey>
           {task.note && <span className="block text-content-secondary">{task.note}</span>}
         </>
       }

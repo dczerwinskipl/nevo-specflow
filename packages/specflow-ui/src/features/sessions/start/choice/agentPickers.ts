@@ -1,26 +1,23 @@
-import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import type { ModelEffortProvider, ModelEffortValue, WorkModeOption } from '../../../sessions';
-import {
-  providerDefaultEffort,
-  selectModel,
-  supportedModes,
-  type AgentChoice,
-} from '../options/agentChoice';
-
-type Provider = DemoCatalogue['providers'][number];
+import type { Message } from '../../../../i18n/message';
+import type { StartProvider } from '../catalogue/startCatalogue';
+import type { ModelEffortProvider, ModelEffortValue } from '../../managed/ModelEffortPicker';
+import type { WorkModeOption } from '../../managed/workModes';
+import { providerDefaultEffort, listedModes, selectModel, type AgentChoice } from './agentChoice';
 
 /**
- * The creation catalogue's provider as the Composer's Model · Effort picker reads it. The catalogue
- * always lets the start screen pick a model and (where the model has any) an effort.
+ * The provider as the Composer's Model · Effort picker reads it. The start catalogue always lets
+ * the start screen pick a model and (where the model has any) an effort.
  */
-export function pickerProvider(provider: Provider | undefined): ModelEffortProvider | undefined {
+export function pickerProvider(
+  provider: StartProvider | undefined,
+): ModelEffortProvider | undefined {
   return provider
     ? {
         capabilities: { modelOverride: true, effortOverride: true },
         models: provider.models.map((model) => ({
           modelId: model.id,
           title: model.title,
-          efforts: model.efforts,
+          efforts: [...model.efforts],
         })),
       }
     : undefined;
@@ -42,7 +39,7 @@ export function modelEffortValue(choice: AgentChoice): ModelEffortValue | undefi
  */
 export function applyModelEffort(
   choice: AgentChoice,
-  provider: Provider | undefined,
+  provider: StartProvider | undefined,
   modelId: string,
   effort: string | undefined,
 ): AgentChoice {
@@ -53,13 +50,20 @@ export function applyModelEffort(
 
 /**
  * The selected model's work modes as the Composer's work-mode picker reads them: the provider
- * catalogue's own ids and titles, in catalogue order (see `supportedModes`). The creation
- * catalogue reports no per-mode availability, so every listed mode is selectable.
+ * catalogue's own ids and titles, in catalogue order, an unavailable mode disabled with its reason.
  */
-export function pickerModes(provider: Provider | undefined, modelId: string): WorkModeOption[] {
+export function pickerModes(
+  provider: StartProvider | undefined,
+  modelId: string,
+  text: (title: Message | string) => string,
+): WorkModeOption[] {
   const model = provider?.models.find((m) => m.id === modelId);
 
-  return supportedModes(provider, model).map((mode) => ({ id: mode.id, title: mode.title }));
+  return (model ? listedModes(provider, model) : []).map((mode) => ({
+    id: mode.id,
+    title: text(mode.title),
+    ...(mode.available ? {} : { disabled: true, ...(mode.reason ? { reason: mode.reason } : {}) }),
+  }));
 }
 
 /** The chosen mode id; none (the placeholder) before a model decides which modes exist. */

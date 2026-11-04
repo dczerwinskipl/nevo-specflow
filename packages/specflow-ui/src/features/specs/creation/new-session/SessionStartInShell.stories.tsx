@@ -108,9 +108,14 @@ export const Open: Story = {
     await expect(canvas.getByRole('heading', { level: 2, name: 'Rozpocznij sesję' })).toBeVisible();
     // The three field rows exist before a model is chosen; Effort and Work mode wait for it.
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
-    await expect(canvas.getByRole('radiogroup', { name: 'Effort' })).toBeVisible();
-    await expect(canvas.getByRole('radio', { name: 'Domyślny' })).toBeDisabled();
-    await expect(canvas.getByRole('combobox', { name: 'Tryb pracy' })).toBeDisabled();
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toHaveTextContent('Domyślny');
+    const modes = canvas.getByRole('radiogroup', { name: 'Tryb pracy' });
+    await expect(modes).toBeVisible();
+    for (const mode of within(modes).getAllByRole('radio')) {
+      await expect(mode).toBeDisabled();
+    }
+
     await expect(startButton(canvas)).toBeDisabled();
     await expect(canvas.getByText('Wybierz model.')).toBeVisible();
     // The Composer is visible but inactive and shows no model or mode pickers.
@@ -134,13 +139,10 @@ export const ClaudeModelChosen: Story = {
   play: async ({ canvas }) => {
     await settle();
     await expect(provider(canvas, /Claude/)).toBeChecked();
-    await expect(canvas.getByRole('radio', { name: 'Domyślny' })).toBeChecked();
-    await expect(canvas.getByRole('radio', { name: 'low' })).toBeEnabled();
-    await expect(canvas.getByRole('radio', { name: 'high' })).toBeEnabled();
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeEnabled();
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toHaveTextContent('Domyślny');
     // The provider's default mode is preselected.
-    await expect(canvas.getByRole('combobox', { name: 'Tryb pracy' })).toHaveTextContent(
-      'Accept edits',
-    );
+    await expect(canvas.getByRole('radio', { name: 'Accept edits' })).toBeChecked();
     await expect(startButton(canvas)).toBeEnabled();
     await expect(
       canvas.getByText('Sesja otworzy się bez wiadomości, a agent nada jej nazwę po pierwszej.'),
@@ -168,9 +170,7 @@ export const AntigravityLongModelList: Story = {
     const options = within(await body().findByRole('listbox'));
     await userEvent.click(await options.findByRole('option', { name: /Gemini 2 Pro/ }));
     await waitFor(() => expect(body().queryByRole('listbox')).toBeNull());
-    await expect(canvas.getByRole('combobox', { name: 'Tryb pracy' })).toHaveTextContent(
-      'Planowanie',
-    );
+    await expect(canvas.getByRole('radio', { name: 'Planowanie' })).toBeChecked();
     await expect(startButton(canvas)).toBeEnabled();
   },
 };
@@ -278,7 +278,7 @@ export const NarrowModelChosen: Story = {
     await settle(375, 812);
     await expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull();
     await expect(startButton(canvas)).toBeEnabled();
-    await expect(canvas.getByRole('combobox', { name: 'Tryb pracy' })).toBeEnabled();
+    await expect(canvas.getByRole('radio', { name: 'Accept edits' })).toBeEnabled();
     await expectNoHorizontalScroll();
     await expectActionRowClear(canvas);
   },

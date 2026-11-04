@@ -17,6 +17,7 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
+import { useMessage } from '../../../../i18n/message';
 import { useWorkspaceLabels } from '../../../../app/navigation/useWorkspaceLabels';
 import { ComposerModePicker, ModelEffortPicker, SessionReadyEmptyState } from '../../../sessions';
 import {
@@ -29,24 +30,23 @@ import type {
 } from '../../../sessions/managed/context/sessionContextTypes';
 import { useSessionActions } from '../../../sessions/managed/sessionActions/useSessionActions';
 import {
-  initialAgentChoice,
-  providerDefaultEffort,
-  selectModel,
-  selectProvider,
-  type AgentChoice,
-} from '../options/agentChoice';
-import {
-  SessionStartForm,
-  type SessionStartStatus,
-} from '../session-start/start-form/SessionStartForm';
-import {
   applyModelEffort,
+  initialAgentChoice,
+  initialSessionName,
   modelEffortValue,
   modeValue,
   pickerModes,
   pickerProvider,
-} from '../session-start/agentPickers';
-import { initialSessionName, type SessionNameChoice } from '../session-start/sessionName';
+  providerDefaultEffort,
+  selectModel,
+  selectProvider,
+  SessionStartForm,
+  startCatalogueFromDemo,
+  type AgentChoice,
+  type SessionNameChoice,
+  type SessionStartStatus,
+  type StartCatalogue,
+} from '../../../sessions';
 import { startCatalogue } from './sessionStartCatalogue.stories-support';
 
 const sessionId = '00000000-0000-4000-8000-0000000000a1';
@@ -75,11 +75,14 @@ export interface SessionStartInitialState {
   phase?: SessionStartPhase;
 }
 
-function initialAgent(catalogue: DemoCatalogue, state: SessionStartInitialState): AgentChoice {
+function initialAgent(catalogue: StartCatalogue, state: SessionStartInitialState): AgentChoice {
   let agent = initialAgentChoice(catalogue);
   const { initialProviderId, initialModelId } = state;
   if (initialProviderId) {
-    agent = selectProvider(agent, initialProviderId);
+    agent = selectProvider(
+      agent,
+      catalogue.providers.find((p) => p.id === initialProviderId),
+    );
   }
 
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
@@ -113,12 +116,14 @@ export function SessionStartShellPreview({
   outcome?: 'ok' | 'failed';
   startDelayMs?: number | null;
 } & SessionStartInitialState) {
+  const start = useMemo(() => startCatalogueFromDemo(catalogue), [catalogue]);
+
   return (
     <div style={{ width: '100%', height: '100vh' }}>
       <AppWorkspaceProvider>
         <AppShell navigation={<div>Projekt</div>} style={{ height: '100%', width: '100%' }}>
           <SessionStartWorkspace
-            catalogue={catalogue}
+            catalogue={start}
             outcome={outcome}
             startDelayMs={startDelayMs}
             initial={initial}
@@ -135,7 +140,7 @@ function SessionStartWorkspace({
   startDelayMs,
   initial,
 }: {
-  catalogue: DemoCatalogue;
+  catalogue: StartCatalogue;
   outcome: 'ok' | 'failed';
   startDelayMs: number | null;
   initial: SessionStartInitialState;
@@ -184,7 +189,7 @@ function SessionStartWorkspace({
       executor: {
         status: 'ready',
         value: {
-          providerId: provider?.mark ?? '',
+          providerId: provider?.icon ?? '',
           providerTitle: provider?.title ?? notChosen,
           modelTitle: provider ? (model?.title ?? notChosen) : undefined,
           effort: model && agent.effort !== providerDefaultEffort ? agent.effort : undefined,
@@ -270,7 +275,7 @@ function StartConversation({
   phase,
   onStart,
 }: {
-  catalogue: DemoCatalogue;
+  catalogue: StartCatalogue;
   agent: AgentChoice;
   onAgentChange: (agent: AgentChoice) => void;
   name: SessionNameChoice;
@@ -279,6 +284,7 @@ function StartConversation({
   onStart: () => void;
 }) {
   const { t } = useTranslation();
+  const text = useMessage();
   const layout = useWorkspaceLayout();
   const isSplit = layout.mode === 'split';
   const localScroll = layout.primaryScrollOwner === 'local';
@@ -317,7 +323,7 @@ function StartConversation({
       <div className="mx-auto flex min-h-full w-full max-w-content-standard shrink-0 flex-col px-5 py-5">
         {started ? (
           <SessionReadyEmptyState
-            providerId={provider?.mark}
+            providerId={provider?.icon}
             providerTitle={provider?.title ?? ''}
           />
         ) : (
@@ -389,7 +395,7 @@ function StartConversation({
             {started && (
               <div className="flex min-w-0 items-center gap-1">
                 <ComposerModePicker
-                  options={pickerModes(provider, agent.modelId)}
+                  options={pickerModes(provider, agent.modelId, text)}
                   value={modeValue(agent)}
                   onChange={(mode) => onAgentChange({ ...agent, mode })}
                   compact={!isSplit}

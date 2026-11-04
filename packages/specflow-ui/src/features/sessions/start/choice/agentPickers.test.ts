@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
+import type { StartProvider } from '../catalogue/startCatalogue';
 import {
   applyModelEffort,
   modelEffortValue,
@@ -8,23 +8,23 @@ import {
   pickerProvider,
 } from './agentPickers';
 
-const provider = {
+const mode = (id: string, title: string, available = true) => ({ id, title, available });
+const provider: StartProvider = {
   id: 'p1',
+  title: 'P1',
+  icon: undefined,
   available: true,
-  modes: [
-    { id: 'edit', title: 'Edit' },
-    { id: 'agent', title: 'Agent' },
-    { id: 'ask', title: 'Ask' },
-  ],
+  modes: [mode('edit', 'Edit'), mode('agent', 'Agent'), mode('ask', 'Ask')],
   defaultModeId: 'agent',
   models: [
-    { id: 'm-agent', title: 'Agent model', modes: ['agent', 'ask', 'custom'], efforts: [] },
-    { id: 'm-edit', title: 'Edit model', modes: ['edit', 'ask'], efforts: ['low', 'high'] },
+    { id: 'm-agent', title: 'Agent model', modeIds: ['agent', 'ask', 'custom'], efforts: [] },
+    { id: 'm-edit', title: 'Edit model', modeIds: ['edit', 'ask'], efforts: ['low', 'high'] },
   ],
-} as unknown as DemoCatalogue['providers'][number];
+};
 const empty = { providerId: 'p1', modelId: '', effort: 'provider-default', mode: '' };
+const text = (title: unknown) => String(title);
 
-describe('agent pickers over the creation catalogue', () => {
+describe('agent pickers over the start catalogue', () => {
   it('lets the Composer model picker offer every catalogue model with its efforts', () => {
     expect(pickerProvider(provider)).toEqual({
       capabilities: { modelOverride: true, effortOverride: true },
@@ -61,16 +61,27 @@ describe('agent pickers over the creation catalogue', () => {
 
   it("offers the chosen model's modes under the catalogue's own titles, in catalogue order", () => {
     // `custom` is a model mode the provider does not describe: nothing to call it, so left out.
-    expect(pickerModes(provider, 'm-agent')).toEqual([
+    expect(pickerModes(provider, 'm-agent', text)).toEqual([
       { id: 'agent', title: 'Agent' },
       { id: 'ask', title: 'Ask' },
     ]);
-    expect(pickerModes(provider, 'm-edit')).toEqual([
+    expect(pickerModes(provider, 'm-edit', text)).toEqual([
       { id: 'edit', title: 'Edit' },
       { id: 'ask', title: 'Ask' },
     ]);
-    expect(pickerModes(provider, '')).toEqual([]);
-    expect(pickerModes(undefined, 'm-agent')).toEqual([]);
+    expect(pickerModes(provider, '', text)).toEqual([]);
+    expect(pickerModes(undefined, 'm-agent', text)).toEqual([]);
+  });
+
+  it('marks an unavailable mode disabled, with the catalogue reason', () => {
+    const locked = {
+      ...provider,
+      modes: [{ ...mode('edit', 'Edit', false), reason: 'Needs approval' }, mode('ask', 'Ask')],
+    };
+    expect(pickerModes(locked, 'm-edit', text)).toEqual([
+      { id: 'edit', title: 'Edit', disabled: true, reason: 'Needs approval' },
+      { id: 'ask', title: 'Ask' },
+    ]);
   });
 
   it('selects the opaque mode id as the session start command carries it', () => {

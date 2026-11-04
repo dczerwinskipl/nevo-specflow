@@ -15,18 +15,17 @@ import { CreateLeaveDialog } from '../form/CreateLeaveDialog';
 import { useCreateLeaveGuard } from '../form/useCreateLeaveGuard';
 import { useCreateDemoSpecification } from '../operation/useCreateDemoSpecification';
 import {
-  initialAgentChoice,
-  providerDefaultEffort,
-  type AgentChoice,
-} from '../options/agentChoice';
-import { CreateAgentSection } from '../options/CreateAgentSection';
-import { SessionNameSection } from '../session-start/SessionNameSection';
-import {
   chosenSessionName,
+  initialAgentChoice,
   initialSessionName,
+  newSessionReadiness,
+  providerDefaultEffort,
+  SessionNameSection,
+  startCatalogueFromDemo,
+  type AgentChoice,
   type SessionNameChoice,
-} from '../session-start/sessionName';
-import { newSessionReadiness } from './newSessionReadiness';
+} from '../../../sessions';
+import { CreateAgentSection } from '../options/CreateAgentSection';
 import { PinnedSpecification } from './PinnedSpecification';
 import type { SessionStart } from './sessionStart';
 
@@ -60,7 +59,9 @@ export function NewSessionForm({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
   const { announce, region } = useAnnouncer();
-  const [agent, setAgent] = useState<AgentChoice>(() => initialAgentChoice(catalogue));
+  const [agent, setAgent] = useState<AgentChoice>(() =>
+    initialAgentChoice(startCatalogueFromDemo(catalogue)),
+  );
   const [name, setName] = useState<SessionNameChoice>(initialSessionName);
   // What the started Session is given, captured when the user starts it: the operation may settle
   // after further edits, and must open the Session with what was actually submitted.
@@ -86,7 +87,7 @@ export function NewSessionForm({
   const reveal = useRevealFailure(state.submitFailed, state.errorSeq, failure);
   const locked = busy || uncertain || recovery || forbidden || configurationUnavailable;
   const { prerequisite, canStart } = newSessionReadiness({
-    catalogue,
+    catalogue: startCatalogueFromDemo(catalogue),
     agent,
     name,
     configurationUnavailable,

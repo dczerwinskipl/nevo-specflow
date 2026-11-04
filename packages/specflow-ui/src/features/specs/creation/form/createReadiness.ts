@@ -1,7 +1,7 @@
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
-import { providerDefaultEffort, type AgentChoice } from '../options/agentChoice';
+import { providerDefaultEffort, type AgentChoice } from '../../../sessions';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
 import { problems as workspaceProblems } from '../workspace/model/workspaceValidation';
 import { type WorkspaceChoice } from '../workspace/model/workspaceChoice';

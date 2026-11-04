@@ -1841,6 +1841,10 @@
       "effort": "Effort",
       "effortDefault": "Domyślny"
     },
+    "modes": {
+      "readOnly": "Tylko odczyt",
+      "workspaceWrite": "Zapis w obszarze roboczym"
+    },
     "composer": {
       "placeholder": "Wybierz agenta i rozpocznij sesję"
     },

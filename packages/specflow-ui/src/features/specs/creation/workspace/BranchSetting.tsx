@@ -3,7 +3,7 @@ import { TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { BRANCH_NAME_MAX_LENGTH, type CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
-import { OwnValueSetting } from '../form/OwnValueSetting';
+import { OwnValueSetting } from '../../../../shared/controls/OwnValueSetting';
 import { branchFieldValue } from './model/createRequest';
 import type { SettingsUpdate } from './settingsTypes';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';

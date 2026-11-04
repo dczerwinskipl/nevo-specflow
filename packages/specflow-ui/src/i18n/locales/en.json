@@ -1841,6 +1841,10 @@
       "effort": "Effort",
       "effortDefault": "Default"
     },
+    "modes": {
+      "readOnly": "Read only",
+      "workspaceWrite": "Workspace write"
+    },
     "composer": {
       "placeholder": "Choose the agent and start the session"
     },

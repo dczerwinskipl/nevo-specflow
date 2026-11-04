@@ -1,10 +1,10 @@
 import { cn, StatusIndicator, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { useMessage } from '../../../../i18n/message';
-import { SessionProviderIcon } from '../../../sessions';
-import { ChoiceTile, ChoiceTileGroup } from '../options/ChoiceTile';
-import { providerStatus } from '../options/providerStatus';
+import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
+import { SessionProviderIcon } from '../../shared/SessionProviderIcon';
+import type { StartCatalogue } from '../catalogue/startCatalogue';
+import { providerStatus } from './providerStatus';
 
 /**
  * Which agent runs the Session: one tile per catalogue provider. Chosen only when a Session starts —
@@ -16,7 +16,7 @@ export function ProviderChoice({
   labelledBy,
   onSelect,
 }: {
-  catalogue: DemoCatalogue;
+  catalogue: StartCatalogue;
   providerId: string;
   /** The heading/legend that names the group. */
   labelledBy: string;
@@ -51,7 +51,7 @@ export function ProviderChoice({
             checked={providerId === p.id}
             disabled={!p.available}
             onSelect={() => onSelect(p.id)}
-            icon={<SessionProviderIcon providerId={p.mark} />}
+            icon={<SessionProviderIcon providerId={p.icon} />}
             title={p.title}
             description={status.access ? text(status.access) : undefined}
             meta={
@@ -64,7 +64,7 @@ export function ProviderChoice({
                 <span>{text(status.availability)}</span>
               )
             }
-            note={status.note}
+            note={status.note ? text(status.note) : undefined}
           />
         );
       })}

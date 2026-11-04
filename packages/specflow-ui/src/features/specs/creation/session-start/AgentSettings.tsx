@@ -1,15 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceCapabilities } from '@nevo/ui';
-import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import { ComposerModePicker, ModelEffortPicker } from '../../../sessions';
-import type { AgentChoice } from '../options/agentChoice';
+import { useMessage } from '../../../../i18n/message';
 import {
   applyModelEffort,
+  ComposerModePicker,
+  ModelEffortPicker,
   modelEffortValue,
   modeValue,
   pickerModes,
   pickerProvider,
-} from './agentPickers';
+  type AgentChoice,
+  type StartCatalogue,
+} from '../../../sessions';
 
 /**
  * The first Turn's work mode and model · effort, shown with the Session Composer's own pickers so a
@@ -23,19 +25,20 @@ export function AgentSettings({
   locked,
   onChange,
 }: {
-  catalogue: DemoCatalogue;
+  catalogue: StartCatalogue;
   choice: AgentChoice;
   locked: boolean;
   onChange: (choice: AgentChoice) => void;
 }) {
   const { t } = useTranslation();
+  const text = useMessage();
   const { supportsSplit } = useWorkspaceCapabilities();
   const provider = catalogue.providers.find((p) => p.id === choice.providerId);
 
   const mode = (
     <div key="mode" className="flex min-w-0 items-center gap-1">
       <ComposerModePicker
-        options={pickerModes(provider, choice.modelId)}
+        options={pickerModes(provider, choice.modelId, text)}
         value={modeValue(choice)}
         onChange={(mode) => onChange({ ...choice, mode })}
         disabled={locked}

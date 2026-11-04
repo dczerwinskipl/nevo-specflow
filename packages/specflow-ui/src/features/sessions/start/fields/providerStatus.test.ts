@@ -13,12 +13,12 @@ function providerStatus(...args: Parameters<typeof rawProviderStatus>) {
   };
 }
 
-const base = { available: true, connection: 'unknown' } as const;
+const base = { available: true, access: undefined } as const;
 
 describe('providerStatus', () => {
   it('maps a known connection to an access statement and never mentions the demo profile', () => {
-    expect(providerStatus({ ...base, connection: 'api' }, { demo: true }).access).toBe('API');
-    expect(providerStatus({ ...base, connection: 'subscription' }, { demo: true }).access).toBe(
+    expect(providerStatus({ ...base, access: 'api' }, { demo: true }).access).toBe('API');
+    expect(providerStatus({ ...base, access: 'subscription' }, { demo: true }).access).toBe(
       'Subskrypcja',
     );
   });
@@ -31,7 +31,7 @@ describe('providerStatus', () => {
       availability: 'Dostępny w demo',
       tone: 'info',
     });
-    expect(providerStatus(base, { demo: false } as never)).toMatchObject({
+    expect(providerStatus(base, { demo: false })).toMatchObject({
       availability: 'Dostępny',
       tone: 'success',
     });
@@ -45,7 +45,7 @@ describe('providerStatus', () => {
   it('shows the reason of an unavailable provider without access or indicator', () => {
     expect(
       providerStatus(
-        { ...base, connection: 'api', available: false, reason: 'Brak adaptera' },
+        { ...base, access: 'api', available: false, reason: 'Brak adaptera' },
         { demo: true },
       ),
     ).toMatchObject({ availability: 'Brak adaptera', tone: undefined, access: undefined });

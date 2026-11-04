@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { catalogue } from '../options/creationCatalogue.stories-support';
+import {
+  codexClaudeCatalogue as catalogue,
+  offlineCatalogue,
+} from '../catalogue/startCatalogue.stories-support';
 import { newSessionReadiness } from './newSessionReadiness';
 
 const ready = {
@@ -18,11 +21,9 @@ describe('newSessionReadiness', () => {
   });
 
   it('says that no agent is available rather than asking to choose one', () => {
-    const offline = {
-      ...catalogue,
-      providers: catalogue.providers.map((p) => ({ ...p, available: false })),
-    };
-    expect(reason({ ...ready, catalogue: offline })).toBe('sessionStart.prerequisite.noProvider');
+    expect(reason({ ...ready, catalogue: offlineCatalogue })).toBe(
+      'sessionStart.prerequisite.noProvider',
+    );
   });
 
   it('asks for the model before the mode, and for the mode before the name', () => {
@@ -35,9 +36,33 @@ describe('newSessionReadiness', () => {
     );
   });
 
+  it('asks for a mode the model runs and the provider currently offers', () => {
+    expect(reason({ ...ready, agent: { ...ready.agent, modelId: 'model-b', mode: 'edit' } })).toBe(
+      'create.prerequisite.mode',
+    );
+    const locked = {
+      ...catalogue,
+      providers: catalogue.providers.map((p) => ({
+        ...p,
+        modes: p.modes.map((m) => ({ ...m, available: m.id !== 'agent' })),
+      })),
+    };
+    expect(reason({ ...ready, catalogue: locked })).toBe('create.prerequisite.mode');
+  });
+
   it('asks for an effort the model supports', () => {
     expect(reason({ ...ready, agent: { ...ready.agent, effort: 'not-an-effort' } })).toBe(
       'create.prerequisite.model',
+    );
+  });
+
+  it('needs no model from a provider that offers no model choice', () => {
+    const plain = {
+      ...catalogue,
+      providers: catalogue.providers.map((p) => ({ ...p, models: [] })),
+    };
+    expect(reason({ ...ready, catalogue: plain, agent: { ...ready.agent, modelId: '' } })).toBe(
+      undefined,
     );
   });
 

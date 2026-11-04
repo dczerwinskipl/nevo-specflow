@@ -10,8 +10,9 @@ import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import {
   initialAgentChoice,
   providerDefaultEffort,
+  startCatalogueFromDemo,
   type AgentChoice,
-} from '../options/agentChoice';
+} from '../../../sessions';
 import { CreateAgentSection } from '../options/CreateAgentSection';
 import { CreateBasicsSection } from '../options/CreateBasicsSection';
 import { ArchetypeSection } from '../options/ArchetypeSection';
@@ -87,7 +88,9 @@ export function CreateDemoForm({
   const [method, setMethod] = useState(''),
     [title, setTitle] = useState(''),
     [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(initialArchetypeChoice),
-    [agent, setAgent] = useState<AgentChoice>(() => initialAgentChoice(catalogue));
+    [agent, setAgent] = useState<AgentChoice>(() =>
+      initialAgentChoice(startCatalogueFromDemo(catalogue)),
+    );
 
   const archetype = selectedArchetype(catalogue, archetypeChoice);
   const optionalDocumentIds = archetype ? tickedTemplates(archetype, archetypeChoice) : [];

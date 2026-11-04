@@ -1,10 +1,8 @@
-import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { message, type Message } from '../../../../i18n/message';
-
-type Provider = DemoCatalogue['providers'][number];
+import type { StartCatalogue, StartProvider } from '../catalogue/startCatalogue';
 
 export interface ProviderStatus {
-  /** How the provider is accessed; absent when the contract does not state it (never a filler). */
+  /** How the provider is accessed; absent when the catalogue does not state it (never a filler). */
   readonly access: Message | undefined;
   /**
    * Availability label. The catalogue's reason text of an unavailable provider replaces the generic
@@ -13,13 +11,16 @@ export interface ProviderStatus {
   readonly availability: Message | string;
   /** Decorative indicator tone for the availability; unavailable providers carry no dot. */
   readonly tone: 'info' | 'success' | undefined;
-  /** Extra contract reason shown for an available provider (e.g. a caveat). */
-  /** Catalogue-authored caveat text, shown as it is. */
-  readonly note: string | undefined;
+  /** Catalogue-authored caveat of an available provider, shown as it is. */
+  readonly note: Message | string | undefined;
 }
 
-function nonEmpty(value?: string) {
-  const trimmed = value?.trim();
+function nonEmpty(value?: Message | string) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
   if (!trimmed) {
     return undefined;
   }
@@ -34,16 +35,13 @@ const accessLabels = {
 
 /**
  * Projects catalogue fields into card text. Nothing is invented: an unstated access method or an
- * unknown quota is simply not shown (no "unknown" filler); the contract has no known quota state.
+ * unknown quota is simply not shown (no "unknown" filler).
  */
 export function providerStatus(
-  provider: Pick<Provider, 'available' | 'connection' | 'reason'>,
-  catalogue: Pick<DemoCatalogue, 'demo'>,
+  provider: Pick<StartProvider, 'available' | 'access' | 'reason'>,
+  catalogue: Pick<StartCatalogue, 'demo'>,
 ): ProviderStatus {
-  const access =
-    provider.connection === 'api' || provider.connection === 'subscription'
-      ? accessLabels[provider.connection]
-      : undefined;
+  const access = provider.access ? accessLabels[provider.access] : undefined;
   const reason = nonEmpty(provider.reason);
   if (!provider.available) {
     return {

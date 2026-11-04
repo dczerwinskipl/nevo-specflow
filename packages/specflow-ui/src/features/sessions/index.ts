@@ -14,3 +14,36 @@ export { ComposerModePicker } from './managed/ComposerPresetPicker';
 export type { WorkModeOption } from './managed/workModes';
 export { SessionReadyEmptyState } from './managed/empty/SessionReadyEmptyState';
 export { SessionNamingStatus } from './managed/naming/SessionNamingStatus';
+// The start of a Session (new-session-ui-spec.md): the provider-neutral catalogue and choice model,
+// the labelled agent fields shared with Create with an agent, and the start screen itself.
+export { startCatalogueFromDemo } from './start/catalogue/fromDemoCatalogue';
+export type {
+  StartCatalogue,
+  StartMode,
+  StartModel,
+  StartProvider,
+} from './start/catalogue/startCatalogue';
+export {
+  initialAgentChoice,
+  providerDefaultEffort,
+  selectModel,
+  selectProvider,
+  type AgentChoice,
+} from './start/choice/agentChoice';
+export {
+  chosenSessionName,
+  initialSessionName,
+  type SessionNameChoice,
+} from './start/choice/sessionName';
+export { AgentFields } from './start/fields/AgentFields';
+export { ProviderChoice } from './start/fields/ProviderChoice';
+export { SessionNameSection } from './start/fields/SessionNameSection';
+export { newSessionReadiness } from './start/choice/newSessionReadiness';
+export {
+  applyModelEffort,
+  modelEffortValue,
+  modeValue,
+  pickerModes,
+  pickerProvider,
+} from './start/choice/agentPickers';
+export { SessionStartForm, type SessionStartStatus } from './start/form/SessionStartForm';

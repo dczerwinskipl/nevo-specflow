@@ -1,10 +1,14 @@
-import { useId } from 'react';
+import { useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import { selectProvider, type AgentChoice } from './agentChoice';
+import {
+  ProviderChoice,
+  selectProvider,
+  startCatalogueFromDemo,
+  type AgentChoice,
+} from '../../../sessions';
 import { AgentSettings } from '../session-start/AgentSettings';
-import { ProviderChoice } from '../session-start/ProviderChoice';
 
 /**
  * The agent of a new Session (the specification's initial one, or New Session's): the shared start block without a first
@@ -28,6 +32,7 @@ export function CreateAgentSection({
   intro?: string;
 }) {
   const { t } = useTranslation();
+  const start = useMemo(() => startCatalogueFromDemo(catalogue), [catalogue]);
   const legendId = useId();
   const settingsId = useId();
 
@@ -43,10 +48,17 @@ export function CreateAgentSection({
           </Typography>
         </div>
         <ProviderChoice
-          catalogue={catalogue}
+          catalogue={start}
           providerId={choice.providerId}
           labelledBy={legendId}
-          onSelect={(providerId) => onChange(selectProvider(choice, providerId))}
+          onSelect={(providerId) =>
+            onChange(
+              selectProvider(
+                choice,
+                start.providers.find((p) => p.id === providerId),
+              ),
+            )
+          }
         />
       </fieldset>
       <div className="grid gap-1.5">
@@ -58,12 +70,7 @@ export function CreateAgentSection({
           aria-labelledby={settingsId}
           className="flex min-w-0 flex-wrap items-center gap-1"
         >
-          <AgentSettings
-            catalogue={catalogue}
-            choice={choice}
-            locked={locked}
-            onChange={onChange}
-          />
+          <AgentSettings catalogue={start} choice={choice} locked={locked} onChange={onChange} />
         </div>
       </div>
     </div>

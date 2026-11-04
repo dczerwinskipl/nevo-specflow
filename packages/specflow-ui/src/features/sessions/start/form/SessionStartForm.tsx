@@ -1,14 +1,14 @@
 import { useId, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Typography } from '@nevo/ui';
-import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import { useMessage } from '../../../../../i18n/message';
-import { selectProvider, type AgentChoice } from '../../options/agentChoice';
-import { newSessionReadiness } from '../../new-session/newSessionReadiness';
-import { AgentFields } from '../AgentFields';
-import { ProviderChoice } from '../ProviderChoice';
-import { SessionNameSection } from '../SessionNameSection';
-import type { SessionNameChoice } from '../sessionName';
+import { useMessage } from '../../../../i18n/message';
+import type { StartCatalogue } from '../catalogue/startCatalogue';
+import { selectProvider, type AgentChoice } from '../choice/agentChoice';
+import { newSessionReadiness } from '../choice/newSessionReadiness';
+import type { SessionNameChoice } from '../choice/sessionName';
+import { AgentFields } from '../fields/AgentFields';
+import { ProviderChoice } from '../fields/ProviderChoice';
+import { SessionNameSection } from '../fields/SessionNameSection';
 import { StartFormActions } from './StartFormActions';
 
 /** `failed`: the last start did not succeed; the choices are kept and the form is unlocked. */
@@ -31,7 +31,7 @@ export function SessionStartForm({
   configurationUnavailable = false,
   onStart,
 }: {
-  catalogue: DemoCatalogue;
+  catalogue: StartCatalogue;
   agent: AgentChoice;
   onAgentChange: (agent: AgentChoice) => void;
   name: SessionNameChoice;
@@ -84,7 +84,14 @@ export function SessionStartForm({
             catalogue={catalogue}
             providerId={agent.providerId}
             labelledBy={agentId}
-            onSelect={(providerId) => onAgentChange(selectProvider(agent, providerId))}
+            onSelect={(providerId) =>
+              onAgentChange(
+                selectProvider(
+                  agent,
+                  catalogue.providers.find((p) => p.id === providerId),
+                ),
+              )
+            }
           />
         </fieldset>
         <AgentFields

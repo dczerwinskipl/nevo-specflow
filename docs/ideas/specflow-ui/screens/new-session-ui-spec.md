@@ -86,7 +86,10 @@ saved.
 - **(c) Start.** **Start session** (or Enter in the name field) locks the form and shows
   **Starting…** in the button. The Session is allocated; the URL is replaced with the Session's own
   (`/specs/$specId/sessions/$sessionId`, history replace, so Back does not return to the empty
-  start state) without remounting the shell. The form is replaced by the ready empty state, the
+  start state) with no visible change of the shell: the header, Context and the Composer's place
+  stay as they are, and no loading text appears while the new Session's first snapshot loads (the
+  ready empty state is shown from the start values meanwhile). The form is replaced by the ready
+  empty state, the
   Composer becomes active with the chosen model and mode in its pickers, and focus moves to the
   message field.
 - **(d) Write.** The first message is sent from the Composer as in any idle Session; naming follows
@@ -100,7 +103,12 @@ saved.
   blindly repeated (the shared Create operation semantics).
 - **(g) Leave before Start.** Nothing was saved, so leaving needs no confirmation; the Sessions list
   does not show anything. A reload shows the start state again with fresh defaults.
-- **(h) Out of scope:** pinning Task or other context, worktree/branch options, delivering the own
+- **(h) Without a Specification.** _New session_ outside a Specification (`/sessions/new`, the
+  managed Runtime's own start) is the same screen and form; Context has no Specification row. The
+  providers, models, efforts and work modes are the Runtime's provider catalogue (readiness and
+  reasons included); a provider that lists no models shows **Model** disabled at the provider
+  default.
+- **(i) Out of scope:** pinning Task or other context, worktree/branch options, delivering the own
   name and agent naming from the Runtime (section 10).
 
 ## 4. First scan
@@ -180,12 +188,16 @@ After Start (and any Session without messages)
 
 ## 6. Agent fields (shared start presentation)
 
-| Field         | Control                                                                                                                               | Notes                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Agent**     | provider `ChoiceTile`s (`ProviderChoice`), one radio group                                                                            | Unavailable providers are disabled with their reason. Fixed for the Session's life.       |
-| **Model**     | DS `Field` + `OptionPicker` (Select up to 8 models, searchable Combobox above, a DS rule), full width, placeholder **Choose a model** | Required. The model title, with the model id as `meta` only when titles repeat.           |
-| **Effort**    | DS `Field` + `SegmentedControl`: **Default** (the provider default) followed by the model's efforts                                   | Disabled until a model is chosen; **Default** selected.                                   |
-| **Work mode** | DS `Field` + `OptionPicker`, the provider catalogue's own modes and titles                                                            | Disabled until a model is chosen. Pinned for the Session's life (no mode-change command). |
+| Field         | Control                                                                                                                               | Notes                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Agent**     | provider `ChoiceTile`s (`ProviderChoice`), one radio group                                                                            | Unavailable providers are disabled with their reason. Fixed for the Session's life.   |
+| **Model**     | DS `Field` + `OptionPicker` (Select up to 8 models, searchable Combobox above, a DS rule), full width, placeholder **Choose a model** | Required. The model title, with the model id as `meta` only when titles repeat.       |
+| **Effort**    | DS `Field` + `OptionPicker`: **Default** (the provider default) followed by the model's efforts                                       | Disabled until a model is chosen; **Default** selected. A provider may list up to 16. |
+| **Work mode** | DS `Field` + `SegmentedControl` of the provider catalogue's own modes and titles; `OptionPicker` when it lists more than 4            | Disabled until a model is chosen. An unavailable mode is disabled with its reason.    |
+
+Control rule (owner, 2026-11-04): a `SegmentedControl` only for a small, fixed set (the work modes:
+ask / edit / accept all edits and the like); a picker for anything whose length the provider
+decides (models, efforts).
 
 Copy: provider terms such as **Effort** are not translated in the Polish locale (owner,
 2026-11-04), unless the providers themselves publish an official translation; generic words

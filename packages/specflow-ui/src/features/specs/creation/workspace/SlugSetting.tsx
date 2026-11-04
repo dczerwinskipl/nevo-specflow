@@ -2,7 +2,7 @@ import type { MutableRefObject } from 'react';
 import { TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { SPEC_SLUG_MAX_LENGTH, deriveSpecSlug } from '@nevo/specflow-contracts/specs';
-import { OwnValueSetting } from '../form/OwnValueSetting';
+import { OwnValueSetting } from '../../../../shared/controls/OwnValueSetting';
 import { useMessage, type Message } from '../../../../i18n/message';
 import type { SettingsUpdate } from './settingsTypes';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';

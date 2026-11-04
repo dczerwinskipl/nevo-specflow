@@ -1,8 +1,8 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TextInput, Typography } from '@nevo/ui';
-import { OwnValueSetting } from '../form/OwnValueSetting';
-import { sessionNameMaxLength, type SessionNameChoice } from './sessionName';
+import { OwnValueSetting } from '../../../../shared/controls/OwnValueSetting';
+import { sessionNameMaxLength, type SessionNameChoice } from '../choice/sessionName';
 
 /**
  * The Session's name, composed like Create's branch name (`OwnValueSetting`): by default the agent

@@ -1082,19 +1082,21 @@ export const LaterSessionConfiguration: Story = {
     await viewport(390, 844);
     await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' });
     await expect(canvas.queryByText(/wykonawcę pierwszej sesji/)).not.toBeInTheDocument();
-    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
     await userEvent.click(
-      await within(document.body).findByRole('menuitemradio', { name: 'codex model A' }),
+      await within(document.body).findByRole('option', { name: 'codex model A' }),
     );
-    // Model A has efforts: the menu stays open on its effort section.
-    await userEvent.keyboard('{Escape}');
     await settleViewport(390, 844);
-    await userEvent.click(canvas.getByRole('link', { name: 'Sesje' }));
-    const dialog = await within(document.body).findByRole('alertdialog');
-    await expect(dialog).toHaveTextContent('Porzucić konfigurację?');
-    await expect(dialog).toHaveTextContent('Niezapisane ustawienia zostaną utracone.');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Kontynuuj' }));
-    await expect(canvas.getByRole('button', { name: 'codex model A' })).toBeVisible();
+    await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
+      'codex model A',
+    );
+    // Nothing was saved before Start, so leaving needs no confirmation (new-session-ui-spec.md,
+    // scenario (g)): the list opens at once, in place of the start form.
+    await userEvent.click(canvas.getByRole('button', { name: /Otwórz nawigację|Open navigation/ }));
+    const drawer = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(drawer).getByRole('link', { name: 'Specyfikacje' }));
+    await canvas.findByRole('heading', { name: 'Specyfikacje', level: 1 });
+    await expect(within(document.body).queryByRole('alertdialog')).toBeNull();
   },
 };
 export const DocumentFocusAndDisclosure: Story = {

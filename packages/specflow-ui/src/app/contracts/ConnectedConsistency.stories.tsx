@@ -1045,12 +1045,16 @@ export const SessionContextRoundTrip: Story = {
     }
 
     await userEvent.click(await canvas.findByRole('button', { name: 'Dokumenty' }));
-    const back = await canvas.findByRole('link', { name: 'Sesja Spec Writera' });
-    // Archived stays archived on the Documents screen.
-    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
-      '/specs/api-integration/documents?collection=archive',
+    // Archived stays archived on the Documents screen. The visit opens the Specification's main
+    // file by itself (`startDocument.ts`), so the route settles on it.
+    await waitFor(() =>
+      expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
+        '/specs/api-integration/documents/spec?collection=archive',
+      ),
     );
-    await userEvent.click(back);
+    // The way back is read only now: the Documents list's own link unmounts when the main file
+    // opens, and the open document's pane shows the link the reader actually uses.
+    await userEvent.click(await canvas.findByRole('link', { name: 'Sesja Spec Writera' }));
     await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue(
       'Zachowany szkic wiadomości',
     );

@@ -157,7 +157,8 @@ export const CursorLikeCatalogue: Story = {
   tags: ['contract'],
   args: { options: runtimeWorkModes(providerFixture('cursor')), initialValue: 'ask' },
   play: async ({ canvasElement }) => {
-    const menu = await openModeMenu(canvasElement, 'Ask');
+    // The trigger is named by what it controls plus the selected mode ("Tryb pracy: …").
+    const menu = await openModeMenu(canvasElement, 'Tryb pracy: Ask');
     await expect(rowLabels(menu)).toEqual(['Ask', 'Plan', 'AgentNiedostępny']);
     await expect(within(menu).getByRole('menuitemradio', { name: 'Ask' })).toHaveAttribute(
       'aria-checked',

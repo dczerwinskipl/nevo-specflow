@@ -191,7 +191,12 @@ export const HistoryFailure: Story = {
  * once fetched, same as it would be across a real reconnect.
  */
 function historyReturnApi() {
-  const base = fixtureApi(sessionFixture());
+  // A conversation long enough to scroll, with one older page above it: the reader can only be
+  // "away" from the latest messages by actually scrolling into history (loading older entries
+  // alone never counts as away — feed.ts, `older()`).
+  const snapshot = longConversationSnapshot();
+  snapshot.history = { hasOlder: true, before: 'older' };
+  const base = fixtureApi(snapshot);
   let exhausted = false;
 
   return {
@@ -210,17 +215,54 @@ function historyReturnApi() {
   };
 }
 
+/**
+ * The reader scrolls up into history: older messages auto-load at the top, the "Return to latest"
+ * pill appears because the reader is away from the latest messages, and using it replaces the
+ * window with the live end again (the older page is gone, so is the pill).
+ */
 export const HistoryReturn: Story = {
   tags: ['contract'],
-  args: { api: historyReturnApi() },
+  args: { owner: 'history-return-story', api: historyReturnApi() },
+  globals: NARROW_VIEWPORT,
   play: async ({ canvasElement }) => {
+    await settleViewport(390, 844);
     const canvas = within(canvasElement);
+    const latestPill = () =>
+      canvas.queryByRole('button', { name: 'Wróć do najnowszych wiadomości' });
+    await expect(await canvas.findByText(longConversationLastMessage)).toBeInTheDocument();
+    const scroller = await waitFor(() => {
+      const node = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');
+      if (!node || !(node.scrollHeight - node.clientHeight > 400)) {
+        throw new Error('Expected the conversation to overflow its scroller.');
+      }
+
+      return node;
+    });
+    // At the latest messages there is nothing to return to.
+    await expect(latestPill()).toBeNull();
     await expect(canvas.queryByRole('button', { name: 'Wczytaj starsze wiadomości' })).toBeNull();
-    await expect(await canvas.findByText('Starsza wiadomość')).toBeVisible();
+
+    // A scroll within 200ms of a resize is the browser re-laying out, never the reader scrolling
+    // away (`useLayoutInducedScroll`, `LAYOUT_SETTLE_MS`): the reader's scroll comes after the
+    // viewport `settleViewport` just set has settled.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // The reader scrolls to the top: older history loads by itself, the reader stays where they
+    // were reading (not pulled back to the bottom), and is away from the latest messages.
+    scroller.scrollTop = 0;
+    scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
+    await expect(await canvas.findByText('Starsza wiadomość')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight).toBeGreaterThan(
+        400,
+      ),
+    );
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Wróć do najnowszych wiadomości' }),
     );
     await waitFor(() => expect(canvas.queryByText('Starsza wiadomość')).not.toBeInTheDocument());
+    await expect(await canvas.findByText(longConversationLastMessage)).toBeInTheDocument();
+    await waitFor(() => expect(latestPill()).toBeNull());
   },
 };
 
@@ -590,6 +632,14 @@ export const RelatedTasksListOpensTaskTabs: Story = {
     await closeRootTab(canvasElement, 'TASK-02');
     await closeRootTab(canvasElement, 'Zadania');
     await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst']));
+    // Closing a tab moves focus to its neighbour (item-tabs.md, "Focus after close"): the last
+    // close lands on the pinned Context tab, whose focus tooltip then describes it
+    // (`aria-describedby`). That is focus state, not structure: assert it, then move focus off the
+    // strip so the comparison below sees the tab at rest, the way the baseline was taken.
+    const contextTab = queryDirectTab(canvasElement, 'Kontekst');
+    await waitFor(() => expect(document.activeElement).toBe(contextTab));
+    contextTab?.blur();
+    await waitFor(() => expect(contextTab).not.toHaveAttribute('aria-describedby'));
     // Attribute ORDER is not part of the contract: the first render adds the tab panel's
     // `aria-labelledby` after its other attributes, a remount writes them in source order.
     await waitFor(() => {

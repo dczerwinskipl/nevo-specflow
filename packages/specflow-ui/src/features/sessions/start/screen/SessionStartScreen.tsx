@@ -198,7 +198,7 @@ export function SessionStartScreen({
         <AppWorkspace.Secondary
           open={contextOpen}
           onOpenChange={setContextOpen}
-          header={<WorkspaceHeader title={t('sessions.context.title')} />}
+          header={<WorkspaceHeader title={t('sessions.context.title')} headingLevel={2} />}
         >
           <SessionContext
             sessionId={pendingSessionId}

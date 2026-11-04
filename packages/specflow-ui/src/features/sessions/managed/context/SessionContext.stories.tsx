@@ -89,6 +89,9 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
                   and every other story here), so it just logs instead of navigating. Exercises the
                   row's real click wiring and the real `value.specification` data without that
                   dependency. */}
+                {/* In the product Context always sits under the Secondary's level-2 heading; its
+                    sections are level 3, so the harness keeps that outline. */}
+                <h2 className="sr-only">Context</h2>
                 <SessionContext
                   sessionId={sessionId}
                   value={value}
@@ -128,7 +131,9 @@ function SecondaryContextHost({ value }: { value: SessionContextViewModel }) {
               <AppWorkspace.Primary header={<WorkspaceHeader title="Session" />}>
                 <div className="p-4" />
               </AppWorkspace.Primary>
-              <AppWorkspace.Secondary header={<WorkspaceHeader title="Kontekst" />}>
+              <AppWorkspace.Secondary
+                header={<WorkspaceHeader title="Kontekst" headingLevel={2} />}
+              >
                 <SessionContext
                   sessionId={sessionId}
                   value={value}

@@ -116,7 +116,7 @@ export const SelectModelEffort: Story = {
     handleChange.mockClear();
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
     await userEvent.click(modelOptionByLabel(menu, 'Standard'));
-    // Picking "Standard" (2 efforts) must NOT close the menu — it reveals "Poziom wysiłku" below
+    // Picking "Standard" (2 efforts) must NOT close the menu — it reveals "Effort" below
     // instead, defaulting to the model's first effort.
     await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
     await waitFor(() => expect(handleChange).toHaveBeenCalledWith('mock-standard', 'low'));
@@ -147,13 +147,13 @@ export const ModelMenuRevealsEffortSection: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {
     const menu = await openModelMenu(canvasElement, 'Wybierz model');
-    await expect(within(menu).queryByText('Poziom wysiłku')).not.toBeInTheDocument();
+    await expect(within(menu).queryByText('Effort')).not.toBeInTheDocument();
     await userEvent.click(modelOptionByLabel(menu, 'Standard'));
     // `waitFor` (not a bare assertion) absorbs the Menu's own open fade-in transition — right
     // after the effort section appears it is still mid-animation, so an immediate assertion
     // would be a false negative, not a real regression.
     await waitFor(async () => {
-      await expect(within(menu).getByText('Poziom wysiłku')).toBeVisible();
+      await expect(within(menu).getByText('Effort')).toBeVisible();
       await expect(modelOptionByLabel(menu, 'low')).toBeVisible();
       await expect(modelOptionByLabel(menu, 'high')).toBeVisible();
     });

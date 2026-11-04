@@ -1591,6 +1591,10 @@
     "answer": "Your answer",
     "respond": "Respond",
     "message": "Message",
+    "readyState": {
+      "title": "{{provider}} is ready",
+      "description": "Write a message below to start the conversation."
+    },
     "model": {
       "label": "Model and effort for the next message",
       "placeholder": "Select model",
@@ -1826,6 +1830,22 @@
     "submit": {
       "start": "Start session",
       "starting": "Starting…"
+    },
+    "form": {
+      "title": "Start a session",
+      "starting": "Starting…",
+      "failedTitle": "The session could not be started",
+      "failedBody": "Your choices were kept. Try again."
+    },
+    "fields": {
+      "effort": "Effort",
+      "effortDefault": "Default"
+    },
+    "composer": {
+      "placeholder": "Choose the agent and start the session"
+    },
+    "executor": {
+      "notChosen": "not chosen"
     }
   },
   "sessionNaming": {

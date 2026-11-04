@@ -14,10 +14,13 @@ export function SessionNameSection({
   choice,
   locked,
   onChange,
+  headingLevel = 'h2',
 }: {
   choice: SessionNameChoice;
   locked: boolean;
   onChange: (choice: SessionNameChoice) => void;
+  /** One level lower where the section sits inside a card that has its own `h2` title. */
+  headingLevel?: 'h2' | 'h3';
 }) {
   const { t } = useTranslation();
   const headingId = useId();
@@ -27,7 +30,7 @@ export function SessionNameSection({
   return (
     <section className="grid gap-4" aria-labelledby={headingId}>
       <div className="grid gap-1">
-        <Typography as="h2" variant="title-md" id={headingId}>
+        <Typography as={headingLevel} variant="title-md" id={headingId}>
           {t('sessionStart.name.heading')}
         </Typography>
         <Typography as="p" variant="body-md" className="text-content-secondary">

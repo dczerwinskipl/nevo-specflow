@@ -12,4 +12,5 @@ export {
 } from './managed/ModelEffortPicker';
 export { ComposerModePicker } from './managed/ComposerPresetPicker';
 export type { WorkModeOption } from './managed/workModes';
+export { SessionReadyEmptyState } from './managed/empty/SessionReadyEmptyState';
 export { SessionNamingStatus } from './managed/naming/SessionNamingStatus';

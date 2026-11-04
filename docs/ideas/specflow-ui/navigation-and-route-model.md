@@ -205,9 +205,9 @@ implementations in multiple dialogs:
   textarea embedded in every start modal.
 
 Exact visual composition and optional advanced fields remain product-design details. The explicit
-**New session** start on an existing Specification (pinned Specification, the agent section shared with
-Create, agent-generated name with an own-name alternative; the Session opens idle and the first message
-is written in its own Composer) and the start block it shares with
+**New session** start on an existing Specification (the Session shell opens at once with a start card
+for the agent, model, effort, mode and optional own name; Start allocates the Session in place and the
+first message is written in its own Composer) and the agent fields it shares with
 Create are specified in the [New Session UI spec](screens/new-session-ui-spec.md).
 
 ## 8. Full Session navigation — Workspace V2 accepted

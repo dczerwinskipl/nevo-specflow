@@ -1591,11 +1591,15 @@
     "answer": "Twoja odpowiedź",
     "respond": "Odpowiedz",
     "message": "Wiadomość",
+    "readyState": {
+      "title": "{{provider}} jest gotowy",
+      "description": "Napisz wiadomość poniżej, aby rozpocząć rozmowę."
+    },
     "model": {
-      "label": "Model i poziom wysiłku dla następnej wiadomości",
+      "label": "Model i Effort dla następnej wiadomości",
       "placeholder": "Wybierz model",
       "sectionLabel": "Model",
-      "effortSectionLabel": "Poziom wysiłku"
+      "effortSectionLabel": "Effort"
     },
     "intent": {
       "label": "Tryb pracy — następny Turn",
@@ -1826,6 +1830,22 @@
     "submit": {
       "start": "Rozpocznij sesję",
       "starting": "Uruchamianie…"
+    },
+    "form": {
+      "title": "Rozpocznij sesję",
+      "starting": "Rozpoczynanie…",
+      "failedTitle": "Nie udało się rozpocząć sesji",
+      "failedBody": "Twoje wybory zostały zachowane. Spróbuj ponownie."
+    },
+    "fields": {
+      "effort": "Effort",
+      "effortDefault": "Domyślny"
+    },
+    "composer": {
+      "placeholder": "Wybierz agenta i rozpocznij sesję"
+    },
+    "executor": {
+      "notChosen": "nie wybrano"
     }
   },
   "sessionNaming": {

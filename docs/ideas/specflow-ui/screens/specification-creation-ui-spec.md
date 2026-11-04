@@ -126,11 +126,13 @@ Create is unavailable and offers retry without losing the draft.
 - The heading says **Initial agent Session**. Provider cards use the existing icons, name and profile;
   2 columns when the width allows, 3 only with a real catalogue and a wide Primary, 1 on narrow. No
   invented third provider.
-- Model, effort and work mode use the Session Composer's own pickers (the shared Session start block,
-  see [New Session UI spec](new-session-ui-spec.md#4-shared-session-start-block-and-the-duplicated-agent-pickers)):
-  the model is a deliberate choice without a forced default; effort is its second section with an
-  explicit provider-default row; the work mode (Ask/Edit/Agent) appears once a model is chosen and lists
-  only the model's modes. Changing model or agent drops incompatible values.
+- Model, effort and work mode are the labelled agent fields shared with the Session start card (owner,
+  2026-11-04, replacing the Composer pickers here; see
+  [New Session UI spec](new-session-ui-spec.md#6-agent-fields-shared-start-presentation)): the model
+  is a deliberate choice without a forced default; effort starts at the provider default; the work
+  mode lists only the model's modes and is enabled once a model is chosen. Changing model or agent
+  drops incompatible values. On success with an agent the user lands in the Session screen
+  ([New Session UI spec](new-session-ui-spec.md#9-create-with-an-agent)).
 - Connection, profile, availability and quota come only from a confirmed source. Unknown stays unknown
   (**No limit data**); a known value has a unit and a window. Example quotas, prices and versions from
   prototypes never enter the product. Demo fixtures are labelled as fixtures.

@@ -7,27 +7,43 @@ const providerIcons: Readonly<Record<string, { url: string; kind: 'color' | 'mon
   claude: { url: claude, kind: 'color' },
 };
 
+/** `default` is the 16px inline mark; `xl` is the design system's large glyph (`Icon` `xl`). */
+const sizeClasses = {
+  default: { box: 'size-4', glyph: 'sm' },
+  xl: { box: 'size-icon-xl', glyph: 'xl' },
+} as const;
+
 /** Provider identity is supplied by the association, never inferred from its title or role. */
-export function SessionProviderIcon({ providerId }: { readonly providerId?: string }) {
+export function SessionProviderIcon({
+  providerId,
+  size = 'default',
+}: {
+  readonly providerId?: string;
+  readonly size?: keyof typeof sizeClasses;
+}) {
+  const { box, glyph } = sizeClasses[size];
   const asset = providerId ? providerIcons[providerId] : undefined;
   if (!asset) {
     return (
-      <span aria-hidden="true" className="inline-flex size-4 shrink-0 items-center justify-center">
-        <Icon name="chat" size="sm" />
+      <span
+        aria-hidden="true"
+        className={`inline-flex ${box} shrink-0 items-center justify-center`}
+      >
+        <Icon name="chat" size={glyph} />
       </span>
     );
   }
 
   if (asset.kind === 'color') {
     return (
-      <img src={asset.url} alt="" aria-hidden="true" className="size-4 shrink-0 object-contain" />
+      <img src={asset.url} alt="" aria-hidden="true" className={`${box} shrink-0 object-contain`} />
     );
   }
 
   return (
     <span
       aria-hidden="true"
-      className="inline-flex size-4 shrink-0 bg-current"
+      className={`inline-flex ${box} shrink-0 bg-current`}
       style={{
         maskImage: `url("${asset.url}")`,
         maskSize: 'contain',

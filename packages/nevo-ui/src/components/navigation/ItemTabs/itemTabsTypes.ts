@@ -25,8 +25,12 @@ export interface ItemTabsLabels {
   tablist: string;
   /** Accessible name of the overflow trigger. */
   openedMenu: (count: number) => string;
-  /** Heading of the Opened menu. */
+  /** Heading of the Opened menu (the switcher's list of every item). */
   openedHeading: string;
+  /** Accessible name of the strip's overflow trigger; `count` is the number of hidden tabs. */
+  moreMenu: (count: number) => string;
+  /** Heading of the overflow menu, which lists only the tabs the strip could not show. */
+  moreHeading: string;
   /** Accessible name of one tab's close button. */
   close: (label: string) => string;
   /** Last line of every tab tooltip. */
@@ -52,6 +56,8 @@ export const defaultItemTabsLabels: ItemTabsLabels = {
   tablist: 'Opened items',
   openedMenu: (count) => `Opened items (${count})`,
   openedHeading: 'Opened items',
+  moreMenu: (count) => `More opened items (${count})`,
+  moreHeading: 'More opened items',
   close: (label) => `Close ${label}`,
   closeHint: 'Close: Delete or middle-click',
   menuHint: 'Delete closes the highlighted item.',

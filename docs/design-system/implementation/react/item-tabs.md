@@ -52,10 +52,12 @@ owns state, guards and the tab panel; the strip renders no panel.
   on every tab's end edge, and **no icons** (a tab is its name). The strip is darker than the panel
   (`--color-tab-strip`, the canvas at 60 %): inactive tabs sit on it with the strip's bottom
   divider and `surface-hover` on hover; the **active tab takes the panel's own surface** (no fill,
-  no bottom border), so it reads as the top of the content below, under a 1 px **neutral** top
-  border of the separators' colour — no primary accent line — plus `content-primary` text. The
+  no bottom border), so it reads as the top of the content below, under a **2 px `action-primary`
+  top accent** plus `content-primary` text. The accent is a pseudo-element laid over the tab's
+  1 px top border, so activating a tab never moves its label (owner, 2026-11-04, reversing the
+  neutral top edge of 2026-11-03: without the accent the active tab was too hard to find). The
   strip continues past the last tab with the same fill and divider (`RailTail`, exported with
-  `ItemTabs`) and carries the `Opened (N)` trigger and any rail controls of the host. A dirty item
+  `ItemTabs`) and carries the `More (N)` trigger and any rail controls of the host. A dirty item
   shows its dot in the glyph slot, which is reserved for it. A rail has no region-level close:
   each tab closes itself (Documents offers _Close all documents_ in the document's `...` menu). The earlier "underline only, no card" rule remains `header`'s; these tabs are square and
   touching, so they are not the separate rounded cards that rule rejected.
@@ -70,7 +72,7 @@ owns state, guards and the tab panel; the strip renders no panel.
   the widest tabs first shrink to one common cap, never below 120 px (their labels truncate in the
   middle, the full label stays the tab's accessible name and tooltip; with no icons there is no
   earlier compaction step); only when even that does not fit do the trailing tabs go to the
-  `Opened (N)` menu, the active one always staying visible
+  `More (N)` menu, the active one always staying visible
   (`fitItemTabs`). Decision (owner, 2026-11): content width replaces the earlier fixed 140-180 px
   for **both** hosts — Documents' `DocumentTabStrip` (file names) and the Secondary rail — because a
   fixed width wasted space on short names (`Kontekst`) and cut long file names early; one policy
@@ -78,19 +80,23 @@ owns state, guards and the tab panel; the strip renders no panel.
   240 px.
 - **Switcher.** Below `switcherBelow` (default 480 px of strip width in `header`, 292 px in
   `rail` = two compressed tabs plus the overflow trigger) the strip MUST become one button
-  `name (N)` opening the same menu (`variant="auto"`).
-- **Overflow trigger.** Shows the chevron and the count; its accessible name is the full
-  `labels.openedMenu(N)` text (the visible count is `aria-hidden`, so the visible text is never
-  outside the name — WCAG 2.5.3).
+  `name (N)` opening the `Opened (N)` menu of every item (`variant="auto"`).
+- **Overflow trigger.** Shows the chevron and the number of **hidden** tabs (owner, 2026-11-04:
+  counting and listing the tabs already on the strip read as duplicates); its accessible name is
+  the full `labels.moreMenu(N)` text (the visible count is `aria-hidden`, so the visible text is
+  never outside the name — WCAG 2.5.3).
 - **Tab anatomy.** Icon, label, close `x` at the label's right edge. The unsaved state is a badge on
   the icon, visible on every pointer and in the switcher; it MUST NOT share the close slot. `loading`
   shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.
 - **Close.** The `x` is shown on hover, focus and on the active tab, always on coarse pointers, with
   a 44 px hit area there. It is outside the tablist and not in the tab order.
-- **Menu.** `Opened (N)` lists every item with description and dirty badge. Every row has the same
+- **Menu.** The strip's `More (N)` menu (heading `labels.moreHeading`) lists only the hidden tabs;
+  the switcher's `Opened (N)` menu (heading `labels.openedHeading`) lists every item. Rows carry
+  the description and dirty badge. Every row has the same
   compact height: the label and the description each take one line and truncate, the description at
   its start so the file name stays visible; the row's tooltip and accessible text carry the full
-  description. Each item row is
+  description. When no listed item has a description, rows are one line (no blank second line). A
+  non-closable item shows its pin where the row `x` would be. Each closable item row is
   followed by a `Close <label>` menu item, shown when its row is highlighted and always available to
   assistive technology; the `x` in a row is a pointer shortcut only. The same menu serves the
   switcher, so closing never depends on a keyboard.

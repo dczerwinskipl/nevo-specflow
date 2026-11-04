@@ -16,7 +16,7 @@ import { WorkspaceHeader } from './WorkspaceHeader';
  * Real-Chromium geometry contracts for the split Secondary's root tabs and local navigation
  * (secondary-navigation.md, "Root tabs and local navigation"; item-tabs.md, "Width"):
  * content-width editor tabs on a 36 px rail that never changes height with depth, the active tab
- * on the panel surface under a neutral top border, the default detail header row (Back + the
+ * on the panel surface under a primary top accent, the default detail header row (Back + the
  * screen's detailHeader) vs the opt-in breadcrumb trail, long and many tabs, and the
  * stacked/mobile layout that keeps its header Back with no row under it.
  */
@@ -371,7 +371,7 @@ function surfaceOwner(element: HTMLElement) {
  * The rail contract at the current width: 36 px, editor tabs filling it, never wrapping or
  * overflowing the panel, each tab as wide as its content (label not truncated unless it is at the
  * 240 px cap or the strip compressed it), no icons; the active tab takes the panel's own surface
- * (no fill, no bottom border) under a neutral top border of the separators' colour, the inactive
+ * (no fill, no bottom border) under a 2px primary accent over its 1px top border, the inactive
  * ones sit on the darker strip.
  */
 function assertRail(context: string) {
@@ -424,7 +424,18 @@ function assertRail(context: string) {
       );
       assert(
         style.borderTopWidth === '1px' && style.borderTopColor === separator,
-        `${context}: the active top edge is the separator colour (top ${style.borderTopColor} vs ${separator}).`,
+        `${context}: the active tab keeps the 1px top border, so its label does not move.`,
+      );
+      const accent = getComputedStyle(tab, '::before');
+      const primary = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-action-primary')
+        .trim();
+      assert(
+        accent.height === '2px' &&
+          accent.top === '-1px' &&
+          accent.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+          accent.backgroundColor !== separator,
+        `${context}: a 2px primary accent covers the active top edge (${accent.height} at ${accent.top}, ${accent.backgroundColor}; token ${primary}).`,
       );
       assert(
         style.borderBottomColor === 'rgba(0, 0, 0, 0)',
@@ -681,15 +692,15 @@ export const LongAndManyTabs: Story = {
     const trigger = await waitFor(
       () =>
         [...rail()!.querySelectorAll<HTMLElement>('button')].find((button) =>
-          button.querySelector('.sr-only')?.textContent?.startsWith('Opened items'),
+          button.querySelector('.sr-only')?.textContent?.startsWith('More opened items'),
         ),
       '450px with 8 tabs: the overflow trigger shows.',
     );
+    assert(tabs().length < 8, 'Some tabs moved to the More menu.');
     assert(
-      trigger.querySelector('.sr-only')?.textContent === 'Opened items (8)',
-      'It counts every tab.',
+      trigger.querySelector('.sr-only')?.textContent === `More opened items (${8 - tabs().length})`,
+      'It counts only the hidden tabs.',
     );
-    assert(tabs().length < 8, 'Some tabs moved to the Opened menu.');
     assert(
       tabs().some((tab) => tab.getAttribute('aria-selected') === 'true'),
       'The active tab stays visible.',

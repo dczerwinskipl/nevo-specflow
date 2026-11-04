@@ -19,6 +19,8 @@ export function useDocumentTabLabels(): Partial<ItemTabsLabels> {
       tablist: t('documents.tabs.tablist'),
       openedMenu: (count) => t('documents.tabs.openedMenu', { n: count }),
       openedHeading: t('documents.tabs.openedHeading'),
+      moreMenu: (count) => t('documents.tabs.moreMenu', { n: count }),
+      moreHeading: t('documents.tabs.moreHeading'),
       close: (name) => t('documents.tabs.close', { name }),
       closeHint: t('documents.tabs.closeHint'),
       menuHint: t('documents.tabs.menuHint'),

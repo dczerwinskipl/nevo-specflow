@@ -695,7 +695,8 @@ the rail, and never changes the rail:
   the direct parent and the current level stay. No Session stack opts in today.
 
 Tabs are editor tabs as wide as their names (64-240px), without icons, the active one on the panel
-surface under a neutral top edge; many tabs overflow into the `Opened (N)` menu. Mobile keeps its header Back and title with no row
+surface under a 2px primary top accent; tabs that do not fit go to the `More (N)` menu, which lists
+only them. Mobile keeps its header Back and title with no row
 under it. Back remounts the parent (its scroll returns to the top unless the product keeps it).
 Contract:
 [Secondary navigation](../../design-system/implementation/react/secondary-navigation.md#root-tabs-and-local-navigation-split-layout).

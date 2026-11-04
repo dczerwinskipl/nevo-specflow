@@ -285,6 +285,8 @@ export function TabHostHeader({
                 tablist: label,
                 openedMenu: (count) => `Opened files (${count})`,
                 openedHeading: 'Opened files',
+                moreMenu: (count) => `More files (${count})`,
+                moreHeading: 'More files',
                 menuHint: 'Delete closes the highlighted file.',
               }}
             />

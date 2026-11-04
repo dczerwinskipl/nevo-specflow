@@ -27,7 +27,8 @@ related:
 **Status: decided and implemented (2026-11-03).** The owner chose **A, Editor tabs**, with four
 changes: (1) no tab icons, so the "Context shrinks to its icon" and "drop icons" steps are gone and
 overflow is: shrink the widest tabs, then the existing 120 px minimum, then the `Opened (N)` menu;
-(2) the active tab's top edge is the neutral separator colour, not a primary accent line; (3) the
+(2) the active tab's top edge is the neutral separator colour, not a primary accent line (reversed
+by the owner on 2026-11-04: the active tab has the 2 px primary top accent again); (3) the
 ToolAction detail gets a 20 px rhythm between its header, PARAMETRY and the response; (4) the
 Documents tab strip keeps its current look (the editor look is `density="rail"` only). The
 normative result is in

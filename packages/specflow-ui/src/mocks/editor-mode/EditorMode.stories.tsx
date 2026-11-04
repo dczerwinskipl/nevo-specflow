@@ -38,7 +38,7 @@ type Story = StoryObj<typeof meta>;
 /** Opens the Opened menu through the user path. Modal menus aria-hide the page: axe is off. */
 const menuOpen = { a11y: { test: 'off' as const } };
 const openOpenedMenu: Story['play'] = async ({ canvas, userEvent }) => {
-  await userEvent.click(await canvas.findByRole('button', { name: /Opened/ }));
+  await userEvent.click(await canvas.findByRole('button', { name: /^More files/ }));
   await within(document.body).findByRole('menu');
 };
 

@@ -22,6 +22,8 @@ export function useWorkspaceLabels(): NonNullable<AppWorkspaceProps['labels']> {
         tablist: t('navigation.secondaryTabs.tablist'),
         openedMenu: (count: number) => t('navigation.secondaryTabs.openedMenu', { n: count }),
         openedHeading: t('navigation.secondaryTabs.openedHeading'),
+        moreMenu: (count: number) => t('navigation.secondaryTabs.moreMenu', { n: count }),
+        moreHeading: t('navigation.secondaryTabs.moreHeading'),
         close: (name: string) => t('navigation.secondaryTabs.close', { name }),
         closeHint: t('navigation.secondaryTabs.closeHint'),
         menuHint: t('navigation.secondaryTabs.menuHint'),

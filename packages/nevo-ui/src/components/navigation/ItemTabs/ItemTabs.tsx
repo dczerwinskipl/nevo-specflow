@@ -70,7 +70,7 @@ export interface ItemTabsProps extends Omit<
    * labels, a primary underline on the active tab — the Documents tab header. `rail`: the split
    * Secondary's editor tabs, `--spacing-tab-rail` (36px, divider included) tall: square tabs that
    * touch, 14px labels, 1px neutral separators, inactive tabs on the darker `tab-strip` and the
-   * active tab on the panel's own surface (no bottom border, a neutral top border). The root draws
+   * active tab on the panel's own surface (no bottom border, a 2px primary top accent). The root draws
    * the strip's bottom divider itself, so its host row has no border. The width policy is the same.
    */
   density?: ItemTabDensity;
@@ -222,13 +222,15 @@ function Tab({
                 ? cn(
                     // Editor tab. `pl-3`, the glyph gap and `pr-8`/`pr-3` are the rail metrics'
                     // numbers (`itemTabMetrics`). 1px separator on every end edge; the active tab
-                    // is the panel's own surface (no fill, no bottom border) under a neutral top
-                    // border, the inactive ones sit on the darker strip with its bottom divider.
+                    // is the panel's own surface (no fill, no bottom border) under a 2px primary
+                    // accent, the inactive ones sit on the darker strip with its bottom divider.
+                    // The accent is a pseudo-element over the 1px top border, so activating a tab
+                    // never moves its label.
                     typographyVariantClasses['body-md'],
-                    'border-y border-r border-r-border-subtle pl-3',
+                    'relative border-y border-r border-r-border-subtle pl-3',
                     chrome.closable ? 'pr-8' : 'pr-3',
                     active
-                      ? 'border-t-border-subtle border-b-transparent text-content-primary'
+                      ? "border-t-border-subtle border-b-transparent text-content-primary before:pointer-events-none before:absolute before:inset-x-0 before:-top-px before:h-0.5 before:bg-action-primary before:content-['']"
                       : cn(
                           'border-t-transparent border-b-border-subtle bg-tab-strip hover:bg-surface-hover hover:text-content-primary',
                           muted ? 'text-content-muted' : 'text-content-secondary',
@@ -346,8 +348,8 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
  * Tab strip for a set of opened items, hosted in a workspace header. Controlled and content-blind:
  * the host owns the items and the active id, and renders the tab panel (see `getItemTabPanelId`).
  * Each tab is as wide as its content (64-240 px, the label measured in the rendered font); long tabs
- * shrink to 120 px before the trailing ones go to an `Opened (N)` menu. Below `switcherBelow`
- * the strip becomes a single switcher button opening the same menu. `className` styles the root; the
+ * shrink to 120 px before the trailing ones go to a `More (N)` menu that lists only those hidden
+ * tabs. Below `switcherBelow` the strip becomes a single switcher button whose menu lists every item. `className` styles the root; the
  * root sizes itself (`density`): the 56 px workspace header minus its 1 px divider, or the full 36 px
  * Secondary tab rail, which draws its own divider. It needs no host sizing inside
  * `WorkspaceHeader.identityContent`.
@@ -452,12 +454,15 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
 
   const menu: OpenedMenuProps = {
     items,
+    heading: labels.openedHeading,
     activeId,
     labels,
     hintId,
     onActivate,
     onClose: onCloseFromMenu,
   };
+  // The overflow menu holds only what the strip could not show; the switcher (no strip) holds all.
+  const hidden = items.filter((item) => !visible.includes(item));
 
   if (switcher) {
     const current = items.find((item) => item.id === activeId);
@@ -611,10 +616,10 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
                 >
                   <Icon name="chevron-down" size="sm" />
                   {/* The visible count is a shorthand of the name, which assistive technology reads
-                    in full; an `aria-label` would leave the visible "8" outside the name
+                    in full; an `aria-label` would leave the visible "3" outside the name
                     (WCAG 2.5.3, axe label-content-name-mismatch). */}
-                  <span aria-hidden="true">{items.length}</span>
-                  <span className="sr-only">{labels.openedMenu(items.length)}</span>
+                  <span aria-hidden="true">{hidden.length}</span>
+                  <span className="sr-only">{labels.moreMenu(hidden.length)}</span>
                 </button>
               </MenuTrigger>
               <MenuContent
@@ -623,7 +628,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
                 aria-describedby={hintId}
                 onCloseAutoFocus={onCloseAutoFocus}
               >
-                <OpenedMenuBody {...menu} />
+                <OpenedMenuBody {...menu} items={hidden} heading={labels.moreHeading} />
               </MenuContent>
             </Menu>
           ) : null}

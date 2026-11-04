@@ -189,9 +189,9 @@ not aligned with the 56 px Primary header; opening a detail never moves the tabs
   `--spacing-tab-rail` = one default control = 36 px including the strip's bottom divider, drawn by
   the tabs themselves, so the rail row has no padding or border of its own. Square tabs that touch,
   14 px labels, 1 px neutral separators; inactive tabs sit on the darker `--color-tab-strip`, the
-  active tab takes the panel's own surface (no fill, no bottom border) under a neutral top border of
-  the separators' colour, plus primary text. As many tabs as fit are shown, then the `Opened (N)`
-  menu; below 292 px of strip width the strip becomes the switcher button. The rail keeps the
+  active tab takes the panel's own surface (no fill, no bottom border) under a 2 px `action-primary`
+  top accent, plus primary text. As many tabs as fit are shown, then the `More (N)` menu of the
+  hidden ones; below 292 px of strip width the strip becomes the switcher button. The rail keeps the
   screen's declared actions, no Back and no panel-level Close (each closable tab owns its `x`).
 - **Choosing the row: `localNavigation`.** A stack declares how its tabs show depth:
   `defineSecondaryStack({ localNavigation: 'back' | 'breadcrumbs' })`, default `back`. The stack the
@@ -245,8 +245,8 @@ not aligned with the 56 px Primary header; opening a detail never moves the tabs
   by the workspace (see "Root tabs lifecycle"). Measured in
   `SecondaryLocalNavigation.contract.stories.tsx`: a list scrolled to 400 px returns at 400.
 - **Verification.** `SecondaryLocalNavigation.contract.stories.tsx` (Secondary at 330 px, 450 px and
-  50/50 at 1440: the 36 px rail at root and in a detail, the active tab's surface and neutral top
-  border, no icons, the detail header row; deep opted-in Tasks trail at 1440 and 330; long and many
+  50/50 at 1440: the 36 px rail at root and in a detail, the active tab's surface and primary top
+  accent, no icons, the detail header row; deep opted-in Tasks trail at 1440 and 330; long and many
   tabs; 390 and 360 mobile) and the Session's `ManagedSession.workDetail.stories.tsx` (including the
   equal 20 px gaps between a ToolAction's header, PARAMETRY and response).
 

@@ -152,19 +152,21 @@ export const NonClosableContract: Story = {
 
     await userEvent.click(
       await waitFor(
-        () => canvas.queryByRole('button', { name: /^Opened items/ }),
-        'The strip overflows into the Opened menu.',
+        () => canvas.queryByRole('button', { name: /^More opened items/ }),
+        'The strip overflows into the More menu.',
       ),
     );
     const menu = await waitFor(
       () => document.querySelector<HTMLElement>('[role="menu"]'),
-      'The Opened menu opens.',
+      'The More menu opens.',
     );
+    // The pinned tab is on the strip, so the More menu lists neither it nor a Close row for it
+    // (the switcher's full list without that Close row is covered in ItemTabs.test.tsx).
     assert(
       [...menu.querySelectorAll('[role="menuitem"]')].every(
-        (row) => row.textContent !== 'Close pinned.md',
+        (row) => !row.textContent?.includes('pinned.md'),
       ),
-      'The Opened menu has no Close row for the non-closable tab.',
+      'The More menu does not repeat the pinned tab shown on the strip.',
     );
     await userEvent.keyboard('{Escape}');
   },
@@ -209,23 +211,31 @@ export const OverflowContract: Story = {
       );
     });
 
+    // The trigger counts, and the menu lists, only the tabs the strip could not show.
+    const shownIds = new Set(tabs.map((tab) => tab.dataset.itemId));
+    const hidden = manyItems.filter((item) => !shownIds.has(item.id));
     await userEvent.click(
-      canvas.getByRole('button', { name: `Opened items (${manyItems.length})` }),
+      canvas.getByRole('button', { name: `More opened items (${hidden.length})` }),
     );
     const menu = await waitFor(
       () => document.querySelector<HTMLElement>('[role="menu"]'),
-      'The Opened menu opens.',
+      'The More menu opens.',
     );
     const closeItems = [...menu.querySelectorAll('[role="menuitem"]')].filter((row) =>
       row.textContent?.startsWith('Close '),
     );
     assert(
-      menu.querySelectorAll('[role="menuitem"]').length === manyItems.length * 2,
-      'The menu lists every opened item with an accessible Close action after it.',
+      menu.querySelectorAll('[role="menuitem"]').length === hidden.length * 2,
+      'The menu lists every hidden item with an accessible Close action after it.',
     );
-    assert(closeItems.length === manyItems.length, 'Every item has its own Close menuitem.');
+    assert(closeItems.length === hidden.length, 'Every hidden item has its own Close menuitem.');
     assert(
-      menu.textContent?.includes('src/audit-log/audit-log.ts') === true,
+      openedMenuRows(menu).every((row) => !shownIds.has(row.dataset.itemId)),
+      'No tab already shown on the strip is listed again.',
+    );
+    const lastHidden = hidden.at(-1)!;
+    assert(
+      menu.textContent?.includes(lastHidden.description ?? lastHidden.label) === true,
       'Rows show the full description.',
     );
     await userEvent.keyboard('{Escape}');
@@ -279,15 +289,19 @@ function openedMenuRows(menu: HTMLElement) {
   );
 }
 
-async function assertCompactRows(menu: HTMLElement) {
+async function assertCompactRows(menu: HTMLElement, expected: readonly ItemTab[]) {
   const rows = openedMenuRows(menu);
-  assert(rows.length === longPathItems.length, 'Every opened item has one visible row.');
+  assert(rows.length === expected.length, 'Every listed item has one visible row.');
   const heights = new Set(rows.map((row) => Math.round(row.getBoundingClientRect().height)));
   assert(heights.size === 1, `Every row has the same height (got ${[...heights].join(', ')}).`);
   const [first, second] = rows;
   assert(first && second, 'Two rows at least.');
   const gap = second.getBoundingClientRect().top - first.getBoundingClientRect().bottom;
   assert(gap < 1, `The hidden Close item adds no gap between rows (got ${gap}px).`);
+  if (expected !== longPathItems) {
+    return;
+  }
+
   const root = rows.find((row) => row.textContent?.startsWith('README.md'));
   assert(
     root?.textContent?.includes('Root folder') === true &&
@@ -326,21 +340,22 @@ export const OpenedMenuLongPathWide: Story = {
   ),
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(
-      await waitFor(
-        () => canvas.queryByRole('button', { name: `Opened items (${longPathItems.length})` }),
-        'The strip overflows into the Opened menu.',
-      ),
+    const trigger = await waitFor(
+      () => canvas.queryByRole('button', { name: /^More opened items/ }),
+      'The strip overflows into the More menu.',
     );
+    const shownIds = new Set(canvas.getAllByRole('tab').map((tab) => tab.dataset.itemId));
+    const hidden = longPathItems.filter((item) => !shownIds.has(item.id));
+    await userEvent.click(trigger);
     const menu = await waitFor(
       () => document.querySelector<HTMLElement>('[role="menu"]'),
-      'The Opened menu opens.',
+      'The More menu opens.',
     );
-    await assertCompactRows(menu);
+    await assertCompactRows(menu, hidden);
     await userEvent.keyboard('{ArrowDown}');
     await userEvent.keyboard('{Delete}');
     await waitFor(
-      () => openedMenuRows(menu).length === longPathItems.length - 1 || !menu.isConnected,
+      () => openedMenuRows(menu).length === hidden.length - 1 || !menu.isConnected,
       'Delete on a highlighted row still closes its item.',
     );
     await userEvent.keyboard('{Escape}');
@@ -366,7 +381,7 @@ export const OpenedMenuLongPathNarrow: Story = {
       () => document.querySelector<HTMLElement>('[role="menu"]'),
       'The Opened menu opens.',
     );
-    await assertCompactRows(menu);
+    await assertCompactRows(menu, longPathItems);
     assert(
       menu.getBoundingClientRect().right <= window.innerWidth,
       'The menu stays inside the viewport.',

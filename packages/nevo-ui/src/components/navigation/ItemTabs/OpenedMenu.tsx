@@ -18,6 +18,7 @@ const distinctDescription = (item: ItemTab) =>
 
 export interface OpenedMenuProps {
   items: readonly ItemTab[];
+  heading: string;
   activeId: string | null;
   labels: ItemTabsLabels;
   hintId: string;
@@ -27,15 +28,20 @@ export interface OpenedMenuProps {
 
 export function OpenedMenuBody({
   items,
+  heading,
   activeId,
   labels,
   hintId,
   onActivate,
   onClose,
 }: OpenedMenuProps) {
+  // Rows are two lines only when some item has a description (a path); a list without any keeps
+  // one-line rows instead of a blank second line under every label.
+  const twoLine = items.some((item) => item.description !== undefined);
+
   return (
     <>
-      <MenuLabel>{labels.openedHeading}</MenuLabel>
+      <MenuLabel>{heading}</MenuLabel>
       {items.map((item) => (
         <Fragment key={item.id}>
           <MenuItem
@@ -46,6 +52,7 @@ export function OpenedMenuBody({
               }
             }}
             aria-current={item.id === activeId ? 'true' : undefined}
+            data-item-id={item.id}
             leadingIcon={item.state === 'missing' ? 'triangle-alert' : item.icon}
             className={item.state === 'missing' ? 'text-content-muted' : undefined}
             // The rows stay one compact height: label and path each take one truncated line, the
@@ -64,12 +71,12 @@ export function OpenedMenuBody({
                 ) : item.description !== undefined ? (
                   // The path is just the name (an item at the root): say where it is instead.
                   <span className="block truncate text-content-muted">{labels.rootLocation}</span>
-                ) : (
+                ) : twoLine ? (
                   // No description: the line is kept (hidden) so every row has the same height.
                   <span aria-hidden="true" className="block">
                     {'\u00a0'}
                   </span>
-                )}
+                ) : null}
               </span>
               {item.dirty ? (
                 <>
@@ -83,9 +90,17 @@ export function OpenedMenuBody({
               {/*
                * A button inside a menuitem is nested-interactive, so this x is a pointer-only,
                * aria-hidden affordance; the keyboard path is Delete on the highlighted row.
-               * 44px on coarse pointers. Omitted for a non-closable item: there is no close path.
+               * 44px on coarse pointers. A non-closable item has no close path: it shows its pin in
+               * the same slot (as on the rail), so every row's label column ends at one edge.
                */}
-              {item.closable !== false ? (
+              {item.closable === false ? (
+                <span
+                  aria-hidden="true"
+                  className="grid size-6 shrink-0 place-items-center text-content-muted pointer-coarse:size-11"
+                >
+                  <Icon name="pin" size="sm" />
+                </span>
+              ) : (
                 <span
                   aria-hidden="true"
                   title={labels.menuClose}
@@ -98,7 +113,7 @@ export function OpenedMenuBody({
                 >
                   <Icon name="close" size="sm" />
                 </span>
-              ) : null}
+              )}
             </span>
           </MenuItem>
           {/*

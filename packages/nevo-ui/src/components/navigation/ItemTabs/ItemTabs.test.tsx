@@ -153,13 +153,16 @@ describe('ItemTabs', () => {
         expect(tab.querySelector('svg')).toBeNull();
       }
 
-      // Active: the panel surface itself (no fill, no bottom border) under a neutral top border,
-      // never the primary underline or accent.
+      // Active: the panel surface itself (no fill, no bottom border) under a 2px primary top
+      // accent drawn over the 1px top border (the label does not move), never an underline.
       expect(history!.className).toContain('border-t-border-subtle');
+      expect(history!.className).toContain('before:bg-action-primary');
+      expect(history!.className).toContain('before:h-0.5');
+      expect(files!.className).not.toContain('action-primary');
       expect(history!.className).toContain('border-b-transparent');
       expect(history!.className).toContain('text-content-primary');
-      expect(history!.className).not.toMatch(/\bbg-/);
-      expect(history!.className).not.toContain('action-primary');
+      expect(history!.className).not.toMatch(/(^|\s)(hover:)?bg-/);
+      expect(history!.className).not.toContain('border-b-action-primary');
       // Inactive: the darker strip, its bottom divider, no top edge.
       expect(files!.className).toContain('bg-tab-strip');
       expect(files!.className).toContain('border-b-border-subtle');
@@ -420,7 +423,7 @@ describe('ItemTabs', () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
     async function openMenu(count: number) {
-      fireEvent.pointerDown(screen.getByRole('button', { name: `Opened items (${count})` }), {
+      fireEvent.pointerDown(screen.getByRole('button', { name: `More opened items (${count})` }), {
         button: 0,
         ctrlKey: false,
         pointerType: 'mouse',
@@ -444,9 +447,9 @@ describe('ItemTabs', () => {
       it(`keeps focus on a tab when ${way} in the Opened menu removes the trigger`, async () => {
         containerWidth = 880;
         render(<Host initial={makeItems(8)} />);
-        close(await openMenu(8));
+        close(await openMenu(2));
         await settleTimers();
-        expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /^More opened items/ })).toBeNull();
         expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-6.md' }));
       });
     }
@@ -460,7 +463,7 @@ describe('ItemTabs', () => {
           canClose={() => new Promise<boolean>((resolve) => (allow = resolve))}
         />,
       );
-      closers['Close menuitem'](await openMenu(8));
+      closers['Close menuitem'](await openMenu(2));
       await settleTimers();
       expect(screen.getAllByRole('tab').length).toBe(6);
       await act(async () => allow(true));
@@ -473,10 +476,12 @@ describe('ItemTabs', () => {
     it('leaves the item and focus alone when the guard refuses', async () => {
       containerWidth = 880;
       render(<Host initial={makeItems(8)} canClose={() => Promise.resolve(false)} />);
-      closers['Close menuitem'](await openMenu(8));
+      closers['Close menuitem'](await openMenu(2));
       await settleTimers();
-      expect(screen.getByRole('button', { name: 'Opened items (8)' })).toBeTruthy();
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Opened items (8)' }));
+      expect(screen.getByRole('button', { name: 'More opened items (2)' })).toBeTruthy();
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'More opened items (2)' }),
+      );
       expect(screen.getAllByRole('tab')).toHaveLength(6);
     });
 
@@ -495,11 +500,13 @@ describe('ItemTabs', () => {
   });
 
   describe('overflow', () => {
-    it('shows the tabs that fit at their compressed width next to the Opened (N) trigger', () => {
+    it('shows the tabs that fit next to a More (N) trigger counting only the hidden ones', () => {
       containerWidth = 700;
       renderTabs({ items: makeItems(8), activeId: 'item-0' });
       expect(screen.getAllByRole('tab')).toHaveLength(5);
-      expect(screen.getByRole('button', { name: 'Opened items (8)' })).toBeTruthy();
+      const trigger = screen.getByRole('button', { name: 'More opened items (3)' });
+      expect(trigger.textContent).toContain('3');
+      expect(trigger.textContent).not.toContain('8');
     });
 
     it('keeps the active tab visible when it would be hidden', () => {
@@ -522,13 +529,13 @@ describe('ItemTabs', () => {
     it('offers an accessible Close menuitem per row, for users without a keyboard', async () => {
       containerWidth = 700;
       const { onClose } = renderTabs({ items: makeItems(8) });
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Opened items (8)' }), {
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'More opened items (3)' }), {
         button: 0,
         ctrlKey: false,
         pointerType: 'mouse',
       });
       const menu = await screen.findByRole('menu');
-      expect(within(menu).getAllByRole('menuitem', { name: /^Close / })).toHaveLength(8);
+      expect(within(menu).getAllByRole('menuitem', { name: /^Close / })).toHaveLength(3);
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-5.md' }));
       expect(onClose).toHaveBeenCalledWith('item-5');
     });
@@ -545,16 +552,22 @@ describe('ItemTabs', () => {
       expect(onClose).toHaveBeenCalledWith('item-1');
     });
 
-    it('lists every item with its description in the Opened menu and activates from it', async () => {
+    it('lists only the hidden items, with descriptions, in the More menu and activates from it', async () => {
       containerWidth = 700;
       const { onActivate } = renderTabs({ items: makeItems(8) });
-      const trigger = screen.getByRole('button', { name: 'Opened items (8)' });
+      const trigger = screen.getByRole('button', { name: 'More opened items (3)' });
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
       const menu = await screen.findByRole('menu');
+      expect(within(menu).getByText('More opened items')).toBeTruthy();
       const rows = within(menu).getAllByRole('menuitem', { name: /^(?!Close )/ });
-      expect(rows).toHaveLength(8);
+      expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringContaining('item-5.md'),
+        expect.stringContaining('item-6.md'),
+        expect.stringContaining('item-7.md'),
+      ]);
+      expect(within(menu).queryByText('docs/item-0.md')).toBeNull();
       expect(within(menu).getAllByText('docs/item-7.md')).toHaveLength(1);
-      fireEvent.click(rows[7]!);
+      fireEvent.click(rows[2]!);
       expect(onActivate).toHaveBeenCalledWith('item-7');
     });
   });
@@ -584,6 +597,38 @@ describe('ItemTabs', () => {
       containerWidth = 600;
       renderTabs({ switcherBelow: 700 });
       expect(screen.queryByRole('tablist')).toBeNull();
+    });
+
+    it('lists every item in one-line rows when none has a description, a pin on the pinned one', async () => {
+      renderTabs({
+        variant: 'switcher',
+        items: [
+          makeItem('context', {
+            label: 'Context',
+            description: undefined,
+            icon: undefined,
+            closable: false,
+          }),
+          makeItem('files', { label: 'Files', description: undefined, icon: undefined }),
+        ],
+        activeId: 'files',
+      });
+      fireEvent.pointerDown(screen.getByRole('button', { name: /opened$/ }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      const menu = await screen.findByRole('menu');
+      expect(within(menu).getByText('Opened items')).toBeTruthy();
+      const rows = within(menu).getAllByRole('menuitem', { name: /^(?!Close )/ });
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        // No reserved blank second line under the label.
+        expect(row.textContent).not.toContain(' ');
+      }
+
+      expect(rows[0]!.querySelector('[title="Close"]')).toBeNull();
+      expect(rows[0]!.querySelector('svg')).toBeTruthy();
     });
 
     it('names the empty state when nothing is active', () => {
@@ -631,9 +676,12 @@ describe('ItemTabs', () => {
     });
 
     it('omits the "Close <label>" row from the Opened menu for a non-closable item', async () => {
-      containerWidth = 700;
-      renderTabs({ items: [makeItem('a', { closable: false }), ...makeItems(8)] });
-      fireEvent.pointerDown(screen.getByRole('button', { name: /^Opened items/ }), {
+      // The switcher's menu lists every item, the visible active one included.
+      renderTabs({
+        variant: 'switcher',
+        items: [makeItem('a', { closable: false }), ...makeItems(8)],
+      });
+      fireEvent.pointerDown(screen.getByRole('button', { name: /opened$/ }), {
         button: 0,
         ctrlKey: false,
         pointerType: 'mouse',

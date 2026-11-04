@@ -39,8 +39,10 @@ related:
 
 **Status.** Owner-requested UX contract, revision 2 (owner decisions 2026-11-04). Revision 1 (a
 separate New Session form page that opened the Session afterwards) is superseded; its naming rules
-(section 7) stay. Mocked in Storybook; no backend or contract change is needed for the
-New Session part (see [Integration dependencies](#10-integration-dependencies)).
+(section 7) stay. Implemented on both New Session routes (`/sessions/new` on the managed Runtime and
+`/specs/$specId/sessions/new` on the demo Runtime) and in Create's agent section; no backend or
+contract change is needed for the New Session part (see
+[Integration dependencies](#10-integration-dependencies)).
 
 ## 1. Purpose
 
@@ -206,15 +208,19 @@ Copy: provider terms such as **Effort** are not translated in the Polish locale 
 The same `AgentFields` composition is used by the start form and by Create's agent section; the
 Composer keeps `ModelEffortPicker` and `ComposerModePicker`. Component map:
 
-| Piece                                     | Owner / decision                                                        |
-| ----------------------------------------- | ----------------------------------------------------------------------- |
-| `ProviderChoice`, `ChoiceTile`            | reused as-is                                                            |
-| `AgentFields` (new)                       | product composition from DS `Field`, `OptionPicker`, `SegmentedControl` |
-| `SessionNameSection` / `OwnValueSetting`  | reused; inside the form its heading is one level lower                  |
-| Start form                                | product composition on the conversation background; no surface          |
-| Ready empty state                         | DS `EmptyState` `pane`; icon = `SessionProviderIcon` at large size      |
-| Inactive Composer (Wide)                  | DS `MessageComposer`, disabled; no new variant                          |
-| `ModelEffortPicker`, `ComposerModePicker` | Composer only (no longer used by the start contexts)                    |
+| Piece                                                        | Owner / decision                                                                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `SessionStartScreen` (`features/sessions/start/screen`)      | product composition: `AppWorkspace`, `WorkspaceHeader`, the real `SessionContext`, the start form, the inactive Composer |
+| `SessionStartSource` (managed and demo sources)              | the catalogue, the start request with its retention or recovery, the pinned Specification; the screen only presents      |
+| `StartCatalogue` (`start/catalogue`)                         | provider-neutral model; adapters from the demo creation catalogue and from `ProviderDescriptor[]`                        |
+| `ProviderChoice`, `ChoiceTile` (`shared/controls`)           | reused as-is                                                                                                             |
+| `AgentFields` (`start/fields`)                               | product composition from DS `Field`, `OptionPicker`, `SegmentedControl`                                                  |
+| `SessionNameSection` / `OwnValueSetting` (`shared/controls`) | reused; inside the form its heading is one level lower                                                                   |
+| Start form (`start/form`)                                    | product composition on the conversation background; no surface                                                           |
+| Start handoff (`start/handoff`)                              | in-memory start values of the opened Session: ready empty state and pickers in place while its snapshot loads            |
+| Ready empty state                                            | DS `EmptyState` `pane`; icon = `SessionProviderIcon` at large size                                                       |
+| Inactive Composer (Wide)                                     | DS `MessageComposer`, disabled; no new variant                                                                           |
+| `ModelEffortPicker`, `ComposerModePicker`                    | Composer only (and its disabled twins in the pending Session)                                                            |
 
 ## 7. Session naming
 
@@ -251,22 +257,34 @@ page, that page hands over to the Session the same way instead of to the Specifi
 
 ## 10. Integration dependencies
 
-| Capability                                         | Status                                                                                                                |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Allocate a Session (provider, mode, model, effort) | existing: `POST /api/sessions` (`reference.api.sessions`); allocation does not launch the provider, so Start is quick |
-| Provider catalogue and availability                | existing: `GET /api/session-providers`; the demo uses the creation catalogue                                          |
-| Start without remounting the shell                 | UI routing only (history replace into the Session route)                                                              |
-| Own name at creation                               | `CreateSession.title` exists; the demo allocation has no title — missing in the demo path                             |
-| Agent-generated name and naming state              | missing (no auto-title, no naming status in the Session read model)                                                   |
-| Create with an agent on a real project             | missing: the project Create form and operation do not choose an agent nor allocate a Session                          |
+| Capability                                         | Status                                                                                                                         |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Allocate a Session (provider, mode, model, effort) | existing: `POST /api/sessions` (`reference.api.sessions`); allocation does not launch the provider, so Start is quick          |
+| Provider catalogue and availability                | existing: `GET /api/session-providers`; the demo uses the creation catalogue                                                   |
+| Start without a visible change of the shell        | UI routing only: history replace into the Session route, the start values handed over in memory (the route remounts the shell) |
+| Own name at creation                               | `CreateSession.title` exists; the demo allocation has no title — missing in the demo path                                      |
+| Agent-generated name and naming state              | missing (no auto-title, no naming status in the Session read model)                                                            |
+| Create with an agent on a real project             | missing: the project Create form and operation do not choose an agent nor allocate a Session                                   |
 
 ## 11. Storybook scenarios
 
-`SpecFlow/Screens/Session Start (mock)`: Wide — open (no model), Claude with a model chosen,
-Antigravity with a long model list (searchable), starting, started (ready empty state, focused
-Composer), start failed, no provider available; Narrow 375 px — open, model chosen (no Composer),
-started. Revision 1's `SpecFlow/Screens/New Session` stories remain until the start form replaces
-the route.
+`SpecFlow/Screens/Session Start` renders the real `SessionStartScreen` (a hidden `contract` story per
+state, rendered from args; the plays only assert it and walk the flows):
+
+- **Specification-bound, demo source** (`features/specs/creation/new-session/SessionStartForSpecification.stories.tsx`):
+  Wide — `Open` (no model), `ClaudeModelChosen`, `AntigravityLongModelList` (searchable),
+  `Starting`, `StartedWhileLoading` (the Session screen before its first snapshot), `Started`
+  (ready empty state, focused Composer), `StartFailed`, `NoProviderAvailable`, plus the flows
+  `AgentNamesSession`, `OwnName`, `EffortAndMode`, `AllocationFails` and `UnknownOutcome`; Narrow
+  375 px — `NarrowOpen`, `NarrowModelChosen` (no Composer), `NarrowStarted`,
+  `NarrowNoProviderAvailable`, `OwnNameMobile`.
+- **Managed source, no Specification** (`features/sessions/start/screen/SessionStartManaged.stories.tsx`,
+  scenario (h)): `NoSpecification`, `NativeModesWithUnavailableOne`, `ProviderWithoutModels`,
+  `ManagedAntigravityLongModelList` (the thirteen-model catalogue), `ManyWorkModes` (a picker),
+  `ManagedNoProviderAvailable`, `ManagedStarting`, `ManagedStartFailed`, `ManagedStartFlow`;
+  Narrow — `NarrowNoSpecification`, `NarrowNativeModes`.
+- A Session without a message, however it was opened: `SpecFlow/Screens/Managed Session` /
+  `EmptySession`.
 
 ## 12. Open questions
 

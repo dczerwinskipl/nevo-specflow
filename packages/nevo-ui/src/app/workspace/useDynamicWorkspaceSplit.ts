@@ -39,6 +39,7 @@ export function useDynamicWorkspaceSplit(
   secondaryRatioProp: number | undefined,
   onSecondaryRatioChange: ((ratio: number, mode: 'auto' | 'manual') => void) | undefined,
   enabled: boolean,
+  scopeGeneration = 0,
 ): {
   layout: 'split' | 'stacked';
   secondaryRatio: number;
@@ -47,6 +48,16 @@ export function useDynamicWorkspaceSplit(
 } {
   const [mode, setMode] = useState<'auto' | 'manual'>('auto');
   const [manualRatio, setManualRatioState] = useState<number | null>(null);
+  // Contract §3: `mode`/`manualRatio` are per `scopeKey` and reset when it changes. The provider's
+  // scope generation says so even while this workspace stays mounted; adjust during render, so the
+  // new scope never renders one frame with the old scope's manual ratio.
+  const [seenScopeGeneration, setSeenScopeGeneration] = useState(scopeGeneration);
+  if (seenScopeGeneration !== scopeGeneration) {
+    setSeenScopeGeneration(scopeGeneration);
+    setMode('auto');
+    setManualRatioState(null);
+  }
+
   const controlled = secondaryRatioProp !== undefined;
   const measured = availableWidth !== undefined;
 

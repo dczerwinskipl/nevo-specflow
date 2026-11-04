@@ -12,10 +12,20 @@ import { useOpenedItems } from './useOpenedItems';
 
 let containerWidth = 1000;
 const observers: (() => void)[] = [];
+let frames = new Map<number, FrameRequestCallback>();
 
 beforeEach(() => {
   containerWidth = 1000;
   observers.length = 0;
+  frames = new Map();
+  let nextFrame = 0;
+  // The width hook coalesces ResizeObserver notifications through requestAnimationFrame.
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++nextFrame, callback);
+
+    return nextFrame;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -77,7 +87,12 @@ function renderTabs(props: Partial<ItemTabsProps> = {}) {
 
 function resize(width: number) {
   containerWidth = width;
-  act(() => observers.forEach((callback) => callback()));
+  act(() => {
+    observers.forEach((callback) => callback());
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach((callback) => callback(0));
+  });
 }
 
 describe('ItemTabs', () => {

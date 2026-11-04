@@ -379,3 +379,73 @@ describe('AppWorkspaceProvider browserHistory', () => {
     expect(marker()?.owner).not.toBe(owner);
   });
 });
+
+describe('AppWorkspaceProvider browserHistory: tab and scope regressions', () => {
+  it('closing the ACTIVE deeper tab re-syncs to the neighbour depth; browser Back then hides', async () => {
+    mount();
+    await openWork('a');
+    await openWork('b');
+    await click('Push detail');
+    await screen.findByText('Detail page');
+    expect(markerDepth()).toBe(2);
+
+    await call((value) => value.closeTab('work:b'));
+    await settleHistory();
+    expect(depth()).toBe(1);
+    expect(markerDepth()).toBe(1);
+
+    await browser(() => window.history.back());
+    await waitFor(() => expect(depth()).toBe(0));
+    expect(markerDepth()).toBe(0);
+  });
+
+  it('closing a BACKGROUND tab leaves history untouched', async () => {
+    mount();
+    await openWork('a');
+    await openWork('b');
+    const length = window.history.length;
+
+    await call((value) => value.closeTab('work:a'));
+    await settleHistory();
+    expect(window.history.length).toBe(length);
+    expect(markerDepth()).toBe(1);
+    expect(depth()).toBe(1);
+  });
+
+  it('hide, then activateTab restores the entries and browser Back walks them', async () => {
+    mount();
+    await openWork('a');
+    await click('Push detail');
+    await screen.findByText('Detail page');
+
+    await call((value) => value.close());
+    await settleHistory();
+    expect(markerDepth()).toBe(0);
+
+    await call((value) => value.activateTab('work:a'));
+    await settleHistory();
+    expect(depth()).toBe(2);
+    expect(markerDepth()).toBe(2);
+
+    await browser(() => window.history.back());
+    await waitFor(() => expect(depth()).toBe(1));
+  });
+
+  it('a scope change consumes the old scope entries', async () => {
+    const tree = (scopeKey: string) => (
+      <AppWorkspaceProvider browserHistory scopeKey={scopeKey}>
+        <Host />
+      </AppWorkspaceProvider>
+    );
+    const { rerender } = render(tree('A'));
+    await openWork('a');
+    await click('Push detail');
+    await screen.findByText('Detail page');
+    expect(markerDepth()).toBe(2);
+
+    rerender(tree('B'));
+    await settleHistory();
+    expect(depth()).toBe(0);
+    expect(markerDepth()).toBe(0);
+  });
+});

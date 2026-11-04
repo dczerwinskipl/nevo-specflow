@@ -123,6 +123,12 @@ export interface SecondaryTabsState {
 export interface WorkspaceContextValue {
   secondary: WorkspaceSecondaryState | null;
   secondaryDepth: number;
+  /**
+   * Counts how many times the provider's `scopeKey` changed since it mounted. State owned by a
+   * consumer that is scoped like the Secondary flow (contract §3: "per `scopeKey`, reset when it
+   * changes") resets when this changes, even if that consumer stays mounted.
+   */
+  scopeGeneration: number;
   canGoBack: boolean;
   /**
    * The active runtime tab's local stack, root first: one titled level per entry
@@ -591,6 +597,15 @@ export function AppWorkspaceProvider({
 }: PropsWithChildren<AppWorkspaceProviderProps>) {
   const [tabsState, setTabsState] = useState<TabsSnapshot>(() => emptyTabsSnapshot(scopeKey));
   const [pinnedTab, setPinnedTab] = useState<PinnedSecondaryTabInput | null>(null);
+  // Derived during render (no effect): a scope change bumps the generation in the same render
+  // that first sees the new `scopeKey`, so consumers never paint one frame of the old scope's state.
+  const [scopeIdentity, setScopeIdentity] = useState({ scopeKey, generation: 0 });
+  let scopeGeneration = scopeIdentity.generation;
+  if (scopeIdentity.scopeKey !== scopeKey) {
+    scopeGeneration += 1;
+    setScopeIdentity({ scopeKey, generation: scopeGeneration });
+  }
+
   const tabsRef = useRef<TabsSnapshot>(tabsState);
   const pinnedTabRef = useRef(pinnedTab);
   const counter = useRef(0);
@@ -659,7 +674,10 @@ export function AppWorkspaceProvider({
       tabsRef.current = { ...previous, activeTabId: PINNED_TAB_ID, isOpen: true };
       setTabsState(tabsRef.current);
     } else if (!pinnedTab && previous.activeTabId === PINNED_TAB_ID) {
-      tabsRef.current = { ...previous, activeTabId: previous.order[0] ?? null };
+      // Nothing took its place: a background runtime tab must not be pulled into view (or the
+      // region reopened) just because the pinned tab went away. The region hides; registering the
+      // pinned tab again (the `activeTabId === null` branch above) reopens it.
+      tabsRef.current = { ...previous, activeTabId: null, isOpen: false };
       setTabsState(tabsRef.current);
     }
   }, [pinnedTab, scopeKey]);
@@ -816,10 +834,12 @@ export function AppWorkspaceProvider({
       // Only the closed tab's own surface ever "exits": closing a background tab changes nothing
       // visible, and the newly-activated neighbour (if any) simply appears, it does not animate in.
       publishTabs(nextSnapshot, 'close', wasActive ? record.flow : null, null);
-      restoreFocus(
-        returnFocusTo,
-        activeRuntimeTab(nextSnapshot)?.flow.entries.at(-1)?.instanceKey ?? null,
-      );
+      // The opener gets focus back only when the closed tab was the active one and nothing is left
+      // to show: otherwise the tab strip's own neighbour rule (`item-tabs.md`, "Focus after
+      // close") owns focus, and a background close moves it nowhere.
+      if (wasActive && activeTabId === null) {
+        restoreFocus(returnFocusTo, null);
+      }
 
       return true;
     },
@@ -1237,9 +1257,28 @@ export function AppWorkspaceProvider({
   const close = useCallback(() => {
     const tab = activeRuntimeTab(tabsRef.current);
     const top = tab?.flow.entries.at(-1);
+    if (tab && top) {
+      return navigate('close', tab.flow.id, top.instanceKey);
+    }
 
-    return tab && top ? navigate('close', tab.flow.id, top.instanceKey) : Promise.resolve(true);
-  }, [navigate]);
+    // The pinned tab is shown while runtime tabs wait in the background: hiding the region is
+    // still "close" (tabs and `activeTabId` survive; `activateTab` reopens). A pinned tab alone
+    // cannot be hidden (contract §4.1), so that stays a no-op.
+    return queue(() => {
+      const snapshot = tabsRef.current;
+      if (
+        mounted.current &&
+        snapshot.scopeKey === currentScope.current &&
+        snapshot.isOpen &&
+        snapshot.activeTabId === PINNED_TAB_ID &&
+        snapshot.order.length > 0
+      ) {
+        publishTabs({ ...snapshot, isOpen: false }, 'close', null, null);
+      }
+
+      return Promise.resolve(true);
+    });
+  }, [navigate, publishTabs, queue]);
 
   const canLeaveScope = useCallback(
     () =>
@@ -1293,6 +1332,7 @@ export function AppWorkspaceProvider({
             )
           : null,
       secondaryDepth: activeTab?.flow.entries.length ?? 0,
+      scopeGeneration,
       canGoBack: (activeTab?.flow.entries.length ?? 0) > 1,
       trail: activeTab ? resolveTrail(activeTab.flow.entries) : [],
       localNavigation: activeTab ? resolveLocalNavigation(activeTab.flow.entries) : 'back',
@@ -1324,6 +1364,7 @@ export function AppWorkspaceProvider({
     openTab,
     pinnedTab,
     registerGuard,
+    scopeGeneration,
     stateIsCurrentOrEmpty,
     transition,
     visibleTabsState,

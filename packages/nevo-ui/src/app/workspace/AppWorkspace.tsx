@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -72,11 +73,11 @@ import {
 } from './WorkspaceHeader';
 
 /**
- * Identifies the Secondary root-tab strip's own `ItemTabs` instance (`getItemTabId`/
- * `getItemTabPanelId` namespace). `AppWorkspace` renders at most one Secondary region, so a fixed
- * scope is sufficient; it never collides with a product's own `ItemTabs` usage elsewhere.
+ * Prefix of the Secondary root-tab strip's own `ItemTabs` scope (`getItemTabId`/
+ * `getItemTabPanelId` namespace). Each `AppWorkspace` instance appends its `useId`, so two
+ * workspaces in one document (and a product's own `ItemTabs`) never share element ids.
  */
-const SECONDARY_TABS_SCOPE = 'workspace-secondary-tabs';
+const SECONDARY_TABS_SCOPE_PREFIX = 'workspace-secondary-tabs';
 
 /**
  * Width (px) under which the Secondary root-tab strip collapses to `ItemTabs`' switcher button —
@@ -105,6 +106,7 @@ function withSecondaryTabStrip(
   shownTabId: string | null,
   activateTab: (id: string) => Promise<boolean>,
   closeTab: (id: string) => Promise<boolean>,
+  tabsScope: string,
   density: 'header' | 'rail',
   tabLabels?: AppWorkspaceLabels['secondaryTabs'],
 ): AppWorkspaceSurface {
@@ -133,7 +135,7 @@ function withSecondaryTabStrip(
               items={items}
               onActivate={(id) => void activateTab(id)}
               onClose={(id) => void closeTab(id)}
-              scope={SECONDARY_TABS_SCOPE}
+              scope={tabsScope}
               switcherBelow={SECONDARY_TABS_SWITCHER_BELOW}
               density={density}
               labels={tabLabels}
@@ -444,17 +446,22 @@ function useWorkspaceLayoutState(
   dynamicOpenTabCount: number,
   dynamicSecondaryRatio: number | undefined,
   onDynamicSecondaryRatioChange: ((ratio: number, mode: 'auto' | 'manual') => void) | undefined,
+  scopeGeneration: number,
 ): WorkspaceLayoutState {
   const { availableWidth, contentWidth = availableWidth } = useAppWorkspace();
   const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth);
   const showSecondary = hasSecondary && (isSplitView || secondaryCanStack);
   // Always called (rules of hooks): a no-op (`enabled: false`) outside `split="dynamic"`.
+  // Sized against the width actually rendered (`contentWidth`, inside the surface borders), so the
+  // fit check and the ratio bounds agree with the slot widths below: Primary never ends up a
+  // sub-pixel under its minimum. The split-capable threshold above stays on `availableWidth`.
   const dynamicSplit = useDynamicWorkspaceSplit(
-    availableWidth,
+    contentWidth,
     dynamicOpenTabCount,
     dynamicSecondaryRatio,
     onDynamicSecondaryRatioChange,
     split === 'dynamic',
+    scopeGeneration,
   );
 
   if (split === 'dynamic') {
@@ -1080,6 +1087,7 @@ function AppWorkspaceRoot({
   const secondarySide = secondarySideProp ?? 'end';
 
   const workspace = useOptionalWorkspace();
+  const secondaryTabsScope = `${SECONDARY_TABS_SCOPE_PREFIX}-${useId()}`;
   const { navigationMode } = useAppWorkspace();
   const runtimeSecondary = workspace?.secondary ?? null;
   const defaultSecondary = staticSurfaces.defaultSecondary;
@@ -1140,6 +1148,7 @@ function AppWorkspaceRoot({
     dynamicOpenTabCount,
     secondaryRatio,
     onSecondaryRatioChange,
+    workspace?.scopeGeneration ?? 0,
   );
   // The strip is the Secondary header's content whenever 2+ tabs are open (workspace-dynamic-split
   // §4.1), and on a split layout already while the pinned tab is the only one: the pinned tab
@@ -1154,11 +1163,11 @@ function AppWorkspaceRoot({
   );
   const secondaryTabPanelId =
     showSecondaryTabStrip && shownSecondaryTabId
-      ? getItemTabPanelId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
+      ? getItemTabPanelId(secondaryTabsScope, shownSecondaryTabId)
       : undefined;
   const secondaryTabPanelLabelledBy =
     showSecondaryTabStrip && shownSecondaryTabId
-      ? getItemTabId(SECONDARY_TABS_SCOPE, shownSecondaryTabId)
+      ? getItemTabId(secondaryTabsScope, shownSecondaryTabId)
       : undefined;
   // The shown Secondary's scroll identity: the shown tab and the stack entry on top of it (the
   // declarative pinned surface has no stack, so its one entry is `root`).
@@ -1175,6 +1184,7 @@ function AppWorkspaceRoot({
             shownSecondaryTabId,
             workspace.activateTab,
             workspace.closeTab,
+            secondaryTabsScope,
             // Split: the compact root-tab rail. Stacked keeps its 56px header (mobile unchanged).
             state.mode === 'split' ? 'rail' : 'header',
             labelsProp?.secondaryTabs,

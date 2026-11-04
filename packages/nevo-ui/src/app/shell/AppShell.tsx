@@ -9,7 +9,6 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
-  type RefObject,
 } from 'react';
 
 import {
@@ -17,6 +16,7 @@ import {
   designSlot,
   useDesignMetadata,
 } from '@nevo/figma-capture/metadata';
+import { useElementWidth, observeWidthCoalesced } from '../../components/behaviors/useElementWidth';
 import { AppBackground, WorkspaceSurface } from '../../components/foundations/Environment';
 import { Drawer, DrawerContent, DrawerTitle } from '../../components/overlays/Drawer';
 import { cn } from '../../lib';
@@ -60,66 +60,8 @@ export function useAppNavigation() {
   return useContext(AppNavigationContext);
 }
 
-/**
- * Coalesces a `ResizeObserver` callback through `requestAnimationFrame`: a burst of notifications
- * (every pixel crossed during a continuous drag-resize fires one) collapses into at most one
- * `measure()` call per animation frame, always reading the *latest* layout at flush time. Without
- * this, each notification commits its own React state update synchronously; cascading through the
- * whole shell/workspace tree (itself full of further `ResizeObserver`-driven measurements —
- * `AppWorkspace`, `WorkspaceHeader`, `ItemTabs`, `ScrollArea`), that per-notification commit cost
- * compounds faster than a real drag re-fires the observer, so the committed width falls further and
- * further behind the actual (already-settled) window size — visibly "stuck" at a stale, narrower-
- * or-wider-than-current layout for as long as it takes the backlog to drain. Coalescing bounds the
- * commit rate to one per frame regardless of notification rate, so the rendered layout can never
- * fall more than one frame behind the real size.
- */
-function observeWidthCoalesced(element: Element, measure: () => void) {
-  let frame: number | null = null;
-  const scheduleMeasure = () => {
-    if (frame !== null) {
-      cancelAnimationFrame(frame);
-    }
-
-    frame = requestAnimationFrame(() => {
-      frame = null;
-      measure();
-    });
-  };
-
-  const observer = new ResizeObserver(scheduleMeasure);
-  observer.observe(element);
-
-  return () => {
-    observer.disconnect();
-    if (frame !== null) {
-      cancelAnimationFrame(frame);
-    }
-  };
-}
-
-function useElementWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [width, setWidth] = useState<number>();
-
-  useLayoutEffect(() => {
-    const element = ref.current;
-
-    if (!element) {
-      return;
-    }
-
-    const update = () => setWidth(element.getBoundingClientRect().width);
-
-    update();
-
-    return observeWidthCoalesced(element, update);
-  }, []);
-
-  return { ref, width };
-}
-
 function useDescendantWidth<T extends HTMLElement>(
-  rootRef: RefObject<T | null>,
+  root: T | null,
   selector: string,
   enabled: boolean,
 ) {
@@ -132,7 +74,7 @@ function useDescendantWidth<T extends HTMLElement>(
       return;
     }
 
-    const element = rootRef.current?.querySelector<HTMLElement>(selector);
+    const element = root?.querySelector<HTMLElement>(selector);
     if (!element) {
       return;
     }
@@ -142,7 +84,7 @@ function useDescendantWidth<T extends HTMLElement>(
     update();
 
     return observeWidthCoalesced(element, update);
-  }, [enabled, rootRef, selector]);
+  }, [enabled, root, selector]);
 
   return width;
 }
@@ -191,12 +133,20 @@ export function AppShell({
   const navigationOpenRef = useRef(false);
   const navigationOpener = useRef<HTMLElement | null>(null);
   const navigationFocusTarget = useRef<(() => HTMLElement | null) | undefined>(undefined);
-  const { ref: shellRef, width: shellWidth } = useElementWidth<HTMLDivElement>();
+  const {
+    setElement: shellRef,
+    element: shellElement,
+    width: shellWidth,
+  } = useElementWidth<HTMLDivElement>();
   const { availableWidth, navigationMode, workspaceMaterialOwner, wide } =
     resolveAppShellLayout(shellWidth);
   const labels = { ...defaultAppShellLabels, ...labelsProp };
   const capture = useDesignMetadata('AppShell', { viewport: 'desktop' });
-  const workspaceWidth = useDescendantWidth(shellRef, '[data-app-shell-region="workspace"]', wide);
+  const workspaceWidth = useDescendantWidth(
+    shellElement,
+    '[data-app-shell-region="workspace"]',
+    wide,
+  );
   const isDesignCapture =
     'data-design-capture' in capture && capture['data-design-capture'] === 'true';
   const workspaceIsInset =

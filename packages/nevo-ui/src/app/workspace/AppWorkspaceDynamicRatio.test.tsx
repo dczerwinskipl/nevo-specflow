@@ -116,7 +116,21 @@ describe('AppWorkspace split="dynamic" ratio contract', () => {
 
       expect(now).toBeGreaterThanOrEqual(min);
       expect(now).toBeLessThanOrEqual(max);
-      expect(primaryWidthPx()).toBeGreaterThanOrEqual(399);
+      expect(primaryWidthPx()).toBeGreaterThanOrEqual(400);
+    },
+  );
+
+  it.each([0.95, 1])(
+    'at the wide boundary (bordered content one pixel under the 840px region) a ratio of %s keeps Primary at its 400px minimum',
+    async (ratio) => {
+      mockWorkspaceWidth(1108);
+      render(<Host ratio={ratio} />);
+      await flush();
+
+      expect(primaryWidthPx()).toBeGreaterThanOrEqual(400);
+      fireEvent.keyDown(splitter(), { key: 'End' });
+      await flush();
+      expect(primaryWidthPx()).toBeGreaterThanOrEqual(400);
     },
   );
 

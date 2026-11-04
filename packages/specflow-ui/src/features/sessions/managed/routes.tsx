@@ -21,8 +21,14 @@ export const managedSessionRoute = createRoute({
   component: ManagedSessionRoute,
 });
 function ManagedSessionRoute() {
-  const { sessionId } = managedSessionRoute.useParams(),
-    services = useAppServices();
+  const { sessionId } = managedSessionRoute.useParams();
+
+  return <ManagedSessionRouteView sessionId={sessionId} />;
+}
+
+/** The Session route's composition for one `sessionId`; the router keeps it mounted across ids. */
+export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
+  const services = useAppServices();
   const owner = useAuthOwner() ?? 'unavailable';
   const { onOpenSpecification, onOpenDocuments } = useSessionContextNavigation(sessionId);
   const started = startedSessionOf(owner, sessionId);
@@ -33,8 +39,10 @@ function ManagedSessionRoute() {
 
   // `browserHistory`: browser/Android Back steps back inside the Context/Work Secondary (sub-page →
   // parent → hide) before leaving the Session (secondary-navigation.md, "Browser and system Back").
+  // `scopeKey`: the router keeps this component mounted from `/sessions/A` to `/sessions/B`, so the
+  // provider would keep A's open tabs; the Session's identity scopes them.
   return (
-    <AppWorkspaceProvider browserHistory>
+    <AppWorkspaceProvider browserHistory scopeKey={`${owner}:${sessionId}`}>
       <ManagedSession
         key={owner + sessionId}
         api={services.managedSessionsApi}

@@ -1,4 +1,9 @@
-import type { ProviderDescriptor, SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import {
+  utf8Bytes,
+  type ContentPage,
+  type ProviderDescriptor,
+  type SessionSnapshot,
+} from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 import { providerModesFixture } from './workModes.stories-support';
 
@@ -6,12 +11,41 @@ export const fixtureSessionId = '00000000-0000-4000-8000-000000000001';
 const turnId = '00000000-0000-4000-8000-000000000002';
 const workId = '00000000-0000-4000-8000-000000000003';
 const contentId = '00000000-0000-4000-8000-000000000004';
+/** The large answer's capped preview: the first bytes of its full content, as the Runtime serves it. */
+const answerPreview =
+  'To jest krótki podgląd dużej odpowiedzi. Dalsza treść jest pobierana dopiero na żądanie.';
 /** The large answer's remaining pages, fetched and stitched together automatically by the UI. */
 const contentFragments = [
   'Dalszy fragment dużej wiadomości — pobrany automatycznie. ',
   'Druga część tej samej odpowiedzi, dociągnięta w tle bez udziału użytkownika. ',
   'Trzecia i ostatnia część — od teraz widoczna razem z resztą jako jedna całość.',
 ];
+const contentParts = [answerPreview, ...contentFragments];
+/** UTF-8 byte offset of each part inside the full content, like the Runtime's content offsets. */
+const contentStarts = contentParts.map((_, index) =>
+  contentParts.slice(0, index).reduce((sum, part) => sum + utf8Bytes(part), 0),
+);
+const contentByteLength = utf8Bytes(contentParts.join(''));
+
+/** The Runtime's `content` read: `offset` is a UTF-8 byte offset from the start of the full content. */
+function contentPage(offset: number): ContentPage {
+  const index = contentStarts.indexOf(offset);
+  if (index < 1) {
+    throw new Error(`Fixture content has no page at byte offset ${offset}`);
+  }
+
+  const next = contentStarts[index + 1];
+
+  return {
+    contentId,
+    revision: String(contentByteLength),
+    offset,
+    nextOffset: next,
+    complete: next === undefined,
+    text: contentParts[index]!,
+  };
+}
+
 export function sessionFixture(waiting = false): SessionSnapshot {
   return {
     session: {
@@ -56,9 +90,13 @@ export function sessionFixture(waiting = false): SessionSnapshot {
         kind: 'answer',
         createdAt: '2026-10-25T10:00:01Z',
         text: {
-          text: 'To jest krótki podgląd dużej odpowiedzi. Dalsza treść jest pobierana dopiero na żądanie.',
+          text: answerPreview,
           complete: false,
-          content: { contentId, revision: '1000000', byteLength: 1000000 },
+          content: {
+            contentId,
+            revision: String(contentByteLength),
+            byteLength: contentByteLength,
+          },
         },
       },
     ],
@@ -138,21 +176,14 @@ export function staggeredContentApi(snapshot: SessionSnapshot, delayMs = 120): M
   return {
     ...fixtureApi(snapshot),
     content: (_sessionId, _ref, offset) => {
-      const index = Math.min(offset, contentFragments.length - 1);
-
-      return new Promise((resolve) => {
-        setTimeout(
-          () =>
-            resolve({
-              contentId,
-              revision: '1000000',
-              offset: index,
-              nextOffset: index + 1 < contentFragments.length ? index + 1 : undefined,
-              complete: index + 1 >= contentFragments.length,
-              text: contentFragments[index]!,
-            }),
-          delayMs,
-        );
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          try {
+            resolve(contentPage(offset));
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
+          }
+        }, delayMs);
       });
     },
   };
@@ -183,19 +214,14 @@ export function fixtureApi(snapshot: SessionSnapshot, historyError = false): Man
             ],
             history: { hasOlder: false },
           }),
-    // Three sequential pages the UI stitches into one answer: offset is just this fake server's
-    // own page index (an opaque cursor the client only ever echoes back), not a byte count.
+    // Three sequential pages after the preview; offsets are UTF-8 byte offsets from the content
+    // start, exactly as the Runtime serves them (the preview is the content's byte prefix).
     content: (_sessionId, _ref, offset) => {
-      const index = Math.min(offset, contentFragments.length - 1);
-
-      return Promise.resolve({
-        contentId,
-        revision: '1000000',
-        offset: index,
-        nextOffset: index + 1 < contentFragments.length ? index + 1 : undefined,
-        complete: index + 1 >= contentFragments.length,
-        text: contentFragments[index]!,
-      });
+      try {
+        return Promise.resolve(contentPage(offset));
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+      }
     },
     work: () =>
       Promise.resolve({

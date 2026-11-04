@@ -297,6 +297,9 @@ true totals whenever older pages are not yet loaded.
 ContentPage = {contentId, revision, offset, text, nextOffset?, complete}.
 revision is required and immutable. offset defaults 0; limitBytes defaults/max 64 KiB.
 Offsets count UTF-8 bytes and must be valid character boundaries; invalid/out-of-range -> 400.
+A conversation `TextPreview.text` is the UTF-8 byte prefix of its content (at most 2048 bytes, cut on a
+character boundary), so a client continues with `offset` = the UTF-8 byte length of the preview text,
+not 0, and appends the pages to the preview.
 Return the longest valid UTF-8 prefix within the byte budget, nextOffset iff more remains.
 Old referenced revisions are retained for the Session lifetime, including for actively growing
 text; use immutable chunk references/prefix manifests rather than copying all prior text per delta.

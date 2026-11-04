@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, MarkdownDocument, Spinner } from '@nevo/ui';
-import type { ContentRef, TextPreview } from '@nevo/specflow-contracts/sessions';
+import { utf8Bytes, type ContentRef, type TextPreview } from '@nevo/specflow-contracts/sessions';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from './api';
 
@@ -17,7 +17,9 @@ import type { ManagedSessionsApi } from './api';
  * authored message rather than just the capped initial preview — e.g. the Copy message action in
  * `ManagedSession`'s `EntryRow` (session-chat-v10-design.md §2). */
 export interface ReadableTextHandle {
-  /** Writes the full resolved text to the clipboard. Resolves to whether it succeeded. */
+  /** Writes the full resolved text to the clipboard. Resolves to whether it succeeded; resolves to
+   * `false`, writing nothing, while the text is still loading or after its load failed, so a
+   * partial message is never copied as if it were whole. */
   copy: () => Promise<boolean>;
 }
 
@@ -85,9 +87,13 @@ const RevisionText = forwardRef<
   const [rest, setRest] = useState('');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // True once every remaining page has been stitched in.
+  const [loaded, setLoaded] = useState(false);
   const lifetime = useRef<AbortController | undefined>(undefined);
   // The offset the fetch sequence last attempted; a retry resumes there instead of from scratch.
-  const resumeFrom = useRef(0);
+  // Content offsets are UTF-8 byte offsets from the start of the full content and the preview is
+  // its byte prefix, so the first request continues exactly where the preview ends.
+  const resumeFrom = useRef(utf8Bytes(value.text));
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
@@ -113,8 +119,15 @@ const RevisionText = forwardRef<
         }
 
         setRest((text) => text + result.text);
+        if (result.nextOffset !== undefined && result.nextOffset <= offset) {
+          // A cursor that does not advance would loop forever (or re-append the same page).
+          throw new Error('Content cursor did not advance');
+        }
+
         offset = result.nextOffset;
       }
+
+      setLoaded(true);
     } catch {
       if (!controller.signal.aborted) {
         setFailed(true);
@@ -136,6 +149,7 @@ const RevisionText = forwardRef<
   }, []);
 
   const text = value.text + rest;
+  const complete = value.complete || loaded;
   // Runs in the same commit as every `text` growth (see `onGrow`'s own doc comment above) —
   // `useLayoutEffect`, not `useEffect`, specifically so this fires before the browser paints the
   // newly grown text, not merely sometime after.
@@ -147,8 +161,7 @@ const RevisionText = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
   // The Copy message action (session-chat-v10-design.md §2) acts on this exact resolved text —
-  // whatever has been stitched in so far — not the capped initial preview alone. Recreated
-  // whenever `text` grows so a copy started mid-fetch still gets the latest available content.
+  // the whole stitched text — not the capped initial preview alone — and only once it is complete.
   useImperativeHandle(
     ref,
     () => ({
@@ -157,6 +170,10 @@ const RevisionText = forwardRef<
           // `navigator.clipboard` is missing outside secure contexts and may be refused: say so
           // instead of reporting a copy that did not happen (same convention as
           // `CreateFailurePanel`/`TaskDetailDisclosure`'s own copy actions).
+          if (!complete) {
+            return false;
+          }
+
           if (!navigator.clipboard?.writeText) {
             throw new Error('Clipboard is unavailable');
           }
@@ -169,7 +186,7 @@ const RevisionText = forwardRef<
         }
       },
     }),
-    [text],
+    [text, complete],
   );
 
   return (

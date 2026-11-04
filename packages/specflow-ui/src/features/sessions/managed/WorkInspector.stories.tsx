@@ -493,3 +493,49 @@ export const ProgressiveLoadingAtScale: Story = {
     await waitFor(() => expect(canvas.queryByText(/Phase 0: narrowing/)).toBeInTheDocument());
   },
 };
+
+/** The Work tail refresh fails after the history was loaded (the API goes away, then Work remounts): the loaded Work stays on screen with an explicit refresh-failure notice rather
+ * than being replaced by a full-screen error (data-loading-and-integration.md "Refresh with
+ * usable data"). */
+export const FailedRefreshKeepsLoadedWork: Story = {
+  tags: ['integration'],
+  args: (() => {
+    const base = createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
+      [actionsWorkId]: mixedWorkTimelineActions(),
+    });
+    let tailCalls = 0;
+
+    return {
+      api: {
+        ...base,
+        work: (sessionId, turnId, before, signal) => {
+          if (before === undefined && ++tailCalls > 1) {
+            return Promise.reject(new Error('API unavailable'));
+          }
+
+          return base.work(sessionId, turnId, before, signal);
+        },
+      } satisfies ManagedSessionsApi,
+    };
+  })(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await openWork(canvasElement);
+    await canvas.findByText('Read file session.ts');
+
+    // Drilling into a ToolAction and coming back remounts Work, whose stale tail refetches — and
+    // fails now that the API is gone.
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /Edit workspace \(3 files\)/ }),
+    );
+    await userEvent.click(await canvas.findByRole('button', { name: /^(Back|Wstecz)/ }));
+
+    await expect(
+      await canvas.findByText('Nie udało się odświeżyć. Pokazane dane mogą być nieaktualne.'),
+    ).toBeVisible();
+    await expect(canvas.getByText('Read file session.ts')).toBeVisible();
+    await expect(
+      canvas.queryByText('Nie udało się wczytać tej części sesji.'),
+    ).not.toBeInTheDocument();
+  },
+};

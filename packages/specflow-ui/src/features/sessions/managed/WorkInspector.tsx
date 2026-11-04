@@ -605,6 +605,53 @@ function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
   );
 }
 
+/** What the tail query's state allows the Work/Actions screens to show. Content the view already
+ * holds (a tail from the cache, or older pages in the persistent store) stays usable through a
+ * pending or failed tail query — only a never-loaded object shows the full loading or error state
+ * (data-loading-and-integration.md "Refresh with usable data"). */
+function useLoadGate(
+  query: { isPending: boolean; isError: boolean; data: unknown },
+  hasStored: boolean,
+) {
+  const usable = hasStored || query.data !== undefined;
+
+  return {
+    showContent: usable || (!query.isPending && !query.isError),
+    loading: !usable && query.isPending,
+    failed: !usable && query.isError,
+    /** The refresh failed but earlier data is on screen: it may be out of date. */
+    refreshFailed: usable && query.isError,
+  };
+}
+
+function LoadGateNotices({
+  gate,
+  retry,
+}: {
+  gate: ReturnType<typeof useLoadGate>;
+  retry: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {gate.loading && <p role="status">{t('managedSession.loading')}</p>}
+      {gate.failed && (
+        <Alert tone="attention" title={t('managedSession.failed')}>
+          <Button onClick={retry}>{t('common.retry')}</Button>
+        </Alert>
+      )}
+      {gate.refreshFailed && (
+        <Alert tone="attention" title={t('managedSession.workInspector.refreshFailed')}>
+          <Button size="sm" onClick={retry}>
+            {t('common.retry')}
+          </Button>
+        </Alert>
+      )}
+    </>
+  );
+}
+
 function Work({ data }: { data: Data }) {
   const { t } = useTranslation();
   const navigation = useSecondaryStack<Pages>();
@@ -644,6 +691,7 @@ function Work({ data }: { data: Data }) {
   const counts = newestCounts(state.counts, query.data && workPageCounts(query.data))?.value;
   const olderBusy = state.busy;
   const olderError = state.error;
+  const loadGate = useLoadGate(query, state.items.length > 0);
   const setFilter = (next: WorkFilterState) => view.update((value) => ({ ...value, filter: next }));
 
   const chapters = useMemo(() => buildWorkChapters(items), [items]);
@@ -671,13 +719,8 @@ function Work({ data }: { data: Data }) {
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div className="flex w-full flex-1 flex-col gap-4">
-          {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
-          {query.isError && (
-            <Alert tone="attention" title={t('managedSession.failed')}>
-              <Button onClick={() => void query.refetch()}>{t('common.retry')}</Button>
-            </Alert>
-          )}
-          {!query.isPending && !query.isError && (
+          <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
+          {loadGate.showContent && (
             <>
               {counts && <WorkCountsSummary counts={counts} />}
               <WorkFilterBar filter={filter} kinds={filterKinds} onChange={setFilter} />
@@ -785,6 +828,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const olderBusy = state.busy;
   const olderError = state.error;
   const hasOlder = (state.cursor ?? query.data?.history)?.hasOlder ?? false;
+  const loadGate = useLoadGate(query, state.items.length > 0);
   const single = isSingleAction(items.length, hasOlder);
 
   return (
@@ -804,18 +848,13 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
               own title is the heading (`SingleToolActionDetail`), and repeating the Work title
               above it would show the same name twice. Where the
               workspace hosts the `detailHeader` (`ActionsHeader`) beside Back, it shows either. */}
-          {!headerHosted && !query.isPending && !single && items.length > 0 && (
+          {!headerHosted && loadGate.showContent && !single && items.length > 0 && (
             <Typography as="h2" variant="title-sm" className="text-content-primary">
               {params.workTitle}
             </Typography>
           )}
-          {query.isPending && <p role="status">{t('managedSession.loading')}</p>}
-          {query.isError && (
-            <Alert tone="attention" title={t('managedSession.failed')}>
-              <Button onClick={() => void query.refetch()}>{t('common.retry')}</Button>
-            </Alert>
-          )}
-          {!query.isPending && !query.isError && (
+          <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
+          {loadGate.showContent && (
             <>
               {/* Auto-loads on scroll near the top instead of a manual button
                   (`useAutoLoadOlder`); this is just its busy indicator. */}

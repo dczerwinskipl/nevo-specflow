@@ -543,9 +543,14 @@ function pagedApi(options: PagedApiOptions) {
   });
   let heldUsed = false;
   let failed = false;
+  let down = false;
   const api = {
     work: async (_sessionId: string, forTurn: string, before?: string) => {
       calls.push({ turnId: forTurn, before });
+      if (down && before === undefined) {
+        throw new Error('API unavailable');
+      }
+
       const pages = options.turns[forTurn] ?? [[]];
       const index = before === undefined ? pages.length - 1 : Number(before);
       if (before !== undefined && before === options.hold && !heldUsed) {
@@ -587,7 +592,7 @@ function pagedApi(options: PagedApiOptions) {
       }),
   } as unknown as ManagedSessionsApi;
 
-  return { api, calls, release: () => release() };
+  return { api, calls, release: () => release(), setDown: (value: boolean) => (down = value) };
 }
 
 function TurnsHost({ api }: { api: ManagedSessionsApi }) {
@@ -843,5 +848,122 @@ describe('WorkInspector Actions view state', () => {
 
     expect(await screen.findByText('Action 1')).toBeTruthy();
     expect(actionCalls.slice(before).filter((cursor) => cursor !== undefined)).toEqual([]);
+  });
+});
+
+describe('WorkInspector failed tail refresh keeps loaded history', () => {
+  const refreshFailed = 'Could not refresh. What is shown may be out of date.';
+
+  it('N04: a failed tail refetch keeps the loaded Work visible with a refresh-failure notice', async () => {
+    const { api, setDown } = pagedApi({
+      turns: { [turnId]: [toolItems('Old', 2), toolItems('Tail', 2)] },
+    });
+    const client = mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText('Tail 0');
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+    await screen.findByText('Old 0');
+
+    setDown(true);
+    await refreshTail(client);
+
+    expect(await screen.findByText(refreshFailed)).toBeTruthy();
+    expect(screen.getByText('Old 0')).toBeTruthy();
+    expect(screen.getByText('Tail 0')).toBeTruthy();
+    expect(screen.queryByText('Could not load this part of the session.')).toBeNull();
+
+    // Retry recovers and clears the notice.
+    setDown(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.queryByText(refreshFailed)).toBeNull());
+    expect(screen.getByText('Old 0')).toBeTruthy();
+  });
+
+  it('N04: returning to a Turn after the query cache is gone and the API is down shows the stored history, filter and search', async () => {
+    const { api, setDown } = pagedApi({
+      turns: {
+        [turnId]: [toolItems('Old', 2), toolItems('Tail', 2)],
+        [otherTurnId]: [toolItems('Elsewhere', 1)],
+      },
+    });
+    const client = mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText('Tail 0');
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+    await screen.findByText('Old 0');
+    selectFilterKind('Filter Work by type', 'Tool');
+    fireEvent.change(screen.getByPlaceholderText('Search Work'), { target: { value: 'Old' } });
+    await waitFor(() => expect(screen.queryByText('Tail 0')).toBeNull());
+
+    await openTurn('Open Turn 2');
+    await screen.findByText('Elsewhere 0');
+    client.clear();
+    setDown(true);
+    await openTurn('Open Turn 1');
+
+    expect(await screen.findByText(refreshFailed)).toBeTruthy();
+    expect(screen.getByText('Old 0')).toBeTruthy();
+    expect(screen.getByPlaceholderText<HTMLInputElement>('Search Work').value).toBe('Old');
+  });
+
+  it('N04: a never-loaded Turn whose first load fails still shows the full error state', async () => {
+    const { api, setDown } = pagedApi({ turns: { [turnId]: [toolItems('Tail', 1)] } });
+    setDown(true);
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+
+    expect(await screen.findByText('Could not load this part of the session.')).toBeTruthy();
+    expect(screen.queryByText(refreshFailed)).toBeNull();
+  });
+
+  it('N04: the Actions screen keeps loaded ToolActions visible when its refresh fails', async () => {
+    const tool = work({
+      kind: 'tool',
+      title: { text: 'Run a batch', complete: true },
+      actionCount: 2,
+    });
+    const action = (ordinal: number) => ({
+      actionId: `action-${ordinal}`,
+      ordinal,
+      revision: 1,
+      state: 'completed' as const,
+      title: { text: `Action ${ordinal}`, complete: true },
+      createdAt: '2026-10-30T10:00:00Z',
+      updatedAt: '2026-10-30T10:00:00Z',
+    });
+    let down = false;
+    const { api: workApi } = pagedApi({
+      turns: { [turnId]: [[tool]], [otherTurnId]: [toolItems('Elsewhere', 1)] },
+    });
+    const api = {
+      ...workApi,
+      actions: (_sessionId: string, workId: string) => {
+        if (down) {
+          return Promise.reject(new Error('API unavailable'));
+        }
+
+        return Promise.resolve({
+          sessionId,
+          eventSeq: 1,
+          workId,
+          items: [action(1), action(2)],
+          history: { hasOlder: false },
+        });
+      },
+    } as unknown as ManagedSessionsApi;
+    const client = mountTurns(api);
+    await openTurn('Open Turn 1');
+    fireEvent.click((await screen.findByText('Run a batch')).closest('button')!);
+    await screen.findByText('Action 1');
+
+    down = true;
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['managed-actions'] });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(await screen.findByText(refreshFailed)).toBeTruthy();
+    expect(screen.getByText('Action 1')).toBeTruthy();
+    expect(screen.getByText('Action 2')).toBeTruthy();
   });
 });

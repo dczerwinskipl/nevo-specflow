@@ -1705,6 +1705,7 @@
       "operationsCount_other": "{{count}} operations",
       "analysisSuffix": "analysis",
       "loadingOlder": "Loading older Work…",
+      "refreshFailed": "Could not refresh. What is shown may be out of date.",
       "noMatches": "No Work matches these filters.",
       "emptyTurn": "No Work yet for this Turn.",
       "noActions": "No tool actions yet.",

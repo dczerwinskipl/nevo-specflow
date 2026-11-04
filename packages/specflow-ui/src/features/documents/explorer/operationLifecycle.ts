@@ -3,13 +3,6 @@ import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { writeRetention } from '../writeRetention';
 import { createOperationLock } from './operationLock';
 
-/**
- * The outcome may still change and only a replay of the same operation decides it: no answer at
- * all, or an answer `writeRetention` keeps for a replay (`DOCUMENT_WRITE_FAILED`). A classified
- * refusal before anything was sent (`not-applied`) is definite.
- */
-export const outcomeUnknown = (failure: unknown) => writeRetention(failure) === 'unknown';
-
 /** Refusals after which the tree is read again (it is stale, or the Specification is read-only now). */
 const refetchCodes = new Set([
   'DOCUMENT_ALREADY_CLASSIFIED',
@@ -48,19 +41,20 @@ export function useOperationLifecycle(options: {
   };
 
   /**
-   * The bookkeeping of every failed operation: unknown outcome (locks the tree), resume offer and
-   * the tree refetch the code calls for. Returns whether the outcome is unknown.
+   * The bookkeeping of every failed operation: the tree is locked while the outcome is unknown or
+   * the write waits for Resume (either way only the same operation may follow), the resume offer
+   * and the tree refetch the code calls for. Returns whether the outcome is unknown.
    */
   const settleFailure = (failure: unknown) => {
-    const unknownOutcome = outcomeUnknown(failure);
-    setRecovery(unknownOutcome);
+    const retention = writeRetention(failure);
+    setRecovery(retention !== undefined);
+    setResumable(retention === 'recovery');
     const code = apiErrorCode(failure);
-    setResumable(writeRetention(failure) === 'recovery');
     if (code && refetchCodes.has(code)) {
       void onRefresh?.();
     }
 
-    return unknownOutcome;
+    return retention === 'unknown';
   };
 
   return {

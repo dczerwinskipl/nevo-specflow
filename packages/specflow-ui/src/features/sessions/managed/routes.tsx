@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { AppWorkspaceProvider } from '@nevo/ui';
 import { appRoute } from '../../../app/router/root';
+import { parseSpecificationCollection } from '../../../app/router/search';
+import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useAuthOwner } from './useAuthOwner';
 import { realRouteSessionContext } from './context/sessionContextTypes';
@@ -18,6 +20,11 @@ export const managedNewSessionRoute = createRoute({
 export const managedSessionRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/sessions/$sessionId',
+  // The Specification's collection the Session was opened from; Context → Documents hands it on so
+  // an archived Specification is not reopened under `current`.
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: parseSpecificationCollection(search),
+  }),
   component: ManagedSessionRoute,
 });
 function ManagedSessionRoute() {
@@ -60,6 +67,7 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
 function NewManagedSession() {
   const services = useAppServices();
   const navigate = useNavigate();
+  const collection = useApplicationCollection();
   const owner = useAuthOwner();
   if (owner === undefined) {
     return null;
@@ -73,7 +81,12 @@ function NewManagedSession() {
       // The start screen is replaced by the Session (history replace): Back does not return to an
       // empty start state.
       onOpenSession={(sessionId) =>
-        void navigate({ to: '/sessions/$sessionId', params: { sessionId }, replace: true })
+        void navigate({
+          to: '/sessions/$sessionId',
+          params: { sessionId },
+          search: { collection },
+          replace: true,
+        })
       }
     />
   );

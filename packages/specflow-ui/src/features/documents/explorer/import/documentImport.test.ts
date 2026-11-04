@@ -6,6 +6,7 @@ const available = { available: true };
 const tree = {
   documents: [{ id: 'd1', path: 'docs/exists.md' }],
   folders: [{ path: 'docs/folder' }],
+  dangling: [{ id: 'gone', path: 'docs/gone.md' }],
   capabilities: {
     createFile: available,
     createFolder: available,
@@ -98,5 +99,52 @@ describe('planImport', () => {
   it('rejects a path longer than the limit', async () => {
     const plan = await planImport([file('deep.md')], 'f'.repeat(importLimits.pathCharacters), tree);
     expect(reasons(plan)).toEqual([['deep.md', 'documents.tree.skip.path']]);
+  });
+});
+
+describe('planImport against the Engine rules', () => {
+  const empty = { ...tree, documents: [], folders: [], dangling: [] };
+
+  it('treats a dangling registration as an occupied path', async () => {
+    const plan = await planImport([file('gone.md'), file('Gone.MD'), file('c.md')], 'docs', tree);
+    expect(plan.accepted.map((doc) => doc.path)).toEqual(['docs/c.md']);
+    expect(reasons(plan)).toEqual([
+      ['gone.md', 'documents.tree.skip.exists'],
+      ['Gone.MD', 'documents.tree.skip.exists'],
+    ]);
+  });
+
+  it('treats a path under, or above, an existing one as a collision', async () => {
+    const nested = { ...empty, documents: [{ id: 'd', path: 'a/b.md' }] } as unknown as typeof tree;
+    expect(reasons(await planImport([file('b.md')], 'a/b.md', nested))).toEqual([
+      ['b.md', 'documents.tree.skip.exists'],
+    ]);
+    const clash = { ...empty, folders: [{ path: 'x.md' }] } as unknown as typeof tree;
+    expect(reasons(await planImport([file('x.md')], '', clash))).toEqual([
+      ['x.md', 'documents.tree.skip.exists'],
+    ]);
+  });
+
+  it('counts accepted files toward the file limit, not the selection index', async () => {
+    const files = [
+      file('bad.png'),
+      ...Array.from({ length: importLimits.files }, (_, i) => file(`f${i}.md`)),
+    ];
+    const plan = await planImport(files, '', empty);
+    expect(plan.accepted).toHaveLength(importLimits.files);
+    expect(reasons(plan)).toEqual([['bad.png', 'documents.tree.skip.format']]);
+  });
+
+  it('mirrors the Engine byte limits: 1 MiB per file, 1 MiB per request, in UTF-8 bytes', async () => {
+    expect([importLimits.fileBytes, importLimits.totalBytes]).toEqual([1048576, 1048576]);
+    const big = file('big.md', 'a'.repeat(importLimits.fileBytes + 1));
+    expect(reasons(await planImport([big], '', empty))).toEqual([
+      ['big.md', 'documents.tree.skip.size'],
+    ]);
+    // 150 000 three-byte characters are 450 000 bytes each: two fit, the third passes the total.
+    const files = ['a', 'b', 'c'].map((n) => file(`${n}.md`, '\u20ac'.repeat(150_000)));
+    const plan = await planImport(files, '', empty);
+    expect(plan.accepted.map((doc) => doc.path)).toEqual(['a.md', 'b.md']);
+    expect(reasons(plan)).toEqual([['c.md', 'documents.tree.skip.total']]);
   });
 });

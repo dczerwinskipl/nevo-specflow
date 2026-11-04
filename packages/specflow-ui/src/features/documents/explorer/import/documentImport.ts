@@ -2,14 +2,21 @@ import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
 import {
   joinDocumentPath,
+  pathCollides,
   uploadNameReason,
   type PlannedDocument,
 } from '../tree/documentTreePolicy';
 
-/** Import limits mirrored from the Runtime; the skip reasons quote them. */
+/**
+ * Import limits. `files`, `fileBytes` and `totalBytes` mirror the Engine's create-documents caps
+ * (`CREATE_DOCUMENTS_MAX_FILES`, `TEXT_CONTENT_MAX_BYTES`, `CREATE_DOCUMENTS_MAX_TOTAL_BYTES`),
+ * all counted in UTF-8 bytes; `contentCharacters` and `pathCharacters` are bounds of this UI only.
+ * The skip reasons quote them.
+ */
 export const importLimits = {
   files: 10,
-  fileBytes: 2 * 1024 * 1024,
+  fileBytes: 1024 * 1024,
+  totalBytes: 1024 * 1024,
   contentCharacters: 200_000,
   pathCharacters: 500,
 } as const;
@@ -34,19 +41,18 @@ export interface ImportPlan {
 export async function planImport(
   files: readonly File[],
   folder: string,
-  tree: Pick<DocumentTree, 'documents' | 'folders' | 'capabilities'>,
+  tree: Pick<DocumentTree, 'documents' | 'folders' | 'dangling' | 'capabilities'>,
 ): Promise<ImportPlan> {
   const accepted: PlannedDocument[] = [];
   const skipped: SkippedFile[] = [];
-  const taken = (path: string) => {
-    const key = path.toLowerCase();
-
-    return (
-      tree.documents.some((doc) => doc.path.toLowerCase() === key) ||
-      tree.folders.some((existing) => existing.path.toLowerCase() === key) ||
-      accepted.some((doc) => doc.path.toLowerCase() === key)
+  // The Engine's occupancy: documents, dangling registrations, folders, and the batch itself.
+  const taken = (path: string) =>
+    pathCollides(
+      path,
+      [...tree.documents, ...tree.dangling, ...accepted].map((doc) => doc.path),
+      tree.folders.map((folder) => folder.path),
     );
-  };
+  let totalBytes = 0;
 
   /** Size, format, path and collision rules, once the name itself is acceptable. */
   const contentReason = (file: File, path: string): Message | undefined => {
@@ -66,10 +72,10 @@ export async function planImport(
     return taken(path) ? message('documents.tree.skip.exists') : undefined;
   };
 
-  for (const [index, file] of files.entries()) {
+  for (const file of files) {
     const path = joinDocumentPath(folder, file.name);
     const reason: Message | undefined =
-      index >= importLimits.files
+      accepted.length >= importLimits.files
         ? message('documents.tree.skip.limit')
         : (uploadNameReason(file.name) ?? contentReason(file, path));
     if (reason) {
@@ -84,6 +90,13 @@ export async function planImport(
         continue;
       }
 
+      const bytes = new TextEncoder().encode(content).length;
+      if (totalBytes + bytes > importLimits.totalBytes) {
+        skipped.push({ name: file.name, reason: message('documents.tree.skip.total') });
+        continue;
+      }
+
+      totalBytes += bytes;
       accepted.push({ path, content });
     } catch {
       skipped.push({ name: file.name, reason: message('documents.tree.skip.utf8') });

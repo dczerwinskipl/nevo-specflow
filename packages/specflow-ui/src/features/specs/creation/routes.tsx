@@ -70,10 +70,10 @@ function NewSpecification() {
             });
           }
         }}
-        onSession={(specId, sessionId) =>
+        onSession={(_specId, sessionId) =>
           void navigate({
-            to: '/specs/$specId/sessions/$sessionId',
-            params: { specId, sessionId },
+            to: '/sessions/$sessionId',
+            params: { sessionId },
             search: { collection },
           })
         }
@@ -130,8 +130,8 @@ function NewSession() {
       // empty start state.
       onOpenSession={(sessionId) =>
         void navigate({
-          to: '/specs/$specId/sessions/$sessionId',
-          params: { specId, sessionId },
+          to: '/sessions/$sessionId',
+          params: { sessionId },
           search: { collection },
           replace: true,
         })

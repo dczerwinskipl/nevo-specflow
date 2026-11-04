@@ -1143,7 +1143,8 @@
       "skippedItem": "{{name}}: {{reason}}",
       "skip": {
         "limit": "maksymalnie 10 plików na import",
-        "size": "plik przekracza 2 MB",
+        "size": "plik przekracza 1 MB",
+        "total": "import przekroczyłby łącznie 1 MB",
         "format": "obsługiwane formaty to .md i .txt",
         "path": "ścieżka przekracza 500 znaków",
         "exists": "ta ścieżka już istnieje — zmień nazwę pliku",
@@ -1161,6 +1162,7 @@
       "error": {
         "pathConflict": "Ta ścieżka już istnieje. Wybierz inną nazwę lub folder.",
         "revisionConflict": "Dokument lub folder zmienił się w międzyczasie. Zamknij akcję i rozpocznij ją ponownie: dokumenty zostały odświeżone.",
+        "tooLarge": "Dokument lub całe żądanie przekracza limit 1 MB.",
         "requestConflict": "To żądanie ma już zapisany inny wynik. Spróbuj wykonać akcję ponownie.",
         "default": "Nie udało się wykonać zmiany. Sprawdź nazwę i ścieżkę; szkic pozostaje zachowany.",
         "caseOnlyRename": "Zmiana samej wielkości liter nie jest obsługiwana na tym systemie plików. Zmień najpierw na inną nazwę, potem na docelową.",
@@ -1473,6 +1475,7 @@
         "attentionUnreadable": "Nie udało się sprawdzić, czy coś wymaga Twojej uwagi.",
         "relatedTasksUnreadable": "Nie udało się wczytać powiązanych zadań.",
         "executorUnreadable": "Nie udało się wczytać danych wykonawcy.",
+        "workUnreadable": "Nie udało się wczytać historii pracy.",
         "executorMissing": "Wykonawca tej sesji nie jest już dostępny."
       },
       "work": {
@@ -1580,6 +1583,9 @@
     "failed": "Nie udało się wczytać tej części sesji.",
     "historyFailed": "Nie udało się wczytać starszych wiadomości.",
     "commandFailed": "Nie potwierdzono żądania. Ponów je z tym samym kluczem.",
+    "savedRequestUnreadable": "Nie można odczytać zapisanego żądania",
+    "savedRequestUnreadableBody": "Ta przeglądarka zachowała żądanie, którego nie da się odczytać. Mogło już zostać zastosowane. Odrzucenie go pozwala wysłać nowe.",
+    "discardSavedRequest": "Odrzuć zapisane żądanie",
     "responseRequired": "Wymagana odpowiedź",
     "unsupportedQuestion": "To pytanie wymaga kontrolek, które nie są jeszcze dostępne.",
     "allow": "Zezwól",

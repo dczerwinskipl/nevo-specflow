@@ -46,7 +46,12 @@ function SessionsRouteScreen() {
           onOpenSession={
             // Full Session is canonical at the top-level `/sessions/:sessionId` route regardless of
             // Runtime mode (see sessionDetailRoute below, which now only redirects there).
-            (sessionId) => void navigate({ to: '/sessions/$sessionId', params: { sessionId } })
+            (sessionId) =>
+              void navigate({
+                to: '/sessions/$sessionId',
+                params: { sessionId },
+                search: { collection },
+              })
           }
         />
       )}
@@ -62,10 +67,14 @@ function SessionsRouteScreen() {
 export const sessionDetailRoute = createRoute({
   getParentRoute: () => specificationRoute,
   path: 'sessions/$sessionId',
-  beforeLoad: ({ params }) =>
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: parseSpecificationCollection(search),
+  }),
+  beforeLoad: ({ params, search }) =>
     redirect({
       to: '/sessions/$sessionId',
       params: { sessionId: params.sessionId },
+      search: { collection: search.collection },
       replace: true,
     }),
 });

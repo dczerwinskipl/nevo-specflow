@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SessionStateProvider, useSessionReturn } from '../SessionStateProvider';
+import { managedSessionRoute } from './routes';
 import { useSessionContextNavigation } from './useSessionContextNavigation';
 
 afterEach(cleanup);
@@ -33,7 +34,15 @@ function mount(initial: string) {
     ),
   });
   const routes = ['/sessions/$sessionId', '/specs/$specId', '/specs/$specId/documents'].map(
-    (path) => createRoute({ getParentRoute: () => rootRoute, path }),
+    (path) =>
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        // The Session route validates the collection exactly as the application's does.
+        ...(path === '/sessions/$sessionId'
+          ? { validateSearch: managedSessionRoute.options.validateSearch }
+          : {}),
+      }),
   );
   const router = createRouter({
     routeTree: rootRoute.addChildren(routes),
@@ -44,9 +53,14 @@ function mount(initial: string) {
   return { captured, router };
 }
 
+/** The URL the application itself builds for a Session (`search: { collection }`). */
+function sessionUrl(collection: 'current' | 'archive') {
+  return `/sessions/session-1?collection=${collection}`;
+}
+
 describe('useSessionContextNavigation', () => {
   it('opens the Specification Documents and remembers this Session as the way back', async () => {
-    const { captured, router } = mount('/sessions/session-1?collection=archive');
+    const { captured, router } = mount(sessionUrl('archive'));
     await act(async () => {
       await router.load();
     });
@@ -64,7 +78,7 @@ describe('useSessionContextNavigation', () => {
   });
 
   it('opens the Specification overview without remembering a return', async () => {
-    const { captured, router } = mount('/sessions/session-1');
+    const { captured, router } = mount(sessionUrl('current'));
     await act(async () => {
       await router.load();
     });

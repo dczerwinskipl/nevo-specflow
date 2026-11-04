@@ -55,6 +55,8 @@ export function documentMutationError(error: unknown, t: TFunction): string {
     case 'CATALOGUE_STALE':
     case 'ARCHETYPE_UNKNOWN':
       return t('documents.tree.error.catalogueStale');
+    case 'DOCUMENT_TOO_LARGE':
+      return t('documents.tree.error.tooLarge');
     case 'DOCUMENT_RECOVERY_REQUIRED':
       return t('documents.tree.error.recovery');
     // A file system that ignores letter case (Windows) cannot rename `bb.md` to `Bb.md`; the

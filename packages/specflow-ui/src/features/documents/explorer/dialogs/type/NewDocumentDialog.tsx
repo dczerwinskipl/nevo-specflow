@@ -110,6 +110,7 @@ export function NewDocumentDialog({
             choices={choices}
             value={type}
             onChange={setPicked}
+            disabled={busy || unknown}
             archetype={archetypeTitle(tree, catalogue.data)}
             allowNone
           />

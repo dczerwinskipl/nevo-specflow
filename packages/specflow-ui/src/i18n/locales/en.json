@@ -1143,7 +1143,8 @@
       "skippedItem": "{{name}}: {{reason}}",
       "skip": {
         "limit": "at most 10 files per import",
-        "size": "the file exceeds 2 MB",
+        "size": "the file exceeds 1 MB",
+        "total": "the import would exceed 1 MB in total",
         "format": "supported formats are .md and .txt",
         "path": "the path exceeds 500 characters",
         "exists": "this path already exists — rename the file",
@@ -1161,6 +1162,7 @@
       "error": {
         "pathConflict": "This path already exists. Choose a different name or folder.",
         "revisionConflict": "The document or folder changed meanwhile. Close the action and start it again: the documents were refreshed.",
+        "tooLarge": "A document or the whole request is larger than the 1 MB limit.",
         "requestConflict": "This request was already recorded with a different result. Try the action again.",
         "default": "Unable to make the change. Check the name and path; the draft is kept.",
         "caseOnlyRename": "Renaming only the letter case is not supported on this file system. Rename it to a different name first, then to the one you want.",
@@ -1473,6 +1475,7 @@
         "attentionUnreadable": "Couldn’t check whether anything needs your attention.",
         "relatedTasksUnreadable": "Couldn’t load related Tasks.",
         "executorUnreadable": "Couldn’t load executor details.",
+        "workUnreadable": "Couldn’t load the work history.",
         "executorMissing": "This session’s executor is no longer available."
       },
       "work": {
@@ -1580,6 +1583,9 @@
     "failed": "Could not load this part of the session.",
     "historyFailed": "Older messages could not be loaded.",
     "commandFailed": "The request was not confirmed. Retry with the same request.",
+    "savedRequestUnreadable": "Saved request can't be read",
+    "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
+    "discardSavedRequest": "Discard saved request",
     "responseRequired": "Response required",
     "unsupportedQuestion": "This question needs controls that are not available yet.",
     "allow": "Allow",

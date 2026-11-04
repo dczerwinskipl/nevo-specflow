@@ -48,3 +48,11 @@ describe('documentMutationError', () => {
     expect(documentMutationError(new Error('x'), t)).toBe('documents.tree.error.default');
   });
 });
+
+describe('documentMutationError size limit', () => {
+  it('explains DOCUMENT_TOO_LARGE instead of the generic failure', () => {
+    expect(documentMutationError(refusal('DOCUMENT_TOO_LARGE'), t)).toBe(
+      'documents.tree.error.tooLarge',
+    );
+  });
+});

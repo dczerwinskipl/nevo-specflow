@@ -6,7 +6,7 @@ import { useNotify } from '../../../../shared/notifications/notifications';
 import { writeRetention } from '../../writeRetention';
 import { documentMutationError } from '../../mutationErrors';
 import type { NewDocumentEntry } from '../operationTypes';
-import { outcomeUnknown, type OperationLifecycle } from '../operationLifecycle';
+import type { OperationLifecycle } from '../operationLifecycle';
 import type { PlannedDocument } from '../tree/documentTreePolicy';
 import { planImport } from './documentImport';
 
@@ -33,10 +33,8 @@ export function useDocumentImport(options: {
    * `operationId` and body). A definite refusal drops them: the same batch would be refused again.
    */
   const failImport = (failure: unknown, files: PlannedDocument[], again: boolean) => {
-    const unknownOutcome = outcomeUnknown(failure);
+    const unknownOutcome = lifecycle.settleFailure(failure);
     const recovery = writeRetention(failure) === 'recovery';
-    setRecovery(unknownOutcome);
-    setResumable(recovery);
     if (unknownOutcome || recovery) {
       setRetry(files);
       setError(
@@ -56,7 +54,8 @@ export function useDocumentImport(options: {
 
   /** Validates and imports files into `folder`. */
   const importFiles = async (files: File[], folder: string) => {
-    if (lock.busy) {
+    // A write that waits for its answer or for Resume holds the tree: a new import would drop it.
+    if (lock.busy || lock.unknown) {
       return;
     }
 

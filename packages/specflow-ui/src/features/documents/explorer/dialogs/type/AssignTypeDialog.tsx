@@ -55,6 +55,7 @@ export function AssignTypeDialog({
             choices={choices}
             value={type}
             onChange={setPicked}
+            disabled={busy || unknown}
             archetype={archetypeTitle(tree, catalogue.data)}
             allowNone={false}
           />

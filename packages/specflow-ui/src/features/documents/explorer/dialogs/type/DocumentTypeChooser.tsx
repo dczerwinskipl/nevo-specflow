@@ -41,6 +41,7 @@ export function DocumentTypeChooser({
   onChange,
   archetype,
   allowNone,
+  disabled,
 }: {
   choices: TypeChoices;
   value: string;
@@ -48,6 +49,8 @@ export function DocumentTypeChooser({
   /** Title of the Specification's archetype ("Suggested by <archetype>"). */
   archetype: string;
   allowNone: boolean;
+  /** The type is fixed: a resubmit must replay the same body (and so the same `operationId`). */
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const groupLabel = (text: string, first: boolean) => (
@@ -60,6 +63,7 @@ export function DocumentTypeChooser({
     <RadioGroup
       value={value}
       onValueChange={onChange}
+      disabled={disabled}
       aria-label={t('documents.newDocument.typeLabel')}
     >
       {choices.suggested.length > 0 &&

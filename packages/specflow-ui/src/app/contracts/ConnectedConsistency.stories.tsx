@@ -15,7 +15,11 @@ import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { browserPage } from '../../test-support/browserPage';
 import type { DemoSessionDetail } from '@nevo/specflow-contracts/demo';
-import { createAuthStore } from '../../auth/store';
+import { authSessionIdentity, createAuthStore } from '../../auth/store';
+import {
+  forgetStartedSessions,
+  rememberStartedSession,
+} from '../../features/sessions/start/handoff/startedSession';
 import { createSpecFlowAppServices } from '../../services';
 import { createSpecFlowRouter } from '../router';
 import { createSpecFlowQueryClient } from '../queryClient';
@@ -48,6 +52,13 @@ import {
  * content itself ignores the requested id and is the same either way.
  */
 const connectedManagedSessionId = '00000000-0000-4000-8000-0000000000c1';
+/** The identity `Connected`'s auth store resolves to: what a started Session is remembered under. */
+const storyOwner = authSessionIdentity({
+  authenticationRequired: false,
+  authenticated: false,
+  user: { id: 'story', name: 'Demo' },
+  loginMethods: { password: { enabled: false }, oidc: [] },
+});
 const createResponseControl = { fail: () => undefined as void };
 export { createResponseControl };
 const historyControl = { back: () => undefined as void, forward: () => undefined as void };
@@ -1001,46 +1012,50 @@ export const HashAnchorClearsTheFloatingRow: Story = {
   },
 };
 /**
- * The demo-era Full Session screen this story used to exercise (`SessionScreen.tsx`, its
- * `SessionContextPanel.tsx` document browser and "Otwórz w Documents" action, and the
- * `sessions.demo.*` copy) was deleted as dead code in 669302f8: Full Session is now canonical at
- * the top-level `/sessions/:sessionId` route (`ManagedSession`, real feed/API), which carries no
- * Specification/document association to browse from, and nothing in the app still records a
- * Session "return" for a Document to link back through (`useRememberSessionReturn` has had no
- * caller since that same commit). There is therefore no UI path left that reaches a Document from
- * a Session and back via a link the way this story originally clicked through.
- *
- * What is still genuinely meaningful — and still worth a contract test — is that the composer
- * draft outlives a real SPA navigation away from and back to this screen. This retargets the
- * story at the canonical route (a fixed Managed Sessions snapshot via `managedSessionsApi`) and
- * exercises that round trip with real router history (the same `historyControl` plumbing this
- * file already uses for `HistoryPopPreservesConfiguration`) instead of the removed UI affordance.
+ * Full Session -> Context -> the Specification's Documents -> the Documents "Back to the Session"
+ * link, with the Specification's collection kept on every hop. The Session is opened the way the
+ * app opens a Session it started (`rememberStartedSession`), because only such a Session carries
+ * a Specification for Context to link to. Context's Documents row remembers the Session
+ * (`useSessionContextNavigation` -> `useRememberSessionReturn`), which is what makes the link show.
+ * The composer draft must also outlive the round trip.
  */
 export const SessionContextRoundTrip: Story = {
-  args: {
-    path: `/sessions/${connectedManagedSessionId}`,
-    previousPath: '/specs/api-integration/documents/spec?collection=archive',
-    historyFromOverview: true,
-  },
+  args: { path: `/sessions/${connectedManagedSessionId}?collection=archive` },
+  loaders: [
+    () => {
+      forgetStartedSessions();
+      rememberStartedSession(storyOwner, connectedManagedSessionId, {
+        providerId: 'codex',
+        providerIcon: 'codex',
+        providerTitle: 'Codex',
+        specification: {
+          status: 'ready',
+          value: { id: 'api-integration', key: 'SPEC-01', title: 'Logowanie SSO' },
+        },
+      });
+    },
+  ],
   play: async ({ canvas, userEvent }) => {
     await viewport(1440, 900);
     const composer = await canvas.findByRole('textbox', { name: 'Wiadomość' });
     await userEvent.type(composer, 'Zachowany szkic wiadomości');
-    // Away: a real router-history navigation to a Document (not a link inside the Session screen,
-    // which has none to Documents - see the note above).
-    historyControl.back();
-    await waitForDocumentActions(canvas);
-    // Back: real router-history navigation returns to the exact same Session route.
-    historyControl.forward();
+    const contextTab = canvas.queryByRole('tab', { name: 'Kontekst' });
+    if (contextTab && contextTab.getAttribute('aria-selected') !== 'true') {
+      await userEvent.click(contextTab);
+    }
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'Dokumenty' }));
+    const back = await canvas.findByRole('link', { name: 'Sesja Spec Writera' });
+    // Archived stays archived on the Documents screen.
+    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
+      '/specs/api-integration/documents?collection=archive',
+    );
+    await userEvent.click(back);
     await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue(
       'Zachowany szkic wiadomości',
     );
-    // The redirect that replaced the old nested `/specs/:specId/sessions/:sessionId` route drops
-    // its `collection` search param (see `sessionDetailRoute` in features/sessions/routes.tsx),
-    // and the canonical route is top-level, not nested under a Specification: there is no
-    // `collection` left to assert survived. Assert the actual post-navigation route instead.
     await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
-      `/sessions/${connectedManagedSessionId}`,
+      `/sessions/${connectedManagedSessionId}?collection=archive`,
     );
     await settleViewport();
     await viewport(390);

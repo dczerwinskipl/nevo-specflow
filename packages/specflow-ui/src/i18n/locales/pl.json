@@ -564,8 +564,7 @@
     "agent": {
       "initialTitle": "Początkowa sesja agenta",
       "introInitial": "Wybierz wykonawcę pierwszej sesji Spec Writera. Kolejne sesje mogą korzystać z innych agentów.",
-      "noProviders": "Brak dostępnych wykonawców.",
-      "settingsLabel": "Model i tryb pracy"
+      "noProviders": "Brak dostępnych wykonawców."
     },
     "provider": {
       "accessApi": "API",

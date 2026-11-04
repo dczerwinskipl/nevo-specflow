@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { browserPage } from '../../../test-support/browserPage';
 import { expect, waitFor, within } from 'storybook/test';
 import { HttpClientError } from '@nevo/http-client';
@@ -328,6 +328,17 @@ export const Default: Story = {
     createDelayMs: { control: { type: 'number', min: 0, step: 100 } },
   },
 };
+/** Picks a model in the labelled Model field of the agent section. */
+async function chooseModel(
+  canvas: StoryContext['canvas'],
+  userEvent: StoryContext['userEvent'],
+  name: string,
+) {
+  await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
+  await userEvent.click(await within(document.body).findByRole('option', { name }));
+  await waitFor(() => expect(within(document.body).queryByRole('listbox')).toBeNull());
+}
+
 export const ChoiceAndConfiguration: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('button', { name: /Z agentem/ });
@@ -366,7 +377,7 @@ export const ChoiceAndConfiguration: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Logowanie SSO',
     );
-    await expect(canvas.getByRole('button', { name: 'Wybierz model' })).toBeVisible();
+    await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeVisible();
     await settleViewport();
     await settleViewport(390, 844);
     await settleViewport(390, 844, () =>
@@ -389,18 +400,21 @@ export const ExplicitModelCapabilities: Story = {
       Number.parseFloat(getComputedStyle(focusedProvider.closest('label')!).outlineWidth),
     ).toBeGreaterThanOrEqual(2);
     await settleViewport();
-    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
-    await userEvent.click(
-      await within(document.body).findByRole('menuitemradio', { name: 'codex model B' }),
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
+    await chooseModel(canvas, userEvent, 'codex model B');
+    // A model without efforts leaves Effort disabled at the provider default.
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toHaveTextContent('Domyślny');
+    // Only the modes this model runs, under the provider's own names.
+    const modes = within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' })).getAllByRole(
+      'radio',
     );
-    // A model without efforts closes the menu at once: there is no effort section.
-    await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull());
-    await userEvent.click(canvas.getByRole('button', { name: 'Agent' }));
-    const modes = await within(document.body).findAllByRole('menuitemradio');
     await expect(modes.map((mode) => mode.textContent)).toEqual(['Ask', 'Agent']);
-    await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('radio', { name: /Claude/ }));
-    await expect(canvas.getByRole('button', { name: 'Wybierz model' })).toBeVisible();
+    // Changing the provider resets everything below it.
+    await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
+      'Wybierz model',
+    );
   },
 };
 
@@ -412,15 +426,10 @@ export const LostCreateAcknowledgement: Story = {
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'SSO recovery',
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
-    await userEvent.click(
-      await within(document.body).findByRole('menuitemradio', { name: 'codex model A' }),
-    );
-    // Model A has efforts: the menu stays open on its effort section.
-    await userEvent.keyboard('{Escape}');
+    await chooseModel(canvas, userEvent, 'codex model A');
     await userEvent.click(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' }));
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();
-    await expect(canvas.getByRole('button', { name: 'codex model A' })).toBeDisabled();
+    await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź wynik' }));
@@ -692,14 +701,13 @@ export const SingleModeModel: Story = {
   ),
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: 'Wybierz model' }));
-    await userEvent.click(
-      await within(document.body).findByRole('menuitemradio', { name: 'Solo model' }),
+    await chooseModel(canvas, userEvent, 'Solo model');
+    // The only mode is shown as the chosen one; there is nothing else to pick.
+    const modes = within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' })).getAllByRole(
+      'radio',
     );
-    // The only mode is shown as the chosen one; its menu offers nothing else.
-    await userEvent.click(canvas.getByRole('button', { name: 'Agent' }));
-    await expect(await within(document.body).findAllByRole('menuitemradio')).toHaveLength(1);
-    await userEvent.keyboard('{Escape}');
+    await expect(modes).toHaveLength(1);
+    await expect(modes[0]).toBeChecked();
   },
 };
 export const SeparatorsOnlyBetweenRenderedSections: Story = {

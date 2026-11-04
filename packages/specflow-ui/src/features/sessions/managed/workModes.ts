@@ -19,7 +19,7 @@ export type WorkModeCommand = Required<Pick<StartTurn, 'mode' | 'providerModeId'
 /**
  * A Session provider's `providerModes`, in catalogue order. A mode is selectable only when the
  * provider reports it ready, does not deny authorization, and its engine safety mode is one the
- * provider currently offers (the same rule `CreateSession`'s own `executableModes` applies).
+ * provider currently offers (the same rule the start catalogue applies, `start/catalogue/fromProviderDescriptors`).
  */
 export function runtimeWorkModes(provider: ProviderDescriptor | undefined): WorkModeOption[] {
   return (provider?.providerModes ?? []).map((mode) => {

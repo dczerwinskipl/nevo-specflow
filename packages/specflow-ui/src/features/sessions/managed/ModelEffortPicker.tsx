@@ -21,7 +21,7 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
  * effort" section below, exactly mirroring the single-effort/no-effort collapse this file always
  * had (a model with 0-1 efforts never shows a separate effort choice at all).
  */
-function modelSectionItems(provider: ModelEffortProvider | undefined, withDefaultEffort: boolean) {
+function modelSectionItems(provider: ModelEffortProvider | undefined) {
   if (!provider?.capabilities.modelOverride || !provider.models.length) {
     return [];
   }
@@ -32,16 +32,15 @@ function modelSectionItems(provider: ModelEffortProvider | undefined, withDefaul
     modelId: model.modelId,
     label: model.title,
     efforts: withEffort ? model.efforts : [],
-    // With an explicit "provider default" row, a single effort is still a real choice (default
-    // versus that one effort); without it, 0-1 efforts never show a separate section.
-    hasEfforts: withEffort && model.efforts.length > (withDefaultEffort ? 0 : 1),
+    hasEfforts: withEffort && model.efforts.length > 1,
   }));
 }
 
 /**
  * What the picker reads from a provider: only its model list and the two override capabilities.
- * A full `ProviderDescriptor` satisfies it; a start screen can adapt its own provider catalogue
- * (`features/specs/creation/session-start`) without inventing the descriptor's other fields.
+ * A full `ProviderDescriptor` satisfies it; the pending Session of a start
+ * (`start/handoff/StartedSessionPlaceholder`) builds one from its start values alone, without
+ * inventing the descriptor's other fields.
  */
 export interface ModelEffortProvider {
   capabilities: Pick<ProviderDescriptor['capabilities'], 'modelOverride' | 'effortOverride'>;
@@ -112,21 +111,11 @@ export function ModelEffortPicker({
   onChange,
   disabled = false,
   compact = false,
-  defaultEffortLabel,
 }: {
   provider: ModelEffortProvider | undefined;
   value: ModelEffortValue | undefined;
   onChange: (modelId: string, effort?: string) => void;
   disabled?: boolean;
-  /**
-   * Start-of-Session variant (`features/specs/creation/session-start`): "no effort" is an explicit,
-   * selectable choice labelled with this text (the provider's own default), shown as the first row
-   * of the effort section. Picking a model then keeps the current effort only when the new model
-   * offers it and otherwise falls back to that default (`undefined`), instead of pre-selecting the
-   * model's first effort. Omitted in the Session's own Composer, whose next Turn always has an
-   * effort.
-   */
-  defaultEffortLabel?: string;
   /**
    * Narrows the trigger's max width for a layout with less room (`ManagedSession.tsx` passes
    * `!supportsSplit`, the same measured-width signal it already uses for the Context header
@@ -140,11 +129,7 @@ export function ModelEffortPicker({
   compact?: boolean;
 }) {
   const { t } = useTranslation();
-  const withDefaultEffort = defaultEffortLabel !== undefined;
-  const modelItems = useMemo(
-    () => modelSectionItems(provider, withDefaultEffort),
-    [provider, withDefaultEffort],
-  );
+  const modelItems = useMemo(() => modelSectionItems(provider), [provider]);
   if (modelItems.length === 0) {
     return null;
   }
@@ -222,9 +207,7 @@ export function ModelEffortPicker({
                 const nextEffort = item.hasEfforts
                   ? value?.effort && item.efforts.includes(value.effort)
                     ? value.effort
-                    : withDefaultEffort
-                      ? undefined
-                      : item.efforts[0]
+                    : item.efforts[0]
                   : undefined;
                 onChange(item.modelId, nextEffort);
                 if (item.hasEfforts) {
@@ -243,11 +226,6 @@ export function ModelEffortPicker({
             <MenuSeparator />
             <MenuLabel>{t('managedSession.model.effortSectionLabel')}</MenuLabel>
             <MenuRadioGroup value={value?.effort ?? ''}>
-              {withDefaultEffort ? (
-                <MenuRadioItem value="" onSelect={() => onChange(selectedModel.modelId)}>
-                  {defaultEffortLabel}
-                </MenuRadioItem>
-              ) : null}
               {selectedModel.efforts.map((effort) => (
                 <MenuRadioItem
                   key={effort}

@@ -564,8 +564,7 @@
     "agent": {
       "initialTitle": "Initial agent session",
       "introInitial": "Choose the executor of the first Spec Writer session. Later sessions can use other agents.",
-      "noProviders": "No executors are available.",
-      "settingsLabel": "Model and work mode"
+      "noProviders": "No executors are available."
     },
     "provider": {
       "accessApi": "API",

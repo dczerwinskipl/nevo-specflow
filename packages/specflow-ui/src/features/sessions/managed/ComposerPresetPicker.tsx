@@ -16,8 +16,8 @@ import type { WorkModeOption } from './workModes';
  * work modes, exactly as its catalogue lists them — in catalogue order, under the catalogue's own
  * titles, unavailable ones disabled with the catalogue's reason (owner decision: the Runtime is
  * the source of truth; this component knows no mode vocabulary). The caller maps its catalogue
- * onto `WorkModeOption`s (`runtimeWorkModes` for a managed Session, `pickerModes` for the start
- * screens) and the picked id back onto its own command. Renders nothing when the catalogue offers
+ * onto `WorkModeOption`s (`runtimeWorkModes` for a managed Session) and the picked id back onto its
+ * own command. Renders nothing when the catalogue offers
  * no modes. Distinct from the Model · effort picker.
  *
  * A text trigger on every layout, with no leading icon (owner audit, round seven: the earlier

@@ -94,6 +94,39 @@ async function expectInside(inner: DOMRect, outer: DOMRect, name: string) {
   );
 }
 
+/**
+ * Waits until the scroll owner's box has not changed for longer than the window in which the screen
+ * attributes a scroll to the layout instead of the reader (`useLayoutInducedScroll`'s 200 ms). A
+ * Split that just mounted its own scroller is still resizing; a single synthetic scroll inside that
+ * window is, by design, not a reader leaving the bottom, and the next pin brings it back (seen on a
+ * slow CI runner: `expected 0 to be greater than 100`). A real reader is simulated only once the
+ * layout is quiet.
+ */
+async function scrollOwnerSettled(scroller: HTMLElement, quietMs = 250) {
+  let changedAt = performance.now();
+  const mark = () => {
+    changedAt = performance.now();
+  };
+
+  const observer = new ResizeObserver(mark);
+  observer.observe(scroller);
+  window.addEventListener('resize', mark);
+
+  try {
+    await waitFor(
+      () => {
+        if (performance.now() - changedAt < quietMs) {
+          throw new Error('The conversation scroller is still resizing');
+        }
+      },
+      { timeout: 5000 },
+    );
+  } finally {
+    observer.disconnect();
+    window.removeEventListener('resize', mark);
+  }
+}
+
 /** What a split-layout conversation must satisfy: owned scroll, scrolls, nothing spans the Secondary. */
 async function verifySplitConversation(canvasElement: HTMLElement) {
   await waitFor(async () => expect(layoutOf()).toBe('split'));
@@ -107,6 +140,7 @@ async function verifySplitConversation(canvasElement: HTMLElement) {
   );
 
   // It actually scrolls: a programmatic move up from the bottom sticks.
+  await scrollOwnerSettled(scroller);
   scroller.scrollTop = scroller.scrollHeight;
   scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
   await nextFrames();

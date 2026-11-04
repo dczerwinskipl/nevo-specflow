@@ -344,6 +344,36 @@ export const Unavailable: Story = {
   },
 };
 
+/**
+ * A Session without a message, however it was opened (new-session-ui-spec.md, section 5): the DS
+ * ready empty state with the provider's logo and name, centred in the free height above the Composer,
+ * which is docked at the bottom. It replaces the former plain "start the conversation" line.
+ */
+export const EmptySession: Story = {
+  tags: ['contract'],
+  args: {
+    api: fixtureApi({ ...genericSpecLevelSnapshot(), entries: [], history: { hasOlder: false } }),
+    sessionContext: genericSpecLevelContext(),
+  },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Claude Code jest gotowy')).toBeVisible();
+    await expect(
+      canvas.getByText('Napisz wiadomość poniżej, aby rozpocząć rozmowę.'),
+    ).toBeVisible();
+    await expect(canvas.queryByText('Rozpocznij rozmowę.')).toBeNull();
+    await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
+    // The empty state is centred above the docked Composer, not stacked directly on top of it.
+    const title = canvas.getByText('Claude Code jest gotowy').getBoundingClientRect();
+    const composer = canvasElement
+      .querySelector('[data-composer-overlay]')!
+      .getBoundingClientRect();
+    await expect(composer.bottom).toBeGreaterThan(window.innerHeight - 40);
+    await expect(composer.top - title.bottom).toBeGreaterThan(100);
+  },
+};
+
 const multiple = sessionFixture(true);
 if (multiple.interaction?.kind === 'question') {
   multiple.interaction.maxSelections = 2;

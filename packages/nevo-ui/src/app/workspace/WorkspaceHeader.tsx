@@ -31,6 +31,7 @@ import {
 } from '../../components/overlays/Tooltip';
 import { RailTail } from '../../components/navigation/ItemTabs/RailTail';
 import { cn } from '../../lib';
+import { useWorkspaceHeaderIdentityOverride } from './workspaceHeaderIdentityOverride';
 import { WORKSPACE_HEADER_NARROW_MAX_WIDTH } from './workspaceSizing';
 
 export type WorkspaceHeaderActionTone = 'neutral' | 'danger';
@@ -581,6 +582,7 @@ export function WorkspaceHeaderFrame({
   const { ref, narrow } = useNarrowHeader();
   const resolved = resolveWorkspaceHeaderActions(actions, narrow ? 'narrow' : 'wide');
   const labels = { ...defaultWorkspaceHeaderLabels, ...labelsProp };
+  const identityOverride = useWorkspaceHeaderIdentityOverride();
 
   return (
     <div
@@ -593,7 +595,7 @@ export function WorkspaceHeaderFrame({
       data-workspace-header-density={narrow ? 'narrow' : 'wide'}
       ref={ref}
     >
-      <div className="min-w-0 flex-1">{content}</div>
+      <div className="min-w-0 flex-1">{identityOverride ?? content}</div>
       {resolved.direct.length > 0 || resolved.overflow.length > 0 ? (
         <ActionsWrapper tabRail={tabRail}>
           {resolved.direct.map((action) => (
@@ -663,10 +665,10 @@ interface WorkspaceHeaderActionProps {
 /**
  * Either header shape a surface's `header: ReactNode` may be: the default `WorkspaceHeader`, or
  * `WorkspaceHeaderFrame` directly (what `HeaderOutlet` renders for a screen definition's own
- * `header` component). Both carry the same `actions`/`labels`/`menu`, so every content-blind
- * extraction below (`getWorkspaceHeaderActions` and friends, already relied on by
- * `CompactWorkspaceActions` and by `AppWorkspace`'s Secondary root-tab strip) must recognize both,
- * not just the default one.
+ * `header` component). Both carry the same `actions`/`labels`/`menu`, so the content-blind
+ * extraction below (`getWorkspaceHeaderActions` and friends, used by `CompactWorkspaceActions` for
+ * a plain `header` element; runtime screens pass their actions to it directly instead) recognizes
+ * both, not just the default one.
  */
 function isWorkspaceHeaderActionElement(
   node: ReactNode,

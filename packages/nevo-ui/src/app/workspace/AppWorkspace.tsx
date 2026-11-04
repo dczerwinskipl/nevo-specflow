@@ -50,6 +50,7 @@ import { useDynamicWorkspaceSplit } from './useDynamicWorkspaceSplit';
 import { WorkspaceLayoutContext, type WorkspaceLayout } from './useWorkspaceLayout';
 import { SecondaryDetailHeaderRow } from './SecondaryDetailHeaderRow';
 import { SecondaryDetailHeaderHostContext } from './secondaryDetailHeaderHost';
+import { WorkspaceHeaderIdentityOverrideProvider } from './workspaceHeaderIdentityOverride';
 import { SecondaryBreadcrumbRow } from './SecondaryBreadcrumbRow';
 import { secondaryScrollKey, useSecondaryScrollMemory } from './secondaryScrollMemory';
 import type { AppWorkspaceSurface } from './workspaceSurface';
@@ -61,9 +62,6 @@ import {
 import {
   CompactWorkspaceActions,
   WorkspaceHeader,
-  getWorkspaceHeaderActions,
-  getWorkspaceHeaderLabels,
-  getWorkspaceHeaderMenu,
   type WorkspaceHeaderAction,
   type WorkspaceHeaderActionDirect,
   type WorkspaceHeaderActionGroup,
@@ -96,10 +94,10 @@ const SECONDARY_TABS_SWITCHER_BELOW = 2 * ITEM_TAB_COMPRESSED_WIDTH + ITEM_TABS_
 /**
  * Composes the Secondary root-tab strip (contract workspace-dynamic-split.md §4.1, reusing
  * item-tabs.md's Content tabs host pattern verbatim) into an already-resolved surface's header,
- * replacing only its identity content. The header's own actions/menu/labels are preserved exactly
- * by reading them back off the original header — the same content-blind extraction `WorkspaceHeader`
- * already exposes for `CompactWorkspaceActions` — so nothing about what a tab's content means is
- * ever inspected here.
+ * replacing only its identity content. The surface's own header is kept as is and rendered under
+ * `WorkspaceHeaderIdentityOverrideProvider`: its `WorkspaceHeaderFrame` swaps its identity for the
+ * strip and keeps its own actions/menu/labels, so nothing about what a tab's content means (nor
+ * what kind of element its header is) is inspected here.
  */
 function withSecondaryTabStrip(
   surface: AppWorkspaceSurface,
@@ -120,17 +118,13 @@ function withSecondaryTabStrip(
   return {
     ...surface,
     header: (
-      <WorkspaceHeader
-        title=""
-        actions={getWorkspaceHeaderActions(surface.header)}
-        labels={getWorkspaceHeaderLabels(surface.header)}
-        menu={getWorkspaceHeaderMenu(surface.header)}
-        identityContent={
+      <WorkspaceHeaderIdentityOverrideProvider
+        value={
           <>
             {/* The region's heading, as `DocumentTabStrip` (the established strip host) renders
-                it: `identityContent` replaces `WorkspaceHeader`'s own visible title, so without
-                this the region had no heading and no `data-workspace-header-title` focus target
-                for the push/replace focus move below. The strip itself is not a heading. */}
+                it: the override replaces the header's own visible title, so without this the
+                region had no heading and no `data-workspace-header-title` focus target for the
+                push/replace focus move below. The strip itself is not a heading. */}
             <h2 tabIndex={-1} data-workspace-header-title="true" className="sr-only outline-none">
               {shownTitle}
             </h2>
@@ -146,7 +140,9 @@ function withSecondaryTabStrip(
             />
           </>
         }
-      />
+      >
+        {surface.header}
+      </WorkspaceHeaderIdentityOverrideProvider>
     ),
   };
 }

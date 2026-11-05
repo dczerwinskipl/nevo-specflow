@@ -55,7 +55,7 @@ function CacheObserverFixture() {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Cache observer',
+  title: 'SpecFlow/Screens/Application Shell',
   component: CacheObserverFixture,
   tags: ['contract'],
 } satisfies Meta<typeof CacheObserverFixture>;

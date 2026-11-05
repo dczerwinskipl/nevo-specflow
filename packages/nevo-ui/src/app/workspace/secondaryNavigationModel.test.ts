@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isCurrentEntry,
   popEntry,
+  popToDepth,
   pushEntry,
   replaceEntry,
   startFlow,
@@ -29,6 +30,16 @@ describe('Secondary navigation model', () => {
 
   it('popping root closes the flow', () => {
     expect(popEntry(startFlow(5, entry(1)))).toBeNull();
+  });
+
+  it('pops several levels at once to an ancestor depth, never to the current or a missing one', () => {
+    const flow = pushEntry(pushEntry(startFlow(5, entry(1)), entry(2)), entry(3));
+    expect(popToDepth(flow, 1)?.entries).toEqual([entry(1)]);
+    expect(popToDepth(flow, 2)?.entries).toEqual([entry(1), entry(2)]);
+    expect(popToDepth(flow, 3)).toBeNull();
+    expect(popToDepth(flow, 0)).toBeNull();
+    expect(popToDepth(flow, 1.5)).toBeNull();
+    expect(flow.entries).toHaveLength(3);
   });
 
   it('does not accept an old callback after a new page or flow', () => {

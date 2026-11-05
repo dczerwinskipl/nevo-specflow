@@ -6,6 +6,7 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Separator,
+  cn,
 } from '@nevo/ui';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
@@ -41,10 +42,21 @@ export function CreateShell({
 }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
+  // The scroll area spans the whole pane and the form column is centred INSIDE it (the column must not wrap the
+  // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
+  // edge instead of the pane's). The footer centres the same column, so
+  // its button stays aligned with the content.
+  const column = 'mx-auto w-content-form max-w-full px-4 sm:px-6';
   const body = (
     <>
-      <AppWorkspaceBody scroll="area" padding="none">
-        <div className="p-4 sm:p-6">
+      {/* The gutter is reserved on both edges so a classic (space-taking) scrollbar keeps the
+          column centred exactly like the footer's, which has no scrollbar. */}
+      <AppWorkspaceBody
+        scroll="area"
+        padding="none"
+        className="[&>.scroll-area-viewport]:[scrollbar-gutter:stable_both-edges]"
+      >
+        <div className={cn(column, 'py-4 sm:py-6')}>
           <AppContentContainer className={containerClassName}>{children}</AppContentContainer>
         </div>
       </AppWorkspaceBody>
@@ -54,8 +66,10 @@ export function CreateShell({
               the two bars line up across the shell; taller only when the hint and the button stack
               on a narrow screen. */}
           <Separator />
-          <div className="flex min-h-shell-footer shrink-0 items-center px-4 py-shell-footer-padding sm:px-6">
-            <AppContentContainer>{footer}</AppContentContainer>
+          <div className="flex min-h-shell-footer shrink-0 items-center py-shell-footer-padding">
+            <div className={column}>
+              <AppContentContainer>{footer}</AppContentContainer>
+            </div>
           </div>
         </>
       ) : null}
@@ -71,7 +85,7 @@ export function CreateShell({
           specId,
         })}
       >
-        <AppContent className="mx-auto w-content-form max-w-full">
+        <AppContent className="w-full">
           {form ? (
             <form {...form} className="flex min-h-0 flex-1 flex-col">
               {body}

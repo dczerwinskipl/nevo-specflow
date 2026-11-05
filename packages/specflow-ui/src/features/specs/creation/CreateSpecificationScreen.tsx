@@ -11,12 +11,10 @@ import { CreateProjectForm } from './form/CreateProjectForm';
 import { CreateFallback, CreateRuntimeGate } from './CreateRuntimeGate';
 
 interface Props {
-  /** Present when only a Session is created for an existing specification (demo Runtime only). */
-  specId?: string;
   onCreated: (id: string, document?: string) => void;
   /**
    * A Create on a project Runtime was handed over: continue on the page of its operation. Absent
-   * where a project Runtime has no Create flow (a Session of an existing specification).
+   * where a project Runtime has no Create flow.
    */
   onProjectStarted?: (operationId: string) => void;
   /**
@@ -24,6 +22,7 @@ interface Props {
    * page. Without it the form is always empty.
    */
   restoreDraftOf?: string;
+  /** The initial Session was allocated together with the specification: open it. */
   onSession: (spec: string, session: string) => void;
   onBack: () => void;
 }
@@ -33,16 +32,13 @@ interface Props {
  * demo catalogue flow on a demo Runtime. The two have different contracts and never mix.
  */
 export function CreateSpecificationScreen(props: Props) {
-  const view = props.specId ? 'new-session' : 'new-specification';
-
   return (
-    <CreateRuntimeGate specId={props.specId} view={view}>
+    <CreateRuntimeGate view="new-specification">
       {(mode) =>
         mode === 'demo' ? (
           <DemoCreateSpecification {...props} />
-        ) : // Agent sessions exist only in the demo Runtime.
-        props.specId || !props.onProjectStarted ? (
-          <CreateFallback specId={props.specId} view={view}>
+        ) : !props.onProjectStarted ? (
+          <CreateFallback view="new-specification">
             <FeatureUnavailable onBack={props.onBack} />
           </CreateFallback>
         ) : (
@@ -62,14 +58,14 @@ function DemoCreateSpecification(props: Props) {
   const services = useAppServices();
   const runtime = useRuntimeInfo();
   const cache = useQueryClient();
-  const view = props.specId ? 'new-session' : 'new-specification';
+  const view = 'new-specification';
   const catalogue = useQuery({
-    queryKey: demoCreationKeys.catalogue(props.specId),
-    queryFn: ({ signal }) => services.demoCreationApi.catalogue(props.specId, signal),
+    queryKey: demoCreationKeys.catalogue(),
+    queryFn: ({ signal }) => services.demoCreationApi.catalogue(undefined, signal),
   });
   if (catalogue.isPending) {
     return (
-      <CreateFallback specId={props.specId} view={view}>
+      <CreateFallback view={view}>
         <p role="status">{t('create.loading')}</p>
       </CreateFallback>
     );
@@ -77,7 +73,7 @@ function DemoCreateSpecification(props: Props) {
 
   if (!catalogue.data) {
     return (
-      <CreateFallback specId={props.specId} view={view}>
+      <CreateFallback view={view}>
         <Alert tone="attention" title={t('create.loadError')}>
           <Button onClick={() => void catalogue.refetch()}>{t('common.retry')}</Button>
         </Alert>
@@ -85,15 +81,17 @@ function DemoCreateSpecification(props: Props) {
     );
   }
 
+  const configurationUnavailable = runtime.isError || catalogue.isError;
+  const refresh = () => void Promise.all([runtime.refetch(), catalogue.refetch()]);
+
   return (
     <CreateDemoForm
-      key={props.specId ?? 'new'}
-      specId={props.specId}
+      key="new"
       onCreated={props.onCreated}
       onSession={props.onSession}
       catalogue={catalogue.data}
-      configurationUnavailable={runtime.isError || catalogue.isError}
-      onRefresh={() => void Promise.all([runtime.refetch(), catalogue.refetch()])}
+      configurationUnavailable={configurationUnavailable}
+      onRefresh={refresh}
       onRefreshCatalogue={async () => {
         // The documents feature reads the same catalogue: it is refreshed with it.
         void cache.invalidateQueries({ queryKey: documentCatalogueKeys.all });

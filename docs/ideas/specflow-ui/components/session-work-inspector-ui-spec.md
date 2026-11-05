@@ -93,18 +93,51 @@ SessionWorkInspector
 Use Typography, MarkdownDocument, Collapsible, Button/IconButton, StatusIndicator,
 code/preformatted surface, ScrollArea, and semantic tokens.
 
-### Strong rule
+### Strong rule — superseded for L2 by an explicit product-owner decision (2026-10-31)
 
-**Conversation is not Timeline. L2 Work log is also not a generic Timeline by default.**
+**Conversation is not Timeline.** That part stands unchanged.
 
-L2 must preserve Commentary as readable prose and visually group the tool burst that follows it.
-A permanent rail + icon on every row makes Commentary look like another technical event and adds too
-much chrome.
+The original text below argued against a generic Timeline for L2 by default. The product owner
+has since reviewed the real `WorkInspector` component live in Storybook, side by side with the
+accepted V10 mockup (`../examples/session-chat-v10/desktop.html`), and explicitly overruled that
+default for L2: **L2 now uses the real DS `Timeline`/`Timeline.Item`/`Timeline.Marker`/
+`Timeline.Content` component for its operations**, implemented as `<timeline> <comment>
+<timeline> <comment> …` — one Timeline instance per Commentary-headed chapter, resetting at each
+Commentary boundary rather than spanning across it.
 
-Generic Timeline is appropriate at L3, where the user explicitly asks for the exact chronological
-inspection list.
+The original worry — Commentary ending up on the rail and reading as just another technical event
+row — is addressed by **keeping Commentary off the Timeline entirely**: it is never a
+`Timeline.Item`. Commentary renders as a compact, collapsed-by-default divider _between_ chapters'
+Timelines (icon + preview text + operation count, expanding to the full Commentary Markdown on
+demand) — closer in spirit to the mockup's narrative separator than to a rail entry, but lighter
+than the mockup's always-expanded full prose. Reasoning ("Thinking") gets no special-casing
+relative to tool operations beyond its own existing collapsible disclosure: every non-Commentary
+Work item shares the same `Timeline.Item`/`Timeline.Marker` treatment on its chapter's rail.
+
+Whether a chapter's operations-Timeline itself renders already-expanded (closest to the mockup,
+which has no extra toggle at all) or starts collapsed behind a compact "N operacje" summary
+(closer to the previously shipped `Collapsible` wrapper) was still open at implementation time;
+`WorkInspector.tsx` exposes it as `WorkInspectorOptions.operationsDefaultExpanded`
+(Storybook-controllable, defaulting to expanded) specifically so the owner can compare both live
+rather than decide from another round of text description.
+
+Generic Timeline remains the strong default at L3 (§7 below), where the user explicitly asks for
+the exact chronological inspection list — that guidance is unaffected.
 
 Tool/domain semantics stay in SpecFlow code.
+
+Original text, superseded for L2 as above and kept only for history:
+
+> **Conversation is not Timeline. L2 Work log is also not a generic Timeline by default.**
+>
+> L2 must preserve Commentary as readable prose and visually group the tool burst that follows it.
+> A permanent rail + icon on every row makes Commentary look like another technical event and adds
+> too much chrome.
+>
+> Generic Timeline is appropriate at L3, where the user explicitly asks for the exact chronological
+> inspection list.
+>
+> Tool/domain semantics stay in SpecFlow code.
 
 ## 3. Canonical tool payload
 
@@ -336,6 +369,67 @@ newer commentary...
 ```
 
 Loading older content must preserve the user's current viewport anchor.
+
+#### Reading position
+
+The Work log and the Actions list each have one owner of their scroll position. The reader reads a
+concrete entry (a Work row, narration or tool group; a ToolAction): the first one with at least a
+line still showing below the top edge, chosen again only when the reader scrolls. Every other change
+keeps that entry where it is on screen: an older page landing above it, a tail refresh, a filter or
+search, a disclosure opening or closing, a scroller resize, and content arriving by itself after the
+entries rendered (a ToolAction's parameters and response, a long Thinking's remaining text). Only
+the entry's own movement is compensated, so the reader's scrolling is never undone, and content the
+policy brought into view above the entry never becomes the one being read. When the entry is gone
+(a search hid it, an older page joined it into a group), the nearest entry still shown keeps its
+place.
+
+At the top edge, the list's own controls growing above it (the loading indicator, a failure notice,
+the older-history button) push it down, so a reader at the top sees them; an older page joining the
+list still keeps the entry in place. The browser's native scroll anchoring is off on these
+scrollers, so the browser and this policy never both correct the same change.
+
+#### Groups keep their identity as history joins them
+
+A chapter, a run of operations between narration and a tool burst are spans of Work items, not
+objects with ids of their own: an older page joins the leading chapter, run or burst at its front,
+live items join the newest at its end, and a filter can split or merge them. Each keeps its identity
+while it keeps any of its members, so a page joining it neither re-creates its rows nor moves the
+reader's focus out of it.
+
+Whether a tool burst is open is product state of the Turn's view (kept with the loaded pages, the
+filter and the expanded narration), not of the row: a burst is open while any tool it holds was in a
+burst the reader opened, so it stays open as it grows, after a drill-in to a tool's actions and
+back, and across a tab switch. Closing it forgets every tool it holds.
+
+#### Bounded auto-loading
+
+Older pages load automatically while the reader is near the top of the list (the same rule for the
+Work log and for the Actions list), but only while that is productive. The merged items are not what
+is on screen: an active kind filter or search hides items, and a long run of completed tools
+collapses into one burst row. So the list measures what a page adds where it shows, the scroller's
+content height before the page is requested and after it is merged and rendered:
+
+- a page that grew the content by less than 32 px (under the smallest row) is unproductive;
+- after **3 consecutive** unproductive pages auto-loading stops, however much history remains;
+- while stopped with older history remaining, a secondary button sits at the top of the list:
+  "Szukaj w starszej historii" / "Search older history" when a kind filter or search is active,
+  otherwise "Wczytaj starszą historię" / "Load older history". A click loads the next batch (the
+  same bound applies to it), so a long search proceeds in reader-paced steps;
+- the count starts again on a click, on a change of the filter or search, and on a real upward
+  scroll gesture (wheel up, touch drag down, an upward scrolling key), not on a scroll the layout
+  caused;
+- a productive page resets the count, so a list that keeps growing loads to the end without a
+  button.
+
+The shared affordance is one component for both screens.
+
+#### Empty result while older history remains
+
+A filter or search with no match among the loaded entries must not claim there is no match anywhere:
+while older history remains the empty state reads "Brak wyników we wczytanych wpisach." / "No Work
+matches these filters in the loaded entries." and carries the button above. Only once no older
+history remains does it keep the definitive "Żadna pozycja nie odpowiada tym filtrom." / "No Work
+matches these filters."
 
 ## 6. L2 grouping algorithm
 
@@ -592,6 +686,39 @@ ToolActions               when present
 Input                     collapsible/raw
 Output                    collapsible/raw
 ```
+
+### 9.1 Implemented ToolAction header and code blocks (owner decision, 2026-11)
+
+The header above is the target once Runtime supplies tool kind and subject. Today's
+`ToolActionSummary` has neither (only `title`, `state`, `input`, `output`, `error`, `createdAt`,
+`updatedAt`), so the implementation does not guess them: no parsing of titles or stdout into a
+tool type or target, and no contract extension in the UI. One simple structure, no extra cards or
+labels:
+
+```text
+Read file admission.mjs               full title, h2 title-sm on the single-action screen
+(✓) 200 ms                            status line, body-sm muted
+PARAMETRY                    Kopiuj   numbered pretty-printed JSON
+ODPOWIEDŹ NARZĘDZIA          Kopiuj   verbatim output, no gutter
+```
+
+- **Status.** Completed: a discreet `circle-check` in `status-success`, the word "Zakończono" for
+  assistive technology only, no badge. Failed / cancelled / interrupted: the matching icon plus the
+  state word visibly (never colour alone); the readable error message is the alert below the
+  header. Running and other unsettled states show the real state ("W toku", spinner), never a
+  duration or a success mark. Inside the Timeline of several actions the marker carries the state,
+  so the status line has no icon there.
+- **Time.** The duration is the visible time. The wall-clock range (`10:00:00–10:00:00`) is hidden
+  by default because next to "200 ms" it reads as a contradiction; it stays reachable as the
+  duration's tooltip (`<time title>`), and is shown in the line itself once a run lasts 60 s or more
+  (`CLOCK_RANGE_VISIBLE_FROM_MS`), where start and end genuinely differ.
+- **Line numbers.** The code view adds a gutter only for text the product formatted itself
+  (pretty-printed JSON parameters). Any other body — stdout, the Read tool's own `cat -n` numbered
+  file — is shown verbatim without a gutter, so its own numbers are never numbered again; numbers
+  are never stripped with a heuristic. No language is guessed beyond "is this valid JSON".
+- **Overflow.** Lines never wrap; each block is height-capped and scrolls both ways inside itself,
+  so a long line or file never widens the Secondary and nothing is truncated (Copy copies the
+  original text).
 
 ### Raw input/output rules
 
@@ -1174,7 +1301,8 @@ Inherits
 ### Work history
 
 - initial Session snapshot includes current/recent Work;
-- older Work pages lazy-load;
+- older Work pages lazy-load, with a bounded auto-load and a reader-driven button once pages stop
+  adding visible rows (section 5.5);
 - L2 projection is derived from canonical cached Work, not a separate server timeline format unless
   server-side pagination requires a compatible summary resource;
 - L3/L4 detail must not refetch the whole Session when one item is selected.

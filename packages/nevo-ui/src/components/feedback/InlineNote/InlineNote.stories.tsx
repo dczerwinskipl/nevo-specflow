@@ -30,6 +30,13 @@ export const Attention: Story = {
   },
 };
 
+export const Danger: Story = {
+  args: {
+    tone: 'danger',
+    children: 'The specification this session belongs to can no longer be found.',
+  },
+};
+
 export const LongTextWraps: Story = {
   render: (args) => (
     <div className="w-64">

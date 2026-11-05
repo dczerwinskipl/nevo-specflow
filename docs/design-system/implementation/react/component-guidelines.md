@@ -42,6 +42,16 @@ These rules govern reusable components in `packages/nevo-ui/` and product UI com
 - **Feature-local vertical ownership:** keep a feature's components, hooks, view-models
   and tests together under `features/<domain>/`. Promote code upward to a shared
   location only when reuse is real, not anticipated.
+- **Folders follow the shape of the code** (owner, 2026-11-04). A component with its own
+  sub-components, hooks and pure model is a folder package: the root component file that composes
+  it, plus sub-folders named after real sub-concerns (for example `conversation/`, `composer/`,
+  `model/`, or a component's private `parts/`). A folder never becomes a flat list of dozens of
+  files; see [UI feature folders](../../../engineering/shared/code-organization.md#ui-feature-folders).
+  Feature-level technical buckets (`hooks/`, `components/`, `utils/`) that separate code changing
+  together are still not used.
+- **One pattern, one implementation (DRY).** A structure that repeats with the same shape (JSX
+  frames, state machines, query/command plumbing, paging, helpers) is extracted once into its
+  owning slice, or into `shared/` when a second feature needs it, instead of being copied.
 
 ## Ownership boundary
 
@@ -55,9 +65,18 @@ These rules govern reusable components in `packages/nevo-ui/` and product UI com
 
 ## File size
 
-An inspection trigger, not an extraction rule. A large cohesive component can be fine;
-split when it mixes independent concerns, tangles orchestration with presentation, or
-is hard to test because of unrelated effects.
+Target (owner, 2026-11-04): a component or hook file stays within about **200-300 lines**. Above
+300 lines the file is split along its real sub-concerns, unless it is one cohesive unit: a single
+state machine, a pure policy or projection module, or a parser. That exception is stated in the
+file's header comment. Comments do not count as a way out: review history and breadcrumbs are
+removed (see [Comments](../../../engineering/shared/code-organization.md#comments-document-why-and-invariants)),
+not kept to explain a long file. Stories and tests are scenario catalogues; split them only where
+one file mixes unrelated scenario groups.
+
+A split keeps cohesion. Split a component into sub-components that own their own markup and state,
+pure model/helper modules, and hooks that pass the [Hooks](#hooks) rule. Moving half of a
+component's body into a hook used only by that component is relocation, not decomposition, and is
+not an acceptable way to meet the target.
 
 ## Visual vs orchestration
 
@@ -72,6 +91,12 @@ is hard to test because of unrelated effects.
 
 Extract hooks **by behavior ownership** (`useSessionStream`, `useWorkTimeline`), not as
 a `useEverything` catch-all. A hook that does five unrelated things is five hooks.
+
+Each hook lives in its own file. A hook is extracted when it is reused, or when it owns one
+behaviour (its effects and invariants) behind a **narrow interface**: a few inputs and a few
+outputs. A single-consumer `useComponentXYZ` that takes the component's state and returns most of
+its values and handlers is relocation: keep that code in the component, or split the component
+itself.
 
 ## View models
 
@@ -114,9 +139,12 @@ behavior and accessibility, and inspect computed styles when exact visuals matte
 - [ ] One primary concept per module?
 - [ ] Composition instead of a configuration-heavy component?
 - [ ] Feature-local ownership, not premature sharing?
-- [ ] File size used only as an inspection trigger?
+- [ ] Files within ~200-300 lines, or a stated cohesive exception?
+- [ ] Repeated patterns implemented once (DRY)?
+- [ ] Folder shape matches the code (sub-concern folders, no flat lists of dozens of files)?
 - [ ] Visual components free of data/routing concerns?
-- [ ] Hooks split by behavior, no catch-alls?
+- [ ] Hooks split by behavior, each in its own file, with a narrow interface; no relocation-only
+      `useComponentXYZ`?
 - [ ] State at the right owner; effects only for synchronization?
 - [ ] Accessible and responsive?
 
@@ -150,7 +178,7 @@ ordinary query refreshes preserve its existing reading DOM.
 `choiceSurfaceClassName` is the only shared appearance for a selectable multi-line card (a command
 `button`, an `aria-checked` radio, or a `label` containing one native radio). There is no
 `SelectableCard` component: the consumer owns semantics, layout and content. SpecFlow UI composes the
-single-choice case once in `features/specs/creation/options/ChoiceTile.tsx` (`ChoiceTileGroup` + `ChoiceTile`: native
+single-choice case once in `shared/controls/ChoiceTile.tsx` (`ChoiceTileGroup` + `ChoiceTile`: native
 radio in a `label`, title/description wired with `aria-labelledby`/`aria-describedby`, always-rendered
 check, `disabled` for a skipped option and `blocked` for one whose reason must stay readable);
 Create's workspace place and agent provider use it. A command tile that is a `button` (the Create method
@@ -205,8 +233,9 @@ long paths and branch names never overflow at 320 px. It is not a table and not 
 
 `InlineNote` is a short explanatory sentence with a leading icon and no container, the quiet
 counterpart of `Alert`: a fact or caveat that belongs to the content next to it, or the reason an
-action is unavailable. `tone` is `info` (muted icon) or `attention` (status colour); the icon is
-decorative. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
+action is unavailable. `tone` is `info` (muted icon), `attention` (status colour) or `danger` (a failure or a missing
+required thing: status-danger colour, circle-alert icon); the icon is decorative and the text
+carries the meaning. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
 ## Shell footer
@@ -303,6 +332,10 @@ it. Put actions in DOM/focus order Cancel → secondary → primary/destructive.
 stacks full-width actions with the primary/destructive action on top; from `sm` it is a right-aligned
 row that wraps (`sm:flex-wrap`) instead of clipping, which keeps 200% zoom readable. Use
 `AlertDialog` with a `destructive` action for irreversible or discarding confirmations.
+
+## On-screen keyboard
+
+Android Chrome (108+) and iOS Safari resize only the visual viewport when the keyboard opens, so a `fixed` overlay would stay behind it. `DialogContent`, `AlertDialogContent` and a `side="bottom"` `DrawerContent` track `window.visualViewport` (shared internal hook `useVisualViewportInset` / `useKeyboardAvoidance`, `rAF`-throttled, inert without `visualViewport`, on pinch-zoom and for insets under 80 px) and, only while a keyboard is open, apply inline styles: dialogs re-centre in the visible area (`top` = visual centre) and cap `max-height` to the visible height minus 2rem; a bottom sheet is lifted (`bottom` = keyboard inset, safe-area padding dropped) and capped to the visible height minus 3rem (still honouring its `size` cap). The body scrolls inside the capped surface so the action row stays visible, and the focused field is scrolled into view. With no keyboard nothing is applied, so desktop and the resting layout are unchanged. The move is not animated (so there is nothing to disable for `prefers-reduced-motion`). Side and top drawers are not adjusted.
 
 ## Drawer sides and sheets
 
@@ -486,7 +519,9 @@ Products pass localized `labels` (the defaults are English).
 ## Scrolling regions
 
 Every scrolling region uses the DS `ScrollArea` (thin scrollbar, edge indicators); never hide scrollbars and
-do not nest scrollers. `DrawerBody` is a `ScrollArea` (padding on its content wrapper; the viewport is one
+do not nest scrollers. A native scroller that cannot be a `ScrollArea` (for example one whose element the
+product measures and pins itself) adds the `scrollbar-subtle` class so it gets the same scrollbar instead of
+the platform default. `DrawerBody` is a `ScrollArea` (padding on its content wrapper; the viewport is one
 keyboard-focusable Tab stop so content without focusable children stays scrollable). A list that already
 contains focusable items (for example a navigation `nav`) wraps its list in `ScrollArea` with
 `className="min-h-0 flex-1"` and `tabIndex={-1}` and no `aria-label`, so it adds no Tab stop and no extra

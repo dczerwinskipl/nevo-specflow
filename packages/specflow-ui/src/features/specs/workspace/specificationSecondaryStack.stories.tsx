@@ -81,7 +81,7 @@ function PendingPreview() {
 }
 
 const meta = {
-  title: 'SpecFlow/Features/Specification/Pending Task Preview',
+  title: 'SpecFlow/Screens/Specification Workspace',
   component: PendingPreview,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof PendingPreview>;
@@ -102,4 +102,4 @@ export const Pending: Story = {
     await expect(canvas.getByText('Parent remains readable')).toBeVisible();
   },
 };
-export const Inspect: Story = {};
+export const Inspect: Story = { tags: ['contract'] };

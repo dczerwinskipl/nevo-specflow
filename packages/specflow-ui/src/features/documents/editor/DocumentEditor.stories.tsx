@@ -129,13 +129,22 @@ function EditorFixture({
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Contracts/Demo Markdown editor V4',
+  title: 'SpecFlow/Features/Document Editor',
   component: EditorFixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof EditorFixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+export const Default: Story = {
+  tags: ['!contract'],
+  argTypes: {
+    deferred: { control: 'boolean' },
+    plainText: { control: 'boolean' },
+    renameFormat: { control: 'boolean' },
+    content: { control: 'text' },
+  },
+};
 export const RetainedDraftAndGuard: Story = {
   play: async ({ canvas, userEvent }) => {
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');

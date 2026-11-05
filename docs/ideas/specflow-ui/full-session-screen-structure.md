@@ -442,6 +442,13 @@ It should not become a metadata dump.
 ### 7.2 Proposed structural order
 
 ```text
+Executor                      (always first: provider, selected model and effort)
+  scope note                  (only when the Session's links are unknown, §7.6)
+
+Specification                 (Specification- and Task-scoped Sessions)
+  Specification row
+  Documents row               (real: opens that Specification's Documents)
+
 Current execution
   agent role/profile
   generic / single Task / Task batch
@@ -452,21 +459,23 @@ Attention / next actions
   Spec/Task human-required action
   continue/resume/recovery when relevant
 
-Related product context
-  Specification
-  current execution Tasks
+Related Tasks
   contextual/historical Tasks
 
-Evidence
-  Handover(s) when available
-  review/artifact references
-  change/verification summary when relevant
+Work                          (real: Work history of the current or last Turn)
+
+Planned areas                 (preview rows, §7.4: Files / Changes, Handovers, Artifacts,
+                               Instructions, Environment)
 
 Session details
-  mode/capabilities/provider/model only as secondary technical context
+  token usage, cost, context window and provider limits, always last
 ```
 
-Empty sections disappear.
+The order is fixed: a section changing state (loading, ready, note) replaces the content of its own
+slot and never moves its neighbours. Whether a section is present, loading, a note or a failure
+follows §7.6. The former "empty sections disappear" is refined there: nothing is shown for a
+subject the Session has no association with, but a known association whose data is missing is said
+out loud.
 
 When a Session interaction already requires response in Primary, Context may summarize that fact for
 orientation but should not duplicate the full response controls. The authoritative interaction stays
@@ -499,18 +508,40 @@ a second horizontal set of section buttons or repeat the full section lists in a
 Its concise, clickable content summaries open/reselect **root tabs** such as Tasks, Files/Changes,
 History, Handovers, Artifacts, Instructions or Environment when useful.
 
-A Task selection from a Tasks tab pushes Task detail onto **that tab's local stack**.
-An attempt, review event, rejection and feedback opened from that Task push deeper on the same stack:
+**Real subjects versus Planned areas.** Three subjects have a real screen and sit in their own
+sections: **Documents** (a row under the Specification, a route to that Specification's Documents
+with the Session as the way back), **Work history** (section "Work", opens the Work tab of the
+current or last Turn, one tab per Turn) and **Tasks** (Current execution and Related Tasks). The
+remaining five (Files / Changes, Handovers, Artifacts, Instructions, Environment) have no screen
+yet: they are one flat section **"Planned areas"**, a preview of what Context will cover. Their rows
+still open a placeholder tab ("This area is a preview — its content will come later.") so the
+navigation mechanics are real. No sub-groups, and no "coming soon" labels on the real subjects.
+
+### 7.4.1 Per-object tabs (owner decision 2026-11-03)
+
+A root tab's identity is **the object it shows**. Each Task opened from Context is its own root tab
+(label = the Task key, `TASK-03`); a Task that is already open is **activated**, never duplicated
+and never retargeted to another Task. The "Related Tasks (N)" summary with more than one Task opens
+the **Tasks list tab** ("Zadania"); selecting a Task there opens that Task's own tab beside the
+list, so a Task never lives both as a tab and as a page inside the list.
+
+An attempt, review event, rejection and feedback opened from a Task push deeper on **that Task
+tab's local stack**:
 
 ```text
-Context [pinned] | Tasks [tab: task list -> TASK-03 -> review attempt 1 -> feedback]
+Context [pinned] | Tasks [tab: task list]
+                 | TASK-03 [tab: task -> review attempt 1 -> feedback]
+                 | TASK-04 [tab: task]
                  | Files [tab: file list]
                  | backend.md [independent file tab]
 ```
 
-Switching tabs preserves their local stack, scroll and selection. Back returns to the direct parent
-inside the active tab. Do not spawn an independent tab for a task-bound event and lose provenance.
-History events opened in History also retain explicit Task/attempt context and a local return path.
+Switching tabs preserves their local stack and each tab's scroll position; the screens of inactive
+tabs are not kept mounted, so selection, filters and drafts are **product state** (the Documents
+pattern), and leaving a tab with unsaved work asks that tab's leave guard first. Back returns to the
+direct parent inside the active tab. Do not spawn an independent tab for a task-bound event and lose
+provenance. History events opened in History also retain explicit Task/attempt context and a local
+return path.
 
 ### 7.5 Handover / artifact selection
 
@@ -521,6 +552,55 @@ specific Task execution or attempt belong in its local stack. This distinction i
 navigation decision; the exact canonical Handover and artifact contracts still need integration.
 
 Do not create a third simultaneous workspace pane.
+
+### 7.6 Context data availability
+
+Every fact-backed section carries a `ContextFact`: `loading`, `ready`, `unreadable` or `missing`.
+The Session also has a **scope**: `unknown` (not provided or unreadable), `standalone`,
+`specification` or `task`. The scope decides which sections exist and which references are
+required:
+
+| Section           | Exists for scope    | Required (missing = error)  |
+| ----------------- | ------------------- | --------------------------- |
+| Executor          | always              | always                      |
+| Specification     | specification, task | specification, task         |
+| Current execution | specification, task | task (the executed Task(s)) |
+| Attention         | specification, task | never                       |
+| Related Tasks     | specification, task | never                       |
+| Work              | always              | never                       |
+
+Resolution of one section: no fact, or an empty ready list, is **omitted**; `loading` shows the
+section label with skeleton rows at the height of the rows they stand for (one row; a Task-scoped
+execution shows `min(taskCount, 3)`), so a Specification or Task title is one truncated line (full
+title as the row's accessible name and hover title) and never wraps the row taller on arrival; `unreadable` is a **warning** note; `missing` is a warning for
+an optional reference and an **error** note for a required one. An absent association ("not
+created") is never a note. The whole-panel "Context is not available" screen is gone: Context always
+keeps the facts it does know.
+
+Notes are the DS `InlineNote` in the section's slot, under its label: `info`, `attention` for a
+warning and `danger` for an error. They are passive: no live region (Context is an inspector the
+reader opens, not an alert), the text carries the meaning, the icon is decorative. No retry in v1.
+
+- Scope unknown, not provided (the real route today): one panel-level info note under the Executor,
+  no label: "This session's links to a Specification and Tasks aren't available yet." Unreadable:
+  the same slot, attention tone: "Couldn't load this session's links." A standalone Session has no
+  note.
+- Specification unreadable: "Couldn't load this session's Specification." Missing and required:
+  "Can't find Specification {key} that this session belongs to."
+- Execution Task missing and required: "Can't find {key}, the Task this session is executing." For a
+  batch: "{count} of {total} Tasks for this session can't be found." (the Tasks that were found still
+  render beside the note). Execution unreadable: "Couldn't load the Tasks being executed."
+- Attention unreadable: "Couldn't check whether anything needs your attention." Related Tasks
+  unreadable or missing: "Couldn't load related Tasks."
+- Executor unreadable: "Couldn't load executor details." Missing (not in the provider catalogue):
+  "This session's executor is no longer available."
+- Work history unreadable or missing: "Couldn't load the work history." (Polish: "Nie udało się
+  wczytać historii pracy."), a warning note in the Work section's slot under its label; the section
+  is not hidden.
+
+The Documents row appears only while the Specification is ready: a loading Specification's skeleton
+covers both rows, an unreadable or missing one shows only its note. Work history is `loading` before
+the first snapshot and absent when the Session has no Turn yet.
 
 ---
 
@@ -548,9 +628,12 @@ L4 Action details      selected ToolAction/detail
 
 ### 8.3 Entry
 
-Compact Work bursts remain in Conversation chronology. Explicit inspection opens/reselects a
-dedicated Work root tab inside the **same** Secondary; ToolAction details push onto its local stack.
-Current activity/live updates must never steal focus or change the active tab.
+Compact Work bursts remain in Conversation chronology. Explicit inspection opens/reselects the
+Work root tab **of that Turn** inside the **same** Secondary: one tab per Turn, labelled
+"Work history · turn N". A Work block in the conversation and Context's "Work history" row for the
+same Turn land on the same tab; another Turn opens or activates its own. ToolAction details push
+onto the tab's local stack. Current activity/live updates must never steal focus or change the
+active tab.
 
 ### 8.4 Drill-down
 
@@ -593,10 +676,34 @@ Examples of independent roots: Tasks, Files/Changes, History, Handovers, Artifac
 Environment, Work inspection, independently opened files and shared reports.
 
 A root tab is for an independently revisitable working surface; a local stack is for dependent
-details. Task -> attempt -> rejected review -> feedback stays inside the Tasks tab. Work ->
-ToolAction stays inside the Work tab. A local detail must reveal its Task/attempt provenance.
-Switching tabs preserves each tab's stack; Back pops inside the active tab before returning to
+details. Task -> attempt -> rejected review -> feedback stays inside that Task's tab (each Task is
+its own root tab, §7.4.1). Work -> ToolAction stays inside the Work tab of its Turn (one per Turn,
+§8.3). A local detail must reveal its Task/attempt provenance.
+Switching tabs preserves each tab's stack and scroll; Back pops inside the active tab before returning to
 its root. Closing a tab does not close or reset the whole Session. Context remains pinned.
+
+On desktop Context is a tab from the start: the editor-tab rail (36px, at every depth) shows
+already while Context is the only tab, so opening Work history or Tasks adds a tab without moving
+the header or the content. The tab keeps its root's name at any depth (the Work tab stays "Historia
+pracy" while a ToolAction is open). Local depth is a detail header row at the top of the tab, under
+the rail, and never changes the rail:
+
+- **Default — detail header row** for a one-level drill (Work history -> ToolAction, Tasks -> Task):
+  a `←` named `Wróć do: Historia pracy` (built from the parent level's title, returning to the
+  direct parent) followed by the opened object's own header (a ToolAction's title and status), which
+  therefore appears once, in that non-scrolling row, not again in the content below.
+- **Opt-in — breadcrumbs** only for a stack whose every level is worth jumping back to
+  (Tasks › TASK-03 › Attempt 2 › Review), declared per stack (`localNavigation: 'breadcrumbs'`),
+  never derived from depth alone. `←` pops one level, ancestors jump straight back, the current
+  object is plain text; at narrow widths middle segments fold into `…` while root, the way back to
+  the direct parent and the current level stay. No Session stack opts in today.
+
+Tabs are editor tabs as wide as their names (64-240px), without icons, the active one on the panel
+surface under a 2px primary top accent; tabs that do not fit go to the `More (N)` menu, which lists
+only them. Mobile keeps its header Back and title with no row
+under it. Back remounts the parent (its scroll returns to the top unless the product keeps it).
+Contract:
+[Secondary navigation](../../design-system/implementation/react/secondary-navigation.md#root-tabs-and-local-navigation-split-layout).
 
 Do not add a second horizontal section-selector bar alongside these tabs, or a second navigation
 tree inside Context duplicating all sections. Long lists (e.g. many Tasks or 100+ files) belong in
@@ -628,7 +735,10 @@ a coherent extension rather than inventing local, conflicting workspace engines.
 
 Mobile/Narrow uses one visible surface at a time; no bottom tab bar. Conversation opens first.
 Context and root destinations open on explicit action, and details drill down via the header and
-Back. A header-level opened-item switcher may support multiple open files. The event title and
+Back. **Back follows the actual path**: opening an object pushes it on top of the stack even when
+it was visited before (Context -> Task A -> Back -> Context -> Task A pushes again), so Back always
+returns to where the user came from; there are no per-object tabs on Narrow. A header-level
+opened-item switcher may support multiple open files. The event title and
 its parent Task/attempt remain clear. Navigation must preserve Conversation composer draft and
 scroll when returning.
 
@@ -995,6 +1105,10 @@ composer/action availability follows authoritative readiness
 
 Unknown/unavailable is not the same as a failed historical Turn.
 
+The Context Secondary keeps every fact it still knows in this state: an unreadable or unavailable
+association is a note in that section's slot (§7.6), never a screen that replaces the whole
+Context.
+
 Transport reconnecting may be shown as connection feedback, but transport state must not overwrite
 canonical Session/Turn semantics. Once authoritative state is restored, the canonical projection
 wins.
@@ -1029,6 +1143,13 @@ composer / interaction controls
 ```text
 ←  Context
 
+Executor
+  Claude · Opus · high
+
+Specification
+  Spec A
+  Documents
+
 Current execution
   Reviewer
   3 Tasks
@@ -1039,9 +1160,16 @@ Needs attention
 Related Tasks
   ...
 
-Evidence
+Work
+  Work history · Current Turn
+
+Planned areas
   ...
 ```
+
+The same sections and rules as wide (§7.2, §7.6); loading and note states occupy the same slots.
+From the Documents row, the Documents tree (also with no document open) shows the Session as its
+way back.
 
 ### 21.3 Work/detail pushed inspection
 

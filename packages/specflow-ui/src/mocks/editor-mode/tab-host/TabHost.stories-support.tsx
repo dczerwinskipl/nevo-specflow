@@ -18,6 +18,7 @@ import {
   MenuLabel,
   MenuSeparator,
   MenuTrigger,
+  RailTail,
   WorkspaceHeader,
   cn,
   getItemTabId,
@@ -28,23 +29,30 @@ import {
 import type { TabAction, TabContent, TabContentProvider } from './types.stories-support';
 import type { TabHost } from './useTabHost.stories-support';
 
-/** One 56px pane header, the same frame the real workspace draws. */
+/**
+ * One pane header, the same frame the real workspace draws: 56px, or with `rail` the 36px
+ * editor-tab rail (no padding or border; the strip draws its own fill and divider).
+ */
 export function PaneHeader({
   leading,
   trailing,
   children,
   bordered = true,
+  rail = false,
 }: {
   leading?: ReactNode;
   trailing?: ReactNode;
   children: ReactNode;
   bordered?: boolean;
+  rail?: boolean;
 }) {
   return (
     <div
       className={cn(
-        '@container flex h-14 shrink-0 items-center gap-2',
-        bordered ? 'border-b border-border-subtle px-4' : 'px-3',
+        '@container flex shrink-0 items-center',
+        rail
+          ? 'h-tab-rail'
+          : cn('h-14 gap-2', bordered ? 'border-b border-border-subtle px-4' : 'px-3'),
       )}
     >
       {leading}
@@ -182,6 +190,7 @@ function ActionSlot({
   budget,
   title,
   identity,
+  rail = false,
 }: {
   host: TabHost;
   item: TabContent;
@@ -189,6 +198,8 @@ function ActionSlot({
   budget: number;
   title: string;
   identity?: ReactNode;
+  /** The identity is a rail strip: the actions and the menu continue it (`RailTail`). */
+  rail?: boolean;
 }) {
   const all = [...item.actions(), ...hostActions(host, id)];
   const { direct, overflow } = splitActions(all, budget);
@@ -196,11 +207,12 @@ function ActionSlot({
   const inMenu = [...direct.filter((action) => action.primary), ...overflow];
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className={cn('flex', rail ? 'items-stretch' : 'items-center gap-1.5')}>
       <div className="min-w-0 flex-1">
         <WorkspaceHeader
           title={title}
           identityContent={identity}
+          tabRail={rail}
           actions={direct.map((a): WorkspaceHeaderAction => ({
             ...a,
             direct: 'always',
@@ -210,7 +222,13 @@ function ActionSlot({
           labels={{ moreActions: 'More actions' }}
         />
       </div>
-      <ActionsMenu actions={inMenu} label="More actions" />
+      {rail ? (
+        <RailTail>
+          <ActionsMenu actions={inMenu} label="More actions" />
+        </RailTail>
+      ) : (
+        <ActionsMenu actions={inMenu} label="More actions" />
+      )}
     </div>
   );
 }
@@ -228,6 +246,7 @@ export function TabHostHeader({
   budget,
   leading,
   trailing,
+  rail = false,
 }: {
   host: TabHost;
   content: TabContentProvider;
@@ -235,6 +254,8 @@ export function TabHostHeader({
   label: string;
   /** Direct actions that fit (Wide 2, Narrow 1). */
   budget: number;
+  /** The Session's editor-tab rail (36px, square tabs) instead of the 56px underline header. */
+  rail?: boolean;
   leading?: ReactNode;
   trailing?: ReactNode;
 }) {
@@ -242,7 +263,7 @@ export function TabHostHeader({
   const id = host.active;
 
   return (
-    <PaneHeader leading={leading} trailing={trailing}>
+    <PaneHeader leading={leading} trailing={trailing} rail={rail}>
       {id && tabs.length > 0 ? (
         <ActionSlot
           host={host}
@@ -250,19 +271,22 @@ export function TabHostHeader({
           id={id}
           budget={budget}
           title={content(id).label}
+          rail={rail}
           identity={
             <ItemTabs
-              items={tabs}
+              items={rail ? tabs.map((tab) => ({ ...tab, icon: undefined })) : tabs}
               activeId={id}
               onActivate={host.setActive}
               onClose={host.requestClose}
               scope={scope}
               variant="strip"
+              density={rail ? 'rail' : 'header'}
               labels={{
                 tablist: label,
                 openedMenu: (count) => `Opened files (${count})`,
                 openedHeading: 'Opened files',
-                menuHint: 'Delete closes the highlighted file.',
+                moreMenu: (count) => `More files (${count})`,
+                moreHeading: 'More files',
               }}
             />
           }
@@ -332,7 +356,6 @@ export function TabHostNarrowHeader({
       labels={{
         openedMenu: () => 'Opened files',
         openedHeading: 'Opened files',
-        menuHint: 'Delete closes the highlighted file.',
         noItem: 'No document',
         switcher: ({ label, count, dirty }) =>
           `${label}${dirty ? ', unsaved changes' : ''}, ${count} opened`,

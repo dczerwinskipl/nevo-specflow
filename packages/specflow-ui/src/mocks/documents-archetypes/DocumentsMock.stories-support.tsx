@@ -29,6 +29,7 @@ import {
   MenuTrigger,
   RadioGroup,
   RadioGroupOption,
+  RailTail,
   ScrollArea,
   Separator,
   Spinner,
@@ -921,8 +922,10 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
         {showDocument ? (
           <AppWorkspace.Secondary
             open
+            headerVariant="tab-rail"
             header={
               <WorkspaceHeader
+                tabRail
                 actions={headerActions(scenario)}
                 menu="complete"
                 headingLevel={2}
@@ -935,11 +938,12 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
                 }}
                 identityContent={
                   <ItemTabs
-                    items={spec.tabs}
+                    items={spec.tabs.map((tab) => ({ ...tab, icon: undefined }))}
                     activeId={spec.active}
                     onActivate={noop}
                     onClose={noop}
                     scope="documents-archetypes-mock"
+                    density="rail"
                     labels={tabLabels}
                   />
                 }
@@ -953,7 +957,16 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
             </AppContent>
           </AppWorkspace.Secondary>
         ) : narrowPage === undefined ? (
-          <AppWorkspace.Secondary header={<WorkspaceHeader title="Document" />}>
+          <AppWorkspace.Secondary
+            headerVariant="tab-rail"
+            header={
+              <RailTail className="h-tab-rail w-full px-3">
+                <Typography as="h2" variant="body-md" className="text-content-secondary">
+                  Document
+                </Typography>
+              </RailTail>
+            }
+          >
             <EmptyDocumentArea onOpen={noop} />
           </AppWorkspace.Secondary>
         ) : null}

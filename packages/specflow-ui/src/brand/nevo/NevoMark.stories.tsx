@@ -24,17 +24,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Brand: Story = {};
+export const Default: Story = {};
 
 export const Monochrome: Story = {
+  tags: ['contract'],
   args: { variant: 'monochrome' },
 };
 
 export const SmallUi: Story = {
+  tags: ['contract'],
   args: { size: 'sm' },
 };
 
 export const LargeDisplay: Story = {
+  tags: ['contract'],
   args: { size: 'lg' },
 };
 
@@ -51,6 +54,7 @@ export const VisualScale: Story = {
 };
 
 export const LightSurface: Story = {
+  tags: ['contract'],
   args: { variant: 'monochrome' },
   decorators: [
     (Story) => (
@@ -62,6 +66,7 @@ export const LightSurface: Story = {
 };
 
 export const DarkSurface: Story = {
+  tags: ['contract'],
   decorators: [
     (Story) => (
       <div className="w-fit rounded-composite bg-canvas p-6 text-content-primary">
@@ -79,6 +84,7 @@ const paletteSamples = [
 ] as const;
 
 export const BrandPaletteComparison: Story = {
+  tags: ['contract'],
   render: () => (
     <div className="grid grid-cols-2 gap-4">
       {paletteSamples.map(([label, primary]) => (

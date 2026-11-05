@@ -1,7 +1,7 @@
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 
 /**
- * Pure policy of the "Where do you want to work?" section: which tiles are available, what the
+ * Pure policy of the Workspace section: which tiles are available, what the
  * request carries, and which stale values must be flagged. A switched-on setting starts from the
  * effective default (so the owner only adjusts), but only a value that differs from that default is
  * ever sent: the UI forwards a real override or nothing.

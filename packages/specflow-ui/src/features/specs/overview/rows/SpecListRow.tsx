@@ -110,12 +110,7 @@ function SpecRowIdentity({
         <Typography
           as="div"
           variant="body-sm"
-          className={cn(
-            'mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-content-secondary [overflow-wrap:anywhere]',
-            item.collection === 'current' &&
-              item.pullRequests?.kind === 'single' &&
-              '[@media(pointer:coarse)]:items-start',
-          )}
+          className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-content-secondary [overflow-wrap:anywhere]"
           data-spec-metadata
         >
           {facts.map((fact, index) => (

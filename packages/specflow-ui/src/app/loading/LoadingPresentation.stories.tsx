@@ -4,7 +4,7 @@ import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { LoadingPresentation } from './LoadingPresentation';
 
 const meta = {
-  title: 'SpecFlow/Components/Loading presentation',
+  title: 'SpecFlow/Components/Loading Presentation',
   component: LoadingPresentation,
   parameters: { layout: 'fullscreen' },
   decorators: [
@@ -20,17 +20,38 @@ const meta = {
 } satisfies Meta<typeof LoadingPresentation>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Specification: Story = {};
-export const FullTask: Story = { args: { shape: 'task' } };
-export const Preview: Story = { args: { shape: 'preview' } };
-export const Overview: Story = { args: { shape: 'overview' } };
-export const Aggregate: Story = { args: { shape: 'list' } };
-export const Summary: Story = { args: { shape: 'summary' } };
-export const Document: Story = { args: { shape: 'document' } };
-export const History: Story = { args: { shape: 'history' } };
-export const Detail: Story = { args: { shape: 'detail' } };
-export const Catalogue: Story = { args: { shape: 'catalogue' } };
-export const Paused: Story = { args: { fetching: false } };
+export const Default: Story = {
+  argTypes: {
+    shape: {
+      control: 'select',
+      options: [
+        'specification',
+        'task',
+        'preview',
+        'overview',
+        'list',
+        'summary',
+        'document',
+        'history',
+        'detail',
+        'catalogue',
+      ],
+    },
+    fetching: { control: 'boolean' },
+    label: { control: 'text' },
+  },
+};
+export const Specification: Story = { tags: ['contract'] };
+export const FullTask: Story = { tags: ['contract'], args: { shape: 'task' } };
+export const Preview: Story = { tags: ['contract'], args: { shape: 'preview' } };
+export const Overview: Story = { tags: ['contract'], args: { shape: 'overview' } };
+export const Aggregate: Story = { tags: ['contract'], args: { shape: 'list' } };
+export const Summary: Story = { tags: ['contract'], args: { shape: 'summary' } };
+export const Document: Story = { tags: ['contract'], args: { shape: 'document' } };
+export const History: Story = { tags: ['contract'], args: { shape: 'history' } };
+export const Detail: Story = { tags: ['contract'], args: { shape: 'detail' } };
+export const Catalogue: Story = { tags: ['contract'], args: { shape: 'catalogue' } };
+export const Paused: Story = { tags: ['contract'], args: { fetching: false } };
 
 export const AccessibleMotion: Story = {
   tags: ['contract'],

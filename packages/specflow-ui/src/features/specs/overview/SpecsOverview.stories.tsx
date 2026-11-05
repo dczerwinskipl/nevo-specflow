@@ -303,6 +303,33 @@ const meta = {
 } satisfies Meta<typeof OverviewFixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+const stateOptions = {
+  loaded,
+  loading: { collection: 'current', loading: true, refreshing: false, error: false },
+  emptyCurrent: { ...loaded, projection: { ...loaded.projection!, items: [] } },
+  archive: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') },
+  emptyArchive: {
+    ...loaded,
+    collection: 'archive',
+    projection: { ...createSpecsFixture('archive'), items: [] },
+  },
+  unavailable: { collection: 'current', loading: false, refreshing: false, error: true },
+  refreshing: { ...loaded, refreshing: true },
+  refreshFailure: { ...loaded, error: true },
+} satisfies Record<string, SpecsOverviewState>;
+
+export const Default: Story = {
+  argTypes: {
+    state: {
+      control: 'select',
+      options: Object.keys(stateOptions),
+      mapping: stateOptions,
+    },
+    locale: { control: 'inline-radio', options: ['en', 'pl'] },
+    interactive: { control: 'boolean' },
+  },
+};
 const pullRequestContractPlay: NonNullable<Story['play']> = async ({
   canvas,
   canvasElement,
@@ -319,16 +346,25 @@ const pullRequestContractPlay: NonNullable<Story['play']> = async ({
     { once: true },
   );
   if (matchMedia('(pointer:coarse)').matches) {
+    // The 44×44 target is the link's hit area (a pseudo-element), not its box: every point 21px
+    // from its centre must still hit the PR link and never the stretched Specification link.
     const rect = pr.getBoundingClientRect();
-    if (rect.width < 44 || rect.height < 44) {
-      throw new Error('PR touch target must be at least44×44');
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const edges = [
+      [x - 21, y - 21],
+      [x + 21, y - 21],
+      [x - 21, y + 21],
+      [x + 21, y + 21],
+    ] as const;
+    for (const [px, py] of edges) {
+      const hit = canvasElement.ownerDocument.elementFromPoint(px, py);
+      if (hit?.closest('a') !== pr) {
+        throw new Error('Near-edge PR target must not activate the stretched Specification link');
+      }
     }
 
-    const hit = canvasElement.ownerDocument.elementFromPoint(rect.right - 1, rect.bottom - 1);
-    if (hit?.closest('a') !== pr) {
-      throw new Error('Near-edge PR target must not activate the stretched Specification link');
-    }
-
+    const hit = canvasElement.ownerDocument.elementFromPoint(x + 21, y + 21)!;
     await userEvent.click(hit);
   } else {
     await userEvent.click(pr);
@@ -473,6 +509,7 @@ export const CurrentContract: Story = {
 };
 
 export const AccountNavigation: Story = {
+  tags: ['contract'],
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
     const menu = document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]');
@@ -493,6 +530,7 @@ export const AccountNavigation: Story = {
 };
 
 export const SpecLevelAttention: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -501,6 +539,7 @@ export const SpecLevelAttention: Story = {
   },
 };
 export const Ready: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -509,6 +548,7 @@ export const Ready: Story = {
   },
 };
 export const BatchWorking: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -517,6 +557,7 @@ export const BatchWorking: Story = {
   },
 };
 export const SingleTaskWorking: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -535,6 +576,7 @@ export const SingleTaskWorking: Story = {
   },
 };
 export const ReadyAndDraft: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -571,7 +613,7 @@ const flatState: SpecsOverviewState = {
 };
 export const FlatListWithoutStatus: Story = {
   args: { state: flatState },
-  tags: ['visual'],
+  tags: ['contract'],
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('link', { name: 'Open specification: Payment limits' });
     await expect(canvasElement.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
@@ -608,7 +650,7 @@ const projectRuntimeState: SpecsOverviewState = {
 };
 export const ProjectRuntimeList: Story = {
   args: { state: projectRuntimeState, locale: 'pl' },
-  tags: ['visual'],
+  tags: ['contract'],
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('link', { name: 'Otwórz specyfikację: Logowanie SSO' });
     await expect(canvasElement.querySelectorAll('[data-spec-updated] time')).toHaveLength(3);
@@ -616,11 +658,13 @@ export const ProjectRuntimeList: Story = {
   },
 };
 export const ProjectRuntimeListMobile: Story = {
+  tags: ['contract'],
   args: { state: projectRuntimeState, locale: 'pl' },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 /** Only progress exists: the flat list keeps one progress column, still no status column. */
 export const FlatListWithProgressOnly: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...flatState,
@@ -634,24 +678,32 @@ export const FlatListWithProgressOnly: Story = {
   },
 };
 export const FlatListMobile: Story = {
+  tags: ['contract'],
   args: { state: flatState },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
-export const FlatListPolish: Story = { args: { state: flatState, locale: 'pl' } };
+export const FlatListPolish: Story = {
+  tags: ['contract'],
+  args: { state: flatState, locale: 'pl' },
+};
 /** Real status data: grouped by status, with the situation and progress columns. */
 export const GroupedByStatus: Story = {
+  tags: ['contract'],
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Requires attention' });
     await expect(canvasElement.querySelector('[data-spec-layout="grouped"]')).not.toBeNull();
   },
 };
 export const Loading: Story = {
+  tags: ['contract'],
   args: { state: { collection: 'current', loading: true, refreshing: false, error: false } },
 };
 export const EmptyCurrent: Story = {
+  tags: ['contract'],
   args: { state: { ...loaded, projection: { ...loaded.projection!, items: [] } } },
 };
 export const EmptyArchive: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -661,10 +713,17 @@ export const EmptyArchive: Story = {
   },
 };
 export const Unavailable: Story = {
+  tags: ['contract'],
   args: { state: { collection: 'current', loading: false, refreshing: false, error: true } },
 };
-export const Refreshing: Story = { args: { state: { ...loaded, refreshing: true } } };
-export const RefreshFailure: Story = { args: { state: { ...loaded, error: true } } };
+export const Refreshing: Story = {
+  tags: ['contract'],
+  args: { state: { ...loaded, refreshing: true } },
+};
+export const RefreshFailure: Story = {
+  tags: ['contract'],
+  args: { state: { ...loaded, error: true } },
+};
 export const Archive: Story = {
   args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
   tags: ['visual'],
@@ -674,6 +733,8 @@ export const Archive: Story = {
 /** Full metadata is the normal Archive visual fixture; incomplete records are tested separately. */
 export const ArchiveWithCompleteMetadata: Story = {
   ...Archive,
+  // Same render as Archive, which keeps the snapshot; visual stories carry no assertions.
+  tags: ['contract'],
   play: async ({ canvasElement }) => {
     // RouterProvider can finish its initial route after Storybook starts play.
     // Check the final DOM instead of failing during asynchronous initialization.
@@ -699,6 +760,7 @@ export const ArchiveWithCompleteMetadata: Story = {
 };
 
 export const ArchiveMissingOptionalMetadata: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -745,6 +807,7 @@ export const ArchiveContract: Story = {
 };
 
 export const CollectionSwitch: Story = {
+  tags: ['contract'],
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
     canvas.getByRole('textbox', { name: 'Search specifications' });
@@ -792,6 +855,7 @@ export const CollectionSwitch: Story = {
   },
 };
 export const LongContent: Story = {
+  tags: ['contract'],
   args: { state: { ...loaded, projection: createLongContentFixture() } },
 };
 /**
@@ -799,6 +863,7 @@ export const LongContent: Story = {
  * client-side ledger) and its row leads to the progress page.
  */
 export const CreatingInProgress: Story = {
+  tags: ['contract'],
   args: {
     operations: [runningItem(1, { title: 'Limity płatności', operationId: 'op-1' })],
   },
@@ -812,6 +877,7 @@ export const CreatingInProgress: Story = {
 
 /** The panel at 320 px with a long name and a check-result row: it wraps and nothing scrolls sideways. */
 export const CreatingInProgressMobile: Story = {
+  tags: ['contract'],
   args: {
     operations: [
       runningItem(2, {
@@ -829,7 +895,7 @@ export const CreatingInProgressMobile: Story = {
     }
   },
 };
-export const Polish: Story = { args: { locale: 'pl' } };
+export const Polish: Story = { tags: ['contract'], args: { locale: 'pl' } };
 export const ProgressStates: Story = {
   args: {
     state: {
@@ -915,6 +981,7 @@ export const InvalidArchiveDates: Story = {
   },
 };
 export const MetadataOverflow: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -951,6 +1018,7 @@ export const MetadataOverflow: Story = {
 };
 
 export const SearchDisclosure: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -1022,6 +1090,7 @@ export const SearchDisclosure: Story = {
 };
 
 export const MissingKey: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -1038,6 +1107,7 @@ export const MissingKey: Story = {
 };
 
 export const ArchiveLifecycle: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -1100,6 +1170,7 @@ export const ArchiveLifecycle: Story = {
 };
 
 export const Dense: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -1118,6 +1189,7 @@ export const Dense: Story = {
 };
 
 export const ConfiguredOrder: Story = {
+  tags: ['contract'],
   args: {
     state: {
       ...loaded,
@@ -1141,6 +1213,7 @@ export const ConfiguredOrder: Story = {
   },
 };
 export const ReadOnlyPreview: Story = {
+  tags: ['contract'],
   args: { interactive: false },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
@@ -1162,6 +1235,7 @@ export const Mobile: Story = {
 };
 
 export const SourceLifecycle: Story = {
+  tags: ['contract'],
   render: () => <SourceLifecycleFixture />,
   play: async ({ canvas, userEvent }) => {
     canvas.getByRole('status', { name: 'Loading specifications' });

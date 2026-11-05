@@ -62,6 +62,7 @@ vi.mock('../useDocumentsApi', () => ({
 
 const emptyTree = {
   documents: [],
+  dangling: [],
   folders: [],
   capabilities: {},
 } as unknown as Parameters<typeof useDocumentOperations>[0]['tree'];

@@ -34,7 +34,7 @@ function RecoverableWorkSection() {
 }
 
 const meta = {
-  title: 'SpecFlow/Features/Work Section Recovery',
+  title: 'SpecFlow/Screens/Specification Workspace',
   component: RecoverableWorkSection,
   tags: ['integration'],
   parameters: { chromatic: { disableSnapshot: true } },

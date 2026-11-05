@@ -1,11 +1,4 @@
-import {
-  AppShell,
-  IconButton,
-  MarkdownDocument,
-  ScrollArea,
-  Typography,
-  WorkspaceHeader,
-} from '@nevo/ui';
+import { AppShell, MarkdownDocument, ScrollArea, Typography, WorkspaceHeader } from '@nevo/ui';
 import {
   documentById,
   fileName,
@@ -70,7 +63,6 @@ function SessionsWorkspace({ empty }: { empty: boolean }) {
     readOnlyProvider,
   );
   const scope = 'sessions-mock';
-  const index = host.active ? host.open.indexOf(host.active) : -1;
   const link = (fileId: string) => (
     <button
       key={fileId}
@@ -118,35 +110,14 @@ function SessionsWorkspace({ empty }: { empty: boolean }) {
         data-mock-region="secondary"
         className="flex min-w-0 basis-1/2 flex-col border-l border-border-subtle"
       >
-        {/* Secondary header as AppWorkspace draws it: Back leading, Close trailing. */}
+        {/* Secondary header as AppWorkspace draws it with the root-tab strip: the rail, each tab closes itself. */}
         <TabHostHeader
           host={host}
           content={readOnlyProvider}
           scope={scope}
           label="Opened context files"
           budget={2}
-          leading={
-            // Back exists only when there is a previous tab to return to.
-            index > 0 ? (
-              <IconButton
-                aria-label="Back"
-                className="[&_svg]:rotate-180"
-                icon="arrow-right"
-                size="sm"
-                variant="ghost"
-                onClick={() => host.setActive(host.open[index - 1]!)}
-              />
-            ) : undefined
-          }
-          trailing={
-            <IconButton
-              aria-label="Close secondary content"
-              icon="close"
-              size="sm"
-              variant="ghost"
-              onClick={host.closeAll}
-            />
-          }
+          rail
         />
         <div className="min-h-0 flex-1">
           <TabHostBody

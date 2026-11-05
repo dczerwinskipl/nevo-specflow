@@ -16,6 +16,11 @@ import {
   floatingSeparatorClassName,
 } from '../../../design-system/floatingRecipes';
 import { cn } from '../../../lib';
+import {
+  optionDescriptionClassName,
+  optionLabelClassName,
+  optionLabelWrappingClassName,
+} from '../../forms/shared/optionRecipes';
 import { Icon, type IconGlyph } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 
@@ -76,7 +81,15 @@ export const MenuContent = forwardRef<ComponentRef<typeof DropdownMenu.Content>,
           className={cn(
             'menu-content',
             floatingContentClassName,
-            'w-56 [&]:min-w-0 max-w-[var(--radix-dropdown-menu-content-available-width)]',
+            // Height counterpart to the existing `available-width` cap just below: without it, a
+            // menu taller than the collision-detected space Radix leaves it (e.g. a popover with
+            // several labeled sections and per-item descriptions open near the bottom of a short
+            // mobile viewport) silently clips past the viewport edge instead of scrolling its own
+            // content — `floatingContentClassName`'s own `overflow-hidden` (from
+            // `floatingSurfaceClassName`) was built for corner-radius clipping, not meant to hide
+            // overflowing content (a long section at 390px wide was clipped). `overflow-y-auto` scrolls the menu's own content inside its fixed
+            // rounded/bordered surface instead.
+            'w-56 [&]:min-w-0 max-w-[var(--radix-dropdown-menu-content-available-width)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto',
             className,
           )}
           collisionPadding={collisionPadding}
@@ -191,12 +204,18 @@ export interface MenuRadioItemProps extends Omit<
   'children'
 > {
   children: ReactNode;
+  /**
+   * Optional second line, reusing `Select`/`Combobox`'s own option anatomy
+   * (`optionDescriptionClassName`) so a richer choice — a model's available efforts, or why a
+   * disabled option is unavailable — never drifts from the shared recipe those pickers already use.
+   */
+  description?: ReactNode;
 }
 
 export const MenuRadioItem = forwardRef<
   ComponentRef<typeof DropdownMenu.RadioItem>,
   MenuRadioItemProps
->(function MenuRadioItem({ children, className, disabled, value, ...props }, ref) {
+>(function MenuRadioItem({ children, className, description, disabled, value, ...props }, ref) {
   const selectedValue = useContext(MenuRadioValueContext);
   const capture = useDesignMetadata('MenuRadioItem', {
     state: disabled ? 'disabled' : selectedValue === value ? 'checked' : 'unchecked',
@@ -205,28 +224,64 @@ export const MenuRadioItem = forwardRef<
   return (
     <DropdownMenu.RadioItem
       ref={ref}
-      className={cn(menuItemVariants({ tone: 'neutral' }), className)}
+      className={cn(menuItemVariants({ tone: 'neutral' }), description && 'items-start', className)}
       disabled={disabled}
       value={value}
       {...props}
       {...capture}
     >
       <span
-        className="inline-flex size-icon-sm shrink-0 items-center justify-center"
+        className={cn(
+          'inline-flex size-icon-sm shrink-0 items-center justify-center',
+          description && 'self-start',
+        )}
         {...designSlot('MenuRadioItem', 'indicator')}
       >
         <DropdownMenu.ItemIndicator>
           <Icon name="check" size="sm" />
         </DropdownMenu.ItemIndicator>
       </span>
-      <Typography
-        as="span"
-        className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-current"
-        {...designSlot('MenuRadioItem', 'label')}
-        variant="body-sm"
-      >
-        {children}
-      </Typography>
+      {description ? (
+        <span className="grid min-w-0 flex-1 gap-0.5 py-0.5">
+          {/* A heading above a description reads as a title, not a single-line value (unlike the
+              plain, no-description branch below, which stays `optionLabelClassName`'s single-line
+              truncating recipe): a long option title (e.g. "Approve edits automatically") would be cut
+              to an ellipsis by that same single-line recipe even though its full second-line
+              description sits right underneath, uncut. The
+              wrapping variant (`optionLabelWrappingClassName`, the same one branch/workspace
+              pickers use to keep a long value fully readable) lets the title wrap onto a second
+              line instead of truncating, so nothing in either line is ever lost.
+              `label-sm` (weight 600), not `body-sm` (weight 400) — same canonical-table fix as
+              `Select`'s/`Combobox`'s own paired label (see `Select`'s own doc comment): owner
+              audit, live on the two-section Work-mode/Approval menu — a label and its description
+              rendered at the same weight read as "jednolita czcionka" (one undifferentiated
+              block) instead of a title over supporting text. */}
+          <Typography
+            as="span"
+            className={cn(optionLabelWrappingClassName, 'block')}
+            {...designSlot('MenuRadioItem', 'label')}
+            variant="label-sm"
+          >
+            {children}
+          </Typography>
+          <Typography
+            as="span"
+            className={cn(optionDescriptionClassName, 'whitespace-normal')}
+            variant="body-sm"
+          >
+            {description}
+          </Typography>
+        </span>
+      ) : (
+        <Typography
+          as="span"
+          className={cn(optionLabelClassName, 'flex-1')}
+          {...designSlot('MenuRadioItem', 'label')}
+          variant="body-sm"
+        >
+          {children}
+        </Typography>
+      )}
     </DropdownMenu.RadioItem>
   );
 });

@@ -1,7 +1,19 @@
 import type { Preview } from '@storybook/react-vite';
 import './preview.css';
 
+// Inter is shipped by the design system with font-display: swap, so the first paint may use the
+// fallback face. Stories that measure geometry, and Chromatic snapshots, must start from the real
+// metrics: load one Latin and one Latin Extended (Polish) sample, then wait for the font set.
+async function loadShippedFonts(): Promise<void> {
+  await Promise.all([
+    document.fonts.load('400 14px Inter', 'Abc'),
+    document.fonts.load('400 14px Inter', 'ąćęłńóśźż'),
+  ]);
+  await document.fonts.ready;
+}
+
 const preview: Preview = {
+  loaders: [loadShippedFonts],
   parameters: {
     layout: 'centered',
     backgrounds: {

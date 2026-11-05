@@ -11,3 +11,4 @@ export {
 } from './i18n';
 export { LocaleMenuItems, StandaloneLocaleMenu } from './LocaleMenu';
 export { LocalizationProvider, useLocale } from './LocalizationProvider';
+export { useMarkdownLabels } from './useMarkdownLabels';

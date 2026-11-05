@@ -79,6 +79,12 @@ export const creationCatalogue: DemoCatalogue = {
       profile: 'Profil demonstracyjny',
       quota: { state: 'unknown' },
       available: true,
+      modes: [
+        { id: 'ask', title: 'Ask' },
+        { id: 'edit', title: 'Edit' },
+        { id: 'agent', title: 'Agent' },
+      ],
+      defaultModeId: 'agent',
       models: [
         {
           id: 'model-a',
@@ -99,6 +105,12 @@ export const creationCatalogue: DemoCatalogue = {
       profile: 'Profil demonstracyjny',
       quota: { state: 'unknown' },
       available: true,
+      modes: [
+        { id: 'ask', title: 'Ask' },
+        { id: 'edit', title: 'Edit' },
+        { id: 'agent', title: 'Agent' },
+      ],
+      defaultModeId: 'agent',
       models: [
         {
           id: 'model-a',
@@ -120,6 +132,7 @@ export const creationCatalogue: DemoCatalogue = {
       quota: { state: 'unknown' },
       available: false,
       reason: 'Niedostępny w tym środowisku demonstracyjnym.',
+      modes: [],
       models: [],
     },
   ],

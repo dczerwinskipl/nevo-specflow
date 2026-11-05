@@ -24,9 +24,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Playground: Story = {};
+export const Default: Story = {};
 
 export const Types: Story = {
+  tags: ['contract'],
   render: () => (
     <div className="flex flex-wrap items-center gap-12">
       <NevoBrandLogo size="lg" type="mark" />
@@ -68,6 +69,7 @@ const productFamily = [
 ] as const;
 
 export const ProductFamily: Story = {
+  tags: ['contract'],
   render: () => (
     <div className="flex flex-wrap items-start gap-8">
       {productFamily.map((identity) => (
@@ -87,6 +89,7 @@ export const ProductFamily: Story = {
 };
 
 export const Monochrome: Story = {
+  tags: ['contract'],
   render: () => (
     <div className="flex flex-wrap items-center gap-12 text-content-primary">
       <NevoBrandLogo appearance="monochrome" size="lg" type="mark" />

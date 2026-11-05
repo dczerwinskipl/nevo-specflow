@@ -7,7 +7,7 @@ import { useAppServices } from '../../../app/useAppServices';
 import { markdownIntro } from '../description/markdownIntro';
 import { hasTextDraft } from '../content-kinds/kindId';
 import { DocumentNonTextPreview } from './DocumentFileViews';
-import { useMarkdownLabels } from '../useMarkdownLabels';
+import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { documentKeys } from '../read-model/queries';
 
 export function DocumentContent({

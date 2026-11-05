@@ -443,7 +443,7 @@ function Workspace({
 }
 
 const meta = {
-  title: 'SpecFlow/Screens/Documents/Archetype states',
+  title: 'SpecFlow/Screens/Documents',
   component: Workspace,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
@@ -451,6 +451,17 @@ const meta = {
 } satisfies Meta<typeof Workspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+export const Default: Story = {
+  tags: ['!contract'],
+  argTypes: {
+    scenario: { control: 'inline-radio', options: ['states', 'read-only', 'conflict', 'project'] },
+    path: {
+      control: 'select',
+      options: [`/specs/${SPEC}/documents`, `/specs/${SPEC}/documents/ux`],
+    },
+    saveRefusal: { control: 'text' },
+  },
+};
 
 const body = () => within(document.body);
 async function wide() {
@@ -695,6 +706,14 @@ export const GuidanceThreeColumns: Story = {
         1280,
       ),
     );
+    // The DOM width changes at once, but the preview learns it from its ResizeObserver one frame
+    // later and only then reports its room for a guidance column to the session. A click in that
+    // frame still sees the narrower room and opens the guidance as a sheet (which the wider panel
+    // then ends). Let the measurement land first, as a reader's click always does.
+    for (let frame = 0; frame < 3; frame += 1) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+
     await userEvent.click(toggle);
     const column = await screen.findByRole('complementary', { name: 'How to write: UX' });
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');

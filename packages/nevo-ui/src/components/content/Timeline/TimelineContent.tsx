@@ -32,7 +32,10 @@ const metaVariants = tv({
   },
 });
 
+// A collapsed disclosure panel (`hidden`) as the only extra content adds no spacing: the item
+// keeps exactly the same rhythm as its plain siblings until it is actually expanded.
 const extraContentVariants = tv({
+  base: 'has-[>[hidden]:only-child]:mt-0',
   variants: {
     size: {
       sm: 'mt-1',

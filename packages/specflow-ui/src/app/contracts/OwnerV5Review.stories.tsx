@@ -1,24 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
-import { browserPage } from '../../test-support/browserPage';
+import { settleViewport } from '../../test-support/viewportSettle.stories-support';
 import { ConnectedApplication } from './ConnectedConsistency.stories';
 import { withLocale } from '../../i18n/StoryLocalization';
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Review/Owner V5 independent responsive review',
+  title: 'SpecFlow/Screens/Application Shell',
   component: ConnectedApplication,
   parameters: { layout: 'fullscreen' },
-  tags: ['contract', 'visual'],
+  tags: ['contract'],
 } satisfies Meta<typeof ConnectedApplication>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 async function stable(width: number, height = 900) {
-  await (await browserPage()).viewport(width, height);
-  await new Promise<void>((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-  );
+  // The shell learns the new width from a ResizeObserver coalesced into the next frame, so the
+  // narrow layout commits after the resize itself: wait for that layout (crossing the split
+  // threshold re-mounts the workspace, and a control found before it is a detached node).
+  await settleViewport(width, height);
   await waitFor(() => {
     for (const surface of document.querySelectorAll<HTMLElement>('[data-workspace-surface]')) {
       if (surface.dataset.workspaceMotion && surface.dataset.workspaceMotion !== 'idle') {
@@ -95,7 +95,7 @@ export const GuardAt360430: Story = {
     await stable(360);
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
     await userEvent.type(
-      canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
+      await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Długi opis eksportu danych klienta',
     );
     await userEvent.click(canvas.getByRole('button', { name: /Otwórz nawigację|Open navigation/ }));

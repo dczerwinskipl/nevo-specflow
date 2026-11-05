@@ -11,6 +11,7 @@ summary: >
   Product-neutral in-memory Secondary screen catalogues and lifecycle, distinct from route navigation.
 related:
   - design-system.principles.system-boundary
+  - design-system.implementation.react.workspace-dynamic-split
   - product.specflow.ui.interaction-model
 ---
 
@@ -24,7 +25,7 @@ Product routes remain owned by the application router. This is not the global na
 - `AppWorkspace.Primary` renders the main work surface.
 - `AppWorkspace.Secondary` is the optional declarative base shown on split-capable layouts.
 - A runtime Secondary flow temporarily takes precedence over the declarative base.
-- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately.
+- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately. Each scope change is a new generation: its tabs, guards, transition and scroll memory start empty in the same commit, and a navigation operation started in a previous scope resolves `false` as soon as the scope changes — even one still waiting on a guard, without waiting for that guard's answer (the same holds when the provider unmounts) — and never blocks or mutates the new scope, even if the old guard answers later. **The provider generalizes this single flow to several independently open root tabs** (`open` keeps one reserved slot, `openTab` opens one tab per instance id, an optional pinned tab) — see [Workspace dynamic split and Secondary root tabs](workspace-dynamic-split.md) and "Root tabs lifecycle" below.
 - Feature code defines available pages in `defineSecondaryStack`, usually in a separate module.
 - A page descriptor contains a page name, small page-specific identifiers and an instance key. Do not store React elements or cached domain snapshots in navigation state.
 - `useData(rootParams)` resolves current data **once per mounted entry** in a stable host; the header and content consume the same result. A refresh updates rendered props without a navigation transition.
@@ -105,7 +106,8 @@ the route transition has been approved, changing the provider's `scopeKey` inval
 its flow. Forced context invalidation (logout, revoked global permissions, destroyed
 workspace scope) intentionally bypasses leave guards and removes the flow.
 Do not treat the `scopeKey` change itself as an ordinary guarded user navigation.
-Browser/system Back implementation belongs in that router adapter, not inside feature screens.
+Browser/system Back _between routes_ belongs in that router adapter, not inside feature screens;
+Back _inside_ the Secondary is the provider's opt-in `browserHistory` (see "Browser and system Back").
 
 `useSecondaryLeaveGuard` optionally registers a guard for the active page. Navigation checks
 the guard before replacing, popping or closing that page; denied transitions leave the state intact.
@@ -119,9 +121,10 @@ it must map confirmed authorization loss to `access-denied` rather than a generi
 network error. Hidden/inert is not an acceptable protection for revoked data.
 
 This retention option applies **only to the current screen**. After Back, earlier
-entries retain identifiers but can remount. If scroll, filters or an unsaved form must
-survive Back, the product should explicitly own that state outside the unmounted page,
-scoped to the flow. Full offscreen React subtree retention is intentionally deferred.
+entries retain identifiers but can remount; the workspace restores their scroll offsets (see "Root
+tabs lifecycle"), but if filters, a selection or an unsaved form must survive Back, the product
+should explicitly own that state outside the unmounted page, scoped to the flow. Full offscreen
+React subtree retention is intentionally deferred.
 Avoid synchronizing two owners of the Secondary with effects in product screens.
 
 ## Refresh and missing data
@@ -153,16 +156,177 @@ may remount screens; an ordinary data update must not.
 
 AppWorkspace owns the responsive split/stacked choice and automatic header controls.
 On Narrow, the active runtime Secondary replaces visible Primary and Back occupies the navigation
-position instead of the global hamburger. On desktop/split, Back and Close are provided by the
-workspace header. Default Secondary is not part of the runtime page stack.
+position instead of the global hamburger. On desktop/split with a single runtime flow (no tab
+strip), Back and Close are provided by the workspace header. With the root-tab strip shown on
+desktop/split, see "Root tabs and local navigation" below. Default Secondary is not part of the
+runtime page stack.
 
-Browser history/Back interception and serialization of transient pages are **out of scope**.
-The current implementation preserves the mounted active page across ordinary `ready`
+### Root tabs and local navigation (split layout)
+
+Decided by the owner (2026-11-03; history and rejected variants in
+[Secondary tabs redesign](../../../ideas/specflow-ui/components/secondary-tabs-redesign.md)): the
+split Secondary's tabs are IDE-style **editor tabs** on a constant 36 px rail, and local depth is a
+detail header row in the content instead of a bar under the rail.
+
+On a split layout the Secondary has no 56 px header while the root-tab strip is shown: its
+navigation is one **tab rail** (36 px at every depth) and, only while the active tab is deeper than
+its root, a **local navigation row** at the top of the tab panel — by default the detail header row
+(`←` Back + the screen's `detailHeader`), by opt-in a breadcrumb trail. The rail is deliberately
+not aligned with the 56 px Primary header; opening a detail never moves the tabs.
+
+- **When the strip shows.** With 2+ root tabs, and on a split layout already while a pinned tab
+  (`useRegisterPinnedSecondaryTab`, for example Session Context) is the only one: the pinned tab is
+  a tab from the start, so opening or closing another tab never swaps a 56 px header for the 36 px
+  rail under the content (the "jumping screen" the owner reported). The pinned tab has no `x` and
+  the rail has no panel-level Close; the product closes the panel from its own control (Session:
+  the Primary "Kontekst" toggle). Stacked layouts and a single runtime tab without a pinned one
+  keep their header unchanged: a lone flow's header carries the screen's own identity, Back and
+  Close, which a one-tab rail would drop.
+- **Tab label = root.** `tabs[].title` is the tab's stack ROOT title (`tabLabel(rootParams)`, else
+  the initial page's `title`) at any depth. A tab never renames itself to the detail open inside it
+  (Work history → a tool action stays "Work history"). Tabs carry no icons.
+- **Tab rail.** `ItemTabs density="rail"` (see [Item tabs](item-tabs.md), "Tab look"):
+  `--spacing-tab-rail` = one default control = 36 px including the strip's bottom divider, drawn by
+  the tabs themselves, so the rail row has no padding or border of its own. Square tabs that touch,
+  14 px labels, 1 px neutral separators; inactive tabs sit on the darker `--color-tab-strip`, the
+  active tab takes the panel's own surface (no fill, no bottom border) under a 2 px `action-primary`
+  top accent, plus primary text. As many tabs as fit are shown, then the `More (N)` menu of the
+  hidden ones; below 292 px of strip width the strip becomes the switcher button. The rail keeps the
+  screen's declared actions, no Back and no panel-level Close (each closable tab owns its `x`).
+- **Choosing the row: `localNavigation`.** A stack declares how its tabs show depth:
+  `defineSecondaryStack({ localNavigation: 'back' | 'breadcrumbs' })`, default `back`. The stack the
+  tab was opened with decides (`WorkspaceContextValue.localNavigation`). Use `breadcrumbs` only when
+  every level is a place worth jumping back to (Tasks › TASK-03 › Attempt 2 › Review); depth alone
+  is not a reason. Today no product stack opts in: Work history → ToolAction and Tasks → Task are
+  one-level drills.
+- **Detail header row (default).** `SecondaryDetailHeaderRow` is the first, non-scrolling child
+  of the tab panel (`data-workspace-detail-header`): a ghost `IconButton sm` `←` whose accessible
+  name and tooltip are `labels.backToParent(parentTitle)` (Session: `Wróć do: Historia pracy`),
+  returning to the direct parent, followed by the screen's declared **`detailHeader`** (a
+  `SecondaryScreenDefinition` field: the object's identity, e.g. a ToolAction's title and status
+  line; Session's single-ToolAction screen declares `ToolActionHeader` here). The workspace keeps
+  owning Back; the screen owns the identity. A screen that declares no `detailHeader` shows Back
+  alone, and its own content heads itself as before. The row has no divider and a height cap
+  (`max-h-40`, scrolling inside) so a very long title cannot eat the panel; the content below it
+  scrolls on its own. Because `header` stays the content of the stacked/mobile header, a
+  `detailHeader` is separate from it; wherever the workspace does not host the row (stacked,
+  breadcrumbs, no tab strip) the screen shows the same identity in its own content, using
+  `useSecondaryDetailHeaderHosted()` (true only while the row hosts it), so it appears exactly once
+  in every layout. The first section of a detail starts one section rhythm (20 px) below the row.
+- **Breadcrumb row (opt-in).** `SecondaryBreadcrumbRow` (DS `Breadcrumbs overflow="collapse"`),
+  same place (`data-workspace-breadcrumbs`), `--spacing-breadcrumb-row` = 24 px with its divider.
+  It replaces the detail header row; the screen shows its own identity. Anatomy:
+  `← Root › … › Parent › Current`. The leading `←` (`IconButton xs`, accessible name
+  `labels.backToParent(parentTitle)`) pops one level; every ancestor segment is an `onPress` button
+  that pops straight back to its level; the current level is plain text (`aria-current="page"`),
+  truncates with an ellipsis and keeps its full text as `title`. Ancestors are capped (`max-w-48`).
+- **Collapse.** Root and current always show, and the leading `←` always returns to the direct
+  parent. Below 480 px of measured row width every middle segment folds into one `…` menu (3+ levels
+  read `Root › … › Current`); wider, at most four segments show and the oldest middle ones fold
+  first. The `…` menu lists the folded levels in order (`collapseBreadcrumbs`).
+- **Segment titles** come from the entries, never from data or paths: a screen may declare
+  `breadcrumbLabel: (params) => string`; the first page of a stack (the tab root, or another module
+  pushed with `navTo(stack, params)`) uses that stack's `tabLabel(rootParams)`; otherwise the
+  screen's static `title`. Back uses the same title for the parent. Do not put full file
+  paths in titles; a title is a short name.
+- **Heights.** The rail is 36 px at a tab root and at every depth; the content (or the detail
+  header row) starts right under it. Nothing is aligned with the Primary header's 56 px.
+- **API.** `WorkspaceContextValue.trail` lists the active runtime tab's levels root first
+  (`{ key, title }`, `trail.length === secondaryDepth`); `backTo(depth)` pops to `depth` levels
+  (1 = root) in **one** `pop` transition, consulting only the current page's leave guard, and
+  resolves `false` for a depth that is not an ancestor. With `browserHistory`, a jump of N levels
+  lowers the desired depth by N and the provider consumes exactly N entries with one `go(-N)`.
+- **Not applied** on stacked/mobile (its header Back + title + Close stay, with no row under the
+  header; the strip keeps the 56 px `header` density there; Documents' tab strip keeps its own
+  look) and not to a single runtime flow without
+  a strip. The pinned/declarative tab has no runtime stack and therefore no local row.
+- **Scroll after Back.** Back remounts the parent screen (see "Refresh and missing data" below):
+  its local state is what the product keeps outside the screen, but its scroll offset is restored
+  by the workspace (see "Root tabs lifecycle"). Measured in
+  `SecondaryLocalNavigation.contract.stories.tsx`: a list scrolled to 400 px returns at 400.
+- **Verification.** `SecondaryLocalNavigation.contract.stories.tsx` (Secondary at 330 px, 450 px and
+  50/50 at 1440: the 36 px rail at root and in a detail, the active tab's surface and primary top
+  accent, no icons, the detail header row; deep opted-in Tasks trail at 1440 and 330; long and many
+  tabs; 390 and 360 mobile) and the Session's `ManagedSession.workDetail.stories.tsx` (including the
+  equal 20 px gaps between a ToolAction's header, PARAMETRY and response).
+
+### Root tabs lifecycle
+
+How the root tabs behave over time, for every product that opens them with `openTab`:
+
+- **Identity is the object.** `openTab` derives the tab id from `definition.id` plus
+  `definition.instanceId(params)`. A root tab shows ONE object, so give a stack that can open many
+  objects an `instanceId` (the Task id, the Turn id) and a `tabLabel` that tells them apart. An
+  already-open id is **activated untouched**: it is never retargeted to the new params, so two
+  objects that share an id show whichever opened first. Every entry point of the same object (a list
+  row, a summary row, a chat block) calls `openTab` with the same params and lands on the same tab.
+- **Inactive tabs unmount.** Only the active tab's screen is mounted. Its **stack** (the entries and
+  their params) and its **scroll offsets** survive; everything inside the screen does not.
+  **Selection, filters, drafts and expanded rows are product state**, kept outside the screen (the
+  Documents pattern), scoped to the tab's object. Nothing keeps a React subtree alive.
+- **Scroll is remembered by the workspace** (`secondaryScrollMemory.ts`): on the split layout the
+  tab panel records the scroll offset of each scroll container inside it, keyed by
+  `(tab id, stack entry instance)`, and puts it back when that entry is shown again (a tab
+  re-selected, Back to a parent entry, the region shown again). Only numbers are retained. A
+  container is matched by its ordinal among the panel's `overflow-y: auto | scroll` elements, so
+  products mark nothing; restoring waits (up to ~30 frames) for async content to be tall enough and
+  gives up on the first user scroll, wheel, touch, key or pointer press. A closed tab, a popped or
+  replaced entry and a scope change drop their offsets. Stacked layouts keep today's reset to the
+  top; they do not use this memory.
+- **Switching away asks the leave guard.** Showing another tab (`activateTab`, and `openTab` for an
+  open tab or a new one, and `open` when it replaces the slot) leaves the visible tab, whose screen
+  then unmounts. The workspace therefore asks that tab's own leave guard first, exactly as closing it
+  would; a refusal (`false`) keeps it shown and resolves the call with `false`. Nothing is asked when
+  the target is the shown tab, the region is hidden, or the visible tab is the pinned one. After the
+  switch the unmounted tab's guard is gone with its screen, so `closeTab` of a background tab and
+  `canLeaveScope` (which consults the active tab only) stay correct: anything worth protecting was
+  protected at the moment the user left it.
+- **Stacked layouts have no per-object tabs in the product flow.** Narrow layouts show one surface
+  at a time and Back follows the path (each selection pushes, repeats included). The tab strip
+  appears on a stacked layout only when 2+ tabs were opened before narrowing, as a `header`-density
+  strip whose active tab owns a real `tabpanel` (`aria-controls` resolves on both layouts).
+
+### Browser and system Back
+
+`<AppWorkspaceProvider browserHistory>` (opt-in, default off) mirrors the Secondary's own `back()`
+into browser history so browser Back and the Android back gesture step back inside the Secondary
+before leaving the page. Enabled today by the Session screen (`ManagedSessionRoute` in
+`specflow-ui/src/features/sessions/managed/routes.tsx` and its Storybook `Environment`).
+
+- **Invariant.** The number of same-URL entries the provider owns above the page's own entry equals
+  the number of `back()` calls that hide the region: the active runtime tab's stack length while
+  the region is visible, else 0 (a pinned/declarative tab counts 0 — UI Back cannot hide it either).
+  So opening the Secondary from hidden adds one entry, `navTo` adds one, `replace` adds none, and
+  `openTab` while a tab is already visible adds none (Back from a tab root hides the region, it
+  never returns to the previous tab). A tab switch to a deeper/shallower tab re-syncs the count.
+- **Browser Back** (`popstate` onto a lower own entry, the base entry, or a multi-step `go(-n)`)
+  runs one workspace `back()` per consumed entry, with the normal `pop`/`close` transition, focus
+  return and leave guard. A refusing guard keeps the page and re-pushes the popped entry.
+- **UI Back/Close/tab close/Escape/scope change** lower the count; the provider consumes the
+  surplus with `history.go(-n)` and ignores the resulting `popstate`. Browser Forward onto an
+  already consumed entry is neutralised (stepped straight back); it never redoes a page.
+- **Router coexistence.** The URL is never changed. Pushed entries copy the current
+  `history.state` (TanStack's `__TSR_index`/`__TSR_key`/`key`) plus one
+  `__nevoWorkspaceHistory: { owner, depth }` marker, through the unpatched
+  `History.prototype.pushState` — so a router that patches `pushState` is not notified, and its
+  `popstate` index delta is 0 (a same-href re-match, no remount). `go(-n)` is issued only while the
+  provider's own entry at the committed depth is current, so it can never undo a route navigation.
+  If another entry is on top (a route push or a `replace` that dropped the marker), the provider
+  re-bases on top of it instead.
+- **Lifecycle.** Only the first enabled provider mounted on a page owns history; later ones stay
+  in-memory. Unmount never traverses (its entries may sit below a router or Storybook manager
+  navigation); entries a dead instance leaves behind ("orphans": reload, route return) are skipped
+  with one `go(-depth)` when browser Back lands on them. Inert without `window` (SSR).
+- **Storybook.** In `iframe.html` inside the manager, the iframe's pushes join the top-level joint
+  session history, so the phone's Back pops them before the manager's own entries.
+
+Serialization of transient pages (restoring a Secondary page from a URL or after reload) remains
+**out of scope**. The current implementation preserves the mounted active page across ordinary `ready`
 refreshes. Without `preserveOnDataLoss`, non-ready states replace the screen content
 and can discard its local draft or leave guard. `access-denied` and `unavailable`
 always unmount current content, even if retention is enabled. A previous screen reached via Back is
 mounted afresh unless the product stores its state outside that component. This prototype
-does not persist offscreen screen-local state or intercept browser/system Back.
+does not persist offscreen screen-local state.
 
 Stack catalogue types constrain `navTo` for each declared set of pages, but the generic
 `useSecondaryStack<TPages>()` parameter is currently asserted by the caller and is
@@ -172,6 +336,7 @@ Do not claim full end-to-end catalogue-type inference.
 ## Agent checklist
 
 1. Read this document and `design-system.implementation.react.component-guidelines`.
+   Name deeper levels with `breadcrumbLabel` when the page title is a page type, not the object.
 2. Keep feature stack catalogue, screen components, and Primary list in separate modules when substantial.
 3. Open with the root entity ID from Primary, not with a React node or stale domain object.
 4. Use `navTo(page, { childId })` for contextual depth. Read the current entity from `useData`.
@@ -209,10 +374,19 @@ static catalogue coupling is a separate follow-up, not a prerequisite for this f
 ### Measured split capability
 
 Products can call the public `useWorkspaceCapabilities()` inside the shell to read
-`supportsSplit`. It uses the same measured available workspace width and threshold
-as `AppWorkspace`, including a narrow workspace in a wide browser window. Use it to
-expose an overflow entry for a default Secondary surface on stacked layouts. Do not
-import shell internals or derive this decision from browser width.
+`supportsSplit`. It uses the same measured available workspace width as `AppWorkspace`
+(including a narrow workspace in a wide browser window) and the fixed-preset threshold
+(840px): it answers "can a non-stacking Secondary be shown", the shell-level hint for
+registering a pinned tab or choosing a side-panel toggle over a Context button. Do not import
+shell internals or derive this decision from browser width.
+
+It is **not** the workspace's layout. A `split="dynamic"` workspace splits a runtime
+(stackable) Secondary from 730px (400 + 330), so between 730 and 839px the workspace is split
+while `supportsSplit` is still `false`. Content rendered inside `AppWorkspace` that depends on the
+layout (scroll ownership, sticky versus fixed overlays, density) reads `useWorkspaceLayout()`
+(`{ mode: 'split' | 'stacked', primaryScrollOwner: 'local' | 'ambient' }`), which `AppWorkspace`
+publishes from the layout it resolved; see
+[Workspace dynamic split](workspace-dynamic-split.md#resolved-layout-vs-shell-capability).
 
 Secondary content that establishes an inline-size container must declare its supported
 content width (for example `w-content-standard max-w-full`) and use `AppWorkspaceBody`
@@ -308,6 +482,48 @@ per-target marker attribute and no `scroll-margin-top` is required. Descendants 
 The properties do not exist in split/desktop mode or in `scroll="content"` workspaces, which have no
 overlay. `AppWorkspaceScroll.contract.stories.tsx` verifies 390 and 320 (including `#tasks-heading`
 through `location.hash`) and a safe-area override.
+
+### Reaching Primary's ambient scroll element, and the bottom safe area
+
+A Primary that needs imperative access to its own scroll position under the default
+`scroll="workspace"` — auto-scroll-to-bottom on new content, near-top infinite-load of older
+history, away-from-bottom ("jump to latest") detection, or reserving space for its own
+bottom-floating control — cannot keep a local scroll ref the way a `scroll="content"` consumer
+does: in stacked (mobile) mode the scroll viewport is the `ScrollArea` `AppWorkspace` itself owns
+for the collapsing-header pattern above, not an element the consumer renders.
+`useWorkspacePrimaryScroll()` (exported from `@nevo/ui`) returns that element, or `null` when there
+is none to read. Which of the two a Primary is in follows the layout `AppWorkspace` resolved, read with
+`useWorkspaceLayout().primaryScrollOwner` (`'ambient'` / `'local'`), not the shell hint
+`supportsSplit` (they differ between 730 and 839px):
+
+- Stacked/mobile: the live `.mobile-workspace-scroll` viewport element, the same node the collapsing
+  header above measures. Updates (including back to `null`) whenever the layout transitions in or
+  out of stacked mode, following `MobileRuntimeSurfaceRegion`'s own mount/unmount.
+- Split/desktop: always `null` — `RuntimeSurfaceRegion`'s split branch renders no scroll affordance
+  of its own (unchanged by `scroll`), so the consumer still owns and renders its own scroll
+  container there, exactly as it always has.
+
+A consumer that owns a bottom-floating control (a Composer) alongside this needs two different
+techniques depending on which of the above applies, not one portable CSS rule: on split/desktop,
+where the consumer's own scroll container is a plain single-level box, `position: sticky` on that
+control (as the container's own last flow child) reserves its own space and sticks correctly. On
+stacked/mobile, `MobileRuntimeSurfaceRegion` interposes clipping wrappers between Primary's content
+and the real scroll viewport (for the rounded sheet surface and the slide transition), so a plain
+`position: sticky` there sticks to the nearest clipping ancestor instead of the real viewport and
+does not visually anchor; `position: fixed` is required instead (it escapes those ancestors unless
+one is mid-transition-`transform`, in which case it correctly slides with the surface), and since
+`position: fixed` reserves no space of its own, the consumer must still measure the control's
+rendered height and apply it as real bottom padding on its own scrollable content.
+
+`--workspace-overlay-bottom` (set on `.mobile-workspace-scroll-area`, `AppWorkspace.css`) is the
+bottom-edge counterpart to `--workspace-overlay-top` above: `max(0.75rem, env(safe-area-inset-bottom))`,
+read by a fixed/sticky bottom control as its own `bottom` offset so it clears the home-indicator/
+gesture-bar safe area the same way the floating navigation row clears the status bar. It carries no
+`scroll-padding-bottom`/inset counterpart — unlike the top row, which is a `nevo-ui`-owned overlay
+over consumer content, a bottom control is the consumer's own element, so the consumer reserves its
+own space (see above) rather than `AppWorkspace.css` doing it generically. A split/desktop consumer,
+which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable with its own fallback
+(`var(--workspace-overlay-bottom, 0.75rem)`).
 
 ### Header actions
 

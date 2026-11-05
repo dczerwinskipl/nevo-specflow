@@ -34,7 +34,36 @@ const meta = {
 } satisfies Meta<typeof TaskWorkspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Human: Story = {};
+export const Default: Story = {
+  argTypes: {
+    data: {
+      control: 'select',
+      options: [
+        'human',
+        'draft',
+        'ready',
+        'implementation',
+        'implementationWaiting',
+        'review',
+        'reviewWaiting',
+        'completed',
+        'humanLongContent',
+      ],
+      mapping: {
+        human: createWorkspaceFixture('human'),
+        draft: createWorkspaceFixture('draft'),
+        ready: createWorkspaceFixture('ready'),
+        implementation: createWorkspaceFixture('implementation'),
+        implementationWaiting: createWorkspaceFixture('implementation-waiting'),
+        review: createWorkspaceFixture('review'),
+        reviewWaiting: createWorkspaceFixture('review-waiting'),
+        completed: createWorkspaceFixture('completed'),
+        humanLongContent: createWorkspaceFixture('human', true),
+      },
+    },
+  },
+};
+export const Human: Story = { tags: ['contract'] };
 function PreviewFixture({ data }: { data: ReturnType<typeof createWorkspaceFixture> }) {
   const [full, setFull] = useState(false);
   const preview = useRef<HTMLDivElement>(null);
@@ -71,7 +100,10 @@ function PreviewFixture({ data }: { data: ReturnType<typeof createWorkspaceFixtu
   );
 }
 
-export const Preview: Story = { render: (args) => <PreviewFixture {...args} /> };
+export const Preview: Story = {
+  tags: ['contract'],
+  render: (args) => <PreviewFixture {...args} />,
+};
 export const PreviewReturnContract: Story = {
   tags: ['contract'],
   render: (args) => <PreviewFixture {...args} />,
@@ -91,17 +123,34 @@ export const PreviewReturnContract: Story = {
     await expect(canvas.queryByRole('heading', { level: 1, name: /Zachowaj sesję/ })).toBeNull();
   },
 };
-export const Draft: Story = { args: { data: createWorkspaceFixture('draft') } };
-export const Ready: Story = { args: { data: createWorkspaceFixture('ready') } };
-export const Implementation: Story = { args: { data: createWorkspaceFixture('implementation') } };
+export const Draft: Story = { tags: ['contract'], args: { data: createWorkspaceFixture('draft') } };
+export const Ready: Story = { tags: ['contract'], args: { data: createWorkspaceFixture('ready') } };
+export const Implementation: Story = {
+  tags: ['contract'],
+  args: { data: createWorkspaceFixture('implementation') },
+};
 export const ImplementationWaiting: Story = {
+  tags: ['contract'],
   args: { data: createWorkspaceFixture('implementation-waiting') },
 };
-export const Review: Story = { args: { data: createWorkspaceFixture('review') } };
-export const ReviewWaiting: Story = { args: { data: createWorkspaceFixture('review-waiting') } };
-export const Completed: Story = { args: { data: createWorkspaceFixture('completed') } };
-export const LongContent: Story = { args: { data: createWorkspaceFixture('human', true) } };
+export const Review: Story = {
+  tags: ['contract'],
+  args: { data: createWorkspaceFixture('review') },
+};
+export const ReviewWaiting: Story = {
+  tags: ['contract'],
+  args: { data: createWorkspaceFixture('review-waiting') },
+};
+export const Completed: Story = {
+  tags: ['contract'],
+  args: { data: createWorkspaceFixture('completed') },
+};
+export const LongContent: Story = {
+  tags: ['contract'],
+  args: { data: createWorkspaceFixture('human', true) },
+};
 export const LongMaterialNames: Story = {
+  tags: ['contract'],
   args: {
     data: (() => {
       const data = createWorkspaceFixture('human', true);
@@ -128,6 +177,7 @@ export const LongMaterialNames: Story = {
   },
 };
 export const UnavailableMaterials: Story = {
+  tags: ['contract'],
   args: {
     data: (() => {
       const data = createWorkspaceFixture();
@@ -156,8 +206,9 @@ export const UnavailableMaterials: Story = {
     })(),
   },
 };
-export const NarrowPanel: Story = { parameters: { workspaceWidth: 480 } };
+export const NarrowPanel: Story = { tags: ['contract'], parameters: { workspaceWidth: 480 } };
 export const SessionProviders: Story = {
+  tags: ['contract'],
   args: {
     data: (() => {
       const data = createWorkspaceFixture();
@@ -176,6 +227,7 @@ export const SessionProviders: Story = {
   },
 };
 export const IdleCurrentSession: Story = {
+  tags: ['contract'],
   args: {
     data: {
       ...createWorkspaceFixture('implementation'),
@@ -187,6 +239,7 @@ export const IdleCurrentSession: Story = {
   },
 };
 export const SessionNeedsResponse: Story = {
+  tags: ['contract'],
   args: {
     data: {
       ...createWorkspaceFixture('review'),
@@ -199,6 +252,7 @@ export const SessionNeedsResponse: Story = {
   },
 };
 export const MultipleSessions: Story = {
+  tags: ['contract'],
   args: {
     data: (() => {
       const data = createWorkspaceFixture('review');

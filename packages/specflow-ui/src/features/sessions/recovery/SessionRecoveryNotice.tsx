@@ -27,8 +27,8 @@ export function SessionRecoveryNotice({ specId }: { specId: string }) {
       notify(t('create.sessionReady'));
       await cache.invalidateQueries({ queryKey: specificationKeys.detail(specId) });
       void navigate({
-        to: '/specs/$specId/sessions/$sessionId',
-        params: { specId, sessionId: session.sessionId },
+        to: '/sessions/$sessionId',
+        params: { sessionId: session.sessionId },
         search: { collection },
       });
     },

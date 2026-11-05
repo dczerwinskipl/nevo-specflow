@@ -20,6 +20,12 @@ describe('InlineNote', () => {
     expect(renderToStaticMarkup(<InlineNote>Fine</InlineNote>)).toContain('text-content-muted');
   });
 
+  it('marks a danger note with the danger status colour', () => {
+    expect(renderToStaticMarkup(<InlineNote tone="danger">Missing</InlineNote>)).toContain(
+      'text-status-danger',
+    );
+  });
+
   it('can drop the icon and merges the consumer class', () => {
     const markup = renderToStaticMarkup(
       <InlineNote icon={null} className="col-start-2">

@@ -86,28 +86,43 @@ export const catalogue: DemoCatalogue = {
       ],
     },
   ],
-  providers: ['codex', 'claude'].map((id) => ({
+  // Each provider's own work-mode vocabulary (the Runtime is the source of truth): Codex offers
+  // Ask/Edit/Agent, Claude its native Plan/Accept edits/Auto. Ids are opaque to the UI.
+  providers: (['codex', 'claude'] as const).map((id) => ({
     id,
     title: id === 'codex' ? 'Codex' : 'Claude',
-    mark: id as 'codex' | 'claude',
+    mark: id,
     version: 'Demo',
     access: 'Dane demonstracyjne',
     profile: 'Profil demonstracyjny',
     connection: 'unknown',
     quota: { state: 'unknown' },
     available: true,
+    modes:
+      id === 'codex'
+        ? [
+            { id: 'ask', title: 'Ask' },
+            { id: 'edit', title: 'Edit' },
+            { id: 'agent', title: 'Agent' },
+          ]
+        : [
+            { id: 'plan', title: 'Plan' },
+            { id: 'acceptEdits', title: 'Accept edits' },
+            { id: 'auto', title: 'Auto' },
+          ],
+    defaultModeId: id === 'codex' ? 'agent' : 'acceptEdits',
     models: [
       {
         id: 'model-a',
         title: `${id} model A`,
         efforts: ['low', 'high'],
-        modes: ['ask', 'edit', 'agent'],
+        modes: id === 'codex' ? ['ask', 'edit', 'agent'] : ['plan', 'acceptEdits', 'auto'],
       },
       {
         id: 'model-b',
         title: `${id} model B`,
         efforts: [],
-        modes: id === 'codex' ? ['ask', 'agent'] : ['ask', 'edit'],
+        modes: id === 'codex' ? ['ask', 'agent'] : ['plan', 'acceptEdits'],
       },
     ],
   })),

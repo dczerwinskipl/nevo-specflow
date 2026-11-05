@@ -6,6 +6,8 @@ import {
   APP_SHELL_GAP,
   APP_WORKSPACE_EDGE_BORDER,
   capPrimaryWidth,
+  resolveDynamicSplitRatioBounds,
+  resolveDynamicWorkspaceSplit,
   resolveSlotMaxWidth,
   resolveWorkspaceContentWidth,
   resolveWorkspaceFit,
@@ -14,8 +16,12 @@ import {
   supportsRuntimeWorkspaceSplit,
   supportsWorkspaceSplit,
   WIDE_SHELL_MIN_WIDTH,
+  WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH,
+  WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH,
   WORKSPACE_SPLIT_MIN_WIDTH,
+  WORKSPACE_SPLITTER_KEYBOARD_STEP_PX,
   WORKSPACE_WIDE_DOMINANCE_MIN_WIDTH,
+  type DynamicSplitInput,
 } from './workspaceSizing';
 
 describe('responsive workspace thresholds', () => {
@@ -203,5 +209,200 @@ describe('capPrimaryWidth', () => {
   it('keeps primary + secondary equal to the content width', () => {
     const capped = capPrimaryWidth(1171, { primary: 292.75, secondary: 878.25 }, 360);
     expect(capped.primary! + capped.secondary!).toBeCloseTo(1171);
+  });
+});
+
+// workspace-dynamic-split.md §4.2 (DynamicSplitInput/output shape) and §5 (the full transition
+// table). Each `it` below is named after, and covers, exactly one §5 table row; the boundary
+// `describe` covers the "even after clamping" width thresholds themselves.
+describe('resolveDynamicWorkspaceSplit', () => {
+  // Wide enough that both the narrow default and the 2+-tab 50/50 fit without clamping, so each
+  // row's expected ratio below is the literal table value, not a width-driven clamp artifact.
+  const baseInput: DynamicSplitInput = {
+    availableWidth: 1400,
+    openTabCount: 1,
+    mode: 'auto',
+    manualRatio: null,
+    previousOpenTabCount: 1,
+  };
+
+  it('keeps the dynamic minimum widths as tunable defaults, not frozen contracts', () => {
+    expect(WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH).toBe(330);
+    expect(WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH).toBe(400);
+  });
+
+  it('`DynamicSplitInput` carries exactly availableWidth/openTabCount/mode/manualRatio/previousOpenTabCount — no field for an active tab, local-stack depth, or any Session/product event (§5 "push/pop"+"live update" rows, §6)', () => {
+    expect(Object.keys(baseInput).sort()).toEqual(
+      ['availableWidth', 'manualRatio', 'mode', 'openTabCount', 'previousOpenTabCount'].sort(),
+    );
+  });
+
+  it('entering a split-capable workspace with only one tab open uses the narrow default', () => {
+    expect(resolveDynamicWorkspaceSplit(baseInput)).toEqual({
+      layout: 'split',
+      secondaryRatio: WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH / baseInput.availableWidth!,
+      mode: 'auto',
+    });
+  });
+
+  it('openTab() opening a brand-new 2nd tab while auto switches to 50/50 once', () => {
+    expect(
+      resolveDynamicWorkspaceSplit({ ...baseInput, openTabCount: 2, previousOpenTabCount: 1 }),
+    ).toEqual({ layout: 'split', secondaryRatio: 0.5, mode: 'auto' });
+  });
+
+  it('open() replacing its slot in place while tab count is unchanged does not resize, unlike opening a brand-new 2nd tab', () => {
+    const afterBrandNewTab = resolveDynamicWorkspaceSplit({
+      ...baseInput,
+      openTabCount: 2,
+      previousOpenTabCount: 1,
+    });
+    const afterReplaceInPlace = resolveDynamicWorkspaceSplit({
+      ...baseInput,
+      openTabCount: 2,
+      previousOpenTabCount: 2,
+    });
+
+    // Two different triggers (contract §4.1 Finding 1): a brand-new tab vs. a same-slot replace.
+    // Both must land on the same 50/50 — that equality is exactly what makes the replace a "no
+    // resize" rather than a second, independent 50/50 switch.
+    expect(afterReplaceInPlace).toEqual(afterBrandNewTab);
+    expect(afterReplaceInPlace).toEqual({ layout: 'split', secondaryRatio: 0.5, mode: 'auto' });
+  });
+
+  it('switching among open tabs is called (if at all) with unchanged inputs and returns unchanged output', () => {
+    const switching: DynamicSplitInput = { ...baseInput, openTabCount: 3, previousOpenTabCount: 3 };
+
+    expect(resolveDynamicWorkspaceSplit(switching)).toEqual(
+      resolveDynamicWorkspaceSplit(switching),
+    );
+  });
+
+  it('closeTab() down to just the pinned tab while auto returns to the narrow default', () => {
+    expect(
+      resolveDynamicWorkspaceSplit({ ...baseInput, openTabCount: 1, previousOpenTabCount: 2 }),
+    ).toEqual({
+      layout: 'split',
+      secondaryRatio: WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH / baseInput.availableWidth!,
+      mode: 'auto',
+    });
+  });
+
+  it('closeTab() closing the last tab in a workspace with no pinned tab leaves Secondary with none (openTabCount 0 is moot, not a throw)', () => {
+    expect(() =>
+      resolveDynamicWorkspaceSplit({ ...baseInput, openTabCount: 0, previousOpenTabCount: 1 }),
+    ).not.toThrow();
+  });
+
+  it('entering manual is preserved across further opens and closes, with no automatic 50/50', () => {
+    const manual = { availableWidth: 1200, mode: 'manual' as const, manualRatio: 0.4 };
+
+    expect(
+      resolveDynamicWorkspaceSplit({ ...manual, openTabCount: 2, previousOpenTabCount: 1 })
+        .secondaryRatio,
+    ).toBe(0.4);
+    expect(
+      resolveDynamicWorkspaceSplit({ ...manual, openTabCount: 3, previousOpenTabCount: 2 })
+        .secondaryRatio,
+    ).toBe(0.4);
+    expect(
+      resolveDynamicWorkspaceSplit({ ...manual, openTabCount: 1, previousOpenTabCount: 3 })
+        .secondaryRatio,
+    ).toBe(0.4);
+  });
+
+  it('width dropping below the fit threshold falls back to stacked, preserving mode/manualRatio as opaque "last known" state', () => {
+    expect(
+      resolveDynamicWorkspaceSplit({
+        availableWidth: 700,
+        openTabCount: 2,
+        mode: 'manual',
+        manualRatio: 0.4,
+        previousOpenTabCount: 2,
+      }),
+    ).toEqual({ layout: 'stacked', secondaryRatio: 0.4, mode: 'manual' });
+  });
+
+  it('width returning restores the clamped ratio, not the auto default, when a manual ratio exists', () => {
+    const result = resolveDynamicWorkspaceSplit({
+      availableWidth: 1200,
+      openTabCount: 2,
+      mode: 'manual',
+      manualRatio: 0.9, // outside [min, max] at 1200px: must clamp, not reset to the 0.5 auto value
+      previousOpenTabCount: 2,
+    });
+
+    expect(result).toEqual({
+      layout: 'split',
+      secondaryRatio: 1 - WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH / 1200,
+      mode: 'manual',
+    });
+    expect(result.secondaryRatio).not.toBe(0.5);
+  });
+
+  describe('boundary widths at exactly the combined minimum', () => {
+    const combinedMinimum =
+      WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH + WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH;
+
+    it('fits exactly at the combined minimum width', () => {
+      const result = resolveDynamicWorkspaceSplit({
+        ...baseInput,
+        availableWidth: combinedMinimum,
+      });
+
+      expect(result.layout).toBe('split');
+      expect(result.secondaryRatio * combinedMinimum).toBeCloseTo(
+        WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH,
+      );
+    });
+
+    it('falls back to stacked one px short of the combined minimum', () => {
+      const result = resolveDynamicWorkspaceSplit({
+        ...baseInput,
+        availableWidth: combinedMinimum - 1,
+      });
+
+      expect(result.layout).toBe('stacked');
+    });
+  });
+});
+
+describe('resolveDynamicSplitRatioBounds', () => {
+  it('shares its exact bounds with resolveDynamicWorkspaceSplit’s own clamping (no second reimplementation)', () => {
+    const availableWidth = 1200;
+    const bounds = resolveDynamicSplitRatioBounds(availableWidth);
+
+    const belowMin = resolveDynamicWorkspaceSplit({
+      availableWidth,
+      openTabCount: 2,
+      mode: 'manual',
+      manualRatio: bounds.min - 0.2,
+      previousOpenTabCount: 2,
+    });
+    const aboveMax = resolveDynamicWorkspaceSplit({
+      availableWidth,
+      openTabCount: 2,
+      mode: 'manual',
+      manualRatio: bounds.max + 0.2,
+      previousOpenTabCount: 2,
+    });
+
+    expect(belowMin.secondaryRatio).toBeCloseTo(bounds.min);
+    expect(aboveMax.secondaryRatio).toBeCloseTo(bounds.max);
+  });
+
+  it('derives min/max directly from the dynamic minimum-width constants', () => {
+    const availableWidth = 1000;
+
+    expect(resolveDynamicSplitRatioBounds(availableWidth)).toEqual({
+      min: WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH / availableWidth,
+      max: 1 - WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH / availableWidth,
+    });
+  });
+});
+
+describe('WORKSPACE_SPLITTER_KEYBOARD_STEP_PX', () => {
+  it('is a tunable default matching the contract’s "24px-equivalent" example', () => {
+    expect(WORKSPACE_SPLITTER_KEYBOARD_STEP_PX).toBe(24);
   });
 });

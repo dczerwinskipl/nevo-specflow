@@ -11,6 +11,7 @@ import {
 import { cn } from '../../../lib';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { IconButton } from '../../actions/IconButton';
+import { useKeyboardAvoidance } from '../../behaviors/useVisualViewportInset';
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -31,9 +32,20 @@ export const DialogContent = forwardRef<
     showClose?: boolean;
   }
 >(function DialogContent(
-  { children, className, container, closeLabel, labels: labelsProp, showClose = true, ...props },
+  {
+    children,
+    className,
+    container,
+    closeLabel,
+    labels: labelsProp,
+    showClose = true,
+    style,
+    ...props
+  },
   ref,
 ) {
+  // Re-centres within the visible area while the on-screen keyboard is open (no-op otherwise).
+  const keyboard = useKeyboardAvoidance(ref, { mode: 'center' });
   const capture = useDesignMetadata('Dialog');
   const labels = { ...defaultDialogLabels, ...labelsProp };
 
@@ -41,11 +53,12 @@ export const DialogContent = forwardRef<
     <DialogPrimitive.Portal container={container}>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-overlay" />
       <DialogPrimitive.Content
-        ref={ref}
+        ref={keyboard.ref}
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 flex flex-col max-h-[calc(100vh-2rem)] w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-hidden rounded-surface border border-border-default bg-surface-raised p-5 text-content-primary shadow-2xl outline-none',
+          'fixed left-1/2 top-1/2 z-50 flex flex-col max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-hidden rounded-surface border border-border-default bg-surface-raised p-5 text-content-primary shadow-2xl outline-none',
           className,
         )}
+        style={{ ...style, ...keyboard.style }}
         {...props}
         {...capture}
       >

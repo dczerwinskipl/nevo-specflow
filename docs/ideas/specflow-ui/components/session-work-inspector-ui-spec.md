@@ -370,6 +370,24 @@ newer commentary...
 
 Loading older content must preserve the user's current viewport anchor.
 
+#### Reading position
+
+The Work log and the Actions list each have one owner of their scroll position. The reader reads a
+concrete entry (a Work row, narration or tool group; a ToolAction): the first one with at least a
+line still showing below the top edge, chosen again only when the reader scrolls. Every other change
+keeps that entry where it is on screen: an older page landing above it, a tail refresh, a filter or
+search, a disclosure opening or closing, a scroller resize, and content arriving by itself after the
+entries rendered (a ToolAction's parameters and response, a long Thinking's remaining text). Only
+the entry's own movement is compensated, so the reader's scrolling is never undone, and content the
+policy brought into view above the entry never becomes the one being read. When the entry is gone
+(a search hid it, an older page joined it into a group), the nearest entry still shown keeps its
+place.
+
+At the top edge, the list's own controls growing above it (the loading indicator, a failure notice,
+the older-history button) push it down, so a reader at the top sees them; an older page joining the
+list still keeps the entry in place. The browser's native scroll anchoring is off on these
+scrollers, so the browser and this policy never both correct the same change.
+
 #### Groups keep their identity as history joins them
 
 A chapter, a run of operations between narration and a tool burst are spans of Work items, not

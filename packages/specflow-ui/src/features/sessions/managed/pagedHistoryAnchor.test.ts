@@ -93,6 +93,41 @@ describe('older page anchoring', () => {
     expect(scroller.scrollTop).toBe(350);
   });
 
+  it('keeps the reader own scrolling since the anchor was read', () => {
+    layOut();
+    const { scroller, render } = scrollerWith(['a', 'b', 'c']);
+    scroller.scrollTop = 150;
+    const anchor = readHistoryAnchor(scroller)!;
+
+    // The reader moved 30px down, and in the same frame a page landed above.
+    scroller.scrollTop = 180;
+    render(['old-1', 'a', 'b', 'c']);
+    restoreHistoryAnchor(scroller, anchor);
+
+    expect(scroller.scrollTop).toBe(280);
+  });
+
+  it('keeps reading the entry it kept in place, not one brought into view above it', () => {
+    layOut();
+    const { scroller } = scrollerWith(['old', 'a', 'b']);
+    scroller.scrollTop = 30;
+
+    // `old` (70px of it still showing) would be read first; the policy kept `a` in place.
+    expect(readHistoryAnchor(scroller, 'a')!.reading).toBe(1);
+    expect(readHistoryAnchor(scroller)!.reading).toBe(0);
+    expect(readHistoryAnchor(scroller, 'gone')!.reading).toBe(0);
+  });
+
+  it('does not read an entry with less than a line still showing', () => {
+    layOut();
+    const { scroller } = scrollerWith(['a', 'b']);
+    scroller.scrollTop = 90;
+
+    expect(readHistoryAnchor(scroller)!.entries[readHistoryAnchor(scroller)!.reading]!.id).toBe(
+      'b',
+    );
+  });
+
   it('leaves the position alone when no anchored entry is rendered any more', () => {
     layOut();
     const { scroller, render } = scrollerWith(['a', 'b']);

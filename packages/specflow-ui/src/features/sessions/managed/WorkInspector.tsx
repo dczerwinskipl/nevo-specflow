@@ -31,7 +31,7 @@ import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
 import { OlderHistoryButton } from './OlderHistoryButton';
-import { historyEntry } from './pagedHistoryAnchor';
+import { historyEntry, historyList } from './pagedHistoryAnchor';
 import { useGroupKeys } from './stableGroupKeys';
 import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
@@ -487,15 +487,24 @@ function Work({ data }: { data: Data }) {
   });
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder, stalled, loadMore } =
-    usePagedHistory({
-      store: view,
-      merge: mergeWorkItems,
-      tail: query.data,
-      fetchOlder: (before) => data.api.work(data.sessionId, data.turnId, before),
-      absorbOlder: (current, page) => absorbWorkPage(current, page, 'older'),
-      resetKey: (value) => value.filter,
-    });
+  const {
+    state,
+    items,
+    hasOlder,
+    scroller,
+    content,
+    loadOlder,
+    maybeLoadOlder,
+    stalled,
+    loadMore,
+  } = usePagedHistory({
+    store: view,
+    merge: mergeWorkItems,
+    tail: query.data,
+    fetchOlder: (before) => data.api.work(data.sessionId, data.turnId, before),
+    absorbOlder: (current, page) => absorbWorkPage(current, page, 'older'),
+    resetKey: (value) => value.filter,
+  });
   const { filter } = state;
   const searching = filter.kind !== 'all' || filter.search.trim() !== '';
   const olderButton = stalled && !state.busy && !state.error && (
@@ -539,7 +548,7 @@ function Work({ data }: { data: Data }) {
         contentClassName="flex min-h-full flex-col p-4"
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
-        <div className="flex w-full flex-1 flex-col gap-4">
+        <div ref={content} className="flex w-full flex-1 flex-col gap-4">
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
           {loadGate.showContent && (
             <>
@@ -577,7 +586,7 @@ function Work({ data }: { data: Data }) {
                   actions={olderButton}
                 />
               ) : (
-                <div className="grid w-full gap-5">
+                <div {...historyList} className="grid w-full gap-5">
                   {visibleChapters.map((chapter, index) => (
                     <WorkChapterSection
                       key={chapterKeys[index]}
@@ -649,14 +658,23 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder, stalled, loadMore } =
-    usePagedHistory({
-      store: view,
-      merge: mergeToolActions,
-      tail: query.data,
-      fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
-      absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
-    });
+  const {
+    state,
+    items,
+    hasOlder,
+    scroller,
+    content,
+    loadOlder,
+    maybeLoadOlder,
+    stalled,
+    loadMore,
+  } = usePagedHistory({
+    store: view,
+    merge: mergeToolActions,
+    tail: query.data,
+    fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
+    absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
+  });
   const olderBusy = state.busy;
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
@@ -674,7 +692,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
         contentClassName={cn('flex min-h-full flex-col px-4 pb-4', headerHosted ? 'pt-5' : 'pt-4')}
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
-        <div className="flex w-full flex-1 flex-col gap-4">
+        <div ref={content} className="flex w-full flex-1 flex-col gap-4">
           {/* Which Work these actions belong to — only when there are several. A single action's
               own title is the heading (`SingleToolActionDetail`), and repeating the Work title
               above it would show the same name twice. Where the
@@ -720,7 +738,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
                 // the Commentary-grouped L2 Work log above (session-work-inspector-ui-spec.md §2).
                 // Several ToolActions genuinely need the marker rail — see
                 // `ToolActionTimelineItem`'s own doc comment.
-                <div className="w-full">
+                <div {...historyList} className="w-full">
                   <Timeline
                     size="md"
                     aria-label={t('managedSession.actions', { count: items.length })}

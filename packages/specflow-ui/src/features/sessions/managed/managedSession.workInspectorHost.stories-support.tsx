@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { userEvent, within } from 'storybook/test';
+import { userEvent, waitFor, within } from 'storybook/test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   AppShell,
@@ -75,7 +75,21 @@ export function WorkInspectorHost({ api }: { api: ManagedSessionsApi }) {
   );
 }
 
+/**
+ * Opens the Work history and waits until the workspace has moved focus to the opened Secondary's
+ * title. The workspace does that one animation frame after the panel opens (`AppWorkspace`'s
+ * push/replace focus), so a play that clicks into the panel (the search field) before that frame
+ * has the rest of its typing go to the title instead — under load the frame lands mid-typing.
+ */
 export async function openWork(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   await userEvent.click(canvas.getByText('Zobacz pracę'));
+  await waitFor(() => {
+    const focused = document.activeElement;
+    if (
+      !focused?.matches('[data-workspace-surface="secondary"] [data-workspace-header-title="true"]')
+    ) {
+      throw new Error('Expected focus to move to the opened Work history panel.');
+    }
+  });
 }

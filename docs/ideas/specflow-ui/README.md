@@ -83,6 +83,7 @@ Therefore:
 - [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
 - [Design-system and composition gaps](design-system-component-composition-gaps.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
+- [UX audit, November 2026](ux-audit-2026-11/README.md)
 - [Screen specifications index](screens/README.md)
 - [Large UI component specifications](components/README.md)
 

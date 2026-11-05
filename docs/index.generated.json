@@ -5785,6 +5785,37 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.ux-audit-2026-11",
+      "type": "product",
+      "title": "SpecFlow UI UX audit, November 2026",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/ux-audit-2026-11/README.md",
+      "read_when": [
+        "re-designing the application navigation or Specification context in the navigator",
+        "deciding desktop shell widths, Primary/Secondary space use or layout stability between screens",
+        "reviewing finished SpecFlow UI screens for visual, flow or mobile problems",
+        "cleaning up Storybook default stories and fixture data"
+      ],
+      "summary": "Screenshot-backed UX audit of the finished SpecFlow UI screens on main after the Full Session redesign. Lists desktop space and layout-jump problems, navigator and flow problems, mobile problems and Storybook data noise, each with a suggested direction. Non-authoritative input for the next navigation and layout iteration.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.navigation-route-model",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.components.session-chat-v10-design"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "ux-audit",
+        "navigation",
+        "layout",
+        "responsive",
+        "storybook"
+      ]
+    },
+    {
       "id": "product.shared.localization",
       "type": "product",
       "title": "Localization",

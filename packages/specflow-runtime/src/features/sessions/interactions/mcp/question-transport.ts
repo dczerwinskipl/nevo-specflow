@@ -79,8 +79,7 @@ export async function createMcpQuestionTransport(options: {
     turnId: options.invocation.turnId,
     invocationId: options.invocation.invocationId,
   });
-  const routes = Object.freeze({ ...options.routes });
-  const paths = new Set(['/mcp', ...Object.keys(routes)]);
+  const routes = new Map(Object.entries(options.routes ?? {}));
   if (
     Object.values(binding).some(
       (id) => typeof id !== 'string' || !id || Buffer.byteLength(id) > 256,
@@ -278,10 +277,13 @@ export async function createMcpQuestionTransport(options: {
 
   async function handle(request: IncomingMessage, response: ServerResponse) {
     response.setHeader('cache-control', 'no-store');
+    const path = request.url ?? '';
+    const isMcp = path === '/mcp';
+    const route = isMcp ? undefined : routes.get(path);
     const credential = Buffer.from(request.headers.authorization ?? '');
     if (
       closed ||
-      !paths.has(request.url ?? '') ||
+      (!isMcp && !route) ||
       request.headers.host !== host ||
       request.headers.origin !== undefined ||
       credential.length !== authorization.length ||
@@ -369,14 +371,7 @@ export async function createMcpQuestionTransport(options: {
       return;
     }
 
-    if (request.url !== '/mcp') {
-      const route = routes[request.url!];
-      if (!route) {
-        deny(response, 403);
-
-        return;
-      }
-
+    if (route) {
       await route(envelope, response);
 
       return;

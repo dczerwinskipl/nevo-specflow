@@ -274,6 +274,15 @@ describe('invocation-private MCP question transport', () => {
       request.end(JSON.stringify(body));
     });
     expect(rebound).toBe(403);
+    expect(
+      (
+        await fetch(f.bridge.endpoint.baseUrl + '/constructor', {
+          method: 'POST',
+          headers: f.headers,
+          body: JSON.stringify(body),
+        })
+      ).status,
+    ).toBe(403);
     expect(f.facts).toEqual([]);
   });
 

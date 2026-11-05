@@ -209,7 +209,7 @@ it('retries a retained create after remount even when the provider becomes unava
 });
 
 it.each(['unavailable', 'unauthorized'] as const)(
-  'lists a %s mode disabled with its reason and starts in the first available one',
+  'omits a %s mode and starts in the first available one',
   async (failure) => {
     const f = fixture();
     const base = (await f.providers()).items[0]!;
@@ -233,10 +233,10 @@ it.each(['unavailable', 'unauthorized'] as const)(
       ],
     });
     view(f.api);
-    const agent = await screen.findByRole('radio', { name: 'Agent' });
-    expect(agent.hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText('Agent: Needs approval')).toBeDefined();
-    expect(screen.getByRole('radio', { name: 'Plan' }).getAttribute('aria-checked')).toBe('true');
+    const planRadio = await screen.findByRole('radio', { name: 'Plan' });
+    expect(screen.queryByRole('radio', { name: 'Agent' })).toBeNull();
+    expect(screen.queryByText(/Needs approval/)).toBeNull();
+    expect(planRadio.getAttribute('aria-checked')).toBe('true');
     await clickStart();
     await waitFor(() => expect(f.create).toHaveBeenCalledOnce());
     expect(f.create.mock.calls[0]?.[0]).toMatchObject({

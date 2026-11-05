@@ -501,10 +501,15 @@ function ManagedSessionConversation({
 
   const snapshot = state.snapshot;
   // The work-mode picker lists the provider's own `providerModes` (the Runtime is the source of
-  // truth). Shown: an explicit pick, else the Session's current provider mode (what
-  // the next Turn inherits), else the catalogue default. A pick — or a shown default that differs
-  // from what the Session would inherit — is sent as `mode` + `providerModeId`.
-  const workModes = useMemo(() => runtimeWorkModes(provider), [provider]);
+  // truth), usable ones only plus the Session's current mode. Shown: an explicit pick, else the
+  // Session's current provider mode (what the next Turn inherits), else the catalogue default. A
+  // pick — or a shown default that differs from what the Session would inherit — is sent as
+  // `mode` + `providerModeId`.
+  const currentModeId = snapshot?.session.providerModeId;
+  const workModes = useMemo(
+    () => runtimeWorkModes(provider, currentModeId),
+    [provider, currentModeId],
+  );
   const workModeId = selectedWorkModeId(
     workModes,
     [state.workModeOverride?.providerModeId, snapshot?.session.providerModeId],

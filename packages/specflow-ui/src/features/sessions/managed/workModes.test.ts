@@ -35,20 +35,27 @@ const provider = {
 } as unknown as ProviderDescriptor;
 
 describe('Runtime work modes', () => {
-  it("lists the provider's modes in catalogue order under their own titles", () => {
-    expect(runtimeWorkModes(provider)).toEqual([
-      { id: 'plan', title: 'Plan' },
-      // Its engine mode is not one the provider currently offers.
-      { id: 'build', title: 'Build', disabled: true },
-      { id: 'ask', title: 'Ask', disabled: true, reason: 'Not installed.' },
-      { id: 'review', title: 'Review', disabled: true },
-    ]);
+  it("lists only the provider's usable modes, in catalogue order under their own titles", () => {
+    // Build's engine mode is not one the provider offers, Ask is unavailable, Review not
+    // authorized: all omitted, not shown disabled.
+    expect(runtimeWorkModes(provider)).toEqual([{ id: 'plan', title: 'Plan' }]);
     expect(runtimeWorkModes(undefined)).toEqual([]);
     expect(runtimeWorkModes({ ...provider, providerModes: undefined })).toEqual([]);
   });
 
+  it("keeps the Session's current mode listed, disabled with its reason, once it became unusable", () => {
+    expect(runtimeWorkModes(provider, 'ask')).toEqual([
+      { id: 'plan', title: 'Plan' },
+      { id: 'ask', title: 'Ask', disabled: true, reason: 'Not installed.' },
+    ]);
+    expect(runtimeWorkModes(provider, 'plan')).toEqual([{ id: 'plan', title: 'Plan' }]);
+  });
+
   it('selects a listed choice first, else a selectable default, else the first selectable mode', () => {
-    const options = runtimeWorkModes({ ...provider, modes: ['read-only', 'workspace-write'] });
+    const options = runtimeWorkModes(
+      { ...provider, modes: ['read-only', 'workspace-write'] },
+      'ask',
+    );
     expect(selectedWorkModeId(options, [undefined, 'plan'], 'build')).toBe('plan');
     expect(selectedWorkModeId(options, ['build', 'plan'], 'build')).toBe('build');
     // A Session's current mode stays shown even when the catalogue now marks it unavailable.

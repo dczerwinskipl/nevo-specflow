@@ -193,12 +193,12 @@ After Start (and any Session without messages)
 
 ## 6. Agent fields (shared start presentation)
 
-| Field         | Control                                                                                                                               | Notes                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| **Agent**     | provider `ChoiceTile`s (`ProviderChoice`), one radio group                                                                            | Unavailable providers are disabled with their reason. Fixed for the Session's life.   |
-| **Model**     | DS `Field` + `OptionPicker` (Select up to 8 models, searchable Combobox above, a DS rule), full width, placeholder **Choose a model** | Required. The model title, with the model id as `meta` only when titles repeat.       |
-| **Effort**    | DS `Field` + `OptionPicker`: **Default** (the provider default) followed by the model's efforts                                       | Disabled until a model is chosen; **Default** selected. A provider may list up to 16. |
-| **Work mode** | DS `Field` + `SegmentedControl` of the provider catalogue's own modes and titles; `OptionPicker` when it lists more than 4            | Disabled until a model is chosen. An unavailable mode is disabled with its reason.    |
+| Field         | Control                                                                                                                               | Notes                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Agent**     | provider `ChoiceTile`s (`ProviderChoice`), one radio group                                                                            | Unavailable providers are disabled with their reason. Fixed for the Session's life.     |
+| **Model**     | DS `Field` + `OptionPicker` (Select up to 8 models, searchable Combobox above, a DS rule), full width, placeholder **Choose a model** | Required. The model title, with the model id as `meta` only when titles repeat.         |
+| **Effort**    | DS `Field` + `OptionPicker`: **Default** (the provider default) followed by the model's efforts                                       | Disabled until a model is chosen; **Default** selected. A provider may list up to 16.   |
+| **Work mode** | DS `Field` + `SegmentedControl` of the provider catalogue's own modes and titles; `OptionPicker` when it lists more than 4            | Disabled until a model is chosen. Lists only usable modes; an unusable mode is omitted. |
 
 Control rule (owner, 2026-11-04): a `SegmentedControl` only for a small, fixed set (the work modes:
 ask / edit / accept all edits and the like); a picker for anything whose length the provider

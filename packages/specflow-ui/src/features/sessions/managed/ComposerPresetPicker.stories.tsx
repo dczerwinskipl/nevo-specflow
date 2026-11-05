@@ -106,19 +106,15 @@ export const Default: Story = {
   },
 };
 
-/** Claude Code's own catalogue, in its order and under its own titles; picking a mode closes the
- * menu and reports the opaque catalogue id. Ready modes carry no description line. */
+/** Claude Code's own catalogue, in its order and under its own titles, usable modes only (its
+ * unavailable "Don't ask" is omitted); picking a mode closes the menu and reports the opaque
+ * catalogue id. Ready modes carry no description line. */
 export const ClaudeCatalogue: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
     const menu = await openModeMenu(canvasElement, /Wybierz tryb pracy/);
-    await expect(rowLabels(menu)).toEqual([
-      'Plan',
-      'Accept edits',
-      'Manual',
-      expect.stringMatching(/^Don't ask/),
-    ]);
+    await expect(rowLabels(menu)).toEqual(['Plan', 'Accept edits', 'Manual']);
     const plan = within(menu).getByRole('menuitemradio', { name: 'Plan' });
     await expect(plan.textContent).toBe('Plan');
     await userEvent.click(within(menu).getByRole('menuitemradio', { name: 'Accept edits' }));
@@ -130,16 +126,24 @@ export const ClaudeCatalogue: Story = {
   },
 };
 
-/** An unavailable mode is listed, disabled, with the catalogue's own reason as its second line. */
-export const UnavailableModeShowsReason: Story = {
+/** The one unusable mode still listed: the Session's current mode, once the catalogue reports it
+ * unavailable. It stays selected and disabled, with the catalogue's own reason as its second line,
+ * so the trigger never claims a mode the next Turn would not inherit. */
+export const CurrentUnavailableModeStaysListed: Story = {
   tags: ['contract'],
+  args: {
+    options: runtimeWorkModes(providerFixture('claude'), 'dontAsk'),
+    initialValue: 'dontAsk',
+  },
   play: async ({ canvasElement }) => {
     handleChange.mockClear();
-    const menu = await openModeMenu(canvasElement, /Wybierz tryb pracy/);
+    const menu = await openModeMenu(canvasElement, "Tryb pracy: Don't ask");
     const dontAsk = within(menu)
       .getAllByRole('menuitemradio')
       .find((item) => item.textContent?.startsWith("Don't ask"))!;
+    await expect(rowLabels(menu)).toHaveLength(4);
     await expect(dontAsk).toHaveAttribute('aria-disabled', 'true');
+    await expect(dontAsk).toHaveAttribute('aria-checked', 'true');
     // `waitFor`: the menu's open animation starts from opacity 0.
     await waitFor(() =>
       expect(
@@ -152,14 +156,14 @@ export const UnavailableModeShowsReason: Story = {
 };
 
 /** A Cursor-like provider speaks its own vocabulary (Ask/Plan/Agent); a mode the actor is not
- * authorized for is disabled with the generic "unavailable" wording (no catalogue reason). */
+ * authorized for (Agent) is omitted. */
 export const CursorLikeCatalogue: Story = {
   tags: ['contract'],
   args: { options: runtimeWorkModes(providerFixture('cursor')), initialValue: 'ask' },
   play: async ({ canvasElement }) => {
     // The trigger is named by what it controls plus the selected mode ("Tryb pracy: …").
     const menu = await openModeMenu(canvasElement, 'Tryb pracy: Ask');
-    await expect(rowLabels(menu)).toEqual(['Ask', 'Plan', 'AgentNiedostępny']);
+    await expect(rowLabels(menu)).toEqual(['Ask', 'Plan']);
     await expect(within(menu).getByRole('menuitemradio', { name: 'Ask' })).toHaveAttribute(
       'aria-checked',
       'true',

@@ -9,11 +9,12 @@ import type { StartMode } from '../catalogue/startCatalogue';
 const segmentedMax = 4;
 
 /**
- * The provider catalogue's own work modes under its own titles. An unavailable mode is listed but
- * disabled, and says why.
+ * The provider catalogue's own work modes under its own titles, usable ones only: an unavailable
+ * mode is omitted, not shown disabled (session-composer-design.md §7 item 4). A provider with no
+ * usable mode is itself unavailable, with the reason on the provider.
  */
 export function WorkModeField({
-  modes,
+  modes: catalogueModes,
   value,
   disabled,
   onChange,
@@ -26,7 +27,7 @@ export function WorkModeField({
   const { t } = useTranslation();
   const text = useMessage();
   const controlId = useId();
-  const reasonOf = (mode: StartMode) => mode.reason ?? t('managedSession.intent.unavailable');
+  const modes = catalogueModes.filter((mode) => mode.available);
 
   if (modes.length > segmentedMax) {
     return (
@@ -41,39 +42,27 @@ export function WorkModeField({
             value: mode.id,
             textValue: text(mode.title),
             label: text(mode.title),
-            unavailable: !mode.available,
-            description: mode.available ? undefined : reasonOf(mode),
           }))}
         />
       </Field>
     );
   }
 
-  const reasons = modes
-    .filter((mode) => !mode.available)
-    .map((mode) => `${text(mode.title)}: ${reasonOf(mode)}`);
-
   return (
     <Field controlId={controlId} disabled={disabled}>
       <Field.Label>{t('managedSession.intent.sectionLabel')}</Field.Label>
       <SegmentedControl
         aria-labelledby={`${controlId}-label`}
-        aria-describedby={reasons.length > 0 ? `${controlId}-description` : undefined}
         className="w-full"
         value={value}
         onValueChange={onChange}
       >
         {modes.map((mode) => (
-          <SegmentedControl.Item
-            key={mode.id}
-            value={mode.id}
-            disabled={disabled || !mode.available}
-          >
+          <SegmentedControl.Item key={mode.id} value={mode.id} disabled={disabled}>
             {text(mode.title)}
           </SegmentedControl.Item>
         ))}
       </SegmentedControl>
-      {reasons.length > 0 && <Field.Description>{reasons.join(' · ')}</Field.Description>}
     </Field>
   );
 }

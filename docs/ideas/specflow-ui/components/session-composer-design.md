@@ -72,8 +72,8 @@ or any missing Runtime API. No production code changed as part of these UX ideas
 > order, under the provider's own titles. A provider without Plan (or with Plan but without Ask)
 > simply shows what it has. The UI holds no Ask/Plan/Agent vocabulary: a mode id is opaque, there
 > are no UI-authored labels or descriptions per mode, the default is the catalogue's
-> `defaultModeId` (else the first ready mode), and an unavailable mode is shown disabled with the
-> catalogue's `reason`. A pick maps to `StartTurn`/`CreateSession` `mode` + `providerModeId`.
+> `defaultModeId` (else the first ready mode), and only modes usable right now are listed (§7
+> item 4). A pick maps to `StartTurn`/`CreateSession` `mode` + `providerModeId`.
 > No catalogue reports separate operation-approval policies, so the Composer shows no separate
 > approval section; a provider's native permission variants (e.g. Claude's Plan / Accept edits /
 > Manual) are simply its work modes. The intent/approval split below remains design background
@@ -187,8 +187,16 @@ state survives local navigation as appropriate, respects limits and cleans up ab
    until a catalogue reports separate approval policies.
 3. ~~Exact certified Ask/Plan mappings per provider~~ — **resolved** (§3 owner decision): no UI
    mapping; the Runtime catalogue lists each provider's modes under its own names.
-4. ~~Whether an option is shown disabled or omitted~~ — **resolved**: a catalogue mode reported
-   unavailable is shown disabled with its reason; a mode the selected model cannot run is omitted.
+4. ~~Whether an option is shown disabled or omitted~~ — **resolved** (owner, 2026-11-05): the
+   work-mode pickers (Composer and Session start) list only modes the user can pick now. A mode the
+   catalogue reports unavailable, not authorized, outside the provider's offered safety modes, or
+   not runnable by the selected model is omitted, not shown disabled: a user who does not know the
+   provider's native mode names cannot act on a disabled entry, and it only raises the question why
+   that mode does not do what its name says. The catalogue keeps the mode and its `reason` for
+   diagnostics. One exception: the Session's current mode stays listed (disabled, with its reason)
+   when it became unusable, so the trigger never claims a mode the next Turn would not inherit. A
+   provider with no usable mode at all is itself unavailable, with the reason on the provider.
+   (Superseded: unavailable modes shown disabled with their reason.)
 5. Upload UI lifecycle, previews, size constraints and cross-session draft persistence.
 6. Whether mobile camera choice is displayed as a separate item or folded into image selection.
 7. Keyboard/paste/drop interactions, focus, live state and composer disabling during interactions.

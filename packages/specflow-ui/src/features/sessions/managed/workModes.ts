@@ -8,7 +8,8 @@ import type { ProviderDescriptor, StartTurn } from '@nevo/specflow-contracts/ses
 export interface WorkModeOption {
   id: string;
   title: string;
-  /** Listed but not selectable; `reason` is the catalogue's own explanation when it gives one. */
+  /** Listed but not selectable (only the Session's current mode, see `runtimeWorkModes`); `reason`
+   * is the catalogue's own explanation when it gives one. */
   disabled?: boolean;
   reason?: string;
 }
@@ -17,23 +18,34 @@ export interface WorkModeOption {
 export type WorkModeCommand = Required<Pick<StartTurn, 'mode' | 'providerModeId'>>;
 
 /**
- * A Session provider's `providerModes`, in catalogue order. A mode is selectable only when the
+ * A Session provider's usable `providerModes`, in catalogue order. A mode is usable only when the
  * provider reports it ready, does not deny authorization, and its engine safety mode is one the
- * provider currently offers (the same rule the start catalogue applies, `start/catalogue/fromProviderDescriptors`).
+ * provider currently offers (the same rule the start catalogue applies,
+ * `start/catalogue/fromProviderDescriptors`). An unusable mode is omitted (session-composer-design.md
+ * §7 item 4) — except `currentId`, the Session's current mode, which stays listed disabled with its
+ * reason so the picker never claims a mode the next Turn would not inherit.
  */
-export function runtimeWorkModes(provider: ProviderDescriptor | undefined): WorkModeOption[] {
-  return (provider?.providerModes ?? []).map((mode) => {
+export function runtimeWorkModes(
+  provider: ProviderDescriptor | undefined,
+  currentId?: string,
+): WorkModeOption[] {
+  return (provider?.providerModes ?? []).flatMap((mode) => {
     const disabled =
       mode.readiness !== 'ready' ||
       mode.authorized === false ||
       !provider!.modes.includes(mode.mode);
+    if (disabled && mode.modeId !== currentId) {
+      return [];
+    }
 
-    return {
-      id: mode.modeId,
-      title: mode.title,
-      ...(disabled ? { disabled } : {}),
-      ...(disabled && mode.reason ? { reason: mode.reason } : {}),
-    };
+    return [
+      {
+        id: mode.modeId,
+        title: mode.title,
+        ...(disabled ? { disabled } : {}),
+        ...(disabled && mode.reason ? { reason: mode.reason } : {}),
+      },
+    ];
   });
 }
 

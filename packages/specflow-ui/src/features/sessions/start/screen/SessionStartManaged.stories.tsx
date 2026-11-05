@@ -81,7 +81,8 @@ export const NoSpecification: Story = {
   },
 };
 
-/** Claude's own native modes: an unavailable one is listed disabled and says why. */
+/** Claude's own native modes: only the usable ones are listed; the catalogue's unavailable one is
+ * omitted, with no reason line (session-composer-design.md §7 item 4). */
 export const NativeModesWithUnavailableOne: Story = {
   args: {
     defaults: {
@@ -97,8 +98,8 @@ export const NativeModesWithUnavailableOne: Story = {
     await settle();
     await expect(await canvas.findByRole('radio', { name: 'Accept edits' })).toBeChecked();
     await expect(canvas.getByRole('radio', { name: 'Plan' })).toBeEnabled();
-    await expect(canvas.getByRole('radio', { name: 'Auto' })).toBeDisabled();
-    await expect(canvas.getByText('Auto: Wymaga zgody administratora.')).toBeVisible();
+    await expect(canvas.queryByRole('radio', { name: 'Auto' })).toBeNull();
+    await expect(canvas.queryByText(/Wymaga zgody administratora/)).toBeNull();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toHaveTextContent('high');
     await expect(startButton(canvas)).toBeEnabled();
   },
@@ -147,7 +148,7 @@ export const ManagedAntigravityLongModelList: Story = {
   },
 };
 
-/** More than four modes: the Work mode field is a picker, an unavailable mode disabled with its reason. */
+/** More than four usable modes: the Work mode field is a picker; an unavailable mode is omitted. */
 export const ManyWorkModes: Story = {
   args: {
     providers: [
@@ -156,13 +157,13 @@ export const ManyWorkModes: Story = {
         title: 'Claude',
         modes: ['read-only', 'workspace-write'],
         defaultModeId: 'm1',
-        providerModes: ['m1', 'm2', 'm3', 'm4', 'm5'].map((modeId, index) => ({
+        providerModes: ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'].map((modeId, index) => ({
           modeId,
           title: `Tryb ${index + 1}`,
           nativeMode: modeId,
           mode: 'workspace-write' as const,
-          readiness: index === 4 ? ('unavailable' as const) : ('ready' as const),
-          ...(index === 4 ? { reason: 'Niedostępny w tym projekcie.' } : {}),
+          readiness: index === 5 ? ('unavailable' as const) : ('ready' as const),
+          ...(index === 5 ? { reason: 'Niedostępny w tym projekcie.' } : {}),
         })),
       }),
     ],
@@ -176,9 +177,9 @@ export const ManyWorkModes: Story = {
     await expect(mode).toHaveTextContent('Tryb 1');
     await expect(canvas.queryByRole('radiogroup', { name: 'Tryb pracy' })).toBeNull();
     await userEvent.click(mode);
-    const unavailable = await body().findByRole('option', { name: /Tryb 5/ });
-    await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
-    await expect(unavailable).toHaveAccessibleDescription('Niedostępny w tym projekcie.');
+    await body().findByRole('option', { name: 'Tryb 5' });
+    await expect(body().getAllByRole('option')).toHaveLength(5);
+    await expect(body().queryByRole('option', { name: /Tryb 6/ })).toBeNull();
     await userEvent.keyboard('{Escape}');
   },
 };

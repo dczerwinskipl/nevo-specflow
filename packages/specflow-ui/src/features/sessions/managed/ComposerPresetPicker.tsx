@@ -14,7 +14,8 @@ import type { WorkModeOption } from './workModes';
 /**
  * The Composer toolbar's "Tryb pracy" entry (session-composer-design.md §6): the provider's own
  * work modes, exactly as its catalogue lists them — in catalogue order, under the catalogue's own
- * titles, unavailable ones disabled with the catalogue's reason (the Runtime is the
+ * titles, usable ones only (a disabled option, with the catalogue's reason, is the Session's
+ * current mode once it became unusable; see `runtimeWorkModes`) (the Runtime is the
  * source of truth; this component knows no mode vocabulary). The caller maps its catalogue
  * onto `WorkModeOption`s (`runtimeWorkModes` for a managed Session) and the picked id back onto its
  * own command. Renders nothing when the catalogue offers
@@ -79,7 +80,7 @@ export function ComposerModePicker({
               key={option.id}
               value={option.id}
               disabled={option.disabled}
-              // Only an unavailable mode gets a second line: the catalogue's reason, else the
+              // Only a disabled mode gets a second line: the catalogue's reason, else the
               // generic "unavailable" wording. Ready modes have no description — no catalogue
               // provides one, and this component does not invent copy per provider mode.
               description={

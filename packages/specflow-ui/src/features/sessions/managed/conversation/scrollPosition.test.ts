@@ -22,16 +22,26 @@ describe('conversation scroll position policy', () => {
     expect(isAtLatest(geometry(0, 500))).toBe(true);
   });
 
-  it('starts reading as soon as the reader scrolls away, and follows again at the bottom', () => {
-    expect(followingAfterScroll(true, geometry(1500), false)).toBe(false);
-    expect(followingAfterScroll(false, geometry(2200), false)).toBe(true);
-    expect(followingAfterScroll(false, geometry(1500), false)).toBe(false);
+  it('starts reading as soon as the reader scrolls up away, and follows again at the bottom', () => {
+    expect(followingAfterScroll(true, geometry(1500), 2200, false)).toBe(false);
+    expect(followingAfterScroll(false, geometry(2200), 1500, false)).toBe(true);
+    expect(followingAfterScroll(false, geometry(1500), 1400, false)).toBe(false);
+    expect(followingAfterScroll(false, geometry(1400), 1500, false)).toBe(false);
   });
 
-  it('never starts reading from a scroll the layout caused, but may resume following from one', () => {
-    expect(followingAfterScroll(true, geometry(1500), true)).toBe(true);
-    expect(followingAfterScroll(false, geometry(1500), true)).toBe(false);
-    expect(followingAfterScroll(false, geometry(2200), true)).toBe(true);
+  it('never starts reading from a move up the layout caused, but may resume following from one', () => {
+    expect(followingAfterScroll(true, geometry(1500), 2200, true)).toBe(true);
+    expect(followingAfterScroll(false, geometry(1500), 2200, true)).toBe(false);
+    expect(followingAfterScroll(false, geometry(2200), 1500, true)).toBe(true);
+  });
+
+  it('never starts reading from a scroll that did not move the view up', () => {
+    // The content re-wrapped taller under an unchanged scrollTop before the pin (a resize).
+    expect(followingAfterScroll(true, geometry(1500, 3600), 1500, false)).toBe(true);
+    // A pin or another write moving the view down, not yet at the bottom.
+    expect(followingAfterScroll(true, geometry(1800), 1500, false)).toBe(true);
+    // Sub-pixel layout rounding is not a reader's gesture.
+    expect(followingAfterScroll(true, geometry(1500.2, 3600), 1500.5, false)).toBe(true);
   });
 
   it('on the same scroller compensates only the entry moving, keeping the reader’s own scrolling', () => {

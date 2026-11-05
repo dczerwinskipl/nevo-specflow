@@ -11,6 +11,21 @@ import {
 import { liveFixtureApi, nextAnswer } from './managedSession.liveFeed.stories-support';
 import { genericSpecLevelContext } from './context/sessionContextFixtures';
 import { Environment } from './managedSession.storyHelpers.stories-support';
+import {
+  awaySettled,
+  distanceFromBottom,
+  entryOffset,
+  expectReadingPosition,
+  firstVisibleEntry,
+  followingLongConversation,
+  latestPill,
+  nextFrames,
+  readerScrollsTo,
+  scrollerOf,
+  scrollOwnerSettled,
+  SPLIT,
+  STACKED,
+} from './managedSession.scrollPosition.stories-support';
 
 /**
  * Where the conversation stays while things change around the reader (the scroll-position policy,
@@ -43,129 +58,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 /** A scenario's args and play; each story below adds its own static `tags` (read by the indexer). */
 type Scenario = Pick<Story, 'args' | 'play'>;
-
-const STACKED = { width: 390, height: 844 } as const;
-const SPLIT = { width: 1280, height: 844 } as const;
-
-const nextFrames = () =>
-  new Promise<void>((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-  );
-
-function scrollerOf(canvasElement: HTMLElement) {
-  const node = canvasElement.querySelector<HTMLElement>('[data-session-scroller]');
-  if (!node) {
-    throw new Error('Expected a conversation scroll owner (data-session-scroller).');
-  }
-
-  return node;
-}
-
-const distanceFromBottom = (node: HTMLElement) =>
-  Math.round(node.scrollHeight - node.clientHeight - node.scrollTop);
-
-const latestPill = (canvasElement: HTMLElement) =>
-  within(canvasElement).queryByRole('button', { name: 'Wróć do najnowszych wiadomości' });
-
-/** The reader's gesture: moves the scroll owner and delivers its `scroll` event in this same task. */
-function readerScrollsTo(scroller: HTMLElement, top: number) {
-  scroller.scrollTop = top;
-  scroller.dispatchEvent(new Event('scroll'));
-}
-
-/** The first entry still visible below the scroller's top edge, and its offset from that edge. */
-function firstVisibleEntry(scroller: HTMLElement) {
-  const top = scroller.getBoundingClientRect().top;
-  const entry = [...scroller.querySelectorAll<HTMLElement>('[data-entry-id]')].find(
-    (element) => element.getBoundingClientRect().bottom > top + 1,
-  );
-  if (!entry?.dataset.entryId) {
-    throw new Error('Expected a visible conversation entry.');
-  }
-
-  return { id: entry.dataset.entryId, offset: entry.getBoundingClientRect().top - top };
-}
-
-function entryOffset(scroller: HTMLElement, id: string) {
-  const entry = scroller.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(id)}"]`);
-  if (!entry) {
-    throw new Error(`Entry ${id} is no longer rendered.`);
-  }
-
-  return entry.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-}
-
-/** The reader still sees the entry they were reading, where they were reading it. */
-async function expectReadingPosition(
-  scroller: HTMLElement,
-  anchor: { id: string; offset: number },
-  label: string,
-) {
-  await expect(
-    Math.round(entryOffset(scroller, anchor.id)),
-    `${label}: "${anchor.id}" stays where the reader was reading it`,
-  ).toBeGreaterThanOrEqual(Math.round(anchor.offset) - 2);
-  await expect(
-    Math.round(entryOffset(scroller, anchor.id)),
-    `${label}: "${anchor.id}" stays where the reader was reading it`,
-  ).toBeLessThanOrEqual(Math.round(anchor.offset) + 2);
-  await expect(
-    distanceFromBottom(scroller),
-    `${label}: not pulled back to the latest message`,
-  ).toBeGreaterThan(200);
-}
-
-/**
- * Waits until the scroll owner's box has not changed for longer than the window in which a scroll
- * is attributed to the layout rather than the reader (`useLayoutInducedScroll`'s 200 ms).
- */
-async function scrollOwnerSettled(scroller: HTMLElement, quietMs = 250) {
-  let changedAt = performance.now();
-  const mark = () => {
-    changedAt = performance.now();
-  };
-
-  const observer = new ResizeObserver(mark);
-  observer.observe(scroller);
-  window.addEventListener('resize', mark);
-  try {
-    await waitFor(
-      () => {
-        if (performance.now() - changedAt < quietMs) {
-          throw new Error('The conversation scroller is still resizing');
-        }
-      },
-      { timeout: 5000 },
-    );
-  } finally {
-    observer.disconnect();
-    window.removeEventListener('resize', mark);
-  }
-}
-
-/** A long conversation on screen, overflowing its scroller and following the latest message. */
-async function followingLongConversation(canvasElement: HTMLElement, lastText: string | RegExp) {
-  await within(canvasElement).findByText(lastText, undefined, { timeout: 5000 });
-  const scroller = await waitFor(() => {
-    const node = scrollerOf(canvasElement);
-    if (!(node.scrollHeight - node.clientHeight > 1200)) {
-      throw new Error('Expected the conversation to overflow its scroller.');
-    }
-
-    return node;
-  });
-  await scrollOwnerSettled(scroller);
-  await waitFor(async () =>
-    expect(distanceFromBottom(scroller), 'following the latest message').toBeLessThanOrEqual(2),
-  );
-
-  return scroller;
-}
-
-/** Waits out the pill debounce (a condition, not a sleep): the pill is the settled "away" verdict. */
-async function awaySettled(canvasElement: HTMLElement) {
-  await waitFor(async () => expect(latestPill(canvasElement)).not.toBeNull());
-}
 
 // --- 1. A new message arrives while the reader is scrolling away ---------------------------------
 

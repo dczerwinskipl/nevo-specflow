@@ -22,20 +22,26 @@ export const isAtLatest = (geometry: ScrollGeometry) =>
   maxScrollTop(geometry) - geometry.scrollTop <= FOLLOW_THRESHOLD_PX;
 
 /**
- * What a `scroll` event means for the mode. Landing at the latest message always resumes following;
- * moving away from it starts reading, unless the browser caused the scroll while re-laying the
- * scroller out (a resize clamping or shifting `scrollTop`), which carries no reading intent.
+ * What a `scroll` event means for the mode, given the `scrollTop` the policy last knew. Landing at
+ * the latest message always resumes following. Otherwise only a move UP that the reader made starts
+ * reading — the one way a reader leaves the latest message. A scroll that did not move the view up
+ * (one handled before the policy re-pinned a re-wrapped, taller conversation) keeps the mode, and so
+ * does a move up the browser made while re-laying the scroller out (`layoutInduced`: a scroll range
+ * that shrank for a moment and clamped `scrollTop`).
  */
 export function followingAfterScroll(
   following: boolean,
   geometry: ScrollGeometry,
+  previousScrollTop: number,
   layoutInduced: boolean,
 ): boolean {
   if (isAtLatest(geometry)) {
     return true;
   }
 
-  return layoutInduced ? following : false;
+  const movedUp = geometry.scrollTop < previousScrollTop - 0.5;
+
+  return movedUp && !layoutInduced ? false : following;
 }
 
 /**

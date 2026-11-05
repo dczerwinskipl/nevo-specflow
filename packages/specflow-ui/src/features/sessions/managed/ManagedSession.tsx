@@ -335,8 +335,10 @@ function ManagedSessionConversation({
   // The one owner of the scroll position (following the latest message vs reading above it, and
   // every `scrollTop` write): see `useConversationScroll`. The feed only receives its settled
   // "away" verdict, for the "Jump to latest" pill and for keeping the window the reader is reading;
-  // no position decision reads that verdict back.
-  const conversationScroll = useConversationScroll(scrollPosition, scroller, (away) =>
+  // no position decision reads that verdict back. It also observes the entries' own container, which
+  // can grow without any commit here (a message's image loading late).
+  const [entriesNode, setEntriesNode] = useState<HTMLDivElement | null>(null);
+  const conversationScroll = useConversationScroll(scrollPosition, scroller, entriesNode, (away) =>
     feed.setAway(away),
   );
   const { layoutChanged } = conversationScroll;
@@ -623,6 +625,7 @@ function ManagedSessionConversation({
             const conversationBody = (
               <>
                 <div
+                  ref={setEntriesNode}
                   className={cn(
                     'mx-auto grid w-full max-w-content-standard gap-4 px-5 py-5',
                     // Empty: the ready empty state centres in the free height above the Composer.

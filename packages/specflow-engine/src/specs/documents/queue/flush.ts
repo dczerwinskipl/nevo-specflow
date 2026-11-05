@@ -323,6 +323,11 @@ export interface FlushAllOptions extends FlushDependencies {
   /** The whole flush is given up after this long (shutdown: 10 s). What is left stays journaled. */
   readonly deadlineMs: number;
   readonly timers?: QueueTimers;
+  /**
+   * Called when the deadline wins, with the flush that keeps running (a commit cannot be cancelled).
+   * The promise never rejects; it resolves once that flush, and every Git process it runs, has ended.
+   */
+  readonly onOverrun?: (running: Promise<void>) => void;
 }
 
 export interface FlushAllOutcome {
@@ -336,7 +341,8 @@ export interface FlushAllOutcome {
  * Flushes every checkout with queue work within a deadline (shutdown of the Runtime, exit of a CLI
  * command). Checkouts are flushed one after the other; when the deadline passes the flush stops
  * waiting. A commit already running is not cancelled: if the process exits first, its journal
- * is recovered by the next executor (dead proof), so nothing is lost or committed twice.
+ * is recovered by the next executor (dead proof), so nothing is lost or committed twice. A process
+ * that does not exit learns when that flush has ended through `onOverrun`.
  */
 export async function flushAllDocumentCommits(
   engine: SpecFlowEngine,
@@ -357,6 +363,15 @@ export async function flushAllDocumentCommits(
     }
   })();
   const outcome = await withDeadline(work, options.deadlineMs, timers);
+  if (outcome.kind === 'deadline') {
+    options.onOverrun?.(
+      work.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+  }
+
   const remaining = (await listDocumentChangeJournals(engine.context)).filter(
     (journal) => journal.stage === 'queued' || journal.stage === 'committing',
   ).length;

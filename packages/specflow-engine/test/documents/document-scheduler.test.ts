@@ -221,10 +221,6 @@ describe('shutdown flush', () => {
     const atCommit = new Promise<void>((resolve) => {
       reached = resolve;
     });
-    let finished: () => void = () => undefined;
-    const done = new Promise<void>((resolve) => {
-      finished = resolve;
-    });
     const project = await queueProject();
     const time = new FakeTime();
     const scheduler = createDocumentQueueScheduler(project.engine, {
@@ -237,11 +233,6 @@ describe('shutdown flush', () => {
           beforeCommit: async () => {
             reached();
             await gate;
-          },
-          afterSettled: () => {
-            finished();
-
-            return Promise.resolve();
           },
         },
       },
@@ -256,9 +247,10 @@ describe('shutdown flush', () => {
     const journal = await findDocumentChangeJournal(project.engine.context, ids[0]!);
     expect(journal?.stage).toBe('committing');
 
-    // The process would exit now; the hung commit is let go here only so the test can end.
+    // The process would exit now; the hung commit is let go here only so the test can end. The flush
+    // the stop gave up on still runs (Git included) after the commit: the scheduler reports its end.
     hold.open?.();
-    await done;
+    await scheduler.whenIdle();
     await expectEachCommittedOnce(project, ids);
   });
 

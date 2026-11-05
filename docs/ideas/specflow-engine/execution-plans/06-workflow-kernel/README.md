@@ -7,7 +7,7 @@ scope: specflow
 areas: [workflow, runtime, testing]
 tags: [execution-plan, workflow, continuation, attention, archetypes]
 read_when:
-  - continuing the workflow kernel work (follow-ups F01–F19)
+  - continuing the workflow kernel work (follow-ups F01–F20)
   - comparing the legacy nevo workflow engine with this one
   - planning Runtime, CLI or UI work on Specification or Task execution
 summary: >
@@ -21,6 +21,7 @@ related:
   - ideas.specflow-engine.plan-03
   - ideas.specflow-engine.plan-05
   - ideas.specflow-engine.workflow-api-requirements
+  - ideas.specflow-engine.task-resource-and-context
 ---
 
 # Plan 06 — Workflow kernel
@@ -314,11 +315,29 @@ that no sequence of valid operations reaches the budget.
     `RECORD_BYTES_MAX`;
   - the handoff of the latest attempt is unchanged.
 
+### F20 — Task resource, lifecycle and context
+
+The Task record of this kernel is provisional. `.execution/tasks/<id>.yaml` holds the Task's metadata
+(title, summary, type, dependencies, block) together with its run, and a Task has no document to work
+on. The effects `block-pending-tasks` and `unblock-tasks` are provisional too: they are to be replaced
+by explicit hold and cancel decisions of the spec writer or the owner.
+
+- **Goal:** one workflow-managed subject contract for Specifications and Tasks; one folder per Task
+  (`tasks/<id>/task.yaml`, `task.md`, extra files) with an ordered Task index; a Task preparation
+  status (`draft`, `ready`, `on-hold`, `cancelled`) separate from the workflow position; escalation
+  from a Task to its Specification; an explicit typed context list per subject.
+- The Task execution record then keeps only the run, the block effects and `TaskRecord.blocked` are
+  removed, and `materializeTasks` writes Task folders and index entries. A follow-up ADR amends
+  ADR 0015 and ADR 0019. This largely replaces F06.
+- Options, recommendations, open questions and slices:
+  [Tasks as workflow-managed resources, and context building](../../task-resource-and-context.md).
+
 ## 4. What is missing (summary)
 
 Runtime orchestration (F01), the agent completion transport (F02), gates (F03), commits (F04),
 writer admission (F05), Task revision and cancel (F06), re-pinning (F07), parallel worktrees (F08),
 API and UI (F09), the Antigravity driver (F10), caching (F11), running selected Tasks (F12), Session cancel on
 return (F13), status projection (F14), model availability (F15), idempotent finish retries (F16), owner
-takeover of an agent step (F17), kind registration from a composition root (F18) and a bounded run
-history (F19).
+takeover of an agent step (F17), kind registration from a composition root (F18), a bounded run
+history (F19), and the Task resource with its lifecycle and context, which replaces the provisional
+Task record and the block effects (F20).

@@ -3997,7 +3997,7 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md",
       "read_when": [
-        "continuing the workflow kernel work (follow-ups F01–F19)",
+        "continuing the workflow kernel work (follow-ups F01–F20)",
         "comparing the legacy nevo workflow engine with this one",
         "planning Runtime, CLI or UI work on Specification or Task execution"
       ],
@@ -4008,7 +4008,8 @@
         "adr.0019-workflow-kernel-and-automatic-continuation",
         "ideas.specflow-engine.plan-03",
         "ideas.specflow-engine.plan-05",
-        "ideas.specflow-engine.workflow-api-requirements"
+        "ideas.specflow-engine.workflow-api-requirements",
+        "ideas.specflow-engine.task-resource-and-context"
       ],
       "scope": "specflow",
       "areas": [
@@ -4077,6 +4078,42 @@
         "self-review",
         "lifecycle",
         "temporary-design"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.task-resource-and-context",
+      "type": "engineering",
+      "title": "Tasks as workflow-managed resources, Task lifecycle and context building (draft)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/task-resource-and-context.md",
+      "read_when": [
+        "replacing the provisional Task record of the workflow kernel",
+        "designing Task folders, the Task index, Task statuses or Task escalation",
+        "designing how the context of a Specification or Task step is built",
+        "writing the ADR that makes Tasks a resource with their own documents"
+      ],
+      "summary": "Owner ideas, not yet decisions: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and an index, a Task preparation status (draft, ready, on-hold, cancelled) separate from the workflow position, explicit hold and cancel decisions instead of automatic Task effects on a Specification return, escalation from a Task to its Specification, and an explicit typed context list per subject. Options, recommendations, open questions and implementation slices.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0017-definitions-as-project-data",
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "ideas.specflow-engine.plan-06",
+        "ideas.specflow-engine.workflow-api-requirements"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai"
+      ],
+      "tags": [
+        "draft",
+        "tasks",
+        "lifecycle",
+        "context",
+        "escalation",
+        "manifest"
       ]
     },
     {

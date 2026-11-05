@@ -146,6 +146,12 @@ step over to the owner (owner takeover) is not supported; it would be an explici
 
 ## Tasks
 
+> **Provisional.** The Task record below (metadata and run in one `.execution/tasks/<id>.yaml` file,
+> no Task document) and the effects `block-pending-tasks` / `unblock-tasks` are provisional. The
+> draft [Task resource, lifecycle and context](../../ideas/specflow-engine/task-resource-and-context.md)
+> proposes a Task folder with its own manifest and documents, a Task preparation status and explicit
+> hold and cancel decisions instead (plan 06, F20). Until an ADR accepts it, this section is current.
+
 A step with `produces: tasks` must finish with `input.tasks[]`. Each entry is
 `{id, title, summary?, type, dependsOn?}`. Every Task:
 

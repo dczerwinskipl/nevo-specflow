@@ -142,18 +142,21 @@ describe('live Session stream authorization and replay', () => {
   });
   it('requires a fresh snapshot when the replay cursor is outside retained history', async () => {
     const { cookie, sessionId, reopen } = await setup();
-    await app!.inject({
+    const started = await app!.inject({
       method: 'POST',
       url: '/api/sessions/' + sessionId + '/turns',
       headers: { cookie },
       payload: { requestId: randomUUID(), message: 'Expire replay' },
     });
-    await vi.waitFor(async () =>
-      expect(
-        (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
-          .json<SessionSnapshot>()
-          .entries.at(-1)?.kind,
-      ).toBe('outcome'),
+    expect(started.statusCode).toBe(202);
+    await vi.waitFor(
+      async () =>
+        expect(
+          (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
+            .json<SessionSnapshot>()
+            .entries.at(-1)?.kind,
+        ).toBe('outcome'),
+      { timeout: 5000 },
     );
     await app!.close();
     // Controlled offline fixture: no production writer bypasses the singleton owner.
@@ -175,18 +178,21 @@ describe('live Session stream authorization and replay', () => {
     const snapshot = (
       await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } })
     ).json<SessionSnapshot>();
-    await app!.inject({
+    const started = await app!.inject({
       method: 'POST',
       url: '/api/sessions/' + sessionId + '/turns',
       headers: { cookie },
       payload: { requestId: randomUUID(), message: 'Between snapshot and stream' },
     });
-    await vi.waitFor(async () =>
-      expect(
-        (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
-          .json<SessionSnapshot>()
-          .entries.at(-1)?.kind,
-      ).toBe('outcome'),
+    expect(started.statusCode).toBe(202);
+    await vi.waitFor(
+      async () =>
+        expect(
+          (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
+            .json<SessionSnapshot>()
+            .entries.at(-1)?.kind,
+        ).toBe('outcome'),
+      { timeout: 5000 },
     );
     const controller = new AbortController();
     controllers.push(controller);

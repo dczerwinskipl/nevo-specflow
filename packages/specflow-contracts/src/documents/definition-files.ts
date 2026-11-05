@@ -13,6 +13,12 @@ import {
   templateId,
   utf8ByteLength,
 } from './definition-schema-parts';
+import {
+  AgentArchetypeDefinitionFileSchema,
+  SpecificationExecutionSchema,
+  TaskTypeDefinitionFileSchema,
+  WorkflowDefinitionFileSchema,
+} from './workflow-definition-files';
 
 /**
  * Per-kind definition files (`.nevo/definitions/<kind>/<id>.yaml`). One file defines one entity;
@@ -27,7 +33,13 @@ import {
 export const DEFINITION_FILE_SCHEMA_VERSION = 1;
 
 /** The kinds the product ships today. The Engine kind registry is open for more. */
-export const DEFINITION_KINDS = ['document-type', 'specification-archetype'] as const;
+export const DEFINITION_KINDS = [
+  'agent-archetype',
+  'document-type',
+  'specification-archetype',
+  'task-type',
+  'workflow',
+] as const;
 export type DefinitionKind = (typeof DEFINITION_KINDS)[number];
 
 /** `$id` of the published JSON Schema of one kind and schema version. */
@@ -134,6 +146,8 @@ export const SpecificationArchetypeDefinitionFileSchema = Type.Object(
     instructions: Type.Optional(instructionsText()),
     requirements: Type.Array(ArchetypeRequirementFileEntrySchema),
     templates: Type.Array(ArchetypeTemplateFileEntrySchema),
+    /** The workflow of the Specification and the task types its Tasks may have. */
+    execution: Type.Optional(SpecificationExecutionSchema),
   },
   { additionalProperties: false },
 );
@@ -207,6 +221,12 @@ export function findArchetypeFileLimitViolations(
 }
 
 const DEFINITION_FILE_SCHEMAS = {
+  'agent-archetype': {
+    title: 'Nevo SpecFlow agent archetype definition',
+    description:
+      'One agent archetype with its preferred provider and a model per provider (kind agent-archetype, schemaVersion 1).',
+    schema: AgentArchetypeDefinitionFileSchema,
+  },
   'document-type': {
     title: 'Nevo SpecFlow document type definition',
     description: 'One document type (kind document-type, schemaVersion 1).',
@@ -217,6 +237,17 @@ const DEFINITION_FILE_SCHEMAS = {
     description:
       'One Specification archetype with its requirements and templates (kind specification-archetype, schemaVersion 1).',
     schema: SpecificationArchetypeDefinitionFileSchema,
+  },
+  'task-type': {
+    title: 'Nevo SpecFlow task type definition',
+    description: 'One task type and the workflow its Tasks run (kind task-type, schemaVersion 1).',
+    schema: TaskTypeDefinitionFileSchema,
+  },
+  workflow: {
+    title: 'Nevo SpecFlow workflow definition',
+    description:
+      'One deterministic workflow of a Specification or a Task (kind workflow, schemaVersion 1).',
+    schema: WorkflowDefinitionFileSchema,
   },
 } as const satisfies Record<DefinitionKind, unknown>;
 

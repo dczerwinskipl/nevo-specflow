@@ -82,13 +82,14 @@ describe('seed files', () => {
     };
 
     await walk(seedDirectory);
-    expect(seen.length).toBe(9 + 3 + 1);
+    // Document types, archetypes, the overview template, agent archetypes, workflows, task types.
+    expect(seen.length).toBe(9 + 3 + 1 + 6 + 3 + 2);
   });
 
   it('pin the revision of the shipped catalogue', () => {
     // Recompute (and re-pin) only when the shipped definitions change on purpose.
     expect(project.catalogue.revision).toBe(
-      '900fd261f4bb33c4f816e81d8c002baad92c2b85429d6f2bfe2c24ac2bdfe6e4',
+      '07b1c01d63520a27116ccc64a31cd13f70e1cc7b493b4891384d6eb338738328',
     );
   });
 });

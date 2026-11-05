@@ -189,7 +189,7 @@ describe('project initialization', () => {
         contribution,
         isIgnored: () => Promise.resolve(true),
       });
-      expect(result.definitionPaths).toHaveLength(13);
+      expect(result.definitionPaths).toHaveLength(24);
       expect(result.definitionPaths?.every((path) => path.startsWith('.nevo/definitions/'))).toBe(
         true,
       );

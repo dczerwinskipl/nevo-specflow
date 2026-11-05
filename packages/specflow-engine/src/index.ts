@@ -276,3 +276,6 @@ export {
   type PublicWorkspaceClosePreview,
   type PublicWorkspaceCloseOperation,
 } from './specs/operations/projection';
+
+// Deterministic workflow execution (Specification and Task entry points over one core).
+export * from './workflow';

@@ -1,0 +1,474 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nevo:specflow:definition:workflow:1",
+  "title": "Nevo SpecFlow workflow definition",
+  "description": "One deterministic workflow of a Specification or a Task (kind workflow, schemaVersion 1).",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "title",
+    "description",
+    "subject",
+    "entryStep",
+    "steps"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "const": "workflow"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "subject": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "specification"
+        },
+        {
+          "type": "string",
+          "const": "task"
+        }
+      ]
+    },
+    "entryStep": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "purpose",
+              "transitions",
+              "kind",
+              "executor"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384,
+                "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "transitions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "to"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "result": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "step"
+                          ],
+                          "properties": {
+                            "step": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "terminal"
+                          ],
+                          "properties": {
+                            "terminal": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "completed"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "abandoned"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "continuation": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "auto"
+                        },
+                        {
+                          "type": "string",
+                          "const": "owner-action"
+                        }
+                      ]
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "fresh"
+                        },
+                        {
+                          "type": "string",
+                          "const": "reuse"
+                        }
+                      ]
+                    },
+                    "feedback": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "required"
+                        },
+                        {
+                          "type": "string",
+                          "const": "optional"
+                        }
+                      ]
+                    },
+                    "effects": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "block-pending-tasks"
+                          },
+                          {
+                            "type": "string",
+                            "const": "unblock-tasks"
+                          }
+                        ]
+                      },
+                      "uniqueItems": true,
+                      "maxItems": 2
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 16
+              },
+              "kind": {
+                "type": "string",
+                "const": "work"
+              },
+              "executor": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "agent"
+                  },
+                  {
+                    "type": "string",
+                    "const": "human"
+                  }
+                ]
+              },
+              "archetype": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "interaction": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "interactive"
+                  },
+                  {
+                    "type": "string",
+                    "const": "autonomous"
+                  }
+                ]
+              },
+              "produces": {
+                "type": "string",
+                "const": "tasks"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "purpose",
+              "transitions",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384,
+                "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+              },
+              "transitions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "to"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "result": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "to": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "step"
+                          ],
+                          "properties": {
+                            "step": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "terminal"
+                          ],
+                          "properties": {
+                            "terminal": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "const": "completed"
+                                },
+                                {
+                                  "type": "string",
+                                  "const": "abandoned"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "continuation": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "auto"
+                        },
+                        {
+                          "type": "string",
+                          "const": "owner-action"
+                        }
+                      ]
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "fresh"
+                        },
+                        {
+                          "type": "string",
+                          "const": "reuse"
+                        }
+                      ]
+                    },
+                    "feedback": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "required"
+                        },
+                        {
+                          "type": "string",
+                          "const": "optional"
+                        }
+                      ]
+                    },
+                    "effects": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "block-pending-tasks"
+                          },
+                          {
+                            "type": "string",
+                            "const": "unblock-tasks"
+                          }
+                        ]
+                      },
+                      "uniqueItems": true,
+                      "maxItems": 2
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 16
+              },
+              "kind": {
+                "type": "string",
+                "const": "wait-for-tasks"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 32
+    },
+    "returns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step"
+        ],
+        "properties": {
+          "step": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "required"
+              },
+              {
+                "type": "string",
+                "const": "optional"
+              }
+            ]
+          },
+          "effects": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "block-pending-tasks"
+                },
+                {
+                  "type": "string",
+                  "const": "unblock-tasks"
+                }
+              ]
+            },
+            "uniqueItems": true,
+            "maxItems": 2
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 32
+    }
+  },
+  "additionalProperties": false
+}

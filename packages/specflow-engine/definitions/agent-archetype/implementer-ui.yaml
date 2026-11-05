@@ -1,0 +1,12 @@
+kind: agent-archetype
+schemaVersion: 1
+id: implementer-ui
+title: UI implementer
+description: Implements scoped UI and design-system changes from an established UX contract.
+profile: nevo-agents:implementer-ui
+preferredProvider: claude
+providers:
+  - provider: claude
+    model: claude-sonnet-5-5
+  - provider: codex
+  - provider: antigravity

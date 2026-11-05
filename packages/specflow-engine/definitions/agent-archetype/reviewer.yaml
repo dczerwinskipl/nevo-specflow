@@ -1,0 +1,12 @@
+kind: agent-archetype
+schemaVersion: 1
+id: reviewer
+title: Reviewer
+description: Independent, evidence-based review of a scoped change, preferably by another provider than the author.
+profile: nevo-agents:reviewer
+preferredProvider: codex
+providers:
+  - provider: codex
+  - provider: claude
+    model: claude-opus-5-5
+  - provider: antigravity

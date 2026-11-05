@@ -1,0 +1,162 @@
+import type { TerminalOutcome } from '../definitions/model';
+
+/**
+ * Canonical execution state of one Specification: the run of its own workflow and one record per Task,
+ * each with its own type and workflow run. Only the position and the history are stored; readiness,
+ * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`).
+ */
+
+export type WorkflowSubject =
+  | { readonly kind: 'specification'; readonly specId: string }
+  | { readonly kind: 'task'; readonly specId: string; readonly taskId: string };
+
+/** Stable text key of a subject, for attention items and error messages. */
+export function subjectKey(subject: WorkflowSubject): string {
+  return subject.kind === 'specification'
+    ? `specification:${subject.specId}`
+    : `task:${subject.specId}:${subject.taskId}`;
+}
+
+/**
+ * - `not-started`: the next start activates the entry step;
+ * - `active`: one attempt of one step is in progress;
+ * - `ready`: the previous step finished (or the owner returned) and `step` is the next to start;
+ *   finish never starts it, so this checkpoint is observable;
+ * - `terminal`: the run ended.
+ */
+export type RunPosition =
+  | { readonly state: 'not-started' }
+  | { readonly state: 'active'; readonly step: string; readonly attempt: number }
+  | { readonly state: 'ready'; readonly step: string }
+  | { readonly state: 'terminal'; readonly outcome: TerminalOutcome };
+
+/**
+ * The definition an attempt is interpreted with. A changed definition never silently reinterprets a
+ * running workflow: the run keeps its pin until it is re-pinned explicitly.
+ */
+export interface WorkflowPin {
+  readonly id: string;
+  readonly version: number;
+  /** sha256 of the canonical JSON of the resolved definition. */
+  readonly revision: string;
+}
+
+/** Who did the work of an attempt. Always taken from trusted Runtime/CLI context, never from an agent. */
+export type ExecutorRecord =
+  | {
+      readonly kind: 'agent';
+      readonly archetype?: string;
+      readonly provider: string;
+      readonly model?: string;
+      readonly sessionId?: string;
+    }
+  | { readonly kind: 'human'; readonly actorId?: string };
+
+export type AttemptOutcome =
+  | {
+      readonly kind: 'transition';
+      readonly transition: string;
+      readonly result?: string;
+      readonly feedback?: string;
+      readonly artifacts: readonly string[];
+    }
+  /** The owner returned the run to an earlier step while this attempt was active. */
+  | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string };
+
+export interface AttemptRecord {
+  readonly step: string;
+  readonly attempt: number;
+  /**
+   * Order of the record among the run's attempts and returns (1, 2, ...). It decides which event came
+   * last; timestamps do not, because clocks can repeat or go back.
+   */
+  readonly sequence: number;
+  readonly startedAt: string;
+  readonly executor?: ExecutorRecord;
+  /** Absent while the attempt is active. */
+  readonly endedAt?: string;
+  /** Who finished the attempt; the Session a `reuse` continuation continues. */
+  readonly finishedBy?: ExecutorRecord;
+  readonly outcome?: AttemptOutcome;
+}
+
+/** An owner return from a non-active position (no attempt was running). */
+export interface ReturnRecord {
+  /** See {@link AttemptRecord.sequence}. */
+  readonly sequence: number;
+  readonly at: string;
+  readonly from: RunPosition;
+  readonly to: string;
+  readonly feedback?: string;
+}
+
+export interface WorkflowRun {
+  readonly workflow: WorkflowPin;
+  readonly position: RunPosition;
+  readonly attempts: readonly AttemptRecord[];
+  readonly returns: readonly ReturnRecord[];
+}
+
+export type TaskTypes = readonly ['*'] | readonly string[];
+
+export interface SpecificationExecutionRecord {
+  readonly specId: string;
+  /** The Specification archetype whose execution binding started this run. */
+  readonly archetype: string;
+  /** The task types allowed when the run started. */
+  readonly taskTypes: TaskTypes;
+  readonly run: WorkflowRun;
+}
+
+/** Set on a Task that has not started yet when the Specification returned to an earlier step. */
+export interface TaskBlock {
+  readonly reason: 'specification-returned';
+  readonly at: string;
+}
+
+export interface TaskRecord {
+  readonly specId: string;
+  readonly taskId: string;
+  readonly title: string;
+  readonly summary?: string;
+  readonly type: string;
+  readonly dependsOn: readonly string[];
+  /** The Specification attempt that created the Task. */
+  readonly origin: { readonly step: string; readonly attempt: number };
+  readonly blocked?: TaskBlock;
+  readonly run: WorkflowRun;
+}
+
+export function nextAttemptNumber(run: WorkflowRun, step: string): number {
+  return (
+    run.attempts.reduce(
+      (highest, record) => (record.step === step ? Math.max(highest, record.attempt) : highest),
+      0,
+    ) + 1
+  );
+}
+
+/** The sequence of the next attempt or return record of a run. */
+export function nextSequence(run: WorkflowRun): number {
+  return (
+    [...run.attempts, ...run.returns].reduce(
+      (highest, record) => Math.max(highest, record.sequence),
+      0,
+    ) + 1
+  );
+}
+
+export function activeAttempt(run: WorkflowRun): AttemptRecord | undefined {
+  const position = run.position;
+  if (position.state !== 'active') {
+    return undefined;
+  }
+
+  return run.attempts.find(
+    (record) => record.step === position.step && record.attempt === position.attempt,
+  );
+}
+
+export function isTerminal(run: WorkflowRun): boolean {
+  return run.position.state === 'terminal';
+}

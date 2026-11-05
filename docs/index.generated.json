@@ -4092,7 +4092,7 @@
         "designing how the context of a Specification or Task step is built",
         "writing the ADR that makes Tasks a resource with their own documents"
       ],
-      "summary": "Owner ideas, not yet decisions: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and an index, a Task preparation status (draft, ready, on-hold, cancelled) separate from the workflow position, explicit hold and cancel decisions instead of automatic Task effects on a Specification return, escalation from a Task to its Specification, and an explicit typed context list per subject. Options, recommendations, open questions and implementation slices.",
+      "summary": "Owner ideas and decisions (open questions answered on 2026-11-05), not yet an ADR: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and the Task index as registry, a Task-only preparation status (draft, ready, on-hold, cancelled) separate from the workflow position, a guard that keeps draft Tasks out of implementation, explicit hold and cancel decisions, escalation from a Task to its Specification through a declared Specification transition, and an explicit typed context list per subject. Options, decisions and implementation slices.",
       "related": [
         "architecture.workflow.workflow-kernel",
         "adr.0015-specification-manifest-as-document-registry",

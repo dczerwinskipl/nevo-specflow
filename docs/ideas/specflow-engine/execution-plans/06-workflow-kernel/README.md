@@ -350,7 +350,13 @@ on. The Task lifecycle (status, explicit decisions, approval, escalation) is don
 - The Task execution record then keeps only the run, the status and the Task metadata move to
   `task.yaml`, and `materializeTasks` writes Task folders and index entries. A follow-up ADR amends
   ADR 0015 and ADR 0019.
-- Options, recommendations, open questions and slices:
+- The owner decided every open question (2026-11-05). The preparation status stays Task-only, the
+  Specification reports only completed / ready to merge from its run (F14). Three kernel follow-ups
+  to W13 that need no Task folders: entering the wait step is refused while a non-cancelled Task is
+  `draft`; one `task-escalated` item lists every escalated Task; the wait step declares an explicit
+  `task-escalated` transition (seed: to `breakdown`). A started Task whose folder is deleted by hand
+  breaks only that Task.
+- Options, decisions and slices:
   [Tasks as workflow-managed resources, and context building](../../task-resource-and-context.md).
 
 ## 4. What is missing (summary)

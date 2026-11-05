@@ -4,7 +4,10 @@ type: engineering
 title: Storybook guidelines
 status: current
 read_when:
-  - creating or editing a Storybook story
+  - creating, editing, or reviewing Storybook stories and their fixtures or Controls
+  - restructuring Storybook navigation, visibility, tags, or component and screen story coverage
+  - reviewing UI changes that affect Storybook tests, component showcases, or visual baselines
+  - configuring Storybook, Chromatic, Figma capture, or accessibility verification
   - verifying a UI component visually or with interaction tests
   - building deterministic UI fixtures
 summary: >
@@ -30,12 +33,27 @@ Story `title` defines the sidebar tree:
 | Owner       | Title pattern                    | Purpose                                                        |
 | ----------- | -------------------------------- | -------------------------------------------------------------- |
 | Nevo UI     | `Nevo UI/<Category>/<Component>` | Reusable foundations, primitives, patterns, and app mechanics. |
-| SpecFlow UI | `SpecFlow/<Area>/<Story>`        | Brand, product composition, features, and full screens.        |
+| SpecFlow UI | `SpecFlow/<Area>/<Subject>`      | Brand, product composition, features, and full screens.        |
 | Examples    | `Examples/<Example>/<Story>`     | Independent consumer examples, including CRM.                  |
 
 Use `Brand`, `Components`, `Features`, and `Screens` below `SpecFlow`. Nevo UI categories follow
 the package organization, such as `Foundations`, `Actions`, `Forms`, `Navigation`, `Data`, and
-`Patterns`.
+`Patterns`. Do not add further levels (`Contracts/…`, `…/States`): a subject is one sidebar entry.
+
+Each **SpecFlow UI** subject shows **one visible `Default`** story: a representative normal state whose states,
+scenarios and supported variants are changed through Controls (`args`/`argTypes`, with `mapping`
+for fixture objects), not through dozens of visible exports. Several story files of one subject
+(for example a screen's contract files) share its title; only one of them exports `Default`, and
+story IDs must not collide. Every other export carries a hidden profile tag (below). Non-story
+exports (fixtures, shared helpers) belong in `*.stories-support.ts(x)` modules or are hidden with
+`excludeStories`, so they never appear as stories. Never delete a `play`, an assertion or a
+snapshot to shorten the sidebar — hide it with a tag instead.
+
+The one-visible-`Default` rule is scoped to SpecFlow UI. A **Nevo UI** component page is a
+showcase: its named variants, states and compositions (for example `Info`/`Attention`/`Danger`,
+`States`/`Overflow`/`InWorkspaceHeader`) are visible exports of that one entry, as they have been
+since the design system's first stories, and no check enforces a single `Default` there. Interaction,
+visual and capture checks on those components still carry the hidden profile tags below.
 
 ## Co-location and naming
 
@@ -54,7 +72,7 @@ Stories have different jobs; do not make every Storybook entry a browser test an
 | Profile     | Tag           | Sidebar           | Chromium                           | Chromatic snapshot | Use                                                   |
 | ----------- | ------------- | ----------------- | ---------------------------------- | ------------------ | ----------------------------------------------------- |
 | Showcase    | none          | visible           | only when it has a `play` function | no                 | Human inspection and Controls.                        |
-| Visual      | `visual`      | visible           | yes                                | yes                | Small, stable regression baseline.                    |
+| Visual      | `visual`      | hidden by default | yes                                | yes                | Small, stable regression baseline.                    |
 | Contract    | `contract`    | hidden by default | yes                                | no                 | Interaction, accessibility, or geometry contract.     |
 | Integration | `integration` | hidden by default | yes                                | no                 | Multi-component compatibility behavior.               |
 | Capture     | `capture`     | hidden by default | no                                 | no                 | Figma/design capture and other tooling-only fixtures. |
@@ -69,8 +87,9 @@ representative component states and composed product screens over exhaustive var
 stories are render baselines, not interaction tests: they must not carry assertion-bearing `play`
 functions. Put behavioral assertions in a paired `contract` story that reuses the same scenario.
 
-Capture, contract, and integration tags are excluded from the sidebar by default. They remain
-available locally through the Storybook tag filter.
+Visual, capture, contract, and integration tags are excluded from the sidebar by default, so the
+default sidebar is the catalog of `Default` stories. They remain available locally through the
+Storybook tag filter, and their IDs (and Chromatic baselines) do not change.
 
 Capture stories must stay fixture-only and **must not define assertion-bearing `play` functions**.
 When a capture fixture has browser-verifiable invariants, reuse the same render fixture from a

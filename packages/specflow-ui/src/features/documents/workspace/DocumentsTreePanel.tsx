@@ -1,11 +1,23 @@
 import { useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, AppContent, Button, InlineNote, ScrollArea, Separator } from '@nevo/ui';
-import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
+import {
+  Alert,
+  AppContent,
+  Button,
+  InlineNote,
+  ScrollArea,
+  Separator,
+  useWorkspaceCapabilities,
+} from '@nevo/ui';
+import {
+  ApplicationContextLine,
+  ApplicationSessionBack,
+  useApplicationCollection,
+} from '../../../app/navigation/ApplicationLocation';
 import { useDocumentsApi } from '../useDocumentsApi';
 import { useMessage } from '../../../i18n/message';
-import { SessionRecoveryNotice } from '../../sessions';
+import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { useSpecificationWorkspace } from '../../specs/read-model';
 import {
   archetypeTitle,
@@ -17,7 +29,8 @@ import {
 } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
-import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
+import { DocumentsExplorer } from '../explorer/DocumentsExplorer';
+import type { DocumentTreeController } from '../explorer/documentRootActions';
 import { documentTreeKeys } from '../read-model/queries';
 import { CloseIssues } from './CloseIssues';
 import { createDiscardConsent } from './discardConsent';
@@ -53,6 +66,9 @@ export function DocumentsTreePanel({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
+  const sessionReturn = useSessionReturn(specId);
+  const collection = useApplicationCollection();
+  const { supportsSplit } = useWorkspaceCapabilities();
   const catalogue = useDocumentCatalogue();
   const dirtyIds = useDirtyDocuments(specId);
   const specification = useSpecificationWorkspace(specId);
@@ -74,6 +90,17 @@ export function DocumentsTreePanel({
       </h1>
       <SessionRecoveryNotice specId={specId} />
       <ScrollArea direction="both" className="min-h-0 flex-1" contentClassName="p-2">
+        {/* Stacked: the tree is the first view, so the way back to the Session sits above it (an open
+            document shows its own link; on a split layout the document area carries it). */}
+        {sessionReturn && !supportsSplit && (
+          <div className="mb-2 px-2">
+            <ApplicationSessionBack
+              specId={specId}
+              sessionId={sessionReturn}
+              collection={collection}
+            />
+          </div>
+        )}
         <ApplicationContextLine specId={specId} view="documents" className="mb-2 px-2" />
         {data && (issues.length > 0 || readOnly !== undefined || unmet.length > 0) && (
           // Inside the tree's scroll area: it scrolls away with the tree and costs nothing when empty.

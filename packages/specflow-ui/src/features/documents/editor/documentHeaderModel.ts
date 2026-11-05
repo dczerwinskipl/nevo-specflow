@@ -7,13 +7,16 @@ import type { DocumentEditorSession } from './DocumentEditorProvider';
  * Header presentation for the open document: unsaved flag and workspace header actions. The
  * content kind declares its own actions (mode switch, Save, Discard); the host adds Show path and,
  * where the document is a tab, Close tab. Render the header with `menu="complete"`, so every
- * action, promoted ones included, is listed in the `...` menu.
+ * action, promoted ones included, is listed in the `...` menu. Close all documents is offered there
+ * too: the tab rail has no region-level close (each tab closes itself), as in the Session.
  */
 export function documentHeaderModel(
   session: DocumentEditorSession | null,
   t: TFunction,
   options: {
     onCloseTab?: () => void;
+    /** Closes every open tab, asking once about the unsaved documents. */
+    onCloseAll?: () => void;
     /** Offered for an unclassified document (its tab's `...` menu). */
     onAssignType?: (id: string) => void;
   } = {},
@@ -32,6 +35,17 @@ export function documentHeaderModel(
         },
       ]
     : [];
+  if (options.onCloseAll) {
+    close.push({
+      id: 'document-close-all',
+      label: t('documents.closeDocument'),
+      icon: 'close',
+      group: 'actions',
+      direct: 'never',
+      onPress: options.onCloseAll,
+    });
+  }
+
   if (!session) {
     return { actions: close, dirty: false };
   }

@@ -66,7 +66,7 @@ function PanelFixture({
 }
 
 const meta = {
-  title: 'SpecFlow/Shared/Operations Panel',
+  title: 'SpecFlow/Components/Operations Panel',
   component: PanelFixture,
   parameters: { layout: 'padded' },
 } satisfies Meta<typeof PanelFixture>;
@@ -79,6 +79,7 @@ const one = (items: OperationListItem[], extras: Partial<Omit<OperationList, 'it
 
 /** Nothing to show: no panel, no heading, no placeholder. */
 export const EmptyHidden: Story = {
+  tags: ['contract'],
   args: { answers: one([]) },
   play: async ({ canvasElement }) => {
     await afterFirstRead();
@@ -88,6 +89,7 @@ export const EmptyHidden: Story = {
 
 /** The runtime has no list yet (404): calmly nothing, no error. */
 export const NotServedHidden: Story = {
+  tags: ['contract'],
   args: { answers: [{ kind: 'unavailable' } as const] },
   play: async ({ canvasElement }) => {
     await afterFirstRead();
@@ -98,6 +100,7 @@ export const NotServedHidden: Story = {
 
 /** One running Create: step "2 of 4", the branch and when it started; the row links to its page. */
 export const OneRunning: Story = {
+  tags: ['contract'],
   args: { answers: one([runningItem(1, { title: 'Limity płatności' })]) },
   play: async ({ canvas }) => {
     const region = await canvas.findByRole('region', { name: 'Background operations' });
@@ -114,6 +117,7 @@ export const OneRunning: Story = {
 
 /** An existing workspace has no "prepare" step, so the checklist counts three. */
 export const ExistingWorkspaceSteps: Story = {
+  tags: ['contract'],
   args: {
     answers: one([
       operationItem({
@@ -134,22 +138,54 @@ export const ExistingWorkspaceSteps: Story = {
   },
 };
 
+const mixedAnswers = one([
+  operationItem({
+    status: 'recovery-required',
+    title: 'Faktury korygujące',
+    code: 'OPERATION_INTERRUPTED',
+    updatedAt: isoAgo(9),
+  }),
+  operationItem({ status: 'failed', title: 'Płatności cykliczne', code: 'COMMIT_FAILED' }),
+  runningItem(2, { title: 'Limity płatności' }),
+  runningItem(0, { title: 'Powiadomienia', startedAt: isoAgo(0) }),
+  operationItem({ status: 'completed', title: 'Rejestr umów', updatedAt: isoAgo(3) }),
+]);
+
+/** The representative panel: pick the answer the Runtime list route gives and the locale. */
+export const Default: Story = {
+  args: { answers: mixedAnswers },
+  argTypes: {
+    answers: {
+      name: 'preset',
+      control: 'select',
+      options: ['mixed', 'oneRunning', 'recoveryRequired', 'failed', 'completed', 'empty', 'error'],
+      mapping: {
+        mixed: mixedAnswers,
+        oneRunning: one([runningItem(1, { title: 'Limity płatności' })]),
+        recoveryRequired: one([
+          operationItem({
+            status: 'recovery-required',
+            title: 'Faktury korygujące',
+            code: 'OPERATION_INTERRUPTED',
+            updatedAt: isoAgo(9),
+          }),
+        ]),
+        failed: one([operationItem({ status: 'failed', title: 'Płatności cykliczne' })]),
+        completed: one([
+          operationItem({ status: 'completed', title: 'Rejestr umów', updatedAt: isoAgo(3) }),
+        ]),
+        empty: one([]),
+        error: [new Error('down')],
+      },
+    },
+    locale: { control: 'inline-radio', options: ['en', 'pl'] },
+  },
+};
+
 /** Running, needing a check, failed and completed together, in the order the server sends them. */
 export const Mixed: Story = {
-  args: {
-    answers: one([
-      operationItem({
-        status: 'recovery-required',
-        title: 'Faktury korygujące',
-        code: 'OPERATION_INTERRUPTED',
-        updatedAt: isoAgo(9),
-      }),
-      operationItem({ status: 'failed', title: 'Płatności cykliczne', code: 'COMMIT_FAILED' }),
-      runningItem(2, { title: 'Limity płatności' }),
-      runningItem(0, { title: 'Powiadomienia', startedAt: isoAgo(0) }),
-      operationItem({ status: 'completed', title: 'Rejestr umów', updatedAt: isoAgo(3) }),
-    ]),
-  },
+  tags: ['contract'],
+  args: { answers: mixedAnswers },
   play: async ({ canvas }) => {
     const region = await canvas.findByRole('region', { name: 'Background operations' });
     await expect(region).toHaveTextContent('2 running, 1 needs attention');
@@ -159,6 +195,7 @@ export const Mixed: Story = {
 
 /** The result of a run that stalled is checked on its page; there is no retry and no hide. */
 export const RecoveryRequired: Story = {
+  tags: ['contract'],
   args: {
     answers: one([
       operationItem({
@@ -180,6 +217,7 @@ export const RecoveryRequired: Story = {
 
 /** A failed run can be hidden for the session; the panel disappears with its last row. */
 export const FailedHideable: Story = {
+  tags: ['contract'],
   args: { answers: one([operationItem({ status: 'failed', title: 'Płatności cykliczne' })]) },
   play: async ({ canvas, canvasElement }) => {
     const hide = await canvas.findByRole('button', { name: 'Hide Płatności cykliczne' });
@@ -190,6 +228,7 @@ export const FailedHideable: Story = {
 
 /** A Create that finished moments ago stays for a while (the server drops it after 10 minutes). */
 export const CompletedRecently: Story = {
+  tags: ['contract'],
   args: {
     answers: one([
       operationItem({ status: 'completed', title: 'Rejestr umów', updatedAt: isoAgo(3) }),
@@ -204,6 +243,7 @@ export const CompletedRecently: Story = {
 
 /** More than five rows: five are shown, "Show all" opens the rest inline. */
 export const ShowAllOverflow: Story = {
+  tags: ['contract'],
   args: {
     answers: one(
       Array.from({ length: 8 }, (_, index) =>
@@ -221,6 +261,7 @@ export const ShowAllOverflow: Story = {
 
 /** The list is cut by the server limit: the caption says how many of how many are shown. */
 export const TruncatedList: Story = {
+  tags: ['contract'],
   args: {
     answers: [
       {
@@ -242,6 +283,7 @@ export const TruncatedList: Story = {
 
 /** The panel is information, not a control: always open, nothing to collapse. */
 export const AlwaysOpen: Story = {
+  tags: ['contract'],
   args: { answers: one([runningItem(1, { title: 'Limity płatności' })]) },
   play: async ({ canvas }) => {
     const region = await canvas.findByRole('region', { name: 'Background operations' });
@@ -252,6 +294,7 @@ export const AlwaysOpen: Story = {
 
 /** No answer and nothing to show yet: a compact notice with a retry, not an empty panel. */
 export const ErrorNoData: Story = {
+  tags: ['contract'],
   args: { answers: [new Error('down')] },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText("Background operations can't be loaded")).toBeVisible();
@@ -261,6 +304,7 @@ export const ErrorNoData: Story = {
 
 /** A refresh failed: the rows stay, a caption says it is retrying (3 to 60 s backoff). */
 export const ErrorWithData: Story = {
+  tags: ['contract'],
   args: {
     answers: [operationList([runningItem(1, { title: 'Limity płatności' })]), new Error('down')],
   },
@@ -274,6 +318,7 @@ export const ErrorWithData: Story = {
 
 /** A kind or status this build does not know still renders, as a plain row without a link. */
 export const UnknownKindAndStatus: Story = {
+  tags: ['contract'],
   args: {
     answers: one([operationItem({ kind: 'future-kind', status: 'paused', title: undefined })]),
   },
@@ -287,6 +332,7 @@ export const UnknownKindAndStatus: Story = {
 
 /** The same panel in Polish. */
 export const Polish: Story = {
+  tags: ['contract'],
   args: {
     locale: 'pl',
     answers: one([
@@ -309,6 +355,7 @@ export const Polish: Story = {
 
 /** 320 px: long titles wrap onto lines, targets stay at least 44 px, nothing scrolls sideways. */
 export const Mobile320: Story = {
+  tags: ['contract'],
   args: {
     answers: one([
       runningItem(2, {

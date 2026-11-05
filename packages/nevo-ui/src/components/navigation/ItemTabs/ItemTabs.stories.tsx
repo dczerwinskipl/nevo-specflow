@@ -50,6 +50,13 @@ const meta = {
       description: 'Container width in px under which `auto` renders the switcher.',
       table: { defaultValue: { summary: '480' } },
     },
+    density: {
+      control: 'inline-radio',
+      options: ['header', 'rail'],
+      description:
+        'Root height and look: the 56px workspace header slot (rounded tabs, underline), or the 36px split Secondary tab rail (editor tabs).',
+      table: { defaultValue: { summary: 'header' } },
+    },
     labels: {
       control: 'object',
       description: 'Typed replacement for every generated string (English defaults).',
@@ -116,6 +123,33 @@ export const InWorkspaceHeader: Story = {
       frame={(tabs, panel) => (
         <>
           <div className="flex h-14 items-center border-b border-border-subtle px-4">
+            <div className="min-w-0 flex-1">
+              <WorkspaceHeader title="Opened items" identityContent={tabs} />
+            </div>
+          </div>
+          {panel}
+        </>
+      )}
+    />
+  ),
+};
+
+/**
+ * `density="rail"`: the split Secondary's 36px editor-tab rail (`--spacing-tab-rail`): square
+ * touching tabs, 14px labels, 1px separators, the active tab on the panel surface under a neutral
+ * top border, inactive tabs on the darker strip. The rail draws its own divider, so its host row
+ * has no border or padding. Same width policy as the header density.
+ */
+export const InTabRail: Story = {
+  args: { items: sampleItems.slice(0, 4), activeId: sampleItems[1]?.id ?? null, density: 'rail' },
+  render: ({ items, activeId, onActivate: _a, onClose: _c, scope: _s, ...props }) => (
+    <ItemTabsHost
+      {...props}
+      items={items}
+      activeId={activeId}
+      frame={(tabs, panel) => (
+        <>
+          <div className="flex h-tab-rail items-center">
             <div className="min-w-0 flex-1">
               <WorkspaceHeader title="Opened items" identityContent={tabs} />
             </div>

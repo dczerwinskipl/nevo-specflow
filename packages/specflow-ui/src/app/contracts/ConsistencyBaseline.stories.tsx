@@ -21,7 +21,8 @@ function Baseline({ screen = 'task' }: { screen?: 'task' | 'specification' | 'sc
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Contracts/Creation consistency baseline',
+  title: 'SpecFlow/Screens/Application Shell',
+  tags: ['contract'],
   component: Baseline,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof Baseline>;

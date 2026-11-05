@@ -15,6 +15,15 @@ export interface BrandEnvironment {
   ambientSubtle: string;
   ambientMedium: string;
   ambientDeep: string;
+  /**
+   * A darkened, muted tint of the brand primary — suitable as an opaque SURFACE background (a
+   * user's own chat bubble, say) rather than an action fill. `--color-action-primary` itself is
+   * tuned for a button's full-saturation, attention-grabbing fill; using it directly as a message
+   * bubble background read as loud/action-like rather than a quiet "this one is mine" surface
+   * Mixed 55% toward black, the same `mixRgb` mechanism `actionHover`/`focusRing` above already
+   * use for their own derived shades.
+   */
+  surfacePrimary: string;
   appBackgroundImage: string;
   workspaceBackgroundImage: string;
 }
@@ -22,6 +31,7 @@ export interface BrandEnvironment {
 export type BrandEnvironmentStyle = CSSProperties & {
   '--color-brand-primary': string;
   '--color-action-primary-hover': string;
+  '--color-surface-primary': string;
   '--color-focus-ring': string;
   '--drop-shadow-action-glow': string;
   '--background-image-app-base': string;
@@ -47,6 +57,7 @@ export function deriveBrandEnvironment(primary = DEFAULT_BRAND_PRIMARY): BrandEn
     ambientSubtle,
     ambientMedium,
     ambientDeep,
+    surfacePrimary: hexFromRgb(mixRgb(source, black, 0.55)),
     appBackgroundImage: [
       `radial-gradient(ellipse 64% 48% at 12% 0%, ${ambientMedium} 0%, ${ambientSubtle} 44%, transparent 74%)`,
       `radial-gradient(ellipse 44% 34% at 100% 100%, ${ambientDeep} 0%, transparent 72%)`,
@@ -62,6 +73,7 @@ export function brandEnvironmentStyle(primary = DEFAULT_BRAND_PRIMARY): BrandEnv
   return {
     '--color-brand-primary': environment.primary,
     '--color-action-primary-hover': environment.actionHover,
+    '--color-surface-primary': environment.surfacePrimary,
     '--color-focus-ring': environment.focusRing,
     '--drop-shadow-action-glow': `0 0 5px ${environment.actionGlow}`,
     '--background-image-app-base': environment.appBackgroundImage,
@@ -77,6 +89,7 @@ export function renderBrandEnvironmentCss(primary = DEFAULT_BRAND_PRIMARY): stri
   --color-brand-primary: ${environment.primary};
   --color-action-primary: var(--color-brand-primary);
   --color-action-primary-hover: ${environment.actionHover};
+  --color-surface-primary: ${environment.surfacePrimary};
   --color-focus-ring: ${environment.focusRing};
   --background-image-app-base: ${environment.appBackgroundImage};
   --background-image-workspace: ${environment.workspaceBackgroundImage};

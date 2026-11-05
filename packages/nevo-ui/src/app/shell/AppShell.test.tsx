@@ -1,6 +1,8 @@
+// @vitest-environment jsdom
 import { readFile } from 'node:fs/promises';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DesignMetadataProvider } from '@nevo/figma-capture/metadata';
 import { AppShell, resolveAppShellLayout } from './AppShell';
 import {
@@ -106,5 +108,144 @@ describe('workspace content width', () => {
     expect(
       resolveWorkspaceContentWidth(undefined, { bordered: true, inset: false }),
     ).toBeUndefined();
+  });
+});
+
+/**
+ * Regression coverage for the "resize from 1440px to 390px leaves the layout visibly broken for
+ * several seconds" bug: a continuous drag fires one `ResizeObserver` notification per pixel
+ * crossed, and without coalescing, each one committed its own synchronous React state update —
+ * cascading through the whole shell/workspace tree, that per-notification commit cost compounded
+ * faster than the browser could paint between notifications, so the rendered layout fell further
+ * and further behind the real (already-settled) window size. `useElementWidth`/`useDescendantWidth`
+ * now coalesce bursts of notifications through `requestAnimationFrame`, matching the pattern
+ * `ScrollArea`'s `scheduleUpdate` already uses for the same class of problem.
+ */
+describe('AppShell resize measurement coalescing', () => {
+  let rafCallbacks: Map<number, FrameRequestCallback>;
+  let nextRafId: number;
+  let observerCallbacks: ResizeObserverCallback[];
+  let currentWidth: number;
+
+  function flushFrames() {
+    const pending = Array.from(rafCallbacks.values());
+    rafCallbacks.clear();
+    pending.forEach((callback) => callback(0));
+  }
+
+  function fireAllObservers() {
+    observerCallbacks.forEach((callback) =>
+      callback([], {
+        observe() {},
+        unobserve() {},
+        disconnect() {},
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    rafCallbacks = new Map();
+    nextRafId = 0;
+    observerCallbacks = [];
+    currentWidth = 1440;
+
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      const id = ++nextRafId;
+      rafCallbacks.set(id, callback);
+
+      return id;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      rafCallbacks.delete(id);
+    });
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          observerCallbacks.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      width: currentWidth,
+      height: 900,
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      toJSON: () => ({}),
+    }));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('settles on only the latest width after a fast-resize burst, not an intermediate one', () => {
+    let renderCount = 0;
+    function RenderCounter() {
+      renderCount += 1;
+
+      return null;
+    }
+
+    render(
+      <AppShell navigation={<nav>Navigation</nav>}>
+        <RenderCounter />
+      </AppShell>,
+    );
+
+    // Mount settles at the initial (wide) width: the hook's own immediate `update()` call, not the
+    // observer, so no frame flush is required yet.
+    expect(screen.getByRole('navigation')).not.toBeNull();
+    const settledRenderCount = renderCount;
+
+    // Simulate a fast continuous drag from 1440px to 390px: many notifications arrive — crossing
+    // the wide/narrow threshold (1108px) back and forth — before the browser ever gets to paint a
+    // frame between them. Each one only schedules/reschedules a frame; none commits React state yet.
+    for (const width of [1200, 1300, 900, 1000, 700, 500, 390]) {
+      currentWidth = width;
+      fireAllObservers();
+    }
+
+    expect(renderCount).toBe(settledRenderCount); // still nothing committed: all frames pending
+
+    // Exactly one frame now runs — the whole burst coalesces into it, reading the width current at
+    // flush time (390), not any of the intermediate values the burst passed through.
+    act(() => {
+      flushFrames();
+    });
+
+    expect(screen.queryByRole('navigation')).toBeNull(); // narrow: persistent nav became a drawer
+    // A handful of commits for the one flush (shell width settling, then the dependent descendant
+    // measurement reacting to `wide` flipping) — nowhere near one per burst notification (7).
+    expect(renderCount - settledRenderCount).toBeLessThanOrEqual(3);
+  });
+
+  it('keeps a slower drag (one notification per frame) responsive at every step', () => {
+    render(
+      <AppShell navigation={<nav>Navigation</nav>}>
+        <div>Workspace</div>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole('navigation')).not.toBeNull();
+
+    for (const width of [1000, 600, 390]) {
+      currentWidth = width;
+      act(() => {
+        fireAllObservers();
+        flushFrames();
+      });
+    }
+
+    expect(screen.queryByRole('navigation')).toBeNull();
   });
 });

@@ -12,7 +12,7 @@ import {
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentKindOf, documentViewOf } from '../content-kinds/documentContentKinds';
 import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
-import { refusalReason } from '../explorer/useDocumentOperations';
+import { refusalReason } from '../mutationErrors';
 import { MarkdownSourceEditor } from './MarkdownSourceEditor';
 import { operationRunningCode } from './useDocumentSave';
 import {
@@ -38,7 +38,7 @@ import {
 import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
 import { DocumentGuidanceColumn } from '../guidance/DocumentGuidance';
 import { DocumentProperties } from '../frontmatter/DocumentProperties';
-import { useMarkdownLabels } from '../useMarkdownLabels';
+import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
 
 /**

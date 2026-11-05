@@ -15,7 +15,11 @@ import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { browserPage } from '../../test-support/browserPage';
 import type { DemoSessionDetail } from '@nevo/specflow-contracts/demo';
-import { createAuthStore } from '../../auth/store';
+import { authSessionIdentity, createAuthStore } from '../../auth/store';
+import {
+  forgetStartedSessions,
+  rememberStartedSession,
+} from '../../features/sessions/start/handoff/startedSession';
 import { createSpecFlowAppServices } from '../../services';
 import { createSpecFlowRouter } from '../router';
 import { createSpecFlowQueryClient } from '../queryClient';
@@ -24,6 +28,10 @@ import { builtInUiModuleRegistry } from '../ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { createWorkspaceIntegrationApi } from '../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../test-support/specs/overview/api';
+import {
+  fixtureApi as managedSessionFixtureApi,
+  sessionFixture as managedSessionFixture,
+} from '../../features/sessions/managed/managedSession.stories-support';
 import { catalogue } from '../../features/specs/creation/options/creationCatalogue.stories-support';
 import {
   createdSpecFixture,
@@ -36,9 +44,24 @@ import {
   waitForDocumentActions,
 } from '../../features/documents/editor/documentHeaderActions.stories-support';
 
+/**
+ * The id this contract suite's own Managed Session stories navigate to. Distinct from
+ * `managedSession.stories-support`'s own `fixtureSessionId` (used by the component-level Full
+ * Session stories) so the two suites' browser `sessionStorage`-backed composer drafts (keyed by
+ * owner+sessionId, see `features/sessions/managed/feed.ts`) never collide; the mock snapshot
+ * content itself ignores the requested id and is the same either way.
+ */
+const connectedManagedSessionId = '00000000-0000-4000-8000-0000000000c1';
+/** The identity `Connected`'s auth store resolves to: what a started Session is remembered under. */
+const storyOwner = authSessionIdentity({
+  authenticationRequired: false,
+  authenticated: false,
+  user: { id: 'story', name: 'Demo' },
+  loginMethods: { password: { enabled: false }, oidc: [] },
+});
 const createResponseControl = { fail: () => undefined as void };
 export { createResponseControl };
-const historyControl = { back: () => undefined as void };
+const historyControl = { back: () => undefined as void, forward: () => undefined as void };
 /** Lets a story make a document disappear from the Runtime behind the open tabs back. */
 const tabsControl = { removeExternally: (_id: string) => undefined as void };
 function Connected({
@@ -49,6 +72,7 @@ function Connected({
   longFilename = false,
   threeDocuments = false,
   historyFromOverview = false,
+  previousPath,
   browserWindow,
   createOutcome = 'success',
 }: {
@@ -57,6 +81,10 @@ function Connected({
   threeDocuments?: boolean;
   longFilename?: boolean;
   historyFromOverview?: boolean;
+  /** The entry `historyFromOverview` pushes before `path`; defaults to the Specifications
+   * overview (the original use), but a story may override it (e.g. a Document) so that
+   * `historyControl.back()`/`.forward()` moves between two specific routes of its own choosing. */
+  previousPath?: string;
   browserWindow?: Window;
   createOutcome?: 'success' | 'failure' | 'unknown' | 'pending' | 'deferred-failure';
   catalogueState?: 'ready' | 'loading' | 'error';
@@ -184,6 +212,11 @@ function Connected({
     const services = createSpecFlowAppServices({
       authStore: auth,
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
+      // The canonical Full Session route (`/sessions/:sessionId`, ManagedSession) is top-level and
+      // unrelated to this fixture's demo Specification/documents graph; a fixed, realistic
+      // Managed-Sessions snapshot lets contract stories navigate there and see real content instead
+      // of an error/not-found state.
+      managedSessionsApi: managedSessionFixtureApi(managedSessionFixture()),
       specsOverviewApi: {
         getOverview: async (collection, signal) => {
           const data = await overview.getOverview(collection, signal);
@@ -324,7 +357,9 @@ function Connected({
       history.flush();
     } else {
       history = createMemoryHistory({
-        initialEntries: historyFromOverview ? ['/?collection=archive', path] : [path],
+        initialEntries: historyFromOverview
+          ? [previousPath ?? '/?collection=archive', path]
+          : [path],
       });
     }
 
@@ -343,17 +378,20 @@ function Connected({
     longFilename,
     threeDocuments,
     historyFromOverview,
+    previousPath,
     browserWindow,
     createOutcome,
   ]);
   useEffect(() => {
     if (historyFromOverview) {
       historyControl.back = () => setup.router.history.back();
+      historyControl.forward = () => setup.router.history.forward();
     }
 
     return () => {
       if (historyFromOverview) {
         historyControl.back = () => undefined;
+        historyControl.forward = () => undefined;
       }
     };
   }, [setup, historyFromOverview]);
@@ -377,7 +415,7 @@ function Connected({
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Connected creation consistency',
+  title: 'SpecFlow/Screens/Application Shell',
   component: Connected,
   excludeStories: ['ConnectedApplication', 'createResponseControl'],
   parameters: { layout: 'fullscreen' },
@@ -561,9 +599,14 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
     await userEvent.click(input);
     await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Unsaved line');
-    // The region's close closes every tab, asking once about the unsaved documents.
+    // Close all (the document's ... menu; the tab rail has no region close) closes every tab,
+    // asking once about the unsaved documents.
     const close = () =>
-      userEvent.click(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' }));
+      invokeDocumentAction(
+        within(canvasElement.querySelector<HTMLElement>('[data-workspace-surface="secondary"]')!),
+        userEvent,
+        'Zamknij wszystkie dokumenty',
+      );
     const dialog = () => within(document.body).findByRole('alertdialog');
 
     // Keep editing: the pane and the draft stay.
@@ -724,7 +767,7 @@ export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
 /** Medium (split, document panel below the column threshold): strip, contents icon and the close. */
 export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
   args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await viewport(1280, 900);
     await openFromTree(canvas, userEvent, /^plan.md/);
     await canvas.findByRole('button', { name: 'Otwórz spis treści' });
@@ -744,7 +787,11 @@ export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
         throw new Error(`The contents icon is not after the strip (gap ${gap})`);
       }
     });
-    await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
+    // Close all lives in the ... menu on the tab rail, reachable next to the strip.
+    const secondary = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"]',
+    )!;
+    await expect(within(secondary).getByRole('button', { name: 'Więcej akcji' })).toBeVisible();
   },
 };
 
@@ -794,7 +841,7 @@ export const ShortCreateAndBranch: Story = {
     await settleViewport();
     await viewport(390, 430);
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
-    await expect(canvas.getByRole('heading', { name: 'Co chcesz opisać?' })).toHaveFocus();
+    await expect(canvas.getByRole('heading', { name: 'Nowa specyfikacja' })).toHaveFocus();
     const input = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
     await userEvent.click(input);
     await userEvent.type(input, 'Logowanie SSO');
@@ -964,23 +1011,56 @@ export const HashAnchorClearsTheFloatingRow: Story = {
     );
   },
 };
+/**
+ * Full Session -> Context -> the Specification's Documents -> the Documents "Back to the Session"
+ * link, with the Specification's collection kept on every hop. The Session is opened the way the
+ * app opens a Session it started (`rememberStartedSession`), because only such a Session carries
+ * a Specification for Context to link to. Context's Documents row remembers the Session
+ * (`useSessionContextNavigation` -> `useRememberSessionReturn`), which is what makes the link show.
+ * The composer draft must also outlive the round trip.
+ */
 export const SessionContextRoundTrip: Story = {
-  args: { path: '/specs/api-integration/sessions/session?collection=archive' },
+  args: { path: `/sessions/${connectedManagedSessionId}?collection=archive` },
+  loaders: [
+    () => {
+      forgetStartedSessions();
+      rememberStartedSession(storyOwner, connectedManagedSessionId, {
+        providerId: 'codex',
+        providerIcon: 'codex',
+        providerTitle: 'Codex',
+        specification: {
+          status: 'ready',
+          value: { id: 'api-integration', key: 'SPEC-01', title: 'Logowanie SSO' },
+        },
+      });
+    },
+  ],
   play: async ({ canvas, userEvent }) => {
     await viewport(1440, 900);
-    const composer = await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' });
+    const composer = await canvas.findByRole('textbox', { name: 'Wiadomość' });
     await userEvent.type(composer, 'Zachowany szkic wiadomości');
-    await userEvent.click(canvas.getByRole('button', { name: /Dokumenty Pliki/ }));
-    await userEvent.click(canvas.getByRole('button', { name: /Specification specification.md/ }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Otwórz w Documents' }));
-    // The document opens in Preview by default.
-    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
-    await canvas.findByRole('textbox', { name: 'Treść specification.md' });
-    await userEvent.click(canvas.getByRole('link', { name: 'Sesja Spec Writera' }));
-    await expect(
-      await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' }),
-    ).toHaveValue('Zachowany szkic wiadomości');
-    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
+    const contextTab = canvas.queryByRole('tab', { name: 'Kontekst' });
+    if (contextTab && contextTab.getAttribute('aria-selected') !== 'true') {
+      await userEvent.click(contextTab);
+    }
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'Dokumenty' }));
+    // Archived stays archived on the Documents screen. The visit opens the Specification's main
+    // file by itself (`startDocument.ts`), so the route settles on it.
+    await waitFor(() =>
+      expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
+        '/specs/api-integration/documents/spec?collection=archive',
+      ),
+    );
+    // The way back is read only now: the Documents list's own link unmounts when the main file
+    // opens, and the open document's pane shows the link the reader actually uses.
+    await userEvent.click(await canvas.findByRole('link', { name: 'Wróć do sesji' }));
+    await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue(
+      'Zachowany szkic wiadomości',
+    );
+    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent(
+      `/sessions/${connectedManagedSessionId}?collection=archive`,
+    );
     await settleViewport();
     await viewport(390);
     await settleViewport(390, 844);
@@ -1019,21 +1099,23 @@ export const LaterSessionConfiguration: Story = {
   args: { path: '/specs/api-integration/sessions/new?collection=archive' },
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
-    await canvas.findByRole('heading', { name: 'Z kim chcesz pracować?' });
+    await canvas.findByRole('heading', { level: 1, name: 'Nowa sesja' });
     await expect(canvas.queryByText(/wykonawcę pierwszej sesji/)).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: 'codex model A' }),
     );
     await settleViewport(390, 844);
-    await userEvent.click(canvas.getByRole('link', { name: 'Sesje' }));
-    const dialog = await within(document.body).findByRole('alertdialog');
-    await expect(dialog).toHaveTextContent('Porzucić konfigurację?');
-    await expect(dialog).toHaveTextContent('Niezapisane ustawienia zostaną utracone.');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Kontynuuj' }));
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
       'codex model A',
     );
+    // Nothing was saved before Start, so leaving needs no confirmation (new-session-ui-spec.md,
+    // scenario (g)): the list opens at once, in place of the start form.
+    await userEvent.click(canvas.getByRole('button', { name: /Otwórz nawigację|Open navigation/ }));
+    const drawer = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(drawer).getByRole('link', { name: 'Specyfikacje' }));
+    await canvas.findByRole('heading', { name: 'Specyfikacje', level: 1 });
+    await expect(within(document.body).queryByRole('alertdialog')).toBeNull();
   },
 };
 export const DocumentFocusAndDisclosure: Story = {

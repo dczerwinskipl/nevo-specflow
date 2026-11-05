@@ -2,10 +2,10 @@ import { forwardRef, type HTMLAttributes } from 'react';
 import { cn } from '../../../lib';
 import { Icon, type IconGlyph } from '../../foundations/Icon';
 
-export type InlineNoteTone = 'info' | 'attention';
+export type InlineNoteTone = 'info' | 'attention' | 'danger';
 
 export interface InlineNoteProps extends HTMLAttributes<HTMLParagraphElement> {
-  /** `info` is a calm explanation; `attention` marks a caveat the reader should not miss. */
+  /** `info` is a calm explanation; `attention` a caveat the reader should not miss; `danger` a failure or a missing required thing. */
   tone?: InlineNoteTone;
   /** Override the tone icon. Pass null to show the text alone. */
   icon?: IconGlyph | null;
@@ -14,17 +14,20 @@ export interface InlineNoteProps extends HTMLAttributes<HTMLParagraphElement> {
 const toneIcons = {
   info: 'info',
   attention: 'triangle-alert',
+  danger: 'circle-alert',
 } as const satisfies Record<InlineNoteTone, IconGlyph>;
 
 const toneIconClasses = {
   info: 'text-content-muted',
   attention: 'text-status-attention',
+  danger: 'text-status-danger',
 } as const satisfies Record<InlineNoteTone, string>;
 
 /**
  * A short explanatory sentence with a leading icon and no container: the quiet counterpart of
  * `Alert`. Use it for a fact or caveat that belongs to the content next to it (a note under a
- * value, the reason an action is unavailable). It carries no live-region role; wrap it in one
+ * value, the reason an action is unavailable). `tone` is `info`, `attention` or `danger` (a failure
+ * or a missing required thing; the text, not the colour, carries the meaning). It carries no live-region role; wrap it in one
  * (or use `Alert`) when it must be announced.
  */
 export const InlineNote = forwardRef<HTMLParagraphElement, InlineNoteProps>(function InlineNote(

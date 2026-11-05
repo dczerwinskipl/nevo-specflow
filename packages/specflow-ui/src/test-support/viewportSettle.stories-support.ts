@@ -8,14 +8,18 @@ export async function settleViewport(width = 1440, height = 900, anchor?: () => 
   await (await browserPage()).viewport(width, height);
   await waitFor(() => {
     const layout = document.querySelector('[data-layout]')?.getAttribute('data-layout');
-    if (layout && layout !== (width < 840 ? 'stacked' : 'split')) {
+    // Below 730 nothing splits; from 840 everything does. In between a `split="dynamic"` workspace
+    // splits only while a runtime Secondary is shown (730 = its two minimum panes), so either
+    // layout is legitimate there and the caller's own assertions decide which one it expects.
+    const expected = width < 730 ? 'stacked' : width >= 840 ? 'split' : undefined;
+    if (layout && expected && layout !== expected) {
       throw new Error('Responsive layout has not settled');
     }
 
     const active = document.querySelector<HTMLElement>(
       '[data-workspace-surface="secondary"][data-workspace-active="true"]',
     );
-    if (width < 840 && active) {
+    if (layout === 'stacked' && active) {
       const bounds = active.getBoundingClientRect();
       if (
         active.dataset.workspaceMotion !== 'idle' ||

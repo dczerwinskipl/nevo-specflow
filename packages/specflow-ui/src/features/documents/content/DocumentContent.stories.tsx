@@ -127,15 +127,19 @@ function DocumentLifecycle({
 }
 
 const meta = {
-  title: 'SpecFlow/Features/Documents/Content lifecycle',
+  title: 'SpecFlow/Features/Document Content',
   component: DocumentLifecycle,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof DocumentLifecycle>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Pending: Story = {};
-export const LongContent: Story = { args: { cached: true, stress: true } };
+export const Default: Story = {
+  args: { cached: true },
+  argTypes: { cached: { control: 'boolean' }, stress: { control: 'boolean' } },
+};
+export const Pending: Story = { tags: ['contract'] };
+export const LongContent: Story = { tags: ['contract'], args: { cached: true, stress: true } };
 export const Cached: Story = {
   args: { cached: true },
   tags: ['contract'],

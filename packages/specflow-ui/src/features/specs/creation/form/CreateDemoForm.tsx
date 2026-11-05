@@ -3,18 +3,16 @@ import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
 import { Separator, useWorkspaceCapabilities } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import {
-  ApplicationContextLine,
-  ApplicationFlowBack,
-} from '../../../../app/navigation/ApplicationLocation';
+import { ApplicationFlowBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import {
   initialAgentChoice,
   providerDefaultEffort,
+  startCatalogueFromDemo,
   type AgentChoice,
-} from '../options/agentChoice';
+} from '../../../sessions';
 import { CreateAgentSection } from '../options/CreateAgentSection';
 import { CreateBasicsSection } from '../options/CreateBasicsSection';
 import { ArchetypeSection } from '../options/ArchetypeSection';
@@ -34,7 +32,6 @@ import { CreateMethodChoice } from '../options/CreateMethodChoice';
 import { CreateShell } from '../CreateShell';
 import { createReadiness } from './createReadiness';
 import { demoCreationKeys } from '../api/api.demo';
-import { SessionWorkspaceSummary } from './SessionWorkspaceSummary';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
 import {
@@ -49,8 +46,6 @@ import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 export interface CreateDemoFormProps {
   catalogue: DemoCatalogue;
-  /** Present when only a Session is created for an existing specification. */
-  specId?: string;
   onCreated: (id: string, document?: string) => void;
   onSession: (spec: string, session: string) => void;
   configurationUnavailable: boolean;
@@ -66,7 +61,6 @@ export interface CreateDemoFormProps {
  */
 export function CreateDemoForm({
   catalogue,
-  specId,
   onCreated,
   onSession,
   configurationUnavailable,
@@ -87,15 +81,16 @@ export function CreateDemoForm({
     fetch: (signal) => demoCreationApi.createOptions(signal),
     isForbidden: (error) => isHttpClientError(error) && error.status === 403,
     refetchOnWindowFocus: true,
-    enabled: !specId,
   });
   const { options: workspaceOptions } = createOptions;
   const place = useWorkspacePlace(createOptions, announce);
 
-  const [method, setMethod] = useState(specId ? 'ai' : ''),
+  const [method, setMethod] = useState(''),
     [title, setTitle] = useState(''),
     [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(initialArchetypeChoice),
-    [agent, setAgent] = useState<AgentChoice>(() => initialAgentChoice(catalogue));
+    [agent, setAgent] = useState<AgentChoice>(() =>
+      initialAgentChoice(startCatalogueFromDemo(catalogue)),
+    );
 
   const archetype = selectedArchetype(catalogue, archetypeChoice);
   const optionalDocumentIds = archetype ? tickedTemplates(archetype, archetypeChoice) : [];
@@ -113,7 +108,6 @@ export function CreateDemoForm({
   const configurationDirty = configurationSnapshot !== initialConfiguration;
 
   const { state, flags, actions } = useCreateDemoSpecification({
-    specId,
     catalogueRevision: catalogue.revision,
     snapshot: configurationSnapshot,
     onCreated,
@@ -136,9 +130,8 @@ export function CreateDemoForm({
     recovery ||
     forbiddenCreate ||
     configurationUnavailable ||
-    (!specId && createOptions.forbidden);
+    createOptions.forbidden;
   const { prerequisite, canSubmit } = createReadiness({
-    specId,
     method,
     title,
     catalogue,
@@ -191,7 +184,7 @@ export function CreateDemoForm({
   };
 
   const leaveDialog = <CreateLeaveDialog guard={leaveGuard} />;
-  if (!method && !specId) {
+  if (!method) {
     return (
       <CreateShell>
         <CreateMethodChoice onChoose={setMethod} />
@@ -210,11 +203,9 @@ export function CreateDemoForm({
       ? t('create.submit.checkOperation')
       : uncertain
         ? t('create.submit.checkResult')
-        : specId
-          ? t('create.submit.openSession')
-          : method === 'ai'
-            ? t('create.submit.createAndOpen')
-            : t('create.submit.create');
+        : method === 'ai'
+          ? t('create.submit.createAndOpen')
+          : t('create.submit.create');
   const note =
     uncertain || recovery
       ? t('create.footer.operationKept')
@@ -223,42 +214,33 @@ export function CreateDemoForm({
         : t('create.footer.manualNote');
 
   const sections: ReactNode[] = [
-    !specId && (
-      <CreateBasicsSection key="basics" title={title} locked={locked} onTitleChange={setTitle} />
-    ),
-    !specId && (
-      <ArchetypeSection
-        key="archetype"
-        state={{ status: 'ready', catalogue }}
-        choice={archetypeChoice}
-        locked={locked}
-        onChange={setArchetypeChoice}
-      />
-    ),
+    <CreateBasicsSection key="basics" title={title} locked={locked} onTitleChange={setTitle} />,
+    <ArchetypeSection
+      key="archetype"
+      state={{ status: 'ready', catalogue }}
+      choice={archetypeChoice}
+      locked={locked}
+      onChange={setArchetypeChoice}
+    />,
     method === 'ai' && (
       <CreateAgentSection
         key="agent"
         catalogue={catalogue}
-        specId={specId}
         choice={agent}
         locked={locked}
         onChange={setAgent}
       />
     ),
-    specId ? (
-      <SessionWorkspaceSummary key="git" location={catalogue.currentLocation} />
-    ) : (
-      <CreateWorkspaceSection
-        key="git"
-        headingId={gitHeadingId}
-        createOptions={createOptions}
-        place={place}
-        locked={locked}
-        title={title}
-        onRefresh={refreshOptions}
-        onAnnounce={announce}
-      />
-    ),
+    <CreateWorkspaceSection
+      key="git"
+      headingId={gitHeadingId}
+      createOptions={createOptions}
+      place={place}
+      locked={locked}
+      title={title}
+      onRefresh={refreshOptions}
+      onAnnounce={announce}
+    />,
   ].filter(Boolean);
   // Under the last section, in the scrolling form: what went wrong and how to go on. The pinned
   // footer stays one line; a failure is revealed here (`useRevealFailure`).
@@ -302,7 +284,6 @@ export function CreateDemoForm({
 
   return (
     <CreateShell
-      specId={specId}
       form={{
         onSubmit: (event) => {
           event.preventDefault();
@@ -332,20 +313,14 @@ export function CreateDemoForm({
         <CreateFormHeader
           headingRef={headingRef}
           lead={
-            specId ? (
-              <ApplicationContextLine className="mb-0" specId={specId} view="new-session" />
-            ) : (
-              <ApplicationFlowBack
-                label={t('create.changeMethod')}
-                disabled={locked}
-                onBack={() => setMethod('')}
-              />
-            )
+            <ApplicationFlowBack
+              label={t('create.changeMethod')}
+              disabled={locked}
+              onBack={() => setMethod('')}
+            />
           }
-          heading={specId ? t('create.heading.session') : t('create.heading.specification')}
-          subheading={
-            specId ? t('create.subheading.session') : t('create.subheading.withArchetype')
-          }
+          heading={t('create.heading.specification')}
+          subheading={t('create.subheading.withArchetype')}
         />
         {sections.flatMap((section, index) => [
           index > 0 ? <Separator key={`separator-${index}`} /> : null,

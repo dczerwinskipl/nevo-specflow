@@ -49,7 +49,7 @@ function RestoreFixture({ target }: { readonly target: number }) {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Restore Scroll Position',
+  title: 'SpecFlow/Features/Document Content',
   component: RestoreFixture,
   args: { target: 30 },
   parameters: { layout: 'padded' },

@@ -10,6 +10,7 @@ import {
 import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { typographyTextStyleRef } from '../../../design-system/resources';
+import { useKeyboardAvoidance } from '../../behaviors/useVisualViewportInset';
 import { IconButton } from '../../actions/IconButton';
 import { ScrollArea } from '../../layout/ScrollArea';
 
@@ -83,17 +84,24 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
       showClose = true,
       side = 'right',
       size = 'default',
+      style,
       ...props
     },
     ref,
   ) {
     const capture = useDesignMetadata('Drawer');
+    // Bottom sheets only: lifted above the on-screen keyboard and capped to the visible area.
+    const keyboard = useKeyboardAvoidance(ref, {
+      mode: side === 'bottom' ? 'bottom' : null,
+      maxHeightCap: size === 'compact' ? '65dvh' : '100dvh - 3rem',
+      margin: 48,
+    });
 
     return (
       <Dialog.Portal container={container}>
         <DrawerOverlay className={overlayClassName} />
         <Dialog.Content
-          ref={ref}
+          ref={keyboard.ref}
           className={cn(
             drawerPanelBaseClassName,
             drawerSideClassNames[side],
@@ -101,6 +109,7 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
             className,
           )}
           data-side={side}
+          style={{ ...style, ...keyboard.style }}
           {...props}
           {...capture}
         >

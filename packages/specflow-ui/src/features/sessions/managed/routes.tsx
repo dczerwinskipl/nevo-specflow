@@ -1,11 +1,16 @@
-import { useCallback, useSyncExternalStore } from 'react';
-import { createRoute } from '@tanstack/react-router';
+import { useMemo } from 'react';
+import { createRoute, useNavigate } from '@tanstack/react-router';
 import { AppWorkspaceProvider } from '@nevo/ui';
 import { appRoute } from '../../../app/router/root';
+import { parseSpecificationCollection } from '../../../app/router/search';
+import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
-import { authSessionIdentity } from '../../../auth/store';
+import { useAuthOwner } from './useAuthOwner';
+import { realRouteSessionContext } from './context/sessionContextTypes';
+import { startedSessionContext, startedSessionOf } from '../start/handoff/startedSession';
+import { ManagedSessionStart } from '../start/screen/ManagedSessionStart';
 import { ManagedSession } from './ManagedSession';
-import { CreateSession } from './creation/CreateSession';
+import { useSessionContextNavigation } from './useSessionContextNavigation';
 
 export const managedNewSessionRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -15,26 +20,45 @@ export const managedNewSessionRoute = createRoute({
 export const managedSessionRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/sessions/$sessionId',
+  // The Specification's collection the Session was opened from; Context → Documents hands it on so
+  // an archived Specification is not reopened under `current`.
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: parseSpecificationCollection(search),
+  }),
   component: ManagedSessionRoute,
 });
 function ManagedSessionRoute() {
-  const { sessionId } = managedSessionRoute.useParams(),
-    services = useAppServices();
-  const subscribe = useCallback(
-    (listener: () => void) => services.authStore.subscribe(listener),
-    [services.authStore],
-  );
-  const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
-  const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
-  const owner = auth.status === 'ready' ? authSessionIdentity(auth.session) : 'unavailable';
+  const { sessionId } = managedSessionRoute.useParams();
 
+  return <ManagedSessionRouteView sessionId={sessionId} />;
+}
+
+/** The Session route's composition for one `sessionId`; the router keeps it mounted across ids. */
+export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
+  const services = useAppServices();
+  const owner = useAuthOwner() ?? 'unavailable';
+  const { onOpenSpecification, onOpenDocuments } = useSessionContextNavigation(sessionId);
+  const started = startedSessionOf(owner, sessionId);
+  const sessionContext = useMemo(
+    () => (started ? startedSessionContext(started) : realRouteSessionContext),
+    [started],
+  );
+
+  // `browserHistory`: browser/Android Back steps back inside the Context/Work Secondary (sub-page →
+  // parent → hide) before leaving the Session (secondary-navigation.md, "Browser and system Back").
+  // `scopeKey`: the router keeps this component mounted from `/sessions/A` to `/sessions/B`, so the
+  // provider would keep A's open tabs; the Session's identity scopes them.
   return (
-    <AppWorkspaceProvider>
+    <AppWorkspaceProvider browserHistory scopeKey={`${owner}:${sessionId}`}>
       <ManagedSession
         key={owner + sessionId}
         api={services.managedSessionsApi}
         sessionId={sessionId}
         owner={owner}
+        // A Session started here keeps the context it was started with (its Specification, or none).
+        sessionContext={sessionContext}
+        onOpenSpecification={onOpenSpecification}
+        onOpenDocuments={onOpenDocuments}
       />
     </AppWorkspaceProvider>
   );
@@ -42,19 +66,30 @@ function ManagedSessionRoute() {
 
 function NewManagedSession() {
   const services = useAppServices();
-  const subscribe = useCallback(
-    (listener: () => void) => services.authStore.subscribe(listener),
-    [services.authStore],
-  );
-  const readAuth = useCallback(() => services.authStore.getState(), [services.authStore]);
-  const auth = useSyncExternalStore(subscribe, readAuth, readAuth);
-  if (auth.status !== 'ready') {
+  const navigate = useNavigate();
+  const collection = useApplicationCollection();
+  const owner = useAuthOwner();
+  if (owner === undefined) {
     return null;
   }
 
-  const owner = authSessionIdentity(auth.session);
-
-  return <CreateSession key={owner} owner={owner} api={services.managedSessionsApi} />;
+  return (
+    <ManagedSessionStart
+      key={owner}
+      owner={owner}
+      api={services.managedSessionsApi}
+      // The start screen is replaced by the Session (history replace): Back does not return to an
+      // empty start state.
+      onOpenSession={(sessionId) =>
+        void navigate({
+          to: '/sessions/$sessionId',
+          params: { sessionId },
+          search: { collection },
+          replace: true,
+        })
+      }
+    />
+  );
 }
 
 export const managedSessionAppRoutes = [managedNewSessionRoute, managedSessionRoute] as const;

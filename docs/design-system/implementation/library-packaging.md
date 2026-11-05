@@ -35,6 +35,27 @@ base. Consumers import it once. Splitting the global base/reset from component a
 future compatibility project because it changes application rendering responsibility; do not create
 an undocumented second CSS path in an unrelated component change.
 
+## Typography and shipped fonts
+
+The design system ships its sans-serif face. Inter (variable, weights 100-900, SIL OFL 1.1) is
+bundled with `@nevo/ui`; consumers do not install, link or fetch it separately, and no CDN or
+runtime network request is involved. `--font-sans` in `design-system.css` names `Inter` first, so
+text measures the same on every machine instead of falling back to Segoe UI, DejaVu Sans or
+another system font. Geometry-sensitive stories and tests may rely on this.
+
+- The `@font-face` rules live in `packages/nevo-ui/src/design-system/fonts.css`. They cover the
+  Latin and Latin Extended subsets (Latin Extended carries the Polish diacritics), use
+  `font-display: swap`, and rely on `unicode-range` so a subset is fetched only when a glyph needs it.
+- The woff2 files come from the exact-pinned `@fontsource-variable/inter` dev dependency.
+  `scripts/ship-fonts.mjs` copies them to `dist/fonts/` after `vite build` and makes
+  `dist/styles.css` start with `@import './fonts/inter.css';`. Vite library mode would otherwise
+  inline the fonts as base64 into `styles.css`; `verify-package.mjs` fails the build if it does.
+- Consumers import `@nevo/ui/styles.css` as before; their Tailwind/Vite pipeline resolves the import
+  and emits the font files as hashed assets.
+- `--font-mono` is a system monospace stack and is intentionally not shipped.
+- To add a script (for example Cyrillic) or an italic, extend `fonts.css` with the matching files
+  from the same package; do not link a hosted font.
+
 TypeScript path aliases MAY continue to target source inside this monorepo for fast authoring and
 cross-package checking. The package build is the proof that the external boundary does not depend on
 those aliases.

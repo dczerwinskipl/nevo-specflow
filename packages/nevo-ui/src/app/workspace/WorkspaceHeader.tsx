@@ -29,7 +29,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../components/overlays/Tooltip';
+import { RailTail } from '../../components/navigation/ItemTabs/RailTail';
 import { cn } from '../../lib';
+import { useWorkspaceHeaderIdentityOverride } from './workspaceHeaderIdentityOverride';
 import { WORKSPACE_HEADER_NARROW_MAX_WIDTH } from './workspaceSizing';
 
 export type WorkspaceHeaderActionTone = 'neutral' | 'danger';
@@ -127,6 +129,11 @@ export interface WorkspaceHeaderProps {
   identityContent?: ReactNode;
   /** Primary defaults to h1; contextual Secondary headers use h2. */
   headingLevel?: 1 | 2;
+  /**
+   * The header is the content of a `density="rail"` tab strip (`identityContent` is an `ItemTabs`
+   * rail): the actions continue the strip (`RailTail`) instead of floating on the page after a gap.
+   */
+  tabRail?: boolean;
 }
 
 export interface WorkspaceHeaderLabels {
@@ -502,30 +509,57 @@ export function WorkspaceHeaderIdentity({
 /**
  * Narrow is the MEASURED width of the header frame (not a CSS-only query): which actions are direct
  * decides which are in the menu, and menus portal outside any container query.
+ *
+ * The `ResizeObserver` callback is coalesced through `requestAnimationFrame` (same pattern as
+ * `ScrollArea`'s `scheduleUpdate`): a continuous drag-resize fires one notification per pixel, and
+ * without coalescing each one commits its own synchronous state update, so a burst of them can
+ * commit faster than the browser can paint between them — visibly lagging behind the real width
+ * until the backlog drains. Collapsing a burst to at most one `measure()` per frame, always reading
+ * the latest layout at flush time, bounds that lag to a single frame regardless of notification rate.
  */
 function useNarrowHeader() {
   const ref = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) {
+    if (!element || typeof ResizeObserver === 'undefined') {
       return undefined;
     }
 
     const update = () =>
       setNarrow(element.getBoundingClientRect().width < WORKSPACE_HEADER_NARROW_MAX_WIDTH);
     update();
-    if (typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
 
-    const observer = new ResizeObserver(update);
+    let frame: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        update();
+      });
+    });
     observer.observe(element);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    };
   }, []);
 
   return { ref, narrow };
+}
+
+function ActionsWrapper({ tabRail, children }: { tabRail: boolean; children: ReactNode }) {
+  return tabRail ? (
+    <RailTail className="gap-1.5">{children}</RailTail>
+  ) : (
+    <div className="flex shrink-0 items-center gap-1.5">{children}</div>
+  );
 }
 
 /** One owner of action placement for desktop headers, including custom Secondary content. */
@@ -535,27 +569,35 @@ export function WorkspaceHeaderFrame({
   labels: labelsProp,
   menu = 'default',
   className,
+  tabRail = false,
 }: {
   content: ReactNode;
   actions?: readonly WorkspaceHeaderAction[];
   labels?: Partial<WorkspaceHeaderLabels>;
   menu?: WorkspaceHeaderMenu;
   className?: string;
+  /** See `WorkspaceHeaderProps.tabRail`. */
+  tabRail?: boolean;
 }) {
   const { ref, narrow } = useNarrowHeader();
   const resolved = resolveWorkspaceHeaderActions(actions, narrow ? 'narrow' : 'wide');
   const labels = { ...defaultWorkspaceHeaderLabels, ...labelsProp };
+  const identityOverride = useWorkspaceHeaderIdentityOverride();
 
   return (
     <div
-      className={cn('flex w-full min-w-0 items-center justify-between gap-3', className)}
+      className={cn(
+        'flex w-full min-w-0 items-center justify-between',
+        tabRail ? 'items-stretch' : 'gap-3',
+        className,
+      )}
       data-workspace-header="true"
       data-workspace-header-density={narrow ? 'narrow' : 'wide'}
       ref={ref}
     >
-      <div className="min-w-0 flex-1">{content}</div>
+      <div className="min-w-0 flex-1">{identityOverride ?? content}</div>
       {resolved.direct.length > 0 || resolved.overflow.length > 0 ? (
-        <div className="flex shrink-0 items-center gap-1.5">
+        <ActionsWrapper tabRail={tabRail}>
           {resolved.direct.map((action) => (
             <DirectPrimaryAction action={action} key={action.id} narrow={narrow} />
           ))}
@@ -565,7 +607,7 @@ export function WorkspaceHeaderFrame({
             label={labels.moreActions}
             scope={labels.menuScope}
           />
-        </div>
+        </ActionsWrapper>
       ) : null}
     </div>
   );
@@ -583,10 +625,12 @@ export function WorkspaceHeader({
   title,
   headingLevel = 1,
   identityContent,
+  tabRail,
 }: WorkspaceHeaderProps) {
   return (
     <WorkspaceHeaderFrame
       actions={actions}
+      tabRail={tabRail}
       className={className}
       labels={labels}
       menu={menu}
@@ -612,18 +656,40 @@ export function isWorkspaceHeaderElement(
   return isValidElement(node) && node.type === WorkspaceHeader;
 }
 
+interface WorkspaceHeaderActionProps {
+  actions?: readonly WorkspaceHeaderAction[];
+  labels?: Partial<WorkspaceHeaderLabels>;
+  menu?: WorkspaceHeaderMenu;
+}
+
+/**
+ * Either header shape a surface's `header: ReactNode` may be: the default `WorkspaceHeader`, or
+ * `WorkspaceHeaderFrame` directly (what `HeaderOutlet` renders for a screen definition's own
+ * `header` component). Both carry the same `actions`/`labels`/`menu`, so the content-blind
+ * extraction below (`getWorkspaceHeaderActions` and friends, used by `CompactWorkspaceActions` for
+ * a plain `header` element; runtime screens pass their actions to it directly instead) recognizes
+ * both, not just the default one.
+ */
+function isWorkspaceHeaderActionElement(
+  node: ReactNode,
+): node is ReactElement<WorkspaceHeaderActionProps> {
+  return (
+    isValidElement(node) && (node.type === WorkspaceHeader || node.type === WorkspaceHeaderFrame)
+  );
+}
+
 export function getWorkspaceHeaderActions(node: ReactNode): readonly WorkspaceHeaderAction[] {
-  return isWorkspaceHeaderElement(node) ? (node.props.actions ?? []) : [];
+  return isWorkspaceHeaderActionElement(node) ? (node.props.actions ?? []) : [];
 }
 
 export function getWorkspaceHeaderMenu(node: ReactNode): WorkspaceHeaderMenu {
-  return (isWorkspaceHeaderElement(node) ? node.props.menu : undefined) ?? 'default';
+  return (isWorkspaceHeaderActionElement(node) ? node.props.menu : undefined) ?? 'default';
 }
 
 export function getWorkspaceHeaderLabels(node: ReactNode): WorkspaceHeaderLabels {
   return {
     ...defaultWorkspaceHeaderLabels,
-    ...(isWorkspaceHeaderElement(node) ? node.props.labels : undefined),
+    ...(isWorkspaceHeaderActionElement(node) ? node.props.labels : undefined),
   };
 }
 

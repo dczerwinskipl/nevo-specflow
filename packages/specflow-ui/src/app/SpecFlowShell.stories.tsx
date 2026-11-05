@@ -369,6 +369,7 @@ function CatalogueCacheProbe({ requestCount }: { requestCount: () => number }) {
 const meta = {
   title: 'SpecFlow/Screens/Application Shell',
   component: RoutedApplication,
+  excludeStories: ['RoutedApplication'],
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof RoutedApplication>;
 
@@ -431,13 +432,48 @@ export const Specs: Story = {
   tags: ['visual'],
   parameters: { chromatic: { disableSnapshot: false } },
 };
-export const Playground: Story = { args: { path: '/ui-playground' } };
-export const AuthenticationRequired: Story = { args: { authMode: 'required' } };
+export const Default: Story = {
+  args: { path: '/ui-playground' },
+  argTypes: {
+    authMode: {
+      control: 'select',
+      options: [
+        'local',
+        'required',
+        'authenticated',
+        'authenticated-refresh-failure',
+        'unavailable',
+      ],
+    },
+    locale: { control: 'inline-radio', options: ['en', 'pl'] },
+    path: {
+      control: 'select',
+      options: ['/', '/ui-playground', '/login', '/specs/admission?collection=current'],
+    },
+    specsStatus: { control: 'inline-radio', options: [undefined, 401, 403] },
+    navigationScenario: {
+      control: 'select',
+      options: [
+        undefined,
+        'attention',
+        'partial',
+        'stale',
+        'unavailable',
+        'long',
+        'identity',
+        'revoked',
+      ],
+    },
+  },
+};
+export const AuthenticationRequired: Story = { tags: ['contract'], args: { authMode: 'required' } };
 export const AlreadyAuthenticatedLogin: Story = {
+  tags: ['contract'],
   args: { authMode: 'authenticated', path: '/login' },
 };
-export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
+export const RuntimeUnavailable: Story = { tags: ['contract'], args: { authMode: 'unavailable' } };
 export const SpecsSessionExpired: Story = {
+  tags: ['integration'],
   args: { authMode: 'authenticated', specsStatus: 401 },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Welcome back' });
@@ -451,6 +487,7 @@ export const SpecsSessionExpired: Story = {
   },
 };
 export const SpecsForbidden: Story = {
+  tags: ['integration'],
   args: { authMode: 'authenticated', specsStatus: 403 },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Access denied' });
@@ -466,8 +503,9 @@ export const SpecsForbidden: Story = {
     }
   },
 };
-export const Polish: Story = { args: { locale: 'pl' } };
+export const Polish: Story = { tags: ['contract'], args: { locale: 'pl' } };
 export const LocalAccount: Story = {
+  tags: ['integration'],
   args: { authMode: 'local' },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Local User/ }));
@@ -484,6 +522,7 @@ export const LocalAccount: Story = {
 };
 
 export const AuthenticatedAccount: Story = {
+  tags: ['integration'],
   args: { authMode: 'authenticated' },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
@@ -504,6 +543,7 @@ export const AuthenticatedAccount: Story = {
 };
 
 export const LogoutSuccess: Story = {
+  tags: ['integration'],
   args: { authMode: 'authenticated' },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
@@ -520,6 +560,7 @@ export const LogoutSuccess: Story = {
 };
 
 export const LogoutRefreshFailure: Story = {
+  tags: ['integration'],
   args: { authMode: 'authenticated-refresh-failure' },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
@@ -536,6 +577,7 @@ export const LogoutRefreshFailure: Story = {
 };
 
 export const Navigation: Story = {
+  tags: ['integration'],
   play: async ({ canvas, canvasElement, userEvent }) => {
     const rowLink = await canvas.findByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
@@ -1024,6 +1066,7 @@ export const NavigationArchiveSpecification: Story = {
 };
 
 export const MobileNavigation: Story = {
+  tags: ['integration'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: 'Open navigation' }));

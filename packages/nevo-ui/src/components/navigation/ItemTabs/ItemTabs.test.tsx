@@ -12,10 +12,20 @@ import { useOpenedItems } from './useOpenedItems';
 
 let containerWidth = 1000;
 const observers: (() => void)[] = [];
+let frames = new Map<number, FrameRequestCallback>();
 
 beforeEach(() => {
   containerWidth = 1000;
   observers.length = 0;
+  frames = new Map();
+  let nextFrame = 0;
+  // The width hook coalesces ResizeObserver notifications through requestAnimationFrame.
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++nextFrame, callback);
+
+    return nextFrame;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -77,7 +87,12 @@ function renderTabs(props: Partial<ItemTabsProps> = {}) {
 
 function resize(width: number) {
   containerWidth = width;
-  act(() => observers.forEach((callback) => callback()));
+  act(() => {
+    observers.forEach((callback) => callback());
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach((callback) => callback(0));
+  });
 }
 
 describe('ItemTabs', () => {
@@ -97,8 +112,137 @@ describe('ItemTabs', () => {
     expect(screen.getByRole('tab', { name: 'item-1.md' })).toBe(tabs[1]);
   });
 
+  it('sizes each tab to its own label, and marks the active one by underline and text only', () => {
+    renderTabs({
+      items: [
+        makeItem('plan', { label: 'Planning', icon: undefined }),
+        makeItem('long', { label: 'Historia pracy agenta', icon: undefined }),
+        makeItem('pinned', { label: 'Planning', icon: undefined, closable: false }),
+      ],
+      activeId: 'plan',
+    });
+    const width = (name: string, index = 0) =>
+      Number.parseFloat(screen.getAllByRole('tab', { name })[index]!.parentElement!.style.width);
+    // jsdom has no layout, so the label is estimated (6.4 px a character); a browser measures it.
+    expect(width('Planning')).toBe(42 + 51);
+    expect(width('Historia pracy agenta')).toBe(42 + 134);
+    // No close slot on a non-closable tab: symmetric padding instead.
+    expect(width('Planning', 1)).toBe(20 + 51);
+    expect(screen.getAllByRole('tab', { name: 'Planning' })[1]!.className).toContain('pr-2.5');
+
+    const active = screen.getAllByRole('tab', { name: 'Planning' })[0]!;
+    expect(active.className).toContain('border-b-action-primary');
+    expect(active.className).toContain('text-content-primary');
+    expect(active.className).not.toMatch(/\bbg-surface-control\b|rounded-t/);
+    expect(active.className).toContain('whitespace-nowrap');
+  });
+
+  describe('density="rail" (the Secondary editor tabs)', () => {
+    const railItems = [
+      makeItem('context', { label: 'Context', icon: undefined, closable: false }),
+      makeItem('history', { label: 'Work history', icon: undefined }),
+      makeItem('files', { label: 'Files', icon: undefined }),
+    ];
+
+    it('is the full 36px rail token and draws the strip with its own divider', () => {
+      renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      const root = screen.getByRole('tablist').parentElement!;
+      expect(root.className).toContain('h-tab-rail');
+      expect(root.className).not.toContain('calc');
+      // The strip continues past the last tab with the same fill and divider as the inactive tabs.
+      const filler = root.lastElementChild as HTMLElement;
+      expect(filler.className).toMatch(/\bbg-tab-strip\b/);
+      expect(filler.className).toMatch(/\bborder-b\b/);
+      expect(filler.className).toContain('border-border-subtle');
+    });
+
+    it('looks like an editor tab: 14px label, 1px separators, no gap, no icon', () => {
+      renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      const tablist = screen.getByRole('tablist');
+      expect(tablist.className).not.toContain('gap-');
+      const [context, history, files] = screen.getAllByRole('tab');
+      for (const tab of [context!, history!, files!]) {
+        expect(tab.className).toContain('text-body-md');
+        expect(tab.className).not.toContain('text-label-sm');
+        expect(tab.className).toContain('border-r-border-subtle');
+        expect(tab.querySelector('svg')).toBeNull();
+      }
+
+      // Active: the panel surface itself (no fill, no bottom border) under a 2px primary top
+      // accent drawn over the 1px top border (the label does not move), never an underline.
+      expect(history!.className).toContain('border-t-border-subtle');
+      expect(history!.className).toContain('before:bg-action-primary');
+      expect(history!.className).toContain('before:h-0.5');
+      expect(files!.className).not.toContain('action-primary');
+      expect(history!.className).toContain('border-b-transparent');
+      expect(history!.className).toContain('text-content-primary');
+      expect(history!.className).not.toMatch(/(^|\s)(hover:)?bg-/);
+      expect(history!.className).not.toContain('border-b-action-primary');
+      // Inactive: the darker strip, its bottom divider, no top edge.
+      expect(files!.className).toContain('bg-tab-strip');
+      expect(files!.className).toContain('border-b-border-subtle');
+      expect(files!.className).toContain('border-t-transparent');
+      // Pinned Context: no x, a pin in the trailing slot (which it keeps, like a closable tab).
+      expect(context!.className).toContain('pr-8');
+      expect(screen.queryByRole('button', { name: 'Close Context' })).toBeNull();
+      expect(document.querySelectorAll('[data-item-pinned="true"]')).toHaveLength(1);
+      // Every closable rail tab shows its x at rest, not only the active or hovered one.
+      const closeFiles = screen.getByRole('button', { name: 'Close Files' });
+      expect(closeFiles.className).toContain('opacity-100');
+      expect(closeFiles.className).not.toContain('opacity-0');
+    });
+
+    it('sizes tabs with the rail metrics: 12px padding and a 7.4px estimated character', () => {
+      renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      const width = (name: string) =>
+        Number.parseFloat(screen.getByRole('tab', { name }).parentElement!.style.width);
+      expect(width('Work history')).toBe(44 + Math.round('Work history'.length * 7.4));
+      // The pinned tab keeps the trailing slot for its pin, so it is sized like a closable tab.
+      expect(width('Context')).toBe(44 + Math.round('Context'.length * 7.4));
+    });
+
+    it('shows the dirty dot in the glyph slot of an iconless tab and reserves its width', () => {
+      renderTabs({
+        items: [
+          makeItem('clean', { label: 'Clean', icon: undefined }),
+          makeItem('dirty', { label: 'Clean', icon: undefined, dirty: true }),
+        ],
+        activeId: 'clean',
+        density: 'rail',
+      });
+      const [clean, dirty] = screen.getAllByRole('tab');
+      expect(clean!.querySelector('.bg-status-attention')).toBeNull();
+      expect(dirty!.querySelector('.bg-status-attention')).not.toBeNull();
+      expect(dirty!.querySelector('svg')).toBeNull();
+      // Same label, so the only difference is the reserved glyph slot (14px + 8px gap).
+      expect(Number.parseFloat(dirty!.parentElement!.style.width)).toBe(
+        Number.parseFloat(clean!.parentElement!.style.width) + 22,
+      );
+    });
+
+    it('stays a strip down to 292px, the header density keeps its 480px switcher', () => {
+      containerWidth = 300;
+      const { unmount } = renderTabs({ items: railItems, activeId: 'history', density: 'rail' });
+      expect(screen.getAllByRole('tab')).toHaveLength(3);
+      unmount();
+      renderTabs({ items: railItems, activeId: 'history' });
+      expect(screen.queryByRole('tab')).toBeNull();
+    });
+
+    it('keeps the header density unchanged: underline, rounded, 2px apart', () => {
+      renderTabs({ items: railItems, activeId: 'history' });
+      expect(screen.getByRole('tablist').className).toContain('gap-0.5');
+      expect(screen.getByRole('tab', { name: 'Work history' }).className).toContain(
+        'border-b-action-primary',
+      );
+      expect(screen.getByRole('tablist').parentElement!.className).not.toContain('h-tab-rail');
+    });
+  });
+
   it('keeps the space at the split point of a middle-truncated label', () => {
-    renderTabs({ items: [makeItem('ux', { label: 'Single sign-on - UX' })] });
+    // Narrower than the tab's content width, so its label is truncated in the middle.
+    containerWidth = 150;
+    renderTabs({ items: [makeItem('ux', { label: 'Single sign-on - UX' })], variant: 'strip' });
     const tab = screen.getByRole('tab', { name: 'Single sign-on - UX' });
     const halves = Array.from(tab.querySelectorAll('[aria-hidden="true"]')).filter(
       (node) => node.textContent,
@@ -294,7 +438,7 @@ describe('ItemTabs', () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
     async function openMenu(count: number) {
-      fireEvent.pointerDown(screen.getByRole('button', { name: `Opened items (${count})` }), {
+      fireEvent.pointerDown(screen.getByRole('button', { name: `More opened items (${count})` }), {
         button: 0,
         ctrlKey: false,
         pointerType: 'mouse',
@@ -316,17 +460,17 @@ describe('ItemTabs', () => {
 
     for (const [way, close] of Object.entries(closers)) {
       it(`keeps focus on a tab when ${way} in the Opened menu removes the trigger`, async () => {
-        containerWidth = 1000;
+        containerWidth = 880;
         render(<Host initial={makeItems(8)} />);
-        close(await openMenu(8));
+        close(await openMenu(2));
         await settleTimers();
-        expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /^More opened items/ })).toBeNull();
         expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-6.md' }));
       });
     }
 
     it('waits for a delayed guard before moving focus, then lands on the neighbour', async () => {
-      containerWidth = 1000;
+      containerWidth = 880;
       let allow: (value: boolean) => void = () => undefined;
       render(
         <Host
@@ -334,7 +478,7 @@ describe('ItemTabs', () => {
           canClose={() => new Promise<boolean>((resolve) => (allow = resolve))}
         />,
       );
-      closers['Close menuitem'](await openMenu(8));
+      closers['Close menuitem'](await openMenu(2));
       await settleTimers();
       expect(screen.getAllByRole('tab').length).toBe(6);
       await act(async () => allow(true));
@@ -345,12 +489,14 @@ describe('ItemTabs', () => {
     });
 
     it('leaves the item and focus alone when the guard refuses', async () => {
-      containerWidth = 1000;
+      containerWidth = 880;
       render(<Host initial={makeItems(8)} canClose={() => Promise.resolve(false)} />);
-      closers['Close menuitem'](await openMenu(8));
+      closers['Close menuitem'](await openMenu(2));
       await settleTimers();
-      expect(screen.getByRole('button', { name: 'Opened items (8)' })).toBeTruthy();
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Opened items (8)' }));
+      expect(screen.getByRole('button', { name: 'More opened items (2)' })).toBeTruthy();
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'More opened items (2)' }),
+      );
       expect(screen.getAllByRole('tab')).toHaveLength(6);
     });
 
@@ -369,11 +515,13 @@ describe('ItemTabs', () => {
   });
 
   describe('overflow', () => {
-    it('shows floor((width - 52) / 140) tabs plus the Opened (N) trigger', () => {
+    it('shows the tabs that fit next to a More (N) trigger counting only the hidden ones', () => {
       containerWidth = 700;
       renderTabs({ items: makeItems(8), activeId: 'item-0' });
-      expect(screen.getAllByRole('tab')).toHaveLength(4);
-      expect(screen.getByRole('button', { name: 'Opened items (8)' })).toBeTruthy();
+      expect(screen.getAllByRole('tab')).toHaveLength(5);
+      const trigger = screen.getByRole('button', { name: 'More opened items (3)' });
+      expect(trigger.textContent).toContain('3');
+      expect(trigger.textContent).not.toContain('8');
     });
 
     it('keeps the active tab visible when it would be hidden', () => {
@@ -381,7 +529,7 @@ describe('ItemTabs', () => {
       renderTabs({ items: makeItems(8), activeId: 'item-7' });
       const names = screen.getAllByRole('tab').map((tab) => tab.dataset.itemId);
       expect(names).toContain('item-7');
-      expect(names).toHaveLength(4);
+      expect(names).toHaveLength(5);
     });
 
     it('recomputes when the container resizes', () => {
@@ -390,19 +538,19 @@ describe('ItemTabs', () => {
       expect(screen.getAllByRole('tab')).toHaveLength(8);
       expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
       resize(700);
-      expect(screen.getAllByRole('tab')).toHaveLength(4);
+      expect(screen.getAllByRole('tab')).toHaveLength(5);
     });
 
     it('offers an accessible Close menuitem per row, for users without a keyboard', async () => {
       containerWidth = 700;
       const { onClose } = renderTabs({ items: makeItems(8) });
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Opened items (8)' }), {
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'More opened items (3)' }), {
         button: 0,
         ctrlKey: false,
         pointerType: 'mouse',
       });
       const menu = await screen.findByRole('menu');
-      expect(within(menu).getAllByRole('menuitem', { name: /^Close / })).toHaveLength(8);
+      expect(within(menu).getAllByRole('menuitem', { name: /^Close / })).toHaveLength(3);
       fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-5.md' }));
       expect(onClose).toHaveBeenCalledWith('item-5');
     });
@@ -419,16 +567,22 @@ describe('ItemTabs', () => {
       expect(onClose).toHaveBeenCalledWith('item-1');
     });
 
-    it('lists every item with its description in the Opened menu and activates from it', async () => {
+    it('lists only the hidden items, with descriptions, in the More menu and activates from it', async () => {
       containerWidth = 700;
       const { onActivate } = renderTabs({ items: makeItems(8) });
-      const trigger = screen.getByRole('button', { name: 'Opened items (8)' });
+      const trigger = screen.getByRole('button', { name: 'More opened items (3)' });
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
       const menu = await screen.findByRole('menu');
+      expect(within(menu).getByText('More opened items')).toBeTruthy();
       const rows = within(menu).getAllByRole('menuitem', { name: /^(?!Close )/ });
-      expect(rows).toHaveLength(8);
+      expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringContaining('item-5.md'),
+        expect.stringContaining('item-6.md'),
+        expect.stringContaining('item-7.md'),
+      ]);
+      expect(within(menu).queryByText('docs/item-0.md')).toBeNull();
       expect(within(menu).getAllByText('docs/item-7.md')).toHaveLength(1);
-      fireEvent.click(rows[7]!);
+      fireEvent.click(rows[2]!);
       expect(onActivate).toHaveBeenCalledWith('item-7');
     });
   });
@@ -460,11 +614,124 @@ describe('ItemTabs', () => {
       expect(screen.queryByRole('tablist')).toBeNull();
     });
 
+    it('lists every item in one-line rows when none has a description, a pin on the pinned one', async () => {
+      renderTabs({
+        variant: 'switcher',
+        items: [
+          makeItem('context', {
+            label: 'Context',
+            description: undefined,
+            icon: undefined,
+            closable: false,
+          }),
+          makeItem('files', { label: 'Files', description: undefined, icon: undefined }),
+        ],
+        activeId: 'files',
+      });
+      fireEvent.pointerDown(screen.getByRole('button', { name: /opened$/ }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      const menu = await screen.findByRole('menu');
+      expect(within(menu).getByText('Opened items')).toBeTruthy();
+      const rows = within(menu).getAllByRole('menuitem', { name: /^(?!Close )/ });
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        // No reserved blank second line under the label.
+        expect(row.textContent).not.toContain(' ');
+      }
+
+      expect(rows[0]!.querySelector('[title="Close"]')).toBeNull();
+      expect(rows[0]!.querySelector('svg')).toBeTruthy();
+    });
+
     it('names the empty state when nothing is active', () => {
       renderTabs({ variant: 'switcher', items: [], activeId: null });
       expect(screen.getByRole('button', { name: 'Opened items (0)' }).textContent).toContain(
         'No item',
       );
+    });
+  });
+
+  describe('closable: false', () => {
+    it('renders no close x for a non-closable item, keeping it otherwise identical', () => {
+      renderTabs({
+        items: [makeItem('a', { closable: false }), makeItem('b')],
+        activeId: 'a',
+      });
+      expect(screen.queryByRole('button', { name: 'Close a.md' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Close b.md' })).toBeTruthy();
+      // Otherwise identical: still a normal, selected, labelled tab.
+      const tab = screen.getByRole('tab', { name: 'a.md' });
+      expect(tab.getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('stays fully keyboard reachable and activatable, but Delete does not close it', () => {
+      const { onClose, onActivate } = renderTabs({
+        items: [makeItem('a', { closable: false }), makeItem('b')],
+        activeId: 'b',
+      });
+      const tabs = screen.getAllByRole('tab');
+      tabs[0]?.focus();
+      expect(document.activeElement).toBe(tabs[0]);
+      fireEvent.keyDown(tabs[0]!, { key: 'Delete' });
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.click(tabs[0]!);
+      expect(onActivate).toHaveBeenCalledWith('a');
+    });
+
+    it('does not close on middle-click for a non-closable item', () => {
+      const { onClose } = renderTabs({
+        items: [makeItem('a', { closable: false }), makeItem('b')],
+      });
+      const tab = screen.getByRole('tab', { name: 'a.md' });
+      fireEvent(tab, new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('omits the "Close <label>" row from the Opened menu for a non-closable item', async () => {
+      // The switcher's menu lists every item, the visible active one included.
+      renderTabs({
+        variant: 'switcher',
+        items: [makeItem('a', { closable: false }), ...makeItems(8)],
+      });
+      fireEvent.pointerDown(screen.getByRole('button', { name: /opened$/ }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      const menu = await screen.findByRole('menu');
+      expect(within(menu).queryByRole('menuitem', { name: 'Close a.md' })).toBeNull();
+      expect(within(menu).getByRole('menuitem', { name: 'Close item-0.md' })).toBeTruthy();
+      // The row itself (activate, label, description) is still present.
+      expect(within(menu).getByRole('menuitem', { name: /^a\.md/ })).toBeTruthy();
+    });
+
+    it('works through useOpenedItems: requestClose refuses, the row stays open', async () => {
+      function Host() {
+        const opened = useOpenedItems<ItemTab>({
+          initialItems: [makeItem('a', { closable: false }), makeItem('b')],
+        });
+
+        return (
+          <ItemTabs
+            items={opened.items}
+            activeId={opened.activeId}
+            onActivate={opened.activate}
+            onClose={(id) => void opened.requestClose(id)}
+            scope="t"
+          />
+        );
+      }
+
+      render(<Host />);
+      expect(screen.queryByRole('button', { name: 'Close a.md' })).toBeNull();
+      const tab = screen.getByRole('tab', { name: 'a.md' });
+      tab.focus();
+      fireEvent.keyDown(tab, { key: 'Delete' });
+      await act(async () => {});
+      expect(screen.getAllByRole('tab')).toHaveLength(2);
     });
   });
 

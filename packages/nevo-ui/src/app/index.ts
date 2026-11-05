@@ -14,6 +14,8 @@ export {
   AppWorkspaceSlots,
   WorkspaceHeader,
   WorkspaceHeaderIdentity,
+  useWorkspacePrimaryScroll,
+  useWorkspacePrimarySheet,
   type AppWorkspaceProps,
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,
@@ -30,10 +32,14 @@ export {
   useSecondaryNavigation,
   useSecondaryStack,
   useSecondaryLeaveGuard,
+  useRegisterPinnedSecondaryTab,
+  type PinnedSecondaryTabInput,
+  type AppWorkspaceProviderProps,
 } from './workspace/WorkspaceContext';
 export {
   defineSecondaryStack,
   type SecondaryData,
+  type SecondaryLocalNavigation,
   type SecondaryScreenProps,
   type SecondaryStackDefinition,
   type SecondaryStackActions,
@@ -48,6 +54,8 @@ export type {
 export { APP_NAVIGATION_INLINE_PADDING, APP_SHELL_GAP } from './workspace/workspaceSizing';
 export * from './floating';
 export { useWorkspaceCapabilities } from './workspace/useWorkspaceCapabilities';
+export { useWorkspaceLayout, type WorkspaceLayout } from './workspace/useWorkspaceLayout';
+export { useSecondaryDetailHeaderHosted } from './workspace/secondaryDetailHeaderHost';
 export type {
   AppContentContainerSize,
   AppWorkspaceRegionProps,

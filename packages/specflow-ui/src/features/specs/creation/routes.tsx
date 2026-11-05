@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { parseSpecificationCollection } from '../../../app/router/search';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { AppWorkspaceProvider } from '@nevo/ui';
@@ -6,6 +7,7 @@ import { appRoute } from '../../../app/router/root';
 import { specificationRoute } from '../routes';
 import { CreateOperationScreen } from './CreateOperationScreen';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
+import { NewSessionScreen } from './new-session/NewSessionScreen';
 export const createSpecificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/new',
@@ -68,10 +70,10 @@ function NewSpecification() {
             });
           }
         }}
-        onSession={(specId, sessionId) =>
+        onSession={(_specId, sessionId) =>
           void navigate({
-            to: '/specs/$specId/sessions/$sessionId',
-            params: { specId, sessionId },
+            to: '/sessions/$sessionId',
+            params: { sessionId },
             search: { collection },
           })
         }
@@ -86,7 +88,7 @@ function CreatingSpecification() {
   const collection = useApplicationCollection();
 
   return (
-    <AppWorkspaceProvider>
+    <AppWorkspaceProvider scopeKey={operationId}>
       <CreateOperationScreen
         operationId={operationId}
         onOpen={(created) =>
@@ -115,27 +117,39 @@ function NewSession() {
   const { collection } = newSessionRoute.useSearch();
 
   return (
-    <AppWorkspaceProvider>
-      <CreateSpecificationScreen
-        specId={specId}
-        onBack={() =>
-          void navigate({
-            to: '/specs/$specId/sessions',
-            params: { specId },
-            search: { collection },
-          })
-        }
-        onCreated={() => {
-          void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
-        }}
-        onSession={(id, sessionId) =>
-          void navigate({
-            to: '/specs/$specId/sessions/$sessionId',
-            params: { specId: id, sessionId },
-            search: { collection },
-          })
-        }
-      />
+    <NewSessionRouteView
+      specId={specId}
+      onBack={() =>
+        void navigate({
+          to: '/specs/$specId/sessions',
+          params: { specId },
+          search: { collection },
+        })
+      }
+      // The start screen is replaced by the Session (history replace): Back does not return to an
+      // empty start state.
+      onOpenSession={(sessionId) =>
+        void navigate({
+          to: '/sessions/$sessionId',
+          params: { sessionId },
+          search: { collection },
+          replace: true,
+        })
+      }
+      onOpenSpecification={() =>
+        void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } })
+      }
+    />
+  );
+}
+
+/** New session's composition for one Specification; the router keeps it mounted across ids. */
+export function NewSessionRouteView(props: ComponentProps<typeof NewSessionScreen>) {
+  // `scopeKey`: the route stays mounted from one Specification's New session to another's; the
+  // Specification scopes the open Context tabs.
+  return (
+    <AppWorkspaceProvider scopeKey={props.specId}>
+      <NewSessionScreen {...props} />
     </AppWorkspaceProvider>
   );
 }

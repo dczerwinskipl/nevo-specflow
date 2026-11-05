@@ -9,7 +9,6 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
-  type RefObject,
 } from 'react';
 
 import {
@@ -17,6 +16,7 @@ import {
   designSlot,
   useDesignMetadata,
 } from '@nevo/figma-capture/metadata';
+import { useElementWidth, observeWidthCoalesced } from '../../components/behaviors/useElementWidth';
 import { AppBackground, WorkspaceSurface } from '../../components/foundations/Environment';
 import { Drawer, DrawerContent, DrawerTitle } from '../../components/overlays/Drawer';
 import { cn } from '../../lib';
@@ -60,31 +60,8 @@ export function useAppNavigation() {
   return useContext(AppNavigationContext);
 }
 
-function useElementWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [width, setWidth] = useState<number>();
-
-  useLayoutEffect(() => {
-    const element = ref.current;
-
-    if (!element) {
-      return;
-    }
-
-    const update = () => setWidth(element.getBoundingClientRect().width);
-    const observer = new ResizeObserver(update);
-
-    observer.observe(element);
-    update();
-
-    return () => observer.disconnect();
-  }, []);
-
-  return { ref, width };
-}
-
 function useDescendantWidth<T extends HTMLElement>(
-  rootRef: RefObject<T | null>,
+  root: T | null,
   selector: string,
   enabled: boolean,
 ) {
@@ -97,19 +74,17 @@ function useDescendantWidth<T extends HTMLElement>(
       return;
     }
 
-    const element = rootRef.current?.querySelector<HTMLElement>(selector);
+    const element = root?.querySelector<HTMLElement>(selector);
     if (!element) {
       return;
     }
 
     const update = () => setWidth(element.getBoundingClientRect().width);
-    const observer = new ResizeObserver(update);
 
-    observer.observe(element);
     update();
 
-    return () => observer.disconnect();
-  }, [enabled, rootRef, selector]);
+    return observeWidthCoalesced(element, update);
+  }, [enabled, root, selector]);
 
   return width;
 }
@@ -158,12 +133,20 @@ export function AppShell({
   const navigationOpenRef = useRef(false);
   const navigationOpener = useRef<HTMLElement | null>(null);
   const navigationFocusTarget = useRef<(() => HTMLElement | null) | undefined>(undefined);
-  const { ref: shellRef, width: shellWidth } = useElementWidth<HTMLDivElement>();
+  const {
+    setElement: shellRef,
+    element: shellElement,
+    width: shellWidth,
+  } = useElementWidth<HTMLDivElement>();
   const { availableWidth, navigationMode, workspaceMaterialOwner, wide } =
     resolveAppShellLayout(shellWidth);
   const labels = { ...defaultAppShellLabels, ...labelsProp };
   const capture = useDesignMetadata('AppShell', { viewport: 'desktop' });
-  const workspaceWidth = useDescendantWidth(shellRef, '[data-app-shell-region="workspace"]', wide);
+  const workspaceWidth = useDescendantWidth(
+    shellElement,
+    '[data-app-shell-region="workspace"]',
+    wide,
+  );
   const isDesignCapture =
     'data-design-capture' in capture && capture['data-design-capture'] === 'true';
   const workspaceIsInset =

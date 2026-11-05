@@ -1,7 +1,7 @@
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
-import { providerDefaultEffort, type AgentChoice } from '../options/agentChoice';
+import { providerDefaultEffort, type AgentChoice } from '../../../sessions';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
 import { problems as workspaceProblems } from '../workspace/model/workspaceValidation';
 import { type WorkspaceChoice } from '../workspace/model/workspaceChoice';
@@ -29,6 +29,13 @@ export function createReadiness(input: {
   const { specId, method, title, catalogue, agent, workspaceState, choice, archetype } = input;
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
   const model = provider?.models.find((m) => m.id === agent.modelId);
+  // A provider that lists no model has nothing to choose (the start rule): its Session runs the
+  // provider's default model, so the modes are the provider's own and only the default effort fits.
+  // (Same predicate as the sessions start rule `offersModelChoice`, which the sessions barrel does not export.)
+  const modelChoice = (provider?.models.length ?? 0) > 0;
+  const modeIds = modelChoice ? model?.modes : provider?.modes.map((mode) => mode.id);
+  const effortFits =
+    agent.effort === providerDefaultEffort || Boolean(model?.efforts.includes(agent.effort));
   const workspaceProblem: Message | undefined = specId
     ? undefined
     : workspaceState.status === 'loading'
@@ -48,8 +55,9 @@ export function createReadiness(input: {
     (method === 'manual' ||
       Boolean(
         provider?.available &&
-        model?.modes.includes(agent.mode) &&
-        (agent.effort === providerDefaultEffort || model.efforts.includes(agent.effort)),
+        (!modelChoice || model) &&
+        modeIds?.includes(agent.mode) &&
+        effortFits,
       ));
   const prerequisite = input.forbiddenCreate
     ? message('create.prerequisite.forbidden')
@@ -65,9 +73,9 @@ export function createReadiness(input: {
             (method === 'ai'
               ? !provider?.available
                 ? message('create.prerequisite.provider')
-                : !model
+                : modelChoice && !model
                   ? message('create.prerequisite.model')
-                  : !model.modes.includes(agent.mode)
+                  : !modeIds?.includes(agent.mode)
                     ? message('create.prerequisite.mode')
                     : undefined
               : undefined));

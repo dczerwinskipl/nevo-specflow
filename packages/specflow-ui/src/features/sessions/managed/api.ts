@@ -13,14 +13,24 @@ import {
   type ActionPage,
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
-import { createApiTransport } from '../../../api';
+import { createApiTransport, type ErrorCodeTable } from '../../../api';
+import type { WithWorkCounts } from './workCounts';
 
 export interface ManagedSessionsApi {
   providers(signal?: AbortSignal): Promise<{ items: ProviderDescriptor[] }>;
   create(input: CreateSession): Promise<{ sessionId: string }>;
   snapshot(sessionId: string, signal?: AbortSignal): Promise<SessionSnapshot>;
   history(sessionId: string, before: string, signal?: AbortSignal): Promise<HistoryPage>;
-  work(sessionId: string, turnId: string, before?: string, signal?: AbortSignal): Promise<WorkPage>;
+  // `WithWorkCounts` is the proposed, not-yet-backend-implemented `counts` extension
+  // (workCounts.ts, docs/reference/api/sessions.md "Proposed Work aggregate counts"). The real
+  // HTTP implementation below returns a plain `WorkPage`, which satisfies this type with `counts`
+  // simply absent; only fixtures populate it.
+  work(
+    sessionId: string,
+    turnId: string,
+    before?: string,
+    signal?: AbortSignal,
+  ): Promise<WithWorkCounts<WorkPage>>;
   actions(
     sessionId: string,
     workId: string,
@@ -43,8 +53,16 @@ export interface ManagedSessionsApi {
     onReconnect: () => void,
   ): AsyncIterable<SessionChange | undefined>;
 }
+/**
+ * The Runtime's journal needs recovery for this Session: whether the command was applied is not
+ * known, so it is kept for a replay with the same `requestId` (a plain 409 would read as a
+ * definite refusal).
+ */
+export const sessionErrorCodes: ErrorCodeTable = {
+  SESSION_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
+};
 export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessionsApi {
-  const read = createApiTransport(http, { operation: 'sessions' });
+  const read = createApiTransport(http, { operation: 'sessions', codes: sessionErrorCodes });
   const path = (id: string) => '/api/sessions/' + encodeURIComponent(id);
 
   return {

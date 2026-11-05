@@ -126,10 +126,13 @@ Create is unavailable and offers retry without losing the draft.
 - The heading says **Initial agent Session**. Provider cards use the existing icons, name and profile;
   2 columns when the width allows, 3 only with a real catalogue and a wide Primary, 1 on narrow. No
   invented third provider.
-- Model is a deliberate select without a forced choice; effort is a select beside it (below on narrow);
-  Ask/Edit/Agent is one segmented selection matching the model's capabilities. A missing option is not
-  hidden silently: unsupported values are disabled with a reason, a missing effort is described as a
-  missing capability. Changing model or agent drops incompatible values.
+- Model, effort and work mode are the labelled agent fields shared with the Session start card (owner,
+  2026-11-04, replacing the Composer pickers here; see
+  [New Session UI spec](new-session-ui-spec.md#6-agent-fields-shared-start-presentation)): the model
+  is a deliberate choice without a forced default; effort starts at the provider default; the work
+  mode lists only the model's modes and is enabled once a model is chosen. Changing model or agent
+  drops incompatible values. On success with an agent the user lands in the Session screen
+  ([New Session UI spec](new-session-ui-spec.md#9-create-with-an-agent)).
 - Connection, profile, availability and quota come only from a confirmed source. Unknown stays unknown
   (**No limit data**); a known value has a unit and a window. Example quotas, prices and versions from
   prototypes never enter the product. Demo fixtures are labelled as fixtures.
@@ -279,17 +282,18 @@ A further Session of an existing specification speaks about **this Session**, ne
 Nevo UI owns the look of the controls. The tree and the inline state are a deliberate product
 composition of existing primitives (no local copy of Button/Menu, no new general DS Tree capability).
 
-| Region                  | Existing pattern                               | Decision                                                                         |
-| ----------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| Shell, regions, scroll  | `AppWorkspace`, `WorkspaceHeader`              | Reuse; Create is Primary only, Documents is `split=secondary`; no extra wrapper. |
-| Mobile                  | Secondary Stack                                | The existing Stack; no prototype tabs.                                           |
-| Two method cards        | Button/surface primitives                      | Product navigation cards; not a new SegmentedControl variant.                    |
-| Workflow, model, effort | `Select`                                       | Reuse; the catalogue projection lives in SpecFlow.                               |
-| Branch, worktree, modes | `RadioGroup`, `Checkbox`, `SegmentedControl`   | Radio for the branch, checkbox for an available worktree, segments for modes.    |
-| Tree menu               | `Menu`, `OverflowMenu`, `IconButton`           | Product row + separate trigger; required policy comes from the Runtime.          |
-| Document                | `MarkdownDocument`, the Markdown source editor | Read-only `MarkdownDocument` for the draft preview; the product editor edits.    |
-| Feedback                | `Toast`, `Alert`, `Dialog`                     | Toast after success, inline errors, the existing guard dialog.                   |
-| Session                 | `MessageComposer`, `SessionProviderIcon`       | Keep the placeholder and Context; no second engine.                              |
+| Region                 | Existing pattern                                   | Decision                                                                         |
+| ---------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Shell, regions, scroll | `AppWorkspace`, `WorkspaceHeader`                  | Reuse; Create is Primary only, Documents is `split=secondary`; no extra wrapper. |
+| Mobile                 | Secondary Stack                                    | The existing Stack; no prototype tabs.                                           |
+| Two method cards       | Button/surface primitives                          | Product navigation cards; not a new SegmentedControl variant.                    |
+| Workflow               | `Select`                                           | Reuse; the catalogue projection lives in SpecFlow.                               |
+| Model, effort, mode    | Composer `ModelEffortPicker`, `ComposerModePicker` | One presentation shared with the Session Composer (New Session UI spec §4).      |
+| Branch, worktree       | `RadioGroup`, `Checkbox`                           | Radio for the branch, checkbox for an available worktree.                        |
+| Tree menu              | `Menu`, `OverflowMenu`, `IconButton`               | Product row + separate trigger; required policy comes from the Runtime.          |
+| Document               | `MarkdownDocument`, the Markdown source editor     | Read-only `MarkdownDocument` for the draft preview; the product editor edits.    |
+| Feedback               | `Toast`, `Alert`, `Dialog`                         | Toast after success, inline errors, the existing guard dialog.                   |
+| Session                | `MessageComposer`, `SessionProviderIcon`           | Keep the placeholder and Context; no second engine.                              |
 
 ## Integration and dependencies
 

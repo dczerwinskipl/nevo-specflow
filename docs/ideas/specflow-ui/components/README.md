@@ -75,6 +75,7 @@ mobile Composer iconography is explicitly unapproved and must use Design System 
 | Session conversation          | User/assistant conversation, Commentary, compact Work summary, current activity and interaction. | [Session conversation UI spec](session-conversation-ui-spec.md)           |
 | Session Composer              | Approved V10 authoring interaction; mobile icons and provider capabilities remain to resolve.    | [Composer capabilities](session-composer-design.md)                       |
 | Session Work inspector        | Commentary-grouped Work, Thinking summaries, exact Work and ToolAction details.                  | [Session Work inspector UI spec](session-work-inspector-ui-spec.md)       |
+| Secondary tab rail (decided)  | Editor-tab rail and detail header row of the split Secondary; variants weighed and the decision. | [Secondary tabs redesign](secondary-tabs-redesign.md)                     |
 | Task decision/evidence        | Task state + reason + evidence + action.                                                         | [Task decision/evidence UI spec](task-decision-evidence-ui-spec.md)       |
 | Spec steering item/collection | Attention/ready/working/issue summaries and direct context targets.                              | [Spec steering UI spec](spec-steering-ui-spec.md)                         |
 | Settings catalog renderer     | Dynamic backend-owned Settings descriptors -> linear Settings UI.                                | [Settings catalog renderer UI spec](settings-catalog-renderer-ui-spec.md) |

@@ -411,3 +411,157 @@ export const HeaderAndBodyShareOneDataHost: Story = {
     );
   },
 };
+
+// W02: Secondary root-tab state (openTab, tabs, activateTab, close/reopen, open's unchanged slot).
+
+const tabItemStack = defineSecondaryStack<
+  { itemId: string },
+  string,
+  { details: Record<never, never> }
+>({
+  id: 'w02-tab-item',
+  initial: 'details',
+  instanceId: (params) => params.itemId,
+  useData: (params) => ({ status: 'ready', data: params.itemId }),
+  screens: {
+    details: { title: 'Item', component: ({ data }) => <p>Item {data} content</p> },
+  },
+});
+
+function TabsContractWorkspace() {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <div className="grid gap-3 p-5">
+            <button
+              type="button"
+              onClick={() => void navigation.openTab(tabItemStack, { itemId: 'one' })}
+            >
+              Open tab one
+            </button>
+            <button
+              type="button"
+              onClick={() => void navigation.openTab(tabItemStack, { itemId: 'two' })}
+            >
+              Open tab two
+            </button>
+            <button type="button" onClick={() => void navigation.close()}>
+              Close secondary (region)
+            </button>
+            {navigation.tabs.tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => void navigation.activateTab(tab.id)}
+              >
+                {`Activate ${tab.id}`}
+              </button>
+            ))}
+            <output data-testid="tab-count">{navigation.tabs.tabs.length}</output>
+            <output data-testid="active-tab">{navigation.tabs.activeTabId ?? ''}</output>
+          </div>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const OpenTabCloseAndReopenContract: Story = {
+  render: () => (
+    <AppWorkspaceProvider>
+      <TabsContractWorkspace />
+    </AppWorkspaceProvider>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open tab one' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Open tab two' }));
+    assert(canvas.getByText('Item two content'), 'The second openTab tab is open and active.');
+    assert(canvas.getByTestId('tab-count').textContent === '2', 'Two openTab tabs are open.');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary (region)' }));
+    const activeWhenClosed = canvas.getByTestId('active-tab').textContent;
+    assert(activeWhenClosed, 'The active tab id is retained while the region is hidden.');
+    assert(
+      canvas.queryByText('Item two content') === null,
+      'Closing the region hides its content.',
+    );
+
+    // Reopen: re-activating the tab that was active when closed brings the whole set back.
+    await userEvent.click(canvas.getByRole('button', { name: `Activate ${activeWhenClosed}` }));
+    assert(canvas.getByTestId('tab-count').textContent === '2', 'Both tabs are still there.');
+    assert(
+      canvas.getByTestId('active-tab').textContent === activeWhenClosed,
+      'The previously active tab is active again.',
+    );
+    assert(canvas.getByText('Item two content'), 'Its content is shown again, not discarded.');
+  },
+};
+
+const openSlotStackOne = defineSecondaryStack<
+  Record<never, never>,
+  string,
+  { page: Record<never, never> }
+>({
+  id: 'w02-open-slot-one',
+  initial: 'page',
+  useData: () => ({ status: 'ready', data: 'one' }),
+  screens: { page: { title: 'Slot', component: () => <p>Open slot content: one</p> } },
+});
+const openSlotStackTwo = defineSecondaryStack<
+  Record<never, never>,
+  string,
+  { page: Record<never, never> }
+>({
+  id: 'w02-open-slot-two',
+  initial: 'page',
+  useData: () => ({ status: 'ready', data: 'two' }),
+  screens: { page: { title: 'Slot', component: () => <p>Open slot content: two</p> } },
+});
+
+function OpenSlotWorkspace() {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <div className="grid gap-3 p-5">
+            <button type="button" onClick={() => void navigation.open(openSlotStackOne, {})}>
+              Open slot one
+            </button>
+            <button type="button" onClick={() => void navigation.open(openSlotStackTwo, {})}>
+              Open slot two
+            </button>
+            <output data-testid="tab-count">{navigation.tabs.tabs.length}</output>
+          </div>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const OpenReplacesItsOneSlotContract: Story = {
+  render: () => (
+    <AppWorkspaceProvider>
+      <OpenSlotWorkspace />
+    </AppWorkspaceProvider>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open slot one' }));
+    assert(canvas.getByText('Open slot content: one'), 'The first open shows its content.');
+    assert(canvas.getByTestId('tab-count').textContent === '1', 'Exactly one tab.');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open slot two' }));
+    assert(
+      canvas.getByText('Open slot content: two'),
+      'The second open replaces the slot with the latest params, no declarative Secondary involved.',
+    );
+    assert(
+      canvas.getByTestId('tab-count').textContent === '1',
+      'Still exactly one tab: open never multiplies, regardless of definition/params.',
+    );
+  },
+};

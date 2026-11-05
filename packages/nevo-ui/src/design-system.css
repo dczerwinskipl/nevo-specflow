@@ -32,6 +32,9 @@
   --color-surface-control: rgba(255, 255, 255, 0.045);
   --color-surface-hover: rgba(255, 255, 255, 0.06);
   --color-surface-selected: rgba(255, 255, 255, 0.09);
+  /* The darker tab strip behind editor tabs (ItemTabs density="rail"): the canvas at 60%, so the
+     active tab, which takes the panel's own surface, reads as joined to the content below. */
+  --color-tab-strip: rgba(10, 10, 10, 0.6);
   --color-workspace-material: rgba(255, 255, 255, 0.045);
   --color-overlay: rgba(0, 0, 0, 0.66);
 
@@ -104,6 +107,15 @@
   --spacing-shell-footer: calc(
     var(--spacing-control-height-default) + 2 * var(--spacing-shell-footer-padding)
   );
+  /*
+   * Split Secondary navigation (secondary-navigation.md, "Root tabs and local navigation"): the
+   * root-tab rail of editor tabs, one default control tall (36px, its bottom divider included) at
+   * every depth. A deeper level adds no bar to the rail: its Back leads the detail header row at the
+   * top of the panel. The rail is deliberately not the 56px Primary header.
+   * `breadcrumb-row` only sizes the opt-in breadcrumb row (`localNavigation: 'breadcrumbs'`).
+   */
+  --spacing-tab-rail: var(--spacing-control-height-default);
+  --spacing-breadcrumb-row: var(--spacing-control-height-inline);
   /* Minimum interactive target: 24px on every pointer, 44px on coarse pointers (see hitAreaClassName). */
   --spacing-target-min: 1.5rem;
   --spacing-target-touch: 2.75rem;
@@ -225,11 +237,11 @@ body {
   font-family: var(--font-sans);
 }
 
+/* The scrollbar keeps the global greyed thumb on workspace surfaces too: a black thumb read as a
+   heavy, unstyled bar on these dark materials. Only the edge shadow differs here. */
 .workspace-surface-material,
 .mobile-workspace-scroll-area {
   --color-scroll-edge-indicator: rgba(0, 0, 0, 0.34);
-  --color-scrollbar-thumb: rgba(0, 0, 0, 0.34);
-  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.48);
 }
 
 .workspace-surface-material::before {

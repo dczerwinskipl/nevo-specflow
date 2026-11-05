@@ -12,13 +12,18 @@ import { withLocale } from '../../i18n/StoryLocalization';
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Review/Owner V5 after',
+  title: 'SpecFlow/Screens/Application Shell',
   component: ConnectedApplication,
   parameters: { layout: 'fullscreen' },
-  tags: ['contract', 'integration', 'visual'],
+  tags: ['contract', 'integration'],
 } satisfies Meta<typeof ConnectedApplication>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+/** Distinct from `ConnectedConsistency.stories.tsx`'s own Managed Session route id, so the two
+ * suites' browser `sessionStorage`-backed composer drafts (keyed by owner+sessionId) never
+ * collide; `ConnectedApplication`'s mocked `managedSessionsApi` returns the same fixed snapshot
+ * regardless of the requested id. */
+const ownerV5ManagedSessionId = '00000000-0000-4000-8000-0000000000d2';
 async function frame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
@@ -265,10 +270,20 @@ export const OverviewTablet: Story = {
     }
   },
 };
+/**
+ * Full Session is canonical at the top-level `/sessions/:sessionId` route (`ManagedSession`) since
+ * 669302f8; the old nested `/specs/:specId/sessions/:sessionId` placeholder now only redirects
+ * there (dropping its `collection` search param) rather than rendering the deleted `SessionScreen`.
+ * `ConnectedApplication`'s services mock a fixed Managed Sessions snapshot so this route renders
+ * real content. The composer's accessible name is the real `managedSession.message` string
+ * ("Wiadomość"), not the retired demo copy. At these tablet widths the screen's default
+ * split-capable Secondary (Context) is open, same as a real visit here today, so the screenshots
+ * are left showing it rather than closing it first.
+ */
 export const SessionTablet: Story = {
-  args: { path: '/specs/api-integration/sessions/session?collection=current' },
+  args: { path: `/sessions/${ownerV5ManagedSessionId}` },
   play: async ({ canvas }) => {
-    await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' });
+    await canvas.findByRole('textbox', { name: 'Wiadomość' });
     for (const width of [839, 840, 1024, 1180]) {
       await shot('session-tablet', width);
     }
@@ -402,24 +417,31 @@ export const ExplicitModeFallback: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('button', { name: /Z agentem/ });
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
-    await expect(canvas.queryByText('Tryb pracy')).not.toBeInTheDocument();
+    // The Work mode field is there before a model decides it, but waits for one.
+    const workModes = () => within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' }));
+    for (const mode of workModes().getAllByRole('radio')) {
+      await expect(mode).toBeDisabled();
+    }
+
     await userEvent.click(canvas.getByRole('radio', { name: /Claude/ }));
     await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: 'claude model B' }),
     );
-    await expect(canvas.queryByRole('combobox', { name: 'Effort' })).not.toBeInTheDocument();
-    // Claude model B supports Ask and Edit only: no dead Agent segment, and the first
-    // supported mode is selected when the previous mode is not supported.
-    await expect(canvas.queryByRole('radio', { name: 'Agent' })).not.toBeInTheDocument();
-    await expect(canvas.getByRole('radio', { name: 'Ask' })).toBeChecked();
-    await expect(canvas.getByRole('radio', { name: 'Edit' })).not.toBeChecked();
-    await userEvent.click(canvas.getByRole('radio', { name: 'Edit' }));
+    // No efforts: Effort stays disabled at the provider default.
+    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
+    // Claude's own catalogue: model B runs Plan and Accept edits only (no dead Auto option),
+    // under Claude's own titles, and starts in the provider's default mode.
+    const modes = workModes().getAllByRole('radio');
+    await expect(modes.map((mode) => mode.textContent)).toEqual(['Plan', 'Accept edits']);
+    await expect(modes[1]).toBeChecked();
+    await userEvent.click(modes[0]!);
     await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: 'claude model A' }),
     );
-    await expect(canvas.getByRole('radio', { name: 'Edit' })).toBeChecked();
+    // Model A also runs Plan: the picked mode is kept.
+    await expect(canvas.getByRole('radio', { name: 'Plan' })).toBeChecked();
   },
 };
 

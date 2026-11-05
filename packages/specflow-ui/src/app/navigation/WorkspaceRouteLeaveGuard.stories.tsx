@@ -126,7 +126,7 @@ function Fixture() {
 }
 
 const meta = {
-  title: 'SpecFlow/Navigation/Workspace route leave guard',
+  title: 'SpecFlow/Screens/Application Shell',
   component: Fixture,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof Fixture>;

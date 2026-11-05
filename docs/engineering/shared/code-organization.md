@@ -396,15 +396,20 @@ when adding, moving or modifying components, hooks, effects, mutations or stores
   logic instead of blindly adding dependencies.
 
 Ownership, state derivation, effects and async operations of a React UI change SHOULD be reviewed
-against this section. Component line count is an inspection trigger, not a rule.
+against this section. File size, hook extraction and folder shape of React UI code follow
+[React component guidelines](../../design-system/implementation/react/component-guidelines.md#file-size).
 
 ## File size is an inspection trigger
 
-There is no hard line-count limit. Refactor when a file mixes independent
+There is no hard line-count limit for non-UI code. Refactor when a file mixes independent
 responsibilities, multiple lifecycle owners, unrelated effects, or becomes difficult to
 test for reasons unrelated to its core algorithm.
 
 A large cohesive parser, projection, or state machine may remain one module.
+
+React UI code (`packages/specflow-ui`, `packages/nevo-ui`) has a size target of about 200-300 lines
+per component or hook file, with the cohesion, hook and DRY rules in
+[React component guidelines](../../design-system/implementation/react/component-guidelines.md#file-size).
 
 ## Dependency injection
 

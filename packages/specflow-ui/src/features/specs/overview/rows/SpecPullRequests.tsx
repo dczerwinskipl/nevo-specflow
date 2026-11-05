@@ -1,4 +1,4 @@
-import { Link, cn } from '@nevo/ui';
+import { Link, cn, hitAreaClassName } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecRowModel } from '../presentation';
 
@@ -14,11 +14,13 @@ export function SpecPullRequests({ item }: { readonly item: SpecRowModel }) {
     return null;
   }
 
+  // The touch target is the DS hit area (a pseudo-element up to `--target-size`), so the link keeps
+  // the height of its text line and never adds an empty band under the row's metadata.
   return (
     <Link
       className={cn(
-        'pointer-events-auto relative z-10 inline-flex min-h-6 items-center rounded-control-inline [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(pointer:coarse)]:items-start [@media(pointer:coarse)]:rounded-none',
-        item.collection === 'archive' && '[@media(pointer:coarse)]:pt-1',
+        'pointer-events-auto z-10 inline-flex items-center rounded-control-inline',
+        hitAreaClassName,
       )}
       href={pr.href}
       aria-label={t('specifications.openPullRequest', { number: pr.number, title: item.title })}

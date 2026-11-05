@@ -343,11 +343,11 @@ export function useApplicationCollection() {
 }
 
 export function ApplicationSessionBack({
-  specId,
   sessionId,
   collection,
 }: {
-  specId: string;
+  /** Callers still pass the Specification; the Session route is top-level and needs only its id. */
+  specId?: string;
   sessionId: string;
   collection: 'current' | 'archive';
 }) {
@@ -355,11 +355,7 @@ export function ApplicationSessionBack({
 
   return (
     <Typography as="div" variant="body-sm">
-      <BackLink
-        to="/specs/$specId/sessions/$sessionId"
-        params={{ specId, sessionId }}
-        search={{ collection }}
-      >
+      <BackLink to="/sessions/$sessionId" params={{ sessionId }} search={{ collection }}>
         <ApplicationBackContent>{t('applicationNavigation.sessionBack')}</ApplicationBackContent>
       </BackLink>
     </Typography>

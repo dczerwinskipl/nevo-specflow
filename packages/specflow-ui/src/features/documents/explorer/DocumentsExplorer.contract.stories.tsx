@@ -97,7 +97,7 @@ function Fixture({
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Contracts/Document tree explorer',
+  title: 'SpecFlow/Features/Document Explorer',
   component: Fixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },

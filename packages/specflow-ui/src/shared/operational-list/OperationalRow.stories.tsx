@@ -96,14 +96,15 @@ function MixedCollection({ narrowPanel = false }: { narrowPanel?: boolean }) {
 
 const meta = {
   title: 'SpecFlow/Components/Operational List',
-  tags: ['visual'],
   component: MixedCollection,
   parameters: { layout: 'padded' },
 } satisfies Meta<typeof MixedCollection>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const MixedLongContent: Story = {};
-export const NarrowPanel: Story = { args: { narrowPanel: true } };
+export const Default: Story = {
+  argTypes: { narrowPanel: { control: 'boolean' } },
+};
+export const NarrowPanel: Story = { tags: ['contract'], args: { narrowPanel: true } };
 
 const geometryContract: NonNullable<Story['play']> = async ({
   canvasElement,
@@ -157,9 +158,14 @@ const geometryContract: NonNullable<Story['play']> = async ({
   await userEvent.keyboard('{Escape}');
 };
 
-export const GeometryDesktop: Story = { tags: ['contract', '!visual'], play: geometryContract };
+export const GeometryDesktop: Story = { tags: ['contract'], play: geometryContract };
 export const GeometryMobile: Story = {
   ...GeometryDesktop,
+  tags: ['contract'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
-export const GeometryNarrowPanel: Story = { ...GeometryDesktop, args: { narrowPanel: true } };
+export const GeometryNarrowPanel: Story = {
+  ...GeometryDesktop,
+  tags: ['contract'],
+  args: { narrowPanel: true },
+};

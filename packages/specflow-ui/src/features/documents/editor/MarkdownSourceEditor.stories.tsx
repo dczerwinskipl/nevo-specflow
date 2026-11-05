@@ -27,7 +27,7 @@ function Fixture() {
 }
 
 const meta = {
-  title: 'SpecFlow/Contracts/Markdown source editor',
+  title: 'SpecFlow/Features/Document Editor',
   component: Fixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },

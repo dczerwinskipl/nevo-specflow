@@ -16,7 +16,6 @@ import { productNavigationItems, showsNoSpecificationHint } from './productNavig
 import { useSessionDisclosure, type SessionDisclosurePreferences } from './useSessionDisclosure';
 import { useNavigationFocus } from './useNavigationFocus';
 import { focusHashSection, useHashSectionFocus } from './useHashSectionFocus';
-import { useRuntimeMode } from '../useRuntimeMode';
 import { designLayerMetadata } from '@nevo/figma-capture/metadata';
 import type { AuthStore } from '../../auth/store';
 import { AccountMenu } from '../AccountMenu';
@@ -65,7 +64,6 @@ export function ProductNavigation({
     sessionDisclosure.preferences,
     sessionDisclosure.setExpanded,
   );
-  const demo = useRuntimeMode() === 'demo';
   const noSpecifications = useNoSpecifications();
   useNavigationFocus();
   useHashSectionFocus();
@@ -233,20 +231,18 @@ export function ProductNavigation({
                             content: (
                               <SessionNavigationPreview
                                 entries={summary.entries}
-                                renderEntryLink={
-                                  demo
-                                    ? (sessionId, className, children) => (
-                                        <Link
-                                          to="/specs/$specId/sessions/$sessionId"
-                                          params={{ specId, sessionId }}
-                                          search={{ collection }}
-                                          className={className}
-                                        >
-                                          {children}
-                                        </Link>
-                                      )
-                                    : undefined
-                                }
+                                renderEntryLink={(sessionId, className, children) => (
+                                  // Full Session is canonical at the top-level route regardless
+                                  // of Runtime mode; see sessionDetailRoute's redirect.
+                                  <Link
+                                    to="/sessions/$sessionId"
+                                    params={{ sessionId }}
+                                    search={{ collection }}
+                                    className={className}
+                                  >
+                                    {children}
+                                  </Link>
+                                )}
                               >
                                 <StandaloneLink
                                   to="/specs/$specId/sessions"

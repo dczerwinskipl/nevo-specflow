@@ -17,8 +17,15 @@ import { fastColorTransitionClassName } from '../../../design-system/interaction
 import { cn } from '../../../lib';
 import { Icon } from '../../foundations/Icon';
 
+/** `default`: a free-standing disclosure row (control height, padding, hover fill). `inline`: a
+ * disclosure that sits inside a line of text owned by its host (for example a compact
+ * `Timeline.Content` title) — it takes the host's font, colour and line box, has no control height,
+ * padding or hover fill of its own, and its panel indents only by the indicator's own width. */
+export type CollapsibleDensity = 'default' | 'inline';
+
 interface CollapsibleVisualContextValue {
   showIndicator: boolean;
+  density: CollapsibleDensity;
 }
 
 const CollapsibleVisualContext = createContext<CollapsibleVisualContextValue | null>(null);
@@ -38,11 +45,12 @@ export type CollapsibleProps = Omit<
 > & {
   className?: string;
   showIndicator?: boolean;
+  density?: CollapsibleDensity;
 };
 
 const CollapsibleRoot = forwardRef<ComponentRef<typeof AriaDisclosure>, CollapsibleProps>(
   function CollapsibleRoot(
-    { className, defaultExpanded, isExpanded, showIndicator = true, ...props },
+    { className, defaultExpanded, density = 'default', isExpanded, showIndicator = true, ...props },
     ref,
   ) {
     const captureState = (isExpanded ?? defaultExpanded) ? 'expanded' : 'collapsed';
@@ -51,7 +59,7 @@ const CollapsibleRoot = forwardRef<ComponentRef<typeof AriaDisclosure>, Collapsi
     });
 
     return (
-      <CollapsibleVisualContext.Provider value={{ showIndicator }}>
+      <CollapsibleVisualContext.Provider value={{ showIndicator, density }}>
         <AriaDisclosure
           ref={ref}
           className={cn('group/collapsible min-w-0', className)}
@@ -78,13 +86,15 @@ export const CollapsibleTrigger = forwardRef<
   ComponentRef<typeof AriaButton>,
   CollapsibleTriggerProps
 >(function CollapsibleTrigger({ children, className, ...props }, ref) {
-  const { showIndicator } = useCollapsibleVisualContext('Collapsible.Trigger');
+  const { showIndicator, density } = useCollapsibleVisualContext('Collapsible.Trigger');
 
   return (
     <AriaButton
       ref={ref}
       className={cn(
-        'flex min-h-control-height-default w-full items-center gap-2 rounded-control px-control-padding-compact text-left text-body-md text-content-secondary hover:bg-surface-hover hover:text-content-primary',
+        density === 'inline'
+          ? 'inline-flex max-w-full cursor-pointer items-center gap-1 rounded-control-inline text-left'
+          : 'flex min-h-control-height-default w-full items-center gap-2 rounded-control px-control-padding-compact text-left text-body-md text-content-secondary hover:bg-surface-hover hover:text-content-primary',
         fastColorTransitionClassName,
         className,
       )}
@@ -101,7 +111,7 @@ export const CollapsibleTrigger = forwardRef<
               size="sm"
             />
           ) : null}
-          <span className="min-w-0 flex-1">
+          <span className={cn('min-w-0', density === 'inline' ? 'truncate' : 'flex-1')}>
             {typeof children === 'function' ? children(renderProps) : children}
           </span>
         </>
@@ -121,7 +131,7 @@ export const CollapsibleContent = forwardRef<
   ComponentRef<typeof AriaDisclosurePanel>,
   CollapsibleContentProps
 >(function CollapsibleContent({ children, className, ...props }, ref) {
-  const { showIndicator } = useCollapsibleVisualContext('Collapsible.Content');
+  const { showIndicator, density } = useCollapsibleVisualContext('Collapsible.Content');
 
   // Only the block axis is clipped (the height animation): clipping the inline axis too would cut
   // the hit area and focus ring of controls that sit flush with the panel edge.
@@ -135,7 +145,14 @@ export const CollapsibleContent = forwardRef<
       {...props}
       {...designSlot('Collapsible', 'content')}
     >
-      <div className={cn('pb-3 pt-1', showIndicator && 'pl-8')}>{children}</div>
+      <div
+        className={cn(
+          density === 'inline' ? 'pt-0.5' : 'pb-3 pt-1',
+          showIndicator && (density === 'inline' ? 'pl-5' : 'pl-8'),
+        )}
+      >
+        {children}
+      </div>
     </AriaDisclosurePanel>
   );
 });

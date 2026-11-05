@@ -18,7 +18,7 @@ const step = (
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Shared/Operation Progress',
+  title: 'SpecFlow/Components/Operation Progress',
   component: OperationProgress,
   parameters: { layout: 'padded' },
   args: { label },
@@ -26,7 +26,34 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const runningSteps = [
+  step('reserving', 'done', 'create.progress.steps.reserving.title'),
+  step('preparing-workspace', 'running', 'create.progress.steps.preparing-workspace.title'),
+  step('writing-specification', 'pending', 'create.progress.steps.writing-specification.title'),
+  step('registering', 'pending', 'create.progress.steps.registering.title'),
+];
+const finishedSteps = [
+  step('reserving', 'done', 'create.progress.steps.reserving.title'),
+  step('writing-specification', 'done', 'create.progress.steps.writing-specification.title'),
+  step('registering', 'done', 'create.progress.steps.registering.title'),
+];
+
+/** The representative checklist: pick the state; the waiting state reserves its rows. */
+export const Default: Story = {
+  args: { steps: runningSteps },
+  argTypes: {
+    steps: {
+      name: 'state',
+      control: 'select',
+      options: ['running', 'finished', 'waiting'],
+      mapping: { running: runningSteps, finished: finishedSteps, waiting: [] },
+    },
+    placeholderRows: { control: { type: 'number', min: 0, max: 6 } },
+  },
+};
+
 export const Running: Story = {
+  tags: ['contract'],
   args: {
     steps: [
       step('reserving', 'done', 'create.progress.steps.reserving.title'),
@@ -45,6 +72,7 @@ export const Running: Story = {
 };
 
 export const Finished: Story = {
+  tags: ['contract'],
   args: {
     steps: [
       step('reserving', 'done', 'create.progress.steps.reserving.title'),
@@ -56,6 +84,7 @@ export const Finished: Story = {
 
 /** Before the first snapshot: rows are reserved so nothing moves when the checklist arrives. */
 export const WaitingForFirstSnapshot: Story = {
+  tags: ['contract'],
   args: { steps: [], placeholderRows: 4 },
   play: async ({ canvas }) => {
     await expect(canvas.queryAllByRole('listitem')).toHaveLength(0);
@@ -64,6 +93,7 @@ export const WaitingForFirstSnapshot: Story = {
 
 /** 320 px: long Polish labels wrap inside the row and never overflow the page. */
 export const Narrow320: Story = {
+  tags: ['contract'],
   args: {
     steps: [
       step('reserving', 'done', 'create.progress.steps.reserving.title'),

@@ -46,10 +46,27 @@
  * (--workspace-overlay-inset-top = row top + control height + gap). The viewport turns the zone into
  * scroll-padding-top, so hash anchors, scrollIntoView and focus scrolling never land under it.
  * Descendants may read --workspace-overlay-inset-top (e.g. for scroll-margin-top).
+ *
+ * --workspace-overlay-bottom is the bottom-edge counterpart: the safe-area-aware offset a
+ * product's own bottom-floating element (for example a Composer pinned over the scroll viewport
+ * on mobile with `position: fixed`, or a `position: sticky` footer on split/desktop, where the
+ * consumer owns its own scroll container) reads as its own `bottom` so it clears the home-
+ * indicator/gesture-bar safe area the same way the top row clears the status bar. Unlike
+ * `--workspace-overlay-inset-top`, nothing here sets `scroll-padding-bottom` for a consumer: a
+ * fixed-position element reserves no space of its own, so the consumer still measures its actual
+ * rendered height and reserves that much space itself (padding-bottom on its own scroll content);
+ * a `position: sticky` element already reserves its own space in the flow and needs nothing extra.
+ * Scoped to `.mobile-workspace-scroll-area` only (its value is irrelevant off that element) so a
+ * split/desktop consumer, which has no such ancestor, falls back to its own
+ * `var(--workspace-overlay-bottom, <value>)` default instead of inheriting a stale one.
  */
 .mobile-workspace-scroll-area,
 .mobile-floating-navigation {
   --workspace-overlay-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.mobile-workspace-scroll-area {
+  --workspace-overlay-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 .mobile-workspace-scroll-area {
@@ -60,6 +77,10 @@
 
 .mobile-workspace-scroll {
   scroll-padding-top: var(--workspace-overlay-inset-top);
+  /* A narrow desktop window has classic (space-taking) scrollbars: reserving the gutter on both
+     edges keeps the sheet centred instead of losing width on the right only. Touch devices use
+     overlay scrollbars, so the gutter is 0 there and nothing changes. */
+  scrollbar-gutter: stable both-edges;
 }
 
 .mobile-floating-navigation {
@@ -86,10 +107,38 @@
   background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
   -webkit-backdrop-filter: blur(var(--blur-sm));
   backdrop-filter: blur(var(--blur-sm));
+  /* Drop-shadow component matches Tailwind's own `shadow-lg` literally (see
+   * `node_modules/tailwindcss/theme.css`'s `--shadow-lg`) — this screen's one shared "floating
+   * surface above content" elevation, also applied via the `shadow-lg` utility class to the
+   * Composer bar and the "jump to latest" pill in `ManagedSession.tsx`, so all three floating
+   * controls share one elevation rather than three different shadow values. The inset highlight
+   * is a separate "material" effect (the frosted edge), not the elevation shadow, so it is kept as-is.
+   */
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 8px 24px rgb(0 0 0 / 0.24);
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
   pointer-events: none;
+}
+
+/*
+ * Opaque "floating pill" background for a control that floats directly over scrolling content
+ * outside the mobile floating-navigation row above (today: `ManagedSession`'s own "jump to
+ * latest" pill) — the DS `Button` `secondary` variant's own background token
+ * (`--color-action-secondary`) is deliberately translucent, meant for a control sitting on an
+ * already-opaque surface, which let scrolled content show through a genuinely floating pill
+ * (the pill must be opaque like the other floating navigation buttons). Declared here, unlayered (this file is `@import`-ed directly by
+ * `design-system.css`, before Tailwind's own `@layer utilities`), so it reliably overrides the
+ * variant's `bg-action-secondary` utility class regardless of Tailwind's internal utility
+ * ordering — un-layered CSS always wins over a `@layer`-declared rule per the CSS Cascade Layers
+ * spec, the same precedence `.mobile-floating-navigation > button` above already relies on for
+ * the same reason. Shares that rule's own opaque material (color-mix + backdrop-blur) so every
+ * floating control on a stacked/mobile layout reads as the same surface.
+ */
+.workspace-floating-pill {
+  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  backdrop-filter: blur(var(--blur-sm));
 }
 
 [data-header-covered='true'] > .mobile-floating-navigation {

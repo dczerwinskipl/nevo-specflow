@@ -30,7 +30,29 @@
     "title": "Application navigation",
     "open": "Open navigation",
     "back": "Back",
-    "closeSecondary": "Close secondary content"
+    "backTo": "Back to {{name}}",
+    "closeSecondary": "Close secondary content",
+    "resizeSecondary": "Resize secondary panel",
+    "secondaryBreadcrumbs": "Location in the panel tab",
+    "secondaryBreadcrumbsCollapsed": "Show hidden levels",
+    "secondaryTabs": {
+      "tablist": "Open panel tabs",
+      "openedMenu": "Open tabs ({{n}})",
+      "openedHeading": "Open tabs",
+      "moreMenu": "More tabs ({{n}})",
+      "moreHeading": "More tabs",
+      "close": "Close {{name}}",
+      "closeHint": "Close: Delete or middle-click",
+      "menuClose": "Close",
+      "rootLocation": "Root folder",
+      "statusLoading": "loading",
+      "statusMissing": "not found",
+      "statusDirty": "unsaved changes",
+      "statusCurrent": "current",
+      "switcher": "{{name}}, {{n}} open tabs",
+      "switcherDirty": "{{name}}, unsaved changes, {{n}} open tabs",
+      "noItem": "No tab"
+    }
   },
   "account": {
     "localAccess": "Local access",
@@ -445,7 +467,7 @@
     "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
     "activeCount_many": "{{count}} active",
-    "sessionBack": "Spec Writer session"
+    "sessionBack": "Back to session"
   },
   "operations": {
     "progress": {
@@ -524,34 +546,23 @@
     "manual": "On my own",
     "nameLabel": "Specification name",
     "namePlaceholder": "E.g. SSO sign-in",
-    "model": "Model",
-    "chooseModel": "Choose a model",
-    "effort": "Effort",
     "providerDefault": "Executor default",
-    "mode": "Working mode",
-    "send": "Send",
     "changeMethod": "Change the way of working",
     "formRegion": "Specification creation",
-    "sessionWorkspaceIntro": "The new session uses the workspace of this specification.",
-    "simulatedSuffix": "simulated, no Git operations",
     "method": {
-      "title": "How do you want to create the specification?",
+      "title": "Creation method",
       "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype.",
       "aiText": "Start a Spec Writer session. Later stages can use other agents.",
       "manualText": "Create the documents of an archetype and edit them yourself."
     },
     "heading": {
-      "session": "Who do you want to work with?",
-      "specification": "What do you want to describe?"
+      "specification": "New specification"
     },
     "subheading": {
-      "session": "Configure another Spec Writer session.",
       "withArchetype": "Name the work, choose the archetype that matches it and where it lives."
     },
     "agent": {
-      "sessionTitle": "Session configuration",
       "initialTitle": "Initial agent session",
-      "introSession": "Choose the executor of this Spec Writer session.",
       "introInitial": "Choose the executor of the first Spec Writer session. Later sessions can use other agents.",
       "noProviders": "No executors are available."
     },
@@ -618,7 +629,6 @@
       "preparing": "Preparing…",
       "checkOperation": "Check operation status",
       "checkResult": "Check the result",
-      "openSession": "Open session",
       "createAndOpen": "Create and open session",
       "create": "Create specification"
     },
@@ -731,7 +741,7 @@
       "refreshArchetypes": "Refresh archetypes"
     },
     "workspace": {
-      "heading": "Where do you want to work?",
+      "heading": "Workspace",
       "intro": "Choose where the specification and its changes will live.",
       "refreshOptions": "Refresh workspace options",
       "refreshOptionsAction": "Refresh options",
@@ -1133,7 +1143,8 @@
       "skippedItem": "{{name}}: {{reason}}",
       "skip": {
         "limit": "at most 10 files per import",
-        "size": "the file exceeds 2 MB",
+        "size": "the file exceeds 1 MB",
+        "total": "the import would exceed 1 MB in total",
         "format": "supported formats are .md and .txt",
         "path": "the path exceeds 500 characters",
         "exists": "this path already exists — rename the file",
@@ -1151,6 +1162,7 @@
       "error": {
         "pathConflict": "This path already exists. Choose a different name or folder.",
         "revisionConflict": "The document or folder changed meanwhile. Close the action and start it again: the documents were refreshed.",
+        "tooLarge": "A document or the whole request is larger than the 1 MB limit.",
         "requestConflict": "This request was already recorded with a different result. Try the action again.",
         "default": "Unable to make the change. Check the name and path; the draft is kept.",
         "caseOnlyRename": "Renaming only the letter case is not supported on this file system. Rename it to a different name first, then to the one you want.",
@@ -1226,9 +1238,10 @@
       "tablist": "Opened documents",
       "openedMenu": "Opened documents ({{n}})",
       "openedHeading": "Opened documents",
+      "moreMenu": "More documents ({{n}})",
+      "moreHeading": "More documents",
       "close": "Close {{name}}",
       "closeHint": "Close: Delete or middle-click",
-      "menuHint": "Delete closes the highlighted document.",
       "menuClose": "Close",
       "rootLocation": "Root folder",
       "statusLoading": "loading",
@@ -1375,39 +1388,101 @@
     }
   },
   "sessions": {
-    "demo": {
-      "title": "Session",
-      "titleWithProfile": "Session · {{profile}}",
-      "backToSession": "Back to the Spec Writer session",
-      "closeContext": "Close context",
-      "context": "Context",
-      "loading": "Loading the session…",
-      "unavailable": "The session is unavailable",
-      "notFound": "This session does not exist or was deleted.",
-      "startTitle": "Start with what you want to settle",
-      "startBody": "You can describe the problem, ask for questions, or point to a part of the specification. The documents are already part of the context.",
-      "messageLabel": "Message to the Spec Writer",
-      "messagePlaceholder": "E.g. check whether we covered secure sign-out…",
-      "demoNote": "Session demo · the message stays a draft. Sending is not available.",
-      "contextIntro": "Materials available to the Spec Writer, regardless of your message.",
-      "documentsHint": "Specification files and source materials",
-      "project": "Project",
-      "instructions": "SpecFlow instructions",
-      "instructionsHint": "Role and working rules",
-      "loadingDocuments": "Loading documents…",
-      "documentsUnavailable": "The documents are unavailable",
-      "noDocuments": "No documents.",
-      "loadingDocument": "Loading the document…",
-      "documentUnavailable": "The document is unavailable.",
-      "previewLine": "{{filename}} · Preview",
-      "previewTitle": "Document preview",
-      "openInDocuments": "Open in Documents",
-      "demoContext": "Demo context, no Git operations.",
-      "writer": "Spec Writer",
-      "instructionsBody": "Project and role instructions are passed by SpecFlow regardless of the user message. This placeholder does not show the full system prompt.",
-      "loadingContext": "Loading the context…",
-      "contextUnavailable": "The context is unavailable.",
-      "cannotShow": "This file cannot be shown here. Open it in Documents."
+    "context": {
+      "executor": "Agent",
+      "title": "Context",
+      "executionScope": "Current execution",
+      "generic": "Generic / Spec-level",
+      "attention": "Attention / next actions",
+      "attentionTone": {
+        "attention": "Requires attention",
+        "info": "For your information",
+        "neutral": "Note"
+      },
+      "relatedTasks": "Related Tasks",
+      "tasksTitle": "Tasks",
+      "taskTitle": "Task",
+      "workHistory": {
+        "title": "Work history"
+      },
+      "tasks": {
+        "empty": "No related Tasks.",
+        "unavailable": "This Task is no longer available.",
+        "detailNote": "Task evidence and actions are reachable from its own Full Task page."
+      },
+      "specification": {
+        "sectionTitle": "Specification",
+        "documents": "Documents"
+      },
+      "placeholders": {
+        "sectionTitle": "Planned areas",
+        "notYetImplemented": "This area is a preview — its content will come later.",
+        "files": "Files / Changes",
+        "handovers": "Handovers",
+        "artifacts": "Artifacts",
+        "instructions": "Instructions",
+        "environment": "Environment"
+      },
+      "sessionDetails": {
+        "usageTitle": "Session usage",
+        "limitsTitle": "Provider limits",
+        "refreshing": "Refreshing…",
+        "costLabel": "Cost",
+        "tokensStatLabel": "Input / output tokens",
+        "tokenBreakdownLabel": "Additional token stats",
+        "cacheReadTokens": "{{value}} cache read",
+        "cacheWriteTokens": "{{value}} cache write",
+        "reasoningTokens": "{{value}} reasoning",
+        "costEstimatedSuffix": "estimated",
+        "costApiEquivalentSuffix": "API-equivalent",
+        "costUnconfirmedSuffix": "unconfirmed",
+        "contextWindowTitle": "Model context window",
+        "contextOccupancyValue": "{{value}}% occupied",
+        "contextWindowScopeTurnAndModel": "Current Turn · {{model}}",
+        "contextWindowScopeTurnOnly": "Current Turn",
+        "contextWindowScopeLastTurnAndModel": "Last Turn · {{model}}",
+        "contextWindowScopeLastTurnOnly": "Last Turn",
+        "contextWindowScopeModelOnly": "Model: {{model}}",
+        "rateLimitWindow": "{{window}} window",
+        "rateLimitWindowHours_one": "{{count}} hour",
+        "rateLimitWindowHours_few": "{{count}} hours",
+        "rateLimitWindowHours_many": "{{count}} hours",
+        "rateLimitWindowHours_other": "{{count}} hours",
+        "rateLimitWindowDays_one": "{{count}} day",
+        "rateLimitWindowDays_few": "{{count}} days",
+        "rateLimitWindowDays_many": "{{count}} days",
+        "rateLimitWindowDays_other": "{{count}} days",
+        "rateLimitUsedPercent": "{{value}}% used",
+        "rateLimitUsedOfLimit": "{{used}}/{{limit}} {{unit}}",
+        "moreLimitWindows": "+{{value}} more",
+        "stale": "Stale",
+        "staleExplanation": "Observed earlier and not yet confirmed current. May be out of date."
+      },
+      "batch_one": "{{count}} Task",
+      "batch_other": "{{count}} Tasks",
+      "batch_few": "{{count}} Tasks",
+      "batch_many": "{{count}} Tasks",
+      "availability": {
+        "scopeNotProvided": "This session’s links to a Specification and Tasks aren’t available yet.",
+        "scopeUnreadable": "Couldn’t load this session’s links.",
+        "specificationUnreadable": "Couldn’t load this session’s Specification.",
+        "specificationMissing": "Can’t find the Specification that this session belongs to.",
+        "specificationMissingNamed": "Can’t find Specification {{key}} that this session belongs to.",
+        "executionUnreadable": "Couldn’t load the Tasks being executed.",
+        "taskMissing": "Can’t find the Task this session is executing.",
+        "taskMissingNamed": "Can’t find {{key}}, the Task this session is executing.",
+        "tasksMissingBatch": "{{count}} of {{total}} Tasks for this session can’t be found.",
+        "attentionUnreadable": "Couldn’t check whether anything needs your attention.",
+        "relatedTasksUnreadable": "Couldn’t load related Tasks.",
+        "executorUnreadable": "Couldn’t load executor details.",
+        "workUnreadable": "Couldn’t load the work history.",
+        "executorMissing": "This session’s executor is no longer available."
+      },
+      "work": {
+        "sectionTitle": "Work",
+        "currentTurn": "Current Turn",
+        "lastTurn": "Last Turn"
+      }
     }
   },
   "apiErrors": {
@@ -1483,23 +1558,34 @@
     "back": "Back to specifications"
   },
   "managedSession": {
+    "sidePanel": "Side panel",
+    "sessionActions": {
+      "rename": "Rename",
+      "renameTitle": "Rename session",
+      "renameLabel": "Session name",
+      "renameSave": "Save",
+      "renameEmpty": "Enter a session name.",
+      "renameTooLong": "The name can be at most {{max}} characters.",
+      "archive": "Archive",
+      "archiveTitle": "Archive this session?",
+      "archiveDescription": "The session will disappear from the lists, but its whole history is kept. You can restore it from the archive later.",
+      "delete": "Delete",
+      "deleteTitle": "Delete this session?",
+      "deleteDescription": "This cannot be undone. The session and its whole conversation history will be permanently deleted."
+    },
     "authenticationRequired": "Sign-in required",
     "authenticationHelp": "Sign in again using the provider CLI, then recheck availability. Messages will not be retried automatically.",
     "recheckAuthentication": "Check sign-in",
-    "nativeMode": "Native mode",
     "title": "Session",
-    "new": "New test session",
-    "create": "Create session",
     "retryCreate": "Retry creation",
     "mockNote": "Controlled test provider · no files are changed",
     "loading": "Loading session…",
     "failed": "Could not load this part of the session.",
     "historyFailed": "Older messages could not be loaded.",
     "commandFailed": "The request was not confirmed. Retry with the same request.",
-    "partial": "Showing part of this message.",
-    "readMore": "Read more",
-    "previous": "Previous part",
-    "next": "Next part",
+    "savedRequestUnreadable": "Saved request can't be read",
+    "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
+    "discardSavedRequest": "Discard saved request",
     "responseRequired": "Response required",
     "unsupportedQuestion": "This question needs controls that are not available yet.",
     "allow": "Allow",
@@ -1507,14 +1593,47 @@
     "answer": "Your answer",
     "respond": "Respond",
     "message": "Message",
+    "readyState": {
+      "title": "{{provider}} is ready",
+      "description": "Write a message below to start the conversation."
+    },
+    "model": {
+      "label": "Model and effort for the next message",
+      "placeholder": "Select model",
+      "default": "Default model",
+      "triggerLabel": "Model: {{value}}",
+      "sectionLabel": "Model",
+      "effortSectionLabel": "Reasoning effort"
+    },
+    "intent": {
+      "label": "Work mode — next Turn",
+      "placeholder": "Select work mode",
+      "triggerLabel": "Work mode: {{value}}",
+      "sectionLabel": "Work mode",
+      "unavailable": "Unavailable"
+    },
+    "attach": {
+      "action": "Add attachment",
+      "addFile": "Add file",
+      "addImage": "Add image",
+      "list": "Attachments",
+      "remove": "Remove {{name}}",
+      "note": "Local mock: attachments are not sent to any provider."
+    },
     "send": "Send",
     "retrySend": "Retry sending",
     "cancel": "Stop",
     "older": "Load older messages",
+    "loadingOlder": "Loading older messages…",
     "latest": "Return to latest messages",
-    "empty": "Start a conversation.",
+    "copy": {
+      "action": "Copy message",
+      "copied": "Copied",
+      "failed": "Could not copy"
+    },
     "inspect": "Inspect Work",
-    "work": "Work",
+    "work": "Work history",
+    "workTab": "Work history · turn {{number}}",
     "closeWork": "Close Work",
     "ready": "Ready",
     "busy": "Working",
@@ -1531,6 +1650,10 @@
       "outcome": "Turn outcome"
     },
     "actions": "Tool actions",
+    "actions_one": "Tool action",
+    "actions_few": "Tool actions",
+    "actions_many": "Tool actions",
+    "actions_other": "Tool actions",
     "newer": "Newer activity",
     "outcome": {
       "completed": "Completed",
@@ -1540,8 +1663,8 @@
     },
     "workKind": {
       "commentary": "Progress",
-      "reasoning": "Reasoning",
-      "interaction": "User response",
+      "reasoning": "Thinking",
+      "interaction": "User interaction",
       "tool": "Tool"
     },
     "workState": {
@@ -1553,6 +1676,187 @@
       "cancelled": "Cancelled",
       "interrupted": "Interrupted",
       "expired": "Expired"
+    },
+    "workInspector": {
+      "copy": "Copy",
+      "copyInput": "Copy parameters",
+      "copyOutput": "Copy tool response",
+      "detailTruncated": "Showing the beginning — the full content is longer.",
+      "actionCount_one": "{{count}} action",
+      "actionCount_few": "{{count}} actions",
+      "actionCount_many": "{{count}} actions",
+      "actionCount_other": "{{count}} actions",
+      "startOfTurn": "Start of Turn",
+      "filterLabel": "Filter Work by type",
+      "filterActive": "Filter Work by type (active filter: {{kind}})",
+      "filterAll": "All",
+      "search": "Search Work",
+      "clearSearch": "Clear search",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "thinking": "Thinking",
+      "toolBurst_one": "{{count}} tool action",
+      "toolBurst_few": "{{count}} tool actions",
+      "toolBurst_many": "{{count}} tool actions",
+      "toolBurst_other": "{{count}} tool actions",
+      "operationsCount_one": "{{count}} operation",
+      "operationsCount_few": "{{count}} operations",
+      "operationsCount_many": "{{count}} operations",
+      "operationsCount_other": "{{count}} operations",
+      "analysisSuffix": "analysis",
+      "loadingOlder": "Loading older Work…",
+      "refreshFailed": "Could not refresh. What is shown may be out of date.",
+      "noMatches": "No Work matches these filters.",
+      "noMatchesLoaded": "No Work matches these filters in the loaded entries.",
+      "searchOlder": "Search older history",
+      "loadOlder": "Load older history",
+      "emptyTurn": "No Work yet for this Turn.",
+      "noActions": "No tool actions yet.",
+      "input": "Parameters",
+      "output": "Tool response",
+      "errorCode": "Error code: {{code}}",
+      "counts": {
+        "total_one": "{{count}} work item",
+        "total_few": "{{count}} work items",
+        "total_many": "{{count}} work items",
+        "total_other": "{{count}} work items",
+        "inProgress": "{{count}} in progress",
+        "commentary_one": "{{count}} progress note",
+        "commentary_few": "{{count}} progress notes",
+        "commentary_many": "{{count}} progress notes",
+        "commentary_other": "{{count}} progress notes",
+        "reasoning_one": "{{count}} thinking step",
+        "reasoning_few": "{{count}} thinking steps",
+        "reasoning_many": "{{count}} thinking steps",
+        "reasoning_other": "{{count}} thinking steps",
+        "interaction_one": "{{count}} user interaction",
+        "interaction_few": "{{count}} user interactions",
+        "interaction_many": "{{count}} user interactions",
+        "interaction_other": "{{count}} user interactions"
+      }
+    },
+    "workSummary": {
+      "running": "In progress:",
+      "open": "Open work history",
+      "failed": "Failed: {{list}}",
+      "more": "and more",
+      "actions_one": "{{count}} tool action",
+      "actions_other": "{{count}} tool actions",
+      "actionsAtLeast_one": "at least {{count}} tool action",
+      "actionsAtLeast_other": "at least {{count}} tool actions",
+      "kind": {
+        "read_one": "{{count}} read",
+        "read_other": "{{count}} reads",
+        "edit_one": "{{count}} edit",
+        "edit_other": "{{count}} edits",
+        "write_one": "{{count}} write",
+        "write_other": "{{count}} writes",
+        "list_one": "{{count}} directory listing",
+        "list_other": "{{count}} directory listings",
+        "search_one": "{{count}} search",
+        "search_other": "{{count}} searches",
+        "command_one": "{{count}} command",
+        "command_other": "{{count}} commands",
+        "test_one": "{{count}} test run",
+        "test_other": "{{count}} test runs",
+        "web_one": "{{count}} web page",
+        "web_other": "{{count}} web pages",
+        "other_one": "{{count}} other action",
+        "other_other": "{{count}} other actions",
+        "read_few": "{{count}} reads",
+        "read_many": "{{count}} reads",
+        "edit_few": "{{count}} edits",
+        "edit_many": "{{count}} edits",
+        "write_few": "{{count}} writes",
+        "write_many": "{{count}} writes",
+        "list_few": "{{count}} directory listings",
+        "list_many": "{{count}} directory listings",
+        "search_few": "{{count}} searches",
+        "search_many": "{{count}} searches",
+        "command_few": "{{count}} commands",
+        "command_many": "{{count}} commands",
+        "test_few": "{{count}} test runs",
+        "test_many": "{{count}} test runs",
+        "web_few": "{{count}} web pages",
+        "web_many": "{{count}} web pages",
+        "other_few": "{{count}} other actions",
+        "other_many": "{{count}} other actions"
+      },
+      "outcome": {
+        "failed": "Turn failed",
+        "cancelled": "Turn stopped",
+        "interrupted": "Turn interrupted"
+      },
+      "live": {
+        "tool": "{{label}}",
+        "toolUnnamed": "Running a tool…",
+        "reasoning": "Thinking…",
+        "responding": "Writing the answer…",
+        "commentary": "Describing progress…",
+        "waiting": "Waiting…",
+        "cancelling": "Cancelling…",
+        "working": "Working…"
+      },
+      "actions_few": "{{count}} tool actions",
+      "actions_many": "{{count}} tool actions",
+      "actionsAtLeast_few": "at least {{count}} tool actions",
+      "actionsAtLeast_many": "at least {{count}} tool actions"
     }
+  },
+  "sessionStart": {
+    "heading": "New session",
+    "agent": {
+      "heading": "Agent"
+    },
+    "name": {
+      "heading": "Session name",
+      "intro": "The name shows in the session list and in its header.",
+      "agentDefault": "The agent names the session from your first message.",
+      "customDescription": "The agent will not rename it.",
+      "useCustom": "Give it your own name",
+      "label": "Session name",
+      "placeholder": "e.g. Acceptance criteria review",
+      "limit": "Up to {{max}} characters.",
+      "remaining": "Characters left: {{remaining}}."
+    },
+    "prerequisite": {
+      "name": "Enter a name or let the agent name it.",
+      "noProvider": "No executor is available right now."
+    },
+    "footer": {
+      "agentNames": "The session opens without a message and the agent names it after the first one.",
+      "ready": "The session opens without a message, with your name."
+    },
+    "submit": {
+      "start": "Start session"
+    },
+    "form": {
+      "title": "Start a session",
+      "starting": "Starting…",
+      "failedTitle": "The session could not be started",
+      "failedBody": "Your choices were kept. Try again.",
+      "configurationBody": "Your choices are kept. Refresh the configuration before starting the session."
+    },
+    "fields": {
+      "effort": "Effort",
+      "effortDefault": "Default"
+    },
+    "modes": {
+      "readOnly": "Read only",
+      "workspaceWrite": "Workspace write"
+    },
+    "composer": {
+      "placeholder": "Choose the agent and start the session"
+    },
+    "executor": {
+      "notChosen": "not chosen"
+    },
+    "provider": {
+      "noMode": "No work mode is available"
+    }
+  },
+  "sessionNaming": {
+    "pending": "Naming…",
+    "provisionalTitle": "New session"
   }
 }

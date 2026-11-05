@@ -14,18 +14,24 @@ import {
   getItemTabPanelId,
   useWorkspaceCapabilities,
 } from '@nevo/ui';
-import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
+import {
+  ApplicationSessionBack,
+  applicationLocationHeader,
+  useApplicationCollection,
+} from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { useSessionReturn } from '../../sessions';
 import { useDocumentsApi } from '../useDocumentsApi';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
-import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
+import { documentRootActions, type DocumentTreeController } from '../explorer/documentRootActions';
 import { documentTreeKeys } from '../read-model/queries';
 import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { DocumentPane } from './DocumentPane';
 import { DocumentsEmptyState } from './DocumentsEmptyState';
+import { DocumentsIdleRailHeader } from './DocumentsIdleRailHeader';
 import {
   DocumentsTreeActionsContext,
   assignTypeFor,
@@ -68,6 +74,10 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   });
   const editor = useDocumentEditor();
   const tabs = useDocumentTabs();
+  // The Session the user came from (Context's Documents row), so the way back exists even while no
+  // document is open; an open document shows the same link in its own pane.
+  const sessionReturn = useSessionReturn(specId);
+  const collection = useApplicationCollection();
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   // Stable: the callbacks read the controller only when the user acts.
@@ -75,15 +85,16 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     assignType: (id) => treeController.current?.assignType(id),
     removeRegistration: (id) => treeController.current?.removeRegistration(id),
   }));
-  const documentHeader = documentHeaderModel(editor, t, {
-    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
-    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
-  });
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
   const commitRef = useRef<(() => void) | null>(null);
   const takeDiscardedRef = useRef<(() => string[]) | null>(null);
   const operations = useDocumentTreeOperations({ specId });
   const opening = useDocumentOpening({ specId, documentId, requestRef, commitRef });
+  const documentHeader = documentHeaderModel(editor, t, {
+    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
+    onCloseAll: tabs.tabs.length > 0 ? () => opening.closeAll() : undefined,
+    onAssignType: assignTypeFor(treeActions, tree.data, documentId),
+  });
   // Once per visit (this screen's mount), as soon as the tree and the layout are known: the main
   // file opens when nothing is chosen. Decided once, so closing it never reopens it in this visit.
   const startDecided = useRef(false);
@@ -123,21 +134,32 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <DocumentPane data={{ specId, documentId }} />
     </div>
   ) : (
-    <DocumentsEmptyState
-      // The start actions the Specification allows; a running operation only disables them.
-      actions={rootActions.filter((action) => {
-        const capabilities = tree.data?.capabilities;
-        if (action.id === 'documents-new-file') {
-          return capabilities?.createFile.available === true;
-        }
+    <>
+      {sessionReturn && supportsSplit && (
+        <div className="shrink-0 px-4 py-3">
+          <ApplicationSessionBack
+            specId={specId}
+            sessionId={sessionReturn}
+            collection={collection}
+          />
+        </div>
+      )}
+      <DocumentsEmptyState
+        // The start actions the Specification allows; a running operation only disables them.
+        actions={rootActions.filter((action) => {
+          const capabilities = tree.data?.capabilities;
+          if (action.id === 'documents-new-file') {
+            return capabilities?.createFile.available === true;
+          }
 
-        if (action.id === 'documents-upload') {
-          return capabilities?.import.available === true;
-        }
+          if (action.id === 'documents-upload') {
+            return capabilities?.import.available === true;
+          }
 
-        return false;
-      })}
-    />
+          return false;
+        })}
+      />
+    </>
   );
 
   return (
@@ -202,6 +224,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                 opening.closeAll();
               }
             }}
+            // The Session's editor-tab rail; the stacked document keeps its own 56px header.
+            headerVariant="tab-rail"
             header={
               <WorkspaceHeader
                 actions={documentHeader.actions}
@@ -217,7 +241,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                   tabs.tabs.find((tab) => tab.id === documentId)?.label ??
                   t('specification.documentPreviewTitle')
                 }
-                identityContent={<DocumentTabStrip />}
+                identityContent={<DocumentTabStrip density="rail" />}
+                tabRail
               />
             }
           >
@@ -226,7 +251,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
         ) : supportsSplit ? (
           // Idle placeholder: not dismissible, so closing it cannot bring back a full-width list.
           <AppWorkspace.Secondary
-            header={<WorkspaceHeader title={t('specification.documentPreviewTitle')} />}
+            headerVariant="tab-rail"
+            header={<DocumentsIdleRailHeader title={t('specification.documentPreviewTitle')} />}
           >
             {pane}
           </AppWorkspace.Secondary>

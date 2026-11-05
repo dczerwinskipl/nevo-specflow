@@ -235,13 +235,46 @@ function ConnectedTaskFixture() {
 
 const meta = {
   title: 'SpecFlow/Screens/Task Workbench',
-  tags: ['visual'],
+  tags: ['contract'],
   component: TaskWorkbenchFixture,
+  excludeStories: ['TaskWorkbenchFixture'],
   parameters: { layout: 'fullscreen' },
   args: { scenario: 'human-gates', stress: false, preview: false, narrowPanel: false },
 } satisfies Meta<typeof TaskWorkbenchFixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+export const Default: Story = {
+  tags: ['!contract'],
+  argTypes: {
+    scenario: {
+      control: 'select',
+      options: [
+        'human-gates',
+        'rich-human',
+        'next-human',
+        'no-next',
+        'work-unavailable',
+        'human-forbidden',
+        'mismatch',
+        'agent',
+        'gates',
+        'human-only',
+        'checkpoint',
+        'retry',
+        'terminal',
+        'unavailable',
+        'forbidden',
+        'unknown-resource',
+        'not-started',
+        'no-description',
+        'recovery',
+      ],
+    },
+    stress: { control: 'boolean' },
+    preview: { control: 'boolean' },
+    narrowPanel: { control: 'boolean' },
+  },
+};
 export const HumanWithGates: Story = {};
 export const RichHuman: Story = { args: { scenario: 'rich-human' } };
 export const RichLongContent: Story = { args: { scenario: 'rich-human', stress: true } };
@@ -323,7 +356,7 @@ const hintsContract: NonNullable<Story['play']> = async ({
 
 export const HintsLongFull: Story = {
   args: { scenario: 'rich-human', stress: true },
-  tags: ['contract', '!visual'],
+  tags: ['contract'],
   parameters: {
     viewport: {
       options: { hintsTablet: { name: 'Hints 768', styles: { width: '768px', height: '1000px' } } },
@@ -359,17 +392,17 @@ export const HintsLongHistory: Story = {
 };
 export const HintsEmptyCurrent: Story = {
   args: { scenario: 'agent' },
-  tags: ['contract', '!visual'],
+  tags: ['contract'],
   play: hintsContract,
 };
 export const HintsEmptyNext: Story = {
   args: { scenario: 'not-started' },
-  tags: ['contract', '!visual'],
+  tags: ['contract'],
   play: hintsContract,
 };
 export const HintsEmptyHistory: Story = {
   args: { emptyHistoryHints: true },
-  tags: ['contract', '!visual'],
+  tags: ['contract'],
   play: hintsContract,
 };
 export const RichPreview: Story = { args: { scenario: 'rich-human', preview: true } };

@@ -12,6 +12,12 @@ export interface ItemTab {
   /** Shows the attention badge on the icon (left, always visible). */
   dirty?: boolean;
   state?: 'ready' | 'loading' | 'missing';
+  /**
+   * Whether this item offers a close affordance. Defaults to `true` when omitted. A `false` item
+   * renders no close `x`, no Delete-key close, no middle-click close, and no "Close <label>" row
+   * in the Opened menu; it otherwise looks and behaves exactly like a closable item.
+   */
+  closable?: boolean;
 }
 
 export interface ItemTabsLabels {
@@ -19,14 +25,16 @@ export interface ItemTabsLabels {
   tablist: string;
   /** Accessible name of the overflow trigger. */
   openedMenu: (count: number) => string;
-  /** Heading of the Opened menu. */
+  /** Heading of the Opened menu (the switcher's list of every item). */
   openedHeading: string;
+  /** Accessible name of the strip's overflow trigger; `count` is the number of hidden tabs. */
+  moreMenu: (count: number) => string;
+  /** Heading of the overflow menu, which lists only the tabs the strip could not show. */
+  moreHeading: string;
   /** Accessible name of one tab's close button. */
   close: (label: string) => string;
   /** Last line of every tab tooltip. */
   closeHint: string;
-  /** Note at the bottom of the Opened menu. */
-  menuHint: string;
   /** Pointer-only close affordance title inside Opened menu rows. */
   menuClose: string;
   /**
@@ -46,9 +54,10 @@ export const defaultItemTabsLabels: ItemTabsLabels = {
   tablist: 'Opened items',
   openedMenu: (count) => `Opened items (${count})`,
   openedHeading: 'Opened items',
+  moreMenu: (count) => `More opened items (${count})`,
+  moreHeading: 'More opened items',
   close: (label) => `Close ${label}`,
   closeHint: 'Close: Delete or middle-click',
-  menuHint: 'Delete closes the highlighted item.',
   menuClose: 'Close',
   rootLocation: 'Root folder',
   status: {

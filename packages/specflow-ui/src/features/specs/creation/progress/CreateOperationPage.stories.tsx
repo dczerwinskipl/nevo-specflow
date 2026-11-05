@@ -293,7 +293,7 @@ function Fixture({
 
 const meta = {
   decorators: [withLocale('pl')],
-  title: 'SpecFlow/Features/Specification Creation/Progress Page',
+  title: 'SpecFlow/Screens/Create Specification Progress',
   component: Fixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
@@ -323,6 +323,34 @@ const newWorkspaceFacts: CreateSettingsFacts = {
 /** The heading names the state and the specification in one line; the settings follow in plain facts. */
 const settingsList = (canvas: { getByLabelText: (label: string) => HTMLElement }) =>
   within(canvas.getByLabelText('Ustawienia tworzenia'));
+
+export const Default: Story = {
+  tags: ['!contract'],
+  args: { request: newWorkspace, facts: newWorkspaceFacts, server: 'running', stream: 'steps' },
+  // The services are built per server/stream, so a new choice remounts the page.
+  render: (args) => <Fixture key={`${args.server}-${args.stream}`} {...args} />,
+  argTypes: {
+    server: {
+      control: 'select',
+      options: [
+        'running',
+        'completed',
+        'unknown',
+        'failed-branch',
+        'refuses-branch',
+        'lost',
+        'refuses-protected',
+        'refuses-blocked',
+        'refuses-path',
+        'commit-failed',
+      ],
+    },
+    stream: {
+      control: 'select',
+      options: ['steps', 'unavailable', 'commit-steps', 'commit-steps-existing'],
+    },
+  },
+};
 
 /**
  * Right after Create: the progress is the primary content. A static status icon (the running step carries the only spinner),
@@ -527,7 +555,8 @@ async function expectFormWidth() {
       getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-form'),
     ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
   const heading = await within(document.body).findByRole('heading', { level: 1 });
-  const content = heading.closest('.scroll-area')!.parentElement!;
+  // The form column, centred inside the full-width scroll area (`CreateShell`).
+  const content = heading.closest<HTMLElement>('.w-content-form')!;
   const surface =
     content.closest<HTMLElement>('[data-workspace-surface]') ?? content.parentElement!;
   for (const width of [1440, 1920, 2560, 900, 390]) {

@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { authSessionIdentity, type AuthStore } from '../auth/store';
+import { forgetStartedSessions } from '../features/sessions';
 
 /** Install application cache isolation once per AuthStore/QueryClient pair. */
 export function bindAuthQueryCache(auth: AuthStore, queryClient: QueryClient): () => void {
@@ -13,12 +14,14 @@ export function bindAuthQueryCache(auth: AuthStore, queryClient: QueryClient): (
       if (previousIdentity !== undefined && previousIdentity !== identity) {
         void queryClient.cancelQueries();
         queryClient.clear();
+        forgetStartedSessions();
       }
 
       previousIdentity = identity;
     } else if (state.status === 'loading' && state.reason === 'logout') {
       void queryClient.cancelQueries();
       queryClient.clear();
+      forgetStartedSessions();
       previousIdentity = undefined;
     }
   };

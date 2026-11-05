@@ -51,6 +51,18 @@ describe('WorkspaceHeader actions', () => {
     expect(html).not.toMatch(/<h[1-6]/);
     expect(html).toContain('New customer');
   });
+  it('continues a rail strip with its actions (tabRail) instead of a gap and a floating group', () => {
+    const header = (
+      <WorkspaceHeader title="Doc" tabRail identityContent={<span>strip</span>} actions={actions} />
+    );
+    const markup = renderToStaticMarkup(header);
+    expect(markup).toContain('bg-tab-strip');
+    expect(markup).toContain('border-b border-border-subtle');
+    expect(markup).not.toContain('gap-3');
+    expect(renderToStaticMarkup(<WorkspaceHeader title="Doc" actions={actions} />)).not.toContain(
+      'bg-tab-strip',
+    );
+  });
   it('automatically renders declared actions beside custom identity exactly once', () => {
     const markup = renderToStaticMarkup(
       <WorkspaceHeaderFrame

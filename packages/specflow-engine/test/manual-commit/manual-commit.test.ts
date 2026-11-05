@@ -5,9 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS, symlinksAvailable } from '../support/platform';
+import { symlinksAvailable, useSlowGitTestTimeouts } from '../support/platform';
 
 import { DocumentError } from '../../src/specs/document-rules/errors';
 import {
@@ -59,7 +59,7 @@ import {
   specPath,
 } from '../support/manual-commit';
 
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 afterEach(removeTrackedRoots);
 

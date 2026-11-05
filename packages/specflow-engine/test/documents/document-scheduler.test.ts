@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { onLinux } from '../support/platform';
+import { onLinux, useSlowGitTestTimeouts } from '../support/platform';
 
 import { projectControlLockPath } from '../../src/project/control-lock';
 import type { DocumentChangeRequest } from '../../src/specs/documents/changes/plan/request';
@@ -46,6 +46,9 @@ import {
   type IndependentVitestWorker,
 } from '../support/process-worker';
 import { git } from '../support/git-project';
+
+// Real Git on a slow runner: the seconds of Linux are minutes there.
+useSlowGitTestTimeouts();
 
 const workers: IndependentVitestWorker[] = [];
 afterEach(async () => {

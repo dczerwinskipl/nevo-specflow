@@ -6,9 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS, symlinksAvailable } from '../support/platform';
+import { symlinksAvailable, useSlowGitTestTimeouts } from '../support/platform';
 
 import { GitCapabilityError } from '../../src/git/errors';
 import { sha256Hex } from '../../src/hash';
@@ -62,7 +62,7 @@ import {
 import { git } from '../support/git-project';
 
 // Real Git on a slow runner: the seconds of Linux are minutes there.
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 afterEach(removeTrackedRoots);
 

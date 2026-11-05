@@ -5,16 +5,16 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS } from '../support/platform';
+import { useSlowGitTestTimeouts } from '../support/platform';
 
 import { bootstrapProjectHome, type SpecFlowEngine } from '../../src/testing';
 import { createGitCommitPort } from '../../src/version-control/commits/git-adapter';
 import type { EngineCommitRequest } from '../../src/version-control/commits/port';
 import { commitStaged, createGitTestProject, git } from '../support/git-project';
 
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 const roots: string[] = [];
 afterEach(async () => {

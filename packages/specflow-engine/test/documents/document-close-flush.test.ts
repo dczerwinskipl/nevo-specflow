@@ -5,9 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS } from '../support/platform';
+import { useSlowGitTestTimeouts } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
 import type { CommitPort } from '../../src/version-control/commits/port';
@@ -48,7 +48,7 @@ import {
 import { commitStaged, git } from '../support/git-project';
 
 // Real Git on a slow runner: the seconds of Linux are minutes there.
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 afterEach(removeTrackedRoots);
 

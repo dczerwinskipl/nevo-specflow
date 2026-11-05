@@ -3,6 +3,8 @@ import { linkSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { vi } from 'vitest';
+
 /**
  * The one place that decides where a platform-dependent test runs.
  *
@@ -83,7 +85,16 @@ export const realGitAvailable: boolean = probeRealGit();
 
 /**
  * Budget of one test that creates repositories or runs many Git processes. A Windows runner needs
- * about ten times what Linux does and the Windows shards pass `--testTimeout=20000`; a test that
- * takes seconds on Linux declares this sets it with `vi.setConfig({ testTimeout })`.
+ * about ten times what Linux does and the Windows shards pass `--testTimeout=20000`; a file whose
+ * tests take seconds on Linux opts in with {@link useSlowGitTestTimeouts}.
  */
 export const SLOW_GIT_TEST_TIMEOUT_MS = 240_000;
+
+/**
+ * Gives every test and hook of the calling file the {@link SLOW_GIT_TEST_TIMEOUT_MS} budget. Hooks
+ * get it too: their teardown removes real repositories, which on a Windows runner can take longer
+ * than the 10 s hook default. Call it once at the top level of the test file.
+ */
+export function useSlowGitTestTimeouts(): void {
+  vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS, hookTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+}

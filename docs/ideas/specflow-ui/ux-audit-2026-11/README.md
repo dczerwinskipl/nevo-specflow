@@ -20,8 +20,9 @@ read_when:
 summary: >
   Screenshot-backed UX audit of the finished SpecFlow UI screens on main after the Full Session
   redesign. Lists desktop space and layout-jump problems, navigator and flow problems, mobile
-  problems and Storybook data noise, each with a suggested direction. Non-authoritative input
-  for the next navigation and layout iteration.
+  problems and Storybook data noise, each with a suggested direction, followed by the review
+  decisions and a phased delivery order. Non-authoritative input for the next navigation and
+  layout iteration.
 related:
   - ideas.specflow-ui
   - ideas.specflow-ui.navigation-route-model
@@ -32,8 +33,11 @@ related:
 # SpecFlow UI UX audit, November 2026
 
 This audit reviews the **finished** SpecFlow UI screens. Known placeholders such as the
-_Planned areas_ list in Session Context are out of scope. Every finding is a proposal for owner
-review, not a decision.
+_Planned areas_ list in Session Context are out of scope.
+
+Sections 1 to 4 record **observations** and the auditor's first **proposals**. Proposals are not
+decisions. The [Review decisions](#review-decisions) section records what was accepted, changed or
+rejected after review. Where a proposal conflicts with an accepted contract, the contract wins.
 
 ## Method and evidence
 
@@ -106,6 +110,9 @@ half of the screen.
 **Suggestion.** Let the default ratio depend on the opened content, or keep Secondary narrow
 until the content needs more space.
 
+> **Conflicts with an accepted contract.** The 50/50 default for a second independent root tab is
+> part of the accepted Session Chat V10 split. The observation stands; the proposal was rejected.
+
 ### 1.5 Documents use four columns
 
 Navigation, document tree, document and table of contents sit side by side. At 1280 px the table
@@ -133,6 +140,13 @@ middle of the flow: right after **Start session**.
 **Suggestion.** This is the main topic for the navigator redesign. The navigator should derive the
 current Specification from the Session's owner as well, so the Specification section stays visible
 in a Session.
+
+**Root cause found in review.** The managed Sessions contract has no Session-to-Specification
+association. Create Session rejects association fields, and the real Session route falls back to
+an unknown scope. A Session started in this page keeps its Specification only through an
+in-memory record of the started Session. After a reload, a direct URL or a move to an older
+Session, the context is gone. Passing a `specId` to the navigator is therefore not enough. The
+fix needs a durable, authoritative association first.
 
 ### 2.2 The same information appears three times
 
@@ -183,12 +197,19 @@ Session.
 with an agent fits the same shell: name and archetype in the start card, Context on the right.
 This would also remove one of the width changes from section 1.1.
 
+> **Rejected in review.** The creation process stays as it is. The width change is solved by the
+> fixed shell geometry instead; the form itself may be improved without changing the process.
+
 ### 2.7 The Session start card has two calls to action
 
 - A **Start session** button and, below it, a disabled Composer saying _Choose an agent and start
   the session_, although an agent is already selected.
 - Model is required but has no default, and Context shows _not selected_ until one is chosen.
 - Work mode shows no selection before a model is chosen.
+
+> **Mostly specified behaviour.** The New Session spec makes the model a deliberate choice with
+> nothing preselected, and keeps the Composer inactive until Start. Only the misleading Composer
+> placeholder, which asks to choose an agent that is already chosen, remains a finding.
 
 ![Session start card with the Start button and the disabled Composer below.](images/desktop-session-start-card.png)
 
@@ -200,6 +221,11 @@ the screen has two text inputs. The Composer meanwhile shows the stop control.
 ![Pending question with its own text area above the main Composer.](images/storybook-session-pending-question.png)
 
 **Suggestion.** Answer through the main Composer with the question attached as context.
+
+> **Changed in review.** Session Chat V10 requires a structured interaction to appear as an
+> actual user decision, not handled by the general Composer. The structured answer stays. The
+> problem to solve is two competing active inputs, for example by replacing the normal Composer
+> with the answer field while the question is pending.
 
 ### Demo leads to a dead end
 
@@ -276,40 +302,79 @@ chaotic and every screen seems to carry a warning.
 Move edge cases and scroll regression stories to a separate group. This matches the direction of
 the Storybook rework proposal in #113.
 
-## Recommendations
+## Review decisions
 
-Ordered by impact on everyday work. Each item names the findings it resolves.
+The first proposals were reviewed on 2026-11-05. The review kept the product structure and the
+accepted Workspace V2 and Session Chat V10 behaviour, and split the work into small, independent
+pull requests instead of one redesign.
 
-1. **Fix the shell geometry first** (1.1, part of 2.6). Keep the navigation and the workspace panel
-   in the same place on every screen and constrain only the column inside the panel. This is a
-   small Nevo UI change with a visible effect on every transition.
-2. **Make the navigator Specification-aware everywhere** (2.1, 2.2). Resolve the current
-   Specification from the Session owner as well as from the route, so the Specification section
-   stays visible in a Session. In the same change, turn the navigator into a list of places with
-   counts and state: Sessions with _waiting for you_ and _working_ counts, no full Session names,
-   and either a real Tasks view or no Tasks item (2.3).
-3. **Put creation into one shell** (2.6, 2.7). Move _New specification with an agent_ into the
-   Session shell with a start card, like _New session_. Give the start card one call to action,
-   preselect a default model and show the selected work mode.
-4. **Let Secondary earn its space** (1.2, 1.4). Collapse empty Secondary panels and keep Secondary
-   narrow until its content needs more room.
-5. **Align the conversation width** (1.3). Apply the accepted V10 reading width to messages, Work
-   summaries and the Composer.
-6. **Give the mobile Session a header** (3). Show the Session name, state and owning
-   Specification, with entry to Context, instead of floating buttons.
-7. **Answer questions in the main Composer** (2.8). Attach the pending question to the Composer
-   rather than rendering a second text input.
-8. **Make demo mode tell the truth** (Demo). Either enable a mock Session provider in demo or
-   disable Session calls to action there with a reason.
-9. **Clean Storybook defaults** (4). One single-language Default story per screen, edge cases in a
-   separate group, as proposed in #113.
-10. **Sweep the small issues** (2.4, 2.5, 2.9). Label the task count, remove the developer note,
-    unify _New session_ naming, drop the duplicated task key, add state to the switcher and check
-    the attention roll-up against real Runtime data.
+### Decisions per proposal
 
-Recommendations 1 and 2 together answer the navigator question: once the shell is stable and the
-navigator keeps the Specification in every child screen, moving between creation, Sessions and
-Documents stops feeling like switching applications.
+| Proposal              | Decision         | What to do                                                                                                                                                         |
+| --------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell geometry        | Implement        | Fixed App Shell geometry with maximum widths only inside views. Not a small CSS change: it affects breakpoints and Workspace width measurement.                    |
+| Navigator             | Implement partly | Keep quick access to Sessions and the current hierarchy. Add a durable Specification context, shorter names and better counts.                                     |
+| Creation shape        | Reject           | Do not move Create Specification into the Session shell. Improve the form without changing the process. Do not preselect a model.                                  |
+| Secondary space       | Split            | Solve the empty Activity history separately. Keep the accepted dynamic V10 split in Full Session.                                                                  |
+| Conversation width    | Implement        | One reading width for answers, comments and Work summaries, consistent with the Composer.                                                                          |
+| Mobile header         | Implement        | A consistent header with name, state and access to Context, built from existing Design System primitives.                                                          |
+| Question and Composer | Redesign the UX  | Keep the structured interaction but avoid two competing active inputs. Consider replacing the normal Composer with the answer field while the question is pending. |
+| Demo                  | Implement        | Remove the false success message and the broken calls to action. Decide separately whether demo simulates Sessions.                                                |
+| Storybook             | Implement        | Within the #113 rework: Default stories, fixture language and tree organisation.                                                                                   |
+| Small issues          | Implement partly | Remove developer copy, duplicated identifiers and unlabelled values. Check attention roll-up against the real Runtime first.                                       |
+
+### Navigator direction
+
+Keep the short Session list in the navigator. With few active Sessions it is useful. Change its
+names, counts and state presentation instead. Repetition between the navigator and the Overview is
+acceptable as long as the navigator stays the lighter of the two.
+
+```text
+Specifications
+
+CURRENT SPECIFICATION
+UI-1234
+Deterministic admission and execution boundaries
+
+Overview
+Sessions            1 waiting · 1 working
+  Agent asks for input
+  Implementer
+  All sessions
+Tasks
+Documents
+```
+
+The structure above illustrates the direction. It is not an accepted mock and does not propose new
+Design System components.
+
+### Delivery order
+
+1. **PR A: App Shell.** Fixed position of the navigation and the Workspace, with independent content
+   widths per view. Verify at 1600, 1280 and 390 px without regressions in splits and scrolling.
+2. **PR B: Session ownership and navigator.** First the contract for the Session-to-Specification
+   association, then one context resolver, then the navigator presentation. This crosses Runtime
+   and UI. It must include:
+   - a durable, authoritative Session-to-Specification association where one exists;
+   - one resolver used by the navigator, Session Context and return links;
+   - correct handling of independent Sessions, loading, not found and missing permission;
+   - tests for a direct URL, reload, switching Sessions and switching Specifications.
+
+   A local cache of the last opened Specification is not an acceptable solution.
+
+3. **PR C: Session UX and responsive.** Conversation width, mobile headers, access to Context and the
+   empty Activity history. Do not change the root tab contract or the Back rules.
+4. **PR D: UI cleanup and demo.** Copy, naming, task counts, messages and fixture consistency.
+   Storybook follows #113 and is not mixed with the navigator work.
+
+PR A is independent and can start immediately. The Session ownership contract for PR B can be
+specified in parallel.
+
+### Verification rule for geometry changes
+
+Every pull request that changes geometry includes a visual before-and-after comparison and tests of
+transitions between screens. Checking a single screen in Storybook is not enough: the problems in
+this audit show up while moving between views.
 
 ## Verification guide
 
@@ -337,35 +402,36 @@ The demo Specification used throughout is `admission` (`UI-1234`).
 Source legend: **App** means the demo application, **SB** means Storybook only, **Code** means
 confirmed by reading code.
 
-| Section | Claim                                             | How to reproduce                                                                                             | Evidence                                                                                                                                                                                                      | Source    |
-| ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| 1.1     | Navigation moves between screens on wide desktops | At 1600 px open `/`, `/specs/new` and `/specs/admission`; compare the logo position                          | `packages/nevo-ui/src/app/shell/AppShell.tsx:201` centers the row; `SpecsOverview.tsx:98` uses `w-content-standard`; `CreateShell.tsx:49` uses `w-content-form`; widths in `nevo-ui/src/design-system.css:87` | App, Code |
-| 1.2     | Empty Activity history keeps a wide column        | At 1280 px open `/specs/admission`                                                                           | Screenshot only; the demo has no history events                                                                                                                                                               | App       |
-| 1.3     | Assistant text is wider than the Composer         | Story `specflow-screens-managed-session--default` at 1600 px                                                 | Compare with the approved width-limited assistant Markdown in `components/session-chat-v10-design.md`                                                                                                         | SB        |
-| 1.4     | Work history is sparse at a 50/50 split           | Story `specflow-screens-managed-session--work-summary-states` at 1600 px                                     | Screenshot only                                                                                                                                                                                               | SB        |
-| 1.5     | Documents use four columns                        | Open `/specs/admission/documents` at 1600 and 1280 px                                                        | Screenshot only                                                                                                                                                                                               | App       |
-| 2.1     | A Session drops the Specification from navigation | Open `/specs/admission/sessions/new`, choose a model, press Start                                            | `ProductNavigation.tsx:54` matches only `/_app/specs/$specId`; `features/sessions/managed/routes.tsx:22` registers `/sessions/$sessionId` outside it                                                          | App, Code |
-| 2.2     | The same Session and attention item repeat        | Open `/specs/admission` at 1600 px                                                                           | Screenshot only                                                                                                                                                                                               | App       |
-| 2.3     | Tasks is an in-page anchor                        | Click Tasks in the navigator on `/specs/admission`                                                           | `app/navigation/productNavigationModel.ts:17` defines `hash: 'tasks-heading'`                                                                                                                                 | App, Code |
-| 2.4     | Task attention does not roll up                   | On `/specs/admission` open TASK-02 and compare with its row and the attention block                          | May be demo fixture data; check the Runtime projection before treating it as a model gap                                                                                                                      | App       |
-| 2.5     | The switcher shows no state                       | On `/specs/admission` open the Current specification switcher                                                | Screenshot only                                                                                                                                                                                               | App       |
-| 2.6     | Creation has two shapes                           | Compare `/specs/new` with agent against `/specs/admission/sessions/new`                                      | Screenshot only                                                                                                                                                                                               | App       |
-| 2.7     | The start card has two calls to action            | Open `/specs/admission/sessions/new` before choosing a model                                                 | Screenshot only                                                                                                                                                                                               | App       |
-| 2.8     | A pending question has a second text input        | Story `specflow-screens-managed-session--pending-interaction`                                                | Screenshot only                                                                                                                                                                                               | SB        |
-| Demo    | Session calls to action end in a load error       | Click Open session on `/specs/admission`; also request `/api/session-providers`                              | `packages/specflow-runtime/src/server/app.ts:210` passes no Sessions config in demo; `features/sessions/http/routes.ts:109` answers `SESSION_DISABLED`                                                        | App, Code |
-| 2.9     | Task key shown twice                              | Task rows on `/specs/admission`                                                                              | Screenshot only                                                                                                                                                                                               | App       |
-| 2.9     | Unlabelled number under a Session                 | Continue session on `/specs/admission` and `/specs/admission/sessions`                                       | `features/specs/read-model/mapWorkspaceResponse.ts:58` maps the task count to a bare number                                                                                                                   | App, Code |
-| 2.9     | Developer note and naming in the Sessions list    | Open `/specs/admission/sessions`                                                                             | `i18n/locales/pl.json:177` `sessionsFutureNotice`; `pl.json:160` `newConversation`                                                                                                                            | App, Code |
-| 2.9     | Untranslated mode title                           | Composer in any Claude Session story                                                                         | `packages/specflow-runtime/src/features/sessions/providers/claude/modes.ts:10`                                                                                                                                | SB, Code  |
-| 3       | Mobile Session has no header                      | Story `specflow-screens-managed-session--real-route-context-narrow` at 390 px                                | Screenshot only                                                                                                                                                                                               | SB        |
-| 3       | Mobile Specification header says only Overview    | Open `/specs/admission` and `/specs/admission/sessions` at 390 px                                            | Screenshot only                                                                                                                                                                                               | App       |
-| 3       | Mobile start button is cut off                    | Open `/specs/admission/sessions/new` at 390×844                                                              | Screenshot only                                                                                                                                                                                               | App       |
-| 4       | Default stories show warnings and mixed languages | Story `specflow-screens-application-shell--navigation-specification-active`; story counts from `/index.json` | English fixture text in `features/sessions/managed/context/sessionContextFixtures.ts:113`                                                                                                                     | SB, Code  |
+| Section | Claim                                             | How to reproduce                                                                                             | Evidence                                                                                                                                                                                                                                                                                                                                                                                         | Source    |
+| ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| 1.1     | Navigation moves between screens on wide desktops | At 1600 px open `/`, `/specs/new` and `/specs/admission`; compare the logo position                          | `packages/nevo-ui/src/app/shell/AppShell.tsx:201` centers the row; `SpecsOverview.tsx:98` uses `w-content-standard`; `CreateShell.tsx:49` uses `w-content-form`; widths in `nevo-ui/src/design-system.css:87`                                                                                                                                                                                    | App, Code |
+| 1.2     | Empty Activity history keeps a wide column        | At 1280 px open `/specs/admission`                                                                           | Screenshot only; the demo has no history events                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 1.3     | Assistant text is wider than the Composer         | Story `specflow-screens-managed-session--default` at 1600 px                                                 | Compare with the approved width-limited assistant Markdown in `components/session-chat-v10-design.md`                                                                                                                                                                                                                                                                                            | SB        |
+| 1.4     | Work history is sparse at a 50/50 split           | Story `specflow-screens-managed-session--work-summary-states` at 1600 px                                     | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | SB        |
+| 1.5     | Documents use four columns                        | Open `/specs/admission/documents` at 1600 and 1280 px                                                        | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 2.1     | A Session drops the Specification from navigation | Open `/specs/admission/sessions/new`, choose a model, press Start                                            | `ProductNavigation.tsx:54` matches only `/_app/specs/$specId`; `features/sessions/managed/routes.tsx:22` registers `/sessions/$sessionId` outside it; `managed/context/sessionContextTypes.ts:125` sets an unknown scope; `start/handoff/startedSession.ts:91` keeps the started context only in memory; `specflow-contracts/src/sessions/model.test.ts:10` rejects association fields on Create | App, Code |
+| 2.2     | The same Session and attention item repeat        | Open `/specs/admission` at 1600 px                                                                           | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 2.3     | Tasks is an in-page anchor                        | Click Tasks in the navigator on `/specs/admission`                                                           | `app/navigation/productNavigationModel.ts:17` defines `hash: 'tasks-heading'`                                                                                                                                                                                                                                                                                                                    | App, Code |
+| 2.4     | Task attention does not roll up                   | On `/specs/admission` open TASK-02 and compare with its row and the attention block                          | May be demo fixture data; check the Runtime projection before treating it as a model gap                                                                                                                                                                                                                                                                                                         | App       |
+| 2.5     | The switcher shows no state                       | On `/specs/admission` open the Current specification switcher                                                | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 2.6     | Creation has two shapes                           | Compare `/specs/new` with agent against `/specs/admission/sessions/new`                                      | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 2.7     | The inactive Composer placeholder misleads        | Open `/specs/admission/sessions/new` with an agent already selected                                          | Inactive Composer and no preselected model are specified in `screens/new-session-ui-spec.md`; only the placeholder text is a finding                                                                                                                                                                                                                                                             | App       |
+| 2.8     | A pending question has a second text input        | Story `specflow-screens-managed-session--pending-interaction`                                                | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | SB        |
+| Demo    | Session calls to action end in a load error       | Click Open session on `/specs/admission`; also request `/api/session-providers`                              | `packages/specflow-runtime/src/server/app.ts:210` passes no Sessions config in demo; `features/sessions/http/routes.ts:109` answers `SESSION_DISABLED`                                                                                                                                                                                                                                           | App, Code |
+| 2.9     | Task key shown twice                              | Task rows on `/specs/admission`                                                                              | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 2.9     | Unlabelled number under a Session                 | Continue session on `/specs/admission` and `/specs/admission/sessions`                                       | `features/specs/read-model/mapWorkspaceResponse.ts:58` maps the task count to a bare number                                                                                                                                                                                                                                                                                                      | App, Code |
+| 2.9     | Developer note and naming in the Sessions list    | Open `/specs/admission/sessions`                                                                             | `i18n/locales/pl.json:177` `sessionsFutureNotice`; `pl.json:160` `newConversation`                                                                                                                                                                                                                                                                                                               | App, Code |
+| 2.9     | Untranslated mode title                           | Composer in any Claude Session story                                                                         | `packages/specflow-runtime/src/features/sessions/providers/claude/modes.ts:10`                                                                                                                                                                                                                                                                                                                   | SB, Code  |
+| 3       | Mobile Session has no header                      | Story `specflow-screens-managed-session--real-route-context-narrow` at 390 px                                | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | SB        |
+| 3       | Mobile Specification header says only Overview    | Open `/specs/admission` and `/specs/admission/sessions` at 390 px                                            | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 3       | Mobile start button is cut off                    | Open `/specs/admission/sessions/new` at 390×844                                                              | Screenshot only                                                                                                                                                                                                                                                                                                                                                                                  | App       |
+| 4       | Default stories show warnings and mixed languages | Story `specflow-screens-application-shell--navigation-specification-active`; story counts from `/index.json` | English fixture text in `features/sessions/managed/context/sessionContextFixtures.ts:113`                                                                                                                                                                                                                                                                                                        | SB, Code  |
 
 ### Known limits of this audit
 
-- Finding 2.1 was observed on the Session error state, because demo mode cannot load a Session.
-  The code supports the same behaviour for a loaded Session, but that was not observed live.
+- Finding 2.1 was observed live only on the Session error state, because demo mode cannot load a
+  Session. The code shows that any Session not started in the current page has no Specification
+  context, so the gap does not depend on the error.
 - Findings marked **SB** use fixture data. Check that the real screen has the same layout.
 - Finding 2.4 may only reflect demo fixtures.
 

@@ -102,8 +102,8 @@ export interface DocumentQueueScheduler {
   /** The scheduler no longer starts passes. With `flush`, commits what is queued within the deadline. */
   stop(options?: SchedulerStopOptions): Promise<SchedulerStopOutcome>;
   /**
-   * Resolves when no pass runs (passes armed for later are not waited for), including the shutdown
-   * flush a `stop` gave up waiting for at its deadline: its commit still runs and then ends.
+   * Resolves when no pass runs (passes armed for later are not waited for), including whatever a
+   * `stop` gave up waiting for at its deadline, flush or not: that work still runs and then ends.
    */
   whenIdle(): Promise<void>;
   /** The last events, oldest first (bounded). */
@@ -163,7 +163,7 @@ export function createDocumentQueueScheduler(
   let stopped = false;
   let sweepTimer: unknown;
   let unsubscribe: (() => void) | undefined;
-  /** The shutdown flush that `stop` stopped waiting for at its deadline and that still runs. */
+  /** Whatever `stop` stopped waiting for at its deadline (the initial wait, or the flush) and that still runs. */
   let overrun: Promise<void> | undefined;
 
   const record = (event: Omit<SchedulerEvent, 'at'>): void => {
@@ -475,6 +475,8 @@ export function createDocumentQueueScheduler(
         timers,
       );
       if (settledRuns.kind === 'deadline') {
+        overrun = settledRuns.overrun;
+
         return { complete: false, timedOut: true, remaining: await remainingWork() };
       }
 

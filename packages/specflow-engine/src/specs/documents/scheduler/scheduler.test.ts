@@ -466,6 +466,32 @@ describe('stop', () => {
     expect(await stopping).toEqual({ complete: false, timedOut: true, remaining: 1 });
   });
 
+  it('also gives up on a prune that outruns its own deadline, and whenIdle waits for it', async () => {
+    let release: () => void = () => undefined;
+    const h = harness({
+      prune: () => new Promise<void>((resolve) => (release = resolve)),
+    });
+    await h.scheduler.start();
+    // The sweep starts the prune; it is still running (it "reads Git") when stop() looks for it.
+    await h.time.advance(DOCUMENT_SWEEP_MS);
+    const stopping = h.scheduler.stop({ deadlineMs: 10_000 });
+    await h.time.advance(10_000);
+    expect(await stopping).toEqual({ complete: false, timedOut: true, remaining: 0 });
+
+    // whenIdle must not report idle while the abandoned prune (the deadline's overrun) still runs,
+    // the same promise started/inFlight get for the deadline of a flush, not only started/inFlight.
+    let idled = false;
+    const idle = h.scheduler.whenIdle().then(() => {
+      idled = true;
+    });
+    await settle();
+    expect(idled).toBe(false);
+
+    release();
+    await idle;
+    expect(idled).toBe(true);
+  });
+
   it('reports what the flush left when its deadline passed', async () => {
     const h = harness({
       flushAll: () => Promise.resolve({ checkouts: 2, remaining: 3, timedOut: true }),

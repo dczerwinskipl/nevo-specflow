@@ -364,12 +364,7 @@ export async function flushAllDocumentCommits(
   })();
   const outcome = await withDeadline(work, options.deadlineMs, timers);
   if (outcome.kind === 'deadline') {
-    options.onOverrun?.(
-      work.then(
-        () => undefined,
-        () => undefined,
-      ),
-    );
+    options.onOverrun?.(outcome.overrun);
   }
 
   const remaining = (await listDocumentChangeJournals(engine.context)).filter(

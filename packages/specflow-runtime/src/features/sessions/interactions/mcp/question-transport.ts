@@ -66,10 +66,15 @@ export async function createMcpQuestionTransport(options: {
   invocation: Pick<Invocation, 'sessionId' | 'turnId' | 'invocationId'>;
   emit: EmitFact;
   signal: AbortSignal;
-  /** Adapter-owned routes share the invocation credential, ledger and cleanup. */
-  routes?: Readonly<
-    Record<string, (envelope: Record<string, unknown>, response: ServerResponse) => Promise<void>>
-  >;
+  /** Adapter-owned paths share the invocation credential, ledger and cleanup. */
+  extension?: {
+    paths: readonly string[];
+    handle(
+      path: string,
+      envelope: Record<string, unknown>,
+      response: ServerResponse,
+    ): Promise<void>;
+  };
   onQuestion?: () => void;
   onClose?: () => void;
 }) {
@@ -79,7 +84,8 @@ export async function createMcpQuestionTransport(options: {
     turnId: options.invocation.turnId,
     invocationId: options.invocation.invocationId,
   });
-  const routes = new Map(Object.entries(options.routes ?? {}));
+  const extension = options.extension;
+  const extensionPaths = new Set(extension?.paths);
   if (
     Object.values(binding).some(
       (id) => typeof id !== 'string' || !id || Buffer.byteLength(id) > 256,
@@ -279,11 +285,10 @@ export async function createMcpQuestionTransport(options: {
     response.setHeader('cache-control', 'no-store');
     const path = request.url ?? '';
     const isMcp = path === '/mcp';
-    const route = isMcp ? undefined : routes.get(path);
     const credential = Buffer.from(request.headers.authorization ?? '');
     if (
       closed ||
-      (!isMcp && !route) ||
+      (!isMcp && !extensionPaths.has(path)) ||
       request.headers.host !== host ||
       request.headers.origin !== undefined ||
       credential.length !== authorization.length ||
@@ -371,8 +376,8 @@ export async function createMcpQuestionTransport(options: {
       return;
     }
 
-    if (route) {
-      await route(envelope, response);
+    if (!isMcp && extension) {
+      await extension.handle(path, envelope, response);
 
       return;
     }

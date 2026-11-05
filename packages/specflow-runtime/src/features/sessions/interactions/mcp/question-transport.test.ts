@@ -21,9 +21,10 @@ async function fixture(
   const bridge: Bridge = await createMcpQuestionTransport({
     invocation: { sessionId: randomUUID(), turnId: randomUUID(), invocationId: randomUUID() },
     signal: controller.signal,
-    routes: revalidate
+    extension: revalidate
       ? {
-          '/permission': async (_envelope, response) => {
+          paths: ['/permission'],
+          handle: async (_path, _envelope, response) => {
             try {
               const answer = await bridge.requestInteraction({
                 keyPrefix: 'permission',

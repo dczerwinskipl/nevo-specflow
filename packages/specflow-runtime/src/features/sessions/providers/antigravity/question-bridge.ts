@@ -57,9 +57,9 @@ export async function createAntigravityQuestionBridge(options: {
     signal: options.signal,
     onQuestion: nativeBusy,
     onClose: () => idle.reject(expired()),
-    routes: {
-      '/hooks/pre-tool-use': (body, response) => handleHook('/hooks/pre-tool-use', body, response),
-      '/hooks/stop': (body, response) => handleHook('/hooks/stop', body, response),
+    extension: {
+      paths: ['/hooks/pre-tool-use', '/hooks/stop'],
+      handle: handleHook,
     },
   });
   function hookJson(response: ServerResponse, value: object) {

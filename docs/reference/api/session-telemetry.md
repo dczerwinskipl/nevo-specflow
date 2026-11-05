@@ -195,9 +195,10 @@ silently discard assigned outbox sequences. A terminal flush commits outstanding
 Turn usage/cost with terminal publication. Shutdown/overload cannot silently lose
 an authoritative terminal sample.
 
-Account-limit reads are shared and demand-driven, at most once per 30 seconds per
-provider/account binding while at least one authorized consumer is subscribed.
-No background polling when none remain. Push-capable providers invalidate sooner.
+Account limits update from native Turn observations and explicit refresh requests.
+Opening the Session stream schedules freshness notifications for existing readings
+without starting a provider process. Concurrent explicit requests share native work
+for the same provider account and credential generation.
 Native context reads are event-driven; do not launch inference or a second CLI
 against an active native context just to populate a gauge. Unsupported live
 sources remain unavailable; terminal-only sources remain terminal-only.
@@ -258,10 +259,10 @@ workspace, resume/replay a Turn, change models or repair authentication.
 Session View controls stored usage/cost/context reads; Session Manage is additionally
 required to trigger an explicit refresh. Account limits also require the separate
 `session.view-provider-limits` capability at the trusted project/Session scope.
-View plus this capability authorizes passive, shared, read-only native monitoring
-while SSE is subscribed, even without Manage. It does not authorize inference,
-authentication repair or a manually scheduled POST. Manage governs that explicit
-command; a user may view monitored observations while `refreshable` is false.
+View plus this capability authorizes reading stored account measurements.
+A user may read those measurements while `refreshable` is false. To request a
+new native measurement, the client uses the refresh POST with Manage and
+`session.view-provider-limits`.
 Without it, return `limits` unavailable with `NOT_AUTHORIZED`, no cached amount,
 timestamps or window IDs. Reject requested limit refresh without it. Auth policy
 changes invalidate actor-visible validators and reproject before further payloads.
@@ -322,8 +323,8 @@ and partial aggregates across restart/replay; currency/overlap validation; accou
 switch and late events; compaction and model change; stale/failed observation;
 403/304 isolation; refresh idempotency/coalescing/timeout/429; snapshot-to-SSE race,
 reconnect/resync, slow readers and terminal flush. Test 32 idle clients: zero
-outbox polling and no per-client provider reads, one bounded shared account read
-per interval only when supported and authorized. No test uses real subscriptions,
+outbox polling, native provider reads or refresh receipts from opening streams.
+No test uses real subscriptions,
 credentials or paid inference. No UI implementation belongs to this delivery.
 
 SQLite schema 1 migrates atomically to additive schema 2. Existing normalized Turn

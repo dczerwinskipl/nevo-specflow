@@ -60,10 +60,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
         sessionId: sid,
       });
       const initialAccess = telemetryAccess(request, scope).accessRevision;
-      const unwatchTelemetry = coordinator.telemetry.watch(
-        sid,
-        () => telemetryAccess(request, scope).permissions['view-provider-limits'],
-      );
+      const unwatchTelemetry = coordinator.telemetry.watch(sid);
       const wakeup = createStreamWakeup((listener) => coordinator.store.subscribe(sid, listener));
       streams.add(controller);
       perActor.set(principal, (perActor.get(principal) ?? 0) + 1);

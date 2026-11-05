@@ -717,17 +717,26 @@ describe('materialized Session telemetry', () => {
       expect(snapshot.cost.session).toMatchObject({ value: { amount: '0.000000000001' } });
       expect(store.readMetrics()).toMatchObject({ rows: 2, contentBytes: 0 });
       const input = { requestId: randomUUID(), groups: ['limits' as const] };
-      const receipt = await store.call({
-        op: 'telemetry-refresh-admit',
+      const admission = {
+        op: 'telemetry-refresh-admit' as const,
         sessionId,
         actor: 'actor',
         input,
+        binding: { accountScope: 'scope', credentialGeneration: 'credentials' },
+      };
+      await expect(
+        store.call({ ...admission, binding: { ...admission.binding, credentialGeneration: '' } }),
+      ).rejects.toMatchObject({ code: 'SESSION_INPUT_INVALID' });
+      await expect(
+        store.call({ op: 'telemetry-refresh-replay', sessionId, actor: 'actor', input }),
+      ).resolves.toBeUndefined();
+      await expect(store.call({ op: 'telemetry', sessionId })).resolves.toMatchObject({
+        refresh: { state: 'idle' },
       });
+      const receipt = await store.call(admission);
       await store.close();
       store = await openSessionStore({ directory, projectId: 'telemetry' });
-      expect(
-        await store.call({ op: 'telemetry-refresh-admit', sessionId, actor: 'actor', input }),
-      ).toEqual({ ...(receipt as object), fresh: false });
+      expect(await store.call(admission)).toEqual({ ...(receipt as object), fresh: false });
       await expect(
         store.call({
           op: 'telemetry-refresh-replay',

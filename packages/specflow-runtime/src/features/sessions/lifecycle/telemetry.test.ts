@@ -4,6 +4,7 @@ import type { TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
 import { createSessionTelemetryService, TelemetryRateLimited } from './telemetry';
 import type { SessionStore } from '../persistence/store';
 import type { MeasurementFact, StoreCommand } from '../persistence/protocol';
+import { SessionError } from '../errors';
 import { createMockDriver } from '../providers/mock';
 
 function deferred<T>() {
@@ -43,6 +44,9 @@ function fixture(
 ) {
   const commands: StoreCommand[] = [];
   const snapshots: Omit<TelemetrySnapshot, 'accessRevision'>[] = [];
+  const deadline = vi.fn((): Promise<number | undefined> => Promise.resolve(undefined));
+  const expire = vi.fn(() => Promise.resolve());
+  const receipts = new Map<string, unknown>();
   const subscriptions = new Map<string, Set<() => void>>();
   const store: SessionStore = {
     call<T>(command: StoreCommand): Promise<T> {
@@ -60,16 +64,27 @@ function fixture(
         result = { providerId: 'mock', nativeScope: 'account' };
       }
 
+      if (command.op === 'telemetry-expiry-deadline') {
+        return deadline() as Promise<T>;
+      }
+
+      if (command.op === 'telemetry-expire') {
+        return expire() as Promise<T>;
+      }
+
+      if (command.op === 'telemetry-refresh-replay') {
+        result = receipts.get(command.input.requestId);
+      }
+
       if (command.op === 'telemetry-refresh-admit') {
-        result = {
-          fresh: true,
-          receipt: {
-            requestId: command.input.requestId,
-            acceptedGroups: command.input.groups,
-            state: 'queued',
-            telemetryRevision: 1,
-          },
+        const receipt = {
+          requestId: command.input.requestId,
+          acceptedGroups: command.input.groups,
+          state: 'queued',
+          telemetryRevision: 1,
         };
+        receipts.set(command.input.requestId, receipt);
+        result = { fresh: true, receipt };
       }
 
       if (command.op === 'telemetry') {
@@ -126,34 +141,51 @@ function fixture(
       groups: ['limits'],
     });
 
-  return { service, request, commands, binding, refresh, subscriptions, snapshots };
+  return {
+    service,
+    request,
+    commands,
+    binding,
+    refresh,
+    subscriptions,
+    snapshots,
+    deadline,
+    expire,
+  };
 }
 
 describe('Session telemetry refresh lifecycle', () => {
-  it('publishes stored context expiry for Session viewers without granting native account monitoring', async () => {
+  it('rechecks the expiry deadline when a commit lands during the previous read', async () => {
     const f = fixture();
-    const snapshot = await f.service.snapshot(randomUUID());
-    snapshot.context = {
-      status: 'available',
-      freshness: 'fresh',
-      refreshable: false,
-      observedAt: new Date().toISOString(),
-      staleAt: new Date(Date.now() + 1000).toISOString(),
-      value: { contextGeneration: 'context', occupiedTokens: 10 },
-    };
-    f.snapshots.push(snapshot);
-    const unwatch = f.service.watch(snapshot.sessionId, () => false);
-    await vi.waitFor(
-      () =>
-        expect(f.commands.filter((command) => command.op === 'telemetry-expire')).toEqual([
-          { op: 'telemetry-expire', sessionId: snapshot.sessionId },
-        ]),
-      { timeout: 3000 },
-    );
+    const sessionId = randomUUID();
+    const read = deferred<number | undefined>();
+    f.deadline.mockReturnValueOnce(read.promise);
+    const unwatch = f.service.watch(sessionId);
+    await vi.waitFor(() => expect(f.deadline).toHaveBeenCalledOnce());
+    f.deadline.mockResolvedValueOnce(Date.now() - 1);
+    for (const listener of f.subscriptions.get(sessionId)!) {
+      listener();
+    }
+
+    read.resolve(undefined);
+    await vi.waitFor(() => expect(f.expire).toHaveBeenCalledOnce(), { timeout: 3000 });
+    expect(f.deadline).toHaveBeenCalledTimes(2);
+    unwatch();
+  });
+
+  it('retries a busy store when an already-due observation needs SSE invalidation', async () => {
+    const f = fixture();
+    const sessionId = randomUUID();
+    f.deadline.mockResolvedValueOnce(Date.now() - 1);
+    f.expire.mockRejectedValueOnce(new SessionError('SESSION_STORE_BUSY', 'Controlled pressure.'));
+    const unwatch = f.service.watch(sessionId);
+    await vi.waitFor(() => expect(f.expire).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    expect(f.commands).toContainEqual({ op: 'telemetry-expire', sessionId });
     expect(f.binding).not.toHaveBeenCalled();
     expect(f.refresh).not.toHaveBeenCalled();
     unwatch();
   });
+
   it('retires previous account observations on a confirmed external switch without rebinding or querying limits', async () => {
     const f = fixture();
     f.binding.mockResolvedValue({
@@ -214,15 +246,6 @@ describe('Session telemetry refresh lifecycle', () => {
     ).rejects.toMatchObject({ code: 'CAPABILITY_UNSUPPORTED' });
     expect(f.binding).not.toHaveBeenCalled();
     expect(f.refresh).not.toHaveBeenCalled();
-  });
-
-  it('allows passive account monitoring with ViewProviderLimits without Manage', async () => {
-    const f = fixture();
-    const permissions = { view: true, limits: true, manage: false };
-    const unwatch = f.service.watch(randomUUID(), () => permissions.view && permissions.limits);
-    await vi.waitFor(() => expect(f.refresh).toHaveBeenCalledOnce());
-    expect(permissions.manage).toBe(false);
-    unwatch();
   });
 
   it('keeps scoped limits and telemetry revision at the same committed read boundary', async () => {
@@ -292,11 +315,11 @@ describe('Session telemetry refresh lifecycle', () => {
     expect(f.commands.some((command) => command.op === 'telemetry-observations')).toBe(false);
   });
 
-  it('does no native work for unauthorized consumers and stops polling after the last unsubscribe', async () => {
+  it('does no native work or refresh journal writes for open streams and unsubscribes the last viewer', async () => {
     vi.useFakeTimers();
     const f = fixture();
     const sessionId = randomUUID();
-    const stops = Array.from({ length: 32 }, () => f.service.watch(sessionId, () => false));
+    const stops = Array.from({ length: 32 }, () => f.service.watch(sessionId));
     await vi.advanceTimersByTimeAsync(90000);
     expect(f.binding).not.toHaveBeenCalled();
     expect(f.refresh).not.toHaveBeenCalled();
@@ -305,6 +328,7 @@ describe('Session telemetry refresh lifecycle', () => {
     }
 
     expect(f.subscriptions.get(sessionId)?.size).toBe(0);
+    expect(f.commands.some((command) => command.op === 'telemetry-refresh-admit')).toBe(false);
     await vi.advanceTimersByTimeAsync(90000);
     expect(f.binding).not.toHaveBeenCalled();
   });
@@ -379,22 +403,22 @@ describe('Session telemetry refresh lifecycle', () => {
     expect(f.refresh).not.toHaveBeenCalled();
   });
 
-  it('projects one fast shared account read to all concurrently subscribed Sessions', async () => {
-    vi.useFakeTimers();
+  it('replays an accepted receipt while the new-request budget is exhausted', async () => {
     const f = fixture();
-    const ids = Array.from({ length: 32 }, () => randomUUID());
-    const stops = ids.map((id) => f.service.watch(id, () => true));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(f.refresh).toHaveBeenCalledTimes(1);
-    const observed = new Set(
-      f.commands.flatMap((command) =>
-        command.op === 'telemetry-observations' ? [command.sessionId] : [],
-      ),
+    const sessionId = randomUUID();
+    const input = { requestId: randomUUID(), groups: ['limits' as const] };
+    const receipt = await f.service.refresh(sessionId, 'actor', input);
+    await vi.waitFor(() =>
+      expect(f.commands.some((command) => command.op === 'telemetry-observations')).toBe(true),
     );
-    for (const stop of stops) {
-      stop();
-    }
-
-    expect(observed.size).toBe(32);
+    f.binding.mockClear();
+    const blocked = deferred<{ accountScope: string; credentialGeneration: string }>();
+    f.binding.mockReturnValue(blocked.promise);
+    const pending = Array.from({ length: 64 }, () => f.request().catch((error: unknown) => error));
+    await vi.waitFor(() => expect(f.binding).toHaveBeenCalledTimes(64));
+    await expect(f.request()).rejects.toBeInstanceOf(TelemetryRateLimited);
+    await expect(f.service.refresh(sessionId, 'actor', input)).resolves.toEqual(receipt);
+    await f.service.close();
+    await Promise.all(pending);
   });
 });

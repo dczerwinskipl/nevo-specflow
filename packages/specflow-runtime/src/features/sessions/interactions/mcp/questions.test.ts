@@ -3,11 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { mcpQuestionAnswer, prepareMcpQuestion } from './questions';
 
 describe('MCP question mapping', () => {
-  it('keeps multi-choice answers structured and preserves literal user text', () => {
+  it('keeps choice answers structured and preserves literal user text', () => {
     const question = prepareMcpQuestion({
       question: 'Pick scopes',
       allowText: true,
-      maxSelections: 2,
+      maxSelections: 1,
       options: [
         { id: 'a', label: 'A' },
         { id: 'b', label: 'B' },
@@ -18,14 +18,11 @@ describe('MCP question mapping', () => {
         mcpQuestionAnswer(question, {
           requestId: randomUUID(),
           kind: 'question',
-          answer: { optionIds: ['b', 'a'], text: '/literal user answer' },
+          answer: { optionIds: ['b'], text: '/literal user answer' },
         }),
       ),
     ).toEqual({
-      selections: [
-        { id: 'b', label: 'B' },
-        { id: 'a', label: 'A' },
-      ],
+      selections: [{ id: 'b', label: 'B' }],
       text: '/literal user answer',
     });
   });
@@ -34,7 +31,14 @@ describe('MCP question mapping', () => {
     for (const input of [
       { question: 'Pick', allowText: false },
       { question: 'Pick', maxSelections: 2 },
-      { question: 'Pick', maxSelections: 2, options: [{ id: 'a', label: 'A' }] },
+      {
+        question: 'Pick',
+        maxSelections: 2,
+        options: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ],
+      },
     ]) {
       expect(() => prepareMcpQuestion(input)).toThrow();
     }

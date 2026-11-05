@@ -882,6 +882,15 @@ export function createSessionTelemetry(
     save(s, data);
   }
 
+  function expiryDeadline(s: StoredSession): number | undefined {
+    const { context, limits } = load(s.snapshot.session.sessionId);
+    const deadlines = [context, limits].flatMap((reading) =>
+      reading?.freshness === 'fresh' && reading.staleAt ? [Date.parse(reading.staleAt)] : [],
+    );
+
+    return deadlines.length ? Math.min(...deadlines) : undefined;
+  }
+
   function expire(s: StoredSession) {
     const data = load(s.snapshot.session.sessionId);
     let changed = false;
@@ -912,5 +921,6 @@ export function createSessionTelemetry(
     observations,
     observationFence,
     expire,
+    expiryDeadline,
   };
 }

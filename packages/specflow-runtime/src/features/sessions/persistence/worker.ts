@@ -444,6 +444,10 @@ export async function runSessionWorker(): Promise<void> {
       return transaction(() => telemetry.migrate());
     }
 
+    if (c.op === 'telemetry-expiry-deadline') {
+      return telemetry.expiryDeadline(session(c.sessionId));
+    }
+
     if (c.op === 'telemetry-expire') {
       return transaction(() => telemetry.expire(session(c.sessionId)));
     }
@@ -532,6 +536,16 @@ export async function runSessionWorker(): Promise<void> {
           };
         }
 
+        const { accountScope, credentialGeneration } = c.binding;
+        const nativeScope = get(
+          'SELECT scope FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        )?.scope;
+        if (nativeScope && nativeScope !== accountScope) {
+          fail('PROVIDER_UNAVAILABLE', 'Session provider account binding changed.');
+        }
+
+        telemetry.observationFence(s, accountScope, credentialGeneration);
         telemetry.refreshState(s, 'queued', c.input.groups);
         const receipt = {
           requestId: c.input.requestId,

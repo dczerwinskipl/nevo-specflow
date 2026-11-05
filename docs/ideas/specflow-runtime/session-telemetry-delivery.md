@@ -29,8 +29,8 @@ current feature branch/PR; do not merge automatically.
 | T1 Contracts and access   | backend / implementer      | Closed bounded snapshot/readings, refresh receipt and SSE invalidation schemas; Session account-limit permission; validation exports in contracts                            | Existing Sessions/Auth resources          | Schema boundary/cross-field validation; no raw identities or unknown-as-zero                         |
 | T2 Durable projections    | backend / implementer      | Single-worker telemetry projection, materialized usage/cost coverage, explicit schema migration, bounded migration batches, refresh journal/state and committed invalidation | T1                                        | Replay/restart/dedupe/baseline/overflow; O(1) reads with no transcript scan; existing data migration |
 | T3 Provider observations  | backend / implementer      | Verified money/context/token dimensions and optional read-only limits source, with native identity/credential fencing                                                        | T1, internal fact boundary agreed with T2 | Controlled protocol fixtures; no real CLI/login/subscription; missing evidence stays unavailable     |
-| T4 HTTP and live refresh  | backend / implementer      | Authorized conditional GET, explicit idempotent refresh, bounded account-coalesced reads, SSE wake/replay/freshness and cleanup through existing stream                      | T1–T3                                     | 304/403 isolation; race/reconnect/resync; refresh timeout/429/dedupe; idle 32-client activity        |
-| T5 Independent acceptance | integration / reviewer     | Review final diff against contract, repository checks and cross-platform lifecycle/packaged-worker verification                                                              | T1–T4                                     | Report final SHA and exact PASS/FAIL/SKIP/not-executed; no paid test runner                          |
+| T4 HTTP and live refresh  | backend / implementer      | Authorized conditional GET, explicit idempotent refresh, bounded account-coalesced reads, SSE wake/replay/freshness and cleanup through existing stream                      | T1â€“T3                                   | 304/403 isolation; race/reconnect/resync; refresh timeout/429/dedupe; idle 32-client activity        |
+| T5 Independent acceptance | integration / reviewer     | Review final diff against contract, repository checks and cross-platform lifecycle/packaged-worker verification                                                              | T1â€“T4                                   | Report final SHA and exact PASS/FAIL/SKIP/not-executed; no paid test runner                          |
 
 T1 and T3 can proceed with a jointly fixed internal observation contract; T2 and
 T4 integrate sequentially at that boundary. SQLite keeps one owner and transaction
@@ -54,7 +54,7 @@ feature PR; this plan alone does not certify completion.
 Review baseline: `cfbcf8c9`. Antigravity execution and telemetry retain separate
 acceptance gates; passing projection tests does not certify native isolation.
 
-Implemented follow-up covers review items 2–7, 11–14, 16–19, 21–22: bounded
+Implemented follow-up covers review items 2â€“7, 11â€“14, 16â€“19, 21â€“22: bounded
 dispatch revalidation, bounded post-result drain, compaction observation epochs,
 separate native-hook capacity, canonical command summaries, typed file arguments,
 explicit writable Plan label, generated Windows path budget, read-only GET,
@@ -63,11 +63,12 @@ account-only refresh, visible migration failure, single MCP session policy and
 cancellable bounded response revalidation. Native execution acceptance remains
 separate from these controlled-process regressions.
 
-Items 8–10 and 20/26 have explicit policy/limitations in the provider/API documents:
+Items 8â€“10 and 20/26 have explicit policy/limitations in the provider/API documents:
 path admission is not atomic native containment; approved commands may change
 repository configuration; reused native step IDs are denied; external account
 changes are noticed on identity checks with bounded freshness between them;
-ViewProviderLimits authorizes passive read-only monitoring without Manage.
+ViewProviderLimits authorizes stored reads without Manage. Explicit refresh requires
+Manage and ViewProviderLimits. Opening a Session stream never starts a provider read.
 Those policy statements are not claims that native race/retry controls passed.
 
 Owner decision on item 1/30: compatible CLI updates remain available without
@@ -83,6 +84,6 @@ See the owner decision in `ideas.specflow-runtime.provider-compatibility`.
 Safe Codex bucket classification (15), full 32-reader/write latency measurement
 (38), installed native Credential Manager acceptance (40), and the existing CI
 failures remain separately reported until verified. Organizational refactors
-(24–25), additional budget factoring (23/27) and broader capability vocabulary
+(24â€“25), additional budget factoring (23/27) and broader capability vocabulary
 (28) are not being substituted for correctness fixes. No mechanical module split,
 additional PR, paid automated test or UI work is introduced by this follow-up.

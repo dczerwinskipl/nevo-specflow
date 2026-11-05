@@ -1,5 +1,4 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { randomUUID } from 'node:crypto';
 import type {
   RefreshTelemetry,
   RefreshTelemetryReceipt,
@@ -15,14 +14,10 @@ const REFRESH_INTERVAL_MS = 30000;
 const REFRESH_TIMEOUT_MS = 10000;
 const MAX_BINDINGS = 64;
 const MAX_WATCHES = 32;
-
-function isPermitted(check: () => boolean): boolean {
-  try {
-    return check();
-  } catch {
-    return false;
-  }
-}
+const MAX_REFRESH_REQUESTS = 64;
+const EXPIRY_COALESCE_MS = 500;
+const EXPIRY_RETRY_MS = 250;
+const MAX_EXPIRY_ATTEMPTS = 3;
 
 export class TelemetryRateLimited extends Error {
   readonly retryAfterSeconds: number;
@@ -46,7 +41,6 @@ export function createSessionTelemetryService(
     promise: Promise<MeasurementFact[]>;
     controller: AbortController;
     running: boolean;
-    groups: RefreshTelemetry['groups'];
     observedAt?: string;
     accountKey: string;
     generation: string;
@@ -59,10 +53,10 @@ export function createSessionTelemetryService(
   const watches = new Map<
     string,
     {
-      consumers: Set<() => boolean>;
-      interval: ReturnType<typeof setInterval>;
+      consumers: number;
       expiry?: ReturnType<typeof setTimeout>;
       pending: boolean;
+      dirty: boolean;
       unsubscribe: () => void;
     }
   >();
@@ -174,29 +168,28 @@ export function createSessionTelemetryService(
     sessionId: string,
     actor: string,
     input: RefreshTelemetry,
-    automatic = false,
   ): Promise<RefreshTelemetryReceipt> {
     if (stopped) {
       throw new SessionError('SESSION_STORE_UNAVAILABLE', 'Session Runtime is stopping.');
     }
 
-    // Count binding/discovery as well as admitted completions; neither may queue without bounds.
-    if (requests + completions.size >= 64) {
+    // The store bounds the cheap replay lookup independently of provider work.
+    const replay = await store.call<RefreshTelemetryReceipt | undefined>({
+      op: 'telemetry-refresh-replay',
+      sessionId,
+      actor,
+      input,
+    });
+    if (replay) {
+      return replay;
+    }
+
+    if (requests + completions.size >= MAX_REFRESH_REQUESTS) {
       throw new TelemetryRateLimited(1);
     }
 
     requests++;
     try {
-      const replay = await store.call<RefreshTelemetryReceipt | undefined>({
-        op: 'telemetry-refresh-replay',
-        sessionId,
-        actor,
-        input,
-      });
-      if (replay) {
-        return replay;
-      }
-
       const info = await source(sessionId);
       const driver = driverFor(info.providerId);
       const provider = driver?.telemetry;
@@ -287,11 +280,7 @@ export function createSessionTelemetryService(
         }
 
         let job = jobs.get(key);
-        if (
-          job &&
-          ((!job.running && !automatic) ||
-            !input.groups.every((group) => job!.groups.includes(group)))
-        ) {
+        if (job && !job.running) {
           throw new TelemetryRateLimited(
             Math.max(1, Math.ceil((REFRESH_INTERVAL_MS - Date.now() + job.at) / 1000)),
           );
@@ -310,23 +299,17 @@ export function createSessionTelemetryService(
           sessionId,
           actor,
           input,
+          binding,
         });
         if (!admitted.fresh) {
           return admitted.receipt;
         }
 
-        await store.call({
-          op: 'telemetry-observation-fence',
-          sessionId,
-          scope: binding.accountScope,
-          generation: binding.credentialGeneration,
-        });
         if (!job) {
           const created: Job = {
             at: Date.now(),
             controller,
             running: true,
-            groups: input.groups,
             promise: Promise.resolve([]),
             accountKey,
             generation: binding.credentialGeneration,
@@ -449,91 +432,103 @@ export function createSessionTelemetryService(
     }
   }
 
-  async function scheduleExpiry(sessionId: string) {
-    const watch = watches.get(sessionId);
-    if (!watch || watch.pending || stopped) {
-      return;
-    }
+  async function publishExpiry(sessionId: string, isWatching: () => boolean) {
+    for (let attempt = 1; attempt <= MAX_EXPIRY_ATTEMPTS && isWatching(); attempt++) {
+      try {
+        await store.call({ op: 'telemetry-expire', sessionId });
 
-    watch.pending = true;
-    try {
-      // Transcript/tool commits share the wake-up channel. Coalesce them rather than
-      // rereading telemetry on every token, and stop work when the final viewer leaves.
-      await delay(500, undefined, { signal: shutdown.signal });
-      // Every authorized Session stream can observe context expiry. The separate
-      // limit permission governs native account polling, not stored freshness.
-      if (watches.get(sessionId) !== watch || !watch.consumers.size) {
         return;
-      }
+      } catch (error) {
+        if (
+          !(error instanceof SessionError) ||
+          error.code !== 'SESSION_STORE_BUSY' ||
+          attempt === MAX_EXPIRY_ATTEMPTS
+        ) {
+          throw error;
+        }
 
-      const value = await snapshot(sessionId);
-      clearTimeout(watch.expiry);
-      const deadlines = [value.context, value.limits].flatMap((reading) =>
-        reading.freshness === 'fresh' && reading.staleAt ? [Date.parse(reading.staleAt)] : [],
-      );
-      if (deadlines.length && watches.get(sessionId) === watch) {
-        watch.expiry = setTimeout(
-          () => {
-            void store.call({ op: 'telemetry-expire', sessionId }).catch(() => undefined);
-          },
-          Math.max(1, Math.min(...deadlines) - Date.now()),
-        );
-        watch.expiry.unref();
+        await delay(EXPIRY_RETRY_MS, undefined, { signal: shutdown.signal });
       }
-    } finally {
-      watch.pending = false;
     }
   }
 
-  function watch(sessionId: string, permitted: () => boolean): () => void {
+  async function scheduleExpiry(sessionId: string) {
+    const watch = watches.get(sessionId);
+    if (!watch || stopped) {
+      return;
+    }
+
+    watch.dirty = true;
+    if (watch.pending) {
+      return;
+    }
+
+    const isWatching = () => !stopped && watches.get(sessionId) === watch;
+    watch.pending = true;
+    try {
+      while (watch.dirty && isWatching()) {
+        // Transcript and telemetry commits share the wakeup channel.
+        await delay(EXPIRY_COALESCE_MS, undefined, { signal: shutdown.signal });
+        if (!isWatching()) {
+          return;
+        }
+
+        watch.dirty = false;
+        const deadline = await store.call<number | undefined>({
+          op: 'telemetry-expiry-deadline',
+          sessionId,
+        });
+        if (!isWatching()) {
+          continue;
+        }
+
+        clearTimeout(watch.expiry);
+        if (deadline !== undefined) {
+          watch.expiry = setTimeout(
+            () => void publishExpiry(sessionId, isWatching).catch(() => undefined),
+            Math.max(1, deadline - Date.now()),
+          );
+          watch.expiry.unref();
+        }
+      }
+    } finally {
+      watch.pending = false;
+      if (watch.dirty && isWatching()) {
+        void scheduleExpiry(sessionId).catch(() => undefined);
+      }
+    }
+  }
+
+  function watch(sessionId: string): () => void {
     let current = watches.get(sessionId);
     if (!current) {
-      if (watches.size >= MAX_WATCHES) {
+      if (stopped || watches.size >= MAX_WATCHES) {
         return () => undefined;
       }
 
-      const poll = () => {
-        if (!watches.get(sessionId)?.consumers.size || stopped) {
-          return;
-        }
-
-        if (![...watches.get(sessionId)!.consumers].some(isPermitted)) {
-          return;
-        }
-
-        void refresh(
-          sessionId,
-          'runtime-telemetry-observer',
-          {
-            requestId: randomUUID(),
-            groups: ['limits'],
-          },
-          true,
-        ).catch(() => undefined);
-      };
-
-      const interval = setInterval(poll, REFRESH_INTERVAL_MS);
-      interval.unref();
       current = {
-        consumers: new Set(),
-        interval,
+        consumers: 0,
         pending: false,
+        dirty: false,
         unsubscribe: store.subscribe(sessionId, () => {
           void scheduleExpiry(sessionId).catch(() => undefined);
         }),
       };
       watches.set(sessionId, current);
       void scheduleExpiry(sessionId).catch(() => undefined);
-      queueMicrotask(poll);
     }
 
-    current.consumers.add(permitted);
+    current.consumers++;
+    let released = false;
 
     return () => {
-      current.consumers.delete(permitted);
-      if (!current.consumers.size) {
+      if (released || watches.get(sessionId) !== current) {
+        return;
+      }
+
+      released = true;
+      if (--current.consumers === 0) {
         current.unsubscribe();
-        clearInterval(current.interval);
         clearTimeout(current.expiry);
         watches.delete(sessionId);
       }
@@ -543,15 +538,13 @@ export function createSessionTelemetryService(
   return {
     migrationStatus: () => migrationStatus,
     snapshot,
-    refresh: (sessionId: string, actor: string, input: RefreshTelemetry) =>
-      refresh(sessionId, actor, input),
+    refresh,
     watch,
     async close() {
       stopped = true;
       shutdown.abort();
       for (const value of watches.values()) {
         value.unsubscribe();
-        clearInterval(value.interval);
         clearTimeout(value.expiry);
       }
 

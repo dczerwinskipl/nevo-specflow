@@ -29,7 +29,7 @@ export const mcpQuestionSchema = Type.Object(
       ),
     ),
     allowText: Type.Optional(Type.Boolean()),
-    maxSelections: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
+    maxSelections: Type.Optional(Type.Integer({ minimum: 1, maximum: 1 })),
   },
   closed,
 );
@@ -48,7 +48,6 @@ export function prepareMcpQuestion(input: unknown): Question {
   if (
     (!allowText && !options?.length) ||
     (!options && input.maxSelections !== undefined) ||
-    (options && maxSelections! > options.length) ||
     options?.some((option) => !option.label.trim())
   ) {
     throw new SessionError('SESSION_INPUT_INVALID', 'Invalid MCP question choices.');

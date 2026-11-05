@@ -140,7 +140,13 @@ export type StoreCommand =
   | { op: 'telemetry'; sessionId: string; expectedScope?: string }
   | { op: 'telemetry-source'; sessionId: string }
   | { op: 'telemetry-migrate' }
-  | { op: 'telemetry-refresh-admit'; sessionId: string; actor: string; input: RefreshTelemetry }
+  | {
+      op: 'telemetry-refresh-admit';
+      sessionId: string;
+      actor: string;
+      input: RefreshTelemetry;
+      binding: { accountScope: string; credentialGeneration: string };
+    }
   | { op: 'telemetry-refresh-replay'; sessionId: string; actor: string; input: RefreshTelemetry }
   | {
       op: 'telemetry-refresh-state';
@@ -159,6 +165,7 @@ export type StoreCommand =
       observedAt?: string;
     }
   | { op: 'telemetry-observation-fence'; sessionId: string; scope: string; generation: string }
+  | { op: 'telemetry-expiry-deadline'; sessionId: string }
   | { op: 'telemetry-expire'; sessionId: string }
   | { op: 'identity'; sessionId: string }
   | { op: 'history'; sessionId: string; actor: string; before: string; limit: number }

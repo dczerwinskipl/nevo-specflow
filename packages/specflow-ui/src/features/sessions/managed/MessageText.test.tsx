@@ -2,7 +2,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createRef, StrictMode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { utf8Bytes, type ContentPage, type TextPreview } from '@nevo/specflow-contracts/sessions';
+import {
+  utf8Bytes,
+  type ContentPage,
+  type ContentRef,
+  type TextPreview,
+} from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
 
@@ -217,6 +222,44 @@ it('stops with the failed state when the next cursor does not advance', async ()
   await screen.findByText('managedSession.failed');
   expect(content).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('alert')).toBeTruthy();
+});
+
+it('never shows a rejected page, and retry resumes from the last valid offset without duplicating text', async () => {
+  let broken = true;
+  const content = vi.fn<ManagedSessionsApi['content']>().mockImplementation((_id, ref, offset) => {
+    if (offset === start) {
+      return Promise.resolve(page(ref.revision, start, start + 1));
+    }
+
+    return Promise.resolve(
+      broken ? page(ref.revision, offset, offset) : page(ref.revision, offset, undefined),
+    );
+  });
+  const api = { content } as unknown as ManagedSessionsApi;
+  render(<ReadableText api={api} sessionId="session" value={value('100')} />);
+  await screen.findByText('managedSession.failed');
+  // The valid first page is shown; the non-advancing second page never reached the text.
+  expect(document.querySelector('p')?.textContent).toBe('Preview 100:Page 100:0 ');
+  broken = false;
+  fireEvent.click(screen.getByText('common.retry'));
+  await waitFor(() => expect(screen.queryByText('managedSession.failed')).toBeNull());
+  await waitFor(() =>
+    expect(document.querySelector('p')?.textContent).toBe('Preview 100:Page 100:0 Page 100:1 '),
+  );
+  expect(content.mock.calls.map((call) => call[2])).toEqual([start, start + 1, start + 1]);
+});
+
+it.each([
+  ['another offset', (ref: ContentRef) => ({ ...page(ref.revision, start + 5, undefined) })],
+  ['another revision', () => page('other', start, undefined)],
+])('rejects a page that answers %s without showing it', async (_name, bad) => {
+  const content = vi
+    .fn<ManagedSessionsApi['content']>()
+    .mockImplementation((_id, ref) => Promise.resolve(bad(ref)));
+  const api = { content } as unknown as ManagedSessionsApi;
+  render(<ReadableText api={api} sessionId="session" value={value('100')} />);
+  await screen.findByText('managedSession.failed');
+  expect(document.querySelector('p')?.textContent).toBe('Preview 100:');
 });
 
 function withClipboard() {

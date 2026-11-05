@@ -111,19 +111,30 @@ const RevisionText = forwardRef<
     try {
       let offset: number | undefined = resumeFrom.current;
       while (offset !== undefined) {
-        resumeFrom.current = offset;
         const result = await api.content(sessionId, ref, offset, controller.signal);
         if (controller.signal.aborted) {
           return;
         }
 
-        setRest((text) => text + result.text);
+        // Validate the whole page before any state change: a rejected page never reaches the shown
+        // text, and `resumeFrom` still points at the last valid offset for Retry.
+        if (
+          result.contentId !== ref.contentId ||
+          result.revision !== ref.revision ||
+          result.offset !== offset
+        ) {
+          throw new Error('Content page does not belong to the requested offset');
+        }
+
         if (result.nextOffset !== undefined && result.nextOffset <= offset) {
           // A cursor that does not advance would loop forever (or re-append the same page).
           throw new Error('Content cursor did not advance');
         }
 
+        setRest((text) => text + result.text);
+        // Only a page that was accepted moves the resume point forward.
         offset = result.nextOffset;
+        resumeFrom.current = offset ?? resumeFrom.current;
       }
 
       setLoaded(true);

@@ -407,6 +407,35 @@ describe('WorkInspector Work screen', () => {
   });
 });
 
+describe('WorkInspector start of Turn', () => {
+  it('labels the leading chapter "Start of Turn" only once the oldest page is loaded', async () => {
+    const tool = (text: string) => work({ kind: 'tool', title: { text, complete: true } });
+    // Pages of two: [A, B] (the real start) · [Phase, C] · [D]. The tail's chapter has no
+    // Commentary loaded only because its Commentary is on an older page, not because it is the
+    // start of the Turn.
+    const { api, calls } = fixtureApi(
+      [
+        tool('Run A'),
+        tool('Run B'),
+        work({ kind: 'commentary', title: { text: 'Phase one…', complete: true } }),
+        tool('Run C'),
+        tool('Run D'),
+      ],
+      2,
+    );
+    const startOfTurn = /Start of Turn|Początek tury/;
+
+    await openWork(api);
+    const tail = await screen.findByText('Run D');
+    expect(screen.queryByText(startOfTurn)).toBeNull();
+
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+    await screen.findByText('Run A', {}, { timeout: 5000 });
+    expect(calls).toEqual([undefined, '1', '0']);
+    expect(screen.getAllByText(startOfTurn)).toHaveLength(1);
+  });
+});
+
 describe('WorkInspector sparse-state framing', () => {
   it('frames an empty Turn as a deliberate, full-height-centred EmptyState, not a bare top-pinned line', async () => {
     const { api } = fixtureApi([]);

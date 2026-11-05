@@ -321,13 +321,18 @@ const chapterMembers = (chapter: WorkChapter) => [
  * rendered between rails, never as part of a rail itself (see
  * session-work-inspector-ui-spec.md §2) and never gated behind a disclosure either (see
  * `WorkNarration`). The leading "Start of Turn" chapter uses a neutral label instead of a
- * Commentary heading — there is no prose to show there. */
+ * Commentary heading — there is no prose to show there. While older history is not loaded, a
+ * leading chapter without Commentary is only cut off from its Commentary on an older page, so it
+ * gets no label at all (`turnStartLoaded`). */
 function WorkChapterSection({
   chapter,
+  turnStartLoaded,
   data,
   onOpenActions,
 }: {
   chapter: WorkChapter;
+  /** The oldest page is loaded: a chapter without Commentary is really the start of the Turn. */
+  turnStartLoaded: boolean;
   data: Data;
   onOpenActions: (workId: string, title: string) => void;
 }) {
@@ -351,7 +356,7 @@ function WorkChapterSection({
     <section className="grid min-w-0 gap-5">
       {chapter.commentary && chapter.commentaryRole === 'match' ? (
         <WorkNarration item={chapter.commentary} voice="commentary" data={data} />
-      ) : !chapter.commentary ? (
+      ) : !chapter.commentary && turnStartLoaded ? (
         // h2, not h3: the panel's own title is the only heading above it (h1), so h3 skipped a
         // level (axe heading-order) whenever Work history opened inside the composed screen.
         <Typography as="h2" variant="label-sm" className="text-content-secondary">
@@ -591,6 +596,7 @@ function Work({ data }: { data: Data }) {
                     <WorkChapterSection
                       key={chapterKeys[index]}
                       chapter={chapter}
+                      turnStartLoaded={!hasOlder}
                       data={data}
                       onOpenActions={openActions}
                     />

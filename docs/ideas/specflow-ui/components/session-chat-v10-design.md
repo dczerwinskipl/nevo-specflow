@@ -148,7 +148,9 @@ A Work timeline is not a flat list of identical tool, commentary and reasoning r
 
 - **Commentary** is a readable Markdown heading/description for a phase of work.
   Subsequent operations are subordinate, chronological rows until the next Commentary.
-  A neutral 'Start of Turn' group covers operations preceding any commentary.
+  A neutral 'Start of Turn' group covers operations preceding any commentary; it is labelled
+  only once the Turn's oldest page is loaded — before that, the leading operations are unlabelled,
+  since their Commentary may be on an older page.
 - **Thinking** is a separately labeled, optionally collapsible reasoning _summary_
   in the relevant chronological section, never a command or fake commentary.
   Only explicitly renderable provider summaries may be shown.

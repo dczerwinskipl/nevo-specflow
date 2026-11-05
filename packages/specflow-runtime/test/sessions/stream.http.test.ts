@@ -94,7 +94,9 @@ async function setup() {
   return { store, authId, cookie, sessionId, origin, reopen };
 }
 
-describe('live Session stream authorization and replay', () => {
+// Each case cold-starts a Runtime and SQLite Worker. Keep the separate bounds
+// on replay and authorization inside a budget that includes Windows startup.
+describe('live Session stream authorization and replay', { timeout: 20000 }, () => {
   it('keeps 32 idle sockets event-driven while revalidating authorization', async () => {
     const { store, cookie, sessionId, origin } = await setup();
     const bootstrapReads = activity.events + 32 * 2;
@@ -171,8 +173,7 @@ describe('live Session stream authorization and replay', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('event: resync-required');
     expect(response.body).not.toContain('event: session-change');
-    // Includes two cold Runtime/SQLite Worker starts plus offline pruning on Windows.
-  }, 20000);
+  });
   it('replays from the snapshot sequence without losing an intervening Turn', async () => {
     const { cookie, sessionId, origin } = await setup();
     const snapshot = (

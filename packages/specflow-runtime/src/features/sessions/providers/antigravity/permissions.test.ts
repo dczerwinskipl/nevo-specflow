@@ -274,6 +274,8 @@ describe('native Antigravity hook policy', () => {
       { BypassSandbox: 'false' },
       { IsDaemon: true },
       { WaitMsBeforeAsync: 0 },
+      { WaitMsBeforeAsync: 30_001 },
+      { WaitMsBeforeAsync: Number.MAX_SAFE_INTEGER },
       { Background: true },
     ]) {
       await expect(

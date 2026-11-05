@@ -352,6 +352,27 @@ describe('Session telemetry refresh lifecycle', () => {
     expect(f.commands.some((command) => command.op === 'telemetry-observations')).toBe(false);
   });
 
+  it('keeps the account cooldown when credentials rotate', async () => {
+    const f = fixture();
+    let now = Date.now();
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    await f.request();
+    await vi.waitFor(() =>
+      expect(f.commands).toContainEqual(
+        expect.objectContaining({ op: 'telemetry-refresh-state', state: 'idle' }),
+      ),
+    );
+    f.binding.mockResolvedValue({
+      accountScope: 'account',
+      credentialGeneration: 'renewed',
+    });
+    await expect(f.request()).rejects.toMatchObject({ retryAfterSeconds: 30 });
+    expect(f.refresh).toHaveBeenCalledOnce();
+    now += 30_000;
+    await f.request();
+    expect(f.refresh).toHaveBeenCalledTimes(2);
+  });
+
   it('rejects a generation change before durable admission without starting a native read', async () => {
     const f = fixture();
     f.binding.mockResolvedValueOnce({

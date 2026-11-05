@@ -264,19 +264,27 @@ export function createSessionTelemetryService(
           );
         }
 
-        for (const previous of jobs.values()) {
+        const now = Date.now();
+        let cooldownUntil = now;
+        for (const [cachedKey, previous] of jobs) {
+          const expiresAt = previous.at + REFRESH_INTERVAL_MS;
+          if (!previous.running && expiresAt <= now) {
+            jobs.delete(cachedKey);
+            continue;
+          }
+
           if (
             previous.accountKey === accountKey &&
             previous.generation !== binding.credentialGeneration
           ) {
             previous.controller.abort();
+            cooldownUntil = Math.max(cooldownUntil, expiresAt);
           }
         }
 
-        for (const [cachedKey, job] of jobs) {
-          if (!job.running && Date.now() - job.at >= REFRESH_INTERVAL_MS) {
-            jobs.delete(cachedKey);
-          }
+        // Credential changes fence reads and results, but the rate budget belongs to the account.
+        if (cooldownUntil > now) {
+          throw new TelemetryRateLimited(Math.ceil((cooldownUntil - now) / 1000));
         }
 
         let job = jobs.get(key);

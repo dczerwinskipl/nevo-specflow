@@ -172,6 +172,8 @@ Session event kind `telemetry` with `changes: {telemetryRevision: number}`.
 This is a coordinated contract extension; today's strict event decoders must be
 updated, not assumed to accept it. Events carry invalidation only, never unfiltered
 account observations. They are emitted only after the corresponding commit.
+Session viewers can observe the timing of shared telemetry invalidations.
+The account-limit permission controls the readings and their source timestamps.
 
 Bootstrap: fetch telemetry, then open the existing Session stream after its
 `eventSeq`. If chat already owns that stream, feed telemetry invalidations from
@@ -198,7 +200,8 @@ an authoritative terminal sample.
 Account limits update from native Turn observations and explicit refresh requests.
 Opening the Session stream schedules freshness notifications for existing readings
 without starting a provider process. Concurrent explicit requests share native work
-for the same provider account and credential generation.
+for the same provider account and credential generation. The 30-second cooldown
+applies to the account across credential renewals.
 Native context reads are event-driven; do not launch inference or a second CLI
 against an active native context just to populate a gauge. Unsupported live
 sources remain unavailable; terminal-only sources remain terminal-only.
@@ -271,7 +274,9 @@ GET/SSE use the same checker and revocation behavior as the existing Session API
 The HTTP snapshot includes a safe `migration.status` diagnostic during normal
 operation. A failed background migration remains observable as `failed` while
 historical aggregates retain `BASELINE_MISSING`; raw SQLite messages and paths
-never enter this field. Restart retries from the durable migration checkpoint.
+never enter this field. Read the diagnostic through GET. A change to migration
+status alone does not publish an SSE invalidation. Restart retries from the
+durable migration checkpoint.
 
 Native monetary numbers are exact-only within the canonical 12-decimal contract.
 Invalid or unrepresentable optional Claude cost is omitted without rejecting an

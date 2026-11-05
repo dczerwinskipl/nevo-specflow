@@ -5,6 +5,8 @@ import { validateAntigravityFileArguments } from './tool-arguments';
 import type { DriverFact } from '../../persistence/protocol';
 import { prepareMcpQuestion, McpQuestionEndpoint } from '../../interactions/mcp/questions';
 
+const MAX_WAIT_BEFORE_ASYNC_MS = 30_000;
+
 export interface AntigravityPermissionContext {
   nativeSessionId: string;
   nativeTools: readonly string[];
@@ -232,7 +234,8 @@ export async function prepareAntigravityPermission(
       typeof args.toolAction !== 'string' ||
       typeof args.WaitMsBeforeAsync !== 'number' ||
       !Number.isSafeInteger(args.WaitMsBeforeAsync) ||
-      args.WaitMsBeforeAsync < 1
+      args.WaitMsBeforeAsync < 1 ||
+      args.WaitMsBeforeAsync > MAX_WAIT_BEFORE_ASYNC_MS
     ) {
       throw new Error('Unsupported native background command.');
     }

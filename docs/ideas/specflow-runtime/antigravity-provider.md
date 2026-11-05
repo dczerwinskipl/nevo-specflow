@@ -100,6 +100,9 @@ invocation transport and delivery ledger; SQLite remains the canonical owner.
 Claude and Codex retain their native question protocols and do not use MCP merely
 for uniformity.
 
+The MCP tool accepts free-text questions and single-choice lists. Calls
+requesting multiple selections are rejected before creating an Interaction.
+
 This transport binds only to loopback with an OS-assigned port. Runtime and CLI
 must share the network namespace; a Runtime/CLI split across Docker/host namespaces
 needs a separately designed execution transport. A configurable public bind host
@@ -135,6 +138,7 @@ and customization-control-path writes are denied. Command execution requires
 an exact canonical once-only permission, physical CWD validation and the selected
 native `proceed-in-sandbox` policy. Runtime never requests an explicit sandbox bypass. Bypass, daemon,
 background/reused-terminal and unknown argument variants are rejected.
+The managed command policy accepts `WaitMsBeforeAsync` up to 30 seconds.
 Supported file-tool arguments have explicit type and range checks. Unverified
 artifact/lint metadata is rejected rather than passed through. Public command
 permissions contain the exact command, a workspace-relative CWD and canonical

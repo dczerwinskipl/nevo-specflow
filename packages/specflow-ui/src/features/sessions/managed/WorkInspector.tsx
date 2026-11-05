@@ -6,7 +6,6 @@ import {
   Alert,
   AppContent,
   Button,
-  Collapsible,
   EmptyState,
   Icon,
   IconButton,
@@ -33,6 +32,7 @@ import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
 import { OlderHistoryButton } from './OlderHistoryButton';
 import { historyEntry } from './pagedHistoryAnchor';
+import { useGroupKeys } from './stableGroupKeys';
 import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
   absorbPage,
@@ -57,13 +57,11 @@ import {
   mergeWorkItems,
   availableWorkFilterKinds,
   type ChapterEntry,
-  type ToolBurstEntry,
   type WorkChapter,
   type WorkFilterKind,
 } from './workGrouping';
 import type { WorkCounts } from './workCounts';
-import { workStateTone } from './workStatus';
-import { WorkRowContent, useWorkRowMeta } from './WorkRow';
+import { WorkOperationsTimeline, chapterEntryMembers } from './WorkOperationsTimeline';
 import { workTabLabel } from './workTabLabel';
 import {
   SingleToolActionDetail,
@@ -194,167 +192,6 @@ function WorkFilterBar({
   );
 }
 
-/** A Work row's title on the Timeline rail (`WorkRowContent`). The Timeline is `size="md"`: its
- * title slot is a block that wraps (long tool titles take two lines instead of being cut), and the
- * row carries its own meta line and navigation chevron. */
-function InteractionTimelineItem({ item }: { item: WorkSummary }) {
-  const { t } = useTranslation();
-  const kind = t('managedSession.workKind.interaction');
-  // The interaction's own title (e.g. "Permission to write workspace") — previously every
-  // interaction showed only the generic kind name, losing what was actually asked — with its kind
-  // leading the meta line under it.
-  const { meta, srStatus } = useWorkRowMeta(item, { leading: item.title.text ? kind : undefined });
-
-  return (
-    <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
-      <Timeline.Content
-        title={
-          <WorkRowContent
-            title={
-              <>
-                {item.title.text || kind}
-                {srStatus}
-              </>
-            }
-            meta={meta}
-          />
-        }
-      />
-    </Timeline.Item>
-  );
-}
-
-/** A tool operation as its own `Timeline.Item`. When the Work has ToolActions, the whole row opens
- * that exact Work's ToolAction details (ToolAction stays the tool's own child, never a top-level
- * row) — one row-sized button with a trailing navigation chevron, never a link-styled title or a
- * separate "Działania narzędzia" text button. Without ToolActions there is nothing to open, so no
- * chevron and no button. State is carried by `useWorkRowMeta` (visible words for anything but a
- * plain completion), never only by the marker's colour — `Timeline.Marker` is `aria-hidden`. */
-function ToolTimelineItem({
-  item,
-  onOpenActions,
-}: {
-  item: WorkSummary;
-  onOpenActions: (workId: string, title: string) => void;
-}) {
-  const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
-
-  return (
-    <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
-      <Timeline.Content
-        title={
-          <WorkRowContent
-            bleed="rail"
-            title={
-              <>
-                {item.title.text}
-                {srStatus}
-              </>
-            }
-            meta={meta}
-            onOpen={
-              item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined
-            }
-          />
-        }
-      />
-    </Timeline.Item>
-  );
-}
-
-/** A member of an expanded tool group: exactly the same row (`WorkRowContent`) as a top-level
- * operation, minus its own marker — a group is one marker on the rail ("jedna oś, jedna
- * hierarchia"); its members are that item's details, not a second mini-Timeline. Only completed
- * tools are ever grouped (`groupChapterEntries`), so the state word never shows here. */
-function GroupedToolRow({
-  item,
-  onOpenActions,
-}: {
-  item: WorkSummary;
-  onOpenActions: (workId: string, title: string) => void;
-}) {
-  const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
-
-  return (
-    <WorkRowContent
-      title={
-        <Typography as="span" variant="body-md" className="text-content-primary">
-          {item.title.text}
-          {srStatus}
-        </Typography>
-      }
-      meta={meta}
-      onOpen={item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined}
-    />
-  );
-}
-
-/** A long (`workGrouping.ts`'s `TOOL_BURST_MIN_SIZE`+) run of adjacent happy-path tool items,
- * compacted into exactly one `Timeline.Item`/marker on the chronology rail, collapsed by default.
- * Its disclosure trigger sits IN the title slot (`Collapsible density="inline"`), so the label
- * shares the marker's line; the disclosure chevron is LEADING (DS: a chevron at the leading edge
- * means expand/collapse) while every member row's navigation chevron is TRAILING, so the two never
- * read as the same control. A shorter run never reaches this component: `groupChapterEntries`
- * leaves it as individual rows. */
-function ToolBurstTimelineItem({
-  burst,
-  onOpenActions,
-}: {
-  burst: ToolBurstEntry;
-  onOpenActions: (workId: string, title: string) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <Timeline.Item {...historyEntry(burst.items[0]!.workId)}>
-      <Timeline.Marker tone="success" />
-      <Collapsible density="inline">
-        <Timeline.Content
-          title={
-            // Touch target: expand the block axis only, never the visual row — same pattern
-            // `ContextNavigationRow` already uses (without it the trigger measures 20×140px, below the
-            // DS touch-target rule every other clickable row follows).
-            <Collapsible.Trigger className="relative after:absolute after:inset-x-0 after:top-1/2 after:h-[max(100%,var(--target-size))] after:-translate-y-1/2 after:content-['']">
-              {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
-            </Collapsible.Trigger>
-          }
-        >
-          <Collapsible.Content>
-            <ul className="grid gap-3 pt-1">
-              {burst.items.map((item) => (
-                <li key={item.workId} className="min-w-0">
-                  <GroupedToolRow item={item} onOpenActions={onOpenActions} />
-                </li>
-              ))}
-            </ul>
-          </Collapsible.Content>
-        </Timeline.Content>
-      </Collapsible>
-    </Timeline.Item>
-  );
-}
-
-function WorkChapterEntryRow({
-  entry,
-  onOpenActions,
-}: {
-  entry: ChapterEntry;
-  onOpenActions: (workId: string, title: string) => void;
-}) {
-  if (entry.type === 'burst') {
-    return <ToolBurstTimelineItem burst={entry} onOpenActions={onOpenActions} />;
-  }
-
-  const { item } = entry;
-  if (item.kind === 'interaction') {
-    return <InteractionTimelineItem item={item} />;
-  }
-
-  return <ToolTimelineItem item={item} onOpenActions={onOpenActions} />;
-}
-
 /** Narration long enough that showing it in full would push its following operations well
  * below the fold is the only case that earns a "Show more" truncation. `!complete` is the authoritative signal — the real transport
  * cap on the initial preview (see `ReadableText`'s own doc comment) means there is strictly more
@@ -443,45 +280,6 @@ function WorkNarration({
   );
 }
 
-/** A run of operations as one flat `Timeline` (`size="md"`: wrapping titles and a meta line under
- * each), always rendered directly
- * — never behind a chapter-level "N operations" disclosure gate (a short run of 1-4 operations is just shown, not wrapped in a synthetic
- * summary container; `workGrouping.groupChapterEntries` already handles the one remaining case
- * that DOES still compact, a long adjacent happy-path run, into a single burst `Timeline.Item` —
- * see `ToolBurstTimelineItem`). */
-function WorkOperationsTimeline({
-  entries,
-  onOpenActions,
-}: {
-  entries: readonly ChapterEntry[];
-  onOpenActions: (workId: string, title: string) => void;
-}) {
-  const { t } = useTranslation();
-  const count = entries.reduce(
-    (sum, entry) => sum + (entry.type === 'burst' ? entry.items.length : 1),
-    0,
-  );
-
-  // Accessible name only — never rendered as visible text next to Commentary, which would read as
-  // "this Commentary owns N operations" (don't claim a stronger ownership/causality than the
-  // chronological data supports).
-  return (
-    <Timeline aria-label={t('managedSession.workInspector.operationsCount', { count })} size="md">
-      {entries.map((entry) => (
-        <WorkChapterEntryRow
-          key={chapterEntryKey(entry)}
-          entry={entry}
-          onOpenActions={onOpenActions}
-        />
-      ))}
-    </Timeline>
-  );
-}
-
-function chapterEntryKey(entry: ChapterEntry): string {
-  return entry.type === 'burst' ? entry.items[0]!.workId : entry.item.workId;
-}
-
 type ChapterSegment =
   { type: 'operations'; entries: ChapterEntry[] } | { type: 'reasoning'; item: WorkSummary };
 
@@ -507,6 +305,17 @@ function chapterSegments(entries: readonly ChapterEntry[]): ChapterSegment[] {
   return segments;
 }
 
+const segmentMembers = (segment: ChapterSegment) =>
+  segment.type === 'reasoning'
+    ? [segment.item.workId]
+    : segment.entries.flatMap(chapterEntryMembers);
+
+/** A chapter's members: its heading Commentary and every item under it. */
+const chapterMembers = (chapter: WorkChapter) => [
+  ...(chapter.commentary ? [chapter.commentary.workId] : []),
+  ...chapter.items.map((item) => item.workId),
+];
+
 /** One Commentary-headed phase: `<comment> <timeline> [<thinking> <timeline>] …` — the rail resets
  * at every narration boundary and never spans across one; narration (Commentary, Thinking) is
  * rendered between rails, never as part of a rail itself (see
@@ -527,6 +336,8 @@ function WorkChapterSection({
     () => chapterSegments(groupChapterEntries(chapter.items)),
     [chapter.items],
   );
+  // A run between narration keeps its identity while an older page joins it (`useGroupKeys`).
+  const keys = useGroupKeys(segments.map(segmentMembers));
 
   // No divider line between chapters (a chapter's Commentary does not always own
   // everything below a drawn line, so a line overstates that boundary; layout-and-containment's
@@ -547,18 +358,14 @@ function WorkChapterSection({
           {t('managedSession.workInspector.startOfTurn')}
         </Typography>
       ) : null}
-      {segments.map((segment) =>
+      {segments.map((segment, index) =>
         segment.type === 'reasoning' ? (
-          <WorkNarration
-            key={segment.item.workId}
-            item={segment.item}
-            voice="reasoning"
-            data={data}
-          />
+          <WorkNarration key={keys[index]} item={segment.item} voice="reasoning" data={data} />
         ) : (
           <WorkOperationsTimeline
-            key={chapterEntryKey(segment.entries[0]!)}
+            key={keys[index]}
             entries={segment.entries}
+            view={data.workView(data.turnId)}
             onOpenActions={onOpenActions}
           />
         ),
@@ -707,6 +514,9 @@ function Work({ data }: { data: Data }) {
 
   const chapters = useMemo(() => buildWorkChapters(items), [items]);
   const visibleChapters = useMemo(() => filterWorkChapters(chapters, filter), [chapters, filter]);
+  // The leading chapter of the loaded part ("Start of Turn" until an older page brings its
+  // Commentary) keeps its identity as older pages join it.
+  const chapterKeys = useGroupKeys(visibleChapters.map(chapterMembers));
   const filterKinds = useMemo(
     () => availableWorkFilterKinds(items, counts?.byKind),
     [items, counts],
@@ -768,9 +578,9 @@ function Work({ data }: { data: Data }) {
                 />
               ) : (
                 <div className="grid w-full gap-5">
-                  {visibleChapters.map((chapter) => (
+                  {visibleChapters.map((chapter, index) => (
                     <WorkChapterSection
-                      key={chapter.id}
+                      key={chapterKeys[index]}
                       chapter={chapter}
                       data={data}
                       onOpenActions={openActions}

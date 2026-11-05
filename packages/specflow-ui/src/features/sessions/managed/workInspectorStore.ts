@@ -147,6 +147,8 @@ export interface WorkViewState extends PagedState<WorkSummary> {
   counts: CountsRecord | undefined;
   /** Narration rows opened with "Show more". */
   expanded: ReadonlySet<string>;
+  /** Members (Work ids) of the tool groups the reader opened (`isGroupOpen`). */
+  openGroups: ReadonlySet<string>;
 }
 
 export const initialWorkViewState = (): WorkViewState => ({
@@ -154,7 +156,34 @@ export const initialWorkViewState = (): WorkViewState => ({
   filter: { kind: 'all', search: '' },
   counts: undefined,
   expanded: new Set(),
+  openGroups: new Set(),
 });
+
+/**
+ * A tool group has no identity of its own: it is a run of adjacent completed tools, and an older
+ * page, a tool completing at its end or a filter changes which tools it holds. So it is open while
+ * any tool it holds was in a group the reader opened — the group keeps its state as it grows,
+ * merges or splits — and closing it forgets every tool it holds.
+ */
+export const isGroupOpen = (state: WorkViewState, members: readonly string[]) =>
+  members.some((workId) => state.openGroups.has(workId));
+
+export function setGroupOpen(
+  state: WorkViewState,
+  members: readonly string[],
+  open: boolean,
+): WorkViewState {
+  const openGroups = new Set(state.openGroups);
+  for (const workId of members) {
+    if (open) {
+      openGroups.add(workId);
+    } else {
+      openGroups.delete(workId);
+    }
+  }
+
+  return { ...state, openGroups };
+}
 
 export type ActionsViewState = PagedState<ToolActionSummary>;
 

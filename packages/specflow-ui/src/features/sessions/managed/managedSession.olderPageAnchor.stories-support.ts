@@ -39,7 +39,8 @@ export function createGate() {
 let seq = 0;
 const timestamps = { createdAt: '2026-10-30T10:00:00Z', updatedAt: '2026-10-30T10:00:00Z' };
 
-function workItem(kind: WorkSummary['kind'], text: string, extra?: Partial<WorkSummary>) {
+/** A completed Work item of this Turn, ordered after every one made before it. */
+export function workItem(kind: WorkSummary['kind'], text: string, extra?: Partial<WorkSummary>) {
   seq += 1;
 
   return {

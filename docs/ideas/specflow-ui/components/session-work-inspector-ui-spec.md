@@ -370,6 +370,19 @@ newer commentary...
 
 Loading older content must preserve the user's current viewport anchor.
 
+#### Groups keep their identity as history joins them
+
+A chapter, a run of operations between narration and a tool burst are spans of Work items, not
+objects with ids of their own: an older page joins the leading chapter, run or burst at its front,
+live items join the newest at its end, and a filter can split or merge them. Each keeps its identity
+while it keeps any of its members, so a page joining it neither re-creates its rows nor moves the
+reader's focus out of it.
+
+Whether a tool burst is open is product state of the Turn's view (kept with the loaded pages, the
+filter and the expanded narration), not of the row: a burst is open while any tool it holds was in a
+burst the reader opened, so it stays open as it grows, after a drill-in to a tool's actions and
+back, and across a tab switch. Closing it forgets every tool it holds.
+
 #### Bounded auto-loading
 
 Older pages load automatically while the reader is near the top of the list (the same rule for the

@@ -31,6 +31,7 @@ import { translateNow } from '../../../i18n/message';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
+import { OlderHistoryButton } from './OlderHistoryButton';
 import { historyEntry } from './pagedHistoryAnchor';
 import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
@@ -679,14 +680,20 @@ function Work({ data }: { data: Data }) {
   });
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const { state, items, scroller, loadOlder, maybeLoadOlder } = usePagedHistory({
-    store: view,
-    merge: mergeWorkItems,
-    tail: query.data,
-    fetchOlder: (before) => data.api.work(data.sessionId, data.turnId, before),
-    absorbOlder: (current, page) => absorbWorkPage(current, page, 'older'),
-  });
+  const { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder, stalled, loadMore } =
+    usePagedHistory({
+      store: view,
+      merge: mergeWorkItems,
+      tail: query.data,
+      fetchOlder: (before) => data.api.work(data.sessionId, data.turnId, before),
+      absorbOlder: (current, page) => absorbWorkPage(current, page, 'older'),
+      resetKey: (value) => value.filter,
+    });
   const { filter } = state;
+  const searching = filter.kind !== 'all' || filter.search.trim() !== '';
+  const olderButton = stalled && !state.busy && !state.error && (
+    <OlderHistoryButton searching={searching} onClick={loadMore} />
+  );
   // The proposed, not-yet-backend-implemented `WorkPage.counts` aggregate (workCounts.ts,
   // docs/reference/api/sessions.md "Proposed Work aggregate counts"): the newest by `eventSeq`
   // among the tail and every page loaded — never derived from `items`, so the summary row is
@@ -745,10 +752,20 @@ function Work({ data }: { data: Data }) {
                   </Button>
                 </Alert>
               )}
+              {olderButton && visibleChapters.length > 0 && olderButton}
               {items.length === 0 ? (
                 <EmptyState variant="pane" title={t('managedSession.workInspector.emptyTurn')} />
               ) : visibleChapters.length === 0 ? (
-                <EmptyState variant="pane" title={t('managedSession.workInspector.noMatches')} />
+                // Older history may still hold a match: only once none remains is "no matches" true.
+                <EmptyState
+                  variant="pane"
+                  title={t(
+                    hasOlder
+                      ? 'managedSession.workInspector.noMatchesLoaded'
+                      : 'managedSession.workInspector.noMatches',
+                  )}
+                  actions={olderButton}
+                />
               ) : (
                 <div className="grid w-full gap-5">
                   {visibleChapters.map((chapter) => (
@@ -822,13 +839,14 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder } = usePagedHistory({
-    store: view,
-    merge: mergeToolActions,
-    tail: query.data,
-    fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
-    absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
-  });
+  const { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder, stalled, loadMore } =
+    usePagedHistory({
+      store: view,
+      merge: mergeToolActions,
+      tail: query.data,
+      fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
+      absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
+    });
   const olderBusy = state.busy;
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
@@ -875,6 +893,9 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
                     {t('common.retry')}
                   </Button>
                 </Alert>
+              )}
+              {stalled && !olderBusy && !olderError && (
+                <OlderHistoryButton searching={false} onClick={loadMore} />
               )}
               {items.length === 0 ? (
                 <EmptyState variant="pane" title={t('managedSession.workInspector.noActions')} />

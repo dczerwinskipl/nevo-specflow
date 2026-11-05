@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useAutoLoadOlder } from './useAutoLoadOlder';
 import { readHistoryAnchor, restoreHistoryAnchor, type HistoryAnchor } from './pagedHistoryAnchor';
 import {
   useViewState,
@@ -7,61 +8,6 @@ import {
   type PagePart,
   type ViewStore,
 } from './workInspectorStore';
-
-// "Near the top" as `ManagedSession.tsx`'s conversation scroller already applies it: not literally
-// `scrollTop === 0`, a threshold reached shortly before it so the
-// next page is ready before the user hits the physical edge.
-const NEAR_TOP_PX = 200;
-
-/** Scroll-triggered auto-loading of older Work/ToolAction pages, replacing the old manual
- * "Load older" button, with the same
- * mechanism `ManagedSession.tsx`'s own conversation scroller uses for older messages:
- * `maybeLoadOlder` is called both from the scroller's own `onScroll` handler (interactive scroll)
- * and from a `useLayoutEffect` that re-checks after every items/busy/error change, so a page that
- * was just prepended and still leaves the scroller near the top keeps loading until
- * `hasOlder` is false, and a short Work/Actions list that never overflows (no scrollbar to
- * drive) still pages in its older history once mounted. Stops entirely on `error` — the caller
- * keeps a manual Retry action instead of looping a failing request. */
-function useAutoLoadOlder({
-  scroller,
-  hasOlder,
-  busy,
-  error,
-  loadOlder,
-  itemsVersion,
-}: {
-  scroller: { current: HTMLDivElement | null };
-  hasOlder: boolean;
-  busy: boolean;
-  error: boolean;
-  loadOlder: () => void | Promise<void>;
-  itemsVersion: unknown;
-}) {
-  function maybeLoadOlder(node: HTMLDivElement) {
-    if (!hasOlder || busy || error) {
-      return;
-    }
-
-    if (node.scrollTop < NEAR_TOP_PX) {
-      void loadOlder();
-    }
-  }
-
-  // Runs after the anchor-restoring effect in `usePagedHistory` (same commit, later in declaration
-  // order), so it reads the scroll position that effect just restored, not a stale one.
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    if (node) {
-      maybeLoadOlder(node);
-    }
-    // `hasOlder`/`busy`/`error` are already listed; `loadOlder` and `scroller` are stable-enough
-    // closures (a new `loadOlder` identity per render carries no behavior the listed values don't
-    // already determine) and re-adding them would only re-run this on every unrelated render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemsVersion, hasOlder, busy, error]);
-
-  return maybeLoadOlder;
-}
 
 /** What the view can show of a paged object: the stored pages merged with the tail window when it
  * is loaded, and whether older history remains behind them. The one definition for every reader
@@ -91,6 +37,8 @@ export function availablePaged<TItem>(
  *   restored in the commit that merges it (keyed to `olderVersion`), so a tail refresh, a filter
  *   or an expanded entry during the request neither uses it up nor shifts it. Entries render
  *   `historyEntry(id)`.
+ * - Auto-loading is bounded (`useAutoLoadOlder`): `stalled` says it stopped with older history
+ *   remaining, and `loadMore` is the reader's request for the next batch.
  */
 export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extends PagePart<TItem>>({
   store,
@@ -98,6 +46,7 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
   tail,
   fetchOlder,
   absorbOlder,
+  resetKey,
 }: {
   store: ViewStore<S>;
   merge: Merge<TItem>;
@@ -106,6 +55,9 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
   fetchOlder: (before: string) => Promise<TPage>;
   /** Folds a fetched older page into the view (extras such as counts ride along). */
   absorbOlder: (state: S, page: TPage) => S;
+  /** What the reader is looking for in the history (the filter and search): when it changes, the
+   * auto-loader starts looking again (`useAutoLoadOlder`). */
+  resetKey?: (state: S) => unknown;
 }) {
   const state = useViewState(store);
   const scroller = useRef<HTMLDivElement>(null);
@@ -124,12 +76,15 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
     anchor.current = undefined;
   }, [state.olderVersion]);
 
-  async function loadOlder() {
+  async function loadOlder(begin?: () => void) {
     const current = store.get();
     const before = (current.cursor ?? tail?.history)?.before;
     if (!before || current.busy) {
       return;
     }
+
+    // Measures the list as it is now, before the loading indicator changes it.
+    begin?.();
 
     store.update((value) => ({ ...value, busy: true, error: false }));
     try {
@@ -143,14 +98,16 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
     }
   }
 
-  const maybeLoadOlder = useAutoLoadOlder({
+  const { maybeLoadOlder, stalled, loadMore } = useAutoLoadOlder({
     scroller,
     hasOlder,
     busy: state.busy,
     error: state.error,
     loadOlder,
     itemsVersion: items,
+    olderVersion: state.olderVersion,
+    resetKey: resetKey?.(state),
   });
 
-  return { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder };
+  return { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder, stalled, loadMore };
 }

@@ -370,6 +370,36 @@ newer commentary...
 
 Loading older content must preserve the user's current viewport anchor.
 
+#### Bounded auto-loading
+
+Older pages load automatically while the reader is near the top of the list (the same rule for the
+Work log and for the Actions list), but only while that is productive. The merged items are not what
+is on screen: an active kind filter or search hides items, and a long run of completed tools
+collapses into one burst row. So the list measures what a page adds where it shows, the scroller's
+content height before the page is requested and after it is merged and rendered:
+
+- a page that grew the content by less than 32 px (under the smallest row) is unproductive;
+- after **3 consecutive** unproductive pages auto-loading stops, however much history remains;
+- while stopped with older history remaining, a secondary button sits at the top of the list:
+  "Szukaj w starszej historii" / "Search older history" when a kind filter or search is active,
+  otherwise "Wczytaj starszą historię" / "Load older history". A click loads the next batch (the
+  same bound applies to it), so a long search proceeds in reader-paced steps;
+- the count starts again on a click, on a change of the filter or search, and on a real upward
+  scroll gesture (wheel up, touch drag down, an upward scrolling key), not on a scroll the layout
+  caused;
+- a productive page resets the count, so a list that keeps growing loads to the end without a
+  button.
+
+The shared affordance is one component for both screens.
+
+#### Empty result while older history remains
+
+A filter or search with no match among the loaded entries must not claim there is no match anywhere:
+while older history remains the empty state reads "Brak wyników we wczytanych wpisach." / "No Work
+matches these filters in the loaded entries." and carries the button above. Only once no older
+history remains does it keep the definitive "Żadna pozycja nie odpowiada tym filtrom." / "No Work
+matches these filters."
+
 ## 6. L2 grouping algorithm
 
 ### 6.1 Tool bursts and chapter grouping
@@ -1240,7 +1270,8 @@ Inherits
 ### Work history
 
 - initial Session snapshot includes current/recent Work;
-- older Work pages lazy-load;
+- older Work pages lazy-load, with a bounded auto-load and a reader-driven button once pages stop
+  adding visible rows (section 5.5);
 - L2 projection is derived from canonical cached Work, not a separate server timeline format unless
   server-side pagination requires a compatible summary resource;
 - L3/L4 detail must not refetch the whole Session when one item is selected.

@@ -28,6 +28,7 @@ import { initialPagedState } from './workInspectorStore';
 // newest/tail content — lets a test instead explicitly drive "the user is scrolled to/held at the
 // top" via `fireEvent.scroll(viewport, { target: { scrollTop: 0 } })`, the same way it would in an
 // actually-overflowing browser list.
+const ENTRY_HEIGHT = 100;
 const scrollTopValues = new WeakMap<HTMLElement, number>();
 let originalScrollTop: PropertyDescriptor | undefined;
 
@@ -44,6 +45,16 @@ beforeEach(() => {
   Element.prototype.scrollTo = () => undefined;
   window.scrollTo = () => undefined;
 
+  // jsdom has no layout either, so a scroller's content height is its rendered history entries
+  // at `ENTRY_HEIGHT` each: what a page adds to the visible list is what `useAutoLoadOlder`
+  // measures. Entries a filter hides, or that collapse into one burst row, are not rendered as
+  // separate entries and add nothing.
+  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.querySelectorAll('[data-history-entry]').length * ENTRY_HEIGHT;
+    },
+  });
   originalScrollTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTop');
   Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
     configurable: true,
@@ -57,6 +68,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
   vi.unstubAllGlobals();
   if (originalScrollTop) {
     Object.defineProperty(HTMLElement.prototype, 'scrollTop', originalScrollTop);
@@ -1064,5 +1076,143 @@ describe('availablePaged', () => {
         merge,
       ),
     ).toEqual({ items: ['b'], hasOlder: true });
+  });
+});
+
+describe('WorkInspector bounded auto-loading of older history', () => {
+  // Pages of two items: 100 pages of history behind the tail, none of them showing anything.
+  const pageCount = 100;
+  const older = (calls: { before?: string }[]) =>
+    calls.filter((call) => call.before !== undefined).length;
+
+  it('N09: a search with no match in the loaded part stops after three pages and offers to search on', async () => {
+    const pages = Array.from({ length: pageCount }, (_, index) => toolItems(`Page${index}`, 2));
+    const { api, calls } = pagedApi({ turns: { [turnId]: pages } });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText(`Page${pageCount - 1} 0`);
+    const viewport = workScroller(tail);
+
+    fireEvent.change(screen.getByPlaceholderText('Search Work'), { target: { value: 'zzz' } });
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    const button = await screen.findByRole('button', { name: 'Search older history' });
+    // Not a definitive "no matches" while older history remains unread.
+    expect(screen.getByText('No Work matches these filters in the loaded entries.')).toBeTruthy();
+    expect(screen.queryByText('No Work matches these filters.')).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(older(calls)).toBe(3);
+
+    // A click loads the next batch, under the same bound.
+    fireEvent.click(button);
+    await waitFor(() => expect(older(calls)).toBe(6));
+    await screen.findByRole('button', { name: 'Search older history' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(older(calls)).toBe(6);
+  });
+
+  it('N09: a changed search and an upward scroll gesture start looking again', async () => {
+    const pages = Array.from({ length: pageCount }, (_, index) => toolItems(`Page${index}`, 2));
+    const { api, calls } = pagedApi({ turns: { [turnId]: pages } });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText(`Page${pageCount - 1} 0`);
+    const viewport = workScroller(tail);
+
+    const search = screen.getByPlaceholderText('Search Work');
+    fireEvent.change(search, { target: { value: 'zzz' } });
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    await screen.findByRole('button', { name: 'Search older history' });
+    expect(older(calls)).toBe(3);
+
+    fireEvent.wheel(viewport, { deltaY: -40 });
+    await waitFor(() => expect(older(calls)).toBe(6));
+    await screen.findByRole('button', { name: 'Search older history' });
+
+    fireEvent.change(search, { target: { value: 'zzzz' } });
+    await waitFor(() => expect(older(calls)).toBe(9));
+    await screen.findByRole('button', { name: 'Search older history' });
+  });
+
+  it('N09: long runs of completed tools that collapse into one burst row stop the loading without a filter', async () => {
+    // Ten completed tools per page: one burst row however many pages are merged.
+    const pages = Array.from({ length: pageCount }, (_, index) => toolItems(`Page${index}`, 10));
+    const { api, calls } = pagedApi({ turns: { [turnId]: pages } });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    const burst = await screen.findByText('10 tool actions');
+    fireEvent.scroll(workScroller(burst), { target: { scrollTop: 0 } });
+
+    const button = await screen.findByRole('button', { name: 'Load older history' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(older(calls)).toBe(3);
+
+    fireEvent.click(button);
+    await waitFor(() => expect(older(calls)).toBe(6));
+    await screen.findByRole('button', { name: 'Load older history' });
+  });
+
+  it('N09: the Actions screen stops the same way when older pages add no action', async () => {
+    const tool = work({
+      kind: 'tool',
+      title: { text: 'Run a batch', complete: true },
+      actionCount: 4,
+    });
+    const action = (ordinal: number) => ({
+      actionId: `action-${ordinal}`,
+      ordinal,
+      revision: 1,
+      state: 'completed' as const,
+      title: { text: `Action ${ordinal}`, complete: true },
+      createdAt: '2026-10-30T10:00:00Z',
+      updatedAt: '2026-10-30T10:00:00Z',
+    });
+    const actionCalls: (string | undefined)[] = [];
+    const { api: workApi } = pagedApi({ turns: { [turnId]: [[tool]] } });
+    const api = {
+      ...workApi,
+      actions: (_sessionId: string, workId: string, before?: string) => {
+        actionCalls.push(before);
+        const index = before === undefined ? pageCount : Number(before);
+
+        return Promise.resolve({
+          sessionId,
+          eventSeq: 1,
+          workId,
+          items: before === undefined ? [action(1), action(2)] : [],
+          history: { hasOlder: index > 0, before: index > 0 ? String(index - 1) : undefined },
+        });
+      },
+    } as unknown as ManagedSessionsApi;
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    fireEvent.click((await screen.findByText('Run a batch')).closest('button')!);
+    const newest = await screen.findByText('Action 2');
+    fireEvent.scroll(workScroller(newest), { target: { scrollTop: 0 } });
+
+    const button = await screen.findByRole('button', { name: 'Load older history' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(actionCalls.filter((before) => before !== undefined)).toHaveLength(3);
+
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(actionCalls.filter((before) => before !== undefined)).toHaveLength(6),
+    );
+  });
+
+  it('N09: pages that each add a row keep loading to the end without a button', async () => {
+    // A Commentary and a tool per page: every page opens a chapter, so each adds visible rows.
+    const pages = Array.from({ length: 8 }, (_, index) => [
+      work({ kind: 'commentary', title: { text: `Page${index} 0`, complete: true } }),
+      work({ kind: 'tool', title: { text: `Page${index} 1`, complete: true } }),
+    ]);
+    const { api, calls } = pagedApi({ turns: { [turnId]: pages } });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    const tail = await screen.findByText('Page7 0');
+    fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
+
+    await screen.findByText('Page0 0', {}, { timeout: 5000 });
+    expect(older(calls)).toBe(7);
+    expect(screen.queryByRole('button', { name: /older history/ })).toBeNull();
   });
 });

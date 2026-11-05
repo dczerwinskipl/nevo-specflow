@@ -79,9 +79,13 @@ function Host({ pinned, panel }: { pinned: string | null; panel: boolean }) {
 
 const tree = (
   scopeKey: string,
-  { pinned = 'Context', panel = false }: { pinned?: string | null; panel?: boolean } = {},
+  {
+    pinned = 'Context',
+    panel = false,
+    history = false,
+  }: { pinned?: string | null; panel?: boolean; history?: boolean } = {},
 ) => (
-  <AppWorkspaceProvider scopeKey={scopeKey}>
+  <AppWorkspaceProvider scopeKey={scopeKey} browserHistory={history}>
     <Host pinned={pinned} panel={panel} />
   </AppWorkspaceProvider>
 );
@@ -290,6 +294,178 @@ describe('scopeKey change in place: operations queued by the old scope', () => {
     await flush();
     expect(tabIds()).toEqual([PINNED_ID]);
     expect(activeTabId()).toBe(PINNED_ID);
+  });
+});
+
+// The old scope's guard may never answer (its dialog went away with the old screen): every
+// operation of that scope settles `false` when the scope changes, without waiting for it.
+describe('scopeKey change in place: an old-scope guard that does not answer', () => {
+  const settled = <T,>(promise: Promise<T>) => {
+    const state: { done: boolean; value?: T } = { done: false };
+    void promise.then((value) => {
+      state.done = true;
+      state.value = value;
+    });
+
+    return state;
+  };
+
+  /** A guard that answers only when the test says so — or never. */
+  const holdGuard = () => {
+    let answer!: (allowed: boolean) => void;
+    guardState.result = new Promise<boolean>((resolve) => {
+      answer = resolve;
+    });
+
+    return (allowed: boolean) => answer(allowed);
+  };
+
+  it.each([
+    ['openTab', (value: WorkspaceContextValue) => value.openTab(workStack, { id: 'queued' })],
+    ['open', (value: WorkspaceContextValue) => value.open(workStack, { id: 'queued' })],
+    ['closeTab', (value: WorkspaceContextValue) => value.closeTab('work:a')],
+    ['back', (value: WorkspaceContextValue) => value.back()],
+    ['close', (value: WorkspaceContextValue) => value.close()],
+    ['activateTab', (value: WorkspaceContextValue) => value.activateTab(PINNED_ID)],
+    ['canLeaveScope', (value: WorkspaceContextValue) => value.canLeaveScope()],
+  ])(
+    '%s waiting on a guard that never answers resolves false on the scope change',
+    async (_, run) => {
+      const { rerender } = render(tree('A'));
+      await call((value) => value.openTab(workStack, { id: 'a' }));
+
+      holdGuard();
+      const fromA = settled(run(workspace!));
+      // A second A operation queued behind the waiting one settles too.
+      const queuedBehind = settled(workspace!.activateTab(PINNED_ID));
+      await flush();
+      expect(fromA.done).toBe(false);
+
+      guardState.result = true;
+      rerender(tree('B'));
+      await flush();
+
+      expect(fromA).toEqual({ done: true, value: false });
+      expect(queuedBehind).toEqual({ done: true, value: false });
+      expect(tabIds()).toEqual([PINNED_ID]);
+      expect(activeTabId()).toBe(PINNED_ID);
+      expect(await call((value) => value.openTab(workStack, { id: 'b' }))).toBe(true);
+      expect(tabIds()).toEqual([PINNED_ID, 'work:b']);
+    },
+  );
+
+  it('a late "true" from the old guard, after the switch, does not mutate the new scope', async () => {
+    const { rerender } = render(tree('A'));
+    await call((value) => value.openTab(workStack, { id: 'a' }));
+
+    const answer = holdGuard();
+    const fromA = settled(workspace!.openTab(workStack, { id: 'queued' }));
+    const backFromA = settled(workspace!.back());
+    await flush();
+
+    guardState.result = true;
+    rerender(tree('B'));
+    await flush();
+    expect(fromA).toEqual({ done: true, value: false });
+    expect(backFromA).toEqual({ done: true, value: false });
+
+    await call((value) => value.openTab(workStack, { id: 'b' }));
+    await act(async () => {
+      answer(true);
+    });
+    await flush();
+
+    expect(fromA.value).toBe(false);
+    expect(tabIds()).toEqual([PINNED_ID, 'work:b']);
+    expect(activeTabId()).toBe('work:b');
+    expect(screen.getByText('Work b')).toBeTruthy();
+    expect(screen.queryByText('Work queued')).toBeNull();
+  });
+
+  it('an operation waiting on a guard that never answers resolves false when the provider unmounts', async () => {
+    const { unmount } = render(tree('A'));
+    await call((value) => value.openTab(workStack, { id: 'a' }));
+
+    holdGuard();
+    const fromA = settled(workspace!.closeTab('work:a'));
+    await flush();
+    expect(fromA.done).toBe(false);
+
+    unmount();
+    await flush();
+
+    expect(fromA).toEqual({ done: true, value: false });
+  });
+
+  it('a browser Back waiting on the old guard does not swallow browser Back in the new scope', async () => {
+    const browserBack = () =>
+      act(async () => {
+        const popped = new Promise((resolve) => {
+          window.addEventListener('popstate', resolve, { once: true });
+        });
+        window.history.back();
+        await popped;
+      });
+    // A fresh, marker-free entry (jsdom keeps one session history per file).
+    window.history.pushState(null, '');
+    const { rerender } = render(tree('A', { history: true }));
+    await call((value) => value.openTab(workStack, { id: 'a' }));
+
+    holdGuard();
+    // Browser Back asks Work a's guard, which never answers.
+    await browserBack();
+    await flush();
+    expect(screen.getByText('Work a')).toBeTruthy();
+
+    guardState.result = true;
+    rerender(tree('B', { history: true }));
+    await flush();
+    await call((value) => value.openTab(workStack, { id: 'b' }));
+    expect(screen.getByText('Work b')).toBeTruthy();
+
+    await browserBack();
+    await flush();
+    expect(screen.queryByText('Work b')).toBeNull();
+    expect(workspace!.secondary).toBeNull();
+  });
+
+  it('a focus return the old scope scheduled does not move focus in the new scope', async () => {
+    // Elements count as rendered (jsdom has no layout), and frames run when the test says so.
+    vi.spyOn(HTMLElement.prototype, 'getClientRects').mockImplementation(
+      () => [{}] as unknown as DOMRectList,
+    );
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.push(callback);
+
+      return frames.length;
+    });
+    const opener = document.body.appendChild(document.createElement('button'));
+    const elsewhere = document.body.appendChild(document.createElement('button'));
+    try {
+      const { rerender } = render(tree('A', { pinned: null }));
+      opener.focus();
+      await call((value) => value.openTab(workStack, { id: 'a' }));
+      // Closing the only tab returns focus to its opener on the next frame...
+      expect(await call((value) => value.closeTab('work:a'))).toBe(true);
+      expect(frames.length).toBeGreaterThan(0);
+
+      // ...but the scope changes first, and the reader moves on inside the new scope.
+      rerender(tree('B', { pinned: null }));
+      await flush();
+      elsewhere.focus();
+      act(() => {
+        while (frames.length > 0) {
+          frames.shift()!(0);
+        }
+      });
+
+      expect(document.activeElement).toBe(elsewhere);
+    } finally {
+      opener.remove();
+      elsewhere.remove();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

@@ -34,6 +34,7 @@ import type {
   SecondaryStackActions,
   SecondaryStackDefinition,
 } from './SecondaryStack';
+import { createScopeOperationQueue } from './scopeOperationQueue';
 import { useWorkspaceBrowserHistory } from './useWorkspaceBrowserHistory';
 import { SecondaryScrollMemoryContext, createSecondaryScrollMemory } from './secondaryScrollMemory';
 import {
@@ -635,11 +636,8 @@ export function AppWorkspaceProvider({
   /** The generation the committed tree belongs to; operations of any other one are stale. */
   const currentGeneration = useRef(scopeGeneration);
   const guards = useRef(new Map<number, LeaveGuard>());
-  /** One serial chain per generation (see `queue`). */
-  const pending = useRef<{ generation: number; chain: Promise<unknown> }>({
-    generation: scopeGeneration,
-    chain: Promise.resolve(),
-  });
+  /** One serial chain per generation, ended with its scope (see `scopeOperationQueue`). */
+  const [operations] = useState(() => createScopeOperationQueue(scopeGeneration));
   const [transition, setTransition] = useState<WorkspaceTransition>({
     action: 'close',
     revision: 0,
@@ -655,8 +653,10 @@ export function AppWorkspaceProvider({
     return () => {
       mounted.current = false;
       registeredGuards.clear();
+      // A caller still waiting (e.g. on a guard whose dialog unmounted with us) gets `false`.
+      operations.endAll();
     };
-  }, []);
+  }, [operations]);
 
   // Route/owner scope invalidation is not a user-initiated close: clear even if
   // the old screen has a leave guard. No stale screen may affect the new scope.
@@ -669,6 +669,8 @@ export function AppWorkspaceProvider({
     }
 
     currentGeneration.current = scopeGeneration;
+    // Every operation of the old scope settles `false` now, without waiting for its guard.
+    operations.endBefore(scopeGeneration);
     const hadRuntimeTabs = tabsRef.current.order.length > 0;
     // The pinned-tab effect below, which runs next in this same commit, re-selects the pinned tab.
     tabsRef.current = emptyTabsSnapshot(scopeGeneration);
@@ -682,7 +684,7 @@ export function AppWorkspaceProvider({
         ? { action: 'close', revision: revisionAtChange, incoming: null, outgoing: null }
         : previous,
     );
-  }, [scopeGeneration]);
+  }, [operations, scopeGeneration]);
 
   // The pinned tab becomes active when nothing else is, and yields to a runtime tab (or nothing)
   // once it disappears; it is never created/destroyed by open/openTab/closeTab (contract §3).
@@ -722,8 +724,10 @@ export function AppWorkspaceProvider({
       }
 
       let attempts = 0;
+      // A focus return belongs to the scope that scheduled it, never to the next one.
+      const generation = currentGeneration.current;
       const tryFocus = () => {
-        if (!mounted.current) {
+        if (!mounted.current || currentGeneration.current !== generation) {
           return;
         }
 
@@ -791,29 +795,15 @@ export function AppWorkspaceProvider({
   );
 
   /**
-   * Serialises one scope's operations. Each generation gets its own chain, so an operation of the
-   * old scope that is still waiting (a leave guard whose dialog went away with its screen) never
-   * blocks the new scope; generations only grow, so an operation of an older one is refused
-   * outright without disturbing the current chain.
+   * Serialises one scope's operations; a scope change settles every operation of the old scope
+   * `false` without waiting for it (`scopeOperationQueue`). Operation bodies therefore re-check
+   * `isCurrentScope` after every await: one may resume after its caller was already told `false`.
    */
-  const queue = useCallback((generation: number, operation: () => Promise<boolean>) => {
-    const current = pending.current;
-    if (generation < current.generation) {
-      return Promise.resolve(false);
-    }
-
-    const head = generation === current.generation ? current.chain : Promise.resolve();
-    const result = head.then(operation, operation);
-    pending.current = {
-      generation,
-      chain: result.then(
-        () => undefined,
-        () => undefined,
-      ),
-    };
-
-    return result;
-  }, []);
+  const queue = useCallback(
+    (generation: number, operation: () => Promise<boolean>) =>
+      operations.run(generation, operation),
+    [operations],
+  );
 
   /** The operation's scope is still the committed one (and the provider is mounted). */
   const isCurrentScope = useCallback(

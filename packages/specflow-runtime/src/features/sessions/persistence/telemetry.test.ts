@@ -164,6 +164,50 @@ describe('materialized Session telemetry', () => {
     });
   });
 
+  it('uses the same proven cumulative usage for the Turn summary and telemetry across gaps and restart', () => {
+    const f = fixture();
+    f.telemetry.create(f.s);
+    const first = f.turn(1);
+    const sample = (turn: StoredTurn, sampleId: string, inputTokens: number) => {
+      f.telemetry.usage(f.s, turn, {
+        kind: 'usage',
+        basis: 'session-cumulative',
+        sampleId,
+        counters: { inputTokens },
+      });
+    };
+
+    f.telemetry.start(f.s, first);
+    sample(first, 'baseline', 0);
+    sample(first, 'total', 10);
+    expect(first.summary.usage).toEqual({ inputTokens: 10 });
+    f.telemetry.terminal(f.s, first);
+
+    const missing = f.turn(2);
+    f.telemetry.start(f.s, missing);
+    f.telemetry.terminal(f.s, missing);
+    f.reopen();
+
+    const next = f.turn(3);
+    f.telemetry.start(f.s, next);
+    sample(next, 'after-gap', 30);
+    expect(next.summary.usage).toBeUndefined();
+    expect(f.telemetry.read(f.s).usage.turn?.reading.status).toBe('unavailable');
+
+    sample(next, 'reset', 2);
+    expect(next.summary.usage).toBeUndefined();
+    sample(next, 'after-reset', 5);
+    expect(next.summary.usage).toEqual({ inputTokens: 3 });
+    expect(f.telemetry.read(f.s).usage.turn?.reading).toMatchObject({
+      status: 'partial',
+      value: { inputTokens: 3, coverage: { complete: false } },
+    });
+    expect(f.telemetry.read(f.s).usage.session).toMatchObject({
+      status: 'partial',
+      value: { inputTokens: 13, coverage: { complete: false } },
+    });
+  });
+
   it('does not turn a missing cumulative baseline or a reset into zero or complete accounting', () => {
     const f = fixture();
     f.telemetry.create(f.s);

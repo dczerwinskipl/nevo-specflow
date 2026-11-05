@@ -253,48 +253,48 @@ export function createSessionTelemetry(
     const old =
       readJson<TurnLedger>('SELECT data FROM telemetry_turns WHERE turn=?', t.summary.turnId) ??
       ledger(t);
-    const counters = t.summary.usage as Record<string, number> | undefined;
-    const next: Tokens = f.basis === 'session-cumulative' ? { ...old.usage } : {};
-    if (f.basis !== 'session-cumulative') {
-      for (const key of tokenKeys) {
-        const value =
-          counters?.[key === 'cacheReadTokens' ? 'cachedTokens' : key] ?? counters?.[key];
-        if (value !== undefined) {
-          next[key] = safe(value);
+    type Counters = NonNullable<StoredTurn['summary']['usage']>;
+    const basis = (name: typeof f.basis) =>
+      readJson<Counters>(
+        'SELECT data FROM usage_basis WHERE invocation=? AND basis=?',
+        t.invocationId,
+        name,
+      ) ?? {};
+    const aggregate = basis(f.basis);
+    const sid = s.snapshot.session.sessionId;
+    const baseline =
+      f.basis === 'session-cumulative'
+        ? readJson<Counters>(
+            'SELECT data FROM telemetry_baselines WHERE session=? AND metric=?',
+            sid,
+            'usage',
+          )
+        : undefined;
+
+    for (const key of Object.keys(f.counters) as (keyof Counters)[]) {
+      const value = f.counters[key];
+      if (value === undefined) {
+        fail('SESSION_INPUT_INVALID', 'Invalid usage counter.');
+      }
+
+      safe(value);
+      if (f.basis === 'turn-total') {
+        aggregate[key] = value;
+      } else if (f.basis === 'delta') {
+        aggregate[key] = safe((aggregate[key] ?? 0) + value);
+      } else {
+        const previous = baseline?.[key];
+        if (previous !== undefined && value >= previous) {
+          aggregate[key] = safe((aggregate[key] ?? 0) + value - previous);
+        } else if (!baseline && value === 0) {
+          aggregate[key] ??= 0;
+        } else {
+          old.usageIncomplete = true;
         }
       }
     }
 
     if (f.basis === 'session-cumulative') {
-      const baseline = readJson<Record<string, number>>(
-        'SELECT data FROM telemetry_baselines WHERE session=? AND metric=?',
-        s.snapshot.session.sessionId,
-        'usage',
-      );
-      if (
-        (!baseline && Object.values(f.counters).some((value) => value !== 0)) ||
-        (baseline &&
-          Object.entries(f.counters).some(
-            ([key, value]) => baseline[key] === undefined || value < baseline[key],
-          ))
-      ) {
-        old.usageIncomplete = true;
-      }
-
-      for (const key of tokenKeys) {
-        const sourceKey = key === 'cacheReadTokens' ? 'cachedTokens' : key;
-        const value = f.counters[sourceKey];
-        if (
-          value !== undefined &&
-          baseline?.[sourceKey] !== undefined &&
-          value >= baseline[sourceKey]
-        ) {
-          next[key] = safe((next[key] ?? 0) + value - baseline[sourceKey]);
-        } else if (value === 0 && baseline === undefined) {
-          next[key] = 0;
-        }
-      }
-
       run(
         'INSERT OR REPLACE INTO telemetry_baselines VALUES(?,?,?)',
         s.snapshot.session.sessionId,
@@ -309,11 +309,31 @@ export function createSessionTelemetry(
       );
     }
 
-    // Canonical usage can span an unobserved Turn; telemetry only attributes the
-    // native cumulative differences whose continuation baseline remains valid.
+    run(
+      'INSERT OR REPLACE INTO usage_basis VALUES(?,?,?)',
+      t.invocationId,
+      f.basis,
+      JSON.stringify(aggregate),
+    );
+    const counters: Counters = {
+      ...basis('session-cumulative'),
+      ...basis('delta'),
+      ...basis('turn-total'),
+    };
+    const next: Tokens = {};
+    for (const key of tokenKeys) {
+      const value = counters[key === 'cacheReadTokens' ? 'cachedTokens' : key];
+      if (value !== undefined) {
+        next[key] = value;
+      }
+    }
+
     if (Object.keys(next).length) {
+      t.summary.usage = counters;
       old.usage = next;
       old.usageAt = now();
+    } else {
+      delete t.summary.usage;
     }
 
     update(s, old);

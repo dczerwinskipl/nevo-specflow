@@ -6,7 +6,6 @@ import type {
   ConversationEntry,
   WorkSummary,
   Interaction,
-  TurnSummary,
   ToolActionSummary,
   SessionChange,
   LiveProjection,
@@ -309,69 +308,6 @@ export function createProviderFacts({
 
       if (!existing) {
         run('INSERT INTO usage_samples VALUES(?,?,?)', c.invocationId, f.sampleId, hash);
-        const aggregate = JSON.parse(
-          String(
-            get(
-              'SELECT data FROM usage_basis WHERE invocation=? AND basis=?',
-              c.invocationId,
-              f.basis,
-            )?.data ?? '{}',
-          ),
-        ) as Record<string, number>;
-        const previous = JSON.parse(
-          String(get('SELECT data FROM usage_session WHERE session=?', c.sessionId)?.data ?? '{}'),
-        ) as Record<string, number>;
-        for (const [key, value] of Object.entries(f.counters)) {
-          if (value === undefined || !Number.isSafeInteger(value) || value < 0) {
-            fail('SESSION_INPUT_INVALID', 'Invalid usage counter.');
-          }
-
-          if (f.basis === 'turn-total') {
-            aggregate[key] = value;
-          } else if (f.basis === 'delta') {
-            aggregate[key] = (aggregate[key] ?? 0) + value;
-          } else {
-            if (previous[key] !== undefined && value >= previous[key]) {
-              aggregate[key] = (aggregate[key] ?? 0) + value - previous[key];
-            }
-
-            previous[key] = value;
-          }
-
-          if (aggregate[key] !== undefined && !Number.isSafeInteger(aggregate[key])) {
-            fail('SESSION_INPUT_INVALID', 'Usage counter overflow.');
-          }
-        }
-
-        run(
-          'INSERT OR REPLACE INTO usage_basis VALUES(?,?,?)',
-          c.invocationId,
-          f.basis,
-          JSON.stringify(aggregate),
-        );
-        if (f.basis === 'session-cumulative') {
-          run(
-            'INSERT OR REPLACE INTO usage_session VALUES(?,?)',
-            c.sessionId,
-            JSON.stringify(previous),
-          );
-        }
-
-        const basis = (name: string) =>
-          JSON.parse(
-            String(
-              get(
-                'SELECT data FROM usage_basis WHERE invocation=? AND basis=?',
-                c.invocationId,
-                name,
-              )?.data ?? '{}',
-            ),
-          ) as NonNullable<TurnSummary['usage']>;
-        t.summary.usage = {
-          ...basis('session-cumulative'),
-          ...basis('delta'),
-          ...basis('turn-total'),
-        };
         telemetry.usage(s, t, f);
       }
     }

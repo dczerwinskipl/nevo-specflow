@@ -17,13 +17,12 @@ import {
   firstVisibleEntry,
   followingLongConversation,
   nextFrames,
-  readerScrollsTo,
   SPLIT,
   STACKED,
 } from './managedSession.scrollPosition.stories-support';
 
 /**
- * The reader's own gesture is never undone by a change racing it (`useConversationScroll`): a real
+ * The reader's own gesture is never undone by a change racing it (`useConversationScroll`): a
  * wheel arriving moments after the scroller was resized (a dragged splitter or window edge, a soft
  * keyboard animating) leaves the latest message and starts reading, exactly as on a quiet layout
  * (`useLayoutInducedScroll` recognises the reader's gesture by its input, however recent the
@@ -53,19 +52,30 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 type Scenario = Pick<Story, 'args' | 'play'>;
 
+const clientBox = (node: HTMLElement) => `${node.clientWidth}x${node.clientHeight}`;
+
 /**
  * Re-lays the scroller out on every frame, the way a dragged Secondary splitter, a window edge
  * being dragged or a soft keyboard animating in does: its content box changes width by a pixel
- * each frame. Returns how to stop it and when the scroller was last resized.
+ * each frame. And the instant the reader's wheel turns, its box loses a pixel of height as well,
+ * so the browser delivers that wheel's scroll to a scroller re-laid out since the last scroll it
+ * saw — the layout change racing the gesture however long the runner's frames are (a resize paced
+ * by frames alone races it only while frames are shorter than the 200 ms layout window).
  */
 function keepResizing(scroller: HTMLElement) {
-  const original = scroller.style.paddingRight;
+  const original = {
+    paddingRight: scroller.style.paddingRight,
+    maxHeight: scroller.style.maxHeight,
+  };
   const base = parseFloat(getComputedStyle(scroller).paddingRight) || 0;
-  let lastResizeAt = Number.NaN;
+  let resized = false;
   let frame = 0;
   let odd = false;
+  // The client box the wheel's resize started from, and the one its scroll was delivered with.
+  let wheelBox: string | undefined;
+  let scrollBox: string | undefined;
   const observer = new ResizeObserver(() => {
-    lastResizeAt = performance.now();
+    resized = true;
   });
   observer.observe(scroller);
   const tick = () => {
@@ -74,75 +84,89 @@ function keepResizing(scroller: HTMLElement) {
     frame = requestAnimationFrame(tick);
   };
 
+  const onWheel = () => {
+    if (wheelBox === undefined) {
+      wheelBox = clientBox(scroller);
+      scroller.style.maxHeight = `${scroller.getBoundingClientRect().height - 1}px`;
+    }
+  };
+
+  const onScroll = () => {
+    if (wheelBox !== undefined && scrollBox === undefined) {
+      scrollBox = clientBox(scroller);
+    }
+  };
+
   frame = requestAnimationFrame(tick);
+  scroller.addEventListener('wheel', onWheel, { passive: true });
+  scroller.addEventListener('scroll', onScroll, { passive: true });
 
   return {
-    lastResizeAt: () => lastResizeAt,
+    resized: () => resized,
+    /** The wheel's scroll reached the page with the scroller's box changed since the wheel. */
+    scrolledResized: () => scrollBox !== undefined && scrollBox !== wheelBox,
     stop() {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      scroller.style.paddingRight = original;
+      scroller.removeEventListener('wheel', onWheel);
+      scroller.removeEventListener('scroll', onScroll);
+      scroller.style.paddingRight = original.paddingRight;
+      scroller.style.maxHeight = original.maxHeight;
     },
   };
+}
+
+/**
+ * The reader turns the wheel up, as the page sees it: a `wheel` event on the scroller, the view
+ * moving by its delta, and that move's `scroll` event delivered by the browser with the next frame.
+ * Dispatched in the page rather than through the runner's browser driver, whose round trip (its
+ * pointer actionability checks over the browser connection every running story shares) took from a
+ * fraction of a second to over ten seconds in the full suite, so the story's duration followed the
+ * machine's load instead of the behaviour.
+ */
+function readerWheelsUp(scroller: HTMLElement, distance: number) {
+  scroller.dispatchEvent(
+    new WheelEvent('wheel', { deltaY: -distance, bubbles: true, cancelable: true }),
+  );
+  scroller.scrollTop -= distance;
 }
 
 function wheelWhileLayoutChanges(viewport: { width: number; height: number }): Scenario {
   return {
     args: { api: liveFixtureApi(longConversationSnapshot()).api },
     play: async ({ canvasElement }) => {
-      // Lazy: story modules are also loaded in plain Node, where `vitest/browser` throws.
-      const { userEvent } = await import('vitest/browser');
       await settleViewport(viewport.width, viewport.height);
       const scroller = await followingLongConversation(canvasElement, longConversationLastMessage);
 
-      let wheelAt = Number.NaN;
-      let resizeBeforeWheelAt = Number.NaN;
       const resizing = keepResizing(scroller);
-      const onWheel = () => {
-        if (Number.isNaN(wheelAt)) {
-          wheelAt = performance.now();
-          resizeBeforeWheelAt = resizing.lastResizeAt();
-        }
-      };
-
-      scroller.addEventListener('wheel', onWheel, { passive: true });
       try {
         await waitFor(() => {
-          if (Number.isNaN(resizing.lastResizeAt())) {
+          if (!resizing.resized()) {
             throw new Error('The scroller is not being re-laid out yet.');
           }
         });
-        // While the layout keeps changing, the reader scrolls up with the wheel. A loaded runner can
-        // stretch a frame past the layout window (then the gesture is not the one this story is
-        // about): the reader returns to the bottom and scrolls again, a few times at most.
-        for (let attempt = 1; ; attempt += 1) {
-          wheelAt = Number.NaN;
-          await userEvent.wheel(scroller, { delta: { y: -600 } });
-          await waitFor(async () =>
-            expect(
-              distanceFromBottom(scroller),
-              "the reader's wheel scrolled the conversation up (not undone by the re-layout)",
-            ).toBeGreaterThan(300),
-          );
-          if (wheelAt - resizeBeforeWheelAt < 200 || attempt === 3) {
-            break;
-          }
-
-          readerScrollsTo(scroller, scroller.scrollHeight);
-          await waitFor(async () => expect(distanceFromBottom(scroller)).toBeLessThanOrEqual(2));
-        }
-
+        // While the layout keeps changing, the reader scrolls up with the wheel.
+        readerWheelsUp(scroller, 600);
+        await nextFrames();
         await expect(
-          wheelAt - resizeBeforeWheelAt,
-          'the reader scrolled right after a resize (the gesture this story is about)',
-        ).toBeLessThan(200);
+          resizing.scrolledResized(),
+          "the wheel's scroll reached the page with the scroller just re-laid out (the race this story is about)",
+        ).toBe(true);
+        await expect(
+          distanceFromBottom(scroller),
+          "the reader's wheel scrolled the conversation up (not undone by the re-layout)",
+        ).toBeGreaterThan(300);
         // The layout keeps changing for a while after the gesture: each re-layout re-applies the
         // position, which must now keep the reader where they scrolled to.
         for (let frame = 0; frame < 10; frame += 1) {
           await nextFrames();
         }
+
+        await expect(
+          distanceFromBottom(scroller),
+          'the re-layouts after the gesture keep the reader where they scrolled to',
+        ).toBeGreaterThan(300);
       } finally {
-        scroller.removeEventListener('wheel', onWheel);
         resizing.stop();
       }
 

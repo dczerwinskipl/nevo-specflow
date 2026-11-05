@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
+import { readHistoryAnchor, restoreHistoryAnchor, type HistoryAnchor } from './pagedHistoryAnchor';
 import {
   useViewState,
   type Merge,
@@ -85,8 +86,11 @@ export function availablePaged<TItem>(
  *
  * - The older-page cursor is the store's, set only by `loadOlder`; until the first older page the
  *   tail's own `history` applies. A tail refresh therefore never rewinds it.
- * - The scroll anchor taken before an older fetch is consumed in the commit that merges that
- *   page (keyed to `olderVersion`), so a tail refresh landing mid-load cannot use it up.
+ * - The reading anchor (`pagedHistoryAnchor.ts`: the entry being read and its distance from the
+ *   scroller's top edge) is read when an older page arrives, right before it is merged, and
+ *   restored in the commit that merges it (keyed to `olderVersion`), so a tail refresh, a filter
+ *   or an expanded entry during the request neither uses it up nor shifts it. Entries render
+ *   `historyEntry(id)`.
  */
 export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extends PagePart<TItem>>({
   store,
@@ -105,7 +109,7 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
 }) {
   const state = useViewState(store);
   const scroller = useRef<HTMLDivElement>(null);
-  const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
+  const anchor = useRef<HistoryAnchor | undefined>(undefined);
   const { items, hasOlder } = useMemo(
     () => availablePaged(state, tail, merge),
     [merge, state, tail],
@@ -113,11 +117,10 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
 
   useLayoutEffect(() => {
     const node = scroller.current;
-    if (!node || !anchor.current) {
-      return;
+    if (node && anchor.current) {
+      restoreHistoryAnchor(node, anchor.current);
     }
 
-    node.scrollTop = anchor.current.top + node.scrollHeight - anchor.current.height;
     anchor.current = undefined;
   }, [state.olderVersion]);
 
@@ -128,16 +131,14 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
       return;
     }
 
-    if (scroller.current) {
-      anchor.current = { height: scroller.current.scrollHeight, top: scroller.current.scrollTop };
-    }
-
     store.update((value) => ({ ...value, busy: true, error: false }));
     try {
       const page = await fetchOlder(before);
+      // Read now, not when the request started: whatever changed while it was in flight is
+      // already on screen, so only the page itself is compensated (`pagedHistoryAnchor.ts`).
+      anchor.current = scroller.current ? readHistoryAnchor(scroller.current) : undefined;
       store.update((value) => absorbOlder(value, page));
     } catch {
-      anchor.current = undefined;
       store.update((value) => ({ ...value, busy: false, error: true }));
     }
   }

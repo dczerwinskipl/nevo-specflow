@@ -749,12 +749,19 @@ describe('WorkInspector view state', () => {
   });
 
   it('F09: a tail refresh landing during an older load does not use up the scroll anchor', async () => {
-    let height = 1000;
-    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
-    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-      configurable: true,
-      get: () => height,
-    });
+    // jsdom lays nothing out: every history entry is given a 300px row in its scroller, in
+    // document order, moved by the scroller's `scrollTop` (`pagedHistoryAnchor.ts` measures these).
+    const rects = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const scroller = this.closest<HTMLElement>('.scroll-area-viewport');
+        const entries = scroller ? [...scroller.querySelectorAll('[data-history-entry]')] : [];
+        const index = entries.indexOf(this);
+        const top = index < 0 ? 0 : index * 300 - scroller!.scrollTop;
+        const height = index < 0 ? 0 : 300;
+
+        return { top, bottom: top + height, height } as DOMRect;
+      });
     try {
       const pages = [toolItems('Old', 2), toolItems('Tail', 2)];
       const { api, release } = pagedApi({ turns: { [turnId]: pages }, hold: '0' });
@@ -767,7 +774,6 @@ describe('WorkInspector view state', () => {
       await screen.findByText('Loading older Work…');
       await refreshTail(client);
 
-      height = 1600;
       await act(async () => {
         release();
         await Promise.resolve();
@@ -777,11 +783,7 @@ describe('WorkInspector view state', () => {
       // 0 + the 600px the older page added above the viewport.
       expect(viewport.scrollTop).toBe(600);
     } finally {
-      if (original) {
-        Object.defineProperty(HTMLElement.prototype, 'scrollHeight', original);
-      } else {
-        delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
-      }
+      rects.mockRestore();
     }
   });
 

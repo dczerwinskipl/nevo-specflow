@@ -5,6 +5,7 @@ import { Check, Copy } from 'lucide-react';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
 import { Alert, Button, Spinner, Timeline, Typography } from '@nevo/ui';
 import type { ManagedSessionsApi } from './api';
+import { historyEntry } from './pagedHistoryAnchor';
 import { ToolActionHeader } from './ToolActionHeader';
 import { ToolDetailCode } from './ToolDetailCode';
 import { workStateTone } from './workStatus';
@@ -220,7 +221,7 @@ export function ToolActionTimelineItem({
   source: ContentSource;
 }) {
   return (
-    <Timeline.Item>
+    <Timeline.Item {...historyEntry(item.actionId)}>
       <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
       <Timeline.Content title={<ToolActionContent item={item} source={source} withHeader />} />
     </Timeline.Item>

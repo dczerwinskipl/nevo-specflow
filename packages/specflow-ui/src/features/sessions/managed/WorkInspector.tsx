@@ -31,6 +31,7 @@ import { translateNow } from '../../../i18n/message';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
+import { historyEntry } from './pagedHistoryAnchor';
 import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
   absorbPage,
@@ -204,7 +205,7 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { meta, srStatus } = useWorkRowMeta(item, { leading: item.title.text ? kind : undefined });
 
   return (
-    <Timeline.Item>
+    <Timeline.Item {...historyEntry(item.workId)}>
       <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
       <Timeline.Content
         title={
@@ -239,7 +240,7 @@ function ToolTimelineItem({
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
 
   return (
-    <Timeline.Item>
+    <Timeline.Item {...historyEntry(item.workId)}>
       <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
       <Timeline.Content
         title={
@@ -306,7 +307,7 @@ function ToolBurstTimelineItem({
   const { t } = useTranslation();
 
   return (
-    <Timeline.Item>
+    <Timeline.Item {...historyEntry(burst.items[0]!.workId)}>
       <Timeline.Marker tone="success" />
       <Collapsible density="inline">
         <Timeline.Content
@@ -402,7 +403,10 @@ function WorkNarration({
   const isLong = isNarrationLong(item);
 
   return (
-    <div className={cn('grid min-w-0 gap-1 text-content-muted', voice === 'reasoning' && 'italic')}>
+    <div
+      {...historyEntry(item.workId)}
+      className={cn('grid min-w-0 gap-1 text-content-muted', voice === 'reasoning' && 'italic')}
+    >
       <span className="sr-only">
         {voice === 'reasoning'
           ? t('managedSession.workInspector.thinking')

@@ -221,6 +221,7 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 | `ideas.specflow-runtime.provider-manual-checks` | [Short manual provider checks outside automated tests](ideas/specflow-runtime/provider-manual-checks.md) | draft | Optional short native-provider checks with explicit test prompts, no embedded credentials and no dependency from automated tests or CI on a subscription. |
 | `ideas.specflow-runtime.provider-migration-plan` | [Real provider migration after the independent Session foundation](ideas/specflow-runtime/provider-migration-plan.md) | draft | Bounded follow-on deliveries for Claude, Codex and Antigravity against the fixed Session driver contract, with explicit Engine prerequisites for writable execution. |
 | `ideas.specflow-runtime.session-review-follow-up` | [PR 98 Session architecture review follow-up](ideas/specflow-runtime/session-review-follow-up.md) | draft | Tracks reproduced defects, safe recovery boundaries, Windows ownership blockers, measured SSE activity, compatibility staging and final verification requirements. |
+| `ideas.specflow-runtime.work-history-server-filter` | [Server-side filter and search for Session Work history](ideas/specflow-runtime/work-history-server-filter.md) | draft | Follow-up to PR #112 finding N09: move the Work Inspector's kind filter and search to the Runtime so a filtered page holds matches from the whole Turn and "no matches" is definitive. Open owner decisions on search semantics and scan cost. |
 
 ## Product
 

@@ -4890,6 +4890,34 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.work-history-server-filter",
+      "type": "engineering",
+      "title": "Server-side filter and search for Session Work history",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/work-history-server-filter.md",
+      "read_when": [
+        "planning filter or search over a Turn's Work history in the Runtime",
+        "changing Work history paging, cursors or the Work Inspector's empty states"
+      ],
+      "summary": "Follow-up to PR #112 finding N09: move the Work Inspector's kind filter and search to the Runtime so a filtered page holds matches from the whole Turn and \"no matches\" is definitive. Open owner decisions on search semantics and scan cost.",
+      "related": [
+        "reference.api.sessions",
+        "ideas.specflow-ui.components.session-work-inspector"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "work-inspector",
+        "paging",
+        "search"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.spec-creation",
       "type": "product",
       "title": "Specification creation vertical slice",

@@ -460,7 +460,9 @@ export function createSessionTelemetryService(
       // Transcript/tool commits share the wake-up channel. Coalesce them rather than
       // rereading telemetry on every token, and stop work when the final viewer leaves.
       await delay(500, undefined, { signal: shutdown.signal });
-      if (watches.get(sessionId) !== watch || ![...watch.consumers].some(isPermitted)) {
+      // Every authorized Session stream can observe context expiry. The separate
+      // limit permission governs native account polling, not stored freshness.
+      if (watches.get(sessionId) !== watch || !watch.consumers.size) {
         return;
       }
 

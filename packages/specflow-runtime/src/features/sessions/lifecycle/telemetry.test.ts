@@ -130,6 +130,30 @@ function fixture(
 }
 
 describe('Session telemetry refresh lifecycle', () => {
+  it('publishes stored context expiry for Session viewers without granting native account monitoring', async () => {
+    const f = fixture();
+    const snapshot = await f.service.snapshot(randomUUID());
+    snapshot.context = {
+      status: 'available',
+      freshness: 'fresh',
+      refreshable: false,
+      observedAt: new Date().toISOString(),
+      staleAt: new Date(Date.now() + 1000).toISOString(),
+      value: { contextGeneration: 'context', occupiedTokens: 10 },
+    };
+    f.snapshots.push(snapshot);
+    const unwatch = f.service.watch(snapshot.sessionId, () => false);
+    await vi.waitFor(
+      () =>
+        expect(f.commands.filter((command) => command.op === 'telemetry-expire')).toEqual([
+          { op: 'telemetry-expire', sessionId: snapshot.sessionId },
+        ]),
+      { timeout: 3000 },
+    );
+    expect(f.binding).not.toHaveBeenCalled();
+    expect(f.refresh).not.toHaveBeenCalled();
+    unwatch();
+  });
   it('retires previous account observations on a confirmed external switch without rebinding or querying limits', async () => {
     const f = fixture();
     f.binding.mockResolvedValue({
